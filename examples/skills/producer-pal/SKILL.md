@@ -71,7 +71,7 @@ Decide once, then pass the same list on every call, including `ppal-connect`:
 ```bash
 # Read-only session: no writers, so all the note-writing and transform
 # instructions come off the Skills blob too
-node ppal.mjs ppal-connect --disable-tools ppal-create-clip,ppal-update-clip,ppal-create-track,ppal-update-track,ppal-create-scene,ppal-update-scene,ppal-create-device,ppal-update-device,ppal-update-live-set,ppal-delete,ppal-duplicate,ppal-context,ppal-playback
+node ppal.mjs ppal-connect --disable-tools ppal-create-clip,ppal-update-clip,ppal-create-track,ppal-update-track,ppal-create-scene,ppal-update-scene,ppal-create-device,ppal-update-device,ppal-update-live-set,ppal-delete,ppal-duplicate,ppal-context,ppal-manage,ppal-playback
 ```
 
 Run `--list-tools` first if you need the exact names. Only skip tools you're

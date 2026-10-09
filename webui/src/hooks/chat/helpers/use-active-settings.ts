@@ -1,11 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { useCallback, useState } from "preact/hooks";
 import { type Notation } from "#src/shared/notation";
-import { type ConversationLockedSettings } from "#webui/lib/conversations/conversation-store";
+import { type RestoredSettings } from "#webui/lib/conversations/conversation-store";
 import { type Provider } from "#webui/types/settings";
 
 /** State for the "locked" settings of the current conversation */
@@ -18,6 +18,8 @@ export interface ActiveSettings {
   activeNotation: Notation | null;
   activeEnabledTools: Record<string, boolean> | null;
   activeMaxToolSteps: number | null;
+  /** The active conversation was imported from a file. */
+  activeImported: boolean;
 }
 
 /**
@@ -40,7 +42,7 @@ interface ActiveSettingsActions {
   /** Lock settings when a new conversation starts */
   lockSettings: (settings: LockedSettingsInput) => void;
   /** Restore settings from a saved conversation */
-  restoreSettings: (lockedSettings?: ConversationLockedSettings) => void;
+  restoreSettings: (lockedSettings?: RestoredSettings) => void;
   /** Clear all active settings (new conversation) */
   clearSettings: () => void;
 }
@@ -75,6 +77,8 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     null,
   );
 
+  const [activeImported, setActiveImported] = useState(false);
+
   const lockSettings = useCallback((settings: LockedSettingsInput) => {
     setActiveModel(settings.model);
     setActiveProvider(settings.provider);
@@ -84,22 +88,23 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     setActiveNotation(settings.notation);
     setActiveEnabledTools(settings.enabledTools);
     setActiveMaxToolSteps(settings.maxToolSteps);
+    // Not touched here: a send (or fork/retry/edit) in a restored imported chat
+    // re-locks it, and the imported prompt keeps running. Only restoreSettings
+    // and clearSettings decide the flag; every fresh conversation clears first.
   }, []);
 
-  const restoreSettings = useCallback(
-    (lockedSettings?: ConversationLockedSettings) => {
-      setActiveModel(lockedSettings?.model ?? null);
-      setActiveProvider(lockedSettings?.provider ?? null);
-      setActiveThinking(lockedSettings?.thinking ?? null);
-      setActiveSmallModelMode(lockedSettings?.smallModelMode ?? null);
-      setActiveSystemInstruction(lockedSettings?.systemInstruction ?? null);
-      setActiveNotation(lockedSettings?.notation ?? null);
-      setActiveEnabledTools(lockedSettings?.enabledTools ?? null);
-      // Nothing to restore — it locks when this conversation's client is built.
-      setActiveMaxToolSteps(null);
-    },
-    [],
-  );
+  const restoreSettings = useCallback((lockedSettings?: RestoredSettings) => {
+    setActiveModel(lockedSettings?.model ?? null);
+    setActiveProvider(lockedSettings?.provider ?? null);
+    setActiveThinking(lockedSettings?.thinking ?? null);
+    setActiveSmallModelMode(lockedSettings?.smallModelMode ?? null);
+    setActiveSystemInstruction(lockedSettings?.systemInstruction ?? null);
+    setActiveNotation(lockedSettings?.notation ?? null);
+    setActiveEnabledTools(lockedSettings?.enabledTools ?? null);
+    // Nothing to restore — it locks when this conversation's client is built.
+    setActiveMaxToolSteps(null);
+    setActiveImported(lockedSettings?.imported === true);
+  }, []);
 
   const clearSettings = useCallback(() => {
     setActiveModel(null);
@@ -110,6 +115,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     setActiveNotation(null);
     setActiveEnabledTools(null);
     setActiveMaxToolSteps(null);
+    setActiveImported(false);
   }, []);
 
   return {
@@ -121,6 +127,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     activeNotation,
     activeEnabledTools,
     activeMaxToolSteps,
+    activeImported,
     lockSettings,
     restoreSettings,
     clearSettings,

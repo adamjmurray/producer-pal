@@ -1,16 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A stand-in for the Max device's MCP server, so a test can decide when the
-// device is reachable. The offline→online transition is the point of these
-// tests, and no real Ableton Live can be switched on halfway through one.
+// device is reachable: no real Ableton Live can be switched on halfway through
+// a test.
 //
-// The device is the collaborator here, not the subject. Narrowing a tool list by
-// the disabled-tools header is the device's job and is tested on that side; what
-// the portal owes is the header itself. So the stub records what it was sent
-// rather than acting on it, and answers with one unmistakable marker tool — any
+// The device is the collaborator here, not the subject, so the stub records what
+// it was sent rather than acting on it, and answers with one marker tool: any
 // list containing it came from the device, not the portal's offline fallback.
 
 import {
@@ -19,8 +17,8 @@ import {
   type Server as HttpServer,
   type ServerResponse,
 } from "node:http";
-import { createServer as createNetServer } from "node:net";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { closeServer, reservePort } from "./local-server";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
 /** The only tool the stub device offers. */
@@ -65,6 +63,8 @@ export interface StubDevice {
   origin: string;
   /** Every MCP request received, in order. */
   requests: DeviceRequest[];
+  /** The server version it reports; set it to play a swapped device */
+  version: string;
   /** Begin answering on the reserved port. */
   start: () => Promise<void>;
   /** Stop answering, as if Ableton quit. */
@@ -73,23 +73,25 @@ export interface StubDevice {
 
 /**
  * Create a stub device on a free port.
- * @param options - Whether it answers from the start
+ * @param options - Whether it answers from the start, and what it reports
  * @param options.online - False to reserve the port but stay unreachable
+ * @param options.version - The server version it reports
  * @returns The device
  */
 export async function createStubDevice(
-  options: { online?: boolean } = {},
+  options: { online?: boolean; version?: string } = {},
 ): Promise<StubDevice> {
   const port = await reservePort();
   const requests: DeviceRequest[] = [];
   const server = createHttpServer((req, res) => {
-    void handleRequest(req, res, requests);
+    void handleRequest(req, res, requests, device.version);
   });
   const device: StubDevice = {
     origin: `http://127.0.0.1:${port}`,
     requests,
+    version: options.version ?? "1.0.0",
     start: () => listen(server, port),
-    stop: () => close(server),
+    stop: () => closeServer(server),
   };
 
   if (options.online !== false) await device.start();
@@ -105,11 +107,13 @@ export async function createStubDevice(
  * @param req - The incoming request
  * @param res - The response to write
  * @param requests - The recorder to append to
+ * @param version - The server version to report
  */
 async function handleRequest(
   req: IncomingMessage,
   res: ServerResponse,
   requests: DeviceRequest[],
+  version: string,
 ): Promise<void> {
   const isMcp = req.url?.startsWith("/mcp") ?? false;
 
@@ -129,7 +133,7 @@ async function handleRequest(
     settings: settingsOf(req),
   });
 
-  const server = new McpServer({ name: "stub-device", version: "1.0.0" });
+  const server = new McpServer({ name: "stub-device", version });
 
   server.registerTool(
     DEVICE_TOOL,
@@ -151,30 +155,6 @@ async function handleRequest(
 }
 
 /**
- * Find a free port and release it, so the device can claim it later — the only
- * way to point a portal at a device that isn't listening yet.
- * @returns The port number
- */
-function reservePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const probe = createNetServer();
-
-    probe.on("error", reject);
-    probe.listen(0, "127.0.0.1", () => {
-      const address = probe.address();
-
-      if (address == null || typeof address === "string") {
-        reject(new Error("Could not reserve a port for the stub device"));
-
-        return;
-      }
-
-      probe.close(() => resolve(address.port));
-    });
-  });
-}
-
-/**
  * Start listening.
  * @param server - The device's HTTP server
  * @param port - The reserved port
@@ -182,25 +162,6 @@ function reservePort(): Promise<number> {
 function listen(server: HttpServer, port: number): Promise<void> {
   return new Promise((resolve) => {
     server.listen(port, "127.0.0.1", () => resolve());
-  });
-}
-
-/**
- * Stop listening, dropping live connections.
- * @param server - The device's HTTP server
- */
-function close(server: HttpServer): Promise<void> {
-  return new Promise((resolve) => {
-    if (!server.listening) {
-      resolve();
-
-      return;
-    }
-
-    // The portal's HTTP client keeps its socket alive, which would hold close()
-    // open until that socket times out.
-    server.closeAllConnections();
-    server.close(() => resolve());
   });
 }
 

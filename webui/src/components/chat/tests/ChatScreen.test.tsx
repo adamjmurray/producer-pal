@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -12,6 +12,10 @@ import { ChatScreen } from "#webui/components/chat/ChatScreen";
 import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderActions";
 import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
 import { conversationPanelProps } from "#webui/components/chat/tests/conversation-panel-props";
+
+vi.mock(import("#webui/hooks/connection/use-remote-script-notice"), () => ({
+  useRemoteScriptNotice: () => null,
+}));
 
 vi.mock(import("#webui/hooks/connection/use-update-check"), () => ({
   useUpdateCheck: () => ({ update: null, dismissUpdate: () => {} }),
@@ -57,6 +61,7 @@ describe("ChatScreen", () => {
     onOpenSettings: mockOnOpenSettings,
     onOpenToolsSettings: vi.fn(),
     onOpenConnectionSettings: vi.fn(),
+    onOpenRemoteScriptSettings: vi.fn(),
     onOpenContext: vi.fn(),
     onOpenInstructions: vi.fn(),
     onStop: mockOnStop,

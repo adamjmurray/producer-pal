@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { formatProviderList, listModels } from "#evals/shared/list-models.ts";
@@ -64,26 +64,49 @@ describe("listModels", () => {
     expect(output).toContain("gpt-5");
   });
 
-  it("caps openrouter to 50 models and notes the total", async () => {
-    process.env.OPENROUTER_KEY = "test-key";
-    const many = Array.from({ length: 75 }, (_unused, index) => ({
-      id: `m${String(index).padStart(3, "0")}`,
-    }));
+  it.each([
+    ["openrouter", "OPENROUTER_KEY", "openrouter", "m"],
+    ["the Vercel AI Gateway", "VERCEL_AI_GATEWAY_KEY", "vercel", "p/m"],
+  ])(
+    "caps %s to 50 models and notes the total",
+    async (_label, keyVar, provider, idPrefix) => {
+      process.env[keyVar] = "test-key";
+      const many = Array.from({ length: 75 }, (_unused, index) => ({
+        id: `${idPrefix}${String(index).padStart(3, "0")}`,
+      }));
 
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ data: many }),
-      }),
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({ data: many }),
+        }),
+      );
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      await listModels(provider);
+
+      const header = log.mock.calls[0]?.[0] as string;
+
+      expect(header).toContain("showing 50 of 75");
+    },
+  );
+
+  it("queries the Vercel AI Gateway models endpoint", async () => {
+    process.env.VERCEL_AI_GATEWAY_KEY = "test-key";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ id: "openai/gpt-6-luna" }] }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+
+    expect(await listModels("vercel")).toBe(0);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://ai-gateway.vercel.sh/v1/models",
+      expect.anything(),
     );
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
-    await listModels("openrouter");
-
-    const header = log.mock.calls[0]?.[0] as string;
-
-    expect(header).toContain("showing 50 of 75");
   });
 
   it("strips the models/ prefix for google", async () => {

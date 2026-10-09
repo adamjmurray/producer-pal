@@ -1,13 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
 import {
   type TargetNotes,
   isParamSent,
   newTargetNotes,
+  noteLanded,
   noteTarget,
   refuseIfNoneLanded,
   refuseTargetWork,
@@ -20,8 +21,14 @@ import {
   readSendBack,
   readSendGainDb,
   refusedSend,
-  warnSendCollisions,
+  withClash,
+  withDetail,
+  withSupersededSends,
 } from "#src/tools/shared/sends/send-list.ts";
+import {
+  AUTOMATION_OVERRIDDEN,
+  overridesAutomation,
+} from "#src/tools/shared/arrangement/tracks/automation-override.ts";
 import {
   asFiniteNumber,
   roundDisplayValue,
@@ -29,6 +36,7 @@ import {
   roundPan,
 } from "#src/tools/shared/helpers/rounding.ts";
 import { findReturnIndex } from "#src/tools/shared/helpers/send-validation.ts";
+import { replacementFailedDetail } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   type MixerApplied,
   PARAM_DISABLED_REASON,
@@ -55,14 +63,16 @@ export interface ChainMixerParams {
 /** What a chain mixer write landed, read back off the chain. */
 export interface ChainMixerApplied extends MixerApplied {
   sends?: SendResult[];
+  /** Sends that landed where the return's spelling also fit another return */
+  clashes?: { return: string; clash: string }[];
 }
 
 /** One send that was written, and the return chain it went to. */
 interface WrittenChainSend extends IndexedSend {
-  /** The return chain's id, for the result entry */
-  returnId: string;
   /** The send parameter, ready to read back */
   param: LiveAPI;
+  /** Whether this write overrode the send's arrangement lane */
+  overrode: boolean;
 }
 
 /**
@@ -73,14 +83,33 @@ interface WrittenChainSend extends IndexedSend {
  * @returns Object with any of gainDb, pan, sends
  */
 export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
+  return readChainMixerAndParams(chain).values;
+}
+
+/** A chain mixer parameter that can carry an arrangement lane. */
+export type AutomatableField = [name: string | (() => string), param: LiveAPI];
+
+/**
+ * Read a chain's mixer as {@link readChainMixer} does, and hand back its
+ * parameters, so a caller wanting their automation doesn't build them again.
+ * @param chain - Chain or DrumChain LiveAPI object
+ * @returns The non-default settings, and every mixer parameter by the name the
+ *   chain entry gives it (a send's name is only worked out when asked for)
+ */
+export function readChainMixerAndParams(chain: LiveAPI): {
+  values: Record<string, unknown>;
+  automatable: AutomatableField[];
+} {
   const info: Record<string, unknown> = {};
   const mixer = chain.child("mixer_device");
 
   if (!mixer.exists()) {
-    return info;
+    return { values: info, automatable: [] };
   }
 
-  const gainDb = mixer.child("volume").getProperty("display_value");
+  const volume = mixer.child("volume");
+  const panning = mixer.child("panning");
+  const gainDb = volume.getProperty("display_value");
 
   // Round before the check, same as pan below.
   const roundedGainDb = roundDisplayValue(gainDb, roundGainDb);
@@ -89,7 +118,7 @@ export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
     info.gainDb = roundedGainDb;
   }
 
-  const pan = mixer.child("panning").getProperty("value");
+  const pan = panning.getProperty("value");
 
   // Round before the check: sub-1% noise is centered as far as Live is
   // concerned, and reporting it as `pan: 0` would contradict "non-default only".
@@ -99,13 +128,24 @@ export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
     info.pan = roundedPan;
   }
 
-  const sends = readActiveSends(chain, mixer);
+  const sendParams = mixer.getChildren("sends");
+  const sends = readActiveSends(chain, sendParams);
 
   if (sends.length > 0) {
     info.sends = sends;
   }
 
-  return info;
+  const automatable: AutomatableField[] = [
+    ["gainDb", volume],
+    ["pan", panning],
+    ...sendParams.map((send, index): AutomatableField => [
+      () =>
+        `send ${sendReturnName(returnChainInfo(chain)[index]?.name, index)}`,
+      send,
+    ]),
+  ];
+
+  return { values: info, automatable };
 }
 
 /**
@@ -168,12 +208,16 @@ export function applyChainMixer(
     applied.pan = pan;
   }
 
-  const sends = applyChainSends(chain, mixer, params);
+  const { sends, clashes } = applyChainSends(chain, mixer, params, notes);
 
   refuseIfNoneLanded(notes, SEND_PARAMS, "send", sends, (send) => send.return);
 
   if (sends.length > 0) {
     applied.sends = sends;
+  }
+
+  if (clashes.length > 0) {
+    applied.clashes = clashes;
   }
 
   return applied;
@@ -197,8 +241,12 @@ export function applyChainMixerAside(
   const refusedSends = (applied.sends ?? [])
     .filter((send) => send.ok === false)
     .map((send) => `send "${send.return}" ${send.detail}`);
+  // A refused send already carries its clash in its detail.
+  const clashes = (applied.clashes ?? []).map(
+    ({ return: name, clash }) => `send "${name}" ${clash}`,
+  );
 
-  for (const said of [...own.said, ...refusedSends]) {
+  for (const said of [...own.said, ...refusedSends, ...clashes]) {
     noteTarget(notes, `${chainLabel(chain)}: ${said}`);
   }
 
@@ -221,6 +269,7 @@ export function rackPath(chain: LiveAPI): string {
  * @param mixer - The chain's mixer device
  * @param send - The send to write, with the return spelled as the caller wrote it
  * @param refused - Entries for the sends nothing was written to, added to
+ * @param notes - Told "send <return>" once the level is written
  * @returns The send and the return it went to, or null when nothing was written
  */
 function applyChainSend(
@@ -228,10 +277,12 @@ function applyChainSend(
   mixer: LiveAPI,
   send: ChainSend,
   refused: SendResult[],
+  notes: TargetNotes,
 ): WrittenChainSend | null {
   const returns = returnChainInfo(chain);
   const names = returns.map((rc) => rc.name);
-  const index = findReturnIndex(
+  // A rack's return chains have no `rt<n>` path, so no path index is passed.
+  const { index, clash } = findReturnIndex(
     names,
     send.return,
     returns.map((rc) => rc.id),
@@ -246,7 +297,7 @@ function applyChainSend(
         : " (rack has no return chains; they can only be added in Live)";
 
     // A fact about the chain the call named, so it rides back on that chain's
-    // own entry (ADR-0042).
+    // own entry.
     refused.push(
       refusedSend(
         send.return,
@@ -262,10 +313,13 @@ function applyChainSend(
 
   if (param == null) {
     refused.push(
-      refusedSend(
-        send.return,
-        returns[index]?.id,
-        "the chain has no send for this return",
+      withClash(
+        refusedSend(
+          send.return,
+          returns[index]?.id,
+          "the chain has no send for this return",
+        ),
+        clash,
       ),
     );
 
@@ -276,15 +330,30 @@ function applyChainSend(
 
   if (!isParamEnabled(param)) {
     refused.push(
-      refusedSend(info.name, info.id, `gainDb ${PARAM_DISABLED_REASON}`),
+      withClash(
+        refusedSend(info.name, info.id, `gainDb ${PARAM_DISABLED_REASON}`),
+        clash,
+      ),
     );
 
     return null;
   }
 
-  param.set("display_value", send.gainDb);
+  const overrode = overridesAutomation(param, () => {
+    param.set("display_value", send.gainDb);
+  });
 
-  return { ...send, index, name: info.name, returnId: info.id, param };
+  noteLanded(notes, `send ${info.name}`);
+
+  return {
+    ...send,
+    index,
+    name: info.name,
+    returnId: info.id,
+    param,
+    overrode,
+    ...(clash == null ? {} : { clash }),
+  };
 }
 
 /**
@@ -293,13 +362,16 @@ function applyChainSend(
  * @param chain - Chain or DrumChain LiveAPI object
  * @param mixer - The chain's mixer device
  * @param params - Mixer values to set
- * @returns One entry per return that landed, plus one per send that didn't
+ * @param notes - What the chain's entry has to say, told what lands
+ * @returns One entry per return that landed, plus one per send that didn't,
+ *   and the clashes of the sends that landed
  */
 function applyChainSends(
   chain: LiveAPI,
   mixer: LiveAPI,
   params: ChainMixerParams,
-): SendResult[] {
+  notes: TargetNotes,
+): Pick<Required<ChainMixerApplied>, "sends" | "clashes"> {
   const { sendGainDb, sendReturn } = params;
   const refused: SendResult[] = [];
 
@@ -311,6 +383,7 @@ function applyChainSends(
           mixer,
           { return: sendReturn, gainDb: sendGainDb },
           refused,
+          notes,
         )
       : null;
 
@@ -319,7 +392,7 @@ function applyChainSends(
   const list: WrittenChainSend[] = [];
 
   for (const send of params.sends ?? []) {
-    const written = applyChainSend(chain, mixer, send, refused);
+    const written = applyChainSend(chain, mixer, send, refused, notes);
 
     if (written != null) {
       list.push(written);
@@ -327,35 +400,62 @@ function applyChainSends(
   }
 
   const { winners, collisions } = dedupeSendsByReturn(scalar, list);
+  // A send named twice is overridden by its first write; the last one's entry
+  // is the one that says so.
+  const overridden = new Set(
+    [...(scalar == null ? [] : [scalar]), ...list]
+      .filter((send) => send.overrode)
+      .map((send) => send.index),
+  );
   const landed = new Map(
     winners.map((send) => [
       send.index,
-      readSendBack(send.param, send.name, send.returnId, send.gainDb),
+      withClash(
+        withDetail(
+          readSendBack(send.param, send.name, send.returnId, send.gainDb),
+          overridden.has(send.index) ? AUTOMATION_OVERRIDDEN : undefined,
+        ),
+        send.clash,
+      ),
     ]),
   );
 
-  // After the read-back, so a collision names the level the send ended up at
-  // rather than the one that won the argument list.
-  warnSendCollisions(collisions, landed);
-
-  return [...landed.values(), ...lastPerReturn(refused)];
+  return {
+    sends: [
+      ...withSupersededSends(landed, collisions),
+      ...replacedRefusals(refused),
+    ],
+    clashes: winners.flatMap((send) =>
+      send.clash == null ? [] : [{ return: send.name, clash: send.clash }],
+    ),
+  };
 }
 
 /**
- * Keep one refused send per return chain, the last one named: a send holds one
- * value, so a return named twice is one write that didn't land. A send that
- * matched no return has no id and keeps its own entry.
+ * A send holds one value, so a return named twice is one write: an earlier
+ * refused send was replaced by the later one that failed too, and says so. A
+ * send that matched no return has no id and keeps its own entry.
  * @param refused - The refused sends, in the order they were named
- * @returns The same entries, one per return chain
+ * @returns The same entries, each replaced one saying it wasn't written
  */
-function lastPerReturn(refused: SendResult[]): SendResult[] {
-  return refused.filter(
-    (send, index) =>
-      send.returnId == null ||
-      !refused
-        .slice(index + 1)
-        .some((later) => later.returnId === send.returnId),
-  );
+function replacedRefusals(refused: SendResult[]): SendResult[] {
+  return refused.map((send, index) => {
+    const later =
+      send.returnId == null
+        ? undefined
+        : refused
+            .slice(index + 1)
+            .findLast((other) => other.returnId === send.returnId);
+
+    return later == null
+      ? send
+      : {
+          return: send.return,
+          returnId: send.returnId,
+          ok: false,
+          detail: replacementFailedDetail(`"${later.return}"`),
+        };
+  });
 }
 
 /**
@@ -373,12 +473,11 @@ export function chainLabel(chain: LiveAPI): string {
 /**
  * Read the sends that are turned up, named after the rack's return chains
  * @param chain - Chain the mixer belongs to
- * @param mixer - The chain's mixer device
+ * @param sendParams - The chain mixer's send parameters, one per return chain
  * @returns Active sends as {return, returnId, gainDb}
  */
-function readActiveSends(chain: LiveAPI, mixer: LiveAPI): SendResult[] {
-  const active = mixer
-    .getChildren("sends")
+function readActiveSends(chain: LiveAPI, sendParams: LiveAPI[]): SendResult[] {
+  const active = sendParams
     .map((send, index) => ({ send, index }))
     .filter(({ send }) => {
       const value = asFiniteNumber(send.getProperty("value"));
@@ -394,14 +493,21 @@ function readActiveSends(chain: LiveAPI, mixer: LiveAPI): SendResult[] {
 
   return active.map(({ send, index }) => {
     const info = returns[index];
-    const rawName = info?.name;
-    // getName() reports "" (not null/undefined) for a nameless return chain,
-    // so an empty name needs the fallback too, not just a missing one.
-    const name =
-      rawName == null || rawName === "" ? `Return ${index + 1}` : rawName;
 
-    return readSendGainDb(send, name, info?.id);
+    return readSendGainDb(send, sendReturnName(info?.name, index), info?.id);
   });
+}
+
+/**
+ * The name a chain's send entry shows for the return chain it feeds.
+ * @param rawName - The return chain's name, if it has one
+ * @param index - The send's position
+ * @returns The name, or `Return <n>` for a missing or empty one
+ */
+function sendReturnName(rawName: string | undefined, index: number): string {
+  // getName() reports "" (not null/undefined) for a nameless return chain,
+  // so an empty name needs the fallback too, not just a missing one.
+  return rawName == null || rawName === "" ? `Return ${index + 1}` : rawName;
 }
 
 /**
@@ -411,14 +517,24 @@ function readActiveSends(chain: LiveAPI, mixer: LiveAPI): SendResult[] {
  * path: a device moved or deleted mid-request can put a different rack at the
  * old path. Names are read fresh, since one call can rename a return chain and
  * then send to it.
+ *
+ * The rack's id comes from the chain's `canonical_parent`, which is the rack
+ * for an instrument, effect, drum and return chain alike. That costs no object;
+ * building the rack from the chain's path to read its id cost one per chain.
  * @param chain - Chain or DrumChain LiveAPI object
  * @returns Return chain names and ids, index-aligned with the chain's sends
  */
-function returnChainInfo(chain: LiveAPI): { name: string; id: string }[] {
-  const rack = LiveAPI.from(rackPath(chain));
+export function returnChainInfo(
+  chain: LiveAPI,
+): { name: string; id: string }[] {
+  const rackId = chain.getChildIds("canonical_parent")[0];
 
-  const chains = requestMemo(`return-chain-info ${rack.id}`, () =>
-    rack.getChildren("return_chains"),
+  if (rackId == null) {
+    return [];
+  }
+
+  const chains = requestMemo(`return-chain-info ${rackId}`, () =>
+    LiveAPI.from(rackId).getChildren("return_chains"),
   );
 
   return chains.map((rc) => ({

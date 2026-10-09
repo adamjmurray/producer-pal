@@ -1,10 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import { checkForUpdate, isNewerVersion } from "../version-check.ts";
+import {
+  checkForUpdate,
+  isNewerVersion,
+  remoteScriptAttention,
+  type RemoteScriptAttentionInput,
+} from "../version-check.ts";
 
 describe("isNewerVersion", () => {
   it("returns true when latest has a newer patch", () => {
@@ -244,5 +249,137 @@ describe("checkForUpdate", () => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       fetchSpy.mockRestore();
     }
+  });
+});
+
+/**
+ * A status for an installed, current script that Live is running.
+ * @param overrides - Fields to change
+ * @returns The status
+ */
+function status(
+  overrides: Partial<RemoteScriptAttentionInput> = {},
+): RemoteScriptAttentionInput {
+  return {
+    installed: true,
+    installedVersion: "2.4.0",
+    running: true,
+    runningVersion: "2.4.0",
+    otherOnPort: null,
+    updateAvailable: false,
+    ...overrides,
+  };
+}
+
+describe("remoteScriptAttention", () => {
+  it("asks for an update when the installed script is older than this build", () => {
+    expect(
+      remoteScriptAttention(
+        status({ installedVersion: "2.3.0", updateAvailable: true }),
+      ),
+    ).toBe("update");
+  });
+
+  it("asks for an update even when Live is not running the script", () => {
+    expect(
+      remoteScriptAttention(
+        status({
+          installedVersion: "2.3.0",
+          updateAvailable: true,
+          running: false,
+          runningVersion: null,
+        }),
+      ),
+    ).toBe("update");
+  });
+
+  it("asks for a restart when Live runs an older copy than the installed one", () => {
+    expect(remoteScriptAttention(status({ runningVersion: "2.3.0" }))).toBe(
+      "restart",
+    );
+  });
+
+  it("prefers the update when both apply", () => {
+    expect(
+      remoteScriptAttention(
+        status({
+          installedVersion: "2.3.0",
+          runningVersion: "2.2.0",
+          updateAvailable: true,
+        }),
+      ),
+    ).toBe("update");
+  });
+
+  it("says nothing when installed and running match", () => {
+    expect(remoteScriptAttention(status())).toBeNull();
+  });
+
+  it("asks for a restart when Live runs a newer copy than the installed one", () => {
+    expect(remoteScriptAttention(status({ runningVersion: "2.5.0" }))).toBe(
+      "restart",
+    );
+  });
+
+  it("asks for a restart between two pre-releases of one version", () => {
+    // isNewerVersion can't order -rc1 and -rc2, so this must not rely on it.
+    const rc = { installedVersion: "2.5.0-rc2", runningVersion: "2.5.0-rc1" };
+
+    expect(remoteScriptAttention(status(rc))).toBe("restart");
+    expect(
+      remoteScriptAttention(
+        status({ installedVersion: "2.5.0-rc1", runningVersion: "2.5.0-rc2" }),
+      ),
+    ).toBe("restart");
+  });
+
+  it("asks for an update between two pre-releases of one version", () => {
+    expect(
+      remoteScriptAttention(
+        status({
+          installedVersion: "2.5.0-rc1",
+          runningVersion: "2.5.0-rc1",
+          updateAvailable: true,
+        }),
+      ),
+    ).toBe("update");
+  });
+
+  it("says nothing when the script is not running and nothing is out of date", () => {
+    expect(
+      remoteScriptAttention(status({ running: false, runningVersion: null })),
+    ).toBeNull();
+  });
+
+  it("says nothing when a running version is unknown", () => {
+    expect(remoteScriptAttention(status({ runningVersion: null }))).toBeNull();
+  });
+
+  it("says nothing when the installed version is unreadable and not flagged", () => {
+    expect(
+      remoteScriptAttention(status({ installedVersion: null })),
+    ).toBeNull();
+  });
+
+  it("says nothing when the script is not installed", () => {
+    expect(
+      remoteScriptAttention(
+        status({ installed: false, installedVersion: null }),
+      ),
+    ).toBeNull();
+  });
+
+  it("says nothing when another program answers on the port", () => {
+    expect(
+      remoteScriptAttention(
+        status({
+          otherOnPort: 3349,
+          running: false,
+          runningVersion: null,
+          installedVersion: "2.3.0",
+          updateAvailable: true,
+        }),
+      ),
+    ).toBeNull();
   });
 });

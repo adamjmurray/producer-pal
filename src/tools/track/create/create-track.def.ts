@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
@@ -15,7 +15,7 @@ import {
 export const toolDefCreateTrack = defineTool("ppal-create-track", {
   title: "Create Track",
   description:
-    "Create track(s). Params with no list form apply to every track.",
+    "Create track(s). Inserting shifts later tracks down, so a result path is where the track sits after the call. Params with no list form apply to every track.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -137,7 +137,6 @@ describe("deleteObject by track and scene path", () => {
           "t0/l1 (id lane_1) is a take lane, which Live's API can't delete; remove it in Live's UI",
       },
       {
-        id: "lane_1",
         path: "t0/l1",
         ok: false,
         detail:
@@ -172,7 +171,6 @@ describe("deleteObject by track and scene path", () => {
         deleteObject({ path: "t0/l1, t0/l9, t99/l0", type }),
       ).toStrictEqual([
         {
-          id: "lane_1",
           path: "t0/l1",
           ok: false,
           detail:

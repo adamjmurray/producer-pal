@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type Notation } from "#src/shared/notation.ts";
@@ -15,7 +15,6 @@ import {
   parseIncludeArray,
   READ_SCENE_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { stripFields } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   namedIdParam,
   namedParam,
@@ -24,7 +23,10 @@ import {
   round2dp,
   roundDisplayValue,
 } from "#src/tools/shared/helpers/rounding.ts";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  idOrPathRequired,
+  validateIdType,
+} from "#src/tools/shared/validation/id-validation.ts";
 import {
   readFanOut,
   type ReadResult,
@@ -91,6 +93,8 @@ export function readScene(
       object: "scene",
       idAlias: "sceneId",
       oneTargetParams: ["sceneIndex"],
+      indexParams: ["sceneIndex"],
+      deadline: context.deadline,
     },
     (one) => readOneScene(one, context),
   );
@@ -117,13 +121,7 @@ export function readOneScene(
 
   // Validate parameters
   if (sceneId == null && scenePath == null && sceneIndex == null) {
-    throw new Error("id or path is required");
-  }
-
-  if (scenePath != null && (sceneId != null || sceneIndex != null)) {
-    throw new Error(
-      "path names the scene on its own - don't send id or sceneIndex with it",
-    );
+    throw new Error(idOrPathRequired());
   }
 
   const { includeClips, includeColor } = parseIncludeArray(
@@ -189,9 +187,6 @@ export function readOneScene(
       expandWildcardIncludes(args.include, READ_SCENE_DEFAULTS),
       context.notation,
     );
-
-    // Strip fields redundant with parent scene context
-    stripFields(clips, "view");
 
     result.clips = clips;
   } else {

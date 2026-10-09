@@ -1,17 +1,16 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
+import { idDoesNotExist } from "#src/tools/shared/validation/id-validation.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import {
-  getMinimalClipInfo,
-  type MinimalClipInfo,
-} from "../minimal-clip-info.ts";
+import { finishCopy, type MinimalClipInfo } from "../minimal-clip-info.ts";
 import { type CopyAttempt } from "./duplicate-one-copy.ts";
+import { withLaneWriteNote } from "./stamp-automation.ts";
 import {
   createClipsForLength,
   parseArrangementLength,
@@ -57,7 +56,7 @@ export async function duplicateClipToArrangement(
   const clip = sourceClip ?? LiveAPI.from(clipId);
 
   if (!clip.exists()) {
-    throw new Error(`id "${clipId}" does not exist`);
+    throw new Error(idDoesNotExist(clipId));
   }
 
   const trackIndex = destTrackIndex ?? clip.trackIndex;
@@ -110,8 +109,9 @@ export async function duplicateClipToArrangement(
     // Skip a silent Ableton dup failure (["id", 0]) rather than push a phantom
     // clip, matching the guards in arrangement-tiling and update-clip.
     if (newClip.exists()) {
-      newClip.setAll({ name, color });
-      duplicatedClips.push(getMinimalClipInfo(newClip));
+      duplicatedClips.push(
+        ...withLaneWriteNote(clip, [finishCopy(newClip, name, color)]),
+      );
     }
   }
 

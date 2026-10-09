@@ -1,13 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The one remainder look-up update-clip and duplicate share. Several landings
 // can span one clip; each entry must name a piece of its own clip, or none —
 // never another entry's clip or piece.
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
@@ -15,6 +15,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { LaneView } from "../arrangement-lane-view.ts";
 import {
   claimRemainders,
   nextLandingOrder,
@@ -162,6 +163,34 @@ describe("claimRemainders", () => {
         { ...unknown, lane: { kind: "track", trackIndex: 1 } },
       ]),
     ).toStrictEqual({ gone: "rest" });
+  });
+
+  it("looks up the clip it names and no other, however many the lane holds", () => {
+    registerLane({
+      before: [0, 4],
+      rest: [8, 32],
+      far: [100, 104],
+      farther: [200, 204],
+    });
+
+    const lanes = new LaneView();
+
+    lanes.clips({ kind: "track", trackIndex: 0 });
+
+    const from = vi.spyOn(LiveAPI, "from");
+    const found = claimRemainders({
+      entries: ["gone"],
+      spanOf: () => span(0, 32, 1),
+      written: [span(0, 32, 1)],
+      taken: [],
+      lanes,
+    });
+
+    expect(found.get("gone")?.clip.id).toBe("rest");
+    // The lane was already read, so the only look-up is the piece itself.
+    expect(
+      from.mock.calls.filter(([id]) => String(id).startsWith("id ")),
+    ).toStrictEqual([["id rest"]]);
   });
 
   it("orders landings across calls to the counter", () => {

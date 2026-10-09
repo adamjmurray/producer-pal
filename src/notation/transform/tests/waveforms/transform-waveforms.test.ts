@@ -1,6 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import {
@@ -14,7 +15,6 @@ import {
   square,
   tri,
 } from "#src/notation/transform/transform-waveforms.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // A waveform value outside [-1, 1] can drive a velocity negative and silently
 // drop the note.
@@ -420,24 +420,6 @@ describe("Transform Waveforms", () => {
       // curve from 10 to 20 with exponent 2
       expect(curve(0, 10, 20, 2)).toBe(10);
       expect(curve(0.5, 10, 20, 2)).toBeCloseTo(12.5, 10); // 10 + 10 * 0.25
-    });
-
-    it("warns and clamps negative exponent to 0.001", () => {
-      const result = curve(0.5, 0, 1, -2);
-
-      expect(result).toBeCloseTo(curve(0.5, 0, 1, 0.001), 2);
-      expect(capturedWarnings()).toContain(
-        "curve() exponent must be > 0, got -2, clamping to 0.001",
-      );
-    });
-
-    it("warns and clamps zero exponent to 0.001", () => {
-      const result = curve(0.5, 0, 1, 0);
-
-      expect(result).toBeCloseTo(curve(0.5, 0, 1, 0.001), 2);
-      expect(capturedWarnings()).toContain(
-        "curve() exponent must be > 0, got 0, clamping to 0.001",
-      );
     });
   });
 

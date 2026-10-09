@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for writing a clip over one that is already there. A slot's clip is
@@ -21,6 +21,7 @@ import {
   isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
+  readSceneCount,
   SAMPLE_FILE,
   setupMcpTestContext,
   sleep,
@@ -35,21 +36,6 @@ const ctx = setupMcpTestContext();
 
 /** A path Live can't load, so it refuses the create. */
 const MISSING_FILE = "/nonexistent/producer-pal-e2e/missing.wav";
-
-/**
- * How many scenes the Set holds right now.
- * @returns The scene count
- */
-async function sceneCount(): Promise<number> {
-  const liveSet = parseToolResult<{ scenes?: unknown[] }>(
-    await ctx.client!.callTool({
-      name: "ppal-read-live-set",
-      arguments: { include: ["scenes"] },
-    }),
-  );
-
-  return liveSet.scenes?.length ?? 0;
-}
 
 /**
  * Call ppal-create-clip with one destination.
@@ -102,7 +88,7 @@ function refusal(result: unknown): string {
 
 describe("replacing a clip on a track with no empty slot", () => {
   it("create-clip replaces it and leaves the scenes as they were", async () => {
-    const scenes = await sceneCount();
+    const scenes = await readSceneCount(ctx.client!);
 
     await fillMidiTrack(scenes);
 
@@ -117,7 +103,7 @@ describe("replacing a clip on a track with no empty slot", () => {
     expect(entry.detail).toBe(
       `overwrote the existing clip at t${EMPTY_MIDI_TRACK}/s0`,
     );
-    expect(await sceneCount()).toBe(scenes);
+    expect(await readSceneCount(ctx.client!)).toBe(scenes);
 
     const slot = await readClipFully(ctx.client!, {
       path: `t${EMPTY_MIDI_TRACK}/s0`,
@@ -131,7 +117,7 @@ describe("replacing a clip on a track with no empty slot", () => {
   it.each(["ppal-update-clip", "ppal-duplicate"])(
     "%s re-creates an arrangement clip over it",
     async (tool) => {
-      const scenes = await sceneCount();
+      const scenes = await readSceneCount(ctx.client!);
 
       await fillMidiTrack(scenes);
 
@@ -162,7 +148,7 @@ describe("replacing a clip on a track with no empty slot", () => {
       expect(placed.detail).toContain(
         `overwrote the existing clip at t${EMPTY_MIDI_TRACK}/s4`,
       );
-      expect(await sceneCount()).toBe(scenes);
+      expect(await readSceneCount(ctx.client!)).toBe(scenes);
 
       const slot = await readClipFully(ctx.client!, {
         path: `t${EMPTY_MIDI_TRACK}/s4`,
@@ -177,7 +163,7 @@ describe("replacing a clip on a track with no empty slot", () => {
 
 describe("a create Live refuses over an existing clip", () => {
   it("leaves the slot's clip and the spare slot it built in", async () => {
-    const scenes = await sceneCount();
+    const scenes = await readSceneCount(ctx.client!);
     const before = await readClipFully(ctx.client!, {
       path: `t${AUDIO_TRACK}/s0`,
     });
@@ -190,7 +176,7 @@ describe("a create Live refuses over an existing clip", () => {
       `Live created no clip at t${AUDIO_TRACK}/s0 from sampleFile "${MISSING_FILE}"; ` +
         `the clip at t${AUDIO_TRACK}/s0 was not touched`,
     );
-    expect(await sceneCount()).toBe(scenes);
+    expect(await readSceneCount(ctx.client!)).toBe(scenes);
 
     const after = await readClipFully(ctx.client!, {
       path: `t${AUDIO_TRACK}/s0`,
@@ -211,7 +197,7 @@ describe("a create Live refuses over an existing clip", () => {
   });
 
   it("leaves the slot's clip on a track with no empty slot", async () => {
-    const scenes = await sceneCount();
+    const scenes = await readSceneCount(ctx.client!);
     const before = await readClipFully(ctx.client!, {
       path: `t${AUDIO_TRACK}/s0`,
     });
@@ -227,7 +213,7 @@ describe("a create Live refuses over an existing clip", () => {
     );
 
     expect(message).toContain(`the clip at t${AUDIO_TRACK}/s0 was not touched`);
-    expect(await sceneCount()).toBe(scenes);
+    expect(await readSceneCount(ctx.client!)).toBe(scenes);
     expect(
       (await readClipFully(ctx.client!, { path: `t${AUDIO_TRACK}/s0` })).id,
     ).toBe(before.id);
@@ -252,5 +238,18 @@ describe("a create Live refuses over an existing clip", () => {
     expect((await arrangementClipAt(ctx.client!, AUDIO_TRACK, "1|1"))?.id).toBe(
       original.id,
     );
+  });
+});
+
+describe("an audio clip past the last arrangement position", () => {
+  it("is refused in bar|beat, not Ableton beats", async () => {
+    expect(
+      refusal(
+        await create({
+          path: `t${AUDIO_TRACK}[999999|1]`,
+          sampleFile: SAMPLE_FILE,
+        }),
+      ),
+    ).toContain("arrangementStart is past the last position Live allows (");
   });
 });

@@ -1,12 +1,16 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook } from "@testing-library/preact";
+import {
+  act,
+  renderHook,
+  type RenderHookResult,
+} from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
 import {
   deferred,
@@ -19,6 +23,25 @@ import {
   statusBody,
   USER_LIBRARY,
 } from "#webui/components/settings/tests/helpers/remote-script-status-test-helpers";
+
+/**
+ * Render the hook and wait for its mount read to land.
+ * @param fetchMock - The installed fetch mock, for the mount read's response
+ * @returns The rendered hook
+ */
+async function renderPastMountRead(
+  fetchMock: ReturnType<typeof installFetchMock>,
+): Promise<RenderHookResult<ReturnType<typeof useRemoteScript>, unknown>> {
+  fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
+
+  const rendered = renderHook(() => useRemoteScript());
+
+  await waitForHookState(() => {
+    expect(rendered.result.current.status).not.toBeNull();
+  });
+
+  return rendered;
+}
 
 describe("useRemoteScript status read", () => {
   const fetchMock = installFetchMock();
@@ -104,13 +127,7 @@ describe("useRemoteScript status read", () => {
   });
 
   it("keeps the last status when a refresh fails", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
-
-    const { result } = renderHook(() => useRemoteScript());
-
-    await waitForHookState(() => {
-      expect(result.current.status).not.toBeNull();
-    });
+    const { result } = await renderPastMountRead(fetchMock);
 
     fetchMock.mockRejectedValueOnce(new Error("Failed to fetch"));
 
@@ -144,13 +161,7 @@ describe("useRemoteScript install failures", () => {
    * @returns The install error the hook surfaced
    */
   async function installRejectedWith(reason: unknown): Promise<string | null> {
-    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
-
-    const { result } = renderHook(() => useRemoteScript());
-
-    await waitForHookState(() => {
-      expect(result.current.status).not.toBeNull();
-    });
+    const { result } = await renderPastMountRead(fetchMock);
 
     fetchMock.mockRejectedValueOnce(reason);
 
@@ -176,13 +187,7 @@ describe("useRemoteScript install failures", () => {
   });
 
   it("skips the status re-read when the install lands after unmount", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
-
-    const { result, unmount } = renderHook(() => useRemoteScript());
-
-    await waitForHookState(() => {
-      expect(result.current.status).not.toBeNull();
-    });
+    const { result, unmount } = await renderPastMountRead(fetchMock);
 
     const post = deferred<Response>();
 

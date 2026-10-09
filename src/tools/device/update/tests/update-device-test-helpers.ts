@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Common imports for update-device test files.
 // Side-effect import must be in this file so test files don't each repeat it.
@@ -270,6 +270,20 @@ export function registerDrumRackPadChain(
 }
 
 /**
+ * Register plain devices on track 0, one per id, in order.
+ * @param ids - The device ids, d0 first
+ * @returns The registered device mocks
+ */
+export function registerTrackDevices(...ids: string[]): RegisteredMockObject[] {
+  return ids.map((id, i) =>
+    registerMockObject(id, {
+      path: livePath.track(0).device(i),
+      type: "Device",
+    }),
+  );
+}
+
+/**
  * Register a device at t0/d0 holding the given parameter mocks.
  * @param paramIds - Parameter mock ids, in the device's parameter order
  * @returns The registered device mock
@@ -375,6 +389,8 @@ export interface MacroRackSpec {
   mapped?: boolean;
   /** The fewest macros it will hide down to, for a rack that keeps some */
   floor?: number;
+  /** Which device slot on track 0 it sits in; the first when absent */
+  slot?: number;
 }
 
 /**
@@ -385,11 +401,12 @@ export interface MacroRackSpec {
  * @param spec.count - The macros it shows to begin with
  * @param spec.mapped - Whether one of its macros is mapped
  * @param spec.floor - The fewest macros it will hide down to
+ * @param spec.slot - Which device slot on track 0 it sits in
  * @returns The registered rack mock
  */
 export function registerMacroRack(
   id: string,
-  { count, mapped = false, floor = 0 }: MacroRackSpec,
+  { count, mapped = false, floor = 0, slot = 0 }: MacroRackSpec,
 ): RegisteredMockObject {
   const properties: Record<string, unknown> = {
     can_have_chains: 1,
@@ -407,7 +424,7 @@ export function registerMacroRack(
   };
 
   return registerMockObject(id, {
-    path: livePath.track(0).device(0),
+    path: livePath.track(0).device(slot),
     type: "RackDevice",
     properties,
     methods: { add_macro: move(2), remove_macro: move(-2) },

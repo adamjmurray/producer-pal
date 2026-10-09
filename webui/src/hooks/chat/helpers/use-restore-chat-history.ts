@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { useCallback, useEffect } from "preact/hooks";
 import { type UseInitializeChatReturn } from "#webui/hooks/chat/helpers/use-initialize-chat";
@@ -10,7 +10,7 @@ import {
   type ChatClient,
   type RateLimitState,
 } from "#webui/hooks/chat/use-chat-types";
-import { type ConversationLockedSettings } from "#webui/lib/conversations/conversation-store";
+import { type RestoredSettings } from "#webui/lib/conversations/conversation-store";
 import { type UIMessage } from "#webui/types/messages";
 
 /** What {@link useRestoreChatHistory} needs from the parent chat hook. */
@@ -28,7 +28,7 @@ interface UseRestoreChatHistoryDeps<
   bootstrapClientRef: { current: (() => Promise<void>) | null };
   initializeChat: UseInitializeChatReturn<TMessage>["initializeChat"];
   clearPendingLock: () => void;
-  restoreSettings: (lockedSettings?: ConversationLockedSettings) => void;
+  restoreSettings: (lockedSettings?: RestoredSettings) => void;
   invalidateCompactionUndo: () => void;
   setMessages: (messages: UIMessage[]) => void;
   setRateLimitState: (state: RateLimitState | null) => void;
@@ -40,7 +40,7 @@ interface UseRestoreChatHistoryReturn {
   /** Load a saved conversation's history without connecting a client yet. */
   restoreChatHistory: (
     chatHistory: unknown[],
-    lockedSettings?: ConversationLockedSettings,
+    lockedSettings?: RestoredSettings,
   ) => void;
 }
 
@@ -75,7 +75,7 @@ export function useRestoreChatHistory<
   } = deps;
 
   const restoreChatHistory = useCallback(
-    (chatHistory: unknown[], lockedSettings?: ConversationLockedSettings) => {
+    (chatHistory: unknown[], lockedSettings?: RestoredSettings) => {
       // No dispose() here: every caller reaches this with no live client —
       // either on mount (clientRef is still null) or right after
       // clearConversation() (which already disposed). The two sites that

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Focused coverage for adaptive-thinking reasoning handling: capturing the
@@ -222,7 +222,17 @@ describe("ChatSdkClient reasoning (adaptive thinking)", () => {
 
       expect(callArgs.messages[1].content).toBe("Done");
     });
+
+    it("keeps assistant content a plain string when thinking is explicitly disabled", async () => {
+      const callArgs = await sendWithHistory(
+        [{ role: "user", content: "Think hard" }, SIGNED_ASSISTANT],
+        { anthropic: { thinking: { type: "disabled" } } },
+      );
+
+      expect(callArgs.messages[1].content).toBe("Done");
+    });
   });
+
   describe("per-message thinking overrides", () => {
     it("builds provider options from the override the message carries", async () => {
       mockStreamParts([]);

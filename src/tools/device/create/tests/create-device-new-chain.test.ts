@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // `c+` appends a chain and loads the device into it, so the caller never has to
 // read the rack to find out how many chains it already had. `c<n>` past the
@@ -161,6 +161,51 @@ describe("createDevice — c+ appends a chain", () => {
     ).toStrictEqual({
       id: "device-2",
       path: "t0/d0/pC1/c2/d0",
+      created: "c1-c2",
+    });
+  });
+
+  // Resolving the path makes the chains, so a refusal has to come first: a
+  // throw after them would leave chains behind a call that reads as a no-op.
+  it("refuses an index past the end of a new chain before making any chain", async () => {
+    mockNonExistentObjects();
+    const { rack } = registerRack(false, [0]);
+
+    await expect(
+      createDevice({ device: "Simpler", path: "t0/d0/c3/d5" }),
+    ).rejects.toThrow(
+      '"t0/d0/c3/d5" is past the end of a container holding 0 devices',
+    );
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses an index past the end of a new drum pad layer before making any", async () => {
+    const { rack } = registerRack(true, [36]);
+
+    await expect(
+      createDevice({ device: "Simpler", path: "t0/d0/pC1/c2/d3" }),
+    ).rejects.toThrow("past the end of a container holding 0 devices");
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses an index past the end of a new drum pad", async () => {
+    const { rack } = registerRack(true, [36]);
+
+    await expect(
+      createDevice({ device: "Simpler", path: "t0/d0/pD1/d2" }),
+    ).rejects.toThrow("past the end of a container holding 0 devices");
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("still makes the chain for index 0", async () => {
+    mockNonExistentObjects();
+    registerRack(false, [0]);
+
+    expect(
+      await createDevice({ device: "Simpler", path: "t0/d0/c2/d0" }),
+    ).toStrictEqual({
+      id: "device-2",
+      path: "t0/d0/c2/d0",
       created: "c1-c2",
     });
   });

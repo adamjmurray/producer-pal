@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Shared mock setup for duplicate tests
 // This file is referenced in each test file's vi.mock() calls
@@ -15,6 +15,8 @@ interface MockClipResult {
   id: string;
   noteCount?: number;
   transformed?: number;
+  deletedNotes?: number;
+  color?: string;
   /** Set only on a clip the update couldn't carry out */
   ok?: false;
   /** Why the update didn't go as asked */

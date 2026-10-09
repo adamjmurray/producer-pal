@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Seeding a muted note into a clip from a scenario `setup`. No published tool
@@ -12,7 +12,11 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
-import { getLiveApiEnabled, setConfig } from "#evals/shared/config.ts";
+import {
+  getLiveApiEnabled,
+  getSmallModelMode,
+  setConfig,
+} from "#evals/shared/config.ts";
 
 const TOOL_LIVE_API = "ppal-live-api";
 const TOOL_READ_CLIP = "ppal-read-clip";
@@ -123,18 +127,23 @@ async function readClip(mcpClient: Client, path: string): Promise<ClipRead> {
 
 /**
  * Run a callback with the Direct Live API tool on, then put it back as found
- * (a `--live-api` run keeps it on).
+ * (a `--live-api` run keeps it on). Small-model mode hides the tool whatever
+ * `liveApiEnabled` says, so it is off for the callback too.
  *
  * @param run - What to do while the tool is available
  */
 async function withLiveApi(run: () => Promise<void>): Promise<void> {
   const wasEnabled = await getLiveApiEnabled();
+  const wasSmallModel = await getSmallModelMode();
 
-  await setConfig({ liveApiEnabled: true });
+  await setConfig({ liveApiEnabled: true, smallModelMode: false });
 
   try {
     await run();
   } finally {
-    await setConfig({ liveApiEnabled: wasEnabled });
+    await setConfig({
+      liveApiEnabled: wasEnabled,
+      smallModelMode: wasSmallModel,
+    });
   }
 }

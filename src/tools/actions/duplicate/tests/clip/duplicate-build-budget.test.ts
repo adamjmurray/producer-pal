@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Budget tests for copying one clip to several destinations in one call.
 //
@@ -85,5 +85,10 @@ describe("duplicate build budget", () => {
 
     // One track for the batch. COPIES means it was resolved per copy.
     expect(resolves("live_set tracks *")).toBe(1);
+
+    // The song meter is read once for the call, not per copy: naming each copy
+    // and checking it afterwards read it again, which is where 2 * COPIES of
+    // these come from. Reading it per copy to cover it too made it 3 * COPIES.
+    expect(resolves("live_set")).toBe(2 * COPIES + 3);
   });
 });

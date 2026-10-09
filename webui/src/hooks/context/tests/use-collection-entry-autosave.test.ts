@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -643,5 +643,18 @@ describe("useCollectionEntryAutosave — externalUpdate", () => {
       await Promise.resolve();
     });
     expect(persist).not.toHaveBeenCalled();
+  });
+
+  it("adoptExternal with no server copy leaves the draft unsaved", async () => {
+    const persist = vi.fn().mockResolvedValue("seed");
+    const { result, unmount } = setup(seeded(persist));
+
+    await act(() => {
+      result.current.adoptExternal();
+    });
+    unmount();
+
+    // No external key to adopt, so the baseline clears and leaving flushes.
+    expect(persist).toHaveBeenCalledTimes(1);
   });
 });

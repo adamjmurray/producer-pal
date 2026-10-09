@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z } from "zod";
 import {
@@ -19,12 +19,14 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   title: "Duplicate",
   description: {
     default:
-      "Duplicate an object, or several — id or path takes a comma-separated list. Supports tracks, scenes, clips, devices, and drum pads. " +
+      "Duplicate an object, or several — id or path takes a comma-separated list. Supports tracks, scenes, clips, devices, drum pads, and rack chains. " +
       "Use count for multiple track/scene copies, and toPath for the destination: a clip slot, a spot on " +
       "the arrangement, a track, a device chain, or a drum pad. " +
-      "Params with no list form apply to every copy.",
+      "A destination list names the copies, so it takes no count. " +
+      "Params with no list form apply to every copy. " +
+      "A copy inserted shifts later siblings, so each entry names its copy where it is after the call.",
     smallModel:
-      "Duplicate an object, or several (id or path takes a list). Supports tracks, scenes, clips, devices, and drum pads. " +
+      "Duplicate an object, or several (id or path takes a list). Supports tracks, scenes, clips, devices, drum pads, and rack chains. " +
       "Use toPath for the destination: clip slot, arrangement spot, device, or pad.",
   },
 
@@ -38,7 +40,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .string()
       .optional()
       .describe(
-        "id(s) of the object(s) to duplicate, comma-separated for multiple " +
+        "id(s), comma-separated " +
           "(type 'track' also takes a take lane's id, which needs a lane or track toPath)",
       ),
 
@@ -64,7 +66,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
 
     count: param(z.coerce.number().int().min(1).default(1), {
       default:
-        "copies per source (tracks/scenes only, ignored for clips/devices)",
+        "copies per source (tracks/scenes only; not with a list of destinations)",
       smallModel: null,
     }),
 
@@ -85,23 +87,23 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       replacedBy: "toPath",
       example: "t2[loc:Verse]",
     }),
-    arrangementLength: z
-      .string()
-      .optional()
-      .describe(
+    arrangementLength: param(z.string().optional(), {
+      default:
+        "clip/scene copies to the arrangement only. duration, e.g. '4bar' (see Skills), or comma-separated one per copy; song meter. " +
+        "Shorter than the source trims the copy; longer tiles copies to fill the span (many clips, not one) — for a single clip use ppal-update-clip with looping false and notes for the full length",
+      smallModel:
         "clip/scene copies to the arrangement only. duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'), or comma-separated one per copy; song meter. " +
-          "Shorter than the source trims the copy; longer tiles copies to fill the span (many clips, not one) — for a single clip use ppal-update-clip with looping false and notes for the full length",
-      ),
+        "Shorter than the source trims the copy; longer tiles copies to fill the span (many clips, not one) — for a single clip use ppal-update-clip with looping false and notes for the full length",
+    }),
     toSlot: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "toPath",
     }),
     toPath: param(z.coerce.string().optional(), {
       default:
         "destination(s). Clips: 't2/s1' = a clip slot, third track and second scene (both count from 0, and scenes are created up to that index); " +
-        "'t2[5|1]' = that spot on that track's arrangement, and '[5|1]' the same spot on the source clip's " +
-        "own track (a position is bar|beat or loc:<locator name or id> — 't2[loc:Chorus]' names a " +
-        "section instead of counting bars; an arrangement track must match " +
-        "the clip's MIDI/audio type); 't2/l0' = its first take lane, and lanes are created up to that " +
+        "'t2[5|1]' or 't2[loc:Chorus]' = that spot (bar|beat, or loc:<locator name or id>) on that track's arrangement, " +
+        "and '[5|1]' the same spot on the source clip's own track " +
+        "(an arrangement track must match the clip's MIDI/audio type); 't2/l0' = its first take lane, and lanes are created up to that " +
         "index; " +
         "'t2' alone needs a position, and omitting toPath uses the source clip's own track. Devices: 't1/d+' appends, 't1/d0' inserts at 0. " +
         "Chains: 't1/d0/c+' appends the copy to that rack (any rack of the same kind); omitting toPath appends to the chain's own rack. " +

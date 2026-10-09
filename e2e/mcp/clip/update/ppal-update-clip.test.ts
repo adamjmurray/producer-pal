@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-update-clip tool
@@ -227,8 +227,8 @@ describe("ppal-update-clip", () => {
     // Setup: a clip with two off-grid notes on the empty MIDI track
     const clipId = await createOffGridClip(6, OFF_GRID_NOTES);
 
-    // n/4 is the note-value alias for the native 1/4 grid (bridged in
-    // handleQuantization). Full-strength snap: 1.25 -> beat 1, 2.75 -> beat 3.
+    // n/4 is the note-value alias for the native 1/4 grid: accepted but not
+    // published, and normalized during validation. Full-strength snap: 1.25 -> beat 1, 2.75 -> beat 3.
     await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: { id: clipId, quantize: 1.0, quantizeGrid: "n/4" },
@@ -321,7 +321,7 @@ describe("ppal-update-clip", () => {
     const movedClipResult = parseToolResult<ReadClipResult>(verifyMove);
 
     expect(arrangementStartOf(movedClipResult)).toBe("45|1");
-    expect(movedClipResult.view).toBe("arrangement");
+    expect(movedClipResult.path).toMatch(/^t\d+(\/l\d+)?\[/);
 
     // Test 2: Update arrangement clip length
     const lengthUpdateResult = await ctx.client!.callTool({
@@ -602,10 +602,10 @@ describe("ppal-update-clip", () => {
       );
 
     expect(data).toHaveLength(2);
-    // The earlier mention needed no work, so it carries a reason and no `ok`.
+    // The earlier mention was never written, so it carries a reason and no
+    // `ok`, spelled as the caller wrote it.
     expect(data[0]).toStrictEqual({
       id: clipId,
-      path,
       detail: `named again as "${path}" later in this call`,
     });
     expect(data[1]?.id).toBe(clipId);
@@ -615,6 +615,24 @@ describe("ppal-update-clip", () => {
     await sleep(100);
 
     expect(await readClipName(clipId)).toBe("Last");
+  });
+
+  // A path that can't be parsed means the call was written wrong: it is
+  // refused whole, so the target before it is left alone too.
+  it("refuses the whole call for a path it can't parse", async () => {
+    const path = `t${EMPTY_MIDI_TRACK}/s27`;
+    const clipId = await createClipInSlot(ctx, path, { notes: "C3 1|1" });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { path: `${path},not-a-path`, name: "Changed,Other" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+
+    await sleep(100);
+
+    expect(await readClipName(clipId)).not.toBe("Changed");
   });
 
   // One target and nothing done: there is no list for an entry to hold a place
@@ -709,7 +727,7 @@ describe("ppal-update-clip", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      "toPath and toSlot both name a destination",
+      "toPath names the destination on its own - don't send toSlot with it",
     );
 
     await sleep(100);
@@ -732,7 +750,7 @@ describe("ppal-update-clip", () => {
 
     expect(isToolError(result)).toBe(false);
     expect(getToolWarnings(result)).toContainEqual(
-      expect.stringContaining('blank id ignored — "path" names the clips'),
+      expect.stringContaining('blank id ignored: "path" names the clips'),
     );
 
     await sleep(100);
@@ -758,7 +776,7 @@ describe("ppal-update-clip", () => {
 
     expect(isToolError(result)).toBe(false);
     expect(getToolWarnings(result)).toContainEqual(
-      expect.stringContaining("blank toPath ignored — leave it out instead"),
+      expect.stringContaining("blank toPath ignored: leave it out instead"),
     );
 
     await sleep(100);
@@ -795,7 +813,7 @@ describe("ppal-update-clip", () => {
     expect(getToolWarnings(result)).toContainEqual(
       expect.stringContaining(
         "blank toSlot, arrangementStart, arrangementLength, " +
-          "arrangementSplit, split ignored — leave them out instead",
+          "arrangementSplit, split ignored: leave them out instead",
       ),
     );
   });

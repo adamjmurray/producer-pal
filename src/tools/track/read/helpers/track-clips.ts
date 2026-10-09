@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type Notation } from "#src/shared/notation.ts";
@@ -148,10 +148,9 @@ export function readTakeLaneClips(
 ): ReadClipResult[] {
   const clips = readArrangementClipsOf(lane, drumMode, include, notation);
 
-  // Strip fields redundant with the parent context: a take lane clip is always
-  // an arrangement clip on this track, matching its MIDI/audio type. The path
-  // stays — it carries where the clip starts, which the lane's own path doesn't.
-  stripFields(clips, "view", "type");
+  // The clip's type matches its track's. The path stays: it carries where the
+  // clip starts, which the lane's own path doesn't.
+  stripFields(clips, "type");
 
   return clips;
 }

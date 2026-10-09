@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Codex (OpenAI), Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -293,6 +293,20 @@ describe("view", () => {
       );
     });
 
+    it.each(["MixerDevice", "ChainMixerDevice"] as const)(
+      "throws error for a %s, which is not a device",
+      (type) => {
+        registerMockObject("mix_1", {
+          path: livePath.track(0).mixerDevice(),
+          type,
+        });
+
+        expect(() => select({ id: "id mix_1" })).toThrow(
+          'unsupported type "mixer"',
+        );
+      },
+    );
+
     it("throws error for unsupported type", () => {
       registerMockObject("app_thing", {
         path: "live_app",
@@ -300,7 +314,7 @@ describe("view", () => {
       });
 
       expect(() => select({ id: "id app_thing" })).toThrow(
-        'unsupported type "Application"',
+        "has an unsupported type",
       );
     });
   });
@@ -397,6 +411,18 @@ describe("view", () => {
       expect(() => select({ devicePath: "t0/d0/c0" })).toThrow(
         "does not resolve to a device",
       );
+    });
+
+    it("refuses a non-device devicePath before switching the view", () => {
+      const songView = setupSongViewMock();
+      const appView = setupAppViewMock();
+
+      expect(() =>
+        select({ devicePath: "t0/d0/c0", view: "arrangement" }),
+      ).toThrow('devicePath "t0/d0/c0" does not resolve to a device');
+      expect(songView.set).not.toHaveBeenCalled();
+      expect(songView.call).not.toHaveBeenCalled();
+      expect(appView.call).not.toHaveBeenCalled();
     });
   });
 

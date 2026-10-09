@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -206,10 +206,14 @@ describe("App", () => {
     });
 
     it("does not close when clicking inside the context view", async () => {
+      setStubLeaveGuard(() => true);
       await openContextThen(() => {
         const inner = contextStub();
 
         if (inner) {
+          // A full press-and-release on content bubbles to the overlay.
+          fireEvent.mouseDown(inner);
+          fireEvent.mouseUp(inner);
           fireEvent.click(inner);
         }
       });

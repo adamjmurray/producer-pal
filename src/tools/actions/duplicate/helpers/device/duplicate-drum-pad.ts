@@ -1,17 +1,20 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A real pad copy, via the rack's own copy_pad. Everything that makes a pad
 // sound the way it does lives on its chain — trim, sends, choke group, devices —
 // and copy_pad brings all of it. A device-level duplicate can't: it moves the
 // device out of its chain and leaves the chain (and its fader) behind.
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   findDrumPadByNote,
   invalidateRackChains,
+  nestedDrumRackHint,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
@@ -20,7 +23,13 @@ import {
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
+import {
+  NEW_CHAIN,
+  NEW_DEVICE,
+  pathError,
+} from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 export interface DuplicateDrumPadResult {
   id: string;
@@ -79,7 +88,7 @@ export function duplicateDrumPad(
 
   if (source.rackPath !== destination.rackPath) {
     throw new Error(
-      `a drum-pad copy stays within one rack, but the source pad and toPath "${toPath}" are in different racks`,
+      `a drum-pad copy stays within one rack, but the source pad and toPath "${toPath}" are in different racks${nestedDrumRackHint(destination.rackPath, midiToNoteName(destination.midi) as string)}`,
     );
   }
 
@@ -152,6 +161,18 @@ function refuseRackWithoutPads(rack: LiveAPI): void {
  * @throws Error when the path doesn't name one pad
  */
 export function resolvePadTarget(path: string, label: string): PadTarget {
+  const parsed = parseObjectPath(path, label, true);
+
+  // A pad copy never makes a chain or a device of its own, so say what the
+  // destination should be instead of listing who takes a `c+`.
+  if (parsed.kind === "new-chain" || parsed.kind === "new-device") {
+    throw pathError(
+      label,
+      path,
+      `a drum-pad copy goes onto a whole pad like "t0/d0/pC1", and layers on any chains it has; drop the "${parsed.kind === "new-chain" ? NEW_CHAIN : NEW_DEVICE}"`,
+    );
+  }
+
   const resolved = resolvePathToLiveApi(path, label);
 
   if (resolved.namesNothing != null) {
@@ -217,24 +238,34 @@ function finishPadCopy(
     throw new Error(`copying onto drum pad "${toPath}" had no effect`);
   }
 
+  // The copy has landed, so a name that won't take is on its entry.
+  let naming: string | undefined;
+
   if (name != null) {
-    // Only the chains the copy added, and only when there's a name to set —
-    // the rest never need building.
-    for (const chainId of chainIds.slice(chainsBefore)) {
-      LiveAPI.from(chainId).set("name", name);
+    try {
+      // Only the chains the copy added, and only when there's a name to set —
+      // the rest never need building.
+      for (const chainId of chainIds.slice(chainsBefore)) {
+        LiveAPI.from(chainId).set("name", name);
+      }
+    } catch (error) {
+      naming = `the pad was copied, but naming its chains failed: ${errorMessage(error)}`;
     }
   }
 
   const devicePath = extractDevicePath(rack.path);
   const noteName = midiToNoteName(destination.midi) as string;
+  // Live layers rather than replaces, matching a device-based pad move onto an
+  // occupied pad. Say so, because the pad now plays both.
+  const layered =
+    chainsBefore > 0
+      ? `the pad already had ${chainsBefore} chain(s), so the copy layers on top of them rather than replacing them`
+      : undefined;
+  const detail = joinDetails([layered, naming]);
 
   return {
     id: pad.id,
     path: devicePath == null ? toPath : buildDrumPadPath(devicePath, noteName),
-    // Live layers rather than replaces, matching a device-based pad move onto
-    // an occupied pad. Say so, because the pad now plays both.
-    ...(chainsBefore > 0 && {
-      detail: `the pad already had ${chainsBefore} chain(s), so the copy layers on top of them rather than replacing them`,
-    }),
+    ...(detail != null && { detail }),
   };
 }

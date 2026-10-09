@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Releasing the path listeners Live arms behind every LiveAPI object: what gets
 // tracked, and when the release actually fires.
@@ -296,7 +296,7 @@ describe("live-api release", () => {
 
     const first = LiveAPI.from(livePath.track(0));
 
-    // What the ppal-live-api set_mode operation leaves behind: follow the
+    // What the ppal-live-api set-mode operation leaves behind: follow the
     // object rather than the path.
     first.mode = 1;
 

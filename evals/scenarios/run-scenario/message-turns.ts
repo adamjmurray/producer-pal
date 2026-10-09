@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Running a scenario's message turns and grading them: one turn at a time, then
@@ -113,7 +113,8 @@ export async function runCorrectnessAssertion(
       return {
         assertion,
         earned: 0,
-        maxScore: 0,
+        // maxScore 0 would score as a pass (earned === maxScore).
+        maxScore: 1,
         message: `Unknown assertion type: ${(assertion as EvalAssertion).type}`,
       };
   }

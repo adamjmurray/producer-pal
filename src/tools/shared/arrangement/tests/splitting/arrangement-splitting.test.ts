@@ -1,9 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   registerMockObject,
   type RegisteredMockObject,
@@ -13,7 +13,7 @@ import {
   LEGACY_SPLIT_MODE,
   performSplitting,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
-import { prepareSplitParams } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
+import { readSplitPoints } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
 import {
   mockArrangementClipsRescan,
   overrideWithDuplicateCounter,
@@ -98,287 +98,74 @@ function expectSplitTrimCount(
   expectCreateMidiClipCount(trackMock, count);
 }
 
-describe("prepareSplitParams", () => {
-  function setupPrepareTest(): {
-    mockClip: LiveAPI;
-    warnings: Set<string>;
-  } {
-    const clipId = "clip_1";
-
-    setupSplittingClipBaseMocks(clipId);
-    setupSplittingClipGetMock(clipId, { looping: true });
-    const mockClip = LiveAPI.from(`id ${clipId}`);
-    const warnings = new Set<string>();
-
-    return { mockClip, warnings };
+describe("readSplitPoints", () => {
+  function setup(): void {
+    setupSplittingClipBaseMocks("clip_1");
+    setupSplittingClipGetMock("clip_1", { looping: true });
   }
 
-  it("should return null when split is undefined", () => {
-    const warnings = new Set<string>();
-    const result = prepareSplitParams(
-      undefined,
-      [],
-      warnings,
-      ARRANGEMENT_SPLIT_MODE,
-    );
+  function manyPoints(count: number): string {
+    return Array.from({ length: count }, (_, i) => `${i + 2}|1`).join(", ");
+  }
 
-    expect(result).toBeNull();
+  it.each(["invalid", "2|1, notaposition"])(
+    "refuses %j as an invalid format",
+    (value) => {
+      setup();
+
+      expect(() => readSplitPoints(value, ARRANGEMENT_SPLIT_MODE)).toThrow(
+        `Invalid arrangementSplit format: "${value}"`,
+      );
+    },
+  );
+
+  it("refuses more than MAX_SPLIT_POINTS points", () => {
+    setup();
+
+    expect(() =>
+      readSplitPoints(manyPoints(33), ARRANGEMENT_SPLIT_MODE),
+    ).toThrow("Too many arrangementSplit points (33), max is 32");
   });
 
-  it("should warn and return null when no arrangement clips", () => {
-    const warnings = new Set<string>();
-    const result = prepareSplitParams(
-      "2|1, 3|1",
-      [],
-      warnings,
-      ARRANGEMENT_SPLIT_MODE,
-    );
+  it("allows exactly MAX_SPLIT_POINTS points", () => {
+    setup();
 
-    expect(result).toBeNull();
-    expect(warnings.has("split-no-arrangement")).toBe(true);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("arrangementSplit requires arrangement clips"),
-    );
+    expect(
+      readSplitPoints(manyPoints(32), ARRANGEMENT_SPLIT_MODE),
+    ).toHaveLength(32);
   });
 
-  it("should warn and return null for invalid format", () => {
-    const { mockClip, warnings } = setupPrepareTest();
+  it("refuses points that are all at the song start", () => {
+    setup();
 
-    const result = prepareSplitParams(
-      "invalid",
-      [mockClip],
-      warnings,
-      ARRANGEMENT_SPLIT_MODE,
-    );
-
-    expect(result).toBeNull();
-    expect(warnings.has("split-invalid-format")).toBe(true);
-    // The warning text names the problem so the model can correct it.
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining('Invalid arrangementSplit format: "invalid"'),
+    expect(() => readSplitPoints("1|1", ARRANGEMENT_SPLIT_MODE)).toThrow(
+      "No valid arrangementSplit points (all at or before the song start)",
     );
   });
 
-  it("treats an all-empty split spec as invalid format", () => {
-    const { mockClip, warnings } = setupPrepareTest();
+  // The deprecated `split` reads from each clip's own start, so the error has
+  // to name that origin.
+  it("names the clip start for the deprecated split param", () => {
+    setup();
 
-    // "," has only empty parts, so parseSplitPoints returns [] (empty, not null).
-    // That must be reported as invalid format, not silently accepted as no-op.
-    const result = prepareSplitParams(
-      ",",
-      [mockClip],
-      warnings,
-      ARRANGEMENT_SPLIT_MODE,
-    );
-
-    expect(result).toBeNull();
-    expect(warnings.has("split-invalid-format")).toBe(true);
-  });
-
-  it("should reject the whole split when any point is malformed", () => {
-    const { mockClip, warnings } = setupPrepareTest();
-
-    // "2|1" alone is valid, but a single malformed part must invalidate the whole
-    // list (return null) rather than silently dropping it and splitting anyway.
-    const result = prepareSplitParams(
-      "2|1, notaposition",
-      [mockClip],
-      warnings,
-      ARRANGEMENT_SPLIT_MODE,
-    );
-
-    expect(result).toBeNull();
-    expect(warnings.has("split-invalid-format")).toBe(true);
-  });
-
-  it("should not re-warn about invalid format when already warned", () => {
-    const { mockClip } = setupPrepareTest();
-    const warnings = new Set(["split-invalid-format"]);
-
-    vi.clearAllMocks();
-
-    prepareSplitParams("invalid", [mockClip], warnings, ARRANGEMENT_SPLIT_MODE);
-
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("Invalid arrangementSplit format"),
+    expect(() => readSplitPoints("1|1", LEGACY_SPLIT_MODE)).toThrow(
+      "No valid split points (all at or before clip start)",
     );
   });
 
-  it("should not re-warn about too many points when already warned", () => {
-    const { mockClip } = setupPrepareTest();
-    const warnings = new Set(["split-max-exceeded"]);
-    const manyPoints = Array.from({ length: 33 }, (_, i) => `${i + 2}|1`).join(
-      ", ",
-    );
-
-    vi.clearAllMocks();
-
-    prepareSplitParams(
-      manyPoints,
-      [mockClip],
-      warnings,
-      ARRANGEMENT_SPLIT_MODE,
-    );
-
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("Too many arrangementSplit points"),
-    );
-  });
-
-  it("should not re-warn about no valid points when already warned", () => {
-    const { mockClip } = setupPrepareTest();
-    const warnings = new Set(["split-no-valid-points"]);
-
-    vi.clearAllMocks();
-
-    prepareSplitParams("1|1", [mockClip], warnings, ARRANGEMENT_SPLIT_MODE);
-
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("No valid arrangementSplit points"),
-    );
-  });
-
-  it("should allow exactly MAX_SPLIT_POINTS points (boundary is > not >=)", () => {
-    const { mockClip, warnings } = setupPrepareTest();
-
-    // 32 points is at the cap, not over it — it must be accepted, not rejected.
-    const points = Array.from({ length: 32 }, (_, i) => `${i + 2}|1`).join(
-      ", ",
-    );
-    const result = prepareSplitParams(
-      points,
-      [mockClip],
-      warnings,
-      ARRANGEMENT_SPLIT_MODE,
-    );
-
-    expect(result).toHaveLength(32);
-    expect(warnings.has("split-max-exceeded")).toBe(false);
-  });
-
-  it("should parse valid bar|beat positions", () => {
-    const { mockClip, warnings } = setupPrepareTest();
+  it("parses, sorts and deduplicates positions, dropping the one at 0", () => {
+    setup();
 
     // 2|1 = 4 beats, 3|1 = 8 beats (in 4/4)
-    const result = prepareSplitParams(
-      "2|1, 3|1",
-      [mockClip],
-      warnings,
-      ARRANGEMENT_SPLIT_MODE,
-    );
-
-    expect(result).toStrictEqual([4, 8]);
-    expect(warnings.size).toBe(0);
+    expect(
+      readSplitPoints("3|1, 1|1, 2|1, 2|1", ARRANGEMENT_SPLIT_MODE),
+    ).toStrictEqual([4, 8]);
   });
 
-  it("should sort and deduplicate split points", () => {
-    const { mockClip, warnings } = setupPrepareTest();
+  it("ignores a trailing comma", () => {
+    setup();
 
-    // Out of order with duplicate
-    const result = prepareSplitParams(
-      "3|1, 2|1, 2|1",
-      [mockClip],
-      warnings,
-      ARRANGEMENT_SPLIT_MODE,
-    );
-
-    expect(result).toStrictEqual([4, 8]); // Sorted and deduplicated
-  });
-
-  it("should filter out split points at clip start (1|1)", () => {
-    const { mockClip, warnings } = setupPrepareTest();
-
-    const result = prepareSplitParams(
-      "1|1, 2|1",
-      [mockClip],
-      warnings,
-      ARRANGEMENT_SPLIT_MODE,
-    );
-
-    // 1|1 = 0 beats (filtered out), 2|1 = 4 beats
-    expect(result).toStrictEqual([4]);
-  });
-
-  it("should warn when all split points are at or before clip start", () => {
-    const { mockClip, warnings } = setupPrepareTest();
-
-    const result = prepareSplitParams(
-      "1|1",
-      [mockClip],
-      warnings,
-      ARRANGEMENT_SPLIT_MODE,
-    );
-
-    expect(result).toBeNull();
-    expect(warnings.has("split-no-valid-points")).toBe(true);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("No valid arrangementSplit points"),
-    );
-  });
-
-  // The deprecated `split` reads its points from each clip's own start, so the
-  // warning has to name that origin rather than the song's.
-  it("names the clip start when clip-relative points are all at or before it", () => {
-    const { mockClip, warnings } = setupPrepareTest();
-
-    prepareSplitParams("1|1", [mockClip], warnings, LEGACY_SPLIT_MODE);
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(
-        "No valid split points (all at or before clip start)",
-      ),
-    );
-  });
-
-  it("should warn when too many split points", () => {
-    const { mockClip, warnings } = setupPrepareTest();
-
-    // Create 33 split points (exceeds MAX_SPLIT_POINTS = 32)
-    const manyPoints = Array.from({ length: 33 }, (_, i) => `${i + 2}|1`).join(
-      ", ",
-    );
-    const result = prepareSplitParams(
-      manyPoints,
-      [mockClip],
-      warnings,
-      ARRANGEMENT_SPLIT_MODE,
-    );
-
-    expect(result).toBeNull();
-    expect(warnings.has("split-max-exceeded")).toBe(true);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Too many arrangementSplit points"),
-    );
-  });
-
-  it("should handle trailing commas in split string", () => {
-    const { mockClip, warnings } = setupPrepareTest();
-
-    // Trailing comma produces an empty part that gets skipped
-    const result = prepareSplitParams(
-      "2|1, 3|1, ",
-      [mockClip],
-      warnings,
-      ARRANGEMENT_SPLIT_MODE,
-    );
-
-    expect(result).toStrictEqual([4, 8]);
-    expect(warnings.size).toBe(0);
-  });
-
-  it("should not duplicate the same warning within a single call", () => {
-    const warnings = new Set<string>();
-
-    // First call: warns about no arrangement clips
-    prepareSplitParams("2|1", [], warnings, ARRANGEMENT_SPLIT_MODE);
-    expect(warnings.has("split-no-arrangement")).toBe(true);
-
-    // Second call with the same warnings set: should not warn again
-    const warningCount = capturedWarnings().length;
-
-    prepareSplitParams("2|1", [], warnings, ARRANGEMENT_SPLIT_MODE);
-
-    expect(capturedWarnings()).toHaveLength(warningCount);
+    expect(readSplitPoints("2|1,", ARRANGEMENT_SPLIT_MODE)).toStrictEqual([4]);
   });
 });
 
@@ -779,7 +566,7 @@ describe("performSplitting", () => {
     expectSplitTrimCount(callState.trackMock, 2);
   });
 
-  it("names the clips it never started splitting when time is up", () => {
+  it("never starts splitting when time is already up", () => {
     const { callState, mockClip, clips } = setupSplitTest();
 
     performSplitting(
@@ -794,9 +581,8 @@ describe("performSplitting", () => {
     );
 
     expect(callState.trackMock.call).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContain(
-      "Ran out of time after splitting 0 of 1 clips. " +
-        "Not split: clip_1. Re-run for those ids.",
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("Ran out of time"),
     );
   });
 

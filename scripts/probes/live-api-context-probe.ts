@@ -2,7 +2,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Live API context probe: measure how per-call latency grows as the device
@@ -43,8 +43,7 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-
-const DEFAULT_URL = "http://localhost:3350/mcp";
+import { DEFAULT_MCP_URL } from "#src/shared/config.ts";
 
 /** Operations per ppal-live-api call. The tool caps this at 50. */
 const OPS_PER_CALL = 50;
@@ -213,7 +212,7 @@ if (!ARMS.includes(arm)) {
   process.exit(1);
 }
 
-const transport = new StreamableHTTPClientTransport(new URL(DEFAULT_URL));
+const transport = new StreamableHTTPClientTransport(new URL(DEFAULT_MCP_URL));
 const client = new Client(
   { name: "live-api-context-probe", version: "1.0.0" },
   { capabilities: {} },

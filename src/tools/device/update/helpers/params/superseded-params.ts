@@ -1,18 +1,37 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   type ParamEntry,
   paramEntryKey,
 } from "#src/tools/device/update/device-params-schema.ts";
+import {
+  type ParamOutcome,
+  supersededParam,
+} from "#src/tools/shared/device/helpers/param-reading.ts";
+import { linkReplacer } from "#src/tools/shared/helpers/entry-details.ts";
 import { isSpecializedParamKey } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
+import { namedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { lastWins } from "#src/tools/shared/write-pipeline/plans/last-wins.ts";
 import { matchParamsByName } from "./param-name-resolution.ts";
 
+/** An entry a later one overrides: what it says, and the later entry. */
+interface Overridden {
+  detail: string;
+  /** Position of the entry that overrides it */
+  by: number;
+  /** The overriding entry as the caller spelled it */
+  label: string;
+}
+
 /**
- * Skip reasons for entries a later entry overrides, keyed by position. When
- * entries reach one param, the last one wins.
+ * One outcome per param entry, in order. An entry a later one overrides isn't
+ * written: its outcome says which entry overrides it, and is linked to that
+ * entry's outcome, so `refreshParamValues` can fail it if the later one landed
+ * nothing. Every other entry's outcome comes from `outcomesFor`, which must
+ * give it at least one.
  *
  * Entries match when their keys are the same text (any case), or when they
  * reach the same parameter on `device` (an id and a name, or a macro's two
@@ -21,44 +40,79 @@ import { matchParamsByName } from "./param-name-resolution.ts";
  * @param device - The device the entries are looked up on; null compares the
  *   keys alone
  * @param params - The params list as the caller sent it
- * @returns The skip reason for each overridden entry
+ * @param outcomesFor - Writes one entry that nothing overrides
+ * @param applies - Whether an entry competes at all; one that doesn't is never
+ *   overridden and overrides no one
+ * @returns The outcomes, in the order the entries were named
  */
-export function supersededParamReasons(
+export function paramOutcomes(
   device: LiveAPI | null,
   params: ParamEntry[],
-): Map<number, string> {
-  const reasons = new Map<number, string>();
+  outcomesFor: (entry: ParamEntry, index: number) => ParamOutcome[],
+  applies: (entry: ParamEntry) => boolean = () => true,
+): ParamOutcome[] {
+  const overridden = overriddenParams(device, params, applies);
+  const outcomes: ParamOutcome[] = [];
+  // Where each entry's first outcome sits.
+  const firstOutcome: number[] = [];
 
-  if (params.length < 2) {
-    return reasons;
-  }
+  for (const [index, entry] of params.entries()) {
+    const skip = overridden.get(index);
 
-  // Read once for the whole list: every entry matches against these.
-  const parameters = device?.getChildren("parameters") ?? [];
-  // What each claimed key or param is set by, as the reason names it.
-  const setBy = new Map<string, string>();
+    firstOutcome.push(outcomes.length);
 
-  // Walk back from the end, so the entry that claims a param is the last one.
-  for (const [index, entry] of [...params.entries()].toReversed()) {
-    const claims = entryClaims(parameters, device, entry);
-    const winner = claims
-      .map((claim) => setBy.get(claim))
-      .find((label) => label != null);
-
-    if (winner != null) {
-      reasons.set(index, `set again by ${winner} later in the list`);
+    if (skip == null) {
+      outcomes.push(...outcomesFor(entry, index));
       continue;
     }
 
     const { key, byId } = paramEntryKey(entry);
-    const label = byId ? `id ${key}` : `"${key}"`;
 
-    for (const claim of claims) {
-      setBy.set(claim, label);
-    }
+    outcomes.push(supersededParam(key, byId, skip.detail));
   }
 
-  return reasons;
+  for (const [index, { by, label }] of overridden) {
+    linkReplacer(outcomes[firstOutcome[index] as number] as ParamOutcome, {
+      entry: outcomes[firstOutcome[by] as number] as ParamOutcome,
+      by: label,
+    });
+  }
+
+  return outcomes;
+}
+
+/**
+ * @param device - The device the entries are looked up on, or null
+ * @param params - The params list as the caller sent it
+ * @param applies - Whether an entry competes at all
+ * @returns For each overridden entry by position, what it says and who
+ *   overrides it
+ */
+function overriddenParams(
+  device: LiveAPI | null,
+  params: ParamEntry[],
+  applies: (entry: ParamEntry) => boolean,
+): Map<number, Overridden> {
+  if (params.length < 2) {
+    return new Map();
+  }
+
+  // Read once for the whole list: every entry matches against these.
+  const parameters = device?.getChildren("parameters") ?? [];
+  const overriddenBy = lastWins(
+    params.map((entry) =>
+      applies(entry) ? entryClaims(parameters, device, entry) : [],
+    ),
+  );
+
+  return new Map(
+    [...overriddenBy].map(([index, by]) => {
+      const { key, byId } = paramEntryKey(params[by] as ParamEntry);
+      const label = byId ? `id ${key}` : `"${key}"`;
+
+      return [index, { detail: namedAgain(label), by, label }];
+    }),
+  );
 }
 
 /**

@@ -51,7 +51,7 @@ beyond standard JS literal parsing).
 call wrote. `{ action }` alone means it ran; a `detail` beside it means it found
 nothing to change; `ok: false` with a `detail` means it was refused
 (unparseable, unknown for the device, bad args, or the handler turned it down).
-Nothing about an action warns (ADR-0042).
+Nothing about an action warns.
 
 **Action discovery (`include: ["actions"]`).** The actions a device supports are
 discoverable at runtime via `ppal-read-device include: ["actions"]`, which

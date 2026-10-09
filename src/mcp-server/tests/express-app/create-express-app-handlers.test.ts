@@ -1,11 +1,17 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import Max from "max-api";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { dismissUpdate } from "../../helpers/http/update-dismissal.ts";
 import { setupExpressAppServer } from "../express-app-test-helpers.ts";
+
+vi.mock(import("../../helpers/http/update-dismissal.ts"), () => ({
+  dismissUpdate: vi.fn(async () => {}),
+  syncDeviceUpdateNotice: vi.fn(async () => {}),
+}));
 
 // Type for mock Max module with test-specific properties
 type MockMax = typeof Max & {
@@ -119,5 +125,14 @@ describe("Handler Registration", () => {
 
     handler("barbeat");
     expect(await getConfigField("notation")).toBe("barbeat");
+  });
+
+  it("should dismiss the update notice when the device's x button asks", () => {
+    const handler = mockMax.handlers.get("dismissUpdate") as () => void;
+
+    expect(handler).toBeDefined();
+
+    handler();
+    expect(dismissUpdate).toHaveBeenCalledTimes(1);
   });
 });

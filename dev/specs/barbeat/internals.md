@@ -40,13 +40,10 @@ type Element =
   | { stream: { param: "velocity", values: ({ velocity: number } | { velocityMin: number, velocityMax: number })[] } } // Pattern bracket (velocity)
   | { stream: { param: "duration", values: { duration: number, bars?: number }[] } } // Pattern bracket (duration)
   | { stream: { param: "probability", values: { probability: number }[] } } // Pattern bracket (probability)
-  | { barCopy: number, sourcePrevious: true }                        // @N= (copy previous)
-  | { barCopy: number, sourceBar: number }                           // @N=M (copy bar M)
-  | { barCopy: number, sourceRange: [number, number] }               // @N=M-P (copy source range)
-  | { barCopyRange: [number, number], sourcePrevious: true }         // @N-M= (copy previous to range)
-  | { barCopyRange: [number, number], sourceBar: number }            // @N-M=P (copy bar to range)
-  | { barCopyRange: [number, number], sourceRange: [number, number] } // @N-M=P-Q (tile pattern)
+  | { destination: BarOrRange, source: BarOrRange | "previous" }       // @N= / @N=M / @N-M=P-Q (bar copy; "previous" when the source is omitted)
   | { clearBuffer: true }                                            // @clear (clear copy buffer)
+
+type BarOrRange = { bar: number } | { range: [number, number] }
 
 type RepeatPattern = {
   start: number,      // Starting beat position (meter-relative)

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The comment-slop ratchet: the caps that src/test/comment-limits.test.ts
 // enforces and `npm run comment:stats` prints beside the current numbers.
@@ -25,11 +25,11 @@ export type TreeLimits = Record<CommentTree, number>;
  * Each cap sits within 0.005 of its tree's density.
  */
 export const COMMENT_DENSITY_LIMITS: TreeLimits = {
-  src: 0.53,
+  src: 0.51,
   scripts: 0.325,
   webui: 0.46,
-  evals: 0.485,
-  e2e: 0.585,
+  evals: 0.465,
+  e2e: 0.475,
 };
 
 /**
@@ -52,7 +52,6 @@ export const LONG_BLOCK_ALLOWANCES: Record<string, number> = {
   "evals/schema-compat/probe-schema-compat-cli.ts": 27,
   "evals/scenarios/defs/clip/notation/arpeggio-bracket-idiom.ts": 27,
   "evals/scenarios/defs/clip/notation/pretransforms-slm.ts": 26,
-  "evals/scenarios/defs/clip/transforms/note-ops-roll-and-merge.ts": 32,
   "evals/scenarios/defs/context/context-onboarding.ts": 26,
   "evals/scenarios/defs/context/context-write-layers.ts": 27,
   "evals/scenarios/defs/context/helpers/context-scenario-setup.ts": 30,
@@ -75,11 +74,8 @@ export const LONG_BLOCK_ALLOWANCES: Record<string, number> = {
   "src/skills/notation/barbeat-standard.ts": 28,
   "src/skills/skill-slots.ts": 34,
   "src/tools/actions/duplicate/duplicate.ts": 27,
-  "src/tools/clip/create/create-clip.ts": 30,
-  "src/tools/clip/create/helpers/clip-iteration.ts": 27,
   "src/tools/clip/update/update-clip.ts": 41,
   "src/tools/core/helpers/project-context-operations.ts": 68,
-  "src/tools/device/update/update-device.ts": 32,
   "src/tools/shared/arrangement/arrangement-tiling-workaround.ts": 29,
   "src/tools/shared/arrangement/helpers/take-lanes.ts": 26,
   "src/tools/shared/device/helpers/nested-param-target.ts": 29,

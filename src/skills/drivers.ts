@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The two driver roots — the documents `buildSkills` resolves from, chosen by
 // small-model mode. A driver is the ONLY place arbitrary top-level prose lives;
@@ -37,7 +37,7 @@ const HEADER = "# Producer Pal Skills";
  *
  * The notation head takes two adjacent lines so the guide stays contiguous: the
  * base head, then its `-write` sibling carrying the syntax only the clip writers
- * can act on (ADR-0019). bar|beat and stark are split; midi-json resolves that
+ * can act on. bar|beat and stark are split; midi-json resolves that
  * second ref to nothing.
  *
  * `object-paths` goes after the transforms block, not before it. Sitting
@@ -82,9 +82,13 @@ export const standardDriver = `${HEADER}
 
 @include "./arrangement-write.md"
 
+@include "./automation.md"
+
 @include "./working-with-live.md"
 
 @include "./context-standard.md"
+
+@include "./history.md"
 
 @include "./getting-help.md"
 `;

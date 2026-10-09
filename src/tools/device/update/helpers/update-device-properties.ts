@@ -1,16 +1,18 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
+import { refreshParamValues } from "#src/tools/device/update/helpers/params/param-read-back.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import {
   type ParamResult,
   type UnresolvedParam,
-  refreshParamValues,
+  paramResultLanded,
+  paramWritten,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
-import { applyChainSampleParams } from "./chain-sample-params.ts";
+import { applyChainSampleParams } from "./chain/chain-sample-params.ts";
 import {
   applyChainMixer,
   type ChainSend,
@@ -18,20 +20,32 @@ import {
 import {
   chainMixerReport,
   type ChainMixerReport,
-} from "./chain-mixer-report.ts";
+} from "./chain/chain-mixer-report.ts";
+import { type MappedMacros } from "#src/tools/shared/device/rack-macro-mappings.ts";
 import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import { type ActionResult } from "#src/tools/shared/device/specialized/specialized-device-types.ts";
 import { setParamValues } from "../update-device-param-setters.ts";
+import { type SettledParams } from "./call/simpler-pitch-bend.ts";
 import {
   updateABCompare,
   updateMacroCount,
   updateMacroVariation,
 } from "./rack-macro-updates.ts";
 import {
+  automationOverriddenDetail,
+  overridesActivator,
+} from "#src/tools/shared/arrangement/tracks/automation-override.ts";
+import {
   type TargetNotes,
   newTargetNotes,
+  noteLanded,
+  noteTarget,
   refuseIfNoneLanded,
 } from "#src/tools/shared/helpers/target-notes.ts";
+import {
+  landedColor,
+  type LandedColor,
+} from "#src/tools/shared/helpers/landed-color.ts";
 import {
   isChainType,
   isRackDevice,
@@ -57,8 +71,10 @@ export interface UpdatePropertyOptions {
   chokeGroup?: number;
   mappedPitch?: string;
   force?: boolean;
-  /** Loaded before anything else; see updateDeviceWithPreset */
+  /** Loaded before anything else; see updateDevice */
   preset?: string;
+  /** @internal Which macros were mapped, read before the write; never an arg */
+  mappedMacros?: MappedMacros;
 }
 
 export interface UpdateTargetOptions extends UpdatePropertyOptions {
@@ -80,6 +96,7 @@ export interface DeviceApplied {
  * @param type - Device type
  * @param options - Update options
  * @param notes - What this device's entry has to say, added to
+ * @param settled - Params already written by the caller, by entry
  * @returns What its params read as and what its actions did
  */
 export function updateDeviceProperties(
@@ -87,6 +104,7 @@ export function updateDeviceProperties(
   type: string,
   options: UpdatePropertyOptions,
   notes: TargetNotes,
+  settled?: SettledParams,
 ): DeviceApplied {
   const {
     params,
@@ -94,6 +112,7 @@ export function updateDeviceProperties(
     macroVariation,
     macroVariationIndex,
     macroCount,
+    mappedMacros,
     abCompare,
     mute,
     solo,
@@ -114,10 +133,19 @@ export function updateDeviceProperties(
   // values are read at the end instead: an A/B swap, a variation recall or a
   // specialized action below rewrites them.
   const paramResults =
-    params != null ? setParamValues(target, params, force, notes) : [];
+    params != null ? setParamValues(target, params, force, notes, settled) : [];
+
+  if (paramResults.some(paramWritten)) {
+    noteLanded(notes, "params");
+  }
 
   const actionResults =
     actions == null ? [] : applySpecializedActions(target, actions);
+
+  // An action that ran has no detail; one that found nothing to do has.
+  if (actionResults.some((result) => !("detail" in result))) {
+    noteLanded(notes, "actions");
+  }
 
   if (abCompare != null) {
     updateABCompare(target, abCompare, notes);
@@ -129,7 +157,7 @@ export function updateDeviceProperties(
     }
 
     if (macroCount != null) {
-      updateMacroCount(target, macroCount, notes);
+      updateMacroCount(target, macroCount, notes, mappedMacros);
     }
   } else {
     noteIfSet(ignored, "macroVariation", macroVariation);
@@ -151,6 +179,11 @@ export function updateDeviceProperties(
   refuseIgnoredParams(notes, ignored, type);
 
   const paramsRead = refreshParamValues(paramResults);
+
+  // A pseudo-param only shows it landed once its value reads back.
+  if (paramsRead.some(paramResultLanded)) {
+    noteLanded(notes, "params");
+  }
 
   refuseIfNoParamLanded(notes, paramsRead);
   refuseIfNoneLanded(
@@ -185,6 +218,8 @@ export function refuseIfNoParamLanded(
 /** What a chain or pad update wrote: its mixer, plus any params it took. */
 export interface NonDeviceWrites extends ChainMixerReport {
   params?: ParamResult[];
+  /** The palette color Live settled on, when it isn't the one asked for */
+  color?: string;
 }
 
 /**
@@ -224,19 +259,30 @@ export function updateNonDeviceProperties(
   noteIfSet(ignored, "abCompare", options.abCompare);
 
   if (options.mute != null) {
-    target.set("mute", options.mute ? 1 : 0);
+    const { mute } = options;
+
+    // Mute drives the chain activator, which can carry an arrangement lane.
+    const overrode = overridesActivator(target, "chain_activator", () => {
+      target.set("mute", mute ? 1 : 0);
+    });
+
+    noteLanded(notes, "mute");
+
+    if (overrode) {
+      noteTarget(notes, automationOverriddenDetail("mute"));
+    }
   }
 
   if (options.solo != null) {
     target.set("solo", options.solo ? 1 : 0);
+    noteLanded(notes, "solo");
   }
 
   let mixer: ChainMixerReport = {};
+  let landedAs: LandedColor = {};
 
   if (isChainType(type)) {
-    if (options.color != null) {
-      target.setColor(options.color);
-    }
+    landedAs = applyChainColor(target, options.color, notes);
 
     if (hasChainMixerParams(options)) {
       mixer = chainMixerReport(
@@ -254,7 +300,7 @@ export function updateNonDeviceProperties(
   }
 
   if (type === "DrumChain") {
-    updateDrumChainProperties(target, options);
+    updateDrumChainProperties(target, options, notes);
   } else {
     noteIfSet(ignored, "chokeGroup", options.chokeGroup);
     noteIfSet(ignored, "mappedPitch", options.mappedPitch);
@@ -262,25 +308,62 @@ export function updateNonDeviceProperties(
 
   refuseIgnoredParams(notes, ignored, type);
 
-  return params.length > 0 ? { ...mixer, params } : mixer;
+  return {
+    ...mixer,
+    ...(landedAs.color == null ? {} : { color: landedAs.color }),
+    ...(params.length > 0 ? { params } : {}),
+  };
+}
+
+/**
+ * Color a chain. Live keeps a fixed palette, so the entry says which swatch the
+ * color landed on when it isn't the one asked for.
+ * @param target - The chain
+ * @param color - The color asked for, if any
+ * @param notes - What the chain's entry has to say, told what lands
+ * @returns The swatch Live chose, when it differs
+ */
+function applyChainColor(
+  target: LiveAPI,
+  color: string | undefined,
+  notes: TargetNotes,
+): LandedColor {
+  if (color == null) {
+    return {};
+  }
+
+  target.setColor(color);
+  noteLanded(notes, "color");
+
+  const landed = landedColor(target, color);
+
+  if (landed.detail != null) {
+    noteTarget(notes, landed.detail);
+  }
+
+  return landed;
 }
 
 /**
  * Apply DrumChain-only properties (chokeGroup, mappedPitch)
  * @param target - DrumChain LiveAPI object
  * @param options - Update options
+ * @param notes - What the target's entry has to say, told what lands
  */
 function updateDrumChainProperties(
   target: LiveAPI,
   options: UpdatePropertyOptions,
+  notes: TargetNotes,
 ): void {
   if (options.chokeGroup != null) {
     target.set("choke_group", options.chokeGroup);
+    noteLanded(notes, "chokeGroup");
   }
 
   if (options.mappedPitch != null) {
     // Refused up front by updateDevice, so this reads back a known-good name.
     target.set("out_note", noteNameToMidi(options.mappedPitch));
+    noteLanded(notes, "mappedPitch");
   }
 }
 

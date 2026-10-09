@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for the per-request headers the tool surfaces read: withheld tools
@@ -23,6 +23,7 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { connectMcp, type McpConnection } from "#evals/chat/mcp.ts";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { DISABLED_TOOLS_HEADER } from "#src/shared/config.ts";
 import { NOTATION_HEADER } from "#src/shared/notation.ts";
 import { buildSkills, type SkillOverrides } from "#src/skills/build-skills.ts";
@@ -33,14 +34,13 @@ import {
   fetchSkillOverrides,
   getToolErrorMessage,
   isToolError,
-  MCP_URL,
   parseToolResult,
   type ReadClipResult,
-  remoteScriptAnswers,
   setConfig,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
+import { remoteScriptAnswers } from "./helpers/server-capability-test-helpers.ts";
 import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
@@ -211,7 +211,7 @@ describe("x-producer-pal-disabled-tools", () => {
     });
     const result = await subset.callTool({
       name: "ppal-library",
-      arguments: { action: "listTags" },
+      arguments: { action: "list-tags" },
     });
 
     expect(isToolError(result)).toBe(true);
@@ -222,7 +222,7 @@ describe("x-producer-pal-disabled-tools", () => {
       isToolError(
         await ctx.client!.callTool({
           name: "ppal-library",
-          arguments: { action: "listTags" },
+          arguments: { action: "list-tags" },
         }),
       ),
     ).toBe(false);

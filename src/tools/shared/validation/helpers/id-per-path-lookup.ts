@@ -1,16 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // One pass over a path param, for every kind of object a path can name. An
-// entry that names nothing resolves to the reason it didn't, so the caller
-// decides what that costs: a warning and a null slot, or an entry in the result
-// saying the target was skipped.
+// entry that names nothing resolves to the reason it didn't, so the caller can
+// put it in the target's result entry.
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
-import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 
 /**
  * What a path was meant to find ("clip"), the param it came from, and the
@@ -39,36 +36,6 @@ export type IdLookup =
 export type PathResolution =
   | { entry: string; id: string; reason?: undefined; empty?: undefined }
   | { entry: string; id: null; reason: string; empty: boolean };
-
-/**
- * Resolves each entry of a path param for a caller with nowhere to report a
- * miss: each one warns and leaves a null in its place, so a list paired against
- * the paths keeps its positions. A hole in the list itself throws, before
- * anything runs.
- * @param paths - Comma-separated paths
- * @param label - Param name the paths came from, for warnings
- * @param resolve - Gives the id an entry names, or the reason there is none
- * @returns One id per path entry, in order, null where an entry named none
- */
-export function idPerPath(
-  paths: string,
-  label: string,
-  resolve: (entry: string) => IdLookup,
-): Array<string | null> {
-  const ids: Array<string | null> = [];
-
-  for (const entry of pathEntries(paths, label)) {
-    const resolution = resolvePathEntry(entry, resolve);
-
-    if (resolution.id == null) {
-      console.warn(resolution.reason);
-    }
-
-    ids.push(resolution.id);
-  }
-
-  return ids;
-}
 
 /**
  * One entry's resolution, tagged with the entry that asked for it. A resolver

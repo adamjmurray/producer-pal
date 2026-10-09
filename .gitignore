@@ -11,6 +11,7 @@ coverage
 reports/mutation
 .stryker-tmp
 claude-desktop-extension/*.mcpb
+claude-desktop-extension/*.amxd
 claude-desktop-extension/*.js
 claude-desktop-extension/LICENSE
 claude-desktop-extension/licenses
@@ -18,6 +19,7 @@ claude-desktop-extension/manifest.json
 npm/*.js
 npm/*.svg
 npm/*.tgz
+npm/*.amxd
 npm/LICENSE
 npm/licenses
 max-for-live-device/*.js
@@ -67,4 +69,7 @@ test-reports
 
 # Project context sidecars left behind by e2e/eval runs
 **/live-sets/**/Producer Pal Project Context.md*
+
+# Sample analysis files Live rewrites whenever it opens a sample
+**/live-sets/**/*.asd
 __pycache__/

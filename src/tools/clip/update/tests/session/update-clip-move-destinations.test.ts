@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -47,11 +47,11 @@ describe("resolveMoveDestinations", () => {
     expect(moveLanes(undefined, "  ", 1)).toStrictEqual([null]);
   });
 
-  it("refuses when toPath and toSlot both name a destination", () => {
+  it("refuses toPath sent with the deprecated toSlot", () => {
     // Nothing has run yet, so the whole call is refused rather than moving
     // nowhere while the rest of the update succeeds.
     expect(() => moveLanes("t2/s3", "4/5", 1)).toThrow(
-      "toPath and toSlot both name a destination; use toPath alone (toSlot is deprecated)",
+      "toPath names the destination on its own - don't send toSlot with it (toSlot is deprecated)",
     );
     expect(capturedWarnings()).toStrictEqual([]);
   });
@@ -107,38 +107,43 @@ describe("resolveMoveDestinations", () => {
     );
   });
 
-  it("skips only the entries no clip can occupy", () => {
-    expect(moveLanes("t2/s3,s4,t6/s7", undefined, 3)).toStrictEqual([
-      { kind: "slot", trackIndex: 2, sceneIndex: 3 },
-      null,
-      { kind: "slot", trackIndex: 6, sceneIndex: 7 },
-    ]);
+  it("refuses the call for an entry that won't parse, whatever its place in the list", () => {
+    // A destination written wrong means the call is wrong. Moving the rest
+    // would let the update look done when part of it never was.
+    expect(() =>
+      resolveMoveDestinations("t2/s3,tX,t6/s7", undefined, 3),
+    ).toThrow('invalid toPath "tX"');
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("skips only the entry that won't parse", () => {
-    // Regression: the whole list was parsed at once and one throw discarded all
-    // of it, so a typo cost every move — while an entry that parsed but named
-    // the wrong kind of place cost only its own. Which one you got depended on
-    // nothing but which side of the grammar the typo fell on.
-    const moves = resolveMoveDestinations("t2/s3,tX,t6/s7", undefined, 3);
+  it("skips only the entry that parses but names no place a clip can go", () => {
+    // "s4" is a valid path, to a scene: nothing to apply, so just its own move.
+    const moves = resolveMoveDestinations("t2/s3,s4,t6/s7", undefined, 3);
 
     expect(moves.destinations).toStrictEqual([
       { kind: "slot", trackIndex: 2, sceneIndex: 3 },
       null,
       { kind: "slot", trackIndex: 6, sceneIndex: 7 },
     ]);
-    // Only the bad entry's own clip hears about it.
+    // Only the skipped entry's own clip hears about it.
     expect(moves.refusals[0]).toBeNull();
     expect(moves.refusals[1]).toContain("not moved:");
     expect(moves.refusals[2]).toBeNull();
   });
 
-  it("moves no clip when toPath names nothing at all", () => {
-    // Not the same as one bad entry: "," says a destination was meant and
-    // failed to arrive, and moving a clip anywhere else is the wrong guess.
-    expect(moveLanes(",", undefined, 2)).toStrictEqual([null, null]);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("it names nothing"),
+  // Not the same as one bad entry: "," says a destination was meant and failed
+  // to arrive, so the call is refused rather than succeeding without the move.
+  it("refuses a toPath that names nothing at all", () => {
+    expect(() => moveLanes(",", undefined, 2)).toThrow(
+      'invalid toPath "," - it names nothing',
     );
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("refuses a toSlot with extra parts", () => {
+    expect(() => moveLanes(undefined, "1/2/3", 1)).toThrow(
+      'invalid toSlot "1/2/3" - expected trackIndex/sceneIndex format (e.g., "0/1")',
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });

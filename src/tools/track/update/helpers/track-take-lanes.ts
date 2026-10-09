@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Take lanes as update-track targets. `t2/l<n>` names a lane, creating the ones
 // up to it; `t2/l+` appends one; a lane's own id names the lane it came from. A
@@ -15,12 +15,13 @@ import {
   resolveTakeLane,
   takeLaneById,
   takeLaneCapacityMessage,
+  takeLanesMadeBy,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
-import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
 import { takeLanePathEntry } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { CREATE_TRACK_ADVICE } from "#src/tools/shared/validation/object-path.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { ignoredText } from "#src/shared/max/ignored-wording.ts";
 
 /** One take-lane target of a call, as the caller spelled it. */
 export interface TakeLaneTargetSpec {
@@ -29,17 +30,21 @@ export interface TakeLaneTargetSpec {
   trackIndex: number;
   /** The lane to name, or null to append one (`l+`) */
   laneIndex: number | null;
+  /** Whether the target is work in itself: it adds a lane, or its track can't
+   * hold one and the write says why. Set by the plan, once the lanes are
+   * counted. */
+  work: boolean;
 }
 
 /** What update-track reports about a take lane it wrote to. */
 export interface UpdateTakeLaneResult {
   id: string;
   path?: string;
-  name: string;
+  /** The name Live kept, when it isn't the one asked for */
+  name?: string;
   /** The lanes this call made ("l3", or "l1-l3" when it filled the gap below
    * the one named), when it made any */
   created?: string;
-  ok?: false;
   detail?: string;
 }
 
@@ -68,7 +73,7 @@ export function planTakeLaneTargets(
     }
   }
 
-  assertTakeLanePlanFits([...lanes.values()]);
+  planTakeLaneGrowth([...lanes.values()]);
 
   return lanes;
 }
@@ -93,46 +98,87 @@ export function paramsTakeLanesIgnore(args: object): string[] {
  * @param spec - The lane target
  * @param name - The name for it, or undefined to leave it alone
  * @param ignored - The params this lane can't use, from {@link paramsTakeLanesIgnore}
+ * @param landed - Told what has changed as it does, for a throw to say so
  * @returns The lane's entry in the result
- * @throws Error when the path names no track, or one with no take lanes
+ * @throws Error when the path names no track, or one with no take lanes, or
+ *   when the call asked nothing of the lane that it can take
  */
 export function updateTakeLane(
   spec: TakeLaneTargetSpec,
   name: string | undefined,
   ignored: string[],
+  landed: (phrase: string, partial?: Record<string, unknown>) => void,
 ): UpdateTakeLaneResult {
   const track = laneTrack(spec);
   const before = track.getChildCount("take_lanes");
   const laneIndex = spec.laneIndex ?? before;
-  const { lane } = resolveTakeLane(track, laneIndex);
   // Naming a lane past the end fills in every lane below it too, so the entry
   // says which lanes the call made, not just the one it asked for.
-  const created =
-    laneIndex >= before ? createdRange("l", before, laneIndex) : null;
+  const { lane, created } = resolveLane(track, laneIndex, landed);
 
-  lane.setAll({ name });
+  // A lane the call made or named still got what it could give it, so the
+  // ignored params are a note on a hit. With nothing written, the target was
+  // refused: a lone one throws, and in a list it is a skip.
+  if (created == null && name == null && ignored.length > 0) {
+    throw new Error(ignoredParamsDetail(ignored));
+  }
 
-  // The lane still got what the call could give it when it was created or
-  // named, so the ignored params are a note on a hit rather than a skip.
-  const wrote = created != null || name != null;
+  const address = { id: lane.id, ...pathField(lane) };
+
+  if (created != null) {
+    landed(`take lane ${created} made`, { ...address, created });
+  }
+
+  lane.setAll({ name }, () => landed("name", address));
+
+  // A name that landed as sent isn't repeated. One Live changed is read back,
+  // and so is the one Live gave a lane this call made, which nothing else shows.
+  const kept = created != null || name != null ? lane.getName() : undefined;
 
   return {
-    id: lane.id,
-    ...pathField(lane),
-    // A lane is only ever its name, so the entry says what it is now: the name
-    // just written, or the one it kept.
-    name: name ?? lane.getName(),
+    ...address,
+    ...(kept == null || kept === name ? {} : { name: kept }),
     ...(created == null ? {} : { created }),
-    ...(ignored.length === 0
-      ? {}
-      : {
-          ...(wrote ? {} : { ok: false as const }),
-          detail: `a take lane takes only name; ignored ${ignored.join(", ")}`,
-        }),
+    ...(ignored.length === 0 ? {} : { detail: ignoredParamsDetail(ignored) }),
   };
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Resolves the lane, saying what was made if Live stops partway.
+ * @param track - The track
+ * @param laneIndex - The lane to resolve
+ * @param landed - Told what has changed as it does
+ * @returns The lane, and the lanes made
+ */
+function resolveLane(
+  track: LiveAPI,
+  laneIndex: number,
+  landed: (phrase: string, partial?: Record<string, unknown>) => void,
+): ReturnType<typeof resolveTakeLane> {
+  try {
+    return resolveTakeLane(track, laneIndex);
+  } catch (error) {
+    // The throw skips the journal below, so what Live did make is said here.
+    const made = takeLanesMadeBy(error);
+
+    if (made != null) {
+      landed(`take lane ${made} made`, { created: made });
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * What a lane says about the params it can't use.
+ * @param ignored - The ignored params, in the caller's spelling
+ * @returns The detail
+ */
+function ignoredParamsDetail(ignored: string[]): string {
+  return ignoredText(ignored, "a take lane takes only name");
+}
 
 /**
  * The lane a path entry names.
@@ -150,6 +196,7 @@ function lanePathSpec(entry: string): TakeLaneTargetSpec | null {
     entry,
     trackIndex: path.trackIndex,
     laneIndex: path.kind === "take-lane" ? path.laneIndex : null,
+    work: false,
   };
 }
 
@@ -171,17 +218,19 @@ function laneIdSpec(entry: string): TakeLaneTargetSpec | null {
     entry,
     trackIndex: lane.trackIndex as number,
     laneIndex: lane.takeLaneIndex as number,
+    work: false,
   };
 }
 
 /**
- * Refuses a call whose lane entries would put a track over the cap, before any
- * lane exists. Lanes can't be deleted, so a call that created some and then hit
- * the cap would strand them.
- * @param specs - Every lane target in the call, in the order named
+ * Marks the lane targets that are work, and refuses a call whose lane entries
+ * would put a track over the cap, before any lane exists. Lanes can't be
+ * deleted, so a call that created some and then hit the cap would strand them.
+ * @param specs - Every lane target in the call, in the order named; each one
+ *   that is work is marked in place
  * @throws Error when a track would end up over MAX_TAKE_LANES
  */
-function assertTakeLanePlanFits(specs: TakeLaneTargetSpec[]): void {
+function planTakeLaneGrowth(specs: TakeLaneTargetSpec[]): void {
   // null for a track that can hold no lanes: those entries are skipped one by
   // one, so they add nothing to count.
   const counts = new Map<number, number | null>();
@@ -193,6 +242,8 @@ function assertTakeLanePlanFits(specs: TakeLaneTargetSpec[]): void {
       : startingLaneCount(spec);
 
     if (before == null) {
+      // Skipped one by one when the call runs, with the real reason.
+      spec.work = true;
       counts.set(trackIndex, null);
       continue;
     }
@@ -211,6 +262,7 @@ function assertTakeLanePlanFits(specs: TakeLaneTargetSpec[]): void {
       );
     }
 
+    spec.work = total > before;
     counts.set(trackIndex, total);
   }
 }

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z } from "zod";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
@@ -13,7 +13,7 @@ import { trackPathFromIndex } from "#src/tools/shared/validation/helpers/path-fr
 export const toolDefReadTrack = defineTool("ppal-read-track", {
   title: "Read Track",
   description:
-    "Read track settings, clips, and devices. Returns overview by default. Use include to add detail.",
+    "Read track settings, clips, and devices by id or path. Returns overview by default. Use include to add detail.",
 
   annotations: {
     readOnlyHint: true,
@@ -24,9 +24,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
     id: z.coerce
       .string()
       .optional()
-      .describe(
-        "track or take lane ID(s) to read, comma-separated for multiple",
-      ),
+      .describe("track or take lane id(s), comma-separated"),
 
     ...addressingAliases({ idAlias: "trackId" }),
     path: z.coerce
@@ -69,7 +67,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
           'session-clips, arrangement-clips = clip lists (arrangement-clips also lists take lanes). notes, timing, sample, warp = clip detail (use with clips). devices, routings, available-routings, mixer = track data. drum-map = the kit\'s actual pad pitches and names, plus drumRackPath (a pad path is <drumRackPath>/p<note>); read it before writing drums. color = track + clip color. "*" = all',
         // `routings` joins `available-routings`: small mode hides all four
         // routing write params, so it could see the state, not the choices, and
-        // change neither. See ADR-0026. `warp` is dropped to match read-clip.
+        // change neither. `warp` is dropped to match read-clip.
         smallModel: {
           description:
             "session-clips, arrangement-clips = clip lists (arrangement-clips also lists take lanes). notes, timing, sample = clip detail (use with clips). devices, mixer = track data. drum-map = the kit's actual pad pitches and names, plus drumRackPath (a pad path is <drumRackPath>/p<note>); read it before writing drums. color = track + clip color",

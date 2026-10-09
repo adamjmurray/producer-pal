@@ -116,15 +116,15 @@ barCopy "bar copy operation"
   }
 
 barOrRange
-  = start:oneOrMoreInt '-' end:oneOrMoreInt {
+  = start:copyBar '-' end:copyBar {
     return { range: [start, end] };
   }
-  / bar:oneOrMoreInt {
+  / bar:copyBar {
     return { bar: bar };
   }
 
 timePoints "time position"
-  = bar:oneOrMoreInt "|" beats:beatList {
+  = bar:barNumber "|" beats:beatList {
     const beatsPerBar = options.beatsPerBar ?? 4;
     return resolveStickyBars(bar, beats, beatsPerBar);
   }
@@ -144,7 +144,7 @@ beatList "beat list"
 // bare `beatSpec` (inherits it). Explicit-bar branch is ordered first so a
 // digit run followed by `|` is read as a new bar, not a bare beat.
 beatItem
-  = bar:oneOrMoreInt "|" beat:beatSpec { return { bar, beat }; }
+  = bar:barNumber "|" beat:beatSpec { return { bar, beat }; }
   / beat:beatSpec { return { bar: null, beat }; }
 
 beatSpec "beat specification"
@@ -259,6 +259,10 @@ duration "duration value"
   }
   / "n" frac:unsignedFraction {
     return { duration: frac };  // Fraction of a whole note (e.g., 1/4 = quarter)
+  }
+  / "n" [0-9.]* "/0" ![0-9.] {
+    // Same text as the transform grammar's nDuration.
+    throw new Error(`a note value's denominator can't be 0 (got ${text()}): n/4 = quarter, n/8 = eighth, n/12 = eighth triplet.`);
   }
   / "n" bad:badAbsoluteValue {
     throw new Error(`durations need a denominator: n/4 = quarter, n/8 = eighth, n/12 = eighth triplet, or a bar form like 1bar or 1bar+n/4. Got n${bad}`);
@@ -398,21 +402,34 @@ rangeAsBeat
 // `1|1-n/N` (see standard skills).
 badZeroBeat
   = "0" [0-9]* ("." [0-9]*)? {
-      throw new Error(`beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${text()}.`);
+      throw new Error(`beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${text().replace(/\.$/, "")}.`);
     }
 
-// Last resort for a digit-led element that is neither a position (no `|`) nor a
-// duration (no `bar`): a `bar.beat`/`bar:beat` written with the wrong separator,
-// or a raw MIDI number used as a pitch. Ordered last in `element` so every real
-// element wins first; raises a fix-suggesting error in place of peggy's generic
-// "Expected …". Never returns a value.
+// Last resort for a digit-led element: a position with spaces around a pipe
+// (`1 | 1`), `bar.beat`/`bar:beat`, or a raw MIDI number. The spaced pipe must
+// come before the MIDI branch, which would read `1 | 1` as the number 1. It
+// parses the whole position so the fix keeps all of it, and a bad beat
+// (`1 | 0`) raises its own error rather than a fix that wouldn't parse. Never
+// returns a value.
 badNumericToken
-  = unsignedInt ("." / ":") unsignedInt {
+  = pos:$(oneOrMoreInt hs "|" hs spacedBeatList) &{ return /[ \t]\||\|[ \t]/.test(pos); } {
+      const fixed = pos.replace(/[ \t]*\|[ \t]*/g, "|");
+      throw new Error(`no spaces around the pipe in a position: write ${fixed}, not "${pos}".`);
+    }
+  / unsignedInt ("." / ":") unsignedInt {
       throw new Error(`positions use a pipe: bar|beat (e.g. 1|1), not "." or ":". Got ${text()}.`);
     }
   / unsignedInt &(WS / !.) {
       throw new Error(`use note names like C3 (middle C) for pitches, not MIDI numbers. Got ${text()}.`);
     }
+
+// `beatList`, but a later item's own `bar|` may also have spaces around its pipe.
+spacedBeatList
+  = beatSpec (hs "," hs spacedBeatItem)* (hs ",")?
+
+spacedBeatItem
+  = oneOrMoreInt hs "|" hs beatSpec
+  / beatSpec
 
 unsignedMixedNumber
   = wholeNumber:unsignedInt "+" fraction:unsignedFraction {
@@ -420,7 +437,7 @@ unsignedMixedNumber
   }
 
 unsignedFraction
-  = num:([0-9]+ "." [0-9]+ / [0-9]*) "/" den:[1-9] [0-9]* mod:("d" / "t")? {
+  = num:([0-9]+ "." [0-9]* / [0-9]*) "/" den:[1-9] [0-9]* mod:("d" / "t")? {
     // Numerator may be empty (→ 1), an integer, or a DECIMAL: the off-grid escape
     // `n<beats>/4` (e.g. `n1.9638/4`) the length/duration serializer emits for a
     // sample-derived value with no clean note-value fraction. The denominator
@@ -456,6 +473,24 @@ oneOrMoreInt
   = [1-9] [0-9]* {
     return Number.parseInt(text());
   }
+
+// The bar of a `bar|beat` position. A bar starting with 0 (`0|1`, `01|1`) can
+// only be the 0-indexed mistake, so it raises a targeted error instead of a
+// parse failure. Never matches a 0 that isn't followed by the pipe.
+barNumber
+  = oneOrMoreInt
+  / &("0" [0-9]* "|") badZeroBar
+
+// A bar in a bar copy (`@2=1`, `@5=1-4`). Any bar starting with 0 is the
+// 0-indexed mistake; there is no pipe to tell it apart from.
+copyBar
+  = oneOrMoreInt
+  / badZeroBar
+
+badZeroBar
+  = "0" [0-9]* {
+      throw new Error(`bars are 1-indexed: the first bar is bar 1 (e.g. 1|1). Got bar ${text()}.`);
+    }
 
 signedInt
   = sign:"-"? value:unsignedInt {

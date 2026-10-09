@@ -1,11 +1,28 @@
 # Producer Pal
 # Copyright (C) 2026 Adam Murray
 # AI assistance: Claude (Anthropic)
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 """What the HTTP routes do. Every function here runs on Live's main thread."""
 
-from . import browser, hotswap
+from . import browser, hot_reload, hotswap
+from .conversions import ROUTES as _CONVERSION_ROUTES
+from .device_copy import ROUTES as _DEVICE_COPY_ROUTES
+from .envelopes import ROUTES as _ENVELOPE_ROUTES
+from .errors import RouteError
+from .params import parse_index
+from .preset_guard import (
+    refuse_hotswapped_producer_pal,
+    refuse_loaded_producer_pal,
+)
+from .producer_pal_device import (
+    holds_producer_pal,
+    is_producer_pal,
+    top_level_producer_pals,
+)
+from .rack_macros import ROUTES as _RACK_MACRO_ROUTES
+from .simpler_settings import ROUTES as _SIMPLER_ROUTES
+from .undo import ROUTES as _UNDO_ROUTES
 from .version import VERSION
 
 # A new track's type follows what's being loaded. When that's unknown (plugins),
@@ -31,22 +48,10 @@ MFL_FOLDER_KINDS = {
 # The `type` that names a file on disk by its absolute `path`.
 FILE_TYPE = "file"
 
-# A Live Set can only have one Producer Pal device.
-PRODUCER_PAL_NAME = "producer_pal"
-
 # Plugins often exist as AU, VST and VST3 under the same name, so ambiguity is
 # normal - report the candidates instead of guessing.
 MAX_CANDIDATES = 25
 MAX_CHOICES = 50
-
-
-class RouteError(Exception):
-    """A route's own HTTP status and body."""
-
-    def __init__(self, status, message, **extra):
-        super().__init__(message)
-        self.status = status
-        self.payload = dict(extra, error=message)
 
 
 def ping(bridge, params):
@@ -56,7 +61,17 @@ def ping(bridge, params):
         app.get_minor_version(),
         app.get_bugfix_version(),
     )
-    return {"ok": True, "live_version": version, "script_version": VERSION}
+    return {
+        "ok": True,
+        "live_version": version,
+        "script_version": VERSION,
+        # Where Live finds the files this script loads. None when unknown.
+        "user_library": browser.user_library(),
+        # getattr: a hot reload can put this route on a bridge from before it had one.
+        "port": getattr(bridge, "port", None),
+        # Of the implementation files when they were last loaded.
+        "source_hash": hot_reload.loaded_hash,
+    }
 
 
 def list_items(bridge, params):
@@ -79,12 +94,33 @@ def load(bridge, params):
     item, path, kind = _find_item(bridge, params)
     song = bridge.song
 
-    if _is_producer_pal(item.name):
+    is_pal_item = is_producer_pal(item.name)
+    if is_pal_item:
         _refuse_second_producer_pal(song)
 
     default_track_type = TRACK_TYPE_FOR_KIND.get(kind, UNKNOWN_KIND_TRACK_TYPE)
-    track = _target_track(song, params, default_track_type)
+    track, created = _target_track(song, params, default_track_type)
 
+    before = list(track.devices)
+    try:
+        _load_onto(bridge, item, track, before, created, is_pal_item)
+        return {
+            "loaded": {"name": item.name, "path": path, "kind": kind},
+            "track": {"index": list(song.tracks).index(track), "name": track.name},
+            # Plugins and Max devices finish loading asynchronously, so this
+            # list can lag a request behind.
+            "devices": [device.name for device in track.devices],
+        }
+    except RouteError:
+        raise
+    except Exception as err:
+        if created:
+            _fail_after_creating_track(song, track, before, item.name, err)
+        raise
+
+
+def _load_onto(bridge, item, track, before, created, is_pal_item):
+    song = bridge.song
     # load_item loads into whatever track is selected, so select it first.
     song.view.selected_track = track
     live_browser = bridge.app.browser
@@ -92,19 +128,53 @@ def load(bridge, params):
     # target device instead of adding one.
     live_browser.hotswap_target = None
     live_browser.load_item(item)
+    # Producer Pal itself loads when the Set has none; a preset holding it never.
+    if not is_pal_item:
+        refuse_loaded_producer_pal(song, track, before, created)
 
-    return {
-        "loaded": {"name": item.name, "path": path, "kind": kind},
-        "track": {"index": list(song.tracks).index(track), "name": track.name},
-        # Plugins and Max devices finish loading asynchronously, so this list
-        # can lag a request behind.
-        "devices": [device.name for device in track.devices],
-    }
+
+def _fail_after_creating_track(song, track, before, item_name, err):
+    """Raise 500 after a failure on a track this load made.
+
+    Nothing landed: delete the empty track. Something did (or can't be told):
+    keep it, since the load itself worked. `changed` says whether the Set still
+    differs.
+    """
+    reason = "%s: %s" % (type(err).__name__, err)
+    if _device_landed(track, before):
+        raise RouteError(
+            500,
+            "%r was loaded onto the new track, but the request then failed (%s); "
+            "check the Set before retrying" % (item_name, reason),
+            changed=True,
+        )
+    try:
+        song.delete_track(list(song.tracks).index(track))
+    except Exception as delete_err:
+        raise RouteError(
+            500,
+            "loading %r failed (%s), and the new track couldn't be removed "
+            "(%s); delete it by hand" % (item_name, reason, delete_err),
+            changed=True,
+        )
+    raise RouteError(
+        500,
+        "loading %r failed (%s); the new track was removed" % (item_name, reason),
+        changed=False,
+    )
+
+
+def _device_landed(track, before):
+    """True when the track has a device it lacked before, or can't be read."""
+    try:
+        return any(device not in before for device in track.devices)
+    except Exception:
+        return True
 
 
 def hotswap_device(bridge, params):
     item, path, kind = _find_item(bridge, params)
-    if _is_producer_pal(item.name):
+    if is_producer_pal(item.name):
         raise RouteError(409, "Producer Pal can't be loaded onto another device")
 
     song = bridge.song
@@ -121,6 +191,14 @@ def hotswap_device(bridge, params):
             409, "the device there is now %r, not %r" % (device.name, expected)
         )
 
+    # The check after the load deletes whatever holds Producer Pal.
+    if holds_producer_pal(device):
+        raise RouteError(
+            409,
+            "a preset can't be loaded onto the Producer Pal device or a rack "
+            "holding it",
+        )
+
     device_kind = hotswap.device_kind(device)
     if kind and device_kind and kind != device_kind:
         raise RouteError(
@@ -130,7 +208,18 @@ def hotswap_device(bridge, params):
         )
 
     before_name = device.name
-    after = hotswap.hotswap(bridge.app.browser, item, device, device_path, song)
+    try:
+        after = hotswap.hotswap(bridge.app.browser, item, device, device_path, song)
+        refuse_hotswapped_producer_pal(song, device_path)
+    except hotswap.DevicePathError as err:
+        # Live has already swapped it; only reading the slot back failed.
+        raise RouteError(
+            500,
+            "Live loaded %r onto the device, but the device at %s couldn't be "
+            "read back (%s); read the device to check what's there"
+            % (item.name, device_path, err),
+            changed=True,
+        )
     replaced = after != device
     # A preset for a different kind of device loads nothing. When the kind was
     # unknown up front, an untouched device is the only sign. A kept device is
@@ -153,6 +242,42 @@ def hotswap_device(bridge, params):
     }
 
 
+def replace_producer_pal(bridge, params):
+    """Swap the Set's one Producer Pal device for another build of itself.
+
+    The old device's server dies with the swap; the new one starts its own.
+    """
+    item, _, _ = _find_item(bridge, dict(params, type=FILE_TYPE))
+    if not is_producer_pal(item.name):
+        raise RouteError(409, "%r isn't the Producer Pal device" % item.name)
+
+    song = bridge.song
+    found = top_level_producer_pals(song)
+    if not found:
+        raise RouteError(409, "Producer Pal isn't in this Live Set")
+    if len(found) > 1:
+        raise RouteError(
+            409,
+            "Producer Pal is in this Live Set %s times (%s) - a Set can only "
+            "have one" % (len(found), ", ".join(pal.track_path for pal in found)),
+        )
+
+    pal = found[0]
+    try:
+        after = hotswap.hotswap(
+            bridge.app.browser, item, pal.device, pal.device_path, song
+        )
+        name = after.name
+    except hotswap.DevicePathError:
+        # The swap was made; only reading the device back failed.
+        name = item.name
+
+    return {
+        "track": {"path": pal.track_path, "name": pal.track.name},
+        "device": {"name": name},
+    }
+
+
 def _kind_words(kind):
     return {
         "instrument": "an instrument",
@@ -161,34 +286,19 @@ def _kind_words(kind):
     }[kind]
 
 
-def _is_producer_pal(name):
-    """True for the Producer Pal device, any case, with or without .amxd."""
-    text = str(name or "").strip().lower()
-    if text.endswith(".amxd"):
-        text = text[: -len(".amxd")]
-    return text == PRODUCER_PAL_NAME
-
-
 def _refuse_second_producer_pal(song):
     """Raise 409 when the Set already has Producer Pal, before anything loads.
 
     Top-level devices only: descending into every rack on every load costs more
     than the rare nested device is worth.
     """
-    tracks = [("track %s" % i, track) for i, track in enumerate(song.tracks)]
-    tracks += [
-        ("return track %s" % i, track)
-        for i, track in enumerate(song.return_tracks)
-    ]
-    tracks.append(("master track", song.master_track))
-
-    for label, track in tracks:
-        if any(_is_producer_pal(device.name) for device in track.devices):
-            raise RouteError(
-                409,
-                "Producer Pal is already in this Live Set, on %s %r - a Set can "
-                "only have one" % (label, track.name),
-            )
+    found = top_level_producer_pals(song)
+    if found:
+        raise RouteError(
+            409,
+            "Producer Pal is already in this Live Set, on %s %r - a Set can "
+            "only have one" % (found[0].track_path, found[0].track.name),
+        )
 
 
 def _item_kind(item_type, path):
@@ -226,6 +336,8 @@ def _find_item(bridge, params):
             raise RouteError(400, "type 'file' needs the file's absolute path")
         try:
             item, path = browser.find_file(bridge.app.browser, file_path)
+        except browser.AmbiguousFile as err:
+            raise RouteError(409, str(err))
         except LookupError as err:
             raise RouteError(404, str(err))
         if not item.is_loadable:
@@ -264,9 +376,10 @@ def _find_loadable(root, devices_only, params):
 
 
 def _target_track(song, params, default_track_type):
+    """(track, created): the track to load onto, and whether this call made it."""
     name = params.get("track_name")
     if name:
-        return _track_named(song, str(name))
+        return _track_named(song, str(name)), False
 
     index = _parse_track_index(params.get("track_index"))
     if index is not None:
@@ -275,13 +388,13 @@ def _target_track(song, params, default_track_type):
             raise RouteError(
                 400, "track_index %s is out of range (%s tracks)" % (index, len(tracks))
             )
-        return tracks[index]
+        return tracks[index], False
 
     track_type = str(params.get("track_type") or default_track_type).strip().lower()
     if track_type == "midi":
-        return song.create_midi_track(-1) or song.tracks[-1]
+        return song.create_midi_track(-1) or song.tracks[-1], True
     if track_type == "audio":
-        return song.create_audio_track(-1) or song.tracks[-1]
+        return song.create_audio_track(-1) or song.tracks[-1], True
     raise RouteError(400, "track_type must be 'midi' or 'audio', got %r" % track_type)
 
 
@@ -298,17 +411,7 @@ def _track_named(song, name):
 
 def _parse_track_index(value):
     """A 0-based track index, or None when absent."""
-    if value is None or value == "":
-        return None
-    if isinstance(value, bool):
-        raise RouteError(400, "track_index must be a whole number, got %r" % value)
-    try:
-        index = int(str(value).strip())
-    except ValueError:
-        raise RouteError(400, "track_index must be a whole number, got %r" % value)
-    if index < 0:
-        raise RouteError(400, "track_index must be 0 or more, got %s" % index)
-    return index
+    return parse_index(value, "track_index")
 
 
 def _as_bool(value):
@@ -322,9 +425,27 @@ ROUTES = {
     "/list": list_items,
     "/load": load,
     "/hotswap": hotswap_device,
+    "/replace-producer-pal": replace_producer_pal,
+    **_DEVICE_COPY_ROUTES,
+    **_ENVELOPE_ROUTES,
+    **_RACK_MACRO_ROUTES,
+    **_CONVERSION_ROUTES,
+    **_SIMPLER_ROUTES,
+    **_UNDO_ROUTES,
 }
 
 # Routes that change the Set. A browser can send a GET with no Origin (an
 # <img> tag), so these refuse GET.
-POST_ONLY = ("/load", "/hotswap")
-
+POST_ONLY = (
+    "/load",
+    "/hotswap",
+    "/replace-producer-pal",
+    "/device/duplicate",
+    "/envelope/write",
+    "/envelope/clear",
+    "/clip/convert",
+    "/device/simpler/write",
+    "/undo/end",
+    "/undo/undo",
+    "/undo/redo",
+)

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { ChatScreen } from "#webui/components/chat/ChatScreen";
 import { type ModeAppProps } from "#webui/components/mode-context";
@@ -30,6 +30,7 @@ export function ChatApp(props: ChatAppProps) {
     onOpenSettings,
     onOpenToolsSettings,
     onOpenConnectionSettings,
+    onOpenRemoteScriptSettings,
     onOpenContext,
     onOpenInstructions,
   } = props;
@@ -41,6 +42,7 @@ export function ChatApp(props: ChatAppProps) {
     headerInfo,
     branchNav,
     systemInstruction,
+    importedPromptDiffers,
   } = useChatModeState(props);
 
   return (
@@ -68,6 +70,7 @@ export function ChatApp(props: ChatAppProps) {
       onOpenSettings={onOpenSettings}
       onOpenToolsSettings={onOpenToolsSettings}
       onOpenConnectionSettings={onOpenConnectionSettings}
+      onOpenRemoteScriptSettings={onOpenRemoteScriptSettings}
       onOpenContext={onOpenContext}
       onOpenInstructions={onOpenInstructions}
       onStop={chat.stopResponse}
@@ -76,6 +79,7 @@ export function ChatApp(props: ChatAppProps) {
       conversationPanel={conversationPanelState}
       branchNav={branchNav}
       systemInstruction={systemInstruction}
+      importedPromptDiffers={importedPromptDiffers}
     />
   );
 }

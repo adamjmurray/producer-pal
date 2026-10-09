@@ -26,9 +26,20 @@ Adds chain list for rack devices. Depth-controlled by `maxDepth` arg.
 At `maxDepth: 0` (default), each chain shows `deviceCount` instead of expanded
 devices. At `maxDepth: 1+`, devices are expanded recursively.
 
+On a Drum Rack a chain belongs to a pad, so `chains` also returns the pads with
+their layers, as `drum-pads` does.
+
 | Field    | Type      | Description                               |
 | -------- | --------- | ----------------------------------------- |
 | `chains` | `Chain[]` | Chain objects with devices or deviceCount |
+
+A chain whose mixer has an arrangement lane lists the fields in `automation`,
+named as the chain names them: `["gainDb", "pan (overridden)", "send A-Echo"]`
+(` (overridden)` once the user overrode one). A field at its default value is
+still named. When the rack's track plays from Session the lanes can't be read,
+so no chain carries `automation` and the entry that holds the chains (the rack,
+or the pad or chain read directly) says so once in its `detail`. Return and main
+track racks always report. Same for `return-chains` and `drum-pads`.
 
 ## Include: `"return-chains"`
 
@@ -63,14 +74,30 @@ in the track's device list.
 
 ## Include: `"params"`
 
-Adds parameter names, macro variation info, and A/B Compare state.
+Adds parameter names, macro variation info, and A/B Compare state. A
+`paramSearch` turns this on by itself, so it needs no `params` include.
 
 | Field        | Type       | Description                                |
 | ------------ | ---------- | ------------------------------------------ |
 | `parameters` | `Param[]`  | Parameter names and IDs                    |
 | `variations` | `object`   | Rack only: `{ count, selected }`           |
-| `macros`     | `object`   | Rack only: `{ count, hasMappings }`        |
+| `macros`     | `object`   | Rack only; see below                       |
 | `abCompare`  | `"a"\|"b"` | Current A/B preset (if device supports it) |
+
+`macros` is `{ count, mapped }` when the remote script is running: `mapped`
+lists the mapped macros' numbers (macro 1 is the first), and `hiddenMapped`
+lists any beyond `count`, since lowering the count hides macros but keeps their
+mappings. Without the remote script, or when it can't answer for a rack, it is
+`{ count, hasMappings }`. One remote-script call (more past 200 racks) covers
+every rack in the read, and the read waits at most 3 seconds for it.
+
+A Simpler read with `params` also lists `pitchBendRange` (0-24 semitones) and
+`notePitchBendRange` (0-48, MPE per-note bend) as `{ name, value }` entries in
+`parameters`, after its other pseudo-params. They come from the remote script's
+`/device/simpler/read`: one call for every Simpler in the read (more past 200),
+at most 3 seconds, skipped when the macros call already stalled. They are left
+out without the remote script, or when it can't answer for a Simpler. A
+`paramSearch` filters them like any other param.
 
 ## Include: `"param-values"`
 
@@ -82,11 +109,19 @@ that range is a word rather than a number — Glue Compressor's `Release` reads
 `"A"` for Auto, Compressor's `Ratio` reads `"inf : 1"` — the word is trimmed off
 the range and reported as `alsoAccepts`, which update-device takes as a value.
 
+A param with an arrangement lane carries `automation: "active"`, or
+`"overridden"` once the user overrode it. When the device's track plays from
+Session the lane state can't be read, so no param carries the flag and the
+device's `detail` says so. Return and main track devices always report. Nested
+chain devices' params aren't read.
+
 ## Include: `"sample"`
 
 A focused discovery view: adds just the Simpler sample file path as a flat
 top-level field, optimized for scanning many devices at once (e.g. every pad in
-a drum rack). No effect on non-Simpler devices. `gainDb`, multi-sample state
+a drum rack). It reaches samples in nested devices too: per drum pad, use
+`include: ["chains", "sample"]` with `maxDepth: 1+` so the pads' devices are
+expanded. No effect on non-Simpler devices. `gainDb`, multi-sample state
 (`multiSampleMode`), and the other Simpler sample params are not in this view —
 use `include: ["params"]` for the full set.
 
@@ -118,6 +153,12 @@ field. See `dev/live-api/specialized-devices/` for per-device contents.
 | ------------- | ---------- | -------------------------------------------- |
 | `options`     | `object`   | Per-device catalogs (omitted when none)      |
 | `modulations` | `object[]` | Wavetable only: `{ target, source, amount }` |
+
+## Targets
+
+`id` and `path` can name a device, a drum pad, or a chain. A chain id (Chain or
+DrumChain, as a `chains` read returns) reads like the chain's path. An id of
+anything else that isn't a device (a track, a mixer, etc.) is refused.
 
 ## `maxDepth` arg
 

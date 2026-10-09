@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -16,9 +16,6 @@ import {
 } from "#src/test/test-data-builders.ts";
 import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
-import { type BlankArgs } from "#src/tools/clip/update/helpers/plan-clip-update.ts";
-import { processSingleClipUpdate } from "#src/tools/clip/update/helpers/batch/process-single-clip-update.ts";
-import * as sessionHelpers from "#src/tools/clip/update/helpers/move/position-operations.ts";
 import {
   expectNotesWritten,
   mockMergeNoteTracking,
@@ -29,7 +26,7 @@ import {
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
-import { newClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
+import { type ClipUpdateArgs } from "#src/tools/clip/update/helpers/call/clip-update-args.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import * as selectModule from "#src/tools/session/select.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -41,7 +38,7 @@ vi.mock(import("#src/tools/clip/code-exec/apply-code-to-clip.ts"), () => ({
 }));
 
 // Each one is a single value for the whole call, not a per-clip list.
-const BLANK_ARGS: Array<[string, BlankArgs]> = [
+const BLANK_ARGS: Array<[string, ClipUpdateArgs]> = [
   ["toPath", { toPath: "" }],
   ["toSlot", { toSlot: "" }],
   ["arrangementStart", { arrangementStart: "" }],
@@ -98,86 +95,16 @@ describe("updateClip - Basic operations", () => {
     );
   });
 
-  // The wording truth table is target-lists.test.ts; these pin WHEN update-clip
-  // says it. A blank is an unset param (ADR-0029), so the path carries the call
-  // — but nothing in the result would say the id the caller sent was dropped.
-  it("warns when a blank id is dropped and path carries the call", async () => {
-    setupMidiClipMock(mocks.clip456);
-
-    const result = await updateClip({
-      id: "   ",
-      path: "t1/s1",
-      name: "By Path",
-    });
-
-    expect(capturedWarnings()).toStrictEqual([
-      'blank id ignored — "path" names the clips',
-    ]);
-    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "By Path");
-    expect(result).toStrictEqual({ id: "456", path: "t1/s1" });
-  });
-
-  it("warns when a blank path is dropped and id carries the call", async () => {
-    setupMidiClipMock(mocks.clip123);
-
-    await updateClip({ id: "123", path: "   ", name: "By Id" });
-
-    expect(capturedWarnings()).toStrictEqual([
-      'blank path ignored — "id" names the clips',
-    ]);
-    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "By Id");
-  });
-
-  it("says nothing when only one of id and path was sent", async () => {
-    setupMidiClipMock(mocks.clip456);
-
-    await updateClip({ path: "t1/s1", name: "By Path" });
-
-    expect(capturedWarnings()).toStrictEqual([]);
-  });
-
-  it("says nothing when id and path both name clips", async () => {
-    setupMidiClipMock(mocks.clip123);
-    setupMidiClipMock(mocks.clip456);
-
-    await updateClip({ id: "123", path: "t1/s1", name: "Both" });
-
-    expect(capturedWarnings()).toStrictEqual([]);
-  });
-
-  // The warning claims what the call did, and a refused call did nothing. V8
-  // attaches a request's warnings to its error response too, so saying it
-  // before the refusals would tell the model that a path it never used named
-  // the clips.
-  it.each([
-    ["a list has a hole", { path: "t1/s1,,t2/s1" }, "empty entry"],
-    [
-      "a whole-call param can't be read",
-      { path: "t1/s1", timeSignature: "x" },
-      "Time signature must be in format",
-    ],
-  ])(
-    "says nothing when the call is refused because %s",
-    async (_label, args, message) => {
-      setupMidiClipMock(mocks.clip456);
-
-      await expect(updateClip({ id: "   ", ...args })).rejects.toThrow(message);
-      expect(capturedWarnings()).not.toContainEqual(
-        expect.stringContaining("blank id ignored"),
-      );
-    },
-  );
-
   // Same detail: "path names the clips" is false when it named none, and the
   // no-clip warning already says what went wrong.
   // One target, nothing done: there is no list for an entry to hold a place in,
-  // so the reason goes back as the error (ADR-0042).
+  // so the reason goes back as the error.
   it("throws when the one path it names holds no clip", async () => {
     mockNonExistentObjects();
 
-    await expect(updateClip({ id: "   ", path: "t9/s9" })).rejects.toThrow(
-      'no clip at path "t9/s9"',
-    );
+    await expect(
+      updateClip({ id: "   ", path: "t9/s9", name: "A" }),
+    ).rejects.toThrow('no clip at path "t9/s9"');
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
@@ -196,7 +123,7 @@ describe("updateClip - Basic operations", () => {
       });
 
       expect(capturedWarnings()).toStrictEqual([
-        `blank ${param} ignored — leave it out instead`,
+        `blank ${param} ignored: leave it out instead`,
       ]);
       // The blank is all that was dropped: the rest of the call still lands.
       expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Still Renamed");
@@ -207,10 +134,10 @@ describe("updateClip - Basic operations", () => {
   it("treats a whitespace-only whole-call arg as blank", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    await updateClip({ id: "123", arrangementStart: "   " });
+    await updateClip({ id: "123", arrangementStart: "   ", name: "A" });
 
     expect(capturedWarnings()).toStrictEqual([
-      "blank arrangementStart ignored — leave it out instead",
+      "blank arrangementStart ignored: leave it out instead",
     ]);
   });
 
@@ -221,7 +148,7 @@ describe("updateClip - Basic operations", () => {
     await updateClip({ id: "123", split: "", toPath: "", name: "Renamed" });
 
     expect(capturedWarnings()).toStrictEqual([
-      "blank toPath, split ignored — leave them out instead",
+      "blank toPath, split ignored: leave them out instead",
     ]);
   });
 
@@ -571,27 +498,74 @@ describe("updateClip - Basic operations", () => {
     );
   });
 
-  // The silent-no-op twin of duplicate's ",": update-clip warns rather than
-  // throwing, but it must not stay quiet about a move that never happened.
-  it.each([
-    // toPath is refused when its entries are split; toSlot reads as unset, so
-    // it never reaches a parser — a pairing check must not count it as sent.
-    ["toPath", 'invalid toPath "," - it names nothing'],
-    ["toSlot", 'toSlot "," names nothing'],
-  ])(
-    "should warn when %s was sent but names nothing",
-    async (param, reason) => {
-      setupMidiClipMock(mocks.clip123);
-      setupToSlotMocks();
+  // A toPath that names nothing can't be read, so the call is refused before
+  // anything runs; a toSlot is deprecated and reads as unset instead.
+  it("should refuse toPath sent as a bare comma, touching nothing", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
 
-      const result = await updateClip({ id: "123", [param]: "," });
+    await expect(
+      updateClip({ id: "123", toPath: ",", name: "Renamed" }),
+    ).rejects.toThrow('invalid toPath "," - it names nothing');
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
 
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining(reason),
-      );
-      expect(result).not.toHaveProperty("slot");
-    },
-  );
+  it("should refuse a toPath that doesn't parse, touching nothing", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
+
+    await expect(
+      updateClip({ id: "123", toPath: "tX", name: "Renamed" }),
+    ).rejects.toThrow('invalid toPath "tX"');
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("should still skip only the move for a toPath that parses but holds no clip", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
+
+    const result = await updateClip({
+      id: "123",
+      toPath: "s3",
+      name: "Renamed",
+    });
+
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Renamed");
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      detail:
+        'not moved: invalid toPath "s3" - a scene alone names no track; clips ' +
+        'go to a track ("t0"), a take lane on it ("t0/l0"), or a clip slot ("t0/s1")',
+    });
+  });
+
+  it("should refuse a toSlot with extra parts, touching nothing", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
+
+    await expect(
+      updateClip({ id: "123", toSlot: "1/2/3", name: "Renamed" }),
+    ).rejects.toThrow(
+      'invalid toSlot "1/2/3" - expected trackIndex/sceneIndex format (e.g., "0/1")',
+    );
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("should read toSlot sent as a bare comma as no move", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
+
+    const result = await updateClip({ id: "123", toSlot: "," });
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining('toSlot "," names nothing'),
+    );
+    expect(result).not.toHaveProperty("slot");
+  });
 
   // The caller asked for no move. Say the param named nothing rather than
   // reporting a move that failed, and let the rest of the update land.
@@ -600,7 +574,11 @@ describe("updateClip - Basic operations", () => {
     setupToSlotMocks();
 
     // The word, written out by a model that had no destination to name.
-    const result = await updateClip({ id: "123", toPath: "null" });
+    const result = await updateClip({
+      id: "123",
+      toPath: "null",
+      name: "A",
+    });
 
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('toPath "null" names nothing'),
@@ -617,7 +595,7 @@ describe("updateClip - Basic operations", () => {
     const toSlot = toolDefUpdateClip.toolOptions.inputSchema.toSlot?.parse(
       null,
     ) as string;
-    const result = await updateClip({ id: "123", toSlot });
+    const result = await updateClip({ id: "123", toSlot, name: "A" });
 
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("clip not moved"),
@@ -629,7 +607,7 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();
 
-    const result = await updateClip({ id: "123", toSlot: "" });
+    const result = await updateClip({ id: "123", toSlot: "", name: "A" });
 
     expect(result).not.toHaveProperty("slot");
   });
@@ -698,7 +676,7 @@ describe("updateClip - Basic operations", () => {
         .spyOn(selectModule, "select")
         .mockReturnValue({} as never);
 
-      await updateClip({ id: "123" });
+      await updateClip({ id: "123", name: "A" });
 
       // focus is falsy so the whole guard must be false (kills forced-true).
       expect(selectSpy).not.toHaveBeenCalled();
@@ -754,6 +732,28 @@ describe("updateClip - Basic operations", () => {
     );
   });
 
+  // A warp param for another operation, or with none, is the call's mistake or
+  // the operation's, so it is refused before any clip is touched.
+  it.each([
+    [
+      { warpOp: "move", warpSampleTime: 1 },
+      'warpSampleTime is only for warpOp "add"; this call has warpOp "move". Change the warpOp or drop warpSampleTime.',
+    ],
+    [
+      { warpOp: "add", warpDistance: 1 },
+      'warpDistance is only for warpOp "move"',
+    ],
+    [
+      { warpBeatTime: 2 },
+      'warpBeatTime is only for warpOp "add", "move" or "remove"; this call has no warpOp. Set the warpOp or drop warpBeatTime.',
+    ],
+  ])("refuses %j", async (args, message) => {
+    setupAudioClipMock(mocks.clip456, { file_path: "/audio/test.wav" });
+
+    await expect(updateClip({ id: "456", ...args })).rejects.toThrow(message);
+    expect(mocks.clip456.call).not.toHaveBeenCalled();
+  });
+
   it("should write notes and not treat a MIDI clip as audio", async () => {
     setupMidiClipMock(mocks.clip123);
 
@@ -766,14 +766,18 @@ describe("updateClip - Basic operations", () => {
       expect.anything(),
     );
     expect(capturedWarnings()).not.toContain(
-      "notes parameter ignored for audio clip",
+      "notes ignored: the clip is audio",
     );
     expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 1 });
   });
 
   it("should apply code exactly once per clip without a failure warning", async () => {
     setupMidiClipMock(mocks.clip123);
-    vi.mocked(applyCodeToSingleClip).mockResolvedValue(3);
+    vi.mocked(applyCodeToSingleClip).mockResolvedValue({
+      noteCount: 3,
+      droppedDuplicates: 0,
+      applied: { collisions: 0, written: [], muted: [] },
+    });
 
     const result = await updateClip({ id: "123", code: "return notes" });
 
@@ -795,35 +799,6 @@ describe("updateClip - Basic operations", () => {
     // noteCount != null guard: a null result must not set the field.
     expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
     expect(result).not.toHaveProperty("noteCount");
-  });
-
-  it("should thread isNonSurvivor from nonSurvivorClipIds into position ops", async () => {
-    setupMidiClipMock(mocks.clip123);
-    const clip = LiveAPI.from("id 123");
-    const posSpy = vi
-      .spyOn(sessionHelpers, "handlePositionOperations")
-      .mockImplementation(() => {
-        /* intercept only */
-      });
-
-    processSingleClipUpdate({
-      clip,
-      clipIndex: 0,
-      clipCount: 1,
-      destinationParam: "toPath",
-      startParam: "arrangementStart",
-      context: {},
-      reasons: newClipReasons(),
-      updatedClips: [],
-      movedClipGroups: new Map(),
-      nonSurvivorClipIds: new Set(["123"]),
-    });
-
-    // clip.id "123" is in the set, so isNonSurvivor must be true (?? false, not
-    // && false which would force it false).
-    expect(posSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ isNonSurvivor: true }),
-    );
   });
 });
 
@@ -871,19 +846,13 @@ describe("updateClip - splitting mutation coverage", () => {
     expect(resultIds).not.toContain("0");
   });
 
-  it("should not split (or throw) when the split format is invalid", async () => {
+  it("refuses, and splits nothing, when the split format is invalid", async () => {
     const clipId = "clip_1";
     const { callState } = setupClipSplittingMocks(clipId);
 
-    // arrangementSplit is provided but unparseable, so splitPoints is null. The guard's
-    // splitPoints != null term must stay honored (forced-true / || mutants
-    // would call performSplitting with null and throw).
-    const result = await updateClip(
-      { id: clipId, arrangementSplit: "not-a-position" },
-      {},
-    );
-
-    expect(result).toBeDefined();
+    await expect(
+      updateClip({ id: clipId, arrangementSplit: "not-a-position" }, {}),
+    ).rejects.toThrow('Invalid arrangementSplit format: "not-a-position"');
     expect(callState.trackMock.call).not.toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       expect.anything(),

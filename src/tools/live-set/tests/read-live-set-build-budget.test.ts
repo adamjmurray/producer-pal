@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Budget test for the session clip grid.
 //
@@ -13,15 +13,17 @@
 // These count resolutions rather than asserting output, because the counts
 // they produce were always right. Only the price was wrong.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
+import { mixerPathIds } from "#src/test/mocks/registry/mock-registry-helpers.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
 
 const TRACKS = 4;
 const SCENES = 4;
+const RETURNS = 2;
 
 /** A Live Set of TRACKS x SCENES, with a clip on the diagonal. */
 function setupGrid(): void {
@@ -33,6 +35,10 @@ function setupGrid(): void {
     { length: SCENES },
     (_, i) => `scene${String(i)}`,
   );
+  const returnIds = Array.from(
+    { length: RETURNS },
+    (_, i) => `return${String(i)}`,
+  );
   const pathIdMap: Record<string, string> = {};
   const objects: Record<string, Record<string, unknown>> = {
     LiveSet: {
@@ -41,7 +47,7 @@ function setupGrid(): void {
       signature_numerator: 4,
       signature_denominator: 4,
       tracks: children(...trackIds),
-      return_tracks: children(),
+      return_tracks: children(...returnIds),
       scenes: children(...sceneIds),
     },
   };
@@ -56,7 +62,30 @@ function setupGrid(): void {
       ),
       arrangement_clips: children(),
       devices: children(),
+      mixer_device: children(`mixer_${String(trackIndex)}`),
     };
+
+    // Every track has a send to each return, so every track's mixer needs the
+    // return tracks' names.
+    Object.assign(
+      pathIdMap,
+      mixerPathIds(livePath.track(trackIndex), trackIndex),
+    );
+    objects[livePath.track(trackIndex).mixerDevice()] = {
+      volume: children(`volume_param_${String(trackIndex)}`),
+      panning: children(`panning_param_${String(trackIndex)}`),
+      sends: children(
+        ...returnIds.map((_, r) => `send_${String(trackIndex)}_${String(r)}`),
+      ),
+    };
+    objects[`volume_param_${String(trackIndex)}`] = { display_value: 0 };
+    objects[`panning_param_${String(trackIndex)}`] = { value: 0 };
+
+    for (const r of returnIds.keys()) {
+      objects[`send_${String(trackIndex)}_${String(r)}`] = {
+        display_value: -70,
+      };
+    }
 
     // One clip per track, on the diagonal, so a per-track and a per-scene
     // count of the same grid both come out as 1 each.
@@ -69,6 +98,17 @@ function setupGrid(): void {
   for (const [sceneIndex, sceneId] of sceneIds.entries()) {
     pathIdMap[livePath.scene(sceneIndex)] = sceneId;
     objects[sceneId] = { name: `Scene ${String(sceneIndex + 1)}` };
+  }
+
+  for (const [returnIndex, returnId] of returnIds.entries()) {
+    pathIdMap[String(livePath.returnTrack(returnIndex))] = returnId;
+    objects[returnId] = {
+      name: `Return ${String(returnIndex + 1)}`,
+      has_midi_input: 0,
+      clip_slots: children(),
+      arrangement_clips: children(),
+      devices: children(),
+    };
   }
 
   pathIdMap[String(livePath.masterTrack())] = "master";
@@ -89,6 +129,20 @@ function setupGrid(): void {
  */
 function slotResolves(): number {
   return resolves("live_set tracks * clip_slots * clip");
+}
+
+/**
+ * Spy on how many times the read builds the Live Set's return tracks. The mock
+ * builds children outside the resolve counter, so count the calls instead.
+ * @returns The spy on getChildren
+ */
+function spyOnReturnTrackBuilds(): { count: () => number } {
+  const spy = vi.spyOn(LiveAPI.prototype, "getChildren");
+
+  return {
+    count: () =>
+      spy.mock.calls.filter(([name]) => name === "return_tracks").length,
+  };
 }
 
 describe("readLiveSet build budget", () => {
@@ -118,5 +172,34 @@ describe("readLiveSet build budget", () => {
     readLiveSet({ include: [] });
 
     expect(slotResolves()).toBe(0);
+  });
+
+  // Return track names and ids only label mixer sends, so a read that reports
+  // no track mixer has no use for them.
+  it("does not read the return tracks when no track reports a mixer", () => {
+    setupGrid();
+    const builds = spyOnReturnTrackBuilds();
+
+    readLiveSet({ include: [] });
+    readLiveSet({ include: ["scenes", "mixer"] });
+    readLiveSet({ include: ["tracks"] });
+
+    expect(builds.count()).toBe(0);
+  });
+
+  it("reads the return tracks once, however many tracks report sends", () => {
+    setupGrid();
+    const builds = spyOnReturnTrackBuilds();
+
+    const result = readLiveSet({ include: ["tracks", "mixer"] });
+
+    // The tracks do report sends, so each would ask for the return tracks.
+    const tracks = result.tracks as { sends: { return: string }[] }[];
+
+    expect(tracks.map((track) => track.sends.length)).toStrictEqual(
+      Array.from({ length: TRACKS }, () => RETURNS),
+    );
+    expect(tracks[0]?.sends[0]?.return).toBe("Return 1");
+    expect(builds.count()).toBe(1);
   });
 });

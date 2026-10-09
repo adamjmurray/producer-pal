@@ -1,16 +1,25 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
+import {
+  idDoesNotExist,
+  idOrPathRequired,
+} from "#src/tools/shared/validation/id-validation.ts";
 import {
   cleanupInternalDrumPads,
   readDevice as readDeviceShared,
 } from "#src/tools/shared/device/device-reader.ts";
-import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reading.ts";
+import {
+  isDeviceTreeType,
+  wrongTargetTypeMessage,
+} from "#src/tools/shared/device/device-target-types.ts";
+import { buildAddressedChainInfo } from "#src/tools/shared/device/helpers/chain-info.ts";
 import { drumPadPath } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   namedIdParam,
   namedParam,
@@ -27,6 +36,8 @@ import {
   buildDrumPadInfo,
   readDrumPadByPath,
 } from "./helpers/drum-pad-reading.ts";
+import { addMappedMacros } from "./helpers/read-mapped-macros.ts";
+import { addSimplerSettings } from "./helpers/read-simpler-settings.ts";
 import { type ReadOptions } from "./helpers/read-device-options.ts";
 
 // ============================================================================
@@ -55,15 +66,32 @@ interface ReadDeviceArgs {
  * @param args.path - Comma-separated device/chain/drum-pad paths
  * @param args.paths - Hidden alias for path
  * @param context - Internal context object (supplies the active notation)
- * @returns One device, or one entry per target named
+ * @returns One device, or one entry per target named; a promise, because a
+ *   rack's mapped macros and a Simpler's pitch bend ranges come from the remote
+ *   script
  */
-export function readDevice(
+export async function readDevice(
   args: ReadDeviceArgs,
   context: Partial<ToolContext> = {},
-): ReadResult<Record<string, unknown>> {
-  return readFanOut(args, { object: "device", idAlias: "deviceId" }, (one) =>
-    readOneDevice(one, context),
+): Promise<ReadResult<Record<string, unknown>>> {
+  const result = readFanOut(
+    args,
+    { object: "device", idAlias: "deviceId", deadline: context.deadline },
+    (one) => readOneDevice(one, context),
   );
+
+  // Which macros are mapped, and a Simpler's pitch bend ranges, are the parts of
+  // a device read that wait on the remote script, so each is added after the
+  // fan-out, once, for every device read. One after the other: awaits never
+  // overlap. A remote script that stalled on the first would stall on the second.
+  const results = Array.isArray(result) ? result : [result];
+  const stalled = await addMappedMacros(results, context.deadline);
+
+  if (!stalled) {
+    await addSimplerSettings(results, context.deadline, args.paramSearch);
+  }
+
+  return result;
 }
 
 /**
@@ -95,16 +123,21 @@ export function readOneDevice(
   path = namedParam(path, "path");
 
   if (deviceId == null && path == null) {
-    throw new Error("id or path is required");
+    throw new Error(idOrPathRequired());
   }
 
   const includeAll = include.includes("*");
   const includeChains = includeAll || include.includes("chains");
   const includeReturnChains = includeAll || include.includes("return-chains");
-  const includeDrumPads = includeAll || include.includes("drum-pads");
+  // A Drum Rack's chains live under its pads, so asking for chains means the
+  // pads with their layers. Small-model mode has no `drum-pads` to ask for.
+  const includeDrumPads =
+    includeAll || include.includes("drum-pads") || include.includes("chains");
   const includeDrumMap = includeAll || include.includes("drum-map");
   const includeParamValues = includeAll || include.includes("param-values");
-  const includeParams = includeParamValues || include.includes("params");
+  // A search names the params to show, so it needs them on.
+  const includeParams =
+    includeParamValues || include.includes("params") || paramSearch != null;
   const includeSample = includeAll || include.includes("sample");
   const includeOptions = includeAll || include.includes("options");
   const includeActions = includeAll || include.includes("actions");
@@ -197,8 +230,8 @@ function readDeviceTarget(
 }
 
 /**
- * Read a device, or a drum pad, by ID
- * @param deviceId - Device or DrumPad ID to read
+ * Read a device, chain, or drum pad by ID
+ * @param deviceId - Device, chain or DrumPad ID to read
  * @param options - Read options
  * @returns Device or drum pad information
  */
@@ -209,7 +242,7 @@ function readDeviceById(
   const device = LiveAPI.from(`id ${deviceId}`);
 
   if (!device.exists()) {
-    throw new Error(`id "${deviceId}" does not exist`);
+    throw new Error(idDoesNotExist(deviceId));
   }
 
   // duplicate and delete both hand back pad ids, so reading one has to answer
@@ -217,6 +250,15 @@ function readDeviceById(
   // shared reader wants, and comes back describing nothing.
   if (device.type === "DrumPad") {
     return buildDrumPadInfo(device, drumPadPath(device), options);
+  }
+
+  // Chain ids come out of `chains` reads, so they read back like a chain path.
+  if (device.type === "Chain" || device.type === "DrumChain") {
+    return readChainObject(device, objectPathForApi(device) ?? null, options);
+  }
+
+  if (!isDeviceTreeType(device.type)) {
+    throw new Error(wrongTargetTypeMessage("read", device));
   }
 
   return readDeviceShared(device, options);
@@ -261,9 +303,26 @@ function readChain(
     throw new Error(`Chain not found at path: ${path}`);
   }
 
-  const devices = chain
-    .getChildren("devices")
-    .map((device) => readDeviceShared(device, options));
+  return readChainObject(chain, path, options);
+}
 
-  return buildChainInfo(chain, { path, devices });
+/**
+ * Read a chain that is already in hand
+ * @param chain - The chain
+ * @param path - Simplified path for response, or null when it has none
+ * @param options - Read options
+ * @returns Chain information
+ */
+function readChainObject(
+  chain: LiveAPI,
+  path: string | null,
+  options: ReadOptions,
+): Record<string, unknown> {
+  return buildAddressedChainInfo(chain, path, (chainAutomation) =>
+    chain
+      .getChildren("devices")
+      .map((device) =>
+        readDeviceShared(device, { ...options, chainAutomation }),
+      ),
+  );
 }

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-update-track tool
@@ -18,6 +18,7 @@ import {
   isToolError,
   parseBatchResult,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   type SkippedTargetResult,
   sleep,
@@ -53,6 +54,48 @@ async function readTrackMixer(trackId: string): Promise<ReadTrackResult> {
       arguments: { id: trackId, include: ["mixer"] },
     }),
   );
+}
+
+/**
+ * The third track and the first return track, for send-collision cases.
+ * @returns The track's id and the return track's metadata
+ */
+async function trackAndFirstReturn(): Promise<{
+  trackId: string;
+  returnTrack: NonNullable<LiveSetResult["returnTracks"]>[number];
+}> {
+  const liveSet = await readTracks();
+
+  return {
+    trackId: liveSet.tracks![2]!.id,
+    returnTrack: liveSet.returnTracks![0]!,
+  };
+}
+
+/**
+ * Assert an update-track result flagged a send as replaced by a later entry,
+ * and that the later entry's gain is the one that stuck.
+ * @param result - The raw update-track result
+ * @param trackId - The track that was updated
+ * @param returnId - The return track the send points at
+ * @param gainDb - Expected gain of the track's first send
+ */
+async function expectSendReplaced(
+  result: unknown,
+  trackId: string,
+  returnId: string,
+  gainDb: number,
+): Promise<void> {
+  expect(getToolWarnings(result)).toStrictEqual([]);
+  expect(parseToolResult<{ sends?: unknown[] }>(result).sends).toContainEqual({
+    return: expect.any(String),
+    returnId,
+    detail: "named again later in this call",
+  });
+
+  const track = await readTrackMixer(trackId);
+
+  expect(track.sends![0]!.gainDb).toBeCloseTo(gainDb, 1);
 }
 
 describe("ppal-update-track", () => {
@@ -91,6 +134,55 @@ describe("ppal-update-track", () => {
     const gainTrack = await readTrackMixer(trackId);
 
     expect(gainTrack.gainDb).toBeCloseTo(-6, 1);
+  });
+
+  it('reads a null name as left out, not as the name "null"', async () => {
+    const readName = async (): Promise<string> =>
+      parseToolResult<ReadTrackResult>(
+        await ctx.client!.callTool({
+          name: "ppal-read-track",
+          arguments: { path: "t0" },
+        }),
+      ).name;
+    const before = await readName();
+
+    // Another real param rides along: a call that asks nothing is refused.
+    parseToolResult(await updateTrack({ path: "t0", name: null, mute: false }));
+    await sleep(100);
+
+    expect(await readName()).toBe(before);
+  });
+
+  // A blank id reads as unset, so the path carries the call — but nothing in
+  // the result would say the id the caller sent was dropped.
+  it("warns once when a blank id rides along with a path", async () => {
+    const { data, warnings } = parseToolResultWithWarnings<UpdateTrackResult>(
+      await updateTrack({ id: "   ", path: "t0", name: "Blank Id" }),
+    );
+
+    expect(data.path).toBe("t0");
+    expect(warnings).toStrictEqual([
+      'WARNING: blank id ignored: "path" names the tracks',
+    ]);
+  });
+
+  it("refuses path beside paths with different values, renaming nothing", async () => {
+    const readNames = async (): Promise<string[]> =>
+      (await readTracks()).tracks!.map((track) => track.name);
+    const before = await readNames();
+
+    const refused = await updateTrack({
+      path: "t0",
+      paths: "t1",
+      name: "Not Renamed",
+    });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "path names the target on its own - don't send paths with it",
+    );
+
+    await sleep(100);
+    expect(await readNames()).toStrictEqual(before);
   });
 
   it("updates track mute, solo, and arm states", async () => {
@@ -535,10 +627,8 @@ describe("ppal-update-track", () => {
     });
   });
 
-  it("lets a sends entry override the scalar pair naming the same return", async () => {
-    const liveSet = await readTracks();
-    const trackId = liveSet.tracks![2]!.id;
-    const returnTrack = liveSet.returnTracks![0]!;
+  it("says on the pair's entry that a sends entry replaced it", async () => {
+    const { trackId, returnTrack } = await trackAndFirstReturn();
 
     // The pair and the list name one return by two different spellings, so the
     // collision is only seen if both resolve to the same index.
@@ -549,14 +639,22 @@ describe("ppal-update-track", () => {
       sends: [{ return: returnTrack.name, gainDb: -15 }],
     });
 
-    expect(getToolWarnings(result)).toContainEqual(
-      expect.stringContaining("sends overrides sendGainDb/sendReturn"),
-    );
-
-    const track = await readTrackMixer(trackId);
-
     // The list is the later word, so the pair's -30 must not be what stuck.
-    expect(track.sends![0]!.gainDb).toBeCloseTo(-15, 1);
+    await expectSendReplaced(result, trackId, returnTrack.id, -15);
+  });
+
+  it("says on the earlier entry that a later sends entry replaced it", async () => {
+    const { trackId, returnTrack } = await trackAndFirstReturn();
+
+    const result = await updateTrack({
+      id: trackId,
+      sends: [
+        { return: returnTrack.id, gainDb: -30 },
+        { return: returnTrack.name, gainDb: -12 },
+      ],
+    });
+
+    await expectSendReplaced(result, trackId, returnTrack.id, -12);
   });
 
   it("can never give a return track an all-digit name", async () => {
@@ -703,6 +801,42 @@ describe("ppal-update-track over a list with a target it can't reach", () => {
       }),
     );
     expect(entries[1]).not.toHaveProperty("ok");
+  });
+});
+
+describe("ppal-update-track over tracks named twice and calls it refuses", () => {
+  it("writes a track named by id and by path once, as the last mention asks", async () => {
+    const trackId = (await readTracks()).tracks![0]!.id;
+    const entries = parseBatchResult<UpdateTrackResult>(
+      await updateTrack({ id: trackId, path: "t0", name: "First,Second" }),
+      2,
+    );
+
+    // No `ok`: the earlier mention's work happened through the later one.
+    expect(entries).toStrictEqual([
+      { id: trackId, detail: 'named again as "t0" later in this call' },
+      { id: trackId, path: "t0" },
+    ]);
+    expect((await readTrackMixer(trackId)).name).toBe("Second");
+  });
+
+  it("refuses a path it can't parse, writing nothing", async () => {
+    const trackId = (await readTracks()).tracks![0]!.id;
+    const before = (await readTrackMixer(trackId)).name;
+    const result = await updateTrack({
+      path: "t0,not-a-path",
+      name: "Refused,Refused",
+    });
+
+    expect(getToolErrorMessage(result)).toContain('invalid path "not-a-path"');
+    expect((await readTrackMixer(trackId)).name).toBe(before);
+  });
+
+  it("refuses a call that names tracks and asks nothing of them", async () => {
+    const trackId = (await readTracks()).tracks![0]!.id;
+    const result = await updateTrack({ id: trackId });
+
+    expect(getToolErrorMessage(result)).toContain("nothing to update");
   });
 });
 

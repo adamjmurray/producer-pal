@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -11,12 +11,12 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
 }));
 
-import { z } from "zod";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { toolDefCreateClip } from "#src/tools/clip/create/create-clip.def.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { parseNullLocationArgs } from "#src/tools/clip/helpers/tests/null-location-params-test-helpers.ts";
 import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import {
   registerArrangementTrack,
@@ -36,10 +36,8 @@ describe("createClip location params through the tool schema", () => {
 
   it("refuses a null trackIndex/sceneIndex instead of filling t0/s0", async () => {
     const raw = { trackIndex: null, sceneIndex: null };
-    const args = z.object(params).parse(unsetEmptyParams(raw, params));
+    const args = parseNullLocationArgs(params, raw);
 
-    expect(args.trackIndex).toBeUndefined();
-    expect(args.sceneIndex).toBeUndefined();
     await expect(createClip(args)).rejects.toThrow("path is required");
   });
 
@@ -319,7 +317,7 @@ describe("createClip path param", () => {
 
   it("refuses path and slot together rather than picking one", async () => {
     await expect(createClip({ path: "t0/s0", slot: "1/1" })).rejects.toThrow(
-      "path and slot both name a destination",
+      "path names the destination on its own - don't send slot with it (slot is deprecated)",
     );
   });
 });
@@ -379,42 +377,42 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
     );
   });
 
-  it("ignores the aliases when path already named the destination", async () => {
+  it("refuses a path sent with trackIndex or sceneIndex", async () => {
     const { clipSlot } = setupSessionMocks({
       liveSet: { signature_numerator: 4, signature_denominator: 4 },
       clip: { length: 4 },
     });
 
-    await createClip({
-      path: "t0/s0",
-      trackIndex: 5,
-      sceneIndex: 5,
-      notes: "C3 1|1",
-    });
-
-    expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('trackIndex/sceneIndex ignored — "path"'),
+    await expect(
+      createClip({
+        path: "t0/s0",
+        trackIndex: 5,
+        sceneIndex: 5,
+        notes: "C3 1|1",
+      }),
+    ).rejects.toThrow(
+      "path names the destination on its own - don't send trackIndex or sceneIndex with it",
     );
+    expect(clipSlot.call).not.toHaveBeenCalled();
   });
 
-  it("ignores the aliases when the deprecated slot named the session destination", async () => {
+  it("refuses the deprecated slot sent with trackIndex and sceneIndex", async () => {
     const { clipSlot } = setupSessionMocks({
       liveSet: { signature_numerator: 4, signature_denominator: 4 },
       clip: { length: 4 },
     });
 
-    await createClip({
-      slot: "0/0",
-      trackIndex: 5,
-      sceneIndex: 5,
-      notes: "C3 1|1",
-    });
-
-    expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('trackIndex/sceneIndex ignored — "slot"'),
+    await expect(
+      createClip({
+        slot: "0/0",
+        trackIndex: 5,
+        sceneIndex: 5,
+        notes: "C3 1|1",
+      }),
+    ).rejects.toThrow(
+      "slot names the destination on its own - don't send trackIndex or sceneIndex with it",
     );
+    expect(clipSlot.call).not.toHaveBeenCalled();
   });
 
   // trackIndex with a slot list is today's session+arrangement combination, so
@@ -486,8 +484,7 @@ describe("createClip path coordinate", () => {
     await expect(
       createClip({ path: "t0[5|1]", arrangementStart: "9|1", notes: "C3 1|1" }),
     ).rejects.toThrow(
-      'path "t0[5|1]" and arrangementStart both name a ' +
-        "song position; use one",
+      "path names the song position on its own - don't send arrangementStart with it",
     );
   });
 

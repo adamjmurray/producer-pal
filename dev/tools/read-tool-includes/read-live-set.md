@@ -9,17 +9,22 @@ Returns the Live Set overview. Use includes to expand track/scene detail.
 
 ## Default response (no includes)
 
-| Field               | Type     | Description                                             |
-| ------------------- | -------- | ------------------------------------------------------- |
-| `name`              | `string` | Live Set name (omitted if empty)                        |
-| `tempo`             | `number` | Tempo in BPM                                            |
-| `timeSignature`     | `string` | e.g., `"4/4"`                                           |
-| `sceneCount`        | `number` | Number of scenes (replaced by array when included)      |
-| `regularTrackCount` | `number` | Number of regular tracks (replaced by `tracks` include) |
-| `returnTrackCount`  | `number` | Number of return tracks (replaced by `tracks` include)  |
-| `scale`             | `string` | e.g., `"A Minor"` (only when scale is enabled)          |
-| `scalePitches`      | `string` | e.g., `"A,B,C,D,E,F,G"` (only when scale is enabled)    |
-| `isPlaying`         | `true`   | Only present when playing                               |
+| Field               | Type       | Description                                             |
+| ------------------- | ---------- | ------------------------------------------------------- |
+| `name`              | `string`   | Live Set name (omitted if empty)                        |
+| `tempo`             | `number`   | Tempo in BPM                                            |
+| `timeSignature`     | `string`   | e.g., `"4/4"`                                           |
+| `sceneCount`        | `number`   | Number of scenes (replaced by array when included)      |
+| `regularTrackCount` | `number`   | Number of regular tracks (replaced by `tracks` include) |
+| `returnTrackCount`  | `number`   | Number of return tracks (replaced by `tracks` include)  |
+| `scale`             | `string`   | e.g., `"A Minor"` (only when scale is enabled)          |
+| `scalePitches`      | `string`   | e.g., `"A,B,C,D,E,F,G"` (only when scale is enabled)    |
+| `isPlaying`         | `true`     | Only present when playing                               |
+| `automation`        | `string[]` | `["tempo"]` when the tempo has an arrangement lane      |
+
+`automation` is `["tempo (overridden)"]` once the user overrode the tempo, and
+omitted without a lane. The main track never plays from Session, so it always
+reports.
 
 ## Includes
 

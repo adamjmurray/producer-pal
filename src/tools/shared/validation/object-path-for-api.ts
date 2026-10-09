@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { midiToNoteName } from "#src/shared/pitch.ts";
 import { drumChainSegmentNamer } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
@@ -111,7 +111,7 @@ export interface WrittenContainer {
  * `written` names the object's direct parent as the call spelled it, and that
  * spelling is used in place of the derived one. Only a pad spelling is
  * substituted — it is the one path with a second numbering. See
- * dev/tools/object-paths/results-and-errors.md.
+ * dev/specs/tool-behavior/object-paths/results-and-errors.md.
  * @param api - The object to name
  * @param written - The call's spelling of the object's parent, if any
  * @returns `{ path }`, or `{}` for an object the grammar can't spell

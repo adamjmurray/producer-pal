@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { EXPERIMENTAL_TOOL_NAMES } from "#webui/lib/utils/tool-catalog";
 
@@ -44,7 +44,7 @@ export function ToolsIndicator({
     ? `Locked: ${enabledToolsCount}/${totalToolsCount} tools enabled (${defaultText})`
     : `${enabledToolsCount}/${totalToolsCount} tools enabled`;
   // The denominator counts the experimental tools whether or not they're on, so
-  // out of the box it reads 21/23. Say why, or that gap looks like a fault.
+  // out of the box it reads 22/24. Say why, or that gap looks like a fault.
   const titleText =
     enabledToolsCount < totalToolsCount
       ? `${countText}\nExperimental tools (${EXPERIMENTAL_TOOL_NAMES.join(", ")}) are off by default`

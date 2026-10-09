@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Gemini Live captures mic audio as raw 16-bit PCM, 16 kHz, mono, little-endian
 // (the format sendRealtimeInput expects). Unlike OpenAI's WebRTC transport —

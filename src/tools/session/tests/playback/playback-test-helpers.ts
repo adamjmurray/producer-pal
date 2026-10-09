@@ -1,10 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
-import { expect } from "vitest";
+import { expect, type MockInstance, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 import {
   type RegisteredMockObject,
@@ -44,6 +45,14 @@ interface MultiClipMockResult {
 }
 
 /**
+ * Spy on the warnings a playback call raises.
+ * @returns The spy on `console.warn`
+ */
+export function spyOnWarn(): MockInstance<typeof console.warn> {
+  return vi.spyOn(console, "warn");
+}
+
+/**
  * Setup a live_set mock with standard transport properties (4/4, loop off).
  * Override any property via the overrides parameter.
  * @param overrides - Properties to override on the live_set mock
@@ -69,15 +78,20 @@ export function setupPlaybackLiveSet(
  * Register a session clip slot, keyed by its own path.
  * @param trackIndex - Track index
  * @param sceneIndex - Scene index
+ * @param hasClip - Whether the slot holds a clip
  * @returns RegisteredMockObject for the clip slot
  */
 export function registerClipSlot(
   trackIndex: number,
   sceneIndex: number,
+  hasClip = true,
 ): RegisteredMockObject {
   const path = livePath.track(trackIndex).clipSlot(sceneIndex);
 
-  return registerMockObject(path, { path });
+  return registerMockObject(path, {
+    path,
+    properties: { has_clip: hasClip ? 1 : 0 },
+  });
 }
 
 /**

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import fs from "node:fs";
 import path from "node:path";
@@ -11,8 +11,8 @@ import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
 const decisionsDir = path.join(projectRoot, "dev/decisions");
 const readmePath = path.join(decisionsDir, "README.md");
 
-// dev/decisions/README.md says these numbers were retired on purpose (ADR-0001,
-// ADR-0002 and ADR-0028 were removed with the user's OK) and won't get a row.
+// Numbers removed before deleted ADRs left gaps routinely. A number is never
+// reused, so none of these may get a file again.
 const RETIRED_NUMBERS = new Set(["0001", "0002", "0028"]);
 
 describe("ADR decisions index", () => {

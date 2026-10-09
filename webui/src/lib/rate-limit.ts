@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Rate limit detection and retry utilities for API error handling.
@@ -29,17 +29,65 @@ export const DEFAULT_RETRY_DELAYS = [5000, 10000, 20000, 40000, 60000] as const;
  */
 export const MAX_RETRY_ATTEMPTS = 5;
 
+/** "rate limit", "rate-limit", "rate_limit"; not "context limit" or "migrate limit". */
+const RATE_LIMIT_WORDS = /\brate[ _-]?limit/i;
+
 /**
  * Patterns that indicate a rate limit error in error messages
  */
 const RATE_LIMIT_PATTERNS = [
   /resource.*exhausted/i,
-  /rate.*limit/i,
+  RATE_LIMIT_WORDS,
   /quota.*exceeded/i,
   /exceeded.*quota/i,
   /too.*many.*requests/i,
-  /429/,
 ] as const;
+
+/**
+ * OpenAI's out-of-credit 429 carries `insufficient_quota` in its body; waiting
+ * won't fix it. Match that code, not the message: Gemini's retryable
+ * per-minute 429 says the same "You exceeded your current quota".
+ */
+const PERMANENT_QUOTA_CODE = "insufficient_quota";
+
+/**
+ * Checks for a permanent out-of-credit error (see PERMANENT_QUOTA_CODE). The
+ * AI SDK's `responseBody` holds the raw HTTP body or stream error frame, so
+ * every OpenAI error shape is covered by one text search.
+ * @param {unknown} error - Error object to analyze
+ * @returns {boolean} Whether retrying cannot help
+ */
+function isPermanentQuotaError(error: unknown): boolean {
+  if (typeof error === "string") {
+    return error.includes(PERMANENT_QUOTA_CODE);
+  }
+
+  if (typeof error !== "object" || error == null) {
+    return false;
+  }
+
+  const { responseBody } = error as { responseBody?: unknown };
+
+  // Message for Errors, the whole body for plain error objects
+  const text = error instanceof Error ? error.message : safeStringify(error);
+
+  return [text, responseBody].some(
+    (part) => typeof part === "string" && part.includes(PERMANENT_QUOTA_CODE),
+  );
+}
+
+/**
+ * JSON.stringify that returns "" instead of throwing (e.g. circular objects)
+ * @param {object} value - Value to serialize
+ * @returns {string} JSON text, or "" on failure
+ */
+function safeStringify(value: object): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "";
+  }
+}
 
 /**
  * Detects if an error is a rate limit error and extracts relevant info
@@ -51,8 +99,9 @@ export function detectRateLimit(error: unknown): RateLimitInfo {
   const statusCode = extractStatusCode(error);
 
   const isRateLimited =
-    statusCode === 429 ||
-    RATE_LIMIT_PATTERNS.some((pattern) => pattern.test(errorString));
+    !isPermanentQuotaError(error) &&
+    (statusCode === 429 ||
+      RATE_LIMIT_PATTERNS.some((pattern) => pattern.test(errorString)));
 
   return {
     isRateLimited,
@@ -153,9 +202,13 @@ function extractStatusCode(error: unknown): number | null {
     }
   }
 
-  // Check error message for status code
+  // Last resort: a status written as "(429)", "HTTP/1.1 429", "status=429" or
+  // `"code":429`. A bare number elsewhere (token counts, line numbers) is not.
   const message = extractErrorString(error);
-  const statusMatch = /\b(429|503)\b/.exec(message);
+  const statusMatch =
+    /(?:^|[("]|\b(?:status_?code|status|code|error|http(?:\/[\d.]+)?)["']?\s*[:=]?\s*)(429|503)\b/i.exec(
+      message,
+    );
 
   if (statusMatch?.[1]) {
     return Number.parseInt(statusMatch[1]);
@@ -220,7 +273,7 @@ function formatRateLimitMessage(errorString: string): string {
     return "API quota exceeded. The request will be retried automatically.";
   }
 
-  if (/rate.*limit/i.test(errorString)) {
+  if (RATE_LIMIT_WORDS.test(errorString)) {
     return "Rate limit reached. The request will be retried automatically.";
   }
 

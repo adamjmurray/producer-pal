@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -104,5 +104,72 @@ describe("VersionDisplay", () => {
     );
     fireEvent.click(screen.getByText("(update)"));
     expect(parentClicked).toBe(false);
+  });
+
+  it("shows no remote script badge when it needs nothing", () => {
+    render(
+      <VersionDisplay
+        version="1.2.3"
+        update={null}
+        onDismissUpdate={vi.fn()}
+        remoteScriptNotice={null}
+        onOpenRemoteScriptSettings={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText("(script update)")).toBeNull();
+    expect(screen.queryByText("(restart Live)")).toBeNull();
+  });
+
+  it("shows a script update badge that opens the remote script settings", () => {
+    const onOpen = vi.fn();
+
+    render(
+      <VersionDisplay
+        version="1.2.3"
+        update={null}
+        onDismissUpdate={vi.fn()}
+        remoteScriptNotice="update"
+        onOpenRemoteScriptSettings={onOpen}
+      />,
+    );
+    fireEvent.click(screen.getByText("(script update)"));
+
+    expect(onOpen).toHaveBeenCalledOnce();
+  });
+
+  it("shows a restart badge that opens the remote script settings", () => {
+    const onOpen = vi.fn();
+
+    render(
+      <VersionDisplay
+        version="1.2.3"
+        update={null}
+        onDismissUpdate={vi.fn()}
+        remoteScriptNotice="restart"
+        onOpenRemoteScriptSettings={onOpen}
+      />,
+    );
+
+    const badge = screen.getByText("(restart Live)");
+
+    expect(badge.getAttribute("title")).toContain("Restart Live");
+
+    fireEvent.click(badge);
+
+    expect(onOpen).toHaveBeenCalledOnce();
+  });
+
+  it("shows the remote script badge beside the update link", () => {
+    render(
+      <VersionDisplay
+        version="1.2.3"
+        update={{ version: "1.3.0" }}
+        onDismissUpdate={vi.fn()}
+        remoteScriptNotice="update"
+        onOpenRemoteScriptSettings={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("(update)")).toBeDefined();
+    expect(screen.getByText("(script update)")).toBeDefined();
   });
 });

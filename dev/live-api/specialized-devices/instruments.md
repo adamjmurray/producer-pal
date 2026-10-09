@@ -278,6 +278,38 @@ Writable via `update-device`'s `params` arg:
   32**) — probe confirmed exact UI set; in-between values silently revert.
   Define as Zod literal union to constrain at schema level.
 
+Pitch bend ranges, remote script only (Max's LiveAPI lacks both; Python's
+`SimplerDevice` has them):
+
+- `pitchBendRange` (int semitones, 0-24) — `pitch_bend_range`; typical
+  default 5.
+- `notePitchBendRange` (int semitones, 0-48) — `note_pitch_bend_range`, MPE
+  per-note bend; typical default 48.
+
+Both are `params` entries and pseudo-params in the spec (`options` "0-24" and
+"0-48"), like Drift's and Spectral Resonator's `pitchBendRange`, but the sync
+`read`/`write` can't wait on the remote script. So `read` answers undefined and
+`write` refuses, saying to use update-device on the Simpler's own path (a pad's
+`pC1/d0/…` shortcut and create-device reach it). Live clamps an out-of-range
+write silently and raises on a float, so both layers refuse anything but a whole
+number in range before writing.
+
+- Read: after the read, one batch call (`/device/simpler/read`, at most 3 s)
+  adds `{name, value}` entries to `parameters` of every Simpler read with
+  `params`, honoring `paramSearch`. Nothing is added when the remote script
+  isn't running, is too old, or can't answer, and the pass is skipped when the
+  macros pass already stalled.
+- Write: update-device's `updateResolved` writes the Simpler's entries (the last
+  of each name; case and spacing don't matter) in one call to
+  `/device/simpler/write` before the rest of the target's update, and hands each
+  entry's outcome to `setParamValues` through its `settled` map. The result is
+  `{name, value}` when it read back as asked, `ok: false` and why otherwise.
+  Without the remote script the entry says it needs it. The request carries an
+  expiry, so Live skips it if it hasn't started it by the time V8 stops waiting.
+  If the route doesn't answer, the write may have landed: the entry says it _may
+  have changed_, the target keeps its place (the pipeline's landed journal), and
+  later Simplers in the call aren't tried.
+
 Actions via `update-device`'s new `actions: string[]` arg:
 
 - `"reverse"` — reverses the loaded sample.
@@ -297,6 +329,11 @@ Actions via `update-device`'s new `actions: string[]` arg:
 - `playing_position` / `playing_position_enabled` — realtime, not useful for
   Producer Pal's batch model.
 - `pad_slicing` — niche.
+- `SimplerDevice.View` sample positions (`sample_start`, `sample_end`,
+  `sample_loop_start`, `sample_loop_end`, `sample_loop_fade`,
+  `sample_env_fade_in`, `sample_env_fade_out`; read-only, in samples, -1 with no
+  sample; Python only) — redundant: they are the modulated positions of the
+  `S Start`, `S Length`, loop and fade DeviceParameters Max already exposes.
 - raw `guess_playback_length` as an action — surfaced as
   `estimatedPlaybackLength` RO pseudo-prop instead (pure compute).
 - `warp_as(beats)` is exposed via the action syntax (`"warpAs(N)"`), not as a

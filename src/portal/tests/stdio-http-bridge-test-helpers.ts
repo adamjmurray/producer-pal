@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Shared mock objects and assertion helpers for the stdio-to-HTTP bridge tests.
@@ -14,7 +14,7 @@
  */
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { expect, vi, type Mock } from "vitest";
-import { VERSION } from "#src/shared/config.ts";
+import { PORTAL_VERSION_HEADER, VERSION } from "#src/shared/config.ts";
 import { type BridgeOptions } from "../portal-settings.ts";
 import { StdioHttpBridge } from "../stdio-http-bridge.ts";
 
@@ -23,7 +23,11 @@ export const mockClient = {
   close: vi.fn(),
   listTools: vi.fn(),
   callTool: vi.fn(),
+  getServerVersion: vi.fn(),
 };
+
+/** The identity (name, version) each mocked Server was constructed with. */
+export const serverInfoCalls: unknown[] = [];
 
 export const mockServer = {
   setRequestHandler: vi.fn(),
@@ -72,10 +76,6 @@ export interface TestBridge {
   };
   start: () => Promise<void>;
   stop: () => Promise<void>;
-  _createSetupErrorResponse: () => {
-    content: Array<{ type: string; text: string }>;
-    isError: boolean;
-  };
   _createMisconfiguredUrlResponse: () => {
     content: Array<{ type: string; text: string }>;
     isError: boolean;
@@ -102,15 +102,15 @@ export function getHandler(
 
 /**
  * Connect a fresh bridge built with `options` and assert the request headers it
- * gave its transport — or, when `expectedHeaders` is null, that it passed no
- * transport options at all. Also asserts nothing was POSTed to /config: these
- * settings are per-client, and a push would change them device-wide.
+ * gave its transport. The portal's version header is always expected on top of
+ * `expectedHeaders`. Also asserts nothing was POSTed to /config: these settings
+ * are per-client, and a push would change them device-wide.
  * @param options - Bridge constructor options
- * @param expectedHeaders - Expected request headers, or null for none
+ * @param expectedHeaders - Expected request headers besides the version
  */
 export async function expectRequestHeaders(
   options: BridgeOptions,
-  expectedHeaders: Record<string, string> | null,
+  expectedHeaders: Record<string, string>,
 ): Promise<void> {
   const fetchSpy = vi
     .spyOn(globalThis, "fetch")
@@ -126,11 +126,11 @@ export async function expectRequestHeaders(
 
   const transportMock = StreamableHTTPClientTransport as unknown as Mock;
 
-  expect(transportMock.mock.calls.at(-1)?.[1]).toStrictEqual(
-    expectedHeaders == null
-      ? undefined
-      : { requestInit: { headers: expectedHeaders } },
-  );
+  expect(transportMock.mock.calls.at(-1)?.[1]).toStrictEqual({
+    requestInit: {
+      headers: { [PORTAL_VERSION_HEADER]: VERSION, ...expectedHeaders },
+    },
+  });
   expect(fetchSpy).not.toHaveBeenCalled();
 
   fetchSpy.mockRestore();
@@ -224,4 +224,24 @@ export async function callToolWithMcpError(
     content: Array<{ type: string; text: string }>;
     isError?: boolean;
   };
+}
+
+/**
+ * Assert that a response is the setup guidance for a Live that isn't running
+ * Producer Pal.
+ * @param response - What the bridge returned for the call
+ */
+export function expectSetupGuidance(response: unknown): void {
+  expect(response).toStrictEqual({
+    content: [
+      {
+        type: "text",
+        text: expect.stringContaining("Cannot connect to Ableton Live."),
+      },
+    ],
+    isError: true,
+  });
+  expectBrandedErrorText(
+    response as { content: Array<{ type: string; text: string }> },
+  );
 }

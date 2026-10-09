@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { basicDriver, standardDriver } from "#src/skills/drivers.ts";
 import {
@@ -9,6 +9,7 @@ import {
   arrangementBasic,
   arrangementWrite,
 } from "#src/skills/fragments/arrangement.ts";
+import { automation } from "#src/skills/fragments/automation.ts";
 import {
   contextBasic,
   contextStandard,
@@ -21,6 +22,7 @@ import {
   gettingHelp,
   gettingHelpBasic,
 } from "#src/skills/fragments/getting-help.ts";
+import { history } from "#src/skills/fragments/history.ts";
 import { library } from "#src/skills/fragments/library.ts";
 import { pluginsAndMaxDevices } from "#src/skills/fragments/devices/plugins-and-max-devices.ts";
 import {
@@ -60,7 +62,7 @@ const TRANSFORMS_EXPRESSIONS = "transforms-expressions";
 const DEVICES = "devices";
 const ARRANGEMENT = "arrangement";
 
-// The user-facing override "slots" (~/.producer-pal skills overrides, ADR-0010).
+// The user-facing override "slots" (~/.producer-pal skills overrides).
 // A slot name is a PUBLIC CONTRACT: it keys a user's override file to a built-in
 // fragment, so renaming one orphans that user's override.
 //
@@ -82,7 +84,7 @@ const ARRANGEMENT = "arrangement";
 //
 // A second, independent suffix axis is DIRECTION: a fragment may spin the half
 // only a writer can act on out into a `-write` sibling, gated on that subject's
-// write tools, so a read-only caller stops paying for it (ADR-0019). The base
+// write tools, so a read-only caller stops paying for it. The base
 // name keeps meaning what it meant — the whole, minus what only a writer can use
 // — which is why splitting one costs no rename and no retired slot. Split so
 // far: bar|beat and stark at BOTH depths (the axes are independent — direction
@@ -112,11 +114,13 @@ export const SKILL_SLOT_NAMES = [
   ARRANGEMENT,
   "arrangement-write",
   "arrangement-basic",
+  "automation",
   "object-paths",
   "object-paths-basic",
   "working-with-live",
   "context-standard",
   "context-basic",
+  "history",
   "getting-help",
   "getting-help-basic",
 
@@ -318,6 +322,13 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     builtIn: arrangementWrite,
   },
 
+  automation: {
+    title: "Clip automation",
+    description:
+      "Reading and writing a clip's automation envelopes (an arrangement clip's go to the track's automation lane); also converting an audio clip to a new track. Sent only while the Producer Pal remote script is running in Live, and never in small-model mode.",
+    builtIn: automation,
+  },
+
   "arrangement-basic": {
     title: "Take lanes (small model mode)",
     description:
@@ -358,6 +369,13 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
     description:
       "A trimmed context guide for smaller or local models (small-model mode): the project and global documents only — small-model mode has no memory.",
     builtIn: contextBasic,
+  },
+
+  history: {
+    title: "Undo & redo",
+    description:
+      "How the AI uses ppal-manage to undo and redo: Live's history holds your own edits too, so it says what it undoes and asks first if you may have edited. Sent only while ppal-manage is on, and never in small-model mode.",
+    builtIn: history,
   },
 
   "getting-help": {

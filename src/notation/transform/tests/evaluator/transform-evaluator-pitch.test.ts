@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -172,43 +172,15 @@ describe("applyTransforms - pitch transforms", () => {
   });
 
   describe("bare pitch literal as non-pitch value (M2)", () => {
-    it("warns and skips when a pitch name is assigned to velocity", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    it.each([
+      ["velocity = b2", `note name "B2" isn't a value for velocity`],
+      ["duration = C3", `note name "C3" isn't a value for duration`],
+      ["deviation = C3", `note name "C3" isn't a value for deviation`],
+    ])("refuses %s (only pitch takes a pitch name)", (transform, message) => {
       const notes = createTestNote({ velocity: 100 });
 
-      applyTransforms(notes, "velocity = b2", 4, 4); // b2 = MIDI 59
-
-      expect(notes[0]!.velocity).toBe(100); // unchanged — skipped
-      // `b2` canonicalizes to the note name `B2` in the warning
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining(`note name "B2" isn't a value for velocity`),
-      );
-      warn.mockRestore();
-    });
-
-    it("warns and skips when a pitch name is assigned to duration", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNote({ duration: 1 });
-
-      applyTransforms(notes, "duration = C3", 4, 4); // C3 = MIDI 60
-
-      expect(notes[0]!.duration).toBe(1); // unchanged — skipped
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("isn't a value for duration"),
-      );
-      warn.mockRestore();
-    });
-
-    it("warns and skips for any non-pitch MIDI parameter (only pitch is exempt)", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const notes = createTestNote();
-
-      applyTransforms(notes, "deviation = C3", 4, 4);
-
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("isn't a value for deviation"),
-      );
-      warn.mockRestore();
+      expect(() => applyTransforms(notes, transform, 4, 4)).toThrow(message);
+      expect(notes[0]!.velocity).toBe(100);
     });
 
     it("does NOT warn for pitch = C4 (full form sets pitch)", () => {

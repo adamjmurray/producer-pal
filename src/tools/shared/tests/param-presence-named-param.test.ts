@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -60,21 +60,17 @@ describe("namedIdParam", () => {
     expect(namedIdParam(undefined, undefined, "clipId")).toBeUndefined();
   });
 
-  it("takes the two spellings of one id without a word", () => {
-    const warn = vi.spyOn(console, "warn");
-
-    expect(namedIdParam("42", " 42 ", "clipId")).toBe("42");
-    expect(warn).not.toHaveBeenCalled();
+  it("refuses the two spellings of one id, even with the same value", () => {
+    expect(() => namedIdParam("42", " 42 ", "clipId")).toThrow(
+      "id names the target on its own - don't send clipId with it",
+    );
   });
 
   // Honoring one and dropping the other in silence is how a call reads the
-  // wrong object, so the dropped one gets named.
-  it("keeps id and says the alias went nowhere when they disagree", () => {
-    const warn = vi.spyOn(console, "warn");
-
-    expect(namedIdParam("42", "99", "clipId")).toBe("42");
-    expect(warn).toHaveBeenCalledWith(
-      'clipId "99" ignored — "id" names the target',
+  // wrong object, so the pair is refused.
+  it("refuses the alias when it disagrees with id", () => {
+    expect(() => namedIdParam("42", "99", "clipId")).toThrow(
+      "id names the target on its own - don't send clipId with it",
     );
   });
 });
@@ -92,12 +88,9 @@ describe("namedPathParam", () => {
     expect(namedPathParam(undefined, undefined)).toBeUndefined();
   });
 
-  it("keeps path and says paths went nowhere when they disagree", () => {
-    const warn = vi.spyOn(console, "warn");
-
-    expect(namedPathParam("t0/s1", "t9/s9")).toBe("t0/s1");
-    expect(warn).toHaveBeenCalledWith(
-      'paths "t9/s9" ignored — "path" names the target',
+  it("refuses paths when it disagrees with path", () => {
+    expect(() => namedPathParam("t0/s1", "t9/s9")).toThrow(
+      "path names the target on its own - don't send paths with it",
     );
   });
 });

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Shared candidate querying against Live's browser DB.
@@ -28,11 +28,16 @@ import {
   folderKindsForSource,
   fourCCsForKind,
   keywordsForType,
+  PRESET_FOLDER_KIND,
   resolveClipSubtype,
   resolveKind,
   resolveSource,
 } from "../library-filters.ts";
-import { type LibraryItem, type LibrarySearchArgs } from "../library-types.ts";
+import {
+  type LibraryItem,
+  type LibrarySearchArgs,
+  type LibrarySource,
+} from "../library-types.ts";
 import {
   nameFromPathSegment,
   pathSegment,
@@ -48,21 +53,49 @@ export interface SearchRow {
   file_type: number;
   subtype: number | null;
   folder_kind: number | null;
+  /** 1 when Live linked the file to a plug-in, else 0 */
+  linked_to_plugin: number;
 }
+
+/** SQL condition on files `f`: Live linked the file to an AU or VST plug-in,
+ * which every plug-in preset is. Ableton and Max for Live ids don't count. */
+const LINKED_TO_PLUGIN = `(COALESCE(f.device_id, '') LIKE 'device:au:%'
+  OR COALESCE(f.device_id, '') LIKE 'device:vst%')`;
 
 /** Column list every candidate SELECT shares, matching SearchRow. */
 export const CANDIDATE_COLUMNS = `f.file_id, f.parent_id, f.name, f.use_count,
-  f.file_type, f.subtype, p.folder_kind AS folder_kind`;
+  f.file_type, f.subtype, p.folder_kind AS folder_kind,
+  ${LINKED_TO_PLUGIN} AS linked_to_plugin`;
 
 /** FROM clause every candidate SELECT shares (places join supplies source). */
 export const CANDIDATE_FROM = `files f
   LEFT JOIN places p ON p.file_id = f.place_id`;
 
-/** SQL condition on files `f`: the file is (or sits in) a browser Place, not
- * (for example) inside another installed Live version. A Place's root folder
- * has place_id 0, so it's matched by its own file_id. */
-export const IN_A_PLACE = `(f.place_id IN (SELECT file_id FROM places)
-  OR f.file_id IN (SELECT file_id FROM places))`;
+/**
+ * SQL condition on files `f`: the file is (or sits in) one of the given places.
+ * A Place's root folder has place_id 0, so it's matched by its own file_id.
+ *
+ * @param placeIds - SELECT of the places' file_ids
+ * @returns The condition
+ */
+function inPlaces(placeIds: string): string {
+  return `(f.place_id IN (${placeIds}) OR f.file_id IN (${placeIds}))`;
+}
+
+/** SQL condition on files `f`: the file sits inside a preset folder. The
+ * folder's own root isn't inside it, matching what `source` returns. */
+const IN_A_PRESET_FOLDER = `f.place_id IN (SELECT file_id FROM places WHERE folder_kind = ${PRESET_FOLDER_KIND})`;
+
+/** SQL condition on files `f`: Live hides it, as it does the sample libraries
+ * plug-ins install in a preset folder. */
+export const IN_A_HIDDEN_PRESET_FOLDER_FILE = `(${IN_A_PRESET_FOLDER} AND NOT ${LINKED_TO_PLUGIN})`;
+
+/** SQL condition on files `f`: the file is (or sits in) a Place Live's browser
+ * lists. Not another installed Live version, nor a preset folder's hidden
+ * files; a plug-in preset in a preset folder is listed, under its plug-in. */
+export const IN_A_PLACE = `(${inPlaces(
+  `SELECT file_id FROM places WHERE folder_kind IS NOT ${PRESET_FOLDER_KIND}`,
+)} OR (${IN_A_PRESET_FOLDER} AND ${LINKED_TO_PLUGIN}))`;
 
 /** SQL condition on files `f`: Live's library-wide views (All, categories)
  * list it. They hide files with the lowest flags bit clear, such as packs' raw
@@ -75,6 +108,11 @@ const IR_TAG = "Impulse Response";
 /** SQL condition for per-tag counts (keyword files `kw`, tagged files `f`):
  * count what a search for that tag returns, which keeps hidden IRs. */
 export const COUNTED_FOR_TAG = `(${IN_LIBRARY_VIEWS} OR kw.name = '${IR_TAG}')`;
+
+interface ListingOptions {
+  sourceShowsHidden?: boolean;
+  presetFoldersOnly?: boolean;
+}
 
 /** A WHERE clause as accumulated conditions plus their positional params. */
 export interface CandidateWhere {
@@ -89,15 +127,13 @@ export interface CandidateWhere {
  *
  * @param args - Filter parameters
  * @param parentId - Resolved file_id for the inFolder constraint, when present
- * @param options - How the listing rules apply
- * @param options.sourceShowsHidden - Whether a source filter also lists files
- *   Live's library views hide. Off for findSimilar: Show Similar has no Place.
+ * @param options - How the listing rules apply (see listingRules)
  * @returns Conditions and params (no ORDER BY, no LIMIT)
  */
 export function buildCandidateWhere(
   args: LibrarySearchArgs,
   parentId?: number,
-  { sourceShowsHidden = true }: { sourceShowsHidden?: boolean } = {},
+  options: ListingOptions = {},
 ): CandidateWhere {
   const where: string[] = [];
   const params: Array<string | number> = [];
@@ -125,17 +161,7 @@ export function buildCandidateWhere(
     params.push(...fileTypeCodes);
   }
 
-  // List what Live's browser lists. Browsing a folder shows everything, so
-  // inFolder skips both rules. A source filter works like searching a Place,
-  // and an IR search asks for exactly the files the flags rule hides.
-  if (parentId == null) {
-    where.push(IN_A_PLACE);
-    const placeSearch = sourceShowsHidden && args.source != null;
-
-    if (!placeSearch && !asksForIRs(args)) {
-      where.push(IN_LIBRARY_VIEWS);
-    }
-  }
+  where.push(...listingRules(args, parentId, options));
 
   if (args.deviceKind) {
     where.push("f.device_type = ?");
@@ -143,18 +169,10 @@ export function buildCandidateWhere(
   }
 
   if (args.source) {
-    const kinds = folderKindsForSource(args.source);
+    const condition = sourceCondition(args.source);
 
-    // Defensive: source=sampleFolder has no DB encoding and yields an empty
-    // kinds list. The tool caller filters this out, but the route is
-    // publicly reachable — emit an impossible predicate to keep the
-    // SQL valid (no rows match) rather than producing `IN ()`.
-    if (kinds.length === 0) {
-      where.push("1 = 0");
-    } else {
-      where.push(`p.folder_kind IN (${kinds.map(() => "?").join(",")})`);
-      params.push(...kinds);
-    }
+    where.push(condition.sql);
+    params.push(...condition.params);
   }
 
   if (parentId != null) {
@@ -346,7 +364,10 @@ export function buildLibraryItem(
     kind: resolveKind(row.file_type),
     tags,
     useCount: row.use_count,
-    source: row.folder_kind == null ? null : resolveSource(row.folder_kind),
+    source:
+      row.folder_kind == null
+        ? null
+        : resolveSource(row.folder_kind, row.linked_to_plugin === 1),
   };
 
   const subtype = resolveClipSubtype(row.file_type, row.subtype);
@@ -417,6 +438,82 @@ export function fetchTagsBulk(
   }
 
   return result;
+}
+
+/**
+ * The condition for a `source` filter. A plug-in preset in a preset folder
+ * counts as "plugin"; "preset-folder" is what Live hides there, so each file
+ * has one source.
+ *
+ * @param source - Public source enum
+ * @returns SQL on `p` and `f`, with its params
+ */
+function sourceCondition(source: LibrarySource): {
+  sql: string;
+  params: number[];
+} {
+  const kinds = folderKindsForSource(source);
+
+  // Defensive: source=sample-folder has no DB encoding and yields an empty
+  // kinds list. The tool caller filters this out, but the route is publicly
+  // reachable — emit an impossible predicate to keep the SQL valid (no rows
+  // match) rather than producing `IN ()`.
+  if (kinds.length === 0) {
+    return { sql: "1 = 0", params: [] };
+  }
+
+  const inKinds = `p.folder_kind IN (${kinds.map(() => "?").join(",")})`;
+  const inPresetFolder = `p.folder_kind = ${PRESET_FOLDER_KIND}`;
+
+  if (source === "plugin") {
+    return {
+      sql: `(${inKinds} OR (${inPresetFolder} AND ${LINKED_TO_PLUGIN}))`,
+      params: kinds,
+    };
+  }
+
+  if (source === "preset-folder") {
+    return { sql: `(${inKinds} AND NOT ${LINKED_TO_PLUGIN})`, params: kinds };
+  }
+
+  return { sql: inKinds, params: kinds };
+}
+
+/**
+ * The conditions that list what Live's browser lists. inFolder skips them all;
+ * a source filter skips the place rule; an IR search skips the flags rule.
+ *
+ * @param args - Filter parameters
+ * @param parentId - Resolved file_id for the inFolder constraint, when present
+ * @param options - How the listing rules apply
+ * @param options.sourceShowsHidden - Whether a source filter also lists files
+ *   Live's library views hide. Off for findSimilar: Show Similar has no Place.
+ * @param options.presetFoldersOnly - Match only the preset folder files the
+ *   default hides, to count them. Has no effect with a source filter.
+ * @returns The conditions to AND in
+ */
+function listingRules(
+  args: LibrarySearchArgs,
+  parentId: number | undefined,
+  { sourceShowsHidden = true, presetFoldersOnly = false }: ListingOptions,
+): string[] {
+  if (parentId != null) {
+    return [];
+  }
+
+  const rules: string[] = [];
+
+  if (args.source == null) {
+    rules.push(presetFoldersOnly ? IN_A_HIDDEN_PRESET_FOLDER_FILE : IN_A_PLACE);
+  }
+
+  const placeSearch = sourceShowsHidden && args.source != null;
+
+  if (!placeSearch && !asksForIRs(args)) {
+    rules.push(IN_LIBRARY_VIEWS);
+  }
+
+  return rules;
 }
 
 /**

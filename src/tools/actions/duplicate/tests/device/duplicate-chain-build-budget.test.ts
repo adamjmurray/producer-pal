@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Budget test for copying a rack chain, which carries the source chain's
 // devices into the copy one at a time.
@@ -15,7 +15,10 @@ import { describe, expect, it, vi } from "vitest";
 import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  registerMockObject,
+  registerPendingMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
   registerCarryLiveSet,
@@ -62,12 +65,12 @@ function setupRackWithDevices(): void {
   });
 
   // The temp track's copy of the chain. Each pass takes its first device.
-  registerMockObject("temp-chain", {
+  registerPendingMockObject("temp-chain", {
     path: TEMP_CHAIN,
     type: "Chain",
     properties: { devices: children("temp-dev") },
   });
-  registerMockObject("temp-dev", {
+  registerPendingMockObject("temp-dev", {
     path: `${TEMP_CHAIN} devices 0`,
     type: "Device",
   });

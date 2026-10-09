@@ -69,9 +69,11 @@ a whole area you never use:
 | `arrangement`                                    | What an Arrangement position means: song meter vs. clip meter                                                                                |
 | `arrangement-write`                              | Moving and splitting clips on the Arrangement timeline, and take lanes                                                                       |
 | `arrangement-basic`                              | What a take lane is and how a path names one, in small model mode                                                                            |
+| `automation`                                     | Reading and writing clip automation envelopes, sent only while the Producer Pal [remote script](/guide/remote-script) is running             |
 | `object-paths` / `object-paths-basic`            | Addressing tracks and scenes by path: `t0`, `s0`, `rt0`, `mt`, the `+` spellings that create, and how a number you say maps onto one         |
 | `working-with-live`                              | Session vs. Arrangement habits, playback, and general music-making advice                                                                    |
 | `context-standard` / `context-basic`             | [Context & Memory](/guide/context): the project, global, and memory layers                                                                   |
+| `history`                                        | Undo and redo with the Manage tool: what a step is, and to say what it undoes and ask first if you may have edited                           |
 | `getting-help`                                   | What to tell you when a request is outside Producer Pal's reach                                                                              |
 | `getting-help-basic`                             | The audio limits worth saying out loud, in small model mode                                                                                  |
 | `barbeat-standard` / `barbeat-basic`             | The bar\|beat note notation guide (default notation)                                                                                         |

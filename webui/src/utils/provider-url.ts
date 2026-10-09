@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /** Placeholder API key for local providers that don't require authentication */
 export const LOCAL_PROVIDER_API_KEY = "not-needed";
@@ -47,6 +47,25 @@ export function normalizeLocalProviderUrl(url: string): string {
 }
 
 /**
+ * Use the default when a URL setting is unset, empty, or only whitespace.
+ * @param url - The configured URL, if any
+ * @param fallback - Default URL
+ * @returns The trimmed URL, or the default when it is blank
+ */
+export function withDefaultUrl(
+  url: string | undefined,
+  fallback: string,
+): string {
+  const trimmed = url?.trim();
+
+  if (!trimmed) {
+    return fallback;
+  }
+
+  return trimmed;
+}
+
+/**
  * Get API base URL for the current provider
  * @param provider - Provider identifier
  * @param baseUrl - Base URL for custom/local providers
@@ -65,11 +84,15 @@ export function getBaseUrl(
   }
 
   if (provider === "lmstudio") {
-    return normalizeLocalProviderUrl(baseUrl ?? "http://localhost:1234");
+    return normalizeLocalProviderUrl(
+      withDefaultUrl(baseUrl, "http://localhost:1234"),
+    );
   }
 
   if (provider === "ollama") {
-    return normalizeLocalProviderUrl(baseUrl ?? "http://localhost:11434");
+    return normalizeLocalProviderUrl(
+      withDefaultUrl(baseUrl, "http://localhost:11434"),
+    );
   }
 
   return PROVIDER_BASE_URLS[provider as keyof typeof PROVIDER_BASE_URLS];

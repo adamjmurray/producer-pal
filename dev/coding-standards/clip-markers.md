@@ -58,7 +58,8 @@ Verified against Live 12, MIDI and audio alike. Every clip has two regions, and
 Flipping the flag does **not** carry the region across — it reveals whatever the
 other pair was last left with, which on a fresh clip is the whole thing.
 `calculateBeatPositions` restates the playing region into the newly selected
-pair, so `looping` changes the loop flag and nothing else (ADR-0020).
+pair, so `looping` changes the loop flag and nothing else
+([why](../specs/tool-behavior/clips-playback-and-sends.md#looping)).
 
 Writing them is not symmetric, and these two are the ones that bite:
 

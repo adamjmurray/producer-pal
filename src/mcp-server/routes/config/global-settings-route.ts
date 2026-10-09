@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // REST endpoints for the machine-global settings file (~/.producer-pal/
 // settings.json). Distinct from /config, which is the device's own live state:
@@ -16,6 +16,7 @@ import {
   updateGlobalSettings,
 } from "../../helpers/config-store/global-settings-store.ts";
 import { rejectForeignOriginWrite } from "../../helpers/http/request-origin.ts";
+import { syncDeviceUpdateNotice } from "../../helpers/http/update-dismissal.ts";
 
 /**
  * Register the /settings REST endpoints on the Express app. GET returns the
@@ -64,7 +65,19 @@ export function registerGlobalSettingsRoutes(app: Express): void {
       return;
     }
 
-    res.json(updateGlobalSettings(patch));
+    const settings = updateGlobalSettings(patch);
+
+    // A dismissal, or turning checks off, should clear the device's notice now,
+    // not at its next load. Turning checks on pushes nothing: it must not
+    // trigger a GitHub request.
+    if (
+      typeof patch.dismissedUpdateVersion === "string" ||
+      patch.autoUpdateCheck === false
+    ) {
+      void syncDeviceUpdateNotice();
+    }
+
+    res.json(settings);
   });
 }
 

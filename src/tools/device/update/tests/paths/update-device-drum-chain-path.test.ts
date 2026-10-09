@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Pad C1 holds two layers and pad D1 one, so the rack's two chain numberings
 // disagree: pC1/c0 and pC1/c1 are chains 0 and 2, and pD1/c0 is chain 1.
@@ -198,7 +198,7 @@ describe("updateDevice — drum chain path spelling", () => {
     ).toStrictEqual({ id: "plain-dev", path: "t0/d0/pC1/c1/d0" });
 
     // The device it displaced answers with the index it shifted to.
-    expect(updateDevice({ id: "dev-2" })).toStrictEqual({
+    expect(updateDevice({ id: "dev-2", focus: true })).toStrictEqual({
       id: "dev-2",
       path: "t0/d0/pC1/c1/d1",
     });

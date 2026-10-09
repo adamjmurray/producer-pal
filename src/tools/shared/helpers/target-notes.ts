@@ -1,9 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
-// What one target's update has to say, for its own result entry (ADR-0042).
+// What one target's update has to say, for its own result entry.
 // The helpers that find out collect it here and the loop that wrote the entry
 // puts it on. A caller with no entry to put it on passes nothing, and the note
 // goes to the Max console instead.
@@ -12,6 +12,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type EntryWithDetail,
   appendDetail,
+  isSuperseded,
   joinDetails,
 } from "#src/tools/shared/helpers/entry-details.ts";
 
@@ -28,6 +29,9 @@ export interface TargetNotes {
   /** Set when the call changed the Set on the way to work that then failed (a
    * swapped or created instrument): a throw would claim nothing changed. */
   altered?: true;
+  /** Told what the write has changed so far, so a later throw can say what
+   * landed. Left out where the caller keeps no entry for this write. */
+  landed?: (phrase: string) => void;
 }
 
 /** One nested write's entry: a send, a param, an action. */
@@ -38,10 +42,26 @@ interface NestedEntry {
 
 /**
  * The collector one target reports through.
+ * @param landed - Told each change as it lands, when the caller needs them
  * @returns An empty collector
  */
-export function newTargetNotes(): TargetNotes {
-  return { said: [], refused: [], unlanded: [] };
+export function newTargetNotes(landed?: (phrase: string) => void): TargetNotes {
+  return landed == null
+    ? { said: [], refused: [], unlanded: [] }
+    : { said: [], refused: [], unlanded: [], landed };
+}
+
+/**
+ * Say that a write has changed Live, right after it did. A throw later in the
+ * target's turn then keeps its entry and names what already landed.
+ * @param notes - What the target has to say; undefined when there's no entry
+ * @param phrase - What landed, in a few words ("name")
+ */
+export function noteLanded(
+  notes: TargetNotes | undefined,
+  phrase: string,
+): void {
+  notes?.landed?.(phrase);
 }
 
 /**
@@ -79,12 +99,18 @@ export function refuseTargetWork(
 
 /**
  * Mark that the call changed the Set for this target, so the target keeps its
- * entry even if nothing it asked for landed.
+ * entry even if nothing it asked for landed. It also says what landed, so a
+ * later throw names it: every change made this way is journaled.
  * @param notes - What the target has to say; undefined when there's no entry
+ * @param phrase - What changed, in a few words ("pad chain made")
  */
-export function noteSetAltered(notes: TargetNotes | undefined): void {
+export function noteSetAltered(
+  notes: TargetNotes | undefined,
+  phrase: string,
+): void {
   if (notes != null) {
     notes.altered = true;
+    noteLanded(notes, phrase);
   }
 }
 
@@ -104,7 +130,9 @@ export function refuseIfNoneLanded<T extends object>(
   entries: readonly T[],
   name: (entry: T) => string,
 ): void {
-  const failed = (entry: T): boolean => (entry as NestedEntry).ok === false;
+  // An entry a later one overrides wrote nothing either.
+  const failed = (entry: T): boolean =>
+    (entry as NestedEntry).ok === false || isSuperseded(entry);
 
   if (entries.length === 0 || !entries.every(failed)) {
     return;

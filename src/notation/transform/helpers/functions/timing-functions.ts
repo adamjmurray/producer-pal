@@ -1,11 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import * as console from "../../transform-warning-label.ts";
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
+import { normalizePhase } from "../../transform-waveforms.ts";
 import { type EvalContext } from "../transform-context.ts";
+import { DEFAULT_SWING_GRID, swingAmountError } from "./swing-amount.ts";
 
 /**
  * Evaluate swing function (delay off-beat notes for swing feel).
@@ -20,22 +22,23 @@ export function evaluateSwing(
   raw: boolean,
   ctx: EvalContext,
 ): number {
-  if (args.length === 0 || args.length > 2) {
-    throw new Error(
-      `Function swing() requires 1-2 arguments: swing(amount [, grid])`,
-    );
-  }
-
   const amount = ctx.evaluateExpression(args[0] as ExpressionNode, ctx);
 
   // Default grid is half a musical beat — the off-beat between the meter's
   // beats: an 8th note in x/4, a 16th in x/8, etc. (the natural swing
   // subdivision per meter). NOT a fixed n/8 — that coincides only in x/4.
   // Pass an explicit grid arg to override.
-  let grid = 0.5;
+  let grid = DEFAULT_SWING_GRID;
 
   if (args.length === 2) {
     grid = parseGrid(args[1] as ExpressionNode, ctx, "swing");
+  }
+
+  // The up-front check judges constants; this catches the rest (rand(), etc.).
+  const refusal = swingAmountError(amount, grid);
+
+  if (refusal != null) {
+    throw new Error(refusal);
   }
 
   const period = grid * 2;
@@ -51,8 +54,9 @@ export function evaluateSwing(
     effectivePosition = Math.round(ctx.position / quantGrid) * quantGrid;
   }
 
-  // Phase within the period cycle (0-1)
-  const phase = (effectivePosition / period) % 1.0;
+  // Phase within the period cycle (0-1). Wrapped so a pickup note before the
+  // clip start (negative position) lands in the right half.
+  const phase = normalizePhase(effectivePosition / period);
 
   // On-beat (first half): no offset. Off-beat (second half): full offset.
   const offset = phase < 0.5 ? 0 : amount;
@@ -71,12 +75,6 @@ export function evaluateQuant(
   args: ExpressionNode[],
   ctx: EvalContext,
 ): number {
-  if (args.length !== 1) {
-    throw new Error(
-      `Function quant() requires exactly 1 argument: quant(grid)`,
-    );
-  }
-
   const grid = parseGrid(args[0] as ExpressionNode, ctx, "quant");
 
   return Math.round(ctx.position / grid) * grid;
@@ -95,10 +93,6 @@ export function evaluateLegato(
   args: ExpressionNode[],
   ctx: EvalContext,
 ): number {
-  if (args.length > 1) {
-    throw new Error("legato() accepts at most 1 argument (tolerance)");
-  }
-
   const legato = ctx.noteProperties._legatoContext;
 
   if (!legato) {
@@ -127,8 +121,8 @@ export function evaluateLegato(
   // No next note and no known clip end (e.g. the final note in a context that
   // doesn't supply a clip length): keep the note's current duration rather than
   // failing the whole transform.
-  console.warn(
-    "legato(): no next note and no clip end for the last note; keeping current duration",
+  console.clipDetail(
+    "legato(): last note has no next note or clip end; kept its duration",
   );
 
   // duration is always populated by buildNoteProperties for note transforms.

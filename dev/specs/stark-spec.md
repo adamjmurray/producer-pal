@@ -116,7 +116,12 @@ chords: Cm7 [Eb G C']      # a symbol, then an explicit voicing (chord register)
 A **note token** (melody/bass) is, in order: `letter` (`A`–`G`,
 case-insensitive) + **accidental** (`#`/`b`, _immediately after the letter_, so
 `Cb` = C-flat while a lone `b` = note B) + an optional **absolute octave** +
-suffix modifiers in **any order**:
+suffix modifiers in **any order**. The accidentals are `#`, lowercase `b`, and
+the `♯`/`♭` glyphs (normalized to `#`/`b` by the grammar, so nothing downstream
+sees them; the Skills teach `#`/`b` only). Unlike bar|beat, an uppercase `B` is
+never a flat (it's the note B). The same accidentals work everywhere Stark reads
+one: bracket-chord notes, drum-header pitch names, chord roots, slash bass, and
+chord qualities (`7♯9` = `7#9`):
 
 - **absolute octave** — a number bound right after the accidental (`C3`, `F#1`,
   `Gb-1`), Ableton convention (C3 = 60). It pins the pitch instead of placing it

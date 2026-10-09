@@ -1,12 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // What a take-lane copy reads from: a track's main lane, or a take lane of its
 // own. Only a lane copy takes a lane source, so `t2/l0` names the lane here and
 // the track everywhere else a track copy looks.
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   isTakeLaneClip,
@@ -18,7 +19,7 @@ import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   existingId,
-  idPerPath,
+  resolvePathEntry,
   type IdLookup,
 } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import {
@@ -31,6 +32,7 @@ import {
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { trackIdAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
+import { type SourceLookup } from "./source-plan.ts";
 
 /** What one source contributes to every destination it names. */
 export interface LaneSource {
@@ -97,21 +99,28 @@ export function laneSource(id: string): LaneSource {
 }
 
 /**
- * The ids a lane copy's `path` names: a lane path names the lane, and
- * everything else the track it always named.
- * @param paths - Comma-separated source paths
- * @returns One id per entry, in order, null where an entry named none
- * @throws Error when an entry appends a lane rather than naming one
+ * How a lane copy finds its sources: a lane path names the lane, and everything
+ * else the track it always named.
  */
-export function laneSourceIds(paths: string): Array<string | null> {
-  const entries = pathEntries(paths, "path");
-
-  for (const entry of entries) {
+export const laneSourceLookup: SourceLookup = {
+  resolvePath: (entry) => {
+    // An `l+` makes a lane, which is empty, so it names nothing to copy from.
     refuseAppendedLane(entry);
-  }
 
-  return idPerPath(paths, "path", laneOrTrackIdAtPath);
-}
+    return resolvePathEntry(entry, laneOrTrackIdAtPath);
+  },
+  problem: (id) => {
+    try {
+      if (takeLaneById(id) == null) {
+        validateIdType(id, "track");
+      }
+
+      return null;
+    } catch (error) {
+      return errorMessage(error);
+    }
+  },
+};
 
 /**
  * Whether a source names a take lane, refusing one the call gave nowhere to

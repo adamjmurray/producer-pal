@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for self-overlapping arrangement clip duplicate/move.
@@ -15,6 +15,10 @@
  *   - duplicate → 1-bar original (its first bar) + full 4-bar copy (2 clips)
  *   - move      → single full 4-bar clip at the new position (original gone),
  *                 and the same moving -1 bar (no tail left past the copy)
+ *
+ * Two or more copies on the source in one call each trim it for the next, so
+ * they are made from a spare of the source: the later copy is full length, the
+ * earlier one is cut short by it, and no spare is left on the track.
  *
  * Uses: e2e-test-set (t8 = empty MIDI track, t5 = audio track with sample)
  *
@@ -95,17 +99,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
     const clips = clipsInBarRange(await readArrClips(EMPTY_MIDI_TRACK), 15, 20);
 
     // A move leaves exactly one clip — the full copy at the new position.
-    expect(clips).toHaveLength(1);
-
-    const moved = clips[0]!;
-
-    expect(arrangementStartOf(moved)).toBe("16|1");
-    expect(lengthBeats(moved)).toBeCloseTo(beats("4bar"), 5);
-
-    // The relocated clip keeps its bar-4 note (full length, not truncated).
-    const movedNotes = (await readClip(moved.id!, ["notes"])).notes ?? "";
-
-    expect(movedNotes).toContain("B3");
+    await expectSingleFullClip(clips, "16|1");
   });
 
   it("move -1 bar leaves a single full 4-bar clip and no tail", async () => {
@@ -117,16 +111,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
 
     const clips = clipsInBarRange(await readArrClips(EMPTY_MIDI_TRACK), 54, 61);
 
-    expect(clips).toHaveLength(1);
-
-    const moved = clips[0]!;
-
-    expect(arrangementStartOf(moved)).toBe("55|1");
-    expect(lengthBeats(moved)).toBeCloseTo(beats("4bar"), 5);
-
-    const movedNotes = (await readClip(moved.id!, ["notes"])).notes ?? "";
-
-    expect(movedNotes).toContain("B3");
+    await expectSingleFullClip(clips, "55|1");
   });
 
   it("non-overlap duplicate still leaves two full clips (control)", async () => {
@@ -143,6 +128,87 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
       5,
     );
   });
+
+  it("two copies onto the source in one call: the later is full, the earlier cut short", async () => {
+    // 4-bar clip at 70|1 ([70|1, 74|1]), copied to 71|1 and 72|1 — both land on
+    // it. Without a spare the second copy would copy the 1 bar left of it.
+    const base = await dupToArr(midi4barId, "70|1");
+    const copies = await dupManyToArr(base.id, ["71|1", "72|1"]);
+
+    expect(copies.map(arrangementStartOf)).toStrictEqual(["71|1", "72|1"]);
+
+    const track = await readArrClips(EMPTY_MIDI_TRACK);
+    const clips = clipsInBarRange(track, 70, 80);
+
+    // The original is cut to bar 70, the first copy to bar 71 by the second,
+    // which is all four bars.
+    expect(clips.map(arrangementStartOf)).toStrictEqual([
+      "70|1",
+      "71|1",
+      "72|1",
+    ]);
+    expect(lengthBeats(clipAt(clips, "70|1"))).toBeCloseTo(beats("1bar"), 5);
+    expect(lengthBeats(clipAt(clips, "71|1"))).toBeCloseTo(beats("1bar"), 5);
+    expect(lengthBeats(clipAt(clips, "72|1"))).toBeCloseTo(beats("4bar"), 5);
+
+    // The full copy still has its bar-4 note.
+    const full = (await readClip(copies[1]!.id, ["notes"])).notes ?? "";
+
+    expect(full).toContain("B3");
+
+    // The spare, parked well past the last clip, is gone.
+    expect(clipsInBarRange(track, 81, 100_000)).toHaveLength(0);
+  });
+
+  // A 6-bar copy of the looped 4-bar clip lands as two tiles: 4 bars, then 2.
+  it.each([
+    { arrangementLength: "2bar", at: 90, lastTiles: [2] },
+    { arrangementLength: "6bar", at: 110, lastTiles: [4, 2] },
+  ])(
+    "two copies onto the source with arrangementLength $arrangementLength: both cut from the full source",
+    async ({ arrangementLength, at, lastTiles }) => {
+      const base = await dupToArr(midi4barId, `${at}|1`);
+
+      await dupManyToArr(
+        base.id,
+        [`${at + 1}|1`, `${at + 2}|1`],
+        EMPTY_MIDI_TRACK,
+        arrangementLength,
+      );
+
+      const clips = clipsInBarRange(
+        await readArrClips(EMPTY_MIDI_TRACK),
+        at,
+        at + 9,
+      );
+      // The original and the first copy are cut to a bar each; the last copy
+      // fills its whole length.
+      const expected = [1, 1, ...lastTiles];
+      let bar = at;
+      const starts = expected.map((bars) => {
+        const start = `${bar}|1`;
+
+        bar += bars;
+
+        return start;
+      });
+
+      expect(clips.map(arrangementStartOf)).toStrictEqual(starts);
+
+      for (const [i, bars] of expected.entries()) {
+        expect(lengthBeats(clipAt(clips, starts[i]!))).toBeCloseTo(
+          beats(`${bars}bar`),
+          5,
+        );
+      }
+
+      // The last copy holds the source's second bar, not the leftover's one.
+      const last = clipAt(clips, `${at + 2}|1`)!;
+      const notes = (await readClip(last.id!, ["notes"])).notes ?? "";
+
+      expect(notes).toContain("E3");
+    },
+  );
 
   it("audio duplicate onto itself keeps a full-length copy with warp intact", async () => {
     // Place the sample in the arrangement, read its true length + warp state,
@@ -171,6 +237,40 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
     expect(lengthBeats(placed)).toBeCloseTo(baseLen, 3);
     expect((await readClip(placed!.id!, ["warp"])).warping).toBe(baseWarping);
   });
+
+  it("two audio copies onto the source: the later is full length with warp intact", async () => {
+    // The sample at 85|1, copied a quarter and a half of its length forward.
+    const base = await dupToArr(audioId, "85|1");
+    const baseClip = clipAt(
+      clipsInBarRange(await readArrClips(AUDIO_TRACK), 85, 85),
+      "85|1",
+    );
+    const baseLen = lengthBeats(baseClip);
+    const baseWarping = (await readClip(base.id, ["warp"])).warping;
+    const start = startToBeats("85|1");
+    const copies = await dupManyToArr(
+      base.id,
+      [start + baseLen / 4, start + baseLen / 2].map(beatsToBarBeat),
+      AUDIO_TRACK,
+    );
+
+    const track = await readArrClips(AUDIO_TRACK);
+    const clips = clipsInBarRange(track, 85, 85 + Math.ceil(baseLen / 4) + 1);
+
+    // The trimmed original, the first copy cut by the second, and the second.
+    expect(clips).toHaveLength(3);
+
+    const [, first, last] = clips;
+
+    expect(lengthBeats(first)).toBeCloseTo(baseLen / 4, 1);
+    expect(lengthBeats(last)).toBeCloseTo(baseLen, 3);
+    expect((await readClip(copies[1]!.id, ["warp"])).warping).toBe(baseWarping);
+
+    // The spare, parked well past the last clip, is gone.
+    expect(
+      clipsInBarRange(track, 85 + Math.ceil(baseLen / 4) + 2, 100_000),
+    ).toHaveLength(0);
+  });
 });
 
 /**
@@ -187,6 +287,34 @@ async function dupToArr(
 }
 
 /**
+ * Duplicate a clip to several arrangement positions in one call.
+ * @param id - Source clip ID
+ * @param positions - Target positions in bar|beat format
+ * @param trackIndex - The track the copies go to
+ * @param arrangementLength - The length each copy fills, if set
+ * @returns The copies' metadata, in the order named
+ */
+async function dupManyToArr(
+  id: string,
+  positions: string[],
+  trackIndex = EMPTY_MIDI_TRACK,
+  arrangementLength?: string,
+): Promise<ArrangementClipResult[]> {
+  const result = await callTool(ctx.client!, "ppal-duplicate", {
+    type: "clip",
+    id,
+    toPath: positions
+      .map((position) => `t${trackIndex}[${position}]`)
+      .join(","),
+    ...(arrangementLength != null && { arrangementLength }),
+  });
+
+  await sleep(150);
+
+  return parseToolResult<ArrangementClipResult[]>(result);
+}
+
+/**
  * Move an arrangement clip to a new position via update-clip.
  * @param id - Arrangement clip ID
  * @param position - Target position in bar|beat format
@@ -197,6 +325,28 @@ async function moveArrClip(id: string, position: string): Promise<void> {
     toPath: `[${position}]`,
   });
   await sleep(100);
+}
+
+/**
+ * Assert the range holds exactly one full-length 4-bar clip at the position,
+ * and that it kept its bar-4 note (not truncated).
+ * @param clips - Arrangement clips in the checked range
+ * @param start - Expected start in bar|beat format
+ */
+async function expectSingleFullClip(
+  clips: ReadClipResult[],
+  start: string,
+): Promise<void> {
+  expect(clips).toHaveLength(1);
+
+  const moved = clips[0]!;
+
+  expect(arrangementStartOf(moved)).toBe(start);
+  expect(lengthBeats(moved)).toBeCloseTo(beats("4bar"), 5);
+
+  const movedNotes = (await readClip(moved.id!, ["notes"])).notes ?? "";
+
+  expect(movedNotes).toContain("B3");
 }
 
 /**

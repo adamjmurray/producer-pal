@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for the drum pad sample-write policy. Uses: racks-test, whose Kit
@@ -18,6 +18,7 @@ import { describe, expect, it } from "vitest";
 import {
   createTestDeviceAt,
   KICK_FILE,
+  parseToolResult,
   setupMcpTestContext,
 } from "../../../mcp-test-helpers.ts";
 import { RACKS_TEST_PATH } from "../../../e2e-test-set.ts";
@@ -183,5 +184,29 @@ describe("a MIDI effect in front of the pad's instrument", () => {
     expect(devices).toHaveLength(2);
     expect(devices[0]?.type).toContain("Arpeggiator");
     expect(devices[1]?.type).toContain("Simpler");
+  });
+});
+
+describe("a device a later target's forced swap deletes", () => {
+  // The deleted device has no address after the call, so its entry keeps the
+  // one it had and says it is gone.
+  it("keeps its path from before the call and says it no longer exists", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: {
+        path: `${KIT}/pAb1/c0/d0,${KIT}/pAb1`,
+        name: "Swapped",
+        params: [{ name: "sample", value: KICK_FILE }],
+        force: true,
+      },
+    });
+    const [deleted, pad] =
+      parseToolResult<Array<{ path?: string; detail?: string }>>(result);
+
+    expect(deleted?.path).toMatch(/\/d0$/);
+    expect(deleted?.detail).toContain(
+      "no longer exists: a later target in this call replaced it",
+    );
+    expect(pad?.detail).toContain("force:true");
   });
 });

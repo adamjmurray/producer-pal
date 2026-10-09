@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Types for the specialized-device interface layer. Devices with a specialized
 // Live API class (Roar, Drift, Wavetable, Compressor, ...) expose state that
@@ -88,8 +88,9 @@ export type ActionHandler = (
 
 /** One entry of the `actions` an update-device result reports, addressed by the
  * action string as written: the action alone when it ran, plus a `detail` when
- * it found nothing to change, and `ok: false` with one when nothing was done.
- * `ok` never appears without a detail. */
+ * it found nothing to change or a later mention of the same action runs
+ * instead, and `ok: false` with one when nothing was done. `ok` never appears
+ * without a detail. */
 export type ActionResult =
   | { action: string }
   | { action: string; detail: string }

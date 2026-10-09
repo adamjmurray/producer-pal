@@ -1,11 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
-import { createAudioClipInSession } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import {
+  createAudioClipInSession,
+  removeSessionClip,
+} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -14,6 +17,8 @@ interface TempClipInfo {
   clipId: string;
   isMidiTrack: boolean;
   slot?: LiveAPI;
+  /** The scene made for the audio clip, to remove with it */
+  sceneId?: string;
 }
 
 /**
@@ -80,25 +85,40 @@ export function extendSongIfNeeded(
     );
   }
 
-  const { clip: sessionClip, slot } = createAudioClipInSession(
+  const {
+    clip: sessionClip,
+    slot,
+    sceneId,
+  } = createAudioClipInSession(
     selectedTrack,
     1, // 1 beat length
     context.silenceWavPath,
   );
 
-  const arrangementClip = clipFromDuplicateResult(
-    selectedTrack.call(
-      "duplicate_clip_to_arrangement",
-      toLiveApiId(sessionClip.id),
-      targetBeats,
-    ),
-  );
+  let arrangementClip: LiveAPI;
+
+  try {
+    arrangementClip = clipFromDuplicateResult(
+      selectedTrack.call(
+        "duplicate_clip_to_arrangement",
+        toLiveApiId(sessionClip.id),
+        targetBeats,
+      ),
+    );
+  } catch (error) {
+    // Nothing returns the session clip to be cleaned up later, so it goes now.
+    // There is no entry to report on here, so a leftover is a warning.
+    removeSessionClip({ slot, sceneId });
+
+    throw error;
+  }
 
   return {
     track: selectedTrack,
     clipId: arrangementClip.id,
     isMidiTrack: false,
     slot,
+    ...(sceneId == null ? {} : { sceneId }),
   };
 }
 
@@ -111,13 +131,13 @@ export function cleanupTempClip(tempClipInfo: TempClipInfo | null): void {
     return;
   }
 
-  const { track, clipId, isMidiTrack, slot } = tempClipInfo;
+  const { track, clipId, isMidiTrack, slot, sceneId } = tempClipInfo;
 
   // Delete the arrangement clip
   track.call("delete_clip", toLiveApiId(clipId));
 
   // For audio clips, also delete the session clip
   if (!isMidiTrack && slot) {
-    slot.call("delete_clip");
+    removeSessionClip({ slot, sceneId });
   }
 }

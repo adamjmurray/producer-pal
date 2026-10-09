@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { midiToNoteName } from "#src/shared/pitch.ts";
 import {
@@ -9,7 +9,12 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   STATE,
 } from "#src/tools/constants.ts";
-import { readChainMixer } from "./chain-mixer/chain-mixer.ts";
+import {
+  noteAutomationUnknown,
+  owningTrackFollowsArrangement,
+} from "#src/tools/shared/arrangement/tracks/follows-arrangement.ts";
+import { automatedFieldNames } from "#src/tools/shared/arrangement/tracks/automated-fields.ts";
+import { readChainMixerAndParams } from "./chain-mixer/chain-mixer.ts";
 
 // Live allows one instrument per chain, and says so by refusing the write
 // without a reason. Shared so a move and a create name the same cause.
@@ -20,6 +25,12 @@ export interface BuildChainInfoOptions {
   path?: string | null;
   devices?: Record<string, unknown>[];
   deviceCount?: number;
+  /**
+   * True to name the mixer fields that have an arrangement lane. The caller
+   * checks that the chain's track follows the arrangement, once for all its
+   * chains, and says so itself when it doesn't. Default false.
+   */
+  showAutomation?: boolean;
 }
 
 /**
@@ -27,13 +38,14 @@ export interface BuildChainInfoOptions {
  * @param chain - Chain Live API object
  * @param options - Build options
  * @returns Chain info object with id, path, type, name, color, mappedPitch,
- *   chokeGroup, non-default mixer settings (gainDb, pan, sends), and state
+ *   chokeGroup, non-default mixer settings (gainDb, pan, sends), automation
+ *   (when asked for), and state
  */
 export function buildChainInfo(
   chain: LiveAPI,
   options: BuildChainInfoOptions = {},
 ): Record<string, unknown> {
-  const { path, devices, deviceCount } = options;
+  const { path, devices, deviceCount, showAutomation = false } = options;
 
   const chainInfo: Record<string, unknown> = {
     id: chain.id,
@@ -73,7 +85,17 @@ export function buildChainInfo(
     }
   }
 
-  Object.assign(chainInfo, readChainMixer(chain));
+  const { values, automatable } = readChainMixerAndParams(chain);
+
+  Object.assign(chainInfo, values);
+
+  if (showAutomation) {
+    const automation = automatedFieldNames(automatable);
+
+    if (automation.length > 0) {
+      chainInfo.automation = automation;
+    }
+  }
 
   const chainState = computeState(chain);
 
@@ -81,10 +103,39 @@ export function buildChainInfo(
     chainInfo.state = chainState;
   }
 
-  if (devices !== undefined) {
+  if (devices != null) {
     chainInfo.devices = devices;
-  } else if (deviceCount !== undefined) {
+  } else if (deviceCount != null) {
     chainInfo.deviceCount = deviceCount;
+  }
+
+  return chainInfo;
+}
+
+/**
+ * Build the entry for a chain the caller addressed directly, so the chain is
+ * the entry that says when its automation is unknown. Checks the chain's track
+ * once, and hands the answer to the devices read inside it.
+ * @param chain - Chain or DrumChain LiveAPI object
+ * @param path - The chain's path in Producer Pal's grammar
+ * @param readDevices - Reads the chain's devices; told whether the track follows
+ *   the arrangement, to pass on to any rack among them
+ * @returns Chain info
+ */
+export function buildAddressedChainInfo(
+  chain: LiveAPI,
+  path: string | null,
+  readDevices: (chainAutomation: boolean) => Record<string, unknown>[],
+): Record<string, unknown> {
+  const follows = owningTrackFollowsArrangement(chain);
+  const chainInfo = buildChainInfo(chain, {
+    path,
+    devices: readDevices(follows),
+    showAutomation: follows,
+  });
+
+  if (!follows) {
+    noteAutomationUnknown(chainInfo);
   }
 
   return chainInfo;

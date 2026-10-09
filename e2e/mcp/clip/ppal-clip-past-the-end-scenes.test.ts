@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E sweep: a clip slot past the last scene makes the scenes up to it, the
@@ -23,6 +23,7 @@ import {
   isToolError,
   parseToolResultWithWarnings,
   parseToolResult,
+  readSceneCount,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
@@ -34,21 +35,6 @@ const ctx = setupMcpTestContext();
 const SCRATCH = `t${EMPTY_MIDI_TRACK}`;
 
 describe("a clip slot past the last scene", () => {
-  /**
-   * How many scenes the Set holds right now.
-   * @returns The scene count
-   */
-  async function sceneCount(): Promise<number> {
-    const liveSet = parseToolResult<{ scenes?: unknown[] }>(
-      await ctx.client!.callTool({
-        name: "ppal-read-live-set",
-        arguments: { include: ["scenes"] },
-      }),
-    );
-
-    return liveSet.scenes?.length ?? 0;
-  }
-
   /**
    * A clip in the first free slot of the scratch track, to move or copy.
    * @param sceneIndex - The slot to put it in
@@ -82,7 +68,7 @@ describe("a clip slot past the last scene", () => {
     toolName: string,
     argsFor: (target: number) => Record<string, unknown>,
   ): Promise<{ data: CreateClipResult; target: number }> {
-    const before = await sceneCount();
+    const before = await readSceneCount(ctx.client!);
     const target = before + 1;
 
     const { data, warnings } = parseToolResultWithWarnings<CreateClipResult>(
@@ -111,7 +97,7 @@ describe("a clip slot past the last scene", () => {
       }),
     );
 
-    expect(await sceneCount()).toBe(target + 1);
+    expect(await readSceneCount(ctx.client!)).toBe(target + 1);
   });
 
   it("is created by a ppal-update-clip toPath, which used to refuse it", async () => {
@@ -140,7 +126,7 @@ describe("a clip slot past the last scene", () => {
   // A scene is not a destination here: `path` names the scene to write to, and
   // nothing in the call says what a new one would be.
   it("is still refused by ppal-update-scene, which names create-scene", async () => {
-    const missing = (await sceneCount()) + 50;
+    const missing = (await readSceneCount(ctx.client!)) + 50;
     const result = await ctx.client!.callTool({
       name: "ppal-update-scene",
       arguments: { path: `s${missing}`, name: "Nowhere" },
@@ -151,6 +137,6 @@ describe("a clip slot past the last scene", () => {
       `no scene at path "s${missing}"; ppal-create-scene makes one`,
     );
     // The refusal made nothing.
-    expect(await sceneCount()).toBe(missing - 50);
+    expect(await readSceneCount(ctx.client!)).toBe(missing - 50);
   });
 });

@@ -1,12 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { useLayoutEffect, useState } from "preact/hooks";
 import { CollectionStatusScreen } from "#webui/components/context/collection/CollectionScreen";
 import { type UseSkillOverridesReturn } from "#webui/hooks/context/use-skill-overrides";
 import { SkillSlotScreen } from "./SkillSlotScreen";
+import { SkillSlotSelect } from "./SkillSlotSelect";
 import { SkillsPreviewScreen } from "./SkillsPreviewScreen";
 import { type SkillsView, SkillsViewToggle } from "./SkillsViewToggle";
 
@@ -93,6 +94,29 @@ export function SkillsScreen(props: SkillsScreenProps): preact.JSX.Element {
   // Length checked above, so index 0 is present (noUncheckedIndexedAccess).
   const first = slots[0] as (typeof slots)[number];
   const active = slots.find((slot) => slot.name === selected) ?? first;
+
+  // An unreadable file is neither shown nor editable: a save would overwrite it.
+  if (active.readError != null) {
+    return (
+      <CollectionStatusScreen
+        title="Skills"
+        tabSlot={tabSlot}
+        belowHeader={
+          <div className="flex items-center gap-3">
+            <SkillSlotSelect
+              slots={slots}
+              selected={active.name}
+              onSelect={setSelected}
+            />
+            {viewSlot}
+          </div>
+        }
+        onClose={onClose}
+        message={`Can't read ${active.name}.md: ${active.readError}`}
+        tone="error"
+      />
+    );
+  }
 
   return (
     <SkillSlotScreen

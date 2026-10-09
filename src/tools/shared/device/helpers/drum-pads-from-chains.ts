@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { assertDefined } from "#src/shared/error-message.ts";
 import { midiToNoteName } from "#src/shared/pitch.ts";
@@ -98,6 +98,9 @@ export interface DrumChainOptions {
   ) => Record<string, unknown>;
   /** The pad's own path, or null when the rack has none to build from */
   padPath: string | null;
+  includeSample?: boolean;
+  /** Whether the chains can name their automated mixer fields */
+  chainAutomation?: boolean;
 }
 
 export interface ProcessedChain {
@@ -160,14 +163,22 @@ function shownDrumChainInfo(
   chainPath: string | null,
   options: DrumChainOptions,
 ): Record<string, unknown> {
-  const { includeDrumPads, includeChains, depth, maxDepth, readDeviceFn } =
-    options;
+  const {
+    includeDrumPads,
+    includeChains,
+    includeSample = false,
+    chainAutomation = false,
+    depth,
+    maxDepth,
+    readDeviceFn,
+  } = options;
 
   // At the depth limit, count the devices rather than building them.
   if (depth >= maxDepth) {
     const chainInfo = buildChainInfo(chain, {
       path: chainPath,
       deviceCount: chain.getChildCount("devices"),
+      showAutomation: chainAutomation,
     });
 
     chainInfo._hasInstrument = hasInstrumentLazily(chain);
@@ -182,11 +193,14 @@ function shownDrumChainInfo(
       readDeviceFn(chainDevice, {
         includeChains: includeDrumPads && includeChains,
         includeDrumPads: includeDrumPads && includeChains,
+        includeSample,
+        chainAutomation,
         depth: depth + 1,
         maxDepth,
         parentPath: chainPath ? `${chainPath}/d${deviceIndex}` : null,
       }),
     ),
+    showAutomation: chainAutomation,
   });
 
   chainInfo._hasInstrument = chainDevices.some(deviceHasInstrument);
@@ -329,6 +343,9 @@ export function updateDrumPadSoloStates(
  * @param maxDepth - Max depth
  * @param readDeviceFn - readDevice function
  * @param devicePath - The rack's own path in Producer Pal's grammar
+ * @param includeSample - Pass the sample include to nested devices
+ * @param chainAutomation - Whether the chains can name their automated mixer
+ *   fields
  */
 export function processDrumPads(
   device: LiveAPI,
@@ -339,6 +356,8 @@ export function processDrumPads(
   maxDepth: number,
   readDeviceFn: DrumChainOptions["readDeviceFn"],
   devicePath?: string,
+  includeSample = false,
+  chainAutomation = false,
 ): void {
   const chains = device.getChildren("chains");
   // Prefer the path the caller walked in on: a Live path spells a nested rack's
@@ -370,6 +389,8 @@ export function processDrumPads(
         maxDepth,
         readDeviceFn,
         padPath,
+        includeSample,
+        chainAutomation,
       }),
     );
 

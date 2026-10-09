@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   buildSkills,
@@ -9,7 +9,11 @@ import {
 } from "#src/skills/build-skills.ts";
 import { type CallLiveApiFunction } from "../create-mcp-server.ts";
 import * as console from "../node-for-max-logger.ts";
-import { pingRemoteScript } from "../rpc/remote-script/remote-script-client.ts";
+import {
+  remoteScriptPing,
+  type RemoteScriptPing,
+} from "../rpc/remote-script/remote-script-client.ts";
+import { outdatedScript } from "../rpc/remote-script/port/remote-script-version.ts";
 import {
   withConnectAppend,
   type WrappedCallLiveApi,
@@ -32,15 +36,18 @@ import { readSkillOverrides } from "./skill-overrides-store.ts";
  *
  * @param inner - The underlying callLiveApi to wrap
  * @param getContext - Reads the current notation/small-model settings
+ * @param getPing - Reads the remote script ping; pass a shared one to save a
+ *   second ping per connect
  * @returns A callLiveApi that appends the skills block to ppal-connect results
  */
 export function withSkills(
   inner: CallLiveApiFunction,
   getContext: () => BuildSkillsOptions,
+  getPing: () => Promise<RemoteScriptPing> = remoteScriptPing,
 ): WrappedCallLiveApi {
   return withConnectAppend(inner, async () =>
     buildSkills(
-      await withRemoteScriptAnswer(getContext()),
+      await withRemoteScriptAnswer(getContext(), getPing),
       readSkillOverrides(),
       (message) => console.warn(`Producer Pal Skills: ${message}`),
     ),
@@ -48,18 +55,27 @@ export function withSkills(
 }
 
 /**
- * Add whether the Producer Pal remote script answers, which decides whether the
- * skills teach loading plug-ins and Max devices. The small-model document never
- * teaches it, so small-model mode skips the ping.
+ * Add whether a current Producer Pal remote script answers, which decides
+ * whether the skills teach loading plug-ins and Max devices. One too old for
+ * this server counts as none. The small-model document never teaches it, so
+ * small-model mode skips the ping.
  *
  * @param options - The rest of the skills context
+ * @param getPing - Reads the remote script ping
  * @returns The same options, with `remoteScript` set
  */
 export async function withRemoteScriptAnswer(
   options: BuildSkillsOptions,
+  getPing: () => Promise<RemoteScriptPing> = remoteScriptPing,
 ): Promise<BuildSkillsOptions> {
+  if (options.smallModelMode === true) {
+    return { ...options, remoteScript: false };
+  }
+
+  const ping = await getPing();
+
   return {
     ...options,
-    remoteScript: options.smallModelMode !== true && (await pingRemoteScript()),
+    remoteScript: ping.running && outdatedScript(ping.scriptVersion) == null,
   };
 }

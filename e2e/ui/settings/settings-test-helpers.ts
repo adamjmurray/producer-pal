@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Harness for the stubbed settings-modal specs. The chat UI's own stubs already
 // bypass the first-run screen, so this only has to open the modal and read back

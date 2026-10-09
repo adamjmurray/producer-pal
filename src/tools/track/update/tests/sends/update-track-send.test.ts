@@ -1,0 +1,766 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
+
+import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import {
+  type RegisteredMockObject,
+  keepsParamValue,
+  lookupMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import {
+  registerReturnTracks,
+  registerTwoTracksWithSends,
+} from "./send-return-fixtures.ts";
+import { updateTrack } from "../../update-track.ts";
+import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+
+const SNAPPED_SEND = "gainDb read back as shown, not as sent";
+
+describe("updateTrack - send properties", () => {
+  let track123: RegisteredMockObject;
+  let send1: RegisteredMockObject;
+  let send2: RegisteredMockObject;
+  let send3: RegisteredMockObject;
+
+  beforeEach(() => {
+    registerTwoTracksWithSends(["send_1", "send_2"], ["send_3", "send_4"]);
+    track123 = lookupMockObject("123") as RegisteredMockObject;
+
+    registerReturnTracks();
+
+    send1 = registerMockObject("send_1", {});
+    send2 = registerMockObject("send_2", {});
+    send3 = registerMockObject("send_3", {});
+    registerMockObject("send_4", {});
+  });
+
+  it("should set send gain with exact return name", () => {
+    updateTrack({
+      id: "123",
+      sendGainDb: -12,
+      sendReturn: "A-Reverb",
+    });
+
+    expect(send1.set).toHaveBeenCalledWith("display_value", -12);
+  });
+
+  it("gives each track its own sendReturn", () => {
+    const send4 = registerMockObject("send_4", {});
+
+    updateTrack({ id: "123,456", sendGainDb: -12, sendReturn: "A,B" });
+
+    expect(send1.set).toHaveBeenCalledWith("display_value", -12);
+    expect(send4.set).toHaveBeenCalledWith("display_value", -12);
+    expect(send2.set).not.toHaveBeenCalled();
+    expect(send3.set).not.toHaveBeenCalled();
+  });
+
+  it("should set send gain with letter prefix", () => {
+    updateTrack({
+      id: "123",
+      sendGainDb: -6,
+      sendReturn: "A",
+    });
+
+    expect(send1.set).toHaveBeenCalledWith("display_value", -6);
+  });
+
+  it("should set second send with letter prefix", () => {
+    updateTrack({
+      id: "123",
+      sendGainDb: -3,
+      sendReturn: "B",
+    });
+
+    expect(send2.set).toHaveBeenCalledWith("display_value", -3);
+  });
+
+  it("should match a return track letter in lower case", () => {
+    updateTrack({
+      id: "123",
+      sendGainDb: -6,
+      sendReturn: "a",
+    });
+
+    expect(send1.set).toHaveBeenCalledWith("display_value", -6);
+  });
+
+  it("should set send gain to minimum value", () => {
+    updateTrack({
+      id: "123",
+      sendGainDb: -70,
+      sendReturn: "A",
+    });
+
+    expect(send1.set).toHaveBeenCalledWith("display_value", -70);
+  });
+
+  it("should set send gain to maximum value (0 dB)", () => {
+    updateTrack({
+      id: "123",
+      sendGainDb: 0,
+      sendReturn: "A",
+    });
+
+    expect(send1.set).toHaveBeenCalledWith("display_value", 0);
+  });
+
+  it("should match a return track by id", () => {
+    // Two returns named the same thing: no name or letter tells them apart, so
+    // this is the case only an id can address.
+    registerMockObject("return_A", {
+      path: livePath.returnTrack(0),
+      properties: { name: "Verb" },
+    });
+    registerMockObject("return_B", {
+      path: livePath.returnTrack(1),
+      properties: { name: "Verb" },
+    });
+
+    updateTrack({
+      id: "123",
+      sendGainDb: -6,
+      sendReturn: "return_B",
+    });
+
+    expect(send1.set).not.toHaveBeenCalled();
+    expect(send2.set).toHaveBeenCalledWith("display_value", -6);
+  });
+
+  it("names an id that is not a return track in the error", () => {
+    expectSendUnresolved(
+      () =>
+        updateTrack({
+          id: "123",
+          sendGainDb: -12,
+          sendReturn: "123",
+        }),
+      [send1, send2],
+      "123",
+    );
+  });
+
+  // Half a pair names no send, and it names the same non-send for every track
+  // in the list. Refused before any of them is touched.
+  it.each([
+    ["sendGainDb", { sendGainDb: -12 }],
+    ["sendReturn", { sendReturn: "A" }],
+  ])("refuses the call when only %s is provided", (_label, args) => {
+    expect(() => updateTrack({ id: "123", ...args })).toThrow(
+      "sendGainDb and sendReturn must both be specified",
+    );
+    expect(send1.set).not.toHaveBeenCalled();
+    expect(send2.set).not.toHaveBeenCalled();
+  });
+
+  it("should skip when return track not found", () => {
+    // Crucially, no send is touched — a mis-initialized "not found" sentinel would silently
+    // write the wrong send instead of skipping.
+    expectSendUnresolved(
+      () =>
+        updateTrack({
+          id: "123",
+          sendGainDb: -12,
+          sendReturn: "C",
+        }),
+      [send1, send2],
+      "C",
+    );
+  });
+
+  it("should not over-match a return whose name merely starts with the letter", () => {
+    // "A" matches "A-Reverb" (letter-dash prefix) or an exact name — it must NOT
+    // match any name that happens to start with "A" (e.g. "Analog"). Guards the
+    // `+ "-"` in the prefix check.
+    registerMockObject("return_A", {
+      path: livePath.returnTrack(0),
+      properties: { name: "Analog" },
+    });
+
+    expectSendUnresolved(
+      () =>
+        updateTrack({
+          id: "123",
+          sendGainDb: -9,
+          sendReturn: "A",
+        }),
+      [send1, send2],
+      "A",
+    );
+  });
+
+  it("says the track has no sends", () => {
+    // Override mixer_1 with empty sends for this test
+    registerMockObject("mixer_1", {
+      path: livePath.track(0).mixerDevice(),
+      properties: { sends: [] },
+    });
+
+    expectSendRefused(
+      () =>
+        updateTrack({
+          id: "123",
+          sendGainDb: -12,
+          sendReturn: "A",
+        }),
+      [send1, send2],
+      "the track has no sends",
+    );
+  });
+
+  it("lists the returns it could have named instead", () => {
+    // The model has to be able to tell what it could have said instead.
+    expect(() =>
+      updateTrack({ id: "123", sendGainDb: -12, sendReturn: "ZZZ" }),
+    ).toThrow(
+      'no send landed — "ZZZ": no return track matching "ZZZ" (Available: A-Reverb, B-Delay)',
+    );
+  });
+
+  it("says so when the Live Set has no return tracks at all", () => {
+    // Listing nothing reads as a bug; the returns can only be added in Live.
+    registerMockObject("liveSet", {
+      path: livePath.liveSet,
+      properties: { return_tracks: [] },
+    });
+
+    expect(() =>
+      updateTrack({ id: "123", sendGainDb: -12, sendReturn: "A" }),
+    ).toThrow(
+      'no send landed — "A": no return track matching "A" (the Live Set has no return tracks)',
+    );
+  });
+
+  it("says so on every track the call named", () => {
+    // The return tracks belong to the Live Set, so this is resolved once — but
+    // no track named by the call is left without an answer.
+    const result = updateTrack({
+      id: "123,456",
+      sendGainDb: -12,
+      sendReturn: "ZZZ",
+    });
+
+    expect(capturedWarnings()).toStrictEqual([]);
+    expect(result).toStrictEqual(
+      ["123", "456"].map((id) => ({
+        id,
+        ok: false,
+        detail:
+          'no send landed — "ZZZ": no return track matching "ZZZ" (Available: A-Reverb, B-Delay)',
+      })),
+    );
+  });
+
+  it("should set sends on multiple tracks", () => {
+    updateTrack({
+      id: "123,456",
+      sendGainDb: -6,
+      sendReturn: "A",
+    });
+
+    expect(send1.set).toHaveBeenCalledWith("display_value", -6);
+    expect(send3.set).toHaveBeenCalledWith("display_value", -6);
+  });
+
+  describe("sends list", () => {
+    it("matches and reports an all-digit return track name as a string", () => {
+      // The match, and the reported `return`, must both see a string.
+      registerMockObject("return_A", {
+        path: livePath.returnTrack(0),
+        properties: { name: 5678 },
+      });
+      keepsParamValue(send1, -6);
+
+      const result = updateTrack({
+        id: "123",
+        sends: [{ return: "5678", gainDb: -6 }],
+      });
+
+      expect(send1.set).toHaveBeenCalledWith("display_value", -6);
+      // The level landed, so the send has nothing to say and drops out.
+      expect(result).toStrictEqual({ id: "123", path: "t0" });
+    });
+
+    it("sets several sends in one call", () => {
+      updateTrack({
+        id: "123",
+        sends: [
+          { return: "A", gainDb: -6 },
+          { return: "B-Delay", gainDb: -12 },
+        ],
+      });
+
+      expect(send1.set).toHaveBeenCalledWith("display_value", -6);
+      expect(send2.set).toHaveBeenCalledWith("display_value", -12);
+    });
+
+    it("sets the same sends on every track in the list", () => {
+      updateTrack({ id: "123,456", sends: [{ return: "A", gainDb: -6 }] });
+
+      expect(send1.set).toHaveBeenCalledWith("display_value", -6);
+      expect(send3.set).toHaveBeenCalledWith("display_value", -6);
+    });
+
+    it("skips the entry whose return matches nothing and keeps the rest", () => {
+      keepsParamValue(send2, -11.98);
+
+      const result = updateTrack({
+        id: "123",
+        sends: [
+          { return: "ZZZ", gainDb: -6 },
+          { return: "B", gainDb: -12 },
+        ],
+      });
+
+      expect(capturedWarnings()).toStrictEqual([]);
+      expect(send1.set).not.toHaveBeenCalled();
+      expect(send2.set).toHaveBeenCalledWith("display_value", -12);
+      // The one that was written is reported because Live kept another level;
+      // the entry that went nowhere has no level and says why instead.
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0",
+        sends: [
+          {
+            return: "B-Delay",
+            returnId: "return_B",
+            gainDb: -11.98,
+            detail: SNAPPED_SEND,
+          },
+          {
+            return: "ZZZ",
+            ok: false,
+            detail:
+              'no return track matching "ZZZ" (Available: A-Reverb, B-Delay)',
+          },
+        ],
+      });
+    });
+
+    it("honors the scalar pair alongside a list naming another return", () => {
+      updateTrack({
+        id: "123",
+        sendGainDb: -6,
+        sendReturn: "A",
+        sends: [{ return: "B", gainDb: -12 }],
+      });
+
+      expect(send1.set).toHaveBeenCalledWith("display_value", -6);
+      expect(send2.set).toHaveBeenCalledWith("display_value", -12);
+    });
+
+    it("says on the pair's entry that the list replaced it", () => {
+      // A send holds one value, so the caller has to be told which one held.
+      const result = updateTrack({
+        id: "123",
+        sendGainDb: -6,
+        sendReturn: "A",
+        sends: [{ return: "A-Reverb", gainDb: -12 }],
+      });
+
+      expect(sendsOf(result)).toStrictEqual([REPLACED]);
+      expect(capturedWarnings()).toStrictEqual([]);
+      expect(send1.set).toHaveBeenCalledWith("display_value", -12);
+      expect(send1.set).not.toHaveBeenCalledWith("display_value", -6);
+    });
+
+    it("says on the earlier entry that a later one replaced it", () => {
+      const result = updateTrack({
+        id: "123",
+        sends: [
+          { return: "A", gainDb: -6 },
+          { return: "A-Reverb", gainDb: -12 },
+        ],
+      });
+
+      expect(sendsOf(result)).toStrictEqual([REPLACED]);
+      expect(capturedWarnings()).toStrictEqual([]);
+      expect(send1.set).toHaveBeenCalledTimes(1);
+      expect(send1.set).toHaveBeenCalledWith("display_value", -12);
+    });
+
+    it("reports the replaced entry on every track of a multi-track call", () => {
+      const result = updateTrack({
+        id: "123,456",
+        sends: [
+          { return: "A", gainDb: -6 },
+          { return: "A-Reverb", gainDb: -12 },
+        ],
+      });
+
+      expect(result).toStrictEqual([
+        { id: "123", path: "t0", sends: [REPLACED] },
+        { id: "456", path: "t1", sends: [REPLACED] },
+      ]);
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it("says nothing about a collision on a send that never landed", () => {
+      // A rack macro owns the first send, so Live ignored that write. There is
+      // no level it ended up at, and the send's own entry says why.
+      registerMockObject("send_1", { properties: { is_enabled: 0 } });
+
+      const result = updateTrack({
+        id: "123",
+        sends: [
+          { return: "A", gainDb: -6 },
+          { return: "A-Reverb", gainDb: -12 },
+          { return: "B", gainDb: -9 },
+        ],
+      });
+
+      expect(capturedWarnings().join()).not.toContain(
+        "names one return more than once",
+      );
+      expect(sendsOf(result)).toContainEqual({
+        return: "A-Reverb",
+        returnId: "return_A",
+        ok: false,
+        detail: expect.stringContaining(
+          "gainDb is disabled and was not changed",
+        ),
+      });
+    });
+
+    it("fails the replaced entry on a track whose write was refused", () => {
+      // A rack macro owns the colliding send on track 1 only.
+      registerMockObject("send_2", { properties: { is_enabled: 0 } });
+
+      const result = updateTrack({
+        id: "123,456",
+        sends: [
+          { return: "A", gainDb: -6 },
+          { return: "B", gainDb: -9 },
+          { return: "B-Delay", gainDb: -12 },
+        ],
+      });
+
+      const [refused, ok] = result as Array<ReturnType<typeof updateTrack>>;
+      const replaced = (entry: unknown): unknown[] =>
+        sendsOf(entry as ReturnType<typeof updateTrack>).filter(
+          (send) =>
+            (send as { detail?: string }).detail ===
+            "named again later in this call",
+        );
+
+      expect(capturedWarnings()).toStrictEqual([]);
+      expect(replaced(ok)).toHaveLength(1);
+      // The later send was refused, so it replaced nothing: the earlier one is
+      // not written, and says so beside the refusal that says why.
+      expect(replaced(refused)).toStrictEqual([]);
+      expect(sendsOf(refused as ReturnType<typeof updateTrack>)).toStrictEqual([
+        {
+          return: "B-Delay",
+          returnId: "return_B",
+          ok: false,
+          detail: 'not written: "B-Delay" was meant to replace it, but failed',
+        },
+        {
+          return: "B-Delay",
+          returnId: "return_B",
+          ok: false,
+          detail: expect.stringContaining("gainDb is disabled"),
+        },
+      ]);
+    });
+  });
+
+  // A level Live kept is the caller's own number, so the result says nothing
+  // about it. A level Live changed was invisible to the model that asked for it.
+  describe("result", () => {
+    it("says nothing about a send that took the level asked for", () => {
+      keepsParamValue(send1, -12);
+
+      const result = updateTrack({
+        id: "123",
+        sends: [{ return: "A", gainDb: -12 }],
+      });
+
+      expect(send1.set).toHaveBeenCalledWith("display_value", -12);
+      expect(result).toStrictEqual({ id: "123", path: "t0" });
+    });
+
+    it("reports only the send whose level Live changed", () => {
+      keepsParamValue(send1, -11.98);
+      keepsParamValue(send2, -12);
+
+      const result = updateTrack({
+        id: "123",
+        sends: [
+          { return: "A", gainDb: -12 },
+          { return: "B", gainDb: -12 },
+        ],
+      });
+
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0",
+        sends: [
+          {
+            return: "A-Reverb",
+            returnId: "return_A",
+            gainDb: -11.98,
+            detail: SNAPPED_SEND,
+          },
+        ],
+      });
+    });
+
+    it("reports the sendGainDb/sendReturn pair under sends as well", () => {
+      keepsParamValue(send1, -6.02);
+
+      const result = updateTrack({
+        id: "123",
+        sendGainDb: -6,
+        sendReturn: "A",
+      });
+
+      // One send has one shape, whichever param spelled it.
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0",
+        sends: [
+          {
+            return: "A-Reverb",
+            returnId: "return_A",
+            gainDb: -6.02,
+            detail: SNAPPED_SEND,
+          },
+        ],
+      });
+    });
+
+    it("reports a level that reads back as a label instead of a number", () => {
+      keepsParamValue(send1, "-inf");
+
+      expect(
+        updateTrack({ id: "123", sends: [{ return: "A", gainDb: -70 }] }),
+      ).toStrictEqual({
+        id: "123",
+        path: "t0",
+        sends: [
+          {
+            return: "A-Reverb",
+            returnId: "return_A",
+            gainDb: "-inf",
+            detail: SNAPPED_SEND,
+          },
+        ],
+      });
+    });
+
+    it("reports the level Live kept, not the one asked for", () => {
+      keepsParamValue(send1, -70);
+
+      const result = updateTrack({
+        id: "123",
+        sends: [{ return: "A", gainDb: -100 }],
+      });
+
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0",
+        sends: [
+          {
+            return: "A-Reverb",
+            returnId: "return_A",
+            gainDb: -70,
+            detail: SNAPPED_SEND,
+          },
+        ],
+      });
+    });
+
+    it("reports the rounded read-back when it isn't the level asked for", () => {
+      // Live snapped the request to a nearby step and handed back its raw
+      // float32, so the rounded read-back is not the rounded argument.
+      keepsParamValue(send1, -6.333000183105469);
+
+      const result = updateTrack({
+        id: "123",
+        sends: [{ return: "A", gainDb: -6.5 }],
+      });
+
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0",
+        sends: [
+          {
+            return: "A-Reverb",
+            returnId: "return_A",
+            gainDb: -6.33,
+            detail: SNAPPED_SEND,
+          },
+        ],
+      });
+    });
+
+    it("counts the raw float32 of the level asked for as landed", () => {
+      keepsParamValue(send1, -6.333000183105469);
+
+      const result = updateTrack({
+        id: "123",
+        sends: [{ return: "A", gainDb: -6.333333 }],
+      });
+
+      expect(result).toStrictEqual({ id: "123", path: "t0" });
+    });
+
+    // Max serializes an exponent-notation float as a string. Nothing came back
+    // to read, so the level written stands in — and it is the one asked for.
+    it("says nothing when Live answers with a string for the level", () => {
+      keepsParamValue(send1, "-1.000000013351432e-01");
+
+      const result = updateTrack({
+        id: "123",
+        sends: [{ return: "A", gainDb: -0.1 }],
+      });
+
+      expect(result).toStrictEqual({ id: "123", path: "t0" });
+    });
+  });
+
+  it("should combine send update with other properties", () => {
+    updateTrack({
+      id: "123",
+      name: "Test Track",
+      sendGainDb: -12,
+      sendReturn: "B",
+    });
+
+    expect(track123.set).toHaveBeenCalledWith("name", "Test Track");
+    expect(send2.set).toHaveBeenCalledWith("display_value", -12);
+  });
+
+  it("does not read the return tracks when no send was asked for", () => {
+    const liveSet = registerMockObject("liveSet", {
+      path: livePath.liveSet,
+      properties: { return_tracks: children("return_A", "return_B") },
+    });
+
+    updateTrack({ id: "123", name: "Test Track" });
+
+    expect(liveSet.get).not.toHaveBeenCalledWith("return_tracks");
+  });
+
+  it("should not set send when neither param is provided", () => {
+    updateTrack({
+      id: "123",
+      name: "Test Track",
+    });
+
+    // Should only set name, not any send values
+    expect(send1.set).not.toHaveBeenCalled();
+    expect(send2.set).not.toHaveBeenCalled();
+  });
+
+  it("says the track has no mixer", () => {
+    // Override mixer to be non-existent for this test
+    registerMockObject("id 0", {
+      path: livePath.track(0).mixerDevice(),
+    });
+
+    expectSendRefused(
+      () =>
+        updateTrack({
+          id: "123",
+          sendGainDb: -12,
+          sendReturn: "A",
+        }),
+      [send1, send2],
+      "the track has no mixer",
+    );
+  });
+
+  it("says the track has no send for the return", () => {
+    // Setup: 3 return tracks but only 2 sends
+    registerMockObject("liveSet", {
+      path: livePath.liveSet,
+      properties: {
+        return_tracks: children("return_A", "return_B", "return_C"),
+      },
+    });
+    registerMockObject("return_C", {
+      path: livePath.returnTrack(2),
+      properties: { name: "C-Echo" },
+    });
+
+    expectSendRefused(
+      () =>
+        updateTrack({
+          id: "123",
+          sendGainDb: -12,
+          sendReturn: "C", // Matches return track at index 2
+        }),
+      [send1, send2],
+      "the track has no send for this return",
+    );
+  });
+});
+
+/**
+ * A send the track itself couldn't take: nothing was written, and with nothing
+ * else asked of the lone track the call throws naming it, and warns nowhere.
+ * @param call - Runs the updateTrack call
+ * @param sends - The send params that must have stayed untouched
+ * @param detail - What the error says about the send
+ */
+function expectSendRefused(
+  call: () => unknown,
+  sends: RegisteredMockObject[],
+  detail: string,
+): void {
+  expect(call).toThrow(/^no send landed — /);
+  expect(call).toThrow(`": ${detail}`);
+
+  for (const send of sends) {
+    expect(send.set).not.toHaveBeenCalled();
+  }
+
+  expect(capturedWarnings()).toStrictEqual([]);
+}
+
+/**
+ * The `sends` a single-track result reports.
+ * @param result - What updateTrack returned
+ * @returns The sends array, or an empty one when it reported none
+ */
+const REPLACED = {
+  return: "A-Reverb",
+  returnId: "return_A",
+  detail: "named again later in this call",
+};
+
+function sendsOf(result: ReturnType<typeof updateTrack>): unknown[] {
+  return (result as { sends?: unknown[] }).sends ?? [];
+}
+
+/**
+ * A send that named no return track: nothing was written, and with nothing else
+ * asked of the lone track the call throws naming the return as the call spelled
+ * it, and warns nowhere.
+ * @param call - Runs the updateTrack call
+ * @param sends - The send params that must have stayed untouched
+ * @param named - The return, spelled the way the call wrote it
+ */
+function expectSendUnresolved(
+  call: () => unknown,
+  sends: RegisteredMockObject[],
+  named: string,
+): void {
+  expect(call).toThrow(
+    `no send landed — "${named}": no return track matching "${named}"`,
+  );
+
+  for (const send of sends) {
+    expect(send.set).not.toHaveBeenCalled();
+  }
+
+  expect(capturedWarnings()).toStrictEqual([]);
+}

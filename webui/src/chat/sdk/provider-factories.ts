@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
@@ -9,13 +9,10 @@ import { createMistral } from "@ai-sdk/mistral";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { type LanguageModel } from "ai";
-import {
-  isAlwaysOnThinkingModel,
-  isLegacyNonThinkingModel,
-  isLegacyThinkingModel,
-} from "#webui/hooks/settings/config-builders";
+import { createGateway, type LanguageModel } from "ai";
+import { isAdaptiveByDefaultModel } from "#webui/hooks/settings/config-builders";
 import { type Provider } from "#webui/types/settings";
+import { withDefaultUrl } from "#webui/utils/provider-url";
 
 /**
  * Creates an AI SDK LanguageModel instance for the given provider.
@@ -24,7 +21,7 @@ import { type Provider } from "#webui/types/settings";
  * local reasoning models emit as thinking; `@ai-sdk/openai`'s chat model
  * silently drops it). Ollama stays on `@ai-sdk/openai` because its thinking
  * control rides on the `openai` providerOptions namespace. OpenRouter uses its
- * own SDK; Gemini uses `@ai-sdk/google`.
+ * own SDK; Gemini uses `@ai-sdk/google`; Vercel AI Gateway uses `ai`'s own.
  *
  * @param provider - Producer Pal provider identifier
  * @param modelId - Model identifier string
@@ -57,6 +54,9 @@ export function createProviderModel(
         fetch: transformOpenRouterRequest,
       }).chat(modelId);
 
+    case "vercel":
+      return createGateway({ apiKey })(modelId);
+
     case "mistral":
       return createMistral({ apiKey })(modelId);
 
@@ -64,7 +64,7 @@ export function createProviderModel(
       return createOpenAICompatible({
         name: "lmstudio",
         apiKey: apiKey || "not-needed",
-        baseURL: baseUrl ?? "http://localhost:1234/v1",
+        baseURL: withDefaultUrl(baseUrl, "http://localhost:1234/v1"),
         // Without includeUsage the SDK omits `stream_options.include_usage`, so
         // OpenAI-compatible servers never emit a usage chunk and token counts
         // stay undefined (show as 0 in the UI).
@@ -74,7 +74,7 @@ export function createProviderModel(
     case "ollama":
       return createOpenAI({
         apiKey: apiKey || "not-needed",
-        baseURL: baseUrl ?? "http://localhost:11434/v1",
+        baseURL: withDefaultUrl(baseUrl, "http://localhost:11434/v1"),
       }).chat(modelId);
 
     case "custom": {
@@ -160,7 +160,7 @@ function applyAnthropicRewrites(body: AnthropicRequestBody): boolean {
     // runs adaptive thinking. The app omits `thinking` only for the "Off"
     // level, and the @ai-sdk/anthropic provider drops a providerOptions
     // `{type:"disabled"}` before it reaches the wire, so make the choice
-    // explicit here to honor "Off". Legacy (Haiku) and always-on (Fable /
+    // explicit here to honor "Off". Legacy (Haiku 4.5) and always-on (Fable /
     // Mythos, which 400 on disabled) models keep the omitted-thinking body.
     body.thinking = { type: "disabled" };
     modified = true;
@@ -177,7 +177,7 @@ function applyAnthropicRewrites(body: AnthropicRequestBody): boolean {
  * Whether an omitted `thinking` field should be forced to `{type: "disabled"}`.
  * True for adaptive-by-default Anthropic models where omitting `thinking` would
  * otherwise run adaptive thinking (Sonnet 5+); false for legacy enabled-thinking
- * models (Haiku), always-on models (Fable / Mythos) that reject `disabled`, and
+ * models (Haiku 4.5), always-on models (Fable / Mythos) that reject `disabled`, and
  * pre-3.7 models (via the free-text "Other..." input) that reject the `thinking`
  * field entirely — injecting `disabled` on those 400s every send.
  * @param body - Parsed Anthropic request body
@@ -187,9 +187,7 @@ function shouldForceThinkingDisabled(body: AnthropicRequestBody): boolean {
   return (
     body.thinking == null &&
     typeof body.model === "string" &&
-    !isLegacyThinkingModel(body.model) &&
-    !isAlwaysOnThinkingModel(body.model) &&
-    !isLegacyNonThinkingModel(body.model)
+    isAdaptiveByDefaultModel(body.model)
   );
 }
 

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import fs from "node:fs";
 import path from "node:path";
@@ -32,6 +32,7 @@ const BROADCAST_KEYS = [
   "sampleFolder",
   "smallModelMode",
   "tools",
+  "updateDismissed",
 ];
 
 describe("V8 config key parity", () => {
@@ -50,6 +51,7 @@ describe("V8 config key parity", () => {
   it("accepts the keys V8 deliberately ignores", () => {
     expect(() => adapter.liveApiEnabled()).not.toThrow();
     expect(() => adapter.tools()).not.toThrow();
+    expect(() => adapter.updateDismissed()).not.toThrow();
   });
 });
 

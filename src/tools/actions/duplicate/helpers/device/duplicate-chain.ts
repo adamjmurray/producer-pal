@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Copying a rack chain. Live has copy_pad for drum pads but nothing for a rack
 // layer, so this builds one: insert_chain for the chain, then the temp-track
@@ -27,56 +27,25 @@ import {
   formatObjectPath,
   parseObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
-import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   newTargetNotes,
   noteTarget,
   type TargetNotes,
 } from "#src/tools/shared/helpers/target-notes.ts";
-import { type CopyLabels } from "../sources/copy-labels.ts";
 import {
   adjustTrackIndicesForTempTrack,
   canonicalPath,
   withTempTrackCopy,
 } from "./temp-track-copy.ts";
 import { copyChainMixerTo } from "./copy-chain-mixer.ts";
-import { copyToDestinations } from "./copy-per-destination.ts";
 
 /** A chain copy: the new chain, and what didn't finish when something didn't. */
-interface ChainCopy {
+export interface ChainCopy {
   id: string;
   path?: string;
   /** What the copy is missing, when the chain exists but isn't a full copy. */
   detail?: string;
-}
-
-/**
- * Copy one chain to each destination rack a comma-separated toPath names, one
- * entry per destination.
- * @param chain - LiveAPI chain object to copy
- * @param toPath - Destination rack path(s), or omitted to append to its own rack
- * @param source - The source chain, as the caller named it
- * @param labels - The call's names and colors
- * @param count - Number of copies (warns if > 1)
- * @returns One entry per destination, in the order toPath named them
- */
-export function duplicateChainWithPaths(
-  chain: LiveAPI,
-  toPath: string | undefined,
-  source: NamedTarget,
-  labels: CopyLabels,
-  count: number,
-): object[] {
-  return copyToDestinations(
-    chain,
-    toPath,
-    source,
-    labels,
-    count,
-    "chain",
-    duplicateChain,
-  );
 }
 
 /**
@@ -87,7 +56,7 @@ export function duplicateChainWithPaths(
  * @returns The new chain's id and path
  * @throws Error when no chain was created
  */
-function duplicateChain(
+export function duplicateChain(
   chain: LiveAPI,
   toPath: string | undefined,
   name: string | undefined,
@@ -219,7 +188,9 @@ function resolveDestinationRack(
   // A chain goes into a rack, so a toPath naming anything else — a track, a
   // chain, a plain device — has no chain slot to offer.
   if (object == null) {
-    throw new Error(`no destination rack at toPath "${toPath}"`);
+    throw new Error(
+      `no destination rack at toPath "${toPath}"; name a rack, e.g. "t0/d0" or "t0/d0/c+" (not a pad, a chain or a plain device)`,
+    );
   }
 
   const destinationClass = object.getProperty("class_name") as string;
@@ -284,15 +255,12 @@ function rackAtPath(toPath: string): LiveAPI | null {
  * @returns The path with a trailing `c+` taken off
  */
 function rackDestination(toPath: string): string {
-  try {
-    const parsed = parseObjectPath(toPath, "toPath");
+  // The call already refused any entry that doesn't parse.
+  const parsed = parseObjectPath(toPath, "toPath");
 
-    return formatObjectPath(
-      parsed.kind === "new-chain" ? { ...parsed, kind: "device" } : parsed,
-    );
-  } catch {
-    return toPath;
-  }
+  return formatObjectPath(
+    parsed.kind === "new-chain" ? { ...parsed, kind: "device" } : parsed,
+  );
 }
 
 /**

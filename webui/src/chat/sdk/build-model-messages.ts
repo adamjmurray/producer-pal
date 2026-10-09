@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type ReasoningPart } from "@ai-sdk/provider-utils";
 import {
@@ -47,6 +47,16 @@ export const MAX_REQUEST_IMAGES = 20;
 
 /** Mistral's API rejects a request with more than 8 images. */
 export const MISTRAL_MAX_REQUEST_IMAGES = 8;
+
+/**
+ * Whether a model id is a Mistral model, whichever route serves it: OpenRouter
+ * (`mistralai/...`) and Vercel AI Gateway (`mistral/...`) keep the vendor prefix.
+ * @param model - Model id
+ * @returns True for a Mistral model id
+ */
+export function isMistralModelId(model: string): boolean {
+  return /^mistral(ai)?\//i.test(model);
+}
 
 /** Stands in for an image left out by the byte or count cap. */
 export const OMITTED_IMAGE_TEXT =
@@ -134,8 +144,8 @@ type UserContent = UserModelMessage["content"];
 
 /**
  * The images that fit in {@link MAX_REQUEST_IMAGE_BYTES} and `maxImages`,
- * newest message first. Once one doesn't fit, it and everything after it are
- * left out.
+ * newest message first. An image too big for the room left is skipped, and
+ * smaller, older ones can still fit.
  * @param history - The messages the request will carry
  * @param maxImages - Most images the request may carry
  * @returns The images to send
@@ -149,8 +159,12 @@ function imagesWithinBudget(
 
   for (const msg of history.toReversed()) {
     for (const image of msg.images ?? []) {
-      if (image.data.length > room || kept.size === maxImages) {
+      if (kept.size === maxImages) {
         return kept;
+      }
+
+      if (image.data.length > room) {
+        continue;
       }
 
       kept.add(image);

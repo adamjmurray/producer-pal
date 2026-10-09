@@ -1,9 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
+import { tryParseTransform } from "#src/notation/transform/transform-evaluator.ts";
 import { parseAssignments } from "./parse-test-helpers.ts";
 
 describe("Transform Parser - whitespace and comments", () => {
@@ -85,5 +86,11 @@ describe("Transform Parser - whitespace and comments", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]!.parameter).toBe("velocity");
+  });
+
+  it("reads a # opening the text as a comment when explaining a later error", () => {
+    expect(() => tryParseTransform("#(\nvelocity +", 4, 4)).toThrow(
+      'transform syntax error at position 12 (line 2, column 10) near "+": nothing after "+" — add a value or remove it.',
+    );
   });
 });

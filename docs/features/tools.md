@@ -64,6 +64,28 @@ gives you this shape.
 
 <!--@include: ../_generated/ppal-context-output.md-->
 
+### Manage (`ppal-manage`) {#ppal-manage}
+
+- Install the [Producer Pal remote script](/guide/remote-script) into your User
+  Library, without opening the Chat UI. Restart Live afterwards.
+- Add the Producer Pal device to the open Live Set, on a new MIDI track, and
+  install it in your User Library first if needed. Works while Producer Pal
+  isn't running yet, through `npx producer-pal` or the Claude Desktop extension.
+  Needs the remote script.
+- Update the Producer Pal device in the open Live Set to the version your
+  `npx producer-pal` or Claude Desktop extension ships. It replaces the device
+  in place and keeps your project context. Your AI offers this when the device
+  is older. Needs the remote script.
+- Undo and redo in Live's own history, one step or several at a time. One
+  Producer Pal tool call that changed the Live Set is one step. It never removes
+  Producer Pal itself. The history also holds your own edits in Live, so an undo
+  can revert something you did. Needs the remote script.
+- Not available in [small model mode](/features#small-model-mode).
+
+<!--@include: ../_generated/ppal-manage-schema.md-->
+
+<!--@include: ../_generated/ppal-manage-output.md-->
+
 ## Session Tools
 
 ### Playback (`ppal-playback`) {#ppal-playback}
@@ -92,24 +114,28 @@ Live, or make sure your standalone Max is up to date. See
 :::
 
 - Search Live's browser library by name, tags, content kind, device kind, or
-  source category (User Library, Pack, Built-in, Cloud, Plugin, or your sample
-  folder)
+  source category (User Library, Pack, Built-in, Cloud, Plugin, plug-in preset
+  folders, or your sample folder). The other files in plug-in preset folders
+  (`Audio/Presets`), such as sample libraries, are hidden by Live's browser and
+  left out unless you ask for them; plug-in presets there stay listed under
+  Plugin
 - Also includes the user-configured sample folder when set, with results merged
   and de-duplicated against Live's library
-- Sort by `use_count` (Live's persistent usage counter, which surfaces what you
-  actually use most), `mod_date`, or `name`
-- Enumerate available tags with `action: "listTags"` so the AI can discover the
+- Sort by `use-count` (Live's persistent usage counter, which surfaces what you
+  actually use most), `mod-date`, or `name`
+- Enumerate available tags with `action: "list-tags"` so the AI can discover the
   tag vocabulary on your machine, or browse Live's category taxonomy (Sounds,
-  Drums, Genres, …) with `action: "listCategories"`
+  Drums, Genres, …) with `action: "list-categories"`
 - Run many filtered searches in one call by passing `searches` (an array of
   query objects, each with its own filters); results grouped per query, so the
   AI can assemble a whole drum kit in one round trip
-- List the VST/VST3/AU plug-ins Live knows about with `action: "listPlugins"`
+- List the VST/VST3/AU plug-ins Live knows about with `action: "list-plugins"`
   (filter by query, vendor, format, device kind, or subcategory)
-- Rank samples by audio similarity to a seed sample with `action: "findSimilar"`
-  (Live's own similarity index, not Producer Pal listening), or group library
-  samples with identical audio (re-shipped duplicates) with
-  `action: "findDuplicates"`. Both can be narrowed with the search filters
+- Rank samples by audio similarity to a seed sample with
+  `action: "find-similar"` (Live's own similarity index, not Producer Pal
+  listening), or group library samples with identical audio (re-shipped
+  duplicates) with `action: "find-duplicates"`. Both can be narrowed with the
+  search filters
 
 <!--@include: ../_generated/ppal-library-schema.md-->
 
@@ -178,8 +204,8 @@ Live, or make sure your standalone Max is up to date. See
   them says so
 - Route duplicated tracks to source instrument for MIDI layering
 
-Note: Return tracks and devices on return tracks cannot be duplicated (Live API
-limitation).
+Note: Return tracks can't be duplicated. Devices on return and main tracks can
+be copied when the Producer Pal remote script is running.
 
 <!--@include: ../_generated/ppal-duplicate-schema.md-->
 
@@ -344,6 +370,10 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
   has no API for re-creates the clip, which costs its automation envelopes; the
   result says when that applied. A slot past the last scene creates the scenes
   up to it, reported as `created`
+- Write clip automation envelopes on session clips (needs the
+  [remote script](/guide/remote-script) and Live 12.4 or later). Writing one
+  re-enables the parameter's automation if you had moved the parameter by hand;
+  the result notes when it did
 - Split arrangement clips at specified positions
 - Update multiple clips at once
 

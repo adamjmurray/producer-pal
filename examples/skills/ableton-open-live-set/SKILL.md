@@ -52,7 +52,8 @@ Producer Pal in the Set. Without the flag nothing is added. With no path and no
 - Node.js 18+, no npm packages.
 - For `--add-producer-pal` only: the
   [Producer Pal remote script](https://github.com/adamjmurray/producer-pal/tree/main/remote-script)
-  selected as a Control Surface (Live Settings → Tempo & MIDI; port 3349,
+  selected as a Control Surface (Live Settings → Tempo & MIDI; port 3349, else
+  the port in `~/.producer-pal/remote-script-port.txt`;
   `PPAL_REMOTE_SCRIPT_PORT` to override), and the `Producer_Pal` device
   installed in the User Library's Max MIDI Effect folder
   ([install guide](https://producer-pal.org/installation#install-the-device)).
@@ -102,7 +103,8 @@ Exit code 1, with `Error: …` on stderr.
 - **"would not open the Set"** — it was saved by a newer Live. Use `--app` with
   a newer Live if one is installed.
 - **"not allowed assistive access"** — the Accessibility permission is missing
-  or stale. Have the user grant it (toggle it off and on if it's already on).
+  or stale (the script already retried with a fresh System Events). Have the
+  user grant it (toggle it off and on if it's already on).
 - **"did not quit"** — Live is still running after the timeout. The error lists
   any dialog on screen; relay it.
 - **"did not swap Sets" / "No Live window showed"** — timed out. The error lists

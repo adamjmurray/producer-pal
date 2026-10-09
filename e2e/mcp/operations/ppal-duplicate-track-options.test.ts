@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for the ppal-duplicate track options that only real Live can prove:
@@ -15,7 +15,9 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  type CreateTrackResult,
   createTestDeviceAt,
+  getToolErrorMessage,
   parseToolResult,
   parseToolResultWithWarnings,
   setupMcpTestContext,
@@ -204,7 +206,7 @@ describe("ppal-duplicate track options", () => {
     // One warning for the pair, not one each: it is about the call's params,
     // which no copy's entry can speak for.
     expect(warnings).toStrictEqual([
-      "WARNING: withoutClips/withoutDevices ignored: routeToSource always " +
+      "WARNING: withoutClips, withoutDevices ignored: routeToSource always " +
         "copies without clips and devices",
     ]);
   });
@@ -215,9 +217,23 @@ describe("ppal-duplicate track options", () => {
       arguments: { type: "scene", id: "0", routeToSource: true },
     });
 
-    expect(JSON.stringify(result)).toContain(
-      "routeToSource is only supported for type 'track'",
+    expect(getToolErrorMessage(result)).toBe(
+      'Error: routeToSource is only for type "track"; this call has type "scene". Change the type or drop routeToSource.',
     );
+  });
+
+  it("refuses a param the type doesn't read and copies nothing", async () => {
+    const before = (await readTracks()).tracks.length;
+
+    const refused = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: { type: "track", path: "t1", transforms: "velocity = 80" },
+    });
+
+    expect(getToolErrorMessage(refused)).toBe(
+      'Error: transforms is only for type "clip"; this call has type "track". Change the type or drop transforms.',
+    );
+    expect((await readTracks()).tracks.length).toBe(before);
   });
 });
 
@@ -331,5 +347,71 @@ describe("ppal-duplicate from a group track", () => {
     expect(await readDevices("t10")).toStrictEqual([
       expect.objectContaining({ type: "instrument: Operator" }),
     ]);
+  });
+});
+
+describe("ppal-duplicate lists the tracks a group copy took along", () => {
+  /**
+   * What a group copy's entry should say, built from the Set as it is now.
+   * @param copy - The group copy's entry
+   * @returns The detail the entry should carry
+   */
+  async function expectedDetail(copy: DuplicateTrackResult): Promise<string> {
+    const { tracks } = await readTracks();
+    const at = tracks.findIndex((track) => track.id === copy.id);
+    const members = tracks
+      .map((track, index) => ({ track, index }))
+      .filter(({ track }) => track.groupId === copy.id)
+      .map(({ track, index }) => `t${index} (id ${track.id})`);
+
+    expect(at).toBeGreaterThan(-1);
+
+    return members.length === 1
+      ? `also copied the track inside this group track: ${members[0]}`
+      : `also copied the ${members.length} tracks inside this group track: ${members.join(", ")}`;
+  }
+
+  it("names the one track inside a copy of the group", async () => {
+    const parentId = (await readTracks()).tracks[9]!.id;
+    const copy = parseToolResult<DuplicateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: { type: "track", id: parentId },
+      }),
+    );
+
+    await sleep(100);
+
+    expect(copy.detail).toBe(await expectedDetail(copy));
+    expect(copy.detail).toContain("also copied the track inside");
+  });
+
+  it("names every track inside each of several copies, where they are after the last", async () => {
+    const parentId = (await readTracks()).tracks[9]!.id;
+
+    // A second member, inside the group right after the group itself.
+    parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: "t10", name: "Extra Member" },
+      }),
+    );
+    await sleep(100);
+
+    const copies = parseToolResult<DuplicateTrackResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: { type: "track", id: parentId, count: 2 },
+      }),
+    );
+
+    await sleep(100);
+
+    expect(copies).toHaveLength(2);
+
+    for (const copy of copies) {
+      expect(copy.detail).toBe(await expectedDetail(copy));
+      expect(copy.detail).toContain("also copied the 2 tracks inside");
+    }
   });
 });

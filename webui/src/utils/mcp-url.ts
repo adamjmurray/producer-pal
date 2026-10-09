@@ -1,11 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
+
+import { DEFAULT_MCP_URL } from "#src/shared/config";
 
 const VITE_DEV_PORT = "5173";
-const DEFAULT_MCP_PORT = "3350";
-const DEFAULT_MCP_URL = `http://localhost:${DEFAULT_MCP_PORT}/mcp`;
 
 /**
  * Whether the page is served from the Vite dev server (port 5173).

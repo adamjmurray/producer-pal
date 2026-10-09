@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The two suppression axes that come from the RUNTIME rather than from the user:
 // which tools this caller can reach, and who is listening. They share a file
@@ -504,5 +504,59 @@ describe("buildSkills - remote script gating", () => {
 
   it("doesn't list it as dropped, since no tool setting explains it", () => {
     expect(assembleSkills({ tools: ALL_TOOLS }).dropped).toStrictEqual([]);
+  });
+});
+
+describe("buildSkills - clip automation gating", () => {
+  const ALL_TOOLS = [...TOOL_NAMES];
+  const HEADING = "## Clip Automation";
+
+  it("teaches envelopes only while the remote script answers", () => {
+    expect(buildSkills({ tools: ALL_TOOLS })).not.toContain(HEADING);
+    expect(buildSkills({ tools: ALL_TOOLS, remoteScript: true })).toContain(
+      HEADING,
+    );
+  });
+
+  it("still needs a clip tool that reads or writes an envelope", () => {
+    const tools = ALL_TOOLS.filter(
+      (name) => name !== "ppal-read-clip" && name !== "ppal-update-clip",
+    );
+
+    expect(buildSkills({ tools, remoteScript: true })).not.toContain(HEADING);
+    expect(
+      buildSkills({ tools: [...tools, "ppal-read-clip"], remoteScript: true }),
+    ).toContain(HEADING);
+  });
+
+  it("never teaches it in small-model mode", () => {
+    expect(
+      buildSkills({ smallModelMode: true, remoteScript: true }),
+    ).not.toContain(HEADING);
+  });
+});
+
+describe("buildSkills - undo and redo gating", () => {
+  const HEADING = "## Undo & Redo";
+
+  it("teaches it when ppal-manage is on, and says the user's edits are in the history", () => {
+    const skills = buildSkills({ tools: [...TOOL_NAMES] });
+
+    expect(skills).toContain(HEADING);
+    expect(skills).toContain("one edit the user made in Live");
+  });
+
+  it("teaches it when no toolset is given", () => {
+    expect(buildSkills({})).toContain(HEADING);
+  });
+
+  it("drops it when ppal-manage is switched off", () => {
+    const tools = TOOL_NAMES.filter((name) => name !== "ppal-manage");
+
+    expect(buildSkills({ tools })).not.toContain(HEADING);
+  });
+
+  it("is never in small-model mode", () => {
+    expect(buildSkills({ smallModelMode: true })).not.toContain(HEADING);
   });
 });

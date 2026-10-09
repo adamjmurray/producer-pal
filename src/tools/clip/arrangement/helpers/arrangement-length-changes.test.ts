@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -113,6 +113,55 @@ describe("arrangement-length-changes", () => {
 
       // Should call createAudioClipInSession for audio clips
       expect(mockCreateAudioClip).toHaveBeenCalled();
+
+      mockCreateAudioClip.mockRestore();
+      mockTileClipToRange.mockRestore();
+    });
+
+    // Tiling speaks for the clip it tiles, so a scratch clip Live won't remove
+    // is said on that clip's entry.
+    it("says on the clip's entry when tiling's scratch clip stays", () => {
+      setupArrangementMocks({
+        clipProps: {},
+        extraMocks: { "session-123": {}, "arr-456": {} },
+      });
+      requireMockObject(livePath.track(0));
+      overrideCall(requireMockObject(livePath.track(0)), (method: string) =>
+        method === "duplicate_clip_to_arrangement"
+          ? "id arr-456"
+          : USE_CALL_FALLBACK,
+      );
+
+      const mockCreateAudioClip = vi
+        .spyOn(arrangementTilingHelpers, "createAudioClipInSession")
+        .mockReturnValue({
+          clip: { id: "session-123" } as unknown as LiveAPI,
+          slot: {
+            call: () => {
+              throw new Error("Live says no");
+            },
+          } as unknown as LiveAPI,
+        });
+      const mockTileClipToRange = vi
+        .spyOn(arrangementTiling, "tileClipToRange")
+        .mockReturnValue([{ id: "tile1" }]);
+      const reasons = newClipReasons();
+      const mockClip = createMockClip({ props: {} });
+
+      handleArrangementLengthening({
+        clip: mockClip as unknown as LiveAPI,
+        isAudioClip: true,
+        arrangementLengthBeats: 16,
+        currentArrangementLength: 12,
+        currentStartTime: 0,
+        currentEndTime: 12,
+        context: { silenceWavPath: "/test.wav" },
+        reasons,
+      });
+
+      expect([...reasons.said.values()].flat()).toContain(
+        "couldn't remove the scratch session clip (Live says no)",
+      );
 
       mockCreateAudioClip.mockRestore();
       mockTileClipToRange.mockRestore();
@@ -503,6 +552,7 @@ describe("arrangement-length-changes", () => {
         expect.anything(),
         4.0, // tempClipLength = 8 - 4 = 4
         "/test.wav",
+        undefined, // no reportScratch in this call
       );
 
       // Should set warping, looping, and loop_end on the duplicated arrangement clip

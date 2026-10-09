@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Carrying a chain's own mixer onto its copy. Gain and pan travel as-is; sends
 // are the interesting case, because a send is an index into the rack's return

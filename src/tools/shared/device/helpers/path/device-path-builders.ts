@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Names one `chains N` segment. Given the Live path through that chain, so a

@@ -1,10 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   registerMockObject,
   type RegisteredMockObject,
@@ -12,39 +11,7 @@ import {
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-
-/**
- * One 4-bar arrangement MIDI clip on its own track, so a move can't collide
- * with a sibling.
- * @param trackIndex - The track it sits on
- * @returns The track mock, which records the move calls
- */
-function setupClipOnTrack(trackIndex: number): RegisteredMockObject {
-  registerMockObject(clipId(trackIndex), {
-    path: livePath.track(trackIndex).arrangementClip(0),
-    type: "Clip",
-    properties: {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      start_time: 0,
-      end_time: 16,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      trackIndex,
-    },
-  });
-
-  return registerMockObject(`track-${trackIndex}`, {
-    path: livePath.track(trackIndex),
-    type: "Track",
-    properties: { track_index: trackIndex },
-    methods: {
-      duplicate_clip_to_arrangement: () => `id moved-${trackIndex}`,
-      create_midi_clip: () => `id temp-${trackIndex}`,
-      delete_clip: () => null,
-    },
-  });
-}
+import { setupClipOnTrack } from "../move-order/clip-per-track-fixtures.ts";
 
 /**
  * Every position a track took a move at, in call order.
@@ -65,15 +32,6 @@ function movesTo(track: RegisteredMockObject): number[] {
  */
 function movedTo(track: RegisteredMockObject): number | null {
   return movesTo(track)[0] ?? null;
-}
-
-/**
- * The clip id for a track. Not "0": Live reads id 0 as no object at all.
- * @param trackIndex - The track the clip sits on
- * @returns The clip id
- */
-function clipId(trackIndex: number): string {
-  return `10${trackIndex}`;
 }
 
 describe("updateClip - arrangement params per clip", () => {
@@ -206,12 +164,13 @@ describe("updateClip - a toPath coordinate", () => {
     expect(movedTo(tracks[2] as RegisteredMockObject)).toBe(32);
   });
 
-  // An entry that doesn't parse costs its own move and keeps its turn, so the
-  // locator beside it still resolves against the right clip.
-  it("resolves a locator beside an entry that won't parse", async () => {
+  // An entry that parses but names no place a clip can go (a scene) costs its
+  // own move and keeps its turn, so the locator beside it still resolves
+  // against the right clip.
+  it("resolves a locator beside an entry that names no place for a clip", async () => {
     seedChorusLocator();
 
-    await updateClip({ id: "100,101", toPath: "tX,t2[loc:Chorus]" });
+    await updateClip({ id: "100,101", toPath: "s3,t2[loc:Chorus]" });
 
     expect(movedTo(tracks[2] as RegisteredMockObject)).toBe(32);
     expect(movedTo(tracks[0] as RegisteredMockObject)).toBeNull();
@@ -219,30 +178,15 @@ describe("updateClip - a toPath coordinate", () => {
 
   // A clip goes on a lane that exists; ppal-update-track is what adds one. The
   // retired "l=" named the lane an "l+" before it appended, and never shipped.
-  // create-clip and duplicate throw for both, because a lone destination is all
-  // they have; here each one is the entry's own miss.
-  it("reports the retired l= and an l+ on the clip's entry", async () => {
-    const result = await updateClip({
-      id: "100,101",
-      toPath: "t2/l=[5|1],t3/l+[5|1]",
-    });
-
-    expect(result).toStrictEqual([
-      {
-        id: "100",
-        ok: false,
-        detail:
-          'not moved: invalid toPath "t2/l=" - "l=" is not a device, chain, ' +
-          'or drum pad; expected "d<index>", "c<index>", "rc<index>", or "p<note>"',
-      },
-      {
-        id: "101",
-        ok: false,
-        detail:
-          'not moved: invalid toPath "t3/l+[5|1]" - "l+" takes no song ' +
-          'position; name the lane by index, as "t<track>/l<lane>"',
-      },
-    ]);
+  // Neither parses as a destination, so each refuses the whole call, as it does
+  // in create-clip and duplicate.
+  it.each([
+    ["t2/l=[5|1]", '"l=" is not a device, chain, or drum pad'],
+    ["t3/l+[5|1]", '"l+" takes no song position'],
+  ])("refuses the call for %s, moving nothing", async (entry, message) => {
+    await expect(
+      updateClip({ id: "100,101", toPath: `t0[9|1],${entry}`, name: "A,B" }),
+    ).rejects.toThrow(message);
     expect(capturedWarnings()).toStrictEqual([]);
     expect(tracks.map(movedTo)).toStrictEqual([null, null, null, null]);
   });
@@ -298,8 +242,7 @@ describe("updateClip - a toPath coordinate", () => {
     await expect(
       updateClip({ id: "100", toPath: "t1[5|1]", arrangementStart: "9|1" }),
     ).rejects.toThrow(
-      'toPath "t1[5|1]" and arrangementStart both name a ' +
-        "song position; use one",
+      "toPath names the song position on its own - don't send arrangementStart with it",
     );
 
     expect(tracks.map(movedTo)).toStrictEqual([null, null, null, null]);

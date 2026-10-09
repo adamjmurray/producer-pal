@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-update-clip preTransforms (v1.4.11).
@@ -12,6 +12,8 @@
  * ppal-update-clip.test.ts: bare clear/edit (no notes), region-scoped clear,
  * drum-lane remap, and pre-merge ordering. The shorthand forms used here
  * (`v0`, `1|1-1|4: v0`, `C1: C4`) are exactly the small-model-mode subset.
+ * Also checks that a malformed transform's error reaches the model with its fix,
+ * and that a region change with a note edit reports the notes left outside it.
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track.
  * See: e2e/live-sets/e2e-test-set-spec.md
@@ -20,6 +22,8 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -53,6 +57,23 @@ async function expectUpdatedNoteCount(
   await sleep(100);
 
   expect(updated.noteCount).toBe(noteCount);
+}
+
+/**
+ * Apply an update-clip call and return the entry's `detail` line.
+ * @param args - update-clip arguments, including the clip id
+ * @returns The result's detail, if any
+ */
+async function updateClipDetail(
+  args: Record<string, unknown>,
+): Promise<string | undefined> {
+  const updated = parseToolResult<UpdateClipResult & { detail?: string }>(
+    await ctx.client!.callTool({ name: "ppal-update-clip", arguments: args }),
+  );
+
+  await sleep(100);
+
+  return updated.detail;
 }
 
 describe("ppal-update-clip preTransforms", () => {
@@ -115,5 +136,94 @@ describe("ppal-update-clip preTransforms", () => {
 
     expect(notes).toContain("C4");
     expect(notes).not.toContain("C1");
+  });
+});
+
+describe("ppal-update-clip notes outside the region", () => {
+  // Notes outside the region stay in the clip but don't play, and a v0 edit
+  // can't always reach them. The entry has to say so.
+  it("counts the notes a shrink-only length cuts off", async () => {
+    const clipId = await createMidiClip(0, "C3 1|1\nE3 2|1");
+
+    const detail = await updateClipDetail({
+      id: clipId,
+      length: "1bar",
+      notes: "G3 1|2",
+    });
+
+    expect(detail).toBe("1 note is outside the region and won't play");
+  });
+
+  it("counts the notes a far move leaves behind, and they return with the region", async () => {
+    const clipId = await createMidiClip(0, "C3 1|1\nE3 2|1");
+
+    const detail = await updateClipDetail({
+      id: clipId,
+      start: "5|1",
+      length: "2bar",
+      notes: "v0 C3 1|1\nG3 5|1",
+    });
+
+    expect(detail).toBe("2 notes are outside the region and won't play");
+
+    await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, start: "1|1", length: "2bar" },
+    });
+    await sleep(100);
+
+    const notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("C3");
+    expect(notes).toContain("E3");
+  });
+});
+
+describe("ppal-update-clip notes an edit puts outside the region", () => {
+  // A transform can push notes past the clip's end. Live keeps them but never
+  // plays them, so the entry has to say how many.
+  it("counts the notes a transform pushes past the end", async () => {
+    const clipId = await createMidiClip(0, "C3 1|1\nE3 1|3");
+
+    const detail = await updateClipDetail({
+      id: clipId,
+      transforms: "timing += 2bar",
+    });
+
+    expect(detail).toBe("2 notes landed outside the region and won't play");
+  });
+
+  it("counts new notes written past the end", async () => {
+    const clipId = await createMidiClip(0, "C3 1|1");
+
+    const detail = await updateClipDetail({
+      id: clipId,
+      notes: "G3 2|3 A3 3|1",
+    });
+
+    expect(detail).toBe("1 note landed outside the region and won't play");
+  });
+});
+
+describe("ppal-update-clip transform parse errors", () => {
+  // A model reads the parse error to repair its transform, so the error must
+  // name the fix, not just a position — and the clip stays as it was.
+  it("names the fix for a malformed transform and leaves the notes alone", async () => {
+    const clipId = await createMidiClip(0, "v100 C3 D3 1|1");
+    const before = await readClipNotes(clipId);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, transforms: "velocity rand(90,110)" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'missing "=" after "velocity" — write "velocity = rand(90,110)"',
+    );
+
+    await sleep(100);
+
+    expect(await readClipNotes(clipId)).toBe(before);
   });
 });

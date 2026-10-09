@@ -1,11 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { type LiveObjectType } from "#src/types/live-object-types.ts";
+import { isDeviceClass } from "#src/tools/shared/device/is-device-class.ts";
 import { targetLabel } from "./object-path-for-api.ts";
+import { parseObjectPath } from "./object-path.ts";
 
 /** What the tools call each Live class a path or id can reach. */
 const TYPE_WORDS: Partial<Record<LiveObjectType, string>> = {
@@ -19,6 +20,8 @@ const TYPE_WORDS: Partial<Record<LiveObjectType, string>> = {
   DrumChain: "chain",
   DrumPad: "drum-pad",
   DeviceParameter: "device parameter",
+  MixerDevice: "mixer",
+  ChainMixerDevice: "mixer",
 };
 
 /**
@@ -32,7 +35,7 @@ export function validateIdType(id: string, expectedType: string): LiveAPI {
   const object = LiveAPI.from(id);
 
   if (!object.exists()) {
-    throw new Error(`id "${id}" does not exist`);
+    throw new Error(idDoesNotExist(id));
   }
 
   const mismatch = typeMismatch(object, expectedType);
@@ -42,6 +45,31 @@ export function validateIdType(id: string, expectedType: string): LiveAPI {
   }
 
   return object;
+}
+
+/**
+ * The reason an `id` names nothing. Ids are numbers, so one that parses as a
+ * path ("t0/d1") says to send it as `path` instead.
+ * @param id - The id as the caller wrote it
+ * @param noun - What the id was meant to name, when the caller knows
+ * @returns The reason
+ */
+export function idDoesNotExist(id: string, noun?: string): string {
+  const what = noun == null ? "id" : `${noun} with id`;
+
+  return `${what} "${id}" does not exist${pathAsIdHint(id)}`;
+}
+
+/**
+ * The refusal for a call that names no target. Shared so every tool words it
+ * the same way.
+ * @param action - The action that needs a target, for tools with several
+ * @returns The reason
+ */
+export function idOrPathRequired(action?: string): string {
+  const reason = "id or path is required";
+
+  return action == null ? reason : `${reason} for action "${action}"`;
 }
 
 /**
@@ -74,84 +102,7 @@ export function typeMismatch(
  * @returns The published word, or null for a class the tools never name
  */
 export function publishedType(type: LiveObjectType): string | null {
-  return type.endsWith("Device") ? "device" : (TYPE_WORDS[type] ?? null);
-}
-
-interface ValidateIdTypesOptions {
-  skipInvalid?: boolean;
-}
-
-/**
- * Validates multiple IDs match expected type
- * @param ids - Array of IDs to validate
- * @param expectedType - Tool-level type (e.g., "track", "device", "drum-pad")
- * @param options - Validation options
- * @param options.skipInvalid - If true, log warnings and skip invalid IDs
- * @returns Array of valid LiveAPI instances
- * @throws Only if skipInvalid=false and any ID is invalid
- */
-export function validateIdTypes(
-  ids: string[],
-  expectedType: string,
-  options: ValidateIdTypesOptions = {},
-): LiveAPI[] {
-  return validateObjectTypes(
-    ids.map((id) => ({ id, object: LiveAPI.from(id) })),
-    expectedType,
-    options,
-  );
-}
-
-/** An id and the object it resolved to. */
-export interface IdentifiedObject {
-  id: string;
-  object: LiveAPI;
-}
-
-/**
- * The same check as validateIdTypes, for a caller that already resolved the
- * ids. Resolving one twice is not free, and a tool with its own check to run
- * first would otherwise pay for both.
- * @param targets - Ids paired with the objects they resolved to
- * @param expectedType - Tool-level type (e.g., "track", "device", "drum-pad")
- * @param options - Validation options
- * @param options.skipInvalid - If true, log warnings and skip invalid objects
- * @returns Array of valid LiveAPI instances
- * @throws Only if skipInvalid=false and any object is invalid
- */
-export function validateObjectTypes(
-  targets: IdentifiedObject[],
-  expectedType: string,
-  { skipInvalid = false }: ValidateIdTypesOptions = {},
-): LiveAPI[] {
-  const validObjects: LiveAPI[] = [];
-
-  for (const { id, object } of targets) {
-    // Check existence
-    if (!object.exists()) {
-      if (skipInvalid) {
-        console.warn(`id "${id}" does not exist`);
-        continue;
-      } else {
-        throw new Error(`id "${id}" does not exist`);
-      }
-    }
-
-    const mismatch = typeMismatch(object, expectedType);
-
-    if (mismatch != null) {
-      if (skipInvalid) {
-        console.warn(mismatch);
-        continue;
-      } else {
-        throw new Error(mismatch);
-      }
-    }
-
-    validObjects.push(object);
-  }
-
-  return validObjects;
+  return isDeviceClass(type) ? "device" : (TYPE_WORDS[type] ?? null);
 }
 
 /**
@@ -173,7 +124,7 @@ function isTypeMatch(
     case "clip":
       return actualType === "Clip";
     case "device":
-      return actualType.endsWith("Device");
+      return isDeviceClass(actualType);
     case "chain":
       return actualType === "Chain" || actualType === "DrumChain";
     case "drum-pad":
@@ -186,4 +137,25 @@ function isTypeMatch(
     default:
       return false;
   }
+}
+
+/**
+ * The advice for an id that is really a path, or "" for anything else.
+ * @param id - The id as the caller wrote it
+ * @returns The advice, or ""
+ */
+function pathAsIdHint(id: string): string {
+  // A real id is all digits. The letter test also keeps the legacy numeric
+  // path spellings ("2", "2/3") out of the parser.
+  if (!/[a-z]/i.test(id)) {
+    return "";
+  }
+
+  try {
+    parseObjectPath(id, "id", true);
+  } catch {
+    return "";
+  }
+
+  return `; "${id.trim()}" is a path, so send it as path, not id`;
 }

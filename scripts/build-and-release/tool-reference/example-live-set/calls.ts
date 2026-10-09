@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // One example call per tool, run against the example Live Set to produce the
 // output shown in the tool reference. Read tools ask for everything ("*") so
@@ -23,6 +23,7 @@ const ALL = ["*"];
 export const TOOL_EXAMPLES: ToolExample[] = [
   { toolName: "ppal-connect", args: {} },
   { toolName: "ppal-context", args: { action: "read" } },
+  { toolName: "ppal-manage", args: { action: "install-remote-script" } },
 
   { toolName: "ppal-playback", args: { action: "play-scene", path: "s0" } },
   { toolName: "ppal-select", args: { path: "t0/s0" } },
@@ -93,8 +94,8 @@ export const TOOL_EXAMPLES: ToolExample[] = [
     args: {
       path: "live_set",
       operations: [
-        { type: "getProperty", property: "tempo" },
-        { type: "getChildIds", property: "tracks" },
+        { type: "get-property", property: "tempo" },
+        { type: "get-child-ids", property: "tracks" },
       ],
     },
   },

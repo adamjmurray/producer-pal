@@ -8,6 +8,16 @@ Upgrading takes two steps for most people. The latest version is
 v{{ $frontmatter.version }}
 ([what's new?](https://github.com/adamjmurray/producer-pal/releases/latest)).
 
+::: tip Let your AI do it
+
+If you use `npx producer-pal` or the Claude Desktop extension and have the
+[remote script](/guide/remote-script), update your AI app first (step 2 and
+[Claude Desktop](#only-if-you-use-claude-desktop) below), then ask your AI to
+update Producer Pal. It installs the new device in your User Library and swaps
+it into the open Live Set.
+
+:::
+
 ## 1. Replace the Max for Live device
 
 Download the new

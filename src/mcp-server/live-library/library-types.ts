@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Shared types for Live library queries (ppal-library tool routes).
@@ -71,20 +71,21 @@ export type LibraryItemType = "loop" | "oneshot" | "impulse-response";
 
 /**
  * Where in Live's library a file lives. Mostly collapses Live's
- * `folder_kind` integers; "sampleFolder" is the special case for files
+ * `folder_kind` integers; "sample-folder" is the special case for files
  * found via the user-configured custom sample folder (V8 filesystem
  * scan, not in Live's DB).
  */
 export type LibrarySource =
-  | "sampleFolder"
+  | "sample-folder"
   | "user"
   | "pack"
   | "builtin"
   | "cloud"
-  | "plugin";
+  | "plugin"
+  | "preset-folder";
 
 /** Sort order for search results */
-export type LibrarySort = "use_count" | "mod_date" | "name";
+export type LibrarySort = "use-count" | "mod-date" | "name";
 
 export interface LibrarySearchArgs {
   query?: string;
@@ -186,6 +187,8 @@ export interface LibrarySearchResult {
   stalenessRisk?: StalenessRisk;
   /** Set when items is empty due to a discoverable failure (e.g. DB missing). */
   detail?: string;
+  /** Set when matching files in plug-in preset folders were left out. */
+  note?: string;
 }
 
 /** findSimilar args: the search filter set (candidate constraints) plus the
@@ -218,6 +221,8 @@ export interface LibraryFindSimilarResult {
   /** Set when items is empty due to a discoverable cause (seed not in the
    * library, seed not analyzed, or DB missing). */
   detail?: string;
+  /** Set when matching files in plug-in preset folders were left out. */
+  note?: string;
 }
 
 /** A set of library files sharing one audio fingerprint — a byte-identical
@@ -237,6 +242,8 @@ export interface LibraryFindDuplicatesResult {
   stalenessRisk?: StalenessRisk;
   /** Set when groups is empty due to a discoverable cause (DB missing). */
   detail?: string;
+  /** Set when matching files in plug-in preset folders were left out. */
+  note?: string;
 }
 
 /** One query in a `searches` fan-out: the single-search filter set plus an
@@ -253,6 +260,8 @@ export interface LibraryBatchEntry {
   items: LibraryItem[];
   /** Set when items is empty due to a discoverable failure (e.g. DB missing). */
   detail?: string;
+  /** Set when matching files in plug-in preset folders were left out. */
+  note?: string;
 }
 
 export interface LibraryBatchResult {

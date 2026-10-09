@@ -43,6 +43,58 @@ reports where Live's User Library is (read from its browser database), what is
 installed there, and what `/ping` says is running; `POST /remote-script/install`
 writes the folder.
 
+The script updates separately from the device, so it drifts. Both the chat UI
+header and `ppal-connect` flag it, using one rule (`remoteScriptAttention` in
+`src/shared/version-check.ts`): **update** when the installed copy differs from
+this build and isn't newer (`updateAvailable`), **restart** when Live runs a
+different version than the installed one, in either direction (after an update
+or a downgrade). Both use `!==` rather than `isNewerVersion`, which can't order
+two pre-releases of one version (`-rc1` vs `-rc2`). Nothing is flagged when the
+script isn't installed or another program answers on the port.
+
+- **Chat UI:** a `(script update)` or `(restart Live)` badge beside the version
+  opens Settings → Remote Script. It reads `GET /remote-script` on load, on
+  window focus, and when the MCP connection comes back (Live restarted). A later
+  read that succeeds clears it; a failed read leaves it as it was. It also
+  follows the tab's own reads.
+- **`ppal-connect`:** `withRemoteScriptNotice`
+  (`src/mcp-server/helpers/connect/remote-script-notice-inject.ts`) appends a
+  `remoteScript:` line after the portal line: not installed, behind this build,
+  installed but not running, needing a Live restart, or just the running
+  version. It points at `ppal-manage` to install when the caller has it, else at
+  the Chat UI. It shares the skills' `/ping` for the connect
+  (`connect-ping.ts`), reads the installed version off disk, and gives up after
+  1.5 s. A status that fails or times out adds no line.
+
+## The device install
+
+The portal (plain Node) can copy the bundled `Producer_Pal.amxd` into the User
+Library's `Presets/MIDI Effects/Max MIDI Effect/`, the folder the remote
+script's `mfl-device` lookup and the docs use. The code is `src/portal/setup/`:
+`deviceFileStatus` compares the installed file with the bundled one (by the
+`const VERSION = "x.y.z"` line a frozen device contains, else by bytes), and
+`installDevice` copies to a temp file and renames, so a failed write keeps the
+old device. A device that's newer, or can't be placed by version, is skipped
+unless `force` is set. Other `Producer_Pal*.amxd` copies in the library are
+reported and never deleted, because a second copy makes adding the device to a
+Set ambiguous.
+
+Both install paths share `rpc/remote-script/user-library/`: its
+`user-library-fs.ts` holds every fs call on a User Library path (the CodeQL rule
+in its header), and `user-library-folder.ts` validates the folder. A failure
+after something changed comes back as a `failed` result that says what changed,
+not a throw.
+
+## Warnings ride inside the response JSON
+
+V8 puts a request's warnings in a `warnings?: string[]` field on the response
+object, the same way `errorCode` travels. Node's `handleLiveApiResult` pulls it
+off, collapses repeats and appends `WARNING:` content items. Nothing follows the
+terminator on the wire: `END_OF_CHUNKS` is only there to tell an empty payload
+from no payload, which a bare `join("")` would report as the same vague
+`JSON.parse` failure. The flattening to text items is for every transport, since
+MCP results have no warnings field and the model reads only `content`.
+
 ## Per-request assembly
 
 Three settings vary per caller rather than per device. Each rides an HTTP
@@ -73,6 +125,38 @@ a sparse map (absent = enabled), and the header must be set when the transport
 is built — before `listTools` could reveal the catalog a whitelist would need.
 Together these are what lets one server serve a full-strength orchestrator and
 several narrowly-scoped subagent workers concurrently.
+
+## Portal version
+
+The portal and the device are updated separately, so they drift. The portal
+sends its own version on every request in `PORTAL_VERSION_HEADER`
+(`src/shared/config.ts`). It has to be a header: the server is stateless, so MCP
+`clientInfo` from `initialize` is gone by the time a tool is called. V8 can't
+see headers, so `withPortalVersion`
+(`src/mcp-server/helpers/connect/portal-version-inject.ts`) appends a
+`portalVersion: <version>` block to the `ppal-connect` result. When the versions
+differ the block adds one sentence saying which side is older and to update it.
+A caller with no header (chat UI, direct HTTP clients) gets no block.
+
+## What the portal carries
+
+The portal is plain Node with no repo beside it, so anything it installs has to
+ship with it:
+
+- **The remote script** is embedded in the bundle by `embedRemoteScript()`, the
+  same plugin the device bundle uses. The portal never reads `remote-script/`
+  from disk.
+- **The frozen device** (`Producer_Pal.amxd`, ~10 MB) is a plain file next to
+  `producer-pal-portal.js`, in the npm package and in the mcpb. It is not
+  embedded: base64 in the bundle would be parsed on every start for a feature
+  used about once, and the device's own bundle must never be able to reach it,
+  or the .amxd would contain itself. `findBundledDevice()`
+  (`src/portal/setup/bundled-device.ts`) locates it and returns null when none
+  shipped.
+
+Only `npm run release:package` puts the device there, because it exists only
+after the manual freeze. Every other build (dev, CI, e2e) removes any copy and
+runs in "no device bundled" mode. See `dev/process/releasing.md`.
 
 Notation is the one axis that crosses the runtime boundary. The other two are
 settled entirely Node-side, but notation also decides how V8 parses and formats

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /** Extensions accepted for text import — the single source the picker's accept
  *  filter and the drag-drop guard both derive from, so the two never diverge. */

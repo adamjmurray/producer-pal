@@ -1,18 +1,28 @@
 # Producer Pal
 # Copyright (C) 2026 Adam Murray
 # AI assistance: Claude (Anthropic)
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 """The HTTP front door. Runs on its own thread and never touches the Live API."""
 
 import json
+import os
+import selectors
+import socket
+import sys
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from threading import Thread
+from threading import Lock, Thread
 from urllib.parse import parse_qs, urlparse, urlsplit
 
 # A Host outside these is a DNS-rebinding page reaching us under its own name.
 LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
+
+# Where we tell clients which port we got. The MCP server reads it; no file
+# means an older script on 3349.
+PORT_FILE = os.path.join(
+    os.path.expanduser("~"), ".producer-pal", "remote-script-port.txt"
+)
 
 
 class BridgeHTTPServer:
@@ -21,27 +31,48 @@ class BridgeHTTPServer:
     `dispatch(method, path, params)` is called on an HTTP worker thread and must
     return `(status, payload)`. It is responsible for hopping to Live's main
     thread.
+
+    Takes the first of `ports` it can bind, since another Live (or another
+    program) may hold the usual one, and records it in `port_file`.
     """
 
-    def __init__(self, port, dispatch, log):
-        self._port = port
+    def __init__(self, ports, dispatch, log, port_file=PORT_FILE):
+        self._ports = tuple(ports)
         self._dispatch = dispatch
         self._log = log
+        self._port_file = port_file
         self._server = None
+        self._selector = None
         self._thread = None
+        # The port we bound, or None before `start` succeeds.
+        self.port = None
 
     def start(self):
-        """Bind the port and start serving. Returns True on success."""
-        try:
-            self._server = _Server(("127.0.0.1", self._port), _Handler)
-        except OSError as err:
-            self._log("could not bind port %s: %s" % (self._port, err))
+        """Bind a port and start serving. Returns True on success."""
+        for port in self._ports:
+            if _answers(port):
+                self._log("port %s is in use" % port)
+                continue
+            try:
+                self._server = _Server(("127.0.0.1", port), _Handler)
+            except OSError as err:
+                self._log("could not bind port %s: %s" % (port, err))
+                continue
+            self.port = port
+            break
+        else:
+            self._log("no free port among %s" % ", ".join(map(str, self._ports)))
             return False
+        # Not `select.select`: it raises for fds past FD_SETSIZE, and Live has
+        # many open.
+        self._selector = selectors.DefaultSelector()
+        self._selector.register(self._server.socket, selectors.EVENT_READ)
         self._server.dispatch = self._dispatch
         self._server.log = self._log
         self._thread = Thread(target=self._serve, name="Producer Pal", daemon=True)
         self._thread.start()
-        self._log("listening on http://127.0.0.1:%s" % self._port)
+        self._log("listening on http://127.0.0.1:%s" % self.port)
+        self._write_port_file()
         return True
 
     def stop(self):
@@ -51,7 +82,34 @@ class BridgeHTTPServer:
         self._server.shutdown()
         self._server.server_close()
         self._server = None
+        self._selector.close()
+        self._selector = None
         self._log("stopped")
+
+    def busy(self):
+        """Whether a connection is waiting to be accepted or a request is in progress.
+
+        Main thread only, like `stop`. Never blocks.
+        """
+        if self._server is None:
+            return False
+        if self._server.in_progress():
+            return True
+        try:
+            return bool(self._selector.select(timeout=0))
+        except (OSError, ValueError):
+            return False
+
+    def _write_port_file(self):
+        try:
+            os.makedirs(os.path.dirname(self._port_file), exist_ok=True)
+            # Replace in one step so a reader never sees half a number.
+            temp = "%s.tmp.%s" % (self._port_file, os.getpid())
+            with open(temp, "w") as file:
+                file.write("%s\n" % self.port)
+            os.replace(temp, self._port_file)
+        except OSError as err:
+            self._log("could not write %s: %s" % (self._port_file, err))
 
     def _serve(self):
         try:
@@ -61,12 +119,61 @@ class BridgeHTTPServer:
 
 
 class _Server(ThreadingHTTPServer):
-    allow_reuse_address = True
+    # On Windows this lets a second bind succeed on a port already in use,
+    # so the fallback to the next port would never happen.
+    allow_reuse_address = sys.platform != "win32"
     daemon_threads = True
+    # Requests queue while Live's main thread is busy; the default of 5 refuses
+    # a burst (one lookup asks every browser section at once).
+    request_queue_size = 32
+
+    def __init__(self, *args, **kwargs):
+        # Request sockets, from accept until the response is written.
+        self._active = set()
+        self._active_lock = Lock()
+        self._accepting = False
+        super().__init__(*args, **kwargs)
+
+    def server_activate(self):
+        super().server_activate()
+        # Without a timeout, accept() can block after the client dropped, and
+        # `_accepting` would stay set, so every tick would sleep its budget.
+        # Accepted sockets are still blocking.
+        self.socket.settimeout(0.5)
+
+    def in_progress(self):
+        with self._active_lock:
+            return self._accepting or bool(self._active)
+
+    def untrack(self, request):
+        """Stop counting a request. Safe to call twice."""
+        with self._active_lock:
+            self._active.discard(request)
+
+    def get_request(self):
+        # Set before accept(): once it returns, the connection has left the
+        # backlog, and this thread may wait for the GIL before it's tracked.
+        self._accepting = True
+        try:
+            request, address = super().get_request()
+            with self._active_lock:
+                self._active.add(request)
+            return request, address
+        finally:
+            self._accepting = False
+
+    def shutdown_request(self, request):
+        # Runs on every path that ends a request: after the handler, when
+        # verify_request refuses, and when process_request raises.
+        self.untrack(request)
+        super().shutdown_request(request)
 
 
 class _Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
+    # Seconds a socket read or write may stall. A connection that stops sending
+    # counts as busy, and each tick sleeps while anything is busy.
+    timeout = 10
 
     def do_GET(self):
         if not self._allowed():
@@ -131,11 +238,30 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
+        # One request per connection. A kept-alive one outlives a Set reload,
+        # which replaces the bridge, so its next request would queue on the old
+        # bridge and never run.
+        self.send_header("Connection", "close")
+        self.close_connection = True
         self.end_headers()
         self.wfile.write(data)
 
     def log_message(self, fmt, *args):
         self.server.log("http: " + (fmt % args))
+
+
+def _answers(port):
+    """Whether something already accepts connections on 127.0.0.1:`port`.
+
+    Binding alone can't tell: with SO_REUSEADDR (kept on macOS so a quick
+    restart isn't refused during TIME_WAIT) a bind to 127.0.0.1 succeeds even
+    when another program listens on the wildcard address.
+    """
+    try:
+        socket.create_connection(("127.0.0.1", port), timeout=0.25).close()
+        return True
+    except OSError:
+        return False
 
 
 def _hostname(host):

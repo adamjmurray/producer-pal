@@ -1,11 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // the entry point / loader script for the MCP server running inside Ableton Live via Node for Max
 import Max from "max-api";
-import { BUILD_SHA, VERSION } from "#src/shared/config.ts";
+import { BUILD_SHA, DEFAULT_MCP_PORT, VERSION } from "#src/shared/config.ts";
 import { createExpressApp } from "./create-express-app.ts";
 import { isConfigDirInert } from "./helpers/config-store/config-markdown-store.ts";
 import { registerGlobalContextNodeRoutes } from "./helpers/global-context/global-context-node-routes.ts";
@@ -29,7 +29,7 @@ interface ServerError extends Error {
 // Cast process to access Node.js argv (max-globals.d.ts has limited process type)
 const args = (process as unknown as { argv: string[] }).argv;
 
-let port = 3350;
+let port = DEFAULT_MCP_PORT;
 
 for (const [index, arg] of args.entries()) {
   if (arg === "port") {

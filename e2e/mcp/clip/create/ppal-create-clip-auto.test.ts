@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-create-clip auto, which drives Live's real transport:
@@ -13,6 +13,7 @@
  */
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  getToolWarnings,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -109,6 +110,23 @@ describe("ppal-create-clip auto", () => {
     const t3Clip = (await readNeighborClips())[0]!;
 
     expect(t3Clip.playing || t3Clip.triggered).toBe(true);
+  });
+
+  // auto launches clip slots, so a call that made none says it did nothing.
+  it("warns that auto did nothing for an arrangement-only call", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}[941|1]`,
+        notes: "C3 1|1",
+        length: "1bar",
+        auto: "play-scene",
+      },
+    });
+
+    expect(getToolWarnings(result)).toStrictEqual([
+      "WARNING: auto ignored: it launches clip slots, and none got a clip",
+    ]);
   });
 
   it("leaves the transport alone without auto", async () => {

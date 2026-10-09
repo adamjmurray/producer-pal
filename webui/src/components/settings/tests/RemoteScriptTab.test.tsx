@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -255,6 +255,82 @@ describe("RemoteScriptTab", () => {
     );
   });
 
+  it("asks for a restart when Live runs a newer copy than the installed one", async () => {
+    await renderTab({
+      installed: true,
+      installedVersion: "1.2.0",
+      running: true,
+      runningVersion: "1.3.0",
+    });
+
+    expect(screen.getByTestId("remote-script-restart").textContent).toBe(
+      "Restart Live to load v1.2.0.",
+    );
+  });
+
+  it("asks for a restart between two pre-releases of one version", async () => {
+    await renderTab({
+      installed: true,
+      installedVersion: "1.2.0-rc2",
+      running: true,
+      runningVersion: "1.2.0-rc1",
+    });
+
+    expect(screen.getByTestId("remote-script-restart").textContent).toBe(
+      "Restart Live to load v1.2.0-rc2.",
+    );
+  });
+
+  it("offers a plain Install for a typed path the status doesn't describe", async () => {
+    await renderTab({
+      installed: true,
+      installedVersion: "1.1.0",
+      updateAvailable: true,
+    });
+
+    const install = screen.getByTestId("remote-script-install");
+
+    expect(install.textContent).toBe("Update");
+
+    fireEvent.input(screen.getByTestId("remote-script-path"), {
+      target: { value: "/elsewhere" },
+    });
+
+    await waitForHookState(() => expect(install.textContent).toBe("Install"));
+  });
+
+  it("keeps a typed path when a Refresh finds a different User Library", async () => {
+    await renderTab({ userLibrary: null });
+
+    fireEvent.input(screen.getByTestId("remote-script-path"), {
+      target: { value: "/mine" },
+    });
+    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
+    fireEvent.click(screen.getByTestId("remote-script-refresh"));
+
+    await waitForHookState(() =>
+      expect(screen.getByText("Is this your User Library?")).toBeTruthy(),
+    );
+    expect(
+      (screen.getByTestId("remote-script-path") as HTMLInputElement).value,
+    ).toBe("/mine");
+  });
+
+  it('drops "Installed to" when the follow-up status read fails', async () => {
+    await renderTab();
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ path: `${USER_LIBRARY}/Remote Scripts/Producer_Pal` }),
+    );
+    fetchMock.mockRejectedValueOnce(new Error("Failed to fetch"));
+    fireEvent.click(screen.getByTestId("remote-script-install"));
+
+    await waitForHookState(() =>
+      screen.getByTestId("remote-script-load-error"),
+    );
+    expect(screen.queryByTestId("remote-script-installed-path")).toBeNull();
+  });
+
   it("fills in a User Library a later Refresh finds", async () => {
     await renderTab({ userLibrary: null });
 
@@ -352,6 +428,24 @@ describe("RemoteScriptTab", () => {
     });
 
     expect(summary).toBe("Installed v1.2.0 (running v1.2.0)");
+  });
+
+  it("doesn't mention another program on the port when nothing is installed", async () => {
+    const summary = await renderTab({ otherOnPort: 3349 });
+
+    expect(summary).toBe("Not installed");
+  });
+
+  it("says it again for an installed script that isn't running", async () => {
+    const summary = await renderTab({
+      installed: true,
+      installedVersion: "1.2.0",
+      otherOnPort: 3351,
+    });
+
+    expect(summary).toBe(
+      "Installed v1.2.0 (not running; another program answers on port 3351)",
+    );
   });
 
   it("omits the Live version from the installed-elsewhere summary too", async () => {

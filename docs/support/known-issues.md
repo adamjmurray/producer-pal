@@ -4,7 +4,7 @@ Known bugs and rough edges.
 
 ::: tip Looking for what Producer Pal can't do?
 
-Automation and clip envelopes, VST/AU plug-in internals, audio analysis and
+Clip envelopes lost on some moves, VST/AU plug-in internals, audio analysis and
 synthesis, drum pitch maps, and lengthening looped arrangement clips are
 **[Limitations](/features/limitations)**: design boundaries rather than bugs, so
 they aren't listed here.
@@ -13,17 +13,22 @@ they aren't listed here.
 
 ## Undo/Redo Behavior
 
-Live groups all Live API changes into a single undo step until you interact with
-Live's UI (clicking, typing, etc.). So if you make multiple requests to Producer
-Pal without clicking in Live between them, Cmd+Z / Ctrl+Z may undo everything at
-once. On the other hand, heavier operations can get split across multiple undo
-steps, so you might need to press undo several times.
+With the [remote script](/guide/remote-script) installed, each Producer Pal
+request is its own undo step, so Cmd+Z / Ctrl+Z undoes one request at a time.
+The AI can undo and redo for you too (the [Manage](/features/tools#ppal-manage)
+tool). That uses Live's own history, which also holds your edits in Live, so an
+undo can revert something you did.
 
-This comes from Live's own undo model as exposed through the Live API, not a Max
-for Live limitation specific to Producer Pal.
+Without it, Live groups all Live API changes into a single undo step until you
+interact with Live's UI (clicking, typing, etc.). So if you make multiple
+requests to Producer Pal without clicking in Live between them, Cmd+Z / Ctrl+Z
+may undo everything at once. On the other hand, heavier operations can get split
+across multiple undo steps, so you might need to press undo several times. This
+comes from Live's own undo model as exposed through the Live API.
 
-**Workaround:** Save your Live Set before big changes. Click somewhere in Live's
-UI between requests if you want separate undo steps.
+**Workaround:** Install the remote script. Without it, save your Live Set before
+big changes, and click somewhere in Live's UI between requests if you want
+separate undo steps.
 
 ## Recent Project Context Can Be Lost on a Device Upgrade (Pre-2.1.0 Devices)
 

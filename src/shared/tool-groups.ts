@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The server's tool catalog, grouped. One table behind the chat UI's Tools tab
 // and the portal's `--tools` / `--disable-tools` flags, so the two can't drift.
@@ -50,6 +50,12 @@ export const CONNECT_TOOL_ID = "ppal-connect";
  */
 export const CONTEXT_TOOL_ID = "ppal-context";
 
+/**
+ * The tool that installs the remote script and undoes and redoes. Connect and
+ * the remote script errors point at it only while it is on.
+ */
+export const MANAGE_TOOL_ID = "ppal-manage";
+
 /** The `ppal-` prefix every server tool name carries. */
 export const TOOL_NAME_PREFIX = "ppal-";
 
@@ -69,7 +75,7 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   {
     alias: "core",
     label: "Core",
-    toolIds: [CONNECT_TOOL_ID, CONTEXT_TOOL_ID],
+    toolIds: [CONNECT_TOOL_ID, CONTEXT_TOOL_ID, MANAGE_TOOL_ID],
   },
   {
     alias: "session",

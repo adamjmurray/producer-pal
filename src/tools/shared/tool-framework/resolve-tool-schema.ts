@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // One place that turns a tool's raw inputSchema into the two schemas every
 // caller needs: the one that validates and the one that gets published. Both
@@ -49,11 +49,17 @@ export function resolveToolSchema(
   // filterSchemaForSmallModel returns the schema unchanged when there is
   // nothing to exclude or override, so calling it unconditionally is a no-op
   // for tools/contexts without any active modes.
-  const validating = filterSchemaForSmallModel(
-    inputSchema,
-    resolved.excludeParams,
-    resolved.descriptionOverrides,
-    resolved.excludeEnumValues,
+  // Hiding an enum value never refuses it, so it is safe here too: it keeps an
+  // aliased enum's refusal (REST validates against this schema) in step with
+  // what is published.
+  const validating = unpublishEnumValues(
+    filterSchemaForSmallModel(
+      inputSchema,
+      resolved.excludeParams,
+      resolved.descriptionOverrides,
+      resolved.excludeEnumValues,
+    ),
+    resolved.unpublishedEnumValues,
   );
   const hidden = collectHiddenParams(validating);
   const hiddenKeys = Object.keys(hidden);

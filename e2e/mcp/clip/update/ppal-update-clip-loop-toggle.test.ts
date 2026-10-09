@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for switching `looping` on ppal-update-clip.
@@ -170,6 +170,65 @@ describe("ppal-update-clip loop toggle", () => {
     expect(clip.looping).toBe(true);
     expect(clip.start).toBe("1|1");
     expect(clip.length).toBe(HALF);
+  });
+
+  it.each([
+    ["looping: false", { looping: false }],
+    ["looping unset", {}],
+  ])(
+    "moves an unlooped clip's start and length (%s)",
+    async (_label, loopingArg) => {
+      // Live ignores start_marker while looping is off, so the start has to go
+      // through loop_start even when `looping: false` changes nothing.
+      const clipId = await create(ctx.client!, {
+        path: `t${EMPTY_MIDI_TRACK}/s1`,
+        name: "unlooped move",
+        length: WHOLE,
+        looping: false,
+        notes: "C3 1|1 E3 1|3",
+      });
+
+      const { clip } = await updateAndRead(ctx.client!, clipId, {
+        ...loopingArg,
+        start: "2|1",
+        length: WHOLE,
+      });
+
+      expect(clip.looping).toBe(false);
+      expect(clip.start).toBe("2|1");
+      expect(clip.length).toBe(WHOLE);
+    },
+  );
+
+  it("moves an unwarped clip's region the same with or without looping: false", async () => {
+    // An unwarped clip is never looping and holds its markers in seconds. If
+    // writing `looping` re-warped it, the region would land as beats instead.
+    const region = { start: "1|3", length: HALF };
+    const clips = [];
+
+    for (const [sceneIndex, loopingArg] of [
+      [3, { looping: false }],
+      [4, {}],
+    ] as const) {
+      const clipId = await create(ctx.client!, {
+        sampleFile: DRUM_LOOP_FILE,
+        path: `t${AUDIO_TRACK}/s${sceneIndex}`,
+        name: "unwarped move",
+        warping: false,
+      });
+      const { clip } = await updateAndRead(ctx.client!, clipId, {
+        ...loopingArg,
+        ...region,
+      });
+
+      expect(clip.warping).toBe(false);
+      expect(clip.looping).toBe(false);
+      clips.push(clip);
+    }
+
+    expect(clips[0]!.start).toBe(clips[1]!.start);
+    expect(clips[0]!.length).toBe(clips[1]!.length);
+    expect(clips[0]!.length).toBe(HALF);
   });
 
   it("keeps the loop brace, not the first pass, when looping switches off", async () => {

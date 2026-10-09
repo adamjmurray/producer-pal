@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for a cross-track arrangement clip duplicate.
@@ -23,6 +23,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  callToolAndSettle,
   parseToolResult,
   parseToolResultWithWarnings,
   getToolErrorMessage,
@@ -30,7 +31,6 @@ import {
   type ReadClipResult,
   setupMcpTestContext,
   type SkippedTargetResult,
-  sleep,
 } from "../../mcp-test-helpers.ts";
 import {
   AUDIO_TRACK,
@@ -264,11 +264,7 @@ async function callTool(
   name: string,
   args: Record<string, unknown>,
 ): Promise<unknown> {
-  const result = await ctx.client!.callTool({ name, arguments: args });
-
-  await sleep(100);
-
-  return result;
+  return callToolAndSettle(ctx.client!, name, args);
 }
 
 /**

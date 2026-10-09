@@ -1,11 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   forgetMemory,
   listMemoryEntries,
@@ -16,7 +16,24 @@ import {
   renameMemory,
   slugifyMemoryName,
 } from "#src/mcp-server/helpers/memory/memory-store.ts";
-import { useTempConfigDir } from "../config-dir-test-helpers.ts";
+import { warn } from "#src/mcp-server/node-for-max-logger.ts";
+import {
+  unreadableWays,
+  useTempConfigDir,
+} from "../config-dir-test-helpers.ts";
+
+vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
+  log: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
+vi.mock(import("node:fs"), async (importOriginal) => {
+  const { withFsFaults } = await import("../config-dir-test-helpers.ts");
+
+  return withFsFaults(await importOriginal());
+});
 
 const getDir = useTempConfigDir();
 
@@ -362,6 +379,24 @@ describe("listMemoryEntries", () => {
     expect(listMemoryEntries().map((e) => e.name)).toStrictEqual(["real"]);
   });
 });
+
+describe.each(unreadableWays)(
+  "listMemoryEntries with an unreadable file ($way)",
+  (blocker) => {
+    it.skipIf(!blocker.supported)(
+      "skips it with a warning, keeping the rest listed and indexed",
+      () => {
+        writeRaw("good.md", "---\ndescription: ok\n---\nbody");
+        writeRaw("locked.md", "---\ndescription: no\n---\nbody");
+        blocker.block(memoryPath("locked.md"));
+
+        expect(listMemoryEntries().map((e) => e.name)).toStrictEqual(["good"]);
+        expect(regenerateIndex()).toContain("`good`");
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining("locked.md"));
+      },
+    );
+  },
+);
 
 describe("memoryExists", () => {
   it("is true for a stored memory (matching by an un-slugified name)", () => {

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for the drum-pad sample pseudo-param (path-prefixed params).
@@ -22,9 +22,9 @@ import {
   parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
-  supportsSampleLoading,
   trackIndexFromPath,
 } from "../../mcp-test-helpers";
+import { liveVersionAtLeast } from "../../workflow/helpers/server-capability-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -33,7 +33,7 @@ const ctx = setupMcpTestContext({ once: true });
 let canLoadSamples = true;
 
 beforeAll(async () => {
-  canLoadSamples = await supportsSampleLoading(ctx.client!);
+  canLoadSamples = await liveVersionAtLeast(ctx.client!, "12.4");
 });
 
 interface CreateTrackResult {

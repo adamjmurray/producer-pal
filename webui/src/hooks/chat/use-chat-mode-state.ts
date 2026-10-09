@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   useCallback,
@@ -36,6 +36,7 @@ import {
 import { useFirstSendGate } from "#webui/hooks/use-first-send-gate";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 import { resolveSystemInstruction } from "#webui/lib/config";
+import { importedPromptDiffers } from "#webui/lib/conversations/imported-system-prompt";
 import {
   type BranchNavState,
   type BranchPoint,
@@ -60,6 +61,7 @@ export type UseChatModeStateParams = Omit<
   | "onOpenSettings"
   | "onOpenToolsSettings"
   | "onOpenConnectionSettings"
+  | "onOpenRemoteScriptSettings"
   | "onOpenContext"
   | "onOpenInstructions"
 > &
@@ -252,6 +254,8 @@ export function useChatModeState(params: UseChatModeStateParams) {
       // The toolset the live client was built with, which is the current one —
       // recorded so a later restore can tell the user the tools have moved.
       activeEnabledTools: chat.activeEnabledTools,
+      // Kept on saves even if the stored row can't be read back.
+      activeImported: chat.activeImported,
     },
     onForeignRecord,
     pendingForkRef,
@@ -326,6 +330,12 @@ export function useChatModeState(params: UseChatModeStateParams) {
     // even though it may not match what that old chat originally used.
     systemInstruction:
       chat.activeSystemInstruction ?? effectiveSystemInstruction,
+    importedPromptDiffers: importedPromptDiffers(
+      chat.activeImported,
+      chat.activeSystemInstruction,
+      effectiveSystemInstruction,
+      systemPromptDoc.status.kind === "ready",
+    ),
   };
 }
 

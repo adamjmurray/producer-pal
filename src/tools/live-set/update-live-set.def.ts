@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z } from "zod";
 import { MAX_TEMPO, MIN_TEMPO, TEMPO_REFUSAL } from "#src/tools/constants.ts";
@@ -37,7 +37,7 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
       .string()
       .optional()
       .describe(
-        '"Root ScaleName" ("C Major", "F# Minor", "Bb Dorian"). Empty string disables scale',
+        '"Root ScaleName" ("C Major", "F# Minor", "Bb Dorian"). Applies to selected clips and as the default for new clips. Empty string disables scale',
       ),
 
     locatorOperation: param(z.enum(["create", "delete", "rename"]).optional(), {
@@ -46,7 +46,7 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
     }),
     locatorId: param(z.coerce.string().optional(), {
       default:
-        "Locator ID(s) from read-live-set, for delete/rename; comma-separated for several",
+        "locator id(s) from read-live-set (delete/rename), comma-separated",
       smallModel: null,
     }),
     locatorTime: param(z.coerce.string().optional(), {

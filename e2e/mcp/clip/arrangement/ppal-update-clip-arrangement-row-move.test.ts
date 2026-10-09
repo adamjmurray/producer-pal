@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for moving a whole row of arrangement clips at once.
@@ -134,7 +134,7 @@ describe("moving a row of arrangement clips", () => {
     ).toBe(second.id);
   });
 
-  // A clip the call sends nowhere — here by a toPath entry that names nothing —
+  // A clip the call sends nowhere — here by a toPath entry that names a scene —
   // sits in the span another clip is moving into. That move used to run and
   // delete it, then report it as updated. (One destination for two clips is
   // refused up front instead, so the second entry is what sends a clip nowhere.)
@@ -146,16 +146,14 @@ describe("moving a row of arrangement clips", () => {
 
     const { data } = await moveClips(
       [second, first],
-      [destination("601|1"), "not-a-real-path"],
+      [destination("601|1"), "s3"],
     );
 
     expect(data[0]?.detail).toContain(
       `not moved: it would land on clip ` +
         `${first.path} (id ${first.id}), which this call leaves where it is`,
     );
-    expect(data[1]?.detail).toContain(
-      'not moved: invalid toPath "not-a-real-path"',
-    );
+    expect(data[1]?.detail).toContain('not moved: invalid toPath "s3"');
 
     // Both still where they started, with the ids they started with.
     expect(

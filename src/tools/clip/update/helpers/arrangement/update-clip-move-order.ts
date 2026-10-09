@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Order a call's arrangement operations so none of them clears a range that
@@ -35,7 +35,16 @@ import {
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { refuseClipWork, type ClipReasons } from "../entries/clip-reasons.ts";
-import { type ClipMoves } from "./update-clip-arrangement-overwrite-plan.ts";
+
+/** Where each clip in the call is headed. */
+export interface ClipMoves {
+  /** The position a clip is moving to, or null when the call named none. */
+  startBeatsFor: (clip: LiveAPI) => number | null;
+  /** The arrangement span a clip is being resized to, or null. */
+  lengthBeatsFor: (clip: LiveAPI) => number | null;
+  /** Where each clip is moving, from toPath, keyed by clip id. */
+  destinationById?: Map<string, ClipPath>;
+}
 
 /** A span on one arrangement lane: a track's main lane, or a take lane on it. */
 interface LaneSpan extends ArrangementTrack {
@@ -78,12 +87,16 @@ export interface ArrangementMoveOrder {
  * @param clips - The clips to update, in the order the caller named them
  * @param moves - Where each clip is headed
  * @param reasons - What each clip has to say beyond its result, added to
+ * @param after - Per clip, the clips (by position) it has to be processed after
+ *   whether or not they free their span: a clip another lands only part of
+ *   itself on is written first, or it lands on top of the clip it was cut by
  * @returns The processing order, and the moves that have to be refused
  */
 export function orderArrangementMoves(
   clips: LiveAPI[],
   moves: ClipMoves,
   reasons: ClipReasons,
+  after: Array<Set<number>> = clips.map(() => new Set<number>()),
 ): ArrangementMoveOrder {
   // No graph: nothing waits on anything, and the executor re-decides nothing.
   const inOrder = {
@@ -118,7 +131,7 @@ export function orderArrangementMoves(
   const vacates = clips.map((clip) => freesCurrentSpan(clip, moves));
 
   return {
-    ...resolveOrder(clips, dependencies, intents, vacates, reasons),
+    ...resolveOrder(clips, { dependencies, after }, intents, vacates, reasons),
     dependencies,
     vacates,
   };
@@ -298,7 +311,7 @@ function buildDependencies(
       }
 
       // Both headed for one spot: that overwrite is what the call asked for,
-      // and the survivor plan already picks which clip wins it.
+      // and the pipeline's covers already pick which clip wins it.
       if (landsAt(other.target, target)) {
         continue;
       }
@@ -355,7 +368,10 @@ function sameLane(a: LaneSpan, b: LaneSpan): boolean {
  * never gets out of anyone's way. Whatever can't be reached — a cycle, or a
  * permanent occupant and everything behind it — can't move at all.
  * @param clips - The clips to update, in the order the caller named them
- * @param dependencies - Which clips each clip has to wait for
+ * @param graph - What each clip waits for: spans to be vacated, and clips that
+ *   only have to have been processed
+ * @param graph.dependencies - Which clips each clip has to wait for
+ * @param graph.after - Which clips each clip has to be processed after
  * @param intents - What the call does to each clip's span
  * @param vacates - Whether each clip's current span comes free
  * @param reasons - What each clip has to say beyond its result, added to
@@ -363,7 +379,7 @@ function sameLane(a: LaneSpan, b: LaneSpan): boolean {
  */
 function resolveOrder(
   clips: LiveAPI[],
-  dependencies: Array<Set<number>>,
+  graph: { dependencies: Array<Set<number>>; after: Array<Set<number>> },
   intents: Array<MoveIntent | null>,
   vacates: boolean[],
   reasons: ClipReasons,
@@ -375,8 +391,11 @@ function resolveOrder(
     clips.findIndex(
       (_, index) =>
         !emitted.has(index) &&
-        [...(dependencies[index] as Set<number>)].every((wait) =>
+        [...(graph.dependencies[index] as Set<number>)].every((wait) =>
           vacated.has(wait),
+        ) &&
+        [...(graph.after[index] as Set<number>)].every((first) =>
+          emitted.has(first),
         ),
     );
 
@@ -400,7 +419,7 @@ function resolveOrder(
     order,
     blockedIds: noteBlockedMoves(
       clips,
-      dependencies,
+      graph,
       blocked,
       intents,
       vacated,
@@ -414,7 +433,9 @@ function resolveOrder(
  * clip standing in its way. A blocked clip always waits on a clip that never
  * vacated — that is what made it unorderable — so there is always one to name.
  * @param clips - The clips to update
- * @param dependencies - Which clips each clip has to wait for
+ * @param graph - What each clip waits for
+ * @param graph.dependencies - Which clips each clip has to wait for
+ * @param graph.after - Which clips each clip has to be processed after
  * @param blocked - Positions of the clips whose moves are refused
  * @param intents - What the call does to each clip's span
  * @param vacated - Positions of the clips whose spans came free
@@ -423,7 +444,7 @@ function resolveOrder(
  */
 function noteBlockedMoves(
   clips: LiveAPI[],
-  dependencies: Array<Set<number>>,
+  graph: { dependencies: Array<Set<number>>; after: Array<Set<number>> },
   blocked: number[],
   intents: Array<MoveIntent | null>,
   vacated: Set<number>,
@@ -433,8 +454,14 @@ function noteBlockedMoves(
 
   for (const index of blocked) {
     const clip = clips[index] as LiveAPI;
-    const waits = [...(dependencies[index] as Set<number>)];
-    const blockerIndex = waits.find((wait) => !vacated.has(wait)) as number;
+    const waits = [...(graph.dependencies[index] as Set<number>)];
+    const waitIndex = waits.find((wait) => !vacated.has(wait));
+    // Otherwise it is held up by a clip it lands part of itself on, which has
+    // to be written first and can't be.
+    const firstIndex = [...(graph.after[index] as Set<number>)].find((first) =>
+      blockedSet.has(first),
+    );
+    const blockerIndex = (waitIndex ?? firstIndex) as number;
     const blocker = clips[blockerIndex] as LiveAPI;
     // A resize clears the span it tiles across, so leaving it to run would
     // destroy the clip the refusal is protecting.
@@ -442,6 +469,20 @@ function noteBlockedMoves(
       intents[index]?.lengthBeats == null
         ? "not moved"
         : "not moved or resized";
+    const label = targetLabel(blocker);
+
+    // The clip that has to be written first is no obstacle to land on: this
+    // clip lands over part of where it is going, so the reason reads apart.
+    if (waitIndex == null) {
+      refuseClipWork(
+        reasons,
+        clip.id,
+        `${skipped}: it lands over part of where clip ${label} is going, and this call can't write that clip first; move them in separate calls`,
+      );
+
+      continue;
+    }
+
     // Two ways a span never comes free: the clip in the way is itself blocked,
     // or the call sends it nowhere at all.
     const why = blockedSet.has(blockerIndex)
@@ -451,7 +492,7 @@ function noteBlockedMoves(
     refuseClipWork(
       reasons,
       clip.id,
-      `${skipped}: it would land on clip ${targetLabel(blocker)}, ${why}`,
+      `${skipped}: it would land on clip ${label}, ${why}`,
     );
   }
 

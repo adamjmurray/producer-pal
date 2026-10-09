@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The one step every MCP → SDK tool bridge starts with: connect, read the
 // catalog, and don't strand the transport if the catalog read fails. Three

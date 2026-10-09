@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Selecting a spot on the arrangement timeline: `t0[5|1]`, or `t0/l0[5|1]` on a
 // take lane. The spot itself is the Live Set's arrangement start marker, and a

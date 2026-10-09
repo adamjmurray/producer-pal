@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
@@ -142,6 +142,7 @@ export function makeProps(o: PropOverrides = {}): VoiceAppProps {
     onOpenSettings: o.onOpenSettings ?? vi.fn(),
     onOpenToolsSettings: vi.fn(),
     onOpenConnectionSettings: vi.fn(),
+    onOpenRemoteScriptSettings: vi.fn(),
     onForeignRecord: vi.fn(),
     clearViewingMode: vi.fn(),
     setModeContext: vi.fn(),

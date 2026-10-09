@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type LanguageModel } from "ai";
 import { describe, expect, it, vi } from "vitest";
@@ -86,6 +86,15 @@ describe("chatAdapter", () => {
       expect(buildForProvider("anthropic").maxRequestImages).toBe(
         MAX_REQUEST_IMAGES,
       );
+    });
+
+    it.each([
+      ["openrouter", "mistralai/mistral-large-2512"],
+      ["vercel", "mistral/pixtral-large-latest"],
+    ])("caps Mistral models on %s at Mistral's limit", (provider, model) => {
+      expect(
+        buildForProvider(provider, "Default", model).maxRequestImages,
+      ).toBe(MISTRAL_MAX_REQUEST_IMAGES);
     });
 
     it("carries smallModelMode from extraParams onto the config", () => {
@@ -613,6 +622,39 @@ describe("chatAdapter", () => {
         expect(config.model).toBe(mockModel); // orchestrator unaffected
         expect(config.subagentConfig).toBeUndefined();
         expect(warnSpy).toHaveBeenCalledOnce();
+
+        vi.mocked(createProviderModel).mockImplementation(() => mockModel);
+        warnSpy.mockRestore();
+      });
+
+      it("warns with the thrown value when it isn't an Error", () => {
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+        vi.mocked(createProviderModel).mockImplementation((_p, modelId) => {
+          if (modelId === "broken-worker") {
+            const notAnError: unknown = "no base URL";
+
+            throw notAnError;
+          }
+
+          return mockModel;
+        });
+
+        const config = chatAdapter.buildConfig(
+          "gpt-4o",
+          "Default",
+          {},
+          undefined,
+          {
+            ...extraParams,
+            subagentPreset: { ...subagentPreset, model: "broken-worker" },
+          },
+        );
+
+        expect(config.subagentConfig).toBeUndefined();
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("current settings. no base URL"),
+        );
 
         vi.mocked(createProviderModel).mockImplementation(() => mockModel);
         warnSpy.mockRestore();

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 export const DEFAULT_VELOCITY = 100;
 export const DEFAULT_TIME: { bar: number; beat: number } = { bar: 1, beat: 1 };

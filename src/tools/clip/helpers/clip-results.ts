@@ -1,9 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { errorMessage } from "#src/shared/error-message.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clipOverwriteNote,
@@ -13,7 +14,10 @@ import {
   createMissingScenes,
   withCreatedScenes,
 } from "#src/tools/shared/clip/create-missing-scenes.ts";
-import { withScratchSlot } from "#src/tools/shared/clip/scratch-slot.ts";
+import {
+  type ScratchSlot,
+  withScratchSlot,
+} from "#src/tools/shared/clip/scratch-slot.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import {
@@ -31,19 +35,43 @@ export interface MidiNote {
 
 export interface NoteUpdateResult {
   noteCount: number;
+  /** Notes the transforms changed; 0 when they changed none */
   transformed?: number;
+  /** Notes the transforms removed (left out when 0) */
+  deletedNotes?: number;
   /** Set only when the call changed the length itself (see duplicateLoop). */
   length?: string;
+  /** Not part of the entry: notes the write put outside the region, for the
+   * report that runs once the call's region is final. */
+  putOutside?: number;
+}
+
+/** What `convert` made: the new track, and its MIDI clip when the kind makes one. */
+export interface ConvertedResult {
+  track: { id: string; path?: string };
+  /** `noteCount` can be 0: Live found no notes in the audio */
+  clip?: { id: string; path?: string; noteCount: number };
 }
 
 export interface ClipResult {
   id: string;
   noteCount?: number;
+  /** Notes the transforms changed and left in the clip; 0 when none changed. */
   transformed?: number;
+  /** Notes the transforms removed; not sent when 0. */
+  deletedNotes?: number;
   /** Where the clip is, as a path. Pastes back into any path/toPath param. */
   path?: string;
+  /** The start the clip ended up at, when Live kept a different one. */
+  start?: string;
   /** The length the clip ended up at, when the call moved it off the arg. */
   length?: string;
+  /** The time signature Live kept, when it isn't the one asked for. */
+  timeSignature?: string;
+  /** The audio values Live kept in place of the ones asked for. */
+  gainDb?: number;
+  pitchShift?: number;
+  warpMode?: string;
   /** The span left on the arrangement, when the call cut it short. */
   arrangementLength?: string;
   /** The palette color Live settled on, when it isn't the one asked for. */
@@ -51,18 +79,19 @@ export interface ClipResult {
   /** The scenes the destination had to make ("s8-s9"), when it made any. */
   created?: string;
   /**
+   * How many of the `envelopes` lines landed, or why none could: only the
+   * remote script reaches them. A line that failed on its own says so in
+   * `detail`.
+   */
+  envelopes?: number | string;
+  /** The track `convert` made from this clip, and its MIDI clip. */
+  converted?: ConvertedResult;
+  /**
    * Why the update didn't go as asked, when something landed anyway: a move
    * Live turned down, a param this clip has no use for, a leftover on a take
-   * lane. Anything about a clip the call named belongs here (ADR-0042).
+   * lane. Anything about a clip the call named belongs here.
    */
   detail?: string;
-  /**
-   * True when another clip in the same call left this one gone (`path` is the
-   * address it last had). A placement that failed destroys it just the same —
-   * it clears the target range before the copy it never makes — so this says
-   * what became of the clip, not whether the overwrite went to plan.
-   */
-  deleted?: true;
 }
 
 /**
@@ -70,9 +99,9 @@ export interface ClipResult {
  * path, read off a clip it already holds — resolving the id here would cost a
  * LiveAPI build per clip returned.
  * @param clipId - The clip ID
- * @param noteResult - Optional note update result with count and transformed
+ * @param noteResult - Optional note update result with count and transformed/deletedNotes
  * @param path - Where the clip is, from objectPathForApi
- * @returns Result object with id, path, and optionally noteCount/transformed/length
+ * @returns Result object with id, path, and optionally noteCount/transformed/deletedNotes/length
  */
 export function buildClipResultObject(
   clipId: string,
@@ -86,6 +115,10 @@ export function buildClipResultObject(
 
     if (noteResult.transformed != null) {
       result.transformed = noteResult.transformed;
+    }
+
+    if (noteResult.deletedNotes != null) {
+      result.deletedNotes = noteResult.deletedNotes;
     }
 
     if (noteResult.length != null) {
@@ -122,6 +155,8 @@ export interface SlotWork {
   created: string | null;
   /** What the new clip replaced, or null when the slot was empty. */
   overwrote: string | null;
+  /** What Live wouldn't clear away after the clip landed (a scratch clip or scene) */
+  leftover?: string;
 }
 
 /** The clip a session create made, and what reaching its slot took. */
@@ -196,51 +231,107 @@ function fillSessionSlot(
     };
   }
 
-  const clip = withScratchSlot(trackIndex, sceneIndex, (scratch) =>
-    replaceFromScratch(scratch.slot, clipSlot, destPath, create, sampleFile),
-  );
+  // The copy can land and the scratch scene's removal still throw, which loses
+  // the copy's return value: keep it where the throw can't reach.
+  const done: { replaced?: Replaced } = {};
+  let sceneLeftover: string | undefined;
 
-  return { clip, overwrote: clipOverwriteNote(destPath) };
+  try {
+    withScratchSlot(trackIndex, sceneIndex, (scratch) => {
+      done.replaced = replaceFromScratch(
+        scratch,
+        clipSlot,
+        destPath,
+        create,
+        sampleFile,
+      );
+    });
+  } catch (error) {
+    if (done.replaced == null) {
+      throw error;
+    }
+
+    sceneLeftover = `couldn't remove the scratch scene: ${errorMessage(error)}`;
+  }
+
+  const { clip, leftover } = done.replaced as Replaced;
+  const left = joinDetails([leftover, sceneLeftover]);
+
+  return {
+    clip,
+    overwrote: clipOverwriteNote(destPath),
+    ...(left == null ? {} : { leftover: left }),
+  };
+}
+
+/** The clip a replace left at its destination, and any clean-up it couldn't do. */
+interface Replaced {
+  clip: LiveAPI;
+  leftover?: string;
 }
 
 /**
  * Build the clip in the scratch slot and copy it onto the occupied one. The
  * scratch slot is emptied afterwards whatever happened.
- * @param scratchSlot - An empty slot on the destination's track
+ * @param scratch - An empty slot on the destination's track
  * @param destSlot - The occupied destination
  * @param destPath - The destination, as a path
  * @param create - Makes the clip in the slot it's given
  * @param sampleFile - The file an audio create loads, or undefined
- * @returns The new clip at the destination
+ * @returns The new clip at the destination, and any scratch clip left behind
  * @throws When no clip landed, saying the one there was not touched
  */
 function replaceFromScratch(
-  scratchSlot: LiveAPI,
+  scratch: ScratchSlot,
   destSlot: LiveAPI,
   destPath: string,
   create: (clipSlot: LiveAPI) => void,
   sampleFile: string | undefined,
-): LiveAPI {
-  try {
-    create(scratchSlot);
-    requireCreatedSessionClip(scratchSlot, destPath, sampleFile);
+): Replaced {
+  let copy: LiveAPI | null = null;
+  let failure: unknown;
 
-    const copy = copyClipToSlot(scratchSlot, destSlot);
+  try {
+    create(scratch.slot);
+    requireCreatedSessionClip(scratch.slot, destPath, sampleFile);
+    copy = copyClipToSlot(scratch.slot, destSlot);
 
     if (copy == null) {
       throw new Error(`Live didn't copy the new clip onto ${destPath}`);
     }
-
-    return copy;
   } catch (error) {
+    failure = error;
+  }
+
+  // Whatever happened: a throw here must not hide a copy that landed.
+  const leftover = clearScratchClip(scratch);
+
+  if (copy == null) {
+    const also = leftover == null ? "" : `; ${leftover}`;
+
     throw new Error(
-      `${errorMessage(error)}; the clip at ${destPath} was not touched`,
-      { cause: error },
+      `${errorMessage(failure)}; the clip at ${destPath} was not touched${also}`,
+      { cause: failure },
     );
-  } finally {
-    if (scratchSlot.getProperty("has_clip")) {
-      scratchSlot.call("delete_clip");
+  }
+
+  return leftover == null ? { clip: copy } : { clip: copy, leftover };
+}
+
+/**
+ * Empty the scratch slot.
+ * @param scratch - The scratch slot
+ * @returns Why it couldn't be emptied, or undefined when it is
+ */
+function clearScratchClip(scratch: ScratchSlot): string | undefined {
+  try {
+    if (scratch.slot.getProperty("has_clip")) {
+      scratch.slot.call("delete_clip");
     }
+
+    return undefined;
+  } catch (error) {
+    return `couldn't clear the scratch clip at ${scratch.path}: ${errorMessage(error)}`;
   }
 }
 

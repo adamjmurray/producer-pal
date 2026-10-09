@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for the sort-ascending-by-start_time-before-add_new_notes invariant.
@@ -15,9 +15,9 @@
  *
  * Genuine same-pitch+start duplicates can't be saved by sorting, so both tools
  * dedupe keep-last before the write, and the new note wins deterministically.
- * create-clip warns about the dropped duplicates (an accident in the input);
- * update-clip's merge stays quiet, since restating a note there is an
- * intentional overwrite.
+ * Both say so on the clip's entry when the input itself holds the duplicate (an
+ * accident in the input); update-clip's merge stays quiet when the input only
+ * restates an existing note, since that is an intentional overwrite.
  *
  * Also covers create-clip's noteCount reporting the count Live actually stored
  * (read back) rather than the interpreted-input count.
@@ -126,8 +126,9 @@ describe("note write ordering (create + update transforms)", () => {
 
     // Two identical same-pitch + same-start notes. Sorting can't help — they're
     // genuine duplicates — so create-clip drops the earlier one before the write
-    // (keep-last) and warns, rather than letting Live silently delete it. The
-    // reported count is the actual stored 1, not the interpreted input 2.
+    // (keep-last) and says so on the entry, rather than letting Live silently
+    // delete it. The reported count is the actual stored 1, not the interpreted
+    // input 2.
     const dupResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
@@ -138,9 +139,10 @@ describe("note write ordering (create + update transforms)", () => {
     const { data: dup, warnings: dupWarnings } =
       parseToolResultWithWarnings<CreateClipResult>(dupResult);
 
-    expect(dupWarnings).toStrictEqual([
-      "WARNING: Dropped 1 duplicate note at the same pitch and start",
-    ]);
+    expect(dup.detail).toBe(
+      "dropped 1 duplicate note at the same pitch and start",
+    );
+    expect(dupWarnings).toStrictEqual([]);
     expect(dup.noteCount).toBe(1);
 
     await sleep(100);
@@ -174,6 +176,31 @@ describe("note write ordering (create + update transforms)", () => {
     // update-clip's noteCount is the actual read-back: 2 confirms the sort kept
     // both notes (without it, Live would delete the onset-overlapped one → 1).
     expect(updated.noteCount).toBe(2);
+  });
+
+  it("update-clip says on the entry when a transform collapses notes onto one onset", async () => {
+    const trackIndex = await createOrderingTrack("Transform Collapse Track");
+
+    // A two-note chord: C1 and E1 at the same start.
+    const created = await createClipWithCount(
+      `t${trackIndex}/s0`,
+      "n/4 C1 E1 1|1",
+      2,
+    );
+
+    // Both notes become pitch 36 at the same start, so one replaces the other.
+    const updateResult = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: created.id, transforms: "pitch = 36" },
+    });
+    const { data: updated, warnings } =
+      parseToolResultWithWarnings<UpdateClipResult>(updateResult);
+
+    expect(updated.noteCount).toBe(1);
+    expect(updated.detail).toBe(
+      "dropped 1 duplicate note at the same pitch and start",
+    );
+    expect(warnings).toStrictEqual([]);
   });
 
   it("update-clip merge sorts + dedupes the combined existing+new notes before re-adding", async () => {
@@ -231,5 +258,29 @@ describe("note write ordering (create + update transforms)", () => {
     const overwritten = parseToolResult<UpdateClipResult>(overwrite);
 
     expect(overwritten.noteCount).toBe(1);
+    expect(overwritten.detail).toBeUndefined();
+  });
+
+  it("update-clip says on the entry when the new bar|beat notation holds a duplicate", async () => {
+    const trackIndex = await createOrderingTrack("Notation Duplicate Track");
+    const created = await createClipWithCount(
+      `t${trackIndex}/s0`,
+      "n/4 C1 1|1",
+      1,
+    );
+
+    // The notation writes E1 twice at one onset; the existing C1 is untouched.
+    const updateResult = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: created.id, notes: "n/4 E1 E1 1|3" },
+    });
+    const { data: updated, warnings } =
+      parseToolResultWithWarnings<UpdateClipResult>(updateResult);
+
+    expect(updated.noteCount).toBe(2);
+    expect(updated.detail).toBe(
+      "dropped 1 duplicate note at the same pitch and start",
+    );
+    expect(warnings).toStrictEqual([]);
   });
 });

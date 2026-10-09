@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -216,9 +216,15 @@ describe("readOneTrack", () => {
     });
 
     const result = readOneTrack({ trackIndex: 0 });
+    // A group holds no clips, so it has no counts to report.
+    const {
+      sessionClipCount: _session,
+      arrangementClipCount: _arrangement,
+      ...soloed
+    } = expectedSoloedMidiTrackResult();
 
     expect(result).toStrictEqual({
-      ...expectedSoloedMidiTrackResult(),
+      ...soloed,
       isGroup: true,
       isGroupMember: true,
       groupId: "456",

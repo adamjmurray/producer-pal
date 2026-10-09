@@ -2,9 +2,9 @@
 title: Limitations
 description:
   What Producer Pal can't do, and the workarounds. No control over VST/AU
-  plug-in internals, no editing clip envelopes or automation, no audio analysis
-  or synthesis, no visibility into arrangement time signature changes, and one
-  drum pitch map per track.
+  plug-in internals, arrangement automation only through Session clips, no audio
+  analysis or synthesis, no visibility into arrangement time signature changes,
+  and one drum pitch map per track.
 ---
 
 # Limitations
@@ -15,8 +15,8 @@ surprising, see [Known Issues](/support/known-issues).
 
 ## VST/AU Plug-in Internals Can't Be Controlled Directly
 
-Producer Pal can open or close a plug-in's editor window, and
-[list the plug-ins you have installed](/features/tools#ppal-library) (Live
+Producer Pal can open or close a plug-in's editor window and
+[list the plug-ins you have installed](/features/tools#ppal-library) (both Live
 12.4+), but it cannot read or set the parameters inside a third-party VST/AU
 plug-in.
 
@@ -45,13 +45,7 @@ them works fully: no mapping step, nothing to keep in sync.
 
 :::
 
-## Clip Envelopes and Automation Can't Be Edited
-
-Producer Pal cannot read, create, or edit **clip envelopes**, the curves drawn
-inside a clip for pitch bend, MIDI CC, or a device or mixer parameter. Track and
-device parameters like volume, pan, sends, and knobs can be set to static
-values, but not shaped over time. The same goes for **arrangement automation**,
-the curves drawn on the track's timeline rather than inside a clip.
+## Some Moves Drop Clip Envelopes
 
 Envelopes you already have are safe through most edits: they live in the clip,
 so they travel with it. The exception is any move that has to **re-create** the
@@ -67,13 +61,28 @@ A move along a track's own arrangement lane is not affected. A re-created audio
 clip also loses any warp markers you edited by hand, and the result says which
 of the two applied.
 
+## Arrangement Automation Replaces the Lane Over the Clip
+
+Live's API can't read or draw a track's arrangement automation directly. With
+the [remote script](/guide/remote-script), Producer Pal writes automation onto
+an arrangement clip by writing the track's automation lane over exactly that
+clip's span. That comes with limits:
+
+- Producer Pal can't see the lane afterwards, or clear it. Writing again
+  overwrites it over the clip's span, and the lane returns to its old value
+  after.
+- The clip is re-created to do it, so it comes back with a new ID.
+- Moving an arrangement clip leaves its automation where it was.
+
 ## Audio Content Can't Be Analyzed or Generated
 
 Producer Pal can manage audio clips (set gain, pitch, and warp settings, change
 clip length, arrange clips in the Arrangement, and load and manage samples on
-Simpler instruments, Drum Rack pads included), but it cannot listen to, analyze,
-or transcribe the audio itself. No detecting notes, key, or tempo from a
-waveform; no audio-to-MIDI; no synthesizing audio from scratch.
+Simpler instruments, Drum Rack pads included), but it cannot listen to or
+analyze the audio itself. No detecting key or tempo from a waveform, no
+synthesizing audio from scratch. The one audio-to-MIDI route is Live's own
+conversion of an audio clip to a new MIDI track (drums, melody or harmony),
+which needs the [remote script](/guide/remote-script).
 
 ::: tip Workaround: drive it from a coding agent
 

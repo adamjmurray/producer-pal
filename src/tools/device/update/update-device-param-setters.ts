@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
@@ -33,7 +33,7 @@ import {
   resolveParamsByName,
 } from "./helpers/params/param-name-resolution.ts";
 import { setParamValue } from "./helpers/params/param-value-interpretation.ts";
-import { supersededParamReasons } from "./helpers/params/superseded-params.ts";
+import { paramOutcomes } from "./helpers/params/superseded-params.ts";
 import { type ParamWriteOutcome } from "./helpers/params/param-write-verification.ts";
 import { normalizeParamValue } from "./update-device-param-parser.ts";
 
@@ -48,12 +48,14 @@ import { normalizeParamValue } from "./update-device-param-parser.ts";
  * own entry is where the caller reads what happened to it.
  *
  * When entries reach one param, only the last is written; each earlier one
- * comes back skipped, naming the entry that overrides it.
+ * comes back with a detail naming the entry that overrides it, and no `ok`
+ * (`refreshParamValues` fails it if that entry then landed nothing).
  * @param device - LiveAPI device object to update
  * @param params - Array of {name | id, value} param entries
  * @param force - Allow a destructive pad-device swap a `sample` write needs
  * @param notes - What the device's entry has to say, added to; left out where
  *   the caller keeps no entry for this write
+ * @param settled - Entries the caller already wrote, with what each came to
  * @returns One entry per param named, in order
  */
 export function setParamValues(
@@ -61,33 +63,28 @@ export function setParamValues(
   params: ParamEntry[],
   force = false,
   notes?: TargetNotes,
+  settled?: Map<ParamEntry, ParamOutcome[]>,
 ): ParamOutcome[] {
-  const skips = supersededParamReasons(device, params);
-  const results: ParamOutcome[] = [];
   // Read once per device, not per param: it only names the device for the
   // recorded-unit lookup.
   const deviceName = device.getProperty("class_display_name") as
     | string
     | undefined;
 
-  for (const [index, entry] of params.entries()) {
+  return paramOutcomes(device, params, (entry) => {
     // Malformed entries were refused up front, so both sides are non-empty.
     const { key, byId } = paramEntryKey(entry);
     const rawValue = entry.value.trim();
-    const skip = skips.get(index);
+    const done = settled?.get(entry);
 
-    if (skip != null) {
-      results.push(
-        byId ? skippedParamById(key, skip) : skippedParam(key, skip),
-      );
-      continue;
+    if (done != null) {
+      return done;
     }
 
     // An id names one parameter outright, so it skips the name lookups — a
     // param that happens to be named "1" can't shadow id 1.
     if (byId) {
-      results.push(setParamById(device, key, rawValue, deviceName));
-      continue;
+      return [setParamById(device, key, rawValue, deviceName)];
     }
 
     // Isolate each param: a throw resolving one (e.g. a path-prefixed pad param
@@ -95,15 +92,11 @@ export function setParamValues(
     // multi-param update. It becomes that param's own skip entry, the way a
     // target that throws becomes the target's.
     try {
-      results.push(
-        ...setOneParam(device, key, rawValue, force, deviceName, notes),
-      );
+      return setOneParam(device, key, rawValue, force, deviceName, notes);
     } catch (e) {
-      results.push(skippedParam(key, errorMessage(e)));
+      return [skippedParam(key, errorMessage(e))];
     }
-  }
-
-  return results;
+  });
 }
 
 /**

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type Page, type Route, expect } from "@playwright/test";
 import { fileURLToPath } from "node:url";
@@ -41,6 +41,10 @@ export interface SeedConversation {
    * non-forked records. */
   forkParentId?: string;
   forkedAtIndex?: number;
+  /** The system prompt the conversation locked; omitted on legacy records. */
+  systemInstruction?: string;
+  /** Set on records that came from a file import. */
+  imported?: boolean;
 }
 
 /**
@@ -158,6 +162,27 @@ export async function installStubs(page: Page): Promise<void> {
       status: 200,
       contentType: "application/json",
       body: "null",
+    }),
+  );
+
+  // Remote script status (the header badge reads it on load) — not installed,
+  // so no badge. A spec that wants one registers its own route after this.
+  await page.route("**/remote-script", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        userLibrary: null,
+        installed: false,
+        installedVersion: null,
+        bundledVersion: "1.2.0",
+        running: false,
+        runningVersion: null,
+        liveVersion: null,
+        otherOnPort: null,
+        updateAvailable: false,
+        installedNewer: false,
+      }),
     }),
   );
 

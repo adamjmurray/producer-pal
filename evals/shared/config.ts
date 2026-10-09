@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Configuration utilities for MCP server settings
@@ -22,6 +22,10 @@ export interface ConfigOptions {
   jsonOutput?: boolean;
   sampleFolder?: string;
   liveApiEnabled?: boolean;
+  /** False makes the remote script look uninstalled. Debug builds only; a release build ignores it. */
+  remoteScriptEnabled?: boolean;
+  /** A version string makes a running remote script older than it look out of date; null clears it. Debug builds only. */
+  remoteScriptMinVersion?: string | null;
   tools?: string[];
   notation?: Notation;
 }
@@ -51,6 +55,7 @@ export async function setConfig(options: ConfigOptions): Promise<void> {
 async function fetchConfig(): Promise<{
   notation?: Notation;
   liveApiEnabled?: boolean;
+  smallModelMode?: boolean;
 }> {
   const response = await fetch(CONFIG_URL);
 
@@ -61,6 +66,7 @@ async function fetchConfig(): Promise<{
   return (await response.json()) as {
     notation?: Notation;
     liveApiEnabled?: boolean;
+    smallModelMode?: boolean;
   };
 }
 
@@ -91,6 +97,17 @@ export async function getLiveApiEnabled(): Promise<boolean> {
 }
 
 /**
+ * Whether the server is in small-model mode.
+ *
+ * @returns True when small-model mode is on
+ */
+export async function getSmallModelMode(): Promise<boolean> {
+  const config = await fetchConfig();
+
+  return config.smallModelMode === true;
+}
+
+/**
  * Reset server config to defaults
  */
 export async function resetConfig(): Promise<void> {
@@ -99,6 +116,9 @@ export async function resetConfig(): Promise<void> {
     projectContext: "",
     jsonOutput: true,
     sampleFolder: "",
+    // A release build ignores this, so the reset works on either build.
+    remoteScriptEnabled: true,
+    remoteScriptMinVersion: null,
     tools: [...TOOL_NAMES],
     notation: DEFAULT_NOTATION,
   });

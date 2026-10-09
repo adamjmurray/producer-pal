@@ -1,20 +1,24 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   sessionClipTargets,
-  type ClipSlotTarget,
+  type SlotPayload,
 } from "./session-clip-targets.ts";
 import {
   namedIdParam,
   namedParam,
   namedPathParam,
+  refuseNamedTwice,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
-import { publishedType } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  idDoesNotExist,
+  publishedType,
+} from "#src/tools/shared/validation/id-validation.ts";
 import {
   formatObjectPath,
   type ObjectPath,
@@ -30,12 +34,13 @@ import {
   parseSlotList,
 } from "#src/tools/shared/validation/position-parsing.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type Target } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 
 export interface PlaybackTarget {
   /** The one scene to play, agreed by every param that named one */
   sceneIndex: number | null;
   /** The clip slots every target param named, in call order */
-  clips: ClipSlotTarget[];
+  clips: Array<Target<SlotPayload>>;
 }
 
 export interface PlaybackTargetParams {
@@ -99,20 +104,20 @@ export function resolvePlaybackTarget(
   action: string,
   { id, ids, path, paths, slots, sceneIndex }: PlaybackTargetParams,
 ): PlaybackTarget {
+  // The transport actions take no target, and playback() has already refused
+  // one that was sent.
+  if (!TARGETING_ACTIONS.has(action)) {
+    return { sceneIndex: null, clips: [] };
+  }
+
   const namedIds = namedIdParam(id, ids, "ids");
   const namedPaths = namedPathParam(path, paths);
 
-  // Parsing these for an action that never reads them turns a leftover param
-  // into a failed transport command: `stop` has to stop.
-  if (!TARGETING_ACTIONS.has(action)) {
-    warnUnusedTarget(action, {
-      path: namedPaths,
-      slots,
-      ids: namedIds,
-      sceneIndex,
-    });
-
-    return { sceneIndex: null, clips: [] };
+  for (const [param, value] of [
+    ["path", namedPaths],
+    ["slots", slots],
+  ] as const) {
+    refuseNamedTwice({ param, value, noun: "scene", also: { sceneIndex } });
   }
 
   const { entries, source } = readPathParam(namedPaths, slots);
@@ -128,19 +133,10 @@ export function resolvePlaybackTarget(
     };
   }
 
-  // Narrow before warning: a path this action can't use throws, and saying we
-  // ignored a param on a call that did nothing is noise the model has to read.
   const clips = sessionClipTargets(
     namedIds,
     slotPathsFrom(action, entries, source),
   );
-
-  if (sceneIndex != null) {
-    console.warn(
-      `sceneIndex ignored: action "${action}" acts on clip slots; ` +
-        `use action "${PLAY_SCENE}" for the whole scene`,
-    );
-  }
 
   return { sceneIndex: null, clips };
 }
@@ -161,11 +157,13 @@ function readPathParam(
   const named = namedParam(path, "path");
   const legacy = namedHiddenPath(slots, "slots");
 
-  if (named != null && legacy != null) {
-    throw new Error(
-      "path and slots both name clips; use path alone (slots is deprecated)",
-    );
-  }
+  refuseNamedTwice({
+    param: "path",
+    value: named,
+    noun: "clips",
+    also: { slots: legacy },
+    hint: "slots is deprecated",
+  });
 
   if (named != null) {
     return {
@@ -295,7 +293,19 @@ function resolveSceneTarget(
     refs.push({ scene: sceneIndex, source: `sceneIndex ${sceneIndex}` });
   }
 
-  refs.push(...idSceneRefs(ids));
+  const { found, problems } = idSceneRefs(ids);
+
+  refs.push(...found);
+
+  // With no scene to play, an id's own reason is the answer, not a lesser one.
+  if (refs.length === 0 && problems.length > 0) {
+    throw new Error(problems.join("; "));
+  }
+
+  // Otherwise another param still names the scene, so a bad id is warned.
+  for (const problem of problems) {
+    console.warn(problem);
+  }
 
   // Keep the first param to name each scene, so the error names one source per
   // scene rather than repeating a scene the caller named two ways.
@@ -320,23 +330,27 @@ function resolveSceneTarget(
 
 /**
  * The scene each id names: a scene id names itself, and a session clip or clip
- * slot id names the scene it sits in. An id naming no scene is warned and
- * skipped, the way every other bad id in this tool is.
+ * slot id names the scene it sits in. An id naming no scene is set aside with
+ * the reason, for the caller to warn or refuse on.
  * @param ids - The normalized `id` param
- * @returns One ref per id that names a scene
+ * @returns One ref per id that names a scene, and why each other one doesn't
  */
-function idSceneRefs(ids: string | undefined): SceneRef[] {
-  if (ids == null) {
-    return [];
-  }
+function idSceneRefs(ids: string | undefined): {
+  found: SceneRef[];
+  problems: string[];
+} {
+  const found: SceneRef[] = [];
+  const problems: string[] = [];
 
-  const refs: SceneRef[] = [];
+  if (ids == null) {
+    return { found, problems };
+  }
 
   for (const id of targetEntries(ids, "id")) {
     const object = LiveAPI.from(id);
 
     if (!object.exists()) {
-      console.warn(`id "${id}" does not exist`);
+      problems.push(idDoesNotExist(id));
       continue;
     }
 
@@ -344,20 +358,20 @@ function idSceneRefs(ids: string | undefined): SceneRef[] {
     // what would work, since "found clip" alone reads as a contradiction to a
     // caller who was asked for a clip id.
     if (object.sceneIndex == null) {
-      const found = publishedType(object.type);
-      const kind = found == null ? "" : ` (found ${found})`;
+      const type = publishedType(object.type);
+      const kind = type == null ? "" : ` (found ${type})`;
 
-      console.warn(
+      problems.push(
         `${targetLabel(object)} is in no scene${kind}; ` +
           `action "${PLAY_SCENE}" takes a scene id or a session clip id`,
       );
       continue;
     }
 
-    refs.push({ scene: object.sceneIndex, source: `id "${id}"` });
+    found.push({ scene: object.sceneIndex, source: `id "${id}"` });
   }
 
-  return refs;
+  return { found, problems };
 }
 
 /**
@@ -389,31 +403,4 @@ function assertClipPath(
     `names a scene; action "${action}" takes clip slots ` +
       `"t<track>/s<scene>" (e.g., "t0/s${entry.sceneIndex}")${wholeScene}`,
   );
-}
-
-/**
- * Warns for target params on an action that has no target to apply them to.
- * @param action - The playback action
- * @param params - The target params, with `id` already normalized
- * @param params.path - Raw path param
- * @param params.slots - Raw deprecated slots param
- * @param params.ids - Normalized id param
- * @param params.sceneIndex - Raw sceneIndex param
- */
-function warnUnusedTarget(
-  action: string,
-  { path, slots, ids, sceneIndex }: PlaybackTargetParams,
-): void {
-  const sent = [
-    namedParam(path, "path") != null ? "path" : null,
-    namedHiddenPath(slots, "slots") != null ? "slots" : null,
-    ids != null ? "id" : null,
-    sceneIndex != null ? "sceneIndex" : null,
-  ].filter((param) => param != null);
-
-  if (sent.length === 0) {
-    return;
-  }
-
-  console.warn(`${sent.join("/")} ignored: action "${action}" takes no target`);
 }

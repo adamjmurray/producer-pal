@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -86,6 +86,26 @@ describe("select - plugin editor window", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
+  it("says so on the device's entry on Live before 12.4", () => {
+    registerMockObject("live_app", {
+      path: "live_app",
+      methods: { get_version_string: () => "12.3.8" },
+    });
+    const device = registerDeviceAtT0D0("plugin_0", "PluginDevice");
+
+    const result = select({ devicePath: "t0/d0", openPluginWindow: true });
+
+    expect(device.set).not.toHaveBeenCalledWith(
+      "is_editor_open",
+      expect.anything(),
+    );
+    expect(result.selectedDevice).toStrictEqual({
+      id: "plugin_0",
+      path: "t0/d0",
+      detail: "openPluginWindow ignored: requires Live 12.4 or later",
+    });
+  });
+
   it("warns and skips when no device target is provided", () => {
     setupSongViewMock();
 
@@ -93,7 +113,7 @@ describe("select - plugin editor window", () => {
 
     expect(result.selectedDevice).toBeUndefined();
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("requires a plug-in device"),
+      "openPluginWindow ignored: it needs a plug-in device; specify id or path",
     );
   });
 });

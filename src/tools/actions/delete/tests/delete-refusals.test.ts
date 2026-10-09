@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "#src/live-api-adapter/live-api-extensions.ts";
@@ -140,7 +140,6 @@ describe("deleteObject when Live refuses the delete", () => {
     ).toStrictEqual([
       {
         id: "scene_0",
-        path: "s0",
         ok: false,
         detail: "scene s0 (id scene_0) still exists, so Live did not delete it",
       },

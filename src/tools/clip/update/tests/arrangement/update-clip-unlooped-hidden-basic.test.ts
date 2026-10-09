@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import {
@@ -55,7 +55,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
     expect(clip.set).toHaveBeenCalledWith("loop_end", 14.0);
 
     // Single clip returned (extended in place, no tiles)
-    // unwrapSingleResult returns single object for single-element arrays
+    // A lone target returns its entry unwrapped
     expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
   });
 
@@ -87,7 +87,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
     expect(clip.set).toHaveBeenCalledWith("loop_end", 15.0);
 
     // Single clip returned (extended in place, no tiles)
-    // unwrapSingleResult returns single object for single-element arrays
+    // A lone target returns its entry unwrapped
     expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
   });
 

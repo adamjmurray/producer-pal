@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-library's `searches` fan-out.
@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   getToolErrorMessage,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   setConfig,
@@ -76,6 +77,21 @@ describe("ppal-library searches", () => {
     return (entry?.items ?? []).map((item) => item.name).toSorted();
   }
 
+  it("refuses top-level filters beside searches", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-library",
+      arguments: {
+        searches: [{ label: "Kicks", query: "kick" }],
+        query: "snare",
+      },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toBe(
+      "Error: query can't be sent beside searches: each entry of searches takes its own filters. Put them in the entries, or drop searches.",
+    );
+  });
+
   it("applies each query's filters to its own group", async () => {
     // The repo's own sample folder holds exactly kick.aiff and sample.aiff, so
     // these two queries have to come back with different items or the filters
@@ -83,8 +99,8 @@ describe("ppal-library searches", () => {
     await setConfig({ sampleFolder: SAMPLE_FOLDER });
 
     const result = await batch([
-      { label: "Kicks", source: "sampleFolder", query: "kick" },
-      { label: "Everything", source: "sampleFolder" },
+      { label: "Kicks", source: "sample-folder", query: "kick" },
+      { label: "Everything", source: "sample-folder" },
     ]);
 
     expect(result.results.map((entry) => entry.label)).toStrictEqual([
@@ -102,8 +118,8 @@ describe("ppal-library searches", () => {
     await setConfig({ sampleFolder: SAMPLE_FOLDER });
 
     const result = await batch([
-      { source: "sampleFolder", query: "kick" },
-      { source: "sampleFolder", query: "sample" },
+      { source: "sample-folder", query: "kick" },
+      { source: "sample-folder", query: "sample" },
     ]);
 
     expect(result).not.toHaveProperty("dbAvailable");
@@ -115,7 +131,7 @@ describe("ppal-library searches", () => {
     // One folder-only query and one that reaches the DB: the roll-up is a
     // property of the batch, not of the query that happened to trigger it.
     const result = await batch([
-      { source: "sampleFolder", query: "kick" },
+      { source: "sample-folder", query: "kick" },
       { query: "kick", limit: 1 },
     ]);
 
@@ -126,9 +142,9 @@ describe("ppal-library searches", () => {
     await setConfig({ sampleFolder: SAMPLE_FOLDER });
 
     const result = await batch([
-      { label: "Kicks", source: "sampleFolder", query: "kick" },
-      { label: "Kicks", source: "sampleFolder", query: "sample" },
-      { source: "sampleFolder" },
+      { label: "Kicks", source: "sample-folder", query: "kick" },
+      { label: "Kicks", source: "sample-folder", query: "sample" },
+      { source: "sample-folder" },
     ]);
 
     // Every group stays addressable: the first "Kicks" keeps the bare label,
@@ -145,8 +161,8 @@ describe("ppal-library searches", () => {
     await setConfig({ sampleFolder: SAMPLE_FOLDER });
 
     const result = await batch([
-      { label: "Nothing", source: "sampleFolder", query: "no-such-sample" },
-      { label: "Kicks", source: "sampleFolder", query: "kick" },
+      { label: "Nothing", source: "sample-folder", query: "no-such-sample" },
+      { label: "Kicks", source: "sample-folder", query: "kick" },
     ]);
 
     // A dropped empty group would silently shift every later label's meaning.
@@ -162,7 +178,9 @@ describe("ppal-library searches", () => {
       await ctx.client!.callTool({
         name: "ppal-library",
         arguments: {
-          searches: [{ label: "Kicks", source: "sampleFolder", query: "kick" }],
+          searches: [
+            { label: "Kicks", source: "sample-folder", query: "kick" },
+          ],
         },
       }),
     );
@@ -176,7 +194,7 @@ describe("ppal-library searches", () => {
   it("refuses an empty searches", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-library",
-      arguments: { searches: [], query: "kick" },
+      arguments: { searches: [] },
     });
 
     expect(getToolErrorMessage(result)).toContain(
@@ -189,7 +207,7 @@ describe("ppal-library searches", () => {
 
     const searches = Array.from({ length: MAX_QUERIES + 1 }, (_, i) => ({
       label: `q${i}`,
-      source: "sampleFolder",
+      source: "sample-folder",
       query: "kick",
     }));
     const { data, warnings } = parseToolResultWithWarnings<BatchResult>(

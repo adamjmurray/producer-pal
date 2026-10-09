@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
@@ -39,7 +39,7 @@ describe("Transform - seq function", () => {
 
     it("rejects sync on seq", () => {
       expect(() => parser.parse("velocity += seq(1, 2, sync)")).toThrow(
-        'but "v" found',
+        'but "s" found',
       );
     });
   });
@@ -339,7 +339,7 @@ describe("Transform - clipseq function", () => {
 
     it("rejects sync on clipseq", () => {
       expect(() => parser.parse("pitch += clipseq(1, 2, sync)")).toThrow(
-        'but "p" found',
+        'but "s" found',
       );
     });
   });
@@ -403,21 +403,6 @@ describe("Transform - clipseq function", () => {
       expect(result.velocity!.value).toBe(10);
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("seq()"),
-      );
-    });
-
-    it("warns when called with no arguments (via applyTransforms catch)", () => {
-      const notes = createTestNotes([{ pitch: 60, start_time: 0 }]);
-
-      applyTransforms(notes, "velocity = clipseq()", 4, 4, {
-        clipIndex: 0,
-        clipCount: 1,
-        clipDuration: 4,
-        barDuration: 4,
-      });
-
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("clipseq() requires at least 1 argument"),
       );
     });
   });

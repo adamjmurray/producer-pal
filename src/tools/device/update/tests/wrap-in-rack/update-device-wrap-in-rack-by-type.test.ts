@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A wrap says what a container holds when `inst`/`mfx<n>`/`afx<n>` names no
 // device in it — the only thing a wrap can say, since it answers with one rack

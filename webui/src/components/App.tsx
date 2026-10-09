@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   useCallback,
@@ -224,6 +224,7 @@ export function App() {
     /* v8 ignore start -- inline settings tab navigation */
     onOpenToolsSettings: () => openSettings("tools"),
     onOpenConnectionSettings: () => openSettings("connection"),
+    onOpenRemoteScriptSettings: () => openSettings("remote-script"),
     /* v8 ignore stop */
     // Wrapped like onOpenSettings: a bare handler would hand openContext the
     // click event as its tab argument.

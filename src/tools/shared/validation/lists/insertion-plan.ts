@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Shared by the create tools that make several objects in one container:
 // tracks and scenes. An entry inside the container names a place as the caller
@@ -33,6 +33,15 @@ export interface Insertion<S extends InsertionSpot = InsertionSpot> {
 const EXISTING = -1;
 const EMPTY = -2;
 
+/** A call part-way through: what is in the container now, and what is left. */
+export interface PlanResume {
+  /** The container as it stands: a token per object, entries as their index */
+  layout: number[];
+  /** The first entry still to write; those before it are in the layout or
+   * failed (and read "end" in `spots`, which shifts nothing) */
+  from: number;
+}
+
 /**
  * Works out where each new object is created and where it ends up.
  *
@@ -44,18 +53,26 @@ const EMPTY = -2;
  * @param spots - Where each new object goes, in the order the call named them
  * @param existingCount - Objects in the container before the call
  * @param padsGaps - Add empty objects when a spot is past the end (scenes)
- * @returns One entry per spot, in the same order
+ * @param resume - Plans only the entries left once an earlier one failed, from
+ *   the container as it is now
+ * @returns One entry per spot, in the same order; with `resume`, one per spot
+ *   from `resume.from` on
  */
 export function planInsertions<S extends InsertionSpot>(
   spots: S[],
   existingCount: number,
   padsGaps = false,
+  resume?: PlanResume,
 ): Insertion<S>[] {
-  const layout: number[] = Array.from(
-    { length: existingCount },
-    () => EXISTING,
-  );
-  const reaches = spots.map((spot, i) => {
+  const layout: number[] =
+    resume == null
+      ? Array.from({ length: existingCount }, () => EXISTING)
+      : [...resume.layout];
+  const from = resume?.from ?? 0;
+  // Empty objects already in the container were made by an earlier entry.
+  const emptiesAtStart = layout.filter((token) => token === EMPTY).length;
+  const reaches = spots.slice(from).map((spot, k) => {
+    const i = from + k;
     const reach = reachFor(
       spot,
       spots.slice(0, i),
@@ -71,9 +88,10 @@ export function planInsertions<S extends InsertionSpot>(
   // The layout is final only once every entry is in, and a later insert can
   // take an empty object an earlier one padded, so the Live calls are worked
   // out from the finished layout.
-  let emptiesMade = 0;
+  let emptiesMade = emptiesAtStart;
 
-  return spots.map((spot, i) => {
+  return spots.slice(from).map((spot, k) => {
+    const i = from + k;
     const finalIndex = layout.indexOf(i);
     const below = layout.slice(0, finalIndex);
     const padCount = Math.max(
@@ -90,12 +108,68 @@ export function planInsertions<S extends InsertionSpot>(
     return {
       insertIndex: (spot === "end" ? "end" : atIndex) as S,
       atIndex,
-      reachIndex: reaches[i] as S,
+      reachIndex: reaches[k] as S,
       padCount,
       finalIndex,
       emptyBelow: countTrailingEmpties(below),
     };
   });
+}
+
+/**
+ * The container as it stands, read off the ids in it: what was there before the
+ * call, what the entries made, and anything else is an empty object a failed
+ * entry padded with.
+ * @param ids - The ids in the container now, in order
+ * @param before - The ids it held before the call
+ * @param made - The id each entry made, by entry; null for one that made none
+ * @param strayIsEmpty - Read an id nothing accounts for as an empty object
+ *   (scenes pad); otherwise as one that was there all along
+ * @param left - Ids a failed entry left behind: they count as objects that were
+ *   there, so no entry fills or claims them
+ * @returns A token per object, for `planInsertions` to carry on from
+ */
+export function layoutFromIds(
+  ids: string[],
+  before: ReadonlySet<string>,
+  made: ReadonlyArray<string | null>,
+  strayIsEmpty: boolean,
+  left: ReadonlySet<string>,
+): number[] {
+  return ids.map((id) => {
+    if (before.has(id) || left.has(id)) {
+      return EXISTING;
+    }
+
+    const entry = made.indexOf(id);
+
+    if (entry !== -1) {
+      return entry;
+    }
+
+    return strayIsEmpty ? EMPTY : EXISTING;
+  });
+}
+
+/**
+ * Where an entry sits in a layout read off the container.
+ * @param layout - The container, from `layoutFromIds`
+ * @param entry - The entry's position in the call
+ * @returns Its index and the empty objects right below it, or null when it made
+ *   no object
+ */
+export function placeInLayout(
+  layout: number[],
+  entry: number,
+): { finalIndex: number; emptyBelow: number } | null {
+  const finalIndex = layout.indexOf(entry);
+
+  return finalIndex === -1
+    ? null
+    : {
+        finalIndex,
+        emptyBelow: countTrailingEmpties(layout.slice(0, finalIndex)),
+      };
 }
 
 /**
@@ -105,20 +179,22 @@ export function planInsertions<S extends InsertionSpot>(
  * @param pathCount - How many entries the path param names
  * @param noun - What the tool creates, singular ("track", "scene")
  * @param example - A path list for this tool, shown in the error
+ * @param param - The param that holds the paths
  */
 export function refuseCountWithPathList(
   count: number | undefined,
   pathCount: number,
   noun: string,
   example: string,
+  param = "path",
 ): void {
   if (count == null || pathCount < 2) {
     return;
   }
 
   throw new Error(
-    `count repeats one path, but path names ${pathCount}. Drop count and let ` +
-      `path name each ${noun} (e.g. path: "${example}").`,
+    `count repeats one path, but ${param} names ${pathCount}. Drop count and let ` +
+      `${param} name each ${noun} (e.g. ${param}: "${example}").`,
   );
 }
 

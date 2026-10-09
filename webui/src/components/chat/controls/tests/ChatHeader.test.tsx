@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -41,6 +41,8 @@ describe("ChatHeader", () => {
     isHistoryOpen: false,
     update: null,
     onDismissUpdate: vi.fn(),
+    remoteScriptNotice: null,
+    onOpenRemoteScriptSettings: vi.fn(),
     onOpenSettings: vi.fn(),
     onOpenToolsSettings: vi.fn(),
     onOpenConnectionSettings: vi.fn(),
@@ -239,7 +241,7 @@ describe("ChatHeader", () => {
     });
 
     it("explains the gap the experimental tools leave in the denominator", () => {
-      // 21/23 out of the box is the normal state, not a fault.
+      // 22/24 out of the box is the normal state, not a fault.
       render(
         <ChatHeader
           {...defaultProps}
@@ -598,6 +600,29 @@ describe("ChatHeader", () => {
       render(<ChatHeader {...defaultProps} />);
 
       expect(screen.queryByTitle(/^Locked:/)).toBeNull();
+    });
+  });
+
+  describe("remote script badge", () => {
+    it("shows nothing by default", () => {
+      render(<ChatHeader {...defaultProps} />);
+
+      expect(screen.queryByText("(script update)")).toBeNull();
+    });
+
+    it("opens the Remote Script settings when clicked", () => {
+      const onOpenRemoteScriptSettings = vi.fn();
+
+      render(
+        <ChatHeader
+          {...defaultProps}
+          remoteScriptNotice="restart"
+          onOpenRemoteScriptSettings={onOpenRemoteScriptSettings}
+        />,
+      );
+      fireEvent.click(screen.getByText("(restart Live)"));
+
+      expect(onOpenRemoteScriptSettings).toHaveBeenCalledOnce();
     });
   });
 

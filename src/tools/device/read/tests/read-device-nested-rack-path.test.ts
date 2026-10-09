@@ -1,14 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readOneDevice } from "../read-device.ts";
-import { setupDrumPadMocks } from "./read-device-drum-mocks.ts";
+import { setupDrumPadMocks } from "./drum/read-device-drum-mocks.ts";
 
 const OUTER_CHAIN = `${livePath.track(1).device(0)} chains 0`;
 const SUB_RACK = `${OUTER_CHAIN} devices 0`;

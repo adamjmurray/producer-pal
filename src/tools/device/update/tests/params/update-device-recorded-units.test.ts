@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { readParameter } from "#src/tools/shared/device/helpers/param-reading.ts";
@@ -16,6 +16,21 @@ import {
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
+
+/**
+ * Register a device at t0/d0 whose only param is the mock "p1".
+ * @param deviceName - The device's class_display_name
+ */
+function registerDeviceWithP1(deviceName: string): void {
+  registerMockObject("dev1", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: {
+      class_display_name: deviceName,
+      parameters: children("p1"),
+    },
+  });
+}
 
 // Some of Live's stock params display a bare number and nothing else, so what
 // they measure is recorded in known-param-units.ts. Glue Compressor is the
@@ -38,14 +53,7 @@ describe("updateDevice - recorded param units", () => {
     min: number,
     max: number,
   ): RegisteredMockObject {
-    registerMockObject("dev1", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: {
-        class_display_name: deviceName,
-        parameters: children("p1"),
-      },
-    });
+    registerDeviceWithP1(deviceName);
 
     return registerMockObject("p1", {
       properties: {
@@ -287,24 +295,15 @@ describe("updateDevice - recorded param units", () => {
     // The range is part of the key. A Live version that moves it has changed
     // what the control does, and reporting the old unit would be worse than
     // reporting none.
-    it("drops the entry when the param's range no longer matches", () => {
-      const param = registerBareParam("Glue Compressor", "Attack", 0.01, 60);
-
-      expectParamRefused(
-        () =>
-          updateDevice({
-            id: "dev1",
-            params: [{ name: "Attack", value: "10 ms" }],
-          }),
-        "Attack",
-        "never says what it measures",
-      );
-
-      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-    });
-
-    it("leaves a param on another device alone", () => {
-      const param = registerBareParam("Compressor", "Attack", 0.01, 30);
+    it.each([
+      [
+        "drops the entry when the param's range no longer matches",
+        "Glue Compressor",
+        60,
+      ],
+      ["leaves a param on another device alone", "Compressor", 30],
+    ])("%s", (_name, deviceName, max) => {
+      const param = registerBareParam(deviceName, "Attack", 0.01, max);
 
       expectParamRefused(
         () =>
@@ -393,14 +392,7 @@ describe("Analog filter frequency", () => {
 
   describe("writing", () => {
     function registerAnalog(deviceName = "Analog"): RegisteredMockObject {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: {
-          class_display_name: deviceName,
-          parameters: children("p1"),
-        },
-      });
+      registerDeviceWithP1(deviceName);
 
       return registerMockObject("p1", {
         properties: { ...analogProps, value: 0 },

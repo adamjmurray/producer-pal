@@ -1,13 +1,30 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+
+/**
+ * Register track 1 as one that follows the arrangement, which is where a chain
+ * or device read looks for its automation. Without it, a track plays from
+ * Session as far as the read can tell.
+ * @param playingSlotIndex - The track's playing_slot_index (default -1, following)
+ * @returns The registered track
+ */
+export function registerArrangementTrack(
+  playingSlotIndex = -1,
+): RegisteredMockObject {
+  return registerMockObject("arrangement-track", {
+    path: String(livePath.track(1)),
+    type: "Track",
+    properties: { playing_slot_index: playingSlotIndex },
+  });
+}
 
 // Default device properties for Operator instrument
 const DEFAULT_DEVICE_PROPS = {
@@ -243,6 +260,8 @@ export function setupChainMock(
     // Providing a number means getProperty returns that number (has color)
     color: config.color ?? [],
   };
+
+  registerArrangementTrack();
 
   // Register the chain
   return registerMockObject(id, {

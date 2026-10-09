@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Fixture data for demo mode — realistic tool result scenarios
@@ -185,7 +185,7 @@ const UPDATE_CLIP_RESULT = { id: "44", path: "t4/s0" };
 
 // Quantization is MIDI-only, so an audio clip warns and skips it
 const QUANTIZE_WARNING =
-  "WARNING: quantize/quantizeGrid ignored for audio clip t4/s0 (id 44): quantization is MIDI-only";
+  "WARNING: quantize, quantizeGrid ignored: the clip is audio";
 
 // Tool name constants to avoid duplicate string violations
 const TOOL_READ_TRACK = "ppal-read-track";

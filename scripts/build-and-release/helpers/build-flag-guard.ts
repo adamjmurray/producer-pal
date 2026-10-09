@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Keeps dev-only flags out of a build that ships. rolldown bakes their values
 // into the bundles, so whatever the shell happens to export is what users get:

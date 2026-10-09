@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray, Eike Haß
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
@@ -17,15 +17,12 @@ import {
 } from "#src/shared/notation.ts";
 import { withLiveApiTool } from "#src/shared/tool-groups.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
-import {
-  TOOL_NAMES,
-  createMcpServer,
-  validateTools,
-} from "./create-mcp-server.ts";
+import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { type WrappedCallLiveApi } from "./helpers/connect/connect-append.ts";
 import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
 import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
 import { errorHandlerMiddleware } from "./helpers/http/error-handler-middleware.ts";
+import { parseConfigBody } from "./helpers/http/config-body.ts";
 import { requestBody } from "./helpers/http/request-body.ts";
 import { rejectCrossOriginWrite } from "./helpers/http/request-origin.ts";
 import {
@@ -33,6 +30,7 @@ import {
   type RequestProfile,
 } from "./helpers/http/request-profile.ts";
 import { getUpdate } from "./helpers/http/update-check.ts";
+import { dismissUpdate } from "./helpers/http/update-dismissal.ts";
 import { registerProjectContextBackupNodeRoutes } from "./helpers/project-context-backup/project-context-backup-node-routes.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 import { withDefaultOverrides } from "./helpers/request-overrides/default-overrides.ts";
@@ -42,6 +40,9 @@ import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-col
 import { registerGlobalContextRoutes } from "./routes/config/global-context-route.ts";
 import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
 import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
+import { setRemoteScriptEnabled } from "./rpc/remote-script/remote-script-client.ts";
+import { setRemoteScriptMinVersion } from "./rpc/remote-script/port/remote-script-version.ts";
+import { withUndoStepEnd } from "./rpc/remote-script/forwarded/with-undo-step-end.ts";
 import { registerRemoteScriptSetupRoutes } from "./routes/remote-script-setup-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerSkillOverridesRoutes } from "./routes/skill-overrides-route.ts";
@@ -59,6 +60,14 @@ interface ProducerPalConfig {
   sampleFolder: string;
   liveApiEnabled: boolean;
   liveApiForcedOn: boolean;
+  // Debug builds only: false makes the remote script look uninstalled. POST
+  // /config only (evals and e2e); not a device setting, so it is never sent to
+  // Max. A release build neither lists nor accepts it.
+  remoteScriptEnabled?: boolean;
+  // Debug builds only, like remoteScriptEnabled: a version string replaces the
+  // minimum remote script version, so a running script can look out of date.
+  // Listed only while set.
+  remoteScriptMinVersion?: string;
   tools: string[];
 }
 
@@ -81,6 +90,7 @@ const config: ProducerPalConfig = {
   sampleFolder: "",
   liveApiEnabled: liveApiForcedOn,
   liveApiForcedOn,
+  ...(liveApiForcedOn && { remoteScriptEnabled: true }),
   tools: liveApiForcedOn
     ? [...TOOL_NAMES, toolDefLiveApi.toolName]
     : [...TOOL_NAMES],
@@ -113,6 +123,12 @@ registerProjectContextBackupNodeRoutes({
   setProjectContext: (value: string) => {
     config.projectContext = value;
   },
+});
+
+// The device's update notice has a × button. The patch sends this; the setting
+// itself is Node-side only.
+Max.addHandler("dismissUpdate", () => {
+  void dismissUpdate();
 });
 
 Max.addHandler("compactOutput", (enabled: unknown) => {
@@ -163,13 +179,16 @@ function applyLiveApiEnabled(next: boolean): void {
  *
  * Notation is also pushed down as a request override (withDefaultOverrides), so
  * the notation the skills teach is the one V8 actually parses and formats notes
- * in. It wraps the inner call, inside the connect-enrichment chain.
+ * in. It wraps the inner call, inside the connect-enrichment chain. Write calls
+ * also end Live's pending undo step (withUndoStepEnd), so each is one undo.
  *
  * @param getSmallModelMode - Reads the small-model mode for this wrapper's calls
  * @param getTools - Reads the toolset skills fragments are gated on
  * @param getNotation - Reads the notation for this wrapper's calls
  * @param getCompactOutput - Reads the output format, or undefined to leave the
  *   device's own setting alone
+ * @param getPortalVersion - Reads the portal's version when the request came
+ *   through one, so ppal-connect can flag a version mismatch
  * @returns A callLiveApi whose ppal-connect results carry every block
  */
 function buildEnrichedCall(
@@ -177,9 +196,10 @@ function buildEnrichedCall(
   getTools: () => readonly string[],
   getNotation: () => Notation,
   getCompactOutput: () => boolean | undefined = () => undefined,
+  getPortalVersion: () => string | undefined = () => undefined,
 ): WrappedCallLiveApi {
   return enrichConnect(
-    withDefaultOverrides(callLiveApi, () => {
+    withDefaultOverrides(withUndoStepEnd(callLiveApi), () => {
       const overrides: RequestOverrides = { notation: getNotation() };
       const compactOutput = getCompactOutput();
 
@@ -196,6 +216,7 @@ function buildEnrichedCall(
       smallModelMode: getSmallModelMode(),
       projectContext: config.projectContext,
       tools: getTools(),
+      portalVersion: getPortalVersion(),
     }),
   );
 }
@@ -304,6 +325,7 @@ export function createExpressApp(): Express {
           () => profile.tools,
           () => profile.notation,
           () => profile.compactOutput,
+          () => profile.portalVersion,
         ),
         {
           smallModelMode: profile.smallModelMode,
@@ -442,7 +464,21 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
 
   // requestBody normalizes a missing/non-object body to {}, so a bodyless POST
   // /config is a benign no-op update instead of a TypeError → 500.
-  const incoming = requestBody(req) as Partial<ProducerPalConfig>;
+  // Check every field first: a bad one refuses the whole request, so a 400
+  // never leaves config half-applied (or Node and the device out of step).
+  const parsed = parseConfigBody(
+    requestBody(req),
+    config.liveApiEnabled,
+    liveApiForcedOn,
+  );
+
+  if (!parsed.ok) {
+    res.status(400).json(parsed.error);
+
+    return;
+  }
+
+  const incoming = parsed.value;
   const outlets: Array<() => Promise<void>> = [];
 
   if (incoming.projectContext !== undefined) {
@@ -453,19 +489,19 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   }
 
   if (incoming.smallModelMode !== undefined) {
-    config.smallModelMode = Boolean(incoming.smallModelMode);
+    config.smallModelMode = incoming.smallModelMode;
     outlets.push(() =>
       Max.outlet("config", "smallModelMode", config.smallModelMode),
     );
   }
 
-  if (incoming.notation !== undefined && isNotation(incoming.notation)) {
+  if (incoming.notation !== undefined) {
     config.notation = incoming.notation;
     outlets.push(() => Max.outlet("config", "notation", config.notation));
   }
 
   if (incoming.jsonOutput !== undefined) {
-    config.jsonOutput = Boolean(incoming.jsonOutput);
+    config.jsonOutput = incoming.jsonOutput;
     outlets.push(() =>
       Max.outlet("config", "compactOutput", !config.jsonOutput),
     );
@@ -479,7 +515,7 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   }
 
   if (incoming.liveApiEnabled !== undefined) {
-    applyLiveApiEnabled(Boolean(incoming.liveApiEnabled));
+    applyLiveApiEnabled(incoming.liveApiEnabled);
 
     // The whitelist is rebuilt either way, so it goes out with the flag.
     outlets.push(
@@ -488,19 +524,23 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
     );
   }
 
-  if (incoming.tools !== undefined) {
-    const validationError = validateTools(
-      incoming.tools,
-      config.liveApiEnabled,
-    );
+  if (incoming.remoteScriptEnabled !== undefined) {
+    config.remoteScriptEnabled = incoming.remoteScriptEnabled;
+    setRemoteScriptEnabled(incoming.remoteScriptEnabled);
+  }
 
-    if (validationError) {
-      res.status(400).json(validationError);
-
-      return;
+  if (incoming.remoteScriptMinVersion !== undefined) {
+    if (incoming.remoteScriptMinVersion == null) {
+      delete config.remoteScriptMinVersion;
+    } else {
+      config.remoteScriptMinVersion = incoming.remoteScriptMinVersion;
     }
 
-    config.tools = incoming.tools.map(String);
+    setRemoteScriptMinVersion(incoming.remoteScriptMinVersion);
+  }
+
+  if (incoming.tools !== undefined) {
+    config.tools = incoming.tools;
     outlets.push(() =>
       Max.outlet("config", "tools", JSON.stringify(config.tools)),
     );

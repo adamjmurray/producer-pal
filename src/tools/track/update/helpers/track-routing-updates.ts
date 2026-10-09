@@ -1,10 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
+import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import {
   type TargetNotes,
+  noteLanded,
   noteTarget,
   refuseTargetWork,
 } from "#src/tools/shared/helpers/target-notes.ts";
@@ -106,7 +108,7 @@ export function applyRoutingProperties(
 
   if (inputRoutingType != null || inputRoutingChannel != null) {
     const category = (track.category as string | undefined) ?? "regular";
-    const isGroup = (track.getProperty("is_foldable") as number) > 0;
+    const isGroup = isGroupTrack(track);
 
     if (isGroup || category !== "regular") {
       refuseTargetWork(
@@ -156,6 +158,7 @@ function setRouting(
   }
 
   track.setProperty(property, { identifier });
+  noteLanded(notes, ROUTING_PARAM[property] as string);
 }
 
 /**
@@ -191,7 +194,7 @@ function resolveRoutingIdentifier(
 
       noteTarget(
         notes,
-        `${matches.length} ${property} options are named "${value}"; used the first — send the identifier (${ids}) to pick another`,
+        `${matches.length} ${ROUTING_PARAM[property]} options are named "${value}"; used the first — send the identifier (${ids}) to pick another`,
       );
     }
 
@@ -209,7 +212,7 @@ function resolveRoutingIdentifier(
   refuseTargetWork(
     notes,
     [ROUTING_PARAM[property] as string],
-    `the track has no ${property} named "${value}"; available: ${names || "none"}`,
+    `the track has no ${ROUTING_PARAM[property]} named "${value}"; available: ${names || "none"}`,
   );
 
   return null;

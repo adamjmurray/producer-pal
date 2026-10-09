@@ -1,24 +1,79 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { rememberMemory } from "#src/mcp-server/helpers/memory/memory-store.ts";
 import {
   connectResponse,
   fakeInnerCall,
   useTempConfigDir,
 } from "#src/mcp-server/tests/config-dir-test-helpers.ts";
+import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { type RemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
+import { VERSION } from "#src/shared/config.ts";
 import { DEFAULT_NOTATION } from "#src/shared/notation.ts";
 import {
   enrichConnect,
   type ConnectEnrichmentConfig,
 } from "../enrich-connect.ts";
 
+const { remoteScriptPing, remoteScriptStatus } = vi.hoisted(() => ({
+  remoteScriptPing: vi.fn<() => Promise<RemoteScriptPing>>(),
+  remoteScriptStatus: vi.fn<() => Promise<RemoteScriptStatus>>(),
+}));
+
+// The real ones read the developer's running Live and User Library.
+vi.mock(
+  import("#src/mcp-server/rpc/remote-script/remote-script-client.ts"),
+  async (original) => ({ ...(await original()), remoteScriptPing }),
+);
+
+vi.mock(
+  import("#src/mcp-server/rpc/remote-script/remote-script-status.ts"),
+  () => ({ remoteScriptStatus }),
+);
+
 const getDir = useTempConfigDir();
+
+/**
+ * A status for an installed, current script that Live is running.
+ * @param overrides - Fields to change
+ * @returns The status
+ */
+function currentStatus(
+  overrides: Partial<RemoteScriptStatus> = {},
+): RemoteScriptStatus {
+  return {
+    userLibrary: "/lib",
+    installed: true,
+    installedVersion: VERSION,
+    bundledVersion: VERSION,
+    running: true,
+    runningVersion: VERSION,
+    liveVersion: "12.4.0",
+    otherOnPort: null,
+    updateAvailable: false,
+    installedNewer: false,
+    ...overrides,
+  };
+}
+
+beforeEach(() => {
+  remoteScriptPing.mockReset();
+  remoteScriptStatus.mockReset();
+  remoteScriptPing.mockResolvedValue({
+    running: true,
+    liveVersion: "12.4.0",
+    scriptVersion: VERSION,
+    userLibrary: null,
+    otherOnPort: null,
+  });
+  remoteScriptStatus.mockResolvedValue(currentStatus());
+});
 
 /**
  * Run the full enrichment chain over a ppal-connect call.
@@ -54,12 +109,97 @@ describe("enrichConnect", () => {
 
     const blocks = await enrichedBlocks({ projectContext: "House track." });
 
-    expect(blocks).toHaveLength(6); // the connect result itself, then five
-    expect(blocks[1]).toContain("Producer Pal"); // skills
-    expect(blocks[2]).toContain("Project context (this Live Set):");
-    expect(blocks[3]).toContain("Global context (all projects):");
-    expect(blocks[4]).toContain("Memory index");
-    expect(blocks[5]).toContain("Report the connection status");
+    expect(blocks).toHaveLength(7); // the connect result itself, then six
+    expect(blocks[1]).toContain("remoteScript:");
+    expect(blocks[2]).toContain("Producer Pal"); // skills
+    expect(blocks[3]).toContain("Project context (this Live Set):");
+    expect(blocks[4]).toContain("Global context (all projects):");
+    expect(blocks[5]).toContain("Memory index");
+    expect(blocks[5]).toContain("Read an entry before work it covers");
+    expect(blocks[5]).toContain("rewrite that entry right away");
+    expect(blocks[6]).toContain("Report the connection status");
+  });
+
+  it("puts the portal version line right after the connect result, before the skills", async () => {
+    const blocks = await enrichedBlocks({ portalVersion: "1.0.0" });
+
+    expect(blocks[1]).toContain("portalVersion: 1.0.0");
+    expect(blocks[3]).toContain("Producer Pal Skills");
+    expect(blocks.at(-1)).toContain("Report the connection status");
+  });
+
+  it("puts the remote script line after the portal line and before the skills", async () => {
+    remoteScriptStatus.mockResolvedValue(
+      currentStatus({ installedVersion: "0.0.1", updateAvailable: true }),
+    );
+
+    const blocks = await enrichedBlocks({ portalVersion: "1.0.0" });
+
+    expect(blocks[1]).toContain("portalVersion: 1.0.0");
+    expect(blocks[2]).toContain("remoteScript:");
+    expect(blocks[3]).toContain("Producer Pal Skills");
+  });
+
+  it("pings the remote script once per connect, for the skills and the notice together", async () => {
+    await enrichedBlocks();
+
+    expect(remoteScriptPing).toHaveBeenCalledOnce();
+  });
+
+  it("gives just the version when the script is current", async () => {
+    const blocks = await enrichedBlocks();
+
+    expect(blocks).toContain(`remoteScript: v${VERSION} running`);
+  });
+
+  describe("the install pointer in the remote script line", () => {
+    const NOT_INSTALLED = {
+      installed: false,
+      installedVersion: null,
+      running: false,
+      runningVersion: null,
+    };
+
+    /**
+     * @param overrides - Device settings to override the defaults
+     * @returns The remote script line
+     */
+    async function lineFor(
+      overrides: Partial<ConnectEnrichmentConfig>,
+    ): Promise<string | undefined> {
+      remoteScriptStatus.mockResolvedValue(currentStatus(NOT_INSTALLED));
+
+      const blocks = await enrichedBlocks(overrides);
+
+      return blocks.find((block) => block.startsWith("remoteScript:"));
+    }
+
+    it("names ppal-manage when the toolset has it", async () => {
+      expect(await lineFor({})).toContain("ppal-manage");
+      expect(
+        await lineFor({ tools: ["ppal-connect", "ppal-manage"] }),
+      ).toContain("ppal-manage");
+    });
+
+    it("names the Chat UI when the toolset leaves ppal-manage out", async () => {
+      const line = await lineFor({ tools: ["ppal-connect"] });
+
+      expect(line).toContain("Chat UI");
+      expect(line).not.toContain("ppal-manage");
+    });
+
+    it("names the Chat UI in small-model mode", async () => {
+      const line = await lineFor({ smallModelMode: true });
+
+      expect(line).toContain("Chat UI");
+      expect(line).not.toContain("ppal-manage");
+    });
+  });
+
+  it("adds no portal line for a request that did not come through a portal", async () => {
+    const blocks = await enrichedBlocks();
+
+    expect(blocks.some((block) => block.includes("portalVersion"))).toBe(false);
   });
 
   // The next step reacts to the context and memory carried by the blocks before

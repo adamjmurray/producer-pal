@@ -1,12 +1,57 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 interface PathSegment {
   collection: string;
   index: number;
 }
+
+/** A target to delete, by its place in the call. */
+export interface OrderedTarget {
+  index: number;
+  object: LiveAPI;
+}
+
+/**
+ * The order to delete targets in. Tracks, scenes and devices delete by
+ * position, so an earlier delete shifts later siblings; deleting from the end
+ * keeps each delete on the right object.
+ *
+ * Clips and chains are deliberately left in call order: they delete by id
+ * (`delete_clip <id>`, and a chain by parking it on a free pad), so a sibling
+ * shift never reaches them. Measured on 12.4.3 by
+ * e2e/mcp/operations/ppal-delete-batch-ordering.test.ts, which deletes three
+ * of four ascending — the worst case — and checks which one survived.
+ * @param targets - The targets to delete, with where each sits in the call
+ * @param type - The tool-level type
+ * @returns The targets' call indexes, in the order to delete them
+ */
+export function positionalDeleteOrder(
+  targets: OrderedTarget[],
+  type: string,
+): number[] {
+  const order = [...targets];
+
+  if (type === "track" || type === "scene") {
+    // Handles both regular and return tracks
+    const pathRegex =
+      type === "track"
+        ? /live_set (?:return_)?tracks (\d+)/
+        : /live_set scenes (\d+)/;
+    const positionOf = ({ object }: OrderedTarget): number =>
+      Number(object.path.match(pathRegex)?.[1]);
+
+    order.sort((a, b) => positionOf(b) - positionOf(a));
+  } else if (type === "device") {
+    order.sort((a, b) => compareDevicesForDeletion(a.object, b.object));
+  }
+
+  return order.map(({ index }) => index);
+}
+
+// --- Helpers below main exports ---
 
 /**
  * Orders devices for safe positional deletion. `delete_device N` removes by
@@ -29,7 +74,7 @@ interface PathSegment {
  * @param b - Second device
  * @returns Negative if a deletes first, positive if b deletes first
  */
-export function compareDevicesForDeletion(a: LiveAPI, b: LiveAPI): number {
+function compareDevicesForDeletion(a: LiveAPI, b: LiveAPI): number {
   const segsA = parsePathSegments(a.path);
   const segsB = parsePathSegments(b.path);
   const sharedDepth = Math.min(segsA.length, segsB.length);
@@ -68,40 +113,4 @@ function parsePathSegments(path: string): PathSegment[] {
     collection: match[1] as string,
     index: Number(match[2]),
   }));
-}
-
-/**
- * Tracks, scenes, and devices delete by position, so an earlier delete shifts
- * later siblings. Sorts highest-index-first, in place, so each delete targets
- * the right object.
- *
- * Clips and chains are deliberately left alone: they delete by id
- * (`delete_clip <id>`, and a chain by parking it on a free pad), so a sibling
- * shift never reaches them. Measured on 12.4.3 by
- * e2e/mcp/operations/ppal-delete-batch-ordering.test.ts, which deletes three
- * of four ascending — the worst case — and checks which one survived.
- * @param objectsToDelete - The resolved targets, mutated into deletion order
- * @param type - The tool-level type
- */
-export function sortForPositionalDelete(
-  objectsToDelete: Array<{ id: string; object: LiveAPI }>,
-  type: string,
-): void {
-  if (type === "track" || type === "scene") {
-    objectsToDelete.sort((a, b) => {
-      // For tracks, handle both regular and return tracks
-      const pathRegex =
-        type === "track"
-          ? /live_set (?:return_)?tracks (\d+)/
-          : /live_set scenes (\d+)/;
-      const indexA = Number(a.object.path.match(pathRegex)?.[1]);
-      const indexB = Number(b.object.path.match(pathRegex)?.[1]);
-
-      return indexB - indexA; // Descending order
-    });
-  } else if (type === "device") {
-    objectsToDelete.sort((a, b) =>
-      compareDevicesForDeletion(a.object, b.object),
-    );
-  }
 }

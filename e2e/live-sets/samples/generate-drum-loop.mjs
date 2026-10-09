@@ -2,7 +2,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Renders the suites' bar-aligned audio fixtures, one per entry in TARGETS.
 // Each is a plain 4/4 drum pattern at its Set's tempo, so a clip covering the

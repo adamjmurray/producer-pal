@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { MIDI_TO_DRUM_NAME } from "#src/notation/stark/stark-config.ts";
 import { type Notation } from "#src/shared/notation.ts";
@@ -19,6 +19,10 @@ import {
   readDeviceParameters,
   readMacroVariations,
 } from "./helpers/device-reading.ts";
+import {
+  noteAutomationUnknown,
+  owningTrackFollowsArrangement,
+} from "#src/tools/shared/arrangement/tracks/follows-arrangement.ts";
 import { extractDevicePath } from "./helpers/path/insertion-path.ts";
 import { probeSimplerSample } from "./simpler-sample.ts";
 import {
@@ -51,6 +55,13 @@ export interface ReadDeviceOptions {
    * reads devices and nothing else. See processDeviceChains.
    */
   chainsHidden?: boolean;
+  /**
+   * Whether the chains' track follows the arrangement, so a chain can name its
+   * automated mixer fields. Left out, the rack checks and says so itself when it
+   * doesn't; set by a caller that already checked, so a rack inside a chain
+   * neither checks again nor says it again.
+   */
+  chainAutomation?: boolean;
 }
 
 interface DeviceWithChains {
@@ -313,6 +324,7 @@ export function readDevice(
     maxDepth = DEFAULT_MAX_DEPTH,
     parentPath,
     chainsHidden = false,
+    chainAutomation,
   } = options;
 
   if (depth > maxDepth) {
@@ -358,7 +370,9 @@ export function readDevice(
     includeChains,
     includeReturnChains,
     includeDrumPads,
+    includeSample,
     chainsHidden,
+    chainAutomation,
     depth,
     maxDepth,
     readDeviceFn: readDevice,
@@ -457,10 +471,20 @@ function appendParameters(
   includeValues: boolean,
   paramSearch: string | undefined,
 ): void {
+  // `automation` is only read with values, and the track is checked once here
+  // rather than once per param.
+  const showAutomation =
+    !includeValues || owningTrackFollowsArrangement(device);
   const parameters = readDeviceParameters(device, {
     includeValues,
     search: paramSearch,
+    showAutomation,
   });
+
+  if (!showAutomation) {
+    noteAutomationUnknown(deviceInfo);
+  }
+
   const pseudoParams = readSpecializedParams(device, paramSearch);
   const merged = [...pseudoParams, ...parameters];
 

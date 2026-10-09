@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
@@ -245,6 +245,17 @@ describe("note-updates", () => {
       });
     }
 
+    it("has no result to count on when the double is skipped", () => {
+      // The caller sends only MIDI clips; an audio one refuses the double.
+      registerMockObject("100", {
+        path: "live_set tracks 0 clip_slots 0 clip",
+        type: "Clip",
+        properties: { is_midi_clip: 0 },
+      });
+
+      expect(callWithEdits()).toBeNull();
+    });
+
     it("skips the pre-double stage entirely when preTransforms is absent", () => {
       // Stage 1 only runs when preTransformString != null. With no edits at all
       // the function just doubles; forcing the guard true would flush the
@@ -404,7 +415,11 @@ describe("muted notes in an edit", () => {
     it("changes only visible notes and writes the muted one back as it was", () => {
       const { addedNotes, result } = transform([rawNote(60, 0, 1), MUTED]);
 
-      expect(result).toStrictEqual({ noteCount: 1, transformed: 1 });
+      expect(result).toStrictEqual({
+        noteCount: 1,
+        transformed: 1,
+        putOutside: 0,
+      });
       expect(addedNotes).toContainEqual(MUTED_WRITTEN);
       expect(addedNotes.filter((note) => note.velocity === 20)).toHaveLength(1);
     });
@@ -424,7 +439,8 @@ describe("muted notes in an edit", () => {
         4,
       );
 
-      expect(result.transformed).toBe(2);
+      expect(result.deletedNotes).toBe(2);
+      expect(result.transformed).toBe(0);
       expect(addedNotes).toStrictEqual([MUTED_WRITTEN]);
     });
 

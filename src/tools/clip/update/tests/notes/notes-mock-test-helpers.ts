@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { vi } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -31,6 +31,16 @@ export function rawNote(pitch: number, startTime: number, noteId: number) {
 const REGION_END_PROPS = new Set(["length", "end_marker", "loop_end"]);
 
 /**
+ * A mock clip's getProperty: the region runs from 0 to `length`; everything
+ * else reads 0.
+ * @param length - Clip length in beats
+ * @returns The getProperty implementation
+ */
+export function clipRegionProperty(length = 4): (prop: string) => number {
+  return (prop) => (REGION_END_PROPS.has(prop) ? length : 0);
+}
+
+/**
  * Build a mock clip that returns `existingNotes` from get_notes_extended and
  * captures every note passed to add_new_notes into the returned `addedNotes`.
  * @param existingNotes - Notes the mock returns from get_notes_extended
@@ -49,10 +59,7 @@ export function makeNotesMockClip<T extends object = Record<string, number>>(
 } {
   const addedNotes: T[] = [];
   const mockClip = {
-    // The region runs from 0 to `length`; everything else reads 0.
-    getProperty: vi.fn((prop: string) =>
-      REGION_END_PROPS.has(prop) ? length : 0,
-    ),
+    getProperty: vi.fn(clipRegionProperty(length)),
     call: vi.fn((method: string, ...args: unknown[]) => {
       if (method === "get_notes_extended") {
         return JSON.stringify({ notes: existingNotes });

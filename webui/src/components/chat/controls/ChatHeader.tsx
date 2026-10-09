@@ -1,11 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { BUILD_SHA, VERSION } from "#src/shared/config";
 import { type UpdateInfo } from "#src/shared/version-check";
 import logoSvg from "#webui/assets/producer-pal-logo.svg";
+import { type RemoteScriptNotice } from "#webui/hooks/connection/use-remote-script-notice";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import { HeaderActions, type HeaderInfo } from "./header/HeaderActions";
 import {
@@ -26,6 +27,8 @@ interface ChatHeaderProps {
   isActiveBookmarked?: boolean;
   update: UpdateInfo | null;
   onDismissUpdate: () => void;
+  remoteScriptNotice: RemoteScriptNotice;
+  onOpenRemoteScriptSettings: () => void;
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
@@ -44,6 +47,8 @@ interface ChatHeaderProps {
  * @param props.isActiveBookmarked - Whether the active conversation is bookmarked
  * @param props.update - Available update, or null if up to date
  * @param props.onDismissUpdate - Hide this version's update notification for good
+ * @param props.remoteScriptNotice - What the remote script needs, or null
+ * @param props.onOpenRemoteScriptSettings - Open settings on the Remote Script tab
  * @param props.onOpenSettings - Callback to open settings
  * @param props.onOpenToolsSettings - Callback to open tools settings tab
  * @param props.onOpenConnectionSettings - Callback to open connection settings tab
@@ -60,6 +65,8 @@ export function ChatHeader({
   isActiveBookmarked,
   update,
   onDismissUpdate,
+  remoteScriptNotice,
+  onOpenRemoteScriptSettings,
   onOpenSettings,
   onOpenToolsSettings,
   onOpenConnectionSettings,
@@ -123,6 +130,8 @@ export function ChatHeader({
         build={BUILD_SHA}
         update={update}
         onDismissUpdate={onDismissUpdate}
+        remoteScriptNotice={remoteScriptNotice}
+        onOpenRemoteScriptSettings={onOpenRemoteScriptSettings}
       />
 
       <div className="flex gap-1 text-xs">

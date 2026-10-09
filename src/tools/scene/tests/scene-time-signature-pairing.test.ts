@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -12,6 +12,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { createScene } from "../create-scene.ts";
 import { updateScene } from "../update-scene.ts";
+import { registerThreeScenes } from "./scene-fixtures.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
@@ -109,9 +110,7 @@ describe("updateScene timeSignature pairing", () => {
   let scene3: RegisteredMockObject;
 
   beforeEach(() => {
-    scene1 = registerMockObject("123", { path: livePath.scene(0) });
-    scene2 = registerMockObject("456", { path: livePath.scene(1) });
-    scene3 = registerMockObject("789", { path: livePath.scene(2) });
+    [scene1, scene2, scene3] = registerThreeScenes();
   });
 
   it("pairs one time signature per scene, in order", () => {

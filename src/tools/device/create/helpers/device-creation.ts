@@ -1,27 +1,40 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The steps creating a device at a path takes, whichever way the device
 // arrives: Live's insert_device for a native one, or a browser load moved into
 // place. Shared so both kinds resolve, warn, and fail alike.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { refreshParamValues } from "#src/tools/device/update/helpers/params/param-read-back.ts";
 import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
 import {
+  errorWithChainsLeft,
+  withChainsLeft,
+} from "#src/tools/shared/device/helpers/path/chains-left.ts";
+import {
   ONE_INSTRUMENT_PER_CHAIN,
   deviceHasInstrument,
 } from "#src/tools/shared/device/helpers/chain-info.ts";
+import { type ParamResult } from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
-  type ParamResult,
-  refreshParamValues,
-} from "#src/tools/shared/device/helpers/param-reading.ts";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+  pastTheEndReason,
+  resolveInsertionPath,
+} from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import { nestedRackHintForPath } from "#src/tools/shared/device/helpers/path/nested-rack-hint.ts";
 import { invalidateDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
-import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  type WrittenContainer,
+  pathField,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  misfitReason,
+  nativeDeviceKind,
+  trackMisfitReason,
+} from "#src/tools/shared/device/helpers/path/device-fit.ts";
 
 export interface CreateDeviceResult {
   id: string;
@@ -29,6 +42,16 @@ export interface CreateDeviceResult {
   /** The rack chains the path had to make first ("c2-c3"), when it made any */
   created?: string;
   params?: ParamResult[];
+  /** What didn't finish after the device landed */
+  detail?: string;
+}
+
+/** A device a path put in place. */
+export interface CreatedDevice {
+  device: LiveAPI;
+  entry: CreateDeviceResult;
+  /** How the call spelled the container, to name the device again later */
+  written: WrittenContainer;
 }
 
 /** Where one path puts a device. */
@@ -40,22 +63,50 @@ export interface CreationTarget {
   containerPath: string;
   /** The rack chains the path made on the way to the container, if any */
   createdChains?: string;
+  /** Every chain the path made, the `c+` one included: what a failure left */
+  madeChains?: string;
 }
 
 /**
  * Insert a native device at a path (track or chain).
  * @param deviceName - The device, as the call named it
  * @param path - Device path
- * @returns The device and its result entry
+ * @returns The device, its result entry and how its container was spelled
  * @throws Error when Live turns the insert down
  */
 export function insertNativeDevice(
   deviceName: string,
   path: string,
-): { device: LiveAPI; entry: CreateDeviceResult } {
+): CreatedDevice {
   const target = resolveCreationTarget(path);
+
+  try {
+    // Before Live is asked, which would refuse a misfit with no reason.
+    const misfit = trackMisfitReason(
+      deviceName,
+      nativeDeviceKind(deviceName),
+      target.container,
+    );
+
+    if (misfit != null) {
+      throw new Error(misfit);
+    }
+
+    return insertInto(target, deviceName, path);
+  } catch (error) {
+    // The chains the path made stay in the Set whether or not the insert does.
+    throw errorWithChainsLeft(error, target.madeChains);
+  }
+}
+
+// Hand Live the insert at an already-resolved target.
+function insertInto(
+  target: CreationTarget,
+  deviceName: string,
+  path: string,
+): CreatedDevice {
   const { container } = target;
-  const { position, deviceCount } = insertionPosition(target, path, deviceName);
+  const { position, deviceCount } = insertionPosition(target);
 
   const result =
     position != null
@@ -84,16 +135,21 @@ export function insertNativeDevice(
     // Live, not a bug, and an audio effect on the same chains succeeds — so
     // name it when the container shows it.
     throw new Error(
-      insertRefusal(
-        deviceName,
-        target.position,
-        path,
-        insertRefusalCause(deviceName, container),
-      ),
+      misfitReason(deviceName, nativeDeviceKind(deviceName), container) ??
+        insertRefusal(
+          deviceName,
+          target.position,
+          path,
+          insertRefusalCause(deviceName, container),
+        ),
     );
   }
 
-  return { device, entry: createdDeviceEntry(id, device, target) };
+  return {
+    device,
+    entry: createdDeviceEntry(id, device, target),
+    written: writtenContainer(target),
+  };
 }
 
 /**
@@ -117,8 +173,14 @@ export function appendRenumbers(deviceName: string): boolean {
  * @throws Error when the path names no place a device can go
  */
 export function resolveCreationTarget(path: string): CreationTarget {
-  const { container, position, containerPath, namesNothing, createdChains } =
-    resolveInsertionPath(path);
+  const {
+    container,
+    position,
+    containerPath,
+    namesNothing,
+    createdChains,
+    madeChains,
+  } = resolveInsertionPath(path);
 
   if (namesNothing != null) {
     throw new Error(
@@ -127,40 +189,44 @@ export function resolveCreationTarget(path: string): CreationTarget {
   }
 
   if (!container?.exists()) {
-    throw new Error(`container at path "${path}" does not exist`);
-  }
-
-  return { container, position, containerPath, createdChains };
-}
-
-/**
- * The index to hand Live. Live rejects any position past the end of the chain,
- * including 0 on an empty one, so those append instead — past the end warns.
- * @param target - Where the device goes
- * @param target.container - The container
- * @param target.position - The index the path named, or null for an append
- * @param path - The path as the call wrote it
- * @param deviceName - The device, as the call named it
- * @returns The index (null appends) and the devices already in the container
- */
-export function insertionPosition(
-  { container, position }: CreationTarget,
-  path: string,
-  deviceName: string,
-): { position: number | null; deviceCount: number } {
-  const deviceCount = container.getChildCount("devices");
-  const pastEnd = position != null && position > deviceCount;
-
-  if (pastEnd) {
-    console.warn(
-      `path "${path}" is past the end of the device chain ` +
-        `(${deviceCount} device${deviceCount === 1 ? "" : "s"}), appending "${deviceName}" instead`,
+    throw new Error(
+      withChainsLeft(
+        `container at path "${path}" does not exist${nestedRackHintForPath(path)}`,
+        madeChains,
+      ),
     );
   }
 
+  // Live ignores a position past the end without a word, so refuse it before
+  // anything is made (a browser device would otherwise load first).
+  const tooFar = pastTheEndReason(
+    position,
+    container.getChildCount("devices"),
+    path,
+  );
+
+  if (tooFar != null) {
+    throw new Error(withChainsLeft(tooFar, madeChains));
+  }
+
+  return { container, position, containerPath, createdChains, madeChains };
+}
+
+/**
+ * The index to hand Live. Live rejects 0 on an empty chain, so that appends.
+ * @param target - Where the device goes
+ * @param target.container - The container
+ * @param target.position - The index the path named, or null for an append
+ * @returns The index (null appends) and the devices already in the container
+ */
+export function insertionPosition({ container, position }: CreationTarget): {
+  position: number | null;
+  deviceCount: number;
+} {
+  const deviceCount = container.getChildCount("devices");
+
   return {
-    position:
-      pastEnd || (position === 0 && deviceCount === 0) ? null : position,
+    position: position === 0 && deviceCount === 0 ? null : position,
     deviceCount,
   };
 }
@@ -207,23 +273,36 @@ export function insertRefusalCause(
 }
 
 /**
+ * How the call spelled the container a device went into.
+ * @param target - Where the device was created
+ * @param target.container - The container
+ * @param target.containerPath - How the call spelled the container
+ * @returns The container and its spelling
+ */
+export function writtenContainer({
+  container,
+  containerPath,
+}: CreationTarget): WrittenContainer {
+  return { container: () => container, path: containerPath };
+}
+
+/**
  * A created device's result entry, named in the call's own spelling.
  * @param id - The device's id
  * @param device - The device
  * @param target - Where it was created
- * @param target.container - The container
- * @param target.containerPath - How the call spelled the container
- * @param target.createdChains - The rack chains the path made first, if any
  * @returns The entry's id, path, and the chains it took to get there
  */
 export function createdDeviceEntry(
   id: string,
   device: LiveAPI,
-  { container, containerPath, createdChains }: CreationTarget,
+  target: CreationTarget,
 ): CreateDeviceResult {
+  const { createdChains } = target;
+
   return {
     id,
-    ...pathField(device, { container: () => container, path: containerPath }),
+    ...pathField(device, writtenContainer(target)),
     ...(createdChains == null ? {} : { created: createdChains }),
   };
 }
@@ -234,6 +313,7 @@ export function createdDeviceEntry(
  * @param entry - Its result entry, which gains any params outcome
  * @param displayName - The name for this device, if any
  * @param params - {name, value} entries applied to each created device
+ * @param landed - Told what has changed in Live, once it has
  * @returns The entry
  */
 export function labelCreatedDevice(
@@ -241,9 +321,11 @@ export function labelCreatedDevice(
   entry: CreateDeviceResult,
   displayName: string | undefined,
   params: ParamEntry[] | undefined,
+  landed: (phrase: string) => void,
 ): CreateDeviceResult {
   if (displayName != null) {
     device.set("name", displayName);
+    landed("name");
   }
 
   if (params != null) {

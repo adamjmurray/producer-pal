@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Collects the exported functions and classes of every non-test .ts/.tsx module
 // in a tree and checks them against the filename, for the main-export ratchet.

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /** Creating, reading and updating a clip, for e2e suites that do several. */
 
@@ -16,6 +16,7 @@ import {
   type ReadClipResult,
   sleep,
 } from "../../mcp-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import { arrangementStartOf } from "./arrangement-start-test-helpers.ts";
 
 /**
@@ -187,4 +188,95 @@ export async function moveOffTakeLane(
   expect(moved.detail).toContain("emptied instead of deleted");
 
   return readClipFully(client, { id: moved.id });
+}
+
+/**
+ * A clip's notes as Live reports them, minus the note_id it assigns itself.
+ * @param client - The connected MCP client
+ * @param clipId - The clip's Live API id
+ * @returns One dictionary per note, in Live's own shape
+ */
+export async function readNoteDicts(
+  client: Client,
+  clipId: string,
+): Promise<Array<Record<string, number>>> {
+  const result = await client.callTool({
+    name: "ppal-live-api",
+    arguments: {
+      path: `id ${clipId}`,
+      operations: [
+        { type: "call", method: "get_notes_extended", args: [0, 128, 0, 4] },
+      ],
+    },
+  });
+  const [raw] = parseToolResult<{
+    results: string[];
+  }>(result).results;
+  const { notes } = JSON.parse(raw!) as {
+    notes: Array<Record<string, number>>;
+  };
+
+  return notes.map(({ note_id: _noteId, ...note }) => note);
+}
+
+/** The muted note's pitch: E3. */
+const MUTED_PITCH = 64;
+
+/**
+ * Create a one-bar clip holding C3 on beat 1 and G3 on beat 4, plus a muted E3
+ * on beat 3 written straight through Live.
+ *
+ * ppal-live-api passes only scalars, and a JSON string is how the dictionary
+ * `add_new_notes` wants gets through. Never use Live's older note protocol
+ * (select_all_notes/replace_selected_notes/notes/note/done) — it pops a modal
+ * dialog that stalls every Live call until someone dismisses it.
+ * @param client - The connected MCP client
+ * @param sceneIndex - Session scene index for the slot
+ * @param mutedStart - Where the muted E3 starts, in beats (2 is on every grid)
+ * @returns The clip's id
+ */
+export async function createClipWithMutedNote(
+  client: Client,
+  sceneIndex: number,
+  mutedStart = 2,
+): Promise<string> {
+  const created = parseToolResult<{ id: string }>(
+    await client.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s${sceneIndex}`,
+        notes: "C3 1|1 G3 1|4",
+        length: "1bar",
+      },
+    }),
+  );
+
+  await client.callTool({
+    name: "ppal-live-api",
+    arguments: {
+      path: `id ${created.id}`,
+      operations: [
+        {
+          type: "call",
+          method: "add_new_notes",
+          args: [
+            JSON.stringify({
+              notes: [
+                {
+                  pitch: MUTED_PITCH,
+                  start_time: mutedStart,
+                  duration: 1,
+                  velocity: 90,
+                  mute: 1,
+                },
+              ],
+            }),
+          ],
+        },
+      ],
+    },
+  });
+  await sleep(100);
+
+  return created.id;
 }

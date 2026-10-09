@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   isTakeLaneClip,
@@ -9,41 +9,40 @@ import {
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { pairValues } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { requireSameLength } from "#src/tools/shared/validation/lists/list-lengths.ts";
-import { parseArrangementLength } from "./arrangement-length.ts";
+import {
+  copyLengthBeats,
+  parseArrangementLength,
+} from "./arrangement-length.ts";
 
 /**
- * Copy order that keeps the source clip whole for as long as possible.
+ * The copies that land on the source clip's own span.
  *
- * A copy landing on the source's own span overwrites it — Live's replace
- * behavior — so the source is shorter afterwards and every copy made after it
- * would be a copy of the leftover. Making those last means the rest of the
- * fan-out gets the whole clip, and the result no longer depends on the order
- * the destinations happened to be listed in.
+ * A copy landing there overwrites the source — Live's replace behavior — so
+ * the source is shorter afterwards and every copy made after it would be a copy
+ * of the leftover. Those copies have to be made last, which keeps the rest of
+ * the fan-out copying the whole clip, and makes the result independent of the
+ * order the destinations happened to be listed in. Two or more are made from a
+ * spare of the source, since each trims it for the next.
  *
  * A copy is in the way only when it lands on the source's own lane and the span
  * it clears — `spanBeats` forward from its start — reaches the source, the same
- * overlap test `clearClipAtDuplicateTarget` uses. Two copies that miss each
- * other either way round must keep the order they were asked for: deferring one
- * behind the copy that truncates the source is how it ends up made from the
- * leftover.
+ * overlap test `clearClipAtDuplicateTarget` uses.
  * @param source - The clip being copied
  * @param targets - Destination per copy
  * @param positions - Start position per copy, in Ableton beats
  * @param spanBeats - How far each copy clears forward from its start, per copy
- * @returns Copy indexes, in the order to make them
+ * @returns The indexes of the copies that go over the source
  */
-export function sourceLastOrder(
+export function copiesOverSource(
   source: LiveAPI,
   targets: ArrangementTrack[],
   positions: number[],
   spanBeats: number[],
-): number[] {
-  const indexes = positions.map((_, i) => i);
-
+): Set<number> {
   // A session source is never in the way: nothing about it lives on the
   // arrangement timeline the copies are clearing.
   if (source.getProperty("is_arrangement_clip") !== 1) {
-    return indexes;
+    return new Set();
   }
 
   const sourceTrackIndex = source.trackIndex;
@@ -64,10 +63,7 @@ export function sourceLastOrder(
     (positions[i] as number) < sourceEnd &&
     (positions[i] as number) + (spanBeats[i] as number) > sourceStart;
 
-  return [
-    ...indexes.filter((i) => !overwritesSource(i)),
-    ...indexes.filter((i) => overwritesSource(i)),
-  ];
+  return new Set(positions.flatMap((_, i) => (overwritesSource(i) ? [i] : [])));
 }
 
 /**
@@ -77,11 +73,11 @@ export function sourceLastOrder(
  * is the source's own length. Every length was checked before any copy, so
  * this one parses.
  *
- * A take-lane source ignores it outright, because every copy of one is
- * re-created — Live's arrangement duplicate handles neither direction — and a
- * re-created copy is always the source's own length. The tool warns that it is.
- * Ordering a lane copy against a span nothing writes is how it lands in the
- * safe bucket while really truncating the source.
+ * A take-lane source ignores it, because every copy of one is re-created and a
+ * re-created copy is never resized. The span is then the source's own, which is
+ * exact for MIDI; an audio copy takes its sample's length, unknown until it is
+ * made. Ordering a lane copy against a span nothing writes is how it lands in
+ * the safe bucket while really truncating the source.
  * @param source - The clip being copied
  * @param arrangementLength - The raw arrangementLength param
  * @param songTimeSigNumerator - Song time signature numerator
@@ -94,12 +90,8 @@ export function copySpanBeats(
   songTimeSigNumerator: number,
   songTimeSigDenominator: number,
 ): number {
-  const sourceLength =
-    (source.getProperty("end_time") as number) -
-    (source.getProperty("start_time") as number);
-
   if (arrangementLength == null || isTakeLaneClip(source)) {
-    return sourceLength;
+    return knownCopyLength(source);
   }
 
   return parseArrangementLength(
@@ -107,6 +99,21 @@ export function copySpanBeats(
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
+}
+
+/**
+ * The source's own copy length, or NaN when the clip can't be read. Planning
+ * runs before any copy, so an unreadable clip fails on its own copy later, not
+ * the whole call here.
+ * @param source - The clip being copied
+ * @returns The length in beats, or NaN
+ */
+function knownCopyLength(source: LiveAPI): number {
+  try {
+    return copyLengthBeats(source);
+  } catch {
+    return Number.NaN;
+  }
 }
 
 /** The copies a call makes, and where each one sits in what was requested. */

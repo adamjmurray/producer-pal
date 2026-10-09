@@ -1,8 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
+import { APICallError } from "ai";
 import { describe, it, expect } from "vitest";
 import {
   detectRateLimit,
@@ -48,11 +49,136 @@ describe("detectRateLimit", () => {
   });
 
   it("detects quota exceeded message", () => {
-    const error = new Error("You exceeded your current quota");
+    const error = new Error("Quota exceeded for metric: requests per minute");
     const result = detectRateLimit(error);
 
     expect(result.isRateLimited).toBe(true);
   });
+
+  it("does not retry OpenAI's out-of-credit 429 (insufficient_quota)", () => {
+    // Body from OpenAI's 429 insufficient_quota response, as the AI SDK
+    // surfaces it: message text only, body kept in `data`.
+    const data = {
+      error: {
+        message:
+          "You exceeded your current quota, please check your plan and billing details.",
+        type: "insufficient_quota",
+        param: null,
+        code: "insufficient_quota",
+      },
+    };
+    const error = new APICallError({
+      message: data.error.message,
+      url: "https://api.openai.com/v1/responses",
+      requestBodyValues: {},
+      statusCode: 429,
+      responseBody: JSON.stringify(data),
+      data,
+    });
+
+    expect(detectRateLimit(error).isRateLimited).toBe(false);
+    expect(detectRateLimit(data).isRateLimited).toBe(false);
+    expect(
+      detectRateLimit({ status: 429, code: "insufficient_quota" })
+        .isRateLimited,
+    ).toBe(false);
+  });
+
+  it.each([
+    // Responses API error event, before any output
+    {
+      type: "error",
+      code: "insufficient_quota",
+      message:
+        "You exceeded your current quota, please check your plan and billing details.",
+      param: null,
+    },
+    {
+      type: "response.failed",
+      response: {
+        error: {
+          code: "insufficient_quota",
+          message:
+            "You exceeded your current quota, please check your plan and billing details.",
+        },
+      },
+    },
+  ])("does not retry OpenAI's out-of-credit stream frame: $type", (frame) => {
+    // Shape built by @ai-sdk/openai's createOpenAIStreamError
+    const error = new APICallError({
+      message:
+        "You exceeded your current quota, please check your plan and billing details.",
+      url: "https://api.openai.com/v1/responses",
+      requestBodyValues: {},
+      statusCode: 429,
+      responseBody: JSON.stringify(frame),
+      data: frame,
+    });
+
+    expect(detectRateLimit(error).isRateLimited).toBe(false);
+  });
+
+  it.each([
+    "Error code: insufficient_quota",
+    new Error("429 insufficient_quota: no credits left"),
+  ])("does not retry when insufficient_quota is only in the text: %s", (e) => {
+    expect(detectRateLimit(e).isRateLimited).toBe(false);
+  });
+
+  // Gemini's per-minute and per-day 429s share this text with OpenAI's
+  // out-of-credit one. Only the quotaId differs, and both carry a RetryInfo.
+  it.each([
+    "GenerateRequestsPerMinutePerProjectPerModel-FreeTier",
+    "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+  ])("retries Gemini's 429 RESOURCE_EXHAUSTED quota error (%s)", (quotaId) => {
+    const data = {
+      error: {
+        code: 429,
+        message:
+          "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits.",
+        status: "RESOURCE_EXHAUSTED",
+        details: [
+          {
+            "@type": "type.googleapis.com/google.rpc.QuotaFailure",
+            violations: [{ quotaId }],
+          },
+          {
+            "@type": "type.googleapis.com/google.rpc.RetryInfo",
+            retryDelay: "34s",
+          },
+        ],
+      },
+    };
+    const error = new APICallError({
+      message: data.error.message,
+      url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent",
+      requestBodyValues: {},
+      statusCode: 429,
+      responseBody: JSON.stringify(data),
+      data,
+    });
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+    expect(result.message).toContain("retried automatically");
+    expect(detectRateLimit(data).isRateLimited).toBe(true);
+  });
+
+  it.each([
+    "Failed to generate content: request exceeds the context limit",
+    "Unknown tool toolu_01A4293x",
+    "Invalid request at line 429",
+    "Error: prompt is too long: requested 429 tokens",
+  ])("does not treat unrelated text as a rate limit: %s", (message) => {
+    expect(detectRateLimit(new Error(message)).isRateLimited).toBe(false);
+  });
+
+  it.each(["rate limit reached", "rate-limit hit", "rate_limit_exceeded"])(
+    "detects rate limit wording: %s",
+    (message) => {
+      expect(detectRateLimit(new Error(message)).isRateLimited).toBe(true);
+    },
+  );
 
   it("detects too many requests message", () => {
     const error = new Error("Too many requests, please slow down");
@@ -96,6 +222,26 @@ describe("detectRateLimit", () => {
 
     expect(result.message).toContain("Rate limit");
     expect(result.message).toContain("retried automatically");
+  });
+
+  it.each([
+    "API error (429): overloaded",
+    "HTTP/1.1 429 Too Early",
+    "status=429",
+    "statusCode: 429",
+    "status_code=429",
+    '{"code":429}',
+    "Error code: 429 - {}",
+  ])("reads a status from message text: %s", (message) => {
+    expect(detectRateLimit(new Error(message)).isRateLimited).toBe(true);
+  });
+
+  it("does not throw on a circular error object", () => {
+    const error: Record<string, unknown> = { status: 429 };
+
+    error.self = error;
+
+    expect(detectRateLimit(error).isRateLimited).toBe(true);
   });
 
   it("extracts status code from error message text", () => {

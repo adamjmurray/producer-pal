@@ -1,12 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import Max from "max-api";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   readGlobalSettings,
   updateGlobalSettings,
@@ -18,6 +18,13 @@ import {
   useTempConfigDir,
   type MarkdownRouteServer,
 } from "../config-dir-test-helpers.ts";
+
+// The route re-checks the update after a dismissal; keep it off the network.
+const { mockGetUpdate } = vi.hoisted(() => ({ mockGetUpdate: vi.fn() }));
+
+vi.mock(import("../../helpers/http/update-check.ts"), () => ({
+  getUpdate: mockGetUpdate,
+}));
 
 const getDir = useTempConfigDir();
 
@@ -107,6 +114,8 @@ describe("/settings routes", () => {
   let url: string;
 
   beforeEach(async () => {
+    vi.mocked(Max.outlet).mockClear();
+    mockGetUpdate.mockResolvedValue(null);
     server = await startMarkdownRouteServer(registerGlobalSettingsRoutes);
     url = `${server.baseUrl}/settings`;
   });
@@ -195,5 +204,28 @@ describe("/settings routes", () => {
 
     expect(response.status).toBe(403);
     expect(readGlobalSettings().autoUpdateCheck).toBe(true);
+  });
+
+  it("hides the device's update notice when a version is dismissed", async () => {
+    await putJson(url, { dismissedUpdateVersion: "9.9.9" });
+
+    await vi.waitFor(() => {
+      expect(Max.outlet).toHaveBeenCalledWith("config", "updateDismissed", 1);
+    });
+  });
+
+  it("hides the device's update notice when update checking is turned off", async () => {
+    await putJson(url, { autoUpdateCheck: false });
+
+    await vi.waitFor(() => {
+      expect(Max.outlet).toHaveBeenCalledWith("config", "updateDismissed", 1);
+    });
+  });
+
+  it("leaves the device's update notice alone for other changes", async () => {
+    await putJson(url, { autoUpdateCheck: true });
+    await putJson(url, { dismissedUpdateVersion: null });
+
+    expect(Max.outlet).not.toHaveBeenCalled();
   });
 });

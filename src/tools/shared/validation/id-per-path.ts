@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Turning a `path` param into the ids it names, for every type a path can
 // address. A path that names the wrong kind of thing reports the type it
@@ -10,6 +10,7 @@
 // `duplicate` refuses the whole call before it makes anything.
 
 import { clipIdAtPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
+import { nestedDrumRackHint } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import {
   findDrumPad,
   resolveDrumPadFromPath,
@@ -19,10 +20,8 @@ import {
   nothingAtPath,
   type ResolvedPath,
 } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
-import { type IdPerPath } from "#src/tools/shared/validation/lists/target-lists.ts";
 import {
   type IdLookup,
-  idPerPath,
   nothingThere,
   type PathResolution,
   resolvePathEntry,
@@ -41,15 +40,6 @@ const SET_LOOKUPS: Record<string, IdAtPath> = {
   scene: sceneIdAtPath,
   clip: clipIdAtPath,
 };
-
-/**
- * The path-to-id lookup a type is addressed by.
- * @param type - Object type ("track", "scene", "clip", "device", "drum-pad", or "chain")
- * @returns A lookup giving one id per path entry, null where a path named none
- */
-export function idPerPathForType(type: string): IdPerPath {
-  return (paths) => idPerPath(paths, "path", idAtPathForType(type));
-}
 
 /**
  * The same lookup for one path, for a caller that reports a miss instead of
@@ -154,7 +144,9 @@ function resolveDrumPadPathToId(
   const pad = findDrumPad(resolved.liveApiPath, resolved.drumPadNote as string);
 
   if (!pad) {
-    return nothingThere(`drum-pad at path "${targetPath}" does not exist`);
+    return nothingThere(
+      `drum-pad at path "${targetPath}" does not exist${padMissHint(resolved)}`,
+    );
   }
 
   return { id: pad.id };
@@ -218,7 +210,9 @@ function resolveDrumChainPathToId(
   );
 
   if (!result.target || result.targetType !== "chain") {
-    return nothingThere(`chain at path "${targetPath}" does not exist`);
+    return nothingThere(
+      `chain at path "${targetPath}" does not exist${padMissHint(resolved)}`,
+    );
   }
 
   return { id: result.target.id };
@@ -263,7 +257,9 @@ function resolveDevicePathToId(
     );
 
     if (!result.target || result.targetType !== "device") {
-      return nothingThere(`device at path "${targetPath}" does not exist`);
+      return nothingThere(
+        `device at path "${targetPath}" does not exist${padMissHint(resolved)}`,
+      );
     }
 
     return { id: result.target.id };
@@ -271,5 +267,19 @@ function resolveDevicePathToId(
 
   throw new Error(
     `path "${targetPath}" resolves to ${resolved.targetType}, not device`,
+  );
+}
+
+/**
+ * The nested-Drum-Rack "did you mean" for a path that resolved to a pad and
+ * found nothing there.
+ * @param resolved - The path's resolution, which stopped at a drum pad
+ * @returns The hint, or "" when there is no nested kit to point at
+ */
+function padMissHint(resolved: ResolvedPath): string {
+  return nestedDrumRackHint(
+    resolved.liveApiPath,
+    resolved.drumPadNote as string,
+    resolved.remainingSegments,
   );
 }

@@ -1,11 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Note: pitch utilities have been centralized in #src/shared/pitch.js
 // Import from there directly instead of through this file
 
+import {
+  isSuperseded,
+  markSuperseded,
+} from "#src/tools/shared/helpers/entry-details.ts";
 import {
   looseLabelKey,
   parseLabel,
@@ -14,10 +18,6 @@ import {
 } from "./param-label-parsing.ts";
 import { recordedUnitFor } from "../known-param-units.ts";
 import { readNumericRange } from "./param-numeric-range.ts";
-import {
-  differsAtPublishedResolution,
-  readBackDetail,
-} from "#src/tools/shared/helpers/read-back-comparison.ts";
 
 // Parameter state mapping (0=active, 1=inactive, 2=disabled)
 export const PARAM_STATE_MAP: Record<number, string> = {
@@ -236,6 +236,25 @@ function addStateFlags(
 }
 
 /**
+ * A param's arrangement automation state.
+ * @param paramApi - LiveAPI parameter object
+ * @param showAutomation - False to report none (the state can't be known)
+ * @returns "none", "active" or "overridden"; undefined when not shown
+ */
+function automationOf(
+  paramApi: LiveAPI,
+  showAutomation = true,
+): string | undefined {
+  if (!showAutomation) {
+    return undefined;
+  }
+
+  return AUTOMATION_STATE_MAP[
+    paramApi.getProperty("automation_state") as number
+  ];
+}
+
+/**
  * Read basic parameter info (id and name only)
  * @param paramApi - LiveAPI parameter object
  * @returns Parameter info with id and name
@@ -255,17 +274,20 @@ export function readParameterBasic(paramApi: LiveAPI): {
  * @param deviceName - The device's class_display_name, for the recorded-unit
  *   lookup. Omitted where the device isn't known; the param then reports a unit
  *   only if its own labels carry one.
+ * @param showAutomation - False where the param's track plays from Session, so
+ *   the automation state can't be known and no flag is better than a wrong one
+ *   (default true)
  * @returns Parameter info object
  */
 export function readParameter(
   paramApi: LiveAPI,
   deviceName?: string,
+  showAutomation?: boolean,
 ): Record<string, unknown> {
   const name = formatParamName(paramApi);
   const stateIdx = paramApi.getProperty("state") as number;
-  const automationIdx = paramApi.getProperty("automation_state") as number;
   const state = PARAM_STATE_MAP[stateIdx];
-  const automationState = AUTOMATION_STATE_MAP[automationIdx];
+  const automationState = automationOf(paramApi, showAutomation);
 
   if ((paramApi.getProperty("is_quantized") as number) > 0) {
     const valueItems = paramApi.getPropertyList("value_items") as (
@@ -372,6 +394,8 @@ export interface WrittenParam {
   /** The bare number the call asked for, when there was one. Decides whether
    * the entry reports a value at all, and never reaches the result itself. */
   requested?: number;
+  /** Set when the write overrode the param's arrangement lane */
+  overrode?: true;
 }
 
 /**
@@ -385,6 +409,16 @@ export interface UnresolvedParam {
   /** The id the call sent, when it addressed the param by id. */
   id?: string;
   ok: false;
+  detail: string;
+}
+
+/**
+ * A param a later entry of the same call overrides: nothing was written, and
+ * it isn't a failure, so it has a `detail` and no `ok`.
+ */
+export interface SupersededParam {
+  name?: string;
+  id?: string;
   detail: string;
 }
 
@@ -411,7 +445,11 @@ export interface WrittenPseudoParam {
 }
 
 /** One param the call named: what a write landed on, or why nothing did. */
-export type ParamOutcome = WrittenParam | WrittenPseudoParam | UnresolvedParam;
+export type ParamOutcome =
+  | WrittenParam
+  | WrittenPseudoParam
+  | UnresolvedParam
+  | SupersededParam;
 
 /**
  * The entry for a param nothing was written to. Nothing warns as well: this is
@@ -425,6 +463,27 @@ export function skippedParam(name: string, detail: string): UnresolvedParam {
 }
 
 /**
+ * Whether an outcome is a write that landed on a DeviceParameter: the only one
+ * with both an id and a name, and no `ok`. A skip or an overridden entry can
+ * carry the id the caller sent.
+ * @param outcome - One param the call named
+ * @returns True for a written param
+ */
+export function paramWritten(outcome: ParamOutcome): outcome is WrittenParam {
+  return !("ok" in outcome) && "id" in outcome && "name" in outcome;
+}
+
+/**
+ * Whether a reported param landed: it isn't a skip, and a later entry didn't
+ * override it. A pseudo-param only finds out when its value is read back.
+ * @param result - One entry of the reported `params`
+ * @returns True when the write landed
+ */
+export function paramResultLanded(result: ParamResult): boolean {
+  return !("ok" in result) && !isSuperseded(result);
+}
+
+/**
  * The entry for a param addressed by id that nothing was written to.
  * @param id - The param id as the call spelled it
  * @param detail - Why nothing was written
@@ -432,6 +491,21 @@ export function skippedParam(name: string, detail: string): UnresolvedParam {
  */
 export function skippedParamById(id: string, detail: string): UnresolvedParam {
   return { id, ok: false, detail };
+}
+
+/**
+ * The entry for a param a later entry overrides.
+ * @param key - The param name or id as the call spelled it
+ * @param byId - Whether the call addressed the param by id
+ * @param detail - Which later entry overrides it
+ * @returns The entry
+ */
+export function supersededParam(
+  key: string,
+  byId: boolean,
+  detail: string,
+): SupersededParam {
+  return markSuperseded(byId ? { id: key, detail } : { name: key, detail });
 }
 
 /** What create-device and update-device report for a param whose value isn't
@@ -461,111 +535,5 @@ export type ParamResult =
   | ParamValueResult
   | LandedParam
   | PseudoParamValueResult
-  | UnresolvedParam;
-
-/** Why a pseudo-param a write landed on still has nothing to report. */
-const NO_VALUE_AFTER_WRITE = "written, but no value reads back";
-
-/**
- * Read the values of the params a call wrote, once everything else in that call
- * has run. An A/B compare swap or a macro-variation recall rewrites the values a
- * `params` write just landed, so reading at write time would report what the
- * same call went on to overwrite. This is the only place a written param's value
- * comes from, and it reads the same as read-device's, so a write and a read can
- * never disagree.
- *
- * Assumes the params are still there: nothing that runs after a `params` write
- * removes a device.
- *
- * The name stays as reported — a path-prefixed write is named by the path the
- * caller used, not by the param's own name. An entry that resolved to nothing
- * passes through: it has no id to read.
- * @param outcomes - Every param the call named
- * @returns The written ones with their current values, the rest unchanged
- */
-export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
-  return outcomes.flatMap((entry): ParamResult[] => {
-    // A skip can carry the id the caller sent; only a landed write has no `ok`.
-    if (!("ok" in entry) && "id" in entry) {
-      return [
-        writtenResult(entry, readParameter(LiveAPI.from(entry.id)).value),
-      ];
-    }
-
-    // A pseudo-param brings its own read; the read itself is not reported. A
-    // meaningful null (e.g. Compressor's "No Input" sidechain source) reports
-    // as a value. undefined means the param does not apply in the device's
-    // current state — and only a param a write landed on gets here, so the
-    // write went in and the device still shows nothing. That is a silent
-    // refusal (an absolute `sample` path naming no file loads nothing), and
-    // read-device omits the param too, so dropping the entry would leave
-    // nothing anywhere to say the value never arrived.
-    if ("read" in entry) {
-      const value = entry.read();
-
-      if (value === undefined) {
-        return [unlandedPseudoParam(entry, NO_VALUE_AFTER_WRITE)];
-      }
-
-      // A device that ignored the write left the value it already had, and
-      // reporting that as the value would read as a write that landed.
-      const failed = entry.writeFailed?.(value);
-
-      return failed == null
-        ? [{ name: entry.name, value }]
-        : [unlandedPseudoParam(entry, failed)];
-    }
-
-    return [entry];
-  });
-}
-
-/**
- * The entry for a pseudo-param whose write the read-back shows didn't land.
- * @param entry - The written pseudo-param
- * @param detail - Why it didn't land
- * @returns The skip entry, naming anything the call made for the write
- */
-function unlandedPseudoParam(
-  entry: WrittenPseudoParam,
-  detail: string,
-): UnresolvedParam {
-  return skippedParam(
-    entry.name,
-    entry.made == null ? detail : `${detail}; ${entry.made}`,
-  );
-}
-
-/**
- * One written param's entry. A bare number that reads back as the one asked for
- * is left out: the caller wrote it, so repeating it says nothing. Everything
- * else reports what the param reads now, plus why it isn't the value
- * asked for.
- *
- * The comparison is exact, because the read already publishes the value at the
- * param's own display precision — rounding it again would call a step the
- * param really moved to the same value.
- * @param entry - The param the write landed on
- * @param value - What it reads as now
- * @returns The result entry
- */
-function writtenResult(
-  entry: WrittenParam,
-  value: unknown,
-): ParamValueResult | LandedParam {
-  const { id, name, requested } = entry;
-  const changed =
-    requested == null || differsAtPublishedResolution(requested, value);
-
-  if (!changed && entry.detail == null) {
-    return { id, name };
-  }
-
-  // A value the write itself knew it changed says why; one only the read-back
-  // reveals (a pan step, an A/B swap later in the call) says what it is.
-  const detail =
-    entry.detail ??
-    (changed && requested != null ? readBackDetail(["value"]) : undefined);
-
-  return detail == null ? { id, name, value } : { id, name, value, detail };
-}
+  | UnresolvedParam
+  | SupersededParam;

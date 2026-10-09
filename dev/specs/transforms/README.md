@@ -4,64 +4,96 @@
 
 ```
 // Waveforms (sync is an optional trailing keyword, not an expression)
-cos(frequency, [phase], [sync]); // cosine wave — phase 0 starts at peak (1.0)
-sin(frequency, [phase], [sync]); // sine wave — phase 0 starts at zero, rising
-tri(frequency, [phase], [sync]); // triangle wave — phase 0 starts at zero, rising
-saw(frequency, [phase], [sync]); // sawtooth wave — phase 0 starts at zero, rising
-square(frequency, [phase], [pulseWidth], [sync]); // square wave — phase 0 starts high
-rand([min], [max]); // random value (no args: -1 to 1, 1 arg: 0 to max, 2 args: min to max)
-choose(a, b, ...); // random pick from arguments (at least 1)
-seq(a, b, ...); // cycle by note.index; clip-granular params (gain, pitchShift) have no note axis, so cycles by clip.index there (== clipseq)
-clipseq(a, b, ...); // cycle by clip.index (per clip across a batch); forces the clip axis even on per-note params
-ramp(start, end); // linear ramp over clip/time range
-curve(start, end, exponent); // exponential ramp over clip/time range
+cos(frequency, [phase], [sync]) // cosine wave — phase 0 starts at peak (1.0)
+sin(frequency, [phase], [sync]) // sine wave — phase 0 starts at zero, rising
+tri(frequency, [phase], [sync]) // triangle wave — phase 0 starts at zero, rising
+saw(frequency, [phase], [sync]) // sawtooth wave — phase 0 starts at zero, rising
+square(frequency, [phase], [pulseWidth], [sync]) // square wave — phase 0 starts high
+rand([min], [max]) // random value (no args: -1 to 1, 1 arg: 0 to max, 2 args: min to max)
+choose(a, b, ...) // random pick from arguments (at least 1)
+seq(a, b, ...) // cycle by note.index; clip-granular params (gain, pitchShift) have no note axis, so cycles by clip.index there (== clipseq)
+clipseq(a, b, ...) // cycle by clip.index (per clip across a batch); forces the clip axis even on per-note params
+ramp(start, end) // linear ramp over clip/time range
+curve(start, end, exponent) // exponential ramp over clip/time range
 
 // Timing functions
-swing(amount, [grid], [raw]); // swing: delay off-beat notes (grid default: half the meter's beat — 8th-note in 4/4, 16th in 6/8)
-quant(grid); // quantize: snap to nearest grid point
-legato([tolerance]); // set duration to reach the next note's start time
+swing(amount, [grid], [raw]) // swing: delay off-beat notes (grid default: half the meter's beat — 8th-note in 4/4, 16th in 6/8)
+quant(grid) // quantize: snap to nearest grid point
+legato([tolerance]) // set duration to reach the next note's start time
 
 // Scale functions (use the Live Set scale; pass-through if no scale is set)
-snap(pitch); // snap pitch to the nearest in-scale pitch
-step(basePitch, offset); // move basePitch by offset scale steps
+snap(pitch) // snap pitch to the nearest in-scale pitch
+step(basePitch, offset) // move basePitch by offset scale steps
 
 // Math functions
-round(value); // round to nearest integer
-floor(value); // round down to integer
-ceil(value); // round up to integer
-abs(value); // absolute value
-clamp(value, min, max); // clamp value to [min, max] range
-wrap(value, min, max); // wrap value into [min, max] range (modular arithmetic)
-reflect(value, min, max); // reflect/bounce value within [min, max] range
-min(a, b, ...); // minimum of 2+ values
-max(a, b, ...); // maximum of 2+ values
-pow(base, exponent); // base raised to exponent
+round(value) // round to nearest integer
+floor(value) // round down to integer
+ceil(value) // round up to integer
+abs(value) // absolute value
+clamp(value, min, max) // clamp value to [min, max] range
+wrap(value, min, max) // wrap value into [min, max] range (modular arithmetic)
+reflect(value, min, max) // reflect/bounce value within [min, max] range
+min(a, b, ...) // minimum of 2+ values
+max(a, b, ...) // maximum of 2+ values
+pow(base, exponent) // base raised to exponent
 
 // Note-count operations (statements, NOT expression functions — see below)
-ratchet(count); // divide each matched note into `count` equal pieces (a roll)
-ratchet(noteValue); // cut each matched note on the absolute noteValue grid (grid form, e.g. ratchet(n/16))
-repeat(offset, [copies]); // echo matched notes forward by `offset` (a note value or <count>bar); `copies` (optional, default 1) is the number of echoes; does NOT resize the clip
-split(barBeat, ..., [sync]); // cut each matched note at explicit bar|beat positions (e.g. split(2|1, 2|3)); trailing sync aligns to the arrangement timeline
-merge(); // span ALL same-pitch matched notes into one sustained note (default)
-merge(0); // glue only touching/overlapping same-pitch notes
-merge(noteValue); // glue same-pitch notes within that note-value gap (e.g. merge(n/8))
+ratchet(count) // divide each matched note into `count` equal pieces (a roll)
+ratchet(noteValue) // cut each matched note on the absolute noteValue grid (grid form, e.g. ratchet(n/16))
+repeat(offset, [copies]) // echo matched notes forward by `offset` (a note value or <count>bar); `copies` (optional, default 1) is the number of echoes; does NOT resize the clip
+split(barBeat, ..., [sync]) // cut each matched note at explicit bar|beat positions (e.g. split(2|1, 2|3)); trailing sync aligns to the arrangement timeline
+merge() // span ALL same-pitch matched notes into one sustained note (default)
+merge(0) // glue only touching/overlapping same-pitch notes
+merge(noteValue) // glue same-pitch notes within that note-value gap (e.g. merge(n/8))
 ```
 
-**Bad argument counts warn rather than fail silently** (counting only positional
-args — the trailing `sync`/`raw` keywords are not arguments), and the warning is
-relayed once per malformed line, not once per affected note. Handling differs by
-call kind:
+**A call with the wrong arguments is refused up front** — the whole call fails
+before any clip is touched, once, with a short message naming the function and
+what is wrong (`ratchet() needs a count of 2 or more`). The text is the same for
+every clip, so warning and skipping would repeat one line per clip and return a
+result that reads as success. `ppal-create-clip`, `ppal-update-clip` and
+`ppal-duplicate` run the same check where they parse the transform. Refused: a
+duplicate selector, a pitch name used as a value for anything but `pitch`, a
+compound assignment (`+=`, `-=`, `*=`, `/=`) whose value is directly a `swing()`
+or `quant()` call (they return a position, so `timing += swing(0.3)` would add
+the note's start to itself; the message says to use `timing = swing(...)`), a
+`swing()` amount whose size reaches its grid in beats (`swing(0.56, n/8)`; a
+percent-looking amount gets the delay it should have been), a built-in with the
+wrong argument count, and a constant argument that can't be evaluated, isn't
+finite or is out of range (a ratchet count below 2 or grid of 0, a repeat offset
+of 0 or count below 1, a `curve()` exponent of 0 or less). Argument counts count
+only positional args — the trailing `sync`/`raw` keywords are not arguments.
+
+Two kinds of argument can't be judged up front, and are reported on the clip as
+the transform runs:
+
+- One that uses a note or clip variable or a random function (`rand()`, `cos()`)
+  — it has no value until a note exists. So are facts that exist only per note
+  or clip: a ratchet that spans no grid line, `repeat` collisions, `sync` on a
+  session clip.
+- A constant that mixes note values or bar lengths with other terms (`1bar - 4`,
+  `n/16 - n/8`): `1bar` is 4 beats in 4/4 and 6 in 6/4, and one call can target
+  clips with different meters. Only the clips it is bad for fail (`ok: false`,
+  notes untouched) and the rest go on. The call is still refused when every
+  meter fails, or when the clip can't be undone (an arrangement clip being
+  split, a duplicate onto the arrangement).
+
+A lone `n/8` or `2bar`, alone, negated or scaled by a constant, has the same
+sign in every meter. So a bare one is always above 0, and one at 0 or below
+(`-1bar`, `0 * n/8`) is bad everywhere and refused up front; a positive scaled
+one used as a count (`2 * n/8`) still depends on the meter.
+
+A cap is reported, not refused: `ratchet(500)` is a valid request, and the
+64-piece cap is Producer Pal's, not a mistake in the text. The clip's entry says
+it was clamped. Handling differs by call kind:
 
 - **Expression functions** (`cos`, `ramp`, the math helpers, …): too few _or_
-  too many arguments makes the assignment apply no change — the matched notes
-  pass through unchanged rather than the call guessing intent — and later lines
-  still run.
+  too many arguments refuses the call.
 - **Note-count operations** (`ratchet`, `repeat`, `split`, `merge`): a missing
-  required argument skips the operation (matched notes pass through), but
-  **extra** arguments warn and the call proceeds using the leading argument(s)
-  it expects — `ratchet`/`merge` use the first, `repeat` uses the first two.
-  `split` is variadic (any number of cut positions, so no "too many" case) and
-  `merge()` with no argument is its valid span-all default.
+  required argument or an **extra** one refuses the call (`ratchet`/`merge` take
+  one argument, `repeat` two). `split` is variadic (any number of cut positions,
+  so no "too many" case) and `merge()` with no argument is its valid span-all
+  default.
 
 **Two shape mistakes fail the parse with a targeted message** rather than
 peggy's generic "Expected statement", which points at column 1 and names
@@ -139,28 +171,28 @@ across clips on the global timeline.
   the clip's start marker is the one that plays at `clip.position`.
 - **Session clips**: A session clip has no arrangement position, so `sync` is
   ignored and the waveform degrades to clip-relative
-  (`effectivePosition = note.start`, phase resets at clip start) with a warning
-  — the modulation still applies, rather than the assignment being skipped. This
-  mirrors the `clip.position` variable fallback (resolves to 0 with a warning on
-  session clips)
+  (`effectivePosition = note.start`, phase resets at clip start), said as a
+  detail on the clip's entry — the modulation still applies, rather than the
+  assignment being skipped. This mirrors the `clip.position` variable fallback
+  (resolves to 0, with a detail on the entry, on session clips)
 - **Audio clips**: `sync` follows the same rule; an audio session clip (no
-  `arrangementStart`) degrades to clip-relative with a warning instead of
-  skipping
+  `arrangementStart`) degrades to clip-relative, with a detail on its entry,
+  instead of skipping
 - **Non-cyclical functions**: `sync` on `ramp`, `curve`, `rand`, `choose`, or
   math functions is a parse error
 
 ```
 // Clip-relative (default) — phase resets at each clip start
-velocity += 20 * cos(4bar);
+velocity += 20 * cos(4bar)
 
 // Timeline-synced — continuous phase from 1|1
-velocity += 20 * cos(4bar, sync);
+velocity += 20 * cos(4bar, sync)
 
 // With phase offset and sync
-velocity += 20 * cos(4bar, 0.25, sync);
+velocity += 20 * cos(4bar, 0.25, sync)
 
 // square with all args and sync
-velocity += 20 * square(n/2, 0, 0.75, sync);
+velocity += 20 * square(n/2, 0, 0.75, sync)
 ```
 
 ## Waveform Behavior

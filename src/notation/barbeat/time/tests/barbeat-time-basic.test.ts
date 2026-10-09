@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -96,6 +96,12 @@ describe("barbeat-time utilities", () => {
       expect(barBeatToMusicalBeats("1|2.25", 4)).toBe(1.25);
       expect(barBeatToMusicalBeats("1|4.75", 4)).toBe(3.75);
       expect(barBeatToMusicalBeats("2|1.5", 4)).toBe(4.5);
+    });
+
+    it("accepts a trailing dot, as the notes grammar does", () => {
+      expect(barBeatToMusicalBeats("2|3.", 4)).toBe(6);
+      expect(barBeatToMusicalBeats("1|2.+n/4", 4)).toBe(2);
+      expect(barBeatToMusicalBeats("1|1+n1./4", 4)).toBe(1);
     });
 
     it("works with different time signatures", () => {

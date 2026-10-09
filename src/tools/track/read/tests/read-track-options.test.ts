@@ -1,13 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children, expectedClip } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { mixerPathIds } from "#src/test/mocks/mock-registry-helpers.ts";
+import { mixerPathIds } from "#src/test/mocks/registry/mock-registry-helpers.ts";
 import {
   createOutputOnlyRoutingMock,
   createSimpleRoutingMock,
@@ -260,8 +260,6 @@ describe("readOneTrack", () => {
           id: "return_track_1",
           path: "rt1",
           name: "Return B",
-          sessionClipCount: 0,
-          arrangementClipCount: 0,
           deviceCount: 0,
         });
       });
@@ -348,8 +346,6 @@ describe("readOneTrack", () => {
           id: "master_track",
           path: "mt",
           name: "Master",
-          sessionClipCount: 0,
-          arrangementClipCount: 0,
           deviceCount: 1,
         });
       });
@@ -461,8 +457,6 @@ describe("readOneTrack", () => {
           id: "master_track",
           path: "mt",
           name: "Master",
-          sessionClipCount: 0,
-          arrangementClipCount: 0,
           deviceCount: 0,
         });
       });

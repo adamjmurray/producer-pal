@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -19,10 +19,8 @@ import {
   LiveAPI,
   type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
-import {
-  liveApi,
-  type LiveApiOperation,
-} from "#src/tools/advanced/live-api.ts";
+import { liveApi } from "#src/tools/advanced/live-api.ts";
+import { type LiveApiOperation } from "#src/tools/advanced/live-api-operations.ts";
 
 describe("liveApi", () => {
   let defaultMock: RegisteredMockObject;
@@ -83,6 +81,20 @@ describe("liveApi", () => {
     proto.getstring = vi.fn((property: string) => `<${property}>`);
   });
 
+  /**
+   * Run one operation that reads the tempo, and check the one result it gives.
+   * @param operation - The operation, whose answer is the mocked tempo
+   */
+  function expectTempoRead(operation: LiveApiOperation): void {
+    defaultMock.get.mockReturnValueOnce([120]);
+
+    const result = liveApi({ operations: [operation] });
+
+    expect(result.results).toHaveLength(1);
+    expect(result.results[0]).toStrictEqual([120]);
+    expect(defaultMock.get).toHaveBeenCalledWith("tempo");
+  }
+
   describe("input validation", () => {
     it("should throw error if operations is not an array", () => {
       expect(() =>
@@ -122,91 +134,118 @@ describe("liveApi", () => {
         } as unknown as Parameters<typeof liveApi>[0]),
       ).toThrow("Unknown operation type: unknown");
     });
+
+    // The type or the param is the mistake and nothing says which, so the call
+    // is refused whole, before the operations before it have run.
+    it.each([
+      [
+        { type: "get", property: "tempo", method: "x" },
+        'method is only for type "call" or "call-method"; this call has type "get". Change the type or drop method.',
+      ],
+      [
+        { type: "call", method: "stop_all_clips", property: "x" },
+        "property is only for type",
+      ],
+      [
+        { type: "get", property: "tempo", args: [1] },
+        'args is only for type "call" or "call-method"',
+      ],
+      [{ type: "get", property: "tempo", value: 1 }, "value is only for type"],
+      [{ type: "info", value: 1 }, "value is only for type"],
+    ])("refuses %j", (operation, message) => {
+      const first = { type: "set", property: "name", value: "A" };
+
+      expect(() =>
+        liveApi({
+          operations: [first, operation] as unknown as LiveApiOperation[],
+        }),
+      ).toThrow(`operations[1] (counting from 0): ${message}`);
+      expect(defaultMock.set).not.toHaveBeenCalled();
+    });
+
+    it("counts a blank as not sent", () => {
+      expect(() =>
+        liveApi({
+          operations: [
+            { type: "exists", property: "", value: "" },
+          ] as unknown as LiveApiOperation[],
+        }),
+      ).not.toThrow();
+    });
   });
 
   describe("core operations", () => {
-    it("should handle get_property operation", () => {
+    it("should handle get-field operation", () => {
       const result = liveApi({
-        operations: [{ type: "get_property", property: "id" }],
+        operations: [{ type: "get-field", property: "id" }],
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.operation.type).toBe("get_property");
-      expect(result.results[0]!.result).toBe("1"); // Default mock has bare id "1"
+      expect(result.results[0]).toBe("1"); // Default mock has bare id "1"
     });
 
-    it("should throw error for get_property without property", () => {
+    it("should throw error for get-field without property", () => {
       expect(() =>
         liveApi({
-          operations: [{ type: "get_property" }],
+          operations: [{ type: "get-field" }],
         }),
-      ).toThrow("get_property operation requires property");
+      ).toThrow("get-field operation requires property");
     });
 
-    it("should handle set_property operation", () => {
+    it("should handle set-property operation", () => {
       const result = liveApi({
-        operations: [{ type: "set_property", property: "tempo", value: 140 }],
+        operations: [{ type: "set-property", property: "tempo", value: 140 }],
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.operation.type).toBe("set_property");
-      expect(result.results[0]!.result).toBe(140);
+      expect(result.results[0]).toBe(140);
     });
 
-    it("should throw error for set_property without property", () => {
+    it("should throw error for set-property without property", () => {
       expect(() =>
         liveApi({
-          operations: [{ type: "set_property", value: 140 }],
+          operations: [{ type: "set-property", value: 140 }],
         }),
-      ).toThrow("set_property operation requires property");
+      ).toThrow("set-property operation requires property");
     });
 
-    it("should throw error for set_property without value", () => {
+    it("should throw error for set-property without value", () => {
       expect(() =>
         liveApi({
-          operations: [{ type: "set_property", property: "tempo" }],
+          operations: [{ type: "set-property", property: "tempo" }],
         }),
-      ).toThrow("set_property operation requires value");
+      ).toThrow("set-property operation requires value");
     });
 
-    it("should handle call_method operation", () => {
-      defaultMock.get.mockReturnValueOnce([120]);
-
-      const result = liveApi({
-        operations: [{ type: "call_method", method: "get", args: ["tempo"] }],
-      });
-
-      expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.operation.type).toBe("call_method");
-      expect(result.results[0]!.result).toStrictEqual([120]);
-      expect(defaultMock.get).toHaveBeenCalledWith("tempo");
+    it("should handle call-method operation", () => {
+      expectTempoRead({ type: "call-method", method: "get", args: ["tempo"] });
     });
 
-    it("should handle call_method operation without args", () => {
+    it("should handle call-method operation without args", () => {
       // No args → executeOperation applies the default [] (empty argument list).
       defaultMock.get.mockReturnValueOnce([120]);
 
       const result = liveApi({
-        operations: [{ type: "call_method", method: "get" }],
+        operations: [{ type: "call-method", method: "get" }],
       });
 
-      expect(result.results[0]!.result).toStrictEqual([120]);
+      expect(result.results[0]).toStrictEqual([120]);
       expect(defaultMock.get).toHaveBeenCalledWith();
     });
 
-    it("should throw error for call_method without method", () => {
+    it("should throw error for call-method without method", () => {
       expect(() =>
         liveApi({
-          operations: [{ type: "call_method", args: ["tempo"] }],
+          operations: [{ type: "call-method", args: ["tempo"] }],
         }),
-      ).toThrow("call_method operation requires method");
+      ).toThrow("call-method operation requires method");
     });
 
-    it("should throw error for call_method with non-existent method", () => {
+    it("should throw error for call-method with non-existent method", () => {
       expect(() =>
         liveApi({
           operations: [
-            { type: "call_method", method: "nonExistentMethod", args: [] },
+            { type: "call-method", method: "nonExistentMethod", args: [] },
           ],
         }),
       ).toThrow('Method "nonExistentMethod" not found on LiveAPI object');
@@ -227,7 +266,7 @@ describe("liveApi", () => {
         resetLiveApiTracking();
         beginLiveApiScope();
 
-        liveApi({ operations: [{ type: "call_method", method: "freepeer" }] });
+        liveApi({ operations: [{ type: "call-method", method: "freepeer" }] });
 
         endLiveApiScope();
         beginLiveApiScope();
@@ -262,15 +301,7 @@ describe("liveApi", () => {
 
   describe("convenience shortcuts", () => {
     it("should handle get operation", () => {
-      defaultMock.get.mockReturnValueOnce([120]);
-
-      const result = liveApi({
-        operations: [{ type: "get", property: "tempo" }],
-      });
-
-      expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toStrictEqual([120]);
-      expect(defaultMock.get).toHaveBeenCalledWith("tempo");
+      expectTempoRead({ type: "get", property: "tempo" });
     });
 
     it("should throw error for get without property", () => {
@@ -289,7 +320,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe(1);
+      expect(result.results[0]).toBe(1);
       expect(defaultMock.set).toHaveBeenCalledWith("tempo", 130);
     });
 
@@ -315,7 +346,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe("001.01.01.000");
+      expect(result.results[0]).toBe("001.01.01.000");
       expect(defaultMock.call).toHaveBeenCalledWith(
         "get_current_beats_song_time",
       );
@@ -341,7 +372,7 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe(1);
+      expect(result.results[0]).toBe(1);
       expect(result.path).toBe(String(livePath.track(0)));
     });
 
@@ -366,38 +397,38 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe(mockInfo);
+      expect(result.results[0]).toBe(mockInfo);
     });
   });
 
   describe("extension shortcuts", () => {
-    it("should handle getProperty operation", () => {
+    it("should handle get-property operation", () => {
       defaultMock.get.mockReturnValueOnce(["Test Track"]);
 
       const result = liveApi({
-        operations: [{ type: "getProperty", property: "name" }],
+        operations: [{ type: "get-property", property: "name" }],
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe("Test Track");
+      expect(result.results[0]).toBe("Test Track");
       expect(LiveAPI.prototype.getProperty).toHaveBeenCalledWith("name");
     });
 
     it("should throw error for getProperty without property", () => {
       expect(() =>
         liveApi({
-          operations: [{ type: "getProperty" }],
+          operations: [{ type: "get-property" }],
         }),
-      ).toThrow("getProperty operation requires property");
+      ).toThrow("get-property operation requires property");
     });
 
-    it("should handle getChildIds operation", () => {
+    it("should handle get-child-ids operation", () => {
       const result = liveApi({
-        operations: [{ type: "getChildIds", property: "clip_slots" }],
+        operations: [{ type: "get-child-ids", property: "clip_slots" }],
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toStrictEqual([
+      expect(result.results[0]).toStrictEqual([
         "id_clip_slots_1",
         "id_clip_slots_2",
       ]);
@@ -407,9 +438,9 @@ describe("liveApi", () => {
     it("should throw error for getChildIds without property", () => {
       expect(() =>
         liveApi({
-          operations: [{ type: "getChildIds" }],
+          operations: [{ type: "get-child-ids" }],
         }),
-      ).toThrow("getChildIds operation requires property (child type)");
+      ).toThrow("get-child-ids operation requires property (child type)");
     });
 
     it("should handle exists operation", () => {
@@ -418,64 +449,64 @@ describe("liveApi", () => {
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe(true);
+      expect(result.results[0]).toBe(true);
       expect(LiveAPI.prototype.exists).toHaveBeenCalled();
     });
 
-    it("should handle getColor operation", () => {
+    it("should handle get-color operation", () => {
       const result = liveApi({
-        operations: [{ type: "getColor" }],
+        operations: [{ type: "get-color" }],
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe("#FF0000");
+      expect(result.results[0]).toBe("#FF0000");
       expect(LiveAPI.prototype.getColor).toHaveBeenCalled();
     });
 
-    it("should handle setColor operation", () => {
+    it("should handle set-color operation", () => {
       const result = liveApi({
-        operations: [{ type: "setColor", value: "#00FF00" }],
+        operations: [{ type: "set-color", value: "#00FF00" }],
       });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0]!.result).toBe("#00FF00");
+      expect(result.results[0]).toBe("#00FF00");
       expect(LiveAPI.prototype.setColor).toHaveBeenCalledWith("#00FF00");
     });
 
     it("should throw error for setColor without value", () => {
       expect(() =>
         liveApi({
-          operations: [{ type: "setColor" }],
+          operations: [{ type: "set-color" }],
         }),
-      ).toThrow("setColor operation requires value (color)");
+      ).toThrow("set-color operation requires value (color)");
     });
   });
 
   describe("LiveAPI object operations", () => {
-    it("should handle set_path operation", () => {
+    it("should handle set-path operation", () => {
       registerMockObject("track-0", {
         path: livePath.track(0),
         type: "Track",
       });
 
       const result = liveApi({
-        operations: [{ type: "set_path", value: String(livePath.track(0)) }],
+        operations: [{ type: "set-path", value: String(livePath.track(0)) }],
       });
 
       // The result is a read-back of api.path, not an echo of the input.
-      expect(result.results[0]!.result).toBe(String(livePath.track(0)));
+      expect(result.results[0]).toBe(String(livePath.track(0)));
       expect(result.path).toBe(String(livePath.track(0)));
     });
 
-    it("should handle set_path operation with an empty path", () => {
+    it("should handle set-path operation with an empty path", () => {
       // Clearing the path is the whole point of this operation: it is what
       // releases the path listeners Live installs. "" is falsy, so this only
       // works because the operation requires a defined value, not a truthy one.
       const result = liveApi({
-        operations: [{ type: "set_path", value: "" }],
+        operations: [{ type: "set-path", value: "" }],
       });
 
-      expect(result.results[0]!.result).toBe("");
+      expect(result.results[0]).toBe("");
       expect(result.path).toBe("");
       // A cleared path reports id "0", the same as any path that doesn't
       // resolve, so the object reads as nonexistent. (This suite stubs
@@ -483,77 +514,77 @@ describe("liveApi", () => {
       expect(result.id).toBe("0");
     });
 
-    it("should throw error for set_path without value", () => {
+    it("should throw error for set-path without value", () => {
       expect(() =>
         liveApi({
-          operations: [{ type: "set_path" }],
+          operations: [{ type: "set-path" }],
         }),
-      ).toThrow("set_path operation requires value (path)");
+      ).toThrow("set-path operation requires value (path)");
     });
 
-    it("should handle set_id operation", () => {
+    it("should handle set-id operation", () => {
       registerMockObject("7", {
         path: livePath.track(0),
         type: "Track",
       });
 
       const result = liveApi({
-        operations: [{ type: "set_id", value: 7 }],
+        operations: [{ type: "set-id", value: 7 }],
       });
 
       // The result is a read-back of api.id, not an echo of the input: a bad id
       // is dropped silently and leaves the previous target in place.
-      expect(result.results[0]!.result).toBe("7");
+      expect(result.results[0]).toBe("7");
       expect(result.path).toBe(String(livePath.track(0)));
     });
 
-    it('should point at nothing for a set_id given the "id N" form', () => {
+    it('should point at nothing for a set-id given the "id N" form', () => {
       // The bare number is the only form that retargets. Worth pinning down
       // because it fails the way everything else here does — silently.
       const result = liveApi({
-        operations: [{ type: "set_id", value: "id 7" }],
+        operations: [{ type: "set-id", value: "id 7" }],
       });
 
-      expect(result.results[0]!.result).toBe("0");
+      expect(result.results[0]).toBe("0");
       expect(result.path).toBe("");
     });
 
-    it("should throw error for set_id without value", () => {
+    it("should throw error for set-id without value", () => {
       expect(() =>
         liveApi({
-          operations: [{ type: "set_id" }],
+          operations: [{ type: "set-id" }],
         }),
-      ).toThrow("set_id operation requires value (id)");
+      ).toThrow("set-id operation requires value (id)");
     });
 
-    it("should handle set_mode operation", () => {
+    it("should handle set-mode operation", () => {
       const result = liveApi({
         operations: [
-          { type: "set_mode", value: 1 },
-          { type: "get_property", property: "mode" },
+          { type: "set-mode", value: 1 },
+          { type: "get-field", property: "mode" },
         ],
       });
 
-      expect(result.results[0]!.result).toBe(1);
-      expect(result.results[1]!.result).toBe(1);
+      expect(result.results[0]).toBe(1);
+      expect(result.results[1]).toBe(1);
     });
 
-    it("should handle set_mode operation with mode 0", () => {
-      // 0 is falsy, so this only passes validation because set_mode requires a
+    it("should handle set-mode operation with mode 0", () => {
+      // 0 is falsy, so this only passes validation because set-mode requires a
       // defined value rather than a truthy one.
       const result = liveApi({
-        operations: [{ type: "set_mode", value: 0 }],
+        operations: [{ type: "set-mode", value: 0 }],
       });
 
-      expect(result.results[0]!.result).toBe(0);
+      expect(result.results[0]).toBe(0);
     });
 
-    it("should throw error for set_mode without value", () => {
+    it("should throw error for set-mode without value", () => {
       expect(() =>
         liveApi({
-          operations: [{ type: "set_mode" }],
+          operations: [{ type: "set-mode" }],
         }),
-      ).toThrow("set_mode operation requires value (mode)");
+      ).toThrow("set-mode operation requires value (mode)");
     });
 
     it("should handle getcount operation", () => {
@@ -561,7 +592,7 @@ describe("liveApi", () => {
         operations: [{ type: "getcount", property: "tracks" }],
       });
 
-      expect(result.results[0]!.result).toBe(4);
+      expect(result.results[0]).toBe(4);
       expect(LiveAPI.prototype.getcount).toHaveBeenCalledWith("tracks");
     });
 
@@ -578,7 +609,7 @@ describe("liveApi", () => {
         operations: [{ type: "getstring", property: "tempo" }],
       });
 
-      expect(result.results[0]!.result).toBe("<tempo>");
+      expect(result.results[0]).toBe("<tempo>");
       expect(LiveAPI.prototype.getstring).toHaveBeenCalledWith("tempo");
     });
 
@@ -632,30 +663,23 @@ describe("liveApi", () => {
 
       const result = liveApi({
         operations: [
-          { type: "get_property", property: "id" },
+          { type: "get-field", property: "id" },
           { type: "get", property: "tempo" },
           { type: "info" },
         ],
       });
 
       expect(result.results).toHaveLength(3);
-      expect(result.results[0]!.operation.type).toBe("get_property");
-      expect(result.results[1]!.operation.type).toBe("get");
-      expect(result.results[2]!.operation.type).toBe("info");
     });
 
-    it("should return operation details with each result", () => {
+    it("should return bare values without echoing the operations", () => {
       defaultMock.get.mockReturnValueOnce([120]);
 
       const result = liveApi({
         operations: [{ type: "get", property: "tempo" }],
       });
 
-      expect(result.results[0]!.operation).toStrictEqual({
-        type: "get",
-        property: "tempo",
-      });
-      expect(result.results[0]!.result).toStrictEqual([120]);
+      expect(result.results).toStrictEqual([[120]]);
     });
   });
 
@@ -674,12 +698,7 @@ describe("liveApi", () => {
       expect(result).toStrictEqual({
         path: livePath.liveSet,
         id: "1",
-        results: [
-          {
-            operation: { type: "info" },
-            result: "Mock LiveAPI info",
-          },
-        ],
+        results: ["Mock LiveAPI info"],
       });
     });
   });
@@ -694,30 +713,57 @@ describe("liveApi", () => {
     });
 
     it("should reject an inherited Object.prototype key as an operation type", () => {
-      // `type in OPERATION_REQUIREMENTS` walks the prototype chain, so
-      // "toString" clears the validator. The switch's default is what actually
-      // stops it.
+      // A prototype-chain lookup would clear "toString" through the validator,
+      // and the operations before it would already have run.
       expect(() =>
         liveApi({
-          operations: [{ type: "toString" }],
+          operations: [
+            { type: "set", property: "tempo", value: 130 },
+            { type: "toString" },
+          ],
         } as unknown as Parameters<typeof liveApi>[0]),
       ).toThrow("Unknown operation type: toString");
+      expect(defaultMock.set).not.toHaveBeenCalled();
+    });
+
+    it("should run nothing when a later operation is malformed", () => {
+      expect(() =>
+        liveApi({
+          operations: [
+            { type: "set", property: "tempo", value: 130 },
+            { type: "set", property: "tempo" },
+          ],
+        }),
+      ).toThrow(
+        "operations[1] (counting from 0): set operation requires value",
+      );
+      expect(defaultMock.set).not.toHaveBeenCalled();
+    });
+
+    it("should name the position of an unknown type", () => {
+      expect(() =>
+        liveApi({
+          operations: [{ type: "info" }, { type: "exists" }, { type: "nope" }],
+        } as unknown as Parameters<typeof liveApi>[0]),
+      ).toThrow(
+        "operations[2] (counting from 0): Unknown operation type: nope",
+      );
     });
 
     it("should wrap operation errors and preserve the original as cause", () => {
       let caught: unknown;
 
       try {
-        liveApi({ operations: [{ type: "get_property" }] });
+        liveApi({ operations: [{ type: "get-field" }] });
       } catch (error) {
         caught = error;
       }
 
       expect(caught).toBeInstanceOf(Error);
-      expect((caught as Error).message).toContain("Operation failed");
+      expect((caught as Error).message).toContain("operations[0]");
       expect((caught as Error).cause).toBeInstanceOf(Error);
       expect(((caught as Error).cause as Error).message).toContain(
-        "get_property operation requires property",
+        "get-field operation requires property",
       );
     });
   });

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import {
@@ -64,6 +64,14 @@ describe("getBaseUrl", () => {
     expect(getBaseUrl("ollama", "http://myhost:9999")).toBe(
       "http://myhost:9999/v1",
     );
+  });
+
+  it.each([
+    ["lmstudio", "http://localhost:1234/v1"],
+    ["ollama", "http://localhost:11434/v1"],
+  ])("falls back to the default URL for a blank %s URL", (provider, url) => {
+    expect(getBaseUrl(provider, "")).toBe(url);
+    expect(getBaseUrl(provider, "  ")).toBe(url);
   });
 
   it("returns known base URL for openai", () => {

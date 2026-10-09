@@ -1,7 +1,7 @@
 # Other Providers
 
 The built-in chat UI supports the Anthropic API, OpenAI API, Mistral,
-OpenRouter, and custom OpenAI-compatible providers.
+OpenRouter, Vercel AI Gateway, and custom OpenAI-compatible providers.
 
 <!--@include: ../_partials/download-device.md-->
 
@@ -45,6 +45,18 @@ one place. Includes free and pay-as-you-go options.
 1. [Get an OpenRouter API key](https://openrouter.ai/settings/keys)
 2. In the chat UI settings:
    - Provider: **OpenRouter**
+   - API Key: Your key
+   - Model: e.g., `anthropic/claude-sonnet-5.5`, `google/gemini-3.8-flash`
+
+### Vercel AI Gateway
+
+[Vercel AI Gateway](https://vercel.com/ai-gateway) is another AI gateway with
+hundreds of models in one place, at the providers' own prices. It needs a credit
+card on file before it answers any request, even on its free monthly credits.
+
+1. [Get a Vercel AI Gateway API key](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai-gateway%2Fapi-keys)
+2. In the chat UI settings:
+   - Provider: **Vercel AI Gateway**
    - API Key: Your key
    - Model: e.g., `anthropic/claude-sonnet-5.5`, `google/gemini-3.8-flash`
 

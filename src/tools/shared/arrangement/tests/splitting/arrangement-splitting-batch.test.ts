@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The batch loop itself: every call site in src/ passes one clip, so nothing
 // else here proves that a second one is split, skipped on the deadline, or
@@ -13,6 +13,7 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   ARRANGEMENT_SPLIT_MODE,
   performSplitting,
+  startSplitting,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import {
   addArrangementClip,
@@ -111,13 +112,13 @@ function splitOnDeadline(
 }
 
 /**
- * The loop stopped after clip_1, and clip_2 was never staged.
+ * The loop stopped after clip_1, and clip_2 was never staged. It warns of
+ * nothing: update-clip gives each clip left its own entry.
  * @param callState - The call-tracking state
  */
 function expectStoppedAfterFirstClip(callState: SplittingCallState): void {
-  expect(capturedWarnings()).toContain(
-    "Ran out of time after splitting 1 of 2 clips. " +
-      "Not split: clip_2. Re-run for those ids.",
+  expect(capturedWarnings()).not.toContainEqual(
+    expect.stringContaining("Ran out of time"),
   );
   expect(holdingStartFor(callState, "clip_2")).toBeUndefined();
 }
@@ -144,7 +145,7 @@ describe("performSplitting across a batch of clips", () => {
     );
   });
 
-  it("names the clips left uncut when time runs out between them", () => {
+  it("leaves the clips after the stop uncut when time runs out between them", () => {
     const { callState, arrangementClips, clips } = setupBatchSplitTest();
 
     // The budget is gone by the time the first clip is done, so the loop stops
@@ -156,8 +157,7 @@ describe("performSplitting across a batch of clips", () => {
     expectStoppedAfterFirstClip(callState);
 
     // Beat 40 is inside clip_2, which the stop never reached. Calling it a
-    // position that cut nothing would contradict the warning above it, and
-    // send the caller to re-run without it.
+    // position that cut nothing would send the caller to re-run without it.
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("cut nothing at"),
     );
@@ -210,5 +210,66 @@ describe("performSplitting across a batch of clips", () => {
       "piece_c",
       "piece_d",
     ]);
+  });
+});
+
+describe("startSplitting, one clip at a time", () => {
+  it("cuts the clips it is handed, and finds each one's own pieces", () => {
+    const { callState, arrangementClips } = setupBatchSplitTest();
+
+    mockArrangementClipsRescan(callState.trackMock, [
+      ["piece_a", 0],
+      ["piece_b", 8],
+      ["piece_c", 32],
+      ["piece_d", 40],
+    ]);
+
+    const run = startSplitting([8, 40], HOLDING_AREA, ARRANGEMENT_SPLIT_MODE);
+    const [first, second] = arrangementClips as [LiveAPI, LiveAPI];
+
+    // Nothing is cut yet, so there are no pieces to find.
+    expect(run.piecesOf(first)).toStrictEqual([]);
+
+    run.cut(first);
+
+    expect([...run.ranges.keys()]).toStrictEqual(["clip_1"]);
+    expect(run.piecesOf(first).map((piece) => piece.id)).toStrictEqual([
+      "piece_a",
+      "piece_b",
+    ]);
+    expect(run.piecesOf(second)).toStrictEqual([]);
+
+    run.cut(second);
+
+    expect(run.piecesOf(second).map((piece) => piece.id)).toStrictEqual([
+      "piece_c",
+      "piece_d",
+    ]);
+  });
+
+  it("says what a position cut nothing of once every clip has been measured", () => {
+    const { arrangementClips } = setupBatchSplitTest();
+    // 8 falls inside clip_1 only, and 100 inside neither.
+    const run = startSplitting([8, 100], HOLDING_AREA, ARRANGEMENT_SPLIT_MODE);
+
+    for (const clip of arrangementClips) {
+      run.cut(clip);
+    }
+
+    run.finish(arrangementClips.length);
+
+    expect(capturedWarnings()).toStrictEqual([
+      expect.stringContaining("arrangementSplit cut nothing at"),
+    ]);
+  });
+
+  it("says nothing of the call while a clip it set out to cut hasn't been measured", () => {
+    const { arrangementClips } = setupBatchSplitTest();
+    const run = startSplitting([100], HOLDING_AREA, ARRANGEMENT_SPLIT_MODE);
+
+    run.cut(arrangementClips[0] as LiveAPI);
+    run.finish(arrangementClips.length);
+
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 });

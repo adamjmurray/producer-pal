@@ -1,14 +1,16 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { cleanupTempClip, extendSongIfNeeded } from "../song-extension.ts";
 
 vi.mock(
   import("#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts"),
-  () => ({
+  async (importOriginal) => ({
+    ...(await importOriginal()),
     createAudioClipInSession: vi.fn(),
   }),
 );
@@ -254,6 +256,28 @@ describe("song-extension", () => {
 
       expect(mockTrackCall).toHaveBeenCalledWith("delete_clip", "id 456");
       expect(mockSlotCall).toHaveBeenCalledWith("delete_clip");
+    });
+
+    it("removes the scene made for the audio clip with it", () => {
+      const mockTrack = { call: vi.fn() } as unknown as LiveAPI;
+      const mockSlot = { call: vi.fn() } as unknown as LiveAPI;
+      const mockSceneCall = vi.fn();
+      const mockSceneLiveSet = {
+        getChildIds: vi.fn().mockReturnValue(["id 1", "id 2"]),
+        call: mockSceneCall,
+      };
+
+      mockLiveApiFrom({ [livePath.liveSet]: mockSceneLiveSet });
+
+      cleanupTempClip({
+        track: mockTrack,
+        clipId: "456",
+        isMidiTrack: false,
+        slot: mockSlot,
+        sceneId: "id 2",
+      });
+
+      expect(mockSceneCall).toHaveBeenCalledExactlyOnceWith("delete_scene", 1);
     });
 
     it("should handle audio clip without slot gracefully", () => {

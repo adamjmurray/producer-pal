@@ -1,45 +1,62 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
-import { noteNameToMidi } from "#src/shared/pitch.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
-import {
-  namedIdParam,
-  namedParam,
-  namedPathParam,
-} from "#src/tools/shared/helpers/param-presence.ts";
-import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
-import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
-import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
+import { type BrowserItem } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   type NamedTarget,
   namedTargets,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
-import { validateParamEntries } from "./helpers/params/param-entry-validation.ts";
-import { macroVariationParamsReason } from "./helpers/rack-macro-updates.ts";
-import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
+import { blankTargetIgnores } from "#src/tools/shared/validation/lists/target-lists.ts";
+import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
+import { refuseUnparsableEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
+import {
+  type AppliedTarget,
+  type Call,
+  type Done,
+  type MaybePromise,
+  type PipelineResult,
+  type Step,
+  type Target,
+  type WriteSpec,
+} from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
+import {
+  type DeviceChecked,
+  type DevicePayload,
+  checkDeviceUpdate,
+  deviceListArgs,
+} from "./helpers/call/check-device-update.ts";
 import {
   type PresetOutcome,
-  type TargetLists,
-  updateMultipleTargets,
-} from "./helpers/update-multiple-targets.ts";
-import { wrapDevicesInRack } from "./helpers/wrap-devices-in-rack.ts";
+  loadPreset,
+  presetDevice,
+} from "./helpers/call/device-presets.ts";
 import {
-  requireDestinationPerSource,
-  validateListLengths,
-} from "#src/tools/shared/validation/lists/list-lengths.ts";
-import { everyEntry } from "#src/tools/shared/validation/lists/list-pairing.ts";
+  type DeviceCall,
+  parseDeviceCall,
+} from "./helpers/call/parse-device-call.ts";
 import {
-  type PairedParamLabels,
-  pairParams,
-} from "#src/tools/shared/validation/lists/paired-values.ts";
+  type ResolvedTarget,
+  resolveNamedTarget,
+  resolvedTargetKey,
+  targetIsGone,
+  writtenContainer,
+} from "./helpers/call/resolve-device-target.ts";
 import {
-  targetCount,
-  targetParamLabel,
-} from "#src/tools/shared/validation/lists/target-lists.ts";
+  type SettledParams,
+  writePitchBendParams,
+} from "./helpers/call/simpler-pitch-bend.ts";
+import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
+import { updateDeviceTarget } from "./helpers/update-device-target.ts";
+import { updateDrumPadGroup } from "./helpers/update-drum-pad-group.ts";
+import { wrapDevicesInRack } from "./helpers/wrap/wrap-devices-in-rack.ts";
 
 export interface UpdateDeviceArgs extends UpdateTargetOptions {
   id?: string;
@@ -52,328 +69,397 @@ export interface UpdateDeviceArgs extends UpdateTargetOptions {
   focus?: boolean;
 }
 
-/** Args a wrap can take: `force` only unlocks a params write, refused anyway. */
-const WRAP_ALLOWED_ARGS = new Set(["name", "force"]);
+/** What a refused preset left of the device it was loaded onto. */
+const CHANGED_BY_PRESET =
+  "the device was replaced and removed; its slot is empty";
 
-/** The other string params that pair per target, beside name and color. */
-const DEVICE_VALUE_LABELS: PairedParamLabels<
-  "sendReturn" | "mappedPitch" | "preset"
-> = {
-  sendReturn: {
-    param: "sendReturn",
-    noun: "return",
-    item: "target",
-    shortfall: "kept their sends",
-  },
-  mappedPitch: {
-    param: "mappedPitch",
-    noun: "pitch",
-    item: "target",
-    shortfall: "kept their pitch",
-  },
-  preset: {
-    param: "preset",
-    noun: "preset",
-    item: "target",
-    shortfall: "kept their devices",
-  },
-};
+/** One target's entry. */
+type DeviceEntry = Record<string, unknown>;
 
-/** A device update, checked and ready to run: a wrap, or per-target updates. */
-export type DeviceUpdatePlan = { focus?: boolean } & (
-  | { wrap: Parameters<typeof wrapDevicesInRack>[0] }
-  | {
-      /** The targets, tagged with the param that named each */
-      items: NamedTarget[];
-      updateOptions: UpdateTargetOptions;
-      lists: TargetLists;
-    }
-);
+/** What update-device answers: a lone entry, or one entry per target. */
+export type UpdateDeviceResult = PipelineResult<DeviceEntry>;
 
 /**
- * Update device(s), chain(s), or drum pad(s) by ID or path. A `preset` is
- * loaded by updateDeviceWithPreset before this runs.
- * @param args - The update-device args
- * @param _context - Internal context object (unused)
+ * Update device(s), chain(s), or drum pad(s) by ID or path, without a preset
+ * or a macro count: sync, except that a Simpler's `pitchBendRange` or
+ * `notePitchBendRange` in `params` goes through the remote script and answers
+ * as a promise, whatever this signature says.
+ * @param args - The update-device args: the target (id/path), what to set on
+ *   it, and `wrapInRack` or `focus`
+ * @param ctx - Internal context object, for the request deadline
+ * @returns Updated object info(s)
+ */
+export function updateDevice(
+  args: UpdateDeviceArgs & { preset?: undefined; macroCount?: undefined },
+  ctx?: Partial<ToolContext>,
+): UpdateDeviceResult;
+/**
+ * Update device(s), chain(s), or drum pad(s) by ID or path. A `preset` loads
+ * through the remote script, a `macroCount` may ask it which macros are
+ * mapped, and a Simpler's pitch bend `params` are written through it, so the
+ * answer comes as a promise.
+ * @param args - The update-device args: the target (id/path), what to set on
+ *   it, and `wrapInRack`, `preset` or `focus`
+ * @param ctx - Internal context object, for the request deadline
  * @returns Updated object info(s)
  */
 export function updateDevice(
   args: UpdateDeviceArgs,
-  _context: Partial<ToolContext> = {},
-): WriteResult<Record<string, unknown>> {
-  return runDeviceUpdate(planDeviceUpdate(args));
-}
+  ctx?: Partial<ToolContext>,
+): MaybePromise<UpdateDeviceResult>;
 
 /**
- * Check a device update, refusing a bad call before anything is written.
- * @param args - The parameters
- * @param args.id - Comma-separated ID(s)
- * @param args.ids - Hidden alias for id
- * @param args.path - Device/chain/drum-pad path
- * @param args.paths - Hidden alias for path
- * @param args.toPath - Where to move, one destination per target (devices only)
- * @param args.name - Display name (not drum pads)
- * @param args.params - {name, value} entries to set (devices, plus `sample` on
- *   a drum pad or one of its layers)
- * @param args.actions - Device-specific action strings (devices only)
- * @param args.macroVariation - Rack variation action (racks only)
- * @param args.macroVariationIndex - Rack variation index (racks only)
- * @param args.macroCount - Rack visible macro count 0-16 (racks only)
- * @param args.abCompare - A/B Compare action (devices only)
- * @param args.mute - Mute state (chains/drum pads only)
- * @param args.solo - Solo state (chains/drum pads only)
- * @param args.color - Color #RRGGBB (chains only)
- * @param args.gainDb - Chain gain in dB (chains only)
- * @param args.pan - Chain pan -1 to 1 (chains only)
- * @param args.sendGainDb - Chain send level in dB, requires sendReturn (chains only)
- * @param args.sendReturn - Rack return chain id, name, or letter, requires sendGainDb (chains only)
- * @param args.sends - Several sends at once as [{return, gainDb}] (chains only)
- * @param args.chokeGroup - Choke group 0-16 (drum chains only)
- * @param args.mappedPitch - Output MIDI note (drum chains only)
- * @param args.wrapInRack - Wrap device(s) in a new rack
- * @param args.force - Allow a destructive pad-device swap a `sample` write needs
- * @param args.preset - Preset to load first (updateDeviceWithPreset loads it)
- * @param args.focus - Select the device and show device detail view
- * @returns The checked update
- */
-export function planDeviceUpdate({
-  id,
-  ids,
-  path,
-  paths,
-  toPath,
-  name,
-  params,
-  actions,
-  macroVariation,
-  macroVariationIndex,
-  macroCount,
-  abCompare,
-  mute,
-  solo,
-  color,
-  gainDb,
-  pan,
-  sendGainDb,
-  sendReturn,
-  sends,
-  chokeGroup,
-  mappedPitch,
-  wrapInRack,
-  force,
-  preset,
-  focus,
-}: UpdateDeviceArgs): DeviceUpdatePlan {
-  // A value the schema coerced from a JSON null names nothing, so it must not
-  // count as the caller having sent both addressing params.
-  ids = namedIdParam(id, ids, "ids");
-  path = namedPathParam(path, paths);
-
-  if (ids == null && path == null) {
-    throw new Error("id or path is required");
-  }
-
-  // No toPath here: each target takes the destination at its own position.
-  const updateOptions: UpdateTargetOptions = {
-    name,
-    params,
-    actions,
-    macroVariation,
-    macroVariationIndex,
-    macroCount,
-    abCompare,
-    mute,
-    solo,
-    color,
-    gainDb,
-    pan,
-    sendGainDb,
-    sendReturn,
-    sends,
-    chokeGroup,
-    mappedPitch,
-    force,
-    preset,
-  };
-
-  // First, so a wrap names every arg it would ignore before any of them is
-  // checked on its own.
-  refuseArgsWrapIgnores(wrapInRack, updateOptions);
-
-  validateSendPair(sendGainDb, sendReturn);
-  updateOptions.params = validateParamEntries(params);
-
-  // Checked for the whole call, so a per-target skip wouldn't repeat itself
-  // down the list. Refused before any target is touched (ADR-0035).
-  for (const pitch of everyEntry(
-    mappedPitch,
-    targetCount({ ids, path }),
-    "mappedPitch",
-  )) {
-    if (noteNameToMidi(pitch) == null) {
-      throw new Error(`invalid note name "${pitch}" for mappedPitch`);
-    }
-  }
-
-  const badVariation = macroVariationParamsReason(
-    macroVariation,
-    macroVariationIndex,
-  );
-
-  if (badVariation != null) {
-    throw new Error(badVariation);
-  }
-
-  if (wrapInRack) {
-    return { wrap: { ids, path, toPath, name }, focus };
-  }
-
-  // Every list in the call is checked together, before any of them is split:
-  // once one is split nothing knows whether the others are lists at all.
-  // toPath is left out — moveDestinations owns it, so a lone destination
-  // against several targets is refused rather than broadcast.
-  validateListLengths([
-    {
-      param: targetParamLabel({ ids, path }),
-      count: targetCount({ ids, path }),
-    },
-    { param: "name", value: name },
-    { param: "color", value: color },
-    { param: "sendReturn", value: sendReturn },
-    { param: "mappedPitch", value: mappedPitch },
-    { param: "preset", value: preset },
-  ]);
-
-  const items = namedTargets({ id: ids, path });
-  const { parsedNames, parsedColors } = pairLabels({
-    noun: "device",
-    count: items.length,
-    name,
-    color,
-  });
-  const destinations = moveDestinations(toPath, items.length);
-
-  return {
-    items,
-    updateOptions,
-    lists: {
-      names: parsedNames,
-      colors: parsedColors,
-      destinations,
-      valuesAt: pairParams(
-        { sendReturn, mappedPitch, preset },
-        DEVICE_VALUE_LABELS,
-        items.length,
-      ),
-    },
-    focus,
-  };
-}
-
-/**
- * Run a checked device update.
- * @param plan - What planDeviceUpdate checked
- * @param presetOutcomes - What loading each target's preset did, by index
+ * Update device(s), chain(s), or drum pad(s) by ID or path.
+ * @param args - The update-device args
+ * @param ctx - Internal context object, for the request deadline
  * @returns Updated object info(s)
  */
-export function runDeviceUpdate(
-  plan: DeviceUpdatePlan,
-  presetOutcomes: Array<PresetOutcome | undefined> = [],
-): WriteResult<Record<string, unknown>> {
-  const result =
-    "wrap" in plan
-      ? { ...wrapDevicesInRack(plan.wrap) }
-      : updateMultipleTargets(
-          plan.items,
-          plan.updateOptions,
-          plan.lists,
-          presetOutcomes,
-        );
+export function updateDevice(
+  args: UpdateDeviceArgs,
+  ctx: Partial<ToolContext> = {},
+): MaybePromise<UpdateDeviceResult> {
+  return runWrite(DEVICE_WRITE, args, ctx);
+}
 
-  if (plan.focus) {
-    const lastId = lastWrittenId(result);
+const DEVICE_WRITE: WriteSpec<
+  UpdateDeviceArgs,
+  DeviceCall,
+  DevicePayload,
+  DeviceChecked,
+  DeviceEntry
+> = {
+  tool: "ppal-update-device",
+  words: { rerun: "target" },
+  parse: (args) => parseDeviceCall(args),
+  lists: deviceListArgs,
+  targets: deviceTargets,
+  check: (call, targets, { ctx }) =>
+    checkDeviceUpdate(call, targets, ctx.deadline),
+  write: writeDevice,
+  settle: settleDeviceUpdate,
+};
 
-    if (lastId) {
-      focusSelect({ id: lastId, detailView: "device" });
+// --- Helpers below main export ---
+
+/**
+ * Name the call's targets and resolve each now, before the first write: a move
+ * re-indexes what it leaves, so a later path would name whatever slid into the
+ * slot.
+ * @param call - The update-device call
+ * @returns The targets in the order named
+ * @throws Error when a list has a hole, or a path can't be parsed
+ */
+function deviceTargets(call: DeviceCall): Array<Target<DevicePayload>> {
+  const named = namedTargets({ id: call.ids, path: call.path });
+
+  // A path that doesn't parse is a mistake in the call, so it refuses the
+  // call, wrapping or not; one that parses but names nothing skips only its
+  // own target.
+  refuseUnparsableEntries(call.path, "path");
+
+  // One rack from every device named, so one target.
+  if (call.wrapInRack === true) {
+    const { ids, path, toPath } = call;
+
+    return [
+      {
+        named: named[0] as Target<DevicePayload>["named"],
+        data: { wrap: { ids, path, toPath, name: call.options.name } },
+      },
+    ];
+  }
+
+  return named.map((target): Target<DevicePayload> => {
+    try {
+      const resolved = resolveNamedTarget(target);
+
+      return {
+        named: target,
+        key: resolvedTargetKey(resolved),
+        data: { resolved, before: pathBefore(call, resolved, target) },
+      };
+    } catch (error) {
+      return { named: target, skip: errorMessage(error) };
+    }
+  });
+}
+
+/**
+ * Where a target is before the first write, for the entry of one that a later
+ * target deletes. Only a forced pad sample swap deletes a named target, and
+ * naming a drum chain costs a rack scan, so other calls skip the read.
+ * @param call - The update-device call
+ * @param resolved - The resolved target
+ * @param named - The target as the call named it, for the spelling to keep
+ * @returns Its path now, in the call's spelling, when the call can delete it
+ */
+function pathBefore(
+  call: DeviceCall,
+  resolved: ResolvedTarget,
+  named: NamedTarget,
+): string | undefined {
+  return call.options.force === true && resolved.kind === "object"
+    ? pathField(
+        resolved.target,
+        writtenContainer(named.param === "path" ? named.value : undefined),
+      ).path
+    : undefined;
+}
+
+/**
+ * What to apply to one target: the call's options, with the name, color,
+ * destination and other strings that pair per target taken at its position.
+ * @param checked - The checked call
+ * @param index - The target's position
+ * @returns The target's options
+ */
+function optionsForTarget(
+  checked: DeviceChecked,
+  index: number,
+): UpdateTargetOptions {
+  const { options, lists } = checked;
+
+  return {
+    ...options,
+    name: getNameForIndex(options.name, index, lists.names),
+    color: getColorForIndex(options.color, index, lists.colors),
+    toPath: lists.destinations[index],
+    mappedMacros: checked.macros[index],
+    ...lists.valuesAt(index),
+  };
+}
+
+/**
+ * Write one target: a wrap, or its own update after any preset it loads.
+ * @param target - The target
+ * @param step - The call's state for this target
+ * @returns The target's entry
+ */
+function writeDevice(
+  target: AppliedTarget<DevicePayload>,
+  step: Step<DeviceChecked>,
+): MaybePromise<DeviceEntry> {
+  const { data, named } = target;
+
+  if ("wrap" in data) {
+    return { ...wrapDevicesInRack(data.wrap) };
+  }
+
+  // A target resolved up front can die before its turn: an earlier target's
+  // preset replaced the rack it sits in, or a forced pad sample swap deleted it.
+  if (targetIsGone(data.resolved)) {
+    throw new Error(
+      "no longer exists: an earlier target in this call replaced it or its rack",
+    );
+  }
+
+  const options = optionsForTarget(step.checked, step.index);
+  const writtenPath = named.param === "path" ? named.value : undefined;
+  const item = step.checked.presets[step.index];
+  const device = presetDevice(data.resolved);
+
+  return item == null || device == null
+    ? updateResolved(data.resolved, options, writtenPath, step)
+    : loadThenUpdate(
+        { device, item },
+        data.resolved,
+        options,
+        writtenPath,
+        step,
+      );
+}
+
+/**
+ * Load a target's preset, then run the rest of its update on the device that's
+ * there afterwards.
+ * @param preset - The device and the preset to load onto it
+ * @param preset.device - The device
+ * @param preset.item - The preset
+ * @param resolved - The target
+ * @param options - What to apply to the target
+ * @param writtenPath - The path the call named the target by, if it did
+ * @param step - The call's state for this target
+ * @returns The target's entry
+ */
+async function loadThenUpdate(
+  preset: { device: LiveAPI; item: BrowserItem },
+  resolved: ResolvedTarget,
+  options: UpdateTargetOptions,
+  writtenPath: string | undefined,
+  step: Step<DeviceChecked>,
+): Promise<DeviceEntry> {
+  const { device, item } = preset;
+  // Read now: the device may be gone afterwards, and its id means nothing then.
+  const where = pathField(device, writtenContainer(writtenPath));
+  const loaded = await loadPreset(device, item, step.call.ctx.deadline);
+
+  // Live changed the device before refusing, so it isn't the one the call
+  // named. Throw after landing, so the entry keeps what changed.
+  if ("error" in loaded.outcome && loaded.outcome.changed === true) {
+    step.landed(CHANGED_BY_PRESET, where);
+    throw new Error(`preset not loaded: ${loaded.outcome.error}`);
+  }
+
+  if (!("error" in loaded.outcome)) {
+    step.landed("preset", { id: (loaded.device ?? device).id });
+  }
+
+  // A new device has a new id, and the target is that device from here on. What
+  // was read of the old one's macros says nothing about it.
+  const current: ResolvedTarget =
+    loaded.device == null
+      ? resolved
+      : { kind: "object", target: loaded.device };
+
+  return await updateResolved(
+    current,
+    loaded.device == null ? options : { ...options, mappedMacros: undefined },
+    writtenPath,
+    step,
+    loaded.outcome,
+  );
+}
+
+/**
+ * Apply the call's options to a resolved target.
+ * @param resolved - The target
+ * @param options - What to apply to it
+ * @param writtenPath - The path the call named the target by, if it did
+ * @param step - The call's state for this target
+ * @param presetOutcome - What loading its preset did, when it had one
+ * @returns The target's entry, its path still to be filled in
+ */
+function updateResolved(
+  resolved: ResolvedTarget,
+  options: UpdateTargetOptions,
+  writtenPath: string | undefined,
+  step: Step<DeviceChecked>,
+  presetOutcome?: PresetOutcome,
+): MaybePromise<DeviceEntry> {
+  if (resolved.kind === "drum-pad") {
+    const id = resolved.group.pad?.id;
+
+    // A virtual pad has no id, so its entry has none to keep if this throws.
+    return {
+      ...updateDrumPadGroup(
+        resolved.group,
+        resolved.padPath,
+        options,
+        (phrase) => step.landed(phrase, id == null ? {} : { id }),
+      ),
+    };
+  }
+
+  const { target } = resolved;
+  const landed = (phrase: string): void =>
+    step.landed(phrase, { id: target.id });
+
+  const finish = (settled?: SettledParams): DeviceEntry => {
+    const update = updateDeviceTarget(
+      target,
+      options,
+      writtenPath,
+      presetOutcome,
+      landed,
+      settled,
+    );
+
+    step.checked.written.set(update.entry, update.written);
+
+    return update.entry;
+  };
+
+  // A Simpler's pitch bend params go through the remote script, which the sync
+  // param write can't wait on, so they are settled first. Sync unless one is sent.
+  const pitchBend = writePitchBendParams(
+    target,
+    options.params,
+    step.checked.pitchBend,
+    { deadline: step.call.ctx.deadline, landed },
+  );
+
+  return pitchBend == null ? finish() : pitchBend.then(finish);
+}
+
+/**
+ * Once every target has had its turn: name each by where it sits now, say what
+ * the call dropped, and focus the last device written.
+ * @param done - What the call did
+ * @param call - The call's shared state
+ */
+function settleDeviceUpdate(
+  done: Done<DevicePayload, DeviceChecked, DeviceEntry>,
+  call: Call,
+): void {
+  const { checked, entries, outcomes, targets } = done;
+  const written: Array<{ id: string }> = [];
+
+  // A later move can push an earlier target along, so name each one once every
+  // target has had its turn. A wrap names its own rack.
+  for (const [index, entry] of entries.entries()) {
+    const data = targets[index]?.data;
+    const id = (entry as DeviceEntry).id;
+
+    if (
+      outcomes[index] === "written" &&
+      data != null &&
+      "resolved" in data &&
+      typeof id === "string"
+    ) {
+      renamePath(
+        entry as DeviceEntry,
+        id,
+        checked.written.get(entry),
+        data.before,
+      );
+    }
+
+    if (outcomes[index] === "written" && typeof id === "string") {
+      written.push({ id });
     }
   }
 
-  return result;
+  // Said once the writes are done: it claims what the call did.
+  for (const { param, why } of blankTargetIgnores(
+    checked.sent,
+    "targets",
+    checked.named,
+  )) {
+    call.ignored(param, why);
+  }
+
+  const last = written.at(-1);
+
+  if (checked.focus === true && last != null) {
+    focusSelect({ id: last.id, detailView: "device" });
+  }
 }
 
 /**
- * Refuse update args sent with wrapInRack. A wrap uses only the targets,
- * toPath and name, so the rest would be dropped while the call reads as done.
- * @param wrapInRack - Whether the call wraps; nothing is refused otherwise
- * @param options - The update args
+ * Name a target by where it sits now, keeping its entry's key order. One a
+ * later target deleted has no address now, so it keeps the one it had.
+ * @param entry - The target's entry, updated in place
+ * @param id - Its id
+ * @param container - The container spelling it was named by, if any
+ * @param before - Where it was before the call, if it had a path
  */
-function refuseArgsWrapIgnores(
-  wrapInRack: boolean | undefined,
-  options: UpdateTargetOptions,
+function renamePath(
+  entry: DeviceEntry,
+  id: string,
+  container: Parameters<typeof pathField>[1],
+  before: string | undefined,
 ): void {
-  if (!wrapInRack) {
-    return;
-  }
+  const { path } = pathField(LiveAPI.from(id), container);
 
-  const ignored = Object.entries(options)
-    .filter(([key, value]) => !WRAP_ALLOWED_ARGS.has(key) && isSent(value))
-    .map(([key]) => key);
-
-  if (ignored.length > 0) {
-    throw new Error(
-      `wrapInRack cannot be used with ${ignored.join(", ")}: wrap first, then update in another call`,
+  if (path != null) {
+    entry.path = path;
+  } else if (before != null) {
+    entry.path = before;
+    appendDetail(
+      entry,
+      "no longer exists: a later target in this call replaced it",
     );
+  } else {
+    delete entry.path;
   }
-}
-
-/**
- * Whether an arg asks for anything: an empty list sets nothing.
- * @param value - The arg's value
- * @returns True when it was sent with something in it
- */
-function isSent(value: unknown): boolean {
-  return value != null && !(Array.isArray(value) && value.length === 0);
-}
-
-/**
- * One destination per target, refused before anything moves when they don't
- * pair. A destination never covers several targets: a device slot holds one
- * object. Repeats are fine — move_device inserts rather than overwrites.
- * @param toPath - The destination(s), comma-separated
- * @param count - How many targets the call names
- * @returns One destination per target, undefined where the call named none
- */
-function moveDestinations(
-  toPath: string | undefined,
-  count: number,
-): Array<string | undefined> {
-  const named = namedParam(toPath, "toPath");
-
-  if (named == null) {
-    return Array.from({ length: count }, () => undefined);
-  }
-
-  const entries = targetEntries(named, "toPath");
-
-  requireDestinationPerSource(
-    { param: "toPath", count: entries.length },
-    { param: "the call", count, noun: "target" },
-  );
-
-  return entries;
-}
-
-/**
- * The id of the last target the call actually wrote, for focus — never a
- * skipped one, whose id names something the call couldn't reach.
- * @param result - What the call is about to return
- * @returns That id, or undefined when nothing was written
- */
-function lastWrittenId(
-  result: WriteResult<Record<string, unknown>>,
-): string | undefined {
-  const entries = Array.isArray(result) ? result : [result];
-  const written = entries.filter((entry) => entry.ok !== false);
-
-  return written.at(-1)?.id as string | undefined;
 }

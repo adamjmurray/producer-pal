@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
@@ -108,6 +108,29 @@ describe("Transform Parser - time range selectors", () => {
     expect(() => parser.parse("1|1-2|0: velocity += 10")).toThrow(
       /beats are 1-indexed.*Got beat 0/,
     );
+  });
+
+  it("rejects a 0-indexed bar in a selector or range bound", () => {
+    const steer = /bars are 1-indexed.*first bar is bar 1.*Got bar 0\./;
+
+    expect(() => parser.parse("0|1: velocity = 5")).toThrow(steer);
+    expect(() => parser.parse("0|*: velocity = 5")).toThrow(steer);
+    expect(() => parser.parse("C3 0|1: velocity = 5")).toThrow(steer);
+    expect(() => parser.parse("0|1-2|1: velocity = 5")).toThrow(steer);
+    expect(() => parser.parse("1|1-0|3: velocity = 5")).toThrow(steer);
+    expect(() => parser.parse("1|1-<0|3: velocity = 5")).toThrow(steer);
+    expect(() => parser.parse("1|*-0|*: velocity = 5")).toThrow(steer);
+    expect(() => parser.parse("0|*-2|*: velocity = 5")).toThrow(steer);
+    expect(() => parser.parse("01|1: velocity = 5")).toThrow(/Got bar 01\./);
+  });
+
+  it("only steers a bar that really starts with 0", () => {
+    expect(() => parser.parse("10|1: velocity = 5")).not.toThrow();
+    expect(() => parser.parse("100|*: velocity = 5")).not.toThrow();
+    expect(() => parser.parse("1|1-10|1: velocity = 5")).not.toThrow();
+    expect(() => parser.parse("velocity = 0")).not.toThrow();
+    expect(() => parser.parse("velocity = 0.5")).not.toThrow();
+    expect(() => parser.parse("1|1-2|1: velocity = 0")).not.toThrow();
   });
 
   it("borrows across the bar line for a -n bound before the downbeat", () => {

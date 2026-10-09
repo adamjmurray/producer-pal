@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -65,7 +65,7 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should set loop start when start is provided", async () => {
-    setupMidiClipMock(mocks.clip123, { looping: 1 });
+    setupMidiClipMock(mocks.clip123, { looping: 1, loop_end: 8 });
 
     await updateClip({
       id: "123",
@@ -244,7 +244,13 @@ describe("updateClip - Advanced note operations", () => {
 
     // noteCount mirrors read-clip's window [-8, 16): beats 0, 4, and the overhang
     // at 8 are counted; F3 at beat 20 (> one clip-length past the end) is not.
-    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 3 });
+    // The notes at beats 8 and 20 are past the region, so they won't play.
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      noteCount: 3,
+      detail: "2 notes are outside the region and won't play",
+    });
 
     // Window: the region [0, 8) plus a clip-length each side, i.e. [-8, 16).
     expect(mocks.clip123.call).toHaveBeenCalledWith(
@@ -284,7 +290,8 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should update warp mode for audio clips", async () => {
-    setupAudioClipMock(mocks.clip123);
+    // The mock keeps what Live would: the mode written
+    setupAudioClipMock(mocks.clip123, { warp_mode: 4 });
 
     const result = await updateClip({
       id: "123",

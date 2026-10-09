@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-create-track tool
@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extractToolResultText,
+  getToolErrorMessage,
   parseBatchResult,
   parseToolResult,
   parseToolResultWithWarnings,
@@ -19,6 +20,7 @@ import {
   sleep,
   type CreateTrackResult,
 } from "../mcp-test-helpers";
+import { CHILD_TRACK, PARENT_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -198,6 +200,55 @@ describe("ppal-create-track", () => {
 
     await sleep(100);
     expect(await nameAt(asAsked.path!)).toBe(`${ownLetter}-Tape`);
+  });
+
+  // A return track can't be armed. The track is made, so its entry stays a
+  // normal one and the detail says what did nothing.
+  it("says an arm on a new return track had no effect", async () => {
+    const created = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: "rt+", arm: true },
+      }),
+    );
+
+    expect(created.path).toMatch(/^rt\d+$/);
+    expect(created).not.toHaveProperty("ok");
+    expect(created.detail).toBe(
+      "arm had no effect: return, main and group tracks can't be armed",
+    );
+
+    await sleep(100);
+    expect(await nameAt(created.path!)).toBeDefined();
+  });
+
+  // The switches check can_be_armed before writing, so a regular track has to
+  // still come back armed with nothing said.
+  it("arms a new MIDI track without a detail", async () => {
+    const created = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { name: "Armed On Create", arm: true },
+      }),
+    );
+
+    expect(created.detail).toBeUndefined();
+
+    await sleep(100);
+    const read = parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { id: created.id },
+      }),
+    );
+
+    expect(read.isArmed).toBe(true);
+
+    // Leave nothing armed for the tests after this one.
+    await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { id: created.id, arm: false },
+    });
   });
 
   it("creates tracks with custom properties", async () => {
@@ -474,6 +525,21 @@ describe("ppal-create-track", () => {
       expect(warnings.join("\n")).toContain('param "count" is deprecated');
     });
 
+    it("refuses a path sent with trackIndex, creating nothing", async () => {
+      const before = await trackCount();
+      const refused = await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: "t+", trackIndex: 0 },
+      });
+
+      expect(getToolErrorMessage(refused)).toContain(
+        "path names the destination on its own - don't send trackIndex with it",
+      );
+
+      await sleep(100);
+      expect(await trackCount()).toBe(before);
+    });
+
     it("refuses count sent with a path list", async () => {
       const before = await trackCount();
       const text = extractToolResultText(
@@ -490,6 +556,42 @@ describe("ppal-create-track", () => {
       expect(await trackCount()).toBe(before);
     });
   });
+
+  // A path at a member's index puts the track inside the group, which the path
+  // itself doesn't show. The index just past the last member lands outside.
+  it("says when a track lands inside a group track", async () => {
+    const parent = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: `t${PARENT_TRACK}` },
+      }),
+    );
+
+    const inside = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: `t${CHILD_TRACK}` },
+      }),
+    );
+
+    expect(inside.path).toBe(`t${CHILD_TRACK}`);
+    expect(inside.detail).toBe(
+      `inside group track t${PARENT_TRACK} (id ${parent.id})`,
+    );
+
+    await sleep(100);
+
+    // Child moved down one, so its old index is now the group's last member.
+    const outside = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { path: `t${CHILD_TRACK + 2}` },
+      }),
+    );
+
+    expect(outside.path).toBe(`t${CHILD_TRACK + 2}`);
+    expect(outside.detail).toBeUndefined();
+  });
 });
 
 interface LiveSetResult {
@@ -503,4 +605,5 @@ interface ReadTrackResult {
   name: string;
   color?: string;
   state?: string;
+  isArmed?: boolean;
 }

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Fixtures the MCP e2e suites share: the Live Sets they open, the default Set's
 // track indexes, and the sample files tests load. Import these instead of
@@ -24,10 +24,15 @@ export const EMPTY_MIDI_TRACK = 8;
 /** t5 "Audio 2": one unwarped session clip in s0, s1-s7 and the arrangement free. */
 export const AUDIO_TRACK = 5;
 
+/** t6 "FX Bus": an audio track, for effects. */
+export const FX_BUS_TRACK = 6;
+
 /** t7 "Racks": nested instrument racks for deep device paths. No clips. */
 export const RACKS_TRACK = 7;
 
-/** t10 "Child": a MIDI track inside the t9 "Parent" group. No clips. */
+export const PARENT_TRACK = 9;
+
+/** t10 "Child": a MIDI track, the only one inside the t9 "Parent" group. */
 export const CHILD_TRACK = 10;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

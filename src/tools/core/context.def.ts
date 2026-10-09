@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z } from "zod";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
@@ -88,7 +88,7 @@ export const toolDefContext = defineTool("ppal-context", {
 
     name: param(z.string().max(200).optional(), {
       default:
-        "Memory entry name (read/write/delete on scope:memory), one entry per " +
+        "Memory entry name (read/write/delete on scope:memory only), one entry per " +
         "call. Reuse a name to update, not duplicate.",
       smallModel: null,
     }),
@@ -101,15 +101,16 @@ export const toolDefContext = defineTool("ppal-context", {
     }),
 
     // The escape hatch for the clobber guard (project-context-operations.ts's
-    // clobberWarning), and deliberately NOT taught in the skills: the model
-    // learns of it from the warning, at the moment it is relevant, so it never
-    // reaches for it casually. Declared in EVERY mode — including small-model,
+    // clobberRefusal), and deliberately NOT taught in the skills: the model
+    // learns of it from the refused write's message, at the moment it is
+    // relevant, so it never reaches for it casually. Declared in EVERY mode — including small-model,
     // where it costs a few tokens — because a guard whose only way out is hidden
     // from the tier that hits it would deadlock the write, which is worse than
     // the clobber it prevents.
     //
-    // Don't refuse a `force` that had nothing to get past. It also means "I
-    // mean to replace this wholesale" — which is how the eval harness seeds and
+    // Refused outside a project or global write, which are the only calls with
+    // a guard to get past. But don't refuse a `force` that had nothing to get
+    // past on one of those. It also means "I mean to replace this wholesale" — which is how the eval harness seeds and
     // restores the global document — and a caller can't predict whether the
     // guard would have fired, since that turns on whether its new content
     // happens to share a line. Refusing would break deliberate replacement at
@@ -118,7 +119,7 @@ export const toolDefContext = defineTool("ppal-context", {
       .boolean()
       .optional()
       .describe(
-        "Only when a write was skipped for dropping the whole document: " +
+        "Only when a write was refused for dropping the whole document: " +
           "true replaces it anyway.",
       ),
   },

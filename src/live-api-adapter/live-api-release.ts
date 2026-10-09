@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Releases the path listeners Live arms behind every LiveAPI object.
@@ -302,13 +302,13 @@ function releaseTrackedObjects(): void {
     try {
       // Mode first, so the clear below always runs against a path-following
       // object. Reusing without resetting would carry a mode of 1 into the next
-      // request; the ppal-live-api set_mode operation is what can leave it
+      // request; the ppal-live-api set-mode operation is what can leave it
       // there. (Clearing from mode 1 works on 12.4.3 — this is just the order
       // that doesn't depend on that.)
       api.mode = 0;
 
       // `path` is readonly in the type so ordinary code can't retarget an
-      // object. This is the release; the ppal-live-api set_path operation is
+      // object. This is the release; the ppal-live-api set-path operation is
       // the only other write. Assigning "" retargets the object, not the set.
       (api as unknown as { path: string }).path = "";
 

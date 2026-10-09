@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -105,7 +105,6 @@ describe("readOneClip", () => {
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
       type: "midi",
-      view: "session",
       name: "Test Clip",
       path: "t0/s0",
       timeSignature: "4/4",
@@ -144,7 +143,6 @@ describe("readOneClip", () => {
       type: "midi",
       // name omitted when empty
       path: "t0/s0",
-      view: "session",
     });
   });
 
@@ -326,7 +324,6 @@ describe("readOneClip", () => {
       name: "Test Clip",
       type: "midi",
       path: "t0/s0",
-      view: "session",
       timeSignature: "4/4",
       looping: false,
       start: "1|1", // start_marker (0 = 1|1)

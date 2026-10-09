@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Installs the test suite's mock Live API as the Max V8 globals the tools read,
 // so the docs generator can run real tool code with no Ableton Live running.

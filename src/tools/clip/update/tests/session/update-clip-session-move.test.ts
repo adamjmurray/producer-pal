@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -22,6 +22,7 @@ import { handlePositionOperations } from "../../helpers/move/position-operations
 import { handleClipSlotMove } from "../../helpers/slot-move/clip-slot-move.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
+import { newLandingLog } from "#src/tools/shared/clip/landings/landing-log.ts";
 
 vi.mock(import("../../helpers/arrangement/arrangement-move.ts"), () => ({
   handleArrangementOperations: vi.fn(),
@@ -633,12 +634,11 @@ function runPositionOps(opts: PositionOpsOptions = {}): ClipReasons {
       toSlot == null ? (toLane ?? null) : { kind: "slot", ...toSlot },
     arrangementStartBeats,
     arrangementLengthBeats,
-    movedClipGroups: new Map(),
+    landings: newLandingLog(),
     context: {},
     updatedClips: [],
     noteResult: null,
     reasons,
-    isNonSurvivor: false,
   });
 
   return reasons;

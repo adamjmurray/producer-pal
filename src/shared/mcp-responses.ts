@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Marks a content item as a warning rather than part of the result. The REST
@@ -110,7 +110,7 @@ interface McpTextContent {
  */
 export type McpErrorCode = "timeout";
 
-interface McpResponse {
+export interface McpResponse {
   content: McpTextContent[];
   isError?: boolean;
   /** Structured error category, set only for specific error origins. */

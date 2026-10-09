@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -79,7 +79,7 @@ describe("handleArrangementLengthOperation", () => {
       path: "live_set tracks 0 take_lanes 1 arrangement_clips 0",
     });
 
-    expectSkippedWithReason(clip, "ignored for a take-lane clip");
+    expectSkippedWithReason(clip, "ignored: this is a take-lane clip");
   });
 
   it("delegates to handleArrangementLengthening when target length is longer", () => {

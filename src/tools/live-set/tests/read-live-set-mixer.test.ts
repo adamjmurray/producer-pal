@@ -1,10 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
-import { mixerPathIds } from "#src/test/mocks/mock-registry-helpers.ts";
+import { mixerPathIds } from "#src/test/mocks/registry/mock-registry-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import {

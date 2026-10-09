@@ -1,15 +1,16 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Filter mappings between Live's DB encoding and our public enums.
  *
  * Live stores content kind as a fourCC integer in `files.file_type` (e.g.
  * 'aiff' → 0x61696666). Source category is encoded as `places.folder_kind`
- * (0=Pack, 1=User Library, etc.). Device classification lives in
- * `files.device_type` (1=instrument, 2=audiofx, 4=midifx).
+ * (0=Pack, 1=User Library, 5=plug-in preset folders, etc.). Device
+ * classification lives in `files.device_type` (1=instrument, 2=audiofx,
+ * 4=midifx).
  */
 
 import {
@@ -164,14 +165,23 @@ export function deviceTypeForKind(deviceKind: LibraryDeviceKind): number {
 
 /**
  * places.folder_kind values that map to each DB-side source enum.
- * "sampleFolder" is not here — it's a V8-only synthetic source for the
+ * "sample-folder" is not here — it's a V8-only synthetic source for the
  * user-configured custom sample folder, with no DB encoding.
  */
-type DbLibrarySource = Exclude<LibrarySource, "sampleFolder">;
+type DbLibrarySource = Exclude<LibrarySource, "sample-folder">;
+
+/**
+ * folder_kind of the "Presets" places (`/Library/Audio/Presets` and the user's
+ * copy). Plug-ins install sample libraries there, which Live indexes but its
+ * browser hides, and plug-in presets (`.aupreset`, `.vstpreset`), which Live
+ * links to their plug-in and lists under it.
+ */
+export const PRESET_FOLDER_KIND = 5;
 
 const SOURCE_TO_FOLDER_KINDS: Record<DbLibrarySource, number[]> = {
   user: [1, 2],
   pack: [0],
+  "preset-folder": [PRESET_FOLDER_KIND],
   builtin: [8],
   cloud: [9],
   plugin: [10],
@@ -188,24 +198,35 @@ for (const [src, kinds] of Object.entries(SOURCE_TO_FOLDER_KINDS) as Array<
 }
 
 /**
- * Map a public source enum to the folder_kind integers it covers.
- * Returns [] for "sampleFolder" (no DB encoding); callers should guard.
+ * Map a public source enum to the folder_kind integers it covers. "plugin"
+ * also covers plug-in presets in kind 5, and "preset-folder" only the kind 5
+ * files not linked to a plug-in; the query adds that. Returns [] for
+ * "sample-folder" (no DB encoding); callers should guard.
  *
  * @param source - Public source enum
  * @returns Array of folder_kind integers to IN-match
  */
 export function folderKindsForSource(source: LibrarySource): number[] {
-  return source === "sampleFolder" ? [] : SOURCE_TO_FOLDER_KINDS[source];
+  return source === "sample-folder" ? [] : SOURCE_TO_FOLDER_KINDS[source];
 }
 
 /**
  * Resolve a raw folder_kind back to a public source enum, or null when
- * the folder_kind doesn't map to one of our known categories.
+ * the folder_kind doesn't map to one of our known categories. A file in a
+ * preset folder that Live linked to a plug-in is a plug-in preset: "plugin".
  *
  * @param folderKind - Raw folder_kind from the DB
+ * @param linkedToPlugin - Whether Live linked the file to a plug-in
  * @returns Public source enum or null
  */
-export function resolveSource(folderKind: number): LibrarySource | null {
+export function resolveSource(
+  folderKind: number,
+  linkedToPlugin = false,
+): LibrarySource | null {
+  if (folderKind === PRESET_FOLDER_KIND && linkedToPlugin) {
+    return "plugin";
+  }
+
   return FOLDER_KIND_TO_SOURCE.get(folderKind) ?? null;
 }
 

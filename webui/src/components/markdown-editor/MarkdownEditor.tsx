@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { Compartment, EditorState, Transaction } from "@codemirror/state";
 import { EditorView, placeholder as placeholderExt } from "@codemirror/view";

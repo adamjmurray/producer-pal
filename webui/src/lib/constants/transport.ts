@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Network deadlines. They live here, apart from the transports that use them,
 // so tests can `vi.mock` this module down to a few ms instead of waiting out the

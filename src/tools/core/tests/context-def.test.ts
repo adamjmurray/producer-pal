@@ -1,11 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi, type Mock } from "vitest";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { type ZodRawShape, type ZodType } from "zod";
+import { type ZodType } from "zod";
+import { registeredShape } from "#src/tools/shared/tool-framework/tests/registered-shape-test-helpers.ts";
 import { type McpOptions } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { toolDefContext } from "../context.def.ts";
 
@@ -34,9 +35,7 @@ function registerContext(options?: McpOptions): Record<string, unknown> {
 function getShape(
   config: Record<string, unknown>,
 ): Record<string, { description?: string; options?: string[] }> {
-  const shape = (config.inputSchema as { shape: ZodRawShape }).shape;
-
-  return shape as unknown as Record<
+  return registeredShape(config) as unknown as Record<
     string,
     { description?: string; options?: string[] }
   >;

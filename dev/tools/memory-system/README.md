@@ -3,9 +3,10 @@
 An indexed, LLM-managed memory: many small fact files under
 `~/.producer-pal/memory/`, a cheap always-injected index, and on-demand
 retrieval of full bodies. It sits alongside the pinned global context
-(`~/.producer-pal/context.md`, ADR-0010's content-override layer) as a second,
-structured layer: context is a hand-authored, always-on blob; memory is a
-lazy-loaded notebook the assistant reads and writes itself.
+(`~/.producer-pal/context.md`, part of the
+[content-override layer](../../architecture/user-content-overrides.md)) as a
+second, structured layer: context is a hand-authored, always-on blob; memory is
+a lazy-loaded notebook the assistant reads and writes itself.
 
 ## Parts
 

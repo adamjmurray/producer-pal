@@ -1,14 +1,16 @@
 # Producer Pal Remote Script
 
-An Ableton Live remote script that listens on **http://127.0.0.1:3349** and can
-list and load Live devices, Max for Live devices, VST/VST3/AU plugins and
-presets, and load a preset in place of a device already in the Set. Prototype.
+An Ableton Live remote script that listens on **http://127.0.0.1:3349** (or the
+next free port, see [Port](#port)) and can list and load Live devices, Max for
+Live devices, VST/VST3/AU plugins and presets, load a preset in place of a
+device already in the Set, and copy a device. Prototype.
 
 Producer Pal's `ppal-create-device` uses it to load plug-ins, Max for Live
-devices and presets, and `ppal-update-device` to swap a preset onto a device.
-Without it, only native Live devices load. The model finds plug-ins with
-`ppal-library`'s `listPlugins` action, and Max devices by searching with
-`kind: m4l-device`.
+devices and presets, `ppal-update-device` to swap a preset onto a device, and
+`ppal-duplicate` to copy a device. Without it, only native Live devices load,
+and device copies are slower (they go through a temp track). The model finds
+plug-ins with `ppal-library`'s `list-plugins` action, and Max devices by
+searching with `kind: m4l-device`.
 
 To open or create a Set with Producer Pal in it, use the
 [`ableton-open-live-set`](../examples/skills/ableton-open-live-set/) skill's
@@ -30,13 +32,18 @@ Either way it replaces `<User Library>/Remote Scripts/Producer_Pal`. **Restart
 Live** (it only scans Remote Scripts at startup), then pick **Producer Pal**
 under Settings → Tempo & MIDI → Control Surface. Leave Input and Output as None.
 
+`npm run remote-script:install -- --probe` also adds two dev-only routes:
+`/probe`, which runs posted Python (see
+[dev/live-api/python-remote-script-api/](../dev/live-api/python-remote-script-api/README.md)),
+and `/reload`. See [Hot reload](#hot-reload).
+
 The folder name must be a valid Python name: Live runs `import <folder>`, so a
 space breaks it.
 
 ## Try it
 
 ```sh
-curl -s localhost:3349/ping
+curl -s localhost:3349/ping  # or the port in ~/.producer-pal/remote-script-port.txt
 
 # list everything loadable, at any depth
 curl -s "localhost:3349/list?type=mfl-device"
@@ -62,7 +69,27 @@ curl -s -X POST localhost:3349/load -d '{"type": "file", "path": "/path/to/Facto
 
 # load a preset in place of the first device on track 3
 curl -s -X POST localhost:3349/hotswap -d '{"type": "instrument", "path": "Drift/Bass/AG Bass.adv", "device_path": "live_set tracks 3 devices 0"}'
+
+# copy the second device on track 1 (the copy lands right after it)
+curl -s -X POST localhost:3349/device/duplicate -d '{"device_path": "live_set tracks 1 devices 1"}'
 ```
+
+## Port
+
+It tries 3349, then 3351 to 3358 (3350 is the MCP server's), and takes the first
+free one: a second Live, or another program, may have 3349. A port counts as
+taken if a bind fails or something already accepts connections on it (a program
+on the wildcard address can sit beside a 127.0.0.1 bind). It writes the port it
+got to `~/.producer-pal/remote-script-port.txt`, even when it's 3349, and leaves
+the file on shutdown. If no port is free it logs that and doesn't serve.
+
+Producer Pal uses 3349 when the remote script answers there, else the port in
+the file, else 3349 (2.4.0 and earlier write no file). With two Lives, every
+Producer Pal therefore talks to the one on 3349: it can't tell which Live it is
+in. It only trusts a `/ping` that has `script_version`, so another program on a
+port counts as "not running". It keeps the port it found until a call finds
+nothing listening there, then looks again; a busy Live that is slow to answer a
+ping doesn't lose it. `PPAL_REMOTE_SCRIPT_PORT` overrides all of it.
 
 ## Types
 
@@ -99,22 +126,43 @@ devices by Live, so `plugin` lists everything.
 **Presets filed elsewhere** (a pack's drum kits, say) aren't under any device.
 Load those by file: `type: file` with the absolute `path`. The script walks that
 path down whichever browser tree mirrors its folder: the User Library (the one
-this script is installed in), a pack under Packs, or a Places folder.
+this script is installed in), a Places folder, or a pack under Packs. The User
+Library and Places folders are matched by their real location. Live doesn't say
+where a pack is on disk, so packs are matched by name. If several packs could
+hold the file, the load is refused with a 409 listing them. The file name must
+match exactly: Live drops only a Max device's extension, so `Foo.amxd` is
+matched against each item's `uri`, and `Foo.adv` never loads a Max device named
+`Foo`.
 
 ## Routes
+
+Adding a route, or changing what one answers? Bump `MIN_REMOTE_SCRIPT_VERSION`
+(`src/mcp-server/rpc/remote-script/port/remote-script-version.ts`) to the
+release that ships it. Producer Pal treats a script older than that as out of
+date and sends it nothing.
 
 Any request with an `Origin` or `Sec-Fetch-Site` header, or a `Host` other than
 `127.0.0.1` or `localhost`, is refused with a 403, so a web page can't drive it.
 
 Any request can pass `expires_in_ms`: if Live hasn't started it by then, it's
-skipped with a 504. Producer Pal sends one with every `/load` and `/hotswap`, a
-bit under how long it waits, so a change it stopped waiting for isn't made
-later.
+skipped with a 504 (a re-run is safe). Producer Pal sends one with every `/list`
+and with every route whose result a caller waits on and that changes the Set
+(`/load`, `/hotswap`, `/replace-producer-pal`, `/device/duplicate`,
+`/clip/convert`, `/envelope/write`, `/envelope/clear`, `/device/simpler/write`,
+`/undo/undo`, `/undo/redo`), a bit under the time it has left, so one deadline
+covers the lookup and the load, and a change it stopped waiting for isn't made
+later. `/undo/end` is fire-and-forget and sends none. A new route that changes
+the Set must be sent one too. A job Live started but didn't finish in 30s is
+also a 504, with `started: true`: Live may have made the change.
 
 ### `GET /ping`
 
 Liveness, Live's version, and this script's (`script_version`, from
-`version.py`, which the build stamps with the Producer Pal release).
+`version.py`, which the build stamps with the Producer Pal release). Also the
+`port` it is listening on, `user_library` (the User Library the script runs
+from; `null` for a dev checkout, absent from older scripts), and `source_hash`:
+a hash of the implementation files when they were last loaded. See
+[Hot reload](#hot-reload).
 
 ### `GET /list`
 
@@ -150,6 +198,14 @@ its (unique) name rather than an index.
 it is a 409 naming the track that has it. Only each track's top-level devices
 are checked, so one inside a rack doesn't count.
 
+**A preset holding Producer Pal is a 409 too.** A rack preset, or one saved from
+a Set, can hold the device inside. Name matching can't see that, so after the
+load the script looks through what Live added (chains, return chains, drum
+pads), deletes the devices that hold it, and answers 409 "nothing was loaded". A
+track the request made is deleted as well. If the delete fails, the 409 says to
+remove the new device by hand. It matches by device name, so a renamed Producer
+Pal isn't caught.
+
 **Hotswap mode is turned off first**: with it on (Live's own, from a device's
 hotswap button), `load_item` replaces that device instead of adding one.
 
@@ -181,38 +237,263 @@ Returns the device's name afterwards and whether Live `replaced` it.
   mismatched preset with that same name then goes unnoticed.
 - **Hotswap mode is turned off afterwards.** Left on, Live keeps filtering the
   browser to that device, and the next `/load` would replace it.
+- **A preset holding Producer Pal is a 409** (see `/load`), and so is a target
+  that is, or holds, the Producer Pal device (checked before loading). Live has
+  already changed the device by the time the preset is found, and can't give the
+  old one back, so the script deletes the new one and **the slot is left
+  empty**. The 409 says so and has `changed: true`. If the delete fails, it says
+  where the device is, still with `changed: true`.
+
+### `POST /replace-producer-pal`
+
+Swaps the Set's Producer Pal device for another build of itself, in place, the
+way `/hotswap` does. The portal uses it to update a running device.
+
+| Param  | Default  | Meaning                                        |
+| ------ | -------- | ---------------------------------------------- |
+| `path` | required | Absolute path of a `Producer_Pal.amxd` on disk |
+
+Finds the device itself: the one Producer Pal device sitting directly on a
+track, return track or the main track (racks aren't searched). Returns the
+`track` (`path`, in the tools' vocabulary: `t2`, `rt0` or `mt`, and `name`) and
+the new `device` name.
+
+- **The old device's server dies with the swap** and the new one starts its own,
+  usually within a second. The track, the device's position and its saved
+  settings (the project context) stay.
+- **Refused before anything changes** with a 409: the file isn't a Producer Pal
+  device, the Set has none, or it has more than one. A file the browser can't
+  find is a 404 (a file just written can take a few seconds to show up), and a
+  missing `path` a 400.
+- **A 500, or a 504 with `started`,** means Live may have swapped the device.
+
+### `POST /device/duplicate`
+
+Copies a device with Live's own `duplicate_device`, which Max for Live can't
+call.
+
+| Param         | Default  | Meaning                                                                                   |
+| ------------- | -------- | ----------------------------------------------------------------------------------------- |
+| `device_path` | required | The device's Live path, e.g. `live_set tracks 0 devices 1 chains 0 devices 0`             |
+| `device_name` | —        | The device's current name; a 409 if it's changed, since devices can shift while it queues |
+
+Returns the copy's `name` and `index`. Live puts it right after the original
+(`index` is the original's plus one), keeping its name, parameter values and,
+for a rack, its chains and macros. Works on tracks, rack chains and drum chains,
+including return and main tracks.
+
+- **Instruments are a 409**: Live raises `Can not duplicate instrument.` for an
+  instrument, an instrument rack, a drum rack, and an instrument inside a chain.
+  The client copies those another way.
+- **The Producer Pal device is a 409**, as is a rack holding it. Live would copy
+  it.
+- Max for Live devices copy (about 170 ms; a native effect about 60 ms).
+  Plug-ins haven't been tried.
+
+### `POST /envelope/list`, `/envelope/read`, `/envelope/write`, `/envelope/clear`
+
+Clip automation envelopes, which Max for Live's LOM can't reach. **Session clips
+only**: Live refuses envelope writes on Arrangement clips and reads them as
+empty, so write in Session and duplicate to the Arrangement. That copies the
+envelope into the track's automation lane, which stays after the clip is deleted
+but can't be read back.
+
+Only automation on track and device parameters is reachable. Modulation,
+clip-level (Gain...) and MIDI CC envelopes are invisible to every route and
+`/clear` leaves them. An unwarped audio clip can't have envelopes in Live: the
+API still writes one, but it never plays. See
+[dev/live-api/clip-envelopes.md](../dev/live-api/clip-envelopes.md).
+
+Common params: `track` (`t0`, `t1`.. a regular track; return and master tracks
+have no clips), `slot` (0-based Session slot) or `arrangement_index`, and a
+parameter: `parameter` = `volume`, `pan`, `send0`.. for the mixer, or `device`
+(`d0`, `d0/c1/d0` into rack chains) plus `parameter` as an exact name or 0-based
+index.
+
+| Route    | Params                                 | Returns                                                                                                                                                                              |
+| -------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/list`  | clip                                   | every automated parameter on the clip with its event count                                                                                                                           |
+| `/read`  | clip, parameter, `from`, `to`, `limit` | events in that beat range (default: all, even past the clip end): `time`, `value` (raw), `display` (Live's units: linear gain for dB, Hz), `display_str`, `coefficients` when curved |
+| `/write` | clip, parameter, `points`              | replaces the whole envelope; `points` = `[{time, value, jump?, coefficients?}]`, raw values                                                                                          |
+| `/clear` | clip, optional parameter               | removes one envelope, or every one it can reach; see below                                                                                                                           |
+
+`/write` re-enables the parameter's automation, and answers `re_enabled: true`
+when the user had overridden it (`automation_state` 2) before the write.
+
+`/clear` answers `{cleared}` for one parameter: whether it had an envelope. With
+no parameter it answers `{cleared, all: true, remaining}`: `cleared` is whether
+any automation it can see was removed, and `remaining` is whether the clip still
+holds envelopes afterwards (modulation, clip-level or MIDI CC, which it can't
+remove).
+
+Times are beats (quarter notes) from clip start. Values are raw `min..max` (most
+device params are `0..1`); `display_str` is what Live shows. Each point ramps to
+the next; a point with `jump: true` holds the previous value until its time,
+then jumps (two events at one time, which is how Live stores a step).
+`coefficients` is the curve of the segment the point starts (see
+[dev/live-api/clip-envelopes.md](../dev/live-api/clip-envelopes.md)); events are
+created last point first so Live keeps the curves. If Live throws while the
+points go in, the new envelope is removed and the call answers a 500 saying so.
+A quantized parameter holds each value until the next anyway. A read returns at
+most 1000 events (`limit`, a positive whole number); a write takes at most 1000
+points. Indexes must be whole numbers >= 0.
+
+### `POST /device/macros`
+
+Which macros of a rack are mapped, which Max for Live's LOM can't say (it only
+reports whether any are). Takes `device_paths`, a list of up to 200 Live device
+paths (`live_set tracks 2 devices 0 chains 1 devices 0`), and answers
+`{racks: [...]}`, one entry per path in order: `{mapped: [7]}` (macro numbers,
+from 1, hidden macros included) or `{error}` when the path names nothing or a
+device that isn't a rack. One bad path doesn't fail the rest. A missing or empty
+list is a 400. Producer Pal asks in chunks of 200.
+
+```sh
+curl -s -X POST localhost:3349/device/macros -d '{"device_paths": ["live_set tracks 0 devices 0"]}'
+```
+
+Lowering a rack's macro count hides macros but keeps their mappings, so a hidden
+macro can still be mapped.
+
+### `POST /clip/convert`
+
+Starts converting an audio clip into a new track, as Live's "Convert ... to New
+MIDI Track" menu does. Max for Live can't reach `Live.Conversions`.
+
+| Param   | Meaning                                                                                                                            |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `track` | `t0`, `t1`.. a regular track                                                                                                       |
+| `slot`  | 0-based Session slot, or `arrangement_index` for an Arrangement clip                                                               |
+| `type`  | `drums`, `melody`, `harmony` (a MIDI clip of the detected notes), `simpler` (a MIDI track with Simpler), `drum-rack` (a Drum Rack) |
+
+Answers `{started: true, type}`. It's a 409 for a clip that isn't audio, is
+recording, or Live says isn't convertible, and for anything Live refuses.
+
+**The new track doesn't exist yet when it answers.** Live does the work a moment
+later, blocking Live for about a second, and nothing says where the track lands.
+The caller finds it by comparing the track list from before. See
+[dev/live-api/conversions.md](../dev/live-api/conversions.md).
+
+### `POST /device/simpler/read`, `/device/simpler/write`
+
+A Simpler's pitch bend ranges, which Max for Live's LOM doesn't have:
+`pitch_bend_range` (semitones the pitch wheel bends, 0-24) and
+`note_pitch_bend_range` (MPE per-note bend, 0-48). Both are whole numbers.
+
+`/device/simpler/read` takes `device_paths` (up to 200, as for `/device/macros`)
+and answers `{simplers: [...]}`, one entry per path in order:
+`{pitch_bend_range, note_pitch_bend_range}`, or `{error}` when the path names
+nothing or a device that isn't a Simpler. One bad path doesn't fail the rest.
+
+`/device/simpler/write` takes one `device_path` and `pitch_bend_range`,
+`note_pitch_bend_range` or both, and answers both values read back. Live clamps
+an out-of-range write without saying so and raises on a float, so a value that
+isn't a whole number in range, a call that sets neither, or a device that isn't
+a Simpler is a 400 and nothing is written.
+
+```sh
+curl -s -X POST localhost:3349/device/simpler/write -d '{"device_path": "live_set tracks 0 devices 0", "pitch_bend_range": 12}'
+```
+
+### `POST /undo/end`
+
+Closes Live's pending undo step and answers `{ok: true}`. Live merges every
+change since the last step into one, so Producer Pal sends this after each write
+tool call (without waiting for the answer) and one undo reverts one call. It
+does nothing when no step is pending. Max for Live's LOM can't do this.
+
+### `POST /undo/undo`, `POST /undo/redo`
+
+Step Live's history back or forward with `song.undo()` and `song.redo()`.
+`steps` (a whole number 1 to 50, default 1; anything else is a 400) takes
+several, stopping early where history ends. Answers
+`{done, can_undo, can_redo, stopped?}`, read after the last step; `stopped` says
+why `done` is below `steps`. The history is Live's own, so it holds the user's
+edits in Live as well as Producer Pal's. It's a 409 (`nothing to undo`,
+`nothing to redo`) when Live says it can't, and nothing is called.
+
+**It never removes Producer Pal.** Before each step it counts the top-level
+devices that are or hold Producer Pal. A step that lowers the count (undoing the
+step that inserted it) is reversed at once, in the same call, and the call stops
+with `stopped` set. The device's server restarts as a new process, so that
+answer usually never arrives. The trip is remembered on the bridge (so another
+Set, which gets a new bridge, starts clear): the next step in the same direction
+is a 409 that touches nothing, until `/undo/end` (Producer Pal wrote again) or a
+step the other way clears it.
 
 ## How it works
 
 Live's Python is single-threaded and the Live API breaks if touched from any
 other thread. So the HTTP server runs on its own thread and only queues jobs;
 `update_display()`, which Live calls about 10x/sec on the main thread, drains
-the queue and runs them. The HTTP thread waits up to 30s for the reply, or until
-`expires_in_ms` if that's sooner. A job still queued by then is skipped; one
-already running is waited for.
+the queue and runs them. Live holds Python's lock between those calls, so while
+a request is in flight `update_display()` keeps looping with short sleeps (at
+most 20ms a call) to let the HTTP threads queue the next job; it doesn't sleep
+when idle. Each connection carries one request, since a Set reload replaces the
+script and a kept-alive connection would still reach the old one. With
+`expires_in_ms`, the HTTP thread waits for Live to start the job until then (a
+job still queued is skipped), and a started job gets its own 30s to finish, so
+time queued behind other jobs doesn't count against it. Without it, the thread
+waits 30s for the reply, and 30s more if the job started in that time.
 
-- `http_server.py`: the HTTP server; never touches Live
+- `http_server.py`: the HTTP server and the port file; never touches Live
 - `bridge.py`: the main-thread pump and the methods Live calls on a control
   surface
+- `errors.py`: `RouteError`, a route's own HTTP status and body
+- `hot_reload.py`: the dev-only reload and the source hash
 - `routes.py`: what each route does; main thread only
+- `params.py`: reading request params
 - `browser.py`: browser tree walking, name matching, and finding a file
 - `hotswap.py`: walking a device path, and loading in place of a device
+- `device_copy.py`: copying a device
+- `producer_pal_device.py`: recognizing the Producer Pal device
+- `envelopes.py`: clip automation envelopes
+- `rack_macros.py`: which rack macros are mapped
+- `conversions.py`: converting an audio clip to a new track
+- `clip_address.py`: finding the clip a route names
+- `simpler_settings.py`: a Simpler's pitch bend ranges
+
+## Hot reload
+
+Change the code and run it in Live without restarting:
+
+```sh
+npm run remote-script:install -- --probe --reload
+```
+
+It reinstalls, reloads the code in Live, and checks Live loaded what was
+installed. `--reload` needs `--probe`, which adds the dev-only `/reload` route.
+
+Every top-level `.py` file reloads except the bootstrap: `__init__.py`,
+`bridge.py`, `errors.py`, `hot_reload.py` and `http_server.py`. If a module
+fails to load, all of them are put back, the old code keeps running, and the
+reply has the traceback.
+
+Still needs a Live restart:
+
+- The first install with `--probe`: the running script has no `/reload` yet.
+- A change to a bootstrap file.
+- Code in a subfolder.
+
+To check what's running, `/ping` returns `source_hash`, a hash of the reloadable
+files as last loaded. `/reload` returns the same `hash`.
 
 ## Notes
 
-- **First plugin listing is slow**: Live scans the plugin folders. That's why
-  the timeout is 30s.
+- **First plugin listing is slow**: Live scans the plugin folders. That's why a
+  running job gets 30s.
 - **Async load**: plugins and Max devices finish loading after `load_item()`
   returns, so the `devices` list in the response can lag.
 - **Debugging**: `bridge.log()` writes to Live's `Log.txt`
   (`~/Library/Preferences/Ableton/Live x.x.x/` on macOS).
-- **Developing**: code changes need a reinstall
-  (`npm run remote-script:install`) and a Live restart. To test against the dev
-  build of the Producer Pal device, open an e2e Set (`e2e/live-sets/`), which
+- **Developing**: see [Hot reload](#hot-reload). To test against the dev build
+  of the Producer Pal device, open an e2e Set (`e2e/live-sets/`), which
   references the repo's device, rather than loading `Producer_Pal` from the
   browser, which finds whatever copy is in your library.
 - **Tests**: `tests/` runs routes against fake Live objects, outside Live:
   `npm run remote-script:test`.
-- **Stay out of the Sounds and Drums sections**: listing `app.browser.sounds`
-  crashed Live 12.4.6 with an internal assert. The `type` param only reaches the
-  sections above, and presets are found under their devices or by file.
+- **No need to walk the Sounds and Drums sections**: they're tag views, and
+  every item in them is also in another section, so it loads by that path.
+  `ppal-library` covers their categories from Live's database. Listing
+  `app.browser.sounds` crashed Live 12.4.6 once with an internal assert, which
+  couldn't be reproduced since.

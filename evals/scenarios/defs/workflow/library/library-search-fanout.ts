@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Scenario: does a model reach for `ppal-library`'s `searches` fan-out when a
@@ -9,7 +9,7 @@
  *
  * The fan-out works when called — unit tests and e2e cover that. What nothing
  * measured was whether the schema reads well enough to get PICKED, which was
- * the premise of folding `searchBatch` into `search`. A schema a model never
+ * the premise of folding `search-batch` into `search`. A schema a model never
  * chooses is indistinguishable from one that reads badly.
  */
 

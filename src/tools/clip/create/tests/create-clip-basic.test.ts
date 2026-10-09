@@ -1,25 +1,24 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
-import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { createClip } from "../create-clip.ts";
 import { convertTimingParameters } from "../helpers/timing-parameters.ts";
 import {
   calculateClipLength,
-  handleAutoPlayback,
+  refuseUnknownAuto,
 } from "../helpers/create-clip-validation.ts";
 import {
   expectClipCreated,
   expectNotesAdded,
-  mockScratchSwap,
   note,
   registerEmptyClipSlot,
   setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
+import { mockScratchSwap } from "./create-clip-scratch-mocks.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
@@ -457,23 +456,17 @@ describe("calculateClipLength (unit)", () => {
   });
 });
 
-describe("handleAutoPlayback (unit)", () => {
-  const slot = (): ClipSlotPosition => ({ trackIndex: 0, sceneIndex: 0 });
-
-  it("no-ops (does not reach the switch) when view is not session", () => {
-    // auto is truthy + view arrangement → the guard returns early. The
-    // `view !== "session"` → false mutant would fall through to the switch and
-    // throw on the unknown auto value.
-    expect(() =>
-      handleAutoPlayback("unknown-mode", "arrangement", [slot()]),
-    ).not.toThrow();
+describe("refuseUnknownAuto (unit)", () => {
+  it("refuses a value that is not an auto action", () => {
+    expect(() => refuseUnknownAuto("unknown-mode")).toThrow(
+      'unknown auto value "unknown-mode"',
+    );
   });
 
-  it("no-ops (does not reach the switch) when there are no clip slots", () => {
-    // Empty slots → guard returns early. The `clipSlots.length === 0` → false
-    // mutant would fall through to the switch and throw on the unknown auto value.
-    expect(() =>
-      handleAutoPlayback("unknown-mode", "session", []),
-    ).not.toThrow();
+  it("lets the two actions, and no value at all, through", () => {
+    expect(() => refuseUnknownAuto("play-scene")).not.toThrow();
+    expect(() => refuseUnknownAuto("play-clip")).not.toThrow();
+    expect(() => refuseUnknownAuto("")).not.toThrow();
+    expect(() => refuseUnknownAuto(null)).not.toThrow();
   });
 });

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E test for what a hidden param publishes.
@@ -21,7 +21,7 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { connectMcp, type McpConnection } from "#evals/chat/mcp.ts";
-import { MCP_URL } from "../mcp-test-helpers";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 
 interface ToolInfo {
   name: string;

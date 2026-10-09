@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { compressorSpec } from "./devices/compressor.ts";
@@ -23,6 +23,10 @@ import {
   type WrittenPseudoParam,
   skippedParam,
 } from "../helpers/param-reading.ts";
+import { markSuperseded } from "#src/tools/shared/helpers/entry-details.ts";
+import { namedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { failUnreplacedEntries } from "#src/tools/shared/write-pipeline/plans/replaced-entries.ts";
+import { lastWins } from "#src/tools/shared/write-pipeline/plans/last-wins.ts";
 import { parseAction } from "./specialized-device-action-parser.ts";
 import { applyInactiveStates } from "./specialized-device-inactive.ts";
 import {
@@ -189,7 +193,8 @@ export function readSpecializedParams(
 /**
  * Parse and dispatch the `actions` arg for a specialized device. Every action
  * keeps its slot, and nothing warns: its entry is where the caller reads what
- * happened to it.
+ * happened to it. An action named again later runs only at its last mention; if
+ * that one is refused, the earlier mention is too.
  * @param device - LiveAPI device object
  * @param actions - Raw action strings
  * @returns One entry per action sent, in order
@@ -199,8 +204,14 @@ export function applySpecializedActions(
   actions: string[],
 ): ActionResult[] {
   const spec = getSpecForDevice(device);
+  // Running the same action twice does nothing the first run didn't: the last
+  // mention runs, like any other target named twice.
+  const overridden = lastWins(actions.map((raw) => [actionKey(raw)]));
+  const results = actions.map((raw, index): ActionResult => {
+    if (overridden.has(index)) {
+      return markSuperseded({ action: raw, detail: namedAgain() });
+    }
 
-  return actions.map((raw): ActionResult => {
     const parsed = parseAction(raw);
 
     if (!parsed) {
@@ -228,6 +239,34 @@ export function applySpecializedActions(
       return refusedAction(raw, errorMessage(e));
     }
   });
+
+  // An earlier mention that gave way to a last one that failed wasn't run.
+  return failUnreplacedEntries(
+    results,
+    new Map(
+      [...overridden].map(([index, later]) => [
+        index,
+        { index: later, by: `"${actions[later]}"` },
+      ]),
+    ),
+    (result) => "ok" in result,
+    (result, detail) => refusedAction(result.action, detail),
+  );
+}
+
+/**
+ * What makes two action strings the same action: the same name (any case) with
+ * the same args, however they were spaced. A string that doesn't parse stands
+ * for itself.
+ * @param raw - The action as the caller wrote it
+ * @returns The key two spellings of one action share
+ */
+function actionKey(raw: string): string {
+  const parsed = parseAction(raw);
+
+  return parsed == null
+    ? `raw:${raw.trim()}`
+    : `${parsed.name.toLowerCase()}:${JSON.stringify(parsed.args)}`;
 }
 
 /**

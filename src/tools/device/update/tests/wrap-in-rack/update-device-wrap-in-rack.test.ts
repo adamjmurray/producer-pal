@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -501,7 +501,7 @@ describe("updateDevice - wrapInRack", () => {
     [
       "c+ path",
       { path: "t0/d0/c+" },
-      'invalid path "t0/d0/c+" - "c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+      'invalid path "t0/d0/c+" - "c+" appends a chain, so it only works as a destination: path in ppal-create-device, toPath in ppal-duplicate and ppal-update-device; name an existing chain as "c<index>"',
     ],
     // No rack at t0/d0, so the pad names nothing.
     [
@@ -534,6 +534,32 @@ describe("updateDevice - wrapInRack", () => {
     ).toThrow(
       'wrapInRack found no devices to wrap: no device at "t0/d0/c0/d0"',
     );
+  });
+
+  it("refuses a wrap whose list has an unparsable path, wrapping nothing", () => {
+    expect(() => updateDevice({ path: "t0/d0,zzz", wrapInRack: true })).toThrow(
+      /invalid path "zzz"/,
+    );
+    expect(capturedWarnings()).toStrictEqual([]);
+    expect(track0.call).not.toHaveBeenCalledWith(
+      "insert_device",
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(liveSet.call).not.toHaveBeenCalledWith(
+      "move_device",
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it("warns once about a legacy-spelled path in a wrap's list", () => {
+    updateDevice({ path: "0/1,t0/d0", wrapInRack: true });
+
+    expect(capturedWarnings()).toStrictEqual([
+      'path "0/1" is the old slot spelling; use "t0/s1"',
+    ]);
   });
 
   // A wrap makes one rack, so a toPath naming nowhere to put it leaves nothing
@@ -590,6 +616,20 @@ describe("updateDevice - wrapInRack", () => {
       'wrapInRack found no devices to wrap: "not-a-device" is a chain, not a device',
     );
   });
+
+  it.each(["MixerDevice", "ChainMixerDevice"] as const)(
+    "should refuse a wrap of a %s, which is not a device",
+    (type) => {
+      registerMockObject("mix-1", {
+        path: livePath.track(0).mixerDevice(),
+        type,
+      });
+
+      expect(() => updateDevice({ id: "mix-1", wrapInRack: true })).toThrow(
+        'wrapInRack found no devices to wrap: "mix-1" is a mixer, not a device',
+      );
+    },
+  );
 
   it("says on the rack's entry which devices did not make it in", () => {
     registerMockObject("not-a-device", { path: "some/path", type: "Chain" });

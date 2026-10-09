@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { findDuplicates } from "../../query/find-duplicates.ts";
@@ -102,7 +102,7 @@ describe("findDuplicates", () => {
 
   it("reports source:sampleFolder rather than a silent empty set", async () => {
     const result = await expectSampleFolderExplained(
-      () => findDuplicates({ source: "sampleFolder" }),
+      () => findDuplicates({ source: "sample-folder" }),
       (r) => r.groups,
     );
 

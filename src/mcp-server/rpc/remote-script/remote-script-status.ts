@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -9,8 +9,11 @@ import { VERSION } from "#src/shared/config.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { setRunningLiveMajor } from "../../live-library/live-db-path.ts";
 import { findUserLibraryPath } from "../../live-library/query/user-library-path.ts";
-import { remoteScriptPing } from "./remote-script-client.ts";
-import { remoteScriptPath } from "./remote-script-install.ts";
+import {
+  remoteScriptPing,
+  type RemoteScriptPing,
+} from "./remote-script-client.ts";
+import { remoteScriptPath } from "./install/remote-script-install.ts";
 
 /** Matches the one line version.py holds. */
 const VERSION_LINE = /^VERSION\s*=\s*["']([^"']*)["']/m;
@@ -25,6 +28,8 @@ export interface RemoteScriptStatus {
   running: boolean;
   runningVersion: string | null;
   liveVersion: string | null;
+  /** The port another program answered on, when it isn't our script. */
+  otherOnPort: number | null;
   /** Installed is older than this build (or unreadable): offer an Update. */
   updateAvailable: boolean;
   /** Installed is newer than this build: installing would downgrade it. */
@@ -38,10 +43,13 @@ export interface RemoteScriptStatus {
  * startup and only when the control surface is selected, so a fresh install
  * reads installed but not running until the user restarts Live.
  *
+ * @param knownPing - A ping the caller just made, to avoid asking Live again
  * @returns The status, with nulls for anything that couldn't be read
  */
-export async function remoteScriptStatus(): Promise<RemoteScriptStatus> {
-  const ping = await remoteScriptPing();
+export async function remoteScriptStatus(
+  knownPing?: RemoteScriptPing,
+): Promise<RemoteScriptStatus> {
+  const ping = knownPing ?? (await remoteScriptPing());
 
   // The running Live picks which browser database to read. The ping is the
   // only place Node learns that on its own. A ping that failed says nothing
@@ -53,11 +61,10 @@ export async function remoteScriptStatus(): Promise<RemoteScriptStatus> {
   }
 
   const userLibrary = await findUserLibraryPath();
-  const folder = userLibrary == null ? null : remoteScriptPath(userLibrary);
-  const installed = folder != null && existsSync(join(folder, "__init__.py"));
-  const installedVersion = installed
-    ? readScriptVersion(join(folder, "version.py"))
-    : null;
+  const { installed, installedVersion } =
+    userLibrary == null
+      ? { installed: false, installedVersion: null }
+      : installedRemoteScript(userLibrary);
   const installedNewer =
     installedVersion != null && isNewerVersion(VERSION, installedVersion);
 
@@ -69,9 +76,40 @@ export async function remoteScriptStatus(): Promise<RemoteScriptStatus> {
     running: ping.running,
     runningVersion: ping.scriptVersion,
     liveVersion: ping.liveVersion,
+    otherOnPort: ping.otherOnPort,
     updateAvailable:
       installed && installedVersion !== VERSION && !installedNewer,
     installedNewer,
+  };
+}
+
+/** The remote script as installed in one User Library. */
+export interface InstalledRemoteScript {
+  /** Where the script is installed, or would be */
+  path: string;
+  installed: boolean;
+  /** Null when not installed or version.py can't be read */
+  installedVersion: string | null;
+}
+
+/**
+ * Look for the remote script in a User Library. Never throws.
+ *
+ * @param userLibrary - Absolute path to Live's User Library folder
+ * @returns Whether the script is there, and its version
+ */
+export function installedRemoteScript(
+  userLibrary: string,
+): InstalledRemoteScript {
+  const path = remoteScriptPath(userLibrary);
+  const installed = existsSync(join(path, "__init__.py"));
+
+  return {
+    path,
+    installed,
+    installedVersion: installed
+      ? readScriptVersion(join(path, "version.py"))
+      : null,
   };
 }
 

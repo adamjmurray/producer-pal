@@ -5,61 +5,14 @@ to build custom clients using plain HTTP requests without the MCP SDK.
 
 ## Endpoints
 
-All endpoints are served on the same Express server (default port 3350).
+Served on the same Express server as MCP (default port 3350):
 
-### `GET /api/tools`
+- `GET /api/tools` — lists enabled tools with their JSON Schemas.
+- `POST /api/tools/:toolName` — calls a tool with a JSON body of arguments.
 
-Lists all enabled tools with their JSON Schema definitions.
-
-```bash
-curl http://localhost:3350/api/tools
-```
-
-Response:
-
-```json
-{
-  "tools": [
-    {
-      "name": "ppal-connect",
-      "title": "Connect",
-      "description": "...",
-      "annotations": { "readOnlyHint": true, "destructiveHint": false },
-      "inputSchema": { "type": "object", "properties": { ... } }
-    }
-  ]
-}
-```
-
-The tool list respects the device's tool configuration — disabled tools are not
-returned.
-
-### `POST /api/tools/:toolName`
-
-Calls a tool by name. Request body is the tool's arguments as a JSON object.
-
-```bash
-curl -X POST http://localhost:3350/api/tools/ppal-connect \
-  -H 'Content-Type: application/json' \
-  -d '{}'
-```
-
-Success response (200):
-
-```json
-{ "result": "...", "isError": false }
-```
-
-The `result` field contains the tool's response text. When the tool reports an
-error, `isError` is `true` and the result contains the error message.
-
-Error responses:
-
-| Status | Meaning                  | Body                                                 |
-| ------ | ------------------------ | ---------------------------------------------------- |
-| 404    | Unknown or disabled tool | `{ "error": "Unknown or disabled tool: ..." }`       |
-| 400    | Input validation failed  | `{ "error": "Validation failed", "details": [...] }` |
-| 500    | Internal server error    | `{ "error": "Internal server error: ..." }`          |
+The request and response contract (result format, errors, `?format`,
+`?timeoutMs`, per-request settings) is documented in
+[docs/guide/rest-api.md](../../docs/guide/rest-api.md).
 
 ## Security
 
@@ -89,7 +42,7 @@ Key files:
 
 ```bash
 # Run REST API tests
-npx vitest run src/mcp-server/tests/rest-api-routes.test.ts
+npx vitest run src/mcp-server/tests/rest-api
 
 # Manual testing with curl (requires Ableton running with Producer Pal)
 curl http://localhost:3350/api/tools

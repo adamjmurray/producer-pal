@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Emptying a take-lane clip in place, for the moves Live's API can't finish.
@@ -27,7 +27,7 @@ const PLACEHOLDER_PREFIX = "(moved)";
  * needs deleting by hand.
  *
  * Returned rather than warned: it is about a clip the call named, so it belongs
- * in that clip's own entry (ADR-0042).
+ * in that clip's own entry.
  * @param clip - The take-lane clip whose content is being given up
  * @returns What was left behind, for the clip's entry to report
  */

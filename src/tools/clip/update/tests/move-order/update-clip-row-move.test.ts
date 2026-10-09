@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -183,12 +183,13 @@ describe("updateClip - moving a row of arrangement clips", () => {
     ]);
   });
 
-  // The first id's toPath doesn't parse, so that clip goes nowhere — and the
-  // second one's destination is the span it is sitting in.
-  it("keeps a clip whose toPath entry didn't parse", async () => {
+  // The first id's toPath names a scene, which no clip can go to, so that clip
+  // goes nowhere — and the second one's destination is the span it is sitting
+  // in.
+  it("keeps a clip whose toPath entry names no place for it", async () => {
     const result = await updateClip({
       id: "113,114",
-      toPath: "not-a-real-path,t0[1|1]",
+      toPath: "s3,t0[1|1]",
     });
 
     expect(movedTo()).toStrictEqual([]);
@@ -197,8 +198,8 @@ describe("updateClip - moving a row of arrangement clips", () => {
         id: "113",
         ok: false,
         detail:
-          'not moved: invalid toPath "not-a-real-path" - "not-a-real-path" is not ' +
-          'a track or scene; expected "t<index>", "rt<index>", "mt", or "s<index>"',
+          'not moved: invalid toPath "s3" - a scene alone names no track; clips ' +
+          'go to a track ("t0"), a take lane on it ("t0/l0"), or a clip slot ("t0/s1")',
       },
       {
         id: "114",
@@ -431,7 +432,7 @@ describe("updateClip - moving a row of take-lane clips", () => {
     ]);
 
     for (const entry of result) {
-      expect(entry.deleted).toBeUndefined();
+      expect(entry).not.toHaveProperty("deleted");
       expect(entry.detail).toContain("re-created on t0/l0");
     }
   });

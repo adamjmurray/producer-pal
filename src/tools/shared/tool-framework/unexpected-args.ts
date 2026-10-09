@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Arguments no param accepts get stripped before the handler runs, on both
 // transports. Saying so is the only way a caller finds out: a typo'd optional

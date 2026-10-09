@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { fetchJson } from "#webui/utils/fetch-json";
@@ -22,10 +22,32 @@ export interface RemoteScriptStatus {
   running: boolean;
   runningVersion: string | null;
   liveVersion: string | null;
+  /** The port another program answered on, when it isn't our script. */
+  otherOnPort: number | null;
   /** Installed is older than this build (or unreadable). */
   updateAvailable: boolean;
   /** Installed is newer than this build, so installing downgrades it. */
   installedNewer: boolean;
+}
+
+type StatusListener = (status: RemoteScriptStatus) => void;
+
+const statusListeners = new Set<StatusListener>();
+
+/**
+ * Follow every status the Remote Script tab reads, so the header badge stays
+ * in step with an install without a second request.
+ * @param listener - Called with each status the tab reads
+ * @returns Stops listening
+ */
+export function subscribeRemoteScriptStatus(
+  listener: StatusListener,
+): () => void {
+  statusListeners.add(listener);
+
+  return () => {
+    statusListeners.delete(listener);
+  };
 }
 
 export interface UseRemoteScriptReturn {
@@ -80,6 +102,10 @@ export function useRemoteScript(): UseRemoteScriptReturn {
 
       setStatus(next);
       setLoadError(null);
+
+      for (const listener of statusListeners) {
+        listener(next);
+      }
     } catch (err) {
       // A newer read or the tab going away aborted this one: not a failure.
       if (signal.aborted) {
@@ -87,6 +113,8 @@ export function useRemoteScript(): UseRemoteScriptReturn {
       }
 
       setLoadError(err instanceof Error ? err.message : String(err));
+      // The status is now out of step with an "Installed to X" message.
+      setInstalledPath(null);
     } finally {
       if (!signal.aborted) {
         setLoading(false);

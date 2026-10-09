@@ -1,9 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
+import * as defs from "../defs/index.ts";
 import {
   listScenarioIds,
   listScenarioSummaries,
@@ -47,6 +48,15 @@ function idsCarrying(tags: string[]): string[] {
 }
 
 describe("loadScenarios", () => {
+  // An exported scenario left out of the list never runs, and nothing says so.
+  it("registers every scenario the defs export", () => {
+    const exported = Object.values(defs)
+      .flat()
+      .map((scenario) => scenario.id);
+
+    expect(listScenarioIds().toSorted()).toStrictEqual(exported.toSorted());
+  });
+
   it("returns everything when nothing is filtered", () => {
     expect(loadScenarios().map((s) => s.id)).toStrictEqual(listScenarioIds());
     expect(

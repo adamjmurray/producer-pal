@@ -13,10 +13,13 @@ should follow from them unambiguously, without being spelled out here.
    warnings report an object's `id`, and its `path` unless the nesting around it
    already gives it. A `path` or `id` a tool returns can be sent straight back
    as input and names the same object. A write to a position past the end of a
-   container creates what's missing when the path alone determines what to
-   create (a scene, a take lane, a rack chain); creation is capped and the
-   result entry reports what was created. When the path leaves a choice open (a
-   track's type), the call refuses and the error names the tool that creates it.
+   container creates what's missing when the path names where something goes and
+   alone determines what to create (a scene, a take lane, a rack chain);
+   creation is capped and the result entry reports what was created. A path
+   naming something to update is refused past the end, and so is a path that
+   leaves a choice open (a track's type); the error names the tool that creates
+   it. Where no other tool creates it (a take lane), the update creates it
+   instead of refusing, capped and reported the same way.
 
 2. Multi-target: Every tool that could possibly operate on multiple objects
    supports it by accepting a comma-separated list of targets (`id`, `path`),
@@ -33,10 +36,13 @@ should follow from them unambiguously, without being spelled out here.
    target a comma is part of the value, which is how a name containing a comma
    is set. Either way `\,` is a literal comma, so such a value can go to several
    targets too. A call that named N targets returns N entries in the order they
-   were named. When entries write the same place or value, the last wins: each
-   earlier one is skipped unwritten, and its entry says a later one replaced it.
-   A single target returns its entry unwrapped: an array where they asked for
-   one object confuses small models.
+   were named. For a call that makes or moves objects, the targets are the
+   objects written, one per destination; a target split into pieces returns its
+   entry followed by the pieces'. When entries name the same object, in any
+   spelling, or write the same place or value, the last wins: each earlier one
+   is skipped unwritten, and its entry says a later one replaced it. A single
+   target returns its entry unwrapped: an array where they asked for one object
+   confuses small models.
 
 3. Relocation: Any object that can exist at different paths always supports
    moving and duplicating to a different location. Where the API lacks a move,
@@ -53,11 +59,17 @@ should follow from them unambiguously, without being spelled out here.
    can and skips the rest, rather than refusing the whole. Skips are reported in
    the result entry. A target that needed no work is not a skip: its entry says
    why there was nothing to do, without marking the target as failed. A call
-   that can't do anything, can't be interpreted unambiguously, or can't be
-   partially done without cleanup throws an error before it starts, having
-   changed nothing. Validation that needs to read from the API happens at each
-   target, as it is reached — except when a partial failure would need cleanup,
-   where the whole list is checked before anything runs.
+   that can't do anything, can't be interpreted unambiguously, or would leave
+   work the tool must undo if it stopped partway throws an error before it
+   starts, having changed nothing. An entry that can't be parsed means the call
+   was written wrong, so the whole call is refused. Two spellings of one arg in
+   the same call — an arg and its alias, or a deprecated arg and the one that
+   replaced it — are refused whatever their values: no caller has a reason to
+   send both. A well-formed target that can't be applied is skipped. Validation
+   that needs to read from the API happens at each target, as it is reached —
+   except when stopping partway would leave work the tool must undo (a temporary
+   track, not a result the caller asked for), where the whole list is checked
+   before anything runs.
 
 5. Observability: On a write, don't report an arg that took effect as intended.
    Report a value the API changed, reading it back off the object, with a
@@ -69,20 +81,25 @@ should follow from them unambiguously, without being spelled out here.
    else reveals it. A read returns the least that answers what was asked; more
    detail is opt-in and named by the caller.
 
-6. Warnings: A warning is only for what no result can carry: a whole-call arg
-   that couldn't be applied at all, an effect on objects the caller didn't name
-   (such as changing another object's path), and a call that worked but was
-   written a way the tools tolerate without teaching — the result carries the
-   outcome, not the lesson. Anything about a target belongs in that target's
-   result entry, not a warning.
+6. Warnings: A warning is only for what no result can carry: a well-formed
+   whole-call arg that couldn't be applied at all (one that can't be read is
+   refused before anything runs), an effect on objects the caller didn't name
+   that the tool description doesn't already teach (an insert or delete shifting
+   later siblings is taught there once, not warned on every call), and a call
+   that worked but was written in a way worth unlearning (a retired spelling, or
+   an alias for a param that does more) — the result carries the outcome, not
+   the lesson. A spelling as good as the taught one is accepted silently, and
+   the result answers in the taught one. Anything about a target belongs in that
+   target's result entry, not a warning.
 
 7. Destruction: An operation that would destroy something the caller didn't ask
    for and wouldn't expect is skipped, and its entry points to the `force` arg
    that performs it anyway. The test is surprise, not damage: writing into an
    arrangement range overwrites what was there, which follows from the request,
-   so it happens silently. `force` is offered only where the destruction is the
-   only way to do what was asked; where a non-destructive way exists, the tool
-   takes it and never asks.
+   so it goes ahead without `force`, and the written entry's `detail` says what
+   it cost. `force` is offered only where the destruction is the only way to do
+   what was asked; where a non-destructive way exists, the tool takes it and
+   never asks.
 
 8. Vocabulary: Everything a tool returns (results, errors, and warnings) uses
    only names the caller could have written: the tool and param names the schema
@@ -95,11 +112,12 @@ should follow from them unambiguously, without being spelled out here.
    result uses the input spelling. A spelling the tools tolerate but don't teach
    is answered with the taught one, so a result never re-teaches a spelling
    being retired. When the call had no path, or one that won't keep referring to
-   the same object or position (a locator), the result uses the spelling that
-   stays valid longest. Where the API reaches one object by more than one route,
-   one is canonical and the rest only resolve on input. Canonical is the route
-   that carries the most context: `pC1/c1` names the pad and the pitch that
-   plays it; a bare `cN` names neither.
+   the same object or position (a locator, a position inside an arrangement
+   clip), the result uses the spelling that stays valid longest. Where the API
+   reaches one object by more than one route, one is canonical and the rest only
+   resolve on input. Canonical is the route that carries the most context:
+   `pC1/c1` names the pad and the pitch that plays it; a bare `cN` names
+   neither.
 
 10. Efficiency: Cover the Live API with as few tools, as few Live API calls, and
     as few tokens as the other principles allow.

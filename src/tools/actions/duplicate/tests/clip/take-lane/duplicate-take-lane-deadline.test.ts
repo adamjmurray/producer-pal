@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "../../duplicate-mocks-test-helpers.ts";
@@ -49,12 +49,12 @@ function registerSource(copyCostMs: number): void {
   });
 }
 
-/** The warning naming what a deadline stop didn't reach. */
-function unreachedWarning(): string | undefined {
+/** A deadline warning, which no call should raise: every entry says it. */
+function deadlineWarning(): string | undefined {
   return vi
     .mocked(consoleMock.warn)
     .mock.calls.map(([message]) => String(message))
-    .find((message) => message.includes("Not duplicated"));
+    .find((message) => message.includes("Ran out of time"));
 }
 
 describe("duplicate to a take lane, cut short", () => {
@@ -83,8 +83,8 @@ describe("duplicate to a take lane, cut short", () => {
       {
         id: "tl_clip_1",
         path: "t1/l0[1|1]",
-        detail:
-          "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
+        created: "l0",
+        detail: "re-created on the take lane",
       },
       {
         path: "t1/l0[5|1]",
@@ -92,10 +92,7 @@ describe("duplicate to a take lane, cut short", () => {
         detail: "the request ran out of time; re-run for this destination",
       },
     ]);
-    expect(unreachedWarning()).toBe(
-      "Ran out of time after duplicating 1 of 2. " +
-        "Not duplicated: t1/l0 5|1. Re-run for those positions.",
-    );
+    expect(deadlineWarning()).toBeUndefined();
   });
 
   it("names a destination it skipped as well as one it never reached", async () => {
@@ -129,8 +126,7 @@ describe("duplicate to a take lane, cut short", () => {
       {
         id: expect.stringMatching(/^tl_clip_\d+$/),
         path: "t1/l0[5|1]",
-        detail:
-          "re-created on the take lane; expand the take-lanes arrow on the track header in Live to see it",
+        detail: "re-created on the take lane",
       },
       {
         path: "t1/l1[9|1]",
@@ -138,10 +134,7 @@ describe("duplicate to a take lane, cut short", () => {
         detail: "the request ran out of time; re-run for this destination",
       },
     ]);
-    expect(unreachedWarning()).toBe(
-      "Ran out of time after duplicating 1 of 3. " +
-        `Not duplicated: t1/l${MAX_TAKE_LANES} 1|1, t1/l1 9|1. Re-run for those positions.`,
-    );
+    expect(deadlineWarning()).toBeUndefined();
   });
 
   // One destination and no budget: nothing was made and there is no list for an
@@ -197,9 +190,6 @@ describe("duplicate to a take lane, cut short", () => {
         detail: "the request ran out of time; re-run for this destination",
       },
     ]);
-    expect(unreachedWarning()).toBe(
-      "Ran out of time after duplicating 0 of 2. " +
-        "Not duplicated: t1/l0 1|1, t1/l1 1|1. Re-run for those positions.",
-    );
+    expect(deadlineWarning()).toBeUndefined();
   });
 });

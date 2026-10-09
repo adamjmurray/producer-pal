@@ -2,11 +2,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { execSync } from "node:child_process";
 import {
-  copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -66,11 +65,13 @@ if (existsSync(releaseDir)) {
 
 mkdirSync(releaseDir);
 
-// Build
-console.log("Building desktop extension...");
+// Build the bundles the device is frozen from. The mcpb and the npm folder come
+// later, from `npm run release:package`: they ship a copy of the frozen device,
+// which doesn't exist yet.
+console.log("Building bundles...");
 
 try {
-  execSync("npm run build", {
+  execSync("npm run build:bundles", {
     cwd: rootDir,
     stdio: "inherit",
     env: { ...process.env, BUILD_SHA: buildSha },
@@ -80,20 +81,6 @@ try {
   console.error("Release directory was created but contains no artifacts.");
   process.exit(1);
 }
-
-// Copy .mcpb file
-const dxtSource = join(rootDir, "claude-desktop-extension/Producer_Pal.mcpb");
-const dxtDest = join(releaseDir, "Producer_Pal.mcpb");
-
-if (!existsSync(dxtSource)) {
-  console.error(
-    "❌ Error: Producer_Pal.mcpb not found. Build may have failed.",
-  );
-  process.exit(1);
-}
-
-copyFileSync(dxtSource, dxtDest);
-console.log("\n✅ Copied Producer_Pal.mcpb to release/");
 
 // Building and tagging are separate steps so the tag lands on artifacts someone
 // has looked at. The gap between them is the risk: a commit, or a version bump,
@@ -109,13 +96,16 @@ console.log("\n📋 Next steps:");
 console.log("1. Open max-for-live-device/Producer_Pal.amxd in Max");
 console.log("2. Click the freeze button");
 console.log("3. Save as: release/Producer_Pal.amxd");
-console.log("4. Test both files work correctly");
-console.log("5. Tag the release: npm run tag");
 console.log(
-  "6. Create the GitHub release, test, and proceed per dev/process/releasing.md",
+  "4. Package the portal, mcpb and npm folder: npm run release:package",
+);
+console.log("5. Test the files work correctly");
+console.log("6. Tag the release: npm run tag");
+console.log(
+  "7. Create the GitHub release, test, and proceed per dev/process/releasing.md",
 );
 console.log(
-  `\n🔖 These files call themselves ${pkg.version} (build ${buildSha}). If step 4 turns up\n` +
+  `\n🔖 These files call themselves ${pkg.version} (build ${buildSha}). If step 5 turns up\n` +
     "   anything, don't rebuild under the same number — npm run version:bump:rc,\n" +
     "   then build again, so the replacement is a version testers can name.\n",
 );

@@ -9,6 +9,10 @@ Detail lives in these parts:
 
 - [runtime-boundary.md](runtime-boundary.md) — V8 vs Node filesystem split, the
   embedded remote script, per-request headers, and subagent briefings.
+- [user-content-overrides.md](user-content-overrides.md) — what
+  `~/.producer-pal` holds, and the rules for override slots.
+- [skills.md](skills.md) — how the Skills text is cut into fragments, gated by
+  tool, and split into read and write halves.
 - [build-system.md](build-system.md) — entry, output, and target for each of the
   four bundles.
 
@@ -159,7 +163,15 @@ the MCP server. Provides graceful fallback when Producer Pal is not running.
 
 - Zero runtime dependencies (all bundled)
 - Graceful degradation when Live isn't running
-- Returns helpful setup instructions when offline
+- Answers calls itself when the device is offline (`src/portal/offline/`): it
+  pings the remote script to say whether Live is up without Producer Pal, and
+  runs `ppal-manage` `install-remote-script` and `add-producer-pal`. See
+  [ppal-manage](../specs/tool-behavior/ppal-manage.md#while-producer-pal-isnt-running).
+- Updates the running device in place (`src/portal/update/`): the bridge answers
+  `ppal-manage` `update-producer-pal` itself, online or off, since the device it
+  replaces dies with the swap, and adds an update hint to `ppal-connect` when
+  the device is older than the portal. See
+  [ppal-manage](../specs/tool-behavior/ppal-manage.md#update-producer-pal).
 - Declares `tools.listChanged` and tells the client to re-list once the device
   comes online, so a cached offline tool list gets corrected. The stateless HTTP
   server can't send that itself — every `POST /mcp` is a fresh server — but the

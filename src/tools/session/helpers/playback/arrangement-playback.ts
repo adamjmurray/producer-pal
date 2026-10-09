@@ -1,11 +1,18 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { applyArrangementLoop } from "./arrangement-loop.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  paramNamesSomething,
+  refuseNamedTwice,
+} from "#src/tools/shared/helpers/param-presence.ts";
+import {
+  type LoopWrite,
+  planArrangementLoop,
+  writeArrangementLoop,
+} from "./arrangement-loop.ts";
 import {
   locatorRef,
   songPositionToBeats,
@@ -52,45 +59,6 @@ const LOCATOR_PARAM_PAIRS = [
 
 /** The action that plays the arrangement, named in a few places. */
 export const PLAY_ARRANGEMENT = "play-arrangement";
-
-/** The actions that read the arrangement timeline. The rest work the session. */
-const ARRANGEMENT_ACTIONS = new Set([
-  PLAY_ARRANGEMENT,
-  "update-arrangement",
-  "stop",
-]);
-
-/**
- * Drop the arrangement-timeline params on an action that doesn't use them.
- *
- * They are written to the Live Set before the action runs, so without this
- * "play scene 3 from bar 5" fires the scene and silently moves the arrangement
- * start position — a change to the Set the caller never asked for.
- * @param action - The playback action, which decides whether they apply
- * @param params - The timeline params as the caller sent them
- * @returns The params, or none of them when the action works the session
- */
-export function resolveArrangementParams<
-  T extends ArrangementParams & LegacyLocatorParams,
->(action: string, params: T): Partial<T> {
-  if (ARRANGEMENT_ACTIONS.has(action)) {
-    return params;
-  }
-
-  const sent = (Object.keys(params) as Array<keyof T>).filter(
-    (key) => params[key] != null,
-  );
-
-  if (sent.length > 0) {
-    console.warn(
-      `${sent.join("/")} ignored: action "${action}" doesn't take arrangement ` +
-        `timeline params; use "play-arrangement" or "update-arrangement" for ` +
-        `the start position and loop`,
-    );
-  }
-
-  return {};
-}
 
 /**
  * The loop fields a playback result carries.
@@ -181,18 +149,51 @@ function loopBounds(liveSet: LiveAPI): {
   };
 }
 
+/** The timeline as the call asks for it, resolved and checked, not yet written. */
+export interface TimelinePlan {
+  /** The start position in beats, or undefined when the call names none */
+  startTimeBeats?: number;
+  loop: LoopWrite | null;
+}
+
+/**
+ * Resolve the arrangement timeline, writing nothing: a start position or loop
+ * bound that can't be read throws here, before the call has changed anything.
+ * @param liveSet - The live_set LiveAPI object
+ * @param timeline - The timeline params, with locators already folded in
+ * @returns What to write
+ */
+export function planArrangementTimeline(
+  liveSet: LiveAPI,
+  timeline: ArrangementParams,
+): TimelinePlan {
+  return {
+    startTimeBeats: resolveStartTime(liveSet, timeline),
+    loop: planArrangementLoop(liveSet, timeline),
+  };
+}
+
 /**
  * Write the arrangement timeline: the start position and the loop.
  * @param liveSet - The live_set LiveAPI object
- * @param timeline - The timeline params, with locators already folded in
+ * @param plan - What {@link planArrangementTimeline} resolved
+ * @param landed - Records what has changed Live, for an error later in the call
  * @returns What the write landed, which a refused loop plan changes
  */
-export function applyArrangementTimeline(
+export function writeArrangementTimeline(
   liveSet: LiveAPI,
-  timeline: ArrangementParams,
+  plan: TimelinePlan,
+  landed: (phrase: string) => void,
 ): TimelineWrites {
-  const startTimeBeats = resolveStartTime(liveSet, timeline);
-  const wroteLoop = applyArrangementLoop(liveSet, timeline);
+  const { startTimeBeats } = plan;
+
+  if (startTimeBeats != null) {
+    liveSet.set("start_time", startTimeBeats);
+    landed("start time");
+  }
+
+  const wroteLoop =
+    plan.loop != null && writeArrangementLoop(liveSet, plan.loop, landed);
 
   return { startTimeBeats, wroteLoop };
 }
@@ -253,15 +254,20 @@ export function foldLocatorParams(
   for (const [position, legacy] of LOCATOR_PARAM_PAIRS) {
     const locator = params[legacy];
 
-    if (locator == null) {
+    // A blank, or the word "null", is a param left out.
+    if (!paramNamesSomething(locator)) {
       continue;
     }
 
     // Never pick one: the two params name the same position, so a caller who
     // sent both told us two different things about it.
-    if (folded[position] != null) {
-      throw new Error(`${position} cannot be used with ${legacy}`);
-    }
+    refuseNamedTwice({
+      param: position,
+      value: folded[position],
+      noun: "position",
+      also: { [legacy]: locator },
+      hint: `${legacy} is deprecated`,
+    });
 
     folded[position] = `loc:${locator}`;
   }
@@ -270,14 +276,13 @@ export function foldLocatorParams(
 }
 
 /**
- * Resolve the arrangement start position and write it. This is where the next
- * play begins; it does not move the playhead.
+ * Resolve the arrangement start position, as the beat the next play begins at.
  * @param liveSet - The live_set LiveAPI object
  * @param params - The timeline params
  * @param params.startTime - Song position, bar|beat or `loc:<name>`
  * @returns The start position in beats, or undefined when none was given
  */
-export function resolveStartTime(
+function resolveStartTime(
   liveSet: LiveAPI,
   { startTime }: ArrangementParams,
 ): number | undefined {
@@ -287,26 +292,28 @@ export function resolveStartTime(
 
   const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
     songMeter();
-  const startTimeBeats = songPositionToBeats(liveSet, startTime, {
+
+  return songPositionToBeats(liveSet, startTime, {
     paramName: "startTime",
     timeSigNumerator,
     timeSigDenominator,
   });
-
-  liveSet.set("start_time", startTimeBeats);
-
-  return startTimeBeats;
 }
 
 /**
  * Handle playing the arrangement view. Playback begins at the arrangement
  * start position, which the caller sets with startTime or leaves as it is.
  * @param liveSet - LiveAPI instance for live_set
+ * @param landed - Records what has changed Live, for an error later in the call
  * @returns Updated playback state
  */
-export function handlePlayArrangement(liveSet: LiveAPI): PlaybackState {
+export function handlePlayArrangement(
+  liveSet: LiveAPI,
+  landed: (phrase: string) => void,
+): PlaybackState {
   liveSet.set("back_to_arranger", 0);
   liveSet.call("start_playing");
+  landed("transport started");
 
   return { isPlaying: true };
 }

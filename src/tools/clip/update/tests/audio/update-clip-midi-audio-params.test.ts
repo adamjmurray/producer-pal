@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -35,7 +35,7 @@ describe("updateClip - audio params on a MIDI clip", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/s0",
-      detail: "gainDb/pitchShift ignored: the clip is MIDI",
+      detail: "gainDb, pitchShift ignored: the clip is MIDI",
     });
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Renamed");
     expect(capturedWarnings()).toHaveLength(0);
@@ -54,7 +54,7 @@ describe("updateClip - audio params on a MIDI clip", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/s0",
-      detail: "warpMode/warping ignored: the clip is MIDI",
+      detail: "warpMode, warping ignored: the clip is MIDI",
     });
   });
 

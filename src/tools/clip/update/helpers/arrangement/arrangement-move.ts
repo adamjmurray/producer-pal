@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -16,11 +16,9 @@ import {
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-results.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
-import {
-  arrangementLaneOf,
-  arrangementWriteEffects,
-  snapshotLane,
-} from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
+import { LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
+import { laneViewOf } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
+import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
 import {
   type ArrangementTrack,
@@ -31,35 +29,31 @@ import {
   markClipLanded,
   moveClipReasons,
   noteClipReason,
+  noteLanded,
   refuseClipWork,
   type ClipReasons,
 } from "../entries/clip-reasons.ts";
-import {
-  deferNonSurvivorDeletion,
-  removeMovedSource,
-} from "./update-clip-deferred-deletion.ts";
-import { clipIsGone } from "../batch/buried-clips.ts";
+import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import { removeMovedSource } from "./moved-source.ts";
+import { objectIsGone } from "#src/tools/shared/write-pipeline/object-is-gone.ts";
 import { placeMovedClip } from "./place-moved-clip.ts";
 import {
+  type LandingLog,
   recordFailedLanding,
   recordLandedClip,
   recordResize,
-  type MoveGroup,
-} from "./update-clip-move-groups.ts";
+} from "#src/tools/shared/clip/landings/landing-log.ts";
 
 interface HandleArrangementStartArgs {
   clip: LiveAPI;
   arrangementStartBeats: number | null;
   /** Where to move the clip, or null for its own track's main lane. */
   destination: ArrangementTrack | null;
-  movedClipGroups: Map<string, MoveGroup>;
+  landings: LandingLog;
   isMidiClip: boolean;
   context: TilingContext;
-  updatedClips: ClipResult[];
-  noteResult: NoteUpdateResult | null;
   /** What each clip has to say beyond its result. */
   reasons: ClipReasons;
-  isNonSurvivor?: boolean;
 }
 
 /**
@@ -74,29 +68,21 @@ interface HandleArrangementStartArgs {
  * @param args.clip - The clip to move
  * @param args.arrangementStartBeats - New position in beats, or null to keep the clip's own
  * @param args.destination - Destination track and lane, or null for the clip's own lane
- * @param args.movedClipGroups - Tally of clips landing on each lane and position
+ * @param args.landings - What the call has written to the arrangement
  * @param args.isMidiClip - Whether the clip is MIDI
  * @param args.context - Context with silenceWavPath for audio clip operations
- * @param args.updatedClips - Array to collect results
- * @param args.noteResult - Note update result for the result entry
  * @param args.reasons - What each clip has to say beyond its result
- * @param args.isNonSurvivor - When true, leave the clip alone: a later, longer
- *   clip in this call is headed for the same place, and clearing it waits on
- *   that landing (see update-clip-deferred-deletion.ts)
- * @returns The new clip ID after move, original ID on failure, or null for non-survivors
+ * @returns The new clip ID after move, original ID on failure
  */
 export function handleArrangementStartOperation({
   clip,
   arrangementStartBeats,
   destination,
-  movedClipGroups,
+  landings,
   isMidiClip,
   context,
-  updatedClips,
-  noteResult,
   reasons,
-  isNonSurvivor,
-}: HandleArrangementStartArgs): string | null {
+}: HandleArrangementStartArgs): string {
   // A session clip never gets here: position-operations.ts refuses it first.
   const sourceTrackIndex = clip.trackIndex;
 
@@ -123,42 +109,59 @@ export function handleArrangementStartOperation({
   const targetBeats =
     arrangementStartBeats ?? (clip.getProperty("start_time") as number);
 
-  // Non-survivor: don't move it, and don't clear it yet either. A later clip
-  // in this call is headed here to overwrite it, and only that clip actually
-  // landing settles its fate.
-  if (isNonSurvivor) {
-    deferNonSurvivorDeletion({
+  // The landing overwrites whatever is in its way — including a clip an
+  // earlier target of this same call put there — so note the destination lane
+  // and let this clip's entry say what it displaced. The ledger is this clip's
+  // own, so it reports only what this landing did; the lane's contents come
+  // from the call's lane view, which every earlier write kept true.
+  const lane = arrangementLaneOf(landing);
+  const ledger = new LaneLedger({ lanes: laneViewOf(context) });
+  // Read before the move: the landing clears this much even when Live then
+  // makes no copy, and the copy is the only other way to learn it.
+  const length = landedLength(clip);
+
+  ledger.scan(lane);
+
+  let newClip: LiveAPI | null;
+  let displaced: string | undefined;
+
+  try {
+    newClip = placeMovedClip({
       clip,
-      sourceTrack,
-      landing,
+      destination,
+      destTrackIndex,
       targetBeats,
-      movedClipGroups,
-      updatedClips,
-      noteResult,
+      isMidiClip,
+      context,
+      reasons,
     });
 
-    return null;
-  }
+    // The copy is in the Set from here: a throw below still has it to report.
+    if (newClip?.exists() === true) {
+      const copyPath = objectPathForApi(newClip);
 
-  // The landing overwrites whatever is in its way — including a clip an
-  // earlier target of this same call put there — so photograph the destination
-  // lane and let this clip's entry say what it displaced.
-  const laneBefore = snapshotLane(arrangementLaneOf(landing));
-  const newClip = placeMovedClip({
-    clip,
-    destination,
-    destTrackIndex,
-    targetBeats,
-    isMidiClip,
-    context,
-    reasons,
-  });
-  // The source describes itself: it is about to be cleared, and a move onto
-  // its own lane trims it on the way.
-  const displaced = arrangementWriteEffects(
-    laneBefore,
-    newClip == null ? [clip.id] : [clip.id, newClip.id],
-  );
+      noteLanded(reasons, `copy at ${copyPath}`, {
+        id: newClip.id,
+        path: copyPath,
+      });
+    }
+
+    // The source describes itself: it is about to be cleared, and a move onto
+    // its own lane trims it on the way.
+    displaced = ledger.afterWrite(
+      lane,
+      newClip == null ? [clip.id] : [clip.id, newClip.id],
+      length == null
+        ? {}
+        : { reach: { start: targetBeats, end: targetBeats + length } },
+    );
+  } catch (error) {
+    // The landing may have cleared and trimmed before it threw, and nothing
+    // will read the lane back, so the view forgets both lanes it touched.
+    ledger.forget(lane);
+    context.lanes?.clipChanged(clip);
+    throw error;
+  }
 
   if (displaced != null) {
     noteClipReason(reasons, clip.id, displaced);
@@ -170,12 +173,7 @@ export function handleArrangementStartOperation({
   if (newClip == null) {
     // A partial re-create may have left a clip there that no entry names.
     if (displaced != null) {
-      recordFailedLanding(
-        movedClipGroups,
-        landing,
-        targetBeats,
-        landedLength(clip),
-      );
+      recordFailedLanding(landings, landing, targetBeats, landedLength(clip));
     }
 
     return clip.id;
@@ -192,16 +190,14 @@ export function handleArrangementStartOperation({
     return clip.id;
   }
 
-  // The copy is confirmed here, which is what releases any clip this call held
-  // back for this lane and position.
-  recordLandedClip(movedClipGroups, landing, targetBeats, clip.id, {
+  recordLandedClip(landings, landing, targetBeats, {
     id: newClip.id,
     length: landedLength(newClip),
   });
 
   // Clear the original to complete the move. A self-overlapping move already
   // deleted it. Check the path: a held clip's exists() stays true once it's gone.
-  if (!clipIsGone(clip)) {
+  if (!objectIsGone(clip)) {
     const leftover = removeMovedSource(clip, sourceTrack);
 
     if (leftover != null) {
@@ -220,13 +216,12 @@ interface HandleArrangementOperationsArgs {
   arrangementLengthBeats?: number | null;
   /** Destination track and lane from toPath, or null to stay on its own lane. */
   destination?: ArrangementTrack | null;
-  movedClipGroups: Map<string, MoveGroup>;
+  landings: LandingLog;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
   /** What each clip has to say beyond its result. */
   reasons: ClipReasons;
-  isNonSurvivor?: boolean;
 }
 
 /**
@@ -243,18 +238,17 @@ interface HandleArrangementOperationsArgs {
  * @param args.arrangementStartBeats - Target start position in beats
  * @param args.arrangementLengthBeats - Target length in beats
  * @param args.destination - Destination track and lane, or null for the clip's own lane
- * @param args.movedClipGroups - Tally of clips landing on each lane and position
+ * @param args.landings - What the call has written to the arrangement
  * @param args.context - Tool execution context
  * @param args.updatedClips - Array to collect updated clips
  * @param args.noteResult - Note update result for result
  * @param args.reasons - What each clip has to say beyond its result
- * @param args.isNonSurvivor - When true, clip is left for the deferred clear
  */
 export function handleArrangementOperations(
   args: HandleArrangementOperationsArgs,
 ): void {
   const { clip, isAudioClip, arrangementLengthBeats } = args;
-  const { movedClipGroups, context, updatedClips, noteResult, reasons } = args;
+  const { landings, context, updatedClips, noteResult, reasons } = args;
   // A destination alone is a move too: it keeps the clip's own start time and
   // changes only the lane it sits on.
   const moves = args.arrangementStartBeats != null || args.destination != null;
@@ -269,17 +263,11 @@ export function handleArrangementOperations(
     return;
   }
 
-  let finalClipId: string | null = clip.id;
+  let finalClipId = clip.id;
   let currentClip = clip;
 
   if (moves) {
     finalClipId = moveArrangementClip(args);
-
-    // A non-survivor is not moved and already recorded its own entry.
-    if (finalClipId == null) {
-      return;
-    }
-
     currentClip = LiveAPI.from(finalClipId);
   }
 
@@ -288,7 +276,7 @@ export function handleArrangementOperations(
 
   if (arrangementLengthBeats != null) {
     // A lengthen writes past the span the clip landed at.
-    recordResize(movedClipGroups, currentClip, arrangementLengthBeats);
+    recordResize(landings, currentClip, arrangementLengthBeats);
 
     let results: ClipIdResult[] = [];
 
@@ -353,22 +341,17 @@ export function handleArrangementOperations(
 /**
  * Move the clip, reporting under the id the call found it at.
  * @param args - Operation arguments
- * @returns The moved clip's id, the original on failure, or null for a non-survivor
+ * @returns The moved clip's id, or the original when the move was turned down
  */
-function moveArrangementClip(
-  args: HandleArrangementOperationsArgs,
-): string | null {
+function moveArrangementClip(args: HandleArrangementOperationsArgs): string {
   return handleArrangementStartOperation({
     clip: args.clip,
     arrangementStartBeats: args.arrangementStartBeats ?? null,
     destination: args.destination ?? null,
-    movedClipGroups: args.movedClipGroups,
+    landings: args.landings,
     isMidiClip: !args.isAudioClip,
     context: args.context as TilingContext,
-    updatedClips: args.updatedClips,
-    noteResult: args.noteResult,
     reasons: args.reasons,
-    isNonSurvivor: args.isNonSurvivor,
   });
 }
 
@@ -384,9 +367,9 @@ function shortensBeforeMove(
   args: HandleArrangementOperationsArgs,
   lengthBeats: number,
 ): boolean {
-  const { clip, destination, isNonSurvivor } = args;
+  const { clip, destination } = args;
 
-  if (isNonSurvivor || destination?.takeLane != null || isTakeLaneClip(clip)) {
+  if (destination?.takeLane != null || isTakeLaneClip(clip)) {
     return false;
   }
 
@@ -400,6 +383,8 @@ function shortensBeforeMove(
 /**
  * Shorten the clip where it sits, then move it. Shortening lays a temp clip
  * over the clip's own tail, so it touches nothing the clip doesn't already fill.
+ * Shortening can't be undone and the move can still be turned down, so the move
+ * is checked first: a move that would be refused leaves the clip as it was.
  * @param args - Operation arguments
  * @param lengthBeats - Target length in beats
  */
@@ -408,8 +393,21 @@ function shortenThenMove(
   lengthBeats: number,
 ): void {
   const { clip, reasons } = args;
+  const blocker =
+    args.destination == null
+      ? null
+      : clipCopyBlocker(!args.isAudioClip, args.destination.trackIndex);
 
-  recordResize(args.movedClipGroups, clip, lengthBeats);
+  if (blocker != null) {
+    refuseClipWork(reasons, clip.id, `not moved or resized: ${blocker}`);
+    args.updatedClips.push(
+      buildClipResultObject(clip.id, args.noteResult, objectPathForApi(clip)),
+    );
+
+    return;
+  }
+
+  recordResize(args.landings, clip, lengthBeats);
   handleArrangementLengthOperation({
     clip,
     isAudioClip: args.isAudioClip,
@@ -421,23 +419,11 @@ function shortenThenMove(
   markClipLanded(reasons, clip.id);
 
   const noteResult = recountNotesAfterLengthChange(clip.id, args.noteResult);
-  let finalClipId: string;
+  const finalClipId = moveArrangementClip(args);
 
-  try {
-    // Never null: a non-survivor doesn't shorten first.
-    finalClipId = moveArrangementClip(args) as string;
-
-    // A refused move already said why, but not that the clip is now shorter.
-    if (finalClipId === clip.id) {
-      noteClipReason(reasons, clip.id, "shortened in place");
-    }
-  } catch (error) {
-    noteClipReason(
-      reasons,
-      clip.id,
-      `shortened, but the move didn't finish: ${errorMessage(error)}`,
-    );
-    finalClipId = clip.id;
+  // A refused move already said why, but not that the clip is now shorter.
+  if (finalClipId === clip.id) {
+    noteClipReason(reasons, clip.id, "shortened in place");
   }
 
   const finalClip = finalClipId === clip.id ? clip : LiveAPI.from(finalClipId);

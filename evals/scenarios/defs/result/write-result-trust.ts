@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Scenario: does a model trust a write result that says nothing?
@@ -18,7 +18,7 @@
  * `token_usage` cap would be a second way to fail for the same reason.
  */
 
-import { getToolCalls } from "../../assertions/index.ts";
+import { getAllToolCalls, toolCallFailed } from "../../assertions/index.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
@@ -58,13 +58,14 @@ function assertNoReadBack(): EvalAssertion {
     type: "custom",
     description: "took the write result at its word instead of reading back",
     assert: (turns: EvalTurnResult[]) => {
-      const calls = getToolCalls(turns, ASK_TURN);
+      // Failed calls count: a read-back that errored is still a read-back.
+      const calls = getAllToolCalls(turns, ASK_TURN);
       const wrote = calls.findLastIndex(
-        (call) => call.name === TOOL_UPDATE_TRACK,
+        (call) => call.name === TOOL_UPDATE_TRACK && !toolCallFailed(call),
       );
 
       if (wrote < 0) {
-        throw new Error(`no ${TOOL_UPDATE_TRACK} call`);
+        throw new Error(`no successful ${TOOL_UPDATE_TRACK} call`);
       }
 
       const readBacks = calls

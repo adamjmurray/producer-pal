@@ -4,114 +4,114 @@
 
 ```
 // Basic envelope
-velocity += 20 * cos(1bar);
+velocity += 20 * cos(1bar)
 
 // Phase-shifted
-velocity += 20 * cos(1bar, 0.5);
+velocity += 20 * cos(1bar, 0.5)
 
 // Pulse width modulation
-velocity += 20 * square(n/2, 0, 0.25);
+velocity += 20 * square(n/2, 0, 0.25)
 
 // Dynamic PWM (pulse width modulated by another waveform)
-velocity += 20 * square(n/2, 0, cos(1bar) * 0.25 + 0.5);
+velocity += 20 * square(n/2, 0, cos(1bar) * 0.25 + 0.5)
 
 // Combined functions
-velocity += 20 * cos(4bar) + 10 * rand();
+velocity += 20 * cos(4bar) + 10 * rand()
 
 // Unipolar envelope (adds 0 to 40)
-velocity += 20 + 20 * cos(2bar);
+velocity += 20 + 20 * cos(2bar)
 
 // Amplitude modulation
-velocity += 30 * cos(4bar) * cos(n/4);
+velocity += 30 * cos(4bar) * cos(n/4)
 
 // Set absolute velocity value
-velocity = 80;
+velocity = 80
 ```
 
 ## Ramp Function
 
 ```
 // Velocity ramp from soft to loud over entire clip
-velocity += ramp(0, 127);
+velocity += ramp(0, 127)
 
 // Reverse ramp (fade out)
-velocity += ramp(127, 0);
+velocity += ramp(127, 0)
 
 // Ramp with arbitrary range
-velocity += ramp(64, 100);
+velocity += ramp(64, 100)
 
 // Combine ramp with periodic modulation
-velocity += ramp(20, 100) + 10 * rand();
+velocity += ramp(20, 100) + 10 * rand()
 ```
 
 ## Rand Function
 
 ```
 // Random velocity humanization (default range: -1 to 1)
-velocity += 10 * rand();
+velocity += 10 * rand()
 
 // Random pitch variation (0 to 12 semitones)
-pitch += round(rand(12));
+pitch += round(rand(12))
 
 // Random pitch variation (-6 to 6 semitones)
-pitch += round(rand(-6, 6));
+pitch += round(rand(-6, 6))
 ```
 
 ## Choose Function
 
 ```
 // Random velocity from a set of values
-velocity = choose(60, 80, 100, 120);
+velocity = choose(60, 80, 100, 120)
 
 // Random chord tones
-pitch += choose(0, 3, 7, 12);
+pitch += choose(0, 3, 7, 12)
 
 // Weighted choice (60 appears 3x more often)
-velocity = choose(60, 60, 60, 100);
+velocity = choose(60, 60, 60, 100)
 ```
 
 ## Curve Function
 
 ```
 // Exponential fade-in (slow start, fast finish)
-velocity += curve(0, 127, 2);
+velocity += curve(0, 127, 2)
 
 // Logarithmic fade-in (fast start, slow finish)
-velocity += curve(0, 127, 0.5);
+velocity += curve(0, 127, 0.5)
 
 // Exponential fade-out
-velocity += curve(127, 0, 2);
+velocity += curve(127, 0, 2)
 
 // Linear (same as ramp)
-velocity += curve(0, 127, 1);
+velocity += curve(0, 127, 1)
 ```
 
 ## Math Functions
 
 ```
 // Round to nearest semitone
-pitch += round(12 * rand());
+pitch += round(12 * rand())
 
 // Ensure minimum velocity
-velocity = max(60, note.velocity);
+velocity = max(60, note.velocity)
 
 // Quantize velocity to steps of 10
-velocity = floor(note.velocity / 10) * 10;
+velocity = floor(note.velocity / 10) * 10
 
 // Absolute pitch distance from C3
-velocity = abs(note.pitch - 60) * 2;
+velocity = abs(note.pitch - 60) * 2
 
 // Clamp velocity to range
-velocity = clamp(note.velocity, 40, 100);
+velocity = clamp(note.velocity, 40, 100)
 
 // Alternating pattern (every other beat)
-velocity = 60 + 40 * (floor(note.start) % 2);
+velocity = 60 + 40 * (floor(note.start) % 2)
 
 // Round velocity up to next multiple of 10
-velocity = ceil(note.velocity / 10) * 10;
+velocity = ceil(note.velocity / 10) * 10
 
 // Exponential scaling
-velocity = pow(note.velocity / 127, 2) * 127;
+velocity = pow(note.velocity / 127, 2) * 127
 ```
 
 ## Pitch Filtering
@@ -164,16 +164,16 @@ velocity = (note.pitch + note.deviation) / 2
 
 ```
 // Use note duration as waveform period
-velocity += cos(note.duration);
+velocity += cos(note.duration)
 
 // Expression as period (2x note duration)
-velocity += tri(note.duration * 2);
+velocity += tri(note.duration * 2)
 
 // Ramp based on note velocity
-velocity = ramp(0, note.velocity);
+velocity = ramp(0, note.velocity)
 
 // Phase offset from note probability
-velocity += cos(n/4, note.probability);
+velocity += cos(n/4, note.probability)
 ```
 
 ## Multi-Parameter
@@ -193,64 +193,64 @@ timing += note.start / 100`;
 
 ```
 // Transpose up an octave
-pitch += 12;
+pitch += 12
 
 // Set all notes to middle C
-pitch = 60;
+pitch = 60
 
 // Random pitch variation (±6 semitones)
-pitch += round(12 * rand());
+pitch += round(12 * rand())
 
 // Octave based on velocity (louder = higher)
-pitch += floor(note.velocity / 32) * 12;
+pitch += floor(note.velocity / 32) * 12
 
 // Quantize to pentatonic-ish (every 2 semitones)
-pitch = floor(note.pitch / 2) * 2;
+pitch = floor(note.pitch / 2) * 2
 ```
 
 ## Context Variables
 
 ```
 // Sequential crescendo using note index
-velocity = 60 + note.index * 5;
+velocity = 60 + note.index * 5
 
 // Stacked fifths across clips in multi-clip operation
-pitch += clip.index * 7;
+pitch += clip.index * 7
 
 // Scale gain by arrangement position
-gain = ramp(-24, 0) * (clip.position/32);
+gain = ramp(-24, 0) * (clip.position/32)
 
 // Position within the bar drives velocity (the bar literal composes in arithmetic)
-velocity += (20 * (note.start % 1bar)) / 1bar;
+velocity += (20 * (note.start % 1bar)) / 1bar
 ```
 
 ## Audio Clip Transforms
 
 ```
 // Set gain to -6 dB
-gain = -6;
+gain = -6
 
 // Add 3 dB
-gain += 3;
+gain += 3
 
 // Self-reference: reduce by 6 dB
-gain = audio.gain - 6;
+gain = audio.gain - 6
 
 // Clamps to valid range (-70 to +24 dB)
-gain = -100; // clamps to -70
-gain = 50; // clamps to +24
+gain = -100 // clamps to -70
+gain = 50 // clamps to +24
 
 // Pitch shift up 5 semitones
-pitchShift = 5;
+pitchShift = 5
 
 // Transpose down an octave
-pitchShift = -12;
+pitchShift = -12
 
 // Self-reference: shift relative to current
-pitchShift = audio.pitchShift + 7;
+pitchShift = audio.pitchShift + 7
 ```
 
 Audio transforms apply to the whole clip, so any note-level scoping is dropped
-with a relayed warning rather than silently: a pitch selector, a time selector,
-a `where()` predicate, MIDI parameters, and note-count operations all warn and
-are ignored on audio clips.
+with a note on the clip's entry rather than silently: a pitch selector, a time
+selector, a `where()` predicate, MIDI parameters, and note-count operations are
+all ignored on audio clips and say so on the entry.

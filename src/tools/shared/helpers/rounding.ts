@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Round to Live's 2-decimal display precision — dB, pan, and tempo all show
@@ -11,6 +11,17 @@
  */
 export function round2dp(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+/**
+ * Round a beat position or length to a thousandth of a beat, the same value
+ * for comparing what was written with what Live holds: Live keeps a 32-bit
+ * float, so a position read back carries noise below that.
+ * @param beats - Raw position or length in beats
+ * @returns Beats rounded to three decimals
+ */
+export function roundBeats(beats: number): number {
+  return Math.round(beats * 1000) / 1000;
 }
 
 /**

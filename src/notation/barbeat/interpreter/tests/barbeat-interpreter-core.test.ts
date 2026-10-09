@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
@@ -309,7 +309,9 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       expect.stringContaining("outside valid range 0-127; clamped to 127"),
     );
     // Malformed syntax (negative velocity) is still a fatal parse error.
-    expect(() => interpretNotation("v-1-100 C3")).toThrow('but "v" found');
+    expect(() => interpretNotation("v-1-100 C3")).toThrow(
+      "bar|beat syntax error at position 0",
+    );
   });
 
   it("clamps out-of-range probability and warns instead of throwing", () => {

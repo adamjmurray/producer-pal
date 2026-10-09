@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   afterEach,
@@ -17,7 +17,9 @@ import {
   DISABLED_TOOLS_HEADER,
   FORMAT_HEADER,
   LIVE_API_HEADER,
+  PORTAL_VERSION_HEADER,
   SMALL_MODEL_MODE_HEADER,
+  VERSION,
 } from "#src/shared/config.ts";
 import { NOTATION_HEADER } from "#src/shared/notation.ts";
 import {
@@ -26,10 +28,12 @@ import {
   callToolWithMcpError,
   expectBrandedErrorText,
   expectRequestHeaders,
+  expectSetupGuidance,
   getHandler,
   mockClient,
   mockLiveApiTool,
   mockServer,
+  serverInfoCalls,
   mockStandardTools,
   mockTransport,
   startAndGetCallHandler,
@@ -54,7 +58,9 @@ vi.mock(import("@modelcontextprotocol/sdk/client/streamableHttp.js"), () => ({
 
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("@modelcontextprotocol/sdk/server/index.js"), () => ({
-  Server: vi.fn(function () {
+  Server: vi.fn(function (info: unknown) {
+    serverInfoCalls.push(info);
+
     return mockServer;
   }),
 }));
@@ -121,6 +127,8 @@ vi.mock(import("../file-logger.ts"), () => ({
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { logger } from "../file-logger.ts";
+import { happyDeps } from "../offline/tests/offline-add-producer-pal-test-helpers.ts";
+import { fakeOfflineDeps } from "../offline/tests/offline-test-helpers.ts";
 import { StdioHttpBridge } from "../stdio-http-bridge.ts";
 
 describe("StdioHttpBridge", () => {
@@ -135,8 +143,11 @@ describe("StdioHttpBridge", () => {
     mockServer.connect.mockResolvedValue(undefined);
     mockServer.sendToolListChanged.mockResolvedValue(undefined);
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    // No remote script, so an offline call gets the not-running guidance.
     bridge = new StdioHttpBridge(
       "http://localhost:3350/mcp",
+      {},
+      fakeOfflineDeps(),
     ) as unknown as TestBridge;
   });
 
@@ -216,7 +227,10 @@ describe("StdioHttpBridge", () => {
     it("sends them as the disabled-tools header on every request", async () => {
       expect(await connectWithWithheldTool()).toStrictEqual({
         requestInit: {
-          headers: { [DISABLED_TOOLS_HEADER]: "ppal-create-clip" },
+          headers: {
+            [PORTAL_VERSION_HEADER]: VERSION,
+            [DISABLED_TOOLS_HEADER]: "ppal-create-clip",
+          },
         },
       });
     });
@@ -232,14 +246,16 @@ describe("StdioHttpBridge", () => {
       fetchSpy.mockRestore();
     });
 
-    it("passes no transport options when nothing is withheld", async () => {
+    it("sends no disabled-tools header when nothing is withheld", async () => {
       mockClient.connect.mockResolvedValue(undefined);
 
       await bridge._ensureHttpConnection();
 
       const transportMock = StreamableHTTPClientTransport as unknown as Mock;
 
-      expect(transportMock.mock.calls.at(-1)?.[1]).toBeUndefined();
+      expect(transportMock.mock.calls.at(-1)?.[1]).toStrictEqual({
+        requestInit: { headers: { [PORTAL_VERSION_HEADER]: VERSION } },
+      });
     });
 
     it("drops them from the offline fallback list too", () => {
@@ -252,24 +268,6 @@ describe("StdioHttpBridge", () => {
       expect(narrowed.fallbackTools.tools.map((t) => t.name)).toStrictEqual([
         "ppal-read-live-set",
       ]);
-    });
-  });
-
-  describe("_createSetupErrorResponse", () => {
-    it("returns setup error response with correct structure", () => {
-      const response = bridge._createSetupErrorResponse();
-
-      expect(response).toStrictEqual({
-        content: [
-          {
-            type: "text",
-            text: expect.stringContaining("Cannot connect to Ableton Live."),
-          },
-        ],
-        isError: true,
-      });
-
-      expectBrandedErrorText(response);
     });
   });
 
@@ -461,8 +459,10 @@ describe("StdioHttpBridge", () => {
       );
     });
 
-    it("sends no headers when no options are set", async () => {
-      await expectRequestHeaders({}, null);
+    it("sends only the portal's own version when no options are set", async () => {
+      // How the device tells a portal from a direct client, and flags a
+      // portal/device version mismatch in the ppal-connect result.
+      await expectRequestHeaders({}, {});
     });
 
     it("does not re-contact the device on a later request when connected", async () => {
@@ -515,6 +515,24 @@ describe("StdioHttpBridge", () => {
   });
 
   describe("start", () => {
+    it("reports the portal's own version to the MCP client and the device", async () => {
+      const clientCalls = (Client as unknown as Mock).mock.calls;
+
+      mockClient.connect.mockResolvedValue(undefined);
+
+      await bridge.start();
+      await bridge._ensureHttpConnection();
+
+      expect(serverInfoCalls.at(-1)).toStrictEqual({
+        name: "stdio-http-bridge",
+        version: VERSION,
+      });
+      expect(clientCalls.at(-1)?.[0]).toStrictEqual({
+        name: "producer-pal-portal",
+        version: VERSION,
+      });
+    });
+
     it("starts successfully and logs appropriate messages", async () => {
       await bridge.start();
 
@@ -668,11 +686,36 @@ describe("StdioHttpBridge", () => {
 
       const result = await callToolHandler(callToolRequest());
 
-      expect(result).toStrictEqual(bridge._createSetupErrorResponse());
+      expectSetupGuidance(result);
       // Verify that error response behavior was triggered
       expect(logger.debug).toHaveBeenCalledWith(
-        "[Bridge] Connectivity problem detected. Returning setup error response",
+        "[Bridge] Connectivity problem detected. Answering offline",
       );
+    });
+
+    it("lets ppal-manage add Producer Pal offline, connecting through the bridge once it is up", async () => {
+      const b = new StdioHttpBridge(
+        "http://localhost:3350/mcp",
+        {},
+        happyDeps(),
+      ) as unknown as TestBridge;
+      const manage = { name: "ppal-manage", description: "", inputSchema: {} };
+
+      b.fallbackTools.tools.push(manage);
+
+      const callToolHandler = await startAndGetCallHandler(b);
+
+      // Down for the call itself, up by the time the bridge polls.
+      mockClient.connect
+        .mockRejectedValueOnce(new Error("Connection failed"))
+        .mockResolvedValue(undefined);
+
+      const result = await callToolHandler(
+        callToolRequest("ppal-manage", { action: "add-producer-pal" }),
+      );
+
+      expect(JSON.stringify(result)).toContain('track:{path:\\"t3\\"');
+      expect(b.isConnected).toBe(true);
     });
 
     it("sets up call tool handler that handles missing arguments", async () => {
@@ -747,7 +790,7 @@ describe("StdioHttpBridge", () => {
         -32000, // ErrorCode.ConnectionClosed
       );
 
-      expect(result).toStrictEqual(bridge._createSetupErrorResponse());
+      expectSetupGuidance(result);
       expect(bridge.isConnected).toBe(false);
     });
 

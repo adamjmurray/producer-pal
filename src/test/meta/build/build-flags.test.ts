@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import fs from "node:fs";
 import path from "node:path";
@@ -117,6 +117,7 @@ describe("build flags", () => {
 
   it("leaves every flag off in production build scripts", () => {
     expect(scripts.build).not.toMatch(/ENABLE_/);
+    expect(scripts["build:bundles"]).not.toMatch(/ENABLE_/);
     expect(scripts.dev).not.toMatch(/ENABLE_/);
   });
 
@@ -143,7 +144,9 @@ describe("build flags", () => {
   // bytes users get are built on the maintainer's machine, so the build itself
   // has to refuse a flag the shell happened to be exporting.
   it("runs the release guard before the production build does anything", () => {
-    expect(scripts.build).toMatch(
+    // `build` is the bundles plus the mcpb; the bundles step starts with the guard.
+    expect(scripts.build).toMatch(/^npm run build:bundles &&/);
+    expect(scripts["build:bundles"]).toMatch(
       /^node scripts\/build-and-release\/helpers\/check-build-flags\.ts &&/,
     );
   });

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -67,5 +67,12 @@ describe("targetEntries", () => {
     expect(() => targetEntries("t0,t1,,", "id")).toThrow(
       'invalid id "t0,t1,," - it has an empty entry.',
     );
+  });
+
+  // A locator name can hold a comma, so a target list reads \, like any other.
+  it("keeps \\, as a comma inside an entry", () => {
+    expect(
+      targetEntries("loc:Verse\\, part 2,loc:Drop", "arrangementStart"),
+    ).toStrictEqual(["loc:Verse, part 2", "loc:Drop"]);
   });
 });

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Drum-pad chain work in one pass: the pad's own fader, a pad copy, and taking
@@ -10,8 +10,8 @@
  * Each turn probes a different reach-for, and each is only visible in the chain
  * the pad ends up with:
  *   - **the pad fader** is the chain's, not the instrument's. Setting the
- *     Simpler's own volume sounds the same and reads back as a default chain,
- *     so the state check below is what tells the two apart.
+ *     Simpler's own volume (-12.6 dB here) is a different control and reads
+ *     back as a default chain, so the state check below tells the two apart.
  *   - **a pad copy** (`type:"drum-pad"`) brings the chain — trim, pan, choke
  *     group — while a device copy leaves all of it behind. The copy's `gainDb`
  *     and `chokeGroup` are how we know which one the model reached for.
@@ -228,7 +228,7 @@ export const rackPadOps: EvalScenario = {
 
   messages: [
     MSG_CONNECT,
-    "In the Drums track's drum rack, turn the pedal hihat pad down to -6 dB and push it a little to the right.",
+    "In the Drums track's drum rack, turn the pedal hihat pad's mixer down to -6 dB and pan it a little to the right.",
     "Copy that pedal hihat pad onto the empty C3 pad.",
     "Layer the shaker pad on top of C3 as well.",
     "That's too busy — take the shaker layer back off C3 and leave the pedal hihat on it.",

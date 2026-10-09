@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for arrangement clip duplication crash workaround.
@@ -32,6 +32,10 @@ interface DuplicateClipResult {
   id: string;
   /** Where the copy landed, e.g. "t0[5|1]" */
   path?: string;
+  /** What the copy did to the clips it landed on, when it did anything. */
+  detail?: string;
+  /** The clips of a copy that was tiled to fill a length. */
+  clips?: DuplicateClipResult[];
 }
 
 interface TrackResult {
@@ -61,6 +65,63 @@ async function dupToArr(
   await sleep(100);
 
   return clip;
+}
+
+/**
+ * The detail of a copy, which a tiled copy carries on its first clip.
+ * @param copy - The copy's entry
+ * @returns Its detail
+ */
+function firstDetail(copy: DuplicateClipResult): string | undefined {
+  return copy.detail ?? copy.clips?.[0]?.detail;
+}
+
+/**
+ * Duplicate a clip to an arrangement position, stretched to a length.
+ * @param id - Source clip ID
+ * @param position - Target position in bar|beat format
+ * @param arrangementLength - How long the copy should be, e.g. "2bar"
+ * @returns The duplicated clip's metadata
+ */
+async function dupToArrLong(
+  id: string,
+  position: string,
+  arrangementLength: string,
+): Promise<DuplicateClipResult> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-duplicate",
+    arguments: { type: "clip", id, toPath: `[${position}]`, arrangementLength },
+  });
+  const clip = parseToolResult<DuplicateClipResult>(result);
+
+  await sleep(100);
+
+  return clip;
+}
+
+/**
+ * Duplicate a clip to several arrangement positions in one call.
+ * @param id - Source clip ID
+ * @param positions - Target positions in bar|beat format, one copy each
+ * @returns One entry per copy, in the order given
+ */
+async function dupToArrMany(
+  id: string,
+  positions: string[],
+): Promise<DuplicateClipResult[]> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-duplicate",
+    arguments: {
+      type: "clip",
+      id,
+      toPath: positions.map((position) => `[${position}]`).join(","),
+    },
+  });
+  const copies = parseToolResult<DuplicateClipResult[]>(result);
+
+  await sleep(100);
+
+  return copies;
 }
 
 /**
@@ -413,5 +474,223 @@ describe("arrangement clip duplication crash workaround", () => {
       expect(result.id).toBeDefined();
       expect(arrangementStartOf(result)).toBe("151|1");
     });
+  });
+
+  // Live reports none of what a copy does to the clips it lands on, so the
+  // copy's own entry says it. Bars 301+ keep these clear of the tests above.
+  describe("what a copy reports about the clips it landed on", () => {
+    const track = `t${EMPTY_MIDI_TRACK}`;
+
+    it("says it overwrote a clip it covered whole", async () => {
+      await dupToArr(midiShortId, "301|1");
+      const result = await dupToArr(midiShortId, "301|1");
+
+      expect(result.detail).toBe(`overwrote the clip at ${track}[301|1]`);
+    });
+
+    // A write starting exactly where a clip starts makes Live re-create the
+    // rest of the clip, so the rest answers to the next bar.
+    it("says it shortened a clip it covered the front of", async () => {
+      await dupToArr(midiLongId, "309|1");
+      const result = await dupToArr(midiShortId, "309|1");
+
+      expect(result.detail).toBe(`shortened the clip at ${track}[310|1]`);
+    });
+
+    it("says it shortened a clip it covered the end of", async () => {
+      await dupToArr(midiLongId, "325|1");
+      const result = await dupToArr(midiShortId, "328|1");
+
+      expect(result.detail).toBe(`shortened the clip at ${track}[325|1]`);
+    });
+
+    it("says it split a clip it landed inside", async () => {
+      await dupToArr(midiLongId, "317|1");
+      const result = await dupToArr(midiShortId, "318|1");
+
+      expect(result.detail).toBe(
+        `split the clip at ${track}[317|1] into ${track}[317|1] and ${track}[319|1]`,
+      );
+    });
+
+    it("says nothing about a copy that landed in free space", async () => {
+      const result = await dupToArr(midiShortId, "333|1");
+
+      expect(result.detail).toBeUndefined();
+    });
+
+    // An arrangement source goes through the crash workaround, which clears the
+    // landing by hand: the clip is cut with a holding-area copy, and the part
+    // past the landing is re-created under a new id.
+    it("says what an arrangement-source copy cut off the front of a clip", async () => {
+      await dupToArr(midiLongId, "361|1");
+
+      const source = await dupToArr(midiShortId, "369|1");
+      const result = await dupToArr(source.id, "361|1");
+
+      expect(result.detail).toBe(`shortened the clip at ${track}[362|1]`);
+    });
+
+    it("says what an arrangement-source copy split", async () => {
+      await dupToArr(midiLongId, "381|1");
+
+      const source = await dupToArr(midiShortId, "389|1");
+      const result = await dupToArr(source.id, "383|1");
+
+      expect(result.detail).toBe(
+        `split the clip at ${track}[381|1] into ${track}[381|1] and ${track}[384|1]`,
+      );
+    });
+
+    // The copy is 1 bar and then grown to 2 bars, over a clip it lands beside.
+    it("says what a lengthened copy overwrote, once", async () => {
+      await dupToArr(midiShortId, "402|1");
+
+      const result = await dupToArrLong(midiShortId, "401|1", "2bar");
+
+      expect(firstDetail(result)).toBe(`overwrote the clip at ${track}[402|1]`);
+    });
+
+    // The copy splits the 4-bar clip at 421|1, and growing it cuts the tail it
+    // just left. Update-clip would name that tail; the clip that was there is
+    // one, split into its head and what is left at 424|1.
+    it("says what a lengthened copy did to a clip it split, once", async () => {
+      await dupToArr(midiLongId, "421|1");
+
+      const result = await dupToArrLong(midiShortId, "422|1", "2bar");
+
+      expect(firstDetail(result)).toBe(
+        `split the clip at ${track}[421|1] into ${track}[421|1] and ${track}[424|1]`,
+      );
+    });
+
+    // Two 2-bar copies of one call, the second starting a bar into the first.
+    // The first is cut short at the back and keeps its id, so its entry says it
+    // was shortened; the second only overwrote its own earlier copy, which is the
+    // first one's to report.
+    it("says an earlier copy of the call was trimmed by a later one", async () => {
+      const twoBar = parseToolResult<{ id: string }>(
+        await ctx.client!.callTool({
+          name: "ppal-create-clip",
+          arguments: {
+            path: `t${EMPTY_MIDI_TRACK}/s2`,
+            notes: "C3 1|1",
+            length: "2bar",
+          },
+        }),
+      ).id;
+
+      await sleep(100);
+
+      const copies = await dupToArrMany(twoBar, ["441|1", "442|1"]);
+
+      expect(copies.map((copy) => copy.detail)).toStrictEqual([
+        `shortened by ${track}[442|1] later in this call`,
+        undefined,
+      ]);
+    });
+
+    // One 4-bar clip at 341|1, and a 1-bar copy of the same call on each of its
+    // bars. The first copy starts exactly where the clip does, so Live deletes
+    // the clip and re-creates the 3 bars left under a new id; the second starts
+    // exactly where that rest does, and so on. The last copy covers the last
+    // bar exactly, so what is left of the clip is gone.
+    it("says what each copy of one call did to the clip they ate", async () => {
+      await dupToArr(midiLongId, "341|1");
+
+      const copies = await dupToArrMany(midiShortId, [
+        "341|1",
+        "342|1",
+        "343|1",
+        "344|1",
+      ]);
+
+      expect(copies.map((copy) => copy.detail)).toStrictEqual([
+        `shortened the clip at ${track}[342|1]`,
+        `shortened the clip at ${track}[343|1]`,
+        `shortened the clip at ${track}[344|1]`,
+        `overwrote the clip at ${track}[344|1]`,
+      ]);
+    });
+  });
+});
+
+describe("a lengthened copy over an earlier copy in the same call", () => {
+  // The lengthened copy covers the earlier one whole, so that one is never
+  // written; the lengthened one reports what was already on the lane, which
+  // includes the clip the earlier copy would have landed on.
+  it("leaves the earlier copy unwritten and reports what was already there", async () => {
+    const track = `t${EMPTY_MIDI_TRACK}`;
+
+    // One bar each at bars 931, 933 and 935, and a one-bar looping source.
+    await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `${track}[931|1],${track}[933|1],${track}[935|1]`,
+        notes: "C3 1|1",
+        length: "1bar",
+      },
+    });
+
+    const source = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `${track}/s3`,
+          notes: "C3 1|1",
+          length: "1bar",
+          looping: true,
+        },
+      }),
+    ).id;
+
+    await sleep(200);
+
+    // The second copy is three bars, so it covers 931-933 and the first copy
+    // with them: the first is never written, and the second overwrites the
+    // clips at 931 and 933.
+    const [first, second] = parseToolResult<
+      [{ path: string; detail: string }, DuplicateClipResult]
+    >(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: source,
+          toPath: `${track}[933|1],${track}[931|1]`,
+          arrangementLength: "1bar,3bar",
+        },
+      }),
+    );
+
+    await sleep(200);
+
+    expect(first).toStrictEqual({
+      path: `${track}[933|1]`,
+      detail: `overwritten later in this call by ${track}[931|1]`,
+    });
+    expect(firstDetail(second)).toContain(
+      `overwrote the clip at ${track}[931|1]`,
+    );
+    expect(firstDetail(second)).toContain(
+      `overwrote the clip at ${track}[933|1]`,
+    );
+
+    const filled = clipsInBarRange(
+      await readArrClips(EMPTY_MIDI_TRACK),
+      931,
+      934,
+    );
+    const beats = filled.reduce(
+      (sum, clip) => sum + parseLengthToBeats(clip.arrangementLength as string),
+      0,
+    );
+
+    // Three bars from 931 are filled, and the clip at 935 was left alone.
+    expect(filled.map(arrangementStartOf)).toContain("931|1");
+    expect(beats).toBe(12);
+    expect(
+      clipsInBarRange(await readArrClips(EMPTY_MIDI_TRACK), 935, 935),
+    ).toHaveLength(1);
   });
 });

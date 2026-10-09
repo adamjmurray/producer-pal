@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Names the clip a transform warning was raised for.
 //
@@ -23,25 +23,46 @@
 import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 
 let clipLabel: string | undefined;
+let clipSink: ((message: string) => void) | undefined;
 
 /**
  * Run a transform with every warning it raises naming the clip it was for.
  * @param label - How to name the clip, or undefined to leave warnings bare
  * @param run - The transform work; must be synchronous
+ * @param sink - Where {@link clipDetail} facts go instead of a warning, when the
+ *   caller reports them on the clip's own entry
  * @returns Whatever run returns
  */
 export function withClipWarningLabel<T>(
   label: string | undefined,
   run: () => T,
+  sink?: (message: string) => void,
 ): T {
   const previous = clipLabel;
+  const previousSink = clipSink;
 
   clipLabel = label;
+  clipSink = sink;
 
   try {
     return run();
   } finally {
     clipLabel = previous;
+    clipSink = previousSink;
+  }
+}
+
+/**
+ * Report a fact about the clip a transform ran for (something skipped, changed
+ * or clamped on it): the caller's sink takes it when there is one (the clip's
+ * entry), else it is a warning.
+ * @param message - What happened on the clip, short enough to read as detail
+ */
+export function clipDetail(message: string): void {
+  if (clipSink == null) {
+    warn(message);
+  } else {
+    clipSink(message);
   }
 }
 

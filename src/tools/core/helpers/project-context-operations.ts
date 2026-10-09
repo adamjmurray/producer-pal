@@ -1,11 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { backupProjectContextOnEdit } from "#src/live-api-adapter/project-context-sync.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { detachWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
 
 export interface ContentResult {
@@ -44,12 +43,10 @@ export function handleWriteProjectContext(
   const existing = context.projectContext?.content ?? "";
 
   if (!force) {
-    const warning = clobberWarning("project", existing, content);
+    const refusal = clobberRefusal("project", existing, content);
 
-    if (warning != null) {
-      console.warn(warning);
-
-      return { content: existing };
+    if (refusal != null) {
+      throw new Error(refusal);
     }
   }
 
@@ -117,12 +114,10 @@ export async function handleWriteGlobalContext(
     // copy — trades a narrow race for a guard that is wrong whenever the document
     // changed during the session. A fresh baseline is the point.
     const existing = await handleReadGlobalContext();
-    const warning = clobberWarning("global", existing.content, content);
+    const refusal = clobberRefusal("global", existing.content, content);
 
-    if (warning != null) {
-      console.warn(warning);
-
-      return existing;
+    if (refusal != null) {
+      throw new Error(refusal);
     }
   }
 
@@ -136,8 +131,8 @@ export async function handleWriteGlobalContext(
  * same way, but it holds one fact under a name the model must reuse deliberately
  * — a far smaller blast radius, and not guarded here.) When the incoming content
  * keeps NONE of what's there, that is far likelier a mistake than an intent — so
- * the write is skipped and this warning is relayed to the model (ADR-0009
- * warn-and-skip), which can re-send with the content merged or pass `force`.
+ * the write throws this message and the model can re-send merged or pass
+ * `force`. (Returning the document beside a warning looked like a success.)
  *
  * Deliberately line containment, not a similarity score: cheap, explainable, and
  * with no ratio to tune — the verdict is "did any existing line survive", not
@@ -195,9 +190,9 @@ export async function handleWriteGlobalContext(
  * @param scope - The layer being written (project | global), for the message
  * @param existing - The document as it stands
  * @param incoming - The content the model wants to write
- * @returns The warning to relay, or null when the write may proceed
+ * @returns The refusal message, or null when the write may proceed
  */
-export function clobberWarning(
+export function clobberRefusal(
   scope: string,
   existing: string,
   incoming: string,
@@ -247,12 +242,12 @@ export function clobberWarning(
   }
 
   return (
-    `scope:${scope} write SKIPPED — nothing was written. Your content kept ` +
-    `none of the existing document (${lines.length} line(s) would be lost, ` +
-    `starting with "${lines[0]}"). The result above is the document as it ` +
-    `stands: re-send the write with that content plus your addition. If the ` +
-    `user really asked to replace the whole thing, pass force:true — ask them ` +
-    `first if you haven't.`
+    `write refused for scope "${scope}": nothing was written. Your content ` +
+    `kept none of the existing document (${lines.length} line(s) would be ` +
+    `lost, starting with "${lines[0]}"). Read the document, then re-send the ` +
+    `write with its content plus your addition. If the user really asked to ` +
+    `replace the whole thing, pass force:true — ask them first if you ` +
+    `haven't.`
   );
 }
 
@@ -335,7 +330,7 @@ export async function callNodeContentRoute(
   const response = await requestNode<ContentResult>(route, args);
 
   if (!response.success || !response.result) {
-    throw new Error(`${route} failed: ${response.error ?? "unknown error"}`);
+    throw new Error(response.error ?? "unknown error");
   }
 
   return response.result;

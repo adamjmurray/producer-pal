@@ -1,0 +1,644 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
+
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  TEMPO_REFUSAL,
+  MAX_AUTO_CREATED_SCENES,
+} from "#src/tools/constants.ts";
+import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import {
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { captureAddsScene } from "./capture-scene-mocks.ts";
+import { expectSceneSetToRed34 } from "../scene-assertions.ts";
+import { createScene } from "../../create-scene.ts";
+
+vi.mock(import("#src/tools/session/select.ts"), () => ({
+  select: vi.fn(),
+}));
+
+describe("createScene", () => {
+  let liveSet: RegisteredMockObject;
+  let scene0: RegisteredMockObject;
+  let scene1: RegisteredMockObject;
+  let scene2: RegisteredMockObject;
+
+  beforeEach(() => {
+    liveSet = registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { scenes: children("existing1", "existing2") },
+    });
+    registerMockObject("app-view", {
+      path: livePath.view.app,
+    });
+    scene0 = registerMockObject("live_set/scenes/0", {
+      path: livePath.scene(0),
+    });
+    scene1 = registerMockObject("live_set/scenes/1", {
+      path: livePath.scene(1),
+    });
+    scene2 = registerMockObject("live_set/scenes/2", {
+      path: livePath.scene(2),
+    });
+
+    // Register additional scenes for tests that need higher indices (e.g., padding)
+    for (let i = 3; i <= 5; i++) {
+      registerMockObject(`live_set/scenes/${i}`, {
+        path: livePath.scene(i),
+      });
+    }
+  });
+
+  it("should create a single scene at the specified index", () => {
+    const result = createScene({
+      sceneIndex: 1,
+      name: "New Scene",
+      color: "#FF0000",
+      tempo: 120,
+      timeSignature: "3/4",
+    });
+
+    expect(liveSet.call).toHaveBeenCalledWith("create_scene", 1);
+    expectSceneSetToRed34(scene1, "New Scene", 120);
+    expect(result).toStrictEqual({
+      id: "live_set/scenes/1",
+      path: "s1",
+    });
+  });
+
+  it("should create multiple scenes with auto-incrementing names", () => {
+    const result = createScene({
+      sceneIndex: 0,
+      count: 3,
+      name: "Verse",
+      color: "#00FF00",
+    });
+
+    expect(liveSet.call).toHaveBeenNthCalledWith(1, "create_scene", 0);
+    expect(liveSet.call).toHaveBeenNthCalledWith(2, "create_scene", 1);
+    expect(liveSet.call).toHaveBeenNthCalledWith(3, "create_scene", 2);
+
+    expect(scene0.set).toHaveBeenCalledWith("name", "Verse");
+    expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
+    expect(scene2.set).toHaveBeenCalledWith("name", "Verse");
+
+    expect(result).toStrictEqual([
+      { id: "live_set/scenes/0", path: "s0" },
+      { id: "live_set/scenes/1", path: "s1" },
+      { id: "live_set/scenes/2", path: "s2" },
+    ]);
+  });
+
+  it("should create scenes without setting properties when not provided", () => {
+    const result = createScene({ sceneIndex: 0 });
+
+    expect(liveSet.call).toHaveBeenCalledWith("create_scene", 0);
+    expect(scene0.set).not.toHaveBeenCalled();
+    expect(result).toStrictEqual({
+      id: "live_set/scenes/0",
+      path: "s0",
+    });
+  });
+
+  it("should pad with empty scenes when sceneIndex exceeds current count", () => {
+    createScene({
+      sceneIndex: 5, // Want to insert at index 5, but only have 2 scenes (indices 0,1)
+      name: "Future Scene",
+    });
+
+    // Should create 3 padding scenes (indices 2,3,4) then the actual scene at index 5
+    expect(liveSet.call).toHaveBeenCalledWith("create_scene", -1);
+    expect(liveSet.call).toHaveBeenCalledWith("create_scene", 5);
+    expect(liveSet.call).toHaveBeenCalledTimes(4);
+  });
+
+  it("should disable tempo when -1 is passed", () => {
+    createScene({
+      sceneIndex: 0,
+      tempo: -1,
+    });
+
+    expect(scene0.set).toHaveBeenCalledWith("tempo_enabled", false);
+    expect(scene0.set).not.toHaveBeenCalledWith("tempo", expect.any(Number));
+  });
+
+  // Checked before the padding scenes are created, so a bad tempo doesn't
+  // leave a run of empty scenes behind.
+  it("refuses an out-of-range tempo before creating anything", () => {
+    expect(() => createScene({ sceneIndex: 0, tempo: 0 })).toThrow(
+      `${TEMPO_REFUSAL} Pass -1 to disable it.`,
+    );
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  it("should disable time signature when 'disabled' is passed", () => {
+    createScene({
+      sceneIndex: 0,
+      timeSignature: "disabled",
+    });
+
+    expect(scene0.set).toHaveBeenCalledWith("time_signature_enabled", false);
+    expect(scene0.set).not.toHaveBeenCalledWith(
+      "time_signature_numerator",
+      expect.any(Number),
+    );
+    expect(scene0.set).not.toHaveBeenCalledWith(
+      "time_signature_denominator",
+      expect.any(Number),
+    );
+  });
+
+  it("should throw error when sceneIndex is missing", () => {
+    expect(() => createScene({})).toThrow("path is required");
+    expect(() => createScene({ count: 2 })).toThrow("path is required");
+  });
+
+  it("should throw error when count is less than 1", () => {
+    expect(() => createScene({ sceneIndex: 0, count: 0 })).toThrow(
+      "count must be at least 1",
+    );
+    expect(() => createScene({ sceneIndex: 0, count: -1 })).toThrow(
+      "count must be at least 1",
+    );
+  });
+
+  it("should throw error for invalid time signature format", () => {
+    expect(() =>
+      createScene({ sceneIndex: 0, timeSignature: "invalid" }),
+    ).toThrow("Time signature must be in format");
+    expect(() => createScene({ sceneIndex: 0, timeSignature: "3-4" })).toThrow(
+      "Time signature must be in format",
+    );
+  });
+
+  it("should throw error when creating scenes would exceed maximum", () => {
+    expect(() =>
+      createScene({
+        sceneIndex: MAX_AUTO_CREATED_SCENES - 2,
+        count: 5,
+      }),
+    ).toThrow(/would exceed the maximum allowed scenes/);
+  });
+
+  // s+ after the last allowed index would land one past the cap.
+  it("counts an s+ entry against the maximum", () => {
+    expect(() =>
+      createScene({ path: `s${MAX_AUTO_CREATED_SCENES - 1},s+` }),
+    ).toThrow(/would exceed the maximum allowed scenes/);
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  // Refused before the plan fills a gap that size with empty scenes.
+  it("refuses a huge index before planning", () => {
+    expect(() => createScene({ path: "s+,s1000000000" })).toThrow(
+      `creating 2 scenes at index 1000000000 would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
+    );
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  it("allows creating scenes up to exactly the maximum", () => {
+    // Boundary: sceneIndex + count === MAX is allowed (> not >=).
+    expect(() =>
+      createScene({ sceneIndex: MAX_AUTO_CREATED_SCENES - 1, count: 1 }),
+    ).not.toThrow();
+  });
+
+  it("should return single object for count=1 and array for count>1", () => {
+    const singleResult = createScene({
+      sceneIndex: 0,
+      count: 1,
+      name: "Single",
+    });
+    const arrayResult = createScene({
+      sceneIndex: 1,
+      count: 2,
+      name: "Multiple",
+    });
+
+    expect(singleResult).toStrictEqual({
+      id: "live_set/scenes/0",
+      path: "s0",
+    });
+
+    expect(Array.isArray(arrayResult)).toBe(true);
+    expect(arrayResult).toHaveLength(2);
+    const arrayResultArr = arrayResult as Array<{ id: string; path: string }>;
+
+    expect(arrayResultArr[0]).toStrictEqual({
+      id: "live_set/scenes/1",
+      path: "s1",
+    });
+    expect(arrayResultArr[1]).toStrictEqual({
+      id: "live_set/scenes/2",
+      path: "s2",
+    });
+  });
+
+  it("should handle single scene name without incrementing", () => {
+    const result = createScene({
+      sceneIndex: 0,
+      count: 1,
+      name: "Solo Scene",
+    });
+
+    expect(scene0.set).toHaveBeenCalledWith("name", "Solo Scene");
+    expect(result).toStrictEqual({
+      id: "live_set/scenes/0",
+      path: "s0",
+    });
+  });
+
+  it("should include disabled tempo and timeSignature in result", () => {
+    const result = createScene({
+      sceneIndex: 0,
+      tempo: -1,
+      timeSignature: "disabled",
+    });
+
+    expect(result).toStrictEqual({
+      id: "live_set/scenes/0",
+      path: "s0",
+    });
+  });
+
+  describe("comma-separated names", () => {
+    it("should use comma-separated names for each scene when count matches", () => {
+      const result = createScene({
+        sceneIndex: 0,
+        count: 3,
+        name: "Intro,Verse,Chorus",
+      });
+
+      expect(scene0.set).toHaveBeenCalledWith("name", "Intro");
+      expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
+      expect(scene2.set).toHaveBeenCalledWith("name", "Chorus");
+      expect(result).toHaveLength(3);
+    });
+
+    // create-scene used to warn and build what it could, where the update
+    // tools threw for the same mistake.
+    it("refuses a name list that doesn't match count", () => {
+      registerMockObject("live_set/scenes/3", { path: livePath.scene(3) });
+
+      expect(() =>
+        createScene({ sceneIndex: 0, count: 4, name: "Intro,Verse,Chorus" }),
+      ).toThrow("count names 4 scenes but name names 3 entries");
+
+      expect(() =>
+        createScene({ sceneIndex: 0, count: 2, name: "Intro,Verse,Chorus" }),
+      ).toThrow("count names 2 scenes but name names 3 entries");
+    });
+
+    // Refusing is only free if nothing has happened yet. Creating past the end
+    // pads the Set with empty scenes first, so the check has to come before it
+    // or a refused call leaves scenes behind to delete by hand.
+    it("pads no scenes when it refuses the list", () => {
+      expect(() =>
+        createScene({ sceneIndex: 5, count: 2, name: "Intro,Verse,Chorus" }),
+      ).toThrow("count names 2 scenes but name names 3 entries");
+
+      expect(liveSet.call).not.toHaveBeenCalledWith("create_scene", -1);
+    });
+
+    it("should preserve commas in name when count is 1", () => {
+      createScene({
+        sceneIndex: 0,
+        count: 1,
+        name: "Intro,Verse",
+      });
+
+      expect(scene0.set).toHaveBeenCalledWith("name", "Intro,Verse");
+    });
+
+    it("should trim whitespace around comma-separated names", () => {
+      createScene({
+        sceneIndex: 0,
+        count: 3,
+        name: " Intro , Verse , Chorus ",
+      });
+
+      expect(scene0.set).toHaveBeenCalledWith("name", "Intro");
+      expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
+      expect(scene2.set).toHaveBeenCalledWith("name", "Chorus");
+    });
+  });
+
+  describe("comma-separated colors", () => {
+    it("refuses a color list that doesn't match count", () => {
+      registerMockObject("live_set/scenes/3", { path: livePath.scene(3) });
+
+      expect(() =>
+        createScene({ sceneIndex: 0, count: 4, color: "#FF0000,#00FF00" }),
+      ).toThrow("count names 4 scenes but color names 2 entries");
+    });
+
+    it("should use colors in order when count matches", () => {
+      createScene({
+        sceneIndex: 0,
+        count: 3,
+        color: "#FF0000,#00FF00,#0000FF",
+      });
+
+      expect(scene0.set).toHaveBeenCalledWith("color", 16711680);
+      expect(scene1.set).toHaveBeenCalledWith("color", 65280);
+      expect(scene2.set).toHaveBeenCalledWith("color", 255);
+    });
+
+    it("should trim whitespace around comma-separated colors", () => {
+      createScene({
+        sceneIndex: 0,
+        count: 2,
+        color: " #FF0000 , #00FF00 ",
+      });
+
+      expect(scene0.set).toHaveBeenCalledWith("color", 16711680);
+      expect(scene1.set).toHaveBeenCalledWith("color", 65280);
+    });
+  });
+
+  describe("color", () => {
+    it("reports the palette color Live snapped to on the scene's entry", () => {
+      scene1.get.mockImplementation((prop: string) =>
+        prop === "color" ? [16725558] : [0],
+      );
+
+      expect(createScene({ sceneIndex: 1, color: "#FF0000" })).toStrictEqual({
+        id: "live_set/scenes/1",
+        path: "s1",
+        color: "#FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
+    });
+
+    it("says nothing when the color lands as asked", () => {
+      expect(createScene({ sceneIndex: 1, color: "#FF0000" })).toStrictEqual({
+        id: "live_set/scenes/1",
+        path: "s1",
+      });
+    });
+  });
+
+  describe("capture mode", () => {
+    let captureLiveSet: RegisteredMockObject;
+    let capturedScene: RegisteredMockObject;
+    let captureAppView: RegisteredMockObject;
+
+    beforeEach(() => {
+      captureLiveSet = captureAddsScene(
+        registerMockObject("live_set", {
+          path: livePath.liveSet,
+          properties: { tracks: [] },
+        }),
+      );
+      captureAppView = registerMockObject("live_set/view", {
+        path: livePath.view.song,
+      });
+      registerMockObject("live_set/scenes/1", {
+        path: livePath.scene(1),
+      });
+      registerMockObject("live_set/view/selected_scene", {
+        path: livePath.scene(1),
+      });
+      capturedScene = registerMockObject("live_set/scenes/2", {
+        path: livePath.scene(2),
+      });
+    });
+
+    it("should delegate to captureScene when capture=true", () => {
+      const result = createScene({ capture: true });
+
+      expect(captureLiveSet.call).toHaveBeenCalledWith(
+        "capture_and_insert_scene",
+      );
+
+      expect(result).toStrictEqual({
+        id: "live_set/scenes/2",
+        path: "s2",
+        clips: [],
+      });
+    });
+
+    // The insert lands after the selection, so index 2 selects scene 1.
+    it("should delegate to captureScene with sceneIndex and name", () => {
+      const result = createScene({
+        capture: true,
+        sceneIndex: 2,
+        name: "Custom Capture",
+      });
+
+      expect(captureAppView.set).toHaveBeenCalledWith(
+        "selected_scene",
+        "id live_set/scenes/1",
+      );
+
+      expect(capturedScene.set).toHaveBeenCalledWith("name", "Custom Capture");
+
+      expect(result).toStrictEqual({
+        id: "live_set/scenes/2",
+        path: "s2",
+        clips: [],
+      });
+    });
+
+    it("should refuse a malformed color before capturing anything", () => {
+      expect(() =>
+        createScene({ capture: true, color: "not-a-hex-color" }),
+      ).toThrow('invalid color "not-a-hex-color" - expected "#RRGGBB"');
+
+      expect(captureLiveSet.call).not.toHaveBeenCalled();
+    });
+
+    it("reports the palette color Live snapped to on the captured scene", () => {
+      capturedScene.get.mockImplementation((prop: string) =>
+        prop === "color" ? [16725558] : [0],
+      );
+
+      expect(createScene({ capture: true, color: "#FF0000" })).toStrictEqual({
+        id: "live_set/scenes/2",
+        path: "s2",
+        clips: [],
+        color: "#FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
+      });
+    });
+
+    it("should apply additional properties after capture", () => {
+      const result = createScene({
+        capture: true,
+        name: "Captured with Props",
+        color: "#FF0000",
+        tempo: 140,
+        timeSignature: "3/4",
+      });
+
+      expect(capturedScene.set).toHaveBeenCalledWith("color", 16711680);
+      expect(capturedScene.set).toHaveBeenCalledWith("tempo", 140);
+      expect(capturedScene.set).toHaveBeenCalledWith("tempo_enabled", true);
+
+      expect(result).toStrictEqual({
+        id: "live_set/scenes/2",
+        path: "s2",
+        clips: [],
+      });
+    });
+
+    it.each([
+      ["color only", { color: "#FF0000" }, "color", 16711680],
+      ["tempo only", { tempo: 140 }, "tempo", 140],
+      [
+        "timeSignature only",
+        { timeSignature: "3/4" },
+        "time_signature_numerator",
+        3,
+      ],
+    ])(
+      "applies %s after capture (each guard operand is load-bearing)",
+      (_label, props, setKey, setValue) => {
+        createScene({ capture: true, ...props });
+
+        expect(capturedScene.set).toHaveBeenCalledWith(setKey, setValue);
+      },
+    );
+
+    it("should handle disabled tempo and timeSignature in capture mode", () => {
+      const result = createScene({
+        capture: true,
+        tempo: -1,
+        timeSignature: "disabled",
+      });
+
+      expect(capturedScene.set).toHaveBeenCalledWith("tempo_enabled", false);
+      expect(capturedScene.set).toHaveBeenCalledWith(
+        "time_signature_enabled",
+        false,
+      );
+
+      expect(result).toStrictEqual({
+        id: "live_set/scenes/2",
+        path: "s2",
+        clips: [],
+      });
+    });
+
+    it("should return clips when capturing with existing clips", () => {
+      captureAddsScene(
+        registerMockObject("live_set", {
+          path: livePath.liveSet,
+          properties: { tracks: ["id", "1", "id", "2", "id", "3"] },
+        }),
+      );
+      // Mark track 1's clip as non-existent (id "0" makes exists() return false)
+      registerMockObject("0", {
+        path: livePath.track(1).clipSlot(2).clip(),
+      });
+
+      const result = createScene({
+        capture: true,
+        name: "With Clips",
+      });
+
+      expect(result).toStrictEqual({
+        id: "live_set/scenes/2",
+        path: "s2",
+        clips: [
+          { id: "live_set/tracks/0/clip_slots/2/clip", path: "t0/s2" },
+          { id: "live_set/tracks/2/clip_slots/2/clip", path: "t2/s2" },
+        ],
+      });
+    });
+  });
+
+  describe("focus functionality", () => {
+    const selectMockRef = setupSelectMock();
+
+    it("should select scene in session view when focus=true", () => {
+      const result = createScene({
+        sceneIndex: 0,
+        focus: true,
+      });
+
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
+        view: "session",
+        id: "live_set/scenes/0",
+      });
+      expect(result).toStrictEqual({
+        id: "live_set/scenes/0",
+        path: "s0",
+      });
+    });
+
+    it("should select scene in session view when capturing with focus=true", () => {
+      captureAddsScene(
+        registerMockObject("live_set", {
+          path: livePath.liveSet,
+          properties: { tracks: [] },
+        }),
+      );
+      registerMockObject("live_set/view/selected_scene", {
+        path: livePath.scene(1),
+      });
+
+      const result = createScene({
+        capture: true,
+        focus: true,
+      });
+
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
+        view: "session",
+        id: "live_set/scenes/2",
+      });
+      expect(result).toStrictEqual({
+        id: "live_set/scenes/2",
+        path: "s2",
+        clips: [],
+      });
+    });
+
+    it("should not call select when focus=false", () => {
+      createScene({
+        sceneIndex: 0,
+        focus: false,
+      });
+
+      expect(selectMockRef.get()).not.toHaveBeenCalled();
+    });
+
+    it("should not call select when capturing with focus omitted", () => {
+      captureAddsScene(
+        registerMockObject("live_set", {
+          path: livePath.liveSet,
+          properties: { tracks: [] },
+        }),
+      );
+      registerMockObject("live_set/view/selected_scene", {
+        path: livePath.scene(1),
+      });
+
+      createScene({ capture: true });
+
+      expect(selectMockRef.get()).not.toHaveBeenCalled();
+    });
+
+    it("should focus last scene when creating multiple with focus=true", () => {
+      const result = createScene({
+        sceneIndex: 0,
+        count: 3,
+        focus: true,
+      });
+
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
+        view: "session",
+        id: "live_set/scenes/2",
+      });
+      expect(selectMockRef.get()).toHaveBeenCalledTimes(1);
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toHaveLength(3);
+    });
+  });
+});

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import {
@@ -210,6 +210,11 @@ describe("durationToAbletonBeats", () => {
 
     it("accepts a decimal numerator in the <count>bar+n tail", () => {
       expect(durationToAbletonBeats("1bar+n0.5/4", 4, 4)).toBeCloseTo(4.5, 6);
+    });
+
+    it("accepts a trailing dot on the numerator", () => {
+      expect(durationToAbletonBeats("n3./4", 4, 4)).toBe(3);
+      expect(durationToAbletonBeats("1bar+n1./4", 4, 4)).toBe(5);
     });
   });
 

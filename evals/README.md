@@ -2,7 +2,7 @@
 Producer Pal
 Copyright (C) 2026 Adam Murray, Taylor Haun
 AI assistance: Claude (Anthropic), Codex (OpenAI)
-SPDX-License-Identifier: GPL-3.0-or-later
+SPDX-License-Identifier: MIT
 -->
 
 # Evals
@@ -132,6 +132,7 @@ be inferred from the prefix:
 | `claude-code/haiku`           | claude-code |
 | `claude-code/fable`           | claude-code |
 | `openrouter/some-model`       | openrouter  |
+| `vercel/openai/gpt-6-luna`    | vercel      |
 | `local/model-name`            | local       |
 
 Only the first `/` splits provider from model, so a model name can contain
@@ -174,6 +175,8 @@ Local models (Ollama, LM Studio, etc.) need special handling:
 1. **Always specify the model explicitly** with the `local/` prefix
 2. **Enable small-model mode** (`--small-model`) for the basic skills tier and
    simplified tool descriptions
+3. **Load the model with a 64K+ context window.** Tools plus Skills take ~12–14K
+   tokens per request, so a 32K context overflows mid-scenario.
 
 ```bash
 # Test a local model
@@ -343,9 +346,17 @@ scripts/eval --list-tags  # every tag, with how many scenarios carry it
 Each scenario is **regression** (should always pass) or **capability**
 (improvement target, may have low pass rates), and carries one or more subset
 tags — `notation`, `transforms`, `paths`, `context`, `clips`, `devices`,
-`workflow`, `pairing`, `results`. A whole-suite run costs hours, so `--tag` is
-how most runs are scoped; `-t` and `--tag` together narrow to scenarios matching
-both.
+`workflow`, `pairing`, `results`, `automation`. A whole-suite run costs hours,
+so `--tag` is how most runs are scoped; `-t` and `--tag` together narrow to
+scenarios matching both.
+
+`automation` scenarios need the Producer Pal remote script running in Live (it
+is the only way to reach clip envelopes), and their `setup` talks to it on its
+port (`PPAL_REMOTE_SCRIPT_PORT` overrides; else 3349 if the script answers
+there, else the port in `~/.producer-pal/remote-script-port.txt`). One scenario,
+`automation-no-remote-script`, sets `config: { remoteScriptEnabled: false }` to
+run as if it weren't installed (debug builds only; a release build ignores the
+field); `resetConfig()` turns it back on after every scenario.
 
 ### The seeded connect turn
 
@@ -503,15 +514,16 @@ scripts/chat -m codex-code/luna -1 "list tracks in the set"
 
 Set these in `.env` at the project root:
 
-| Variable         | Description                                             |
-| ---------------- | ------------------------------------------------------- |
-| `GEMINI_KEY`     | Google Gemini API key                                   |
-| `ANTHROPIC_KEY`  | Anthropic API key                                       |
-| `OPENAI_KEY`     | OpenAI API key                                          |
-| `OPENROUTER_KEY` | OpenRouter API key                                      |
-| `LOCAL_API_KEY`  | Local server API key (optional)                         |
-| `LOCAL_BASE_URL` | Local server URL (default: `http://localhost:11434/v1`) |
-| `MCP_URL`        | MCP server URL (default: `http://localhost:3350/mcp`)   |
+| Variable                | Description                                             |
+| ----------------------- | ------------------------------------------------------- |
+| `GEMINI_KEY`            | Google Gemini API key                                   |
+| `ANTHROPIC_KEY`         | Anthropic API key                                       |
+| `OPENAI_KEY`            | OpenAI API key                                          |
+| `OPENROUTER_KEY`        | OpenRouter API key                                      |
+| `VERCEL_AI_GATEWAY_KEY` | Vercel AI Gateway API key                               |
+| `LOCAL_API_KEY`         | Local server API key (optional)                         |
+| `LOCAL_BASE_URL`        | Local server URL (default: `http://localhost:11434/v1`) |
+| `MCP_URL`               | MCP server URL (default: `http://localhost:3350/mcp`)   |
 
 The subscription CLIs take no key. `CLAUDE_CODE_BIN` and `CODEX_BIN` override
 which executable is spawned (see

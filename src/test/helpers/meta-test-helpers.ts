@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import fs from "node:fs";
 import path from "node:path";
@@ -370,6 +370,28 @@ export function findSourceFiles(
 
     return !excludeTests || !isTestFile(relPath);
   });
+}
+
+/**
+ * Visit every source file under some trees, except one
+ * @param trees - Project-relative directories to scan
+ * @param skip - Project-relative path to leave out (the calling test)
+ * @param visit - Called with each file's absolute path, project-relative path and lines
+ */
+export function forEachSourceFile(
+  trees: string[],
+  skip: string,
+  visit: (file: string, rel: string, lines: string[]) => void,
+): void {
+  for (const tree of trees) {
+    for (const file of findSourceFiles(path.join(projectRoot, tree))) {
+      const rel = path.relative(projectRoot, file);
+
+      if (rel !== skip) {
+        visit(file, rel, fs.readFileSync(file, "utf8").split("\n"));
+      }
+    }
+  }
 }
 
 /**

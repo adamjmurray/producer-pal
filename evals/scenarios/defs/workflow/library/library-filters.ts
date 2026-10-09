@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Scenarios: does `ppal-library`'s schema get the right filter PICKED?
@@ -161,13 +161,13 @@ export const libraryTypeOneshot: EvalScenario = {
 
 /**
  * `action` is a 161 B enum whose values are otherwise unreachable in the suite.
- * `listTags` is the one small models keep, so it covers both modes.
+ * `list-tags` is the one small models keep, so it covers both modes.
  */
 export const libraryTagDiscovery: EvalScenario = {
   ...LIBRARY_SCENARIO,
   id: "library-tag-discovery",
   tags: ["workflow"],
-  description: "Ask what tags exist and get listTags rather than a search",
+  description: "Ask what tags exist and get list-tags rather than a search",
 
   messages: [
     MSG_CONNECT,
@@ -179,7 +179,7 @@ export const libraryTagDiscovery: EvalScenario = {
     { type: "tool_called", tool: TOOL_LIBRARY, turn: ASK_TURN },
     assertLibraryArgs(
       "enumerated tags instead of running a search",
-      (args) => args.action === "listTags",
+      (args) => args.action === "list-tags",
     ),
 
     { type: "token_usage", maxTokens: 1_500 },
@@ -197,7 +197,7 @@ export const libraryDiscoveryActions: EvalScenario = {
   tags: ["workflow"],
   description:
     "Reach the browse and duplicate-finding actions, not just search",
-  // listCategories and findDuplicates are trimmed from the small-model enum.
+  // list-categories and find-duplicates are trimmed from the small-model enum.
   requires: { largeModel: true },
 
   messages: [
@@ -210,7 +210,7 @@ export const libraryDiscoveryActions: EvalScenario = {
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
     assertLibraryArgs(
       "browsed the category taxonomy",
-      (args) => args.action === "listCategories",
+      (args) => args.action === "list-categories",
     ),
     {
       type: "custom",
@@ -220,9 +220,9 @@ export const libraryDiscoveryActions: EvalScenario = {
           (call) => call.name === TOOL_LIBRARY,
         );
 
-        if (!calls.some((call) => call.args.action === "findDuplicates")) {
+        if (!calls.some((call) => call.args.action === "find-duplicates")) {
           throw new Error(
-            `${calls.length} call(s), none using findDuplicates: ${calls
+            `${calls.length} call(s), none using find-duplicates: ${calls
               .map((call) => JSON.stringify(call.args))
               .join(" | ")
               .slice(0, 240)}`,

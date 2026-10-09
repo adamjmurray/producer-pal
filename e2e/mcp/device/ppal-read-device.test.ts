@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-read-device tool
@@ -11,7 +11,10 @@
  * Run with: npm run e2e:mcp
  */
 import { describe, expect, it } from "vitest";
+import { readTrackMixerId } from "./helpers/track-mixer-id-test-helpers.ts";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseAliasedToolResult,
   parseBatchResult,
   parseToolResult,
@@ -220,8 +223,13 @@ describe("ppal-read-device", () => {
     });
     const macroRack = parseToolResult<ReadDeviceResult>(macroResult);
 
+    // With the remote script running it names the mapped macros instead; that
+    // is covered in ppal-rack-macros-remote-script.
     expect(macroRack.macros).toBeDefined();
-    expect(macroRack.macros!.hasMappings).toBe(true);
+    expect(
+      macroRack.macros!.hasMappings === true ||
+        (macroRack.macros!.mapped ?? []).length === 1,
+    ).toBe(true);
 
     // Test deactivated: t7/d0 entire chain is deactivated
     const deactivatedResult = await ctx.client!.callTool({
@@ -297,6 +305,76 @@ describe("ppal-read-device over a list of targets", () => {
     expect(Array.isArray(device)).toBe(false);
     expect(device.path).toBe("t1/d0");
   });
+
+  it("reads a chain id back, the way its path reads", async () => {
+    const rack = parseToolResult<ReadDeviceResult>(
+      await readDevices({ path: "t1/d0", include: ["chains"] }),
+    );
+    const chain = rack.chains![0]!;
+    const byId = parseToolResult<ReadDeviceResult>(
+      await readDevices({ id: chain.id }),
+    );
+
+    expect(byId.id).toBe(chain.id);
+    expect(byId.type).toBe(chain.type);
+    expect(byId.path).toBe("t1/d0/c0");
+  });
+
+  it("refuses a track id", async () => {
+    const track = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: "t0" },
+      }),
+    );
+    const result = await readDevices({ id: track.id });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("cannot read a track");
+  });
+
+  it("refuses a track mixer id, which is not a device", async () => {
+    const mixerId = await readTrackMixerId(ctx.client!, 0);
+    const result = await readDevices({ id: mixerId });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("cannot read a mixer");
+  });
+
+  it("returns a Drum Rack's pads with their layers for chains alone", async () => {
+    const rack = parseToolResult<ReadDeviceResult>(
+      await readDevices({ path: "t0/d0", include: ["chains"], maxDepth: 1 }),
+    );
+    const kick = rack.drumPads!.find((pad) => pad.pitch === "C1");
+
+    expect(rack.drumPads!.length).toBeGreaterThanOrEqual(4);
+    expect(kick!.chains!.length).toBeGreaterThan(0);
+    expect(kick!.chains![0]!.devices!.length).toBeGreaterThan(0);
+  });
+
+  it("returns each pad's sample when sample is included", async () => {
+    const rack = parseToolResult<ReadDeviceResult>(
+      await readDevices({
+        path: "t0/d0",
+        include: ["chains", "sample"],
+        maxDepth: 1,
+      }),
+    );
+
+    for (const pad of rack.drumPads!) {
+      expect(pad.chains![0]!.devices![0]!.sample).toStrictEqual(
+        expect.any(String),
+      );
+    }
+  });
+
+  it("turns params on when paramSearch is given", async () => {
+    const device = parseToolResult<ReadDeviceResult>(
+      await readDevices({ path: "t3/d1", paramSearch: "threshold" }),
+    );
+
+    expect(device.parameters!.length).toBeGreaterThan(0);
+  });
 });
 
 interface ReadDeviceResult {
@@ -306,7 +384,12 @@ interface ReadDeviceResult {
   name?: string;
   collapsed?: boolean;
   deactivated?: boolean;
-  macros?: { count: number; hasMappings: boolean };
+  macros?: {
+    count: number;
+    hasMappings?: boolean;
+    mapped?: number[];
+    hiddenMapped?: number[];
+  };
   parameters?: Array<{
     id?: string; // absent for specialized pseudo-params (name + value only)
     name: string;
@@ -318,9 +401,14 @@ interface ReadDeviceResult {
     id: string;
     name: string;
     type: string;
+    path?: string;
+    devices?: ReadDeviceResult[];
   }>;
+  sample?: string;
   drumPads?: Array<{
     id: string;
     name: string;
+    pitch?: string;
+    chains?: NonNullable<ReadDeviceResult["chains"]>;
   }>;
 }

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { useCallback, useMemo, useState } from "preact/hooks";
 import {
@@ -34,6 +34,7 @@ export interface ProviderConnections {
  * @param openai - OpenAI settings
  * @param mistral - Mistral settings
  * @param openrouter - OpenRouter settings
+ * @param vercel - Vercel AI Gateway settings
  * @param lmstudio - LM Studio settings
  * @param ollama - Ollama settings
  * @param custom - Custom provider settings
@@ -45,6 +46,7 @@ export function useProviderConnections(
   openai: ProviderSettings,
   mistral: ProviderSettings,
   openrouter: ProviderSettings,
+  vercel: ProviderSettings,
   lmstudio: ProviderSettings,
   ollama: ProviderSettings,
   custom: ProviderSettings,
@@ -57,11 +59,22 @@ export function useProviderConnections(
         openai,
         mistral,
         openrouter,
+        vercel,
         lmstudio,
         ollama,
         custom,
       ),
-    [anthropic, gemini, openai, mistral, openrouter, lmstudio, ollama, custom],
+    [
+      anthropic,
+      gemini,
+      openai,
+      mistral,
+      openrouter,
+      vercel,
+      lmstudio,
+      ollama,
+      custom,
+    ],
   );
 
   // Read a specific provider's stored connection regardless of which provider is
@@ -108,6 +121,9 @@ export function useProviderSlices(): ProviderSlices {
   );
   const [openrouterSettings, setOpenrouterSettings] =
     useState<ProviderSettings>(() => loadProviderSettings("openrouter"));
+  const [vercelSettings, setVercelSettings] = useState<ProviderSettings>(() =>
+    loadProviderSettings("vercel"),
+  );
   const [lmstudioSettings, setLmstudioSettings] = useState<ProviderSettings>(
     () => loadProviderSettings("lmstudio"),
   );
@@ -126,6 +142,7 @@ export function useProviderSlices(): ProviderSlices {
       openai: setOpenaiSettings,
       mistral: setMistralSettings,
       openrouter: setOpenrouterSettings,
+      vercel: setVercelSettings,
       lmstudio: setLmstudioSettings,
       ollama: setOllamaSettings,
       custom: setCustomSettings,
@@ -139,6 +156,7 @@ export function useProviderSlices(): ProviderSlices {
     openaiSettings,
     mistralSettings,
     openrouterSettings,
+    vercelSettings,
     lmstudioSettings,
     ollamaSettings,
     customSettings,

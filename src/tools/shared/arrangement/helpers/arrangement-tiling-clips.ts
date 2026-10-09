@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Primitive helpers for arrangement clip operations.
@@ -9,12 +9,14 @@
  * and arrangement-splitting.ts.
  */
 
-import { assertDefined } from "#src/shared/error-message.ts";
+import { assertDefined, errorMessage } from "#src/shared/error-message.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { clipFromDuplicateResult } from "./arrangement-duplicate-result.ts";
+import { type LaneView } from "./arrangement-lane-view.ts";
 import { type ClipReporter } from "./clip-reporter.ts";
 
 /**
@@ -37,31 +39,48 @@ export interface TilingContext {
   deadline?: number | null;
   /** Where to say what happened to a clip; unset drops what tiling reports. */
   reportClip?: ClipReporter;
+  /** What is on the arrangement lanes, kept true by every write that has this. */
+  lanes?: LaneView;
+  /** Where to say a scratch clip or scene couldn't be removed; unset warns. */
+  reportScratch?: (message: string) => void;
 }
 
 export interface CreatedClip {
   id: string;
 }
 
-interface SessionClipResult {
+export interface SessionClipResult {
   clip: LiveAPI;
   slot: LiveAPI;
+  /** The scene made to hold the clip, when the last one wasn't empty. Take it
+   * out with {@link removeSessionClip}, or it stays in the Set. */
+  sceneId?: string;
+}
+
+/** An empty clip slot on a track, for a scratch clip. */
+export interface ScratchSessionSlot {
+  slot: LiveAPI;
+  trackIndex: number;
+  sceneIndex: number;
+  /** The scene made to hold the clip, when the last one wasn't empty. Take it
+   * out with {@link removeSessionClip}, or it stays in the Set. */
+  sceneId?: string;
 }
 
 /**
- * Creates an audio clip in session view with controlled length.
- * Uses session view because create_audio_clip in arrangement doesn't support length control.
+ * Finds the clip slot a scratch session clip goes in: the track's slot in the
+ * last scene when that scene is empty, otherwise one in a scene made for it.
+ * If it throws after making a scene, the scene is removed first.
  *
  * @param track - LiveAPI track instance
- * @param targetLength - Desired clip length in beats
- * @param audioFilePath - Path to audio WAV file (can be silence.wav or actual audio)
- * @returns The created clip and slot in session view
+ * @param report - Where to say a scene that couldn't be removed after a throw;
+ *   unset warns
+ * @returns The slot, and the scene made for it when the last one wasn't empty
  */
-export function createAudioClipInSession(
+export function openScratchSlot(
   track: LiveAPI,
-  targetLength: number,
-  audioFilePath: string,
-): SessionClipResult {
+  report?: (message: string) => void,
+): ScratchSessionSlot {
   const liveSet = LiveAPI.from(livePath.liveSet);
   let sceneIds = liveSet.getChildIds("scenes");
   const lastSceneId = assertDefined(sceneIds.at(-1), "last scene ID");
@@ -80,32 +99,110 @@ export function createAudioClipInSession(
     workingSceneId = Array.isArray(newSceneResult)
       ? newSceneResult.join(" ")
       : newSceneResult;
-    // Refresh scene IDs after creating new scene
-    sceneIds = liveSet.getChildIds("scenes");
   }
 
-  // Get track index to find corresponding clip slot
-  const trackIndex = track.trackIndex as number;
-  const sceneIndex = sceneIds.indexOf(workingSceneId);
+  try {
+    if (!isEmpty) {
+      // Refresh scene IDs after creating new scene
+      sceneIds = liveSet.getChildIds("scenes");
+    }
 
-  // Create the audio clip in a clip slot
-  const slot = LiveAPI.from(livePath.track(trackIndex).clipSlot(sceneIndex));
+    // Get track index to find corresponding clip slot
+    const trackIndex = track.trackIndex as number;
+    const sceneIndex = sceneIds.indexOf(workingSceneId);
 
-  // create_audio_clip requires a file path
-  slot.call("create_audio_clip", audioFilePath);
+    return {
+      slot: LiveAPI.from(livePath.track(trackIndex).clipSlot(sceneIndex)),
+      trackIndex,
+      sceneIndex,
+      ...(isEmpty ? {} : { sceneId: workingSceneId }),
+    };
+  } catch (error) {
+    // Nothing returns the scene to the caller, so it goes now.
+    if (!isEmpty) {
+      removeScratchScene(workingSceneId, reporter(report));
+    }
 
-  // Get the created clip by reconstructing the path
-  const clip = LiveAPI.from(
-    livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
-  );
+    throw error;
+  }
+}
 
-  // Enable warping and looping, then set length via loop_end
-  clip.set("warping", 1);
-  clip.set("looping", 1);
-  clip.set("loop_end", targetLength);
+/**
+ * Creates an audio clip in session view with controlled length.
+ * Uses session view because create_audio_clip in arrangement doesn't support length control.
+ * If it throws, what it made (the clip, the scene) is removed first.
+ *
+ * @param track - LiveAPI track instance
+ * @param targetLength - Desired clip length in beats
+ * @param audioFilePath - Path to audio WAV file (can be silence.wav or actual audio)
+ * @param report - Where to say what couldn't be removed after a throw, in the
+ *   caller's entry; unset warns
+ * @returns The created clip and slot in session view, and the scene made for
+ *   them when the last one wasn't empty
+ */
+export function createAudioClipInSession(
+  track: LiveAPI,
+  targetLength: number,
+  audioFilePath: string,
+  report?: (message: string) => void,
+): SessionClipResult {
+  const opened = openScratchSlot(track, report);
+  const { slot, trackIndex, sceneIndex, sceneId } = opened;
 
-  // Return both clip and slot for cleanup
-  return { clip, slot };
+  try {
+    // create_audio_clip requires a file path
+    slot.call("create_audio_clip", audioFilePath);
+
+    // Get the created clip by reconstructing the path
+    const clip = LiveAPI.from(
+      livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
+    );
+
+    // Enable warping and looping, then set length via loop_end
+    clip.set("warping", 1);
+    clip.set("looping", 1);
+    clip.set("loop_end", targetLength);
+
+    // Return both clip and slot for cleanup
+    return { clip, slot, ...(sceneId != null && { sceneId }) };
+  } catch (error) {
+    // Nothing returns the session to the caller, so it goes now. A clip is
+    // deleted only if one was made: Live refusing the create made none. If
+    // that can't be read, try the delete: removeSessionClip never throws.
+    if (clipMayExist(slot)) {
+      removeSessionClip(opened, report);
+    } else if (sceneId != null) {
+      removeScratchScene(sceneId, reporter(report));
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * Removes what {@link createAudioClipInSession} made: the clip, and the scene
+ * made for it. Never throws, so it can sit in a `finally` without hiding the
+ * failure it follows. What stays behind is said through `report`.
+ * @param session - What createAudioClipInSession returned
+ * @param report - Where to say what couldn't be removed, in the caller's
+ *   entry; unset warns, for a caller with no entry to put it on
+ */
+export function removeSessionClip(
+  session: Pick<SessionClipResult, "slot" | "sceneId">,
+  report?: (message: string) => void,
+): void {
+  const say = reporter(report);
+
+  try {
+    session.slot.call("delete_clip");
+  } catch (error) {
+    say(`couldn't remove the scratch session clip (${errorMessage(error)})`);
+  }
+
+  // Tried even when the clip stayed: removing the scene takes its clips too.
+  if (session.sceneId != null) {
+    removeScratchScene(session.sceneId, say);
+  }
 }
 
 /**
@@ -125,6 +222,9 @@ export function createAndDeleteTempClip(
   isMidiClip: boolean,
   context: TilingContext,
 ): void {
+  // The temp clip is gone by the time anything looks, so say what it trimmed.
+  context.lanes?.wroteOnTrack(track, position, position + length);
+
   if (isMidiClip) {
     const tempResult = track.call("create_midi_clip", position, length) as [
       string,
@@ -137,21 +237,79 @@ export function createAndDeleteTempClip(
 
     track.call("delete_clip", toLiveApiId(tempClip.id));
   } else {
-    const { clip: sessionClip, slot } = createAudioClipInSession(
+    const session = createAudioClipInSession(
       track,
       length,
       context.silenceWavPath,
+      context.reportScratch,
     );
 
-    const tempClip = clipFromDuplicateResult(
-      track.call(
-        "duplicate_clip_to_arrangement",
-        toLiveApiId(sessionClip.id),
-        position,
-      ),
-    );
+    let tempClip: LiveAPI;
 
-    slot.call("delete_clip");
+    // The scratch clip goes whether or not the copy landed: a throw would
+    // otherwise leave it, and its scene, in the Set with nothing to say so.
+    try {
+      tempClip = clipFromDuplicateResult(
+        track.call(
+          "duplicate_clip_to_arrangement",
+          toLiveApiId(session.clip.id),
+          position,
+        ),
+      );
+    } finally {
+      removeSessionClip(session, context.reportScratch);
+    }
+
     track.call("delete_clip", toLiveApiId(tempClip.id));
+  }
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * @param report - Where the caller says things, if it has somewhere
+ * @returns `report`, or a console warning for a caller with no entry
+ */
+function reporter(
+  report?: (message: string) => void,
+): (message: string) => void {
+  return report ?? ((message: string) => console.warn(message));
+}
+
+/**
+ * Deletes a scene made for a scratch clip. Never throws.
+ * @param sceneId - The scene's ID
+ * @param say - Where to say the scene couldn't be removed
+ */
+function removeScratchScene(
+  sceneId: string,
+  say: (message: string) => void,
+): void {
+  try {
+    const liveSet = LiveAPI.from(livePath.liveSet);
+    // By id, since the scene's index moves if the call made or removed others.
+    const sceneIndex = liveSet.getChildIds("scenes").indexOf(sceneId);
+
+    if (sceneIndex < 0) {
+      throw new Error("it is no longer in the Set");
+    }
+
+    liveSet.call("delete_scene", sceneIndex);
+  } catch (error) {
+    say(
+      `left an empty scene behind: couldn't remove the scratch scene (${errorMessage(error)})`,
+    );
+  }
+}
+
+/**
+ * @param slot - A clip slot
+ * @returns Whether it holds a clip; true when that can't be read
+ */
+function clipMayExist(slot: LiveAPI): boolean {
+  try {
+    return slot.child("clip").exists();
+  } catch {
+    return true;
   }
 }

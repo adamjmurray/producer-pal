@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type Provider } from "#webui/types/settings";
 
@@ -37,6 +37,7 @@ export function ProviderSelector({
         <option value="gemini">Google</option>
         <option value="mistral">Mistral</option>
         <option value="openrouter">OpenRouter</option>
+        <option value="vercel">Vercel AI Gateway</option>
         {/* Browsers without <hr> in <select> support just skip it */}
         <hr />
         <option value="ollama">Ollama (local)</option>

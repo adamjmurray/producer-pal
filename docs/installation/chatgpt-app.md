@@ -38,7 +38,7 @@ similar, but it's no longer officially supported — the new app is recommended.
 
 ## Installation Steps
 
-<!--@include: ../_partials/install-device.md-->
+<!--@include: ../_partials/setup-by-ai.md-->
 
 ### 2. Add Producer Pal to ChatGPT
 

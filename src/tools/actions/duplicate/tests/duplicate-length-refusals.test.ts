@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A bad arrangementLength, or a per-copy list that doesn't match the copies,
 // refuses the whole call before any copy or take lane is made. Only clip and
@@ -108,42 +108,29 @@ describe("duplicate - arrangementLength refused before any write", () => {
     }
   });
 
-  it("refuses a bad entry for a scene's later copy before the first", async () => {
-    setupArrangementSceneMocks(1);
-    registerClipSlot(0, 0, true, createStandardMidiClipMock());
-
-    const track0 = registerTrackWithArrangementDup(0);
-
-    registerArrangementClip(0, 0, 16);
-
-    await expect(
-      duplicate({
-        type: "scene",
-        id: "scene1",
-        arrangementStart: "5|1,9|1",
-        arrangementLength: "1bar,bogus",
-      }),
-    ).rejects.toThrow(BAD_FORMAT);
-
-    expectNoCopies(track0);
-  });
-
-  it("refuses a scene's bad entry when count makes the copies", async () => {
-    setupArrangementSceneMocks(1);
-    registerClipSlot(0, 0, true, createStandardMidiClipMock());
-
-    const track0 = registerTrackWithArrangementDup(0);
-
-    registerArrangementClip(0, 0, 16);
-
-    await expect(
-      duplicate({
-        type: "scene",
-        id: "scene1",
+  it.each([
+    {
+      desc: "refuses a bad entry for a scene's later copy before the first",
+      params: { arrangementStart: "5|1,9|1", arrangementLength: "1bar,bogus" },
+    },
+    {
+      desc: "refuses a scene's bad entry when count makes the copies",
+      params: {
         arrangementStart: "5|1",
         count: 2,
         arrangementLength: "1bar,bogus",
-      }),
+      },
+    },
+  ])("$desc", async ({ params }) => {
+    setupArrangementSceneMocks(1);
+    registerClipSlot(0, 0, true, createStandardMidiClipMock());
+
+    const track0 = registerTrackWithArrangementDup(0);
+
+    registerArrangementClip(0, 0, 16);
+
+    await expect(
+      duplicate({ type: "scene", id: "scene1", ...params }),
     ).rejects.toThrow(BAD_FORMAT);
 
     expectNoCopies(track0);
@@ -270,18 +257,21 @@ describe("duplicate - arrangementLength where no copy reads it", () => {
     clearCapturedWarnings();
   });
 
-  it("warns once for track copies, whatever the list length", async () => {
+  it("refuses a track copy, which never reads it, before copying", async () => {
     const { liveSet } = registerTrackCopySet(["track1"]);
 
-    await duplicate({
-      type: "track",
-      id: "track1",
-      count: 2,
-      arrangementLength: "1bar,2bar,3bar",
-    });
+    await expect(
+      duplicate({
+        type: "track",
+        id: "track1",
+        count: 2,
+        arrangementLength: "1bar,2bar,3bar",
+      }),
+    ).rejects.toThrow(
+      'arrangementLength is only for type "clip" or "scene"; this call has type "track".',
+    );
 
-    expect(liveSet.call).toHaveBeenCalledTimes(2);
-    expect(lengthWarnings()).toStrictEqual([`${IGNORED} (type "track")`]);
+    expect(liveSet.call).not.toHaveBeenCalled();
   });
 
   it("warns for session scene copies, whatever the list length", async () => {
@@ -298,17 +288,17 @@ describe("duplicate - arrangementLength where no copy reads it", () => {
     expect(lengthWarnings()).toStrictEqual([`${IGNORED} (type "scene")`]);
   });
 
-  it("warns for a track copied onto a take lane", async () => {
+  it("refuses a track copied onto a take lane, which never reads it", async () => {
     registerMainLaneSource([0]);
     registerTakeLaneTrack({ trackIndex: 1 });
 
-    await duplicateToLanes({
-      id: "src_track",
-      toPath: "t1/l+,t1/l+",
-      arrangementLength: "1bar,2bar,3bar",
-    });
-
-    expect(lengthWarnings()).toStrictEqual([`${IGNORED} (type "track")`]);
+    await expect(
+      duplicateToLanes({
+        id: "src_track",
+        toPath: "t1/l+,t1/l+",
+        arrangementLength: "1bar,2bar,3bar",
+      }),
+    ).rejects.toThrow('arrangementLength is only for type "clip" or "scene"');
   });
 
   it("doesn't refuse a clip copy to a slot over the list length", async () => {

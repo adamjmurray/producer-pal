@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The deadline every ~/.producer-pal request runs under. The REST handlers are
 // synchronous and always answer, so a hang needs the Node-for-Max loop blocked —

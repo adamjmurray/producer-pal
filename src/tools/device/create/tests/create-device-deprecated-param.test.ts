@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // `device` replaced `deviceName`. The old name still works so a caller
 // mid-migration keeps creating devices, and the warning tells it the new one.
@@ -54,18 +54,21 @@ describe("createDevice — deprecated deviceName", () => {
     ).toStrictEqual({ id: "new-device", path: "t0/d0" });
   });
 
-  // Both spellings name the same thing, so a caller sending both gets the one
-  // it is being steered towards rather than the one it is leaving behind.
-  it("loses to device when both are sent", async () => {
+  // Both spellings name the same thing, so the call is refused rather than
+  // quietly taking one of them.
+  it("refuses deviceName beside device, creating nothing", async () => {
     const track = registerTrack();
 
-    await createDevice({
-      device: "Reverb",
-      deviceName: "Delay",
-      path: "t0/d+",
-    });
-
-    expect(track.call).toHaveBeenCalledWith("insert_device", "Reverb");
+    await expect(
+      createDevice({
+        device: "Reverb",
+        deviceName: "Delay",
+        path: "t0/d+",
+      }),
+    ).rejects.toThrow(
+      "device names the device on its own - don't send deviceName with it (deviceName is deprecated)",
+    );
+    expect(track.call).not.toHaveBeenCalled();
   });
 
   it("tells the caller the param is now device", async () => {

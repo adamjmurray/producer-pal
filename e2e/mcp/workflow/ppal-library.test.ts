@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-library tool.
@@ -25,12 +25,13 @@ import {
   IN_A_PLACE,
 } from "#src/mcp-server/live-library/query/candidate-query.ts";
 import {
+  getToolErrorMessage,
   isToolError,
   parseToolResult,
-  readLiveVersion,
   setConfig,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
+import { readLiveVersion } from "./helpers/server-capability-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -49,9 +50,11 @@ interface LibraryItem {
 
 interface LibrarySearchResult {
   items: LibraryItem[];
-  /** Present when DB was consulted; omitted when bypassed (source=sampleFolder). */
+  /** Present when DB was consulted; omitted when bypassed (source=sample-folder). */
   dbAvailable?: boolean;
   detail?: string;
+  /** Set when the default left matching plug-in preset folder files out. */
+  note?: string;
 }
 
 interface LibraryListTagsResult {
@@ -91,7 +94,7 @@ async function listTags(
   args: LibraryArgs = {},
 ): Promise<LibraryListTagsResult> {
   return parseToolResult<LibraryListTagsResult>(
-    await callLibrary({ action: "listTags", ...args }),
+    await callLibrary({ action: "list-tags", ...args }),
   );
 }
 
@@ -99,7 +102,7 @@ async function findSimilar(
   args: LibraryArgs = {},
 ): Promise<LibraryFindSimilarResult> {
   return parseToolResult<LibraryFindSimilarResult>(
-    await callLibrary({ action: "findSimilar", ...args }),
+    await callLibrary({ action: "find-similar", ...args }),
   );
 }
 
@@ -107,7 +110,7 @@ async function findDuplicates(
   args: LibraryArgs = {},
 ): Promise<LibraryFindDuplicatesResult> {
   return parseToolResult<LibraryFindDuplicatesResult>(
-    await callLibrary({ action: "findDuplicates", ...args }),
+    await callLibrary({ action: "find-duplicates", ...args }),
   );
 }
 
@@ -174,15 +177,15 @@ async function readTagsDirectly(
 
 describe("ppal-library", () => {
   describe("folder source (deterministic)", () => {
-    it("returns folder-only items when source=sampleFolder", async () => {
+    it("returns folder-only items when source=sample-folder", async () => {
       await setConfig({ sampleFolder: SAMPLE_FOLDER });
 
-      const result = await search({ source: "sampleFolder" });
+      const result = await search({ source: "sample-folder" });
 
       expect(result.items).toHaveLength(2);
 
       for (const item of result.items) {
-        expect(item.source).toBe("sampleFolder");
+        expect(item.source).toBe("sample-folder");
         expect(item.kind).toBe("audio");
         expect(item.useCount).toBe(0);
         expect(item.tags).toStrictEqual([]);
@@ -197,7 +200,7 @@ describe("ppal-library", () => {
     it("filters folder items by query substring", async () => {
       await setConfig({ sampleFolder: SAMPLE_FOLDER });
 
-      const result = await search({ source: "sampleFolder", query: "kick" });
+      const result = await search({ source: "sample-folder", query: "kick" });
 
       expect(result.items).toHaveLength(1);
       expect(result.items[0]?.name).toBe("kick.aiff");
@@ -206,7 +209,7 @@ describe("ppal-library", () => {
     it("returns empty folder results when no sampleFolder is configured", async () => {
       await setConfig({ sampleFolder: "" });
 
-      const result = await search({ source: "sampleFolder" });
+      const result = await search({ source: "sample-folder" });
 
       expect(result.items).toStrictEqual([]);
     });
@@ -217,10 +220,10 @@ describe("ppal-library", () => {
       const result = await search({ query: "kick" });
 
       // Folder items are biased to the front of merged results regardless
-      // of the DB's use_count ranking. Even with the default limit of 50,
+      // of the DB's use-count ranking. Even with the default limit of 50,
       // the user's configured sample folder should always surface first.
       expect(result.items.length).toBeGreaterThanOrEqual(1);
-      expect(result.items[0]?.source).toBe("sampleFolder");
+      expect(result.items[0]?.source).toBe("sample-folder");
       expect(result.items[0]?.name).toBe("kick.aiff");
     });
 
@@ -229,7 +232,9 @@ describe("ppal-library", () => {
 
       const result = await search({ kind: "midi" });
 
-      expect(result.items.every((i) => i.source !== "sampleFolder")).toBe(true);
+      expect(result.items.every((i) => i.source !== "sample-folder")).toBe(
+        true,
+      );
     });
 
     it("suppresses folder scan when tags are present", async () => {
@@ -237,7 +242,9 @@ describe("ppal-library", () => {
 
       const result = await search({ tags: "Kick" });
 
-      expect(result.items.every((i) => i.source !== "sampleFolder")).toBe(true);
+      expect(result.items.every((i) => i.source !== "sample-folder")).toBe(
+        true,
+      );
     });
 
     it("suppresses folder scan when deviceKind is present", async () => {
@@ -248,7 +255,9 @@ describe("ppal-library", () => {
         deviceKind: "instrument",
       });
 
-      expect(result.items.every((i) => i.source !== "sampleFolder")).toBe(true);
+      expect(result.items.every((i) => i.source !== "sample-folder")).toBe(
+        true,
+      );
     });
 
     it("suppresses folder scan when source is non-sampleFolder", async () => {
@@ -256,7 +265,9 @@ describe("ppal-library", () => {
 
       const result = await search({ source: "user" });
 
-      expect(result.items.every((i) => i.source !== "sampleFolder")).toBe(true);
+      expect(result.items.every((i) => i.source !== "sample-folder")).toBe(
+        true,
+      );
     });
   });
 
@@ -319,6 +330,34 @@ describe("ppal-library", () => {
       }
     });
 
+    it("source preset-folder only returns plug-in preset folder items", async () => {
+      const result = await search({ source: "preset-folder", limit: 20 });
+
+      for (const item of result.items) {
+        expect(item.source).toBe("preset-folder");
+      }
+    });
+
+    it("leaves plug-in preset folder items out unless asked, and says so", async () => {
+      const asked = await search({ source: "preset-folder", limit: 1 });
+      const result = await search({ limit: 1000 });
+
+      for (const item of result.items) {
+        expect(item.source).not.toBe("preset-folder");
+      }
+
+      expect(asked.note).toBeUndefined();
+
+      // Only machines with plug-in sample libraries have anything to report.
+      if (asked.items.length > 0) {
+        expect(result.note).toMatch(
+          /^\d+ matching files? in plug-in preset folders left out; source: preset-folder includes them$/,
+        );
+      } else {
+        expect(result.note).toBeUndefined();
+      }
+    });
+
     it("tags filter returns items containing the requested tag (case-insensitive)", async () => {
       const tagsResult = await listTags({ limit: 10 });
 
@@ -365,7 +404,7 @@ describe("ppal-library", () => {
       }
     });
 
-    it("default sort (use_count desc) is deterministic across repeated calls", async () => {
+    it("default sort (use-count desc) is deterministic across repeated calls", async () => {
       const a = await search({ limit: 20 });
       const b = await search({ limit: 20 });
 
@@ -443,6 +482,17 @@ describe("ppal-library", () => {
       const result = await callLibrary({ action: "bogus" });
 
       expect(isToolError(result)).toBe(true);
+    });
+
+    // With no action this used to run a plain search and return unrelated
+    // samples, with no distance and nothing said.
+    it("refuses similarTo without find-similar instead of searching", async () => {
+      const result = await callLibrary({ similarTo: "/no/such/seed/file.wav" });
+
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toBe(
+        'Error: similarTo is only for action "find-similar"; this call has action "search". Change the action or drop similarTo.',
+      );
     });
   });
 

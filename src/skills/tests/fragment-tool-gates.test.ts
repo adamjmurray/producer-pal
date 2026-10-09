@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
@@ -63,10 +63,10 @@ const KNOWN_BLEED: Record<string, readonly string[]> = {
   // Pad operations named beside the chain trim they preserve: clearing a pad
   // before replacing its sample, and copying a whole pad rather than the device
   // inside it.
-  "devices-write": ["ppal-delete", "ppal-duplicate"],
+  "devices-write": ["ppal-delete", "ppal-duplicate", "ppal-read-device"],
   // Take-lane clips refuse a delete the same way they refuse an update, so the
   // warning belongs beside the update-clip one it shares a sentence with.
-  "arrangement-write": ["ppal-delete"],
+  "arrangement-write": ["ppal-delete", "ppal-read-track"],
 };
 
 // Tools no fragment gates on, and why. Most are here because their schema is
@@ -220,6 +220,24 @@ describe("fragment prose", () => {
       for (const tool of mentionedTools(body)) {
         expect(ALL_TOOLS, `${name} names unknown ${tool}`).toContain(tool);
       }
+    }
+  });
+
+  it("writes every tool with its ppal- prefix", () => {
+    // The model only knows the published name. Single-word tools (`delete`,
+    // `select`, ...) are skipped: they are also ordinary words and keywords.
+    const bare = ALL_TOOLS.map((tool) => tool.replace(/^ppal-/, "")).filter(
+      (name) => name.includes("-"),
+    );
+    const pattern = new RegExp(`(?<![\\w-])(${bare.join("|")})(?![\\w-])`, "g");
+
+    for (const [name, body] of fragments) {
+      const found = [...body.matchAll(pattern)].map((m) => m[1]);
+
+      expect(
+        found,
+        `${name} names tools without the ppal- prefix`,
+      ).toStrictEqual([]);
     }
   });
 

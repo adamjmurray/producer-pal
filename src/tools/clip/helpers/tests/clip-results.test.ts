@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
@@ -55,6 +55,21 @@ describe("clip-results", () => {
         id: "clip100",
         noteCount: 10,
         transformed: 5,
+      });
+    });
+
+    it("includes deleted beside transformed", () => {
+      const result = buildClipResultObject("clip100", {
+        noteCount: 10,
+        transformed: 5,
+        deletedNotes: 2,
+      });
+
+      expect(result).toStrictEqual({
+        id: "clip100",
+        noteCount: 10,
+        transformed: 5,
+        deletedNotes: 2,
       });
     });
 

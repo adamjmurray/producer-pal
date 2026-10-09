@@ -26,7 +26,9 @@ no other app to install.
 - **New conversation** - Start a fresh conversation
 - **Bookmark star** - Pin the active conversation
 - **Logo, title & version** - Shows an "update" link when a newer version is
-  available
+  available, and "script update" or "restart Live" when the
+  [remote script](/guide/remote-script#updating) needs updating or Live needs a
+  restart to load the installed version
 - **Connection status** - Shows "Ready" when connected to Ableton
 
 ### Right
@@ -98,6 +100,10 @@ The toolbar at the top of the history panel has buttons to:
   is newer
 
 A notification banner confirms the result of each operation.
+
+An imported conversation keeps the system prompt it was exported with. If that
+prompt differs from yours, the conversation shows a warning with the full
+prompt, since the model will follow it. Only import files you trust.
 
 ## Conversations
 
@@ -326,7 +332,8 @@ The Connection tab is where you choose and configure your AI provider and model:
 <img src="/img/producer-pal-chat-settings-connection.png" alt="Connection settings" width="500"/>
 
 - **Provider** - Choose from Google, Mistral, OpenAI, Anthropic, Ollama (local),
-  Bionic / LM Studio (local), OpenRouter, or Custom (OpenAI-compatible)
+  Bionic / LM Studio (local), OpenRouter, Vercel AI Gateway, or Custom
+  (OpenAI-compatible)
 - **API Key** - Your API key (for cloud providers)
 - **Test Connection** - Verify your provider settings work before saving
 - **Model** - Select a model or enter a custom model name
@@ -479,7 +486,7 @@ library search and the AI stops being told how to search a library it can't
 reach. The saving is therefore bigger than the tool's own schema, and you don't
 have to trim skills by hand to match your toolset.
 
-The header's count is out of all 23 tools, so it reads **21/23** out of the box:
+The header's count is out of all 24 tools, so it reads **22/24** out of the box:
 the two experimental ones (**Live API** and **Subagent**, both under
 **Advanced**) are off until you switch them on. The denominator stays put as
 they move, so the fraction always means how much of the full set you're running.
@@ -541,7 +548,8 @@ The Remote Script tab installs the optional Producer Pal
 [remote script](/guide/remote-script), which lets the AI load plug-ins, Max for
 Live devices, and presets. It shows whether the script is installed and whether
 Live is running it, and offers an update when your Producer Pal build has a
-newer one.
+newer one. The header also flags this, so you can spot it without opening
+Settings.
 
 <img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="Remote Script tab" width="500"/>
 

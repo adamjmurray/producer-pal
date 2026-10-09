@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -24,6 +24,7 @@ import {
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   deleteMockObject,
+  lookupMockObject,
   mockNonExistentObjects,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -91,6 +92,29 @@ function registerCopiesIntoOneNewSlot(): void {
   });
 }
 
+/**
+ * Duplicate clip1 with an arrangementStart and a session destination, on a
+ * source slot where Live makes no copy, and expect the call to fail for it.
+ * @param destination - The session destination, as toPath or toSlot
+ */
+async function expectNoCopyMade(
+  destination: { toPath: string } | { toSlot: string },
+): Promise<void> {
+  registerMockObject("clipslot-0-0", {
+    path: livePath.track(0).clipSlot(0),
+    methods: { duplicate_clip_to: () => null },
+  });
+
+  await expect(
+    duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "3|1",
+      ...destination,
+    }),
+  ).rejects.toThrow("Live made no copy there");
+}
+
 describe("duplicate - clip duplication", () => {
   it("should throw an error when clip has no position params", async () => {
     registerSourceClip();
@@ -120,6 +144,31 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual({
         id: "live_set/tracks/0/clip_slots/1/clip",
         path: "t0/s1",
+      });
+    });
+
+    it("says which palette color Live snapped a slot copy's color to", async () => {
+      registerSessionClipDuplication({ destClipProperties: {} });
+
+      // Reads that ignore what was written, as Live's palette snap does.
+      lookupMockObject(
+        "live_set/tracks/0/clip_slots/1/clip",
+      )?.get.mockImplementation((prop: string) => [
+        prop === "color" ? 16725558 : 0,
+      ]);
+
+      expect(
+        await duplicate({
+          type: "clip",
+          id: "clip1",
+          toPath: "t0/s1",
+          color: "#FF0000",
+        }),
+      ).toStrictEqual({
+        id: "live_set/tracks/0/clip_slots/1/clip",
+        path: "t0/s1",
+        color: "#FF3636",
+        detail: "color #FF0000 is not in Live's palette; landed as #FF3636",
       });
     });
 
@@ -198,7 +247,7 @@ describe("duplicate - clip duplication", () => {
       });
     });
 
-    it("refuses when toPath and toSlot both name a destination", async () => {
+    it("refuses toPath sent with the deprecated toSlot", async () => {
       registerSourceClip();
 
       await expect(
@@ -208,12 +257,14 @@ describe("duplicate - clip duplication", () => {
           toPath: "t0/s1",
           toSlot: "0/2",
         }),
-      ).rejects.toThrow(/toPath and toSlot both name a destination/);
+      ).rejects.toThrow(
+        "toPath names the destination on its own - don't send toSlot with it",
+      );
     });
 
-    // The first copy made the scenes and the second found them there, so the
-    // replaced copy's entry is the only one left to say they were made.
-    it("keeps the scenes a replaced copy created", async () => {
+    // The first copy is never written, so the second is the one that makes the
+    // scenes, and says so.
+    it("says the surviving copy created the scenes", async () => {
       registerCopiesIntoOneNewSlot();
 
       const result = await duplicate({
@@ -225,14 +276,12 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual([
         {
           path: "t1/s3",
-          created: "s2-s3",
-          deleted: true,
-          detail: "a later copy in this call landed on it",
+          detail: "overwritten later in this call by t1/s3",
         },
         {
-          id: "copy_2",
+          id: "copy_1",
           path: "t1/s3",
-          detail: "overwrote the existing clip at t1/s3",
+          created: "s2-s3",
         },
       ]);
     });
@@ -410,17 +459,7 @@ describe("duplicate - clip duplication", () => {
       registerMockObject("clipslot-2-0", {
         path: livePath.track(2).clipSlot(0),
       });
-
-      // The slot holds no clip in this mock, so the one copy it asked for
-      // couldn't be made — the warning about the dropped param still lands.
-      await expect(
-        duplicate({
-          type: "clip",
-          id: "clip1",
-          arrangementStart: "3|1",
-          toPath: "t2/s0",
-        }),
-      ).rejects.toThrow("Live made no copy there");
+      await expectNoCopyMade({ toPath: "t2/s0" });
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("arrangementStart ignored"),
       );
@@ -502,18 +541,10 @@ describe("duplicate - clip duplication", () => {
 
     it("copies to the toSlot and drops the arrangement position, with a warning", async () => {
       registerSourceClip();
-
-      await expect(
-        duplicate({
-          type: "clip",
-          id: "clip1",
-          arrangementStart: "3|1",
-          toSlot: "2/0",
-        }),
-      ).rejects.toThrow("Live made no copy there");
+      await expectNoCopyMade({ toSlot: "2/0" });
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
-          "arrangementStart ignored — toSlot names a clip slot",
+          "arrangementStart ignored: toSlot names a clip slot",
         ),
       );
     });
@@ -681,9 +712,8 @@ describe("duplicate - clip duplication", () => {
         })),
       );
       expect(track0.call).not.toHaveBeenCalled();
-      expect(capturedWarnings()).toContain(
-        "Ran out of time after duplicating 0 of 3. " +
-          "Not duplicated: t0 3|1, t0 4|1, t0 5|1. Re-run for those positions.",
+      expect(capturedWarnings()).not.toContainEqual(
+        expect.stringContaining("Ran out of time"),
       );
     });
 
@@ -706,9 +736,8 @@ describe("duplicate - clip duplication", () => {
         { deadline: Date.now() - 1 },
       );
 
-      expect(capturedWarnings()).toContain(
-        "Ran out of time after duplicating 0 of 3. " +
-          "Not duplicated: t1 3|1, t2 3|1, t3 3|1. Re-run for those positions.",
+      expect(capturedWarnings()).not.toContainEqual(
+        expect.stringContaining("Ran out of time"),
       );
     });
   });

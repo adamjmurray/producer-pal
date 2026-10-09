@@ -1,13 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 
 // A model writing the word instead of leaving the param out: "null" or
-// "undefined" as a param's whole value. (A JSON null never gets this far —
-// unsetEmptyParams drops it before the schema coerces.)
+// "undefined" as a param's whole value. (A JSON null never gets this far — it
+// is dropped before the schema coerces, over MCP and REST alike.)
 const COERCED_NULLISH = new Set(["null", "undefined"]);
 
 /**
@@ -71,12 +71,13 @@ export function namedParam(
 /**
  * Reads a target from the canonical `id` param, falling back to a name the tool
  * still accepts (`clipId`, `ids`, ...). The alias only fills in for a caller
- * that did not send `id`. Both arriving with different values means one was
- * about to be dropped in silence, so say which.
+ * that did not send `id`. Both arriving names the target twice, so the call is
+ * refused, whatever the values.
  * @param id - The `id` param
  * @param alias - The alias param
- * @param aliasLabel - The alias's name, for the warnings
+ * @param aliasLabel - The alias's name, for the refusal
  * @returns The trimmed value, or undefined when neither names anything
+ * @throws Error when both name something
  */
 export function namedIdParam(
   id: string | null | undefined,
@@ -89,10 +90,11 @@ export function namedIdParam(
 /**
  * Reads a target from the canonical `path` param, falling back to `paths`. Same
  * deal as {@link namedIdParam}: `path` already takes a comma-separated list, so
- * the plural is a guess worth catching rather than dropping.
+ * the plural is a guess, and one beside `path` is refused.
  * @param path - The `path` param
  * @param paths - The `paths` alias param
  * @returns The trimmed value, or undefined when neither names anything
+ * @throws Error when both name something
  */
 export function namedPathParam(
   path: string | null | undefined,
@@ -102,66 +104,13 @@ export function namedPathParam(
 }
 
 /**
- * Parses a comma-separated string of IDs into an array of trimmed, non-empty strings
- * @param ids - Comma-separated string of IDs (e.g., "1, 2, 3" or "track1,track2")
- * @returns Array of trimmed ID strings
- */
-export function parseCommaSeparatedIds(ids?: string | null): string[] {
-  if (ids == null) {
-    return [];
-  }
-
-  return ids
-    .split(",")
-    .map((id) => id.trim())
-    .filter((id) => id.length > 0);
-}
-
-/**
- * Sets properties on a target object, but only for non-null values
- * @param target - The object to set properties on
- * @param properties - Object with key-value pairs to set
- * @returns The target object (for chaining)
- */
-export function setAllNonNull(
-  target: Record<string, unknown>,
-  properties: Record<string, unknown>,
-): Record<string, unknown> {
-  for (const [key, value] of Object.entries(properties)) {
-    if (value != null) {
-      target[key] = value;
-    }
-  }
-
-  return target;
-}
-
-/**
- * Creates a new object with all non-null properties from the input object
- * @param obj - Object with key-value pairs
- * @returns New object containing only non-null properties
- */
-export function withoutNulls(
-  obj: Record<string, unknown>,
-): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(obj)) {
-    if (value != null) {
-      result[key] = value;
-    }
-  }
-
-  return result;
-}
-
-/**
  * Folds an alias onto the param it stands in for.
  * @param value - The canonical param's value
  * @param canonical - The canonical param's name
  * @param alias - The alias param's value
  * @param aliasLabel - The alias param's name
  * @returns The trimmed value, or undefined when neither names anything
+ * @throws Error when both name something
  */
 function namedAliasedParam(
   value: string | null | undefined,
@@ -176,11 +125,64 @@ function namedAliasedParam(
     return namedAlias;
   }
 
-  if (namedAlias != null && namedAlias !== named) {
-    console.warn(
-      `${aliasLabel} "${namedAlias}" ignored — "${canonical}" names the target`,
-    );
-  }
+  // A param and its alias are never sent together, whatever their values: no
+  // caller has a reason to, and a pair that agrees today can drift apart.
+  refuseNamedTwice({
+    param: canonical,
+    value: named,
+    noun: "target",
+    also: { [aliasLabel]: namedAlias },
+  });
 
   return named;
+}
+
+/** The param that names the target, and the params sent beside it. */
+interface NamedTwice {
+  /** The param that names the target on its own ("path", "slot") */
+  param: string;
+  /** That param's value, as received */
+  value: unknown;
+  /** What it names, for the message ("scene", "destination") */
+  noun: string;
+  /** The params that name it again, by name, as received */
+  also: Readonly<Record<string, unknown>>;
+  /** A short note on the end, e.g. which spelling is deprecated */
+  hint?: string;
+}
+
+/**
+ * Refuses a call that names its target twice, through two params. The one
+ * wording for every such refusal: `<param> names the <noun> on its own - don't
+ * send <params> with it`. The conflict is in the args, so the refusal comes
+ * before any work and nothing is changed.
+ * @param args - The naming param, what it names, and the params to check
+ * @param args.param - The param that names the target on its own
+ * @param args.value - That param's value, as received
+ * @param args.noun - What it names, for the message
+ * @param args.also - The params that name it again, by name, as received
+ * @param args.hint - A short note on the end, e.g. which spelling is deprecated
+ * @throws Error naming the params that were sent beside it
+ */
+export function refuseNamedTwice({
+  param,
+  value,
+  noun,
+  also,
+  hint,
+}: NamedTwice): void {
+  if (!paramNamesSomething(value)) {
+    return;
+  }
+
+  const sent = Object.keys(also).filter((name) =>
+    paramNamesSomething(also[name]),
+  );
+
+  if (sent.length > 0) {
+    throw new Error(
+      `${param} names the ${noun} on its own - don't send ${sent.join(" or ")} with it` +
+        (hint == null ? "" : ` (${hint})`),
+    );
+  }
 }

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Walks a running Live Set breadth-first and records what the LOM exposes.
 //
@@ -178,9 +178,9 @@ async function identifyObjects(
   const jobs: Job[] = paths.map((path) => ({
     path,
     ops: [
-      { type: "get_property", property: "id" },
-      { type: "get_property", property: "type" },
-      { type: "get_property", property: "path" },
+      { type: "get-field", property: "id" },
+      { type: "get-field", property: "type" },
+      { type: "get-field", property: "path" },
       { type: "info" },
     ],
   }));

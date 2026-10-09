@@ -1,15 +1,17 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
+  mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { registerTwoTracksWithSends } from "./sends/send-return-fixtures.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -270,16 +272,7 @@ describe("updateTrack - refused mute, solo and arm", () => {
 // nothing land: ok:false in a list, and a lone one throws naming each send.
 describe("updateTrack - every send failed", () => {
   beforeEach(() => {
-    registerMockObject("123", { path: livePath.track(0) });
-    registerMockObject("456", { path: livePath.track(1) });
-    registerMockObject("mixer_1", {
-      path: livePath.track(0).mixerDevice(),
-      properties: { sends: children("send_1") },
-    });
-    registerMockObject("mixer_2", {
-      path: livePath.track(1).mixerDevice(),
-      properties: { sends: children("send_2") },
-    });
+    registerTwoTracksWithSends(["send_1"], ["send_2"]);
     registerMockObject("send_1", { properties: { is_enabled: 0 } });
     registerMockObject("send_2", {});
     registerMockObject("liveSet", {
@@ -334,6 +327,48 @@ describe("updateTrack - every send failed", () => {
         },
       ],
     });
+  });
+});
+
+describe("updateTrack - a call refused up front", () => {
+  let track123: RegisteredMockObject;
+  let track456: RegisteredMockObject;
+
+  beforeEach(() => {
+    track123 = registerMockObject("123", { path: livePath.track(0) });
+    track456 = registerMockObject("456", { path: livePath.track(1) });
+  });
+
+  it.each([
+    { id: "123" },
+    { path: "t0,t1" },
+    { id: "123", sends: [] },
+    { id: "123", gainDb: undefined },
+  ])("refuses %j, which asks nothing of the tracks", (args) => {
+    expect(() => updateTrack(args)).toThrow(
+      "nothing to update: id and path only name the tracks; also send a param to change",
+    );
+  });
+
+  it("refuses a path it can't parse, writing nothing", () => {
+    expect(() =>
+      updateTrack({ path: "t0,not-a-path,t1", name: "A,B,C" }),
+    ).toThrow('invalid path "not-a-path"');
+    expect(track123.set).not.toHaveBeenCalled();
+    expect(track456.set).not.toHaveBeenCalled();
+  });
+
+  it("still skips only its own target for a path that parses but names nothing", () => {
+    mockNonExistentObjects();
+
+    expect(updateTrack({ path: "t0,t9", name: "A,B" })).toStrictEqual([
+      { id: "123", path: "t0" },
+      {
+        path: "t9",
+        ok: false,
+        detail: 'no track at path "t9"; ppal-create-track adds tracks',
+      },
+    ]);
   });
 });
 

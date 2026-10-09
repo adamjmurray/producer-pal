@@ -1,10 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
+  automationOverriddenDetail,
+  overridesActivator,
+} from "#src/tools/shared/arrangement/tracks/automation-override.ts";
+import {
   type TargetNotes,
+  noteLanded,
   noteTarget,
   refuseTargetWork,
 } from "#src/tools/shared/helpers/target-notes.ts";
@@ -48,11 +53,25 @@ export function applyTrackSwitches(
     );
   }
 
-  track.setAll({
-    mute: isMain ? undefined : mute,
-    solo: isMain ? undefined : solo,
-    arm: armable ? arm : undefined,
-  });
+  const write = (): void => {
+    track.setAll(
+      {
+        mute: isMain ? undefined : mute,
+        solo: isMain ? undefined : solo,
+        arm: armable ? arm : undefined,
+      },
+      (property) => noteLanded(notes, property),
+    );
+  };
+
+  // Mute drives the track activator, which can carry an arrangement lane.
+  if (mute != null && !isMain) {
+    if (overridesActivator(track, "track_activator", write)) {
+      noteTarget(notes, automationOverriddenDetail("mute"));
+    }
+  } else {
+    write();
+  }
 }
 
 /**

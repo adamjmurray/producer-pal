@@ -1,12 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-update-clip with velocity transforms and merge
  * Tests the bug fix for "Invalid velocity range" error when merging clips
- * with high velocity values that would exceed MIDI max 127.
+ * with high velocity values that would exceed MIDI max 127, and the low end:
+ * Live drops a note written under velocity 1.
  * Uses: e2e-test-set - tests create clips in empty slots (t8 is empty MIDI track)
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
@@ -149,5 +150,25 @@ describe("ppal-update-clip velocity merge", () => {
 
     expect(merged.id).toBe(clipId);
     expect(merged.noteCount).toBe(5); // 4 C3 notes + 1 D3 note
+  });
+
+  it("keeps notes a transform sets between 0 and 1, at velocity 1", async () => {
+    const clipId = await createClip(3, "v100 C3 1|1 D3 1|2", "1bar");
+
+    const updated = parseToolResult<{ noteCount: number }>(
+      await updateClip(clipId, { transforms: "velocity = 0.7" }),
+    );
+
+    expect(updated.noteCount).toBe(2);
+
+    const readResult = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { id: clipId, include: ["notes"] },
+    });
+    const { notes } = parseToolResult<ReadClipResult>(readResult);
+
+    expect(notes).toContain("C3");
+    expect(notes).toContain("D3");
+    expect(notes?.match(/v\d+/g)).toStrictEqual(["v1"]);
   });
 });

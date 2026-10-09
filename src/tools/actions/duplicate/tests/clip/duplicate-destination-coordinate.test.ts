@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import "../duplicate-mocks-test-helpers.ts";
@@ -150,8 +150,7 @@ describe("duplicate - a toPath coordinate", () => {
         arrangementStart: "5|1",
       }),
     ).rejects.toThrow(
-      'toPath "t2[3|1]" and arrangementStart both name a ' +
-        "song position; use one",
+      "toPath names the song position on its own - don't send arrangementStart with it",
     );
   });
 

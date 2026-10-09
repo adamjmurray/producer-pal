@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for `update-clip` `duplicateLoop`, verified through the Live
@@ -12,7 +12,7 @@
  * observe (envelope copy isn't surfaced by read-clip, so it stays unit-only).
  *
  * They also pin the composition contract on real Live geometry: start/length are
- * refused alongside duplicateLoop and go in their own call first (ADR-0040);
+ * refused alongside duplicateLoop and go in their own call first;
  * firstStart composes, preTransforms edit the source, then the double, then
  * notes/transforms apply across the FULL doubled clip. The unit tests pin the
  * call ordering; these confirm the resulting notes land in the right bars.

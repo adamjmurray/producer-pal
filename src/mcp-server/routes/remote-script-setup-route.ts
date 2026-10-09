@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // REST endpoints the chat UI uses to install Live's Producer Pal remote script.
 // The script's Python sources ride along inside this bundle, so installing is
@@ -10,11 +10,9 @@
 import { type Express, type Request, type Response } from "express";
 import { VERSION } from "#src/shared/config.ts";
 import { rejectForeignOriginWrite } from "../helpers/http/request-origin.ts";
-import {
-  RemoteScriptInstallError,
-  installRemoteScript,
-} from "../rpc/remote-script/remote-script-install.ts";
+import { installRemoteScript } from "../rpc/remote-script/install/remote-script-install.ts";
 import { remoteScriptStatus } from "../rpc/remote-script/remote-script-status.ts";
+import { UserLibraryFolderError } from "../rpc/remote-script/user-library/user-library-folder.ts";
 
 /**
  * Register GET /remote-script (status) and POST /remote-script/install.
@@ -60,7 +58,7 @@ export function registerRemoteScriptSetupRoutes(app: Express): void {
         version: VERSION,
       });
     } catch (error) {
-      if (!(error instanceof RemoteScriptInstallError)) {
+      if (!(error instanceof UserLibraryFolderError)) {
         throw error;
       }
 

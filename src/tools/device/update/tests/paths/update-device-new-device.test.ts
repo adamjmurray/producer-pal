@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // `d+` as a move destination: put the device at the end of that container,
 // without reading it first to find out what the end is.
@@ -66,9 +66,9 @@ describe("updateDevice — d+ as a move destination", () => {
   // spelling mistake there — and the refusal names the tools that take it.
   it("refuses a d+ as the device to update", () => {
     expect(() => updateDevice({ path: "t1/d+", name: "x" })).toThrow(
-      'invalid path "t1/d+" - "d+" appends a device, which only ' +
-        "ppal-create-device, ppal-duplicate and ppal-update-device do; " +
-        'name an existing device as "d<index>"',
+      'invalid path "t1/d+" - "d+" appends a device, so it only works as a ' +
+        "destination: path in ppal-create-device, toPath in ppal-duplicate " +
+        'and ppal-update-device; name an existing device as "d<index>"',
     );
   });
 });

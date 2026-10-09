@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // At-rest encryption for provider API keys stored in localStorage. Keys are
 // encrypted with a non-extractable AES-GCM CryptoKey persisted in IndexedDB, so
@@ -132,9 +132,7 @@ async function loadOrGenerateKey(): Promise<CryptoKey> {
     ["encrypt", "decrypt"],
   );
 
-  await writeKey(key);
-
-  return key;
+  return await storeKeyIfAbsent(key);
 }
 
 /**
@@ -154,15 +152,30 @@ async function readKey(): Promise<CryptoKey | null> {
 }
 
 /**
- * Persist a CryptoKey to IndexedDB. CryptoKey objects are structured-cloneable,
- * so a non-extractable key round-trips through IndexedDB without exposing bytes.
+ * Persist a CryptoKey unless another tab stored one first. The check and the
+ * write share one transaction, so only one writer wins and every tab ends up
+ * using the same key. CryptoKey objects are structured-cloneable, so a
+ * non-extractable key round-trips through IndexedDB without exposing bytes.
  * @param key - The key to store
+ * @returns The key that is now stored: the existing one if there was one
  */
-async function writeKey(key: CryptoKey): Promise<void> {
+async function storeKeyIfAbsent(key: CryptoKey): Promise<CryptoKey> {
   const db = await openCryptoDb();
 
   try {
-    await db.put(STORE_NAME, key, KEY_ID);
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const existing = (await tx.store.get(KEY_ID)) as CryptoKey | undefined;
+
+    if (existing != null) {
+      await tx.done;
+
+      return existing;
+    }
+
+    await tx.store.add(key, KEY_ID);
+    await tx.done;
+
+    return key;
   } finally {
     db.close();
   }

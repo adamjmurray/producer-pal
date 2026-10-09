@@ -1,10 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { createAudioClipInSession } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import {
+  createAudioClipInSession,
+  removeSessionClip,
+} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import {
   markClipLanded,
@@ -137,17 +140,21 @@ function lengthenWarpedUnloopedAudio(
 
   // Create session clip with minimal loop_end (1) to detect file content boundary
   // without extending end_marker past the actual file content
-  const { clip: sessionClip, slot } = createAudioClipInSession(
-    track,
-    1,
-    filePath,
-  );
+  const reportScratch = (message: string): void =>
+    noteClipReason(reasons, clip.id, message);
+  const session = createAudioClipInSession(track, 1, filePath, reportScratch);
 
   // end_marker on the session clip stays at the file's natural content length
   // in the warped beat grid (createAudioClipInSession sets loop_end but not end_marker)
-  const fileContentBoundary = sessionClip.getProperty("end_marker") as number;
+  let fileContentBoundary: number;
 
-  slot.call("delete_clip");
+  // Removed even if the read throws: the scratch clip would otherwise stay,
+  // and its scene with it.
+  try {
+    fileContentBoundary = session.clip.getProperty("end_marker") as number;
+  } finally {
+    removeSessionClip(session, reportScratch);
+  }
 
   const totalContentFromStart = fileContentBoundary - clipStartMarker;
 

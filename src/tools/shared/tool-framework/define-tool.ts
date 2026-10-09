@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -17,7 +17,10 @@ import {
   unexpectedArgKeys,
   unexpectedArgsWarning,
 } from "#src/tools/shared/tool-framework/unexpected-args.ts";
-import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
+import {
+  optionalParams,
+  unsetEmptyParams,
+} from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 
 // Re-export CallToolResult for use by callers
@@ -34,6 +37,8 @@ export interface ToolOptions {
   // overrides. See modal-config.ts.
   description: ModalDescription;
   annotations?: ToolAnnotations;
+  // True: small-model mode leaves the tool out entirely (see isOfferedInMode).
+  omitInSmallModel?: boolean;
   // Param descriptions/exclusions/enum-trims are co-located on each param via
   // param() (see modal-config.ts) — there is no separate override config.
   inputSchema: Record<string, ZodType>;
@@ -60,6 +65,20 @@ export interface ToolDefFunction {
 }
 
 /**
+ * Whether a tool is offered in a mode. Small-model mode drops a tool that opts
+ * out, from MCP and from REST alike.
+ * @param toolDef - The tool's definition
+ * @param smallModelMode - Whether small-model mode is on
+ * @returns True when the tool is offered
+ */
+export function isOfferedInMode(
+  toolDef: Pick<ToolDefFunction, "toolOptions">,
+  smallModelMode: boolean,
+): boolean {
+  return !(smallModelMode && toolDef.toolOptions.omitInSmallModel === true);
+}
+
+/**
  * Defines an MCP tool with validation and modal (notation / small-model) support
  * @param name - Tool name
  * @param options - Tool configuration options
@@ -75,7 +94,16 @@ export function defineTool(
     mcpOptions: McpOptions = {},
   ): void => {
     const { smallModelMode = false, notation } = mcpOptions;
-    const { inputSchema, description, ...toolConfig } = options;
+    const {
+      inputSchema,
+      description,
+      omitInSmallModel: _omitInSmallModel,
+      ...toolConfig
+    } = options;
+
+    if (!isOfferedInMode({ toolOptions: options }, smallModelMode)) {
+      return;
+    }
 
     // Hidden params still validate, but are not published — the model reads only
     // the canonical names while callers sending a retired or guessed one keep
@@ -92,8 +120,12 @@ export function defineTool(
       smallModelMode,
     });
 
-    // Use loose() so extra args reach our handler (SDK would strip them otherwise)
-    const passthroughSchema = z.object(publishedSchema).loose();
+    // The SDK parses args against this before our handler runs, so a null or
+    // blank would already be coerced (null to 0 or "null") by the time
+    // unsetEmptyParams saw it. optionalParams applies the same rule here and
+    // leaves the JSON Schema unchanged. loose() lets extra args reach our
+    // handler (the SDK would strip them otherwise).
+    const passthroughSchema = z.object(optionalParams(publishedSchema)).loose();
 
     server.registerTool(
       name,

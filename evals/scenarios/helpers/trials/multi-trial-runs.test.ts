@@ -1,10 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { parseRepeatCount, planTrialLiveSetOpens } from "./multi-trial-runs.ts";
+import { type JsonEvalResult } from "../json-results/types.ts";
+import {
+  liveSetLeftOpen,
+  parseRepeatCount,
+  planTrialLiveSetOpens,
+} from "./multi-trial-runs.ts";
 
 describe("parseRepeatCount", () => {
   it("defaults to a single trial", () => {
@@ -43,5 +48,27 @@ describe("planTrialLiveSetOpens", () => {
 
   it("returns one flag per trial", () => {
     expect(planTrialLiveSetOpens(1, false, true)).toStrictEqual([false]);
+  });
+});
+
+describe("liveSetLeftOpen", () => {
+  const run = (result: JsonEvalResult["result"]): JsonEvalResult =>
+    ({ result }) as JsonEvalResult;
+
+  it("is true after a run that got past the open", () => {
+    expect(liveSetLeftOpen([run("pass")])).toBe(true);
+    expect(liveSetLeftOpen([run("fail")])).toBe(true);
+  });
+
+  it("is false when the last run errored", () => {
+    expect(liveSetLeftOpen([run("pass"), run("error")])).toBe(false);
+  });
+
+  it("recovers when a later trial reopened the Set", () => {
+    expect(liveSetLeftOpen([run("error"), run("pass")])).toBe(true);
+  });
+
+  it("is false when nothing ran", () => {
+    expect(liveSetLeftOpen([])).toBe(false);
   });
 });

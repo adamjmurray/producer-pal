@@ -1,12 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi, type Mock } from "vitest";
 import { z, type ZodRawShape } from "zod";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type Notation } from "#src/shared/notation.ts";
+import { registeredShape } from "./registered-shape-test-helpers.ts";
 import {
   defineTool,
   filterExcludedEnumValues,
@@ -69,9 +70,7 @@ function getRegisteredConfig(mockServer: MockServer) {
  * @returns Zod schema shape of the registered tool
  */
 function getRegisteredShape(mockServer: MockServer): ZodRawShape {
-  const config = getRegisteredConfig(mockServer);
-
-  return (config.inputSchema as { shape: ZodRawShape }).shape;
+  return registeredShape(getRegisteredConfig(mockServer)) as ZodRawShape;
 }
 
 /**

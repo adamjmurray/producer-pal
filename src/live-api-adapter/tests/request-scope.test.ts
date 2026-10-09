@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Every Max entry point releases the LiveAPI objects it built, so Live's path
 // listeners don't outlive the request. See live-api-release.ts.
@@ -97,22 +97,23 @@ describe("request scope", () => {
   });
 
   it("clears them even when the tool call fails", async () => {
-    // A failed call armed the listeners just the same. `get_property` with no
-    // `property` fails validation — assert the response really is the error,
-    // or a change that stops it throwing turns this into the test above.
+    // A failed call armed the listeners just the same. A method that isn't on
+    // the object fails only after it is built (a malformed operation is refused
+    // before) — assert the response really is the error, or a change that stops
+    // it throwing turns this into the test above.
     const created = await objectsBuiltBy(() =>
       mcp_request(
         "req-1",
         "ppal-live-api",
         JSON.stringify({
           path: String(livePath.track(0)),
-          operations: [{ type: "get_property" }],
+          operations: [{ type: "call-method", method: "noSuchMethod" }],
         }),
       ),
     );
 
     expect(lastResponseJson()).toContain('"isError":true');
-    expect(lastResponseJson()).toContain("requires property");
+    expect(lastResponseJson()).toContain("not found on LiveAPI object");
     expectAllReleased(created);
   });
 });

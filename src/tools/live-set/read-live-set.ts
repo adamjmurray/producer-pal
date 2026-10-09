@@ -1,13 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
 } from "#src/shared/pitch.ts";
+import { automatedFieldNames } from "#src/tools/shared/arrangement/tracks/automated-fields.ts";
 import { readOneScene } from "#src/tools/scene/read-scene.ts";
 import { readLocators } from "#src/tools/shared/locator/locators.ts";
 import { readReturnTrackInfo } from "#src/tools/shared/sends/return-track-info.ts";
@@ -48,8 +49,12 @@ export function readLiveSet(
   // Build include array to propagate to track/scene readers
   const trackInclude = buildTrackInclude(includeFlags);
 
-  // Read the return tracks once for efficiency (used for sends in mixer data)
-  const returnTracks = readReturnTrackInfo();
+  // Only track mixer sends name their return tracks. Read them once for all the
+  // tracks, and not at all when no track reports a mixer.
+  const returnTracks =
+    includeFlags.includeTracks && includeFlags.includeMixer
+      ? readReturnTrackInfo()
+      : undefined;
 
   // One pass over the session grid, shared by the scenes and the tracks below:
   // each counts the same slots, so counting in both built every clip twice.
@@ -69,6 +74,11 @@ export function readLiveSet(
     tempo: roundDisplayValue(liveSet.getProperty("tempo"), round2dp),
     timeSignature: `${String(timeSigNumerator)}/${String(timeSigDenominator)}`,
   };
+  const automation = tempoAutomation();
+
+  if (automation.length > 0) {
+    result.automation = automation;
+  }
 
   // Include full scene details or just the count
   if (includeFlags.includeScenes) {
@@ -164,6 +174,18 @@ export function readLiveSet(
   }
 
   return result;
+}
+
+/**
+ * Name the Live Set fields with an arrangement lane. Only the tempo can have
+ * one. The main track never plays from Session, so its state always reads true.
+ * @returns `["tempo"]`, `["tempo (overridden)"]`, or empty without a lane
+ */
+function tempoAutomation(): string[] {
+  const mixer = LiveAPI.from(livePath.masterTrack().mixerDevice());
+  const songTempo = mixer.child("song_tempo");
+
+  return songTempo.exists() ? automatedFieldNames([["tempo", songTempo]]) : [];
 }
 
 interface SessionClipCounts {

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Scenario tags — the subset axis, alongside scenario ids and `kind`. A full
@@ -15,6 +15,7 @@
  * transforms). Adding a name here is what makes it usable.
  */
 export const SCENARIO_TAGS = [
+  "automation",
   "clips",
   "context",
   "devices",

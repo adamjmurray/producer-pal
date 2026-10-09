@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A chain or pad mixer write Live has disabled (a rack macro owns it) did
 // nothing, so it is refused on the entry: ok:false when it was all the call

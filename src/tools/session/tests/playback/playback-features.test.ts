@@ -1,11 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -15,6 +14,7 @@ import {
   registerClipSlot,
   setupDefaultTimeSignature,
   setupPlaybackLiveSet,
+  spyOnWarn,
 } from "./playback-test-helpers.ts";
 
 describe("playback path param", () => {
@@ -50,7 +50,7 @@ describe("playback path param", () => {
   // What results said before 2.2.0, so a model pasting one back made a
   // well-founded guess: honor it, and warn to teach the spelling.
   it("honors the old unprefixed spelling, with a warning", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = spyOnWarn();
     const clipSlot = registerClipSlot(0, 1);
 
     playback({ action: "play-session-clips", path: "0/1" });
@@ -64,7 +64,7 @@ describe("playback path param", () => {
   // A caller on the current param may still send the deprecated one as null;
   // counting the coerced "null" as a second target refused the call.
   it("fires what slots names when path is a coerced null", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = spyOnWarn();
     const clipSlot = registerClipSlot(0, 1);
 
     playback({ action: "play-session-clips", path: "null", slots: "0/1" });
@@ -76,13 +76,15 @@ describe("playback path param", () => {
   it("refuses path and the deprecated slots together", () => {
     expect(() =>
       playback({ action: "play-session-clips", path: "t0/s1", slots: "0/1" }),
-    ).toThrow("path and slots both name clips");
+    ).toThrow(
+      "path names the clips on its own - don't send slots with it (slots is deprecated)",
+    );
   });
 
   // The same check, on a slots that named nothing. A comma is not a second
   // target, so refusing the call reported a conflict the caller never made.
   it("fires what path names when slots names nothing", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = spyOnWarn();
     const clipSlot = registerClipSlot(0, 1);
 
     playback({ action: "play-session-clips", path: "t0/s1", slots: "," });
@@ -110,38 +112,21 @@ describe("playback path param", () => {
     );
   });
 
-  // Only a disagreement is worth refusing. A model that says the same thing
-  // twice — path plus the param it replaced, in agreement — gets its scene, not
-  // an error about how it phrased the request.
-  it("fires the scene when path and sceneIndex agree", () => {
-    const scene = registerMockObject(livePath.scene(3), {
-      path: livePath.scene(3),
+  // Even a path and sceneIndex that agree are refused: a path names its scene
+  // on its own. Scene 0 is falsy, and the refusal has to read it as a value.
+  it.each([
+    ["s3", 3],
+    ["s3", 1],
+    ["s0", 0],
+  ])("refuses path %s sent with sceneIndex %d", (path, sceneIndex) => {
+    const scene = registerMockObject(livePath.scene(sceneIndex), {
+      path: livePath.scene(sceneIndex),
     });
 
-    playback({ action: "play-scene", path: "s3", sceneIndex: 3 });
-
-    expect(scene.call).toHaveBeenCalledWith("fire");
-  });
-
-  // Scene 0 is falsy, and the agreement check and the `??` that picks the
-  // winner both have to read it as a value rather than as "not given".
-  it("fires scene 0 when path and sceneIndex agree on it", () => {
-    const scene = registerMockObject(livePath.scene(0), {
-      path: livePath.scene(0),
-    });
-
-    playback({ action: "play-scene", path: "s0", sceneIndex: 0 });
-
-    expect(scene.call).toHaveBeenCalledWith("fire");
-  });
-
-  it("refuses a scene path and sceneIndex that disagree, naming both", () => {
-    expect(() =>
-      playback({ action: "play-scene", path: "s3", sceneIndex: 1 }),
-    ).toThrow(
-      'action "play-scene" plays one scene, but got ' +
-        'scene 3 from path "s3", scene 1 from sceneIndex 1',
+    expect(() => playback({ action: "play-scene", path, sceneIndex })).toThrow(
+      "path names the scene on its own - don't send sceneIndex with it",
     );
+    expect(scene.call).not.toHaveBeenCalled();
   });
 });
 

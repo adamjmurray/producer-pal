@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { copyClipToSlot } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
@@ -145,7 +145,27 @@ function recreateViaScratchSlot(
     return failure(attempt, scratch.path, "preserved", destPath, wasCleared);
   }
 
-  const newClip = copyClipToSlot(scratch.slot, destClipSlot);
+  let newClip: LiveAPI | null;
+
+  try {
+    newClip = copyClipToSlot(scratch.slot, destClipSlot);
+  } catch (error) {
+    // The scratch slot may be a free slot the user can see, so the clip built
+    // in it goes before the throw goes on.
+    try {
+      scratch.slot.call("delete_clip");
+    } catch {
+      // Read back what's really there; a clip still there is said below.
+      if (clipMayRemain(scratch.slot)) {
+        throw new Error(
+          `${errorMessage(error)}; couldn't delete the clip built at ${scratch.path}, it is still there`,
+          { cause: error },
+        );
+      }
+    }
+
+    throw error;
+  }
 
   scratch.slot.call("delete_clip");
 
@@ -188,4 +208,16 @@ function failure(
     occupant === "preserved" ? ` The clip at ${destPath} was not touched.` : "";
 
   return { ok: false, reason: `${outcome}.${occupantNote}` };
+}
+
+/**
+ * @param slot - A slot a delete_clip just failed on
+ * @returns Whether a clip may still be in it; true when that can't be read
+ */
+function clipMayRemain(slot: LiveAPI): boolean {
+  try {
+    return slot.child("clip").exists();
+  } catch {
+    return true;
+  }
 }

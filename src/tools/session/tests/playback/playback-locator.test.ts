@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -202,6 +202,26 @@ describe("playback - song positions", () => {
       expect(result).toStrictEqual({ playing: false });
     });
 
+    // A blank, or the word "null", is a param left out.
+    it.each(["", "   ", "null"])(
+      "treats a %j *Locator as unsent beside its position",
+      (blank) => {
+        playback({
+          action: "update-arrangement",
+          startTime: "5|1",
+          loopStart: "5|1",
+          loopEnd: "9|1",
+          startLocator: blank,
+          loopStartLocator: blank,
+          loopEndLocator: blank,
+        });
+
+        expectLiveSetProperty(liveSet, "start_time", 16);
+        expectLiveSetProperty(liveSet, "loop_start", 16);
+        expectLiveSetProperty(liveSet, "loop_length", 16);
+      },
+    );
+
     it("should not allow startTime with startLocator", () => {
       expect(() =>
         playback({
@@ -209,7 +229,9 @@ describe("playback - song positions", () => {
           startTime: "1|1",
           startLocator: "26",
         }),
-      ).toThrow("startTime cannot be used with startLocator");
+      ).toThrow(
+        "startTime names the position on its own - don't send startLocator with it (startLocator is deprecated)",
+      );
     });
 
     it("should not allow loopStart with loopStartLocator", () => {
@@ -219,7 +241,9 @@ describe("playback - song positions", () => {
           loopStart: "1|1",
           loopStartLocator: "26",
         }),
-      ).toThrow("loopStart cannot be used with loopStartLocator");
+      ).toThrow(
+        "loopStart names the position on its own - don't send loopStartLocator with it (loopStartLocator is deprecated)",
+      );
     });
 
     it("should not allow loopEnd with loopEndLocator", () => {
@@ -229,7 +253,9 @@ describe("playback - song positions", () => {
           loopEnd: "10|1",
           loopEndLocator: "Chorus",
         }),
-      ).toThrow("loopEnd cannot be used with loopEndLocator");
+      ).toThrow(
+        "loopEnd names the position on its own - don't send loopEndLocator with it (loopEndLocator is deprecated)",
+      );
     });
   });
 

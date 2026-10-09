@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { endMovesFirst } from "#src/tools/shared/clip/clip-region-writes.ts";
 
@@ -96,6 +96,7 @@ export interface BuildClipPropertiesArgs {
   startMarkerBeats: number | null;
   looping?: boolean;
   isLooping: boolean;
+  wasLooping: boolean;
   startBeats: number | null;
   endBeats: number | null;
   currentLoopEnd: number;
@@ -113,7 +114,8 @@ export interface BuildClipPropertiesArgs {
  * @param args.timeSigDenominator - Time signature denominator
  * @param args.startMarkerBeats - Start marker position in beats
  * @param args.looping - Whether looping is enabled
- * @param args.isLooping - Current looping state
+ * @param args.isLooping - The clip's looping state after this update
+ * @param args.wasLooping - The clip's looping state before this update
  * @param args.startBeats - Start position in beats
  * @param args.endBeats - End position in beats
  * @param args.currentLoopEnd - The clip's current loop_end in beats
@@ -130,12 +132,18 @@ export function buildClipPropertiesToSet({
   startMarkerBeats,
   looping,
   isLooping,
+  wasLooping,
   startBeats,
   endBeats,
   currentLoopEnd,
   currentEndMarker,
   beatsPerMarkerUnit,
 }: BuildClipPropertiesArgs): ClipPropsToSet {
+  // `looping: false` on a clip that is already off changes nothing, so its
+  // region is written as if looping were unset: through loop_start, the only
+  // start handle Live honors while looping is off.
+  const regionLooping = looping === false && !wasLooping ? undefined : looping;
+
   // The markers are seconds on an unwarped audio clip and beats everywhere
   // else. This is the only place that writes them, so it is the only place that
   // has to convert.
@@ -160,16 +168,16 @@ export function buildClipPropertiesToSet({
     start,
     end,
     startMarker,
-    writesLoop: (isLooping || looping == null) && looping !== false,
+    writesLoop: (isLooping || regionLooping == null) && regionLooping !== false,
     // A looping clip still has to move end_marker when its start_marker is
     // going past it, or Live drops the start and playback begins at the old one.
     writesEndMarker:
-      (!isLooping || looping === false || markerEndFirst) && end != null,
+      (!isLooping || regionLooping === false || markerEndFirst) && end != null,
   };
 
   // The loop brace needs `looping` already on, and Live ignores a start_marker
-  // while it is off. So switching looping off writes the markers first and
-  // flips after; everything else flips first.
+  // while it is off. So `looping: false` writes the markers first and flips
+  // after; everything else flips first.
   if (looping === false) {
     addRegionProperties(propsToSet, region);
     propsToSet.looping = false;

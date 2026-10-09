@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -11,16 +11,13 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import {
-  MAX_ARRANGEMENT_POSITION_BEATS,
-  MAX_AUTO_CREATED_SCENES,
-} from "#src/tools/constants.ts";
+import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createClip } from "../../create-clip.ts";
 import { createAudioArrangementClip } from "../../helpers/audio-clip-creation.ts";
+import { mockScratchSwap } from "../create-clip-scratch-mocks.ts";
 import {
   audioClipProperties,
   expectNoTimingProperties,
-  mockScratchSwap,
   setupAudioArrangementClipMocks,
   setupMultiAudioArrangementClipMocks,
   setupMultiSessionAudioClipMocks,
@@ -206,7 +203,7 @@ describe("createClip - audio clips", () => {
     });
 
     // A lone destination that got no clip throws, since there is no list for
-    // its entry to hold a place in (ADR-0042).
+    // its entry to hold a place in.
     it("should throw when the scene index exceeds the maximum", async () => {
       registerLiveSetAndTrack(AUDIO_TRACK);
 
@@ -359,7 +356,9 @@ describe("createClip - audio clips", () => {
           arrangementStart: "394202|1",
           sampleFile: "/path/to/audio.wav",
         }),
-      ).rejects.toThrow("exceeds");
+      ).rejects.toThrow(
+        "arrangementStart is past the last position Live allows (394201|1)",
+      );
     });
 
     it("should throw error when track does not exist", async () => {
@@ -528,33 +527,6 @@ describe("createClip - audio clips", () => {
 });
 
 describe("createAudioArrangementClip (unit)", () => {
-  it("throws when arrangementStartBeats exceeds the maximum position", () => {
-    // A valid track is registered, so if the max-position guard were removed the
-    // clip would be created without throwing. Kills the guard's
-    // ConditionalExpression / EqualityOperator / block / message mutants.
-    setupAudioArrangementClipMocks();
-
-    expect(() =>
-      createAudioArrangementClip(
-        0,
-        MAX_ARRANGEMENT_POSITION_BEATS + 1,
-        "/samples/loop.wav",
-      ),
-    ).toThrow(/exceeds maximum/);
-  });
-
-  it("does NOT throw at exactly the maximum position (boundary: > not >=)", () => {
-    setupAudioArrangementClipMocks();
-
-    const result = createAudioArrangementClip(
-      0,
-      MAX_ARRANGEMENT_POSITION_BEATS,
-      "/samples/loop.wav",
-    );
-
-    expect(result.arrangementStartBeats).toBe(MAX_ARRANGEMENT_POSITION_BEATS);
-  });
-
   it.each([
     ["Live creates nothing", ["id", "0"]], // "no object" ref → exists() false
     // A declined create on a MIDI track hands back another object — the Live
@@ -688,34 +660,40 @@ describe("createClip - audio clip warping", () => {
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it("warns that MIDI-only timing params are ignored for audio", async () => {
+  it("says on the entry that MIDI-only timing params are ignored for audio", async () => {
     const warnSpy = vi.spyOn(v8Console, "warn");
 
     setupSessionAudioClipMocks({ clipLength: 8 });
 
-    await createClip({
+    const result = (await createClip({
       slot: "0/0",
       sampleFile: "/path/to/audio.wav",
       length: "4bar",
       looping: true,
-    });
+    })) as { detail?: string };
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("length, looping ignored for audio clips"),
+    expect(result.detail).toContain(
+      "length, looping ignored: the clip is audio, so the sample defines its region",
     );
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it("warns that warping is ignored on a MIDI clip", async () => {
+  it("says on the entry that warping is ignored on a MIDI clip", async () => {
     // The inverse of the audio warning: warping is documented audio-only, and
     // the MIDI path has nowhere to put it.
     const warnSpy = vi.spyOn(v8Console, "warn");
 
     setupSessionMocks();
 
-    await createClip({ slot: "0/0", notes: "1|1 C3", warping: true });
+    const result = (await createClip({
+      slot: "0/0",
+      notes: "1|1 C3",
+      warping: true,
+    })) as { detail?: string };
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("warping ignored for MIDI clips"),
+    expect(result.detail).toContain("warping ignored: the clip is MIDI");
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("ignored"),
     );
   });
 });

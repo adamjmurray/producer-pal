@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /** Mocks the take-lane duplicate suites share. */
 
@@ -18,7 +18,7 @@ export const CLIPS_ONLY =
 export interface LaneCopyEntry {
   id: string;
   path: string;
-  created?: true;
+  created?: string;
   name?: string;
   clips: Array<{ id?: string; path?: string; ok?: false; detail?: string }>;
   detail: string;
@@ -226,6 +226,7 @@ function arrangementClipProperties(
     is_arrangement_clip: 1,
     length: 4,
     start_time: startBeats,
+    end_time: startBeats + Number(extraProps.length ?? 4),
     loop_start: 0,
     loop_end: 4,
     start_marker: 0,

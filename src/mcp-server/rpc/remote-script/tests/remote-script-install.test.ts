@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   type PathLike,
@@ -21,11 +21,15 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EMBEDDED_REMOTE_SCRIPT_FILES } from "../embedded-remote-script.ts";
 import {
-  RemoteScriptInstallError,
   installRemoteScript,
   remoteScriptPath,
-} from "../remote-script-install.ts";
+} from "../install/remote-script-install.ts";
 import { readRemoteScriptSource } from "../remote-script-source.ts";
+import { UserLibraryFolderError } from "../user-library/user-library-folder.ts";
+import {
+  PY_ONLY_SOURCE,
+  writeScriptTreeWithJunk,
+} from "./remote-script-test-helpers.ts";
 
 const { homedir } = vi.hoisted(() => ({ homedir: vi.fn<() => string>() }));
 // Path prefixes whose fs calls should fail.
@@ -33,6 +37,8 @@ const fault = vi.hoisted(() => ({
   renameFrom: [] as string[],
   rm: [] as string[],
   readdir: false,
+  // Throw a bare string instead of an Error.
+  renameBare: false,
 }));
 
 // The install expands "~", and a test can't write to the real home folder.
@@ -50,7 +56,11 @@ vi.mock(import("node:fs"), async (importOriginal) => {
     ...actual,
     renameSync: (from: PathLike, to: PathLike) => {
       if (fault.renameFrom.some((prefix) => String(from).startsWith(prefix))) {
-        throw new Error(`EPERM: rename ${String(from)}`);
+        const message = `EPERM: rename ${String(from)}`;
+
+        const thrown: unknown = fault.renameBare ? message : new Error(message);
+
+        throw thrown;
       }
 
       actual.renameSync(from, to);
@@ -82,6 +92,7 @@ beforeEach(() => {
   fault.renameFrom = [];
   fault.rm = [];
   fault.readdir = false;
+  fault.renameBare = false;
   scratchDir = mkdtempSync(join(tmpdir(), "ppal-remote-script-"));
   homedir.mockReturnValue(scratchDir);
 });
@@ -92,19 +103,9 @@ afterEach(() => {
 
 describe("readRemoteScriptSource", () => {
   it("reads .py files at any depth and leaves everything else out", () => {
-    mkdirSync(join(scratchDir, "__pycache__"));
-    mkdirSync(join(scratchDir, "nested"));
-    writeFileSync(join(scratchDir, "__init__.py"), "top", "utf8");
-    writeFileSync(join(scratchDir, ".DS_Store"), "finder", "utf8");
-    writeFileSync(join(scratchDir, "nested/notes.txt"), "scratch", "utf8");
-    writeFileSync(join(scratchDir, "stale.pyc"), "bytecode", "utf8");
-    writeFileSync(join(scratchDir, "__pycache__/a.pyc"), "bytecode", "utf8");
-    writeFileSync(join(scratchDir, "nested/deep.py"), "deep", "utf8");
+    writeScriptTreeWithJunk(scratchDir);
 
-    expect(readRemoteScriptSource(scratchDir)).toStrictEqual({
-      "__init__.py": "top",
-      "nested/deep.py": "deep",
-    });
+    expect(readRemoteScriptSource(scratchDir)).toStrictEqual(PY_ONLY_SOURCE);
   });
 });
 
@@ -149,7 +150,7 @@ describe("installRemoteScript", () => {
 
   it("refuses a folder that isn't there", () => {
     expect(() => installRemoteScript(join(scratchDir, "nope"))).toThrow(
-      RemoteScriptInstallError,
+      UserLibraryFolderError,
     );
   });
 
@@ -228,6 +229,32 @@ describe("installRemoteScript", () => {
         "utf8",
       ),
     ).toBe("old install");
+  });
+
+  it("leaves nothing behind when a first install can't be moved in", () => {
+    const path = remoteScriptPath(scratchDir);
+
+    fault.renameFrom = [`${path}.tmp-`];
+
+    expect(() => installRemoteScript(scratchDir)).toThrow("EPERM");
+    expect(readdirSync(join(scratchDir, "Remote Scripts"))).toStrictEqual([]);
+  });
+
+  it("rethrows a non-Error swap failure as is when the old install can't be put back", () => {
+    const { path } = installRemoteScript(scratchDir);
+
+    fault.renameFrom = [`${path}.tmp-`, `${path}.old-`];
+    fault.renameBare = true;
+
+    let thrown: unknown;
+
+    try {
+      installRemoteScript(scratchDir);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toMatch(/^EPERM: rename .*Producer_Pal\.tmp-[^ ]*$/);
   });
 
   it("keeps installing when old installs can't be cleaned up", () => {

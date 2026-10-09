@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-create-device's `preset`, loaded through the Producer Pal
@@ -15,19 +15,21 @@
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import {
+  callToolAndSettle,
+  createMidiTrack,
   getToolErrorMessage,
   isToolError,
   parseToolResult,
   setupMcpTestContext,
-  sleep,
-  trackIndexFromPath,
 } from "../../mcp-test-helpers";
 import {
   type Preset,
   REMOTE_SCRIPT_E2E,
+  packDrumKitOrSkip,
   listPresets,
   presetEndingIn,
   presetName,
+  readDevice,
   requireRemoteScript,
 } from "../helpers/remote-script-test-helpers";
 
@@ -51,47 +53,11 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
    * @returns The raw result
    */
   async function create(args: Record<string, unknown>): Promise<unknown> {
-    const result = await ctx.client!.callTool({
-      name: "ppal-create-device",
-      arguments: args,
-    });
-
-    await sleep(100);
-
-    return result;
-  }
-
-  /**
-   * A fresh MIDI track, so the Set's own tracks stay intact.
-   * @returns The new track's index
-   */
-  async function createTrack(): Promise<number> {
-    const track = parseToolResult<{ path: string }>(
-      await ctx.client!.callTool({
-        name: "ppal-create-track",
-        arguments: { type: "midi" },
-      }),
-    );
-
-    return trackIndexFromPath(track.path);
-  }
-
-  /**
-   * Read a device.
-   * @param path - Its path
-   * @returns Its id, type and name
-   */
-  async function readDevice(path: string): Promise<DeviceRead> {
-    return parseToolResult<DeviceRead>(
-      await ctx.client!.callTool({
-        name: "ppal-read-device",
-        arguments: { path },
-      }),
-    );
+    return callToolAndSettle(ctx.client!, "ppal-create-device", args);
   }
 
   it("creates a device from one of its presets, by name", async () => {
-    const track = await createTrack();
+    const track = await createMidiTrack(ctx.client!);
     const created = parseToolResult<{ id: string; path: string }>(
       await create({
         device: "Drift",
@@ -99,7 +65,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
         path: `t${track}/d0`,
       }),
     );
-    const device = await readDevice(created.path);
+    const device = await readDevice(ctx.client!, created.path);
 
     expect(device.id).toBe(created.id);
     expect(device.type).toBe("instrument: Drift");
@@ -107,13 +73,85 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
   });
 
   it("creates a rack from a rack preset, by browser path", async () => {
-    const track = await createTrack();
+    const track = await createMidiTrack(ctx.client!);
     const created = parseToolResult<{ path: string }>(
       await create({ preset: `Instruments/${adg.path}`, path: `t${track}/d0` }),
     );
 
-    expect((await readDevice(created.path)).type).toBe("instrument-rack");
+    expect((await readDevice(ctx.client!, created.path)).type).toBe(
+      "instrument-rack",
+    );
   });
+
+  /**
+   * The absolute path of the Drift .adv preset, from ppal-library.
+   * @returns The file path
+   */
+  async function driftPresetFile(): Promise<string> {
+    const library = parseToolResult<{
+      items: { name: string; path: string }[];
+    }>(
+      await callToolAndSettle(ctx.client!, "ppal-library", {
+        kind: "preset",
+        query: presetName(adv.name),
+      }),
+    );
+    const file = library.items.find((item) => item.name === adv.name)?.path;
+
+    expect(file).toBeDefined();
+
+    return file as string;
+  }
+
+  it("creates a device from a preset's file path", async () => {
+    // A Core Library file: the remote script finds it under the "Core Library"
+    // pack, which it can only match by name.
+    const file = await driftPresetFile();
+    const track = await createMidiTrack(ctx.client!);
+    const created = parseToolResult<{ path: string }>(
+      await create({ preset: file, path: `t${track}/d0` }),
+    );
+
+    expect((await readDevice(ctx.client!, created.path)).name).toBe(
+      presetName(adv.name),
+    );
+  });
+
+  it("refuses a preset file that isn't the named device's", async () => {
+    const result = await create({
+      device: "Operator",
+      preset: await driftPresetFile(),
+      path: "t0/d+",
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "is not a preset for Operator",
+    );
+  });
+
+  for (const [label, device] of [
+    ["which no device lists", undefined],
+    ["and device Drum Rack", "Drum Rack"],
+  ] as const) {
+    it(`creates a pack's drum kit from its name, ${label}`, async ({
+      skip,
+    }) => {
+      const kit = await packDrumKitOrSkip(ctx.client!, skip);
+      const track = await createMidiTrack(ctx.client!);
+      const created = parseToolResult<{ path: string }>(
+        await create({
+          ...(device == null ? {} : { device }),
+          preset: presetName(kit.name),
+          path: `t${track}/d0`,
+        }),
+      );
+
+      expect((await readDevice(ctx.client!, created.path)).type).toBe(
+        "drum-rack",
+      );
+    });
+  }
 
   it("refuses a preset that isn't the named device's", async () => {
     const result = await create({
@@ -138,9 +176,3 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     );
   });
 });
-
-interface DeviceRead {
-  id: string;
-  type: string;
-  name?: string;
-}

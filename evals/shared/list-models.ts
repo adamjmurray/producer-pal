@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic), Codex (OpenAI)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * List available models for a provider via the provider's live API.
@@ -19,8 +19,8 @@ import {
   validateApiKey,
 } from "#evals/shared/provider-configs.ts";
 
-/** OpenRouter exposes hundreds of models; cap the listing to keep it usable. */
-const OPENROUTER_MODEL_CAP = 50;
+/** OpenRouter and the Vercel gateway list hundreds of models; cap the listing. */
+const LARGE_LIST_MODEL_CAP = 50;
 
 const LOCAL_DEFAULT_BASE_URL = "http://localhost:11434/v1";
 
@@ -63,7 +63,8 @@ export async function listModels(
     return 1;
   }
 
-  const cap = arg === "openrouter" ? OPENROUTER_MODEL_CAP : null;
+  const cap =
+    arg === "openrouter" || arg === "vercel" ? LARGE_LIST_MODEL_CAP : null;
   const shown = cap != null ? allModels.slice(0, cap) : allModels;
   const countLabel =
     cap != null && allModels.length > cap
@@ -191,6 +192,14 @@ async function fetchModelsForProvider(
       return await fetchOpenAiStyleIds("https://openrouter.ai/api/v1/models", {
         Authorization: `Bearer ${validateApiKey(PROVIDER_CONFIGS.openrouter)}`,
       });
+
+    case "vercel":
+      return await fetchOpenAiStyleIds(
+        "https://ai-gateway.vercel.sh/v1/models",
+        {
+          Authorization: `Bearer ${validateApiKey(PROVIDER_CONFIGS.vercel)}`,
+        },
+      );
 
     case "local": {
       const baseUrl =

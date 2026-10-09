@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for a param write that lands nowhere: it keeps its slot in `params`
@@ -174,14 +174,14 @@ describe("ppal-update-device actions", () => {
       "reverse",
     ]);
 
-    // The second add has nothing left to do, so it keeps a normal entry with a
-    // reason and no `ok`; only the last two are refusals.
+    // The same action twice: the last one runs and the first is skipped
+    // unwritten, with no `ok`. Only the last two are refusals.
     expect(entries).toStrictEqual([
-      { action: "addModulationTarget('Flt 1 Freq')" },
       {
         action: "addModulationTarget('Flt 1 Freq')",
-        detail: 'parameter "Flt 1 Freq" is already in the modulation matrix',
+        detail: "named again later in this call",
       },
+      { action: "addModulationTarget('Flt 1 Freq')" },
       {
         action: "setModulation('Flt 1 Freq','LFO 1')",
         ok: false,
@@ -194,6 +194,16 @@ describe("ppal-update-device actions", () => {
       },
     ]);
     expect(warnings).toStrictEqual([]);
+
+    // Adding it again has nothing left to do: a normal entry with a reason.
+    const again = await sendActions(id, ["addModulationTarget('Flt 1 Freq')"]);
+
+    expect(again.entries).toStrictEqual([
+      {
+        action: "addModulationTarget('Flt 1 Freq')",
+        detail: 'parameter "Flt 1 Freq" is already in the modulation matrix',
+      },
+    ]);
   });
 
   it("reports a sample edit that ran beside one with a bad argument", async () => {

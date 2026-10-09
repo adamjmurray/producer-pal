@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import * as parser from "#src/notation/barbeat/parser/barbeat-parser.ts";
@@ -48,6 +48,7 @@ describe("validateBarBeatPosition", () => {
         "beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat 0.",
       );
       expect(() => validateBarBeatPosition("1|007")).toThrow("Got beat 007.");
+      expect(() => validateBarBeatPosition("1|0.")).toThrow(/Got beat 0\.$/);
     });
 
     it("names the offending bar for a zero/leading-zero bar", () => {
@@ -75,9 +76,9 @@ describe("validateBarBeatPosition", () => {
     for (const pos of REJECTED_POSITIONS) {
       it(`notes parser also rejects "${pos} C3"`, () => {
         // A bad beat gets the grammar's 1-indexing steer; a zero/leading-zero
-        // bar fails earlier, as a plain syntax error at the "|".
+        // bar or a negative beat fails as a plain syntax error.
         expect(() => parser.parse(`${pos} C3`)).toThrow(
-          /1-indexed|but "\|" found/,
+          /1-indexed|but "[|-]" found/,
         );
       });
     }

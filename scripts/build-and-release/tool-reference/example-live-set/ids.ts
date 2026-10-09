@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Object ids for the example Live Set the docs generator reads. Live hands out
 // opaque numbers, so these are numbers too — grouped by hundreds per kind so an

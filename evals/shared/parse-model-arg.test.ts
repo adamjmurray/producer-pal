@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { parseModelArg } from "./parse-model-arg.ts";
@@ -17,6 +17,10 @@ describe("parseModelArg", () => {
     ).toStrictEqual({
       provider: "openrouter",
       model: "anthropic/claude-haiku-4.5",
+    });
+    expect(parseModelArg("vercel/openai/gpt-6-luna")).toStrictEqual({
+      provider: "vercel",
+      model: "openai/gpt-6-luna",
     });
   });
 

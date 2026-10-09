@@ -27,7 +27,9 @@
 //   import { listTools, callTool, setConfig, addToLiveSet } from "./ppal.mjs";
 //   const { result, warnings } = await callTool("ppal-read-live-set");
 
-import { realpathSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const DEFAULT_BASE_URL = "http://localhost:3350";
@@ -118,12 +120,10 @@ export async function callTool(name, args = {}, options = {}) {
 
 /**
  * POST /config — update device settings remotely and return the full updated
- * config. `patch` is a partial object; the server ignores unrecognized keys and
- * also silently ignores an invalid value for a known field (an unknown
- * `notation` is dropped, keeping the current setting; booleans are coerced). The
- * only field that rejects with a 400 is an invalid `tools` list. Because bad
- * values are dropped rather than reported, read the returned config to confirm a
- * setting actually took effect.
+ * config. `patch` is a partial object; unrecognized keys are ignored. A wrong
+ * type (e.g. the string "false" for a boolean) or an invalid value (an unknown
+ * `notation`, a bad `tools` list) is a 400 that names every bad field, and
+ * nothing in the patch is applied.
  *
  * Every setting here is GLOBAL to the device — it also moves the chat UI and any
  * connected MCP clients. Prefer the per-request `notation`, `disabledTools`, and
@@ -143,13 +143,62 @@ export async function setConfig(patch, options = {}) {
   return res.json();
 }
 
-const REMOTE_SCRIPT_URL = `http://127.0.0.1:${process.env.PPAL_REMOTE_SCRIPT_PORT ?? 3349}`;
 const REMOTE_SCRIPT_REPO =
   "https://github.com/adamjmurray/producer-pal/tree/main/remote-script";
 const ADD_WAIT_MS = 30_000;
 // Live can re-create the device right after a load, so one answer can be the
 // old device's last. Two in a row counts as up.
 const READY_STREAK = 2;
+
+// Ports to try: PPAL_REMOTE_SCRIPT_PORT alone if valid, else 3349 first (never
+// follow the file to another Live), then the port in ~/.producer-pal's file.
+function remoteScriptPorts() {
+  const raw = process.env.PPAL_REMOTE_SCRIPT_PORT;
+  const fromEnv = raw == null || raw.trim() === "" ? Number.NaN : Number(raw);
+  if (Number.isInteger(fromEnv) && fromEnv >= 0) {
+    return [fromEnv];
+  }
+  const ports = [3349];
+  try {
+    const text = readFileSync(
+      join(homedir(), ".producer-pal", "remote-script-port.txt"),
+      "utf8",
+    ).trim();
+    const port = /^\d+$/.test(text) ? Number(text) : Number.NaN;
+    if (port >= 1 && port <= 65535 && port !== 3349) {
+      ports.push(port);
+    }
+  } catch {
+    // No file: an older script, which is on 3349.
+  }
+  return ports;
+}
+
+/**
+ * Whether our remote script (not some other program) answers on `port`. A slow
+ * ping counts: Live is busy, not absent, and it may be this Live's script.
+ */
+async function isRemoteScript(port) {
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/ping`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    const body = await res.json();
+    return res.ok && typeof body?.script_version === "string";
+  } catch (err) {
+    return err?.name === "TimeoutError";
+  }
+}
+
+/** The base URL of the first port where the remote script answers, or null. */
+async function findRemoteScript() {
+  for (const port of remoteScriptPorts()) {
+    if (await isRemoteScript(port)) {
+      return `http://127.0.0.1:${port}`;
+    }
+  }
+  return null;
+}
 
 /**
  * Add the Producer Pal device to the open Live Set, on a new MIDI track,
@@ -167,9 +216,15 @@ export async function addToLiveSet(options = {}) {
     return { producerPal: true };
   }
 
+  const remoteScriptUrl = await findRemoteScript();
+  if (remoteScriptUrl == null) {
+    throw new Error(
+      `The Producer Pal remote script isn't answering on port ${remoteScriptPorts().join(" or ")}. Is Live running? Install the script and select it as a Control Surface (Live Settings → Tempo & MIDI): ${REMOTE_SCRIPT_REPO}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`,
+    );
+  }
   let res;
   try {
-    res = await fetch(`${REMOTE_SCRIPT_URL}/load`, {
+    res = await fetch(`${remoteScriptUrl}/load`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: "mfl-device", name: "Producer_Pal" }),
@@ -177,9 +232,7 @@ export async function addToLiveSet(options = {}) {
     });
   } catch (err) {
     throw new Error(
-      err.cause?.code === "ECONNREFUSED"
-        ? `The Producer Pal remote script isn't answering on ${REMOTE_SCRIPT_URL}. Is Live running? Install the script and select it as a Control Surface (Live Settings → Tempo & MIDI): ${REMOTE_SCRIPT_REPO}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`
-        : `The Producer Pal remote script didn't reply: ${err.message}`,
+      `The Producer Pal remote script didn't reply: ${err.message}`,
       { cause: err },
     );
   }

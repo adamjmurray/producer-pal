@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Entry point for the tool implementations with direct Live API access
 import "./live-api-extensions.ts";
@@ -39,9 +39,10 @@ import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { connect } from "#src/tools/core/connect.ts";
 import { context as contextTool } from "#src/tools/core/context.ts";
+import { manage } from "#src/tools/core/manage.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
 import { readDevice } from "#src/tools/device/read/read-device.ts";
-import { updateDeviceWithPreset } from "#src/tools/device/update/update-device-with-preset.ts";
+import { updateDevice } from "#src/tools/device/update/update-device.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { createScene } from "#src/tools/scene/create-scene.ts";
@@ -66,7 +67,8 @@ import {
   syncProjectContextBackup,
 } from "./project-context-sync.ts";
 
-// One outlet: MCP responses. Warnings ride inside the response JSON (ADR-0032).
+// One outlet: MCP responses. Warnings ride inside the response JSON, not as
+// trailing Max atoms.
 outlets = 1;
 setoutletassist(0, "tool call results");
 
@@ -147,12 +149,13 @@ const toolDispatch: Record<
   "ppal-update-clip": (args, ctx) => updateClip(args as any, ctx),
   "ppal-create-device": (args, ctx) => createDevice(args as any, ctx),
   "ppal-read-device": (args, ctx) => readDevice(args as any, ctx),
-  "ppal-update-device": (args, ctx) => updateDeviceWithPreset(args as any, ctx),
+  "ppal-update-device": (args, ctx) => updateDevice(args as any, ctx),
   "ppal-playback": (args, ctx) => playback(args as any, ctx),
   "ppal-select": (args, ctx) => select(args as any, ctx),
   "ppal-delete": (args, ctx) => deleteObject(args as any, ctx),
   "ppal-duplicate": (args, ctx) => duplicate(args as any, ctx),
   "ppal-context": (args, ctx) => contextTool(args as any, ctx),
+  "ppal-manage": (args, ctx) => manage(args as any, ctx),
   "ppal-library": (args, ctx) => library(args as any, ctx),
   "ppal-live-api": (args, ctx) => liveApi(args as any, ctx),
 };
@@ -354,6 +357,12 @@ export function liveApiEnabled(): void {}
  * before they reach V8.
  */
 export function tools(): void {}
+
+/**
+ * Ignore the update-notice dismissal. It only tells the device's Main tab to
+ * hide its notice.
+ */
+export function updateDismissed(): void {}
 
 /**
  * Chunk one payload for the Max IPC boundary and send it, as:

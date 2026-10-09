@@ -298,7 +298,7 @@ export default defineConfig({
     },
 
     footer: {
-      message: "Released under the GPL-3.0 License.",
+      message: "Released under the MIT License.",
       copyright: `Copyright © ${new Date().getFullYear()} <a href="https://adammurray.link">Adam Murray</a>`,
     },
   },

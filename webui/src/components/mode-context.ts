@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type ConversationLock } from "#webui/components/settings/LockedSettingsNotice";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
@@ -33,6 +33,8 @@ export interface ModeAppProps {
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
+  /** Open settings on the Remote Script tab. */
+  onOpenRemoteScriptSettings: () => void;
   onOpenContext: () => void;
   /** Open the context editor on its Instructions tab (the system prompt). */
   onOpenInstructions: () => void;

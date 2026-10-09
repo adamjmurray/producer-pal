@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-live-api tool.
@@ -26,19 +26,40 @@ import {
 interface LiveApiResult {
   path?: string;
   id: string;
-  results: Array<{
-    operation: {
-      type: string;
-      property?: string;
-      method?: string;
-      value?: unknown;
-      args?: unknown[];
-    };
-    result: unknown;
-  }>;
+  results: unknown[];
+  failed?: { index: number; detail: string };
 }
 
 const ctx = setupMcpTestContext({ once: true });
+
+/**
+ * Call ppal-live-api without parsing the result.
+ * @param operations - The operations to run
+ * @param path - The Live object path to start from
+ * @returns The raw tool result
+ */
+async function callLiveApi(operations: unknown[], path = "live_set") {
+  return await ctx.client!.callTool({
+    name: "ppal-live-api",
+    arguments: { path, operations },
+  });
+}
+
+/**
+ * Put the tempo back after a test changed it.
+ * @param tempo - The tempo to restore
+ */
+async function restoreTempo(tempo: number): Promise<void> {
+  await callLiveApi([
+    { type: "set-property", property: "tempo", value: tempo },
+  ]);
+}
+
+async function readTempo(): Promise<number> {
+  return parseToolResult<LiveApiResult>(
+    await callLiveApi([{ type: "get-property", property: "tempo" }]),
+  ).results[0] as number;
+}
 
 describe("ppal-live-api", () => {
   // setupMcpTestContext's beforeEach resets config.tools to TOOL_NAMES
@@ -50,13 +71,7 @@ describe("ppal-live-api", () => {
   });
 
   it("returns object info for live_set", async () => {
-    const result = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set",
-        operations: [{ type: "info" }],
-      },
-    });
+    const result = await callLiveApi([{ type: "info" }]);
 
     const parsed = parseToolResult<LiveApiResult>(result);
 
@@ -64,69 +79,47 @@ describe("ppal-live-api", () => {
     expect(parsed.path).toContain("live_set");
     expect(parsed.results).toHaveLength(1);
 
-    const info = parsed.results[0]!.result;
+    const info = parsed.results[0];
 
     expect(typeof info).toBe("string");
     expect(info as string).toContain("tempo");
   });
 
-  it("reads tempo via getProperty", async () => {
-    // getProperty uses the live-api-extension that returns a scalar.
-    // (get_property accesses JS fields on the LiveAPI object itself —
+  it("reads tempo via get-property", async () => {
+    // get-property uses the live-api-extension that returns a scalar.
+    // (get-field accesses JS fields on the LiveAPI object itself —
     // suitable for built-ins like info/id/path, not Live Object props.)
-    const result = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set",
-        operations: [{ type: "getProperty", property: "tempo" }],
-      },
-    });
+    const result = await callLiveApi([
+      { type: "get-property", property: "tempo" },
+    ]);
 
     const parsed = parseToolResult<LiveApiResult>(result);
 
     expect(parsed.results).toHaveLength(1);
-    expect(typeof parsed.results[0]!.result).toBe("number");
+    expect(typeof parsed.results[0]).toBe("number");
   });
 
-  it("writes tempo via set_property and reverts to the original value", async () => {
-    const readResult = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set",
-        operations: [{ type: "getProperty", property: "tempo" }],
-      },
-    });
-    const original = parseToolResult<LiveApiResult>(readResult).results[0]!
-      .result as number;
+  it("writes tempo via set-property and reverts to the original value", async () => {
+    const readResult = await callLiveApi([
+      { type: "get-property", property: "tempo" },
+    ]);
+    const original = parseToolResult<LiveApiResult>(readResult)
+      .results[0] as number;
 
     expect(typeof original).toBe("number");
 
     try {
-      const writeResult = await ctx.client!.callTool({
-        name: "ppal-live-api",
-        arguments: {
-          path: "live_set",
-          operations: [
-            { type: "set_property", property: "tempo", value: 120 },
-            { type: "getProperty", property: "tempo" },
-          ],
-        },
-      });
+      const writeResult = await callLiveApi([
+        { type: "set-property", property: "tempo", value: 120 },
+        { type: "get-property", property: "tempo" },
+      ]);
       const parsed = parseToolResult<LiveApiResult>(writeResult);
 
       expect(parsed.results).toHaveLength(2);
-      expect(parsed.results[1]!.result).toBe(120);
+      expect(parsed.results[1]).toBe(120);
     } finally {
       // Restore tempo even if assertions above threw.
-      await ctx.client!.callTool({
-        name: "ppal-live-api",
-        arguments: {
-          path: "live_set",
-          operations: [
-            { type: "set_property", property: "tempo", value: original },
-          ],
-        },
-      });
+      await restoreTempo(original);
     }
   });
 
@@ -135,34 +128,46 @@ describe("ppal-live-api", () => {
   // still comes back 1 — which is why the declaration in src/types/live-api.d.ts
   // says to read the property back instead of trusting the return.
   it("returns 1 from set even when Live rejects the write", async () => {
-    const result = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set",
-        operations: [
-          { type: "getProperty", property: "tempo" },
-          // read-only property
-          { type: "set", property: "song_length", value: 999 },
-          // a string into a numeric property
-          { type: "set", property: "tempo", value: "not_a_number" },
-          // property the object doesn't have
-          { type: "set", property: "bogus_property_xyz", value: 1 },
-          // past Live's maximum tempo
-          { type: "set", property: "tempo", value: 9999 },
-          { type: "getProperty", property: "tempo" },
-        ],
-      },
-    });
-
-    const parsed = parseToolResult<LiveApiResult>(result);
-    const original = parsed.results[0]!.result;
-
-    expect(parsed.results.slice(1, 5).map((r) => r.result)).toStrictEqual([
-      1, 1, 1, 1,
+    const result = await callLiveApi([
+      { type: "get-property", property: "tempo" },
+      // read-only property
+      { type: "set", property: "song_length", value: 999 },
+      // a string into a numeric property
+      { type: "set", property: "tempo", value: "not_a_number" },
+      // property the object doesn't have
+      { type: "set", property: "bogus_property_xyz", value: 1 },
+      // past Live's maximum tempo
+      { type: "set", property: "tempo", value: 9999 },
+      { type: "get-property", property: "tempo" },
     ]);
 
+    const parsed = parseToolResult<LiveApiResult>(result);
+    const original = parsed.results[0];
+
+    expect(parsed.results.slice(1, 5)).toStrictEqual([1, 1, 1, 1]);
+
     // None of them landed, so nothing needs restoring.
-    expect(parsed.results[5]!.result).toBe(original);
+    expect(parsed.results[5]).toBe(original);
+  });
+
+  it("refuses a param the operation type doesn't read, before any operation runs", async () => {
+    const tempo = async (): Promise<unknown> =>
+      parseToolResult<LiveApiResult>(
+        await callLiveApi([{ type: "get-property", property: "tempo" }]),
+      ).results[0];
+    const before = await tempo();
+
+    const refused = await callLiveApi([
+      { type: "set", property: "tempo", value: 77 },
+      { type: "get", property: "tempo", method: "stop_all_clips" },
+    ]);
+
+    expect(isToolError(refused)).toBe(true);
+    expect(getToolErrorMessage(refused)).toBe(
+      'Error: operations[1] (counting from 0): method is only for type "call" or "call-method"; this call has type "get". Change the type or drop method.',
+    );
+    // The set before it never ran.
+    expect(await tempo()).toBe(before);
   });
 
   // The nonexistent-object contract, pinned so a Live upgrade that changes it
@@ -170,28 +175,23 @@ describe("ppal-live-api", () => {
   // dev/coding-standards/live-api-behavior.md, "What Live Returns When There Is
   // No Object".
   it("returns the documented sentinels on a nonexistent object", async () => {
-    const result = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set tracks 999",
-        operations: [
-          { type: "get", property: "name" },
-          { type: "set", property: "name", value: "should not apply" },
-          { type: "call", method: "stop_all_clips" },
-          { type: "getstring", property: "name" },
-          { type: "getcount", property: "devices" },
-          { type: "info" },
-          { type: "exists" },
-          { type: "getProperty", property: "name" },
-          { type: "getChildIds", property: "devices" },
-          { type: "getColor" },
-        ],
-      },
-    });
-
-    const r = parseToolResult<LiveApiResult>(result).results.map(
-      (entry) => entry.result,
+    const result = await callLiveApi(
+      [
+        { type: "get", property: "name" },
+        { type: "set", property: "name", value: "should not apply" },
+        { type: "call", method: "stop_all_clips" },
+        { type: "getstring", property: "name" },
+        { type: "getcount", property: "devices" },
+        { type: "info" },
+        { type: "exists" },
+        { type: "get-property", property: "name" },
+        { type: "get-child-ids", property: "devices" },
+        { type: "get-color" },
+      ],
+      "live_set tracks 999",
     );
+
+    const r = parseToolResult<LiveApiResult>(result).results;
 
     // Live's own calls: a bare 1 means "no object, no answer".
     expect(r.slice(0, 4)).toStrictEqual([1, 1, 1, 1]);
@@ -200,156 +200,117 @@ describe("ppal-live-api", () => {
 
     // The wrapper turns all of that into ordinary empty values.
     expect(r[6]).toBe(false);
-    expect(r[7]).toBeUndefined();
+    // No value; JSON carries it as null.
+    expect(r[7]).toBeNull();
     expect(r[8]).toStrictEqual([]);
     expect(r[9]).toBeNull();
   });
 
   it("executes multiple operations in a single call", async () => {
-    const result = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set",
-        operations: [
-          { type: "getProperty", property: "tempo" },
-          { type: "info" },
-        ],
-      },
-    });
+    const result = await callLiveApi([
+      { type: "get-property", property: "tempo" },
+      { type: "info" },
+    ]);
 
     const parsed = parseToolResult<LiveApiResult>(result);
 
     expect(parsed.results).toHaveLength(2);
-    expect(typeof parsed.results[0]!.result).toBe("number");
-    expect(typeof parsed.results[1]!.result).toBe("string");
+    expect(typeof parsed.results[0]).toBe("number");
+    expect(typeof parsed.results[1]).toBe("string");
   });
 
   it("counts children with getcount and reads a property as a string with getstring", async () => {
-    const result = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set",
-        operations: [
-          { type: "getcount", property: "tracks" },
-          { type: "getstring", property: "tempo" },
-        ],
-      },
-    });
+    const result = await callLiveApi([
+      { type: "getcount", property: "tracks" },
+      { type: "getstring", property: "tempo" },
+    ]);
 
     const parsed = parseToolResult<LiveApiResult>(result);
 
-    expect(parsed.results[0]!.result).toBeGreaterThan(0);
+    expect(parsed.results[0]).toBeGreaterThan(0);
     // Max renders a float property with a trailing dot: "120."
-    expect(parsed.results[1]!.result).toMatch(/^\d/);
+    expect(parsed.results[1]).toMatch(/^\d/);
   });
 
-  it("retargets the object with set_path", async () => {
-    const result = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set tracks 0",
-        operations: [
-          { type: "get_property", property: "id" },
-          { type: "set_path", value: "live_set tracks 1" },
-          { type: "get_property", property: "id" },
-        ],
-      },
-    });
+  it("retargets the object with set-path", async () => {
+    const result = await callLiveApi(
+      [
+        { type: "get-field", property: "id" },
+        { type: "set-path", value: "live_set tracks 1" },
+        { type: "get-field", property: "id" },
+      ],
+      "live_set tracks 0",
+    );
 
     const parsed = parseToolResult<LiveApiResult>(result);
 
-    // set_path reads the field back rather than echoing the input.
-    expect(parsed.results[1]!.result).toBe("live_set tracks 1");
-    expect(parsed.results[2]!.result).not.toBe(parsed.results[0]!.result);
+    // set-path reads the field back rather than echoing the input.
+    expect(parsed.results[1]).toBe("live_set tracks 1");
+    expect(parsed.results[2]).not.toBe(parsed.results[0]);
     expect(parsed.path).toBe("live_set tracks 1");
   });
 
-  it('releases the object with set_path ""', async () => {
+  it('releases the object with set-path ""', async () => {
     // The whole point of the operation: clearing the path is the only way to
     // release the listeners Live installs along it, and "" is falsy, so this
-    // only works because set_path requires a defined value, not a truthy one.
-    const result = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set tracks 0",
-        operations: [
-          { type: "set_path", value: "" },
-          { type: "get_property", property: "id" },
-          { type: "exists" },
-        ],
-      },
-    });
+    // only works because set-path requires a defined value, not a truthy one.
+    const result = await callLiveApi(
+      [
+        { type: "set-path", value: "" },
+        { type: "get-field", property: "id" },
+        { type: "exists" },
+      ],
+      "live_set tracks 0",
+    );
 
     const parsed = parseToolResult<LiveApiResult>(result);
 
-    expect(parsed.results[0]!.result).toBe("");
-    expect(parsed.results[1]!.result).toBe("0");
-    expect(parsed.results[2]!.result).toBe(false);
+    expect(parsed.results[0]).toBe("");
+    expect(parsed.results[1]).toBe("0");
+    expect(parsed.results[2]).toBe(false);
     expect(parsed.path).toBe("");
   });
 
-  it("assigns mode with set_mode, which Max coerces to 0 or 1", async () => {
-    const result = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set",
-        operations: [
-          { type: "get_property", property: "mode" },
-          { type: "set_mode", value: 1 },
-          // 0 is falsy — same valueDefined requirement as set_path "".
-          { type: "set_mode", value: 0 },
-          // Max normalizes anything else, so the read-back is the truth.
-          { type: "set_mode", value: 7 },
-        ],
-      },
-    });
+  it("assigns mode with set-mode, which Max coerces to 0 or 1", async () => {
+    const result = await callLiveApi([
+      { type: "get-field", property: "mode" },
+      { type: "set-mode", value: 1 },
+      // 0 is falsy — same valueDefined requirement as set-path "".
+      { type: "set-mode", value: 0 },
+      // Max normalizes anything else, so the read-back is the truth.
+      { type: "set-mode", value: 7 },
+    ]);
 
     const parsed = parseToolResult<LiveApiResult>(result);
 
-    expect(parsed.results[0]!.result).toBe(0);
-    expect(parsed.results[1]!.result).toBe(1);
-    expect(parsed.results[2]!.result).toBe(0);
-    expect(parsed.results[3]!.result).toBe(1);
+    expect(parsed.results[0]).toBe(0);
+    expect(parsed.results[1]).toBe(1);
+    expect(parsed.results[2]).toBe(0);
+    expect(parsed.results[3]).toBe(1);
   });
 
-  it("distinguishes call from call_method", async () => {
+  it("distinguishes call from call-method", async () => {
     // Despite the names these are not aliases: call reaches the Live object,
-    // call_method reaches the JavaScript wrapper.
-    const liveMethod = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set",
-        operations: [{ type: "call", method: "get_current_beats_song_time" }],
-      },
-    });
+    // call-method reaches the JavaScript wrapper.
+    const liveMethod = await callLiveApi([
+      { type: "call", method: "get_current_beats_song_time" },
+    ]);
+
+    expect(parseToolResult<LiveApiResult>(liveMethod).results[0]).toMatch(
+      /^\d+\./,
+    );
+
+    const wrapperMethod = await callLiveApi([
+      { type: "call-method", method: "getProperty", args: ["tempo"] },
+    ]);
 
     expect(
-      parseToolResult<LiveApiResult>(liveMethod).results[0]!.result,
-    ).toMatch(/^\d+\./);
-
-    const wrapperMethod = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set",
-        operations: [
-          { type: "call_method", method: "getProperty", args: ["tempo"] },
-        ],
-      },
-    });
-
-    expect(
-      typeof parseToolResult<LiveApiResult>(wrapperMethod).results[0]!.result,
+      typeof parseToolResult<LiveApiResult>(wrapperMethod).results[0],
     ).toBe("number");
 
-    const wrongTarget = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set",
-        operations: [
-          { type: "call_method", method: "get_current_beats_song_time" },
-        ],
-      },
-    });
+    const wrongTarget = await callLiveApi([
+      { type: "call-method", method: "get_current_beats_song_time" },
+    ]);
 
     expect(isToolError(wrongTarget)).toBe(true);
     expect(getToolErrorMessage(wrongTarget)).toContain(
@@ -358,33 +319,81 @@ describe("ppal-live-api", () => {
   });
 
   it("surfaces a tool error when a falsy-value operation omits its value", async () => {
-    // set_path and set_mode take "" and 0, so they check for a defined value
+    // set-path and set-mode take "" and 0, so they check for a defined value
     // rather than a truthy one. Omitting the value must still fail.
-    for (const type of ["set_path", "set_mode"]) {
-      const result = await ctx.client!.callTool({
-        name: "ppal-live-api",
-        arguments: {
-          path: "live_set",
-          operations: [{ type }],
-        },
-      });
+    for (const type of ["set-path", "set-mode"]) {
+      const result = await callLiveApi([{ type }]);
 
       expect(isToolError(result)).toBe(true);
       expect(getToolErrorMessage(result)).toContain("requires value");
     }
   });
 
-  it("surfaces a tool error when get_property is missing the property param", async () => {
-    const result = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set",
-        operations: [{ type: "get_property" }],
-      },
-    });
+  it("surfaces a tool error when get-field is missing the property param", async () => {
+    const result = await callLiveApi([{ type: "get-field" }]);
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain("requires property");
+  });
+
+  it("runs nothing when a later operation is malformed", async () => {
+    const original = await readTempo();
+    const other = original === 120 ? 121 : 120;
+
+    try {
+      const result = await callLiveApi([
+        { type: "set-property", property: "tempo", value: other },
+        { type: "set-property", property: "tempo" },
+      ]);
+
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toContain(
+        "set-property operation requires value",
+      );
+      // The first operation never ran
+      expect(await readTempo()).toBe(original);
+    } finally {
+      // Restore tempo in case the first operation ran anyway.
+      await restoreTempo(original);
+    }
+  });
+
+  it("keeps earlier results and stops when an operation throws at runtime", async () => {
+    const original = await readTempo();
+    const first = original === 120 ? 121 : 120;
+    const never = original === 122 ? 123 : 122;
+
+    try {
+      const result = await callLiveApi([
+        { type: "set-property", property: "tempo", value: first },
+        // A valid path, but the LiveAPI object has no such method
+        { type: "call-method", method: "noSuchMethod" },
+        { type: "set-property", property: "tempo", value: never },
+      ]);
+
+      expect(isToolError(result)).toBe(false);
+
+      const parsed = parseToolResult<LiveApiResult>(result);
+
+      expect(parsed.results).toStrictEqual([first]);
+      expect(parsed.failed?.index).toBe(1);
+      expect(parsed.failed?.detail).toContain("not found on LiveAPI object");
+      // The first operation landed and the last never ran
+      expect(await readTempo()).toBe(first);
+    } finally {
+      await restoreTempo(original);
+    }
+  });
+
+  it("names the failing operation's index when validation refuses a call", async () => {
+    const result = await callLiveApi([
+      { type: "info" },
+      { type: "exists" },
+      { type: "get" },
+    ]);
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("operations[2]");
   });
 
   it("is gated by config.liveApiEnabled at the MCP layer", async () => {
@@ -393,26 +402,14 @@ describe("ppal-live-api", () => {
     // When the tool is not registered with the MCP server, the SDK
     // surfaces a JSON-RPC error as a tool result with isError: true
     // (text: "MCP error -32602: Tool ppal-live-api not found").
-    const disabledResult = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set",
-        operations: [{ type: "info" }],
-      },
-    });
+    const disabledResult = await callLiveApi([{ type: "info" }]);
 
     expect(isToolError(disabledResult)).toBe(true);
     expect(getToolErrorMessage(disabledResult)).toContain("not found");
 
     await setConfig({ liveApiEnabled: true });
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-live-api",
-      arguments: {
-        path: "live_set",
-        operations: [{ type: "info" }],
-      },
-    });
+    const result = await callLiveApi([{ type: "info" }]);
 
     expect(isToolError(result)).toBe(false);
 

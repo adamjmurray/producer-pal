@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-playback tool
@@ -24,16 +24,16 @@ import {
   sleep,
 } from "../mcp-test-helpers";
 import { CHILD_TRACK, EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
+import {
+  type ClipEntry,
+  type PlaybackResult,
+  playbackCalls,
+} from "./helpers/playback-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
-async function playback(
-  args: Record<string, unknown>,
-): Promise<PlaybackResult> {
-  return parseToolResult<PlaybackResult>(
-    await ctx.client!.callTool({ name: "ppal-playback", arguments: args }),
-  );
-}
+const { playback, isPlaying, readClip, createClipOnTrack, createSessionClip } =
+  playbackCalls(ctx);
 
 /**
  * Check the next call reports the loop the write before it left. A write
@@ -50,38 +50,6 @@ async function expectLoopReadsBack(
   expect(playing.loop).toBe(true);
   expect(playing.loopStart).toBe(loopStart);
   expect(playing.loopEnd).toBe(loopEnd);
-}
-
-async function createSessionClip(
-  sceneIndex: number,
-  note: string,
-): Promise<string> {
-  return createClipOnTrack(EMPTY_MIDI_TRACK, sceneIndex, note);
-}
-
-async function createClipOnTrack(
-  trackIndex: number,
-  sceneIndex: number,
-  note: string,
-): Promise<string> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-create-clip",
-    arguments: {
-      path: `t${trackIndex}/s${sceneIndex}`,
-      notes: `${note} 1|1`,
-      length: "1bar",
-    },
-  });
-
-  return parseToolResult<{ id: string }>(result).id;
-}
-
-async function readClip(
-  path: string,
-): Promise<{ playing?: boolean; triggered?: boolean }> {
-  return parseToolResult<{ playing?: boolean; triggered?: boolean }>(
-    await ctx.client!.callTool({ name: "ppal-read-clip", arguments: { path } }),
-  );
 }
 
 describe("ppal-playback", () => {
@@ -471,17 +439,49 @@ describe("ppal-playback", () => {
       id: `999999,${clip}`,
     });
 
-    expect(stopped.clips).toHaveLength(2);
-    expect(stopped.clips?.[0]).toStrictEqual({
+    const entries = stopped.clip as ClipEntry[];
+
+    expect(entries).toHaveLength(2);
+    expect(entries[0]).toStrictEqual({
       id: "999999",
       ok: false,
       detail: 'id "999999" does not exist',
     });
-    expect(stopped.clips?.[1]).toStrictEqual({
+    expect(entries[1]).toStrictEqual({
       id: clip,
       path: `t${EMPTY_MIDI_TRACK}/s0`,
     });
 
+    await playback({ action: "stop" });
+  });
+
+  // `clip` mirrors the singular `id`/`path` params: one target comes back
+  // alone, several as a list.
+  it("answers one clip unwrapped and several as an array", async () => {
+    const clip1 = await createSessionClip(0, "C3");
+    const clip2 = await createSessionClip(1, "D3");
+
+    await sleep(100);
+
+    const one = await playback({ action: "play-session-clips", id: clip1 });
+
+    expect(one.clip).toStrictEqual({
+      id: clip1,
+      path: `t${EMPTY_MIDI_TRACK}/s0`,
+    });
+
+    const two = await playback({
+      action: "play-session-clips",
+      id: `${clip1},${clip2}`,
+    });
+
+    expect(two.clip).toHaveLength(2);
+    expect(two.clip).toStrictEqual([
+      expect.objectContaining({ id: clip1 }),
+      expect.objectContaining({ id: clip2 }),
+    ]);
+
+    await playback({ action: "stop-all-session-clips" });
     await playback({ action: "stop" });
   });
 
@@ -624,6 +624,49 @@ describe("ppal-playback", () => {
     await playback({ action: "stop" });
   });
 
+  it("refuses a start position on a session action and leaves the Set alone", async () => {
+    await playback({ action: "update-arrangement", startTime: "9|1" });
+
+    const refused = await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "play-scene", path: "s0", startTime: "5|1" },
+    });
+
+    expect(isToolError(refused)).toBe(true);
+    expect(getToolErrorMessage(refused)).toBe(
+      'Error: startTime is only for action "play-arrangement", "update-arrangement" or "stop"; this call has action "play-scene". Change the action or drop startTime.',
+    );
+
+    // Neither the scene fired nor the start position moved; only a later
+    // call can show it.
+    const after = await playback({ action: "play-arrangement" });
+
+    expect(after.startTime).toBe("9|1");
+    expect(after.scene).toBeUndefined();
+
+    await playback({ action: "stop" });
+  });
+
+  it("refuses a scene path sent with sceneIndex, firing nothing", async () => {
+    // isPlaying reads undefined while the transport is stopped, and firing
+    // a scene would start it.
+    await playback({ action: "stop" });
+    await sleep(100);
+    expect(await isPlaying()).toBeUndefined();
+
+    const refused = await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "play-scene", path: "s0", sceneIndex: 0 },
+    });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "path names the scene on its own - don't send sceneIndex with it",
+    );
+
+    await sleep(100);
+    expect(await isPlaying()).toBeUndefined();
+  });
+
   it("errors on a locator name nothing matches", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-playback",
@@ -636,13 +679,3 @@ describe("ppal-playback", () => {
     );
   });
 });
-
-interface PlaybackResult {
-  playing: boolean;
-  startTime?: string;
-  scene?: { id: string; path?: string };
-  clips?: Array<{ id?: string; path?: string; ok?: false; detail?: string }>;
-  loop?: boolean;
-  loopStart?: string;
-  loopEnd?: string;
-}

@@ -46,10 +46,40 @@ Every read tool drops some include options in small-model mode, via
 The trim is enforced: the value is removed from the schema that validates, so
 sending it is an error rather than a no-op. `"*"` is dropped everywhere.
 
-Which options go, and why, is ADR-0026 — the short version is that an option
-goes when nothing the small model can do depends on it. Fields inside a
-surviving option are never suppressed. The per-tool lists live in each
-`.def.ts`; the per-tool files describe large-model mode.
+**Trim by include option; leave the fields inside a surviving option alone.** An
+option goes only when nothing the small model can do depends on it. Any one of
+these keeps it:
+
+1. it feeds a published param, on this tool or another,
+2. it names something a later call has to address, or
+3. it answers a question a user actually asks.
+
+That is wider than "has a matching write param": `sampleFile`, `instrument`,
+`drumMap`, `id` and `path` have no write param and are all load-bearing. Today
+that drops `actions` on read-device (its only consumer, update-device's
+`actions`, is hidden) and `routings` on read-track and read-live-set (all four
+routing write params are hidden, so a model could see the state, not the
+choices). The latter costs the ability to answer "what is this track routed
+to?", accepted because the half-measure was worse.
+
+Why not suppress individual fields: an option is what the model _chooses_ — it
+can decline an option but not a field. Field suppression would mean threading a
+flag through every read helper, or a deny-list that can't tell a clip's `gainDb`
+(writable in small mode) from a chain's (not), and it adds a second, silent way
+read output varies by mode that nothing guards the way
+`small-model-param-references.test.ts` guards descriptions. The option lever is
+one line per tool and reuses validation that already exists. Don't fix it in
+`basicDriver` either: a devices fragment explaining the chain fader would teach
+a small model about params it doesn't have.
+
+The dead fields stay, mostly cheap because they emit only when non-default. The
+exception is chain `sends` inside read-device `chains`: small mode drops
+`drum-pads`, so `chains` is the only route into a drum rack, and a factory kit
+routes most pads to returns. Unmeasured. If it costs real context there, or a
+third option turns out dead, reopen the per-field question with data.
+
+The per-tool lists live in each `.def.ts`; the per-tool files describe
+large-model mode.
 
 ### Include propagation
 
@@ -64,14 +94,13 @@ published. `ppal-read-live-set` propagates only track-level includes
 
 Nested clip results have context-redundant fields removed to save tokens:
 
-- **In `ppal-read-track`**: `view` and `type` are stripped from clips in
+- **In `ppal-read-track`**: `type` is stripped from clips in
   `sessionClips`/`arrangementClips`/`takeLanes` (redundant with the parent
   track's properties and the array name). A take lane clip keeps its `path` — it
   says where on the lane the clip starts, which the lane's own path doesn't.
-- **In `ppal-read-scene`**: `view` is stripped from clips in the `clips` array
-  (scenes are always session view)
 
-When reading clips directly via `ppal-read-clip`, all fields are present.
+Every clip read leaves out `view`: the `path` already says it (`t0/s3` is a
+session slot, `t0[5|1]` an arrangement position).
 
 ### Implementation
 

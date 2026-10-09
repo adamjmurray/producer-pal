@@ -2,7 +2,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Runs every tool once against a mock Live Set and writes the result into the
 // tool reference as an "Example output" block. No Ableton Live involved — the

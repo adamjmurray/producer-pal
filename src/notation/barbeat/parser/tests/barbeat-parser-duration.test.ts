@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import * as parser from "../barbeat-parser.ts";
@@ -186,7 +186,9 @@ describe("BarBeatScript Parser - duration", () => {
   });
 
   it("rejects malformed denominators (zero or missing)", () => {
-    expect(() => parser.parse("n/0 C3")).toThrow('but "n" found');
+    expect(() => parser.parse("n/0 C3")).toThrow(
+      "a note value's denominator can't be 0 (got n/0)",
+    );
     expect(() => parser.parse("n//4 C3")).toThrow('but "n" found');
     expect(() => parser.parse("n3/0 C3")).toThrow(/denominator/);
   });

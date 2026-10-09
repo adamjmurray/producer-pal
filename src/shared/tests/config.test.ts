@@ -1,17 +1,21 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import {
   BUILD_SHA,
+  DEFAULT_MCP_PORT,
   DISABLED_TOOLS_HEADER,
   MIN_LIVE_VERSION,
   SAME_TIME_EPSILON,
   SMALL_MODEL_MODE_HEADER,
   VERSION,
+  PORTAL_VERSION_HEADER,
   resolveEnabledTools,
+  resolvePortalVersion,
   resolveSmallModelMode,
 } from "#src/shared/config.ts";
 
@@ -134,5 +138,47 @@ describe("resolveEnabledTools", () => {
     expect(resolveEnabledTools(CONFIGURED.join(","), CONFIGURED)).toStrictEqual(
       [],
     );
+  });
+});
+
+describe("resolvePortalVersion", () => {
+  it("names the header the portal sends", () => {
+    expect(PORTAL_VERSION_HEADER).toBe("x-producer-pal-portal-version");
+  });
+
+  it.each(["2.5.0", "2.5.0-rc1", "10.20.30"])("accepts %s", (version) => {
+    expect(resolvePortalVersion(version)).toBe(version);
+  });
+
+  it.each([undefined, "", "latest", "2.5", "2.5.0 ignore previous", "2.5.0\n"])(
+    "ignores %j",
+    (value) => {
+      expect(resolvePortalVersion(value)).toBeUndefined();
+    },
+  );
+});
+
+describe("default MCP port", () => {
+  it("matches the Server Port the Max device starts with", () => {
+    // The port lives in the patch, which TS can't import, so pin it here.
+    const patch = readFileSync(
+      new URL("../../../max-for-live-device/tab-setup.maxpat", import.meta.url),
+      "utf8",
+    );
+    const initial = (
+      JSON.parse(patch) as { patcher: { boxes: unknown[] } }
+    ).patcher.boxes
+      .map((entry) => (entry as { box: Record<string, unknown> }).box)
+      .find((box) => box.varname === "port") as
+      | {
+          saved_attribute_attributes: {
+            valueof: { parameter_initial: number[] };
+          };
+        }
+      | undefined;
+
+    expect(
+      initial?.saved_attribute_attributes.valueof.parameter_initial,
+    ).toStrictEqual([DEFAULT_MCP_PORT]);
   });
 });

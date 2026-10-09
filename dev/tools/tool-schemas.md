@@ -34,10 +34,11 @@ switch — tolerance lives in the schema, e.g. `device-params-schema.ts`'s
 
 ## Comma-separated params pair one way
 
-When a param varies per item, use `src/tools/shared/validation/list-pairing.ts`:
-one value covers every item, or exactly N pair 1:1 in order, and no entry may be
-empty. Anything else is refused before any work runs. Nothing cycles — including
-`color`, which used to (ADR-0031).
+When a param varies per item, use
+`src/tools/shared/validation/lists/list-pairing.ts`: one value covers every
+item, or exactly N pair 1:1 in order, and no entry may be empty. Anything else
+is refused before any work runs. Nothing cycles. The rules are in
+[Tool Behavior](../specs/tool-behavior/README.md#lists-and-pairing).
 
 `pairValues` / `valueForIndex` for values, `pairExact` for a destination that
 holds one item — broadcasting a lone clip slot to three clips would destroy two
@@ -58,9 +59,9 @@ list:
   `src/tools/shared/helpers/target-entries.ts`, which refuses a hole and refuses
   a list that names nothing at all (`","`). Dropping a hole shifts every later
   pairing and keeping it names nothing, so neither is guessed at. Nothing has
-  run when the check fires, so refusing costs the caller only a retry. A target
-  list of names (`locatorName` on delete) splits with `nameEntries` instead,
-  where `\,` is a comma inside a name.
+  run when the check fires, so refusing costs the caller only a retry. `\,` is a
+  comma inside an entry, so a locator name can hold one. A param whose value is
+  its own list (split points) reads the same way.
 - **Value lists** are properties applied to targets (`name`, `color`). Split
   them with `splitList`, which refuses a hole for the same reason. `name: ""`
   alone is how you clear a value, for every target in the call.
@@ -76,36 +77,26 @@ target, the check is skipped: every value is read whole, commas and all.
 An item count the call works out for itself (`count: 3` on a create tool) is one
 of the lists, so `count: 3` with `name: "A,B"` is refused too.
 
-Two tools can't check their raw args. update-clip's `id` and `path` name
-different clips and add up, so it passes the sum as a count and never compares
-the two. duplicate shares its destinations out across the sources first, so its
-check (`requireSameLength`) runs where the copies are planned. A clip slot,
-lane, device or pad holds one object, so with several sources the destination
-list must name one per source: `requireDestinationPerSource` refuses anything
-else before the first copy is made. Only a clip destination that leaves the
-copies apart broadcasts: a bare `[5|1]`, or a track whose positions pair one per
-clip.
-
-See ADR-0035.
+Three tools can't check their raw args and do it where their targets are
+resolved; see
+[up-front refusals, tool by tool](../specs/tool-behavior/up-front-refusals-by-tool.md).
+A destination that holds one object is checked with
+`requireDestinationPerSource`.
 
 ## Params that don't apply to every action
 
 A modal tool publishes one schema for every action, so a caller can always send
-a param the chosen action has no use for. **Warn and skip it — never apply it,
-never drop it quietly.** Applying it is the worse half: `ppal-playback` used to
-write the arrangement start position on `play-scene`, so "play scene 3 from bar
-5" changed the Live Set in a way nobody asked for.
+a param the chosen action has no use for. **Refuse it up front — never apply it,
+never drop it quietly.** The call is ambiguous (the action or the param is the
+mistake), and applying it is the worse guess: `ppal-playback` used to write the
+arrangement start position on `play-scene`, so "play scene 3 from bar 5" changed
+the Live Set in a way nobody asked for.
 
-Say which action ignored it, and point at every action that would have used it —
-naming only one steers a caller who meant the other:
-
-```
-startTime ignored: action "play-scene" doesn't take arrangement timeline
-params; use "play-arrangement" or "update-arrangement" for the start position and loop
-```
-
-Group the params that share a reason into one warning rather than repeating the
-sentence per param.
+Build the refusal with `refuseParamsOutsideAction` so every tool words it the
+same way: it names the params, the actions that read them, and what the call
+has. A defaulted action counts like an explicit one; a null or blank counts as
+not sent. Rule:
+[Tool Behavior](../specs/tool-behavior/README.md#a-param-only-another-action-reads).
 
 ## Length caps
 
@@ -133,19 +124,36 @@ Write an optional param the plain way — nothing to remember. Clients fill the
 params they have no value for with `null`, and `unsetEmptyParams()` drops those
 args before validation on every call path, so a null reads as a param never
 sent. Without it `Number(null)` is 0, `z.coerce.string()` gives `"null"`, and a
-boolean or enum rejects the whole call. See ADR-0029.
+boolean or enum rejects the whole call. Rule:
+[Tool Behavior](../specs/tool-behavior/README.md#empty-and-blank-params).
 
 A blank string is not the same thing. It survives on a text param, where
 clearing a name or a clip's notes is a real request; on a param with no empty
 value of its own — a number, boolean, enum or array — it is **refused**, naming
 the param. Dropping it is what let `bpm: ""` become a call that set no tempo and
-said nothing. See ADR-0035 rule 5.
+said nothing.
 
 Both halves are held for the whole tool surface by
 `src/test/meta/tool-schemas/empty-params.test.ts`.
 
+Over MCP the SDK parses and coerces the args before our handler runs, so
+`defineTool` hands it the params wrapped in `optionalParams()`, which applies
+the same rule and publishes the same JSON Schema.
+`src/mcp-server/tests/server/mcp-sdk-empty-params.test.ts` holds that path
+through a real client.
+
 A param nested below the args isn't reached — wrap that shape in
 `optionalParams()`, as `library-query-schema.ts` does.
+
+Two other ways to do this were tried and dropped. Making each param nullable
+(`z.preprocess(blank → null, inner.nullable())`) published
+`anyOf: [{integer}, {null}]` to the model and pushed `number | null` through
+every handler. Wrapping every param's schema in `resolveToolSchema` hid the
+inner `.description` and enum `.options` from the outer instance, so the docs
+generator and the modal-config machinery stopped seeing them. Scrubbing the args
+leaves every schema as authored; `optionalParams()` wraps only the SDK-facing
+copy, whose JSON Schema is byte-identical. `isCoercedNullish()` still earns its
+keep for a model that writes the _word_ `"null"`.
 
 ## Modal config: per-mode descriptions
 
@@ -191,6 +199,42 @@ bar|beat in every notation.
 `createMcpServer` runs fresh for each `POST /mcp`. Because overrides are
 co-located, there are no dangling refs to guard — just keep each param's modes
 correct.
+
+## Remote-script-only features
+
+Tool descriptions don't teach anything that needs the Producer Pal remote
+script. Loading plug-ins, Max for Live devices and presets by `path` is taught
+only in the `plugins-and-max-devices` Skill, which ships only when the remote
+script answers and never in small-model mode. The exception is a param that only
+works with the remote script (`preset` on create-device and update-device): it
+says so in its own description and is hidden in small-model mode.
+
+## Enum values
+
+Every enum value we define is kebab-case (`list-tags`, `use-count`). Strings
+Live owns keep Live's spelling: scale and view names, quantize grids like
+`1/8T`, device labels like `M/S`, routing names like `No Input`, Simpler's
+`one-shot`.
+
+Renaming a value leaves the old spelling as a hidden alias: `aliasedEnum()`
+publishes only the new values, and a call using an old one validates and reaches
+the handler as the new one. No refusal, no warning. Don't rename a value without
+one: memory, custom Skills and user scripts can hold the old spelling for good,
+and none of them can be migrated for the user. The alias rewrites the value, so
+it works at the top level, inside arrays and objects, and over MCP and REST. A
+small model's enum trim removes a value's aliases along with it, and results
+echo the new value.
+
+When two operations would collapse into one kebab name, rename one. In
+`ppal-live-api`, `getProperty` (a normalized Live read) and `get_property` (a
+JavaScript field on the LiveAPI object) are different operations, so the second
+is `get-field`.
+
+```typescript
+source: aliasedEnum(["sample-folder", "user"], {
+  sampleFolder: "sample-folder",
+});
+```
 
 ## Retiring a param
 

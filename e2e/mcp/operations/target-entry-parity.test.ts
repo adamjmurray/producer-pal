@@ -1,12 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E sweep across the write tools: the same multi-target call, once by `path`
  * and once by `id`, answers with the same entries in the same order, each
- * addressed by the spelling its caller wrote (ADR-0042).
+ * addressed by the spelling its caller wrote.
  *
  * Every case names a target the call refuses or can only half serve — the
  * entries that used to be dropped or turned into a warning, and the ones most
@@ -117,12 +117,11 @@ describe("a write answers the same by path and by id", () => {
       ],
     );
 
+    // Nothing was written, so the lane gets the plain skip entry.
     expect(entry).toStrictEqual({
-      id: lane.id,
       path: lane.path,
-      name: "Take A",
       ok: false,
-      detail: "a take lane takes only name; ignored color",
+      detail: "color ignored: a take lane takes only name",
     });
   });
 
@@ -189,12 +188,12 @@ describe("a write answers the same by path and by id", () => {
     expect(chain).toStrictEqual({
       path: "t6/d0/c0",
       ok: false,
-      detail: `no param landed — "Volume": 'params' not applicable to a chain t6/d0/c0 (id ${chainId})`,
+      detail: `no param landed — "Volume": params ignored: can't be set on a chain t6/d0/c0 (id ${chainId})`,
     });
     expect(pad).toStrictEqual({
       path: "t0/d0/pC1",
       ok: false,
-      detail: `no param landed — "Volume": 'params' not applicable to a drum pad chain t0/d0/pC1/c0 (id ${await idAt("ppal-read-device", "t0/d0/pC1/c0")})`,
+      detail: `no param landed — "Volume": params ignored: can't be set on a drum pad chain t0/d0/pC1/c0 (id ${await idAt("ppal-read-device", "t0/d0/pC1/c0")})`,
     });
   });
 
@@ -248,7 +247,6 @@ describe("a write answers the same by path and by id", () => {
     );
 
     expect(host).toStrictEqual({
-      id: hostTrackId,
       path: "t11",
       ok: false,
       detail: `cannot delete track t11 (id ${hostTrackId}), which hosts the Producer Pal device`,

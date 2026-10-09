@@ -185,3 +185,10 @@ what changed. Reopening the Live Set (`./scripts/open-live-set`) does it.
 `scripts/probes/live-api-context-probe.ts` answers the other question — how
 latency grows with objects built and paths visited, and which of the two a
 slowdown is coming from. Its header explains the arms.
+
+**Never time calls with a `fetch` + `sleep` loop.** Node's built-in `fetch`
+stalls ~0.5–3 s after a timer-woken sleep, so the numbers are inflated and
+bucketed. Use `node:http`, the explicit dispatcher in
+`evals/shared/install-fetch-dispatcher.ts`, or drive the process over a pipe.
+The shipped portal is unaffected; that file can go once Node vendors undici
+8.10.0 or later.

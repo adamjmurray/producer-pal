@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Everything that reads a path's raw text before the grammar sees it: the
 // pre-2.2.0 spellings we still honor, and splitting the `[...]` coordinate off
@@ -21,16 +21,16 @@ export const NEW_TAKE_LANE_ADVICE =
 /** Appends a chain to the rack (or drum pad) the rest of the path names. */
 export const NEW_CHAIN = "c+";
 
-/** Why a tool that only reads or writes an existing object can't take a `c+`. */
+/** Why a path naming an existing object can't take a `c+`, and where one works. */
 export const NEW_CHAIN_ADVICE =
-  '"c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do';
+  '"c+" appends a chain, so it only works as a destination: path in ppal-create-device, toPath in ppal-duplicate and ppal-update-device';
 
 /** Appends a device to the container the rest of the path names. */
 export const NEW_DEVICE = "d+";
 
-/** Why a tool that only reads or writes an existing object can't take a `d+`. */
+/** Why a path naming an existing object can't take a `d+`, and where one works. */
 export const NEW_DEVICE_ADVICE =
-  '"d+" appends a device, which only ppal-create-device, ppal-duplicate and ppal-update-device do';
+  '"d+" appends a device, so it only works as a destination: path in ppal-create-device, toPath in ppal-duplicate and ppal-update-device';
 
 const LEGACY_TRACK = /^(\d+)$/;
 const LEGACY_SLOT = /^(\d+)\/(\d+)$/;
@@ -40,11 +40,13 @@ const LEGACY_SLOT = /^(\d+)\/(\d+)$/;
  * that replaced it.
  * @param input - The trimmed path
  * @param label - Param name for error messages
+ * @param quiet - Don't warn
  * @returns What the legacy value names, or null when it isn't one
  */
 export function parseLegacyPath(
   input: string,
   label: string,
+  quiet = false,
 ): ObjectPath | null {
   const slot = LEGACY_SLOT.exec(input);
 
@@ -52,9 +54,11 @@ export function parseLegacyPath(
     const trackIndex = Number(slot[1]);
     const sceneIndex = Number(slot[2]);
 
-    console.warn(
-      `${label} "${input}" is the old slot spelling; use "t${trackIndex}/s${sceneIndex}"`,
-    );
+    if (!quiet) {
+      console.warn(
+        `${label} "${input}" is the old slot spelling; use "t${trackIndex}/s${sceneIndex}"`,
+      );
+    }
 
     return { kind: "slot", trackIndex, sceneIndex };
   }
@@ -64,9 +68,11 @@ export function parseLegacyPath(
   if (track) {
     const trackIndex = Number(track[1]);
 
-    console.warn(
-      `${label} "${input}" is a bare track index; use "t${trackIndex}"`,
-    );
+    if (!quiet) {
+      console.warn(
+        `${label} "${input}" is a bare track index; use "t${trackIndex}"`,
+      );
+    }
 
     return { kind: "track", trackIndex };
   }

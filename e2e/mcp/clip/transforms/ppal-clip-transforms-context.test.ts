@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for transform context variables (note.*, clip.*, bar.*),
@@ -15,12 +15,18 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   type CreateTrackResult,
-  getToolWarnings,
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
-import { createClipTransformHelpers } from "../helpers/ppal-clip-transforms-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import {
+  createClipInSlot,
+  createClipTransformHelpers,
+} from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 const { createMidiClip, createArrangementClip, readClipNotes, applyTransform } =
@@ -75,6 +81,23 @@ describe("ppal-clip-transforms (context variables)", () => {
     expect(notes).toContain("v120");
   });
 
+  it("clip.duration is the region length when the region starts after 1|1", async () => {
+    // Region 5|1 to 6|1 is 1 bar = 4 beats, not the 5 bars to its end.
+    const clipId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s44`, {
+      notes: "v100 C3 5|1",
+      start: "5|1",
+      length: "1bar",
+      transforms: "velocity = clip.duration * 10",
+    });
+
+    expect(await readClipNotes(clipId)).toContain("v40");
+
+    // update-clip agrees
+    await applyTransform(clipId, "velocity = clip.duration * 20");
+
+    expect(await readClipNotes(clipId)).toContain("v80");
+  });
+
   it("clip.barDuration reflects time signature", async () => {
     // Default 4/4, clip.barDuration = 4
     const clipId = await createMidiClip(29, "v100 C3 1|1");
@@ -107,13 +130,18 @@ describe("ppal-clip-transforms (context variables)", () => {
     expect(notes2).toContain("G3");
   });
 
-  it("clip.position warns on session clips", async () => {
+  it("clip.position on a session clip is said on its entry, not warned", async () => {
     const clipId = await createMidiClip(32, "v100 C3 1|1");
 
     const result = await applyTransform(clipId, "velocity = clip.position");
-    const warnings = getToolWarnings(result);
+    const { data, warnings } = parseToolResultWithWarnings<{ detail?: string }>(
+      result,
+    );
 
-    expect(warnings.length).toBeGreaterThan(0);
+    expect(data.detail).toBe(
+      "clip.position isn't available on a session clip; used 0",
+    );
+    expect(warnings).toStrictEqual([]);
   });
 
   it("note.count scales velocity based on total note count", async () => {
@@ -191,33 +219,22 @@ describe("ppal-clip-transforms (context variables)", () => {
 // =============================================================================
 
 describe("ppal-clip-transforms (arity validation)", () => {
-  it("warns on rand() with too many arguments", async () => {
-    const clipId = await createMidiClip(33, "v80 C3 1|1");
+  it.each([
+    [33, "rand(0, 100, 50)", "rand() needs 0-2 arguments"],
+    [34, "ramp(0, 100, 1, 2)", "ramp() needs exactly 2 arguments"],
+  ])(
+    "refuses scene %i's %s as too many arguments, leaving the notes alone",
+    async (scene, call, message) => {
+      const clipId = await createMidiClip(scene, "v80 C3 1|1");
 
-    const result = await applyTransform(clipId, "velocity = rand(0, 100, 50)");
-    const warnings = getToolWarnings(result);
+      const result = await applyTransform(clipId, `velocity = ${call}`);
 
-    expect(warnings.length).toBeGreaterThan(0);
-    // Original velocity should be unchanged
-    const notes = await readClipNotes(clipId);
-
-    expect(notes).toContain("v80");
-  });
-
-  it("warns on ramp() with too many arguments", async () => {
-    const clipId = await createMidiClip(34, "v80 C3 1|1");
-
-    const result = await applyTransform(
-      clipId,
-      "velocity = ramp(0, 100, 1, 2)",
-    );
-    const warnings = getToolWarnings(result);
-
-    expect(warnings.length).toBeGreaterThan(0);
-    const notes = await readClipNotes(clipId);
-
-    expect(notes).toContain("v80");
-  });
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toContain(message);
+      // Original velocity should be unchanged
+      expect(await readClipNotes(clipId)).toContain("v80");
+    },
+  );
 });
 
 // =============================================================================

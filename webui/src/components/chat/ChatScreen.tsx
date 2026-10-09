@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { useEffect, useState } from "preact/hooks";
 import {
@@ -56,6 +56,7 @@ interface ChatScreenProps {
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
+  onOpenRemoteScriptSettings: () => void;
   onOpenContext: () => void;
   /** Open the context editor's Instructions tab (the system prompt). */
   onOpenInstructions: () => void;
@@ -66,6 +67,8 @@ interface ChatScreenProps {
   branchNav?: BranchNavState;
   /** System instruction shown as a collapsible notice atop the transcript. */
   systemInstruction?: string;
+  /** The conversation was imported with a system prompt unlike the user's own. */
+  importedPromptDiffers?: boolean;
 }
 
 /**
@@ -131,6 +134,7 @@ export function ChatScreen(props: ChatScreenProps) {
     conversationPanel,
     branchNav,
     systemInstruction,
+    importedPromptDiffers,
   } = props;
   const [thinking, setThinking] = useThinkingOverride(props);
 
@@ -146,6 +150,7 @@ export function ChatScreen(props: ChatScreenProps) {
       onOpenSettings={onOpenSettings}
       onOpenToolsSettings={onOpenToolsSettings}
       onOpenConnectionSettings={onOpenConnectionSettings}
+      onOpenRemoteScriptSettings={props.onOpenRemoteScriptSettings}
       onOpenContext={onOpenContext}
     >
       {/* The composer is first in the DOM so Tab reaches the input, Send and
@@ -212,6 +217,7 @@ export function ChatScreen(props: ChatScreenProps) {
             requestedModel={headerInfo.activeModel}
             branchNav={branchNav}
             systemInstruction={systemInstruction}
+            importedPromptDiffers={importedPromptDiffers}
             onOpenInstructions={onOpenInstructions}
           />
         )}

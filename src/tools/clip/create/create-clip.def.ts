@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z } from "zod";
 import { MAX_CODE_LENGTH, TAKE_LANE_NOTE } from "#src/tools/constants.ts";
@@ -96,12 +96,12 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         "bar|beat position where loop/clip region begins (clip meter); or comma-separated one per path",
       ),
 
-    length: z
-      .string()
-      .optional()
-      .describe(
+    length: param(z.string().optional(), {
+      default:
+        "duration, e.g. '4bar' (see Skills). Clip meter. MIDI only, default: next full bar after latest note. Audio clip length comes from the sample. Or comma-separated one per path",
+      smallModel:
         "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'). Clip meter. MIDI only, default: next full bar after latest note. Audio clip length comes from the sample. Or comma-separated one per path",
-      ),
+    }),
 
     looping: z.boolean().optional().describe("enable looping for the clip"),
 

@@ -1,48 +1,19 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { createNoteTrackingMethods } from "#src/test/helpers/mock-registry-test-helpers.ts";
-import {
-  type RegisteredMockObject,
-  registerMockObject,
-} from "#src/test/mocks/mock-registry.ts";
 import { createClip } from "../create-clip.ts";
 import {
   setupMultiSessionAudioClipMocks,
   setupSessionAudioClipMocks,
 } from "./create-clip-test-helpers.ts";
-
-interface SessionSlot {
-  clipSlot: RegisteredMockObject;
-  clip: RegisteredMockObject;
-}
-
-/** Two empty session clip slots on track 0, in a 4/4 Set. */
-function twoSessionSlots(): SessionSlot[] {
-  registerMockObject("live-set", {
-    path: livePath.liveSet,
-    properties: { signature_numerator: 4, signature_denominator: 4 },
-  });
-
-  return [0, 1].map((sceneIndex) => ({
-    clipSlot: registerMockObject(`clip-slot-0-${sceneIndex}`, {
-      path: livePath.track(0).clipSlot(sceneIndex),
-      properties: { has_clip: 0 },
-    }),
-    clip: registerMockObject(`clip-0-${sceneIndex}`, {
-      path: livePath.track(0).clipSlot(sceneIndex).clip(),
-      methods: createNoteTrackingMethods(),
-    }),
-  }));
-}
+import { twoSessionSlots } from "./notes/session-slot-test-helpers.ts";
 
 describe("createClip - per-position timing params", () => {
   it("gives each position its own length", async () => {
-    const [first, second] = twoSessionSlots() as [SessionSlot, SessionSlot];
+    const [first, second] = twoSessionSlots();
 
     await createClip({ path: "t0/s0,t0/s1", length: "1bar,2bar" });
 
@@ -51,7 +22,7 @@ describe("createClip - per-position timing params", () => {
   });
 
   it("applies a single length to every position", async () => {
-    const [first, second] = twoSessionSlots() as [SessionSlot, SessionSlot];
+    const [first, second] = twoSessionSlots();
 
     await createClip({ path: "t0/s0,t0/s1", length: "2bar" });
 
@@ -60,7 +31,7 @@ describe("createClip - per-position timing params", () => {
   });
 
   it("gives each position its own time signature", async () => {
-    const [first, second] = twoSessionSlots() as [SessionSlot, SessionSlot];
+    const [first, second] = twoSessionSlots();
 
     await createClip({ path: "t0/s0,t0/s1", timeSignature: "4/4,3/4" });
 
@@ -69,7 +40,7 @@ describe("createClip - per-position timing params", () => {
   });
 
   it("gives each position its own region start", async () => {
-    const [first, second] = twoSessionSlots() as [SessionSlot, SessionSlot];
+    const [first, second] = twoSessionSlots();
 
     await createClip({ path: "t0/s0,t0/s1", start: "1|1,2|1" });
 
@@ -78,7 +49,7 @@ describe("createClip - per-position timing params", () => {
   });
 
   it("gives each position its own firstStart", async () => {
-    const [first, second] = twoSessionSlots() as [SessionSlot, SessionSlot];
+    const [first, second] = twoSessionSlots();
 
     await createClip({
       path: "t0/s0,t0/s1",
@@ -101,7 +72,7 @@ describe("createClip - per-position timing params", () => {
 
   // A trailing comma isn't an entry, so this is a short list, not one value.
   it("refuses a short list before creating anything", async () => {
-    const [first] = twoSessionSlots() as [SessionSlot, SessionSlot];
+    const [first] = twoSessionSlots();
 
     await expect(
       createClip({ path: "t0/s0,t0/s1", timeSignature: "3/4," }),
@@ -123,7 +94,7 @@ describe("createClip - per-position timing params", () => {
 
   // With one position there is no list to pair, so the value stays whole.
   it("takes a whole timeSignature literally when the call names one position", async () => {
-    const [first] = twoSessionSlots() as [SessionSlot, SessionSlot];
+    const [first] = twoSessionSlots();
 
     await expect(
       createClip({ path: "t0/s0", timeSignature: "4/4,3/4" }),

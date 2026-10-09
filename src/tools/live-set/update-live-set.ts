@@ -1,26 +1,38 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { intervalsToPitchClasses } from "#src/shared/pitch.ts";
-import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
-import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
+import { automationOverriddenDetail } from "#src/tools/shared/arrangement/tracks/automation-override.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import { readBackDetail } from "#src/tools/shared/helpers/read-back-comparison.ts";
 import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
-import { loneRefusal } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { parseKeptTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
+import { refuseNoWrite } from "#src/tools/shared/validation/lists/refuse-no-write.ts";
+import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
+import {
+  type AppliedTarget,
+  type Step,
+  type Target,
+  type WriteSpec,
+} from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { deleteLocator } from "./helpers/locator-deletes.ts";
 import {
-  laterNamings,
-  namedLaterEntry,
-} from "./helpers/locator-later-namings.ts";
+  type LocatorPayload,
+  locatorPipelineTargets,
+} from "./helpers/locator-pipeline-targets.ts";
 import {
-  attemptLocator,
   type LocatorOperation,
-  type LocatorTarget,
   locatorTargets,
   type SongMeter,
 } from "./helpers/locator-targets.ts";
+import {
+  type RememberedTransport,
+  rememberTransport,
+  restoreTransport,
+} from "./helpers/locator-transport.ts";
 import {
   createLocator,
   renameLocator,
@@ -30,6 +42,7 @@ import {
   applyScale,
   applyTempo,
   applyTimeSignature,
+  type ParsedScale,
   parseScale,
 } from "./helpers/tempo-and-scale-updates.ts";
 
@@ -46,6 +59,35 @@ interface UpdateLiveSetArgs {
 // silenceWavPath is available on context at runtime but not declared in ToolContext
 type UpdateLiveSetContext = Partial<ToolContext> & { silenceWavPath?: string };
 
+/** The call, and the place its whole-call writes leave what the result says. */
+interface UpdateLiveSetRun {
+  args: UpdateLiveSetArgs;
+  /** Only includes properties that are actually set */
+  result: Record<string, unknown>;
+  /** Where the playhead and start marker were before a locator edit */
+  transport?: RememberedTransport;
+}
+
+/** The call, read once. */
+interface UpdateLiveSetCall {
+  run: UpdateLiveSetRun;
+  liveSet: LiveAPI;
+  tempo?: number;
+  timeSignature: { numerator: number; denominator: number } | null;
+  scale?: string;
+  /** Null when the scale is disabled or not sent */
+  parsedScale: ParsedScale | null;
+  locators: Array<Target<LocatorPayload>>;
+}
+
+/** What the call shares between its hooks. */
+interface UpdateLiveSetChecked extends UpdateLiveSetCall {
+  operation?: LocatorOperation;
+  /** The meter Live holds once the whole-call writes have landed, read when
+   * the call names locators */
+  meter?: SongMeter;
+}
+
 /**
  * Updates Live Set parameters like tempo, time signature, scale, and locators.
  * Note: Scale changes affect currently selected clips and set defaults for new clips.
@@ -61,76 +103,162 @@ type UpdateLiveSetContext = Partial<ToolContext> & { silenceWavPath?: string };
  * @returns Updated Live Set information
  */
 export async function updateLiveSet(
-  {
-    tempo,
-    timeSignature,
-    scale,
-    locatorOperation,
-    locatorId,
-    locatorTime,
-    locatorName,
-  }: UpdateLiveSetArgs = {},
+  args: UpdateLiveSetArgs = {},
   context: UpdateLiveSetContext = {},
 ): Promise<Record<string, unknown>> {
-  validateLocatorOperation(locatorOperation, {
-    locatorId,
-    locatorTime,
-    locatorName,
+  const run: UpdateLiveSetRun = { args, result: {} };
+  let locator;
+
+  try {
+    locator = await runWrite(UPDATE_LIVE_SET_WRITE, run, context);
+  } finally {
+    // Also after a throw or a deadline: an edit may have moved the playhead.
+    if (run.transport != null) {
+      await restoreTransport(run.transport);
+    }
+  }
+
+  return {
+    ...run.result,
+    // One entry per locator named, in order; a lone one is unwrapped
+    ...(args.locatorOperation != null && { locator }),
+  };
+}
+
+const UPDATE_LIVE_SET_WRITE: WriteSpec<
+  UpdateLiveSetRun,
+  UpdateLiveSetCall,
+  LocatorPayload,
+  UpdateLiveSetChecked,
+  Record<string, unknown>
+> = {
+  tool: "ppal-update-live-set",
+  words: { rerun: "locator" },
+  parse: parseUpdateLiveSet,
+  targets: (call) => call.locators,
+  check: (call) => ({
+    ...call,
+    operation: call.run.args.locatorOperation as LocatorOperation | undefined,
+  }),
+  before: writeSongState,
+  // A lone locator refusal throws only when it was the call's only work: an
+  // error would hide what else landed.
+  loneSkipThrows: ({ tempo, timeSignature, scale }) =>
+    tempo == null && timeSignature == null && scale == null,
+  write: writeLocator,
+};
+
+// --- Helpers below main export ---
+
+/**
+ * Read the call, refusing one that is malformed before anything is written.
+ * @param run - The call
+ * @returns The call, with its whole-call params read
+ */
+function parseUpdateLiveSet(run: UpdateLiveSetRun): UpdateLiveSetCall {
+  const { args } = run;
+
+  validateLocatorOperation(args.locatorOperation, {
+    locatorId: args.locatorId,
+    locatorTime: args.locatorTime,
+    locatorName: args.locatorName,
   });
+  // Answering a call that asks for nothing reads as if it had changed something.
+  refuseNoWrite(args);
 
   const liveSet = LiveAPI.from(livePath.liveSet);
+  // Parsed up front so a malformed format fails before any property is
+  // written, instead of after tempo already landed.
+  const timeSignature =
+    args.timeSignature == null
+      ? null
+      : parseKeptTimeSignature(args.timeSignature);
+  // Named before anything is written: an unreadable list or time is refused
+  // with the Set untouched.
+  const locators = locatorsNamed(args, liveSet, timeSignature);
 
-  // Parse timeSignature up front so a malformed format fails before any
-  // property is mutated, instead of throwing after a partial update (e.g. tempo
-  // already applied). Mirrors updateClip's upfront validation.
-  const parsedTimeSignature =
-    timeSignature != null ? parseTimeSignature(timeSignature) : null;
-
-  // Split the locator lists before anything is written: an unreadable list or
-  // time is refused with the Set untouched. Times are read in the meter this
-  // call leaves the Set in.
-  const targets =
-    locatorOperation == null
-      ? []
-      : locatorTargets(
-          locatorOperation,
-          { locatorId, locatorTime, locatorName },
-          liveSet,
-          parsedTimeSignature == null
-            ? readMeter(liveSet)
-            : {
-                timeSigNumerator: parsedTimeSignature.numerator,
-                timeSigDenominator: parsedTimeSignature.denominator,
-              },
-        );
-
-  // optimistic result object that only include properties that are actually set
-  const result: Record<string, unknown> = {
-    id: liveSet.id,
-  };
-
-  // The scale covers the whole call, so one we can't read is refused here too,
-  // with the Set untouched. An empty string means disable, not a bad scale.
+  // The scale covers the whole call, so one we can't read is refused here too.
+  // An empty string means disable, not a bad scale.
+  const { scale, tempo } = args;
   const parsedScale = scale == null || scale === "" ? null : parseScale(scale);
 
   validateTempo(tempo);
 
-  if (tempo != null) {
-    applyTempo(liveSet, tempo, result);
+  return { run, liveSet, tempo, timeSignature, scale, parsedScale, locators };
+}
+
+/**
+ * The locators the call names, with their times read in the meter this call
+ * leaves the Set in.
+ * @param args - The call's args
+ * @param liveSet - The live_set LiveAPI object
+ * @param timeSignature - The time signature the call sets, if any
+ * @returns One target per locator, none when the call names no operation
+ */
+function locatorsNamed(
+  args: UpdateLiveSetArgs,
+  liveSet: LiveAPI,
+  timeSignature: UpdateLiveSetCall["timeSignature"],
+): Array<Target<LocatorPayload>> {
+  if (args.locatorOperation == null) {
+    return [];
   }
 
-  if (parsedTimeSignature != null) {
-    applyTimeSignature(liveSet, parsedTimeSignature, result);
+  const meter =
+    timeSignature == null
+      ? readMeter(liveSet)
+      : {
+          timeSigNumerator: timeSignature.numerator,
+          timeSigDenominator: timeSignature.denominator,
+        };
+
+  return locatorPipelineTargets(
+    liveSet,
+    locatorTargets(
+      args.locatorOperation,
+      {
+        locatorId: args.locatorId,
+        locatorTime: args.locatorTime,
+        locatorName: args.locatorName,
+      },
+      liveSet,
+      meter,
+    ),
+    meter,
+  );
+}
+
+/**
+ * Write the tempo, time signature and scale, before any locator is touched.
+ * @param checked - The checked call
+ */
+function writeSongState(checked: UpdateLiveSetChecked): void {
+  const { liveSet, tempo, timeSignature, scale, parsedScale } = checked;
+  const { result } = checked.run;
+
+  result.id = liveSet.id;
+
+  const overrodeTempo = tempo != null && applyTempo(liveSet, tempo, result);
+
+  if (timeSignature != null) {
+    applyTimeSignature(liveSet, timeSignature, result);
+  }
+
+  // Said once for both: the value Live kept sits in the field it was asked in.
+  const changed = ["tempo", "timeSignature"].filter((field) => field in result);
+
+  const readBack = readBackDetail(changed);
+
+  if (readBack != null) {
+    result.detail = readBack;
+  }
+
+  if (overrodeTempo) {
+    appendDetail(result, automationOverriddenDetail("tempo"));
   }
 
   if (scale != null) {
     applyScale(liveSet, parsedScale, scale, result);
-
-    result.$meta = [
-      parsedScale == null
-        ? "Scale disabled for selected clips and defaults for new clips."
-        : "Scale applied to selected clips and defaults for new clips.",
-    ];
   }
 
   if (parsedScale != null) {
@@ -144,75 +272,46 @@ export async function updateLiveSet(
     ).join(",");
   }
 
-  // Handle locator operations
-  if (locatorOperation != null) {
-    result.locator = await handleLocatorOperations(
-      liveSet,
-      locatorOperation as LocatorOperation,
-      targets,
-      context,
-      tempo == null && timeSignature == null && scale == null,
-    );
+  if (checked.operation != null) {
+    // Read again: the meter Live holds now, after any timeSignature write.
+    checked.meter = readMeter(liveSet);
   }
 
-  return result;
+  // Rename leaves the playhead and start marker alone.
+  if (checked.operation === "create" || checked.operation === "delete") {
+    checked.run.transport = rememberTransport(liveSet);
+  }
 }
 
 /**
- * Run the operation on every locator the call named, in order.
- * @param liveSet - The live_set LiveAPI object
- * @param operation - "create", "delete", or "rename"
- * @param targets - One target per locator named
- * @param context - Context object with silenceWavPath
- * @param locatorsOnly - Whether the locators are all the call asked for
- * @returns The locator's result when one was named, otherwise one entry each
- * @throws Error when a lone locator got nothing done and nothing else was asked
+ * Run the operation on one locator. Sequential, which the pipeline guarantees:
+ * each operation moves the playhead, so they can't overlap.
+ * @param target - The locator
+ * @param step - The call's state for this target
+ * @returns The locator's entry
  */
-async function handleLocatorOperations(
-  liveSet: LiveAPI,
-  operation: LocatorOperation,
-  targets: LocatorTarget[],
-  context: UpdateLiveSetContext,
-  locatorsOnly: boolean,
-): Promise<unknown> {
-  // Read again: the meter Live holds now, after any timeSignature write.
-  const meter = readMeter(liveSet);
-  const namings =
-    targets.length > 1 ? laterNamings(liveSet, targets, meter) : [];
-  const entries: Array<Record<string, unknown>> = [];
+async function writeLocator(
+  target: AppliedTarget<LocatorPayload>,
+  step: Step<UpdateLiveSetChecked>,
+): Promise<Record<string, unknown>> {
+  const { liveSet, operation } = step.checked;
+  const meter = step.checked.meter as SongMeter;
+  const locator = target.data.target;
 
-  // Sequential: each operation moves the playhead, so they can't overlap.
-  for (const [index, target] of targets.entries()) {
-    const naming = namings[index];
-
-    if (naming != null) {
-      entries.push(namedLaterEntry(operation, target, naming));
-      continue;
-    }
-
-    const run = async (): Promise<Record<string, unknown>> => {
-      switch (operation) {
-        case "create":
-          return await createLocator(liveSet, target, meter, context);
-        case "delete":
-          return await deleteLocator(liveSet, target, meter);
-        default:
-          return renameLocator(liveSet, target, meter);
-      }
-    };
-
-    entries.push(await attemptLocator(target, run));
+  switch (operation) {
+    case "create":
+      return await createLocator(
+        liveSet,
+        locator,
+        meter,
+        step.call.ctx,
+        step.landed,
+      );
+    case "delete":
+      return await deleteLocator(liveSet, locator, meter);
+    default:
+      return renameLocator(liveSet, locator, meter);
   }
-
-  // A lone refusal throws, unless tempo or other song state landed: an error
-  // would hide that.
-  const refusal = locatorsOnly ? loneRefusal(entries) : null;
-
-  if (refusal != null) {
-    throw new Error(refusal);
-  }
-
-  return unwrapSingleResult(entries);
 }
 
 /**

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for take lanes as ppal-update-track and ppal-read-track targets:
@@ -55,7 +55,8 @@ async function createOnLane(
 interface UpdateTakeLaneResult {
   id: string;
   path: string;
-  name: string;
+  /** Not on a write that landed as sent; a read always has it */
+  name?: string;
   /** The lanes the call made ("l0", or "l0-l2" when it filled a gap) */
   created?: string;
   ok?: false;
@@ -83,7 +84,6 @@ describe("take lanes as track-tool targets", () => {
     expect(added).toStrictEqual({
       id: expect.any(String),
       path: `t${EMPTY_MIDI_TRACK}/l0`,
-      name: "Take A",
       created: "l0",
     });
 
@@ -107,7 +107,6 @@ describe("take lanes as track-tool targets", () => {
     expect(renamed).toStrictEqual({
       id: added.id,
       path: `t${EMPTY_MIDI_TRACK}/l0`,
-      name: "Renamed",
     });
 
     await sleep(100);
@@ -123,6 +122,29 @@ describe("take lanes as track-tool targets", () => {
       path: `t${EMPTY_MIDI_TRACK}/l0`,
       name: "Renamed",
     });
+  });
+
+  it("writes a lane named by id and by path once, as the last mention asks", async () => {
+    const added = await updateTrack<UpdateTakeLaneResult>({
+      path: `t${EMPTY_MIDI_TRACK}/l+`,
+      name: "Take A",
+    });
+    const lanePath = `t${EMPTY_MIDI_TRACK}/l0`;
+
+    // No `ok`: the earlier mention's work happened through the later one.
+    expect(
+      await updateTrack<unknown[]>({
+        id: added.id,
+        path: lanePath,
+        name: "First,Second",
+      }),
+    ).toStrictEqual([
+      {
+        id: added.id,
+        detail: `named again as "${lanePath}" later in this call`,
+      },
+      { id: added.id, path: lanePath },
+    ]);
   });
 
   it("takes the id a lane read reported back as a target", async () => {
@@ -148,7 +170,6 @@ describe("take lanes as track-tool targets", () => {
     expect(renamed).toStrictEqual({
       id: read.id,
       path: `t${EMPTY_MIDI_TRACK}/l0`,
-      name: "By id",
     });
 
     await sleep(100);
@@ -194,7 +215,7 @@ describe("take lanes as track-tool targets", () => {
     expect(lane.path).toBe(`t${EMPTY_MIDI_TRACK}/l2`);
     // The gap below the lane the path named is filled in, and named.
     expect(lane.created).toBe("l0-l2");
-    expect(lane.detail).toBe("a take lane takes only name; ignored color");
+    expect(lane.detail).toBe("color ignored: a take lane takes only name");
 
     await sleep(100);
     const track = parseToolResult<ReadTrackTakeLanesResult>(
@@ -205,6 +226,44 @@ describe("take lanes as track-tool targets", () => {
     );
 
     expect(track.takeLaneCount).toBe(3);
+  });
+
+  it("refuses a lone lane the call asked nothing of it can take", async () => {
+    await updateTrack<UpdateTakeLaneResult>({
+      path: `t${EMPTY_MIDI_TRACK}/l+`,
+      name: "Take A",
+    });
+
+    const refused = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { path: `t${EMPTY_MIDI_TRACK}/l0`, gainDb: -3 },
+    });
+
+    expect(isToolError(refused)).toBe(true);
+    expect(getToolErrorMessage(refused)).toContain(
+      "gainDb ignored: a take lane takes only name",
+    );
+
+    // In a list the same lane holds its slot as a skip. Named twice, the
+    // earlier mention was meant to be replaced by the later one, which failed.
+    const lanePath = `t${EMPTY_MIDI_TRACK}/l0`;
+    const skipped = await updateTrack<UpdateTakeLaneResult[]>({
+      path: `${lanePath},${lanePath}`,
+      gainDb: -3,
+    });
+
+    expect(skipped).toStrictEqual([
+      {
+        path: lanePath,
+        ok: false,
+        detail: `not written: "${lanePath}" was meant to replace it, but failed`,
+      },
+      {
+        path: lanePath,
+        ok: false,
+        detail: "gainDb ignored: a take lane takes only name",
+      },
+    ]);
   });
 
   it("refuses the whole call when the lanes would pass the cap", async () => {
@@ -233,21 +292,41 @@ describe("take lanes as track-tool targets", () => {
 
   it("skips a lane path on a track that has no lanes", async () => {
     const result = await updateTrack<UpdateTakeLaneResult[]>({
-      path: `rt0/l0,t9/l0,t${EMPTY_MIDI_TRACK}/l+`,
-      name: "A,B,C",
+      path: `t9/l0,t${EMPTY_MIDI_TRACK}/l+`,
+      name: "A,B",
     });
 
     expect(result[0]!.ok).toBe(false);
-    expect(result[0]!.detail).toContain("only regular tracks have take lanes");
-    expect(result[1]!.ok).toBe(false);
-    expect(result[1]!.detail).toBe(
+    expect(result[0]!.detail).toBe(
       'only regular tracks have take lanes; "t9" is a group track',
     );
-    expect(result[2]).toStrictEqual({
+    expect(result[1]).toStrictEqual({
       id: expect.any(String),
       path: `t${EMPTY_MIDI_TRACK}/l0`,
-      name: "C",
       created: "l0",
     });
+  });
+
+  it("refuses the whole call for a lane path on a return or main track", async () => {
+    const refused = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { path: `rt0/l0,t${EMPTY_MIDI_TRACK}/l+`, name: "A,B" },
+    });
+
+    expect(isToolError(refused)).toBe(true);
+    expect(getToolErrorMessage(refused)).toContain(
+      "only regular tracks have take lanes",
+    );
+  });
+
+  it("says why a lane can't be appended to a group track", async () => {
+    const refused = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { path: "t9/l+" },
+    });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      'only regular tracks have take lanes; "t9" is a group track',
+    );
   });
 });

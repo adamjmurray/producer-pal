@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -207,7 +207,6 @@ describe("deleteObject", () => {
     ).toStrictEqual([
       {
         id: "take_lane_clip",
-        path: "t0/l0[1|1]",
         ok: false,
         detail: expect.stringContaining("cannot delete take-lane clip"),
       },
@@ -385,7 +384,6 @@ describe("deleteObject", () => {
     ).toStrictEqual([
       {
         id: "track_1",
-        path: "t1",
         ok: false,
         detail:
           "cannot delete track t1 (id track_1), which hosts the Producer Pal device",
@@ -430,7 +428,6 @@ describe("deleteObject", () => {
       ).toStrictEqual([
         {
           id: "inner_group",
-          path: "t1",
           ok: false,
           detail:
             "cannot delete group track t1 (id inner_group), which contains the Producer Pal device",

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -10,6 +10,7 @@ import {
   rawNotesToNoteEvents,
   readAllClipNotes,
   readClipNotes,
+  readVisibleClipNotesInSpan,
   removeAllClipNotes,
 } from "#src/tools/shared/clip/clip-notes.ts";
 
@@ -42,6 +43,30 @@ function makeClip(
     call: vi.fn(() => callReturn),
   } as unknown as LiveAPI;
 }
+
+describe("readVisibleClipNotesInSpan", () => {
+  it("leaves muted notes out of the span it reads", () => {
+    const clip = makeClip(
+      JSON.stringify({
+        notes: [
+          { pitch: 60, mute: 0 },
+          { pitch: 61, mute: 1 },
+        ],
+      }),
+    );
+
+    expect(readVisibleClipNotesInSpan(clip, -10, 20)).toStrictEqual([
+      { pitch: 60, mute: 0 },
+    ]);
+    expect(clip.call).toHaveBeenCalledWith(
+      "get_notes_extended",
+      0,
+      128,
+      -10,
+      20,
+    );
+  });
+});
 
 describe("getClipNoteCount", () => {
   it("returns the note count when notes are present", () => {

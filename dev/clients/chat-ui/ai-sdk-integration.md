@@ -20,9 +20,9 @@ for await (const part of result.fullStream) {
 }
 ```
 
-All providers (Anthropic, Google, OpenAI, Mistral, OpenRouter, Ollama) go
-through this single code path via provider-specific model factories in
-`provider-factories.ts`.
+All providers (Anthropic, Google, OpenAI, Mistral, OpenRouter, Vercel AI
+Gateway, Ollama) go through this single code path via provider-specific model
+factories in `provider-factories.ts`.
 
 **Locked Settings:**
 
@@ -59,10 +59,10 @@ default.
 
 **Response Model Tracking:**
 
-After each stream completes, `ai-sdk-client.ts` captures the `modelId` from the
-API response metadata and stores it on the assistant `ChatMessage` as
-`responseModel`. This persists to IndexedDB automatically (optional field, no
-migration needed).
+After each stream completes, `ChatSdkClient` (`chat/sdk/client.ts`) captures the
+`modelId` from the API response metadata and stores it on the assistant
+`ChatMessage` as `responseModel`. This persists to IndexedDB automatically
+(optional field, no migration needed).
 
 When the response model differs meaningfully from the requested model — after
 normalizing org prefixes and date suffixes — `MessageList.tsx` shows a
@@ -107,6 +107,30 @@ the worker bootstraps itself as before; `ppal-context` stays withheld either
 way, since it's withheld to keep parallel workers off the user's context store
 rather than because the briefing replaced it — see the Architecture doc →
 Subagent briefings for why the blob belongs in the system prompt.
+
+**Resuming a subagent:**
+
+A worker's recorded transcript is its resumable state. `resumeFrom: N` seeds a
+fresh `ChatSdkClient` with worker N's session and sends one more user turn;
+nothing stays alive between runs and no config is snapshotted (the model is a
+live instance and the provider options a closure, so neither can be). A resumed
+worker runs under the _current_ model, preset and tools, like a restored
+conversation. Worker identity is a 1-based index shown to the model as a
+`[subagent N]` label, in `subagent/subagent-session.ts`.
+
+- **The seeded session must be a deep copy.** It becomes the worker's live
+  history, and the rate-limit restart truncates that in place. Pointing it at
+  the persisted transcript would erase the record of a run that happened.
+- **Concurrent resumes of one worker are refused**, not merged. Both would seed
+  from the same session and record divergent continuations under one index.
+- Each run stores only what it added, and `collectSubagentTranscript` stitches
+  them together. Storing full history per resume would duplicate the whole
+  transcript every time.
+- The orchestrator resumes in its own turn. A user-facing "Resume" button would
+  mean rewriting history the provider already saw, since a worker's result must
+  land as a tool-result in an assistant message.
+- Compaction can scroll a `[subagent N]` label out of the model's view. Resuming
+  still works, but the model has to remember the number.
 
 **Formatting:**
 

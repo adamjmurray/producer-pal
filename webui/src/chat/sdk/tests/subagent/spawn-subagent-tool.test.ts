@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi, type Mock } from "vitest";
 import {
@@ -203,6 +203,20 @@ describe("buildWorkerConfig", () => {
       );
 
       expect(worker.enabledTools?.[LIVE_API_TOOL_ID]).toBe(true);
+    });
+
+    it("defaults the Live API tool on when the conversation has no toolset", () => {
+      const worker = buildWorkerConfig(
+        createConfig({
+          subagentConfig: {
+            ...override,
+            enabledTools: { "ppal-create-clip": false },
+          },
+        }),
+      );
+
+      expect(worker.enabledTools?.[LIVE_API_TOOL_ID]).toBe(true);
+      expect(worker.enabledTools?.["ppal-create-clip"]).toBe(false);
     });
 
     it("runs the worker in the preset's notation, not the orchestrator's", () => {
@@ -531,6 +545,17 @@ describe("createSpawnSubagentTool", () => {
         tool.execute!({ task: "more", resumeFrom: 9 }, options()),
       ).rejects.toThrow("Existing subagents: 1, 2, 3.");
       expect(runWorker).not.toHaveBeenCalled();
+    });
+
+    it("names only the workers that have a recorded transcript", async () => {
+      const { tool } = setup({
+        nextIndex: 3,
+        getSession: (index) => (index === 2 ? undefined : session),
+      });
+
+      await expect(
+        tool.execute!({ task: "more", resumeFrom: 2 }, options()),
+      ).rejects.toThrow("Existing subagents: 1, 3.");
     });
 
     it("says so plainly when there are no subagents to resume", async () => {

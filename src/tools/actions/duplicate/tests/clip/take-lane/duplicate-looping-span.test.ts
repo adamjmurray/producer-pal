@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A looping arrangement clip re-created on a lane, or promoted off one, keeps
 // the span it covers on the timeline (not its shorter loop length), or says

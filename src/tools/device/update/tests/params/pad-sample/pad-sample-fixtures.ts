@@ -1,11 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Drum Racks whose pads take a `sample` write, for the update-device tests.
 
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
+import { registerC1PadRack } from "#src/tools/device/tests/helpers/device-rack-fixtures.ts";
 import {
   type RegisteredMockObject,
   children,
@@ -69,37 +70,13 @@ export const KICK = "/Library/kick.wav";
  * @returns The pad's chains, in rack order
  */
 export function registerPadRack(layers = 1): RegisteredMockObject[] {
-  const chainIds = Array.from({ length: layers }, (_, i) => `chain-${i}`);
+  return registerC1PadRack(layers).map((chain) => {
+    // The chain holds what Live inserted, so a read-back sees it.
+    chain.methods.insert_device = () => {
+      chain.properties.devices = children(SIMPLER_ID);
 
-  registerMockObject("drum-rack", {
-    path: livePath.track(0).device(0),
-    type: "RackDevice",
-    properties: {
-      can_have_drum_pads: 1,
-      chains: children(...chainIds),
-      drum_pads: children("pad-36"),
-    },
-  });
-  registerMockObject("pad-36", {
-    path: livePath.track(0).device(0).drumPad(36),
-    type: "DrumPad",
-    properties: { note: 36 },
-  });
-
-  return chainIds.map((id, index) => {
-    const chain = registerMockObject(id, {
-      path: livePath.track(0).device(0).chain(index),
-      type: "DrumChain",
-      properties: { in_note: 36, devices: children() },
-      methods: {
-        // The chain holds what Live inserted, so a read-back sees it.
-        insert_device: () => {
-          chain.properties.devices = children(SIMPLER_ID);
-
-          return ["id", SIMPLER_ID];
-        },
-      },
-    });
+      return ["id", SIMPLER_ID];
+    };
 
     return chain;
   });

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Register Node-side library routes with the V8↔Node RPC dispatcher.
@@ -105,12 +105,24 @@ export function registerLibraryRoutes(): void {
  */
 function libraryRoute(handler: NodeRouteHandler): NodeRouteHandler {
   return async (args) => {
-    setRunningLiveMajor(liveMajorFromArgs(args));
+    setRunningLiveMajorFromArgs(args);
 
     await ensureSqliteAvailable();
 
     return handler(args);
   };
+}
+
+/**
+ * Record which Live major is running, from the `liveVersion` V8 sends with a
+ * route call, so DB selection prefers that install's databases over a newer
+ * install's stale ones (see live-db-path.ts). Any route that reads the library
+ * database calls it.
+ *
+ * @param args - Raw route args
+ */
+export function setRunningLiveMajorFromArgs(args: unknown): void {
+  setRunningLiveMajor(liveMajorFromArgs(args));
 }
 
 /**

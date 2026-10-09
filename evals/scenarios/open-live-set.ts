@@ -2,7 +2,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Opens an Ableton Live project and waits until THAT project is the one
@@ -29,19 +29,26 @@
 // The MCP poll loop below sleeps between requests, which is exactly what Node's
 // bundled undici stalls. See the module for why.
 import "#evals/shared/install-fetch-dispatcher.ts";
-import { type ChildProcess, exec, execFile, spawn } from "node:child_process";
+import { exec } from "node:child_process";
 import { existsSync } from "node:fs";
 import { basename, resolve as resolvePath } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { MIN_LIVE_VERSION } from "#src/shared/config.ts";
+import {
+  ASSISTIVE_ACCESS_DENIED,
+  ASSISTIVE_ACCESS_FIX,
+  LIVE_PROCESS,
+  runOsascript,
+  startDialogWatcher,
+  type DialogWatcher,
+} from "./helpers/open-live-set/open-live-set-dialogs.ts";
 import { nextReadyStreak } from "./helpers/open-live-set/open-live-set-ready.ts";
 
 // For `open -a`. Override to test against a differently-named bundle
 // (e.g. a side-by-side older version).
 const ABLETON_APP = process.env.ABLETON_APP ?? "Ableton Live 12 Suite";
-const ABLETON_PROCESS = "Live"; // For System Events
 const POLL_INTERVAL_MS = 250;
 // Consecutive successful probes required before the server counts as up. See
 // nextReadyStreak() for why one success alone isn't enough.
@@ -53,8 +60,6 @@ const SERVER_STOP_TIMEOUT_MS = 20000;
 const SERVER_START_TIMEOUT_MS = 45000;
 // Live shows this instead of opening a Set that a newer version saved.
 const UNSUPPORTED_VERSION_TEXT = "newer version of Live";
-// What System Events says when the Accessibility grant is missing or stale.
-const ASSISTIVE_ACCESS_DENIED = "not allowed assistive access";
 
 /**
  * Opens an Ableton Live project, clearing any dialogs in the way.
@@ -80,13 +85,15 @@ export async function openLiveSet(projectPath: string): Promise<void> {
     // (or its Set device-less) nothing is serving, and the wait would just burn
     // its whole timeout.
     if (wasServing) {
-      await waitForServerToStop();
+      await waitForServerToStop(watcher);
     }
 
-    await waitForServerToStart();
+    await waitForServerToStart(watcher);
     await verifyLoadedSet(absolutePath);
+    // A dialog we failed to clear must not pass as a loaded Set.
+    watcher.assertClean();
   } finally {
-    watcher.kill();
+    await watcher.stop();
   }
 }
 
@@ -114,70 +121,10 @@ async function assertAssistiveAccess(): Promise<void> {
   if (error?.includes(ASSISTIVE_ACCESS_DENIED)) {
     throw new Error(
       "AppleScript is not allowed assistive access, so the dialogs that block " +
-        "a Set swap cannot be clicked. Grant Accessibility (System Settings → " +
-        "Privacy & Security → Accessibility) to the app running these tests, " +
-        "and to AEServer if it is listed. Toggle an entry that is already on " +
-        `off and back on — the grant goes stale. osascript said: ${error}`,
+        `a Set swap cannot be clicked. ${ASSISTIVE_ACCESS_FIX} ` +
+        `osascript said: ${error}`,
     );
   }
-}
-
-/**
- * Starts an AppleScript process that clicks away the modals that block a Set
- * swap: "Save changes before closing?" (click Don't Save) and, after a crash,
- * "Would you like to recover your work?" (click No — recovering restores the
- * mutated session we are reopening to get rid of).
- *
- * It runs until killed rather than for a fixed window, because the dialogs turn
- * up at their own pace: the save prompt right after `open`, the crash prompt
- * partway through a cold launch.
- * @returns The spawned child process. Kill it when the open is done.
- */
-function startDialogWatcher(): ChildProcess {
-  const pollCount = Math.ceil(
-    (SERVER_STOP_TIMEOUT_MS + SERVER_START_TIMEOUT_MS) / POLL_INTERVAL_MS,
-  );
-
-  // Both dialogs are AXDialog windows whose buttons live in group 1, labelled
-  // by "description" ("name" and "title" are both `missing value`). "Don" gets
-  // Don't Save without tangling with the curly apostrophe. "No" is too plain a
-  // word to match on alone, so it needs the crash prompt's text alongside it.
-  const script = `
-    tell application "System Events"
-      tell process "${ABLETON_PROCESS}"
-        repeat ${pollCount} times
-          try
-            repeat with w in windows
-              if subrole of w is "AXDialog" then
-                set msg to ""
-                try
-                  repeat with t in static texts of group 1 of w
-                    set msg to msg & (value of t)
-                  end repeat
-                end try
-                repeat with b in buttons of group 1 of w
-                  set d to ""
-                  try
-                    set d to description of b as text
-                  end try
-                  if d contains "Don" then
-                    click b
-                    exit repeat
-                  else if d is "No" and msg contains "recover your work" then
-                    click b
-                    exit repeat
-                  end if
-                end repeat
-              end if
-            end repeat
-          end try
-          delay ${POLL_INTERVAL_MS / 1000}
-        end repeat
-      end tell
-    end tell
-  `;
-
-  return spawn("osascript", ["-e", script]);
 }
 
 /**
@@ -230,11 +177,14 @@ function envWithoutTestMarkers(): NodeJS.ProcessEnv {
  * Waits for the Set that was open to stop serving MCP. That teardown is the
  * only reliable sign Live let go of it — the alternative, trusting the first
  * server that answers, hands the caller the outgoing Set.
+ * @param watcher - Throws if a dialog keeps resisting the click
  */
-async function waitForServerToStop(): Promise<void> {
+async function waitForServerToStop(watcher: DialogWatcher): Promise<void> {
   const start = Date.now();
 
   while (Date.now() - start < SERVER_STOP_TIMEOUT_MS) {
+    watcher.assertClean();
+
     if (!(await serverIsAnswering())) {
       return;
     }
@@ -251,12 +201,16 @@ async function waitForServerToStop(): Promise<void> {
 
 /**
  * Waits for the newly opened Set to start serving MCP.
+ * @param watcher - Throws if a dialog resists the click, or Live shows no
+ *   windows for too long
  */
-async function waitForServerToStart(): Promise<void> {
+async function waitForServerToStart(watcher: DialogWatcher): Promise<void> {
   const start = Date.now();
   let readyStreak = 0;
 
   while (Date.now() - start < SERVER_START_TIMEOUT_MS) {
+    watcher.assertNotStuck();
+
     const refusal = await dismissUnsupportedVersionAlert();
 
     if (refusal != null) {
@@ -368,7 +322,7 @@ async function verifyLoadedSet(projectPath: string): Promise<void> {
 async function dismissUnsupportedVersionAlert(): Promise<string | null> {
   return await runAppleScript(`
     tell application "System Events"
-      tell process "${ABLETON_PROCESS}"
+      tell process "${LIVE_PROCESS}"
         repeat with w in windows
           try
             if subrole of w is "AXDialog" then
@@ -400,7 +354,7 @@ async function describeLiveState(): Promise<string> {
   const titles = await liveWindowTitles();
   const dialog = await runAppleScript(`
     tell application "System Events"
-      tell process "${ABLETON_PROCESS}"
+      tell process "${LIVE_PROCESS}"
         set out to ""
         repeat with w in windows
           if subrole of w is "AXDialog" then
@@ -419,7 +373,7 @@ async function describeLiveState(): Promise<string> {
   const state =
     titles.length > 0
       ? `Live windows: ${titles.join(", ")}.`
-      : "Live has no readable windows (is it running?).";
+      : "Live has no readable windows (not running, or stuck on a dialog?).";
 
   return dialog == null ? state : `${state} Dialog on screen: ${dialog}`;
 }
@@ -431,7 +385,7 @@ async function describeLiveState(): Promise<string> {
 async function liveWindowTitles(): Promise<string[]> {
   const output = await runAppleScript(`
     tell application "System Events"
-      tell process "${ABLETON_PROCESS}"
+      tell process "${LIVE_PROCESS}"
         set out to ""
         repeat with w in windows
           set n to ""
@@ -459,27 +413,6 @@ async function runAppleScript(script: string): Promise<string | null> {
   const { output } = await runOsascript(script);
 
   return output;
-}
-
-/**
- * Runs an AppleScript, keeping the failure. Only the access preflight needs
- * this; everything else treats a failure as "nothing to report".
- * @param script - The AppleScript source
- * @returns The trimmed output, or the error text when osascript failed
- */
-async function runOsascript(
-  script: string,
-): Promise<{ output: string | null; error: string | null }> {
-  return await new Promise((resolve) => {
-    execFile("osascript", ["-e", script], (error, stdout, stderr) => {
-      const output = error ? "" : stdout.trim();
-
-      resolve({
-        output: output === "" ? null : output,
-        error: error ? stderr.trim() || error.message : null,
-      });
-    });
-  });
 }
 
 /**

@@ -62,16 +62,16 @@ One durable test-authoring gotcha surfaced (worth reusing across domains):
   the `create-device`/`wrap` name-set guard mutants until the assertion was
   rewritten.
 
-| Gap (now killed)                                                    | Test strengthened / added                   |
-| ------------------------------------------------------------------- | ------------------------------------------- |
-| Chain-creation loop bounds/arithmetic (rack with N existing chains) | `update-device-wrap-in-rack-chains.test.ts` |
-| wrapInRack warn messages + name-set + insert_chain failure detect   | `update-device-wrap-in-rack.test.ts`        |
-| `setVariationIndex` load/delete index-set paired with the action    | `update-device-macro-variation.test.ts`     |
-| Variation index-count boundary (`>=`) + skip-executes-action guard  | `update-device-macro-variation.test.ts`     |
-| Drum-chain move: single-chain vs whole-pad, sharp note, `p*`        | `update-device-drum-chain-move.test.ts`     |
-| Nested drum-pad chain/device index boundary + non-numeric segments  | `read-device-drum-pad-path.test.ts`         |
-| Device `focus` selects `.at(-1)` (3 devices, not a 2-element tie)   | `update-device-focus.test.ts`               |
-| Cross-type "not applicable" params (rack-only on non-rack, etc.)    | `update-device-chains.test.ts`              |
-| Division-label OR, min-unparseable fallback, pan display-max        | `update-device-param-conversion.test.ts`    |
-| return-chains include on/off; malformed-path safe-resolve warn      | `read-device.test.ts`, `update-device-path` |
-| Malformed-JSON `params` string rejected (not swallowed)             | `device-params-schema.test.ts`              |
+| Gap (now killed)                                                    | Test strengthened / added                      |
+| ------------------------------------------------------------------- | ---------------------------------------------- |
+| Chain-creation loop bounds/arithmetic (rack with N existing chains) | `update-device-wrap-in-rack-chains.test.ts`    |
+| wrapInRack warn messages + name-set + insert_chain failure detect   | `update-device-wrap-in-rack.test.ts`           |
+| `setVariationIndex` load/delete index-set paired with the action    | `macros/update-device-macro-variation.test.ts` |
+| Variation index-count boundary (`>=`) + skip-executes-action guard  | `macros/update-device-macro-variation.test.ts` |
+| Drum-chain move: single-chain vs whole-pad, sharp note, `p*`        | `update-device-drum-chain-move.test.ts`        |
+| Nested drum-pad chain/device index boundary + non-numeric segments  | `read-device-drum-pad-path.test.ts`            |
+| Device `focus` selects `.at(-1)` (3 devices, not a 2-element tie)   | `update-device-focus.test.ts`                  |
+| Cross-type "not applicable" params (rack-only on non-rack, etc.)    | `update-device-chains.test.ts`                 |
+| Division-label OR, min-unparseable fallback, pan display-max        | `update-device-param-conversion.test.ts`       |
+| return-chains include on/off; malformed-path safe-resolve warn      | `read-device.test.ts`, `update-device-path`    |
+| Malformed-JSON `params` string rejected (not swallowed)             | `device-params-schema.test.ts`                 |

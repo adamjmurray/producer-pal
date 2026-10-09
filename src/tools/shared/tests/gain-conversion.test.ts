@@ -1,9 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
 
 import { describe, it, expect } from "vitest";
-import { LOOKUP_TABLE } from "#src/tools/shared/clip-gain-lookup/lookup-table.ts";
+import { LOOKUP_TABLE } from "#src/tools/shared/clip/clip-gain-lookup/lookup-table.ts";
 import {
   liveGainToDb,
   dbToLiveGain,
