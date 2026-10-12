@@ -182,20 +182,26 @@ describe("captureScene", () => {
 
   it("allows a sceneIndex up to exactly the maximum", () => {
     registerMockObject("live_set/view", { path: livePath.view.song });
+    registerMockObject(
+      `live_set/scenes/${String(MAX_AUTO_CREATED_SCENES - 2)}`,
+      {
+        path: livePath.scene(MAX_AUTO_CREATED_SCENES - 2),
+      },
+    );
 
-    for (let i = 0; i < MAX_AUTO_CREATED_SCENES; i++) {
-      registerMockObject(`live_set/scenes/${String(i)}`, {
-        path: livePath.scene(i),
-      });
-    }
-
+    // The scenes already exist: padding ~1000 of them through the mock is slow.
     // Selecting scene MAX-2 (sceneIndex - 1) makes the insert land at MAX-1.
-    const { liveSet } = setupCaptureMocks(MAX_AUTO_CREATED_SCENES - 2, [], 0);
+    const { liveSet } = setupCaptureMocks(
+      MAX_AUTO_CREATED_SCENES - 2,
+      [],
+      MAX_AUTO_CREATED_SCENES - 1,
+    );
 
     expect(() =>
       captureScene({ sceneIndex: MAX_AUTO_CREATED_SCENES - 1 }),
     ).not.toThrow();
 
     expect(liveSet.call).toHaveBeenCalledWith("capture_and_insert_scene");
+    expect(liveSet.call).not.toHaveBeenCalledWith("create_scene", -1);
   });
 });
