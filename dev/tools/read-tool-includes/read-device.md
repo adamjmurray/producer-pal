@@ -89,7 +89,9 @@ lists the mapped macros' numbers (macro 1 is the first), and `hiddenMapped`
 lists any beyond `count`, since lowering the count hides macros but keeps their
 mappings. Without the remote script, or when it can't answer for a rack, it is
 `{ count, hasMappings }`. One remote-script call (more past 200 racks) covers
-every rack in the read, and the read waits at most 3 seconds for it.
+every rack in the read, and the read waits at most 3 seconds for it. If the
+remote script goes away between calls, the racks already answered keep their
+answers and the rest read as without it (same for Simplers below).
 
 A Simpler read with `params` also lists `pitchBendRange` (0-24 semitones) and
 `notePitchBendRange` (0-48, MPE per-note bend) as `{ name, value }` entries in

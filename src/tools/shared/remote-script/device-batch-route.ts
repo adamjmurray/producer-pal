@@ -52,7 +52,8 @@ export interface DeviceBatchRoute<Result, Answer extends object> {
  * @param maxWaitMs - A shorter wait than the usual one for each call, for a
  *   caller that can do without the answer
  * @returns One answer per device, in order; null when the remote script isn't
- *   running, so there is nothing to ask
+ *   running at the first call, so there is nothing to ask. If it goes missing
+ *   later, the devices it hadn't answered for carry that as their reason.
  */
 export async function askAboutDevices<Result, Answer extends object>(
   batch: DeviceBatchRoute<Result, Answer>,
@@ -61,14 +62,15 @@ export async function askAboutDevices<Result, Answer extends object>(
   maxWaitMs?: number,
 ): Promise<Array<Answer | Unreadable> | null> {
   const answers: Array<Answer | Unreadable> = [];
-  let stalled: string | undefined;
+  // Why the rest can't be asked: a stall, or a remote script that went missing.
+  let stopped: string | undefined;
 
   for (let at = 0; at < devices.length; at += batch.maxPerCall) {
     const chunk = devices.slice(at, at + batch.maxPerCall);
 
     // A route that stalled once would stall the rest the same way.
-    if (stalled != null) {
-      const unreadable: Unreadable = { unreadable: stalled };
+    if (stopped != null) {
+      const unreadable: Unreadable = { unreadable: stopped };
 
       answers.push(...chunk.map(() => unreadable));
       continue;
@@ -76,11 +78,17 @@ export async function askAboutDevices<Result, Answer extends object>(
 
     const asked = await askAboutChunk(batch, chunk, deadline, maxWaitMs);
 
-    if (asked == null) {
-      return null;
+    if ("missing" in asked) {
+      if (at === 0) {
+        return null;
+      }
+
+      stopped = asked.missing;
+      answers.push(...chunk.map(() => ({ unreadable: asked.missing })));
+      continue;
     }
 
-    stalled = asked.stalled;
+    stopped = asked.stalled;
     answers.push(...asked.answers);
   }
 
@@ -95,15 +103,18 @@ export async function askAboutDevices<Result, Answer extends object>(
  * @param devices - At most `batch.maxPerCall` devices
  * @param deadline - The request deadline from ToolContext, if any
  * @param maxWaitMs - A shorter wait than the usual one, if any
- * @returns One answer per device, and why the route stalled if it did; null
- *   when the remote script isn't running
+ * @returns One answer per device, and why the route stalled if it did; or why
+ *   the remote script isn't running
  */
 async function askAboutChunk<Result, Answer extends object>(
   batch: DeviceBatchRoute<Result, Answer>,
   devices: LiveAPI[],
   deadline: number | null | undefined,
   maxWaitMs: number | undefined,
-): Promise<{ answers: Array<Answer | Unreadable>; stalled?: string } | null> {
+): Promise<
+  | { answers: Array<Answer | Unreadable>; stalled?: string }
+  | { missing: string }
+> {
   try {
     const outcome = await remoteScriptRoute<Result>(
       batch.route,
@@ -115,7 +126,7 @@ async function askAboutChunk<Result, Answer extends object>(
 
     if (!outcome.ok) {
       if (!outcome.available) {
-        return null;
+        return { missing: outcome.reason };
       }
 
       return {

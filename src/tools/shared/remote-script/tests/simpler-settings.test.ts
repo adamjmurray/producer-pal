@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { isStalled } from "#src/tools/shared/remote-script/device-batch-route.ts";
 import {
   lookUpSimplerSettings,
   writeSimplerSettings,
@@ -84,6 +85,95 @@ describe("lookUpSimplerSettings", () => {
     expect(await lookUpSimplerSettings(simplers(1), null)).toStrictEqual([
       { unreadable: "'Reverb' is not a Simpler" },
     ]);
+  });
+
+  it("keeps the first chunk's answers when the remote script is gone for the next", async () => {
+    vi.mocked(requestNode)
+      .mockResolvedValueOnce({
+        success: true,
+        result: {
+          available: true,
+          result: {
+            simplers: Array.from({ length: MAX_SIMPLERS_PER_CALL }, () => ({
+              pitch_bend_range: 5,
+              note_pitch_bend_range: 48,
+            })),
+          },
+        },
+      })
+      .mockResolvedValue({
+        success: true,
+        result: { available: false, outdated: "too old" },
+      });
+
+    const answers = await lookUpSimplerSettings(
+      simplers(MAX_SIMPLERS_PER_CALL * 2 + 1),
+      null,
+    );
+
+    expect(requestNode).toHaveBeenCalledTimes(2);
+    expect(answers).toHaveLength(MAX_SIMPLERS_PER_CALL * 2 + 1);
+    expect(answers?.[0]).toStrictEqual({
+      pitchBendRange: 5,
+      notePitchBendRange: 48,
+    });
+    expect(answers?.[MAX_SIMPLERS_PER_CALL - 1]).toStrictEqual({
+      pitchBendRange: 5,
+      notePitchBendRange: 48,
+    });
+    expect(answers?.slice(MAX_SIMPLERS_PER_CALL)).toStrictEqual(
+      Array.from({ length: MAX_SIMPLERS_PER_CALL + 1 }, () => ({
+        unreadable: "too old",
+      })),
+    );
+  });
+
+  it("marks the rest unreadable, not stalled, when the script is gone mid-call", async () => {
+    vi.mocked(requestNode)
+      .mockResolvedValueOnce({
+        success: true,
+        result: { available: true, result: { simplers: [] } },
+      })
+      .mockResolvedValue({ success: true, result: { available: false } });
+
+    const answers = await lookUpSimplerSettings(
+      simplers(MAX_SIMPLERS_PER_CALL + 1),
+      null,
+    );
+
+    expect(answers?.at(-1)).toStrictEqual({
+      unreadable: "the Producer Pal remote script isn't running",
+    });
+    expect(answers?.some(isStalled)).toBe(false);
+  });
+
+  it("keeps the first chunk's answers when a later chunk stalls", async () => {
+    vi.mocked(requestNode)
+      .mockResolvedValueOnce({
+        success: true,
+        result: {
+          available: true,
+          result: {
+            simplers: Array.from({ length: MAX_SIMPLERS_PER_CALL }, () => ({
+              pitch_bend_range: 2,
+              note_pitch_bend_range: 48,
+            })),
+          },
+        },
+      })
+      .mockResolvedValue({ success: false, error: "x" });
+
+    const answers = await lookUpSimplerSettings(
+      simplers(MAX_SIMPLERS_PER_CALL * 2 + 1),
+      null,
+    );
+
+    expect(requestNode).toHaveBeenCalledTimes(2);
+    expect(answers?.[0]).toStrictEqual({
+      pitchBendRange: 2,
+      notePitchBendRange: 48,
+    });
+    expect(answers?.slice(MAX_SIMPLERS_PER_CALL).every(isStalled)).toBe(true);
   });
 
   it("gives null when the remote script is out of date", async () => {

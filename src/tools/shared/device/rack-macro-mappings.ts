@@ -38,7 +38,8 @@ const RACK_MACROS: DeviceBatchRoute<RackMacrosResult, { mapped: number[] }> = {
  * @param maxWaitMs - A shorter wait than the usual one for each call, for a
  *   caller that can do without the answer
  * @returns One answer per rack, in order; null when the remote script isn't
- *   running, so there is nothing to ask
+ *   running at the first call, so there is nothing to ask. If it goes missing
+ *   later, the ones it hadn't answered for carry that as their reason.
  */
 export function lookUpMappedMacros(
   racks: LiveAPI[],

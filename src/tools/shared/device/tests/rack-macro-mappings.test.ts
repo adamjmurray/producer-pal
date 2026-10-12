@@ -83,6 +83,33 @@ describe("lookUpMappedMacros", () => {
     });
   });
 
+  it("keeps earlier chunks' answers when the remote script is gone for the next", async () => {
+    vi.mocked(requestNode)
+      .mockResolvedValueOnce({
+        success: true,
+        result: {
+          available: true,
+          result: {
+            racks: Array.from({ length: MAX_RACKS_PER_CALL }, () => ({
+              mapped: [3],
+            })),
+          },
+        },
+      })
+      .mockResolvedValue({ success: true, result: { available: false } });
+
+    const answers = await lookUpMappedMacros(
+      racks(MAX_RACKS_PER_CALL + 1),
+      null,
+    );
+
+    expect(answers).toHaveLength(MAX_RACKS_PER_CALL + 1);
+    expect(answers?.[0]).toStrictEqual({ mapped: [3] });
+    expect(answers?.at(-1)).toStrictEqual({
+      unreadable: "the Producer Pal remote script isn't running",
+    });
+  });
+
   it("is null when the remote script isn't there", async () => {
     vi.mocked(requestNode).mockResolvedValue({
       success: true,
