@@ -100,8 +100,8 @@ All decided before the first write (`plans/`), so the loop never has to undo:
   transport) has changed Live. A throw from `before`, or from `settle` when no
   target was written, then ends the call with `; already changed: <phrases>`,
   since no entry can carry it. A target's own throw still becomes that target's
-  entry. Only `ppal-playback` records these so far; the other write tools do not
-  yet.
+  entry. Only `ppal-playback` and `ppal-update-live-set` record these so far;
+  the other write tools do not yet.
 
 A throw is the target's skip when nothing had landed. Throw the words a lone
 target would show the model.

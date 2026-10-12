@@ -110,6 +110,42 @@ describe("updateLiveSet", () => {
     ).rejects.toThrow("Unknown locator operation: bogus");
   });
 
+  it("says what was already written when a later step throws", async () => {
+    const readScale = liveSet.get.getMockImplementation();
+
+    liveSet.get.mockImplementation((property: string) => {
+      if (property === "scale_intervals") {
+        throw new Error("Live refused scale_intervals");
+      }
+
+      return readScale?.(property);
+    });
+
+    await expect(
+      updateLiveSet({
+        tempo: 120,
+        timeSignature: "3/4",
+        scale: "D Major",
+      }),
+    ).rejects.toThrow(
+      "Live refused scale_intervals; already changed: tempo, time signature, scale",
+    );
+  });
+
+  it("names only what was written when the time signature write throws", async () => {
+    liveSet.set.mockImplementation((property: string) => {
+      if (property === "signature_numerator") {
+        throw new Error("Live refused signature_numerator");
+      }
+    });
+
+    await expect(
+      updateLiveSet({ tempo: 120, timeSignature: "3/4" }),
+    ).rejects.toThrow(
+      "Live refused signature_numerator; already changed: tempo",
+    );
+  });
+
   // One value for the whole call, and Live can't hold it — refused before any
   // property is written, the way a malformed timeSignature already was.
   it.each([10, 1000])("refuses an out-of-range tempo of %i", async (tempo) => {

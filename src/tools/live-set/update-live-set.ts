@@ -140,7 +140,7 @@ const UPDATE_LIVE_SET_WRITE: WriteSpec<
     ...call,
     operation: call.run.args.locatorOperation as LocatorOperation | undefined,
   }),
-  before: writeSongState,
+  before: (checked, call) => writeSongState(checked, call.landed),
   // A lone locator refusal throws only when it was the call's only work: an
   // error would hide what else landed.
   loneSkipThrows: ({ tempo, timeSignature, scale }) =>
@@ -231,8 +231,12 @@ function locatorsNamed(
 /**
  * Write the tempo, time signature and scale, before any locator is touched.
  * @param checked - The checked call
+ * @param landed - Says that a song-level value has changed Live
  */
-function writeSongState(checked: UpdateLiveSetChecked): void {
+function writeSongState(
+  checked: UpdateLiveSetChecked,
+  landed: (phrase: string) => void,
+): void {
   const { liveSet, tempo, timeSignature, scale, parsedScale } = checked;
   const { result } = checked.run;
 
@@ -240,8 +244,13 @@ function writeSongState(checked: UpdateLiveSetChecked): void {
 
   const overrodeTempo = tempo != null && applyTempo(liveSet, tempo, result);
 
+  if (tempo != null) {
+    landed("tempo");
+  }
+
   if (timeSignature != null) {
     applyTimeSignature(liveSet, timeSignature, result);
+    landed("time signature");
   }
 
   // Said once for both: the value Live kept sits in the field it was asked in.
@@ -259,6 +268,7 @@ function writeSongState(checked: UpdateLiveSetChecked): void {
 
   if (scale != null) {
     applyScale(liveSet, parsedScale, scale, result);
+    landed("scale");
   }
 
   if (parsedScale != null) {
