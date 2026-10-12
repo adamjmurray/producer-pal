@@ -144,6 +144,10 @@ release build.
    - Click the freeze button
    - Save as: `release/Producer_Pal.amxd`
 
+   Or skip Max: `npm run device:freeze` writes the same file to
+   `release/Producer_Pal.amxd` (`-- --out <path>` to write elsewhere). It reads
+   the device and the files it uses from `max-for-live-device/` and `licenses/`.
+
 3. Package the portal, the extension and the npm folder:
 
    ```sh
