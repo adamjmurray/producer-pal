@@ -159,17 +159,29 @@ describe("ppal-clip-transforms (bad argument refused up front)", () => {
     },
   );
 
-  it("ppal-update-clip refuses a swing amount at or past its grid", async () => {
-    const clipId = await createMidiClip(98, "v80 C3 1|1.5");
-
-    expectRefused(
-      await ctx.client!.callTool({
-        name: "ppal-update-clip",
-        arguments: { id: clipId, transforms: "timing = swing(0.56)" },
-      }),
+  it.each([
+    [
+      "timing = swing(0.56)",
       "swing amount is a delay in beats and must be under the grid (0.5 beats); for 56% swing, use 0.06",
-    );
-    // Still on the off-beat, not moved
-    expect(await readClipNotes(clipId)).toContain("1|1.5");
-  });
+    ],
+    [
+      "timing = swing(0.5)",
+      "swing amount is a delay in beats and must be under the grid (0.5 beats); 0 is straight (MPC 50%)",
+    ],
+  ])(
+    "ppal-update-clip refuses a swing amount at or past its grid: %s",
+    async (transforms, message) => {
+      const clipId = await createMidiClip(98, "v80 C3 1|1.5");
+
+      expectRefused(
+        await ctx.client!.callTool({
+          name: "ppal-update-clip",
+          arguments: { id: clipId, transforms },
+        }),
+        message,
+      );
+      // Still on the off-beat, not moved
+      expect(await readClipNotes(clipId)).toContain("1|1.5");
+    },
+  );
 });

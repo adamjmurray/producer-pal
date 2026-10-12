@@ -34,5 +34,10 @@ export function swingAmountError(
   // (S - 50%) of the pair length.
   const delay = Number((((percent - 50) / 100) * 2 * grid).toFixed(4));
 
+  // 50% is no delay, which a model can misread as "no swing" for half swing.
+  if (delay === 0) {
+    return `${message}; 0 is straight (MPC 50%)`;
+  }
+
   return `${message}; for ${Number(percent.toFixed(2))}% swing, use ${delay}`;
 }

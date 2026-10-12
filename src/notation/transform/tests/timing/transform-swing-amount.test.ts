@@ -16,7 +16,11 @@ const BASE = "swing amount is a delay in beats and must be under the grid";
 
 describe("a swing() amount at or past its grid", () => {
   it.each([
-    ["timing = swing(0.5, n/8)", `${BASE} (0.5 beats); for 50% swing, use 0`],
+    [
+      "timing = swing(0.5, n/8)",
+      `${BASE} (0.5 beats); 0 is straight (MPC 50%)`,
+    ],
+    ["timing = swing(50, n/8)", `${BASE} (0.5 beats); 0 is straight (MPC 50%)`],
     [
       "timing = swing(0.56, n/8)",
       `${BASE} (0.5 beats); for 56% swing, use 0.06`,
