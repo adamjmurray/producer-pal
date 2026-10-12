@@ -198,6 +198,38 @@ export function putJson(
   body: unknown,
   origin?: string,
 ): Promise<Response> {
+  return sendJson("PUT", url, body, origin);
+}
+
+/**
+ * POST a JSON body to an endpoint.
+ *
+ * @param url - Fully-qualified endpoint URL
+ * @param body - Request body (sent as JSON)
+ * @param origin - Optional Origin header to exercise the localhost gate
+ * @returns The fetch Response
+ */
+export function postJson(
+  url: string,
+  body: unknown,
+  origin?: string,
+): Promise<Response> {
+  return sendJson("POST", url, body, origin);
+}
+
+/**
+ * @param method - HTTP method
+ * @param url - Fully-qualified endpoint URL
+ * @param body - Request body (sent as JSON)
+ * @param origin - Optional Origin header
+ * @returns The fetch Response
+ */
+function sendJson(
+  method: "POST" | "PUT",
+  url: string,
+  body: unknown,
+  origin?: string,
+): Promise<Response> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
@@ -206,7 +238,7 @@ export function putJson(
     headers.Origin = origin;
   }
 
-  return fetch(url, { method: "PUT", headers, body: JSON.stringify(body) });
+  return fetch(url, { method, headers, body: JSON.stringify(body) });
 }
 
 /** The parsed payload a V8↔Node RPC route sends back. */

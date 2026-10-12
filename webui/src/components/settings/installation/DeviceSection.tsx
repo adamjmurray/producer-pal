@@ -7,10 +7,13 @@ import {
   type DeviceInstallStatus,
   type UseDeviceInstallReturn,
 } from "#webui/hooks/settings/installation/use-device-install";
+import { type UseDeviceSwapReturn } from "#webui/hooks/settings/installation/use-device-swap";
+import { DeviceSwap } from "./DeviceSwap";
 import { buttonClass, noteClass } from "./installation-classes";
 
 interface DeviceSectionProps {
   device: UseDeviceInstallReturn;
+  swap: UseDeviceSwapReturn;
   /** The User Library path in the tab's shared field. */
   path: string;
   /** The User Library the server detected, or null. */
@@ -22,11 +25,17 @@ interface DeviceSectionProps {
  * Library, where Live Sets and the remote script can find it.
  * @param {DeviceSectionProps} props - Component props
  * @param {object} props.device - The useDeviceInstall state and actions
+ * @param {object} props.swap - The useDeviceSwap state and action
  * @param {string} props.path - The User Library path in the shared field
  * @param {string | null} props.detected - The detected User Library, or null
  * @returns {JSX.Element} The device section
  */
-export function DeviceSection({ device, path, detected }: DeviceSectionProps) {
+export function DeviceSection({
+  device,
+  swap,
+  path,
+  detected,
+}: DeviceSectionProps) {
   const { status } = device;
 
   return (
@@ -63,7 +72,14 @@ export function DeviceSection({ device, path, detected }: DeviceSectionProps) {
         </>
       )}
 
-      {/* Later: "Swap this device for the User Library copy" goes here. */}
+      {status != null && (
+        <DeviceSwap
+          status={status}
+          swap={swap}
+          path={path.trim()}
+          isDetected={path.trim() === detected}
+        />
+      )}
     </div>
   );
 }

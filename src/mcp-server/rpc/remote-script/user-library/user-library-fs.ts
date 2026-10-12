@@ -26,6 +26,7 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
@@ -100,6 +101,19 @@ export function copyIntoLibrary(from: string, to: string): void {
  */
 export function setLibraryFileMode(file: string, mode: number): void {
   chmodSync(file, mode);
+}
+
+/**
+ * @param path - Path to resolve
+ * @returns The path with links resolved and its case as the disk spells it, or
+ *   undefined when nothing is there
+ */
+export function libraryRealPath(path: string): string | undefined {
+  try {
+    return realpathSync.native(path);
+  } catch {
+    return undefined;
+  }
 }
 
 /**

@@ -7,7 +7,9 @@
  * The device installing itself into the User Library (/device-install). The
  * e2e Live Set loads the UNFROZEN development device from max-for-live-device/,
  * so this covers what a real Live can prove: V8 reports the device's file path
- * to Node, and the server refuses to copy a device that isn't frozen.
+ * to Node, the server refuses to copy a device that isn't frozen, and it refuses
+ * to swap the device for a User Library copy that isn't there. A real swap
+ * would replace the device the test talks to, so it isn't run here.
  *
  * Run with: npm run e2e:mcp -- control/ppal-device-install
  */
@@ -92,5 +94,27 @@ describe("device self-install (unfrozen development device)", () => {
     expect(response.status).toBe(409);
     expect(body.error).toContain("development device");
     expect(readdirSync(scratchLibrary)).toStrictEqual([]);
+  });
+
+  it("refuses to swap when the User Library has no copy, and leaves the device in the Set", async () => {
+    const before = await statusWithSource();
+
+    // The copy check comes first, so no remote script is needed to see this.
+    const response = await fetch(`${DEVICE_URL}/swap`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userLibrary: scratchLibrary }),
+    });
+    const body = (await response.json()) as { error: string };
+
+    expect(response.status).toBe(409);
+    expect(body.error).toContain("no copy of this device");
+    expect(readdirSync(scratchLibrary)).toStrictEqual([]);
+
+    // Still the same device answering, from the same file.
+    const after = await statusWithSource();
+
+    expect(after.source).toBe(before.source);
+    expect(after.problem).toBe("not-frozen");
   });
 });

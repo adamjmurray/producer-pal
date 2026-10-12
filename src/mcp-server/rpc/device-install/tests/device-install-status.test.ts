@@ -43,6 +43,7 @@ describe("deviceInstallStatus", () => {
       problem: null,
       userLibrary: library,
       path: installed,
+      inUserLibrary: false,
       state: "not-installed",
       version: VERSION,
       installedVersion: null,

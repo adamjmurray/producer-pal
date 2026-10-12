@@ -127,7 +127,7 @@ function replyFailure(
  * @param reply - The failure
  * @returns True when the swap may have happened
  */
-function mayHaveSwapped(reply: RemoteScriptAnswer): boolean {
+export function mayHaveSwapped(reply: RemoteScriptAnswer): boolean {
   if (reply.status === 504) {
     return reply.body.started === true;
   }
@@ -139,7 +139,9 @@ function mayHaveSwapped(reply: RemoteScriptAnswer): boolean {
  * @param body - A successful /replace-producer-pal answer
  * @returns The track it names, when it names one
  */
-function trackOf(body: Record<string, unknown>): ReplacedTrack | undefined {
+export function trackOf(
+  body: Record<string, unknown>,
+): ReplacedTrack | undefined {
   const { track } = body;
 
   if (track == null || typeof track !== "object") {

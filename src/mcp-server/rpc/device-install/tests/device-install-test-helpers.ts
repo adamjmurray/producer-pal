@@ -8,7 +8,18 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach } from "vitest";
 import { deviceFilePath } from "#src/portal/setup/device-file-status.ts";
+import { MIN_REMOTE_SCRIPT_VERSION } from "../../remote-script/port/remote-script-version.ts";
+import { type RemoteScriptPing } from "../../remote-script/remote-script-client.ts";
 import { recordDeviceSource, resetDeviceSource } from "../device-source.ts";
+
+/** A remote script that is running and new enough for the swap. */
+export const RUNNING_PING: RemoteScriptPing = {
+  running: true,
+  liveVersion: "12.4.0",
+  scriptVersion: MIN_REMOTE_SCRIPT_VERSION,
+  userLibrary: null,
+  otherOnPort: null,
+};
 
 /**
  * Bytes shaped like a frozen device: Max's container header, `mx@c` where a

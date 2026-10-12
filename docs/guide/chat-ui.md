@@ -550,7 +550,13 @@ sections use the one User Library path at the top of the tab.
 - **Device:** copies the Producer Pal device you loaded into your User Library,
   so every Live Set can find it. The device shows a **Finish installation…**
   button until it's there; the button opens this tab. A development (unfrozen)
-  device can't be copied.
+  device can't be copied. A Live Set remembers the file a device was loaded
+  from, so a device loaded from Downloads stays tied to that file. Once the
+  [remote script](/guide/remote-script) is running and your User Library has a
+  copy that is the same version or newer, **Swap this device for the User
+  Library copy** replaces the device in your Set with it. The AI connection
+  drops for a moment while the new device starts. Save your Live Set afterwards
+  so it keeps using the User Library copy.
 - **Remote script:** installs the optional Producer Pal
   [remote script](/guide/remote-script), which lets the AI load plug-ins, Max
   for Live devices, and presets. It shows whether the script is installed and

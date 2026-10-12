@@ -11,12 +11,18 @@ import { VERSION } from "#src/shared/config.ts";
 import {
   developmentDevice,
   frozenDevice,
+  RUNNING_PING,
   useDeviceScratch,
 } from "../../rpc/device-install/tests/device-install-test-helpers.ts";
+import {
+  remoteScriptPing,
+  remoteScriptRequest,
+} from "../../rpc/remote-script/remote-script-client.ts";
 import { errorHandlerMiddleware } from "../../helpers/http/error-handler-middleware.ts";
 import {
   type MarkdownRouteServer,
   errorOf,
+  postJson,
   startMarkdownRouteServer,
 } from "../../tests/config-dir-test-helpers.ts";
 import { registerDeviceInstallRoutes } from "../device-install-route.ts";
@@ -29,6 +35,16 @@ const { findUserLibraryPath } = vi.hoisted(() => ({
 vi.mock(import("../../live-library/query/user-library-path.ts"), () => ({
   findUserLibraryPath,
 }));
+
+// The real ones would talk to a Live running on the developer's machine.
+vi.mock(
+  import("../../rpc/remote-script/remote-script-client.ts"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    remoteScriptPing: vi.fn(),
+    remoteScriptRequest: vi.fn(),
+  }),
+);
 
 // Names a copy to fail halfway.
 const fault = vi.hoisted(() => ({ copy: false, stat: false }));
@@ -62,33 +78,15 @@ describe("device-install routes", () => {
   const scratch = useDeviceScratch();
   let server: MarkdownRouteServer;
 
-  /**
-   * POST the install endpoint.
-   *
-   * @param body - The JSON body to send
-   * @param origin - Optional Origin header, to exercise the foreign-origin gate
-   * @returns The fetch Response
-   */
-  function postInstall(body: unknown, origin?: string): Promise<Response> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (origin != null) {
-      headers.Origin = origin;
-    }
-
-    return fetch(`${server.baseUrl}/device-install/install`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
-  }
+  const postInstall = (body: unknown, origin?: string): Promise<Response> =>
+    postJson(`${server.baseUrl}/device-install/install`, body, origin);
 
   beforeEach(async () => {
     fault.copy = false;
     fault.stat = false;
     findUserLibraryPath.mockReset().mockResolvedValue(scratch().library);
+    vi.mocked(remoteScriptPing).mockReset().mockResolvedValue(RUNNING_PING);
+    vi.mocked(remoteScriptRequest).mockReset();
     vi.mocked(Max.outlet).mockClear();
     server = await startMarkdownRouteServer((app) => {
       registerDeviceInstallRoutes(app);
@@ -113,10 +111,16 @@ describe("device-install routes", () => {
         problem: null,
         userLibrary: library,
         path: installed,
+        inUserLibrary: false,
         state: "not-installed",
         version: VERSION,
         installedVersion: null,
         otherCopies: [],
+        swap: {
+          allowed: false,
+          reason:
+            "There is no copy of this device in your User Library yet. Install it first.",
+        },
       });
     });
 
@@ -284,6 +288,164 @@ describe("device-install routes", () => {
       writeFileSync(join(library, "Presets"), "");
 
       const res = await postInstall({ userLibrary: library });
+
+      expect(res.status).toBe(500);
+    });
+  });
+
+  describe("GET /device-install swap offer", () => {
+    it("offers the swap once an equal copy is in the User Library", async () => {
+      const { runFromDownloads, installed, put } = scratch();
+
+      runFromDownloads(frozenDevice(VERSION));
+      put(installed, frozenDevice(VERSION, "library copy"));
+
+      const res = await fetch(`${server.baseUrl}/device-install`);
+      const body = (await res.json()) as { swap: unknown };
+
+      expect(body.swap).toStrictEqual({ allowed: true, reason: null });
+    });
+
+    it("says why when the remote script isn't running", async () => {
+      const { runFromDownloads, installed, put } = scratch();
+
+      runFromDownloads(frozenDevice(VERSION));
+      put(installed, frozenDevice(VERSION, "library copy"));
+      vi.mocked(remoteScriptPing).mockResolvedValue({
+        ...RUNNING_PING,
+        running: false,
+      });
+
+      const res = await fetch(`${server.baseUrl}/device-install`);
+      const body = (await res.json()) as {
+        swap: { allowed: boolean; reason: string };
+      };
+
+      expect(body.swap.allowed).toBe(false);
+      expect(body.swap.reason).toContain("remote script isn't running");
+    });
+  });
+
+  describe("POST /device-install/swap", () => {
+    const postSwap = (body: unknown, origin?: string): Promise<Response> =>
+      postJson(`${server.baseUrl}/device-install/swap`, body, origin);
+
+    /**
+     * Make the remote script answer the swap.
+     *
+     * @param status - HTTP status
+     * @param body - JSON body
+     */
+    function liveAnswers(status: number, body: Record<string, unknown>): void {
+      vi.mocked(remoteScriptRequest).mockResolvedValue({
+        available: true,
+        status,
+        body,
+      });
+    }
+
+    /** Put a swappable device and copy in place. */
+    function readyToSwap(): void {
+      const { runFromDownloads, installed, put } = scratch();
+
+      runFromDownloads(frozenDevice(VERSION));
+      put(installed, frozenDevice(VERSION, "library copy"));
+    }
+
+    /**
+     * Swap into the scratch User Library.
+     *
+     * @returns The status and JSON body the route answered with
+     */
+    async function swapped(): Promise<{
+      status: number;
+      body: Record<string, unknown>;
+    }> {
+      const res = await postSwap({ userLibrary: scratch().library });
+
+      return {
+        status: res.status,
+        body: (await res.json()) as Record<string, unknown>,
+      };
+    }
+
+    it("swaps, and says so", async () => {
+      readyToSwap();
+      liveAnswers(200, { track: { path: "t1", name: "Pal" } });
+
+      const { status, body } = await swapped();
+
+      expect(status).toBe(200);
+      expect(body).toStrictEqual({
+        swapping: true,
+        confirmed: true,
+        track: { path: "t1", name: "Pal" },
+      });
+    });
+
+    it("says the swap is unconfirmed when Live didn't answer", async () => {
+      readyToSwap();
+      liveAnswers(500, { error: "boom" });
+
+      const { status, body } = await swapped();
+
+      expect(status).toBe(200);
+      expect(body.confirmed).toBe(false);
+      expect(body.note).toContain("may have been swapped");
+    });
+
+    it("answers 409 with a plain reason and asks Live nothing when there is no copy", async () => {
+      scratch().runFromDownloads(frozenDevice(VERSION));
+
+      const res = await postSwap({ userLibrary: scratch().library });
+
+      expect(res.status).toBe(409);
+      expect(await errorOf(res)).toContain("no copy of this device");
+      expect(remoteScriptRequest).not.toHaveBeenCalled();
+    });
+
+    it("answers 409 when Live refuses", async () => {
+      readyToSwap();
+      liveAnswers(409, { error: "Producer Pal isn't in this Live Set" });
+
+      const res = await postSwap({ userLibrary: scratch().library });
+
+      expect(res.status).toBe(409);
+      expect(await errorOf(res)).toContain("isn't in this Live Set");
+    });
+
+    it("answers 502 when the remote script can't be reached", async () => {
+      readyToSwap();
+      vi.mocked(remoteScriptRequest).mockResolvedValue({ available: false });
+
+      const res = await postSwap({ userLibrary: scratch().library });
+
+      expect(res.status).toBe(502);
+    });
+
+    it("rejects a blank userLibrary, a bad folder and a foreign origin", async () => {
+      readyToSwap();
+
+      const blank = await postSwap({});
+      const missing = await postSwap({
+        userLibrary: join(scratch().library, "nope"),
+      });
+      const foreign = await postSwap(
+        { userLibrary: scratch().library },
+        "https://evil.example",
+      );
+
+      expect([blank.status, missing.status, foreign.status]).toStrictEqual([
+        400, 400, 403,
+      ]);
+      expect(remoteScriptRequest).not.toHaveBeenCalled();
+    });
+
+    it("answers 500 for an error it can't explain", async () => {
+      readyToSwap();
+      fault.stat = true;
+
+      const res = await postSwap({ userLibrary: scratch().library });
 
       expect(res.status).toBe(500);
     });

@@ -5,6 +5,7 @@
 
 import { useState } from "preact/hooks";
 import { useDeviceInstall } from "#webui/hooks/settings/installation/use-device-install";
+import { useDeviceSwap } from "#webui/hooks/settings/installation/use-device-swap";
 import { useRemoteScript } from "#webui/hooks/settings/installation/use-remote-script";
 import { DeviceSection } from "./DeviceSection";
 import { RemoteScriptSection } from "./RemoteScriptSection";
@@ -18,6 +19,7 @@ import { UserLibraryField } from "./UserLibraryField";
 export function InstallationTab() {
   const remote = useRemoteScript();
   const device = useDeviceInstall();
+  const swap = useDeviceSwap(device.refresh);
   // Either status may be the one that finds it; a failed read has none.
   const detected =
     remote.status?.userLibrary ?? device.status?.userLibrary ?? null;
@@ -29,7 +31,12 @@ export function InstallationTab() {
   return (
     <div className="space-y-6 text-sm" data-testid="installation-tab">
       <UserLibraryField detected={detected} value={path} onInput={setTyped} />
-      <DeviceSection device={device} path={path} detected={detected} />
+      <DeviceSection
+        device={device}
+        swap={swap}
+        path={path}
+        detected={detected}
+      />
       <RemoteScriptSection remote={remote} path={path} detected={detected} />
     </div>
   );

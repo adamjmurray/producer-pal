@@ -29,6 +29,8 @@ interface DeviceStatus {
   version: string;
   installedVersion: string | null;
   otherCopies: string[];
+  inUserLibrary: boolean;
+  swap: { allowed: boolean; reason: string | null };
 }
 
 /**
@@ -42,10 +44,16 @@ function status(overrides: Partial<DeviceStatus> = {}): DeviceStatus {
     problem: null,
     userLibrary: USER_LIBRARY,
     path: DEVICE_PATH,
+    inUserLibrary: false,
     state: "not-installed",
     version: "1.2.0",
     installedVersion: null,
     otherCopies: [],
+    swap: {
+      allowed: false,
+      reason:
+        "There is no copy of this device in your User Library yet. Install it first.",
+    },
     ...overrides,
   };
 }
@@ -210,6 +218,138 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
       "Couldn't install the device. ENOSPC: copy",
     );
     await expect(page.getByTestId("device-installed-path")).toBeHidden();
+  });
+});
+
+/** A copy of this device in the User Library that the swap is offered for. */
+const SWAPPABLE = status({
+  state: "same",
+  installedVersion: "1.2.0",
+  swap: { allowed: true, reason: null },
+});
+
+/**
+ * Stub the swap POST. A swap kills the server that gets it, so by default the
+ * connection drops without an answer, and the status the page polls then shows
+ * the new device after `polls` reads.
+ * @param page - Playwright page
+ * @param initial - The status before the swap
+ * @param swap - How the POST answers: dropped (the default), or a status and body
+ * @param swap.status - HTTP status of the answer
+ * @param swap.body - JSON body of the answer
+ * @param polls - How many reads still show the old device after the POST
+ * @returns The bodies the swap POST received
+ */
+async function stubSwap(
+  page: Page,
+  initial: DeviceStatus,
+  swap: { status: number; body: unknown } | null = null,
+  polls = 1,
+): Promise<unknown[]> {
+  const posted: unknown[] = [];
+  let swapped = false;
+  let readsSinceSwap = 0;
+
+  await page.route("**/device-install", (route) => {
+    if (swapped && ++readsSinceSwap > polls) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ...initial, inUserLibrary: true }),
+      });
+    }
+
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(initial),
+    });
+  });
+  await page.route("**/device-install/swap", (route) => {
+    posted.push(route.request().postDataJSON());
+
+    if (swap == null) {
+      swapped = true;
+
+      return route.abort("connectionreset");
+    }
+
+    return route.fulfill({
+      status: swap.status,
+      contentType: "application/json",
+      body: JSON.stringify(swap.body),
+    });
+  });
+
+  return posted;
+}
+
+test.describe("Settings — installation: device swap (stubbed backend)", () => {
+  test("offers the swap, then waits for the new device and says to save the Set", async ({
+    page,
+  }) => {
+    await setupSettingsTest(page);
+    const posted = await stubSwap(page, SWAPPABLE);
+
+    await openInstallationTab(page);
+
+    await expect(page.getByTestId("device-swap")).toBeEnabled();
+
+    await page.getByTestId("device-swap").click();
+
+    // The old server died with the swap: the page keeps watching.
+    await expect(page.getByTestId("device-swap-waiting")).toBeVisible();
+    await expect(page.getByTestId("device-swap")).toBeHidden();
+    await expect(page.getByTestId("device-swap-done")).toContainText(
+      "Save your Live Set",
+      { timeout: 15_000 },
+    );
+    expect(posted).toStrictEqual([{ userLibrary: USER_LIBRARY }]);
+  });
+
+  test("shows why the swap isn't offered", async ({ page }) => {
+    await setupSettingsTest(page);
+    await stubDevice(
+      page,
+      status({
+        swap: { allowed: false, reason: "The remote script isn't running." },
+      }),
+    );
+    await openInstallationTab(page);
+
+    await expect(page.getByTestId("device-swap")).toBeDisabled();
+    await expect(page.getByTestId("device-swap-note")).toHaveText(
+      "The remote script isn't running.",
+    );
+  });
+
+  test("offers nothing once the device is the User Library copy", async ({
+    page,
+  }) => {
+    await setupSettingsTest(page);
+    await stubDevice(page, { ...SWAPPABLE, inUserLibrary: true });
+    await openInstallationTab(page);
+
+    await expect(page.getByTestId("device-status")).toBeVisible();
+    await expect(page.getByTestId("device-swap-section")).toBeHidden();
+  });
+
+  test("shows the server's reason and keeps the button when the swap is refused", async ({
+    page,
+  }) => {
+    await setupSettingsTest(page);
+    await stubSwap(page, SWAPPABLE, {
+      status: 409,
+      body: { error: "Producer Pal isn't in this Live Set" },
+    });
+    await openInstallationTab(page);
+
+    await page.getByTestId("device-swap").click();
+
+    await expect(page.getByTestId("device-swap-error")).toHaveText(
+      "Producer Pal isn't in this Live Set",
+    );
+    await expect(page.getByTestId("device-swap")).toBeEnabled();
   });
 });
 

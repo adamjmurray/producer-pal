@@ -107,6 +107,24 @@ the User Library copy is missing or older. Node sends `config installNotice 1|0`
 `dismissInstallNotice`, which saves `dismissedInstallVersion` in the global
 settings. It is keyed on the version, like the update notice.
 
+A Set keeps pointing at the file its device was loaded from, so a device from
+Downloads stays pinned there. `POST /device-install/swap` replaces it with the
+User Library copy through the remote script's `/replace-producer-pal`, the route
+the portal's update uses (`requestWithBrowserRetry`, `mayHaveSwapped`). The
+server refuses first, with a 409 and a plain reason (`device-swap-check.ts`): no
+copy, an older copy, already running from the copy, or no new-enough remote
+script. `GET /device-install` carries the same check as `swap`.
+
+Live unloads the old device inside the swap, so the server that sent the request
+usually dies before the remote script answers. A dropped connection is therefore
+the expected success, and no state may outlive the request. The chat UI
+(`use-device-swap.ts`) treats a dropped POST as "swapping" and polls
+`GET /device-install` until a device answers with `inUserLibrary: true` (the
+running file is the User Library file, compared by real path), giving up after
+45 s. It relies on the new device serving the same port; the port is a device
+parameter, so a changed one may not carry over. The Set still points at the old
+file until the user saves it.
+
 ## Warnings ride inside the response JSON
 
 V8 puts a request's warnings in a `warnings?: string[]` field on the response

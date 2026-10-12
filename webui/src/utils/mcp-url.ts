@@ -146,6 +146,15 @@ export function getDeviceInstallActionUrl(): string {
 }
 
 /**
+ * Gets the device swap endpoint URL (POST replaces the running device in the
+ * Live Set with the User Library copy).
+ * @returns {string} The device swap endpoint URL
+ */
+export function getDeviceSwapUrl(): string {
+  return serverUrl("/device-install/swap");
+}
+
+/**
  * Gets the memory collection endpoint URL (lists every stored memory entry;
  * the LLM-managed ~/.producer-pal/memory/ collection).
  * @returns {string} The memory collection endpoint URL

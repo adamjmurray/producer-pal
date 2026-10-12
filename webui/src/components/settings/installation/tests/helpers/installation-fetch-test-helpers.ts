@@ -23,10 +23,16 @@ export function deviceStatusBody(
     problem: null,
     userLibrary: USER_LIBRARY,
     path: DEVICE_PATH,
+    inUserLibrary: false,
     state: "not-installed",
     version: "1.2.0",
     installedVersion: null,
     otherCopies: [],
+    swap: {
+      allowed: false,
+      reason:
+        "There is no copy of this device in your User Library yet. Install it first.",
+    },
     ...overrides,
   };
 }

@@ -5,12 +5,16 @@
 
 import {
   type DeviceState,
+  deviceFilePath,
   deviceFileStatus,
 } from "#src/portal/setup/device-file-status.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { findUserLibraryPath } from "../../live-library/query/user-library-path.ts";
 import { resolveUserLibraryFolder } from "../remote-script/user-library/user-library-folder.ts";
-import { readLibraryBytes } from "../remote-script/user-library/user-library-fs.ts";
+import {
+  libraryRealPath,
+  readLibraryBytes,
+} from "../remote-script/user-library/user-library-fs.ts";
 import {
   askDeviceToReport,
   deviceSourcePath,
@@ -40,6 +44,8 @@ export interface DeviceInstallStatus {
   userLibrary: string | null;
   /** Where the device is installed, or would be */
   path: string | null;
+  /** Whether the running device is that User Library file itself */
+  inUserLibrary: boolean;
   /** The installed copy compared with the running device; null with a problem */
   state: DeviceState | null;
   /** This device's version */
@@ -71,6 +77,10 @@ export async function deviceInstallStatus(
     source: check.source,
     userLibrary,
     path: null,
+    inUserLibrary:
+      userLibrary != null &&
+      check.source != null &&
+      isSameFile(check.source, deviceFilePath(userLibrary)),
     state: null,
     version: VERSION,
     installedVersion: null,
@@ -127,4 +137,16 @@ export function checkDeviceSource(): DeviceSourceCheck {
   } catch {
     return { source, problem: "unreadable-source" };
   }
+}
+
+/**
+ * @param a - A file path
+ * @param b - Another
+ * @returns Whether both exist and are the same file, however each is spelled
+ *   (links, case)
+ */
+function isSameFile(a: string, b: string): boolean {
+  const real = libraryRealPath(a);
+
+  return real != null && real === libraryRealPath(b);
 }

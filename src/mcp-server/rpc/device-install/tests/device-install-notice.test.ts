@@ -49,6 +49,7 @@ function status(
     source: "/Users/me/Downloads/Producer_Pal.amxd",
     problem: null,
     userLibrary: "/Users/me/Music/Ableton/User Library",
+    inUserLibrary: false,
     path: "/Users/me/Music/Ableton/User Library/Presets/MIDI Effects/Max MIDI Effect/Producer_Pal.amxd",
     state: "not-installed",
     version: VERSION,

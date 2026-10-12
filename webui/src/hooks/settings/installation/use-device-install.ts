@@ -35,6 +35,8 @@ export interface DeviceInstallStatus {
   userLibrary: string | null;
   /** Where the copy is, or would be. */
   path: string | null;
+  /** Whether the running device is the User Library file itself. */
+  inUserLibrary: boolean;
   /** The copy compared with the running device; null with a problem. */
   state: DeviceState | null;
   /** This device's version. */
@@ -42,6 +44,8 @@ export interface DeviceInstallStatus {
   installedVersion: string | null;
   /** Other Producer_Pal .amxd files in the User Library. */
   otherCopies: string[];
+  /** Whether the running device can be swapped for the User Library copy. */
+  swap: { allowed: boolean; reason: string | null };
 }
 
 export interface UseDeviceInstallReturn {
