@@ -204,8 +204,8 @@ export function applySpecializedActions(
   actions: string[],
 ): ActionResult[] {
   const spec = getSpecForDevice(device);
-  // Running the same action twice does nothing the first run didn't: the last
-  // mention runs, like any other target named twice.
+  // Only the last mention runs, like any other target named twice — even an
+  // action that would change more on a second run (warpDouble, reverse).
   const overridden = lastWins(actions.map((raw) => [actionKey(raw)]));
   const results = actions.map((raw, index): ActionResult => {
     if (overridden.has(index)) {
