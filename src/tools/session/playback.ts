@@ -73,7 +73,8 @@ interface PlaybackArgs {
 }
 
 interface PlaybackResult {
-  playing: boolean;
+  /** Absent when the final step failed: the call can't say what is playing */
+  playing?: boolean;
   startTime?: string;
   loop?: boolean;
   loopStart?: string;
@@ -94,7 +95,8 @@ interface PlaybackOutcome {
 /** The call, and the place its hooks leave what the result reports. */
 interface PlaybackRun {
   args: PlaybackArgs;
-  outcome: PlaybackOutcome;
+  /** Set only once the final step finishes; until then there is nothing true to report */
+  outcome?: PlaybackOutcome;
 }
 
 /** The call, read once. */
@@ -162,17 +164,18 @@ export function playback(
   args: PlaybackArgs = {},
   ctx: Partial<ToolContext> = {},
 ): PlaybackResult {
-  const run: PlaybackRun = { args, outcome: { playing: false, loop: {} } };
+  const run: PlaybackRun = { args };
   // No hook awaits, so the answer is never a promise.
   const clip = runWrite(
     PLAYBACK_WRITE,
     run,
     ctx,
   ) as PipelineResult<ClipSlotEntry>;
-  const { playing, startTime, scene, loop } = run.outcome;
+  // Missing when the final step threw: leave out what only it can say.
+  const { playing, startTime, scene, loop } = run.outcome ?? {};
 
   return {
-    playing,
+    ...(playing != null && { playing }),
     ...(startTime != null && { startTime }),
     // Which scene fired, since a scene id or a clip in it can name it
     ...(scene && { scene }),

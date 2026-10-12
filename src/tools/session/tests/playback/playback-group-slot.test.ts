@@ -5,6 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
@@ -335,7 +336,7 @@ describe("playback - a failure around a group track's slot", () => {
     ]);
   });
 
-  it("keeps the fire in the error when the transport restart then throws", () => {
+  it("keeps the fire entries and warns when the transport restart then throws", () => {
     const { slots } = setUpTracks([
       { id: "group", foldable: true },
       { id: "a", group: "group", clips: { [SCENE]: "clipA" } },
@@ -348,11 +349,16 @@ describe("playback - a failure around a group track's slot", () => {
       }
     });
 
-    expect(() =>
-      playback({ action: "play-session-clips", path: "t0/s0,t2/s0" }),
-    ).toThrow(
-      "Live refused start_playing; already changed: session clips fired, transport stopped",
-    );
+    const result = playback({
+      action: "play-session-clips",
+      path: "t0/s0,t2/s0",
+    });
+
+    expect(result).not.toHaveProperty("playing");
+    expect(result.clip).toHaveLength(2);
+    expect(capturedWarnings()).toStrictEqual([
+      "Final step failed: Live refused start_playing; already changed: session clips fired, transport stopped; results may be incomplete.",
+    ]);
     expect(slots[0]?.call).toHaveBeenCalledWith("fire");
   });
 

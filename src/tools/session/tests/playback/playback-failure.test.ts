@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   registerMockObject,
   type RegisteredMockObject,
@@ -127,7 +128,7 @@ describe("playback - a failure after Live changed", () => {
     );
   });
 
-  it("names the clips fired when the transport restart then fails", () => {
+  it("keeps the fired clips and warns when the transport restart then fails", () => {
     const { clipSlots } = setupMultiClipMocks();
 
     liveSet = registerMockObject("live_set", {
@@ -140,11 +141,18 @@ describe("playback - a failure after Live changed", () => {
       }
     });
 
-    expect(() =>
-      playback({ action: "play-session-clips", id: "clip1,clip2" }),
-    ).toThrow(
-      "Live refused start_playing; already changed: session clips fired, transport stopped",
-    );
+    const result = playback({
+      action: "play-session-clips",
+      id: "clip1,clip2",
+    });
+
+    // The clips fired, so their entries stay; the warning says what went wrong.
+    // What only the final step can say is left out, not guessed.
+    expect(result).not.toHaveProperty("playing");
+    expect(result.clip).toHaveLength(2);
+    expect(capturedWarnings()).toStrictEqual([
+      "Final step failed: Live refused start_playing; already changed: session clips fired, transport stopped; results may be incomplete.",
+    ]);
     expect(clipSlots[0]?.call).toHaveBeenCalledWith("fire");
     expect(clipSlots[1]?.call).toHaveBeenCalledWith("fire");
   });

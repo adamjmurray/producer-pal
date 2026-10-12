@@ -14,6 +14,7 @@
 // outside one.
 
 import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { assembleEntries } from "./helpers/assemble-entries.ts";
 import { type CallJournal, callJournal } from "./helpers/call-landed.ts";
 import { afterMaybe } from "./helpers/maybe-async.ts";
@@ -25,7 +26,7 @@ import {
   writeLoop,
 } from "./helpers/write-loop.ts";
 import { supersession } from "./plans/supersession.ts";
-import { recordPipelineRun } from "./pipeline-probe.ts";
+import { recordPipelineRun, throwSettleFault } from "./pipeline-probe.ts";
 import {
   type Call,
   type MaybePromise,
@@ -118,12 +119,24 @@ function finish<Args, Parsed, P, Checked, E extends object, Each>(
     spec.loneSkipThrows?.(checked) ?? true,
   );
 
+  // A throw here must not cost the entries of targets that already wrote:
+  // keep them and warn. With nothing written there are no entries to keep.
+  const keep = outcomes.includes("written")
+    ? (detail: string): void =>
+        console.warn(`Final step failed: ${detail}; results may be incomplete.`)
+    : undefined;
+
   return afterMaybe(
-    journal.guard(() =>
-      spec.settle?.(
-        { targets, checked, entries, pieces, outcomes, shortened },
-        call,
-      ),
+    journal.guard(
+      () =>
+        afterMaybe(
+          spec.settle?.(
+            { targets, checked, entries, pieces, outcomes, shortened },
+            call,
+          ),
+          throwSettleFault,
+        ),
+      keep,
     ),
     () => result,
   );

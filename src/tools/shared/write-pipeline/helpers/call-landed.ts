@@ -14,10 +14,17 @@ export interface CallJournal {
   /**
    * Run a whole-call hook. A throw from it, sync or async, says what the
    * journal holds; with nothing in it, the throw passes through unchanged.
+   * With `recover`, a throw is handed to it instead of rethrown.
    * @param hook - The hook to run
-   * @returns What the hook returned, as a promise only if it was one
+   * @param recover - Takes the throw's message, plus what landed, and answers
+   *   for the hook
+   * @returns What the hook (or `recover`) returned, as a promise only if the
+   *   hook returned one
    */
-  guard: <T>(hook: () => MaybePromise<T>) => MaybePromise<T>;
+  guard: <T>(
+    hook: () => MaybePromise<T>,
+    recover?: (detail: string) => T,
+  ) => MaybePromise<T>;
 }
 
 /**
@@ -27,14 +34,17 @@ export interface CallJournal {
 export function callJournal(): CallJournal {
   const phrases: string[] = [];
 
+  const detailOf = (error: unknown): string =>
+    phrases.length === 0
+      ? errorMessage(error)
+      : landedDetail(errorMessage(error), phrases);
+
   const rethrow = (error: unknown): never => {
     if (phrases.length === 0) {
       throw error;
     }
 
-    throw new Error(landedDetail(errorMessage(error), phrases), {
-      cause: error,
-    });
+    throw new Error(detailOf(error), { cause: error });
   };
 
   return {
@@ -43,13 +53,19 @@ export function callJournal(): CallJournal {
         phrases.push(phrase);
       }
     },
-    guard: (hook) => {
+    guard: <T>(
+      hook: () => MaybePromise<T>,
+      recover?: (detail: string) => T,
+    ): MaybePromise<T> => {
+      const fail = (error: unknown): T =>
+        recover == null ? rethrow(error) : recover(detailOf(error));
+
       try {
         const result = hook();
 
-        return result instanceof Promise ? result.catch(rethrow) : result;
+        return result instanceof Promise ? result.catch(fail) : result;
       } catch (error) {
-        return rethrow(error);
+        return fail(error);
       }
     },
   };

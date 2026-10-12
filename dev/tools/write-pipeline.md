@@ -27,7 +27,13 @@ Types are in `write-pipeline-types.ts`; `runWrite()` is in `write-pipeline.ts`.
 |       | `loneSkipThrows` | Whether a lone skipped target throws its detail (default yes).                                                               |
 
 Refusals (stages 1 to 3) happen before the first write. Once targets are being
-written, a failed target costs only its own entry; the rest still run.
+written, a failed target costs only its own entry; the rest still run. A
+`settle` that throws after any target was written costs nothing either: the
+pipeline returns every entry with a `WARNING:`
+(`Final step failed: ...; results may be incomplete.`). With nothing written,
+the throw ends the call. A tool that fills call-level result fields in `settle`
+(`playing`) must leave them out until then, not default them: a placeholder
+would be reported as fact.
 
 ## Targets
 
@@ -91,10 +97,11 @@ All decided before the first write (`plans/`), so the loop never has to undo:
 - `call.ignored(params, why)`: warn that a whole-call param did nothing, as
   `X ignored: why`.
 - `call.landed(phrase)`: say that something the whole call changes (the
-  transport) has changed Live. A throw from `before` or `settle` then ends the
-  call with `; already changed: <phrases>`, since no entry can carry it. A
-  target's own throw still becomes that target's entry. Only `ppal-playback`
-  records these so far; the other write tools do not yet.
+  transport) has changed Live. A throw from `before`, or from `settle` when no
+  target was written, then ends the call with `; already changed: <phrases>`,
+  since no entry can carry it. A target's own throw still becomes that target's
+  entry. Only `ppal-playback` records these so far; the other write tools do not
+  yet.
 
 A throw is the target's skip when nothing had landed. Throw the words a lone
 target would show the model.
@@ -157,7 +164,8 @@ holding the call's other changes.
    same cases: order, lone entry, named twice, replaced later, unparsable
    (targets and destinations), unappliable, failure midway and after a change,
    wrong list length, refusals write nothing, count with destinations, lone
-   skip. A case that can't apply is listed under `na` with why.
+   skip, final step throws. A case that can't apply is listed under `na` with
+   why.
 4. Add per-tool tests for what the hooks do. Cover the pipeline's rules through
    the conformance suite, not by re-testing them per tool.
 5. Add a behavior case to `e2e/mcp/` for any change to what the tool does in

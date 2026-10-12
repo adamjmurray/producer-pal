@@ -27,6 +27,7 @@ export const CASE_IDS = [
   "refusals",
   "countWithDestinations",
   "loneSkipped",
+  "settleThrows",
 ] as const;
 
 export type CaseId = (typeof CASE_IDS)[number];
@@ -126,4 +127,9 @@ export interface WriteToolAdapter {
   /** `count` together with a list of destinations */
   countWithDestinations?: () => ToolArgs;
   loneSkipped?: () => LoneScenario;
+  /**
+   * A call whose final step throws after its targets wrote. Defaults to
+   * `many(2)`; only a tool with no list of targets needs its own.
+   */
+  settleThrows?: () => Scenario;
 }

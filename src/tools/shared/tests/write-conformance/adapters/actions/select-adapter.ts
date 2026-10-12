@@ -48,6 +48,12 @@ export const selectAdapter: WriteToolAdapter = {
     },
   ],
 
+  settleThrows: () => {
+    registerTracks(2);
+
+    return { args: { path: "t0" }, expected: [{}] };
+  },
+
   loneSkipped: () => {
     registerTracks(2);
     mockNonExistentObjects();

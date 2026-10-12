@@ -5,6 +5,11 @@
 
 import { isDeepStrictEqual } from "node:util";
 import { expect } from "vitest";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  armSettleFault,
+  disarmSettleFault,
+} from "#src/tools/shared/write-pipeline/pipeline-probe.ts";
 import {
   entriesOf,
   freshLive,
@@ -36,6 +41,7 @@ export const writeConformanceCases: Record<
   refusals: expectRefusalsWriteNothing,
   countWithDestinations: expectCountWithDestinationsRefused,
   loneSkipped: expectLoneSkipThrows,
+  settleThrows: expectSettleThrowKeepsEntries,
 };
 
 /**
@@ -311,4 +317,28 @@ async function expectLoneSkipThrows(adapter: WriteToolAdapter): Promise<void> {
   const { args, detail } = needs(adapter, "loneSkipped")();
 
   await expect(runTool(adapter, args)).rejects.toThrow(detail);
+}
+
+async function expectSettleThrowKeepsEntries(
+  adapter: WriteToolAdapter,
+): Promise<void> {
+  const { args, expected } = (adapter.settleThrows ?? needs(adapter, "many"))(
+    2,
+  );
+
+  armSettleFault(new Error("final step refused"));
+
+  try {
+    // The call still answers, with every entry its targets earned.
+    expectEntries(entriesOf(await runTool(adapter, args)), expected);
+  } finally {
+    disarmSettleFault();
+  }
+
+  // A tool that records what the whole call changed adds it after the message.
+  expect(capturedWarnings()).toContainEqual(
+    expect.stringMatching(
+      /^Final step failed: final step refused(; already changed: .+)?; results may be incomplete\.$/,
+    ),
+  );
 }

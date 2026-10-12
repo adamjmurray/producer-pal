@@ -207,7 +207,9 @@ export interface WriteSpec<
   /**
    * Stage 5: once every target has had its turn: paths, focus, warnings. It may
    * await a write that needs every entry first (a transform over all the
-   * copies). A throw ends the call; it names what `call.landed` had recorded.
+   * copies). A throw after any target was written keeps every entry and adds a
+   * warning (with what `call.landed` recorded); with nothing written, it ends
+   * the call, naming what `call.landed` recorded.
    */
   settle?: (done: Done<P, Checked, E>, call: Call) => MaybePromise<void>;
 }

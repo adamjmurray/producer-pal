@@ -24,6 +24,8 @@
 //  7. Any up-front refusal leaves nothing written.
 //  8. `count` with a list of destinations is refused up front.
 //  9. A lone target that is skipped makes the call throw with its detail.
+// 10. A throw in the final step, after targets wrote, keeps every entry and
+//     warns that the results may be incomplete.
 //
 // A case that can't apply to a tool is listed under `na` in its adapter, with
 // why.
@@ -97,6 +99,7 @@ function hasOwnHook(adapter: WriteToolAdapter, id: CaseId): boolean {
     refusals: adapter.refusals,
     countWithDestinations: adapter.countWithDestinations,
     loneSkipped: adapter.loneSkipped,
+    settleThrows: adapter.settleThrows ?? adapter.many,
   };
   const twin = id === "order" ? "lone" : "order";
   const twinApplies =
