@@ -542,16 +542,23 @@ notation it has been using all along, and reopening an old conversation resumes
 in whatever notation its notes were written in. The AI is never taught one
 notation and then handed notes in another.
 
-### Remote Script
+### Installation
 
-The Remote Script tab installs the optional Producer Pal
-[remote script](/guide/remote-script), which lets the AI load plug-ins, Max for
-Live devices, and presets. It shows whether the script is installed and whether
-Live is running it, and offers an update when your Producer Pal build has a
-newer one. The header also flags this, so you can spot it without opening
-Settings.
+The Installation tab puts Producer Pal's files in your Live User Library. Both
+sections use the one User Library path at the top of the tab.
 
-<img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="Remote Script tab" width="500"/>
+- **Device:** copies the Producer Pal device you loaded into your User Library,
+  so every Live Set can find it. The device shows a **Finish installation…**
+  button until it's there; the button opens this tab. A development (unfrozen)
+  device can't be copied.
+- **Remote script:** installs the optional Producer Pal
+  [remote script](/guide/remote-script), which lets the AI load plug-ins, Max
+  for Live devices, and presets. It shows whether the script is installed and
+  whether Live is running it, and offers an update when your Producer Pal build
+  has a newer one. The header also flags this, so you can spot it without
+  opening Settings.
+
+<img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="Installation tab" width="500"/>
 
 See the [remote script guide](/guide/remote-script) to install and enable it.
 

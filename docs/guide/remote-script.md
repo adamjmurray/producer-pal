@@ -63,7 +63,7 @@ in [small model mode](/features#small-model-mode).
 
 ## Install from the Chat UI
 
-1. Open the [Chat UI](/guide/chat-ui) and go to **Settings → Remote Script**.
+1. Open the [Chat UI](/guide/chat-ui) and go to **Settings → Installation**.
 2. **Confirm your User Library folder.** Producer Pal reads it from Live's
    browser database or settings, or finds it in the default location. If it is
    wrong or missing, paste the path yourself: Live shows it under **Settings →
@@ -73,14 +73,14 @@ in [small model mode](/features#small-model-mode).
 3. Click **Install**. The script is written to
    `<User Library>/Remote Scripts/Producer_Pal`, replacing any older copy.
 
-<img src="/img/producer-pal-chat-settings-remote-script-pre-install.png" alt="The Remote Script tab before installing, showing Not installed, the User Library path, and the Install button" width="500"/>
+<img src="/img/producer-pal-chat-settings-remote-script-pre-install.png" alt="The Installation tab before installing, showing Not installed, the User Library path, and the Install button" width="500"/>
 
 ## Enable it in Live
 
 Once installed, the tab says the script is **not running** yet and lists the
 steps to enable it:
 
-<img src="/img/producer-pal-chat-settings-remote-script-post-install.png" alt="The Remote Script tab after installing, showing Installed (not running) and the Enable it in Live steps" width="500"/>
+<img src="/img/producer-pal-chat-settings-remote-script-post-install.png" alt="The Installation tab after installing, showing Installed (not running) and the Enable it in Live steps" width="500"/>
 
 1. **Restart Live.** It only scans Remote Scripts at startup, so a freshly
    installed script is invisible until then.
@@ -92,11 +92,11 @@ steps to enable it:
 
 ## Check it's working
 
-After restarting Live, click **Refresh** in the Remote Script tab. It shows the
+After restarting Live, click **Refresh** in the Installation tab. It shows the
 installed version and whether Live is running it. "Running" means Live loaded it
 and it is answering on its port:
 
-<img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="The Remote Script tab showing Installed v2.4.0, running in Live" width="500"/>
+<img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="The Installation tab showing Installed v2.4.0, running in Live" width="500"/>
 
 If it says installed but not running, you either skipped the restart or the
 Control Surface slot isn't set.
@@ -114,7 +114,7 @@ You don't have to open Settings to find out. The Chat UI header shows **(script
 update)** when the installed script doesn't match your Producer Pal build, and
 **(restart Live)** when Live is running a different version than the installed
 one, for example right after an update or a downgrade. Click either to open the
-Remote Script tab. Your AI assistant also tells you when it connects. The badge
+Installation tab. Your AI assistant also tells you when it connects. The badge
 clears on its own once Live is running the installed script: it re-checks when
 you come back to the Chat UI window and when Producer Pal reconnects after Live
 restarts.
