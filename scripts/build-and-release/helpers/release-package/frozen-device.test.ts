@@ -128,7 +128,7 @@ describe("checkFrozenDevice", () => {
     const refusal = checkFrozenDevice({ releaseDir, version: "2.5.0" });
 
     expect(refusal).toContain("older than release/build-info.json");
-    expect(refusal).toContain("Freeze the device again");
+    expect(refusal).toContain("Run `npm run device:freeze`");
   });
 
   it("accepts a device saved in the same instant as the build", () => {

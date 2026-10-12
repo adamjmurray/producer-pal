@@ -4,9 +4,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// Run after `npm run release` and the manual Max freeze. Builds the portal and
-// the .mcpb with the frozen device beside them, and leaves the same files in
-// npm/ ready to pack. See dev/process/releasing.md.
+// Run after `npm run release`, which builds and freezes the device. Builds the
+// portal and the .mcpb with the frozen device beside them, and leaves the same
+// files in npm/ ready to pack. See dev/process/releasing.md.
 //
 // `--verify-npm` only checks that npm/ holds this version's device. It is what
 // `npm run guard:device` and npm/package.json's prepack run, so a tarball can't

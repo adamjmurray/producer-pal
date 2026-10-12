@@ -65,9 +65,8 @@ if (existsSync(releaseDir)) {
 
 mkdirSync(releaseDir);
 
-// Build the bundles the device is frozen from. The mcpb and the npm folder come
-// later, from `npm run release:package`: they ship a copy of the frozen device,
-// which doesn't exist yet.
+// Build the bundles, then freeze the device from them. The mcpb and the npm
+// folder come later, from `npm run release:package`.
 console.log("Building bundles...");
 
 try {
@@ -92,20 +91,28 @@ writeFileSync(
   JSON.stringify({ version: pkg.version, commit: buildSha }, null, 2) + "\n",
 );
 
+// After build-info.json: package-release refuses a device older than it.
+// Writes release/Producer_Pal.amxd only; the checked-in device is untouched.
+console.log("\nFreezing the device...");
+
+try {
+  execSync("npm run device:freeze", { cwd: rootDir, stdio: "inherit" });
+} catch (error) {
+  console.error(`\n❌ Freeze failed: ${String(error)}`);
+  process.exit(1);
+}
+
 console.log("\n📋 Next steps:");
-console.log("1. Open max-for-live-device/Producer_Pal.amxd in Max");
-console.log("2. Click the freeze button");
-console.log("3. Save as: release/Producer_Pal.amxd");
 console.log(
-  "4. Package the portal, mcpb and npm folder: npm run release:package",
+  "1. Package the portal, mcpb and npm folder: npm run release:package",
 );
-console.log("5. Test the files work correctly");
-console.log("6. Tag the release: npm run tag");
+console.log("2. Test the files work correctly");
+console.log("3. Tag the release: npm run tag");
 console.log(
-  "7. Create the GitHub release, test, and proceed per dev/process/releasing.md",
+  "4. Create the GitHub release, test, and proceed per dev/process/releasing.md",
 );
 console.log(
-  `\n🔖 These files call themselves ${pkg.version} (build ${buildSha}). If step 5 turns up\n` +
+  `\n🔖 These files call themselves ${pkg.version} (build ${buildSha}). If step 2 turns up\n` +
     "   anything, don't rebuild under the same number — npm run version:bump:rc,\n" +
     "   then build again, so the replacement is a version testers can name.\n",
 );

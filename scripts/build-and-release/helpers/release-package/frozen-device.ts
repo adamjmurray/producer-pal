@@ -3,9 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// The frozen .amxd is made by hand in Max, after `npm run release`, and nothing
-// ties it to the build it came from. These checks do: the portal ships a copy
-// of it, so a stale freeze would hand users last release's device.
+// `npm run release` freezes the .amxd (so can `npm run device:freeze` or Max),
+// and nothing ties the file to the build it came from. These checks do: the
+// portal ships a copy of it, so a stale freeze would hand users last release's
+// device.
 
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -70,20 +71,20 @@ export function checkFrozenDevice(options: {
   if (!existsSync(devicePath)) {
     return [
       `release/${FROZEN_DEVICE_FILENAME} not found.`,
-      "Freeze the device in Max first (dev/process/releasing.md, Step 1).",
+      "Run `npm run release`, which freezes it (dev/process/releasing.md, Step 1).",
     ].join("\n");
   }
 
   const buildRefusal = checkBuildVersion(readBuildInfo(releaseDir), version);
 
   if (buildRefusal != null) {
-    return [...buildRefusal, "Then freeze the device again."].join("\n");
+    return [...buildRefusal, "Then run `npm run device:freeze`."].join("\n");
   }
 
   const mismatch = checkDeviceVersion(devicePath, version);
 
   if (mismatch != null) {
-    return `${mismatch}\nRun \`npm run release\`, then freeze the device again.`;
+    return `${mismatch}\nRun \`npm run release\` again.`;
   }
 
   // The marker can't tell an earlier build of this version; the age can.
@@ -93,7 +94,7 @@ export function checkFrozenDevice(options: {
   ) {
     return [
       `release/${FROZEN_DEVICE_FILENAME} is older than release/build-info.json.`,
-      "It was frozen from an earlier build. Freeze the device again.",
+      "It was frozen from an earlier build. Run `npm run device:freeze`.",
     ].join("\n");
   }
 

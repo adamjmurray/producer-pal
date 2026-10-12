@@ -137,16 +137,12 @@ release build.
    tag has to land on that commit — see
    [How update detection works](#how-update-detection-works).
 
-2. Freeze a fresh Max device:
-   - Add the freshly built `max-for-live-device/Producer_Pal.amxd` to Ableton
-     Live
-   - Open the device in Max
-   - Click the freeze button
-   - Save as: `release/Producer_Pal.amxd`
-
-   Or skip Max: `npm run device:freeze` writes the same file to
-   `release/Producer_Pal.amxd` (`-- --out <path>` to write elsewhere). It reads
-   the device and the files it uses from `max-for-live-device/` and `licenses/`.
+2. `npm run release` also freezes the device into `release/Producer_Pal.amxd`,
+   from the freshly built `max-for-live-device/` and `licenses/`. The checked-in
+   `max-for-live-device/Producer_Pal.amxd` is not changed. To re-freeze on its
+   own, run `npm run device:freeze` (`-- --out <path>` to write elsewhere).
+   Freezing in Max (open the device, click freeze, save as
+   `release/Producer_Pal.amxd`) still works and writes the same file.
 
 3. Package the portal, the extension and the npm folder:
 
@@ -156,8 +152,8 @@ release build.
 
    The portal ships a copy of the frozen device (a plain file next to
    `producer-pal-portal.js`, never inside any bundle), so this has to come after
-   the freeze. It refuses unless `release/` belongs to this checkout, the same
-   test `npm run tag` applies (clean tree, HEAD equal to the commit in
+   `npm run release`. It refuses unless `release/` belongs to this checkout, the
+   same test `npm run tag` applies (clean tree, HEAD equal to the commit in
    `build-info.json`, matching version), and unless the frozen device belongs to
    that build: its bytes must contain `const VERSION = "x.y.z"`, and the file
    must be newer than `build-info.json`, which catches a freeze left over from
@@ -384,7 +380,7 @@ After testing succeeds:
    the artifacts have to carry `X.Y.Z`, not `X.Y.Z-rc4`:
 
    ```sh
-   npm run release           # then freeze the Max device, as in Step 1
+   npm run release           # builds and freezes the device
    npm run release:package
    npm run tag               # creates vX.Y.Z
    ```
@@ -443,7 +439,6 @@ candidate numbering exists to avoid. A fix means the next candidate:
 
    ```sh
    npm run release
-   # Freeze Max device again
    npm run release:package
    npm run tag
    git push origin dev vX.Y.Z-rcN
@@ -504,7 +499,6 @@ can run `npx producer-pal` to connect any MCP client to Producer Pal.
 ```sh
 # Build and package everything (including the npm/ folder), as the release does
 npm run release
-# ...freeze the Max device, as in Step 1, then:
 npm run release:package
 
 # Change to npm directory
