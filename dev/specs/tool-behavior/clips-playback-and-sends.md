@@ -71,7 +71,9 @@ remote script. A line it can't write is a `detail` on that clip's entry
 
 - **A write that fails partway leaves no half envelope.** The clear and the
   rewrite are one step: if Live throws while the points go in, the remote script
-  removes what it wrote and the line's `detail` says the envelope was removed.
+  removes what it wrote, puts the old envelope back, and the line's `detail`
+  says it was kept. With no old envelope it says nothing was written. If the old
+  one can't be put back, `detail` says the old automation was lost.
 
 - **An unwarped audio clip takes no points.** Live keeps its envelopes but never
   plays them, so a line with points is refused:

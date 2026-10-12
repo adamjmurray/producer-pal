@@ -4,7 +4,8 @@
 # SPDX-License-Identifier: MIT
 
 """/envelope/write re-enables the parameter's automation and says when it had
-been overridden, writes curves last point first, and fails cleanly.
+been overridden, writes curves last point first, and fails cleanly
+(restoring an old envelope is in test_envelope_restore.py).
 
 Run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s remote-script/tests
 """
@@ -186,7 +187,7 @@ class EnvelopeWriteFailureTest(unittest.TestCase):
         self.assertEqual(caught.exception.status, 500)
         message = caught.exception.payload["error"]
         self.assertIn("RuntimeError: Live said no", message)
-        self.assertIn("the envelope was removed", message)
+        self.assertIn("nothing was written", message)
         self.assertIsNone(clip.env)
 
     def test_the_write_leaves_undo_steps_alone(self):

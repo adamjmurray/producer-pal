@@ -71,10 +71,7 @@ def read(bridge, params):
     events = list(env.events_in_range(start, end))
     out = []
     for i, event in enumerate(events[:limit]):
-        # Two events can share a time (a step). value_at_time at that time
-        # gives the earlier one, so sample just after it for the later.
-        follows_same_time = i > 0 and events[i - 1].time == event.time
-        raw = env.value_at_time(event.time + EPSILON if follows_same_time else event.time)
+        raw = _raw_value(env, events, i)
         item = {
             "time": event.time,
             "value": raw,
@@ -130,10 +127,12 @@ def write(bridge, params):
 def _replace_envelope(clip, param, points):
     """Clear the parameter's envelope and write `points`; returns the new one.
 
-    A failure after the clear leaves nothing half written: the new envelope is
-    removed and the error says so.
+    If the write fails, the half-written envelope is removed and the old one
+    put back, and the error says what is left.
     """
-    if clip.automation_envelope(param) is not None:
+    old = clip.automation_envelope(param)
+    saved = _snapshot(old) if old is not None else None
+    if old is not None:
         clip.clear_envelope(param)
     try:
         env = clip.create_automation_envelope(param)
@@ -141,15 +140,65 @@ def _replace_envelope(clip, param, points):
         # Safe in any state, so always called.
         param.re_enable_automation()
     except Exception as err:
-        try:
-            clip.clear_envelope(param)
-            outcome = "the envelope was removed"
-        except Exception:
-            outcome = "the envelope may be partly written"
+        outcome = _undo_write(clip, param, old is not None, saved)
         raise RouteError(
             500, "writing the envelope failed (%s: %s); %s" % (type(err).__name__, err, outcome)
         )
     return env
+
+
+def _snapshot(env):
+    """The envelope's events as write points, or None if they can't be read.
+
+    A failed read must not block the write, which replaces them anyway.
+    """
+    try:
+        events = list(env.events_in_range(0, MAX_TIME))
+        saved = []
+        for i, event in enumerate(events):
+            coefficients = _coefficients(event)
+            saved.append(
+                (
+                    event.time,
+                    _raw_value(env, events, i),
+                    False,
+                    None if coefficients == STRAIGHT else coefficients,
+                )
+            )
+        return saved
+    except Exception:
+        return None
+
+
+def _undo_write(clip, param, had_old, saved):
+    """Remove what the failed write left and restore `saved`; returns what to
+    tell the caller about the envelope.
+
+    The automation override is left alone: only a successful write ends it.
+    """
+    if not _cleared(clip, param):
+        if had_old:
+            return "the old automation was lost and the envelope may be partly written"
+        return "the envelope may be partly written"
+    if not had_old:
+        return "nothing was written"
+    if saved is None:
+        return "the old automation was lost (it could not be read)"
+    try:
+        _write_events(clip.create_automation_envelope(param), saved)
+    except Exception:
+        if _cleared(clip, param):
+            return "the old automation was lost"
+        return "the old automation was lost and the envelope may be partly written"
+    return "the old envelope was kept"
+
+
+def _cleared(clip, param):
+    try:
+        clip.clear_envelope(param)
+        return True
+    except Exception:
+        return False
 
 
 def _write_events(env, points):
@@ -310,6 +359,15 @@ def _describe(p):
         "enabled": bool(p.is_enabled),
         "automation_state": int(p.automation_state),
     }
+
+
+def _raw_value(env, events, i):
+    """The raw value of events[i]. Two events can share a time (a step):
+    value_at_time there gives the earlier one, so sample just after for the
+    later."""
+    time = events[i].time
+    follows_same_time = i > 0 and events[i - 1].time == time
+    return env.value_at_time(time + EPSILON if follows_same_time else time)
 
 
 def _coefficients(event):
