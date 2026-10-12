@@ -63,6 +63,12 @@ remote script. A line it can't write is a `detail` on that clip's entry
   started it changed nothing: its `detail` says so and the other lines still
   run.
 
+- **A remote script that goes missing mid-call keeps what landed.** With no line
+  written yet, `envelopes` is the reason. After some were, `envelopes` counts
+  them and a `detail` gives the reason, then `envelopes not written, re-run for`
+  and the lines left. `ppal-read-clip` keeps the envelopes it read, and the rest
+  say `not read: <reason>`.
+
 - **A curve is spelled `~N`.** Points join with `/` (straight), `_` (hold, then
   jump) or `~N` (curved ramp, N from -1 to 1, no space after the `~`). A bare
   `~` or an amount outside -1..1 refuses the whole call before anything is
@@ -117,8 +123,11 @@ stamp writes them all.
   The other lines still run.
 - **Nothing is changed unless a line was written.** When every line is refused
   (or the remote script is missing, stalls, is too old for points, or the
-  request is out of time first), the entry says so, `envelopes` is 0 and its
-  `detail` ends `the clip and its lane are unchanged`. The clip is not parked.
+  request is out of time first), the entry says so (`envelopes` is 0, or the
+  reason when the remote script is missing) and its `detail` ends
+  `the clip and its lane are unchanged`. The clip is not parked. If the remote
+  script goes missing after some lines landed, those are stamped and a `detail`
+  names the rest.
 - **Refused before anything is touched**, as the `envelopes` text: a clip on a
   take lane, a frozen track, an audio clip when the silence file isn't known.
 - **Failure after Live changed.** The clip is parked a bar past the Set's end

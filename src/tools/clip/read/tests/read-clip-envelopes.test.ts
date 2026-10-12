@@ -490,7 +490,7 @@ describe("readClip - envelopes", () => {
     ]);
   });
 
-  it("reports the whole read as unreachable if the remote script goes missing mid-read", async () => {
+  it("reports the whole read as unreachable if the remote script is missing for the first read", async () => {
     setupClip();
     vi.mocked(requestNode).mockImplementation(async (route) =>
       route === ENVELOPE_ROUTES.list
@@ -504,6 +504,59 @@ describe("readClip - envelopes", () => {
     expect(await readEnvelopes()).toBe(
       "the Producer Pal remote script isn't running, so clip automation can't be reached",
     );
+  });
+
+  it("keeps the envelopes it read when the remote script goes missing mid-read", async () => {
+    setupClip();
+
+    const missing =
+      "the Producer Pal remote script isn't running, so clip automation can't be reached";
+
+    vi.mocked(requestNode).mockImplementation(async (route, args) => {
+      if (route === ENVELOPE_ROUTES.list) {
+        return {
+          success: true,
+          result: {
+            available: true,
+            result: { envelopes: [MIXER_VOLUME, MIXER_SEND, DEVICE_PARAM] },
+          },
+        };
+      }
+
+      return (args as { parameter?: unknown }).parameter === "volume"
+        ? {
+            success: true,
+            result: {
+              available: true,
+              result: { exists: true, event_count: 2, events: EVENTS },
+            },
+          }
+        : { success: true, result: { available: false } };
+    });
+
+    expect(await readEnvelopes()).toStrictEqual([
+      {
+        parameter: "Track Volume",
+        id: "volume-param",
+        eventCount: 2,
+        events: EVENTS_NOTATION,
+      },
+      {
+        parameter: "Send A",
+        id: "send-param",
+        eventCount: 2,
+        detail: missing,
+      },
+      {
+        parameter: "Filter Freq",
+        id: "filter-param",
+        device: "t0/d0/c1/d0",
+        eventCount: 2,
+        detail: `not read: ${missing}`,
+      },
+    ]);
+    // The list, the read that landed, and the one that found the script gone.
+    expect(requestNode).toHaveBeenCalledTimes(3);
   });
 
   it("stops reading when a route stalls, and says which parameters it left", async () => {

@@ -206,9 +206,7 @@ async function fillCarrier(
 
   // A line's own reason is on the entry; a call that wrote none says the rest.
   if (written === 0) {
-    if (entry.envelopes === 0) {
-      appendDetail(entry, "the clip and its lane are unchanged");
-    }
+    appendDetail(entry, "the clip and its lane are unchanged");
 
     return undefined;
   }

@@ -77,9 +77,10 @@ export function canWriteEnvelopePoints(): boolean {
 /**
  * Write the lines one at a time, stopping when the remote script turns out not
  * to be there, or when it stops answering or the request runs out of time: the
- * next line would stall the same way. Nothing here throws: a line the remote
- * script turned down becomes a detail on the entry, and the lines after it
- * still run.
+ * next line would stall the same way. A script missing before any line landed
+ * is the entry's `envelopes`; after one did, a detail naming the lines left.
+ * Nothing here throws: a line the remote script turned down becomes a detail
+ * on the entry, and the lines after it still run.
  * @param entry - The clip's result entry, written to
  * @param lines - The `envelopes` param, already read into lines
  * @param address - The clip the lines write to, and its meter
@@ -123,9 +124,18 @@ export async function writeEachLine(
     }
 
     if (!outcome.available) {
-      entry.envelopes = outcome.reason;
+      // Nothing was sent for this line. With none written, the reason is the answer.
+      if (written === 0) {
+        entry.envelopes = outcome.reason;
 
-      return 0;
+        return 0;
+      }
+
+      appendDetail(
+        entry,
+        `${outcome.reason}; envelopes not written, re-run for ${named(lines.slice(index))}`,
+      );
+      break;
     }
 
     if (outcome.stalled != null) {

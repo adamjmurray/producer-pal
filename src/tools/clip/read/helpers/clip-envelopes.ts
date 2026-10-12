@@ -126,12 +126,13 @@ export async function clipEnvelopes(
     );
 
     if (!read.ok) {
-      if (!read.available) {
+      // With nothing read yet, the reason is the answer.
+      if (!read.available && envelopes.length === 0) {
         return read.reason;
       }
 
-      // A stalled route would stall the rest the same way.
-      if (read.stalled != null) {
+      // A stalled or missing route would fail the rest the same way.
+      if (!read.available || read.stalled != null) {
         stalledReason = read.reason;
       }
 

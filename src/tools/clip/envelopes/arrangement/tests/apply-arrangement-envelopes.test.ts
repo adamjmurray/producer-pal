@@ -261,8 +261,33 @@ describe("applyClipEnvelopes - arrangement clip", () => {
 
     const entry = await apply([RAMP]);
 
-    expect(entry.envelopes).toContain("isn't running");
+    expect(entry).toStrictEqual({
+      id: CLIP_ID,
+      path: "t0[5|1]",
+      envelopes:
+        "the Producer Pal remote script isn't running, so clip automation can't be reached",
+      detail: "the clip and its lane are unchanged",
+    });
     expect(world.copies).toStrictEqual([]);
+    expect(world.scratchClipLeft()).toBe(false);
+  });
+
+  it("stamps the lines that landed when the remote script goes missing after them", async () => {
+    vi.mocked(requestNode)
+      .mockResolvedValueOnce({
+        success: true,
+        result: { available: true, result: {} },
+      })
+      .mockResolvedValue({ success: true, result: { available: false } });
+
+    const entry = await apply([RAMP, "pan: 1|1 0.5", "send0: 1|1 0.5"]);
+
+    expect(entry.envelopes).toBe(1);
+    expect(entry.detail).toBe(
+      'the Producer Pal remote script isn\'t running, so clip automation can\'t be reached; envelopes not written, re-run for "pan", "send0"',
+    );
+    expect(requestNode).toHaveBeenCalledTimes(2);
+    expect(world.copies).toHaveLength(3);
     expect(world.scratchClipLeft()).toBe(false);
   });
 
@@ -270,6 +295,7 @@ describe("applyClipEnvelopes - arrangement clip", () => {
     const entry = await apply([RAMP, "volume: 1|1 1"]);
 
     expect(entry.envelopes).toContain("are the same parameter");
+    expect(entry.detail).toBe("the clip and its lane are unchanged");
     expect(world.copies).toStrictEqual([]);
   });
 

@@ -25,6 +25,7 @@ import {
   type ReadClipResult,
   setConfig,
   setupMcpTestContext,
+  sleep,
   type UpdateClipResult,
 } from "../../mcp-test-helpers.ts";
 import {
@@ -185,6 +186,33 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
           detail: expect.stringContaining("not cleared") as string,
         }),
       );
+      await expectLane(MIDI_TRACK, [[MIDI_CLIP_START + 8, baseline]]);
+      expect((await clipOn(MIDI_TRACK, "9|1")).id).toBe(before.id);
+    });
+
+    it("says the remote script isn't running, and changes nothing", async () => {
+      const before = await clipOn(MIDI_TRACK, "9|1");
+      const baseline = await lane(MIDI_TRACK, MIDI_CLIP_START + 8);
+
+      // Makes the running script look uninstalled.
+      await setConfig({ remoteScriptEnabled: false });
+      await sleep(50);
+
+      const result = await update({
+        id: before.id,
+        envelopes: "pan: 1|1 0.5",
+      });
+
+      expect(result).toStrictEqual(
+        expect.objectContaining({
+          id: before.id,
+          envelopes:
+            "the Producer Pal remote script isn't running, so clip automation can't be reached",
+          detail: "the clip and its lane are unchanged",
+        }),
+      );
+      await setConfig({ remoteScriptEnabled: true });
+      await sleep(50);
       await expectLane(MIDI_TRACK, [[MIDI_CLIP_START + 8, baseline]]);
       expect((await clipOn(MIDI_TRACK, "9|1")).id).toBe(before.id);
     });
