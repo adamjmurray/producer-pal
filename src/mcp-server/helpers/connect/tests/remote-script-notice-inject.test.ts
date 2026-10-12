@@ -120,7 +120,7 @@ describe("withRemoteScriptNotice", () => {
 
     expect(content[1]?.text).toBe(
       `remoteScript: v2.3.0 is installed, but this device ships v${VERSION}. ` +
-        "Tell the user to update it (Chat UI > Settings > Remote Script > Update), then restart Live.",
+        "Tell the user to update it (Chat UI > Settings > Installation > Update), then restart Live.",
     );
   });
 
@@ -166,7 +166,7 @@ describe("withRemoteScriptNotice", () => {
     const content = await connectThrough(undefined, false);
 
     expect(content[1]?.text).toBe(
-      `remoteScript: not installed. ${ADDS} Tell the user to install it (Chat UI > Settings > Remote Script > Install), then restart Live.`,
+      `remoteScript: not installed. ${ADDS} Tell the user to install it (Chat UI > Settings > Installation > Install), then restart Live.`,
     );
   });
 

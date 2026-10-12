@@ -25,7 +25,7 @@ switch it off like any tool. It sits in the `core` group.
 ## `install-remote-script`
 
 Writes the bundled script into the User Library, replacing any copy, as Settings
-→ Remote Script does. It runs in Node and needs no running remote script.
+→ Installation does. It runs in Node and needs no running remote script.
 
 - **Where:** `userLibrary` if given, else the User Library Producer Pal finds
   (the same lookup the Chat UI uses).

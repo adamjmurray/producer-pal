@@ -18,7 +18,7 @@ To open or create a Set with Producer Pal in it, use the
 
 ## Install
 
-Users install from the Chat UI's **Settings → Remote Script** tab. See
+Users install from the Chat UI's **Settings → Installation** tab. See
 [the guide](https://producer-pal.org/guide/remote-script).
 
 From a checkout, set `ABLETON_USER_LIBRARY` in `.env` (see `.env.example`),

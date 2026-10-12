@@ -72,7 +72,7 @@ function remoteScriptLine(status: RemoteScriptStatus, manage: boolean): string {
 
     return manage
       ? `remoteScript: not installed. ${REMOTE_SCRIPT_ADDS} To install it, call ${INSTALL_WITH_TOOL}, then tell the user to restart Live.`
-      : `remoteScript: not installed. ${REMOTE_SCRIPT_ADDS} Tell the user to install it (Chat UI > Settings > Remote Script > Install), then restart Live.`;
+      : `remoteScript: not installed. ${REMOTE_SCRIPT_ADDS} Tell the user to install it (Chat UI > Settings > Installation > Install), then restart Live.`;
   }
 
   if (remoteScriptAttention(status) === "update") {
@@ -80,7 +80,7 @@ function remoteScriptLine(status: RemoteScriptStatus, manage: boolean): string {
 
     return manage
       ? `${behind} To update it, call ${INSTALL_WITH_TOOL}, then tell the user to restart Live.`
-      : `${behind} Tell the user to update it (Chat UI > Settings > Remote Script > Update), then restart Live.`;
+      : `${behind} Tell the user to update it (Chat UI > Settings > Installation > Update), then restart Live.`;
   }
 
   if (!status.running) {

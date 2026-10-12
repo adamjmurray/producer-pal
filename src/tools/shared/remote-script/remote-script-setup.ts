@@ -15,7 +15,7 @@ export const REMOTE_SCRIPT_ADDS =
 
 /** Where the user installs it by hand. */
 export const INSTALL_IN_CHAT_UI =
-  "the Producer Pal chat UI's Settings → Remote Script";
+  "the Producer Pal chat UI's Settings → Installation";
 
 /** What to tell the user when a load needs the remote script. */
 export const REMOTE_SCRIPT_SETUP = `set it up with ${INSTALL_WITH_TOOL}, then ask the user to restart Live (or have them use ${INSTALL_IN_CHAT_UI}; guide: https://producer-pal.org/guide/remote-script)`;
