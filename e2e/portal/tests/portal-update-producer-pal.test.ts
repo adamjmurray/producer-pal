@@ -136,18 +136,27 @@ describe("ppal-manage update-producer-pal", () => {
     expect(existsSync(join(library, "Presets"))).toBe(false);
   });
 
-  it("says nothing changed when the remote script refuses the swap", async () => {
+  it("on a refused swap, says the Set is unchanged and whether the library file was updated", async () => {
     const { device, portal } = await setup(OLD, () => ({
       status: 409,
       body: { error: "Producer Pal isn't in this Live Set" },
     }));
 
-    const { text, isError } = await callToolText(portal, "ppal-manage", UPDATE);
+    const first = await callToolText(portal, "ppal-manage", UPDATE);
 
-    expect(isError).toBe(true);
-    expect(text).toContain("Live couldn't replace Producer Pal");
-    expect(text).toContain("Nothing was changed.");
+    expect(first.isError).toBe(true);
+    expect(first.text).toContain("Live couldn't replace Producer Pal");
+    expect(first.text).toContain(
+      "The Live Set wasn't changed, but the Producer Pal device in the User Library was updated.",
+    );
     expect(device.version).toBe(OLD);
+
+    // The library now holds the same file, so the retry writes nothing.
+    const retry = await callToolText(portal, "ppal-manage", UPDATE);
+
+    expect(retry.isError).toBe(true);
+    expect(retry.text).toContain("The Live Set wasn't changed.");
+    expect(retry.text).not.toContain("User Library was updated");
   });
 
   it("says a remote script without the route is out of date", async () => {
@@ -157,7 +166,9 @@ describe("ppal-manage update-producer-pal", () => {
 
     expect(isError).toBe(true);
     expect(text).toContain("remote script is out of date");
-    expect(text).toContain("Nothing was changed.");
+    expect(text).toContain(
+      "The Live Set wasn't changed, but the Producer Pal device in the User Library was updated.",
+    );
   });
 
   it("points at add-producer-pal when the device isn't running", async () => {

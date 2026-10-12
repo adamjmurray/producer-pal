@@ -6,8 +6,9 @@
 // ppal-manage update-producer-pal: replace the running Producer Pal device with
 // the one this portal ships, in place. The portal answers it, online or not,
 // because the device being replaced can't: its server dies with the swap.
-// Every refusal before the swap says nothing changed; every failure after
-// Live may have acted says what to check.
+// A refusal before the swap says what it left alone (the Live Set, and the User
+// Library when the file was written); every failure after Live may have acted
+// says what to check.
 
 import { UPDATE_PORTAL_ADVICE, VERSION } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
@@ -28,6 +29,7 @@ import { userLibraryFor } from "../setup/library-for-device.ts";
 import { remoteScriptReady } from "../setup/remote-script-ready.ts";
 import { SetupFailed, type SetupPurpose } from "../setup/setup-failure.ts";
 import { waitForNewDevice } from "./new-device-wait.ts";
+import { setUnchanged } from "./set-unchanged.ts";
 import { replaceDevice } from "./replace-device-request.ts";
 import { type RunningDevice } from "./running-device.ts";
 
@@ -42,6 +44,8 @@ interface DeviceFile {
   path: string;
   /** The version it names, when it names one */
   version?: string;
+  /** Whether this update wrote the file into the User Library */
+  written: boolean;
   /** Said in the result when the file isn't the one this portal ships */
   note?: string;
 }
@@ -84,7 +88,7 @@ export async function updateProducerPal(
       installBundledDevice(library, bundled, deps, UPDATE),
       from,
     );
-    const track = await replaceDevice(file.path, from, deps);
+    const track = await replaceDevice(file.path, from, deps, file.written);
     const to = await waitForNewDevice(
       { from, expected: file.version, track },
       device,
@@ -131,22 +135,24 @@ function versionToReplace(running: string | undefined): string | null {
  * file has to name a version newer than the running one.
  * @param shipped - The version the file this portal ships names, if it does
  * @param running - The version of the device being replaced
+ * @param written - Whether the file was just written to the User Library
  * @returns The shipped version
  * @throws SetupFailed when it can't be confirmed as newer
  */
 function shippedVersionToLoad(
   shipped: string | undefined,
   running: string,
+  written: boolean,
 ): string {
   if (shipped == null) {
     throw new SetupFailed(
-      `the device this portal ships names no version, so it can't be confirmed as newer than the running one (${running}). Nothing in the Live Set was changed.`,
+      `the device this portal ships names no version, so it can't be confirmed as newer than the running one (${running}). ${setUnchanged(written)}`,
     );
   }
 
   if (!isNewerVersion(running, shipped)) {
     throw new SetupFailed(
-      `the device this portal ships (${shipped}) isn't newer than the running one (${running}), so there is nothing to update to. Nothing in the Live Set was changed.`,
+      `the device this portal ships (${shipped}) isn't newer than the running one (${running}), so there is nothing to update to. ${setUnchanged(written)}`,
     );
   }
 
@@ -165,12 +171,16 @@ function deviceFile(result: DeviceInstallResult, running: string): DeviceFile {
 
   if (result.outcome === "failed") {
     throw new SetupFailed(
-      `couldn't copy the new device into the User Library (${result.error}). The file may be in use by Live. Nothing in the Live Set was changed.`,
+      `couldn't copy the new device into the User Library (${result.error}). The file may be in use by Live. ${setUnchanged(false)}`,
     );
   }
 
   if (result.outcome !== "skipped") {
-    return { path, version: shippedVersionToLoad(bundledVersion, running) };
+    return {
+      path,
+      version: shippedVersionToLoad(bundledVersion, running, result.changed),
+      written: result.changed,
+    };
   }
 
   // The copy left a different file alone: it is only worth loading if it is
@@ -184,6 +194,7 @@ function deviceFile(result: DeviceInstallResult, running: string): DeviceFile {
   return {
     path,
     version: previousVersion,
+    written: false,
     note: `loaded the device already in the User Library (${previousVersion}), which is newer than this portal's (${bundledVersion ?? VERSION}). ${UPDATE_PORTAL_ADVICE}`,
   };
 }

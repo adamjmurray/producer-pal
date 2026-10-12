@@ -8,6 +8,7 @@ import { type RemoteScriptReply } from "#src/mcp-server/rpc/remote-script/remote
 import { RemoteScriptConnectionLost } from "#src/mcp-server/rpc/remote-script/remote-script-errors.ts";
 import { VERSION } from "#src/shared/config.ts";
 import {
+  copied,
   failure,
   requestAnswers,
   responseText,
@@ -55,7 +56,7 @@ describe("update-producer-pal when the swap is refused", () => {
 
     expect(isError).toBe(true);
     expect(text).toBe(
-      "Error: the Producer Pal remote script is out of date (running 2.5.0). Nothing was changed.",
+      "Error: the Producer Pal remote script is out of date (running 2.5.0). The Live Set wasn't changed, but the Producer Pal device in the User Library was updated.",
     );
   });
 
@@ -63,7 +64,7 @@ describe("update-producer-pal when the swap is refused", () => {
     const { text } = await swapAnswering({ available: false });
 
     expect(text).toBe(
-      "Error: the remote script stopped answering. Nothing was changed.",
+      "Error: the remote script stopped answering. The Live Set wasn't changed, but the Producer Pal device in the User Library was updated.",
     );
   });
 
@@ -80,7 +81,7 @@ describe("update-producer-pal when the swap is refused", () => {
 
       expect(isError).toBe(true);
       expect(text).toBe(
-        `Error: Live couldn't replace Producer Pal: ${why}. Nothing was changed.`,
+        `Error: Live couldn't replace Producer Pal: ${why}. The Live Set wasn't changed, but the Producer Pal device in the User Library was updated.`,
       );
       expect(requests).toBe(1);
     },
@@ -92,7 +93,7 @@ describe("update-producer-pal when the swap is refused", () => {
     );
 
     expect(text).toBe(
-      "Error: Live couldn't replace Producer Pal: the request expired before Live ran it. Nothing was changed.",
+      "Error: Live couldn't replace Producer Pal: the request expired before Live ran it. The Live Set wasn't changed, but the Producer Pal device in the User Library was updated.",
     );
   });
 
@@ -113,8 +114,90 @@ describe("update-producer-pal when the swap is refused", () => {
 
     expect(isError).toBe(true);
     expect(text).toBe(
-      "Error: Live's browser hasn't found the device file yet (no device found). Nothing was changed. Call update-producer-pal again in a moment.",
+      "Error: Live's browser hasn't found the device file yet (no device found). The Live Set wasn't changed, but the Producer Pal device in the User Library was updated. Call update-producer-pal again in a moment.",
     );
+  });
+});
+
+describe("update-producer-pal refusal wording by what happened to the library file", () => {
+  const WRITTEN =
+    "The Live Set wasn't changed, but the Producer Pal device in the User Library was updated.";
+  const UNCHANGED = "The Live Set wasn't changed.";
+  const refusals: Array<[string, RemoteScriptReply | Error, string]> = [
+    [
+      "an unavailable remote script",
+      { available: false },
+      "the remote script stopped answering.",
+    ],
+    [
+      "a refused request",
+      failure(409, "Producer Pal isn't in this Live Set"),
+      "Live couldn't replace Producer Pal: Producer Pal isn't in this Live Set.",
+    ],
+    [
+      "a browser that never finds the file",
+      failure(404, "no device found"),
+      "Live's browser hasn't found the device file yet (no device found).",
+    ],
+    [
+      "a request that never left",
+      UNSENT_TIMEOUT,
+      "ran out of time before the request reached Live.",
+    ],
+  ];
+
+  it.each(
+    (["installed", "updated"] as const).flatMap((outcome) =>
+      refusals.map(
+        ([why, answer, start]) => [outcome, why, answer, start] as const,
+      ),
+    ),
+  )(
+    "says the library device was updated when the file was %s: %s",
+    async (outcome, _why, answer, start) => {
+      const deps = updateDeps({
+        installDevice: vi.fn(() =>
+          copied(outcome, { bundledVersion: VERSION, previousVersion: OLD }),
+        ),
+        request: requestAnswers(answer),
+      });
+      const text = responseText(await updateCall(fakeDevice(OLD), deps));
+
+      expect(text).toContain(`${start} ${WRITTEN}`);
+    },
+  );
+
+  it.each(refusals)(
+    "says only the Live Set was unchanged when the library file was already current: %s",
+    async (_why, answer, start) => {
+      const deps = updateDeps({
+        installDevice: vi.fn(() =>
+          copied("current", {
+            bundledVersion: VERSION,
+            previousVersion: VERSION,
+          }),
+        ),
+        request: requestAnswers(answer),
+      });
+      const text = responseText(await updateCall(fakeDevice(OLD), deps));
+
+      expect(text).toContain(`${start} ${UNCHANGED}`);
+      expect(text).not.toContain("User Library was updated");
+    },
+  );
+
+  it("says only the Live Set was unchanged when a newer library file was left in place", async () => {
+    const deps = updateDeps({
+      installDevice: vi.fn(() =>
+        copied("skipped", { bundledVersion: OLD, previousVersion: VERSION }),
+      ),
+      request: requestAnswers(
+        failure(409, "Producer Pal isn't in this Live Set"),
+      ),
+    });
+    const text = responseText(await updateCall(fakeDevice(OLD), deps));
+
+    expect(text).toContain(`Producer Pal isn't in this Live Set. ${UNCHANGED}`);
   });
 });
 
@@ -157,7 +240,7 @@ describe("update-producer-pal when the swap may have happened", () => {
     const { text } = await swapAnswering(UNSENT_TIMEOUT);
 
     expect(text).toBe(
-      "Error: ran out of time before the request reached Live, so nothing was changed. Call update-producer-pal again.",
+      "Error: ran out of time before the request reached Live. The Live Set wasn't changed, but the Producer Pal device in the User Library was updated. Call update-producer-pal again.",
     );
   });
 });

@@ -78,8 +78,10 @@ to ask the user first.
 - **On the device** (Chat UI, a direct HTTP client, or a portal too old to
   answer it): throws that the update runs through the portal (the npx package or
   the Claude Desktop extension), after the same argument checks as every action.
-- **Portal flow**, each step refusing with "nothing was changed" before the
-  swap:
+- **Portal flow**, each step refusing before the swap (before step 5, "nothing
+  was changed"; from step 5 on, the Live Set wasn't changed, and the message
+  adds that the Producer Pal device in the User Library was updated when the
+  copy wrote it):
   1. Producer Pal not answering: the offline guidance below, which points at
      `add-producer-pal`.
   2. The running version is the device's own (`serverInfo.version`, asked
@@ -99,8 +101,8 @@ to ask the user first.
      older.
   6. The remote script's `/replace-producer-pal` hot-swaps the Set's one
      Producer Pal device with that file (a not-found is asked again for 15 s). A
-     refusal there (none in the Set, more than one, bad file) says nothing was
-     changed.
+     refusal there (none in the Set, more than one, bad file) says the Live Set
+     wasn't changed, and whether the library file was updated.
   7. The bridge drops its connection and reconnects until a server answers with
      a newer version than the old one (30 s), then tells the client to re-list
      tools, which may differ between versions.

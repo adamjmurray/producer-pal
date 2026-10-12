@@ -234,7 +234,7 @@ describe("update-producer-pal before anything changes", () => {
 
     expect(response.isError).toBe(true);
     expect(responseText(response)).toBe(
-      "Error: couldn't copy the new device into the User Library (EBUSY: resource busy). The file may be in use by Live. Nothing in the Live Set was changed.",
+      "Error: couldn't copy the new device into the User Library (EBUSY: resource busy). The file may be in use by Live. The Live Set wasn't changed.",
     );
     expect(deps.request).not.toHaveBeenCalled();
   });
@@ -258,11 +258,23 @@ describe("update-producer-pal when the file to load isn't newer", () => {
 
       expect(response.isError).toBe(true);
       expect(responseText(response)).toBe(
-        `Error: the device this portal ships (${shipped}) isn't newer than the running one (${OLD}), so there is nothing to update to. Nothing in the Live Set was changed.`,
+        `Error: the device this portal ships (${shipped}) isn't newer than the running one (${OLD}), so there is nothing to update to. The Live Set wasn't changed.`,
       );
       expect(deps.request).not.toHaveBeenCalled();
     },
   );
+
+  it("says the library device was updated when the file was just written", async () => {
+    const deps = updateDeps({
+      installDevice: () =>
+        copied("updated", { bundledVersion: OLD, previousVersion: "2.3.0" }),
+    });
+    const response = await updateCall(oldDevice(), deps);
+
+    expect(responseText(response)).toBe(
+      `Error: the device this portal ships (${OLD}) isn't newer than the running one (${OLD}), so there is nothing to update to. The Live Set wasn't changed, but the Producer Pal device in the User Library was updated.`,
+    );
+  });
 
   it("refuses a shipped device that names no version", async () => {
     const deps = updateDeps({ installDevice: () => copied("installed") });
@@ -270,7 +282,7 @@ describe("update-producer-pal when the file to load isn't newer", () => {
 
     expect(response.isError).toBe(true);
     expect(responseText(response)).toBe(
-      `Error: the device this portal ships names no version, so it can't be confirmed as newer than the running one (${OLD}). Nothing in the Live Set was changed.`,
+      `Error: the device this portal ships names no version, so it can't be confirmed as newer than the running one (${OLD}). The Live Set wasn't changed, but the Producer Pal device in the User Library was updated.`,
     );
     expect(deps.request).not.toHaveBeenCalled();
   });
