@@ -25,7 +25,7 @@
 //  8. `count` with a list of destinations is refused up front.
 //  9. A lone target that is skipped makes the call throw with its detail.
 // 10. A throw in the final step, after targets wrote, keeps every entry and
-//     warns that the results may be incomplete.
+//     warns that the results may be incomplete or out of date.
 //
 // A case that can't apply to a tool is listed under `na` in its adapter, with
 // why.

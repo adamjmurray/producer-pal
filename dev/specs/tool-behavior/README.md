@@ -240,8 +240,9 @@ A target the call couldn't carry out keeps its slot as a skip entry:
 - **A throw in the step after the targets keeps the entries.** If any target was
   written, the call still returns every entry, plus a `WARNING:` saying the
   final step failed (with `already changed: ...` for what `call.landed` had
-  recorded) and that the results may be incomplete. If nothing was written, the
-  call throws, naming what had landed.
+  recorded) and that the results may be incomplete, with paths or ids out of
+  date, so the caller reads them again. If nothing was written, the call throws,
+  naming what had landed.
 - **`ppal-playback` and `ppal-update-live-set` say what landed when the step
   before the targets fails partway.** A throw from the step that writes the
   transport or timeline (playback) or the tempo, time signature and scale

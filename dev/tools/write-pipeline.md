@@ -30,10 +30,10 @@ Refusals (stages 1 to 3) happen before the first write. Once targets are being
 written, a failed target costs only its own entry; the rest still run. A
 `settle` that throws after any target was written costs nothing either: the
 pipeline returns every entry with a `WARNING:`
-(`Final step failed: ...; results may be incomplete.`). With nothing written,
-the throw ends the call. A tool that fills call-level result fields in `settle`
-(`playing`) must leave them out until then, not default them: a placeholder
-would be reported as fact.
+(`Final step failed: ...; results may be incomplete and paths or ids out of date; read them again before relying on them.`).
+With nothing written, the throw ends the call. A tool that fills call-level
+result fields in `settle` (`playing`) must leave them out until then, not
+default them: a placeholder would be reported as fact.
 
 ## Targets
 

@@ -338,7 +338,7 @@ async function expectSettleThrowKeepsEntries(
   // A tool that records what the whole call changed adds it after the message.
   expect(capturedWarnings()).toContainEqual(
     expect.stringMatching(
-      /^Final step failed: final step refused(; already changed: .+)?; results may be incomplete\.$/,
+      /^Final step failed: final step refused(; already changed: .+)?; results may be incomplete and paths or ids out of date; read them again before relying on them\.$/,
     ),
   );
 }

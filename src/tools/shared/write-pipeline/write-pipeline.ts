@@ -120,10 +120,13 @@ function finish<Args, Parsed, P, Checked, E extends object, Each>(
   );
 
   // A throw here must not cost the entries of targets that already wrote:
-  // keep them and warn. With nothing written there are no entries to keep.
+  // keep them and warn. Settle may not have fixed paths yet, so the warning
+  // says to read them again. With nothing written there are no entries to keep.
   const keep = outcomes.includes("written")
     ? (detail: string): void =>
-        console.warn(`Final step failed: ${detail}; results may be incomplete.`)
+        console.warn(
+          `Final step failed: ${detail}; results may be incomplete and paths or ids out of date; read them again before relying on them.`,
+        )
     : undefined;
 
   return afterMaybe(

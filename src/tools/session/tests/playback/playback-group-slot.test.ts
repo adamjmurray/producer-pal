@@ -357,7 +357,7 @@ describe("playback - a failure around a group track's slot", () => {
     expect(result).not.toHaveProperty("playing");
     expect(result.clip).toHaveLength(2);
     expect(capturedWarnings()).toStrictEqual([
-      "Final step failed: Live refused start_playing; already changed: session clips fired, transport stopped; results may be incomplete.",
+      "Final step failed: Live refused start_playing; already changed: session clips fired, transport stopped; results may be incomplete and paths or ids out of date; read them again before relying on them.",
     ]);
     expect(slots[0]?.call).toHaveBeenCalledWith("fire");
   });

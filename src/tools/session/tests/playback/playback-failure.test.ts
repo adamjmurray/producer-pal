@@ -151,7 +151,7 @@ describe("playback - a failure after Live changed", () => {
     expect(result).not.toHaveProperty("playing");
     expect(result.clip).toHaveLength(2);
     expect(capturedWarnings()).toStrictEqual([
-      "Final step failed: Live refused start_playing; already changed: session clips fired, transport stopped; results may be incomplete.",
+      "Final step failed: Live refused start_playing; already changed: session clips fired, transport stopped; results may be incomplete and paths or ids out of date; read them again before relying on them.",
     ]);
     expect(clipSlots[0]?.call).toHaveBeenCalledWith("fire");
     expect(clipSlots[1]?.call).toHaveBeenCalledWith("fire");
