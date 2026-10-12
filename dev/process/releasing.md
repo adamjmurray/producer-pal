@@ -122,51 +122,46 @@ release build.
 
 ## Step 1: Build Release Files
 
-1. Build the release bundles:
+```sh
+npm run release
+```
 
-   ```sh
-   npm run release
-   ```
+This runs the two steps below in order and stops at the first failure. Run them
+separately to redo just one.
 
-   This builds the device and portal bundles and records the version and commit
-   in `release/build-info.json`. It refuses to build if your shell has a debug
-   flag set — they are substituted into the bundles, so a leftover
-   `ENABLE_CODE_EXEC=true` would ship code execution to everyone.
+1. `npm run release:amxd` builds the device and portal bundles, records the
+   version and commit in `release/build-info.json`, and freezes the device into
+   `release/Producer_Pal.amxd` from the freshly built `max-for-live-device/` and
+   `licenses/`. The checked-in `max-for-live-device/Producer_Pal.amxd` is not
+   changed. It refuses to build if your shell has a debug flag set — they are
+   substituted into the bundles, so a leftover `ENABLE_CODE_EXEC=true` would
+   ship code execution to everyone.
 
-   It also prints the **build** these files identify themselves as. The release
-   tag has to land on that commit — see
+   The release tag has to land on the commit it records — see
    [How update detection works](#how-update-detection-works).
 
-2. `npm run release` also freezes the device into `release/Producer_Pal.amxd`,
-   from the freshly built `max-for-live-device/` and `licenses/`. The checked-in
-   `max-for-live-device/Producer_Pal.amxd` is not changed. To re-freeze on its
-   own, run `npm run device:freeze` (`-- --out <path>` to write elsewhere).
-   Freezing in Max (open the device, click freeze, save as
+   To re-freeze on its own, run `npm run device:freeze` (`-- --out <path>` to
+   write elsewhere). Freezing in Max (open the device, click freeze, save as
    `release/Producer_Pal.amxd`) still works and writes the same file.
 
-3. Package the portal, the extension and the npm folder:
-
-   ```sh
-   npm run release:package
-   ```
-
+2. `npm run release:mcpb` packages the portal, the extension and the npm folder.
    The portal ships a copy of the frozen device (a plain file next to
    `producer-pal-portal.js`, never inside any bundle), so this has to come after
-   `npm run release`. It refuses unless `release/` belongs to this checkout, the
-   same test `npm run tag` applies (clean tree, HEAD equal to the commit in
-   `build-info.json`, matching version), and unless the frozen device belongs to
-   that build: its bytes must contain `const VERSION = "x.y.z"`, and the file
-   must be newer than `build-info.json`, which catches a freeze left over from
-   an earlier build of the same version. Then it builds the portal, makes
-   `release/Producer_Pal.mcpb` (device included), and leaves the same device and
-   portal in `npm/`. If a step fails it lists what was written and what was not;
-   fix the cause and re-run.
+   `npm run release:amxd`. It refuses unless `release/` belongs to this
+   checkout, the same test `npm run tag` applies (clean tree, HEAD equal to the
+   commit in `build-info.json`, matching version), and unless the frozen device
+   is really frozen and belongs to that build: its bytes must contain
+   `const VERSION = "x.y.z"`, and the file must be newer than `build-info.json`,
+   which catches a freeze left over from an earlier build of the same version.
+   Then it builds the portal, makes `release/Producer_Pal.mcpb` (device
+   included), and leaves the same device and portal in `npm/`. If a step fails
+   it lists what was written and what was not; fix the cause and re-run.
 
-   Don't run a plain `npm run build` afterwards: with no frozen device to hand
-   it, it removes the device from `npm/` and the extension folder. Plain builds
-   (dev, CI, e2e) bundle no device, and the portal treats that as "none
-   bundled". `npm pack` refuses in that state (`prepack` runs
-   `npm run guard:device`), so a tarball can't ship without the device.
+Don't run a plain `npm run build` afterwards: with no frozen device to hand it,
+it removes the device from `npm/` and the extension folder. Plain builds (dev,
+CI, e2e) bundle no device, and the portal treats that as "none bundled".
+`npm pack` refuses in that state (`prepack` runs `npm run guard:device`), so a
+tarball can't ship without the device.
 
 ## Step 2: Create GitHub Pre-Release
 
@@ -177,11 +172,11 @@ release build.
    ```
 
    This runs after the build, not before, so the tag goes on something that has
-   been looked at. `npm run release` records the version and commit it built
-   from, and this checks the tag against them — commit anything, or bump the
-   version, between the two steps and it refuses rather than tagging code the
-   artifacts didn't come from. It also refuses to move an existing tag: if the
-   build needs to change, that's a new candidate, not a re-tag (see
+   been looked at. `npm run release:amxd` records the version and commit it
+   built from, and this checks the tag against them — commit anything, or bump
+   the version, between the two steps and it refuses rather than tagging code
+   the artifacts didn't come from. It also refuses to move an existing tag: if
+   the build needs to change, that's a new candidate, not a re-tag (see
    [Fixing Issues During Pre-Release](#fixing-issues-during-pre-release)).
 
    It creates the tag locally and prints the push command. Nothing is public
@@ -380,8 +375,7 @@ After testing succeeds:
    the artifacts have to carry `X.Y.Z`, not `X.Y.Z-rc4`:
 
    ```sh
-   npm run release           # builds and freezes the device
-   npm run release:package
+   npm run release           # builds, freezes the device, packages
    npm run tag               # creates vX.Y.Z
    ```
 
@@ -389,8 +383,8 @@ After testing succeeds:
    fresh files. This is the release everyone gets prompted to install.
 
 4. Publish to npm — the first and only publish of this version. Pack the
-   `npm run release:package` build, test that tarball as in Step 4, then publish
-   that same file:
+   `npm run release` build, test that tarball as in Step 4, then publish that
+   same file:
 
    ```sh
    npm login
@@ -439,7 +433,6 @@ candidate numbering exists to avoid. A fix means the next candidate:
 
    ```sh
    npm run release
-   npm run release:package
    npm run tag
    git push origin dev vX.Y.Z-rcN
    ```
@@ -499,7 +492,6 @@ can run `npx producer-pal` to connect any MCP client to Producer Pal.
 ```sh
 # Build and package everything (including the npm/ folder), as the release does
 npm run release
-npm run release:package
 
 # Change to npm directory
 cd npm
@@ -533,8 +525,8 @@ cd ..
   a tarball skips `prepublishOnly`, so run both guards by hand
 - Published files (defined in `npm/package.json` `files` array):
   - `producer-pal-portal.js` (bundled portal script with shebang)
-  - `Producer_Pal.amxd` (the frozen device, copied in by
-    `npm run release:package`; the portal installs it, never the bundle)
+  - `Producer_Pal.amxd` (the frozen device, copied in by `npm run release:mcpb`;
+    the portal installs it, never the bundle)
   - `LICENSE` (MIT license)
   - `licenses/` (only portal dependencies: MCP SDK, zod)
   - `README.md` (npm-specific documentation)

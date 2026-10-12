@@ -194,9 +194,9 @@ ship with it:
   (`src/portal/setup/bundled-device.ts`) locates it and returns null when none
   shipped.
 
-Only `npm run release:package` puts the device there, because it exists only
-after the manual freeze. Every other build (dev, CI, e2e) removes any copy and
-runs in "no device bundled" mode. See `dev/process/releasing.md`.
+Only `npm run release:mcpb` puts the device there, because it exists only after
+the freeze. Every other build (dev, CI, e2e) removes any copy and runs in "no
+device bundled" mode. See `dev/process/releasing.md`.
 
 Notation is the one axis that crosses the runtime boundary. The other two are
 settled entirely Node-side, but notation also decides how V8 parses and formats

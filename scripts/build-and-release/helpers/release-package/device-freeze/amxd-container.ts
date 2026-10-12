@@ -6,6 +6,8 @@
 // The .amxd wrapper: a 32-byte header, then the patcher body. Max writes meta
 // 1 for a device you edit and meta 7 for a frozen one.
 
+import { FROZEN_BODY_MAGIC } from "./frozen-body.ts";
+
 export const AMXD_META_UNFROZEN = 1;
 export const AMXD_META_FROZEN = 7;
 
@@ -60,4 +62,18 @@ export function buildAmxd(meta: number, body: Buffer): Buffer {
   header.writeUInt32LE(body.length, LENGTH_OFFSET);
 
   return Buffer.concat([header, body]);
+}
+
+/**
+ * Tell a frozen device from an editable one by the first bytes of its body: a
+ * frozen body starts with `mx@c`, an editable one with the patcher JSON.
+ *
+ * @param bytes - The whole file
+ * @returns True when the body is frozen
+ */
+export function isFrozenAmxd(bytes: Buffer): boolean {
+  return (
+    bytes.subarray(HEADER_BYTES, HEADER_BYTES + 4).toString("latin1") ===
+    FROZEN_BODY_MAGIC
+  );
 }

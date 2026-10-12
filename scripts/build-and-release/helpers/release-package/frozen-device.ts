@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// `npm run release` freezes the .amxd (so can `npm run device:freeze` or Max),
+// `npm run release:amxd` freezes the .amxd (so can `npm run device:freeze` or Max),
 // and nothing ties the file to the build it came from. These checks do: the
 // portal ships a copy of it, so a stale freeze would hand users last release's
 // device.
@@ -12,6 +12,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { checkBuildVersion, readBuildInfo } from "./build-info.ts";
+import { isFrozenAmxd } from "./device-freeze/amxd-container.ts";
 
 /** Must equal BUNDLED_DEVICE_FILENAME in src/portal/setup/bundled-device.ts. */
 export const FROZEN_DEVICE_FILENAME = "Producer_Pal.amxd";
@@ -71,7 +72,14 @@ export function checkFrozenDevice(options: {
   if (!existsSync(devicePath)) {
     return [
       `release/${FROZEN_DEVICE_FILENAME} not found.`,
-      "Run `npm run release`, which freezes it (dev/process/releasing.md, Step 1).",
+      "Run `npm run release:amxd`, which freezes it (dev/process/releasing.md, Step 1).",
+    ].join("\n");
+  }
+
+  if (!isFrozenAmxd(readFileSync(devicePath))) {
+    return [
+      `release/${FROZEN_DEVICE_FILENAME} is not frozen (it is an editable device).`,
+      "Run `npm run release:amxd`, which freezes it, or freeze it in Max.",
     ].join("\n");
   }
 
@@ -84,7 +92,7 @@ export function checkFrozenDevice(options: {
   const mismatch = checkDeviceVersion(devicePath, version);
 
   if (mismatch != null) {
-    return `${mismatch}\nRun \`npm run release\` again.`;
+    return `${mismatch}\nRun \`npm run release:amxd\` again.`;
   }
 
   // The marker can't tell an earlier build of this version; the age can.

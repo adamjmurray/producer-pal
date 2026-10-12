@@ -18,6 +18,9 @@ export interface FrozenEntry {
   mdat: number;
 }
 
+/** The first four bytes of a frozen body. */
+export const FROZEN_BODY_MAGIC = "mx@c";
+
 const BODY_HEADER_BYTES = 16;
 
 /**
@@ -36,7 +39,7 @@ export function buildFrozenBody(entries: FrozenEntry[]): Buffer {
     BODY_HEADER_BYTES + entries.reduce((sum, e) => sum + e.data.length, 0);
 
   const header = Buffer.concat([
-    Buffer.from("mx@c", "latin1"),
+    Buffer.from(FROZEN_BODY_MAGIC, "latin1"),
     u32(BODY_HEADER_BYTES),
     u32(0),
     u32(dlstOffset),

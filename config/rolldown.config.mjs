@@ -176,7 +176,7 @@ export default defineConfig([
       // and must not read remote-script/ off disk when it runs.
       embedRemoteScript(),
       // The frozen device ships as a file beside the portal, not inside it.
-      // Only `npm run release:package` sets this; plain builds bundle none.
+      // Only `npm run release:mcpb` sets this; plain builds bundle none.
       bundleDevice({
         dirs: [extensionDir, npmDir],
         deviceFile: process.env.PRODUCER_PAL_DEVICE_FILE,

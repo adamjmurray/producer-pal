@@ -4,12 +4,12 @@
 // SPDX-License-Identifier: MIT
 
 // The tag and the release package both refuse to run against anything but the
-// build `npm run release` recorded, so they share these checks.
+// build `npm run release:amxd` recorded, so they share these checks.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-/** What `npm run release` records. */
+/** What `npm run release:amxd` records. */
 export interface BuildInfo {
   version: string;
   commit: string;
@@ -22,7 +22,7 @@ export interface Checkout {
 }
 
 /**
- * Read what the last `npm run release` recorded.
+ * Read what the last `npm run release:amxd` recorded.
  *
  * @param releaseDir - The release/ folder
  * @returns The build's version and commit, or null when missing or unreadable
@@ -79,7 +79,7 @@ export function checkBuildVersion(
     return [
       "Nothing has been built from this checkout.",
       "release/build-info.json is missing or unreadable (an interrupted release",
-      "can leave it truncated). Run `npm run release` first.",
+      "can leave it truncated). Run `npm run release:amxd` first.",
     ];
   }
 

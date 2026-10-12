@@ -3,10 +3,21 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  mkdtempSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  AMXD_META_FROZEN,
+  AMXD_META_UNFROZEN,
+  buildAmxd,
+} from "./device-freeze/amxd-container.ts";
 import {
   assertDeviceCopies,
   checkDeviceVersion,
@@ -26,21 +37,24 @@ afterEach(() => {
 });
 
 /**
- * Lay out a release/ folder the way `npm run release` and the freeze leave it.
+ * Lay out a release/ folder the way `npm run release:amxd` leaves it.
  *
  * @param options - What to write; a null skips that file
  * @param options.buildVersion - The version recorded in build-info.json
- * @param options.deviceText - The device's bytes
+ * @param options.deviceText - The device's body text
+ * @param options.frozen - Whether the device body is frozen (`mx@c`) or editable
  * @param options.deviceAgeSeconds - How much newer than build-info.json the device is
  */
 function layOutRelease(options: {
   buildVersion?: string | null;
   deviceText?: string | null;
+  frozen?: boolean;
   deviceAgeSeconds?: number;
 }): void {
   const {
     buildVersion = "2.5.0",
     deviceText = null,
+    frozen = true,
     deviceAgeSeconds = 60,
   } = options;
   const buildTime = 1_800_000_000;
@@ -57,7 +71,12 @@ function layOutRelease(options: {
     const devicePath = join(releaseDir, FROZEN_DEVICE_FILENAME);
     const deviceTime = buildTime + deviceAgeSeconds;
 
-    writeFileSync(devicePath, deviceText);
+    const body = Buffer.from(frozen ? `mx@c${deviceText}` : deviceText);
+
+    writeFileSync(
+      devicePath,
+      buildAmxd(frozen ? AMXD_META_FROZEN : AMXD_META_UNFROZEN, body),
+    );
     utimesSync(devicePath, deviceTime, deviceTime);
   }
 }
@@ -83,9 +102,19 @@ describe("checkFrozenDevice", () => {
   it("refuses when the device file is missing", () => {
     layOutRelease({});
 
-    expect(checkFrozenDevice({ releaseDir, version: "2.5.0" })).toContain(
-      "Producer_Pal.amxd not found",
-    );
+    const refusal = checkFrozenDevice({ releaseDir, version: "2.5.0" });
+
+    expect(refusal).toContain("Producer_Pal.amxd not found");
+    expect(refusal).toContain("npm run release:amxd");
+  });
+
+  it("refuses an editable device that was never frozen", () => {
+    layOutRelease({ deviceText: DEVICE_2_5_0, frozen: false });
+
+    const refusal = checkFrozenDevice({ releaseDir, version: "2.5.0" });
+
+    expect(refusal).toContain("is not frozen");
+    expect(refusal).toContain("npm run release:amxd");
   });
 
   it("refuses when build-info.json is missing", () => {
@@ -204,7 +233,10 @@ describe("assertDeviceCopies", () => {
     const same = mkdtempSync(join(tmpdir(), "ppal-frozen-copy-"));
 
     try {
-      writeFileSync(join(same, FROZEN_DEVICE_FILENAME), DEVICE_2_5_0);
+      copyFileSync(
+        join(releaseDir, FROZEN_DEVICE_FILENAME),
+        join(same, FROZEN_DEVICE_FILENAME),
+      );
 
       expect(() =>
         assertDeviceCopies(join(releaseDir, FROZEN_DEVICE_FILENAME), [same]),

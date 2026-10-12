@@ -4,7 +4,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// Run after `npm run release`, which builds and freezes the device. Builds the
+// Run after `npm run release:amxd`, which builds and freezes the device. Builds the
 // portal and the .mcpb with the frozen device beside them, and leaves the same
 // files in npm/ ready to pack. See dev/process/releasing.md.
 //
@@ -55,7 +55,9 @@ function verifyNpm(): void {
 
   if (refusal != null) {
     console.error(`\n❌ npm/ is not ready to publish.\n${refusal}`);
-    console.error("Run `npm run release:package` (after freezing) first.\n");
+    console.error(
+      "Run `npm run release:mcpb` (after `npm run release:amxd`) first.\n",
+    );
     process.exit(1);
   }
 
@@ -148,6 +150,26 @@ function packageRelease(): void {
   console.log(
     "\nDon't run a plain `npm run build` before publishing: it removes the",
     "device from npm/ and the extension folder.",
-    "\nNext: tag (npm run tag), test, and pack from npm/ per dev/process/releasing.md.\n",
+  );
+  printNextSteps(pkg.version, build.commit);
+}
+
+/**
+ * Print what to do once the package is built.
+ *
+ * @param version - The packaged version
+ * @param commit - The build commit
+ */
+function printNextSteps(version: string, commit: string): void {
+  console.log("\n📋 Next steps:");
+  console.log("1. Test the files work correctly");
+  console.log("2. Tag the release: npm run tag");
+  console.log(
+    "3. Create the GitHub release, test, and proceed per dev/process/releasing.md",
+  );
+  console.log(
+    `\n🔖 These files call themselves ${version} (build ${commit}). If step 1 turns up\n` +
+      "   anything, don't rebuild under the same number — npm run version:bump:rc,\n" +
+      "   then build again, so the replacement is a version testers can name.\n",
   );
 }

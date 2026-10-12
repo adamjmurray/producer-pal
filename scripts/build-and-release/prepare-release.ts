@@ -66,7 +66,7 @@ if (existsSync(releaseDir)) {
 mkdirSync(releaseDir);
 
 // Build the bundles, then freeze the device from them. The mcpb and the npm
-// folder come later, from `npm run release:package`.
+// folder come later, from `npm run release:mcpb`.
 console.log("Building bundles...");
 
 try {
@@ -102,17 +102,7 @@ try {
   process.exit(1);
 }
 
-console.log("\n📋 Next steps:");
-console.log(
-  "1. Package the portal, mcpb and npm folder: npm run release:package",
-);
-console.log("2. Test the files work correctly");
-console.log("3. Tag the release: npm run tag");
-console.log(
-  "4. Create the GitHub release, test, and proceed per dev/process/releasing.md",
-);
-console.log(
-  `\n🔖 These files call themselves ${pkg.version} (build ${buildSha}). If step 2 turns up\n` +
-    "   anything, don't rebuild under the same number — npm run version:bump:rc,\n" +
-    "   then build again, so the replacement is a version testers can name.\n",
-);
+// `npm run release` passes --chain and prints the final steps after release:mcpb.
+if (!process.argv.includes("--chain")) {
+  console.log("\n📋 Next: npm run release:mcpb\n");
+}

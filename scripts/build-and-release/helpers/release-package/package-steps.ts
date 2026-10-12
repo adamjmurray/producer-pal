@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-/** One stage of `npm run release:package`. */
+/** One stage of `npm run release:mcpb`. */
 export interface PackageStep {
   name: string;
   writes: string[];
@@ -66,7 +66,7 @@ export function describePackageFailure(result: PackageResult): string {
     `Not written: ${list(result.notWritten)}`,
     "",
     "The folders now hold a partial package. Fix the cause and re-run",
-    "`npm run release:package`; don't publish or upload from this state.",
+    "`npm run release:mcpb`; don't publish or upload from this state.",
   ];
 
   return lines.join("\n");

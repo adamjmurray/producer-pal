@@ -8,6 +8,7 @@ import {
   AMXD_META_FROZEN,
   AMXD_META_UNFROZEN,
   buildAmxd,
+  isFrozenAmxd,
   parseAmxd,
 } from "./amxd-container.ts";
 
@@ -51,5 +52,23 @@ describe("parseAmxd", () => {
     expect(() => parseAmxd(bytes.subarray(0, bytes.length - 1))).toThrow(
       "truncated",
     );
+  });
+});
+
+describe("isFrozenAmxd", () => {
+  it("is true for a body that starts with mx@c", () => {
+    const body = Buffer.concat([Buffer.from("mx@c"), Buffer.from("rest")]);
+
+    expect(isFrozenAmxd(buildAmxd(AMXD_META_FROZEN, body))).toBe(true);
+  });
+
+  it("is false for an editable device with patcher JSON", () => {
+    const body = Buffer.from('{"patcher":{}}');
+
+    expect(isFrozenAmxd(buildAmxd(AMXD_META_UNFROZEN, body))).toBe(false);
+  });
+
+  it("is false for a file shorter than the header", () => {
+    expect(isFrozenAmxd(Buffer.from("tiny"))).toBe(false);
   });
 });
