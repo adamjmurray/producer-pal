@@ -56,7 +56,7 @@ interface ChatScreenProps {
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
-  onOpenRemoteScriptSettings: () => void;
+  onOpenInstallationSettings: () => void;
   onOpenContext: () => void;
   /** Open the context editor's Instructions tab (the system prompt). */
   onOpenInstructions: () => void;
@@ -150,7 +150,7 @@ export function ChatScreen(props: ChatScreenProps) {
       onOpenSettings={onOpenSettings}
       onOpenToolsSettings={onOpenToolsSettings}
       onOpenConnectionSettings={onOpenConnectionSettings}
-      onOpenRemoteScriptSettings={props.onOpenRemoteScriptSettings}
+      onOpenInstallationSettings={props.onOpenInstallationSettings}
       onOpenContext={onOpenContext}
     >
       {/* The composer is first in the DOM so Tab reaches the input, Send and

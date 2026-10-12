@@ -94,8 +94,9 @@ export async function setupUiTest(
  * @param page - Playwright page
  */
 export async function installStubs(page: Page): Promise<void> {
-  // Serve the built single-file UI without a static server.
-  await page.route("**/chat-ui.html", (route) =>
+  // Serve the built single-file UI without a static server. The trailing `*`
+  // also matches a deep link's query string (`?settings=installation`).
+  await page.route("**/chat-ui.html*", (route) =>
     route.fulfill({
       path: BUILT_UI_PATH,
       contentType: "text/html; charset=utf-8",
@@ -182,6 +183,26 @@ export async function installStubs(page: Page): Promise<void> {
         otherOnPort: null,
         updateAvailable: false,
         installedNewer: false,
+      }),
+    }),
+  );
+
+  // Device install status (the Installation tab reads it) — a device that
+  // hasn't said where it is, so there is nothing to offer. A spec that wants
+  // more registers its own route after this.
+  await page.route("**/device-install", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        source: null,
+        problem: "unknown-source",
+        userLibrary: null,
+        path: null,
+        state: null,
+        version: "1.2.0",
+        installedVersion: null,
+        otherCopies: [],
       }),
     }),
   );

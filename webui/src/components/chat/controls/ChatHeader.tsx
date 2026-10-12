@@ -28,7 +28,7 @@ interface ChatHeaderProps {
   update: UpdateInfo | null;
   onDismissUpdate: () => void;
   remoteScriptNotice: RemoteScriptNotice;
-  onOpenRemoteScriptSettings: () => void;
+  onOpenInstallationSettings: () => void;
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
@@ -48,7 +48,7 @@ interface ChatHeaderProps {
  * @param props.update - Available update, or null if up to date
  * @param props.onDismissUpdate - Hide this version's update notification for good
  * @param props.remoteScriptNotice - What the remote script needs, or null
- * @param props.onOpenRemoteScriptSettings - Open settings on the Remote Script tab
+ * @param props.onOpenInstallationSettings - Open settings on the Installation tab
  * @param props.onOpenSettings - Callback to open settings
  * @param props.onOpenToolsSettings - Callback to open tools settings tab
  * @param props.onOpenConnectionSettings - Callback to open connection settings tab
@@ -66,7 +66,7 @@ export function ChatHeader({
   update,
   onDismissUpdate,
   remoteScriptNotice,
-  onOpenRemoteScriptSettings,
+  onOpenInstallationSettings,
   onOpenSettings,
   onOpenToolsSettings,
   onOpenConnectionSettings,
@@ -131,7 +131,7 @@ export function ChatHeader({
         update={update}
         onDismissUpdate={onDismissUpdate}
         remoteScriptNotice={remoteScriptNotice}
-        onOpenRemoteScriptSettings={onOpenRemoteScriptSettings}
+        onOpenInstallationSettings={onOpenInstallationSettings}
       />
 
       <div className="flex gap-1 text-xs">

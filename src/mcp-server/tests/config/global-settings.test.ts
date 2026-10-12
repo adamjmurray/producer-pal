@@ -41,6 +41,7 @@ describe("global settings store", () => {
     expect(readGlobalSettings()).toStrictEqual({
       autoUpdateCheck: true,
       dismissedUpdateVersion: null,
+      dismissedInstallVersion: null,
     });
   });
 
@@ -51,7 +52,16 @@ describe("global settings store", () => {
     expect(readGlobalSettings()).toStrictEqual({
       autoUpdateCheck: false,
       dismissedUpdateVersion: "9.9.9",
+      dismissedInstallVersion: null,
     });
+  });
+
+  it("stores the install-notice dismissal and ignores a mistyped one", () => {
+    updateGlobalSettings({ dismissedInstallVersion: "2.5.0" });
+    expect(readGlobalSettings().dismissedInstallVersion).toBe("2.5.0");
+
+    writeRawSettings('{"dismissedInstallVersion": 7}');
+    expect(readGlobalSettings().dismissedInstallVersion).toBeNull();
   });
 
   it("preserves keys it doesn't know about", () => {
@@ -83,6 +93,7 @@ describe("global settings store", () => {
       expect(readGlobalSettings()).toStrictEqual({
         autoUpdateCheck: true,
         dismissedUpdateVersion: null,
+        dismissedInstallVersion: null,
       });
     }
   });
@@ -105,6 +116,7 @@ describe("global settings store", () => {
     expect(updateGlobalSettings({ autoUpdateCheck: false })).toStrictEqual({
       autoUpdateCheck: true,
       dismissedUpdateVersion: null,
+      dismissedInstallVersion: null,
     });
   });
 });
@@ -133,6 +145,7 @@ describe("/settings routes", () => {
     expect(await response.json()).toStrictEqual({
       autoUpdateCheck: false,
       dismissedUpdateVersion: null,
+      dismissedInstallVersion: null,
     });
   });
 
@@ -142,6 +155,7 @@ describe("/settings routes", () => {
     expect(await response.json()).toStrictEqual({
       autoUpdateCheck: true,
       dismissedUpdateVersion: "9.9.9",
+      dismissedInstallVersion: null,
     });
     expect(readGlobalSettings().dismissedUpdateVersion).toBe("9.9.9");
   });
@@ -152,6 +166,7 @@ describe("/settings routes", () => {
     expect(await response.json()).toStrictEqual({
       autoUpdateCheck: false,
       dismissedUpdateVersion: null,
+      dismissedInstallVersion: null,
     });
     expect(readGlobalSettings().autoUpdateCheck).toBe(false);
   });
@@ -173,6 +188,7 @@ describe("/settings routes", () => {
     expect(await response.json()).toStrictEqual({
       autoUpdateCheck: true,
       dismissedUpdateVersion: null,
+      dismissedInstallVersion: null,
     });
   });
 

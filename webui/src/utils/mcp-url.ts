@@ -128,6 +128,24 @@ export function getRemoteScriptInstallUrl(): string {
 }
 
 /**
+ * Gets the device-install endpoint URL (whether this device is copied into
+ * Live's User Library, and whether that copy is current).
+ * @returns {string} The device-install endpoint URL
+ */
+export function getDeviceInstallUrl(): string {
+  return serverUrl("/device-install");
+}
+
+/**
+ * Gets the device-install action endpoint URL (POST copies the running device
+ * into the given User Library).
+ * @returns {string} The device-install action endpoint URL
+ */
+export function getDeviceInstallActionUrl(): string {
+  return serverUrl("/device-install/install");
+}
+
+/**
  * Gets the memory collection endpoint URL (lists every stored memory entry;
  * the LLM-managed ~/.producer-pal/memory/ collection).
  * @returns {string} The memory collection endpoint URL

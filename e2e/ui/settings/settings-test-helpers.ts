@@ -65,11 +65,11 @@ export async function openPreferencesTab(page: Page): Promise<void> {
 }
 
 /**
- * Switch to the Remote Script tab and wait for its status line.
+ * Switch to the Installation tab and wait for the remote script's status line.
  * @param page - Playwright page
  */
-export async function openRemoteScriptTab(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Remote Script" }).click();
+export async function openInstallationTab(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Installation" }).click();
   await expect(page.getByTestId("remote-script-status")).toBeVisible();
 }
 

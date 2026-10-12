@@ -42,7 +42,7 @@ describe("ChatHeader", () => {
     update: null,
     onDismissUpdate: vi.fn(),
     remoteScriptNotice: null,
-    onOpenRemoteScriptSettings: vi.fn(),
+    onOpenInstallationSettings: vi.fn(),
     onOpenSettings: vi.fn(),
     onOpenToolsSettings: vi.fn(),
     onOpenConnectionSettings: vi.fn(),
@@ -610,19 +610,19 @@ describe("ChatHeader", () => {
       expect(screen.queryByText("(script update)")).toBeNull();
     });
 
-    it("opens the Remote Script settings when clicked", () => {
-      const onOpenRemoteScriptSettings = vi.fn();
+    it("opens the Installation settings when clicked", () => {
+      const onOpenInstallationSettings = vi.fn();
 
       render(
         <ChatHeader
           {...defaultProps}
           remoteScriptNotice="restart"
-          onOpenRemoteScriptSettings={onOpenRemoteScriptSettings}
+          onOpenInstallationSettings={onOpenInstallationSettings}
         />,
       );
       fireEvent.click(screen.getByText("(restart Live)"));
 
-      expect(onOpenRemoteScriptSettings).toHaveBeenCalledOnce();
+      expect(onOpenInstallationSettings).toHaveBeenCalledOnce();
     });
   });
 

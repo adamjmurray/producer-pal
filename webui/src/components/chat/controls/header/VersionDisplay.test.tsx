@@ -113,7 +113,7 @@ describe("VersionDisplay", () => {
         update={null}
         onDismissUpdate={vi.fn()}
         remoteScriptNotice={null}
-        onOpenRemoteScriptSettings={vi.fn()}
+        onOpenInstallationSettings={vi.fn()}
       />,
     );
     expect(screen.queryByText("(script update)")).toBeNull();
@@ -129,7 +129,7 @@ describe("VersionDisplay", () => {
         update={null}
         onDismissUpdate={vi.fn()}
         remoteScriptNotice="update"
-        onOpenRemoteScriptSettings={onOpen}
+        onOpenInstallationSettings={onOpen}
       />,
     );
     fireEvent.click(screen.getByText("(script update)"));
@@ -146,7 +146,7 @@ describe("VersionDisplay", () => {
         update={null}
         onDismissUpdate={vi.fn()}
         remoteScriptNotice="restart"
-        onOpenRemoteScriptSettings={onOpen}
+        onOpenInstallationSettings={onOpen}
       />,
     );
 
@@ -166,7 +166,7 @@ describe("VersionDisplay", () => {
         update={{ version: "1.3.0" }}
         onDismissUpdate={vi.fn()}
         remoteScriptNotice="update"
-        onOpenRemoteScriptSettings={vi.fn()}
+        onOpenInstallationSettings={vi.fn()}
       />,
     );
     expect(screen.getByText("(update)")).toBeDefined();

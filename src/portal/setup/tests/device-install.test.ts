@@ -215,6 +215,63 @@ describe("installDevice", () => {
     );
   });
 
+  describe("naming the file being installed", () => {
+    // [installed, source, what the install does, the message it gives]
+    const cases = [
+      {
+        what: "already current",
+        installed: fakeDevice("2.4.0"),
+        source: fakeDevice("2.4.0"),
+        expected: (name: string) => `The installed device is already ${name}.`,
+      },
+      {
+        what: "newer",
+        installed: fakeDevice("2.5.0"),
+        source: fakeDevice("2.4.0"),
+        expected: (name: string) =>
+          `The installed device (2.5.0) is newer than ${name} (2.4.0). Left unchanged. Use force to replace it.`,
+      },
+      {
+        what: "unversioned",
+        installed: Buffer.from("someone's own file"),
+        source: fakeDevice("2.4.0"),
+        expected: (name: string) =>
+          `The installed device differs from ${name}, and one of them names no version to compare. Left unchanged. Use force to replace it.`,
+      },
+      {
+        what: "unorderable",
+        installed: fakeDevice("2.5.0-rc1"),
+        source: fakeDevice("2.5.0-rc2"),
+        expected: (name: string) =>
+          `The installed device (2.5.0-rc1) and ${name} (2.5.0-rc2) differ, and their order can't be told. Left unchanged. Use force to replace it.`,
+      },
+    ];
+
+    it.each(cases)(
+      "says the bundled one by default ($what)",
+      ({ installed, source: sourceBytes, expected }) => {
+        put(source, sourceBytes);
+        put(device(), installed);
+
+        expect(installDevice(library, source).detail).toBe(
+          expected("the bundled one"),
+        );
+      },
+    );
+
+    it.each(cases)(
+      "uses the name it's given ($what)",
+      ({ installed, source: sourceBytes, expected }) => {
+        put(source, sourceBytes);
+        put(device(), installed);
+
+        expect(
+          installDevice(library, source, { sourceName: "this device" }).detail,
+        ).toBe(expected("this device"));
+      },
+    );
+  });
+
   it("reports other copies and leaves them alone", () => {
     const other = join(library, "Presets/Instruments/Producer_Pal.amxd");
 

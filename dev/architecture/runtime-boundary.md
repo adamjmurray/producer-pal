@@ -53,7 +53,7 @@ two pre-releases of one version (`-rc1` vs `-rc2`). Nothing is flagged when the
 script isn't installed or another program answers on the port.
 
 - **Chat UI:** a `(script update)` or `(restart Live)` badge beside the version
-  opens Settings → Remote Script. It reads `GET /remote-script` on load, on
+  opens Settings → Installation. It reads `GET /remote-script` on load, on
   window focus, and when the MCP connection comes back (Live restarted). A later
   read that succeeds clears it; a failed read leaves it as it was. It also
   follows the tab's own reads.
@@ -84,6 +84,28 @@ Both install paths share `rpc/remote-script/user-library/`: its
 in its header), and `user-library-folder.ts` validates the folder. A failure
 after something changed comes back as a `failed` result that says what changed,
 not a throw.
+
+### The device installs itself
+
+The loaded device can copy itself into the User Library too
+(`src/mcp-server/rpc/device-install/`). Only the device's patcher knows its own
+file, so V8 reads `patcher.filepath` (Max's `Volume:/path` form) and sends it to
+Node over the `device.report` route (`reportDevice` in `live-api-adapter.ts`).
+Node asks for it when it starts, through the `reportDevice` message on the
+`config` outlet, since V8 is up long before Node is. `maxPathToPosix` turns it
+into an OS path.
+
+Only a **frozen** device can be copied (bytes 32–35 are `mx@c`); the development
+device depends on the files beside it. `GET /device-install` and
+`POST /device-install/install` serve the chat UI's Installation tab, the same
+way `/remote-script` does. The install is `installDevice` from the portal, with
+`force` needed for a newer or unorderable copy.
+
+The device shows a "Finish installation…" notice while the source is frozen and
+the User Library copy is missing or older. Node sends `config installNotice 1|0`
+(the patch's `tab-main` routes it) and the notice's `×` sends
+`dismissInstallNotice`, which saves `dismissedInstallVersion` in the global
+settings. It is keyed on the version, like the update notice.
 
 ## Warnings ride inside the response JSON
 

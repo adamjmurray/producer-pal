@@ -8,7 +8,7 @@
  */
 import { act, renderHook } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
-import { statusBody } from "#webui/components/settings/tests/helpers/remote-script-status-test-helpers";
+import { statusBody } from "#webui/components/settings/installation/tests/helpers/remote-script-status-test-helpers";
 import { useRemoteScriptNotice } from "#webui/hooks/connection/use-remote-script-notice";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import {
@@ -16,7 +16,7 @@ import {
   installFetchMock,
   jsonResponse,
 } from "#webui/hooks/context/tests/doc-transport-test-helpers";
-import { useRemoteScript } from "#webui/hooks/settings/use-remote-script";
+import { useRemoteScript } from "#webui/hooks/settings/installation/use-remote-script";
 import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 
 const OLD_INSTALL = {
@@ -129,7 +129,7 @@ describe("useRemoteScriptNotice", () => {
     await waitForHookState(() => expect(result.current).toBeNull());
   });
 
-  it("follows a status the Remote Script tab reads", async () => {
+  it("follows a status the Installation tab reads", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(statusBody(OLD_INSTALL)));
 
     const notice = renderHook(() => useRemoteScriptNotice("connecting"));

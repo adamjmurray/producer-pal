@@ -22,6 +22,7 @@ vi.mock(import("../../helpers/config-store/global-settings-store.ts"), () => ({
   DEFAULT_GLOBAL_SETTINGS: {
     autoUpdateCheck: true,
     dismissedUpdateVersion: null,
+    dismissedInstallVersion: null,
   },
 }));
 
@@ -69,6 +70,7 @@ describe("dismissUpdate", () => {
     vi.mocked(updateGlobalSettings).mockReturnValue({
       autoUpdateCheck: true,
       dismissedUpdateVersion: null,
+      dismissedInstallVersion: null,
     });
 
     await dismissUpdate();

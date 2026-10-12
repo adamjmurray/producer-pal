@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
 /**
@@ -61,7 +62,7 @@ describe("ChatScreen", () => {
     onOpenSettings: mockOnOpenSettings,
     onOpenToolsSettings: vi.fn(),
     onOpenConnectionSettings: vi.fn(),
-    onOpenRemoteScriptSettings: vi.fn(),
+    onOpenInstallationSettings: vi.fn(),
     onOpenContext: vi.fn(),
     onOpenInstructions: vi.fn(),
     onStop: mockOnStop,

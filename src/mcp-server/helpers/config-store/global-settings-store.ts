@@ -36,11 +36,17 @@ export interface GlobalSettings {
    * suppresses exactly that release and lifts on the next one.
    */
   dismissedUpdateVersion: string | null;
+  /**
+   * The device version whose "finish installation" notice the user dismissed,
+   * or null. Per version, so the next release asks again.
+   */
+  dismissedInstallVersion: string | null;
 }
 
 export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   autoUpdateCheck: true,
   dismissedUpdateVersion: null,
+  dismissedInstallVersion: null,
 };
 
 /**
@@ -62,6 +68,10 @@ export function readGlobalSettings(): GlobalSettings {
       typeof raw.dismissedUpdateVersion === "string"
         ? raw.dismissedUpdateVersion
         : DEFAULT_GLOBAL_SETTINGS.dismissedUpdateVersion,
+    dismissedInstallVersion:
+      typeof raw.dismissedInstallVersion === "string"
+        ? raw.dismissedInstallVersion
+        : DEFAULT_GLOBAL_SETTINGS.dismissedInstallVersion,
   };
 }
 

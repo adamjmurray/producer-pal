@@ -3,14 +3,15 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// The Remote Script tab against a stubbed /remote-script endpoint. The install
-// itself is a Node-side file copy, so what's worth guarding here is the flow:
-// what the tab shows before, during, and after the POST.
+// The Installation tab's remote script section against a stubbed /remote-script
+// endpoint. The install itself is a Node-side file copy, so what's worth
+// guarding here is the flow: what the tab shows before, during, and after the
+// POST.
 
 import { type Page, expect, test } from "@playwright/test";
 import { installStubs } from "../ui-test-helpers";
 import {
-  openRemoteScriptTab,
+  openInstallationTab,
   setupSettingsTest,
 } from "./settings-test-helpers";
 
@@ -96,7 +97,7 @@ async function stubRemoteScript(
   });
 }
 
-test.describe("Settings — remote script (stubbed backend)", () => {
+test.describe("Settings — installation: remote script (stubbed backend)", () => {
   test("installs from the detected User Library and shows the steps", async ({
     page,
   }) => {
@@ -109,12 +110,12 @@ test.describe("Settings — remote script (stubbed backend)", () => {
       },
       after: { installed: true, installedVersion: "1.2.0" },
     });
-    await openRemoteScriptTab(page);
+    await openInstallationTab(page);
 
     await expect(page.getByTestId("remote-script-status")).toHaveText(
       "Not installed",
     );
-    await expect(page.getByTestId("remote-script-path")).toHaveValue(
+    await expect(page.getByTestId("user-library-path")).toHaveValue(
       USER_LIBRARY,
     );
     await expect(page.getByTestId("remote-script-steps")).toBeHidden();
@@ -155,7 +156,7 @@ test.describe("Settings — remote script (stubbed backend)", () => {
         after: { installedVersion: "1.2.0", updateAvailable: false },
       },
     );
-    await openRemoteScriptTab(page);
+    await openInstallationTab(page);
 
     await expect(page.getByTestId("remote-script-status")).toHaveText(
       "Update available: installed v1.1.0, this build has v1.2.0 (running v1.1.0 in Live 12.1)",
@@ -185,7 +186,7 @@ test.describe("Settings — remote script (stubbed backend)", () => {
       status({ installed: true, installedVersion: "1.2.0", otherOnPort: 3349 }),
       { status: 200, body: {} },
     );
-    await openRemoteScriptTab(page);
+    await openInstallationTab(page);
 
     await expect(page.getByTestId("remote-script-status")).toHaveText(
       "Installed v1.2.0 (not running; another program answers on port 3349)",
@@ -200,15 +201,15 @@ test.describe("Settings — remote script (stubbed backend)", () => {
       status: 400,
       body: { error: "No such directory: /nope" },
     });
-    await openRemoteScriptTab(page);
+    await openInstallationTab(page);
 
-    await expect(page.getByTestId("remote-script-path")).toHaveValue("");
+    await expect(page.getByTestId("user-library-path")).toHaveValue("");
     await expect(page.getByTestId("remote-script-install")).toBeDisabled();
-    await expect(page.getByTestId("remote-script-tab")).toContainText(
+    await expect(page.getByTestId("installation-tab")).toContainText(
       "Location of User Library",
     );
 
-    await page.getByTestId("remote-script-path").fill("/nope");
+    await page.getByTestId("user-library-path").fill("/nope");
     await page.getByTestId("remote-script-install").click();
 
     await expect(page.getByTestId("remote-script-error")).toHaveText(
@@ -242,7 +243,7 @@ test.describe("Settings — remote script (stubbed backend)", () => {
 
     await page.getByRole("button", { name: "(script update)" }).click();
 
-    // The badge opens Settings on the Remote Script tab.
+    // The badge opens Settings on the Installation tab.
     await expect(page.getByTestId("remote-script-status")).toBeVisible();
 
     await page.getByTestId("remote-script-install").click();

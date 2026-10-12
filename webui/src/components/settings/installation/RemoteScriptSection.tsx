@@ -3,34 +3,42 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { useState } from "preact/hooks";
 import { liveRunsOtherCopy } from "#src/shared/version-check";
 import {
   type RemoteScriptStatus,
-  useRemoteScript,
-} from "#webui/hooks/settings/use-remote-script";
+  type useRemoteScript,
+} from "#webui/hooks/settings/installation/use-remote-script";
 import { REMOTE_SCRIPT_DOCS_URL } from "#webui/lib/config";
+import { buttonClass, noteClass } from "./installation-classes";
 
-const buttonClass =
-  "rounded-lg border border-zinc-300 bg-zinc-200 px-3 py-1.5 text-sm hover:bg-zinc-300 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-600 dark:hover:bg-zinc-700";
-
-const inputClass =
-  "w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-700";
-
-const noteClass = "text-xs text-zinc-500 dark:text-zinc-300";
+interface RemoteScriptSectionProps {
+  remote: ReturnType<typeof useRemoteScript>;
+  /** The User Library path in the tab's shared field. */
+  path: string;
+  /** The User Library the server detected, or null. */
+  detected: string | null;
+}
 
 /**
- * Remote Script tab: installs the Producer Pal control surface into Live's
- * User Library and shows whether Live is running it.
- * @returns {JSX.Element} Remote Script tab component
+ * Remote script section of the Installation tab: installs the Producer Pal
+ * control surface into the User Library and shows whether Live is running it.
+ * @param {RemoteScriptSectionProps} props - Component props
+ * @param {object} props.remote - The useRemoteScript state and actions
+ * @param {string} props.path - The User Library path in the shared field
+ * @param {string | null} props.detected - The detected User Library, or null
+ * @returns {JSX.Element} The remote script section
  */
-export function RemoteScriptTab() {
-  const remote = useRemoteScript();
+export function RemoteScriptSection({
+  remote,
+  path,
+  detected,
+}: RemoteScriptSectionProps) {
   const { status } = remote;
 
   if (status == null) {
     return (
-      <div className="space-y-2 text-sm" data-testid="remote-script-tab">
+      <div className="space-y-2 text-sm" data-testid="remote-script-section">
+        <h3 className="font-semibold">Remote script</h3>
         {remote.loading ? (
           <p data-testid="remote-script-loading">Checking…</p>
         ) : (
@@ -48,7 +56,9 @@ export function RemoteScriptTab() {
   }
 
   return (
-    <div className="space-y-4 text-sm" data-testid="remote-script-tab">
+    <div className="space-y-4 text-sm" data-testid="remote-script-section">
+      <h3 className="font-semibold">Remote script</h3>
+
       <p className={noteClass}>
         The remote script lets Producer Pal load Live devices and plugins by
         name.{" "}
@@ -63,7 +73,12 @@ export function RemoteScriptTab() {
 
       <p data-testid="remote-script-status">{summarize(status)}</p>
 
-      <InstallForm status={status} remote={remote} />
+      <InstallForm
+        status={status}
+        remote={remote}
+        path={path}
+        detected={detected}
+      />
 
       {status.installed && (
         <EnableSteps
@@ -163,45 +178,23 @@ function restartVersion(status: RemoteScriptStatus): string | null {
 interface InstallFormProps {
   status: RemoteScriptStatus;
   remote: ReturnType<typeof useRemoteScript>;
+  path: string;
+  detected: string | null;
 }
 
 /**
- * User Library path field plus the Install / Update button. The path is always
- * editable — the server's guess can be wrong, and it has none at all when Live
- * has never written its preferences.
+ * The Install / Update button for the User Library in the shared field, and
+ * what came of the last install.
  * @param {InstallFormProps} props - Component props
  * @param {RemoteScriptStatus} props.status - The server's remote-script status
  * @param {object} props.remote - The useRemoteScript state and actions
+ * @param {string} props.path - The User Library path in the shared field
+ * @param {string | null} props.detected - The detected User Library, or null
  * @returns {JSX.Element} The install form
  */
-function InstallForm({ status, remote }: InstallFormProps) {
-  const detected = status.userLibrary;
-  // Null until the user edits, so a Refresh that finds the User Library reaches
-  // the field without ever overwriting a typed path.
-  const [typed, setTyped] = useState<string | null>(null);
-  const path = typed ?? detected ?? "";
-
+function InstallForm({ status, remote, path, detected }: InstallFormProps) {
   return (
     <div className="space-y-2">
-      <label htmlFor="remote-script-path" className="block">
-        {detected == null
-          ? "Where is your User Library?"
-          : "Is this your User Library?"}
-      </label>
-      <input
-        id="remote-script-path"
-        data-testid="remote-script-path"
-        type="text"
-        value={path}
-        onInput={(e) => setTyped((e.target as HTMLInputElement).value)}
-        className={inputClass}
-      />
-      {detected == null && (
-        <p className={noteClass}>
-          Live shows it under Settings → Library → Location of User Library.
-        </p>
-      )}
-
       <button
         type="button"
         data-testid="remote-script-install"

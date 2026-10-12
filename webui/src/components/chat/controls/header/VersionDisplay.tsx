@@ -14,7 +14,7 @@ interface VersionDisplayProps {
   update: UpdateInfo | null;
   onDismissUpdate: () => void;
   remoteScriptNotice?: RemoteScriptNotice;
-  onOpenRemoteScriptSettings?: () => void;
+  onOpenInstallationSettings?: () => void;
 }
 
 const REMOTE_SCRIPT_BADGES = {
@@ -37,7 +37,7 @@ const REMOTE_SCRIPT_BADGES = {
  * @param props.update - Available update, or null if up to date
  * @param props.onDismissUpdate - Hide this version's notification for good
  * @param props.remoteScriptNotice - What the remote script needs, or null
- * @param props.onOpenRemoteScriptSettings - Open settings on the Remote Script tab
+ * @param props.onOpenInstallationSettings - Open settings on the Installation tab
  * @returns Version display element
  */
 export function VersionDisplay({
@@ -46,7 +46,7 @@ export function VersionDisplay({
   update,
   onDismissUpdate,
   remoteScriptNotice,
-  onOpenRemoteScriptSettings,
+  onOpenInstallationSettings,
 }: VersionDisplayProps) {
   const badge =
     remoteScriptNotice == null
@@ -88,7 +88,7 @@ export function VersionDisplay({
           {" "}
           <button
             type="button"
-            onClick={onOpenRemoteScriptSettings}
+            onClick={onOpenInstallationSettings}
             className="text-sky-500 hover:underline dark:text-sky-400"
             title={badge.title}
           >

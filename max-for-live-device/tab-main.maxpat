@@ -456,6 +456,136 @@
                     "proportion": 0.39,
                     "rounded": 0
                 }
+            },
+            {
+                "box": {
+                    "id": "obj-80",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 2,
+                    "outlettype": [ "", "" ],
+                    "patching_rect": [ 790.0, 329.0, 110.0, 22.0 ],
+                    "text": "route installNotice"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-81",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 3,
+                    "outlettype": [ "bang", "bang", "" ],
+                    "patching_rect": [ 790.0, 365.0, 45.0, 22.0 ],
+                    "text": "sel 1 0"
+                }
+            },
+            {
+                "box": {
+                    "linecount": 4,
+                    "id": "obj-82",
+                    "maxclass": "message",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 790.0, 401.0, 166.0, 63.0 ],
+                    "text": "script sendbox \"Producer Pal finish installation\" hidden 0, script sendbox \"Producer Pal finish installation dismiss\" hidden 0"
+                }
+            },
+            {
+                "box": {
+                    "linecount": 4,
+                    "id": "obj-83",
+                    "maxclass": "message",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 970.0, 401.0, 166.0, 63.0 ],
+                    "text": "script sendbox \"Producer Pal finish installation\" hidden 1, script sendbox \"Producer Pal finish installation dismiss\" hidden 1"
+                }
+            },
+            {
+                "box": {
+                    "annotation": "Copy this device into your User Library so every Live Set can find it.",
+                    "bgcolor": [ 0.596078431372549, 0.933333333333333, 1.0, 1.0 ],
+                    "fontface": 0,
+                    "hidden": 1,
+                    "hint": "",
+                    "id": "obj-84",
+                    "maxclass": "textbutton",
+                    "numinlets": 1,
+                    "numoutlets": 3,
+                    "outlettype": [ "", "", "int" ],
+                    "parameter_enable": 0,
+                    "patching_rect": [ 790.0, 497.0, 98.0, 20.0 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 0.0, 3.0, 98.0, 20.0 ],
+                    "rounded": 8.0,
+                    "text": "Finish installation…",
+                    "textoncolor": [ 0.129411764705882, 0.129411764705882, 0.129411764705882, 1.0 ],
+                    "textovercolor": [ 0.231372549019608, 0.03921568627451, 0.72156862745098, 1.0 ],
+                    "underline": 1,
+                    "usetextovercolor": 1,
+                    "varname": "Producer Pal finish installation"
+                }
+            },
+            {
+                "box": {
+                    "annotation": "Dismiss this notice.",
+                    "bgcolor": [ 0.596078431372549, 0.933333333333333, 1.0, 1.0 ],
+                    "fontface": 0,
+                    "hidden": 1,
+                    "hint": "",
+                    "id": "obj-85",
+                    "maxclass": "textbutton",
+                    "numinlets": 1,
+                    "numoutlets": 3,
+                    "outlettype": [ "", "", "int" ],
+                    "parameter_enable": 0,
+                    "patching_rect": [ 900.0, 497.0, 20.0, 20.0 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 100.0, 3.0, 20.0, 20.0 ],
+                    "rounded": 8.0,
+                    "text": "×",
+                    "textoncolor": [ 0.129411764705882, 0.129411764705882, 0.129411764705882, 1.0 ],
+                    "textovercolor": [ 0.231372549019608, 0.03921568627451, 0.72156862745098, 1.0 ],
+                    "usetextovercolor": 1,
+                    "varname": "Producer Pal finish installation dismiss"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-86",
+                    "maxclass": "message",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 900.0, 535.0, 125.0, 22.0 ],
+                    "text": "dismissInstallNotice"
+                }
+            },
+            {
+                "box": {
+                    "linecount": 3,
+                    "id": "obj-87",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 790.0, 590.0, 230.0, 49.0 ],
+                    "text": "sprintf \\; max launch_browser http://localhost:%d/chat?settings=installation"
+                }
+            },
+            {
+                "box": {
+                    "linecount": 3,
+                    "id": "obj-88",
+                    "maxclass": "message",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 790.0, 655.0, 230.0, 49.0 ],
+                    "text": ";\rmax launch_browser http://localhost:3350/chat?settings=installation"
+                }
             }
         ],
         "lines": [
@@ -571,6 +701,72 @@
                 "patchline": {
                     "destination": [ "obj-21", 0 ],
                     "source": [ "obj-76", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-80", 0 ],
+                    "source": [ "obj-75", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-81", 0 ],
+                    "source": [ "obj-80", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-82", 0 ],
+                    "source": [ "obj-81", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-83", 0 ],
+                    "source": [ "obj-81", 1 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-14", 0 ],
+                    "source": [ "obj-82", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-14", 0 ],
+                    "source": [ "obj-83", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-88", 0 ],
+                    "source": [ "obj-84", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-86", 0 ],
+                    "source": [ "obj-85", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-74", 0 ],
+                    "source": [ "obj-86", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-87", 0 ],
+                    "source": [ "obj-13", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-88", 1 ],
+                    "source": [ "obj-87", 0 ]
                 }
             }
         ],

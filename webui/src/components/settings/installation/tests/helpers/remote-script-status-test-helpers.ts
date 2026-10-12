@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { type RemoteScriptStatus } from "#webui/hooks/settings/use-remote-script";
+import { type RemoteScriptStatus } from "#webui/hooks/settings/installation/use-remote-script";
 
 export const USER_LIBRARY = "/Users/me/Music/Ableton/User Library";
 

@@ -7,6 +7,10 @@
 import "./live-api-extensions.ts";
 import "#src/polyfills/es2023-array.ts";
 
+import {
+  DEVICE_REPORT_ROUTE,
+  type DeviceReportArgs,
+} from "#src/shared/max/device-install-contract.ts";
 import { toCompactJSLiteral } from "#src/shared/compact/compact-serializer.ts";
 import { MIN_LIVE_VERSION, VERSION } from "#src/shared/config.ts";
 import {
@@ -60,7 +64,7 @@ import {
   reportLiveApiBuildStats,
 } from "./live-api-build-stats.ts";
 import { beginLiveApiScope, endLiveApiScope } from "./live-api-release.ts";
-import { handleNodeResponse } from "./node-request-v8-protocol.ts";
+import { handleNodeResponse, requestNode } from "./node-request-v8-protocol.ts";
 import {
   backupProjectContextOnEdit,
   noteProjectContextLoaded,
@@ -363,6 +367,42 @@ export function tools(): void {}
  * hide its notice.
  */
 export function updateDismissed(): void {}
+
+/**
+ * Ignore the "Finish installation" notice toggle. It only tells the device's
+ * Main tab to show or hide its notice.
+ */
+export function installNotice(): void {}
+
+/**
+ * Tell Node where this device's file is. Only the device's patcher knows, and
+ * the Live Set references the device by that path. Node asks (as the
+ * `reportDevice` config key) when it starts, since V8 is up long before it is.
+ * Best-effort: a device with no file path just stays unknown.
+ */
+export function reportDevice(): void {
+  const patcher = (globalThis as { patcher?: { filepath?: unknown } }).patcher;
+  const filepath = patcher?.filepath;
+
+  if (typeof filepath !== "string" || filepath === "") {
+    console.warn("Could not read this device's file path.");
+
+    return;
+  }
+
+  const args: DeviceReportArgs = { filepath };
+
+  // Detached: a void-ed async call outlives any request that might be running.
+  detachWarningCapture(async () => {
+    const response = await requestNode(DEVICE_REPORT_ROUTE, args);
+
+    if (!response.success) {
+      console.warn(
+        `Could not report this device's file path: ${response.error}`,
+      );
+    }
+  });
+}
 
 /**
  * Chunk one payload for the Max IPC boundary and send it, as:

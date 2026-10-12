@@ -142,7 +142,7 @@ export function makeProps(o: PropOverrides = {}): VoiceAppProps {
     onOpenSettings: o.onOpenSettings ?? vi.fn(),
     onOpenToolsSettings: vi.fn(),
     onOpenConnectionSettings: vi.fn(),
-    onOpenRemoteScriptSettings: vi.fn(),
+    onOpenInstallationSettings: vi.fn(),
     onForeignRecord: vi.fn(),
     clearViewingMode: vi.fn(),
     setModeContext: vi.fn(),

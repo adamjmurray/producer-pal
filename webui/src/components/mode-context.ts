@@ -33,8 +33,8 @@ export interface ModeAppProps {
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
-  /** Open settings on the Remote Script tab. */
-  onOpenRemoteScriptSettings: () => void;
+  /** Open settings on the Installation tab. */
+  onOpenInstallationSettings: () => void;
   onOpenContext: () => void;
   /** Open the context editor on its Instructions tab (the system prompt). */
   onOpenInstructions: () => void;

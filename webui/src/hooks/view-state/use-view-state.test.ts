@@ -40,6 +40,17 @@ describe("useViewState", () => {
     expect(result.current.viewState.settingsOpen).toBe(false);
   });
 
+  it("opens the Installation tab for a stored Remote Script tab", () => {
+    localStorage.setItem(
+      VIEW_STATE_KEY,
+      JSON.stringify({ settingsTab: "remote-script" }),
+    );
+
+    const { result } = renderHook(() => useViewState());
+
+    expect(result.current.viewState.settingsTab).toBe("installation");
+  });
+
   it("merges partial updates and persists to localStorage", async () => {
     const { result } = renderHook(() => useViewState());
 

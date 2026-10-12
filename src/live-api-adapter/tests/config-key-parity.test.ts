@@ -26,9 +26,11 @@ const CONFIG_OUTLET = /Max\.outlet\(\s*"config"\s*,\s*"([^"]+)"/g;
 // it) or a call the regex can no longer see (fix the scan).
 const BROADCAST_KEYS = [
   "compactOutput",
+  "installNotice",
   "liveApiEnabled",
   "notation",
   "projectContext",
+  "reportDevice",
   "sampleFolder",
   "smallModelMode",
   "tools",
@@ -52,6 +54,7 @@ describe("V8 config key parity", () => {
     expect(() => adapter.liveApiEnabled()).not.toThrow();
     expect(() => adapter.tools()).not.toThrow();
     expect(() => adapter.updateDismissed()).not.toThrow();
+    expect(() => adapter.installNotice()).not.toThrow();
   });
 });
 

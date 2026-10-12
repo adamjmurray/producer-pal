@@ -18,11 +18,11 @@ import {
   jsonResponse,
 } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { waitForHookState } from "#webui/test-utils/async-test-helpers";
-import { useRemoteScript } from "#webui/hooks/settings/use-remote-script";
+import { useRemoteScript } from "#webui/hooks/settings/installation/use-remote-script";
 import {
   statusBody,
   USER_LIBRARY,
-} from "#webui/components/settings/tests/helpers/remote-script-status-test-helpers";
+} from "#webui/components/settings/installation/tests/helpers/remote-script-status-test-helpers";
 
 /**
  * Render the hook and wait for its mount read to land.

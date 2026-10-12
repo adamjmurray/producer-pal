@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { useCallback, useState } from "preact/hooks";
-import { type TabId } from "#webui/components/settings/SettingsTabs";
+import { type TabId } from "#webui/components/settings/helpers/settings-tab-ids";
 
 const VIEW_STATE_KEY = "producer_pal_view_state";
 
@@ -66,6 +66,11 @@ function loadViewState(): ViewState {
     // Guard against corrupted settingsTab (e.g. stored as non-string value)
     if (typeof merged.settingsTab !== "string") {
       merged.settingsTab = DEFAULT_VIEW_STATE.settingsTab;
+    }
+
+    // The Remote Script tab became Installation.
+    if ((merged.settingsTab as string) === "remote-script") {
+      merged.settingsTab = "installation";
     }
 
     return merged;

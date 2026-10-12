@@ -6,81 +6,77 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { fetchJson } from "#webui/utils/fetch-json";
 import {
-  getRemoteScriptInstallUrl,
-  getRemoteScriptUrl,
+  getDeviceInstallActionUrl,
+  getDeviceInstallUrl,
 } from "#webui/utils/mcp-url";
 
-/** What the server knows about the remote script, as `GET /remote-script`. */
-export interface RemoteScriptStatus {
+/** How the User Library copy compares with the running device. */
+export type DeviceState =
+  | "not-installed"
+  | "same"
+  | "installed-older"
+  | "installed-newer"
+  | "different";
+
+/** Why the running device can't be copied. */
+export type DeviceInstallProblem =
+  | "unknown-source"
+  | "unreadable-source"
+  | "not-frozen"
+  | "no-user-library";
+
+/** What the server knows about the device's own installation, as `GET /device-install`. */
+export interface DeviceInstallStatus {
+  /** The running device's file, or null before it has said where it is. */
+  source: string | null;
+  /** Why it can't be installed, or null when it can. */
+  problem: DeviceInstallProblem | null;
   /** Live's User Library, or null when the server couldn't find it. */
   userLibrary: string | null;
-  installed: boolean;
+  /** Where the copy is, or would be. */
+  path: string | null;
+  /** The copy compared with the running device; null with a problem. */
+  state: DeviceState | null;
+  /** This device's version. */
+  version: string;
   installedVersion: string | null;
-  /** The version this build of Producer Pal ships. */
-  bundledVersion: string;
-  /** Whether Live currently has the script loaded as a control surface. */
-  running: boolean;
-  runningVersion: string | null;
-  liveVersion: string | null;
-  /** The port another program answered on, when it isn't our script. */
-  otherOnPort: number | null;
-  /** Installed is older than this build (or unreadable). */
-  updateAvailable: boolean;
-  /** Installed is newer than this build, so installing downgrades it. */
-  installedNewer: boolean;
+  /** Other Producer_Pal .amxd files in the User Library. */
+  otherCopies: string[];
 }
 
-type StatusListener = (status: RemoteScriptStatus) => void;
-
-const statusListeners = new Set<StatusListener>();
-
-/**
- * Follow every status the Remote Script tab reads, so the header badge stays
- * in step with an install without a second request.
- * @param listener - Called with each status the tab reads
- * @returns Stops listening
- */
-export function subscribeRemoteScriptStatus(
-  listener: StatusListener,
-): () => void {
-  statusListeners.add(listener);
-
-  return () => {
-    statusListeners.delete(listener);
-  };
-}
-
-export interface UseRemoteScriptReturn {
-  status: RemoteScriptStatus | null;
+export interface UseDeviceInstallReturn {
+  status: DeviceInstallStatus | null;
   /** True while a status read is in flight. */
   loading: boolean;
   /** Why the status read failed, or null. */
   loadError: string | null;
   /** Re-read the status. */
   refresh: () => void;
+  /** True while the install request is in flight. */
   installing: boolean;
-  /** The server's reason for refusing the install, or null. */
+  /** Why the install was refused or failed, or null. */
   installError: string | null;
-  /** Where the last successful install landed, or null. */
-  installedPath: string | null;
-  /** Copy the bundled script into `userLibrary`, then re-read the status. */
-  install: (userLibrary: string) => void;
+  /** What the last install did and where, or null. */
+  installResult: { detail: string; path: string } | null;
+  /** Copy the device into `userLibrary`, replacing a newer one only with `force`, then re-read the status. */
+  install: (userLibrary: string, force: boolean) => void;
 }
 
 /**
- * Reads the remote script's install state and installs it.
+ * Reads whether this device is installed in the User Library and installs it.
  *
- * Both endpoints are Node-side: the script is files in Live's User Library, not
- * anything the Live API can see.
+ * Both endpoints are Node-side: the copy is a file operation the Live API
+ * can't see.
  * @returns The status, the install action, and their pending/error state
  */
-export function useRemoteScript(): UseRemoteScriptReturn {
-  const [status, setStatus] = useState<RemoteScriptStatus | null>(null);
+export function useDeviceInstall(): UseDeviceInstallReturn {
+  const [status, setStatus] = useState<DeviceInstallStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [installing, setInstalling] = useState(false);
   const [installError, setInstallError] = useState<string | null>(null);
-  const [installedPath, setInstalledPath] = useState<string | null>(null);
+  const [installResult, setInstallResult] =
+    useState<UseDeviceInstallReturn["installResult"]>(null);
   // The read in flight. Each new read aborts it first, so a slow older answer
   // can't overwrite a newer one.
   const readRef = useRef<AbortController | null>(null);
@@ -91,8 +87,8 @@ export function useRemoteScript(): UseRemoteScriptReturn {
     setLoading(true);
 
     try {
-      const next = await fetchJson<RemoteScriptStatus>(getRemoteScriptUrl(), {
-        label: "Remote script status",
+      const next = await fetchJson<DeviceInstallStatus>(getDeviceInstallUrl(), {
+        label: "Device install status",
         signal,
       });
 
@@ -102,10 +98,6 @@ export function useRemoteScript(): UseRemoteScriptReturn {
 
       setStatus(next);
       setLoadError(null);
-
-      for (const listener of statusListeners) {
-        listener(next);
-      }
     } catch (err) {
       // A newer read or the tab going away aborted this one: not a failure.
       if (signal.aborted) {
@@ -114,7 +106,7 @@ export function useRemoteScript(): UseRemoteScriptReturn {
 
       setLoadError(err instanceof Error ? err.message : String(err));
       // The status is now out of step with an "Installed to X" message.
-      setInstalledPath(null);
+      setInstallResult(null);
     } finally {
       if (!signal.aborted) {
         setLoading(false);
@@ -145,22 +137,21 @@ export function useRemoteScript(): UseRemoteScriptReturn {
   }, [refresh]);
 
   const install = useCallback(
-    (userLibrary: string): void => {
+    (userLibrary: string, force: boolean): void => {
       setInstalling(true);
       setInstallError(null);
 
-      void postInstall(userLibrary).then((result) => {
+      void postInstall(userLibrary, force).then((result) => {
         setInstalling(false);
 
         if (result.error != null) {
           setInstallError(result.error);
+          setInstallResult(null);
 
           return;
         }
 
-        setInstalledPath(result.path);
-        // The summary above the steps has to say "installed" now, and only the
-        // server knows the version that landed.
+        setInstallResult(result.done);
         refresh();
       });
     },
@@ -174,54 +165,64 @@ export function useRemoteScript(): UseRemoteScriptReturn {
     refresh,
     installing,
     installError,
-    installedPath,
+    installResult,
     install,
   };
 }
 
 // --- Helpers below main export ---
 
-/** Either the installed path or the reason the install was refused. */
-interface InstallResult {
-  path: string | null;
+/** What a POST came back with: what was done, or why it wasn't. */
+interface PostResult {
+  done: { detail: string; path: string } | null;
   error: string | null;
+}
+
+/** The server's answer, whichever way it went. */
+interface InstallBody {
+  detail?: string;
+  path?: string;
+  error?: string;
 }
 
 /**
  * POST the install, folding every failure into one `error` string.
  * @param userLibrary - The User Library to install into
- * @returns The installed path, or the error to show
+ * @param force - Replace a newer or unorderable copy
+ * @returns What was done, or the error to show
  */
-async function postInstall(userLibrary: string): Promise<InstallResult> {
+async function postInstall(
+  userLibrary: string,
+  force: boolean,
+): Promise<PostResult> {
   try {
-    const response = await fetch(getRemoteScriptInstallUrl(), {
+    const response = await fetch(getDeviceInstallActionUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userLibrary }),
+      body: JSON.stringify({ userLibrary, force }),
     });
     // An older server has no such route, so the 404 comes back as HTML.
     const body = await readJsonBody(response);
 
     if (!response.ok) {
       return {
-        path: null,
+        done: null,
         error: body?.error ?? `Install failed (${response.status})`,
       };
     }
 
-    if (typeof body?.path !== "string") {
-      // A 200 owes us the path it wrote to; anything else is a broken server,
-      // not something to paper over with the folder the user typed.
+    if (typeof body?.path !== "string" || typeof body.detail !== "string") {
+      // A 200 owes us where it wrote and what it did.
       return {
-        path: null,
-        error: body?.error ?? "Install failed: the server didn't say where",
+        done: null,
+        error: "Install failed: the server didn't say what it did",
       };
     }
 
-    return { path: body.path, error: null };
+    return { done: { detail: body.detail, path: body.path }, error: null };
   } catch (err) {
     return {
-      path: null,
+      done: null,
       error: err instanceof Error ? err.message : String(err),
     };
   }
@@ -232,9 +233,7 @@ async function postInstall(userLibrary: string): Promise<InstallResult> {
  * @param response - The install response
  * @returns The parsed body, or null
  */
-async function readJsonBody(
-  response: Response,
-): Promise<Partial<{ path: string; error: string }> | null> {
+async function readJsonBody(response: Response): Promise<InstallBody | null> {
   if (
     response.headers.get("Content-Type")?.includes("application/json") !== true
   ) {
@@ -242,7 +241,7 @@ async function readJsonBody(
   }
 
   try {
-    return (await response.json()) as Partial<{ path: string; error: string }>;
+    return (await response.json()) as InstallBody;
   } catch {
     return null;
   }

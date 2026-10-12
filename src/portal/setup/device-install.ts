@@ -30,6 +30,8 @@ const LEFTOVER = new RegExp(
 
 const INSTALLED_MODE = 0o644;
 
+const DEFAULT_SOURCE_NAME = "the bundled one";
+
 // Leftovers younger than this may belong to an install running right now.
 const LEFTOVER_MIN_AGE_MS = 60_000;
 
@@ -72,6 +74,8 @@ export interface DeviceInstallResult {
 export interface InstallDeviceOptions {
   /** Replace an installed device that's newer than the bundled one, or that can't be told apart from it by version */
   force?: boolean;
+  /** What the messages call the file being installed, as in "newer than ___". Defaults to "the bundled one". */
+  sourceName?: string;
 }
 
 /**
@@ -99,6 +103,7 @@ export function installDevice(
 ): DeviceInstallResult {
   const status = deviceFileStatus(userLibrary, sourceFile);
   const { path, state } = status;
+  const sourceName = options.sourceName ?? DEFAULT_SOURCE_NAME;
   const base = {
     path,
     changed: false,
@@ -112,7 +117,7 @@ export function installDevice(
     return {
       ...base,
       outcome: "current",
-      detail: "The installed device is already the bundled one.",
+      detail: `The installed device is already ${sourceName}.`,
     };
   }
 
@@ -120,7 +125,11 @@ export function installDevice(
     (state === "installed-newer" || state === "different") &&
     !options.force
   ) {
-    return { ...base, outcome: "skipped", detail: skipDetail(status) };
+    return {
+      ...base,
+      outcome: "skipped",
+      detail: skipDetail(status, sourceName),
+    };
   }
 
   return { ...base, ...copyDevice(sourceFile, path, state) };
@@ -128,28 +137,28 @@ export function installDevice(
 
 // --- Helpers below the main exports ---
 
-function skipDetail({
-  state,
-  installedVersion,
-  bundledVersion,
-}: DeviceFileStatus): string {
-  return `${skipReason(state, installedVersion, bundledVersion)} Left unchanged. Use force to replace it.`;
+function skipDetail(
+  { state, installedVersion, bundledVersion }: DeviceFileStatus,
+  sourceName: string,
+): string {
+  return `${skipReason(state, installedVersion, bundledVersion, sourceName)} Left unchanged. Use force to replace it.`;
 }
 
 function skipReason(
   state: DeviceState,
   installed: string | undefined,
   bundled: string | undefined,
+  sourceName: string,
 ): string {
   if (state === "installed-newer") {
-    return `The installed device (${installed}) is newer than the bundled one (${bundled}).`;
+    return `The installed device (${installed}) is newer than ${sourceName} (${bundled}).`;
   }
 
   if (installed == null || bundled == null) {
-    return "The installed device differs from the bundled one, and one of them names no version to compare.";
+    return `The installed device differs from ${sourceName}, and one of them names no version to compare.`;
   }
 
-  return `The installed device (${installed}) and the bundled one (${bundled}) differ, and their order can't be told.`;
+  return `The installed device (${installed}) and ${sourceName} (${bundled}) differ, and their order can't be told.`;
 }
 
 type CopyOutcome = Pick<

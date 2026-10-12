@@ -7,6 +7,8 @@
 import Max from "max-api";
 import { BUILD_SHA, DEFAULT_MCP_PORT, VERSION } from "#src/shared/config.ts";
 import { createExpressApp } from "./create-express-app.ts";
+import { registerDeviceReportRoute } from "./rpc/device-install/device-report-route.ts";
+import { askDeviceToReport } from "./rpc/device-install/device-source.ts";
 import { isConfigDirInert } from "./helpers/config-store/config-markdown-store.ts";
 import { registerGlobalContextNodeRoutes } from "./helpers/global-context/global-context-node-routes.ts";
 import { getUpdate } from "./helpers/http/update-check.ts";
@@ -18,6 +20,7 @@ import { registerRemoteScriptRoutes } from "./rpc/remote-script/remote-script-ro
 
 registerLibraryRoutes();
 registerRemoteScriptRoutes();
+registerDeviceReportRoute();
 registerGlobalContextNodeRoutes();
 registerMemoryNodeRoutes();
 registerCustomSkillsNodeRoutes();
@@ -95,6 +98,9 @@ appServer
     // We need to use our own started event because the Node for Max started
     // occurs too early, before our message handlers are registered.
     void Max.outlet("started");
+
+    // The device knows where its file is; this is how Node finds out.
+    askDeviceToReport();
 
     // The process's only GitHub request. `GET /update` reuses this same result
     // rather than making its own — see update-check.ts.

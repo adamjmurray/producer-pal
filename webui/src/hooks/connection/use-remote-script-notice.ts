@@ -9,7 +9,7 @@ import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import {
   subscribeRemoteScriptStatus,
   type RemoteScriptStatus,
-} from "#webui/hooks/settings/use-remote-script";
+} from "#webui/hooks/settings/installation/use-remote-script";
 import { fetchJsonOrNull } from "#webui/utils/fetch-json";
 import { getRemoteScriptUrl } from "#webui/utils/mcp-url";
 
@@ -22,7 +22,7 @@ export type RemoteScriptNotice = "update" | "restart" | null;
  *
  * Reads the status on mount, when the window regains focus, and when the MCP
  * connection comes back (Live restarted). A later successful read clears the
- * badge; a failed read leaves it as it was. It also follows the Remote Script
+ * badge; a failed read leaves it as it was. It also follows the Installation
  * tab's own reads, so an Update there changes the badge without waiting.
  * @param mcpStatus - The MCP connection status; a switch to "connected" re-reads
  * @returns "update", "restart", or null

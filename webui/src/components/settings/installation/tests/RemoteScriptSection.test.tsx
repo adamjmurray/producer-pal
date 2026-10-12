@@ -7,21 +7,30 @@
  * @vitest-environment happy-dom
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   installFetchMock,
   jsonResponse,
 } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { waitForHookState } from "#webui/test-utils/async-test-helpers";
-import { RemoteScriptTab } from "#webui/components/settings/RemoteScriptTab";
-import { type RemoteScriptStatus } from "#webui/hooks/settings/use-remote-script";
+import { InstallationTab } from "#webui/components/settings/installation/InstallationTab";
+import { type RemoteScriptStatus } from "#webui/hooks/settings/installation/use-remote-script";
+import {
+  deviceStatusBody,
+  routeInstallationFetch,
+} from "#webui/components/settings/installation/tests/helpers/installation-fetch-test-helpers";
 import {
   statusBody,
   USER_LIBRARY,
-} from "#webui/components/settings/tests/helpers/remote-script-status-test-helpers";
+} from "#webui/components/settings/installation/tests/helpers/remote-script-status-test-helpers";
 
-describe("RemoteScriptTab", () => {
+describe("InstallationTab remote script section", () => {
   const fetchMock = installFetchMock();
+  let routes: ReturnType<typeof routeInstallationFetch>;
+
+  beforeEach(() => {
+    routes = routeInstallationFetch(fetchMock);
+  });
 
   /**
    * Render the tab past its mount read.
@@ -31,8 +40,15 @@ describe("RemoteScriptTab", () => {
   async function renderTab(
     overrides: Partial<RemoteScriptStatus> = {},
   ): Promise<string | null> {
-    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody(overrides)));
-    render(<RemoteScriptTab />);
+    routes.remote(jsonResponse(statusBody(overrides)));
+
+    // Either status can find the User Library, so a test about not finding it
+    // needs the device to fail too.
+    if (overrides.userLibrary === null) {
+      routes.device(jsonResponse(deviceStatusBody({ userLibrary: null })));
+    }
+
+    render(<InstallationTab />);
 
     const summary = await waitForHookState(() =>
       screen.getByTestId("remote-script-status"),
@@ -42,17 +58,17 @@ describe("RemoteScriptTab", () => {
   }
 
   it("shows a loading state until the status lands", async () => {
-    fetchMock.mockReturnValueOnce(new Promise(() => {}));
-    render(<RemoteScriptTab />);
+    routes.remote(new Promise(() => {}));
+    render(<InstallationTab />);
 
     expect(screen.getByTestId("remote-script-loading")).toBeTruthy();
   });
 
   it("surfaces a failed status read and re-reads on Refresh", async () => {
-    fetchMock.mockResolvedValueOnce(
+    routes.remote(
       new Response("nope", { status: 500, statusText: "Server Error" }),
     );
-    render(<RemoteScriptTab />);
+    render(<InstallationTab />);
 
     const error = await waitForHookState(() =>
       screen.getByTestId("remote-script-load-error"),
@@ -60,7 +76,7 @@ describe("RemoteScriptTab", () => {
 
     expect(error.textContent).toContain("Remote script status failed");
 
-    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
+    routes.remote(jsonResponse(statusBody()));
     fireEvent.click(screen.getByTestId("remote-script-refresh"));
 
     const summary = await waitForHookState(() =>
@@ -73,7 +89,7 @@ describe("RemoteScriptTab", () => {
   it("keeps the last status and shows the error when a Refresh fails", async () => {
     await renderTab();
 
-    fetchMock.mockRejectedValueOnce(new Error("Failed to fetch"));
+    routes.remote(new Error("Failed to fetch"));
     fireEvent.click(screen.getByTestId("remote-script-refresh"));
 
     const error = await waitForHookState(() =>
@@ -85,7 +101,7 @@ describe("RemoteScriptTab", () => {
       "Not installed",
     );
 
-    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
+    routes.remote(jsonResponse(statusBody()));
     fireEvent.click(screen.getByTestId("remote-script-refresh"));
 
     await waitForHookState(() => {
@@ -98,7 +114,7 @@ describe("RemoteScriptTab", () => {
 
     expect(summary).toBe("Not installed");
     expect(
-      (screen.getByTestId("remote-script-path") as HTMLInputElement).value,
+      (screen.getByTestId("user-library-path") as HTMLInputElement).value,
     ).toBe(USER_LIBRARY);
     expect(screen.getByTestId("remote-script-install").textContent).toBe(
       "Install",
@@ -109,13 +125,13 @@ describe("RemoteScriptTab", () => {
   it("installs, shows the path, and then shows the enable steps", async () => {
     await renderTab();
 
-    fetchMock.mockResolvedValueOnce(
+    routes.remote(
       jsonResponse({
         path: `${USER_LIBRARY}/Remote Scripts/Producer_Pal`,
         version: "1.2.0",
       }),
     );
-    fetchMock.mockResolvedValueOnce(
+    routes.remote(
       jsonResponse(statusBody({ installed: true, installedVersion: "1.2.0" })),
     );
     fireEvent.click(screen.getByTestId("remote-script-install"));
@@ -128,8 +144,7 @@ describe("RemoteScriptTab", () => {
     expect(
       screen.getByTestId("remote-script-installed-path").textContent,
     ).toContain(`${USER_LIBRARY}/Remote Scripts/Producer_Pal`);
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
+    expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/remote-script/install"),
       expect.objectContaining({
         method: "POST",
@@ -147,10 +162,10 @@ describe("RemoteScriptTab", () => {
   it("shows the server's reason when the install is refused", async () => {
     await renderTab({ userLibrary: null });
 
-    const input = screen.getByTestId("remote-script-path");
+    const input = screen.getByTestId("user-library-path");
 
     fireEvent.input(input, { target: { value: "/nope" } });
-    fetchMock.mockResolvedValueOnce(
+    routes.remote(
       new Response(JSON.stringify({ error: "No such directory: /nope" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -170,14 +185,14 @@ describe("RemoteScriptTab", () => {
     await renderTab({ userLibrary: null });
 
     expect(
-      (screen.getByTestId("remote-script-path") as HTMLInputElement).value,
+      (screen.getByTestId("user-library-path") as HTMLInputElement).value,
     ).toBe("");
     // Install has nothing to write until the user pastes a path.
     expect(
       (screen.getByTestId("remote-script-install") as HTMLButtonElement)
         .disabled,
     ).toBe(true);
-    expect(screen.getByTestId("remote-script-tab").textContent).toContain(
+    expect(screen.getByTestId("installation-tab").textContent).toContain(
       "Location of User Library",
     );
   });
@@ -292,7 +307,7 @@ describe("RemoteScriptTab", () => {
 
     expect(install.textContent).toBe("Update");
 
-    fireEvent.input(screen.getByTestId("remote-script-path"), {
+    fireEvent.input(screen.getByTestId("user-library-path"), {
       target: { value: "/elsewhere" },
     });
 
@@ -302,27 +317,27 @@ describe("RemoteScriptTab", () => {
   it("keeps a typed path when a Refresh finds a different User Library", async () => {
     await renderTab({ userLibrary: null });
 
-    fireEvent.input(screen.getByTestId("remote-script-path"), {
+    fireEvent.input(screen.getByTestId("user-library-path"), {
       target: { value: "/mine" },
     });
-    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
+    routes.remote(jsonResponse(statusBody()));
     fireEvent.click(screen.getByTestId("remote-script-refresh"));
 
     await waitForHookState(() =>
       expect(screen.getByText("Is this your User Library?")).toBeTruthy(),
     );
     expect(
-      (screen.getByTestId("remote-script-path") as HTMLInputElement).value,
+      (screen.getByTestId("user-library-path") as HTMLInputElement).value,
     ).toBe("/mine");
   });
 
   it('drops "Installed to" when the follow-up status read fails', async () => {
     await renderTab();
 
-    fetchMock.mockResolvedValueOnce(
+    routes.remote(
       jsonResponse({ path: `${USER_LIBRARY}/Remote Scripts/Producer_Pal` }),
     );
-    fetchMock.mockRejectedValueOnce(new Error("Failed to fetch"));
+    routes.remote(new Error("Failed to fetch"));
     fireEvent.click(screen.getByTestId("remote-script-install"));
 
     await waitForHookState(() =>
@@ -334,12 +349,12 @@ describe("RemoteScriptTab", () => {
   it("fills in a User Library a later Refresh finds", async () => {
     await renderTab({ userLibrary: null });
 
-    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
+    routes.remote(jsonResponse(statusBody()));
     fireEvent.click(screen.getByTestId("remote-script-refresh"));
 
     await waitForHookState(() =>
       expect(
-        (screen.getByTestId("remote-script-path") as HTMLInputElement).value,
+        (screen.getByTestId("user-library-path") as HTMLInputElement).value,
       ).toBe(USER_LIBRARY),
     );
   });
@@ -362,7 +377,7 @@ describe("RemoteScriptTab", () => {
   ])("$what", async ({ body, status, contentType, expected }) => {
     await renderTab();
 
-    fetchMock.mockResolvedValueOnce(
+    routes.remote(
       new Response(body, { status, headers: { "Content-Type": contentType } }),
     );
     fireEvent.click(screen.getByTestId("remote-script-install"));
@@ -377,7 +392,7 @@ describe("RemoteScriptTab", () => {
   it("refuses to guess the path when a 200 leaves it out", async () => {
     await renderTab();
 
-    fetchMock.mockResolvedValueOnce(jsonResponse({ version: "1.2.0" }));
+    routes.remote(jsonResponse({ version: "1.2.0" }));
     fireEvent.click(screen.getByTestId("remote-script-install"));
 
     const error = await waitForHookState(() =>
@@ -408,8 +423,8 @@ describe("RemoteScriptTab", () => {
   });
   it("falls back to generic copy when the read answers nothing", async () => {
     // A 200 with a null body: no status to show and no error to quote.
-    fetchMock.mockResolvedValueOnce(jsonResponse(null));
-    render(<RemoteScriptTab />);
+    routes.remote(jsonResponse(null));
+    render(<InstallationTab />);
 
     const error = await waitForHookState(() =>
       screen.getByTestId("remote-script-load-error"),

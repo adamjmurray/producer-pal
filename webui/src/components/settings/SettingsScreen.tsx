@@ -17,6 +17,7 @@ import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings"
 import { CHAT_UI_DOCS_URL } from "#webui/lib/config";
 import { type UseSettingsReturn } from "#webui/types/settings";
 import { ConnectionTab } from "./ConnectionTab";
+import { InstallationTab } from "./installation/InstallationTab";
 import { ToolToggles } from "./controls/ToolToggles";
 import {
   type ConversationLock,
@@ -24,9 +25,9 @@ import {
 } from "./LockedSettingsNotice";
 import { PreferencesTab } from "./PreferencesTab";
 import { PresetsTab } from "./PresetsTab";
-import { RemoteScriptTab } from "./RemoteScriptTab";
 import { SettingsFooter } from "./SettingsFooter";
-import { type TabId, SettingsTabs } from "./SettingsTabs";
+import { type TabId } from "./helpers/settings-tab-ids";
+import { SettingsTabs } from "./SettingsTabs";
 
 interface SettingsScreenProps {
   settings: UseSettingsReturn;
@@ -214,7 +215,7 @@ function SettingsTabContent(
         />
       )}
 
-      {activeTab === "remote-script" && <RemoteScriptTab />}
+      {activeTab === "installation" && <InstallationTab />}
 
       {activeTab === "preferences" && (
         <PreferencesTab

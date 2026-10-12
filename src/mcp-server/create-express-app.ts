@@ -30,6 +30,7 @@ import {
   type RequestProfile,
 } from "./helpers/http/request-profile.ts";
 import { getUpdate } from "./helpers/http/update-check.ts";
+import { dismissInstallNotice } from "./rpc/device-install/device-install-notice.ts";
 import { dismissUpdate } from "./helpers/http/update-dismissal.ts";
 import { registerProjectContextBackupNodeRoutes } from "./helpers/project-context-backup/project-context-backup-node-routes.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
@@ -43,6 +44,7 @@ import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route
 import { setRemoteScriptEnabled } from "./rpc/remote-script/remote-script-client.ts";
 import { setRemoteScriptMinVersion } from "./rpc/remote-script/port/remote-script-version.ts";
 import { withUndoStepEnd } from "./rpc/remote-script/forwarded/with-undo-step-end.ts";
+import { registerDeviceInstallRoutes } from "./routes/device-install-route.ts";
 import { registerRemoteScriptSetupRoutes } from "./routes/remote-script-setup-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerSkillOverridesRoutes } from "./routes/skill-overrides-route.ts";
@@ -129,6 +131,11 @@ registerProjectContextBackupNodeRoutes({
 // itself is Node-side only.
 Max.addHandler("dismissUpdate", () => {
   void dismissUpdate();
+});
+
+// Same for the "Finish installation" notice.
+Max.addHandler("dismissInstallNotice", () => {
+  void dismissInstallNotice();
 });
 
 Max.addHandler("compactOutput", (enabled: unknown) => {
@@ -424,6 +431,7 @@ export function createExpressApp(): Express {
   registerSkillOverridesRoutes(app);
   registerSkillsPreviewRoute(app, () => config.tools);
   registerRemoteScriptSetupRoutes(app);
+  registerDeviceInstallRoutes(app);
   // Raw callLiveApi, not the enriched one: the briefing composes its own blocks
   // in worker order and must not inherit the user-facing connect enrichment.
   registerSubagentBriefingRoute(app, () => config, callLiveApi);
