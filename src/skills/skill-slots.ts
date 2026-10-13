@@ -9,7 +9,10 @@ import {
   arrangementBasic,
   arrangementWrite,
 } from "#src/skills/fragments/arrangement.ts";
-import { automation } from "#src/skills/fragments/automation.ts";
+import {
+  automation,
+  automationWrite,
+} from "#src/skills/fragments/automation.ts";
 import {
   contextBasic,
   contextStandard,
@@ -115,6 +118,7 @@ export const SKILL_SLOT_NAMES = [
   "arrangement-write",
   "arrangement-basic",
   "automation",
+  "automation-write",
   "object-paths",
   "object-paths-basic",
   "working-with-live",
@@ -325,8 +329,15 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   automation: {
     title: "Clip automation",
     description:
-      "Reading and writing a clip's automation envelopes (an arrangement clip's go to the track's automation lane); also converting an audio clip to a new track. Sent only while the Producer Pal remote script is running in Live, and never in small-model mode.",
+      "Reading a clip's automation envelopes (an arrangement clip's go to the track's automation lane), and where automation shows up in other reads. Sent only while the Producer Pal remote script is running in Live, and never in small-model mode.",
     builtIn: automation,
+  },
+
+  "automation-write": {
+    title: "Clip automation: writing",
+    description:
+      "Writing a clip's automation envelopes, the envelope notation, and converting an audio clip to a new track. Only update-clip can act on it, so a read-only caller never gets it. Sent only while the Producer Pal remote script is running in Live, and never in small-model mode. Needs the clip automation guide it sits under.",
+    builtIn: automationWrite,
   },
 
   "arrangement-basic": {

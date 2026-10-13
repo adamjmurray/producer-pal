@@ -378,6 +378,19 @@ describe("gatedOutFragments", () => {
     expect(gatedOutFragments(["ppal-playback"])).toContain("arrangement");
   });
 
+  it("drops the automation write half for a clip caller that can't write", () => {
+    // read-clip reports envelopes but has no way to write one or convert audio.
+    const readOnly = gatedOutFragments(["ppal-read-clip"]);
+
+    expect(readOnly).not.toContain("automation");
+    expect(readOnly).toContain("automation-write");
+
+    const writer = gatedOutFragments(["ppal-update-clip"]);
+
+    expect(writer).not.toContain("automation");
+    expect(writer).not.toContain("automation-write");
+  });
+
   it("keeps arrangement for read-track but not read-scene", () => {
     // read-track returns arrangementClips carrying arrangementStart; read-scene
     // reads clip slots only, so no arrangement position ever reaches it.

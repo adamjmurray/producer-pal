@@ -132,7 +132,7 @@ export const READ_ONLY_ALIAS = "read-only";
  * A cross-cutting alias rather than a group: it spans most of {@link
  * TOOL_GROUPS}, and it is where the token savings actually are. It withholds
  * every writer, which drops the `transforms-*`, `devices-write`,
- * `arrangement-write`, and notation `-write` skills fragments along with their
+ * `arrangement-write`, `automation-write`, and notation `-write` skills fragments along with their
  * schemas.
  */
 export const READ_ONLY_TOOLS: readonly string[] = [

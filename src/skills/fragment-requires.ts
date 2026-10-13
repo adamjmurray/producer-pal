@@ -50,6 +50,7 @@ export const FRAGMENT_REQUIRES: Record<string, readonly string[]> = {
   devices: [TIME_AND_VALUES],
 
   "arrangement-write": ["arrangement"],
+  "automation-write": ["automation"],
 
   // The standard notation head defers note values to time-and-values; the basic
   // heads and midi-json spell their own out, so neither needs the edge. (The

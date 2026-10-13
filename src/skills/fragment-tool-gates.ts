@@ -72,6 +72,7 @@ const CONVERSATION_ONLY = "conversation-only";
 const REMOTE_SCRIPT_FRAGMENTS = [
   "plugins-and-max-devices",
   "automation",
+  "automation-write",
 ] as const;
 
 /**
@@ -229,8 +230,10 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   // one whether or not it can write.
   "arrangement-basic": ARRANGEMENT_TOOLS,
   // Only read-clip reports an envelope and only update-clip writes one, and
-  // neither can without the remote script (see remoteScriptGatedFragments).
+  // neither can without the remote script (see remoteScriptGatedFragments). A
+  // writer keeps the read half: it needs it to read what it is about to replace.
   automation: [READ_CLIP, UPDATE_CLIP],
+  "automation-write": [UPDATE_CLIP],
 
   "object-paths": TRACK_SCENE_PATH_TOOLS,
   "object-paths-basic": SMALL_MODEL_PATH_TOOLS,

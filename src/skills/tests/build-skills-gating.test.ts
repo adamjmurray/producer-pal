@@ -529,6 +529,27 @@ describe("buildSkills - clip automation gating", () => {
     ).toContain(HEADING);
   });
 
+  it("gives a clip reader the read half but not how to write or convert", () => {
+    const skills = buildSkills({
+      tools: ["ppal-read-clip"],
+      remoteScript: true,
+    });
+
+    expect(skills).toContain("**Read** with ppal-read-clip");
+    expect(skills).not.toContain("**Write** with ppal-update-clip");
+    expect(skills).not.toContain("## Converting Audio Clips");
+  });
+
+  it("gives a clip writer both halves", () => {
+    const skills = buildSkills({
+      tools: ["ppal-update-clip"],
+      remoteScript: true,
+    });
+
+    expect(skills).toContain("**Write** with ppal-update-clip");
+    expect(skills).toContain("## Converting Audio Clips");
+  });
+
   it("never teaches it in small-model mode", () => {
     expect(
       buildSkills({ smallModelMode: true, remoteScript: true }),

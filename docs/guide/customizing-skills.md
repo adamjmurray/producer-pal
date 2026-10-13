@@ -69,7 +69,8 @@ a whole area you never use:
 | `arrangement`                                    | What an Arrangement position means: song meter vs. clip meter                                                                                |
 | `arrangement-write`                              | Moving and splitting clips on the Arrangement timeline, and take lanes                                                                       |
 | `arrangement-basic`                              | What a take lane is and how a path names one, in small model mode                                                                            |
-| `automation`                                     | Reading and writing clip automation envelopes, sent only while the Producer Pal [remote script](/guide/remote-script) is running             |
+| `automation`                                     | Reading clip automation envelopes, sent only while the Producer Pal [remote script](/guide/remote-script) is running                         |
+| `automation-write`                               | Writing clip automation envelopes and converting audio clips to a new track, with the same remote script condition                           |
 | `object-paths` / `object-paths-basic`            | Addressing tracks and scenes by path: `t0`, `s0`, `rt0`, `mt`, the `+` spellings that create, and how a number you say maps onto one         |
 | `working-with-live`                              | Session vs. Arrangement habits, playback, and general music-making advice                                                                    |
 | `context-standard` / `context-basic`             | [Context & Memory](/guide/context): the project, global, and memory layers                                                                   |
@@ -210,11 +211,12 @@ transforms guides all build on `transforms-core`; keeping
 `transforms-generative` without it leaves the AI knowing `ratchet()` and the
 waveforms but not the shape of a transform, which is worse than dropping them
 all. `devices-write`, `plugins-and-max-devices` and `specialized-devices` all
-sit inside `devices` the same way, and so does `arrangement-write` inside
-`arrangement`. Each notation's write half sits inside its own guide too:
-`barbeat-standard-write` inside `barbeat-standard`, `stark-basic-write` inside
-`stark-basic`, and so on. That's why the rows above are ordered
-most-specific-first and say which fragments travel together.
+sit inside `devices` the same way, and so do `arrangement-write` inside
+`arrangement` and `automation-write` inside `automation`. Each notation's write
+half sits inside its own guide too: `barbeat-standard-write` inside
+`barbeat-standard`, `stark-basic-write` inside `stark-basic`, and so on. That's
+why the rows above are ordered most-specific-first and say which fragments
+travel together.
 
 `time-and-values` is the widest of these: it defines the units everything else
 counts in, plus the octave convention (C3 = MIDI 60). The bar|beat guide,
