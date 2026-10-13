@@ -205,18 +205,22 @@ export function isUnclosed(text: string, open: string, close: string): boolean {
 }
 
 /**
- * Hint for a note value with a zero denominator (`n/0`, `@n1/0`). Same text as
- * the grammars' own error for a duration value.
+ * Hint for a note value whose denominator is 0 or starts with 0 (`n/0`,
+ * `@n1/0`, `n/05`). Same text as the grammars' own errors for a duration value.
  * @param code - The failing line, comments removed
  * @returns The hint, or null when there is no such note value
  */
 export function zeroDenominatorHint(code: string): string | null {
   // Not `clip.position/0`: the `n` must start a word.
-  const token = /(?<![\w.])n[\d.]*\/0(?![\d.])/.exec(code)?.[0];
+  const token = /(?<![\w.])n[\d.]*\/0\d*(?![\d.])/.exec(code)?.[0];
 
-  return token == null
-    ? null
-    : `a note value's denominator can't be 0 (got ${token}): n/4 = quarter, n/8 = eighth, n/12 = eighth triplet.`;
+  if (token == null) {
+    return null;
+  }
+
+  const problem = token.endsWith("/0") ? "be 0" : "start with 0";
+
+  return `a note value's denominator can't ${problem} (got ${token}): n/4 = quarter, n/8 = eighth, n/12 = eighth triplet.`;
 }
 
 /**

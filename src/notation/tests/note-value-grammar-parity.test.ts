@@ -199,7 +199,7 @@ const OFFSET_SITES = [
 // point — asserting this pattern keeps a rejection test from passing on that
 // guard instead of on the grammar.
 const REJECTION =
-  /^(Expected |Invalid (duration|bar\|beat) format|durations need a denominator|step intervals use|beat (offsets|positions)|use note names|positions use a pipe)/;
+  /^(Expected |Invalid (duration|bar\|beat) format|durations need a denominator|a note value's denominator can't |step intervals use|beat (offsets|positions)|use note names|positions use a pipe)/;
 
 // Registers one test per token: no duration site accepts it.
 function itRejectsDurations(tokens: string[]): void {

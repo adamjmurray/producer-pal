@@ -191,5 +191,8 @@ describe("BarBeatScript Parser - duration", () => {
     );
     expect(() => parser.parse("n//4 C3")).toThrow('but "n" found');
     expect(() => parser.parse("n3/0 C3")).toThrow(/denominator/);
+    expect(() => parser.parse("n/05 C3")).toThrow(
+      "a note value's denominator can't start with 0 (got n/05)",
+    );
   });
 });

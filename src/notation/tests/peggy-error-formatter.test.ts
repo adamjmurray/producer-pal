@@ -143,6 +143,9 @@ describe("hint helpers", () => {
     expect(zeroDenominatorHint("C3 1|1+n1/0")).toContain("(got n1/0)");
     expect(zeroDenominatorHint("n/0.5 C3")).toBeNull();
     expect(zeroDenominatorHint("clip.position/0")).toBeNull();
+    expect(zeroDenominatorHint("C3 1|1+n/05")).toContain(
+      "can't start with 0 (got n/05)",
+    );
   });
 
   it("measures edit distance", () => {

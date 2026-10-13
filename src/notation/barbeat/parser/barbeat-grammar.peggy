@@ -264,6 +264,9 @@ duration "duration value"
     // Same text as the transform grammar's nDuration.
     throw new Error(`a note value's denominator can't be 0 (got ${text()}): n/4 = quarter, n/8 = eighth, n/12 = eighth triplet.`);
   }
+  / "n" [0-9.]* "/0" [0-9]+ ![0-9.] {
+    throw new Error(`a note value's denominator can't start with 0 (got ${text()}): n/4 = quarter, n/8 = eighth, n/12 = eighth triplet.`);
+  }
   / "n" bad:badAbsoluteValue {
     throw new Error(`durations need a denominator: n/4 = quarter, n/8 = eighth, n/12 = eighth triplet, or a bar form like 1bar or 1bar+n/4. Got n${bad}`);
   }

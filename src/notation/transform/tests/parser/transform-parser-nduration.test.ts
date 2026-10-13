@@ -155,6 +155,12 @@ describe("Transform Parser - nDuration", () => {
     );
   });
 
+  it("throws on a leading-zero denominator (n/05)", () => {
+    expect(() => parseAssignments("duration = n/05")).toThrow(
+      "denominator can't start with 0 (got n/05)",
+    );
+  });
+
   it("throws on double slash (n//4)", () => {
     expect(() => parseAssignments("duration = n//4")).toThrow('but "n" found');
   });

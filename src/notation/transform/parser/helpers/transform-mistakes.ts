@@ -31,6 +31,7 @@ type MistakeCheck = (line: FailedLine) => string | null;
 const CHECKS: MistakeCheck[] = [
   unclosedParen,
   ({ code }) => zeroDenominatorHint(code),
+  zeroBarMistake,
   mixedWildcardRange,
   unknownPropertyMistake,
   whereNameMistake,
@@ -77,6 +78,18 @@ function unclosedParen(line: FailedLine): string | null {
   return isUnclosed(line.code, "(", ")")
     ? `unclosed "(" — add the missing ")".`
     : null;
+}
+
+/**
+ * @param line - The failing line
+ * @returns Hint for `0bar`, which no transform value accepts
+ */
+function zeroBarMistake(line: FailedLine): string | null {
+  const token = /(?<![\w.|])0bars?(?!\w)/.exec(line.code)?.[0];
+
+  return token == null
+    ? null
+    : `${token} isn't a duration: bar counts start at 1 (e.g. 1bar).`;
 }
 
 /**

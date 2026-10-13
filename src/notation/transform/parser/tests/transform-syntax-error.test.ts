@@ -92,14 +92,39 @@ describe("transform syntax errors name the mistake", () => {
     },
   );
 
+  it.each(["duration = n/0.5", "1|1+n/0.5-2|1: v1"])(
+    "doesn't call %s a zero denominator",
+    (source) => {
+      expect(errorFor(source)).not.toContain("can't be 0");
+    },
+  );
+
   it.each([
-    "duration = n/0.5",
-    "duration = n/04",
-    "1|1+n/0.5-2|1: v1",
-    "1|1+n/05-2|1: v1",
-  ])("doesn't call %s a zero denominator", (source) => {
-    expect(errorFor(source)).not.toContain("can't be 0");
+    ["duration = n/05", "n/05"],
+    ["duration = n/04", "n/04"],
+    ["duration = n3/00", "n3/00"],
+    ["1|1+n/05-2|1: v1", "n/05"],
+  ])("says a denominator can't start with 0 in %s", (source, token) => {
+    expect(errorFor(source)).toContain(
+      `a note value's denominator can't start with 0 (got ${token}): n/4 = quarter`,
+    );
   });
+
+  it.each(["repeat(0bar)", "duration = 0bar", "duration = 0bars + n/4"])(
+    "says 0bar isn't a duration in %s",
+    (source) => {
+      expect(errorFor(source)).toContain(
+        "isn't a duration: bar counts start at 1 (e.g. 1bar).",
+      );
+    },
+  );
+
+  it.each(["duration = 10bar +", "velocity = clip.0bar"])(
+    "doesn't read %s as a 0bar",
+    (source) => {
+      expect(errorFor(source)).not.toContain("isn't a duration");
+    },
+  );
 });
 
 describe("transform syntax error details", () => {

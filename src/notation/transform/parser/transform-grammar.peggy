@@ -806,6 +806,9 @@ nDuration "absolute duration value"
   / "n" [0-9.]* "/0" ![0-9.] {
     throw new Error(`a note value's denominator can't be 0 (got ${text()}): n/4 = quarter, n/8 = eighth, n/12 = eighth triplet.`);
   }
+  / "n" [0-9.]* "/0" [0-9]+ ![0-9.] {
+    throw new Error(`a note value's denominator can't start with 0 (got ${text()}): n/4 = quarter, n/8 = eighth, n/12 = eighth triplet.`);
+  }
   / "n" bad:badAbsoluteValue {
     throw new Error(`durations need a denominator: n/4 = quarter, n/8 = eighth, n/12 = eighth triplet. Got n${bad}`);
   }
