@@ -145,8 +145,13 @@ the answer. No end follows a timeout, since V8 may still be changing the Set. A
 Live without the remote script keeps one merged step. A tool that is not
 read-only (`readOnlyHint`) gets this with no code of its own, except
 `ppal-manage`: closing a step right after an undo could wipe Live's redo
-history. Don't open undo steps inside a tool or route: a begin closes the step
-holding the call's other changes.
+history. A tool whose calls don't all change the Set declares `changesSet(args)`
+in its def (`ppal-context`: reads, and global or memory writes, change nothing),
+and a call it says changes nothing gets no end. That matters because an end also
+clears the undo guard that `ppal-manage` keeps (see
+[ppal-manage](../specs/tool-behavior/ppal-manage.md)). Don't open undo steps
+inside a tool or route: a begin closes the step holding the call's other
+changes.
 
 ## Adding a write tool
 

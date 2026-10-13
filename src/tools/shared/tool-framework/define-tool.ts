@@ -39,6 +39,10 @@ export interface ToolOptions {
   annotations?: ToolAnnotations;
   // True: small-model mode leaves the tool out entirely (see isOfferedInMode).
   omitInSmallModel?: boolean;
+  // For a tool that isn't read-only: whether a call with these args can change
+  // the Set. Omitted means every call can. A call that can't gets no undo step
+  // closed after it (see with-undo-step-end.ts).
+  changesSet?: (args: Record<string, unknown>) => boolean;
   // Param descriptions/exclusions/enum-trims are co-located on each param via
   // param() (see modal-config.ts) — there is no separate override config.
   inputSchema: Record<string, ZodType>;
@@ -98,6 +102,7 @@ export function defineTool(
       inputSchema,
       description,
       omitInSmallModel: _omitInSmallModel,
+      changesSet: _changesSet,
       ...toolConfig
     } = options;
 

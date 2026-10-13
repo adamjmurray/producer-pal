@@ -126,10 +126,12 @@ describe("withUndoStepEnd", () => {
     ];
     // ppal-manage is not read-only, but an undo step closed right after an undo
     // could wipe Live's redo history, and an install changes nothing in the Set.
+    // ppal-context with no args is a read, which changes nothing either.
     const writes = STANDARD_TOOL_DEFS.filter(
       (def) =>
         def.toolOptions.annotations?.readOnlyHint !== true &&
-        def.toolName !== "ppal-manage",
+        def.toolName !== "ppal-manage" &&
+        def.toolName !== "ppal-context",
     ).map((def) => def.toolName);
 
     expect(writes).toContain("ppal-create-track");
@@ -149,6 +151,65 @@ describe("withUndoStepEnd", () => {
     }
 
     expect(sent).toStrictEqual(expected);
+  });
+
+  it.each([
+    [{}, false],
+    [{ action: "read" }, false],
+    [{ action: "read", scope: "project" }, false],
+    [{ action: "read", scope: "memory", name: "x" }, false],
+    [{ action: "read", scope: "global" }, false],
+    [{ action: "write", scope: "global", content: "x" }, false],
+    [{ action: "write", scope: "memory", name: "x", content: "y" }, false],
+    [{ action: "delete", scope: "memory", name: "x" }, false],
+    [{ action: "write", content: "x" }, true],
+    [{ action: "write", scope: "project", content: "x" }, true],
+  ])(
+    "ppal-context %j sends an end: %s",
+    async (args: Record<string, unknown>, ends: boolean) => {
+      const script = await startScript();
+      const call = withUndoStepEnd(() => Promise.resolve(OK));
+
+      await call("ppal-context", args);
+      await settle();
+      expect(script.requests).toHaveLength(ends ? 1 : 0);
+    },
+  );
+
+  it("still ends the step after ppal-playback, whatever the action", async () => {
+    const script = await startScript();
+    const call = withUndoStepEnd(() => Promise.resolve(OK));
+
+    await call("ppal-playback", { action: "stop" });
+    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
+    await call("ppal-playback", { action: "update-arrangement", loop: true });
+    await vi.waitFor(() => expect(script.requests).toHaveLength(2));
+  });
+
+  it("never ends the step after ppal-manage", async () => {
+    const script = await startScript();
+    const call = withUndoStepEnd(() => Promise.resolve(OK));
+
+    await call("ppal-manage", { action: "undo" });
+    await call("ppal-manage", { action: "redo" });
+    await settle();
+    expect(script.requests).toHaveLength(0);
+  });
+
+  it("does not count a skipped call among the running writes", async () => {
+    const script = await startScript();
+    const { call, finish } = deferredCalls();
+    const write = call("ppal-create-track", {});
+    const read = call("ppal-context", { action: "read" });
+
+    finish(OK);
+    await write;
+    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
+
+    finish(OK);
+    await read;
+    await settle();
+    expect(script.requests).toHaveLength(1);
   });
 
   it("sends nothing after a timeout", async () => {

@@ -31,6 +31,14 @@ export const toolDefContext = defineTool("ppal-context", {
     destructiveHint: true, // write replaces, delete removes stored content
   },
 
+  // Reads, and anything on global or memory (files on disk), never touch the
+  // Set. A project write goes to the device, which is saved with the Set.
+  changesSet: ({ action, scope }) =>
+    action !== undefined &&
+    action !== "read" &&
+    scope !== "global" &&
+    scope !== "memory",
+
   inputSchema: {
     action: param(
       z

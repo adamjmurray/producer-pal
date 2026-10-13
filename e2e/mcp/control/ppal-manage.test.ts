@@ -112,6 +112,25 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-manage undo and redo", () => {
     expect(result.canUndo).toBe(true);
   });
 
+  // A context read changes nothing in the Set, so it closes no undo step and
+  // leaves the history between the undo and the redo alone.
+  it("redoes after a ppal-context read in between", async () => {
+    const before = await trackCount();
+
+    await createTrack();
+    await manage("undo");
+    await ctx.client!.callTool({
+      name: "ppal-context",
+      arguments: { action: "read" },
+    });
+    await sleep(END_LANDS_MS);
+
+    const result = parseToolResult<HistoryResult>(await manage("redo"));
+
+    expect(result.redone).toBe(1);
+    expect(await trackCount()).toBe(before + 1);
+  });
+
   it("undoes only the last of two write calls", async () => {
     const before = await trackCount();
 
