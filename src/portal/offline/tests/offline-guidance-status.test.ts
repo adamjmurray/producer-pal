@@ -136,6 +136,7 @@ Or set it up now: run ${INSTALL} (installs to ${SCRIPT_PATH}), then ${RESTART}. 
 
   it.each([
     ["0.0.1", "0.0.1"],
+    [`${VERSION}-older-rc`, `${VERSION}-older-rc`],
     [null, "unknown version"],
   ])(
     "offers an update for an older (%s) installed script",

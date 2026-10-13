@@ -6,6 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   checkForUpdate,
+  isBehindBuild,
   isNewerVersion,
   remoteScriptAttention,
   type RemoteScriptAttentionInput,
@@ -381,5 +382,32 @@ describe("remoteScriptAttention", () => {
         }),
       ),
     ).toBeNull();
+  });
+});
+
+describe("isBehindBuild", () => {
+  it("is behind when the installed release is older", () => {
+    expect(isBehindBuild("2.4.0", "2.5.0")).toBe(true);
+  });
+
+  it("is not behind when the versions are equal", () => {
+    expect(isBehindBuild("2.5.0-rc1", "2.5.0-rc1")).toBe(false);
+  });
+
+  it("is not behind when the installed version is newer", () => {
+    expect(isBehindBuild("2.6.0", "2.5.0")).toBe(false);
+    expect(isBehindBuild("2.5.0", "2.5.0-rc2")).toBe(false);
+  });
+
+  it("is behind between two pre-releases of one version", () => {
+    expect(isBehindBuild("2.5.0-rc1", "2.5.0-rc2")).toBe(true);
+  });
+
+  it("is behind when a pre-release is installed and the release ships", () => {
+    expect(isBehindBuild("2.5.0-rc2", "2.5.0")).toBe(true);
+  });
+
+  it("is behind when the installed version is unreadable", () => {
+    expect(isBehindBuild(null, "2.5.0")).toBe(true);
   });
 });

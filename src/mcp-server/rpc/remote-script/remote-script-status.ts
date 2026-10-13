@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { VERSION } from "#src/shared/config.ts";
-import { isNewerVersion } from "#src/shared/version-check.ts";
+import { isBehindBuild, isNewerVersion } from "#src/shared/version-check.ts";
 import { setRunningLiveMajor } from "../../live-library/live-db-path.ts";
 import { findUserLibraryPath } from "../../live-library/query/user-library-path.ts";
 import {
@@ -133,11 +133,7 @@ function isBehind(
   installed: boolean,
   installedVersion: string | null,
 ): boolean {
-  return (
-    installed &&
-    installedVersion !== VERSION &&
-    !isInstalledNewer(installedVersion)
-  );
+  return installed && isBehindBuild(installedVersion, VERSION);
 }
 
 /**

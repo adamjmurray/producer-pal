@@ -100,6 +100,25 @@ export function isNewerVersion(current: string, latest: string): boolean {
   return hasPreReleaseSuffix(current) && !hasPreReleaseSuffix(latest);
 }
 
+/**
+ * Whether an installed copy is behind a build: different from it, and not newer.
+ * An unreadable version counts as behind. Differs-from is the test, not
+ * `isNewerVersion`, which can't order two pre-releases of one version (rc1 vs
+ * rc2). Use this wherever an installed copy is judged against the build.
+ * @param installed - The installed version, or null when unreadable
+ * @param build - This build's version
+ * @returns True when the installed copy should be updated
+ */
+export function isBehindBuild(
+  installed: string | null,
+  build: string,
+): boolean {
+  return (
+    installed !== build &&
+    !(installed != null && isNewerVersion(build, installed))
+  );
+}
+
 function parseVersionParts(version: string): number[] {
   let cleaned = version.trim();
 

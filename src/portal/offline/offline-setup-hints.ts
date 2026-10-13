@@ -6,9 +6,8 @@
 // The next steps an offline call is told, worded by what is installed where.
 // Each device sentence says what ppal-manage add-producer-pal will do.
 
-import { type InstalledRemoteScript } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { UPDATE_PORTAL_ADVICE, VERSION } from "#src/shared/config.ts";
-import { isNewerVersion } from "#src/shared/version-check.ts";
+import { isBehindBuild, isNewerVersion } from "#src/shared/version-check.ts";
 import { INSTALL_WITH_TOOL } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { type OfflineInstallStatus } from "./offline-install-status.ts";
 
@@ -124,19 +123,9 @@ function scriptLine(status: OfflineInstallStatus): string | undefined {
     return `Or set it up now: run ${INSTALL_WITH_TOOL} (installs to ${script.path}), then ask the user to restart Live and ${CONTROL_SURFACE}.`;
   }
 
-  return isCurrent(script)
+  return !isBehindBuild(script.installedVersion, VERSION)
     ? `The Producer Pal remote script is installed (${script.installedVersion}, ${script.path}) but not running. Ask the user to restart Live if they installed it since Live started, and to ${CONTROL_SURFACE}.`
     : `The Producer Pal remote script at ${script.path} is out of date (${script.installedVersion ?? UNKNOWN}; this is ${VERSION}). Run ${INSTALL_WITH_TOOL} to update it, then ask the user to restart Live and ${CONTROL_SURFACE}.`;
-}
-
-/**
- * @param script - An installed remote script
- * @returns Whether its version is this build's or newer
- */
-function isCurrent(script: InstalledRemoteScript): boolean {
-  const { installedVersion } = script;
-
-  return installedVersion != null && !isNewerVersion(installedVersion, VERSION);
 }
 
 /**
