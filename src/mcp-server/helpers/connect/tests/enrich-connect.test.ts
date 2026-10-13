@@ -212,10 +212,10 @@ describe("enrichConnect", () => {
     expect(blocks.at(-1)).toContain("Report the connection status");
   });
 
-  it("offers to get to know a user with no global context and no memories", async () => {
+  it("marks a user with no global context and no memories as new", async () => {
     const blocks = await enrichedBlocks();
 
-    expect(blocks.at(-1)).toContain("musical style, preferences, and goals");
+    expect(blocks.at(-1)).toContain("nothing is saved about them yet");
   });
 
   // The project blob reaches the next step by a different route than the other
@@ -236,7 +236,7 @@ describe("enrichConnect", () => {
     expect(blocks.at(-1)).toContain("Currently empty: global context, memory.");
   });
 
-  it("drops the offer once a memory exists, and keeps the next step last", async () => {
+  it("drops the new-user marker once a memory exists, and keeps the next step last", async () => {
     rememberMemory({
       name: "prefers-dark-techno",
       description: "Default genre for new material",
@@ -245,9 +245,7 @@ describe("enrichConnect", () => {
 
     const blocks = await enrichedBlocks();
 
-    expect(blocks.at(-1)).not.toContain(
-      "musical style, preferences, and goals",
-    );
+    expect(blocks.at(-1)).not.toContain("nothing is saved about them yet");
     expect(blocks.at(-1)).toContain("Report the connection status");
   });
 });

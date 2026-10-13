@@ -14,6 +14,16 @@
 // of the first fragments a worker drops.
 
 /**
+ * What ppal-connect says for a user with no global context and no memories. The
+ * New user paragraph below keys on it, so the two cannot drift apart.
+ */
+export const NEW_USER_MARKER = "nothing is saved about them yet";
+
+// The New user paragraph asks a real yes/no question because a statement like
+// "tell me anytime" gives the user nothing to decline, so a brush-off never gets
+// recorded and they'd be asked every session. What they share goes to global
+// (always-on); an empty document needs no permission.
+/**
  * The Context & Memory fragment at standard depth: the three ppal-context
  * scopes, who owns each, and how to manage the memory index.
  */
@@ -32,6 +42,8 @@ If a fact should ALWAYS apply, it belongs in context — never divert it into me
 Before ANY write, check the memory index: if an entry covers the fact, UPDATE it (reuse its name) — never write it to context or add a duplicate. This beats the layer rules; two layers disagreeing is worse than either being wrong.
 
 Whichever layer you write, write for a stranger: they have none of this conversation. Capture the whole structure a fact sits in, not the isolated detail in front of you — so they can act on it without re-deriving what you worked out here.
+
+**New user** (connect says ${NEW_USER_MARKER}): end your connect reply with one short yes-or-no question: would they like to tell you their musical style, preferences, and goals so you can remember them across sessions? If they share, write what they said to global context (it's empty, so nothing is overwritten). If they say no or just start working, write a one-line memory saying so, so they aren't asked again.
 
 Writing project/global (the user's own documents — an action:write REPLACES the whole document):
 - **Only what the USER told you, here.** Facts you already hold about them — from your own memory, another tool, an earlier project — are NOT yours to install. Offer: list exactly what you'd add, and write only on a yes.

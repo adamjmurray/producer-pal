@@ -62,7 +62,6 @@ export const LONG_BLOCK_ALLOWANCES: Record<string, number> = {
   "src/live-api-adapter/live-api-build-stats.ts": 34,
   "src/live-api-adapter/live-api-build.ts": 57,
   "src/live-api-adapter/live-api-release.ts": 72,
-  "src/mcp-server/helpers/connect/next-step-inject.ts": 37,
   "src/mcp-server/helpers/project-context-backup/project-context-backup-store.ts": 42,
   "src/mcp-server/live-library/list-plugins.ts": 29,
   "src/mcp-server/routes/subagent-briefing-route.ts": 29,

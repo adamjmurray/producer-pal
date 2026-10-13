@@ -8,9 +8,10 @@
  *
  * Memory is invisible unless the assistant raises it, so a user who is never
  * asked never gets one. When global context is empty and no memories exist, the
- * next-step block that closes ppal-connect
- * (`src/mcp-server/helpers/connect/next-step-inject.ts`) tells the assistant to
- * invite the user to share their style, preferences, and goals.
+ * result of ppal-connect marks a new user
+ * (`src/mcp-server/helpers/connect/next-step-inject.ts`) and the context Skill
+ * (`src/skills/fragments/context.ts`) says what to do: invite the user to share
+ * their style, preferences, and goals.
  *
  * What they share goes to GLOBAL context, not memory — an always-on fact about
  * who they are belongs in an always-on layer — and it needs no confirmation
@@ -20,11 +21,10 @@
  *
  * The offer must also be ONE-SHOT, and nothing tracks "already asked": sharing
  * fills global context, declining writes a memory, and EITHER flips the check
- * back to the plain next step. So these grade both directions, which is the
- * whole risk surface: an assistant that never asks leaves the feature
- * undiscovered, and one that asks every session is a nag. The unit tests
- * (`next-step-inject.test.ts`) already pin WHICH text gets injected; what only
- * an LLM can tell us is whether the model acts on it.
+ * back to the plain next step. So these grade both directions: an assistant
+ * that never asks leaves the feature undiscovered, and one that asks every
+ * session is a nag. The unit tests pin WHICH text gets injected; only an LLM
+ * can tell us whether the model acts on it.
  *
  * The judge is the GATE here, not advisory: "did it ask?" and "did it drop the
  * subject?" are properties of the prose, and no tool call can pin them.
@@ -234,7 +234,8 @@ export const contextOnboardingStaysQuiet: EvalScenario = {
 musical background and declined. Evaluate the assistant's reply after connecting
 to Live. It should report the connection/Live Set overview and wait for
 instructions. FAIL if it asks the user about their musical style, preferences,
-or goals again in any form.`,
+or goals again in any form. A generic "what would you like to work on?" is not
+asking again.`,
     },
   ],
 };
