@@ -4,7 +4,7 @@ description:
   What Producer Pal can't do, and the workarounds. No control over VST/AU
   plug-in internals, arrangement automation only through Session clips, no audio
   analysis or synthesis, no visibility into arrangement time signature changes,
-  and one drum pitch map per track.
+  one drum pitch map per track, and backslashes in names read back changed.
 ---
 
 # Limitations
@@ -164,6 +164,21 @@ Reading a track gives the AI a map of which MIDI pitch triggers which drum pad,
 so it can place your kick and snare by name instead of guessing. That map comes
 from the first Drum Rack on the track, including ones nested inside other racks,
 so if you layer several, the AI goes by the first one's pad names.
+
+## Backslashes in Names Read Back Changed
+
+Producer Pal writes a backslash into a track, scene, clip or other name as
+written, and Live shows it correctly. But Max for Live changes it when Producer
+Pal reads the name back, so the AI sees a different name than the one in Live:
+
+- **macOS:** the backslash is dropped. `Kick\Snare` reads as `KickSnare`.
+- **Windows:** it reads as a slash. `Kick\Snare` reads as `Kick:/Snare`.
+
+If the AI then writes that name somewhere else, the changed version is what gets
+saved. Leave backslashes out of names you want Producer Pal to work with.
+
+File paths aren't affected in practice. A Windows sample path reads back with
+forward slashes (`C:/Users/...`), which Live accepts.
 
 ---
 

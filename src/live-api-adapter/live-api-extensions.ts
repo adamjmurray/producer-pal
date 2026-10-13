@@ -292,7 +292,8 @@ if (typeof LiveAPI !== "undefined") {
    * Get the object's name as a string. Live hands back an all-digit name
    * (e.g. a locator, chain, or track named "5678") as a number, not a
    * string — this normalizes that, and reports "" instead of "undefined"
-   * for an object with no name property.
+   * for an object with no name property. A backslash doesn't survive Max's
+   * read: macOS drops it and Windows turns it into a slash.
    * @returns The name, always a string
    */
   LiveAPI.prototype.getName = function (this: LiveAPI): string {

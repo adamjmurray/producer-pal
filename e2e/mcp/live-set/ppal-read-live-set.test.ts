@@ -112,8 +112,8 @@ describe("ppal-read-live-set", () => {
 
   // An all-digit name resolves as an id, which points at whichever locator
   // carries it (999999 is past any id Live hands out here). A trailing
-  // backslash escapes the comma after it in a list. The trip to V8 reads `\\`
-  // as one backslash, so the sent name doubles it.
+  // backslash escapes the comma after it in a list. Max reads a stored `\\`
+  // back as one backslash on macOS, so the sent name doubles it.
   it.each([
     ["named like an ID", "999999", "999999"],
     ["whose name ends in a backslash", "Ends\\\\", "Ends\\"],
