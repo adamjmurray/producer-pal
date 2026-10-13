@@ -94,27 +94,37 @@ describe("ppal-update-clip destinations it can make nothing of", () => {
     expect(data.path).toBe(`t${EMPTY_MIDI_TRACK}[33|1]`);
   });
 
-  it("throws for a lone clip whose locator the Set doesn't have", async () => {
-    const clipId = await createArrangementClip(ctx, "640|1", "C3 1|1", "1bar");
+  // A switch sent off asks nothing, so it must not turn the throw into an entry.
+  it.each([{}, { duplicateLoop: false }])(
+    "throws for a lone clip whose locator the Set doesn't have (%j)",
+    async (extra) => {
+      const clipId = await createArrangementClip(
+        ctx,
+        "640|1",
+        "C3 1|1",
+        "1bar",
+      );
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        id: clipId,
-        toPath: `t${EMPTY_MIDI_TRACK}[loc:${MISSING_LOCATOR}]`,
-      },
-    });
+      const result = await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: {
+          id: clipId,
+          toPath: `t${EMPTY_MIDI_TRACK}[loc:${MISSING_LOCATOR}]`,
+          ...extra,
+        },
+      });
 
-    await sleep(200);
+      await sleep(200);
 
-    expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toContain(
-      `no locator found with name "${MISSING_LOCATOR}" for toPath`,
-    );
-    expect((await readClipFully(ctx.client!, { id: clipId })).path).toBe(
-      `t${EMPTY_MIDI_TRACK}[640|1]`,
-    );
-  });
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toContain(
+        `no locator found with name "${MISSING_LOCATOR}" for toPath`,
+      );
+      expect((await readClipFully(ctx.client!, { id: clipId })).path).toBe(
+        `t${EMPTY_MIDI_TRACK}[640|1]`,
+      );
+    },
+  );
 
   // "l=" once named the lane an "l+" before it appended, and never shipped, so
   // it is just an unknown segment now. Every tool that takes a clip destination

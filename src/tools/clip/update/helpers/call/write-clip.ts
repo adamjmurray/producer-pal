@@ -39,6 +39,7 @@ import {
   reportClipReasons,
 } from "../entries/clip-reasons.ts";
 import { applyCodeToWrittenClips } from "./apply-clip-code.ts";
+import { isSwitchedOff } from "#src/tools/shared/validation/lists/refuse-no-write.ts";
 import { type ClipRun } from "./clip-run.ts";
 import { cutClip } from "./cut-clip.ts";
 import { type ClipCall } from "./parse-clip-call.ts";
@@ -390,7 +391,10 @@ function askedBeyondPosition(
   ignored: ReadonlySet<string>,
 ): boolean {
   return CONTENT_PARAMS.some(
-    (param) => args[param] != null && !ignored.has(param),
+    (param) =>
+      args[param] != null &&
+      !isSwitchedOff(param, args[param]) &&
+      !ignored.has(param),
   );
 }
 

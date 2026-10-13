@@ -405,6 +405,37 @@ describe("updateClip - a move Live turns down at write time", () => {
       expect.anything(),
     );
   });
+
+  // A switch sent off asks nothing, so it can't turn the refusal into an entry.
+  it.each([{}, { duplicateLoop: false }])(
+    "refuses a lone move to an audio track the same way with %j",
+    async (extra) => {
+      setupRefusingTrack([{ id: "113", start: 0, end: 16 }]);
+
+      await expect(
+        updateClip({ id: "113", toPath: `t${AUDIO_TRACK}[1|1]`, ...extra }),
+      ).rejects.toThrow(
+        "not moved: track t1 (id track-1) is audio; a MIDI clip needs a MIDI track",
+      );
+    },
+  );
+
+  it("keeps the entry when duplicateLoop is true beside a refused move", async () => {
+    setupRefusingTrack([{ id: "113", start: 0, end: 16 }]);
+
+    const result = await updateClip({
+      id: "113",
+      toPath: `t${AUDIO_TRACK}[1|1]`,
+      duplicateLoop: true,
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        id: "113",
+        detail: expect.stringContaining("not moved:") as string,
+      }),
+    );
+  });
 });
 
 describe("updateClip - moving a row of take-lane clips", () => {

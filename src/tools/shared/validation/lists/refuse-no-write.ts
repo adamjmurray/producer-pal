@@ -12,6 +12,16 @@ const TARGET_PARAMS = new Set(["id", "ids", "path", "paths"]);
 /** Params that do nothing when false: the switches. */
 const SWITCHES = new Set(["focus", "wrapInRack", "duplicateLoop"]);
 
+/**
+ * Whether a param is a switch sent off, which asks nothing of the targets.
+ * @param param - The param's name
+ * @param value - The value sent
+ * @returns True for a switch set to false
+ */
+export function isSwitchedOff(param: string, value: unknown): boolean {
+  return SWITCHES.has(param) && value === false;
+}
+
 /** Destinations, positions and splits: a blank one names nothing, so it is
  * unsent (unlike a blank `name`, which clears it). */
 const NAMING_PARAMS = new Set([
@@ -43,7 +53,7 @@ export function refuseNoWrite(args: object, objects?: string): void {
       !MODIFIERS.has(param) &&
       isParamSent(value) &&
       (!NAMING_PARAMS.has(param) || paramNamesSomething(value)) &&
-      !(SWITCHES.has(param) && value === false),
+      !isSwitchedOff(param, value),
   );
 
   if (!asked) {
