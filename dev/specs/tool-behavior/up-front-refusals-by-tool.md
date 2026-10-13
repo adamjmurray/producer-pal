@@ -109,7 +109,10 @@ follows the code; when it disagrees with a tool, the tool wins.
 - **`updateClip` refuses a `length` that spans nothing** (`0bar`, `n0/4`) before
   any clip is touched. One that is empty only in some meters (`1bar-n/1` in 4/4)
   skips that clip, as does a `start` at or past a looping clip's loop end sent
-  without a `length`: Live would keep the old region.
+  without a `length`: Live would keep the old region. Both are checked before
+  anything is written to the clip, in the meter the call sets — except an
+  unwarped audio clip sent `looping: true` with a `start` and no `length`, whose
+  loop end is known only once warping is on.
 - **`createClip` refuses a `path` entry it can't parse** before anything is
   made, as well as an arrangement position that won't parse or is past Live's
   last, a list that doesn't pair, and an unknown `auto`. A destination that

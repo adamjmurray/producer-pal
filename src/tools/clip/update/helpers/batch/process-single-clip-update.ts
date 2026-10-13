@@ -32,6 +32,7 @@ import {
 import { type LandingLog } from "#src/tools/shared/clip/landings/landing-log.ts";
 import { handlePositionOperations } from "../move/position-operations.ts";
 import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { checkRegionUpFront } from "./check-region-up-front.ts";
 import { writeClipMeter } from "./write-clip-meter.ts";
 import { buildClipContext, hasNoteEdits } from "../notes/note-transforms.ts";
 import { reportNotesOutsideRegion } from "../notes/notes-outside-region.ts";
@@ -165,6 +166,10 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     landings,
     reasons,
   } = params;
+
+  // Before the first write: a start or length the clip can't take skips it
+  // with nothing changed.
+  checkRegionUpFront(params);
 
   const { timeSigNumerator, timeSigDenominator } = writeClipMeter(
     clip,

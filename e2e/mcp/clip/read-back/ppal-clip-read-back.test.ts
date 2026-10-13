@@ -28,6 +28,7 @@ import {
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 import {
   createArrangementClip,
+  readClipFully,
   updateAndRead,
 } from "../helpers/clip-io-test-helpers.ts";
 import { createClipInSlot } from "../helpers/ppal-clip-transforms-test-helpers.ts";
@@ -77,6 +78,26 @@ describe("ppal-update-clip region read-back", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain("is not before the loop end");
+  });
+
+  // The check used to run after the meter was written, so the refused clip
+  // came back in the new meter anyway.
+  it("refuses a start past the loop end before writing the meter sent with it", async () => {
+    const clipId = await loopingClipAtBar5("s36");
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, timeSignature: "3/4", start: "99|1" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("is not before the loop end");
+    expect(getToolErrorMessage(result)).not.toContain("already changed");
+
+    await sleep(100);
+
+    expect(
+      (await readClipFully(ctx.client!, { id: clipId })).timeSignature,
+    ).toBe("4/4");
   });
 
   it("refuses a length of zero", async () => {

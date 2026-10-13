@@ -35,6 +35,13 @@ interface CalculateBeatPositionsArgs {
   reasons: ClipReasons;
 }
 
+type RegionRequest = Omit<CalculateBeatPositionsArgs, "reasons"> & {
+  /** False when the loop end can't be known yet, so that check is left out. */
+  loopEndKnown?: boolean;
+};
+
+type ResolvedRegion = Omit<BeatPositions, "startMarkerBeats">;
+
 export interface TimeSignature {
   timeSigNumerator: number;
   timeSigDenominator: number;
@@ -94,19 +101,52 @@ function determineStartMarker(
  * @param args.reasons - What each clip has to say beyond its result
  * @returns Beat positions
  */
-export function calculateBeatPositions({
-  start,
-  length,
-  firstStart,
-  timeSigNumerator,
-  timeSigDenominator,
-  clip,
-  isLooping,
-  wasLooping,
-  beatsPerMarkerUnit,
-  markerClampSeconds,
-  reasons,
-}: CalculateBeatPositionsArgs): BeatPositions {
+export function calculateBeatPositions(
+  args: CalculateBeatPositionsArgs,
+): BeatPositions {
+  const { reasons, ...request } = args;
+  const { startBeats, endBeats, firstStartBeats } = resolveRegion(request);
+
+  // Determine start_marker value (must be < end_marker content boundary).
+  // Bound it by the end this update is writing rather than the stale one — an
+  // expanding write moves the end first (see endMovesFirst).
+  const startMarkerBeats = determineStartMarker(
+    request.clip.id,
+    firstStartBeats,
+    startBeats,
+    endBeats ??
+      markerBeats(request.clip, "end_marker", {
+        beatsPerMarkerUnit: request.beatsPerMarkerUnit,
+        markerClampSeconds: request.markerClampSeconds,
+      }),
+    reasons,
+  );
+
+  return { startBeats, endBeats, firstStartBeats, startMarkerBeats };
+}
+
+/**
+ * Turn a start/length/firstStart request into beats, refusing what Live would
+ * not take. It only reads the clip, so it can run before anything is written.
+ * @param request - The positions asked for, the meter and the clip's state
+ * @returns The start, end and first start in beats, null where not asked
+ * @throws Error when a position can't be read, a length is empty, or a looping
+ *   clip's start is not before its loop end
+ */
+export function resolveRegion(request: RegionRequest): ResolvedRegion {
+  const {
+    start,
+    length,
+    firstStart,
+    timeSigNumerator,
+    timeSigDenominator,
+    clip,
+    isLooping,
+    wasLooping,
+    beatsPerMarkerUnit,
+    markerClampSeconds,
+    loopEndKnown = true,
+  } = request;
   let startBeats: number | null = null;
   let endBeats: number | null = null;
   let firstStartBeats: number | null = null;
@@ -163,6 +203,7 @@ export function calculateBeatPositions({
   const heldLoopEnd = endBeats ?? currentEnd;
 
   if (
+    loopEndKnown &&
     isLooping &&
     start != null &&
     startBeats != null &&
@@ -191,18 +232,7 @@ export function calculateBeatPositions({
     );
   }
 
-  // Determine start_marker value (must be < end_marker content boundary).
-  // Bound it by the end this update is writing rather than the stale one — an
-  // expanding write moves the end first (see endMovesFirst).
-  const startMarkerBeats = determineStartMarker(
-    clip.id,
-    firstStartBeats,
-    startBeats,
-    endBeats ?? readMarker("end_marker"),
-    reasons,
-  );
-
-  return { startBeats, endBeats, firstStartBeats, startMarkerBeats };
+  return { startBeats, endBeats, firstStartBeats };
 }
 
 /**
