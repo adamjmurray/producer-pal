@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { errorMessage } from "#src/shared/error-message.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
 import {
@@ -123,21 +125,31 @@ export function extendSongIfNeeded(
 }
 
 /**
- * Cleans up the temporary clip created by extendSongIfNeeded.
+ * Cleans up the temporary clip created by extendSongIfNeeded. Never throws, and
+ * tries every step even if an earlier one fails, so a leftover can't hide the
+ * outcome it follows.
  * @param tempClipInfo - Info from extendSongIfNeeded or null
+ * @param report - Where to say what couldn't be removed; unset warns
  */
-export function cleanupTempClip(tempClipInfo: TempClipInfo | null): void {
+export function cleanupTempClip(
+  tempClipInfo: TempClipInfo | null,
+  report?: (message: string) => void,
+): void {
   if (!tempClipInfo) {
     return;
   }
 
   const { track, clipId, isMidiTrack, slot, sceneId } = tempClipInfo;
+  const say = report ?? ((message: string) => console.warn(message));
 
-  // Delete the arrangement clip
-  track.call("delete_clip", toLiveApiId(clipId));
+  try {
+    track.call("delete_clip", toLiveApiId(clipId));
+  } catch (error) {
+    say(`couldn't remove the temp arrangement clip (${errorMessage(error)})`);
+  }
 
   // For audio clips, also delete the session clip
   if (!isMidiTrack && slot) {
-    removeSessionClip({ slot, sceneId });
+    removeSessionClip({ slot, sceneId }, say);
   }
 }

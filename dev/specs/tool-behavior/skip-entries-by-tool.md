@@ -396,9 +396,12 @@ with a tool, the tool wins.
   `{id | time | name, detail}` with no `ok`, and fail with the last one if it
   fails. A locator made and then refused its name keeps
   `{operation: "create", id, detail}`, the detail ending
-  `already changed: created`. A lone refusal throws only when no tempo, time
-  signature or scale was sent; beside one it keeps its `ok: false` entry. Those
-  whole-call params are written first and read back as before.
+  `already changed: created`. A locator made past the song's end whose temp
+  clip, session clip or scene Live then won't remove keeps
+  `{operation: "create", id, detail}`, the detail saying what stayed. A lone
+  refusal throws only when no tempo, time signature or scale was sent; beside
+  one it keeps its `ok: false` entry. Those whole-call params are written first
+  and read back as before.
 - **playback answers per clip slot named** for `play-session-clips` and
   `stop-session-clips`, in `clip` (unwrapped for one). An id naming no session
   clip, a slot that isn't there, and a launch Live threw on hold their slot as

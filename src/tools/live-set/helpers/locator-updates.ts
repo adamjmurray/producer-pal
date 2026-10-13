@@ -123,23 +123,30 @@ export async function createLocator(
 
   try {
     await toggleCueAt(liveSet, targetBeats, meter);
-  } finally {
+  } catch (error) {
     cleanupTempClip(tempClipInfo);
+
+    throw error;
   }
 
-  const found = findLocator(liveSet, { timeInBeats: targetBeats });
+  // The locator exists now: a cleanup failure goes on its entry, not in place of it.
+  const leftovers: string[] = [];
 
-  if (found == null) {
-    throw new Error(`Live made no locator at ${target.value}`);
+  cleanupTempClip(tempClipInfo, (message) => leftovers.push(message));
+
+  try {
+    const created = nameCreatedLocator(liveSet, target, targetBeats, landed);
+
+    return leftovers.length > 0
+      ? { ...created, detail: leftovers.join("; ") }
+      : created;
+  } catch (error) {
+    for (const message of leftovers) {
+      console.warn(message);
+    }
+
+    throw error;
   }
-
-  landed("created", { operation: "create", id: found.locator.id });
-
-  if (target.name != null) {
-    found.locator.set("name", target.name);
-  }
-
-  return { operation: "create", id: found.locator.id };
 }
 
 /**
@@ -198,6 +205,36 @@ export function validateLocatorOperation(
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Find the locator a toggle made, and give it its name.
+ * @param liveSet - The live_set LiveAPI object
+ * @param target - The time, and the name to give
+ * @param targetBeats - The time, in beats
+ * @param landed - Says the locator exists
+ * @returns The create entry
+ * @throws Error when Live made no locator, or refused the name
+ */
+function nameCreatedLocator(
+  liveSet: LiveAPI,
+  target: LocatorTarget,
+  targetBeats: number,
+  landed: Step<unknown>["landed"],
+): Record<string, unknown> {
+  const found = findLocator(liveSet, { timeInBeats: targetBeats });
+
+  if (found == null) {
+    throw new Error(`Live made no locator at ${target.value}`);
+  }
+
+  landed("created", { operation: "create", id: found.locator.id });
+
+  if (target.name != null) {
+    found.locator.set("name", target.name);
+  }
+
+  return { operation: "create", id: found.locator.id };
+}
 
 /**
  * The entry for a create where a locator already is. Nothing is written: a

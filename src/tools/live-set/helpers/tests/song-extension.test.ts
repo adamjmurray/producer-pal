@@ -280,6 +280,107 @@ describe("song-extension", () => {
       expect(mockSceneCall).toHaveBeenCalledExactlyOnceWith("delete_scene", 1);
     });
 
+    it("still removes the session clip and scene when the arrangement clip won't go", () => {
+      const mockTrack = {
+        call: vi.fn(() => {
+          throw new Error("track says no");
+        }),
+      } as unknown as LiveAPI;
+      const mockSlot = { call: vi.fn() } as unknown as LiveAPI;
+      const mockSceneCall = vi.fn();
+      const report = vi.fn();
+
+      mockLiveApiFrom({
+        [livePath.liveSet]: {
+          getChildIds: vi.fn().mockReturnValue(["id 1", "id 2"]),
+          call: mockSceneCall,
+        },
+      });
+
+      expect(() =>
+        cleanupTempClip(
+          {
+            track: mockTrack,
+            clipId: "456",
+            isMidiTrack: false,
+            slot: mockSlot,
+            sceneId: "id 2",
+          },
+          report,
+        ),
+      ).not.toThrow();
+
+      expect(report).toHaveBeenCalledExactlyOnceWith(
+        "couldn't remove the temp arrangement clip (track says no)",
+      );
+      expect(mockSlot.call).toHaveBeenCalledWith("delete_clip");
+      expect(mockSceneCall).toHaveBeenCalledExactlyOnceWith("delete_scene", 1);
+    });
+
+    it("reports a session clip that won't go, and still tries the scene", () => {
+      const mockTrack = { call: vi.fn() } as unknown as LiveAPI;
+      const mockSlot = {
+        call: vi.fn(() => {
+          throw new Error("slot says no");
+        }),
+      } as unknown as LiveAPI;
+      const mockSceneCall = vi.fn();
+      const report = vi.fn();
+
+      mockLiveApiFrom({
+        [livePath.liveSet]: {
+          getChildIds: vi.fn().mockReturnValue(["id 2"]),
+          call: mockSceneCall,
+        },
+      });
+
+      cleanupTempClip(
+        {
+          track: mockTrack,
+          clipId: "456",
+          isMidiTrack: false,
+          slot: mockSlot,
+          sceneId: "id 2",
+        },
+        report,
+      );
+
+      expect(report).toHaveBeenCalledExactlyOnceWith(
+        "couldn't remove the scratch session clip (slot says no)",
+      );
+      expect(mockSceneCall).toHaveBeenCalledExactlyOnceWith("delete_scene", 0);
+    });
+
+    it("reports a scene that won't go", () => {
+      const mockTrack = { call: vi.fn() } as unknown as LiveAPI;
+      const mockSlot = { call: vi.fn() } as unknown as LiveAPI;
+      const report = vi.fn();
+
+      mockLiveApiFrom({
+        [livePath.liveSet]: {
+          getChildIds: vi.fn().mockReturnValue(["id 2"]),
+          call: vi.fn(() => {
+            throw new Error("scene says no");
+          }),
+        },
+      });
+
+      cleanupTempClip(
+        {
+          track: mockTrack,
+          clipId: "456",
+          isMidiTrack: false,
+          slot: mockSlot,
+          sceneId: "id 2",
+        },
+        report,
+      );
+
+      expect(report).toHaveBeenCalledExactlyOnceWith(
+        "left an empty scene behind: couldn't remove the scratch scene (scene says no)",
+      );
+    });
+
     it("should handle audio clip without slot gracefully", () => {
       const mockCall = vi.fn();
       const mockTrack = { call: mockCall } as unknown as LiveAPI;
