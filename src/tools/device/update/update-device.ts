@@ -300,6 +300,12 @@ async function loadThenUpdate(
     throw new Error(`preset not loaded: ${loaded.outcome.error}`);
   }
 
+  // The swap may still land, so the device at this path is unknown. Writing to
+  // it could hit the wrong device. Nothing of this target has landed yet.
+  if ("error" in loaded.outcome && loaded.outcome.unfinished === true) {
+    throw new Error(`preset not loaded: ${loaded.outcome.error}`);
+  }
+
   if (!("error" in loaded.outcome)) {
     step.landed("preset", { id: (loaded.device ?? device).id });
   }

@@ -15,11 +15,12 @@ import { type ResolvedTarget } from "./resolve-device-target.ts";
 
 /**
  * What loading a target's preset did: replaced the device or kept it, or why
- * not. `changed` marks a failure after Live had already changed the device.
+ * not. `changed` marks a failure after Live had already changed the device;
+ * `unfinished` one where Live may still change it.
  */
 export type PresetOutcome =
   | { replaced: boolean }
-  | { error: string; changed?: true };
+  | { error: string; changed?: true; unfinished?: true };
 
 /** A loaded preset: what its entry should say, and the device Live put in the
  * old one's place when it replaced it. */

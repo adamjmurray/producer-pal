@@ -217,6 +217,11 @@ with a tool, the tool wins.
   and nothing else is written to that target. Later targets still load at their
   current path. If the delete fails, the 409 says where the device is. Only a
   preset can hold it: Producer Pal loaded by name is judged on its own.
+- **A `/hotswap` that timed out may still land.** update-device skips that
+  target with
+  `preset not loaded: <why>; Live may have loaded it anyway, so check the device before re-running`
+  and writes nothing else to it, since the device at its path is unknown. Later
+  targets still run.
 - **create-track answers per path named.** A track Live didn't make (an insert
   it refused, an answer with no track, one the deadline never reached) holds its
   slot as `{path, ok: false, detail}` in the caller's spelling (`t+`, `t2`,

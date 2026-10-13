@@ -125,6 +125,7 @@ describe("hotswapPreset when the connection dropped after the request went out",
       await hotswapPreset(LiveAPI.from("drift"), PRESET, null),
     ).toStrictEqual({
       error: `${CONNECTION_LOST}; Live may have loaded it anyway, so check the device before re-running`,
+      unfinished: true,
     });
   });
 });

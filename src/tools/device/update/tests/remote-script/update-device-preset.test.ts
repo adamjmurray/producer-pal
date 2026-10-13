@@ -43,6 +43,7 @@ const DRIFT_PATH = livePath.track(3).device(0);
 const REVERB_PATH = livePath.track(3).device(1);
 
 let drift: RegisteredMockObject;
+let reverb: RegisteredMockObject;
 
 interface Answers {
   resolution?: BrowserItemResolution;
@@ -74,6 +75,22 @@ function answerRemoteScript({
       success: true,
       result: hotswaps[Math.min(swaps++, hotswaps.length - 1)],
     };
+  });
+}
+
+/** Make every hotswap outlast V8's wait, as a timeout does. */
+function outlastTheWait(): void {
+  let now = 1_000_000;
+
+  vi.spyOn(Date, "now").mockImplementation(() => now);
+  vi.mocked(requestNode).mockImplementation(async (route) => {
+    if (route === REMOTE_SCRIPT_ROUTES.resolvePreset) {
+      return { success: true, result: { available: true, item: PRESET } };
+    }
+
+    now += 10_000;
+
+    return { success: false, error: "timed out" };
   });
 }
 
@@ -129,7 +146,7 @@ function registerDriftAndReverb(): RegisteredMockObject {
     name: "Drift",
   });
 
-  registerDevice("reverb", String(REVERB_PATH), {
+  reverb = registerDevice("reverb", String(REVERB_PATH), {
     class_display_name: "Reverb",
     type: 2,
     name: "Reverb",
@@ -377,18 +394,7 @@ describe("updateDevice with a preset", () => {
   });
 
   it("says Live may have loaded the preset when V8 stopped waiting", async () => {
-    let now = 1_000_000;
-
-    vi.spyOn(Date, "now").mockImplementation(() => now);
-    vi.mocked(requestNode).mockImplementation(async (route) => {
-      if (route === REMOTE_SCRIPT_ROUTES.resolvePreset) {
-        return { success: true, result: { available: true, item: PRESET } };
-      }
-
-      now += 10_000;
-
-      return { success: false, error: "timed out" };
-    });
+    outlastTheWait();
 
     await expect(
       updateDevice(
@@ -578,6 +584,62 @@ describe("updateDevice - Live fails around a preset load", () => {
         detail: "preset not loaded: kinds differ",
       },
     ]);
+  });
+
+  describe("when the hotswap timed out and may still land", () => {
+    const UNFINISHED =
+      "Live started the request but didn't finish it within 30.0s";
+    const ANYWAY =
+      "Live may have loaded it anyway, so check the device before re-running";
+
+    it("writes nothing else to a lone target", async () => {
+      answerRemoteScript({
+        hotswaps: [{ available: true, error: UNFINISHED, unfinished: true }],
+      });
+
+      await expect(
+        updateDevice({ path: "t3/d0", preset: "AG Bass", name: "Keys" }),
+      ).rejects.toThrow(`preset not loaded: ${UNFINISHED}; ${ANYWAY}`);
+      expect(drift.set).not.toHaveBeenCalled();
+    });
+
+    it("skips that target, writes nothing else to it, and carries on", async () => {
+      answerRemoteScript({
+        hotswaps: [
+          { available: true, error: UNFINISHED, unfinished: true },
+          { available: true, replaced: false },
+        ],
+      });
+
+      expect(
+        await updateDevice({
+          path: "t3/d0,t3/d1",
+          preset: "AG Bass,Concert Hall",
+          name: "A,B",
+        }),
+      ).toStrictEqual([
+        {
+          path: "t3/d0",
+          ok: false,
+          detail: `preset not loaded: ${UNFINISHED}; ${ANYWAY}`,
+        },
+        { id: "reverb", path: "t3/d1" },
+      ]);
+      expect(drift.set).not.toHaveBeenCalled();
+      expect(reverb.set).toHaveBeenCalledWith("name", "B");
+    });
+
+    it("writes nothing else when V8 stopped waiting", async () => {
+      outlastTheWait();
+
+      await expect(
+        updateDevice(
+          { path: "t3/d0", preset: "AG Bass", name: "Keys" },
+          { deadline: 1_000_000 + 10_000 },
+        ),
+      ).rejects.toThrow(`preset not loaded: timed out; ${ANYWAY}`);
+      expect(drift.set).not.toHaveBeenCalled();
+    });
   });
 
   it("gives a target whose load threw a skip, and loads the next", async () => {

@@ -51,11 +51,12 @@ const HOTSWAP_UNFINISHED =
 
 /**
  * What loading a preset onto a device did: the device there now, or why not.
- * `changed` marks a failure after Live had already changed the device.
+ * `changed` marks a failure after Live had already changed the device;
+ * `unfinished` one where Live may still change it.
  */
 export type PresetHotswap =
   | { replaced: boolean; device: LiveAPI }
-  | { error: string; changed?: true };
+  | { error: string; changed?: true; unfinished?: true };
 
 /**
  * Find a preset in Live's browser.
@@ -195,12 +196,9 @@ export async function hotswapPreset(
     const error = response.error ?? "the remote script returned nothing";
 
     // Past V8's wait, Live may still be loading it.
-    return {
-      error:
-        !response.success && Date.now() - started >= waitMs
-          ? `${error}; ${HOTSWAP_UNFINISHED}`
-          : error,
-    };
+    return !response.success && Date.now() - started >= waitMs
+      ? { error: `${error}; ${HOTSWAP_UNFINISHED}`, unfinished: true }
+      : { error };
   }
 
   const result = response.result;
@@ -216,6 +214,7 @@ export async function hotswapPreset(
           ? `${result.error}; ${HOTSWAP_UNFINISHED}`
           : result.error,
       ...(result.changed === true ? { changed: true as const } : {}),
+      ...(result.unfinished === true ? { unfinished: true as const } : {}),
     };
   }
 
