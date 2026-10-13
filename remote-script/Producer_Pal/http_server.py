@@ -18,6 +18,10 @@ from urllib.parse import parse_qs, urlparse, urlsplit
 # A Host outside these is a DNS-rebinding page reaching us under its own name.
 LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
 
+# Largest POST body we read. Above the REST API's 2 MB cap, since a tool call's
+# envelope notation grows when sent here as JSON points.
+MAX_BODY_BYTES = 8 * 1024 * 1024
+
 # Where we tell clients which port we got. The MCP server reads it; no file
 # means an older script on 3349.
 PORT_FILE = os.path.join(
@@ -189,6 +193,12 @@ class _Handler(BaseHTTPRequestHandler):
         if length is None:
             # The body can't be framed, so it can't stay on the connection.
             self._send(400, {"error": "invalid Content-Length"})
+            return
+        if length > MAX_BODY_BYTES:
+            # Refused before reading, so a huge body can't hold up the one
+            # serving thread.
+            error = "request body too large: %d bytes, max %d" % (length, MAX_BODY_BYTES)
+            self._send(413, {"error": error})
             return
         raw = self.rfile.read(length) if length else b""
         if raw:

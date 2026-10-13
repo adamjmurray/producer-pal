@@ -3,7 +3,8 @@
 # AI assistance: Claude (Anthropic)
 # SPDX-License-Identifier: MIT
 
-"""A POST with a bad Content-Length is answered with a 400, not dropped.
+"""A POST with a bad Content-Length is answered with a 400, not dropped, and
+one declaring a body over the cap with a 413, before the body is read.
 
 Run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s remote-script/tests
 """
@@ -23,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Only Live's own Python has this module; the package imports it on load.
 sys.modules.setdefault("Live", types.ModuleType("Live"))
 
-from Producer_Pal.http_server import BridgeHTTPServer  # noqa: E402
+from Producer_Pal.http_server import MAX_BODY_BYTES, BridgeHTTPServer  # noqa: E402
 
 
 def free_port():
@@ -93,6 +94,23 @@ class ContentLengthTest(unittest.TestCase):
                 status, payload = self.post(header, b"")
                 self.assertEqual(status, 200)
                 self.assertEqual(payload, {"params": {}})
+
+    def test_body_over_the_cap_is_refused_unread(self):
+        # No body is sent: an answer at all shows it wasn't waited for.
+        status, payload = self.post(str(MAX_BODY_BYTES + 1).encode(), b"")
+
+        self.assertEqual(status, 413)
+        self.assertEqual(
+            payload,
+            {"error": "request body too large: %d bytes, max %d" % (MAX_BODY_BYTES + 1, MAX_BODY_BYTES)},
+        )
+
+    def test_body_at_the_cap_is_read(self):
+        body = b'{"a":"' + b"x" * (MAX_BODY_BYTES - 8) + b'"}'
+        status, payload = self.post(str(len(body)).encode(), body)
+
+        self.assertEqual(status, 200)
+        self.assertEqual(len(payload["params"]["a"]), MAX_BODY_BYTES - 8)
 
 
 if __name__ == "__main__":
