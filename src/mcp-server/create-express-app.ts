@@ -1,5 +1,5 @@
 // Producer Pal
-// Copyright (C) 2026 Adam Murray, Eike Haß
+// Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
