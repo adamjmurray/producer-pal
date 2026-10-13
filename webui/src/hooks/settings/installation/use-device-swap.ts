@@ -8,8 +8,11 @@ import { fetchJsonOrNull } from "#webui/utils/fetch-json";
 import { getDeviceInstallUrl, getDeviceSwapUrl } from "#webui/utils/mcp-url";
 import { type DeviceInstallStatus } from "./use-device-install";
 
-/** How often the page asks whether the new device has come up. */
-const POLL_MS = 1000;
+/**
+ * How often the page asks whether the new device has come up. Each poll makes
+ * the device read its own file and the User Library, so don't ask often.
+ */
+export const POLL_MS = 3000;
 /** How long one poll may take. */
 const POLL_TIMEOUT_MS = 3000;
 

@@ -20,6 +20,7 @@ import {
 import { USER_LIBRARY } from "#webui/components/settings/installation/tests/helpers/remote-script-status-test-helpers";
 import { type DeviceInstallStatus } from "#webui/hooks/settings/installation/use-device-install";
 import {
+  POLL_MS,
   SWAP_TIMED_OUT,
   SWAP_TIMEOUT_MS,
 } from "#webui/hooks/settings/installation/use-device-swap";
@@ -153,7 +154,7 @@ describe("InstallationTab device swap", () => {
 
     expect(screen.getByTestId("device-swap-waiting")).toBeTruthy();
 
-    await pass(1000);
+    await pass(POLL_MS);
 
     expect(screen.getByTestId("device-swap-done").textContent).toContain(
       "Save your Live Set",
@@ -191,7 +192,7 @@ describe("InstallationTab device swap", () => {
 
     routes.device(jsonResponse({ swapping: true, confirmed: false }));
     fireEvent.click(button());
-    await pass(SWAP_TIMEOUT_MS + 2000);
+    await pass(SWAP_TIMEOUT_MS + POLL_MS);
 
     expect(screen.getByTestId("device-swap-error").textContent).toBe(
       SWAP_TIMED_OUT,

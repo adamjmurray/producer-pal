@@ -23,6 +23,7 @@ import {
 import { deviceStatusBody } from "#webui/components/settings/installation/tests/helpers/installation-fetch-test-helpers";
 import { USER_LIBRARY } from "#webui/components/settings/installation/tests/helpers/remote-script-status-test-helpers";
 import {
+  POLL_MS,
   SWAP_TIMED_OUT,
   SWAP_TIMEOUT_MS,
   useDeviceSwap,
@@ -94,14 +95,14 @@ describe("useDeviceSwap", () => {
 
     // The old device still answers, then nothing does, then the new one.
     fetchMock.mockResolvedValueOnce(jsonResponse(OLD_DEVICE));
-    await pass(1000);
+    await pass(POLL_MS);
     fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
-    await pass(1000);
+    await pass(POLL_MS);
     expect(result.current.phase).toBe("waiting");
     expect(onSwapped).not.toHaveBeenCalled();
 
     fetchMock.mockResolvedValueOnce(jsonResponse(NEW_DEVICE));
-    await pass(1000);
+    await pass(POLL_MS);
 
     expect(result.current.phase).toBe("done");
     expect(result.current.error).toBeNull();
@@ -114,7 +115,7 @@ describe("useDeviceSwap", () => {
     expect(result.current.phase).toBe("waiting");
 
     fetchMock.mockResolvedValueOnce(jsonResponse(NEW_DEVICE));
-    await pass(1000);
+    await pass(POLL_MS);
 
     expect(result.current.phase).toBe("done");
   });
@@ -157,7 +158,7 @@ describe("useDeviceSwap", () => {
 
     const { result } = await startSwap(jsonResponse({ swapping: true }));
 
-    await pass(SWAP_TIMEOUT_MS + 1000);
+    await pass(SWAP_TIMEOUT_MS + POLL_MS);
 
     expect(result.current.phase).toBe("failed");
     expect(result.current.error).toBe(SWAP_TIMED_OUT);
@@ -178,7 +179,7 @@ describe("useDeviceSwap", () => {
     );
     fetchMock.mockResolvedValue(jsonResponse(NEW_DEVICE));
 
-    await pass(1000 + 3000 + 1000 + 1000);
+    await pass(POLL_MS + 3000 + POLL_MS + 1000);
 
     expect(result.current.phase).toBe("done");
   });
