@@ -27,6 +27,12 @@ export const DEVICE_TOOL = "ppal-device-marker";
 /** What that tool answers with. */
 export const DEVICE_TOOL_REPLY = "the device answered";
 
+/** A tool that answers after SLOW_TOOL_MS, offered only with `slowTool`. */
+export const SLOW_TOOL = "ppal-device-slow";
+
+/** How long the slow tool takes. */
+export const SLOW_TOOL_MS = 1000;
+
 /**
  * Mirrors DISABLED_TOOLS_HEADER in src/shared/config.ts. Spelled out rather than
  * imported: it is a wire contract, and a test that imported the constant would
@@ -76,15 +82,16 @@ export interface StubDevice {
  * @param options - Whether it answers from the start, and what it reports
  * @param options.online - False to reserve the port but stay unreachable
  * @param options.version - The server version it reports
+ * @param options.slowTool - Also offer ppal-connect and SLOW_TOOL
  * @returns The device
  */
 export async function createStubDevice(
-  options: { online?: boolean; version?: string } = {},
+  options: { online?: boolean; version?: string; slowTool?: boolean } = {},
 ): Promise<StubDevice> {
   const port = await reservePort();
   const requests: DeviceRequest[] = [];
   const server = createHttpServer((req, res) => {
-    void handleRequest(req, res, requests, device.version);
+    void handleRequest(req, res, requests, device.version, options.slowTool);
   });
   const device: StubDevice = {
     origin: `http://127.0.0.1:${port}`,
@@ -108,12 +115,14 @@ export async function createStubDevice(
  * @param res - The response to write
  * @param requests - The recorder to append to
  * @param version - The server version to report
+ * @param slowTool - Also offer ppal-connect and SLOW_TOOL
  */
 async function handleRequest(
   req: IncomingMessage,
   res: ServerResponse,
   requests: DeviceRequest[],
   version: string,
+  slowTool = false,
 ): Promise<void> {
   const isMcp = req.url?.startsWith("/mcp") ?? false;
 
@@ -140,6 +149,27 @@ async function handleRequest(
     { description: "Proof that a tool list came from the device." },
     () => ({ content: [{ type: "text" as const, text: DEVICE_TOOL_REPLY }] }),
   );
+
+  if (slowTool) {
+    server.registerTool(
+      "ppal-connect",
+      { description: "Stub connect." },
+      () => ({
+        content: [{ type: "text" as const, text: "connected" }],
+      }),
+    );
+    server.registerTool(
+      SLOW_TOOL,
+      { description: "Answers late." },
+      async () => {
+        await new Promise((resolve) => setTimeout(resolve, SLOW_TOOL_MS));
+
+        return {
+          content: [{ type: "text" as const, text: DEVICE_TOOL_REPLY }],
+        };
+      },
+    );
+  }
 
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined, // stateless, like the device's own server

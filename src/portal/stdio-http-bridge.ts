@@ -17,6 +17,7 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import { formatErrorResponse } from "#src/shared/mcp-responses.ts";
 import { buildFallbackTools, type FallbackTool } from "./fallback-tools.ts";
 import { logger } from "./file-logger.ts";
+import { InFlightClients } from "./update/in-flight-clients.ts";
 import { answerOfflineCall, MANAGE_TOOL } from "./offline/offline-call.ts";
 import { type OfflineDeps, realOfflineDeps } from "./offline/offline-deps.ts";
 import { SETUP_URL } from "./offline/offline-setup-hints.ts";
@@ -51,6 +52,7 @@ export class StdioHttpBridge {
   // eslint-disable-next-line @typescript-eslint/no-deprecated -- Server needed for setRequestHandler proxying
   private mcpServer: Server | null = null;
   private httpClient: Client | null = null;
+  private inFlight = new InFlightClients();
   private isConnected = false;
   private connectionPromise: Promise<void> | null = null;
   private fallbackTools: { tools: FallbackTool[] };
@@ -98,7 +100,8 @@ export class StdioHttpBridge {
     return {
       connect: () => this._ensureHttpConnection(),
       version: () => this.httpClient?.getServerVersion()?.version,
-      // The next connect closes the old client and handshakes again.
+      // The next connect replaces the client and handshakes again; calls still
+      // on the old one finish first.
       reset: () => {
         this.isConnected = false;
       },
@@ -141,15 +144,12 @@ Tell the user to check ${SETUP_URL} for configuration help.
   }
 
   private async _doConnect(): Promise<void> {
-    // Clean up old client if it exists
+    // Calls already on the old client finish before it closes.
     if (this.httpClient) {
-      try {
-        await this.httpClient.close();
-      } catch (error) {
-        logger.error(`Error closing old client: ${errorMessage(error)}`);
-      }
+      const old = this.httpClient;
 
       this.httpClient = null;
+      await this.inFlight.retire(old);
     }
 
     // Create new connection
@@ -276,7 +276,10 @@ Tell the user to check ${SETUP_URL} for configuration help.
       try {
         await this._ensureHttpConnection();
         // httpClient is guaranteed non-null after successful _ensureHttpConnection()
-        const result = await (this.httpClient as Client).listTools();
+        const client = this.httpClient as Client;
+        const result = await this.inFlight.run(client, () =>
+          client.listTools(),
+        );
 
         logger.debug(`[Bridge] tools/list successful via HTTP`);
 
@@ -313,9 +316,14 @@ Tell the user to check ${SETUP_URL} for configuration help.
           );
         }
 
+        // The client this call is on, if it got that far
+        let client: Client | null = null;
+
         // Always try to connect to HTTP server first
         try {
           await this._ensureHttpConnection();
+          client = this.httpClient as Client;
+
           const toolRequest = {
             name: request.params.name,
             arguments: request.params.arguments ?? {},
@@ -325,10 +333,11 @@ Tell the user to check ${SETUP_URL} for configuration help.
           // Explicit timeout rather than the SDK's 60s default, which would
           // sit too close to the device's ceiling. The upstream client's own
           // deadline still binds first — this only keeps our leg out of the way.
-          const result = await (this.httpClient as Client).callTool(
-            toolRequest,
-            undefined,
-            { timeout: CLIENT_TOOL_TIMEOUT_MS },
+          const active = client;
+          const result = await this.inFlight.run(active, () =>
+            active.callTool(toolRequest, undefined, {
+              timeout: CLIENT_TOOL_TIMEOUT_MS,
+            }),
           );
 
           logger.debug(
@@ -377,8 +386,11 @@ Tell the user to check ${SETUP_URL} for configuration help.
             return formatErrorResponse(errMsg);
           }
 
-          // This is a real connectivity/network error
-          this.isConnected = false;
+          // This is a real connectivity/network error. A call on a client
+          // we've since replaced says nothing about the new one.
+          if (client == null || client === this.httpClient) {
+            this.isConnected = false;
+          }
 
           if (errorCode === "ERR_INVALID_URL") {
             logger.debug(
@@ -418,6 +430,8 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
       this.httpClient = null;
     }
+
+    await this.inFlight.closeAll();
 
     if (this.mcpServer) {
       try {

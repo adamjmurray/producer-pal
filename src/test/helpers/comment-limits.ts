@@ -29,7 +29,7 @@ export const COMMENT_DENSITY_LIMITS: TreeLimits = {
   scripts: 0.325,
   webui: 0.455,
   evals: 0.465,
-  e2e: 0.475,
+  e2e: 0.455,
 };
 
 /**
