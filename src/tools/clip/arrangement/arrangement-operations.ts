@@ -154,10 +154,12 @@ export function handleArrangementLengthOperation({
       context,
       // A scratch clip Live won't remove is this clip's to report.
       reportScratch: (message) => noteClipReason(reasons, clip.id, message),
+      // The clip is cut in place, so it is updated, not a clip left as it was.
+      onCut: () => {
+        markClipLanded(reasons, clip.id);
+        noteLanded(reasons, "shortened", { id: clip.id });
+      },
     });
-    // The clip was cut in place, so it is updated, not a clip left as it was.
-    markClipLanded(reasons, clip.id);
-    noteLanded(reasons, "shortened", { id: clip.id });
   }
 
   return updatedClips;

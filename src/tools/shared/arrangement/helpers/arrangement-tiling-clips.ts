@@ -206,6 +206,28 @@ export function removeSessionClip(
 }
 
 /**
+ * Deletes a temp arrangement clip. Never throws, so it can sit in a `finally`
+ * without hiding the failure it follows. A clip Live won't delete is said
+ * through `report`.
+ * @param track - The track the clip is on
+ * @param clipId - The temp clip's ID
+ * @param report - Where to say it couldn't be removed; unset warns
+ */
+export function removeTempArrangementClip(
+  track: LiveAPI,
+  clipId: string,
+  report?: (message: string) => void,
+): void {
+  try {
+    track.call("delete_clip", toLiveApiId(clipId));
+  } catch (error) {
+    reporter(report)(
+      `couldn't remove the temp arrangement clip (${errorMessage(error)})`,
+    );
+  }
+}
+
+/**
  * Creates and immediately deletes a temp clip at a position.
  * Used to trim adjacent clips via Ableton's overlap behavior.
  * For MIDI: creates directly in arrangement. For audio: creates in session then duplicates.

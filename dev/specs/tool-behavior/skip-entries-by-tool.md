@@ -34,17 +34,19 @@ with a tool, the tool wins.
 - **update-clip: Live fails partway** leaves the clip's normal entry, naming
   what exists now (the copy a move made, not the source) and what landed:
   `<error>; already changed: name, copy at t1/s2`. A move is checked before it
-  shortens or resizes, so a refused move leaves the clip as it was. A param the
-  clip can't take is a detail on its entry, and a skip when it was all the call
-  asked. The move and arrangement helpers report on the clip's entry through a
-  per-call collector keyed by the clip id; a step that writes under a new id
-  hands what it reports back to the id the caller named. Moves are written in an
-  order that clears nobody's way, and one that can't be ordered is refused with
-  the clip it would land on named. Known gap: if Live fails while a lengthened
-  clip's last partial tile is in the holding area past the track's clips, that
-  holding copy can be left there unreported. Another known gap: when a target
-  throws partway, notes gathered for that clip before the throw are not carried
-  onto its failure entry.
+  shortens or resizes, so a refused move leaves the clip as it was. A shortening
+  clip is cut by a temp clip that is deleted on every path; one Live won't
+  delete is a `detail` on the entry, and a throw after the cut keeps
+  `already changed: shortened`. A param the clip can't take is a detail on its
+  entry, and a skip when it was all the call asked. The move and arrangement
+  helpers report on the clip's entry through a per-call collector keyed by the
+  clip id; a step that writes under a new id hands what it reports back to the
+  id the caller named. Moves are written in an order that clears nobody's way,
+  and one that can't be ordered is refused with the clip it would land on named.
+  Known gap: if Live fails while a lengthened clip's last partial tile is in the
+  holding area past the track's clips, that holding copy can be left there
+  unreported. Another known gap: when a target throws partway, notes gathered
+  for that clip before the throw are not carried onto its failure entry.
 - **update-clip: a clip whose new meter can't read the notes or transforms is a
   skip.** A bar|beat range or constant that is fine in one clip's meter and not
   in another's (`1|5-2|1` is a bar in 4/4, backwards in 3/4) is checked per
