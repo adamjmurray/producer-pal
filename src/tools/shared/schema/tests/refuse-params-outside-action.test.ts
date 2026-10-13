@@ -84,6 +84,7 @@ describe("refuseParamsOutsideAction", () => {
     ["null", null],
     ["blank", "  "],
     ["the word null", "null"],
+    ["an empty list", []],
   ])("counts %s as not sent", (_label, value) => {
     expect(() =>
       refuseParamsOutsideAction(
@@ -92,6 +93,16 @@ describe("refuseParamsOutsideAction", () => {
         HOMES,
       ),
     ).not.toThrow();
+  });
+
+  it("counts a list with something in it as sent", () => {
+    expect(() =>
+      refuseParamsOutsideAction(
+        { action: "search" },
+        { similarTo: ["a"] },
+        HOMES,
+      ),
+    ).toThrow("similarTo");
   });
 
   it("counts false and 0 as sent", () => {

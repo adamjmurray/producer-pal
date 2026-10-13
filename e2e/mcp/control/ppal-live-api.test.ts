@@ -170,6 +170,18 @@ describe("ppal-live-api", () => {
     expect(await tempo()).toBe(before);
   });
 
+  it("counts an empty args list on a get as not sent", async () => {
+    const result = await callLiveApi([
+      { type: "get", property: "tempo", args: [] },
+    ]);
+
+    expect(isToolError(result)).toBe(false);
+    // A raw get answers with the property's value list, e.g. [108].
+    expect(parseToolResult<LiveApiResult>(result).results[0]).toStrictEqual([
+      expect.any(Number),
+    ]);
+  });
+
   // The nonexistent-object contract, pinned so a Live upgrade that changes it
   // fails here rather than as wrong values deep inside a tool. See
   // dev/coding-standards/live-api-behavior.md, "What Live Returns When There Is

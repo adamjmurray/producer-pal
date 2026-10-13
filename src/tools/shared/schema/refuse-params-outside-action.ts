@@ -8,6 +8,7 @@
 // call is refused, in one wording for every tool.
 
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
+import { isParamSent } from "#src/tools/shared/helpers/target-notes.ts";
 
 /**
  * Where a param applies: for each axis of the call (`action`, `scope`), the
@@ -23,8 +24,8 @@ interface Misfit {
 
 /**
  * Refuses a call that sends a param the call's action (or scope) doesn't read.
- * A null, blank or "null" counts as not sent. The defaulted action counts like
- * an explicit one.
+ * A null, blank, "null" or empty list counts as not sent. The defaulted action
+ * counts like an explicit one.
  * @param call - The call's axes and their values, e.g. `{ action: "search" }`;
  *   a value of undefined means the call names none
  * @param sent - The args, under the names the caller wrote
@@ -58,12 +59,13 @@ export function refuseParamsOutsideAction(
 }
 
 /**
- * Whether a param was sent: a null, a blank and the word "null" were not.
+ * Whether a param was sent: a null, a blank, the word "null" and an empty list
+ * were not.
  * @param value - A param's value as sent
  * @returns True when it names something
  */
 export function paramWasSent(value: unknown): boolean {
-  return typeof value === "string" ? paramNamesSomething(value) : value != null;
+  return paramNamesSomething(value) && isParamSent(value);
 }
 
 /**

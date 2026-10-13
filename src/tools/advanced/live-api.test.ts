@@ -163,6 +163,16 @@ describe("liveApi", () => {
       expect(defaultMock.set).not.toHaveBeenCalled();
     });
 
+    it("counts an empty args list as not sent", () => {
+      expect(() =>
+        liveApi({
+          operations: [
+            { type: "get", property: "tempo", args: [] },
+          ] as unknown as LiveApiOperation[],
+        }),
+      ).not.toThrow();
+    });
+
     it("counts a blank as not sent", () => {
       expect(() =>
         liveApi({
