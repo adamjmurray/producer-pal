@@ -43,6 +43,32 @@ Upgrading from a previous version? See the
 
 <!--@include: ./_partials/add-device.md-->
 
+### Finish the Installation {#finish-the-installation}
+
+Also install Producer Pal's other two pieces. This is recommended for everyone:
+
+- **The remote script** adds clip automation, undo and redo, and loading
+  plug-ins and Max for Live devices into your project.
+- **The device in your User Library** keeps it up to date across all your
+  projects, and lets a coding agent or the Claude Desktop extension add Producer
+  Pal to a new project.
+
+The simple way:
+
+1. On the device, click **Finish installation…** (or click **Open Chat UI** and
+   go to **Settings → Installation**).
+2. Install the device and the remote script.
+3. Restart Live, then in **Settings → Link, Tempo & MIDI** set a **Control
+   Surface** to **Producer Pal**.
+
+<!-- TODO screenshot: Installation tab -->
+
+Details, updating and troubleshooting: [Remote Script](/guide/remote-script).
+
+If you use `npx producer-pal` or the
+[Claude Desktop](./installation/claude-desktop) extension, you can skip this:
+ask the AI to connect to Ableton and it sets up both for you.
+
 ## Step 2: Choose How You Want to Use It {#choose-how-you-want-to-use-it}
 
 Producer Pal works the same with any provider — the main choice is _how_ you

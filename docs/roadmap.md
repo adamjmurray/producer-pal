@@ -34,8 +34,7 @@ and keeps going with the rest.
   clips
 - Library searches, including similar samples, show what Live's browser shows
 
-The new Producer Pal remote script (experimental) does what the Live API alone
-can't:
+The new Producer Pal remote script does what the Live API alone can't:
 
 - Put Producer Pal into a freshly opened Live Set
 - Add plug-ins and Max for Live devices

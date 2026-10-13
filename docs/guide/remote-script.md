@@ -1,92 +1,102 @@
 ---
 title: Remote Script
 description:
-  Install the optional Producer Pal remote script so AI can write clip
-  automation, load VST/AU plug-ins, Max for Live devices and presets, convert
-  audio to MIDI, and undo in Ableton Live. Install it, enable it in Live,
-  update, and uninstall.
+  The Producer Pal remote script adds clip automation, undo, and loading
+  plug-ins and Max for Live devices to Ableton Live. How to install, enable,
+  update and remove it.
 ---
 
 # Remote Script
 
-The remote script is an optional companion to the Producer Pal device. It is a
-small Ableton control surface script that runs inside Live and listens on
-`http://127.0.0.1:3349`, or on the next free port (3351 to 3358) when something
-else, such as a second Live, already has it. Producer Pal finds it either way.
+The remote script is a small Ableton control surface script that runs inside
+Live and works alongside the Producer Pal device. Install it as part of the
+standard setup. It adds:
 
-Install it if you want AI to:
-
-- **Read and write clip automation** on session clips: volume, pan, sends and
-  device parameters, with [Update Clip](/features/tools#ppal-update-clip). Needs
-  Live 12.4 or later.
-- **Load VST/AU plug-ins and Max for Live devices by name**, like "add Pro-Q 4
-  to the bass track". The AI finds them with the
-  [Library](/features/tools#ppal-library) tool. Without the script,
-  [Create Device](/features/tools#ppal-create-device) can only add Live's native
-  devices, not Max for Live ones such as LFO or DS Kick.
-- **Load presets**: create a device or rack straight from a preset (`.adv` or
-  `.adg`), including drum kits from your Packs, or swap a preset onto a device
-  that's already in the Set with
+- **Clip automation**: read and write automation on session clips (volume, pan,
+  sends, device parameters) with
+  [Update Clip](/features/tools#ppal-update-clip). Needs Live 12.4 or later.
+- **Undo and redo**: each request is one undo step in Live, so Cmd+Z / Ctrl+Z
+  reverts just that request. The AI can also undo and redo with the
+  [Manage](/features/tools#ppal-manage) tool. Live's history includes your own
+  edits, so an undo can revert something you did.
+- **Plug-ins and Max for Live devices**: load VST/AU plug-ins and Max for Live
+  devices by name, like "add Pro-Q 4 to the bass track". The AI finds them with
+  the [Library](/features/tools#ppal-library) tool. Without the script,
+  [Create Device](/features/tools#ppal-create-device) only adds Live's native
+  devices.
+- **Presets**: create a device or rack from a preset (`.adv` or `.adg`),
+  including drum kits from your Packs, or swap a preset onto a device with
   [Update Device](/features/tools#ppal-update-device). A preset for a different
   device, or a rack, replaces the device, and its automation is lost.
-- **Convert audio to MIDI**: turn an audio clip's drums, melody or harmony into
-  a MIDI clip, or into a track with Simpler or a Drum Rack playing its sample,
-  like Live's own Convert commands.
-- **Reach more device settings**: Simpler's pitch-bend ranges, and which rack
-  macros are mapped.
-- **Undo one request at a time**: each request becomes a single undo step in
-  Live, so Cmd+Z / Ctrl+Z reverts just that request. The AI can also undo and
-  redo for you with the [Manage](/features/tools#ppal-manage) tool; Live's
-  history includes your own edits, so it can revert something you did.
-- **Add Producer Pal to a Live Set** from a coding agent: to the open Set with
-  the `producer-pal` [Agent Skill](/guide/skills), or while opening or creating
-  one with `ableton-open-live-set`. This needs the device installed in your User
-  Library's Max MIDI Effect folder (see
-  [installing](/installation#install-the-device) or
-  [upgrading](/installation/upgrading)).
+- **Audio to MIDI**: turn an audio clip's drums, melody or harmony into a MIDI
+  clip, or into a track with Simpler or a Drum Rack playing its sample.
+- **More device settings**: Simpler's pitch-bend ranges, and which rack macros
+  are mapped.
+- **Adding Producer Pal to a new Set** from a coding agent or the Claude Desktop
+  extension. This also needs the device in your User Library (see below).
 
-::: warning Prototype
-
-The remote script is an early prototype. It works on macOS and Windows, but how
-it is installed and what it does may change.
-
-:::
-
-## Install by asking the AI
-
-Ask the AI to install the remote script. It uses the
-[Manage](/features/tools#ppal-manage) tool, which writes the script to your User
-Library (it finds the folder itself, or asks you for it) and tells you the steps
-below: restart Live, and on the first install choose Producer Pal as a Control
-Surface. This works even when the script isn't running yet, and it isn't offered
-in [small model mode](/features#small-model-mode).
+It works on macOS and Windows. It listens on `http://127.0.0.1:3349`, or on the
+next free port (3351 to 3358) when something else, such as a second Live,
+already has it. Producer Pal finds it either way.
 
 ## Install from the Chat UI
 
-1. Open the [Chat UI](/guide/chat-ui) and go to **Settings → Installation**.
-2. **Confirm your User Library folder.** Producer Pal reads it from Live's
+Click **Finish installation…** on the device's Main tab. Or open the
+[Chat UI](/guide/chat-ui) with **Open Chat UI** and go to **Settings →
+Installation**.
+
+<!-- TODO screenshot: Installation tab (Device and Remote script sections) -->
+
+1. **Confirm your User Library folder.** Producer Pal reads it from Live's
    browser database or settings, or finds it in the default location. If it is
    wrong or missing, paste the path yourself: Live shows it under **Settings →
    Library → Location of User Library**.
    - macOS: `~/Music/Ableton/User Library`
    - Windows: `C:\Users\you\Documents\Ableton\User Library`
-3. Click **Install**. The script is written to
-   `<User Library>/Remote Scripts/Producer_Pal`, replacing any older copy.
+2. **Device:** click **Install** (or **Update**) to copy the Producer Pal device
+   to `<User Library>/Presets/MIDI Effects/Max MIDI Effect/Producer_Pal.amxd`.
+   One copy there serves all your projects, and lets a coding agent or the
+   Claude Desktop extension add Producer Pal to a new project.
+3. **Remote script:** click **Install** (or **Update**). The script is written
+   to `<User Library>/Remote Scripts/Producer_Pal`, replacing any older copy.
 
 <img src="/img/producer-pal-chat-settings-remote-script-pre-install.png" alt="The Installation tab before installing, showing Not installed, the User Library path, and the Install button" width="500"/>
 
+### Swap the running device for the User Library copy
+
+Your Live Set remembers which file its device was loaded from, so a device
+loaded from Downloads stays tied to that file. Once the remote script is running
+and the User Library copy is the same version or newer, click **Swap this device
+for the User Library copy**. The AI connection drops for a moment while the new
+device starts. **Save your Live Set afterwards** so it keeps using the User
+Library copy.
+
+### The reminder
+
+The device's Main tab shows **Finish installation…** while the User Library copy
+is missing or older, or the remote script is missing or out of date. It stays
+hidden while **Update available** is showing. To turn it off, untick **Warn when
+installation is incomplete** in **Settings → Installation**.
+
+## Install by asking the AI
+
+If you use `npx producer-pal` or the Claude Desktop extension, ask the AI to
+connect to Ableton. It uses the [Manage](/features/tools#ppal-manage) tool to
+install the script (it finds your User Library, or asks you for it) and tells
+you the steps below. It works before the device is running, and it isn't offered
+in [small model mode](/features#small-model-mode). See
+[Claude Desktop](/installation/claude-desktop) for the full setup.
+
 ## Enable it in Live
 
-Once installed, the tab says the script is **not running** yet and lists the
-steps to enable it:
+A freshly installed script is **not running** yet:
 
 <img src="/img/producer-pal-chat-settings-remote-script-post-install.png" alt="The Installation tab after installing, showing Installed (not running) and the Enable it in Live steps" width="500"/>
 
-1. **Restart Live.** It only scans Remote Scripts at startup, so a freshly
-   installed script is invisible until then.
-2. Go to **Settings → Tempo & MIDI**, and set an unused **Control Surface** slot
-   to **Producer Pal**. Leave **Input** and **Output** as **None**. The script
-   doesn't use MIDI.
+1. **Restart Live.** It only scans Remote Scripts at startup.
+2. Go to **Settings → Link, Tempo & MIDI**, and set an unused **Control
+   Surface** slot to **Producer Pal**. Leave **Input** and **Output** as
+   **None**. The script doesn't use MIDI.
 
 <img src="/img/producer-pal-remote-script-control-surface-setup.png" alt="Live's Settings, Tempo & MIDI tab, with Control Surface 1 set to Producer Pal and Input and Output set to None" width="500"/>
 
@@ -110,14 +120,11 @@ setting is kept.
 If the installed script is newer than your Producer Pal device, the tab offers
 **Downgrade to match** instead.
 
-You don't have to open Settings to find out. The Chat UI header shows **(script
+You don't need to open Settings to notice. The Chat UI header shows **(script
 update)** when the installed script doesn't match your Producer Pal build, and
-**(restart Live)** when Live is running a different version than the installed
-one, for example right after an update or a downgrade. Click either to open the
-Installation tab. Your AI assistant also tells you when it connects. The badge
-clears on its own once Live is running the installed script: it re-checks when
-you come back to the Chat UI window and when Producer Pal reconnects after Live
-restarts.
+**(restart Live)** when Live is still running another version than the one
+installed. Click either to open the Installation tab. The badge clears once Live
+runs the installed script.
 
 ## Uninstalling
 

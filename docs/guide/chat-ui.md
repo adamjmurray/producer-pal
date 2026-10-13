@@ -549,24 +549,35 @@ sections use the one User Library path at the top of the tab.
 
 - **Device:** copies the Producer Pal device you loaded into your User Library,
   so every Live Set can find it. The device shows a **Finish installation…**
-  button until it's there; the button opens this tab. A development (unfrozen)
-  device can't be copied. A Live Set remembers the file a device was loaded
-  from, so a device loaded from Downloads stays tied to that file. Once the
-  [remote script](/guide/remote-script) is running and your User Library has a
-  copy that is the same version or newer, **Swap this device for the User
-  Library copy** replaces the device in your Set with it. The AI connection
-  drops for a moment while the new device starts. Save your Live Set afterwards
-  so it keeps using the User Library copy.
-- **Remote script:** installs the optional Producer Pal
-  [remote script](/guide/remote-script), which lets the AI load plug-ins, Max
-  for Live devices, and presets. It shows whether the script is installed and
-  whether Live is running it, and offers an update when your Producer Pal build
-  has a newer one. The header also flags this, so you can spot it without
-  opening Settings.
+  button until it's there (and the remote script is current); the button opens
+  this tab. A development (unfrozen) device can't be copied. A Live Set
+  remembers the file a device was loaded from, so a device loaded from Downloads
+  stays tied to that file. Once the [remote script](/guide/remote-script) is
+  running and your User Library has a copy that is the same version or newer,
+  **Swap this device for the User Library copy** replaces the device in your Set
+  with it. The AI connection drops for a moment while the new device starts.
+  Save your Live Set afterwards so it keeps using the User Library copy.
+- **Remote script:** installs the Producer Pal
+  [remote script](/guide/remote-script), which adds clip automation, undo and
+  redo, and loading plug-ins, Max for Live devices and presets. It shows whether
+  the script is installed and whether Live is running it, and offers an update
+  when your Producer Pal build has a newer one. The header also flags this, so
+  you can spot it without opening Settings.
 
 <img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="Installation tab" width="500"/>
 
 See the [remote script guide](/guide/remote-script) to install and enable it.
+
+Two checkboxes at the bottom of the tab control the notices on the device:
+
+- **Warn when installation is incomplete** - On by default. The device shows
+  **Finish installation…** while its User Library copy or the remote script is
+  missing or out of date. It gives way to the **Update available** notice, which
+  sits in the same spot. Turn this off and the device never shows it.
+- **Automatically check for new versions** - On by default. Producer Pal asks
+  GitHub once per device load whether a newer release exists, and shows an
+  `(update)` link next to the version number when there is one. Turn this off
+  and it never contacts GitHub.
 
 ### Preferences
 
@@ -580,10 +591,6 @@ The Preferences tab controls visual preferences and conversation management:
   header and settings
 - **Show message token usage** - Display token counts after each AI response
   (see [Token Usage](#token-usage) below)
-- **Automatically check for new versions** - On by default. Producer Pal asks
-  GitHub once per device load whether a newer release exists, and shows an
-  `(update)` link next to the version number when there is one. Turn this off
-  and it never contacts GitHub.
 - **Tool steps per turn** - How much tool work one turn may do before it stops
   and hands control back (5-100, default 25). Raise it if long arrangement tasks
   keep stopping partway; lower it to keep a looping model on a shorter leash.
