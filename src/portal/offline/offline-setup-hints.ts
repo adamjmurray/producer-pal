@@ -18,7 +18,7 @@ const ADD_ACTION = 'action "add-producer-pal"';
 
 const ADD_CALL = `ppal-manage ${ADD_ACTION}`;
 const CONTROL_SURFACE =
-  "choose Producer Pal as a Control Surface in Settings → Link, Tempo & MIDI";
+  "choose Producer Pal as a Control Surface in Settings → Tempo & MIDI";
 const NEW_TRACK = "to a new MIDI track";
 const UNKNOWN = "unknown version";
 

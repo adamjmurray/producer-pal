@@ -94,9 +94,9 @@ A freshly installed script is **not running** yet:
 <img src="/img/producer-pal-chat-settings-remote-script-post-install.png" alt="The Installation tab after installing, showing Installed (not running) and the Enable it in Live steps" width="500"/>
 
 1. **Restart Live.** It only scans Remote Scripts at startup.
-2. Go to **Settings → Link, Tempo & MIDI**, and set an unused **Control
-   Surface** slot to **Producer Pal**. Leave **Input** and **Output** as
-   **None**. The script doesn't use MIDI.
+2. Go to **Settings → Tempo & MIDI**, and set an unused **Control Surface** slot
+   to **Producer Pal**. Leave **Input** and **Output** as **None**. The script
+   doesn't use MIDI.
 
 <img src="/img/producer-pal-remote-script-control-surface-setup.png" alt="Live's Settings, Tempo & MIDI tab, with Control Surface 1 set to Producer Pal and Input and Output set to None" width="500"/>
 

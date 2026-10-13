@@ -30,7 +30,7 @@ const FOOT = `\n\n(Producer Pal ${VERSION})`;
 const INSTALL = 'ppal-manage action "install-remote-script"';
 const ADD = 'ppal-manage action "add-producer-pal"';
 const RESTART =
-  "ask the user to restart Live and choose Producer Pal as a Control Surface in Settings → Link, Tempo & MIDI";
+  "ask the user to restart Live and choose Producer Pal as a Control Surface in Settings → Tempo & MIDI";
 const NEW_TRACK = "to a new MIDI track";
 
 /**
@@ -111,7 +111,7 @@ Or set it up now: run ${INSTALL} (installs to ${SCRIPT_PATH}), then ${RESTART}. 
       });
 
       expect(text).toContain(
-        `The Producer Pal remote script is installed (${version}, ${SCRIPT_PATH}) but not running. Ask the user to restart Live if they installed it since Live started, and to choose Producer Pal as a Control Surface in Settings → Link, Tempo & MIDI. After that, ${ADD} installs`,
+        `The Producer Pal remote script is installed (${version}, ${SCRIPT_PATH}) but not running. Ask the user to restart Live if they installed it since Live started, and to choose Producer Pal as a Control Surface in Settings → Tempo & MIDI. After that, ${ADD} installs`,
       );
       expect(text).not.toContain(`Or set it up`);
     },

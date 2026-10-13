@@ -84,7 +84,7 @@ function remoteScriptLine(status: RemoteScriptStatus, manage: boolean): string {
   }
 
   if (!status.running) {
-    return `remoteScript: ${versionText(status.installedVersion)} is installed but not running. ${REMOTE_SCRIPT_ADDS} Tell the user to choose Producer Pal as a Control Surface in Live's Settings → Link, Tempo & MIDI, or restart Live. Reinstalling won't help.`;
+    return `remoteScript: ${versionText(status.installedVersion)} is installed but not running. ${REMOTE_SCRIPT_ADDS} Tell the user to choose Producer Pal as a Control Surface in Live's Settings → Tempo & MIDI, or restart Live. Reinstalling won't help.`;
   }
 
   if (liveRunsOtherCopy(status)) {

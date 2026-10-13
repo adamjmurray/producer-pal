@@ -30,8 +30,8 @@ Writes the bundled script into the User Library, replacing any copy, as Settings
 - **Where:** `userLibrary` if given, else the User Library Producer Pal finds
   (the same lookup the Chat UI uses).
 - **Result:** `{ version, path, nextSteps }`. `nextSteps` tells the user to
-  choose Producer Pal as a Control Surface in Settings → Link, Tempo & MIDI on a
-  first install, then restart Live.
+  choose Producer Pal as a Control Surface in Settings → Tempo & MIDI on a first
+  install, then restart Live.
 - **No User Library found, none given:** throws, saying nothing was installed
   and to ask the user for the path (Live: Settings → Library → Location of User
   Library) and pass it as `userLibrary`.

@@ -24,7 +24,7 @@ export async function remoteScriptReady(
 
   if (!ping.running) {
     throw new SetupFailed(
-      `the Producer Pal remote script isn't running, and ${purpose.doing} needs it, so ${purpose.unchanged}. Run ${INSTALL_WITH_TOOL} (if it isn't installed), then ask the user to restart Live and choose Producer Pal as a Control Surface in Settings → Link, Tempo & MIDI. Then call ${purpose.action} again.`,
+      `the Producer Pal remote script isn't running, and ${purpose.doing} needs it, so ${purpose.unchanged}. Run ${INSTALL_WITH_TOOL} (if it isn't installed), then ask the user to restart Live and choose Producer Pal as a Control Surface in Settings → Tempo & MIDI. Then call ${purpose.action} again.`,
     );
   }
 

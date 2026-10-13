@@ -58,8 +58,8 @@ The simple way:
 1. On the device, click **Finish installation…** (or click **Open Chat UI** and
    go to **Settings → Installation**).
 2. Install the device and the remote script.
-3. Restart Live, then in **Settings → Link, Tempo & MIDI** set a **Control
-   Surface** to **Producer Pal**.
+3. Restart Live, then in **Settings → Tempo & MIDI** set a **Control Surface**
+   to **Producer Pal**.
 
 <!-- TODO screenshot: Installation tab -->
 

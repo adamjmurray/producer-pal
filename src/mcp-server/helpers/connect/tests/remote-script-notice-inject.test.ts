@@ -189,7 +189,7 @@ describe("withRemoteScriptNotice", () => {
       const content = await connectThrough(undefined, manage);
 
       expect(content[1]?.text).toBe(
-        `remoteScript: v${VERSION} is installed but not running. ${ADDS} Tell the user to choose Producer Pal as a Control Surface in Live's Settings → Link, Tempo & MIDI, or restart Live. Reinstalling won't help.`,
+        `remoteScript: v${VERSION} is installed but not running. ${ADDS} Tell the user to choose Producer Pal as a Control Surface in Live's Settings → Tempo & MIDI, or restart Live. Reinstalling won't help.`,
       );
     }
   });
