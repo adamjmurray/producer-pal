@@ -93,6 +93,60 @@ describe("combineOutcomes", () => {
   });
 });
 
+describe("combineOutcomes with note-count ops in the first pass", () => {
+  /**
+   * Run two passes over the C major triad and count the combined result.
+   * @param pre - First pass (preTransforms)
+   * @param post - Second pass (transforms)
+   * @returns The combined counts
+   */
+  function combinedCounts(pre: string, post: string): TransformCounts {
+    const notes = cMajorTriad();
+    const first = applyTransforms(notes, pre, 4, 4);
+    const second = applyTransforms(notes, post, 4, 4);
+
+    return countTransforms(combineOutcomes(first, second), notes);
+  }
+
+  it("counts the copies a repeat made when the second pass changes nothing", () => {
+    expect(combinedCounts("repeat(n/4)", "velocity = 100")).toStrictEqual({
+      transformed: 3,
+    });
+  });
+
+  it("counts the pieces a ratchet made when the second pass changes nothing", () => {
+    expect(
+      combinedCounts("C3: ratchet(2)", "C3: velocity = 100"),
+    ).toStrictEqual({ transformed: 2 });
+  });
+
+  it("counts the pieces a split made when the second pass changes nothing", () => {
+    expect(combinedCounts("split(1|1.5)", "velocity = 100")).toStrictEqual({
+      transformed: 2,
+    });
+  });
+
+  it("counts a copy once when the second pass changes it too", () => {
+    // Three copies, plus the original C3 the second pass changed
+    expect(combinedCounts("repeat(n/4)", "C3: velocity = 50")).toStrictEqual({
+      transformed: 4,
+    });
+  });
+
+  it("counts a copy the second pass puts back to the original's values", () => {
+    expect(combinedCounts("C3: repeat(n/4)", "velocity += 0")).toStrictEqual({
+      transformed: 1,
+    });
+  });
+
+  it("doesn't count copies the second pass deleted as deleted notes", () => {
+    // The copy never existed in the clip; only the C3 it came from did
+    expect(combinedCounts("C3: repeat(n/4)", "C3: velocity = 0")).toStrictEqual(
+      { transformed: 0, deletedNotes: 1 },
+    );
+  });
+});
+
 describe("addCounts", () => {
   it("sums each count and leaves out deletedNotes when it stays 0", () => {
     expect(

@@ -84,6 +84,24 @@ describe("updateClip - transform counts", () => {
         { transformed: 3 },
       ],
       [
+        "a copy preTransforms made counts when transforms changes nothing",
+        "D3: repeat(n/4)",
+        "velocity = 100",
+        { transformed: 1 },
+      ],
+      [
+        "ratchet pieces count when transforms changes nothing",
+        "D3: ratchet(2)",
+        "D3: velocity = 100",
+        { transformed: 2 },
+      ],
+      [
+        "a copy and a note transforms changed both count",
+        "D3: repeat(n/4)",
+        "C3: velocity += 10",
+        { transformed: 3 },
+      ],
+      [
         "a note preTransforms deleted counts as deleted",
         "C3: velocity = 0",
         "D3: velocity += 10",

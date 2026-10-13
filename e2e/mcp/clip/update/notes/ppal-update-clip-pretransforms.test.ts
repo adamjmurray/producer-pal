@@ -179,6 +179,30 @@ describe("ppal-update-clip notes outside the region", () => {
   });
 });
 
+describe("ppal-update-clip transform counts across both passes", () => {
+  // The second pass saw preTransforms' copies as already there, so a
+  // transforms that left them as they were reported transformed: 0.
+  it("counts the copies preTransforms made when transforms leaves them alone", async () => {
+    const clipId = await createMidiClip(0, "v100 C3 E3 1|1");
+
+    const updated = parseToolResult<UpdateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: {
+          id: clipId,
+          preTransforms: "repeat(n/4)",
+          transforms: "velocity = 100",
+        },
+      }),
+    );
+
+    await sleep(100);
+
+    expect(updated.noteCount).toBe(4);
+    expect(updated.transformed).toBe(2);
+  });
+});
+
 describe("ppal-update-clip notes an edit puts outside the region", () => {
   // A transform can push notes past the clip's end. Live keeps them but never
   // plays them, so the entry has to say how many.

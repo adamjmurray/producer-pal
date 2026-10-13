@@ -33,7 +33,9 @@ export interface TransformCounts {
  * Join the outcomes of several passes over the same notes (preTransforms, then
  * transforms). A note counts as changed if it ended up different from how the
  * first pass found it, so a note one pass changes and a later one puts back
- * counts as neither, and a note both changed counts once.
+ * counts as neither, and a note both changed counts once. A note an earlier
+ * pass made (a repeat copy, a ratchet or split piece) counts as changed no
+ * matter what a later pass does to it: a later pass sees it as already there.
  * @param outcomes - Outcomes to combine; undefined ones (no transform ran) are skipped
  * @returns The combined outcome, or undefined when none of them ran
  */
@@ -46,12 +48,30 @@ export function combineOutcomes(
     return undefined;
   }
 
-  // The first pass to see a note holds how it started.
+  // The first pass to see a note holds how it started; notes a pass made
+  // have no start.
   const original = new Map<NoteEvent, NoteEvent>();
+  const made = new Set<NoteEvent>();
+  const deleted: NoteEvent[] = [];
 
-  for (const outcome of ran.toReversed()) {
+  for (const outcome of ran) {
+    const madeValues = new Set<NoteEvent | undefined>(
+      [...made].map((note) => outcome.original.get(note)),
+    );
+
     for (const [note, values] of outcome.original) {
-      original.set(note, values);
+      if (!original.has(note) && !made.has(note)) {
+        original.set(note, values);
+      }
+    }
+
+    // Notes that never existed in the clip are not "deleted notes".
+    deleted.push(...outcome.deleted.filter((note) => !madeValues.has(note)));
+
+    for (const note of outcome.changed) {
+      if (!original.has(note)) {
+        made.add(note);
+      }
     }
   }
 
@@ -65,11 +85,7 @@ export function combineOutcomes(
     }
   }
 
-  return {
-    changed,
-    deleted: ran.flatMap((outcome) => outcome.deleted),
-    original,
-  };
+  return { changed, deleted, original };
 }
 
 /**
