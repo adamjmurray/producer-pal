@@ -30,7 +30,6 @@ import {
   type RequestProfile,
 } from "./helpers/http/request-profile.ts";
 import { getUpdate } from "./helpers/http/update-check.ts";
-import { dismissInstallNotice } from "./rpc/device-install/device-install-notice.ts";
 import { dismissUpdate } from "./helpers/http/update-dismissal.ts";
 import { registerProjectContextBackupNodeRoutes } from "./helpers/project-context-backup/project-context-backup-node-routes.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
@@ -131,11 +130,6 @@ registerProjectContextBackupNodeRoutes({
 // itself is Node-side only.
 Max.addHandler("dismissUpdate", () => {
   void dismissUpdate();
-});
-
-// Same for the "Finish installation" notice.
-Max.addHandler("dismissInstallNotice", () => {
-  void dismissInstallNotice();
 });
 
 Max.addHandler("compactOutput", (enabled: unknown) => {

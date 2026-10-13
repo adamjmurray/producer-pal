@@ -9,7 +9,7 @@ import {
   type useRemoteScript,
 } from "#webui/hooks/settings/installation/use-remote-script";
 import { REMOTE_SCRIPT_DOCS_URL } from "#webui/lib/config";
-import { buttonClass, noteClass } from "./installation-classes";
+import { buttonClass, linkClass, noteClass } from "./installation-classes";
 
 interface RemoteScriptSectionProps {
   remote: ReturnType<typeof useRemoteScript>;
@@ -66,6 +66,7 @@ export function RemoteScriptSection({
           href={REMOTE_SCRIPT_DOCS_URL}
           target="_blank"
           rel="noopener noreferrer"
+          className={linkClass}
         >
           Learn more
         </a>

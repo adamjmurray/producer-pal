@@ -6,11 +6,16 @@
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { updateGlobalSettings } from "../../helpers/config-store/global-settings-store.ts";
+import { syncDeviceInstallNotice } from "../../rpc/device-install/device-install-notice.ts";
 import { getUpdate } from "../../helpers/http/update-check.ts";
 import {
   dismissUpdate,
   syncDeviceUpdateNotice,
 } from "../../helpers/http/update-dismissal.ts";
+
+vi.mock(import("../../rpc/device-install/device-install-notice.ts"), () => ({
+  syncDeviceInstallNotice: vi.fn(async () => {}),
+}));
 
 vi.mock(import("../../helpers/http/update-check.ts"), () => ({
   getUpdate: vi.fn(),
@@ -22,7 +27,7 @@ vi.mock(import("../../helpers/config-store/global-settings-store.ts"), () => ({
   DEFAULT_GLOBAL_SETTINGS: {
     autoUpdateCheck: true,
     dismissedUpdateVersion: null,
-    dismissedInstallVersion: null,
+    warnIfInstallIncomplete: true,
   },
 }));
 
@@ -31,6 +36,7 @@ const HIDE_NOTICE = ["config", "updateDismissed", 1];
 describe("dismissUpdate", () => {
   beforeEach(() => {
     vi.mocked(Max.outlet).mockClear();
+    vi.mocked(syncDeviceInstallNotice).mockClear();
     vi.mocked(Max.post).mockClear();
     vi.mocked(updateGlobalSettings).mockReset();
   });
@@ -47,6 +53,8 @@ describe("dismissUpdate", () => {
       dismissedUpdateVersion: "9.9.9",
     });
     expect(Max.outlet).toHaveBeenCalledWith(...HIDE_NOTICE);
+    // The install notice was waiting on this one.
+    expect(syncDeviceInstallNotice).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the notice and warns when the setting can't be saved", async () => {
@@ -70,7 +78,7 @@ describe("dismissUpdate", () => {
     vi.mocked(updateGlobalSettings).mockReturnValue({
       autoUpdateCheck: true,
       dismissedUpdateVersion: null,
-      dismissedInstallVersion: null,
+      warnIfInstallIncomplete: true,
     });
 
     await dismissUpdate();

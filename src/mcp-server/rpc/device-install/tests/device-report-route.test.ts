@@ -20,8 +20,6 @@ import { deviceSourcePath, resetDeviceSource } from "../device-source.ts";
 
 vi.mock(import("../device-install-notice.ts"), () => ({
   syncDeviceInstallNotice: vi.fn(async () => {}),
-  shouldShowInstallNotice: vi.fn(),
-  dismissInstallNotice: vi.fn(),
 }));
 
 describe("device.report route", () => {

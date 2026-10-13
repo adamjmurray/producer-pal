@@ -65,8 +65,7 @@ export async function remoteScriptStatus(
     userLibrary == null
       ? { installed: false, installedVersion: null }
       : installedRemoteScript(userLibrary);
-  const installedNewer =
-    installedVersion != null && isNewerVersion(VERSION, installedVersion);
+  const installedNewer = isInstalledNewer(installedVersion);
 
   return {
     userLibrary,
@@ -77,10 +76,22 @@ export async function remoteScriptStatus(
     runningVersion: ping.scriptVersion,
     liveVersion: ping.liveVersion,
     otherOnPort: ping.otherOnPort,
-    updateAvailable:
-      installed && installedVersion !== VERSION && !installedNewer,
+    updateAvailable: isBehind(installed, installedVersion),
     installedNewer,
   };
+}
+
+/**
+ * Whether a User Library has a remote script that is in place and not behind
+ * this build. A script that is newer than this build counts as current.
+ *
+ * @param userLibrary - Absolute path to Live's User Library folder
+ * @returns False when the script is missing or older than the bundled one
+ */
+export function remoteScriptCurrent(userLibrary: string): boolean {
+  const { installed, installedVersion } = installedRemoteScript(userLibrary);
+
+  return installed && !isBehind(installed, installedVersion);
 }
 
 /** The remote script as installed in one User Library. */
@@ -111,6 +122,30 @@ export function installedRemoteScript(
       ? readScriptVersion(join(path, "version.py"))
       : null,
   };
+}
+
+/**
+ * @param installed - Whether a script is installed
+ * @param installedVersion - Its version, if it names one
+ * @returns Whether it is older than this build, or unreadable
+ */
+function isBehind(
+  installed: boolean,
+  installedVersion: string | null,
+): boolean {
+  return (
+    installed &&
+    installedVersion !== VERSION &&
+    !isInstalledNewer(installedVersion)
+  );
+}
+
+/**
+ * @param installedVersion - The installed script's version, if it names one
+ * @returns Whether it is newer than this build
+ */
+function isInstalledNewer(installedVersion: string | null): boolean {
+  return installedVersion != null && isNewerVersion(VERSION, installedVersion);
 }
 
 /**

@@ -8,6 +8,7 @@ import { useDeviceInstall } from "#webui/hooks/settings/installation/use-device-
 import { useDeviceSwap } from "#webui/hooks/settings/installation/use-device-swap";
 import { useRemoteScript } from "#webui/hooks/settings/installation/use-remote-script";
 import { DeviceSection } from "./DeviceSection";
+import { InstallationOptions } from "./InstallationOptions";
 import { RemoteScriptSection } from "./RemoteScriptSection";
 import { UserLibraryField } from "./UserLibraryField";
 
@@ -38,6 +39,7 @@ export function InstallationTab() {
         detected={detected}
       />
       <RemoteScriptSection remote={remote} path={path} detected={detected} />
+      <InstallationOptions />
     </div>
   );
 }

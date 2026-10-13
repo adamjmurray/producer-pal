@@ -40,6 +40,13 @@ export function deviceStatusBody(
 /** What the stubbed `fetch` looks like to this helper. */
 export type FetchStub = (url: string) => Promise<Response>;
 
+/** What `GET /settings` answers by default. */
+export const GLOBAL_SETTINGS = {
+  autoUpdateCheck: true,
+  dismissedUpdateVersion: null,
+  warnIfInstallIncomplete: true,
+};
+
 /** One queued answer: a response, a failure, or a promise of either. */
 type Answer = Response | Error | Promise<Response>;
 
@@ -65,6 +72,11 @@ export function routeInstallationFetch(
 
   // The shared mock is untyped, so its implementations would read as void.
   (fetchMock as unknown as Mock<FetchStub>).mockImplementation((url) => {
+    // The options checkboxes read the machine-wide settings, nothing queued.
+    if (url.includes("/settings")) {
+      return Promise.resolve(jsonResponse(GLOBAL_SETTINGS));
+    }
+
     const isDevice = url.includes("/device-install");
     const next = (isDevice ? device : remote).shift();
 

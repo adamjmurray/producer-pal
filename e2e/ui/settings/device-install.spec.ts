@@ -353,6 +353,68 @@ test.describe("Settings — installation: device swap (stubbed backend)", () => 
   });
 });
 
+test.describe("Settings — installation: notice options (stubbed backend)", () => {
+  test("holds both device notice checkboxes, on by default, and writes a change", async ({
+    page,
+  }) => {
+    await setupSettingsTest(page);
+    await stubDevice(page, status());
+
+    const writes: unknown[] = [];
+
+    await page.route("**/settings", (route) => {
+      if (route.request().method() === "PUT") {
+        writes.push(route.request().postDataJSON());
+      }
+
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          autoUpdateCheck: true,
+          dismissedUpdateVersion: null,
+          warnIfInstallIncomplete: true,
+        }),
+      });
+    });
+    await openInstallationTab(page);
+
+    const warn = page.getByTestId("warn-install-incomplete");
+    const updates = page.getByTestId("auto-update-check");
+
+    await expect(warn).toBeChecked();
+    await expect(updates).toBeChecked();
+    await expect(
+      page.getByTestId("installation-options").getByRole("link", {
+        name: "Learn more",
+      }),
+    ).toHaveAttribute(
+      "href",
+      "https://producer-pal.org/installation#finish-the-installation",
+    );
+
+    await warn.uncheck();
+    await updates.uncheck();
+
+    await expect
+      .poll(() => writes)
+      .toStrictEqual([
+        { warnIfInstallIncomplete: false },
+        { autoUpdateCheck: false },
+      ]);
+  });
+
+  test("moved the update check out of Preferences", async ({ page }) => {
+    await setupSettingsTest(page);
+    await page.getByRole("button", { name: "Preferences" }).click();
+
+    await expect(page.getByTestId("max-tool-steps")).toBeVisible();
+    await expect(
+      page.getByText("Automatically check for new versions"),
+    ).toBeHidden();
+  });
+});
+
 test.describe("Settings — ?settings=installation link", () => {
   test("opens the settings on the Installation tab and clears the parameter", async ({
     page,

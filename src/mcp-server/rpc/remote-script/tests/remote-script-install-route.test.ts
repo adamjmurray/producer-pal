@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
 import { MANAGE_ROUTES } from "#src/tools/core/helpers/manage-contract.ts";
 import { findUserLibraryPath } from "../../../live-library/query/user-library-path.ts";
+import { syncDeviceInstallNotice } from "../../device-install/device-install-notice.ts";
 import { clearNodeRoutes } from "../../node-request-protocol.ts";
 import { dispatchNodeRoute } from "../../../tests/config-dir-test-helpers.ts";
 import {
@@ -28,6 +29,11 @@ import { makeScratchUserLibrary } from "./remote-script-test-helpers.ts";
 
 vi.mock(import("../../../live-library/query/user-library-path.ts"), () => ({
   findUserLibraryPath: vi.fn(),
+}));
+
+// Covered by its own tests; here only whether the route asks for it.
+vi.mock(import("../../device-install/device-install-notice.ts"), () => ({
+  syncDeviceInstallNotice: vi.fn(async () => {}),
 }));
 
 // Real by default; a test can make the swap fail the way a stuck one does.
@@ -49,6 +55,7 @@ beforeEach(() => {
   registerRemoteScriptInstallRoute();
   library = makeScratchUserLibrary("install-route");
   vi.mocked(findUserLibraryPath).mockResolvedValue(library);
+  vi.mocked(syncDeviceInstallNotice).mockClear();
 });
 
 afterEach(() => {
@@ -78,6 +85,8 @@ describe("manage.installRemoteScript", () => {
       path,
     });
     expect(existsSync(join(path, "__init__.py"))).toBe(true);
+    // The device's "Finish installation" notice may be done with.
+    expect(syncDeviceInstallNotice).toHaveBeenCalledTimes(1);
   });
 
   it("answers the same when called directly, as the portal does", async () => {
@@ -113,6 +122,7 @@ describe("manage.installRemoteScript", () => {
         /^couldn't find Live's User Library, so nothing was installed\. Ask the user .* pass it as userLibrary$/,
       ),
     });
+    expect(syncDeviceInstallNotice).not.toHaveBeenCalled();
   });
 
   it("refuses a given path that isn't a folder, and installs nothing", async () => {

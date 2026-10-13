@@ -12,7 +12,6 @@ import {
   type PresetSelection,
   usePresetSelection,
 } from "#webui/hooks/settings/presets/use-preset-selection";
-import { useGlobalSettings } from "#webui/hooks/connection/use-global-settings";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { CHAT_UI_DOCS_URL } from "#webui/lib/config";
 import { type UseSettingsReturn } from "#webui/types/settings";
@@ -156,9 +155,6 @@ function SettingsTabContent(
 ) {
   const { settings, display, activeTab } = props;
   const providerLabel = getProviderName(settings.provider, "product");
-  // Machine-global settings, read fresh each time the modal opens so a
-  // device-side change shows up.
-  const globalSettings = useGlobalSettings();
 
   return (
     <div className="space-y-4">
@@ -227,8 +223,6 @@ function SettingsTabContent(
           setShowHelpLinks={display.setShowHelpLinks}
           showTokenUsage={display.showTokenUsage}
           setShowTokenUsage={display.setShowTokenUsage}
-          autoUpdateCheck={globalSettings.autoUpdateCheck}
-          setAutoUpdateCheck={globalSettings.setAutoUpdateCheck}
           maxToolSteps={settings.maxToolSteps}
           setMaxToolSteps={settings.setMaxToolSteps}
           onDeleteAllConversations={props.onDeleteAllConversations}

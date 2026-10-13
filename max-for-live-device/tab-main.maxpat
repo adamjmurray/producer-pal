@@ -481,26 +481,26 @@
             },
             {
                 "box": {
-                    "linecount": 4,
+                    "linecount": 2,
                     "id": "obj-82",
                     "maxclass": "message",
                     "numinlets": 2,
                     "numoutlets": 1,
                     "outlettype": [ "" ],
-                    "patching_rect": [ 790.0, 401.0, 166.0, 63.0 ],
-                    "text": "script sendbox \"Producer Pal finish installation\" hidden 0, script sendbox \"Producer Pal finish installation dismiss\" hidden 0"
+                    "patching_rect": [ 790.0, 401.0, 166.0, 35.0 ],
+                    "text": "script sendbox \"Producer Pal finish installation\" hidden 0"
                 }
             },
             {
                 "box": {
-                    "linecount": 4,
+                    "linecount": 2,
                     "id": "obj-83",
                     "maxclass": "message",
                     "numinlets": 2,
                     "numoutlets": 1,
                     "outlettype": [ "" ],
-                    "patching_rect": [ 970.0, 401.0, 166.0, 63.0 ],
-                    "text": "script sendbox \"Producer Pal finish installation\" hidden 1, script sendbox \"Producer Pal finish installation dismiss\" hidden 1"
+                    "patching_rect": [ 970.0, 401.0, 166.0, 35.0 ],
+                    "text": "script sendbox \"Producer Pal finish installation\" hidden 1"
                 }
             },
             {
@@ -518,7 +518,7 @@
                     "parameter_enable": 0,
                     "patching_rect": [ 790.0, 497.0, 98.0, 20.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 0.0, 3.0, 98.0, 20.0 ],
+                    "presentation_rect": [ 100.0, 4.0, 148.0, 22.0 ],
                     "rounded": 8.0,
                     "text": "Finish installation…",
                     "textoncolor": [ 0.129411764705882, 0.129411764705882, 0.129411764705882, 1.0 ],
@@ -526,41 +526,6 @@
                     "underline": 1,
                     "usetextovercolor": 1,
                     "varname": "Producer Pal finish installation"
-                }
-            },
-            {
-                "box": {
-                    "annotation": "Dismiss this notice.",
-                    "bgcolor": [ 0.596078431372549, 0.933333333333333, 1.0, 1.0 ],
-                    "fontface": 0,
-                    "hidden": 1,
-                    "hint": "",
-                    "id": "obj-85",
-                    "maxclass": "textbutton",
-                    "numinlets": 1,
-                    "numoutlets": 3,
-                    "outlettype": [ "", "", "int" ],
-                    "parameter_enable": 0,
-                    "patching_rect": [ 900.0, 497.0, 20.0, 20.0 ],
-                    "presentation": 1,
-                    "presentation_rect": [ 100.0, 3.0, 20.0, 20.0 ],
-                    "rounded": 8.0,
-                    "text": "×",
-                    "textoncolor": [ 0.129411764705882, 0.129411764705882, 0.129411764705882, 1.0 ],
-                    "textovercolor": [ 0.231372549019608, 0.03921568627451, 0.72156862745098, 1.0 ],
-                    "usetextovercolor": 1,
-                    "varname": "Producer Pal finish installation dismiss"
-                }
-            },
-            {
-                "box": {
-                    "id": "obj-86",
-                    "maxclass": "message",
-                    "numinlets": 2,
-                    "numoutlets": 1,
-                    "outlettype": [ "" ],
-                    "patching_rect": [ 900.0, 535.0, 125.0, 22.0 ],
-                    "text": "dismissInstallNotice"
                 }
             },
             {
@@ -743,18 +708,6 @@
                 "patchline": {
                     "destination": [ "obj-88", 0 ],
                     "source": [ "obj-84", 0 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-86", 0 ],
-                    "source": [ "obj-85", 0 ]
-                }
-            },
-            {
-                "patchline": {
-                    "destination": [ "obj-74", 0 ],
-                    "source": [ "obj-86", 0 ]
                 }
             },
             {

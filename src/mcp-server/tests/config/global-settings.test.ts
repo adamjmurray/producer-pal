@@ -11,6 +11,7 @@ import {
   readGlobalSettings,
   updateGlobalSettings,
 } from "../../helpers/config-store/global-settings-store.ts";
+import { syncDeviceInstallNotice } from "../../rpc/device-install/device-install-notice.ts";
 import { registerGlobalSettingsRoutes } from "../../routes/config/global-settings-route.ts";
 import {
   putJson,
@@ -24,6 +25,11 @@ const { mockGetUpdate } = vi.hoisted(() => ({ mockGetUpdate: vi.fn() }));
 
 vi.mock(import("../../helpers/http/update-check.ts"), () => ({
   getUpdate: mockGetUpdate,
+}));
+
+// The install notice is covered by its own tests; here only when it is asked.
+vi.mock(import("../../rpc/device-install/device-install-notice.ts"), () => ({
+  syncDeviceInstallNotice: vi.fn(async () => {}),
 }));
 
 const getDir = useTempConfigDir();
@@ -41,7 +47,7 @@ describe("global settings store", () => {
     expect(readGlobalSettings()).toStrictEqual({
       autoUpdateCheck: true,
       dismissedUpdateVersion: null,
-      dismissedInstallVersion: null,
+      warnIfInstallIncomplete: true,
     });
   });
 
@@ -52,16 +58,16 @@ describe("global settings store", () => {
     expect(readGlobalSettings()).toStrictEqual({
       autoUpdateCheck: false,
       dismissedUpdateVersion: "9.9.9",
-      dismissedInstallVersion: null,
+      warnIfInstallIncomplete: true,
     });
   });
 
-  it("stores the install-notice dismissal and ignores a mistyped one", () => {
-    updateGlobalSettings({ dismissedInstallVersion: "2.5.0" });
-    expect(readGlobalSettings().dismissedInstallVersion).toBe("2.5.0");
+  it("stores the incomplete-installation warning and ignores a mistyped one", () => {
+    updateGlobalSettings({ warnIfInstallIncomplete: false });
+    expect(readGlobalSettings().warnIfInstallIncomplete).toBe(false);
 
-    writeRawSettings('{"dismissedInstallVersion": 7}');
-    expect(readGlobalSettings().dismissedInstallVersion).toBeNull();
+    writeRawSettings('{"warnIfInstallIncomplete": "no"}');
+    expect(readGlobalSettings().warnIfInstallIncomplete).toBe(true);
   });
 
   it("preserves keys it doesn't know about", () => {
@@ -93,7 +99,7 @@ describe("global settings store", () => {
       expect(readGlobalSettings()).toStrictEqual({
         autoUpdateCheck: true,
         dismissedUpdateVersion: null,
-        dismissedInstallVersion: null,
+        warnIfInstallIncomplete: true,
       });
     }
   });
@@ -116,7 +122,7 @@ describe("global settings store", () => {
     expect(updateGlobalSettings({ autoUpdateCheck: false })).toStrictEqual({
       autoUpdateCheck: true,
       dismissedUpdateVersion: null,
-      dismissedInstallVersion: null,
+      warnIfInstallIncomplete: true,
     });
   });
 });
@@ -127,6 +133,7 @@ describe("/settings routes", () => {
 
   beforeEach(async () => {
     vi.mocked(Max.outlet).mockClear();
+    vi.mocked(syncDeviceInstallNotice).mockClear();
     mockGetUpdate.mockResolvedValue(null);
     server = await startMarkdownRouteServer(registerGlobalSettingsRoutes);
     url = `${server.baseUrl}/settings`;
@@ -145,7 +152,7 @@ describe("/settings routes", () => {
     expect(await response.json()).toStrictEqual({
       autoUpdateCheck: false,
       dismissedUpdateVersion: null,
-      dismissedInstallVersion: null,
+      warnIfInstallIncomplete: true,
     });
   });
 
@@ -155,7 +162,7 @@ describe("/settings routes", () => {
     expect(await response.json()).toStrictEqual({
       autoUpdateCheck: true,
       dismissedUpdateVersion: "9.9.9",
-      dismissedInstallVersion: null,
+      warnIfInstallIncomplete: true,
     });
     expect(readGlobalSettings().dismissedUpdateVersion).toBe("9.9.9");
   });
@@ -166,7 +173,7 @@ describe("/settings routes", () => {
     expect(await response.json()).toStrictEqual({
       autoUpdateCheck: false,
       dismissedUpdateVersion: null,
-      dismissedInstallVersion: null,
+      warnIfInstallIncomplete: true,
     });
     expect(readGlobalSettings().autoUpdateCheck).toBe(false);
   });
@@ -188,7 +195,7 @@ describe("/settings routes", () => {
     expect(await response.json()).toStrictEqual({
       autoUpdateCheck: true,
       dismissedUpdateVersion: null,
-      dismissedInstallVersion: null,
+      warnIfInstallIncomplete: true,
     });
   });
 
@@ -243,5 +250,43 @@ describe("/settings routes", () => {
     await putJson(url, { dismissedUpdateVersion: null });
 
     expect(Max.outlet).not.toHaveBeenCalled();
+  });
+
+  it("PUTs the incomplete-installation warning, and re-checks the device's install notice", async () => {
+    const response = await putJson(url, { warnIfInstallIncomplete: false });
+
+    expect(await response.json()).toStrictEqual({
+      autoUpdateCheck: true,
+      dismissedUpdateVersion: null,
+      warnIfInstallIncomplete: false,
+    });
+    expect(syncDeviceInstallNotice).toHaveBeenCalledTimes(1);
+  });
+
+  it("400s a mistyped warnIfInstallIncomplete", async () => {
+    const response = await putJson(url, { warnIfInstallIncomplete: "no" });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toStrictEqual({
+      error: "warnIfInstallIncomplete must be a boolean",
+    });
+  });
+
+  it.each([
+    { what: "a dismissed update", patch: { dismissedUpdateVersion: "9.9.9" } },
+    { what: "update checks turned off", patch: { autoUpdateCheck: false } },
+  ])(
+    "re-checks the device's install notice for $what, since it gives way to the update notice",
+    async ({ patch }) => {
+      await putJson(url, patch);
+
+      expect(syncDeviceInstallNotice).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("leaves the install notice alone when update checks are turned on", async () => {
+    await putJson(url, { autoUpdateCheck: true });
+
+    expect(syncDeviceInstallNotice).not.toHaveBeenCalled();
   });
 });

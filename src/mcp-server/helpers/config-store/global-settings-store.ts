@@ -37,16 +37,17 @@ export interface GlobalSettings {
    */
   dismissedUpdateVersion: string | null;
   /**
-   * The device version whose "finish installation" notice the user dismissed,
-   * or null. Per version, so the next release asks again.
+   * Whether the device may show its "Finish installation" notice while the
+   * device copy or the remote script in the User Library is missing or behind.
+   * Opt-OUT, like the update check: the default is true.
    */
-  dismissedInstallVersion: string | null;
+  warnIfInstallIncomplete: boolean;
 }
 
 export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   autoUpdateCheck: true,
   dismissedUpdateVersion: null,
-  dismissedInstallVersion: null,
+  warnIfInstallIncomplete: true,
 };
 
 /**
@@ -68,10 +69,10 @@ export function readGlobalSettings(): GlobalSettings {
       typeof raw.dismissedUpdateVersion === "string"
         ? raw.dismissedUpdateVersion
         : DEFAULT_GLOBAL_SETTINGS.dismissedUpdateVersion,
-    dismissedInstallVersion:
-      typeof raw.dismissedInstallVersion === "string"
-        ? raw.dismissedInstallVersion
-        : DEFAULT_GLOBAL_SETTINGS.dismissedInstallVersion,
+    warnIfInstallIncomplete:
+      typeof raw.warnIfInstallIncomplete === "boolean"
+        ? raw.warnIfInstallIncomplete
+        : DEFAULT_GLOBAL_SETTINGS.warnIfInstallIncomplete,
   };
 }
 

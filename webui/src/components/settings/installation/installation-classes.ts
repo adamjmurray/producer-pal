@@ -10,5 +10,7 @@ export const buttonClass =
 
 export const noteClass = "text-xs text-zinc-500 dark:text-zinc-300";
 
+export const linkClass = "text-blue-600 hover:underline dark:text-blue-400";
+
 export const inputClass =
   "w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-700";

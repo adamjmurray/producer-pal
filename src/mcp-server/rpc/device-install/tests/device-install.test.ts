@@ -8,6 +8,7 @@ import { dirname, join } from "node:path";
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
+import { installRemoteScript } from "../../remote-script/install/remote-script-install.ts";
 import { UserLibraryFolderError } from "../../remote-script/user-library/user-library-folder.ts";
 import {
   installRunningDevice,
@@ -26,6 +27,11 @@ const { findUserLibraryPath } = vi.hoisted(() => ({
 
 vi.mock(import("../../../live-library/query/user-library-path.ts"), () => ({
   findUserLibraryPath,
+}));
+
+// The real check would ask GitHub.
+vi.mock(import("../../../helpers/http/update-check.ts"), () => ({
+  getUpdate: vi.fn(async () => null),
 }));
 
 // Names a user-library-fs call to fail.
@@ -105,6 +111,7 @@ describe("installRunningDevice", () => {
     const bytes = frozenDevice(VERSION);
 
     findUserLibraryPath.mockResolvedValue(library);
+    installRemoteScript(library);
     runFromDownloads(bytes);
 
     const result = installRunningDevice(library);
@@ -117,6 +124,18 @@ describe("installRunningDevice", () => {
     expect(readFileSync(installed).equals(bytes)).toBe(true);
     await vi.waitFor(() => {
       expect(Max.outlet).toHaveBeenCalledWith("config", "installNotice", 0);
+    });
+  });
+
+  it("keeps the notice up after the copy while the remote script is still missing", async () => {
+    const { library, runFromDownloads } = scratch();
+
+    findUserLibraryPath.mockResolvedValue(library);
+    runFromDownloads(frozenDevice(VERSION));
+    installRunningDevice(library);
+
+    await vi.waitFor(() => {
+      expect(Max.outlet).toHaveBeenCalledWith("config", "installNotice", 1);
     });
   });
 

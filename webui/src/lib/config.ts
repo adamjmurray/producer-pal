@@ -25,6 +25,9 @@ export const CONTEXT_DOCS_URL = "https://producer-pal.org/guide/context";
 export const REMOTE_SCRIPT_DOCS_URL =
   "https://producer-pal.org/guide/remote-script";
 
+export const FINISH_INSTALLATION_DOCS_URL =
+  "https://producer-pal.org/installation#finish-the-installation";
+
 const ALL_MODELS = [
   ...ANTHROPIC_MODELS,
   ...GEMINI_MODELS,

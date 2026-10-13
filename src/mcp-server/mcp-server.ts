@@ -7,6 +7,7 @@
 import Max from "max-api";
 import { BUILD_SHA, DEFAULT_MCP_PORT, VERSION } from "#src/shared/config.ts";
 import { createExpressApp } from "./create-express-app.ts";
+import { syncDeviceInstallNotice } from "./rpc/device-install/device-install-notice.ts";
 import { registerDeviceReportRoute } from "./rpc/device-install/device-report-route.ts";
 import { askDeviceToReport } from "./rpc/device-install/device-source.ts";
 import { isConfigDirInert } from "./helpers/config-store/config-markdown-store.ts";
@@ -109,6 +110,9 @@ appServer
         console.log(`Producer Pal update available: ${update.version}`);
         void Max.outlet("update_available", update.version);
       }
+
+      // The install notice waits for this answer: it gives way to the update.
+      void syncDeviceInstallNotice();
     });
   })
   .on("error", (error: ServerError) => {

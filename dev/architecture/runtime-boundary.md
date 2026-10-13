@@ -101,11 +101,18 @@ device depends on the files beside it. `GET /device-install` and
 way `/remote-script` does. The install is `installDevice` from the portal, with
 `force` needed for a newer or unorderable copy.
 
-The device shows a "Finish installation…" notice while the source is frozen and
-the User Library copy is missing or older. Node sends `config installNotice 1|0`
-(the patch's `tab-main` routes it) and the notice's `×` sends
-`dismissInstallNotice`, which saves `dismissedInstallVersion` in the global
-settings. It is keyed on the version, like the update notice.
+The device shows a "Finish installation…" notice (in the update notice's spot,
+no `×`) when `installIncomplete` says so: the User Library has no copy of a
+frozen device or an older one, or its remote script is missing or behind this
+build. `syncDeviceInstallNotice` is the one place that decides. The notice also
+needs the global setting `warnIfInstallIncomplete` (default on, set from the
+Installation tab) and no update notice: it asks `getUpdate()`, which already
+folds in the update check setting and its dismissal. Node sends
+`config installNotice 1|0` (`tab-main` routes it), and re-sends it whenever an
+input changes: the device reports its path, an install, a remote script install,
+the update notice's dismissal or check being turned off, the warning setting,
+and the update check finishing at startup. Turning update checks on pushes
+nothing, as for the update notice itself.
 
 A Set keeps pointing at the file its device was loaded from, so a device from
 Downloads stays pinned there. `POST /device-install/swap` replaces it with the

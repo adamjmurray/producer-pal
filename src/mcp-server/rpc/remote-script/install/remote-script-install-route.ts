@@ -10,6 +10,7 @@ import {
 } from "#src/tools/core/helpers/manage-contract.ts";
 import { registerNodeRoute } from "../../node-request-protocol.ts";
 import { optionalString } from "../../route-string-args.ts";
+import { syncDeviceInstallNotice } from "../../device-install/device-install-notice.ts";
 import { installRemoteScriptReply } from "./remote-script-install-reply.ts";
 
 /**
@@ -28,6 +29,15 @@ export function registerRemoteScriptInstallRoute(): void {
  * @param args - `{ userLibrary? }`
  * @returns The version and path installed, or why it wasn't
  */
-function installFromRoute(args: unknown): Promise<InstallReply> {
-  return installRemoteScriptReply(optionalString(args, "userLibrary"));
+async function installFromRoute(args: unknown): Promise<InstallReply> {
+  const reply = await installRemoteScriptReply(
+    optionalString(args, "userLibrary"),
+  );
+
+  if (reply.installed) {
+    // The device's "Finish installation" notice may be done with.
+    void syncDeviceInstallNotice();
+  }
+
+  return reply;
 }

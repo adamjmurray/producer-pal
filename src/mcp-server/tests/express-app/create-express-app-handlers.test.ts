@@ -5,15 +5,8 @@
 
 import Max from "max-api";
 import { describe, expect, it, vi } from "vitest";
-import { dismissInstallNotice } from "../../rpc/device-install/device-install-notice.ts";
 import { dismissUpdate } from "../../helpers/http/update-dismissal.ts";
 import { setupExpressAppServer } from "../express-app-test-helpers.ts";
-
-vi.mock(import("../../rpc/device-install/device-install-notice.ts"), () => ({
-  dismissInstallNotice: vi.fn(async () => {}),
-  syncDeviceInstallNotice: vi.fn(async () => {}),
-  shouldShowInstallNotice: vi.fn(),
-}));
 
 vi.mock(import("../../helpers/http/update-dismissal.ts"), () => ({
   dismissUpdate: vi.fn(async () => {}),
@@ -141,14 +134,5 @@ describe("Handler Registration", () => {
 
     handler();
     expect(dismissUpdate).toHaveBeenCalledTimes(1);
-  });
-
-  it("should dismiss the installation notice when the device's x button asks", () => {
-    const handler = mockMax.handlers.get("dismissInstallNotice") as () => void;
-
-    expect(handler).toBeDefined();
-
-    handler();
-    expect(dismissInstallNotice).toHaveBeenCalledTimes(1);
   });
 });
