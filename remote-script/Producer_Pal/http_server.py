@@ -185,7 +185,11 @@ class _Handler(BaseHTTPRequestHandler):
         if not self._allowed():
             return
         path, params = self._parse_url()
-        length = int(self.headers.get("Content-Length") or 0)
+        length = _content_length(self.headers.get("Content-Length"))
+        if length is None:
+            # The body can't be framed, so it can't stay on the connection.
+            self._send(400, {"error": "invalid Content-Length"})
+            return
         raw = self.rfile.read(length) if length else b""
         if raw:
             try:
@@ -248,6 +252,17 @@ class _Handler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
         self.server.log("http: " + (fmt % args))
+
+
+def _content_length(value):
+    """The body size from a Content-Length header: 0 if absent, None if invalid."""
+    value = (value or "").strip()
+    if not value:
+        return 0
+    # int() would also accept signs, underscores and non-ASCII digits.
+    if not (value.isascii() and value.isdigit()):
+        return None
+    return int(value)
 
 
 def _answers(port):
