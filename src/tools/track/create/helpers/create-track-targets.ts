@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
 import {
   type InsertionSpot,
   refuseCountWithPathList,
@@ -17,6 +18,12 @@ import {
 } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import { refuseNamedTwice } from "#src/tools/shared/helpers/param-presence.ts";
+import { refuseTrackCount } from "./track-cap.ts";
+
+const TRACK_COUNT_LIMIT = {
+  max: MAX_AUTO_CREATED_TRACKS,
+  refuse: refuseTrackCount,
+};
 
 export type CreateTrackType = "midi" | "audio" | "return";
 
@@ -64,7 +71,11 @@ export function resolveCreateTrackTargets({
   if (entries.length === 0) {
     validateCount(count);
 
-    return repeatForCount([targetFromIndex(trackIndex, type)], count);
+    return repeatForCount(
+      [targetFromIndex(trackIndex, type)],
+      count,
+      TRACK_COUNT_LIMIT,
+    );
   }
 
   refuseCountWithPathList(count, entries.length, "track", "t+,t+,t+");
@@ -73,6 +84,7 @@ export function resolveCreateTrackTargets({
   return repeatForCount(
     entries.map((entry) => targetFromPath(entry, type)),
     count,
+    TRACK_COUNT_LIMIT,
   );
 }
 

@@ -208,19 +208,34 @@ export function validateCount(count: number | undefined): void {
   }
 }
 
+/** A cap on how many objects a call may create, and how it refuses one more. */
+export interface CountLimit<T> {
+  /** The most a call may create */
+  max: number;
+  /** Throws the call's usual over-the-cap refusal */
+  refuse: (count: number, target: T) => never;
+}
+
 /**
  * Repeats a lone target `count` times, which is all `count` ever meant: the
- * same place, several times over.
+ * same place, several times over. A count past the cap is refused first, so a
+ * huge one never builds the array.
  * @param targets - The targets the path named
  * @param count - The count param, or undefined when it wasn't sent
+ * @param limit - The cap, and the refusal to give past it
  * @returns The targets to create, in order
  */
 export function repeatForCount<T>(
   targets: T[],
   count: number | undefined,
+  limit: CountLimit<T>,
 ): T[] {
   if (count == null || targets.length !== 1) {
     return targets;
+  }
+
+  if (count > limit.max) {
+    limit.refuse(count, targets[0] as T);
   }
 
   return Array.from({ length: count }, () => targets[0] as T);

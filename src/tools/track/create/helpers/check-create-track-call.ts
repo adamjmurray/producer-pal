@@ -16,6 +16,7 @@ import {
 } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import { type Target } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { type CreateTrackTarget } from "./create-track-targets.ts";
+import { refuseTrackCount } from "./track-cap.ts";
 import { type CreateTrackCall } from "./parse-create-track-call.ts";
 
 /** What the check found, shared by every target's write. */
@@ -100,9 +101,7 @@ function validateTrackCap(total: number, insertions: Insertion[]): void {
   // The total must not exceed the cap in ANY mode: the reach check below sees
   // only inserts at a named index, so appends and returns would be unbounded.
   if (total > MAX_AUTO_CREATED_TRACKS) {
-    throw new Error(
-      `creating ${total} tracks exceeds the maximum allowed (${MAX_AUTO_CREATED_TRACKS})`,
-    );
+    refuseTrackCount(total);
   }
 
   const indexes = insertions

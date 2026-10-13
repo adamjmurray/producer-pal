@@ -564,6 +564,18 @@ describe("ppal-create-scene", () => {
       await sleep(100);
       expect(await sceneIds()).toStrictEqual(before);
     });
+
+    // Refused before the scenes are listed out, so a huge count can't stall Live.
+    it("refuses a count past the cap at once", async () => {
+      const text = extractToolResultText(
+        await ctx.client!.callTool({
+          name: "ppal-create-scene",
+          arguments: { path: "s+", count: 1000000000 },
+        }),
+      );
+
+      expect(text).toContain("creating 1000000000 scenes at index");
+    });
   });
 });
 

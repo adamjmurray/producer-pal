@@ -4,11 +4,13 @@
 // SPDX-License-Identifier: MIT
 
 import { errorMessage } from "#src/shared/error-message.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { withCreatedScenes } from "#src/tools/shared/clip/create-missing-scenes.ts";
 import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
 import {
   type InsertionSpot,
+  type CountLimit,
   refuseCountWithPathList,
   repeatForCount,
   validateCount,
@@ -31,11 +33,35 @@ export function validateSceneIndexCap(
   count = sceneIndexes.length,
 ): void {
   if (Math.max(-1, ...sceneIndexes) + 1 > MAX_AUTO_CREATED_SCENES) {
-    throw new Error(
-      `creating ${count} scene${count === 1 ? "" : "s"} at index ${sceneIndexes[0]} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
-    );
+    throw sceneCapError(count, sceneIndexes[0]);
   }
 }
+
+function sceneCapError(count: number, index: number | undefined): Error {
+  return new Error(
+    `creating ${count} scene${count === 1 ? "" : "s"} at index ${index} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
+  );
+}
+
+/**
+ * Refuses a count past the scene cap with the cap's usual message, before the
+ * scenes are planned: scene N+1 always lands past it.
+ * @param count - How many scenes the call asks for
+ * @param place - Where they go
+ */
+function refuseSceneCount(count: number, place: SceneSpot): never {
+  const first =
+    place.spot === "end"
+      ? LiveAPI.from(livePath.liveSet).getChildIds("scenes").length
+      : place.spot;
+
+  throw sceneCapError(count, first);
+}
+
+const SCENE_COUNT_LIMIT: CountLimit<SceneSpot> = {
+  max: MAX_AUTO_CREATED_SCENES,
+  refuse: refuseSceneCount,
+};
 
 /**
  * Appends empty scenes. A failure part-way names the ones already made: they
@@ -214,6 +240,7 @@ export function resolveCreateSceneSpots(
         },
       ],
       count,
+      SCENE_COUNT_LIMIT,
     );
   }
 
@@ -226,6 +253,7 @@ export function resolveCreateSceneSpots(
       spelled: entry,
     })),
     count,
+    SCENE_COUNT_LIMIT,
   );
 }
 
