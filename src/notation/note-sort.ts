@@ -44,15 +44,107 @@ export function sortNotes<T extends { start_time: number; pitch: number }>(
 export function dedupeNotesKeepingLast<
   T extends { start_time: number; pitch: number },
 >(notes: T[]): T[] {
-  return notes.reduce<T[]>((result, note) => {
-    const withoutCollision = result.filter(
-      (existing) => !isSameSlot(existing, note),
-    );
+  const replaced = findReplacedIndices(notes);
 
-    withoutCollision.push(note);
+  return notes.filter((_, index) => !replaced.has(index));
+}
 
-    return withoutCollision;
-  }, []);
+/**
+ * Indices of notes with a later note in their slot. A note survives keep-last
+ * only if none follows it, so this is the whole rule, not a shortcut: the
+ * tolerance isn't transitive, but a note removed early is always removed by a
+ * later one too.
+ *
+ * Per pitch, sort by onset; the notes within the tolerance of one are a
+ * contiguous window. A sliding-window maximum of the original index says whether
+ * any note in it comes later. O(n log n), versus re-filtering per note.
+ * Non-finite onsets and NaN pitches never share a slot ({@link isSameSlot}), so
+ * they stay out.
+ * @param notes - Notes in insertion order
+ * @returns The indices to drop
+ */
+function findReplacedIndices(
+  notes: { start_time: number; pitch: number }[],
+): Set<number> {
+  const byPitch = new Map<number, number[]>();
+
+  for (const [index, note] of notes.entries()) {
+    if (Number.isNaN(note.pitch) || !Number.isFinite(note.start_time)) {
+      continue;
+    }
+
+    const group = byPitch.get(note.pitch);
+
+    if (group == null) {
+      byPitch.set(note.pitch, [index]);
+    } else {
+      group.push(index);
+    }
+  }
+
+  const replaced = new Set<number>();
+
+  for (const group of byPitch.values()) {
+    markReplacedInGroup(notes, group, replaced);
+  }
+
+  return replaced;
+}
+
+/**
+ * Slide a window over one pitch's notes in onset order, tracking the highest
+ * original index in it.
+ * @param notes - All notes in insertion order
+ * @param group - Indices of the notes sharing one pitch
+ * @param replaced - Collects the indices that have a later note in their slot
+ */
+function markReplacedInGroup(
+  notes: { start_time: number }[],
+  group: number[],
+  replaced: Set<number>,
+): void {
+  if (group.length < 2) {
+    return;
+  }
+
+  const time = (note: number): number =>
+    (notes[note] as { start_time: number }).start_time;
+  const order = group.toSorted((a, b) => time(a) - time(b));
+  // Positions in `order`, from `head` on, with original indices falling
+  const maxima: number[] = [];
+  let head = 0;
+  let lo = 0;
+  let hi = 0;
+
+  for (let pos = 0; pos < order.length; pos++) {
+    const here = time(order[pos] as number);
+
+    while (
+      hi < order.length &&
+      isWithinEpsilon(time(order[hi] as number), here)
+    ) {
+      while (
+        maxima.length > head &&
+        (order[maxima.at(-1) as number] as number) < (order[hi] as number)
+      ) {
+        maxima.pop();
+      }
+
+      maxima.push(hi++);
+    }
+
+    while (!isWithinEpsilon(time(order[lo] as number), here)) {
+      lo++;
+    }
+
+    while ((maxima[head] as number) < lo) {
+      head++;
+    }
+
+    if ((order[maxima[head] as number] as number) > (order[pos] as number)) {
+      replaced.add(order[pos] as number);
+    }
+  }
 }
 
 /**
@@ -109,8 +201,9 @@ export function isSameSlot(
   a: { start_time: number; pitch: number },
   b: { start_time: number; pitch: number },
 ): boolean {
-  return (
-    a.pitch === b.pitch &&
-    Math.abs(a.start_time - b.start_time) < SAME_TIME_EPSILON
-  );
+  return a.pitch === b.pitch && isWithinEpsilon(a.start_time, b.start_time);
+}
+
+function isWithinEpsilon(a: number, b: number): boolean {
+  return Math.abs(a - b) < SAME_TIME_EPSILON;
 }
