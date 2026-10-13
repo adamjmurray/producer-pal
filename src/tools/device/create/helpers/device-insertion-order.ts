@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { type BrowserItem } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { appendRenumbers } from "#src/tools/device/create/helpers/device-creation.ts";
 import { pastTheEndReason } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
@@ -46,7 +47,10 @@ interface InsertionTarget {
 /** One entry of the path list, and the device it inserts. */
 export interface InsertionEntry {
   path: string;
+  /** The device as the call named it; for a preset, the preset */
   device: string;
+  /** What loads from Live's browser, or null for a native insert */
+  item?: BrowserItem | null;
 }
 
 /**
@@ -75,7 +79,7 @@ export function validateInsertionOrder(entries: InsertionEntry[]): void {
   // own.
   const chainsMemo = new Map<string, LiveAPI[]>();
 
-  for (const { path: p, device } of entries) {
+  for (const { path: p, device, item } of entries) {
     const target = insertionTarget(p, pending, chainsMemo);
 
     if (target == null) {
@@ -107,7 +111,7 @@ export function validateInsertionOrder(entries: InsertionEntry[]): void {
       pending.set(target.liveKey, (pending.get(target.liveKey) ?? 0) + 1);
     }
 
-    if (target.positioned || appendRenumbers(device)) {
+    if (target.positioned || appendRenumbers(device, item)) {
       renumbered.push(target);
     }
   }

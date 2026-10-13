@@ -9,6 +9,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { PRESET_NEEDS_REMOTE_SCRIPT } from "#src/tools/device/create/helpers/browser-presets.ts";
 import {
@@ -249,5 +250,80 @@ describe("createDevice — from a preset", () => {
       "path is required when creating a device",
     );
     expect(requestNode).not.toHaveBeenCalled();
+  });
+
+  // A loaded entry's order is judged by what it loads, never by the preset's
+  // name: "Hall" is no device in the audio effect list.
+  describe("insertion order", () => {
+    const TWO_ENTRIES = "t0/d+,t0/d1";
+    const REVERB_PRESET: BrowserItem = {
+      type: "audio-effect",
+      path: "Reverb/Hall.adv",
+      name: "Hall.adv",
+    };
+
+    beforeEach(() => {
+      registerMockObject("track-0", {
+        path: livePath.track(0),
+        properties: { devices: children("device-a", "device-b") },
+      });
+    });
+
+    it("lets an audio effect preset append beside a positioned entry", async () => {
+      answerLookups({ available: true, item: REVERB_PRESET });
+
+      expect(
+        await createDevice({
+          device: "Reverb",
+          preset: "Hall",
+          path: TWO_ENTRIES,
+        }),
+      ).toHaveLength(2);
+      expect(createBrowserDevice).toHaveBeenCalledTimes(2);
+    });
+
+    it("lets a preset with no device name append when it is an audio effect", async () => {
+      answerLookups({ available: true, item: REVERB_PRESET });
+
+      expect(
+        await createDevice({ preset: "Hall", path: TWO_ENTRIES }),
+      ).toHaveLength(2);
+    });
+
+    it("lets an audio effect that isn't native append", async () => {
+      answerLookups(
+        { available: true, item: PRESET },
+        {
+          available: true,
+          item: { type: "audio-effect", path: "My FX.adg", name: "My FX.adg" },
+        },
+      );
+
+      expect(
+        await createDevice({ device: "My FX", path: TWO_ENTRIES }),
+      ).toHaveLength(2);
+    });
+
+    it("refuses when an instrument preset's append renumbers the chain", async () => {
+      await expect(
+        createDevice({
+          device: "Wavetable",
+          preset: "Abdominal Bass",
+          path: TWO_ENTRIES,
+        }),
+      ).rejects.toThrow('path entry "t0/d1" is spelled through "t0"');
+      expect(createBrowserDevice).not.toHaveBeenCalled();
+    });
+
+    it("refuses when a plug-in preset might land ahead of its siblings", async () => {
+      answerLookups({
+        available: true,
+        item: { ...PLUGIN, name: "Pad.fxp", path: "VST3/Vital/Pad.fxp" },
+      });
+
+      await expect(
+        createDevice({ device: "Vital", preset: "Pad", path: TWO_ENTRIES }),
+      ).rejects.toThrow('path entry "t0/d1" is spelled through "t0"');
+    });
   });
 });

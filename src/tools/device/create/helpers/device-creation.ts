@@ -9,6 +9,7 @@
 
 import { refreshParamValues } from "#src/tools/device/update/helpers/params/param-read-back.ts";
 import { VALID_DEVICES } from "#src/tools/constants.ts";
+import { type BrowserItem } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
 import {
@@ -157,10 +158,21 @@ function insertInto(
  * already there. Live keeps a chain sorted by device type, so an instrument
  * lands ahead of the audio effects and a MIDI effect ahead of everything: both
  * push siblings down a slot. Only an audio effect is guaranteed to land last.
+ * A loaded item is judged by its type, never its name: a preset's name says
+ * nothing about the device it holds. A plug-in or Max device can be anything,
+ * so it counts as renumbering.
  * @param deviceName - The device being inserted
+ * @param item - The browser item it loads from, or null for a native insert
  * @returns True when an append can move a sibling
  */
-export function appendRenumbers(deviceName: string): boolean {
+export function appendRenumbers(
+  deviceName: string,
+  item?: BrowserItem | null,
+): boolean {
+  if (item != null) {
+    return item.type !== "audio-effect";
+  }
+
   return !(VALID_DEVICES.audioEffects as readonly string[]).includes(
     deviceName,
   );

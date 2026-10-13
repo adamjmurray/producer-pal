@@ -153,6 +153,26 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     });
   }
 
+  // An audio effect always lands last, so appending one moves no sibling and a
+  // later entry may still name a device by index.
+  it("appends an audio effect's preset before an indexed entry", async () => {
+    const reverb = presetEndingIn(
+      await listPresets("audio-effect", "Reverb"),
+      ".adv",
+    );
+    const track = await createMidiTrack(ctx.client!);
+
+    await create({ device: "Reverb", path: `t${track}/d+` });
+    const result = await create({
+      device: "Reverb",
+      preset: presetName(reverb.name),
+      path: `t${track}/d+,t${track}/d1`,
+    });
+
+    expect(isToolError(result)).toBe(false);
+    expect(parseToolResult<unknown[]>(result)).toHaveLength(2);
+  });
+
   it("refuses a preset that isn't the named device's", async () => {
     const result = await create({
       device: "Operator",
