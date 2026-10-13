@@ -141,8 +141,12 @@ separately to redo just one.
    [How update detection works](#how-update-detection-works).
 
    To re-freeze on its own, run `npm run device:freeze` (`-- --out <path>` to
-   write elsewhere). Freezing in Max (open the device, click freeze, save as
-   `release/Producer_Pal.amxd`) still works and writes the same file.
+   write elsewhere). It refuses a debug build (`npm run build:debug`): bundles
+   built with any dev flag carry a `PRODUCER_PAL_DEV_BUILD` header, and
+   `release:mcpb` and `npm pack` refuse a device that has it, always.
+   `ALLOW_DEV_BUILD_FLAGS=true npm run device:freeze` freezes one anyway, with a
+   warning, to test in Live. Freezing in Max (open the device, click freeze,
+   save as `release/Producer_Pal.amxd`) still works and writes the same file.
 
 2. `npm run release:mcpb` packages the portal, the extension and the npm folder.
    The portal ships a copy of the frozen device (a plain file next to

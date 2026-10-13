@@ -19,6 +19,7 @@ import {
   buildAmxd,
   parseAmxd,
 } from "./amxd-container.ts";
+import { DEV_BUILD_MARKER } from "../../build-flag-guard.ts";
 import { freezeDeviceFromRoot } from "./freeze-device-from-root.ts";
 
 const MAC_EPOCH_OFFSET = 2_082_844_800;
@@ -114,6 +115,46 @@ function writeSources(): void {
 }
 
 describe("freezeDeviceFromRoot", () => {
+  it("freezes a debug build with a warning when allowDevBuild is set", () => {
+    writeDevice(["a-license"]);
+    writeSources();
+    write("max-for-live-device/server.mjs", `/* ${DEV_BUILD_MARKER} */\nbody`);
+
+    const { bytes, warnings } = freezeDeviceFromRoot(root, {
+      allowDevBuild: true,
+    });
+
+    expect(parseAmxd(bytes).meta).toBe(AMXD_META_FROZEN);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("server.mjs was built with dev-only");
+    expect(warnings[0]).toContain("must not ship");
+  });
+
+  it("names the opt-out when it refuses a debug build", () => {
+    writeDevice(["a-license"]);
+    writeSources();
+    write("max-for-live-device/server.mjs", DEV_BUILD_MARKER);
+
+    expect(() => freezeDeviceFromRoot(root)).toThrow(
+      "ALLOW_DEV_BUILD_FLAGS=true npm run device:freeze",
+    );
+  });
+
+  it.each(["server.mjs", "adapter.js"])(
+    "refuses when %s was built with dev-only flags",
+    (name) => {
+      writeDevice(["a-license"]);
+      writeSources();
+      write(`max-for-live-device/${name}`, `/* ${DEV_BUILD_MARKER} */\nbody`);
+
+      expect(() => freezeDeviceFromRoot(root)).toThrow(
+        new RegExp(
+          `${name} was built with dev-only build flags[^]*release:amxd`,
+        ),
+      );
+    },
+  );
+
   it("writes a frozen device with the main patcher first, then the project and scripts", () => {
     writeDevice(["a-license"]);
     writeSources();

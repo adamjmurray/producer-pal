@@ -12,16 +12,18 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AMXD_META_FROZEN,
   AMXD_META_UNFROZEN,
   buildAmxd,
 } from "./device-freeze/amxd-container.ts";
+import { DEV_BUILD_MARKER } from "../build-flag-guard.ts";
 import {
   assertDeviceCopies,
   checkDeviceVersion,
   checkFrozenDevice,
+  checkNotDevBuild,
   FROZEN_DEVICE_FILENAME,
   versionMarker,
 } from "./frozen-device.ts";
@@ -33,6 +35,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   rmSync(releaseDir, { recursive: true, force: true });
 });
 
@@ -157,7 +160,39 @@ describe("checkFrozenDevice", () => {
     const refusal = checkFrozenDevice({ releaseDir, version: "2.5.0" });
 
     expect(refusal).toContain("older than release/build-info.json");
-    expect(refusal).toContain("Run `npm run device:freeze`");
+    expect(refusal).toContain("Run `npm run release:amxd`");
+  });
+
+  it("refuses a debug build, even one with this version's marker", () => {
+    layOutRelease({ deviceText: `/* ${DEV_BUILD_MARKER} */ ${DEVICE_2_5_0}` });
+
+    const refusal = checkFrozenDevice({ releaseDir, version: "2.5.0" });
+
+    expect(refusal).toContain("dev-only build flags");
+    expect(refusal).toContain("Run `npm run release:amxd`");
+    expect(refusal).not.toContain("device:freeze");
+  });
+
+  it("refuses a debug build even when ALLOW_DEV_BUILD_FLAGS is set", () => {
+    // The opt-out is for freezing to test in Live; packaging never honors it.
+    vi.stubEnv("ALLOW_DEV_BUILD_FLAGS", "true");
+    layOutRelease({ deviceText: `/* ${DEV_BUILD_MARKER} */ ${DEVICE_2_5_0}` });
+
+    expect(checkFrozenDevice({ releaseDir, version: "2.5.0" })).toContain(
+      "dev-only build flags",
+    );
+    expect(
+      checkDeviceVersion(join(releaseDir, FROZEN_DEVICE_FILENAME), "2.5.0"),
+    ).toContain("dev-only build flags");
+  });
+
+  it("points a stale build-info.json at release:amxd, not device:freeze", () => {
+    layOutRelease({ buildVersion: "2.4.0", deviceText: DEVICE_2_5_0 });
+
+    const refusal = checkFrozenDevice({ releaseDir, version: "2.5.0" });
+
+    expect(refusal).toContain("npm run release:amxd");
+    expect(refusal).not.toContain("device:freeze");
   });
 
   it("accepts a device saved in the same instant as the build", () => {
@@ -188,6 +223,26 @@ describe("checkDeviceVersion", () => {
     expect(
       checkDeviceVersion(join(releaseDir, FROZEN_DEVICE_FILENAME), "2.5.0"),
     ).toBeNull();
+  });
+
+  it("refuses a debug build", () => {
+    layOutRelease({ deviceText: `${DEV_BUILD_MARKER} ${DEVICE_2_5_0}` });
+
+    expect(
+      checkDeviceVersion(join(releaseDir, FROZEN_DEVICE_FILENAME), "2.5.0"),
+    ).toContain("dev-only build flags");
+  });
+});
+
+describe("checkNotDevBuild", () => {
+  it("names what was inspected when the marker is there", () => {
+    expect(
+      checkNotDevBuild("server.mjs", Buffer.from(`a ${DEV_BUILD_MARKER} b`)),
+    ).toContain("server.mjs was built with dev-only build flags");
+  });
+
+  it("accepts bytes without the marker", () => {
+    expect(checkNotDevBuild("server.mjs", Buffer.from("release"))).toBeNull();
   });
 });
 

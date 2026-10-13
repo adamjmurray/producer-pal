@@ -5,7 +5,8 @@
 
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { FROZEN_DEVICE_FILENAME } from "../frozen-device.ts";
+import { DEV_BUILD_OVERRIDE } from "../../build-flag-guard.ts";
+import { checkNotDevBuild, FROZEN_DEVICE_FILENAME } from "../frozen-device.ts";
 import {
   AMXD_META_FROZEN,
   AMXD_META_UNFROZEN,
@@ -37,9 +38,14 @@ export interface FrozenDevice {
  * Freeze the unfrozen device under a repo root, as Max's Freeze button does.
  *
  * @param rootDir - The repo root (holds `max-for-live-device/`)
+ * @param options - Freeze options
+ * @param options.allowDevBuild - Freeze bundles built with dev-only flags anyway, with a warning
  * @returns The frozen device, the files in it, and any warnings
  */
-export function freezeDeviceFromRoot(rootDir: string): FrozenDevice {
+export function freezeDeviceFromRoot(
+  rootDir: string,
+  options: { allowDevBuild?: boolean } = {},
+): FrozenDevice {
   const deviceDir = join(rootDir, DEVICE_DIR_NAME);
   const devicePath = join(deviceDir, FROZEN_DEVICE_FILENAME);
   const { meta, body } = parseAmxd(readFileSync(devicePath));
@@ -69,6 +75,23 @@ export function freezeDeviceFromRoot(rootDir: string): FrozenDevice {
       mdat: macTime(file.path),
     })),
   ];
+
+  // The editable device never carries the marker; the bundles it uses might.
+  for (const entry of entries) {
+    const devBuild = checkNotDevBuild(entry.name, entry.data);
+
+    if (devBuild == null) {
+      continue;
+    }
+
+    if (options.allowDevBuild !== true) {
+      throw new Error(
+        `${devBuild}\nRebuild clean and freeze with \`npm run release:amxd\`, or to test it in Live: ${DEV_BUILD_OVERRIDE}=true npm run device:freeze`,
+      );
+    }
+
+    warnings.push(devBuild);
+  }
 
   return {
     bytes: buildAmxd(AMXD_META_FROZEN, buildFrozenBody(entries)),

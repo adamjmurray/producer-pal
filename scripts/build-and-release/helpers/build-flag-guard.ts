@@ -36,6 +36,35 @@ export const GUARDED_BUILD_FLAGS: string[] = [
 export const DEV_BUILD_OVERRIDE = "ALLOW_DEV_BUILD_FLAGS";
 
 /**
+ * Written into the header of every bundle built with any guarded flag set, so
+ * the release steps can tell a debug device from a release one by its bytes.
+ */
+export const DEV_BUILD_MARKER = "PRODUCER_PAL_DEV_BUILD";
+
+/**
+ * The guarded flags the environment sets (to anything but empty).
+ * @param env - The environment the build runs with
+ * @returns The names of the flags that are set
+ */
+function flagsSet(env: Record<string, string | undefined>): string[] {
+  return GUARDED_BUILD_FLAGS.filter(
+    (flag) => env[flag] != null && env[flag] !== "",
+  );
+}
+
+/**
+ * Whether a build run with this environment bakes in a dev-only flag. True even
+ * with the override: the override lets the build run, not ship.
+ * @param env - The environment the build runs with
+ * @returns True when the bundles carry DEV_BUILD_MARKER
+ */
+export function hasDevBuildFlags(
+  env: Record<string, string | undefined>,
+): boolean {
+  return flagsSet(env).length > 0;
+}
+
+/**
  * Checks the environment a build is about to run with.
  * @param env - The environment the build will run with
  * @returns What to print before refusing, or null when the environment is clean
@@ -49,9 +78,7 @@ export function buildFlagGuard(
     return null;
   }
 
-  const set = GUARDED_BUILD_FLAGS.filter(
-    (flag) => env[flag] != null && env[flag] !== "",
-  );
+  const set = flagsSet(env);
 
   if (set.length === 0) {
     return null;

@@ -6,11 +6,12 @@
 // `npm run release:amxd` freezes the .amxd (so can `npm run device:freeze` or Max),
 // and nothing ties the file to the build it came from. These checks do: the
 // portal ships a copy of it, so a stale freeze would hand users last release's
-// device.
+// device, and a freeze of a debug build would hand them its dev-only features.
 
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { DEV_BUILD_MARKER } from "../build-flag-guard.ts";
 import { checkBuildVersion, readBuildInfo } from "./build-info.ts";
 import { isFrozenAmxd } from "./device-freeze/amxd-container.ts";
 
@@ -30,7 +31,26 @@ export function versionMarker(version: string): string {
 }
 
 /**
- * Check that a device file carries this version's marker.
+ * What to print when bytes come from a build with dev-only flags on, which must
+ * never ship.
+ *
+ * @param name - What the bytes are (a path or file name), for the message
+ * @param bytes - The bytes to inspect
+ * @returns The refusal, or null when they carry no dev-build marker
+ */
+export function checkNotDevBuild(
+  name: string,
+  bytes: Buffer | Uint8Array,
+): string | null {
+  if (!Buffer.from(bytes).includes(DEV_BUILD_MARKER)) {
+    return null;
+  }
+
+  return `${name} was built with dev-only build flags (a debug build). It must not ship.`;
+}
+
+/**
+ * Check that a device file is a release build carrying this version's marker.
  *
  * @param devicePath - The .amxd to inspect
  * @param version - The version it must be
@@ -44,7 +64,14 @@ export function checkDeviceVersion(
     return `${devicePath} not found.`;
   }
 
-  if (!readFileSync(devicePath).includes(versionMarker(version))) {
+  const bytes = readFileSync(devicePath);
+  const devBuild = checkNotDevBuild(devicePath, bytes);
+
+  if (devBuild != null) {
+    return devBuild;
+  }
+
+  if (!bytes.includes(versionMarker(version))) {
     return [
       `${devicePath} does not contain ${versionMarker(version)}.`,
       `It was frozen from a different build than ${version}.`,
@@ -86,7 +113,7 @@ export function checkFrozenDevice(options: {
   const buildRefusal = checkBuildVersion(readBuildInfo(releaseDir), version);
 
   if (buildRefusal != null) {
-    return [...buildRefusal, "Then run `npm run device:freeze`."].join("\n");
+    return [...buildRefusal, "Then run `npm run release:amxd`."].join("\n");
   }
 
   const mismatch = checkDeviceVersion(devicePath, version);
@@ -102,7 +129,7 @@ export function checkFrozenDevice(options: {
   ) {
     return [
       `release/${FROZEN_DEVICE_FILENAME} is older than release/build-info.json.`,
-      "It was frozen from an earlier build. Run `npm run device:freeze`.",
+      "It was frozen from an earlier build. Run `npm run release:amxd`.",
     ].join("\n");
   }
 

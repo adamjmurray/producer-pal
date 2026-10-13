@@ -16,15 +16,16 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { rolldown, type InputOptions, type RolldownOutput } from "rolldown";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
+import {
+  DEV_BUILD_MARKER,
+  GUARDED_BUILD_FLAGS,
+} from "../../../../scripts/build-and-release/helpers/build-flag-guard.ts";
 import {
   BUILD_STATS_STUBS,
   CODE_EXEC_STUBS,
 } from "../../../../config/rolldown-plugin-stub-modules.mjs";
-
-/** The flags whose absence puts a stub in each real module's place. */
-const DEV_ONLY_FLAGS = ["ENABLE_CODE_EXEC", "ENABLE_BUILD_STATS"];
 
 // Taken from the plugin's own tables rather than restated. A restated path that
 // went stale in a rename would filter for something that can never appear, and
@@ -71,8 +72,9 @@ let scratchDir = "";
 
 beforeAll(async () => {
   // The config reads these at import time; a shell that happens to export one
-  // would otherwise turn this whole suite into a no-op.
-  for (const flag of DEV_ONLY_FLAGS) {
+  // (the test setup sets ENABLE_WARP_MARKERS) would otherwise turn this suite
+  // into a release check of a dev build.
+  for (const flag of GUARDED_BUILD_FLAGS) {
     delete process.env[flag];
   }
 
@@ -153,6 +155,10 @@ describe.each(BUNDLES)("release bundle: $name", ({ name, stubs }) => {
     },
   );
 
+  it("carries no dev-build marker", () => {
+    expect(chunkCode[name]).not.toContain(DEV_BUILD_MARKER);
+  });
+
   it("does not import node:vm", () => {
     expect(moduleIds[name]).not.toContain("node:vm");
   });
@@ -165,6 +171,35 @@ describe.each(BUNDLES)("release bundle: $name", ({ name, stubs }) => {
       [],
     );
     expect(chunkCode[name]).not.toContain(FAKE_DEVICE_TEXT);
+  });
+});
+
+// The release steps tell a debug device from a release one by this marker, so a
+// build with a dev flag on must carry it in every bundle that can end up frozen.
+describe("dev build marker", () => {
+  const devCode: Record<string, string> = {};
+
+  beforeAll(async () => {
+    // The config reads the environment at import time, so load a fresh copy.
+    vi.resetModules();
+    process.env.ENABLE_LIVE_API = "true";
+
+    try {
+      const config = await import("../../../../config/rolldown.config.mjs");
+      const configs = config.default as (InputOptions & { output: unknown })[];
+
+      for (const { name, index } of BUNDLES) {
+        const built = await buildChunks(configs[index] as InputOptions);
+
+        devCode[name] = built.code;
+      }
+    } finally {
+      delete process.env.ENABLE_LIVE_API;
+    }
+  }, 120_000);
+
+  it.each(BUNDLES.map((b) => b.name))("is in the %s bundle", (name) => {
+    expect(devCode[name]).toContain(`/* ${DEV_BUILD_MARKER} */`);
   });
 });
 

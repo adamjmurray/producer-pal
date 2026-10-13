@@ -4,7 +4,12 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { buildFlagGuard, DEV_BUILD_OVERRIDE } from "./build-flag-guard.ts";
+import {
+  buildFlagGuard,
+  DEV_BUILD_OVERRIDE,
+  GUARDED_BUILD_FLAGS,
+  hasDevBuildFlags,
+} from "./build-flag-guard.ts";
 
 describe("buildFlagGuard", () => {
   it("allows a build from a clean environment", () => {
@@ -70,5 +75,34 @@ describe("buildFlagGuard", () => {
         ENABLE_CODE_EXEC: "true",
       }),
     ).toBe(null);
+  });
+});
+
+describe("hasDevBuildFlags", () => {
+  it("is false for a clean environment", () => {
+    expect(hasDevBuildFlags({ PATH: "/usr/bin" })).toBe(false);
+  });
+
+  it.each(GUARDED_BUILD_FLAGS)("is true when %s is set", (flag) => {
+    expect(hasDevBuildFlags({ [flag]: "true" })).toBe(true);
+  });
+
+  it("ignores empty flags, unrelated ENABLE_ vars and the override alone", () => {
+    expect(
+      hasDevBuildFlags({
+        ENABLE_CODE_EXEC: "",
+        ENABLE_RUNNER_TRACING: "true",
+        [DEV_BUILD_OVERRIDE]: "true",
+      }),
+    ).toBe(false);
+  });
+
+  it("is true with the override, which only lets the build run", () => {
+    expect(
+      hasDevBuildFlags({
+        [DEV_BUILD_OVERRIDE]: "true",
+        ENABLE_LIVE_API: "true",
+      }),
+    ).toBe(true);
   });
 });

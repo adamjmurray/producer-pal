@@ -9,10 +9,14 @@
 // files it uses. Run after a build.
 //
 //   npm run device:freeze [-- --out <path>]    (default release/Producer_Pal.amxd)
+//
+// Refuses bundles built with dev-only flags (npm run build:debug). To freeze one
+// for testing in Live, set ALLOW_DEV_BUILD_FLAGS=true; it can't ship.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEV_BUILD_OVERRIDE } from "../build-flag-guard.ts";
 import { freezeDeviceFromRoot } from "./device-freeze/freeze-device-from-root.ts";
 import { FROZEN_DEVICE_FILENAME } from "./frozen-device.ts";
 
@@ -29,7 +33,9 @@ try {
     throw new Error("--out needs a path.");
   }
 
-  const { bytes, files, warnings } = freezeDeviceFromRoot(rootDir);
+  const { bytes, files, warnings } = freezeDeviceFromRoot(rootDir, {
+    allowDevBuild: process.env[DEV_BUILD_OVERRIDE] === "true",
+  });
 
   mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, bytes);
