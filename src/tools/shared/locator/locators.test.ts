@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { LiveAPI as MockLiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { resolveLocatorPositions } from "./song-position.ts";
 import {
   findLocator,
   isLocatorId,
@@ -210,6 +211,33 @@ describe("locators", () => {
 
         expect(resolveLocatorRefToBeats(liveSet, ref)).toBe(locators[i]?.time);
       }
+    });
+
+    it.each(["Intro\\", "Intro\\\\", "\\"])(
+      "reads a name ending in a backslash (%s) back as the same locator in a list",
+      (name) => {
+        const liveSet = setupMockLocators(
+          { id: "26", name, time: 8 },
+          { id: "27", name: "Verse", time: 16 },
+        );
+
+        Object.assign(liveSet, { getProperty: vi.fn(() => 4) });
+
+        const positions = readLocators(liveSet, 4, 4).map((l) => l.position);
+
+        expect(positions[0]).toBe("loc:26");
+        expect(
+          resolveLocatorPositions(liveSet, positions.join(","), {
+            paramName: "positions",
+          }),
+        ).toBe("3|1,5|1");
+      },
+    );
+
+    it("still uses the name when a backslash is not at the end", () => {
+      const liveSet = setupMockLocators({ id: "26", name: "A\\B", time: 8 });
+
+      expect(readLocators(liveSet, 4, 4)[0]?.position).toBe("loc:A\\B");
     });
   });
 });
