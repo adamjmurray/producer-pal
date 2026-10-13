@@ -72,11 +72,15 @@ the transform runs:
   or clip: a ratchet that spans no grid line, `repeat` collisions, `sync` on a
   session clip.
 - A constant that mixes note values or bar lengths with other terms (`1bar - 4`,
-  `n/16 - n/8`): `1bar` is 4 beats in 4/4 and 6 in 6/4, and one call can target
+  `1bar - n/4`): `1bar` is 4 beats in 4/4 and 6 in 6/4, and one call can target
   clips with different meters. Only the clips it is bad for fail (`ok: false`,
   notes untouched) and the rest go on. The call is still refused when every
   meter fails, or when the clip can't be undone (an arrangement clip being
   split, a duplicate onto the arrangement).
+
+Only a bar count or a bare number can flip an expression's sign across meters.
+Note values all scale by the same factor, so `n/16 - n/8` is negative in every
+meter, though the check still treats a sum of them as per-meter.
 
 A lone `n/8` or `2bar`, alone, negated or scaled by a constant, has the same
 sign in every meter. So a bare one is always above 0, and one at 0 or below
