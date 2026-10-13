@@ -7,6 +7,7 @@ import { z } from "zod";
 import {
   DUPLICATE_TYPES,
   MAX_CODE_LENGTH,
+  MAX_DUPLICATE_COUNT,
   TAKE_LANE_NOTE,
 } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
@@ -64,11 +65,13 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       smallModel: "#RRGGBB",
     }),
 
-    count: param(z.coerce.number().int().min(1).default(1), {
-      default:
-        "copies per source (tracks/scenes only; not with a list of destinations)",
-      smallModel: null,
-    }),
+    count: param(
+      z.coerce.number().int().min(1).max(MAX_DUPLICATE_COUNT).default(1),
+      {
+        default: `copies per source, max ${MAX_DUPLICATE_COUNT} (tracks/scenes only; not with a list of destinations)`,
+        smallModel: null,
+      },
+    ),
 
     withoutClips: param(z.boolean().optional(), {
       default: "exclude clips?",

@@ -160,8 +160,9 @@ tables sit next to each tool's code and feed one helper,
   `withoutClips`, `withoutDevices` and `routeToSource` are refused for it as
   well (`destination "lane"`). `count` beside a list of scene positions or of
   take lanes is refused as create-track and create-scene refuse it, since the
-  list already says how many. The destination decides the rest (a session clip
-  copy has no length), so that stays a warning.
+  list already says how many. A `count` above 25 is refused by the schema. The
+  destination decides the rest (a session clip copy has no length), so that
+  stays a warning.
 - **`ppal-update-live-set`** (`locator-updates.ts`): `locatorId` is for `delete`
   and `rename`; all three locator params need a `locatorOperation`.
 - **`ppal-update-device`** (`rack-macro-updates.ts`): `macroVariationIndex` is

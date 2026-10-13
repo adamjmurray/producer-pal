@@ -23,6 +23,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
+import { MAX_DUPLICATE_COUNT } from "#src/tools/constants.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -413,5 +414,26 @@ describe("ppal-duplicate lists the tracks a group copy took along", () => {
       expect(copy.detail).toBe(await expectedDetail(copy));
       expect(copy.detail).toContain("also copied the 2 tracks inside");
     }
+  });
+
+  it("refuses a count above the cap, making no copies", async () => {
+    const before = await readTracks();
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "track",
+        id: before.tracks[0]!.id,
+        count: MAX_DUPLICATE_COUNT + 1,
+      },
+    });
+
+    expect(getToolErrorMessage(result)).toContain(
+      `expected number to be <=${MAX_DUPLICATE_COUNT}`,
+    );
+
+    await sleep(100);
+
+    expect((await readTracks()).tracks).toHaveLength(before.tracks.length);
   });
 });

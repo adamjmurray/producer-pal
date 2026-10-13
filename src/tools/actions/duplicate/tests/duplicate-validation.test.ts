@@ -5,7 +5,9 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import "./duplicate-mocks-test-helpers.ts";
+import { toolDefDuplicate } from "#src/tools/actions/duplicate/duplicate.def.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
+import { MAX_DUPLICATE_COUNT } from "#src/tools/constants.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   registerMockObject,
@@ -42,6 +44,16 @@ describe("duplicate - input validation", () => {
     await expect(
       duplicate({ type: "track", id: "some-id", count: 0 }),
     ).rejects.toThrow("count must be at least 1");
+  });
+
+  it("accepts a count up to the cap and refuses one above it", () => {
+    const count = toolDefDuplicate.toolOptions.inputSchema.count!;
+
+    expect(MAX_DUPLICATE_COUNT).toBe(25);
+    expect(count.parse(MAX_DUPLICATE_COUNT)).toBe(25);
+    expect(() => count.parse(MAX_DUPLICATE_COUNT + 1)).toThrow(
+      "Too big: expected number to be <=25",
+    );
   });
 
   it("should throw an error when the object doesn't exist", async () => {
