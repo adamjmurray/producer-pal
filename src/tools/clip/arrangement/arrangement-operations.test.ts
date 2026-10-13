@@ -185,4 +185,27 @@ describe("handleArrangementLengthOperation", () => {
     expect(shorteningSpy).not.toHaveBeenCalled();
     expect(result).toStrictEqual([]);
   });
+
+  // read-clip rounds the length it reports, so a caller echoing it back is a
+  // hair off the real one, on either side.
+  it.each([7.9996, 8.0004])(
+    "does nothing when the target (%f) is within rounding of the current length",
+    (arrangementLengthBeats) => {
+      const lengtheningSpy = vi.spyOn(helpers, "handleArrangementLengthening");
+      const shorteningSpy = vi.spyOn(helpers, "handleArrangementShortening");
+      const clip = createMockClip({ props: { start_time: 0, end_time: 8 } });
+
+      const result = handleArrangementLengthOperation({
+        clip,
+        isAudioClip: true,
+        arrangementLengthBeats,
+        context: {},
+        reasons: newClipReasons(),
+      });
+
+      expect(lengtheningSpy).not.toHaveBeenCalled();
+      expect(shorteningSpy).not.toHaveBeenCalled();
+      expect(result).toStrictEqual([]);
+    },
+  );
 });

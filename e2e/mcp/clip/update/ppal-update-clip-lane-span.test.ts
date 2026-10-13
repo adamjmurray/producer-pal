@@ -4,13 +4,15 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * E2E test for the length a looping clip keeps when a move re-creates it.
+ * E2E test for the length a looping clip keeps when a move re-creates it, and
+ * when arrangementLength asks for the length it already has.
  *
  * A move onto or off a take lane rebuilds the clip. A clip whose loop is shorter
  * than the stretch of arrangement it covers (a 3-bar loop shown for 4 bars) must
  * keep the 4 bars, not shrink to the loop.
  *
- * Uses: e2e-test-set (t8 = empty MIDI track, t7 = MIDI track with no clips)
+ * Uses: e2e-test-set (t8 = empty MIDI track, t7 = MIDI track with no clips,
+ * t4[17|1] = looping audio clip)
  *
  * Run with: npm run e2e:mcp -- ppal-update-clip-lane-span
  */
@@ -26,6 +28,7 @@ import {
   readClipFully,
   updateClip,
 } from "../helpers/clip-io-test-helpers.ts";
+import { readArrangementClips } from "../helpers/arrangement-clip-query-test-helpers.ts";
 import { CHILD_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
@@ -120,6 +123,29 @@ describe("a looping clip re-created on or off a take lane", () => {
     const mainClip = await readClipFully(ctx.client!, { id: back.id });
 
     expectSpanKept(back.detail, mainClip, before);
+  });
+});
+
+// read-clip rounds the length it reports, so echoing it back is a hair off the
+// real one. That once tiled the clip into one clip per loop.
+describe("arrangementLength equal to the current length", () => {
+  it("leaves a looping audio clip as the one clip it was", async () => {
+    const audioTrack = 4;
+    const before = await readClipFully(ctx.client!, { path: "t4[17|1]" });
+    const clipsBefore = await readArrangementClips(ctx.client!, audioTrack);
+
+    expect(before.arrangementLength).toStrictEqual(expect.any(String));
+
+    await updateClip(ctx.client!, before.id, {
+      arrangementLength: before.arrangementLength,
+    });
+    await sleep(200);
+
+    const clipsAfter = await readArrangementClips(ctx.client!, audioTrack);
+
+    expect(clipsAfter.map(({ id }) => id)).toStrictEqual(
+      clipsBefore.map(({ id }) => id),
+    );
   });
 });
 

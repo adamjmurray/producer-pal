@@ -20,6 +20,7 @@ import {
   type ArrangementContext,
   type ClipIdResult,
 } from "./helpers/arrangement-length-changes.ts";
+import { EPSILON } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { SESSION_CLIP, ignoredText } from "#src/shared/max/ignored-wording.ts";
 
 interface HandleArrangementLengthOperationArgs {
@@ -83,8 +84,10 @@ export function handleArrangementLengthOperation({
   const currentEndTime = clip.getProperty("end_time") as number;
   const currentArrangementLength = currentEndTime - currentStartTime;
 
-  // Check if shortening, lengthening, or same
-  if (arrangementLengthBeats > currentArrangementLength) {
+  // Check if shortening, lengthening, or same. A length that differs by less
+  // than EPSILON is the same one: read-clip rounds, so a caller echoing back
+  // the length it read must not lengthen the clip.
+  if (arrangementLengthBeats > currentArrangementLength + EPSILON) {
     // Growing into the lane overwrites whatever sits after the clip, so note
     // the lane first and say what the growth cost. This clip's ledger starts
     // here, from the call's lane view, so it hears of nothing before it.
@@ -165,12 +168,13 @@ export function handleArrangementLengthOperation({
  * @param startTime - The clip's start_time, in beats
  * @param endTime - The clip's end_time, in beats
  * @param arrangementLengthBeats - Target length in beats
- * @returns True when the target is shorter than the clip is now
+ * @returns True when the target is shorter than the clip is now, by more than
+ *   the rounding a read-back allows
  */
 export function shortensArrangementClip(
   startTime: number,
   endTime: number,
   arrangementLengthBeats: number,
 ): boolean {
-  return arrangementLengthBeats < endTime - startTime;
+  return arrangementLengthBeats < endTime - startTime - EPSILON;
 }
