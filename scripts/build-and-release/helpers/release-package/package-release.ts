@@ -28,6 +28,7 @@ import {
   checkFrozenDevice,
   FROZEN_DEVICE_FILENAME,
 } from "./frozen-device.ts";
+import { MCPB_FILENAME } from "./packaged-mcpb.ts";
 import { describePackageFailure, runPackageSteps } from "./package-steps.ts";
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -127,11 +128,11 @@ function packageRelease(): void {
     },
     {
       name: "copy the mcpb to release/",
-      writes: ["release/Producer_Pal.mcpb"],
+      writes: [`release/${MCPB_FILENAME}`],
       run: () =>
         copyFileSync(
-          join(extensionDir, "Producer_Pal.mcpb"),
-          join(releaseDir, "Producer_Pal.mcpb"),
+          join(extensionDir, MCPB_FILENAME),
+          join(releaseDir, MCPB_FILENAME),
         ),
     },
   ]);

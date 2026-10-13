@@ -13,6 +13,7 @@ import {
   readBuildInfo,
   readCheckout,
 } from "./helpers/release-package/build-info.ts";
+import { checkMcpbPackaged } from "./helpers/release-package/packaged-mcpb.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "../..");
@@ -69,6 +70,13 @@ const mismatch = checkBuildMatchesCheckout({
 
 if (mismatch != null) {
   fail(...mismatch);
+}
+
+// release:amxd wipes release/, so amxd then tag would tag an unpackaged release.
+const unpackaged = checkMcpbPackaged(join(rootDir, "release"));
+
+if (unpackaged != null) {
+  fail(...unpackaged);
 }
 
 const head = checkout.head;

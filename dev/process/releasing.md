@@ -179,8 +179,11 @@ tarball can't ship without the device.
    been looked at. `npm run release:amxd` records the version and commit it
    built from, and this checks the tag against them — commit anything, or bump
    the version, between the two steps and it refuses rather than tagging code
-   the artifacts didn't come from. It also refuses to move an existing tag: if
-   the build needs to change, that's a new candidate, not a re-tag (see
+   the artifacts didn't come from. It also refuses unless
+   `release/Producer_Pal.mcpb` exists and is newer than `build-info.json`
+   (`release:amxd` wipes `release/`, so run `npm run release:mcpb` first). It
+   also refuses to move an existing tag: if the build needs to change, that's a
+   new candidate, not a re-tag (see
    [Fixing Issues During Pre-Release](#fixing-issues-during-pre-release)).
 
    It creates the tag locally and prints the push command. Nothing is public
