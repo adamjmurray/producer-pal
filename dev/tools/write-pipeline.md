@@ -145,13 +145,29 @@ the answer. No end follows a timeout, since V8 may still be changing the Set. A
 Live without the remote script keeps one merged step. A tool that is not
 read-only (`readOnlyHint`) gets this with no code of its own, except
 `ppal-manage`: closing a step right after an undo could wipe Live's redo
-history. A tool whose calls don't all change the Set declares `changesSet(args)`
-in its def (`ppal-context`: reads, and global or memory writes, change nothing),
-and a call it says changes nothing gets no end. That matters because an end also
-clears the undo guard that `ppal-manage` keeps (see
-[ppal-manage](../specs/tool-behavior/ppal-manage.md)). Don't open undo steps
-inside a tool or route: a begin closes the step holding the call's other
-changes.
+history.
+
+A call that changes nothing gets no end, because an end also clears the undo
+guard that `ppal-manage` keeps (see
+[ppal-manage](../specs/tool-behavior/ppal-manage.md)). Two ways to know:
+
+- **The pipeline proves it.** `runWrite()` reports a verdict to the request: it
+  changed nothing when it was refused before the first write (stages 1 to 3), or
+  when no target was written and nothing was noted with `call.landed`. V8 puts
+  `changedNothing` on the response, Node notes it, and the end is skipped when
+  every call in the group proved it. Anything else (a throw from `before` or
+  `settle`, a write that landed then threw, a response V8 never marked) counts
+  as a change. This is why `write` must say `step.landed`, and `before` and
+  `settle` must say `call.landed`, for every change they make: a change not
+  noted looks like none. A tool that writes outside `runWrite()` calls
+  `recordWriteRun(false)`.
+- **The def says so.** A tool outside the pipeline, or one whose actions never
+  touch the Set, declares `changesSet(args)` in its def (`ppal-context`: reads,
+  and global or memory writes; `ppal-playback`: session clip actions;
+  `ppal-live-api`: a call of only reading operations). When unsure, say true.
+
+Don't open undo steps inside a tool or route: a begin closes the step holding
+the call's other changes.
 
 ## Adding a write tool
 

@@ -175,7 +175,8 @@ export interface WriteSpec<
    * Stage 3b: write what the call as a whole changes (tempo, the transport),
    * once, before the first target. Runs after every refusal the earlier stages
    * can make, so a refused call has written nothing. A throw ends the call; it
-   * names what `call.landed` had recorded.
+   * names what `call.landed` had recorded. Everything it writes must be noted
+   * with `call.landed`: a change not noted counts as no change.
    */
   before?: (checked: Checked, call: Call) => MaybePromise<void>;
   /**

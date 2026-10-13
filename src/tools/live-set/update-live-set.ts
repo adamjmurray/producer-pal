@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { recordWriteRun } from "#src/shared/max/v8-warning-capture.ts";
 import { intervalsToPitchClasses } from "#src/shared/pitch.ts";
 import { automationOverriddenDetail } from "#src/tools/shared/arrangement/tracks/automation-override.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
@@ -114,6 +115,8 @@ export async function updateLiveSet(
   } finally {
     // Also after a throw or a deadline: an edit may have moved the playhead.
     if (run.transport != null) {
+      // Written outside the pipeline, so the call can't be called a no-op.
+      recordWriteRun(false);
       await restoreTransport(run.transport);
     }
   }

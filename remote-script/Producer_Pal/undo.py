@@ -5,9 +5,9 @@
 
 """Live's undo history. `/undo/end` closes the pending undo step: Live merges
 everything changed since the last step into one, so Producer Pal calls it after
-each write tool call to make that call one step. `/undo/undo` and `/undo/redo`
-step through that history, which also holds the user's own edits. Main thread
-only.
+each tool call that may have changed the Set, to make that call one step.
+`/undo/undo` and `/undo/redo` step through that history, which also holds the
+user's own edits. Main thread only.
 
 A step can remove Producer Pal itself (undoing the step that inserted it). That
 kills the server answering the request, so the step is reversed at once and

@@ -53,6 +53,11 @@ export interface WarningCapture {
   ended: boolean;
   /** Keys already handed to alreadyWarnedOnce this request. */
   warnedOnce: Set<string>;
+  /**
+   * What the request's writes proved. "none": every write run was proven to
+   * change nothing. "maybe": one may have. Unset: nothing reported.
+   */
+  writes?: "none" | "maybe";
 }
 
 /**
@@ -180,6 +185,30 @@ export function alreadyWarnedOnce(key: string): boolean {
   activeCapture.warnedOnce.add(key);
 
   return false;
+}
+
+/**
+ * Report what a write run did to the Set, against the request in flight. One
+ * "maybe" outweighs any number of "none". Ignored with no request in flight.
+ *
+ * @param provenUnchanged - True only when the run provably changed nothing
+ */
+export function recordWriteRun(provenUnchanged: boolean): void {
+  if (activeCapture == null || activeCapture.ended) {
+    return;
+  }
+
+  activeCapture.writes =
+    provenUnchanged && activeCapture.writes !== "maybe" ? "none" : "maybe";
+}
+
+/**
+ * @param capture - The capture returned by beginWarningCapture
+ * @returns True when the request's writes were all proven to change nothing;
+ *   false when one may have, or none reported (a read tool, say)
+ */
+export function changedNothing(capture: WarningCapture): boolean {
+  return capture.writes === "none";
 }
 
 /**

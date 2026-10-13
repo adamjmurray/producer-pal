@@ -29,6 +29,7 @@ import {
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   beginWarningCapture,
+  changedNothing,
   detachWarningCapture,
   endWarningCapture,
   resumeWarningCapture,
@@ -427,19 +428,25 @@ function sendChunked(requestId: string, payload: object): string | null {
 /**
  * Send a response back to the MCP server. Warnings ride inside the JSON as a
  * `warnings` sidecar; Node strips it and turns it into WARNING: content items.
- * Nothing follows END_OF_CHUNKS.
+ * `changedNothing` is a sidecar too, set only when the request's writes were
+ * all proven to change nothing. Nothing follows END_OF_CHUNKS.
  *
  * @param requestId - Request identifier
  * @param result - Result object to send
  * @param warnings - Warnings this request raised
+ * @param unchanged - Whether the request provably changed nothing in the Set
  */
 function sendResponse(
   requestId: string,
   result: object,
   warnings: string[],
+  unchanged: boolean,
 ): void {
-  const withWarnings = (payload: object): object =>
-    warnings.length > 0 ? { ...payload, warnings } : payload;
+  const withWarnings = (payload: object): object => ({
+    ...payload,
+    ...(warnings.length > 0 && { warnings }),
+    ...(unchanged && { changedNothing: true }),
+  });
 
   const tooLargeError = sendChunked(requestId, withWarnings(result));
 
@@ -639,8 +646,11 @@ async function handleRequest(
     result = formatErrorResponse(`Error parsing tool call request: ${message}`);
   }
 
+  // Read before the capture ends. Node uses it to leave the undo step open.
+  const unchanged = changedNothing(warnings);
+
   // Send response back to Node for Max
-  sendResponse(requestId, result, endWarningCapture(warnings));
+  sendResponse(requestId, result, endWarningCapture(warnings), unchanged);
 }
 
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss

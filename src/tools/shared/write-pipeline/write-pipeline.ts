@@ -21,6 +21,11 @@ import { afterMaybe } from "./helpers/maybe-async.ts";
 import { resolveTargets } from "./helpers/resolve-targets.ts";
 import { settleSupersession } from "./helpers/settle-supersession.ts";
 import {
+  refusingUpFront,
+  reportingVerdict,
+  type WriteVerdict,
+} from "./helpers/write-verdict.ts";
+import {
   type Planned,
   type TargetRun,
   writeLoop,
@@ -60,20 +65,33 @@ export function runWrite<
 
   const journal = callJournal();
   const call: Call = { ctx, ignored: warnIgnored, landed: journal.landed };
+  const verdict: WriteVerdict = { unchanged: false };
 
-  return afterMaybe(
-    resolveTargets(spec, args, call),
-    ({ targets, checked }) => {
-      const planned = planWrites(spec, targets, checked, call);
+  return reportingVerdict(verdict, () =>
+    afterMaybe(
+      refusingUpFront(verdict, () => resolveTargets(spec, args, call)),
+      ({ targets, checked }) => {
+        const planned = planWrites(spec, targets, checked, call);
 
-      return afterMaybe(
-        journal.guard(() => spec.before?.(checked, call)),
-        () =>
-          afterMaybe(writeLoop(spec, targets, checked, call, planned), (runs) =>
-            finish(spec, { targets, checked, call, planned, runs, journal }),
-          ),
-      );
-    },
+        return afterMaybe(
+          journal.guard(() => spec.before?.(checked, call)),
+          () =>
+            afterMaybe(
+              writeLoop(spec, targets, checked, call, planned),
+              (runs) =>
+                finish(spec, {
+                  targets,
+                  checked,
+                  call,
+                  planned,
+                  runs,
+                  journal,
+                  verdict,
+                }),
+            ),
+        );
+      },
+    ),
   );
 }
 
@@ -87,6 +105,7 @@ interface Finished<P, Checked, E, Each> {
   planned: Planned<Each>;
   runs: Array<TargetRun<E>>;
   journal: CallJournal;
+  verdict: WriteVerdict;
 }
 
 /**
@@ -99,7 +118,7 @@ function finish<Args, Parsed, P, Checked, E extends object, Each>(
   spec: WriteSpec<Args, Parsed, P, Checked, E, Each>,
   done: Finished<P, Checked, E, Each>,
 ): MaybePromise<PipelineResult<E>> {
-  const { targets, checked, call, planned, runs, journal } = done;
+  const { targets, checked, call, planned, runs, journal, verdict } = done;
   const shortened = settleSupersession(
     runs,
     targets,
@@ -112,12 +131,22 @@ function finish<Args, Parsed, P, Checked, E extends object, Each>(
   const outcomes = runs.map(({ outcome }) => outcome);
   // Before settle: a lone skip throws, and a call that did nothing has no
   // paths to fix up or claims to make.
-  const result = assembleEntries(
-    entries,
-    pieces,
-    outcomes,
-    spec.loneSkipThrows?.(checked) ?? true,
-  );
+  // Nothing written and nothing noted as landed: the call changed nothing.
+  const changedNothing = (): boolean =>
+    !outcomes.includes("written") && !journal.touched();
+  let result;
+
+  try {
+    result = assembleEntries(
+      entries,
+      pieces,
+      outcomes,
+      spec.loneSkipThrows?.(checked) ?? true,
+    );
+  } catch (error) {
+    verdict.unchanged = changedNothing();
+    throw error;
+  }
 
   // A throw here must not cost the entries of targets that already wrote:
   // keep them and warn. Settle may not have fixed paths yet, so the warning
@@ -141,7 +170,11 @@ function finish<Args, Parsed, P, Checked, E extends object, Each>(
         ),
       keep,
     ),
-    () => result,
+    () => {
+      verdict.unchanged = changedNothing();
+
+      return result;
+    },
   );
 }
 

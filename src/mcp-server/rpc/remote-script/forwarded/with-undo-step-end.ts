@@ -9,6 +9,7 @@ import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
 } from "../../../create-mcp-server.ts";
+import { isChangedNothing } from "./changed-nothing.ts";
 import { remoteScriptRequest } from "../remote-script-client.ts";
 import { type McpResponse } from "../../../max-api-adapter.ts";
 import { type RequestOverrides } from "../../../helpers/request-overrides/request-overrides.ts";
@@ -41,10 +42,21 @@ let inFlight = 0;
 let groupTimedOut = false;
 
 /**
+ * A call in the current group may have changed the Set. An end also clears the
+ * guard ppal-manage keeps after an undo that would remove Producer Pal, so it
+ * is sent only when something may have changed.
+ */
+let groupMayHaveChanged = false;
+
+/**
  * Wrap a callLiveApi so each call that can change the Set becomes one undo step.
  * A call that can't (a read action of a write tool) gets none. Live merges
  * every change into one step until something closes it, so after the last
- * running write call settles, the remote script is asked to close it.
+ * running write call settles, the remote script is asked to close it, if any
+ * call in the group may have changed the Set.
+ *
+ * A call may have changed the Set unless V8 proved it didn't (every target
+ * skipped, or refused up front). A call that threw may have, so it counts.
  *
  * End only, never begin: a begin left open by a crash or timeout would merge
  * everything after it. The request isn't awaited, and any failure is dropped —
@@ -67,11 +79,13 @@ export function withUndoStepEnd(
     inFlight++;
 
     let timedOut = false;
+    let mayHaveChanged = true;
 
     try {
       const result = await inner(tool, args, overrides);
 
       timedOut = (result as McpResponse).errorCode === "timeout";
+      mayHaveChanged = !isChangedNothing(result);
 
       return result;
     } finally {
@@ -79,14 +93,19 @@ export function withUndoStepEnd(
         groupTimedOut = true;
       }
 
+      if (mayHaveChanged) {
+        groupMayHaveChanged = true;
+      }
+
       inFlight--;
 
       if (inFlight === 0) {
-        if (!groupTimedOut) {
+        if (!groupTimedOut && groupMayHaveChanged) {
           sendUndoEnd();
         }
 
         groupTimedOut = false;
+        groupMayHaveChanged = false;
       }
     }
   };

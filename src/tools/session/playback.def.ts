@@ -7,6 +7,7 @@ import { z } from "zod";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { actionReadsTimeline } from "./helpers/playback/playback-action-params.ts";
 import { scenePathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 export const toolDefPlayback = defineTool("ppal-playback", {
@@ -17,6 +18,14 @@ export const toolDefPlayback = defineTool("ppal-playback", {
     readOnlyHint: false,
     destructiveHint: true,
   },
+
+  // Firing and stopping session clips never touches the Set. The timeline
+  // actions write the arrangement start or loop, and a scene can carry its own
+  // tempo or time signature, so those may change it.
+  changesSet: ({ action }) =>
+    typeof action !== "string" ||
+    action === "play-scene" ||
+    actionReadsTimeline(action),
 
   inputSchema: {
     action: z

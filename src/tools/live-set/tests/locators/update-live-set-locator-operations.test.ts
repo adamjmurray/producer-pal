@@ -13,7 +13,12 @@ import {
   setupLocatorCreationMocks,
   setupLocatorMocks,
 } from "../update-live-set-test-helpers.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  beginWarningCapture,
+  capturedWarnings,
+  changedNothing,
+  endWarningCapture,
+} from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateLiveSet - locator operations", () => {
   let liveSet: RegisteredMockObject;
@@ -109,6 +114,34 @@ describe("updateLiveSet - locator operations", () => {
 
         expect(liveSet.call).not.toHaveBeenCalledWith("set_or_delete_cue");
         expect(existing?.set).not.toHaveBeenCalled();
+      });
+
+      // The playhead is put back after a create or delete, even when nothing
+      // landed, and that is a write the pipeline can't see.
+      it("may have changed the Set even though the create landed nothing", async () => {
+        const capture = beginWarningCapture();
+
+        await expect(
+          updateLiveSet({
+            locatorOperation: "create",
+            locatorTime: "5|1",
+            locatorName: "New Locator",
+          }),
+        ).rejects.toThrow("not created");
+
+        expect(changedNothing(capture)).toBe(false);
+        endWarningCapture(capture);
+      });
+
+      it("changed nothing when the call is refused before any write", async () => {
+        const capture = beginWarningCapture();
+
+        await expect(updateLiveSet({ locatorTime: "5|1" })).rejects.toThrow(
+          "locatorTime is only for locatorOperation",
+        );
+
+        expect(changedNothing(capture)).toBe(true);
+        endWarningCapture(capture);
       });
 
       it("reports the refusal on its entry when the call also set tempo", async () => {

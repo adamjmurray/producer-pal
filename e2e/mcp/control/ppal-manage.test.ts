@@ -131,6 +131,42 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-manage undo and redo", () => {
     expect(await trackCount()).toBe(before + 1);
   });
 
+  // Calls that change nothing close no undo step. A clip action never touches
+  // the Set, and a live-api get is a read.
+  const NO_CHANGE_CALLS: Array<[string, Record<string, unknown>]> = [
+    ["ppal-playback", { action: "stop-all-session-clips" }],
+    [
+      "ppal-live-api",
+      { path: "live_set", operations: [{ type: "get", property: "tempo" }] },
+    ],
+  ];
+
+  /** Make each of the calls that change nothing, then wait for any end. */
+  async function changeNothing(): Promise<void> {
+    await setConfig({ liveApiEnabled: true });
+    await sleep(50);
+
+    for (const [name, args] of NO_CHANGE_CALLS) {
+      await ctx.client!.callTool({ name, arguments: args });
+    }
+
+    await sleep(END_LANDS_MS);
+  }
+
+  // So they leave the history between the undo and the redo alone.
+  it("redoes after calls that change nothing in between", async () => {
+    const before = await trackCount();
+
+    await createTrack();
+    await manage("undo");
+    await changeNothing();
+
+    const result = parseToolResult<HistoryResult>(await manage("redo"));
+
+    expect(result.redone).toBe(1);
+    expect(await trackCount()).toBe(before + 1);
+  });
+
   it("undoes only the last of two write calls", async () => {
     const before = await trackCount();
 

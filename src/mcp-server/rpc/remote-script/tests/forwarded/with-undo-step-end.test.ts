@@ -9,6 +9,7 @@ import {
   type FakeRemoteScript,
   startFakeRemoteScript,
 } from "../remote-script-test-helpers.ts";
+import { markChangedNothing } from "../../forwarded/changed-nothing.ts";
 import { STANDARD_TOOL_DEFS } from "../../../../create-mcp-server.ts";
 import { withUndoStepEnd } from "../../forwarded/with-undo-step-end.ts";
 
@@ -20,6 +21,18 @@ const TIMEOUT = {
 };
 
 const OK_ANSWER: FakeAnswer = { body: { ok: true } };
+
+/**
+ * A response V8 proved changed nothing.
+ * @returns A fresh response, marked
+ */
+function unchanged(): { content: object[] } {
+  const response = { content: [{ type: "text", text: "{}" }] };
+
+  markChangedNothing(response);
+
+  return response;
+}
 
 let fake: FakeRemoteScript | undefined;
 
@@ -176,15 +189,60 @@ describe("withUndoStepEnd", () => {
     },
   );
 
-  it("still ends the step after ppal-playback, whatever the action", async () => {
-    const script = await startScript();
-    const call = withUndoStepEnd(() => Promise.resolve(OK));
+  it.each([
+    [{ action: "play-scene", id: "1" }, true],
+    [{ action: "play-session-clips", path: "t0/s0" }, false],
+    [{ action: "stop-session-clips", path: "t0/s0" }, false],
+    [{ action: "stop-all-session-clips" }, false],
+    [{ action: "stop" }, true],
+    [{ action: "play-arrangement" }, true],
+    [{ action: "update-arrangement", loop: true }, true],
+    [{}, true],
+  ])(
+    "ppal-playback %j sends an end: %s",
+    async (args: Record<string, unknown>, ends: boolean) => {
+      const script = await startScript();
+      const call = withUndoStepEnd(() => Promise.resolve(OK));
 
-    await call("ppal-playback", { action: "stop" });
-    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
-    await call("ppal-playback", { action: "update-arrangement", loop: true });
-    await vi.waitFor(() => expect(script.requests).toHaveLength(2));
-  });
+      await call("ppal-playback", args);
+      await settle();
+      expect(script.requests).toHaveLength(ends ? 1 : 0);
+    },
+  );
+
+  it.each([
+    [{ operations: [{ type: "get", property: "tempo" }] }, false],
+    [
+      {
+        path: "live_set",
+        operations: [
+          { type: "info" },
+          { type: "getcount", property: "tracks" },
+        ],
+      },
+      false,
+    ],
+    [{ operations: [{ type: "get-property", property: "tempo" }] }, false],
+    [
+      { operations: [{ type: "get" }, { type: "set", property: "tempo" }] },
+      true,
+    ],
+    [{ operations: [{ type: "call", method: "stop_playing" }] }, true],
+    [{ operations: [{ type: "getProperty", property: "tempo" }] }, true],
+    [{ operations: [{ property: "tempo" }] }, true],
+    [{ operations: [] }, false],
+    [{}, true],
+  ])(
+    "ppal-live-api %j sends an end: %s",
+    async (args: Record<string, unknown>, ends: boolean) => {
+      const script = await startScript();
+      const call = withUndoStepEnd(() => Promise.resolve(OK));
+
+      await call("ppal-live-api", args);
+      await settle();
+      expect(script.requests).toHaveLength(ends ? 1 : 0);
+    },
+  );
 
   it("never ends the step after ppal-manage", async () => {
     const script = await startScript();
@@ -210,6 +268,75 @@ describe("withUndoStepEnd", () => {
     await read;
     await settle();
     expect(script.requests).toHaveLength(1);
+  });
+
+  it("sends nothing after a call V8 proved changed nothing", async () => {
+    const script = await startScript();
+    const refused = Object.assign(unchanged(), { isError: true });
+    const call = withUndoStepEnd(() => Promise.resolve(refused));
+
+    expect(await call("ppal-update-clip", {})).toBe(refused);
+    await settle();
+    expect(script.requests).toHaveLength(0);
+  });
+
+  it("still ends the step after a call that only said it changed something", async () => {
+    const script = await startScript();
+    const failed = { content: [], isError: true };
+    const call = withUndoStepEnd(() => Promise.resolve(failed));
+
+    await call("ppal-update-clip", {});
+    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
+  });
+
+  it("ends the step when one of overlapping calls may have changed the Set", async () => {
+    const script = await startScript();
+    const { call, finish } = deferredCalls();
+    const noop = call("ppal-update-clip", {});
+    const write = call("ppal-create-track", {});
+
+    finish(unchanged());
+    await noop;
+    finish(OK);
+    await write;
+    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
+  });
+
+  it("sends nothing when every overlapping call changed nothing", async () => {
+    const script = await startScript();
+    const { call, finish } = deferredCalls();
+    const first = call("ppal-update-clip", {});
+    const second = call("ppal-update-track", {});
+
+    finish(unchanged());
+    await first;
+    finish(unchanged());
+    await second;
+    await settle();
+    expect(script.requests).toHaveLength(0);
+  });
+
+  it("forgets an unchanged group, so a later write still ends", async () => {
+    const script = await startScript();
+    const { call, finish } = deferredCalls();
+    const noop = call("ppal-update-clip", {});
+
+    finish(unchanged());
+    await noop;
+
+    const later = call("ppal-create-track", {});
+
+    finish(OK);
+    await later;
+    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
+  });
+
+  it("ends the step after a throw, even if an earlier call changed nothing", async () => {
+    const script = await startScript();
+    const call = withUndoStepEnd(() => Promise.reject(new Error("boom")));
+
+    await expect(call("ppal-update-clip", {})).rejects.toThrow("boom");
+    await vi.waitFor(() => expect(script.requests).toHaveLength(1));
   });
 
   it("sends nothing after a timeout", async () => {

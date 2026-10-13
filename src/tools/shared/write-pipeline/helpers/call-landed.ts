@@ -11,6 +11,8 @@ import { type MaybePromise } from "../write-pipeline-types.ts";
 export interface CallJournal {
   /** `call.landed`: note one thing the call changed */
   landed: (phrase: string) => void;
+  /** @returns Whether anything has been noted as landed */
+  touched: () => boolean;
   /**
    * Run a whole-call hook. A throw from it, sync or async, says what the
    * journal holds; with nothing in it, the throw passes through unchanged.
@@ -53,6 +55,7 @@ export function callJournal(): CallJournal {
         phrases.push(phrase);
       }
     },
+    touched: () => phrases.length > 0,
     guard: <T>(
       hook: () => MaybePromise<T>,
       recover?: (detail: string) => T,

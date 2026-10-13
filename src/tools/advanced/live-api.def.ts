@@ -9,6 +9,7 @@ import {
   LIVE_API_OPERATION_TYPES,
   MAX_OPERATIONS,
 } from "#src/tools/advanced/live-api-operations.ts";
+import { READ_ONLY_OPERATION_TYPES } from "#src/tools/advanced/live-api-read-only-operations.ts";
 import { aliasedEnum } from "#src/tools/shared/tool-framework/enum-aliases.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
@@ -25,6 +26,15 @@ export const toolDefLiveApi = defineTool("ppal-live-api", {
     readOnlyHint: false,
     destructiveHint: true,
   },
+
+  // Only a call made wholly of reads leaves the Set alone. Anything unclear
+  // (a missing list, an unknown type) counts as a change.
+  changesSet: ({ operations }) =>
+    !Array.isArray(operations) ||
+    operations.some(
+      (op: { type?: unknown } | null) =>
+        typeof op?.type !== "string" || !READ_ONLY_OPERATION_TYPES.has(op.type),
+    ),
 
   inputSchema: {
     path: z.coerce
