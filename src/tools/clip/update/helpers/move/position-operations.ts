@@ -30,6 +30,8 @@ interface HandlePositionOperationsArgs {
   clip: LiveAPI;
   isAudioClip: boolean;
   destination?: ClipPath | null;
+  /** A clip slot sent beside an arrangement start or length: noted, not used. */
+  ignoredDestination?: ClipPath | null;
   destinationParam: "toPath" | "toSlot";
   /** The param that named arrangementStartBeats. */
   startParam: "toPath" | "arrangementStart";
@@ -55,41 +57,40 @@ export function handlePositionOperations(
 ): void {
   const { clip, destination, arrangementStartBeats, arrangementLengthBeats } =
     args;
-  const { destinationParam } = args;
+
+  // A slot is off the arrangement timeline, so it can't go with an arrangement
+  // start or length. Arrangement destinations are the opposite: they combine
+  // with arrangementStart, which says where on the destination lane to land.
+  if (args.ignoredDestination != null) {
+    noteClipReason(
+      args.reasons,
+      clip.id,
+      ignoredText(
+        args.destinationParam,
+        "a clip slot is off the arrangement timeline the other position params name",
+      ),
+    );
+  }
 
   if (destination?.kind === "slot") {
-    // A slot is off the arrangement timeline, so the two ask for different
-    // places at once. Arrangement destinations are the opposite: they combine
-    // with arrangementStart, which says where on the destination lane to land.
-    if (arrangementStartBeats != null || arrangementLengthBeats != null) {
-      noteClipReason(
-        args.reasons,
-        clip.id,
-        ignoredText(
-          destinationParam,
-          "a clip slot is off the arrangement timeline the other position params name",
-        ),
-      );
-    } else {
-      const move =
-        (clip.getProperty("is_arrangement_clip") as number) > 0
-          ? handleArrangementToSlotMove
-          : handleClipSlotMove;
+    const move =
+      (clip.getProperty("is_arrangement_clip") as number) > 0
+        ? handleArrangementToSlotMove
+        : handleClipSlotMove;
 
-      move({
-        clip,
-        toSlot: {
-          trackIndex: destination.trackIndex,
-          sceneIndex: destination.sceneIndex,
-        },
-        destinationTracks: args.destinationTracks,
-        updatedClips: args.updatedClips,
-        noteResult: args.noteResult,
-        reasons: args.reasons,
-      });
+    move({
+      clip,
+      toSlot: {
+        trackIndex: destination.trackIndex,
+        sceneIndex: destination.sceneIndex,
+      },
+      destinationTracks: args.destinationTracks,
+      updatedClips: args.updatedClips,
+      noteResult: args.noteResult,
+      reasons: args.reasons,
+    });
 
-      return;
-    }
+    return;
   }
 
   // A refused move leaves the clip where it is; any resize still runs.

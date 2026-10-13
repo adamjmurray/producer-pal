@@ -138,6 +138,26 @@ describe("a clip a later clip of the call lands on top of", () => {
     expect(callsTo(track, "delete_clip")).toStrictEqual([[`id ${SECOND}`]]);
   });
 
+  // A slot sent beside arrangementStart is ignored, so the clip lands at the
+  // start and covers it just the same.
+  it("is left unwritten when the later one's slot toPath is ignored", async () => {
+    const track = setUpTwoClips([16, 16]);
+
+    const result = (await updateClip({
+      id: `${FIRST},${SECOND}`,
+      arrangementStart: "17|1",
+      toPath: "t1/s0,t1/s1",
+    })) as ClipResult[];
+
+    expect(result[0]).toStrictEqual({
+      id: FIRST,
+      detail: "overwritten later in this call by t0[17|1]",
+    });
+    expect(callsTo(track, "duplicate_clip_to_arrangement")).toStrictEqual([
+      [`id ${SECOND}`, TARGET_BEATS],
+    ]);
+  });
+
   it("never says it was deleted, or that it failed", async () => {
     setUpTwoClips([16, 16]);
 

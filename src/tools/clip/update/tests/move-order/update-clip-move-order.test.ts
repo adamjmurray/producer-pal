@@ -223,7 +223,7 @@ describe("orderArrangementMoves", () => {
     expect(blockedIds).toStrictEqual(new Set(["113"]));
   });
 
-  // moveIntent returns null for either destination the same way it does for a
+  // moveIntent returns null for a slot the same way it does for a
   // clip going nowhere, but this clip does free its span: it is re-created at
   // the destination and the original deleted. Treating it as a permanent
   // occupant would refuse the move below for no reason.
@@ -288,7 +288,7 @@ describe("orderArrangementMoves", () => {
       ["113", { kind: "slot", trackIndex: 0, sceneIndex: 0 }],
     ]);
 
-    const { order } = orderMoves(clips, moves({ "113": 16 }, destinations));
+    const { order } = orderMoves(clips, moves({}, destinations));
 
     expect(order).toStrictEqual([0, 1, 2]);
   });
@@ -358,23 +358,6 @@ describe("orderArrangementMoves", () => {
       "not moved or resized: it would land on " +
         "clip t0[5|1] (id 114), which this call leaves where it is",
     );
-  });
-
-  it("counts a slot destination the call will ignore for a resize", () => {
-    const clips = registerRow(row);
-    const destinations = new Map<string, ClipPath>([
-      ["113", { kind: "slot", trackIndex: 0, sceneIndex: 0 }],
-    ]);
-
-    // update-clip warns the slot is ignored and tiles the clip where it is, so
-    // the span it clears still runs over 114 — and the slot doesn't free 113's
-    // own span either, so 114 has nothing to wait behind.
-    const { blockedIds } = orderMoves(
-      clips,
-      moves({}, destinations, { "113": 32 }),
-    );
-
-    expect(blockedIds).toStrictEqual(new Set(["113"]));
   });
 
   it("refuses the resize too when it refuses the move", () => {

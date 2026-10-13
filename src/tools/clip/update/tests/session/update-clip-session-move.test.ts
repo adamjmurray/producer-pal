@@ -594,6 +594,8 @@ interface PositionOpsOptions {
   destinationParam?: "toPath" | "toSlot";
   startParam?: "toPath" | "arrangementStart";
   toSlot?: { trackIndex: number; sceneIndex: number };
+  /** A slot sent beside an arrangement start or length, which the call ignores */
+  ignoredSlot?: { trackIndex: number; sceneIndex: number };
   /** An arrangement-lane destination, instead of a slot */
   toLane?: ClipPath;
   arrangementStartBeats?: number;
@@ -612,6 +614,7 @@ function runPositionOps(opts: PositionOpsOptions = {}): ClipReasons {
     destinationParam = "toPath",
     startParam = "arrangementStart",
     toSlot,
+    ignoredSlot,
     toLane,
     arrangementStartBeats,
     arrangementLengthBeats,
@@ -632,6 +635,8 @@ function runPositionOps(opts: PositionOpsOptions = {}): ClipReasons {
     startParam,
     destination:
       toSlot == null ? (toLane ?? null) : { kind: "slot", ...toSlot },
+    ignoredDestination:
+      ignoredSlot == null ? null : { kind: "slot", ...ignoredSlot },
     arrangementStartBeats,
     arrangementLengthBeats,
     landings: newLandingLog(),
@@ -661,7 +666,7 @@ describe("handlePositionOperations", () => {
   it("names the deprecated param when that is what the caller sent", () => {
     const reasons = runPositionOps({
       destinationParam: "toSlot",
-      toSlot: { trackIndex: 1, sceneIndex: 2 },
+      ignoredSlot: { trackIndex: 1, sceneIndex: 2 },
       arrangementStartBeats: 8,
     });
 
@@ -670,7 +675,7 @@ describe("handlePositionOperations", () => {
 
   it("reports a slot destination dropped for arrangement parameters", () => {
     const reasons = runPositionOps({
-      toSlot: { trackIndex: 1, sceneIndex: 2 },
+      ignoredSlot: { trackIndex: 1, sceneIndex: 2 },
       arrangementStartBeats: 8,
     });
 
@@ -678,10 +683,8 @@ describe("handlePositionOperations", () => {
   });
 
   it("reports it for arrangement LENGTH only too", () => {
-    // Only arrangementLengthBeats is set (no start): the second operand of the
-    // arrangement-params guard must stay live (kills its -> false mutant).
     const reasons = runPositionOps({
-      toSlot: { trackIndex: 1, sceneIndex: 2 },
+      ignoredSlot: { trackIndex: 1, sceneIndex: 2 },
       arrangementLengthBeats: 8,
     });
 

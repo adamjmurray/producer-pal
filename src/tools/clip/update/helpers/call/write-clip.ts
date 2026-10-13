@@ -46,7 +46,10 @@ import { type ClipPlanned } from "./plan-clip-moves.ts";
 import { type ClipPayload } from "./resolve-clip-targets.ts";
 
 /** Where the clip goes and how long it is to be, once the plan has weighed in. */
-type Motion = Pick<ClipPayload, "destination" | "startBeats" | "lengthBeats">;
+type Motion = Pick<
+  ClipPayload,
+  "destination" | "ignoredDestination" | "startBeats" | "lengthBeats"
+>;
 
 /** What one target's write answers. */
 type Written = ClipResult | ReturnType<typeof withPieces<ClipResult>>;
@@ -200,7 +203,12 @@ function motionFor(
   run.calledOff.add(step.index);
   refuseClipWork(reasons, payload.clip.id, reason);
 
-  return { destination: null, startBeats: null, lengthBeats: null };
+  return {
+    destination: null,
+    ignoredDestination: null,
+    startBeats: null,
+    lengthBeats: null,
+  };
 }
 
 interface PieceTurn {
@@ -276,6 +284,7 @@ async function updatePiece(
       arrangementLengthBeats: motion.lengthBeats,
       arrangementStartBeats: motion.startBeats,
       destination: motion.destination,
+      ignoredDestination: motion.ignoredDestination,
       destinationParam: call.destinationParam,
       startParam: call.startParam,
       destinationTracks: run.destinationTracks,

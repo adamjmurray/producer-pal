@@ -44,6 +44,11 @@ export interface ClipPayload {
   clip: LiveAPI;
   /** Where the clip moves, from toPath or toSlot */
   destination: ClipPath | null;
+  /**
+   * A clip slot named beside an arrangement start or length. It is ignored, so
+   * it counts as no destination everywhere but the note saying so.
+   */
+  ignoredDestination: ClipPath | null;
   /** The position it moves to, in beats */
   startBeats: number | null;
   /** The arrangement span it is resized to, in beats */
@@ -153,7 +158,14 @@ function payloadFor(
 ): ClipPayload {
   const startBeats = beatsForClip(call.startBeats, index);
   const lengthBeats = beatsForClip(call.lengthBeats, index);
-  let destination = call.moves.destinations[index] ?? null;
+  const named = call.moves.destinations[index] ?? null;
+  // A slot beside an arrangement position or length is ignored: plan the clip
+  // as if no destination was sent.
+  const ignoredDestination =
+    named?.kind === "slot" && (startBeats != null || lengthBeats != null)
+      ? named
+      : null;
+  let destination = ignoredDestination == null ? named : null;
   let refusedMove = call.moves.refusals[index] ?? null;
   const occupant = slotOccupantInBatch(destination, clip, batchIds);
 
@@ -184,6 +196,7 @@ function payloadFor(
   return {
     clip,
     destination,
+    ignoredDestination,
     startBeats,
     lengthBeats,
     refusedMove,
@@ -264,51 +277,33 @@ function coversOf(
   payload: ClipPayload,
   destinationTracks: Map<number, LiveAPI>,
 ): Cover[] | undefined {
-  const { clip, destination, startBeats, lengthBeats, span } = payload;
+  const { clip, destination, span } = payload;
 
   if (destination?.kind === "slot") {
-    // A slot beside an arrangement position or length is ignored: the clip
-    // stays where it is, and only a length writes anything.
-    return startBeats == null && lengthBeats == null
-      ? slotCovers(
-          clip,
-          destination,
-          (clip.getProperty("is_midi_clip") as number) > 0,
-          destinationTracks,
-        )
-      : lengthCovers(payload, span);
+    return slotCovers(
+      clip,
+      destination,
+      (clip.getProperty("is_midi_clip") as number) > 0,
+      destinationTracks,
+    );
   }
 
-  return span == null ? undefined : laneCovers(payload, span);
-}
-
-/**
- * What a resize of a clip that stays on its own lane writes over.
- * @param payload - The target's payload
- * @param span - Where the clip sits now
- * @returns The ground it covers, or undefined when it writes none
- */
-function lengthCovers(
-  payload: ClipPayload,
-  span: LandedSpan | null,
-): Cover[] | undefined {
-  return span == null || payload.lengthBeats == null
-    ? undefined
-    : laneCovers({ ...payload, destination: null }, span);
+  return span == null ? undefined : laneCovers(payload, destination, span);
 }
 
 /**
  * The stretch of lane a clip lands on, unless the move would be turned down.
  * @param payload - The target's payload
+ * @param lane - The lane it is sent to, or null for its own
  * @param span - Where the clip sits now
  * @returns The ground it covers, or undefined when it writes none
  */
 function laneCovers(
   payload: ClipPayload,
+  lane: Exclude<ClipPath, { kind: "slot" }> | null,
   span: LandedSpan,
 ): Cover[] | undefined {
-  const { clip, destination, startBeats, lengthBeats } = payload;
-  const lane = destination?.kind === "slot" ? null : destination;
+  const { clip, startBeats, lengthBeats } = payload;
   const landing = {
     trackIndex: lane?.trackIndex ?? (clip.trackIndex as number),
     takeLane: lane?.kind === "take-lane" ? lane.laneIndex : null,

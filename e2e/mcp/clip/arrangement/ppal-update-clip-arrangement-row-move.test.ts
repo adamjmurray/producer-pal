@@ -190,6 +190,41 @@ describe("moving a row of arrangement clips", () => {
       expect(placed.notes).toContain("C3");
     }
   });
+
+  // A slot beside arrangementStart is ignored and the clip moves to the start.
+  // The ordering used to read the slot as the destination, so the row ran
+  // front to back and the middle clip was wiped.
+  it("keeps every clip when slot toPaths are ignored beside arrangementStart", async () => {
+    const row = await createRow(["801|1", "805|1", "809|1"], "Ignored");
+
+    const { data } = await moveClips(
+      row,
+      ["s0", "s1", "s2"].map((slot) => `t${EMPTY_MIDI_TRACK}/${slot}`),
+      { arrangementStart: "805|1,809|1,813|1" },
+    );
+
+    for (const clip of data) {
+      expect(clip.ok).toBeUndefined();
+      expect(clip.detail).toContain("toPath ignored");
+    }
+
+    await expectRowAt(["805|1", "809|1", "813|1"], data, "Ignored");
+  });
+
+  it("keeps a take-lane clip on its lane when its slot toPath is ignored", async () => {
+    const [clip] = await createRow(["901|1"], "Stay", laneDestination);
+
+    const { data } = await moveClips([clip!], [`t${EMPTY_MIDI_TRACK}/s0`], {
+      arrangementStart: "905|1",
+    });
+
+    expect(data[0]?.path).toBe(laneDestination("905|1"));
+    expect(data[0]?.detail).toContain("toPath ignored");
+    expect(
+      (await readClipFully(ctx.client!, { path: laneDestination("905|1") }))
+        .name,
+    ).toBe("Stay 0");
+  });
 });
 
 /**

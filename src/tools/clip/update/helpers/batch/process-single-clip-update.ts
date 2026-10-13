@@ -83,6 +83,8 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   arrangementStartBeats?: number | null;
   /** Where this clip moves, from toPath (or the deprecated toSlot). */
   destination?: ClipPath | null;
+  /** A clip slot sent beside an arrangement start or length, to be noted as ignored. */
+  ignoredDestination?: ClipPath | null;
   destinationParam: "toPath" | "toSlot";
   /** The param that named arrangementStartBeats. */
   startParam: "toPath" | "arrangementStart";
@@ -268,6 +270,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     clip,
     isAudioClip,
     destination: params.destination,
+    ignoredDestination: params.ignoredDestination,
     destinationParam: params.destinationParam,
     startParam: params.startParam,
     arrangementStartBeats: params.arrangementStartBeats,

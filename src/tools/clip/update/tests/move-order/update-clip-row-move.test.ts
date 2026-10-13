@@ -136,6 +136,27 @@ describe("updateClip - moving a row of arrangement clips", () => {
     expectNoSessionClipWarning();
   });
 
+  // A slot sent beside arrangementStart is ignored, so the row moves exactly
+  // as it does without one: back-to-front, each clip keeping its note.
+  it("keeps every clip when the row shift also names ignored slots", async () => {
+    const result = (await updateClip({
+      id: "113,114,115",
+      arrangementStart: "5|1,9|1,13|1",
+      toPath: "t0/s0,t0/s1,t0/s2",
+    })) as ClipResult[];
+
+    expect(movedTo()).toStrictEqual([48, 32, 16]);
+    expect(result).toHaveLength(3);
+
+    for (const entry of result) {
+      expect(entry).not.toHaveProperty("ok");
+      expect(entry.detail).toContain("toPath ignored:");
+      expect(entry.detail).not.toContain("overwritten");
+    }
+
+    expectNoSessionClipWarning();
+  });
+
   it("keeps a row shifting four bars earlier working", async () => {
     setupTrack([
       { id: "113", start: 16, end: 32 },
@@ -435,5 +456,20 @@ describe("updateClip - moving a row of take-lane clips", () => {
       expect(entry).not.toHaveProperty("deleted");
       expect(entry.detail).toContain("re-created on t0/l0");
     }
+  });
+
+  // A position with no lane keeps a take-lane clip on its lane; a slot that is
+  // ignored must not change that.
+  it("keeps a take-lane clip on its lane when the slot toPath is ignored", async () => {
+    const [first] = setupTakeLane();
+
+    const result = (await updateClip({
+      id: first as string,
+      arrangementStart: "9|1",
+      toPath: "t0/s0",
+    })) as ClipResult;
+
+    expect(result.path).toBe("t0/l0[9|1]");
+    expect(result.detail).toContain("toPath ignored:");
   });
 });

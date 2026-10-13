@@ -151,9 +151,9 @@ function moveIntent(clip: LiveAPI, moves: ClipMoves): MoveIntent | null {
   const destination = moves.destinationById?.get(clip.id);
   const lengthBeats = moves.lengthBeatsFor(clip);
 
-  // A clip slot is off the timeline entirely — except alongside an arrangement
-  // length, which makes update-clip ignore the slot and tile where it stands.
-  if (destination?.kind === "slot" && lengthBeats == null) {
+  // A clip slot is off the timeline entirely. (A slot sent beside a start or
+  // length is ignored, and the caller leaves it out of the destinations.)
+  if (destination?.kind === "slot") {
     return null;
   }
 
@@ -167,15 +167,14 @@ function moveIntent(clip: LiveAPI, moves: ClipMoves): MoveIntent | null {
 }
 
 /**
- * The lane a destination sends a clip to. An ignored slot lands nowhere of its
- * own, so it reads as the clip's own lane, same as no destination at all.
+ * The lane a destination sends a clip to.
  * @param destination - Where the call named the clip to go, if anywhere
  * @returns The lane, or null for the clip's own
  */
 function landingLane(
-  destination: ClipPath | undefined,
+  destination: Exclude<ClipPath, { kind: "slot" }> | undefined,
 ): ArrangementTrack | null {
-  if (destination == null || destination.kind === "slot") {
+  if (destination == null) {
     return null;
   }
 
@@ -201,15 +200,7 @@ function freesCurrentSpan(clip: LiveAPI, moves: ClipMoves): boolean {
     return true;
   }
 
-  const destination = moves.destinationById?.get(clip.id);
-
-  if (destination == null) {
-    return false;
-  }
-
-  // A slot alongside an arrangement length is ignored: update-clip tiles the
-  // clip where it stands, so it goes nowhere.
-  return !(destination.kind === "slot" && moves.lengthBeatsFor(clip) != null);
+  return moves.destinationById?.has(clip.id) ?? false;
 }
 
 /**
