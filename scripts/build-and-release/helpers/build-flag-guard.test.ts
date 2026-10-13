@@ -68,6 +68,26 @@ describe("buildFlagGuard", () => {
     ).toContain("ENABLE_CODE_EXEC=true");
   });
 
+  it("refuses even with the override when it is not allowed", () => {
+    const refusal = buildFlagGuard(
+      { [DEV_BUILD_OVERRIDE]: "true", ENABLE_CODE_EXEC: "true" },
+      { allowOverride: false },
+    );
+
+    expect(refusal).toContain("ENABLE_CODE_EXEC=true");
+    expect(refusal).toContain("does not apply");
+    expect(refusal).not.toContain("On purpose");
+  });
+
+  it("passes a clean environment when the override is not allowed", () => {
+    expect(
+      buildFlagGuard(
+        { [DEV_BUILD_OVERRIDE]: "true" },
+        { allowOverride: false },
+      ),
+    ).toBeNull();
+  });
+
   it("lets a build opt in on purpose", () => {
     expect(
       buildFlagGuard({

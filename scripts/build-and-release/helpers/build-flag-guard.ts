@@ -11,17 +11,14 @@
 
 /**
  * The flags the build substitutes. Not a prefix match on ENABLE_*: that
- * namespace isn't ours, and GitHub's runners export ENABLE_RUNNER_TRACING.
+ * namespace isn't ours (GitHub's runners export ENABLE_RUNNER_TRACING).
  *
- * Nothing here has to be remembered. src/test/meta/build/build-flags.test.ts
- * already fails on a flag read in src/ that isn't classified, and holds this
- * list equal to the build-flag half of that inventory — so a new flag fails the
- * suite until it is listed here too. Runtime flags stay out on purpose: the
- * portal reads ENABLE_LOGGING when it runs, so the build never bakes it in.
+ * src/test/meta/build/build-flags.test.ts fails on a flag read in src/ that
+ * isn't classified, and holds this list equal to its build-flag half. Runtime
+ * flags stay out: the portal reads ENABLE_LOGGING when it runs.
  *
- * ENABLE_BUILD_STATS is here even though src/ never reads it: it picks which
- * module the bundler resolves rather than a value to substitute, and it still
- * changes the shipped bytes.
+ * ENABLE_BUILD_STATS is here though src/ never reads it: it picks which module
+ * the bundler resolves, which still changes the shipped bytes.
  */
 export const GUARDED_BUILD_FLAGS: string[] = [
   "ENABLE_LIVE_API",
@@ -67,14 +64,19 @@ export function hasDevBuildFlags(
 /**
  * Checks the environment a build is about to run with.
  * @param env - The environment the build will run with
+ * @param options - Options
+ * @param options.allowOverride - False when packaging what ships: the override is no excuse there
  * @returns What to print before refusing, or null when the environment is clean
  */
 export function buildFlagGuard(
   env: Record<string, string | undefined>,
+  options: { allowOverride?: boolean } = {},
 ): string | null {
+  const allowOverride = options.allowOverride ?? true;
+
   // "true" exactly, like every flag the build reads — a shell that means to
   // opt in can spell it the one way the refusal below prints.
-  if (env[DEV_BUILD_OVERRIDE] === "true") {
+  if (allowOverride && env[DEV_BUILD_OVERRIDE] === "true") {
     return null;
   }
 
@@ -91,6 +93,8 @@ export function buildFlagGuard(
     "   arbitrary code execution, wildcard CORS, unfinished features, the",
     "   LiveAPI object counter, and the object-staleness probe. None of that\n   may ship.\n",
     "   • For a development build:  npm run build:debug",
-    `   • On purpose, this once:    ${DEV_BUILD_OVERRIDE}=true npm run build\n`,
+    allowOverride
+      ? `   • On purpose, this once:    ${DEV_BUILD_OVERRIDE}=true npm run build\n`
+      : `   ${DEV_BUILD_OVERRIDE} does not apply here: unset the flags and run again.\n`,
   ].join("\n");
 }

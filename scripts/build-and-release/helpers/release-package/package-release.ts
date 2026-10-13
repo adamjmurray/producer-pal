@@ -28,7 +28,8 @@ import {
   checkFrozenDevice,
   FROZEN_DEVICE_FILENAME,
 } from "./frozen-device.ts";
-import { MCPB_FILENAME } from "./packaged-mcpb.ts";
+import { MCPB_FILENAME } from "./packaged/packaged-mcpb.ts";
+import { checkPackagedPortals } from "./packaged/packaged-portals.ts";
 import { describePackageFailure, runPackageSteps } from "./package-steps.ts";
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -49,10 +50,9 @@ if (process.argv.includes("--verify-npm")) {
 
 /** Refuse unless npm/ is ready to publish. */
 function verifyNpm(): void {
-  const refusal = checkDeviceVersion(
-    join(npmDir, FROZEN_DEVICE_FILENAME),
-    pkg.version,
-  );
+  const refusal =
+    checkDeviceVersion(join(npmDir, FROZEN_DEVICE_FILENAME), pkg.version) ??
+    checkPackagedPortals([npmDir]);
 
   if (refusal != null) {
     console.error(`\n❌ npm/ is not ready to publish.\n${refusal}`);
@@ -67,7 +67,8 @@ function verifyNpm(): void {
 
 /** Check the frozen device, then build and copy everything that ships it. */
 function packageRelease(): void {
-  const flagRefusal = buildFlagGuard(process.env);
+  // No override: it lets a dev build run, never ship.
+  const flagRefusal = buildFlagGuard(process.env, { allowOverride: false });
 
   if (flagRefusal != null) {
     console.error(flagRefusal);
@@ -120,6 +121,17 @@ function packageRelease(): void {
       name: "check the bundled copies",
       writes: [],
       run: () => assertDeviceCopies(frozenDevice, [extensionDir, npmDir]),
+    },
+    {
+      name: "check the bundled portals",
+      writes: [],
+      run: () => {
+        const devPortal = checkPackagedPortals([extensionDir, npmDir]);
+
+        if (devPortal != null) {
+          throw new Error(devPortal);
+        }
+      },
     },
     {
       name: "make the mcpb",

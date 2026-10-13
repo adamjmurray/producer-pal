@@ -157,9 +157,12 @@ separately to redo just one.
    is really frozen and belongs to that build: its bytes must contain
    `const VERSION = "x.y.z"`, and the file must be newer than `build-info.json`,
    which catches a freeze left over from an earlier build of the same version.
-   Then it builds the portal, makes `release/Producer_Pal.mcpb` (device
-   included), and leaves the same device and portal in `npm/`. If a step fails
-   it lists what was written and what was not; fix the cause and re-run.
+   It also refuses if any dev flag is set, `ALLOW_DEV_BUILD_FLAGS` or not, and
+   refuses a portal carrying the `PRODUCER_PAL_DEV_BUILD` header (checked after
+   the build, and again by `npm run tag` and `npm run guard:device`). Then it
+   builds the portal, makes `release/Producer_Pal.mcpb` (device included), and
+   leaves the same device and portal in `npm/`. If a step fails it lists what
+   was written and what was not; fix the cause and re-run.
 
 Don't run a plain `npm run build` afterwards: with no frozen device to hand it,
 it removes the device from `npm/` and the extension folder. Plain builds (dev,

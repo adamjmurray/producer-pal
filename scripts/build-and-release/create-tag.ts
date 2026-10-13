@@ -13,7 +13,8 @@ import {
   readBuildInfo,
   readCheckout,
 } from "./helpers/release-package/build-info.ts";
-import { checkMcpbPackaged } from "./helpers/release-package/packaged-mcpb.ts";
+import { checkMcpbPackaged } from "./helpers/release-package/packaged/packaged-mcpb.ts";
+import { checkPackagedPortals } from "./helpers/release-package/packaged/packaged-portals.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "../..");
@@ -77,6 +78,16 @@ const unpackaged = checkMcpbPackaged(join(rootDir, "release"));
 
 if (unpackaged != null) {
   fail(...unpackaged);
+}
+
+// The mcpb is a zip, so check the portal it was packed from, and npm's copy.
+const devPortal = checkPackagedPortals([
+  join(rootDir, "claude-desktop-extension"),
+  join(rootDir, "npm"),
+]);
+
+if (devPortal != null) {
+  fail(...devPortal.split("\n"));
 }
 
 const head = checkout.head;
