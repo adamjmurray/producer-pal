@@ -18,9 +18,9 @@ type ChangesSet = (args: Record<string, unknown>) => boolean;
 
 /**
  * Tools that may change the Set, read off their defs, each with the check that
- * says whether a given call does. Not ppal-manage: closing a step right after
- * an undo could wipe Live's redo history, and installing changes nothing in the
- * Set.
+ * says whether a given call does. Not ppal-manage: an end clears the guard
+ * that stops its next undo from removing Producer Pal, and installing changes
+ * nothing in the Set.
  */
 const WRITE_TOOLS: ReadonlyMap<string, ChangesSet> = new Map(
   [...STANDARD_TOOL_DEFS, toolDefLiveApi]

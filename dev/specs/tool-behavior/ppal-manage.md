@@ -8,8 +8,9 @@ throws.
 
 It is not a target-list write, so it doesn't run through the
 [write pipeline](../../tools/write-pipeline.md), and it gets no undo step of its
-own: closing one right after an undo could wipe Live's redo history, and an
-install changes nothing in the Set.
+own: an end clears the guard that stops the next undo from removing Producer Pal
+(see [`undo` and `redo`](#undo-and-redo)), and an install changes nothing in the
+Set.
 
 Small-model mode leaves it out entirely (not in MCP, not in REST), and users can
 switch it off like any tool. It sits in the `core` group.

@@ -144,8 +144,8 @@ open by a crash or timeout would merge everything after it) and doesn't wait for
 the answer. No end follows a timeout, since V8 may still be changing the Set. A
 Live without the remote script keeps one merged step. A tool that is not
 read-only (`readOnlyHint`) gets this with no code of its own, except
-`ppal-manage`: closing a step right after an undo could wipe Live's redo
-history.
+`ppal-manage`: an end clears the guard that stops its next undo from removing
+Producer Pal.
 
 A call that changes nothing gets no end, because an end also clears the undo
 guard that `ppal-manage` keeps (see

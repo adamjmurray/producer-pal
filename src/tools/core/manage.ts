@@ -19,8 +19,8 @@ import { installFromTool } from "./helpers/manage-install.ts";
  * refused (the portal answers them).
  *
  * Not a target-list write, so it doesn't run through the write pipeline. It
- * also gets no undo step of its own: closing one right after an undo could wipe
- * Live's redo history.
+ * also gets no undo step of its own: an end clears the guard that stops the
+ * next undo from removing Producer Pal.
  * @param args - The action, and `userLibrary` for an install
  * @param ctx - Per-request context carrying the deadline
  * @returns The install's version and path, or what Live can undo and redo now
