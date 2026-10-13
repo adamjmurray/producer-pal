@@ -15,6 +15,12 @@ import {
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildFlagGuard } from "./helpers/build-flag-guard.ts";
+import {
+  checkTreeClean,
+  type Checkout,
+  gitIn,
+  readCheckout,
+} from "./helpers/release-package/build-info.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "../..");
@@ -36,20 +42,28 @@ if (flagRefusal != null) {
 // Get version from package.json
 const pkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
 
+let checkout: Checkout;
+
+try {
+  checkout = readCheckout(gitIn(rootDir));
+} catch (error) {
+  console.error(`\n❌ Could not resolve the build SHA: ${String(error)}`);
+  console.error("   Releases must be built from a git checkout.");
+  process.exit(1);
+}
+
 // Baked into the bundles and shown next to the version in the device UI. It is
 // diagnostic only: which commit produced these bytes, for when a bug report and
 // a version number disagree. The update check does not read it — the version
 // string alone answers that now that every build carries its own -rcN.
-let buildSha: string;
+const buildSha = checkout.head;
 
-try {
-  buildSha = execSync("git rev-parse --short=7 HEAD", {
-    encoding: "utf8",
-    stdio: ["pipe", "pipe", "ignore"],
-  }).trim();
-} catch (error) {
-  console.error(`\n❌ Could not resolve the build SHA: ${String(error)}`);
-  console.error("   Releases must be built from a git checkout.");
+// build-info.json records HEAD. A dirty tree would put changes in the artifacts
+// that no commit holds, and reverting them later would pass every other check.
+const dirty = checkTreeClean(checkout);
+
+if (dirty != null) {
+  console.error(`\n❌ Not building.\n${dirty.join("\n")}\n`);
   process.exit(1);
 }
 

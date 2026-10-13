@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,6 +11,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   checkBuildMatchesCheckout,
   checkBuildVersion,
+  checkTreeClean,
+  gitIn,
   readBuildInfo,
   readCheckout,
 } from "./build-info.ts";
@@ -78,6 +81,35 @@ describe("readCheckout", () => {
     );
 
     expect(checkout.treeClean).toBe(false);
+  });
+});
+
+describe("gitIn", () => {
+  it("runs git in the repo: ignored files are clean, untracked ones are not", () => {
+    execFileSync("git", ["init", "-q"], { cwd: releaseDir });
+    writeFileSync(join(releaseDir, ".git/info/exclude"), "out.js\n");
+    writeFileSync(join(releaseDir, "out.js"), "built");
+
+    const git = gitIn(releaseDir);
+
+    expect(git("status", "--porcelain")).toBe("");
+
+    writeFileSync(join(releaseDir, "new.ts"), "edit");
+
+    expect(git("status", "--porcelain")).toBe("?? new.ts");
+  });
+});
+
+describe("checkTreeClean", () => {
+  it("accepts a clean tree", () => {
+    expect(checkTreeClean(CLEAN_HEAD)).toBeNull();
+  });
+
+  it("refuses a dirty tree and says what to do", () => {
+    const refusal = checkTreeClean({ head: "abc1234", treeClean: false });
+
+    expect(refusal?.join("\n")).toContain("Working tree is not clean");
+    expect(refusal?.join("\n")).toContain("Commit or discard");
   });
 });
 

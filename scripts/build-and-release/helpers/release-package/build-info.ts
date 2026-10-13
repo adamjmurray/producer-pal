@@ -6,6 +6,7 @@
 // The tag and the release package both refuse to run against anything but the
 // build `npm run release:amxd` recorded, so they share these checks.
 
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -52,6 +53,17 @@ export function readBuildInfo(releaseDir: string): BuildInfo | null {
 }
 
 /**
+ * A git runner for `readCheckout`.
+ *
+ * @param cwd - The repo to run git in
+ * @returns A function that runs git there and returns its trimmed stdout
+ */
+export function gitIn(cwd: string): (...args: string[]) => string {
+  return (...args) =>
+    execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+}
+
+/**
  * Read the checkout's HEAD and whether it has uncommitted changes.
  *
  * @param git - Runs a git command in the repo and returns its trimmed stdout
@@ -95,6 +107,26 @@ export function checkBuildVersion(
 }
 
 /**
+ * Check that the working tree has no uncommitted changes. Gitignored files
+ * don't count; untracked ones do.
+ *
+ * @param checkout - HEAD and tree state now
+ * @returns Refusal lines (headline first), or null when the tree is clean
+ */
+export function checkTreeClean(checkout: Checkout): string[] | null {
+  if (checkout.treeClean) {
+    return null;
+  }
+
+  return [
+    "Working tree is not clean.",
+    "Every build output is gitignored, so what shows up here is a source change",
+    "that a release build would not match its commit. Commit or discard it,",
+    "then run `npm run release` again.",
+  ];
+}
+
+/**
  * Check that the build in release/ came from the code in this checkout.
  *
  * @param options - The recorded build, package.json's version, and the checkout
@@ -110,13 +142,10 @@ export function checkBuildMatchesCheckout(options: {
 }): string[] | null {
   const { build, version, checkout } = options;
 
-  if (!checkout.treeClean) {
-    return [
-      "Working tree is not clean.",
-      "Every build output is gitignored, so a clean tree after `npm run release`",
-      "is the normal state — whatever is showing up here is a source change that",
-      "the build in release/ does not cover.",
-    ];
+  const dirty = checkTreeClean(checkout);
+
+  if (dirty != null) {
+    return dirty;
   }
 
   const versionRefusal = checkBuildVersion(build, version);

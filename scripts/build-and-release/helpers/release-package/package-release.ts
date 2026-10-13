@@ -12,13 +12,14 @@
 // `npm run guard:device` and npm/package.json's prepack run, so a tarball can't
 // be packed after a plain build has wiped the device.
 
-import { execFileSync, execSync } from "node:child_process";
+import { execSync } from "node:child_process";
 import { copyFileSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildFlagGuard } from "../build-flag-guard.ts";
 import {
   checkBuildMatchesCheckout,
+  gitIn,
   readBuildInfo,
   readCheckout,
 } from "./build-info.ts";
@@ -80,9 +81,7 @@ function packageRelease(): void {
   const checkoutRefusal = checkBuildMatchesCheckout({
     build,
     version: pkg.version,
-    checkout: readCheckout((...args) =>
-      execFileSync("git", args, { cwd: rootDir, encoding: "utf8" }).trim(),
-    ),
+    checkout: readCheckout(gitIn(rootDir)),
   });
   const refusal =
     checkoutRefusal?.join("\n") ??

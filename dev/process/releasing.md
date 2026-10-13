@@ -133,9 +133,10 @@ separately to redo just one.
    version and commit in `release/build-info.json`, and freezes the device into
    `release/Producer_Pal.amxd` from the freshly built `max-for-live-device/` and
    `licenses/`. The checked-in `max-for-live-device/Producer_Pal.amxd` is not
-   changed. It refuses to build if your shell has a debug flag set — they are
-   substituted into the bundles, so a leftover `ENABLE_CODE_EXEC=true` would
-   ship code execution to everyone.
+   changed. It refuses to build from a dirty working tree, since the recorded
+   commit would not describe the artifacts. It also refuses if your shell has a
+   debug flag set — they are substituted into the bundles, so a leftover
+   `ENABLE_CODE_EXEC=true` would ship code execution to everyone.
 
    The release tag has to land on the commit it records — see
    [How update detection works](#how-update-detection-works).
