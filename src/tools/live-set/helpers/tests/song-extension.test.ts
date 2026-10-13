@@ -27,6 +27,15 @@ function mockLiveSetWithTracks(trackIds: string[] = ["track-1"]): LiveAPI {
 }
 
 /**
+ * A track's getProperty: the given values, 0 for any other property.
+ * @param props - Property values by name
+ * @returns A getProperty mock
+ */
+function trackProps(props: Record<string, number>): Mock {
+  return vi.fn((name: string) => props[name] ?? 0);
+}
+
+/**
  * Answer `LiveAPI.from` with these objects, and null for any other id.
  * @param objectsById - The object each id resolves to
  */
@@ -73,7 +82,7 @@ describe("song-extension", () => {
 
     it("reads the track list by the 'tracks' child name", () => {
       const mockMidiTrack = {
-        getProperty: vi.fn().mockReturnValue(1), // has_midi_input = 1
+        getProperty: trackProps({ has_midi_input: 1 }),
         call: vi.fn().mockReturnValue("id 999"),
       };
 
@@ -118,7 +127,7 @@ describe("song-extension", () => {
       // A refused create_midi_clip answers with the Live Set (id 1), never
       // undefined — an unchecked id here would poison the returned clipId.
       const mockMidiTrack = {
-        getProperty: vi.fn().mockReturnValue(1),
+        getProperty: trackProps({ has_midi_input: 1 }),
         call: vi.fn().mockReturnValue("id 1"),
       };
       const mockLiveSetObject = {
@@ -138,7 +147,7 @@ describe("song-extension", () => {
 
     it("should create audio clip when only audio tracks available", () => {
       const mockAudioTrack = {
-        getProperty: vi.fn().mockReturnValue(0), // has_midi_input = 0 (audio)
+        getProperty: trackProps({ has_midi_input: 0 }),
         call: vi.fn().mockReturnValue("id 888"),
       };
       const mockSessionClip = { id: "777" };
@@ -181,7 +190,7 @@ describe("song-extension", () => {
 
     it("should throw error if audio track but no silenceWavPath", () => {
       const mockAudioTrack = {
-        getProperty: vi.fn().mockReturnValue(0), // has_midi_input = 0 (audio)
+        getProperty: trackProps({ has_midi_input: 0 }),
       };
 
       g.LiveAPI = {
@@ -197,7 +206,7 @@ describe("song-extension", () => {
 
     it("should prefer MIDI track over audio track", () => {
       const mockAudioTrack = {
-        getProperty: vi.fn().mockReturnValue(0), // audio track
+        getProperty: trackProps({ has_midi_input: 0 }),
       };
       const { mockMidiTrack, mockTempClip } = midiTrackCreatingClip999();
 
@@ -214,6 +223,77 @@ describe("song-extension", () => {
       // Should use MIDI track even though audio was first
       expect(result!.isMidiTrack).toBe(true);
       expect(result!.track).toBe(mockMidiTrack);
+    });
+
+    describe("tracks that can't take a clip", () => {
+      it.each([
+        ["frozen", { has_midi_input: 1, is_frozen: 1 }],
+        ["a group", { has_midi_input: 1, is_foldable: 1 }],
+      ])("skips a MIDI track that is %s", (_what, props) => {
+        const { mockMidiTrack, mockTempClip } = midiTrackCreatingClip999();
+        const blocked = { getProperty: trackProps(props), call: vi.fn() };
+
+        mockLiveApiFrom({
+          blocked,
+          "midi-track": mockMidiTrack,
+          "id 999": mockTempClip,
+        });
+
+        const result = extendSongIfNeeded(
+          mockLiveSetWithTracks(["blocked", "midi-track"]),
+          200,
+          {},
+        );
+
+        expect(result!.track).toBe(mockMidiTrack);
+        expect(blocked.call).not.toHaveBeenCalled();
+      });
+
+      it("skips a frozen audio track when picking the audio fallback", () => {
+        const frozen = { getProperty: trackProps({ is_frozen: 1 }) };
+        const audio = {
+          getProperty: trackProps({ has_midi_input: 0 }),
+          call: vi.fn().mockReturnValue("id 888"),
+        };
+
+        (createAudioClipInSession as Mock).mockReturnValue({
+          clip: { id: "777" },
+          slot: { call: vi.fn() },
+        });
+        mockLiveApiFrom({ frozen, audio, "id 888": { id: "888" } });
+
+        const result = extendSongIfNeeded(
+          mockLiveSetWithTracks(["frozen", "audio"]),
+          200,
+          { silenceWavPath: "/path/to/silence.wav" },
+        );
+
+        expect(result!.track).toBe(audio);
+        expect(createAudioClipInSession).toHaveBeenCalledWith(
+          audio,
+          1,
+          "/path/to/silence.wav",
+        );
+      });
+
+      it("throws the no-tracks error when every track is frozen or a group", () => {
+        mockLiveApiFrom({
+          frozen: {
+            getProperty: trackProps({ has_midi_input: 1, is_frozen: 1 }),
+          },
+          group: { getProperty: trackProps({ is_foldable: 1 }) },
+        });
+
+        expect(() =>
+          extendSongIfNeeded(
+            mockLiveSetWithTracks(["frozen", "group"]),
+            200,
+            {},
+          ),
+        ).toThrow(
+          "Cannot create locator past song end: no tracks available to extend song",
+        );
+      });
     });
   });
 
@@ -407,8 +487,7 @@ function midiTrackCreatingClip999(): {
 } {
   return {
     mockMidiTrack: {
-      // has_midi_input = 1
-      getProperty: vi.fn().mockReturnValue(1),
+      getProperty: trackProps({ has_midi_input: 1 }),
       call: vi.fn().mockReturnValue("id 999"),
     },
     mockTempClip: { id: "999", exists: () => true, type: "Clip" },

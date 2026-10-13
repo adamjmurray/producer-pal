@@ -376,6 +376,41 @@ describe("ppal-update-live-set", () => {
     expect(locators.length).toBe(initialLocators.length);
   });
 
+  // Past the song end, a temp clip on the first usable track extends the song.
+  it("creates a locator past the song end and removes the temp clip", async () => {
+    const arrangementClipCount = async (): Promise<number> => {
+      const read = await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: "t0", include: ["arrangement-clips"] },
+      });
+
+      return (
+        parseToolResult<{ arrangementClips?: unknown[] }>(read)
+          .arrangementClips ?? []
+      ).length;
+    };
+
+    const clipsBefore = await arrangementClipCount();
+
+    const created = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "create",
+          locatorTime: "401|1",
+          locatorName: "E2E Past End",
+        },
+      }),
+    );
+
+    expect(created.locator?.operation).toBe("create");
+    await sleep(100);
+    expect(
+      (await readLocatorList()).find((l) => l.name === "E2E Past End")?.time,
+    ).toBe("401|1");
+    expect(await arrangementClipCount()).toBe(clipsBefore);
+  });
+
   it("creates, renames, and deletes several locators per call", async () => {
     // Marking up a song structure is one call per section otherwise. The Set
     // ships with locators at 1|1, 9|1, 17|1 and 33|1, so these three sit in the

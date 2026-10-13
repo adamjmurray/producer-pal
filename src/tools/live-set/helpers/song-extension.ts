@@ -11,6 +11,7 @@ import {
   createAudioClipInSession,
   removeSessionClip,
 } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -41,13 +42,18 @@ export function extendSongIfNeeded(
     return null; // No extension needed
   }
 
-  // Find first track (prefer MIDI, fallback to audio)
+  // Find first usable track (prefer MIDI, fallback to audio). Frozen and group
+  // tracks can't take a new clip.
   const trackIds = liveSet.getChildIds("tracks");
   let selectedTrack: LiveAPI | null = null;
   let isMidiTrack = false;
 
   for (const trackId of trackIds) {
     const track = LiveAPI.from(trackId);
+
+    if (track.getProperty("is_frozen") || isGroupTrack(track)) {
+      continue;
+    }
 
     if ((track.getProperty("has_midi_input") as number) > 0) {
       selectedTrack = track;
