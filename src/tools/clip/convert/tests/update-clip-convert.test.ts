@@ -398,6 +398,39 @@ describe("updateClip - convert", () => {
     ]);
   });
 
+  it("doesn't call a clip overwritten because a later conversion shifted its path", async () => {
+    setupAudioClipMock(mocks.clip456);
+
+    let calls = 0;
+
+    answerRoute(() => {
+      calls += 1;
+
+      if (calls === 1) {
+        addTrack("200", 4);
+
+        return;
+      }
+
+      // The second conversion's track lands ahead of both clips.
+      addTrack("201", 0);
+      mocks.clip123.path = livePath.track(1).clipSlot(0).clip();
+      mocks.clip456.path = livePath.track(2).clipSlot(1).clip();
+    });
+
+    const result = (await updateClip({
+      id: "123,456",
+      convert: "simpler",
+      arrangementLength: "2bar",
+    })) as Array<{ id?: string; path?: string; detail?: string }>;
+
+    expect(result.map(({ id, path }) => ({ id, path }))).toStrictEqual([
+      { id: "123", path: "t1/s0" },
+      { id: "456", path: "t2/s1" },
+    ]);
+    expect(JSON.stringify(result)).not.toContain("overwritten");
+  });
+
   it("converts the clip as the same call left it", async () => {
     answerRoute(() => addTrack("200", 4));
 

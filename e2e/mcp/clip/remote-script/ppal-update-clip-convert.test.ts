@@ -23,6 +23,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
+import { readClipFully } from "../helpers/clip-io-test-helpers.ts";
 import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
@@ -30,7 +31,9 @@ import {
 
 /** An update-clip entry that converted a clip. */
 interface Converted {
+  id?: string;
   path?: string;
+  detail?: string;
   converted?: {
     track: { id: string };
     clip?: { path?: string; noteCount: number };
@@ -151,6 +154,38 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-clip — convert", () => {
       expect(results[0]?.converted?.track.id).not.toBe(
         results[1]?.converted?.track.id,
       );
+    } finally {
+      await deleteTracks(...results);
+    }
+  });
+
+  // The second clip's new track lands ahead of the first clip, so the first
+  // clip's path moves. It was untouched, so it must not read as overwritten.
+  it("keeps both entries when a later conversion shifts an earlier clip's path", async () => {
+    // Its current length, so arrangementLength asks for the write and changes nothing.
+    const { arrangementLength } = await readClipFully(ctx.client!, {
+      path: "t4[17|1]",
+    });
+    const results = parseToolResult<Converted[]>(
+      await update({
+        path: "t5/s0,t4[17|1]",
+        convert: "drums",
+        arrangementLength,
+      }),
+    );
+
+    try {
+      expect(results).toHaveLength(2);
+
+      for (const entry of results) {
+        expect(entry.id).toStrictEqual(expect.any(String));
+        expect(entry.detail ?? "").not.toContain("overwritten");
+      }
+
+      // The entry's path is where the clip is now, not where it was written.
+      const session = await readClipFully(ctx.client!, { id: results[0]!.id! });
+
+      expect(results[0]?.path).toBe(session.path);
     } finally {
       await deleteTracks(...results);
     }

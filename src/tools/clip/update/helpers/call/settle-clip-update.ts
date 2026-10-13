@@ -47,6 +47,18 @@ export function settleClipUpdate(
 ): void {
   const { checked, targets, entries, pieces, outcomes } = done;
 
+  // First: the overwrite check compares each entry's path with where its clip
+  // is now, and a conversion's new track shifts the paths written before it.
+  if (run.convert.madeTrack) {
+    refreshPathsAfterConvert(
+      entries.flatMap((entry, index) =>
+        outcomes[index] === "written"
+          ? ([entry, ...(pieces[index] as ClipResult[])] as ClipResult[])
+          : [],
+      ),
+    );
+  }
+
   reportOverwritten(run, done);
   reportClearedInPlace(run, done);
 
@@ -56,16 +68,6 @@ export function settleClipUpdate(
         nameWhereItIs(written as ClipResult);
       }
     }
-  }
-
-  if (run.convert.madeTrack) {
-    refreshPathsAfterConvert(
-      entries.flatMap((entry, index) =>
-        outcomes[index] === "written"
-          ? ([entry, ...(pieces[index] as ClipResult[])] as ClipResult[])
-          : [],
-      ),
-    );
   }
 
   // A cut that every clip was measured against says what it cut nothing of.
