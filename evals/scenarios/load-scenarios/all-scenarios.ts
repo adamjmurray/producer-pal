@@ -9,7 +9,7 @@ import {
   audioConvertDrumRack,
   audioConvertToMidi,
   audioSampleWorkflow,
-  automationArrangementDirectLimit,
+  automationArrangementDirect,
   automationArrangementViaSession,
   automationClearOne,
   automationNoRemoteScript,
@@ -211,7 +211,7 @@ export const allScenarios: EvalScenario[] = [
   automationWriteCurve,
   automationClearOne,
   automationArrangementViaSession,
-  automationArrangementDirectLimit,
+  automationArrangementDirect,
   automationNoRemoteScript,
   pathLocatorCoordinate,
   // Object-path addressing (2.2.0). Contiguous and on one Live Set:

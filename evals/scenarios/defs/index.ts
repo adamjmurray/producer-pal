@@ -12,7 +12,7 @@
  */
 
 export {
-  automationArrangementDirectLimit,
+  automationArrangementDirect,
   automationArrangementViaSession,
 } from "./clip/automation/automation-arrangement.ts";
 export { automationClearOne } from "./clip/automation/automation-clear-one.ts";

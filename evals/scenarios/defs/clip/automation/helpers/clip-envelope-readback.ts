@@ -201,8 +201,8 @@ export function sortEnvelopes(envelopes: ClipEnvelopeRead[]): {
 
 /**
  * Every ppal-update-clip call whose `envelopes` landed on at least one line,
- * in call order. Failed attempts don't count, and neither does a call that
- * only got the arrangement-clip note back (its `envelopes` is prose).
+ * in call order, on session or arrangement clips. Failed attempts don't
+ * count.
  *
  * @param turns - All conversation turns
  * @returns The calls that wrote automation
@@ -246,7 +246,7 @@ export function placesOnArrangement(call: ToolCall): boolean {
  * @param call - A tool call
  * @returns The result entries, empty when it has none
  */
-function resultEntries(call: ToolCall): Array<Record<string, unknown>> {
+export function resultEntries(call: ToolCall): Array<Record<string, unknown>> {
   const result = parsedToolResult(call) as unknown;
 
   if (Array.isArray(result)) {

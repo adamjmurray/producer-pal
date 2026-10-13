@@ -6,18 +6,16 @@
 /**
  * Scenarios: automation in the arrangement.
  *
- * Envelopes are session-clip only. The documented route to automate the
- * arrangement is to write the envelope on a session clip, then copy that clip
- * onto the arrangement, which writes the envelope into the track's automation
- * lane. Nothing the model can call reads that lane back, so these can't check
- * the lane itself. They check what the docs promise instead:
+ * Two routes reach a track's arrangement automation lane: write `envelopes` on
+ * the arrangement clip (it writes the lane over the clip's span), or write them
+ * on a session clip and copy that clip over the span. Either counts. The lane
+ * itself isn't checked: a track read only reports it while the track plays the
+ * arrangement, and these Sets play from Session.
  *
- *   - via-session: an envelope write landed on a session clip BEFORE the last
- *     copy to the arrangement (a later copy replaces the lane, so the order is
- *     the point), and the clip is at the asked position.
- *   - direct-limit: asked to automate a clip that is already in the arrangement,
- *     the model either takes the same route or says plainly that the clip has
- *     no envelopes of its own. It must not claim the job done when it wasn't.
+ *   - via-session: the Lead session clip goes to bar 5 with a fade, so the
+ *     envelope lands on the arrangement clip after the last copy, or on the
+ *     session clip before it (a later copy replaces the lane).
+ *   - direct: the Lead clip is already at bar 5, and the model automates it.
  */
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -31,6 +29,7 @@ import {
   LEAD_CLIP,
   LEAD_TRACK_INDEX,
   placesOnArrangement,
+  resultEntries,
   TOOL_DUPLICATE,
   TOOL_UPDATE_CLIP,
 } from "./helpers/clip-envelope-readback.ts";
@@ -38,62 +37,35 @@ import { seedLeadEnvelopes } from "./helpers/seed-clip-envelopes.ts";
 
 const TOOL_READ_TRACK = "ppal-read-track";
 
-/** The turn carrying the request; turn 0 is always connect. */
-const ASK_TURN = 1;
-
 /** Where the Lead clip is, or is asked to go, on the arrangement. */
 const ARRANGEMENT_SPOT = "5|1";
 
-/** Words a reply uses to say a clip can't hold automation itself. */
-const ADMITS_LIMIT =
-  /session|automation lane|\blane\b|can(?:no|')t|not (?:possible|supported)|isn'?t|doesn'?t|unable|no envelopes/i;
-
 /**
- * The model wrote the envelope first and copied the clip to the arrangement
- * after, so the copy carried the automation into the lane.
+ * An envelope write reached the clip at the arrangement spot: written on the
+ * arrangement clip after its last placement, or on a session clip before a
+ * copy put it there.
  *
  * @param turns - All conversation turns
- * @returns True when the first landed envelope write precedes the last placement
+ * @returns True when one of the two routes landed
  */
-function writesBeforePlacing(turns: EvalTurnResult[]): boolean {
+function automationReachedSpot(turns: EvalTurnResult[]): boolean {
   const calls = getAllToolCalls(turns);
-  const first = envelopeWrites(turns)[0];
-
-  if (first == null) {
-    throw new Error("no envelope write landed on a session clip");
-  }
-
-  const firstWrite = calls.indexOf(first);
   const lastPlacement = calls.findLastIndex(placesOnArrangement);
 
-  if (lastPlacement < firstWrite) {
-    throw new Error(
-      "the clip was last put on the arrangement before its envelope was written",
+  const reached = envelopeWrites(turns).some((write) => {
+    const index = calls.indexOf(write);
+    const paths = resultEntries(write).map((entry) => String(entry.path));
+
+    return paths.some((path) =>
+      path.includes("[")
+        ? path.includes(`[${ARRANGEMENT_SPOT}]`) && index > lastPlacement
+        : index < lastPlacement,
     );
-  }
+  });
 
-  return true;
-}
-
-/**
- * The model either got the automation into the arrangement the documented way,
- * or told the user it can't be written on the arrangement clip itself.
- *
- * @param turns - All conversation turns
- * @returns True when one of the two happened
- */
-function wroteOrAdmitted(turns: EvalTurnResult[]): boolean {
-  const reply = turns[ASK_TURN]?.assistantResponse ?? "";
-
-  if (reply.trim() === "") {
-    throw new Error(`turn ${ASK_TURN} has no reply`);
-  }
-
-  const wrote = envelopeWrites(turns).length > 0;
-
-  if (!wrote && !ADMITS_LIMIT.test(reply)) {
+  if (!reached) {
     throw new Error(
-      "no envelope was written, and the reply doesn't say why not",
+      `no envelope reached the clip at ${ARRANGEMENT_SPOT}: not written on the arrangement clip after placing it, nor on a session clip before copying it there`,
     );
   }
 
@@ -151,7 +123,7 @@ export const automationArrangementViaSession: EvalScenario = {
   id: "automation-arrangement-via-session",
   tags: ["automation"],
   description:
-    "Automate the arrangement by writing on the session clip, then copying it over",
+    "Copy a session clip to the arrangement with a fade, by either route",
   kind: "capability",
   liveSet: "basic-with-drum-and-lead-clips",
   judgeAdvisory: true,
@@ -172,9 +144,8 @@ export const automationArrangementViaSession: EvalScenario = {
     assertLeadAtSpot(),
     {
       type: "custom",
-      description:
-        "wrote the envelope before copying the clip to the arrangement",
-      assert: writesBeforePlacing,
+      description: "the fade reached the clip at bar 5",
+      assert: automationReachedSpot,
     },
 
     { type: "token_usage", maxTokens: 5_000 },
@@ -191,11 +162,10 @@ mention the automation lane or that the session clip was used to carry it.`,
   ],
 };
 
-export const automationArrangementDirectLimit: EvalScenario = {
-  id: "automation-arrangement-direct-limit",
+export const automationArrangementDirect: EvalScenario = {
+  id: "automation-arrangement-direct",
   tags: ["automation"],
-  description:
-    "Asked to automate a clip already on the arrangement, take the session route or say it can't",
+  description: "Automate a clip already on the arrangement",
   kind: "capability",
   liveSet: "basic-with-drum-and-lead-clips",
   requires: {
@@ -215,27 +185,22 @@ export const automationArrangementDirectLimit: EvalScenario = {
     assertLeadAtSpot(),
     {
       type: "custom",
-      description: "wrote the automation, or said why it couldn't",
-      assert: wroteOrAdmitted,
+      description: "the pan automation reached the clip at bar 5",
+      assert: automationReachedSpot,
     },
 
     { type: "token_usage", maxTokens: 5_000 },
 
     {
       type: "llm_judge",
-      prompt: `The Lead clip sits on the arrangement at bar 5. An arrangement clip has no
-automation envelopes of its own: its automation lives in the track's automation
-lane, and the tools only write envelopes on session clips. Writing one on a
-session clip and copying that clip over bar 5 puts it in the lane.
+      prompt: `The Lead clip sits on the arrangement at bar 5. Writing envelopes on an
+arrangement clip writes the track's automation lane over that clip's span (the
+clip is re-created under a new id). Copying an automated session clip over bar
+5 works too.
 
 Evaluate the final reply to the request to automate that clip's pan:
-1. If it did the session-clip route, it says so and reports the pan automation
-   as written at bar 5.
-2. If it did not, it tells the user an arrangement clip can't take envelopes
-   directly, and does not claim the pan was automated.
-3. Either way it does not claim success for work that wasn't done, and does not
-   present the arrangement clip as having its own envelope.
-Offering the session-clip route as a next step is fine.`,
+1. It reports pan automation from hard left to hard right as written at bar 5.
+2. It does not claim work that wasn't done, and does not say this is impossible.`,
     },
   ],
 };
