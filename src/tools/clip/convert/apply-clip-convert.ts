@@ -31,7 +31,7 @@ import { REQUEST_OUT_OF_TIME } from "#src/tools/shared/validation/lists/named-ta
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   convertedResult,
-  findConvertedClip,
+  findConvertedParts,
   regularTrackIds,
   type SourcePlace,
   waitForNewTracks,
@@ -267,8 +267,9 @@ interface Looking {
 }
 
 /**
- * Put what the conversion made on the entry: the new track and its clip. When
- * that can't be told, say what was seen, since Live has already changed.
+ * Put what the conversion made on the entry: the new track, its instrument and
+ * its clip. When that can't be told, say what was seen, since Live has already
+ * changed.
  * @param entry - The clip's entry, written to
  * @param arrived - The ids of the tracks that appeared
  * @param looking - What the conversion should have made
@@ -297,11 +298,11 @@ async function reportArrival(
     return;
   }
 
-  const clip = await findConvertedClip(trackId, looking.place);
+  const parts = await findConvertedParts(trackId, looking.place);
 
-  entry.converted = convertedResult(trackId, clip);
+  entry.converted = convertedResult(trackId, parts);
 
-  if (clip == null) {
+  if (parts.clip == null) {
     appendDetail(entry, "the new track has no MIDI clip where this clip was");
   }
 }

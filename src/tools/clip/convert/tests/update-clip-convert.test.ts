@@ -9,11 +9,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  type ClipResult,
+  type ConvertedResult,
+} from "#src/tools/clip/helpers/clip-results.ts";
 import { CONVERT_ROUTE } from "#src/tools/clip/convert/remote-script-convert-contract.ts";
 import {
   setupArrangementAudioClipMock,
@@ -33,6 +38,21 @@ vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),
   handleNodeResponse: vi.fn(),
 }));
+
+/** The name Live gives a new track. */
+const TRACK_NAME = "5-Drums to MIDI";
+
+/** The new track as the result reports it, when it holds nothing. */
+const NEW_TRACK = { id: "200", path: "t4", name: TRACK_NAME };
+
+/**
+ * What a call reported it converted.
+ * @param result - The tool's result for one clip
+ * @returns The entry's `converted`
+ */
+function convertedOf(result: unknown): ConvertedResult | undefined {
+  return (result as ClipResult).converted;
+}
 
 /** The tracks the Live Set starts with: the clips' tracks, t0 to t3. */
 const OLD_TRACKS = ["id", "100", "id", "101", "id", "102", "id", "103"];
@@ -79,12 +99,35 @@ describe("updateClip - convert", () => {
    * Add a track to the end of the list, at the index it lands on.
    * @param id - The new track's id
    * @param index - Its place in the list
+   * @param instrumentId - The id of the instrument on it, if it has one
    */
-  function addTrack(id: string, index: number): RegisteredMockObject {
+  function addTrack(
+    id: string,
+    index: number,
+    instrumentId?: string,
+  ): RegisteredMockObject {
     const track = registerMockObject(id, {
       path: livePath.track(index),
       type: "Track",
+      properties: {
+        name: TRACK_NAME,
+        ...(instrumentId != null && { devices: ["id", instrumentId] }),
+      },
     });
+
+    if (instrumentId != null) {
+      registerMockObject(instrumentId, {
+        path: livePath.track(index).device(0),
+        type: "Device",
+        properties: {
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          name: "Drums to MIDI",
+          class_display_name: "Drum Rack",
+          can_have_chains: 1,
+          can_have_drum_pads: 1,
+        },
+      });
+    }
 
     liveSet.properties.tracks = [
       ...(liveSet.properties.tracks as string[]),
@@ -135,7 +178,7 @@ describe("updateClip - convert", () => {
 
   it("sends a session clip's track and slot, and reports the new track and clip", async () => {
     answerRoute(() => {
-      addTrack("200", 4);
+      addTrack("200", 4, "400");
       addSlotClip("300", 4, 3);
     });
 
@@ -148,10 +191,48 @@ describe("updateClip - convert", () => {
       id: "123",
       path: "t0/s0",
       converted: {
-        track: { id: "200", path: "t4" },
+        track: { id: "200", path: "t4", name: TRACK_NAME },
+        instrument: {
+          id: "400",
+          path: "t4/d0",
+          type: "drum-rack",
+          name: "Drums to MIDI",
+        },
         clip: { id: "300", path: "t4/s0", noteCount: 3 },
       },
     });
+  });
+
+  it("leaves the instrument out when the new track has none", async () => {
+    answerRoute(() => {
+      addTrack("200", 4);
+      addSlotClip("300", 4, 1);
+    });
+
+    const result = await updateClip({ id: "123", convert: "drums" });
+
+    expect(convertedOf(result)).toStrictEqual({
+      track: NEW_TRACK,
+      clip: { id: "300", path: "t4/s0", noteCount: 1 },
+    });
+  });
+
+  it("waits for an instrument that loads after the track", async () => {
+    answerRoute(() => {
+      const track = addTrack("200", 4, "400");
+      const devices = track.properties.devices;
+      let reads = 0;
+
+      // Live loads the instrument a few looks after the track appears.
+      Object.defineProperty(track.properties, "devices", {
+        get: () => (++reads > 3 ? devices : []),
+      });
+      addSlotClip("300", 4, 1);
+    });
+
+    const result = await updateClip({ id: "123", convert: "drums" });
+
+    expect(convertedOf(result)?.instrument?.id).toBe("400");
   });
 
   it("reports a clip with no notes as a clip with none, not a failure", async () => {
@@ -207,9 +288,9 @@ describe("updateClip - convert", () => {
 
     const result = await updateClip({ id: "123", convert: "drums" });
 
+    expect(convertedOf(result)).toStrictEqual({ track: NEW_TRACK });
     expect(result).toStrictEqual(
       expect.objectContaining({
-        converted: { track: { id: "200", path: "t4" } },
         detail: "the new track has no MIDI clip where this clip was",
       }),
     );
@@ -251,11 +332,7 @@ describe("updateClip - convert", () => {
 
     const result = await updateClip({ id: "123", convert: "drums" });
 
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        converted: { track: { id: "200", path: "t4" } },
-      }),
-    );
+    expect(convertedOf(result)).toStrictEqual({ track: NEW_TRACK });
   });
 
   it("names the tracks and reports none as the clip's when several appear", async () => {
@@ -299,7 +376,7 @@ describe("updateClip - convert", () => {
       },
       expect.objectContaining({
         id: "123",
-        converted: { track: { id: "200", path: "t4" } },
+        converted: { track: { id: "200", path: "t4", name: TRACK_NAME } },
         detail: "the new track has no MIDI clip where this clip was",
       }),
     ]);
@@ -353,7 +430,7 @@ describe("updateClip - convert", () => {
       calls += 1;
 
       if (calls === 1) {
-        first = addTrack("200", 4);
+        first = addTrack("200", 4, "400");
 
         return;
       }
@@ -365,6 +442,7 @@ describe("updateClip - convert", () => {
 
       if (first != null) {
         first.path = "live_set tracks 5";
+        registerMockObject("400", { path: "live_set tracks 5 devices 0" });
       }
     });
 
@@ -374,13 +452,21 @@ describe("updateClip - convert", () => {
       {
         id: "123",
         path: "t1/s0",
-        converted: { track: { id: "200", path: "t5" } },
+        converted: {
+          track: { id: "200", path: "t5", name: TRACK_NAME },
+          instrument: {
+            id: "400",
+            path: "t5/d0",
+            type: "drum-rack",
+            name: "Drums to MIDI",
+          },
+        },
         detail: "the new track has no MIDI clip where this clip was",
       },
       {
         id: "456",
         path: "t2/s1",
-        converted: { track: { id: "201", path: "t0" } },
+        converted: { track: { id: "201", path: "t0", name: TRACK_NAME } },
         detail: "the new track has no MIDI clip where this clip was",
       },
     ]);

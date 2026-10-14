@@ -5,8 +5,8 @@
 
 /**
  * E2E tests for ppal-update-clip `convert`: an audio clip becomes a new track
- * with a MIDI clip of the detected notes, through the remote script. Each test
- * deletes the tracks it made.
+ * with an instrument and a MIDI clip of the detected notes, through the remote
+ * script. Each test deletes the tracks it made.
  *
  * Uses: e2e-test-set — audio clips at t4/s0 and t5/s0, an arrangement audio clip
  * at t4@17|1, and a MIDI clip at t0/s0.
@@ -35,10 +35,30 @@ interface Converted {
   path?: string;
   detail?: string;
   converted?: {
-    track: { id: string };
+    track: { id: string; name?: string };
+    instrument?: { id?: string; path?: string; type?: string };
     clip?: { path?: string; noteCount: number };
   };
 }
+
+/**
+ * The new track is named, and holds an instrument of the expected type.
+ * @param converted - The entry's `converted`
+ * @param type - The instrument's device type
+ */
+const expectTrackAndInstrument = (
+  converted: Converted["converted"],
+  type: string,
+) => {
+  expect(converted?.track.name).toStrictEqual(expect.any(String));
+  expect(converted?.instrument).toStrictEqual(
+    expect.objectContaining({
+      id: expect.any(String),
+      path: expect.stringMatching(/^t\d+\/d\d+$/),
+      type,
+    }),
+  );
+};
 
 describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-clip — convert", () => {
   requireRemoteScript();
@@ -61,7 +81,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-clip — convert", () => {
     await sleep(100);
   };
 
-  it("drums: a MIDI track with a clip in the same slot", async () => {
+  it("drums: a MIDI track with a Drum Rack and a clip in the same slot", async () => {
     const result = parseToolResult<Converted>(
       await update({ path: "t4/s0", convert: "drums" }),
     );
@@ -69,6 +89,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-clip — convert", () => {
 
     try {
       expect(converted.track.id).toStrictEqual(expect.any(String));
+      expectTrackAndInstrument(converted, "drum-rack");
       expect(converted.clip?.path).toMatch(/^t\d+\/s0$/);
       expect(converted.clip?.noteCount).toStrictEqual(expect.any(Number));
       // The new track may sit before the source, which moves the source's path.
@@ -84,6 +105,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-clip — convert", () => {
     );
 
     try {
+      expectTrackAndInstrument(result.converted, "instrument-rack");
       expect(result.converted?.clip).toStrictEqual(
         expect.objectContaining({ noteCount: expect.any(Number) }),
       );
@@ -98,6 +120,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-clip — convert", () => {
     );
 
     try {
+      expectTrackAndInstrument(result.converted, "instrument-rack");
       expect(result.converted?.clip?.path).toMatch(/^t\d+\[17\|1\]$/);
     } finally {
       await deleteTracks(result);

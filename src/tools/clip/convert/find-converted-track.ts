@@ -11,13 +11,14 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
 import { type ConvertedResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
+import { getDeviceType } from "#src/tools/shared/device/device-reader.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** How often to look for the new track, and its clip. */
 const POLL_MS = 100;
 
-/** How long to look for the clip once the track is there. */
-const CLIP_WAIT_MS = 1000;
+/** How long to look for the clip and instrument once the track is there. */
+const PARTS_WAIT_MS = 1000;
 
 /** Where the converted clip sat, which is where its MIDI clip lands. */
 export type SourcePlace =
@@ -53,42 +54,67 @@ export async function waitForNewTracks(
   return added();
 }
 
+/** What a conversion put on its new track, besides the track itself. */
+export interface ConvertedParts {
+  /** The MIDI clip, in the source's slot or at its arrangement start */
+  clip: LiveAPI | null;
+  /** The track's first device, which plays the clip */
+  instrument: LiveAPI | null;
+}
+
 /**
- * The MIDI clip a conversion made on its new track: in the same slot as the
- * source (Session), or starting where it did (Arrangement). Waits a moment, in
- * case the clip lags the track.
+ * The MIDI clip and instrument a conversion made on its new track. The clip is
+ * in the same slot as the source (Session), or starts where it did
+ * (Arrangement). Waits a moment, in case either lags the track; returns at once
+ * when both are there.
  * @param trackId - The new track
  * @param place - Where the source clip sat
- * @returns The clip, or null when the track has none there
+ * @returns The clip and instrument, each null when the track has none
  */
-export async function findConvertedClip(
+export async function findConvertedParts(
   trackId: string,
   place: SourcePlace,
-): Promise<LiveAPI | null> {
-  const look = (): LiveAPI | null => clipAt(trackId, place);
-
-  await waitUntil(() => look() != null, {
-    pollingInterval: POLL_MS,
-    maxRetries: CLIP_WAIT_MS / POLL_MS,
+): Promise<ConvertedParts> {
+  const look = (): ConvertedParts => ({
+    clip: clipAt(trackId, place),
+    instrument: LiveAPI.from(trackId).getChildAt("devices", 0),
   });
+
+  await waitUntil(
+    () => {
+      const { clip, instrument } = look();
+
+      return clip != null && instrument != null;
+    },
+    { pollingInterval: POLL_MS, maxRetries: PARTS_WAIT_MS / POLL_MS },
+  );
 
   return look();
 }
 
 /**
- * What the entry says about the new track, and its clip when there is one.
+ * What the entry says about the new track, its instrument and its clip.
  * @param trackId - The new track
- * @param clip - Its MIDI clip, if Live made one
+ * @param parts - Its instrument and MIDI clip, whichever Live made
  * @returns The `converted` field
  */
 export function convertedResult(
   trackId: string,
-  clip: LiveAPI | null,
+  parts: ConvertedParts,
 ): ConvertedResult {
+  const { clip, instrument } = parts;
   const track = LiveAPI.from(trackId);
 
   return {
-    track: { id: track.id, ...pathField(track) },
+    track: { id: track.id, ...pathField(track), name: track.getName() },
+    ...(instrument != null && {
+      instrument: {
+        id: instrument.id,
+        ...pathField(instrument),
+        type: getDeviceType(instrument),
+        name: instrument.getName(),
+      },
+    }),
     ...(clip != null && {
       clip: {
         id: clip.id,

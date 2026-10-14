@@ -21,8 +21,10 @@ export function refreshPathsAfterConvert(entries: readonly ClipResult[]): void {
     if (entry.converted != null) {
       refresh(entry.converted.track, entry.converted.track.id);
 
-      if (entry.converted.clip != null) {
-        refresh(entry.converted.clip, entry.converted.clip.id);
+      for (const part of [entry.converted.instrument, entry.converted.clip]) {
+        if (part != null) {
+          refresh(part, part.id);
+        }
       }
     }
   }

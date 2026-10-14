@@ -17,6 +17,12 @@ clip's warp, and carry over only the clip's gain (the Simpler gets it) and name.
 `create-device` with a Simpler `sample` param, or a Drum Rack `pC1/sample`
 param, does the same and more.
 
+What `audio_to_midi_clip` loads on the new track (Live 12.4.6): one device,
+named for the conversion. `drums_to_midi` gets a Drum Rack ("Drums to MIDI"),
+`melody_to_midi` and `harmony_to_midi` an Instrument Rack holding an Analog and
+an Electric ("Melody to MIDI", "Harmony to MIDI"). The track is named like
+"7-Drums to MIDI".
+
 ## It returns before it works
 
 Every call returns `None` at once and does the work on Live's main thread on a

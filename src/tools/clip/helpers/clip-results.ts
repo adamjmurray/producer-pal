@@ -46,9 +46,11 @@ export interface NoteUpdateResult {
   putOutside?: number;
 }
 
-/** What `convert` made: the new track, and its MIDI clip if Live made one. */
+/** What `convert` made: the new track, its instrument and MIDI clip. */
 export interface ConvertedResult {
-  track: { id: string; path?: string };
+  track: { id: string; path?: string; name: string };
+  /** The track's first device; absent when it has none */
+  instrument?: { id: string; path?: string; type: string; name: string };
   /** `noteCount` can be 0: Live found no notes in the audio */
   clip?: { id: string; path?: string; noteCount: number };
 }
@@ -84,7 +86,7 @@ export interface ClipResult {
    * `detail`.
    */
   envelopes?: number | string;
-  /** The track `convert` made from this clip, and its MIDI clip. */
+  /** The track `convert` made from this clip, with its instrument and clip. */
   converted?: ConvertedResult;
   /**
    * Why the update didn't go as asked, when something landed anyway: a move

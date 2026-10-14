@@ -172,16 +172,19 @@ conversion per clip: each clip's entry reports its own, and one that fails
 doesn't stop the rest, except as noted below.
 
 The entry gets
-`converted: { track: { id, path }, clip?: { id, path, noteCount } }`. `clip` is
-the MIDI clip, in the source's slot (Session) or starting where it started
-(Arrangement); its `noteCount` can be 0, which is an answer, not a failure. It
-is missing when the new track has none there.
+`converted: { track: { id, path, name }, instrument?: { id, path, type, name }, clip?: { id, path, noteCount } }`.
+`instrument` is the new track's first device (what Live loaded to play the
+clip), missing when the track has none. `clip` is the MIDI clip, in the source's
+slot (Session) or starting where it started (Arrangement); its `noteCount` can
+be 0, which is an answer, not a failure. It is missing when the new track has
+none there. Once the track appears, the call looks up to 1 s for the instrument
+and clip, and returns at once when both are there.
 
 - **Paths are read again at the end of the call.** Live doesn't say where the
   new track lands, and each conversion shifts the tracks after it. So once the
   call is done, every written entry's `path`, and the `path` of each `converted`
-  track and clip, is read again. The param description says once that it adds a
-  track; results don't warn.
+  track, instrument and clip, is read again. The param description says once
+  that it adds a track; results don't warn.
 - **Refused, so nothing changed**: not an audio clip, a take lane clip, a clip
   that is recording, one Live says isn't convertible, a Live without the
   conversions, no time left, or no remote script. With nothing else asked of the
