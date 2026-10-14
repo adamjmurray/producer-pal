@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Runs one example call the way a real request does: validate the arguments
 // against the tool's own schema, then dispatch through the V8 adapter. Every

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A spawn, driven end to end: the orchestrator calls spawn_subagent, a real
 // nested worker session runs against the scripted endpoint, and its result comes

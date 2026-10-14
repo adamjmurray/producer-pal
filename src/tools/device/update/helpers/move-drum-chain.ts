@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Moving a drum chain onto another pad. Live has no move for this — a pad is
 // just an in_note, so the "move" is a re-map — which is why it resolves the
@@ -10,6 +10,7 @@
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import {
   type TargetNotes,
+  noteLanded,
   noteTarget,
   refuseTargetWork,
 } from "#src/tools/shared/helpers/target-notes.ts";
@@ -73,6 +74,7 @@ export function moveDrumChainToPath(
 
   for (const moving of chains) {
     moving.set("in_note", targetInNote);
+    noteLanded(notes, "move");
   }
 }
 

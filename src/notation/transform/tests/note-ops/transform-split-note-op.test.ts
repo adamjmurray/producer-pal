@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
@@ -229,19 +229,6 @@ describe("note-count operation: split", () => {
     warn.mockRestore();
   });
 
-  it("warns and skips when no positions are given", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const notes = createTestNote({ start_time: 0, duration: 1 });
-
-    applyTransforms(notes, "split()", 4, 4);
-
-    expect(notes).toHaveLength(1);
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("needs one or more bar|beat positions"),
-    );
-    warn.mockRestore();
-  });
-
   it("leaves a zero/negative-duration note unchanged", () => {
     // Exercised via splitNotes directly: the final evaluator sweep would delete
     // a zero-duration note before it could be observed here.
@@ -318,7 +305,7 @@ describe("note-count operation: split", () => {
         [2, 6],
       ]);
       expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("sync ignored on session clip"),
+        expect.stringContaining("sync ignored: session clip"),
       );
       warn.mockRestore();
     });

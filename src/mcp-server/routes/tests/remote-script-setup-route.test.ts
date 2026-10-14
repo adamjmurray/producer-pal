@@ -1,14 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
+import { syncDeviceInstallNotice } from "../../rpc/device-install/device-install-notice.ts";
 import { errorHandlerMiddleware } from "../../helpers/http/error-handler-middleware.ts";
-import { remoteScriptPath } from "../../rpc/remote-script/remote-script-install.ts";
+import { remoteScriptPath } from "../../rpc/remote-script/install/remote-script-install.ts";
 import { makeScratchUserLibrary } from "../../rpc/remote-script/tests/remote-script-test-helpers.ts";
 import {
   type MarkdownRouteServer,
@@ -19,6 +20,11 @@ import { registerRemoteScriptSetupRoutes } from "../remote-script-setup-route.ts
 
 const { findUserLibraryPath } = vi.hoisted(() => ({
   findUserLibraryPath: vi.fn<() => Promise<string | null>>(),
+}));
+
+// Covered by its own tests; here only whether the route asks for it.
+vi.mock(import("../../rpc/device-install/device-install-notice.ts"), () => ({
+  syncDeviceInstallNotice: vi.fn(async () => {}),
 }));
 
 // The real lookup reads Live's browser database off the developer's machine.
@@ -55,6 +61,7 @@ function postInstall(body: unknown, origin?: string): Promise<Response> {
 beforeEach(async () => {
   scratchDir = makeScratchUserLibrary("route");
   findUserLibraryPath.mockResolvedValue(scratchDir);
+  vi.mocked(syncDeviceInstallNotice).mockClear();
   server = await startMarkdownRouteServer((app) => {
     registerRemoteScriptSetupRoutes(app);
     app.use(errorHandlerMiddleware);
@@ -80,6 +87,7 @@ describe("GET /remote-script", () => {
       running: false,
       runningVersion: null,
       liveVersion: null,
+      otherOnPort: null,
       updateAvailable: false,
       installedNewer: false,
     });
@@ -98,6 +106,8 @@ describe("POST /remote-script/install", () => {
     expect(existsSync(join(remoteScriptPath(scratchDir), "__init__.py"))).toBe(
       true,
     );
+    // The device's "Finish installation" notice may be done with.
+    expect(syncDeviceInstallNotice).toHaveBeenCalledTimes(1);
   });
 
   it("rejects a missing or blank userLibrary", async () => {
@@ -140,5 +150,6 @@ describe("POST /remote-script/install", () => {
     const res = await postInstall({ userLibrary: scratchDir });
 
     expect(res.status).toBe(500);
+    expect(syncDeviceInstallNotice).not.toHaveBeenCalled();
   });
 });

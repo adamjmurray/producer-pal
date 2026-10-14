@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -44,6 +44,7 @@ interface MessageListProps {
   branchNav?: BranchNavState;
   /** System instruction shown as a collapsible notice atop the transcript. */
   systemInstruction?: string;
+  importedPromptDiffers?: boolean;
   /** Opens the Instructions tab from that notice; omitted in voice/demo. */
   onOpenInstructions?: () => void;
 }
@@ -82,6 +83,7 @@ export function MessageList({
   requestedModel,
   branchNav,
   systemInstruction,
+  importedPromptDiffers,
   onOpenInstructions,
 }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -144,6 +146,7 @@ export function MessageList({
       {systemInstruction != null && (
         <SystemPromptNotice
           systemInstruction={systemInstruction}
+          importedPromptDiffers={importedPromptDiffers}
           onOpenInstructions={onOpenInstructions}
         />
       )}

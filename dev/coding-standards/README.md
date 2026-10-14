@@ -80,10 +80,13 @@ named for nothing, and the cap only goes down.
 
 ## Imports
 
-Always include `.ts` extensions matching the actual file type:
+In `src/`, always include `.ts` extensions. In `webui/`, never. To cross between
+top-level modules use the `#src/`, `#webui/`, `#evals/` aliases; a relative
+import must stay inside its own module (`webui/` bans `..` entirely). Enforced
+by `src/test/meta/import-restrictions.test.ts`.
 
 ```typescript
-import { createMcpServer } from "../src/mcp-server/create-mcp-server.ts";
+import { createMcpServer } from "#src/mcp-server/create-mcp-server.ts";
 ```
 
 Peggy-generated parsers are wrapped in TypeScript files (e.g.,
@@ -112,20 +115,21 @@ for (let i = 0; i < tracks.length; i++) {
 
 - **Never use `!`** — the linter forbids the non-null assertion.
 - A commented `as` is for an index you can _prove_ is in range. Never delete a
-  runtime guard to buy coverage — warn-and-skip is a product requirement, not
-  coverage noise.
+  runtime guard to buy coverage. A target the call can't handle is skipped and
+  reported in its own result entry; a malformed call is refused up front. Both
+  are product behavior, not coverage noise (`dev/PRINCIPLES.md`,
+  `dev/specs/tool-behavior/`).
 
 ## Tools
 
-Always pass args in `src/main.ts`:
+Tool handlers are dispatched in `src/live-api-adapter/live-api-adapter.ts`. Each
+takes `(args, ctx)`:
 
-```javascript
-tools: {
-  "ppal-create-clip": (args) => createClip(args),
-}
+```typescript
+"ppal-create-clip": (args, ctx) => createClip(args as any, ctx),
 ```
 
-Zod schemas: primitives/enums only. For lists, use comma-separated strings.
+Pick each param's Zod shape per `dev/tools/tool-schemas.md`.
 
 ## Live API
 

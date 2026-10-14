@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E test for `ppal-delete type="chain"`.
@@ -37,6 +37,11 @@ interface DeleteResult {
   detail?: string;
 }
 
+interface DeletePathResult {
+  id: string;
+  deletedPath?: string;
+}
+
 describe("ppal-delete drum rack chain", () => {
   it("removes one layer and leaves the rest of the pad", async () => {
     const { rackPath } = await createLayeredPad(ctx.client!);
@@ -59,6 +64,28 @@ describe("ppal-delete drum rack chain", () => {
     expect(after.chains).toHaveLength(1);
     expect(after.chains?.[0]?.name).toBe(before.chains?.[1]?.name);
     expect(after.pitch).toBe("D1");
+  });
+
+  // Deleting the first layer shifts the second down to c0, but a deleted
+  // object's path is its address from before the call.
+  it("names two chains of one pad by their addresses from before the call", async () => {
+    const { rackPath } = await createLayeredPad(ctx.client!);
+    const chains = (await readDrumPad(ctx.client!, `${rackPath}/pD1`)).chains;
+    const ids = (chains ?? []).map((chain) => chain.id);
+
+    expect(ids).toHaveLength(2);
+
+    const result = parseToolResult<DeletePathResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-delete",
+        arguments: { type: "chain", id: ids.join(",") },
+      }),
+    );
+
+    expect(result).toStrictEqual([
+      { id: ids[0], deletedPath: `${rackPath}/pD1/c0` },
+      { id: ids[1], deletedPath: `${rackPath}/pD1/c1` },
+    ]);
   });
 
   it("removes the last chain, emptying the pad", async () => {

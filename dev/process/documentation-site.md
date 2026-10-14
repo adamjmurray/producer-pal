@@ -22,8 +22,21 @@ of Vite and Vue. It provides:
 npm run docs:dev
 ```
 
-Starts VitePress development server at http://localhost:5173 with hot reload.
-Changes to markdown files in `docs/` will update automatically in the browser.
+Runs `docs:generate`, then starts the VitePress dev server at
+http://localhost:5174 with hot reload. Changes to markdown files in `docs/`
+update automatically in the browser.
+
+### Generated Content
+
+```bash
+npm run docs:generate
+```
+
+Builds the generated pages and assets: the tool reference (schemas and example
+output, run from the real tools), the plain-markdown copies in
+`docs/public/markdown/`, and the skill downloads. `docs:dev` and `docs:build`
+run it for you. The outputs (`docs/_generated`, `docs/public/markdown`,
+`docs/public/downloads`) are gitignored.
 
 ### Production Build
 
@@ -31,8 +44,7 @@ Changes to markdown files in `docs/` will update automatically in the browser.
 npm run docs:build
 ```
 
-Builds the static site to `docs/.vitepress/dist/`. This creates optimized HTML,
-CSS, and JavaScript files ready for deployment.
+Runs `docs:generate`, then builds the static site to `docs/.vitepress/dist/`.
 
 ### Preview Production Build
 
@@ -44,8 +56,14 @@ Serves the built site locally to test the production build before deploying.
 
 ## Deployment
 
-The documentation site is automatically deployed to https://producer-pal.org
-when changes are pushed to the `main` branch.
+The site is built two ways, both with `npm run docs:build`:
+
+- **Netlify**: configured in `netlify.toml` (publishes `docs/.vitepress/dist`).
+  Its `ignore` command skips a build when nothing relevant changed. Keep that
+  path list in step with the `paths` filter in `deploy-docs.yml`, or one site
+  serves a stale copy.
+- **GitHub Pages**: `.github/workflows/deploy-docs.yml` deploys when changes are
+  pushed to `main`.
 
 ### GitHub Pages Configuration
 
@@ -60,7 +78,8 @@ when changes are pushed to the `main` branch.
 The custom domain `producer-pal.org` is configured via:
 
 1. **CNAME file**: `docs/public/CNAME` contains `producer-pal.org`
-2. **DNS configuration**: CNAME record points `producer-pal.org` to
+2. **DNS configuration**: the apex `producer-pal.org` has A and AAAA records for
+   GitHub Pages' addresses (an apex can't be a CNAME), and `www` is a CNAME to
    `adamjmurray.github.io`
 3. **GitHub Pages settings**: Repository settings → Pages → Custom domain set to
    `producer-pal.org`
@@ -86,7 +105,7 @@ configures:
 Custom theme files are in `docs/.vitepress/theme/`:
 
 - `index.ts` - Theme entry point
-- `style.css` - Custom CSS overrides and additions
+- `*.css` - Custom CSS overrides and additions, split by area
 
 ### Public Assets
 
@@ -99,25 +118,26 @@ files are copied to the root of the build output.
 docs/
 ├── .vitepress/
 │   ├── config.ts           # Main configuration
-│   ├── theme/              # Theme customization
-│   │   ├── index.ts        # Theme entry point
-│   │   └── style.css       # Custom styles
+│   ├── theme/              # Theme customization (index.ts + CSS and Vue files)
 │   ├── cache/              # Build cache (gitignored)
 │   └── dist/               # Build output (gitignored)
 ├── public/                 # Static assets
 │   ├── CNAME               # Custom domain config
 │   ├── BingSiteAuth.xml    # Search engine verification
 │   └── *.png, *.svg        # Images and icons
-├── guide/                  # Documentation content
-│   ├── index.md            # Getting started guide
-│   └── usage.md            # Usage tips
-├── installation/           # Installation guides
-│   ├── index.md
-│   ├── claude-desktop.md
-│   └── ...
+├── guide.md                # Guide section landing page
+├── guide/                  # Guides (skills.md, rest-api.md, ...)
+├── installation.md
+├── installation/           # Per-client install guides
+├── features.md
+├── features/
+├── how-it-works.md
+├── how-it-works/
+├── support.md
+├── support/
+├── _partials/              # Snippets included in other pages
 ├── index.md                # Homepage
-├── features/index.md       # Feature list
-└── roadmap/index.md        # Development roadmap
+└── roadmap.md              # Development roadmap
 ```
 
 ## Content Guidelines
@@ -154,9 +174,9 @@ description: Brief description for SEO
 
 ### Linking
 
-- Use relative paths for internal links: `[Installation](./installation/)`
-- Include `.md` extension in links: `[Guide](./installation/chat-ui.md)`
-- VitePress will handle converting these to proper URLs in the build
+- Use root-absolute clean URLs for internal links, with no `.md` extension:
+  `[Chat UI](/guide/chat-ui)`, `[Tools](/features/tools#ppal-live-api)`
+- Relative links (`./chat-ui`) are fine for a sibling page
 
 ### Code Blocks
 

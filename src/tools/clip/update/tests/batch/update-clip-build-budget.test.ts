@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Build budgets for updating a batch of clips in one call.
 //
@@ -160,15 +160,29 @@ describe("updateClip build budget", () => {
     expect(resolves("live_set")).toBe(0);
   });
 
-  it("reads the Live Set's scale once per clip that edits notes", async () => {
+  it("reads the Live Set's scale once for the whole batch that edits notes", async () => {
     setupSessionClips();
 
     await updateClip({ id: IDS.join(","), notes: "1|1 C3" });
 
     // The other side of the skip above: notes mean a context per clip, and the
-    // context carries the scale mask. Still one read per clip — the scale is
-    // the same for the whole batch, so this could be one.
-    expect(resolves("live_set")).toBe(CLIPS);
+    // context carries the scale mask. The scale is the same for the whole
+    // batch, so the first clip reads it and the rest reuse it. It was CLIPS.
+    expect(resolves("live_set")).toBe(1);
+  });
+
+  it("reads the scale once for a duplicateLoop batch that edits notes twice per clip", async () => {
+    setupSessionClips();
+
+    await updateClip({
+      id: IDS.join(","),
+      duplicateLoop: true,
+      preTransforms: "velocity = 100",
+      notes: "1|1 C3",
+    });
+
+    // Each clip builds a context before the double and another after it.
+    expect(resolves("live_set")).toBe(1);
   });
 
   it("shares the song meter across an arrangement batch", async () => {

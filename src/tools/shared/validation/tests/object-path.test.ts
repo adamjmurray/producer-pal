@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -81,10 +81,16 @@ describe("parseObjectPath", () => {
     });
   });
 
+  it("sends a scene append under a track to ppal-create-scene", () => {
+    expect(() => parseObjectPath("t0/s+")).toThrow(
+      '"s+" adds a scene, which only ppal-create-scene does; a clip slot is "t<track>/s<scene>"',
+    );
+  });
+
   // A song position needs a lane that is already numbered.
   it("refuses l+ under a song position, and on a track that has no lanes", () => {
     expect(() => parseObjectPath("t2/l+[5|1]")).toThrow(
-      '"l+" takes no song position; name the lane by index, as "t<track>/l<lane>"',
+      '"l+" takes no song position, and ppal-update-track appends lanes; name an existing lane by index, as "t<track>/l<lane>"',
     );
     expect(() => parseObjectPath("rt0/l+")).toThrow(
       'a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',
@@ -423,6 +429,21 @@ describe("parseObjectPath", () => {
       expect(warn).toHaveBeenCalledWith(
         'toPath "7" is a bare track index; use "t7"',
       );
+    });
+
+    it("reads both spellings without a warning when quiet", () => {
+      const warn = vi.spyOn(console, "warn");
+
+      expect(parseObjectPath("0/3", "path", true)).toStrictEqual({
+        kind: "slot",
+        trackIndex: 0,
+        sceneIndex: 3,
+      });
+      expect(parseObjectPath("7", "path", true)).toStrictEqual({
+        kind: "track",
+        trackIndex: 7,
+      });
+      expect(warn).not.toHaveBeenCalled();
     });
 
     // Three numbers were never a spelling of anything, so there's nothing to

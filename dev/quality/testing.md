@@ -30,7 +30,7 @@ step.
   standard 375 / 115.
 - **Duplication**: `src/`, `webui/`, `scripts/`, and `evals/` scan tests
   separately at a looser threshold (`config/.jscpd-tests.json`). `e2e/` doesn't
-  split — 67 of its 85 files are tests, so `config/.jscpd-e2e.json` covers the
+  split — most of its files are tests, so `config/.jscpd-e2e.json` covers the
   whole tree at one threshold. Markdown is out of scope for all of them:
   `config/.jscpd-docs.json` scans the repo's prose in one pass, so a doc is
   measured once and never against a code threshold.
@@ -71,11 +71,29 @@ Use the mock registry (`src/test/mocks/mock-registry.ts`):
   `deleteMockObject(id)` does the same for a fixture whose own `call`
   implementation destroys something — an arrangement create clears the range it
   writes to, and that never reaches a `delete_*`.
+- Creating, duplicating and deleting shift later siblings' paths, and each
+  created object gets its own id. To make a created object _be_ a particular
+  mock, register it with `registerPendingMockObject()` instead of
+  `registerMockObject()`: a registered object is already there, so the insert
+  moves it. `simulateMockMoves()` makes `move_device` move its device, as
+  `simulateMockDeletes()` does for deletes. See `dev/live-api/object-reuse.md`.
+- `getMockWrites()` / `clearMockWrites()` (`mocks/registry/mock-write-log.ts`)
+  read the ordered log of every `set` and `call` on any LiveAPI object,
+  registered or not, with its id, path, name and args. Use it for "this wrote
+  nothing" assertions. It includes read-only calls like `get_version_string`.
 - Domain helpers like `setupTrackMock()` wrap `registerMockObject()` for common
   object graphs.
 
 What the mock does and doesn't model about a held object going stale is in
 `dev/live-api/object-reuse.md`.
+
+## Write-tool conformance
+
+`src/tools/shared/tests/write-conformance/` runs every write tool through the
+same cases from `dev/PRINCIPLES.md` (entries in order, a target named twice, a
+bad entry among good ones, a failure partway, a refusal that writes nothing,
+...). Each tool has a small adapter that builds its targets. A case that can't
+apply to a tool is listed under `na` in its adapter, with why.
 
 ## MCP server tests
 

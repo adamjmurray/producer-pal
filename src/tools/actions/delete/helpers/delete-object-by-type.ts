@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Actually removing an object, once the delete tool has resolved and ordered
 // its targets. One function per type, behind a dispatch on the tool-level type.
@@ -27,6 +27,7 @@ import { deleteTrackObject } from "./delete-track-object.ts";
  * @param id - The object ID
  * @param object - The object to delete
  * @param tracks - Tracks already resolved this call, keyed by index
+ * @param landed - Says that something changed before the delete was done
  * @returns null if deleted, else why it wasn't
  */
 export function deleteObjectByType(
@@ -34,6 +35,7 @@ export function deleteObjectByType(
   id: string,
   object: LiveAPI,
   tracks: Map<number, LiveAPI>,
+  landed: (phrase: string) => void,
 ): string | null {
   // Tracks have their own check below, by index — it names the track, which is
   // what the user asked for. Everything else routes through here.
@@ -42,7 +44,7 @@ export function deleteObjectByType(
   }
 
   if (type === "track") {
-    return deleteTrackObject(id, object, confirmDeleted);
+    return deleteTrackObject(id, object, confirmDeleted, landed);
   }
 
   if (type === "scene") {
@@ -61,7 +63,7 @@ export function deleteObjectByType(
     return deleteDrumPadObject(object);
   }
 
-  return deleteDrumChain(id, object);
+  return deleteDrumChain(id, object, landed);
 }
 
 /**
@@ -144,7 +146,7 @@ function deleteClipObject(
  * @param object - The object to delete
  * @returns null if the device is gone, else why it wasn't deleted
  */
-function deleteDeviceObject(id: string, object: LiveAPI): string | null {
+export function deleteDeviceObject(id: string, object: LiveAPI): string | null {
   // Find the LAST "devices X" in the path to handle nested devices
   // e.g., "live_set tracks 1 devices 0 chains 0 devices 1" -> last match is "devices 1"
   const deviceMatches = [...object.path.matchAll(/devices (\d+)/g)];

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Codex (OpenAI), Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";

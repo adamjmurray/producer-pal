@@ -1,9 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
+  abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
   durationToAbletonBeats,
   validateBarBeatPosition,
@@ -34,7 +35,14 @@ interface CalculateBeatPositionsArgs {
   reasons: ClipReasons;
 }
 
-interface TimeSignature {
+type RegionRequest = Omit<CalculateBeatPositionsArgs, "reasons"> & {
+  /** False when the loop end can't be known yet, so that check is left out. */
+  loopEndKnown?: boolean;
+};
+
+type ResolvedRegion = Omit<BeatPositions, "startMarkerBeats">;
+
+export interface TimeSignature {
   timeSigNumerator: number;
   timeSigDenominator: number;
 }
@@ -93,19 +101,52 @@ function determineStartMarker(
  * @param args.reasons - What each clip has to say beyond its result
  * @returns Beat positions
  */
-export function calculateBeatPositions({
-  start,
-  length,
-  firstStart,
-  timeSigNumerator,
-  timeSigDenominator,
-  clip,
-  isLooping,
-  wasLooping,
-  beatsPerMarkerUnit,
-  markerClampSeconds,
-  reasons,
-}: CalculateBeatPositionsArgs): BeatPositions {
+export function calculateBeatPositions(
+  args: CalculateBeatPositionsArgs,
+): BeatPositions {
+  const { reasons, ...request } = args;
+  const { startBeats, endBeats, firstStartBeats } = resolveRegion(request);
+
+  // Determine start_marker value (must be < end_marker content boundary).
+  // Bound it by the end this update is writing rather than the stale one — an
+  // expanding write moves the end first (see endMovesFirst).
+  const startMarkerBeats = determineStartMarker(
+    request.clip.id,
+    firstStartBeats,
+    startBeats,
+    endBeats ??
+      markerBeats(request.clip, "end_marker", {
+        beatsPerMarkerUnit: request.beatsPerMarkerUnit,
+        markerClampSeconds: request.markerClampSeconds,
+      }),
+    reasons,
+  );
+
+  return { startBeats, endBeats, firstStartBeats, startMarkerBeats };
+}
+
+/**
+ * Turn a start/length/firstStart request into beats, refusing what Live would
+ * not take. It only reads the clip, so it can run before anything is written.
+ * @param request - The positions asked for, the meter and the clip's state
+ * @returns The start, end and first start in beats, null where not asked
+ * @throws Error when a position can't be read, a length is empty, or a looping
+ *   clip's start is not before its loop end
+ */
+export function resolveRegion(request: RegionRequest): ResolvedRegion {
+  const {
+    start,
+    length,
+    firstStart,
+    timeSigNumerator,
+    timeSigDenominator,
+    clip,
+    isLooping,
+    wasLooping,
+    beatsPerMarkerUnit,
+    markerClampSeconds,
+    loopEndKnown = true,
+  } = request;
   let startBeats: number | null = null;
   let endBeats: number | null = null;
   let firstStartBeats: number | null = null;
@@ -148,12 +189,34 @@ export function calculateBeatPositions({
     // end and grows backward, which is what `length` means there.
     startBeats ??= wasLooping ? currentStart : currentEnd - lengthBeats;
 
+    refuseEmptyLength(length, lengthBeats);
+
     endBeats = startBeats + lengthBeats;
+  }
+
+  // A looping clip's `start` is its loop start. With no `length`, the loop end
+  // holds, and Live refuses a loop start at or past it and keeps the old one.
+  // Turning looping on restates the region that was playing as the loop (below),
+  // so its end is the loop end too. An unlooped clip's start is read from the
+  // markers instead, so a start past them is reported by the read-back, not
+  // refused.
+  const heldLoopEnd = endBeats ?? currentEnd;
+
+  if (
+    loopEndKnown &&
+    isLooping &&
+    start != null &&
+    startBeats != null &&
+    startBeats >= heldLoopEnd
+  ) {
+    throw new Error(
+      `start "${start}" is not before the loop end at ${abletonBeatsToBarBeat(heldLoopEnd, timeSigNumerator, timeSigDenominator)}: send a length too, or an earlier start`,
+    );
   }
 
   // A loop toggle swaps which pair plays, and Live reveals the other pair's old
   // values instead of carrying the region over. Restate the region that was
-  // playing, so `looping` changes the loop flag and nothing else (ADR-0020).
+  // playing, so `looping` changes the loop flag and nothing else.
   if (isLooping !== wasLooping) {
     startBeats ??= currentStart;
     endBeats ??= currentEnd;
@@ -169,18 +232,19 @@ export function calculateBeatPositions({
     );
   }
 
-  // Determine start_marker value (must be < end_marker content boundary).
-  // Bound it by the end this update is writing rather than the stale one — an
-  // expanding write moves the end first (see endMovesFirst).
-  const startMarkerBeats = determineStartMarker(
-    clip.id,
-    firstStartBeats,
-    startBeats,
-    endBeats ?? readMarker("end_marker"),
-    reasons,
-  );
+  return { startBeats, endBeats, firstStartBeats };
+}
 
-  return { startBeats, endBeats, firstStartBeats, startMarkerBeats };
+/**
+ * Refuse a length that spans nothing. Live keeps the region it had.
+ * @param length - The length as the caller wrote it
+ * @param lengthBeats - What it comes to in the clip's meter
+ * @throws Error when the length is zero or less
+ */
+export function refuseEmptyLength(length: string, lengthBeats: number): void {
+  if (lengthBeats <= 0) {
+    throw new Error(`length "${length}" must be longer than zero`);
+  }
 }
 
 /**

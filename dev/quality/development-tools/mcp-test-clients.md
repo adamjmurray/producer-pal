@@ -78,7 +78,7 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
   "path": "live_set tracks 0",
   "operations": [
     {"type": "info"},
-    {"type": "getChildIds"}
+    {"type": "get-child-ids"}
   ]
 }'
 
@@ -99,7 +99,7 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
 - `get` - Get a property's raw value (an array)
 - `set` - Set a property value. Always returns 1, even when the write is
   rejected — read the property back to confirm it landed.
-- `set_property` - The same write as `set`, but returns the value you sent
+- `set-property` - The same write as `set`, but returns the value you sent
 - `call` - Call a method on the Live object
 - `goto` - Navigate to a new path
 - `info` - Get object information
@@ -108,24 +108,24 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
 
 **Extension methods** (normalized values):
 
-- `getProperty` - Get a property, unwrapped to a scalar
-- `getChildIds` - Get child object IDs
+- `get-property` - Get a property, unwrapped to a scalar
+- `get-child-ids` - Get child object IDs
 - `exists` - Check if the object exists. Producer Pal's judgment, not Live's:
   Live's own `valid` field reads 1 for a bad path, a bad index, a bad id, and a
   cleared path, so this checks the object id instead.
-- `getColor` - Get color as hex string
-- `setColor` - Set color from hex string
+- `get-color` - Get color as hex string
+- `set-color` - Set color from hex string
 
 **The LiveAPI object itself,** not the Live object it points at:
 
-- `get_property` - Read a JavaScript field (`path`, `id`, `type`, `mode`,
-  `valid`, `children`, ...). Not the same as `get`.
-- `call_method` - Call a JavaScript method (`getProperty`, `getChildIds`,
+- `get-field` - Read a JavaScript field (`path`, `id`, `type`, `mode`, `valid`,
+  `children`, ...). Not the same as `get`.
+- `call-method` - Call a JavaScript method (`getProperty`, `getChildIds`,
   `child`, ...). Not the same as `call`:
-  `call_method get_current_beats_song_time` fails, because that method lives on
+  `call-method get_current_beats_song_time` fails, because that method lives on
   the Live object.
-- `set_path` - Assign `path`, retargeting the object. `""` clears it.
-- `set_mode` - Assign `mode`: `0` follows the path, `1` follows the object. Max
+- `set-path` - Assign `path`, retargeting the object. `""` clears it.
+- `set-mode` - Assign `mode`: `0` follows the path, `1` follows the object. Max
   coerces anything else to 0 or 1.
 
 ### Important Limitations
@@ -142,7 +142,7 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
   Live arms a path listener on every collection along a path-based object's path
   and never takes them down, so an unreleased object costs ~5 KB of Ableton log
   on every later structural change to the Live Set, and slows down every later
-  LiveAPI creation. Don't add `set_path ""` yourself.
+  LiveAPI creation. Don't add `set-path ""` yourself.
 
 ## MCP Inspector
 

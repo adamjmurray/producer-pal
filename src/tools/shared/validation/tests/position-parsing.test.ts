@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import {
@@ -36,27 +36,19 @@ describe("parseSlotList", () => {
     expect(parseSlotList(null, "toSlot")).toStrictEqual([]);
   });
 
+  it("names the param the caller sent", () => {
+    expect(() => parseSlot("03", "clipSlot")).toThrow('invalid clipSlot "03"');
+  });
+
   it("should throw for missing separator", () => {
     expect(() => parseSlotList("01", "toSlot")).toThrow(
       'invalid toSlot "01" - expected trackIndex/sceneIndex format',
     );
   });
 
-  it("should warn and use first two parts when extra separators present", () => {
-    const result = parseSlotList("0/1/2", "toSlot");
-
-    expect(result).toStrictEqual([{ trackIndex: 0, sceneIndex: 1 }]);
-    expect(capturedWarnings()).toContain(
-      'toSlot "0/1/2" has extra parts, using first two (trackIndex/sceneIndex)',
-    );
-  });
-
-  it("should not warn for a clean two-part slot", () => {
-    parseSlotList("0/1", "toSlot");
-
-    // Exactly two parts must not trigger the extra-parts warning.
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("has extra parts"),
+  it("should refuse extra separators rather than guess which two parts were meant", () => {
+    expect(() => parseSlotList("0/1/2", "toSlot")).toThrow(
+      'invalid toSlot "0/1/2" - expected trackIndex/sceneIndex format (e.g., "0/1")',
     );
   });
 
@@ -78,10 +70,8 @@ describe("parseSlotList", () => {
       'invalid slot ",0/1" - it has an empty entry.',
     );
 
-    parseSlotList("0/1/2", "slot");
-
-    expect(capturedWarnings()).toContain(
-      'slot "0/1/2" has extra parts, using first two (trackIndex/sceneIndex)',
+    expect(() => parseSlotList("0/1/2", "slot")).toThrow(
+      'invalid slot "0/1/2" - expected trackIndex/sceneIndex format (e.g., "0/1")',
     );
   });
 
@@ -114,23 +104,26 @@ describe("parseSlotList", () => {
 
 describe("parseSlot", () => {
   it("should parse a valid slot string", () => {
-    expect(parseSlot("0/3")).toStrictEqual({ trackIndex: 0, sceneIndex: 3 });
+    expect(parseSlot("0/3", "slot")).toStrictEqual({
+      trackIndex: 0,
+      sceneIndex: 3,
+    });
   });
 
   it("should throw for missing separator", () => {
-    expect(() => parseSlot("03")).toThrow(
-      'invalid slot "03" - expected trackIndex/sceneIndex',
+    expect(() => parseSlot("03", "slot")).toThrow(
+      'invalid slot "03" - expected trackIndex/sceneIndex format',
     );
   });
 
   it("should throw for extra separators", () => {
-    expect(() => parseSlot("0/1/2")).toThrow(
-      'invalid slot "0/1/2" - expected trackIndex/sceneIndex',
+    expect(() => parseSlot("0/1/2", "slot")).toThrow(
+      'invalid slot "0/1/2" - expected trackIndex/sceneIndex format',
     );
   });
 
   it("should throw for non-integer values", () => {
-    expect(() => parseSlot("a/b")).toThrow(
+    expect(() => parseSlot("a/b", "slot")).toThrow(
       'invalid slot "a/b" - trackIndex and sceneIndex must be integers',
     );
   });
@@ -138,16 +131,16 @@ describe("parseSlot", () => {
   it("should throw when only one part is non-integer", () => {
     // Each NaN check is independent (OR), so a single bad part must still throw
     // — "a/b" alone can't prove that (both parts are NaN).
-    expect(() => parseSlot("5/x")).toThrow(
+    expect(() => parseSlot("5/x", "slot")).toThrow(
       'invalid slot "5/x" - trackIndex and sceneIndex must be integers',
     );
-    expect(() => parseSlot("x/5")).toThrow(
+    expect(() => parseSlot("x/5", "slot")).toThrow(
       'invalid slot "x/5" - trackIndex and sceneIndex must be integers',
     );
   });
 
   it("should throw for negative values", () => {
-    expect(() => parseSlot("-1/0")).toThrow(
+    expect(() => parseSlot("-1/0", "slot")).toThrow(
       'invalid slot "-1/0" - trackIndex and sceneIndex must be non-negative',
     );
   });

@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
 
 // Test script for the stdio-HTTP bridge without requiring Claude Desktop installation
 import { spawn } from "node:child_process";
+import { DEFAULT_MCP_URL } from "#src/shared/config.ts";
 
-const DEFAULT_HTTP_URL = "http://localhost:3350/mcp";
 const JSON_RPC_VERSION = "2.0";
 const TOOLS_LIST_METHOD = "tools/list";
 
@@ -33,7 +34,7 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
   console.log("");
   console.log("Arguments:");
   console.log(
-    "  url              HTTP URL of the MCP server (default: http://localhost:3350/mcp)",
+    `  url              HTTP URL of the MCP server (default: ${DEFAULT_MCP_URL})`,
   );
   console.log(
     "  tool-name        Optional tool to call after initialization and tools/list",
@@ -60,7 +61,7 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
 }
 
 // Parse command line arguments
-let httpUrl = DEFAULT_HTTP_URL;
+let httpUrl = DEFAULT_MCP_URL;
 let toolName: string | null = null;
 let toolArgs: Record<string, unknown> = {};
 

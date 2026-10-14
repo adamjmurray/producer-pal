@@ -1,9 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { splitPathEntries } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import { locatorRef } from "#src/tools/shared/locator/song-position.ts";
 import { splitEntries } from "./split-entries.ts";
 import { plural } from "./plural.ts";
 
@@ -71,10 +72,7 @@ export function validateListLengths(args: ListArg[]): void {
       noun: arg.noun ?? "entry",
       count: entryCount(arg),
       isList: isList(arg),
-      // Only a value list splits at `\,`; a target or path list splits at
-      // every comma, so the hint would be wrong for it.
-      escapable:
-        arg.count == null && arg.isPath !== true && arg.target !== true,
+      escapable: isEscapable(arg),
     }))
     .filter((list) => list.isList);
 
@@ -174,9 +172,30 @@ function isList(arg: ListArg): boolean {
 }
 
 /**
+ * Whether the `\,` hint can help with this arg. A path list has its own
+ * bracket rule, and a target list holds ids and positions, where only a `loc:`
+ * entry can hold a comma in a name.
+ * @param arg - The list param
+ * @returns True when a comma in an entry could have been meant as text
+ */
+function isEscapable(arg: ListArg): boolean {
+  if (arg.count != null || arg.isPath === true) {
+    return false;
+  }
+
+  if (arg.target !== true) {
+    return true;
+  }
+
+  return (
+    arg.value != null &&
+    splitEntries(arg.value).some((entry) => locatorRef(entry.trim()) != null)
+  );
+}
+
+/**
  * How an arg's entries split, the same way its own splitter does: a path at
- * bracket depth 0, any other target list at every comma, and a value list at
- * every comma not written `\,`.
+ * bracket depth 0, and any other list at every comma not written `\,`.
  * @param arg - The list param
  * @returns The split function
  */
@@ -185,16 +204,7 @@ function splitterFor(arg: ListArg): (value: string) => string[] {
     return splitPathEntries;
   }
 
-  return arg.target === true ? splitTargetEntries : splitEntries;
-}
-
-/**
- * Split a target list at every comma, as `targetEntries` does.
- * @param value - The raw param value
- * @returns The untrimmed entries
- */
-function splitTargetEntries(value: string): string[] {
-  return value.split(",");
+  return splitEntries;
 }
 
 /**
@@ -221,7 +231,7 @@ function entryCount(arg: ListArg): number {
 export function countListEntries(value: string | null | undefined): number {
   return value == null || value.trim() === ""
     ? 0
-    : countEntries(value, splitTargetEntries);
+    : countEntries(value, splitEntries);
 }
 
 /**

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -159,7 +159,7 @@ describe("updateClip - duplicateLoop", () => {
 
   // start/length set the loop region, which is exactly what duplicate_loop
   // copies, so the pair reads two ways - "the region to double" or "the length
-  // to end up at" - and both look like success. Refused instead (ADR-0040).
+  // to end up at" - and both look like success. Refused instead.
   it.each([
     ["length", { length: "4bar" }, "combined with length: length sets"],
     ["start", { start: "2|1" }, "combined with start: start sets"],
@@ -346,7 +346,7 @@ describe("updateClip - duplicateLoop", () => {
     });
   });
 
-  it("prefers the transforms count over the preTransforms one", async () => {
+  it("adds the counts of the preTransforms and transforms passes", async () => {
     setupMidiClipMock(mocks.clip123);
     mockNoteCount(mocks.clip123, 8);
 
@@ -357,15 +357,114 @@ describe("updateClip - duplicateLoop", () => {
       transforms: "pitch += 1",
     });
 
-    // Both ran; the reported count is the later pass's, matching every other
-    // path where transforms wins over preTransforms.
+    // Both ran over the 8 notes the mock holds, and each pass compares its own
+    // before and after, so the report is their sum.
     expect(result).toStrictEqual({
-      transformed: 8,
+      transformed: 16,
       id: "123",
       path: "t0/s0",
       noteCount: 8,
       length: "2bar",
     });
+  });
+
+  it("reports what the preTransforms pass deleted beside what transforms changed", async () => {
+    setupMidiClipMock(mocks.clip123);
+    mockNoteCount(mocks.clip123, 8);
+
+    const result = await updateClip({
+      id: "123",
+      duplicateLoop: true,
+      preTransforms: "C3: velocity = 0",
+      transforms: "pitch += 1",
+    });
+
+    expect(result).toStrictEqual({
+      transformed: 8,
+      deletedNotes: 8,
+      id: "123",
+      path: "t0/s0",
+      noteCount: 8,
+      length: "2bar",
+    });
+  });
+
+  it("says how many muted notes duplicate_loop copied", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    let duplicated = false;
+
+    mocks.clip123.call.mockImplementation((method: string) => {
+      if (method === "duplicate_loop") {
+        duplicated = true;
+
+        return {};
+      }
+
+      // One muted note, copied into the new half
+      return method === "get_notes_extended"
+        ? JSON.stringify({
+            notes: [
+              { pitch: 60, start_time: 0, duration: 1, velocity: 100, mute: 0 },
+              ...Array.from({ length: duplicated ? 2 : 1 }, (_, i) => ({
+                pitch: 62,
+                start_time: i * 4,
+                duration: 1,
+                velocity: 100,
+                mute: 1,
+              })),
+            ],
+          })
+        : {};
+    });
+
+    const result = await updateClip({ id: "123", duplicateLoop: true });
+
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      noteCount: 1,
+      length: "2bar",
+      detail: "duplicateLoop copied 1 muted note",
+    });
+  });
+
+  it("counts copied muted notes over the window it read before, not the wider one after", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    let duplicated = false;
+
+    mocks.clip123.call.mockImplementation((method: string) => {
+      if (method === "duplicate_loop") {
+        duplicated = true;
+
+        return {};
+      }
+
+      const muted = (start: number) => ({
+        pitch: 62,
+        start_time: start,
+        duration: 1,
+        velocity: 100,
+        mute: 1,
+      });
+
+      // The wider window after the double also reaches a muted note that was
+      // never in the one read before, and that isn't a copy.
+      return method === "get_notes_extended"
+        ? JSON.stringify({
+            notes: duplicated ? [muted(0), muted(4), muted(1000)] : [muted(0)],
+          })
+        : {};
+    });
+
+    const result = await updateClip({ id: "123", duplicateLoop: true });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: "duplicateLoop copied 1 muted note",
+      }),
+    );
   });
 
   it("composes code: doubles the loop, then runs code on the doubled clip", async () => {

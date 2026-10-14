@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type ReturnTrackInfo } from "#src/tools/shared/sends/return-track-info.ts";
@@ -9,7 +9,10 @@ import {
   namedIdParam,
   namedParam,
 } from "#src/tools/shared/helpers/param-presence.ts";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  idOrPathRequired,
+  validateIdType,
+} from "#src/tools/shared/validation/id-validation.ts";
 import { trackApiAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 
 export interface ReadTrackArgs {
@@ -59,13 +62,7 @@ export function resolveReadTrackTarget(args: ReadTrackArgs): ReadTrackTarget {
     trackIndex == null &&
     category !== "master"
   ) {
-    throw new Error("id or path is required");
-  }
-
-  if (path != null && (trackId != null || trackIndex != null)) {
-    throw new Error(
-      "path names the track on its own - don't send id or trackIndex with it",
-    );
+    throw new Error(idOrPathRequired());
   }
 
   if (trackId != null || path != null) {

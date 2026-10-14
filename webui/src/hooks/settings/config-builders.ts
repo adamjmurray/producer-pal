@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   type SemanticEagerness,
@@ -85,12 +85,12 @@ export function mapTurnDetectionToConfig(
 
 /**
  * Checks if a model requires legacy enabled thinking (budgetTokens) instead of adaptive.
- * Haiku 4.5 does not support adaptive thinking yet.
+ * Only Haiku 4.5: it lacks adaptive thinking, and Haiku 5.5+ rejects budgetTokens.
  * @param {string} model - Model identifier
  * @returns {boolean} - True if model needs legacy thinking config
  */
 export function isLegacyThinkingModel(model: string): boolean {
-  return model.includes("haiku");
+  return model.includes("haiku-4");
 }
 
 /**
@@ -122,6 +122,20 @@ const LEGACY_NON_THINKING_MODEL =
  */
 export function isLegacyNonThinkingModel(model: string): boolean {
   return LEGACY_NON_THINKING_MODEL.test(model);
+}
+
+/**
+ * Checks if an Anthropic model runs adaptive thinking when `thinking` is
+ * omitted (Sonnet 5+), so "Off" must send `{type: "disabled"}` explicitly.
+ * @param {string} model - Model identifier
+ * @returns {boolean} - True if omitting `thinking` would still think
+ */
+export function isAdaptiveByDefaultModel(model: string): boolean {
+  return (
+    !isLegacyThinkingModel(model) &&
+    !isAlwaysOnThinkingModel(model) &&
+    !isLegacyNonThinkingModel(model)
+  );
 }
 
 /**

@@ -81,6 +81,16 @@ all digits (a locator, track, chain, or clip named `"5678"`). Always read a name
 through `getName()`, never `getProperty("name")` — it normalizes the number to a
 string and reports `""` instead of `"undefined"` for an object with no name.
 
+## A Backslash in a String Doesn't Read Back
+
+Live stores a backslash in a name or path as written, but Max's `get` and
+`getstring` change it on the way back: macOS drops it (`a\b` reads as `ab`,
+`a\\b` as `a\b`), and Windows reads it as a slash (`a\b` as `a:/b`, `C:\Users\x`
+as `C:/Users/x`). Writes through `set` and `call` arrive intact, and so does the
+Node↔V8 transport. The remote script's Python reads the value intact. Nothing in
+V8 can undo Max's read, so a name read and written back loses its backslashes.
+Windows file paths still work, since Live accepts the forward-slash form.
+
 ## `pad.name` Is a UI Label, Not Data
 
 It reads the chain's name at one chain, the note name (`"C♯1"`) at zero, and

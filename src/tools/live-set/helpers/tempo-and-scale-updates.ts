@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   VALID_PITCH_CLASS_NAMES,
@@ -14,7 +14,11 @@ import {
   differsAtPublishedResolution,
   publishedReadBack,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
+import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { overridesAutomation } from "#src/tools/shared/arrangement/tracks/automation-override.ts";
 import { round2dp } from "#src/tools/shared/helpers/rounding.ts";
+import { keptTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 
 // Create lowercase versions for case-insensitive comparison
 const VALID_PITCH_CLASS_NAMES_LOWERCASE = VALID_PITCH_CLASS_NAMES.map((name) =>
@@ -41,20 +45,32 @@ export interface ParsedScale {
  * @param tempo - Tempo in BPM
  * @param result - Result object to update
  * @param result.tempo - Tempo property to set
+ * @returns True when the write overrode the tempo's arrangement automation
  */
 export function applyTempo(
   liveSet: LiveAPI,
   tempo: number,
   result: { tempo?: PublishedValue },
-): void {
-  // Range already refused by validateTempo, before any property was written.
-  liveSet.set("tempo", tempo);
+): boolean {
+  const songTempo = LiveAPI.from(livePath.masterTrack().mixerDevice()).child(
+    "song_tempo",
+  );
+  const overrode = overridesAutomation(
+    songTempo,
+    () => {
+      // Range already refused by validateTempo, before any property was written.
+      liveSet.set("tempo", tempo);
+    },
+    () => liveSet.getProperty("tempo"),
+  );
 
   const landed = publishedReadBack(liveSet.getProperty("tempo"), round2dp);
 
   if (landed != null && differsAtPublishedResolution(tempo, landed, round2dp)) {
     result.tempo = landed;
   }
+
+  return overrode;
 }
 
 /**
@@ -75,10 +91,14 @@ export function applyTimeSignature(
   liveSet.set("signature_numerator", signature.numerator);
   liveSet.set("signature_denominator", signature.denominator);
 
-  const landed = `${String(liveSet.getProperty("signature_numerator"))}/${String(liveSet.getProperty("signature_denominator"))}`;
+  const kept = keptTimeSignature(
+    signature,
+    liveSet.getProperty("signature_numerator"),
+    liveSet.getProperty("signature_denominator"),
+  );
 
-  if (landed !== `${signature.numerator}/${signature.denominator}`) {
-    result.timeSignature = landed;
+  if (kept != null) {
+    result.timeSignature = kept;
   }
 }
 
@@ -123,10 +143,12 @@ export function applyScale(
   result.scale = landed;
   // Without the detail, a model that asked for F# sees Gb come back and
   // retries, thinking the write failed.
-  result.detail =
+  appendDetail(
+    result,
     storedRoot === scaleRoot
       ? `scale ${requested.trim()} is spelled ${landed} — same scale, set correctly`
-      : `scale roots are spelled with flats, so ${scaleRoot} comes back as ${storedRoot} — same scale, set correctly`;
+      : `scale roots are spelled with flats, so ${scaleRoot} comes back as ${storedRoot} — same scale, set correctly`,
+  );
 }
 
 /**

@@ -42,17 +42,17 @@
       "win32"
     ],
     "runtimes": {
-      "node": ">=18.0.0"
+      "node": ">=20.0.0"
     }
   },
   "user_config": {
     "mcp_server_origin": {
       "type": "string",
       "title": "Ableton device URL",
-      "description": "URL for connecting to the Producer Pal Max for Live device (protocol://host:port). Use http://localhost:[port] for local connections or http://[IP]:[port] for network connections. The port number must match the port in the Max for Live device's advanced settings (default port is 3350). Default: http://localhost:3350",
+      "description": "URL for connecting to the Producer Pal Max for Live device (protocol://host:port). Use http://localhost:[port] for local connections or http://[IP]:[port] for network connections. The port number must match the port in the Max for Live device's advanced settings (default port is {{port}}). Default: {{origin}}",
       "required": false,
       "sensitive": false,
-      "default": "http://localhost:3350"
+      "default": "{{origin}}"
     },
     "notation": {
       "type": "string",
@@ -114,7 +114,7 @@
     "assistant",
     "pal"
   ],
-  "license": "GPL-3.0-or-later",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/adamjmurray/producer-pal"

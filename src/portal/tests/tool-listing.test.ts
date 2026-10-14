@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import type * as SdkClient from "@modelcontextprotocol/sdk/client/index.js";
 import type * as SdkHttp from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -65,7 +65,11 @@ vi.mock(
 );
 
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { DISABLED_TOOLS_HEADER } from "#src/shared/config.ts";
+import {
+  DISABLED_TOOLS_HEADER,
+  PORTAL_VERSION_HEADER,
+  VERSION,
+} from "#src/shared/config.ts";
 import { formatToolListing } from "../tool-listing.ts";
 
 const MCP_URL = "http://localhost:3350/mcp";
@@ -118,7 +122,10 @@ describe("formatToolListing", () => {
       new URL(MCP_URL),
       {
         requestInit: {
-          headers: { [DISABLED_TOOLS_HEADER]: "ppal-create-clip" },
+          headers: {
+            [PORTAL_VERSION_HEADER]: VERSION,
+            [DISABLED_TOOLS_HEADER]: "ppal-create-clip",
+          },
         },
       },
     );

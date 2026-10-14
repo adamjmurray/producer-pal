@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import {
@@ -367,6 +367,24 @@ describe("updateDevice - written param values", () => {
     // caller would have nothing anywhere that says it never landed.
     expect(message).toBe(
       'no param landed — "sample": written, but no value reads back',
+    );
+  });
+
+  it("fails the earlier sample when the last one leaves nothing to read", () => {
+    registerSimplerDevice();
+
+    const message = noParamLanded(() =>
+      updateDevice({
+        id: "simpler-1",
+        params: [
+          { name: "sample", value: "/nowhere/first.wav" },
+          { name: "Sample", value: "/nowhere/missing.wav" },
+        ],
+      }),
+    );
+
+    expect(message).toBe(
+      'no param landed — "sample": not written: "Sample" was meant to replace it, but failed; "sample": written, but no value reads back',
     );
   });
 

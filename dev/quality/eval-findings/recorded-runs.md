@@ -7,7 +7,8 @@ in [scenario-results.md](scenario-results.md); the index is
 `evals/results/` is gitignored, so a run stays comparable only if its numbers
 are here. **Record the commit.** Without one, a diff between two runs credits
 the model for a fix that landed in between: `duplicate-loop` read as "luna
-fails, gemma passes" until run 2 turned out to predate ADR-0040's refusal.
+fails, gemma passes" until run 2 turned out to predate the refusal of
+`start`/`length` beside `duplicateLoop`.
 
 | #   | model           | mode            | commit       | trials | ran | pass      | input  | wall  |
 | --- | --------------- | --------------- | ------------ | ------ | --- | --------- | ------ | ----- |

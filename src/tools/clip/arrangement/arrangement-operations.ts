@@ -1,15 +1,16 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
+import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
+import { LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
+import { laneViewOf } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
 import {
-  arrangementWriteEffects,
-  snapshotLane,
-} from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
-import {
+  markClipLanded,
   noteClipReason,
+  noteLanded,
   refuseClipWork,
   type ClipReasons,
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
@@ -19,6 +20,8 @@ import {
   type ArrangementContext,
   type ClipIdResult,
 } from "./helpers/arrangement-length-changes.ts";
+import { EPSILON } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { SESSION_CLIP, ignoredText } from "#src/shared/max/ignored-wording.ts";
 
 interface HandleArrangementLengthOperationArgs {
   clip: LiveAPI;
@@ -54,7 +57,7 @@ export function handleArrangementLengthOperation({
     refuseClipWork(
       reasons,
       clip.id,
-      "arrangementLength ignored: this is a session clip",
+      ignoredText("arrangementLength", SESSION_CLIP),
     );
 
     return updatedClips;
@@ -67,7 +70,10 @@ export function handleArrangementLengthOperation({
     refuseClipWork(
       reasons,
       clip.id,
-      "arrangementLength ignored for a take-lane clip; adjust it in Live's UI",
+      ignoredText(
+        "arrangementLength",
+        "this is a take-lane clip; adjust it in Live's UI",
+      ),
     );
 
     return updatedClips;
@@ -78,29 +84,53 @@ export function handleArrangementLengthOperation({
   const currentEndTime = clip.getProperty("end_time") as number;
   const currentArrangementLength = currentEndTime - currentStartTime;
 
-  // Check if shortening, lengthening, or same
-  if (arrangementLengthBeats > currentArrangementLength) {
-    // Growing into the lane overwrites whatever sits after the clip, so
-    // photograph the lane first and say what the growth cost.
-    const laneBefore = snapshotLane({
+  // Check if shortening, lengthening, or same. A length that differs by less
+  // than EPSILON is the same one: read-clip rounds, so a caller echoing back
+  // the length it read must not lengthen the clip.
+  if (arrangementLengthBeats > currentArrangementLength + EPSILON) {
+    // Growing into the lane overwrites whatever sits after the clip, so note
+    // the lane first and say what the growth cost. This clip's ledger starts
+    // here, from the call's lane view, so it hears of nothing before it.
+    const lane: ArrangementLane = {
       kind: "track",
       trackIndex: clip.trackIndex as number,
-    });
-    const result = handleArrangementLengthening({
-      clip,
-      isAudioClip,
-      arrangementLengthBeats,
-      currentArrangementLength,
-      currentStartTime,
-      currentEndTime,
-      context,
-      reasons,
-    });
-    // The clip itself and every tile it laid describe themselves.
-    const displaced = arrangementWriteEffects(laneBefore, [
-      clip.id,
-      ...result.map(({ id }) => id),
-    ]);
+    };
+    const ledger = new LaneLedger({ lanes: laneViewOf(context) });
+
+    ledger.scan(lane);
+
+    let result: ClipIdResult[];
+
+    try {
+      result = handleArrangementLengthening({
+        clip,
+        isAudioClip,
+        arrangementLengthBeats,
+        currentArrangementLength,
+        currentStartTime,
+        currentEndTime,
+        context,
+        reasons,
+      });
+    } catch (error) {
+      // The clip may already have grown over its neighbours (the region is set
+      // in steps), and nothing will read the lane back, so the view forgets it.
+      ledger.forget(lane);
+      throw error;
+    }
+
+    // The clip itself and every tile it laid describe themselves. Tiling clears
+    // ahead of what lands, so everything up to the target counts as written.
+    const displaced = ledger.afterWrite(
+      lane,
+      [clip.id, ...result.map(({ id }) => id)],
+      {
+        reach: {
+          start: currentStartTime,
+          end: currentStartTime + arrangementLengthBeats,
+        },
+      },
+    );
 
     if (displaced != null) {
       noteClipReason(reasons, clip.id, displaced);
@@ -122,6 +152,13 @@ export function handleArrangementLengthOperation({
       currentStartTime,
       currentEndTime,
       context,
+      // A scratch clip Live won't remove is this clip's to report.
+      reportScratch: (message) => noteClipReason(reasons, clip.id, message),
+      // The clip is cut in place, so it is updated, not a clip left as it was.
+      onCut: () => {
+        markClipLanded(reasons, clip.id);
+        noteLanded(reasons, "shortened", { id: clip.id });
+      },
     });
   }
 
@@ -133,12 +170,13 @@ export function handleArrangementLengthOperation({
  * @param startTime - The clip's start_time, in beats
  * @param endTime - The clip's end_time, in beats
  * @param arrangementLengthBeats - Target length in beats
- * @returns True when the target is shorter than the clip is now
+ * @returns True when the target is shorter than the clip is now, by more than
+ *   the rounding a read-back allows
  */
 export function shortensArrangementClip(
   startTime: number,
   endTime: number,
   arrangementLengthBeats: number,
 ): boolean {
-  return arrangementLengthBeats < endTime - startTime;
+  return arrangementLengthBeats < endTime - startTime - EPSILON;
 }

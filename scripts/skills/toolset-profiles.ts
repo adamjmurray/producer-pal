@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The named toolsets the skills snapshot corpus is generated for. Each one is a
 // USE CASE the fragment carve is supposed to serve, not a sample of the 2^21

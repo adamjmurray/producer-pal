@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { assignment, parseAssignments } from "./parse-test-helpers.ts";
@@ -12,6 +12,7 @@ const V_MINUS_10_ADD_OF_NEGATION = [
   assignment({
     parameter: "velocity",
     operator: "add",
+    compound: "-=",
     expression: { type: "subtract", left: 0, right: 10 },
   }),
 ];
@@ -43,7 +44,12 @@ describe("Transform Parser - shorthand", () => {
   describe("additive operator shorthand (v±N, p±N)", () => {
     it("desugars v+10 to velocity add", () => {
       expect(parseAssignments("v+10")).toStrictEqual([
-        assignment({ parameter: "velocity", operator: "add", expression: 10 }),
+        assignment({
+          parameter: "velocity",
+          operator: "add",
+          compound: "+=",
+          expression: 10,
+        }),
       ]);
     });
 
@@ -58,6 +64,7 @@ describe("Transform Parser - shorthand", () => {
         assignment({
           parameter: "probability",
           operator: "add",
+          compound: "+=",
           expression: 0.1,
         }),
       ]);
@@ -68,6 +75,7 @@ describe("Transform Parser - shorthand", () => {
         assignment({
           parameter: "probability",
           operator: "add",
+          compound: "-=",
           expression: { type: "subtract", left: 0, right: 0.1 },
         }),
       ]);
@@ -79,6 +87,7 @@ describe("Transform Parser - shorthand", () => {
           pitchRange: { startPitch: 36, endPitch: 36 },
           parameter: "velocity",
           operator: "add",
+          compound: "-=",
           expression: { type: "subtract", left: 0, right: 10 },
         }),
       );
@@ -308,7 +317,7 @@ describe("Transform Parser - shorthand", () => {
     });
 
     it("rejects a pitch range as body (C4-C5)", () => {
-      expect(() => parseAssignments("C4-C5")).toThrow('but "-" found');
+      expect(() => parseAssignments("C4-C5")).toThrow("but end of input found");
     });
   });
 
@@ -374,7 +383,7 @@ describe("Transform Parser - shorthand", () => {
 
   describe("disambiguation errors", () => {
     it("rejects selector without colon (C1 C4)", () => {
-      expect(() => parseAssignments("C1 C4")).toThrow('but "C" found');
+      expect(() => parseAssignments("C1 C4")).toThrow("but end of input found");
     });
 
     it("rejects stacking two changes on one line (C1: C4 v100)", () => {
@@ -383,6 +392,32 @@ describe("Transform Parser - shorthand", () => {
 
     it("rejects bare token prefix with no value (v)", () => {
       expect(() => parseAssignments("v")).toThrow('but "v" found');
+    });
+  });
+
+  describe("compound operator record", () => {
+    it("records the operator as written, and none for =", () => {
+      const compounds = [
+        "velocity += 1",
+        "velocity -= 1",
+        "velocity *= 2",
+        "velocity /= 2",
+        "velocity = 1",
+        "timing = note.start * 2",
+        "v+10",
+        "p-0.1",
+      ].map((line) => parseAssignments(line)[0]!.compound);
+
+      expect(compounds).toStrictEqual([
+        "+=",
+        "-=",
+        "*=",
+        "/=",
+        undefined,
+        undefined,
+        "+=",
+        "-=",
+      ]);
     });
   });
 });

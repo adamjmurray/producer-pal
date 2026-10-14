@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -145,6 +145,25 @@ describe("code-exec-v8-protocol requestCodeExecution", () => {
     return expect(requestCodeExecution("return notes")).rejects.toThrow(
       "outlet exploded",
     );
+  });
+
+  it("cancels the timeout task when outlet() throws", async () => {
+    const scheduleCalls: number[] = [];
+    const restore = installTrackingTask(scheduleCalls);
+
+    try {
+      vi.mocked(globalThis.outlet).mockImplementationOnce(() => {
+        throw new Error("outlet exploded");
+      });
+
+      await expect(requestCodeExecution("return notes")).rejects.toThrow(
+        "outlet exploded",
+      );
+
+      expect(scheduleCalls).toStrictEqual([10_000, -1]);
+    } finally {
+      restore();
+    }
   });
 });
 

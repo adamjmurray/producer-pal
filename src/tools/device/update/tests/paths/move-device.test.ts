@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -138,7 +138,7 @@ describe("moveDeviceToPath", () => {
       outcome: "refused",
       reason: undefined,
     });
-    // The caller puts the refusal on the target's own entry (ADR-0042).
+    // The caller puts the refusal on the target's own entry.
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
@@ -166,6 +166,97 @@ describe("moveDeviceToPath", () => {
         "the destination already has an instrument, and only one is allowed",
     });
     expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  // Live drops these with no reason, so the refusal names it.
+  describe("a move to a place that takes only some kinds of device", () => {
+    beforeEach(() => {
+      registerMockObject("live_set", { path: livePath.liveSet });
+      device = registerMockObject("device-0", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: {
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          class_display_name: "Operator",
+        },
+      });
+    });
+
+    it("says a group track takes only audio effects", () => {
+      registerMockObject("track-1", {
+        path: livePath.track(1),
+        type: "Track",
+        properties: { is_foldable: 1, has_midi_input: 0 },
+      });
+
+      expect(
+        moveDeviceToPath(LiveAPI.from(device.path), "t1/d+"),
+      ).toStrictEqual({
+        outcome: "refused",
+        reason:
+          'group track t1 (id track-1) takes only audio effects; "Operator" is an instrument',
+      });
+    });
+
+    it("says an audio track takes only audio effects", () => {
+      registerMockObject("track-1", {
+        path: livePath.track(1),
+        type: "Track",
+        properties: { is_foldable: 0, has_midi_input: 0 },
+      });
+
+      expect(
+        moveDeviceToPath(LiveAPI.from(device.path), "t1/d+"),
+      ).toStrictEqual({
+        outcome: "refused",
+        reason:
+          'audio track t1 (id track-1) takes only audio effects; "Operator" is an instrument',
+      });
+    });
+
+    it("says an audio effect rack's chain takes only audio effects", () => {
+      registerMockObject("track-1", { path: livePath.track(1), type: "Track" });
+      registerMockObject("rack", {
+        path: livePath.track(1).device(0),
+        type: "RackDevice",
+        properties: {
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+          can_have_chains: 1,
+          can_have_drum_pads: 0,
+          chains: children("chain-0"),
+        },
+      });
+      registerMockObject("chain-0", {
+        path: livePath.track(1).device(0).chain(0),
+        type: "Chain",
+        properties: { devices: [] },
+      });
+
+      expect(
+        moveDeviceToPath(LiveAPI.from(device.path), "t1/d0/c0/d+"),
+      ).toStrictEqual({
+        outcome: "refused",
+        reason:
+          'chain t1/d0/c0 (id chain-0) takes only audio effects; "Operator" is an instrument',
+      });
+    });
+
+    it("gives a device the place does take no such reason", () => {
+      registerMockObject("track-1", {
+        path: livePath.track(1),
+        type: "Track",
+        properties: { is_foldable: 1, has_midi_input: 0 },
+      });
+      registerMockObject("device-0", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: { type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT },
+      });
+
+      expect(
+        moveDeviceToPath(LiveAPI.from(device.path), "t1/d+"),
+      ).toStrictEqual({ outcome: "refused", reason: undefined });
+    });
   });
 
   it("refuses an index past the end, which Live would drop in silence", () => {

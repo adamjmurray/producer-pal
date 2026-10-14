@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
 import { type McpResponse } from "#src/mcp-server/max-api-adapter.ts";
@@ -9,6 +9,7 @@ import {
   withRemoteScriptAnswer,
   withSkills,
 } from "#src/mcp-server/helpers/skills-inject.ts";
+import { setRemoteScriptMinVersion } from "#src/mcp-server/rpc/remote-script/port/remote-script-version.ts";
 import { startFakeRemoteScript } from "#src/mcp-server/rpc/remote-script/tests/remote-script-test-helpers.ts";
 import { writeSkillOverride } from "#src/mcp-server/helpers/skill-overrides-store.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
@@ -153,7 +154,9 @@ describe("withRemoteScriptAnswer", () => {
   const HEADING = "### Plug-Ins, Max for Live Devices & Presets";
 
   it("teaches loading plug-ins while the remote script answers its ping", async () => {
-    const remote = await startFakeRemoteScript(() => ({ body: { ok: true } }));
+    const remote = await startFakeRemoteScript(() => ({
+      body: { ok: true, script_version: "2.5.0" },
+    }));
 
     try {
       expect(await withRemoteScriptAnswer({})).toStrictEqual({
@@ -163,6 +166,78 @@ describe("withRemoteScriptAnswer", () => {
       const wrapped = withSkills(fakeInner(connectResponse()), () => ({}));
 
       expect(lastText(await wrapped("ppal-connect", {}))).toContain(HEADING);
+    } finally {
+      await remote.close();
+    }
+  });
+
+  it("doesn't when the script is older than this server needs", async () => {
+    const remote = await startFakeRemoteScript(() => ({
+      body: { ok: true, script_version: "2.4.0" },
+    }));
+
+    try {
+      expect(await withRemoteScriptAnswer({})).toStrictEqual({
+        remoteScript: false,
+      });
+
+      const wrapped = withSkills(fakeInner(connectResponse()), () => ({}));
+
+      expect(lastText(await wrapped("ppal-connect", {}))).not.toContain(
+        HEADING,
+      );
+    } finally {
+      await remote.close();
+    }
+  });
+
+  it("doesn't when the dev override makes the script too old", async () => {
+    const remote = await startFakeRemoteScript(() => ({
+      body: { ok: true, script_version: "2.5.0" },
+    }));
+
+    setRemoteScriptMinVersion("9.0.0");
+
+    try {
+      expect(await withRemoteScriptAnswer({})).toStrictEqual({
+        remoteScript: false,
+      });
+    } finally {
+      setRemoteScriptMinVersion(null);
+      await remote.close();
+    }
+  });
+
+  it("uses the ping it is given instead of asking the remote script", async () => {
+    const getPing = vi.fn(async () => ({
+      running: true,
+      liveVersion: null,
+      scriptVersion: "2.5.0",
+      userLibrary: null,
+      otherOnPort: null,
+    }));
+
+    expect(await withRemoteScriptAnswer({}, getPing)).toStrictEqual({
+      remoteScript: true,
+    });
+
+    const wrapped = withSkills(
+      fakeInner(connectResponse()),
+      () => ({}),
+      getPing,
+    );
+
+    expect(lastText(await wrapped("ppal-connect", {}))).toContain(HEADING);
+    expect(getPing).toHaveBeenCalledTimes(2);
+  });
+
+  it("doesn't when something else answers the port", async () => {
+    const remote = await startFakeRemoteScript(() => ({ body: { ok: true } }));
+
+    try {
+      expect(await withRemoteScriptAnswer({})).toStrictEqual({
+        remoteScript: false,
+      });
     } finally {
       await remote.close();
     }

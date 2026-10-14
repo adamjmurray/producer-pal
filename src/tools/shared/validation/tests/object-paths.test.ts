@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -10,7 +10,6 @@ import {
   namedHiddenPath,
   parseObjectPathList,
   pathEntries,
-  parseClipSlotPathList,
   pathNamesSomething,
   requireClipPath,
   requireDeviceContainer,
@@ -18,6 +17,7 @@ import {
   requireClipSlotPath,
   trackSegmentPath,
 } from "../helpers/object-paths.ts";
+import { deviceTailNoun } from "../helpers/object-path-device-tail.ts";
 
 describe("parseObjectPathList", () => {
   it("parses a comma-separated list in order", () => {
@@ -171,21 +171,6 @@ describe("requireClipSlotPath", () => {
   it("rejects a non-clip path in clip terms", () => {
     expect(() => requireClipSlotPath(parseObjectPath("t1/d0"))).toThrow(
       /device paths hold no clips/,
-    );
-  });
-});
-
-describe("parseClipSlotPathList", () => {
-  it("parses a comma-separated list of slots", () => {
-    expect(parseClipSlotPathList("t0/s1,t2/s3")).toStrictEqual([
-      { trackIndex: 0, sceneIndex: 1 },
-      { trackIndex: 2, sceneIndex: 3 },
-    ]);
-  });
-
-  it("throws on the first entry that isn't a slot", () => {
-    expect(() => parseClipSlotPathList("t0/s1,t2")).toThrow(
-      /a track has no one clip/,
     );
   });
 });
@@ -375,3 +360,24 @@ describe("a song position on a tool that can't take one", () => {
     ).toThrow("a song position names a clip, not a device");
   });
 });
+
+describe("deviceTailNoun", () => {
+  it("names the track when the chain has no segments", () => {
+    expect(deviceTailNoun([])).toBe("a track");
+  });
+
+  it("names whatever the last segment names", () => {
+    expect(deviceTailNoun(parseDeviceSegments("t0/d0/c1"))).toBe("a chain");
+  });
+});
+
+/**
+ * The device segments a path parses to.
+ * @param path - A device path
+ * @returns Its segments
+ */
+function parseDeviceSegments(path: string) {
+  const parsed = parseObjectPath(path);
+
+  return "segments" in parsed ? parsed.segments : [];
+}

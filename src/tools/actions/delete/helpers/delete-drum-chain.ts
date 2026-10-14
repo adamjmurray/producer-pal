@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Removing one chain from a drum rack. Live exposes no chain delete, so this
 // borrows a pad's: park the chain on a pad nothing else uses, then clear that
@@ -13,6 +13,9 @@ import {
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
+/** What a throw leaves behind when the chain is still on the spare pad. */
+const PARKED = "moved the chain to a spare drum pad";
+
 /** Where a pad's chain sits under its rack. */
 const CHAIN_TAIL = / chains \d+$/;
 
@@ -22,9 +25,14 @@ const CHAIN_TAIL = / chains \d+$/;
  * reason it didn't happen.
  * @param id - The chain's object ID
  * @param chain - The chain to delete
+ * @param landed - Says that the chain was parked, which a throw leaves undone
  * @returns null if the chain is gone, else why it wasn't deleted
  */
-export function deleteDrumChain(id: string, chain: LiveAPI): string | null {
+export function deleteDrumChain(
+  id: string,
+  chain: LiveAPI,
+  landed: (phrase: string) => void,
+): string | null {
   if (chain.type !== "DrumChain" || !CHAIN_TAIL.test(chain.path)) {
     return (
       `chain ${targetLabel(chain)} is not on a drum pad. Live has no way to delete ` +
@@ -47,8 +55,16 @@ export function deleteDrumChain(id: string, chain: LiveAPI): string | null {
   const originalInNote = chain.getProperty("in_note") as number;
 
   chain.set("in_note", scratchPad.getProperty("note"));
-  scratchPad.call("delete_all_chains");
-  invalidateRackChains(rack);
+
+  try {
+    scratchPad.call("delete_all_chains");
+  } catch (error) {
+    // The chain is still parked: nothing here puts it back.
+    landed(PARKED);
+    throw error;
+  } finally {
+    invalidateRackChains(rack);
+  }
 
   // Look the id up again: a dead one lands nowhere, while the object the clear
   // ran through still reports its old id and path.
@@ -60,7 +76,12 @@ export function deleteDrumChain(id: string, chain: LiveAPI): string | null {
 
   // Leaving it parked would silently move the chain to a pad the user never
   // named, so put it back where it was.
-  survivor.set("in_note", originalInNote);
+  try {
+    survivor.set("in_note", originalInNote);
+  } catch (error) {
+    landed(PARKED);
+    throw error;
+  }
 
   return `Live did not remove chain ${targetLabel(survivor)}, so it was left as is`;
 }

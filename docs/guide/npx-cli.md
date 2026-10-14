@@ -91,7 +91,7 @@ Producer Pal 2.3.0 tools and groups
 Pass any of these to --tools (keep only these) or --disable-tools (drop
 these), comma or space separated. Names work bare or ppal- prefixed.
 
-  core       ppal-connect ppal-context
+  core       ppal-connect ppal-context ppal-manage
   session    ppal-playback ppal-library ppal-select
   actions    ppal-delete ppal-duplicate
   live-set   ppal-read-live-set ppal-update-live-set

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-read-live-set tool
@@ -110,15 +110,20 @@ describe("ppal-read-live-set", () => {
     expect(locatorsParsed.locators?.[1]?.position).toBe("loc:Verse");
   });
 
-  it("falls back to the ID for a locator named like an ID", async () => {
-    // An all-digit name resolves as an id, which points at whichever locator
-    // carries it — not at this one. 999999 is past any id Live hands out here.
+  // An all-digit name resolves as an id, which points at whichever locator
+  // carries it (999999 is past any id Live hands out here). A trailing
+  // backslash escapes the comma after it in a list. Max reads a stored `\\`
+  // back as one backslash on macOS, so the sent name doubles it.
+  it.each([
+    ["named like an ID", "999999", "999999"],
+    ["whose name ends in a backslash", "Ends\\\\", "Ends\\"],
+  ])("falls back to the ID for a locator %s", async (_label, sent, name) => {
     await ctx.client!.callTool({
       name: "ppal-update-live-set",
       arguments: {
         locatorOperation: "create",
         locatorTime: "2|1",
-        locatorName: "999999",
+        locatorName: sent,
       },
     });
     await sleep(100);
@@ -130,11 +135,11 @@ describe("ppal-read-live-set", () => {
           arguments: { include: ["locators"] },
         }),
       );
-      const named = parsed.locators?.find((l) => l.name === "999999");
+      const named = parsed.locators?.find((l) => l.name === name);
 
       expect(named).toBeDefined();
       expect(named!.position).toBe(`loc:${named!.id}`);
-      expect(named!.id).not.toBe("999999");
+      expect(named!.id).not.toBe(name);
     } finally {
       await ctx.client!.callTool({
         name: "ppal-update-live-set",

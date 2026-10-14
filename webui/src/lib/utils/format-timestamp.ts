@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Formats a Unix timestamp for display in title attribute.

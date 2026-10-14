@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { CONTEXT_TOOL_ID } from "#src/shared/tool-groups.ts";
 import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
@@ -79,8 +79,9 @@ function memoryBlock({
   }
 
   return (
-    'Memory index. Load a body with ppal-context (action:"read", ' +
-    'scope:"memory", name:"<name>"):\n\n' +
+    "Memory index. Read an entry before work it covers; when the user changes " +
+    "a fact an entry covers, rewrite that entry right away. Load a body with " +
+    'ppal-context (action:"read", scope:"memory", name:"<name>"):\n\n' +
     renderMemoryIndex(entries)
   );
 }

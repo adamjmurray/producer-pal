@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -9,6 +9,8 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
+import { applyRoutingProperties } from "../helpers/track-routing-updates.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -148,7 +150,7 @@ describe("updateTrack routing by name", () => {
       id: "123",
       path: "t0",
       detail:
-        '2 output_routing_type options are named "Bass"; used the first — ' +
+        '2 outputRoutingType options are named "Bass"; used the first — ' +
         "send the identifier (30, 31) to pick another",
     });
     expect(capturedWarnings()).toStrictEqual([]);
@@ -158,7 +160,7 @@ describe("updateTrack routing by name", () => {
     // The routing was the whole call, so nothing landed on the lone track.
     expect(() =>
       updateTrack({ id: "123", outputRoutingType: "Nowhere" }),
-    ).toThrow('the track has no output_routing_type named "Nowhere"');
+    ).toThrow('the track has no outputRoutingType named "Nowhere"');
 
     expect(track.set).not.toHaveBeenCalledWith(
       "output_routing_type",
@@ -227,5 +229,25 @@ describe("updateTrack routing by name", () => {
       );
       expect(track.set).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe("applyRoutingProperties", () => {
+  it("routes the input of a track with no category of its own as a regular track", () => {
+    const loose = registerMockObject("loose", {
+      type: "Track",
+      properties: { ...routingProperties, is_foldable: 0 },
+    });
+
+    applyRoutingProperties(
+      LiveAPI.from("loose"),
+      { inputRoutingType: "Resampling" },
+      newTargetNotes(),
+    );
+
+    expect(loose.set).toHaveBeenCalledWith(
+      "input_routing_type",
+      '{"input_routing_type":{"identifier":18}}',
+    );
   });
 });

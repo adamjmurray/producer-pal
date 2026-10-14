@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2025 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Stark notation heads. A literal, round-trippable format: melody/bass lines are
@@ -14,7 +14,7 @@
  * EVERY mode, so read-back is unchanged; the basic head only narrows what a small
  * model is TAUGHT to generate. DIRECTION: chord symbols are the one thing here the
  * serializer never emits, so they split off into a `-write` sibling at both depths
- * and a read-only caller stops paying for them (ADR-0019).
+ * and a read-only caller stops paying for them.
  *
  * The matching driver (`standard` / `basic`) `@include`s the head and its `-write`
  * sibling on adjacent lines — `resolveIncludes` composes them, buildSkills glues
@@ -24,7 +24,7 @@
 // Preamble + the drum line, through the 16 named pads (shared by both heads).
 const starkHeadDrums = `## MIDI Notation — Stark
 
-A literal, round-trippable format. The \`notes\` argument (and read-clip's returned notes) is one line per part, \`type: content\`. Whitespace between tokens is only a separator — it has NO rhythmic meaning; timing comes from each token's duration.
+A literal, round-trippable format. The \`notes\` argument (and ppal-read-clip's returned notes) is one line per part, \`type: content\`. Whitespace between tokens is only a separator — it has NO rhythmic meaning; timing comes from each token's duration.
 
 - **Drums** — one line per drum, written like a melody of hits: \`X\`=normal, \`x\`=soft, \`^\`=accent, \`z\`=rest. Each token lasts \`/4\` (a quarter note) by default; set a line default in the header (\`hihat /8:\`) or glue \`/N\` to one token (\`X/8\`). Repeat a token with \`*N\`: \`hihat /16: X*16\` is a one-bar 16th-note roll. Token count = the familiar subdivision: a 4/4 bar of quarters is 4 tokens, of eighths is 8. \`|\` is an optional visual barline. Example — a 1-bar 4/4 backbeat, kick on 1 & 3, snare on 2 & 4, closed hi-hat on every eighth:
 
@@ -46,8 +46,8 @@ const starkDrumPitchNameFallback = ` A pad with no name uses an absolute pitch-n
 // Both bullets still name `chords:` (its default duration, its register) though
 // the chord SYMBOLS moved to the write half. That is the whole-bullet seam doing
 // its job: a read-back never carries a chords line, but trimming two clauses out
-// of the middle of a shared bullet is the mis-sort ADR-0019 rejected, and the
-// cost is a few tokens.
+// of the middle of a shared bullet is the mis-sort the read/write split avoids,
+// and the cost is a few tokens.
 const starkHeadPitched = `
 - **Pitched** — \`melody: C Eb G'\` (also \`bass:\`). A token is letter \`A\`-\`G\` + optional \`#\`/\`b\` (immediately after the letter, so \`Cb\`=C-flat but a lone \`b\`=note B) + octave marks (\`'\` up, \`,\` down, stackable) + duration \`/N\` + dynamic (\`!\`=accent, \`?\`=soft, omit=normal). \`/N\` is an ABSOLUTE note value: \`/1\`=whole (4 beats), \`/2\`=half, \`/4\`=quarter (1 beat), \`/8\`, \`/16\`. A trailing \`.\` means dotted (×1.5): \`/4.\`=dotted quarter (1.5 beats); a trailing \`t\` means triplet (×2/3): \`/8t\`=eighth-note triplet (⅓ beat, three per beat). One modifier max (\`.\` or \`t\`, not both). Repeat any token with a trailing \`*N\`: \`C*4\`, \`z*3\`. Rest = \`z\` or \`z/N\`. Default duration is \`/4\` for bass/melody, \`/1\` for chords; set a line default in the header (\`melody/8: ...\`).
 - **Registers** (the MIDI pitch a bare \`C\` maps to, Ableton naming where C3=60=middle C): bass=C1, melody=C3, chords=C2; octave marks shift from there. Every bare letter stays in that ONE octave — a line never climbs on its own, so an ascending run past \`B\` needs a mark: \`G A B C'\`, not \`G A B C\`, which drops back a seventh to where it started.`;

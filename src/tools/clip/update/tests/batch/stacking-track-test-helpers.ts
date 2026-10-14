@@ -1,11 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A track whose arrangement answers the way Live's does, so a test drives the
 // real clearing and trimming code instead of a stand-in for it.
 
+import { expect } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -72,8 +73,11 @@ export function registerStackingTrack(lengths: number[]): string[] {
     methods: {
       duplicate_clip_to_arrangement: (sourceId, start) => {
         const [sourceStart, sourceEnd] = laneClipSpan(bareId(sourceId));
+        const id = writeLaneClip(start as number, sourceEnd - sourceStart);
 
-        return ["id", writeLaneClip(start as number, sourceEnd - sourceStart)];
+        inheritLoop(bareId(sourceId), id);
+
+        return ["id", id];
       },
       create_midi_clip: (start, length) => [
         "id",
@@ -96,6 +100,31 @@ export function registerStackingTrack(lengths: number[]): string[] {
 
     return id;
   });
+}
+
+/** What makes a clip tile when it is lengthened, and a copy keeps. */
+const LOOP_PROPERTIES = [
+  "looping",
+  "loop_start",
+  "loop_end",
+  "start_marker",
+  "end_marker",
+] as const;
+
+/**
+ * Give a copy the loop of the clip it was made from, when that has one.
+ * @param sourceId - The clip copied
+ * @param copyId - The copy
+ */
+function inheritLoop(sourceId: string, copyId: string): void {
+  const source = lookupMockObject(sourceId)?.properties ?? {};
+  const copy = lookupMockObject(copyId)?.properties ?? {};
+
+  for (const name of LOOP_PROPERTIES) {
+    if (source[name] !== undefined) {
+      copy[name] = source[name];
+    }
+  }
 }
 
 /**
@@ -222,4 +251,54 @@ export function stackedLaneClips(): string[] {
  */
 export function stackedLaneSpans(): Array<[number, number]> {
   return laneClips.map(laneClipSpan).toSorted((a, b) => a[0] - b[0]);
+}
+
+/**
+ * @param ids - Clip ids
+ * @returns How often each one's properties were read, in order
+ */
+export function readsOf(ids: string[]): number[] {
+  return ids.map((id) => lookupMockObject(id)?.get.mock.calls.length ?? 0);
+}
+
+/**
+ * @param from - The spy on LiveAPI.from
+ * @param ids - Clip ids
+ * @returns How often each one was looked up, in order
+ */
+export function buildsOf(
+  from: { mock: { calls: unknown[][] } },
+  ids: string[],
+): number[] {
+  return ids.map(
+    (id) => from.mock.calls.filter(([found]) => found === `id ${id}`).length,
+  );
+}
+
+/**
+ * Expect clips no edit touched to have been scanned once (two reads: the lane's
+ * end and its start) and looked up once.
+ * @param from - The spy on LiveAPI.from
+ * @param ids - The untouched clips' ids
+ */
+export function expectUntouchedClipsReadOnce(
+  from: { mock: { calls: unknown[][] } },
+  ids: string[],
+): void {
+  expect(readsOf(ids)).toStrictEqual(ids.map(() => 2));
+  expect(buildsOf(from, ids)).toStrictEqual(ids.map(() => 1));
+}
+
+/**
+ * Make a clip loop over its own length, which is what lengthening tiles.
+ * @param id - The clip
+ */
+export function makeLooping(id: string): void {
+  Object.assign(lookupMockObject(id)?.properties ?? {}, {
+    looping: 1,
+    loop_start: 0,
+    loop_end: 4,
+    start_marker: 0,
+    end_marker: 4,
+  });
 }

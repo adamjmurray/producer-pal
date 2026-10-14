@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
 import { barBeatToMusicalBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
@@ -37,18 +37,6 @@ type ProcessAssignmentResult = { skip: true } | { skip?: false; value: number };
  */
 export function isNoteOp(stmt: TransformStatement): stmt is NoteOp {
   return "kind" in stmt;
-}
-
-/**
- * Map an assignment's internal operator token to the source symbol the user
- * wrote, for warning messages. The parser normalizes `-=` into `add` (with a
- * negated expression), so only `set`/`add` reach here; both display forms a user
- * would recognize.
- * @param operator - The internal operator token ("set" or "add")
- * @returns The display symbol ("=" or "+=")
- */
-export function operatorDisplay(operator: "set" | "add"): string {
-  return operator === "set" ? "=" : "+=";
 }
 
 /**
@@ -145,8 +133,8 @@ function processAssignment(
 
     return { value: evaluateExpression(assignment.expression, ctx) };
   } catch (error) {
-    console.warn(
-      `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`,
+    console.clipDetail(
+      `${assignment.parameter} transform failed: ${errorMessage(error)}`,
     );
 
     return { skip: true };
@@ -271,9 +259,9 @@ export function evaluateExpression(
   }
 
   // Pitch literal (`C4`, `b2`) — evaluates to its MIDI number. The node stays
-  // tagged through the AST so applyAssignmentToNotes can warn-and-skip a bare
-  // pitch literal assigned to a non-pitch parameter; everywhere else (function
-  // args, `pitch = C4`) it is just its number.
+  // tagged through the AST so checkTransformArgs can refuse a bare pitch literal
+  // assigned to a non-pitch parameter; everywhere else (function args,
+  // `pitch = C4`) it is just its number.
   if (node.type === "pitchLiteral") {
     return node.value;
   }
@@ -310,8 +298,8 @@ export function evaluateExpression(
       // (neutral) + warn instead of failing the transform — mirrors the audio
       // evaluator so the condition is recoverable on both note and audio paths.
       if (node.namespace === "clip" && node.name === "position") {
-        console.warn(
-          `clip.position is not available for session clips; using 0`,
+        console.clipDetail(
+          "clip.position isn't available on a session clip; used 0",
         );
 
         return 0;

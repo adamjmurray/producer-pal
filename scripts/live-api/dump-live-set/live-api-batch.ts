@@ -1,15 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
-// Packs many objects into one ppal-live-api call. `set_path` is an operation
+// Packs many objects into one ppal-live-api call. `set-path` is an operation
 // like any other, so a single request can retarget the tool's LiveAPI object
 // over and over and read each target in turn — one HTTP round trip per fifty
 // operations instead of one per object.
 //
-// A request is all-or-nothing: the tool aborts the whole array on the first
-// operation that throws. So a failed request is halved and retried until the
+// A request counts as failed if any operation threw: the tool stops there and
+// reports `failed`. So a failed request is halved and retried until the
 // offending read is alone, and only that read is recorded as null. Without
 // that, one unreadable property would cost every other property on the object.
 
@@ -26,7 +26,7 @@ export interface LiveApiOp {
   args?: unknown[];
 }
 
-/** One object's reads. The `set_path` that targets them is added here. */
+/** One object's reads. The `set-path` that targets them is added here. */
 export interface Job {
   path: string;
   ops: LiveApiOp[];
@@ -43,7 +43,7 @@ export interface BatchContext {
   stats: BatchStats;
 }
 
-/** Reads left in a request once `set_path` has taken its slot. */
+/** Reads left in a request once `set-path` has taken its slot. */
 const MAX_READS_PER_CHUNK = MAX_OPERATIONS - 1;
 
 interface Chunk {
@@ -114,15 +114,21 @@ export async function runOperations(
     throw new Error(String(body.result));
   }
 
-  const results = (
-    body.result as { results?: { result: unknown }[] } | undefined
-  )?.results;
+  const result = body.result as
+    | { results?: unknown[]; failed?: { index: number; detail: string } }
+    | undefined;
 
-  if (!results) {
+  if (result?.failed) {
+    throw new Error(
+      `operations[${result.failed.index}]: ${result.failed.detail}`,
+    );
+  }
+
+  if (!result?.results) {
     throw new Error("ppal-live-api returned no results");
   }
 
-  return results.map((entry) => entry.result);
+  return result.results;
 }
 
 /**
@@ -256,7 +262,7 @@ async function tryPack(
   // The generic is load-bearing: without it the literal widens `type` to
   // string, and the lint autofixer strips an inline assertion as redundant.
   const ops = pack.flatMap<LiveApiOp>((chunk) => [
-    { type: "set_path", value: chunk.path },
+    { type: "set-path", value: chunk.path },
     ...chunk.ops,
   ]);
 

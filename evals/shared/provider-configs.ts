@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic), Codex (OpenAI)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Centralized provider configuration for all LLM providers
@@ -65,6 +65,13 @@ export const OPENROUTER_CONFIG: ProviderConfig = {
   defaultModel: "google/gemini-3.8-flash",
 };
 
+/** Vercel AI Gateway provider configuration */
+export const VERCEL_CONFIG: ProviderConfig = {
+  apiKeyEnvVar: "VERCEL_AI_GATEWAY_KEY",
+  providerName: "Vercel AI Gateway",
+  defaultModel: "google/gemini-3.8-flash",
+};
+
 /** Local OpenAI-compatible server configuration (Ollama, LM Studio, etc.) */
 export const LOCAL_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "LOCAL_API_KEY",
@@ -103,6 +110,7 @@ export const PROVIDER_CONFIGS: Record<EvalProvider, ProviderConfig> = {
   local: LOCAL_CONFIG,
   openai: OPENAI_CONFIG,
   openrouter: OPENROUTER_CONFIG,
+  vercel: VERCEL_CONFIG,
 };
 
 /** All valid provider ids (registry order) */

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -16,6 +16,10 @@ import {
   updateDevice,
 } from "./update-device-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  MIXER_TYPES,
+  registerMixer,
+} from "#src/tools/device/tests/helpers/non-device-fixtures.ts";
 
 describe("updateDevice", () => {
   let device123: RegisteredMockObject;
@@ -113,12 +117,8 @@ describe("updateDevice", () => {
   });
 
   it("should not call set when no properties provided", () => {
-    const result = updateDevice({
-      id: "123",
-    });
-
+    expect(() => updateDevice({ id: "123" })).toThrow("nothing to update");
     expect(device123.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   describe("params - numeric values", () => {
@@ -406,7 +406,7 @@ describe("updateDevice", () => {
 
   // Params by name are in params/update-device-param-names.test.ts
   // Division params tests are in update-device-division-params.test.js
-  // macroVariation tests are in update-device-macro-variation.test.js
+  // macroVariation and macroCount tests are in macros/
   // Chain and DrumPad tests are in update-device-chains.test.js
 
   describe("macroCount", () => {
@@ -423,7 +423,7 @@ describe("updateDevice", () => {
 
     it("should reject non-rack devices with error", () => {
       expect(() => updateDevice({ id: "456", macroCount: 8 })).toThrow(
-        "macroCount not applicable to a device",
+        "macroCount ignored: can't be set on a device",
       );
       expect(device456.call).not.toHaveBeenCalled();
       expect(capturedWarnings()).toStrictEqual([]);
@@ -478,18 +478,6 @@ describe("updateDevice", () => {
       expect(capturedWarnings()).toStrictEqual([]);
     });
 
-    it("says where the count landed when a mapped rack keeps its macros", () => {
-      registerMacroRack("rack", { count: 8, mapped: true, floor: 8 });
-
-      expect(updateDevice({ id: "rack", macroCount: 4 })).toStrictEqual({
-        id: "rack",
-        path: "t0/d0",
-        detail:
-          "macroCount landed at 8, not 4: Live keeps a mapped macro visible",
-      });
-      expect(capturedWarnings()).toStrictEqual([]);
-    });
-
     it("says where the count landed when nothing is mapped", () => {
       registerMacroRack("rack", { count: 8, floor: 6 });
 
@@ -497,16 +485,6 @@ describe("updateDevice", () => {
         id: "rack",
         path: "t0/d0",
         detail: "macroCount landed at 6, not 4",
-      });
-    });
-
-    it("says which mapped macros a lowered count hid", () => {
-      registerMacroRack("rack", { count: 8, mapped: true });
-
-      expect(updateDevice({ id: "rack", macroCount: 4 })).toStrictEqual({
-        id: "rack",
-        path: "t0/d0",
-        detail: "macros 5 to 8 hidden; any mappings on them are gone",
       });
     });
 
@@ -745,6 +723,19 @@ describe("updateDevice", () => {
       expect(() => updateDevice({ id: "999", name: "Nope" })).toThrow(
         "cannot update a track: t3 (id 999)",
       );
+      expect(capturedWarnings()).toStrictEqual([]);
+    });
+
+    it.each(MIXER_TYPES)("refuses a %s, which is not a device", (type) => {
+      registerMixer(type);
+
+      expect(() => updateDevice({ id: "mix-1", name: "Nope" })).toThrow(
+        "cannot update a mixer: id mix-1",
+      );
+      expect(updateDevice({ id: "mix-1,123", name: "Nope" })).toStrictEqual([
+        { id: "mix-1", ok: false, detail: "cannot update a mixer: id mix-1" },
+        { id: "123", path: "t0/d0" },
+      ]);
       expect(capturedWarnings()).toStrictEqual([]);
     });
 

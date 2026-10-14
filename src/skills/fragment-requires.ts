@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Which fragments a fragment is incomplete without. The carve is by task, not by
 // independence: a few fragments teach a vocabulary whose GRAMMAR lives in
@@ -50,6 +50,7 @@ export const FRAGMENT_REQUIRES: Record<string, readonly string[]> = {
   devices: [TIME_AND_VALUES],
 
   "arrangement-write": ["arrangement"],
+  "automation-write": ["automation"],
 
   // The standard notation head defers note values to time-and-values; the basic
   // heads and midi-json spell their own out, so neither needs the edge. (The

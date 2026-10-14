@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-update-device abCompare.
@@ -29,7 +29,7 @@ const ctx = setupMcpTestContext();
 const DRIFT_PATH = "live_set tracks 3 devices 0";
 
 interface LiveApiResult {
-  results: Array<{ result?: unknown }>;
+  results: unknown[];
 }
 
 async function usingPresetB(): Promise<number> {
@@ -39,13 +39,13 @@ async function usingPresetB(): Promise<number> {
       arguments: {
         path: DRIFT_PATH,
         operations: [
-          { type: "getProperty", property: "is_using_compare_preset_b" },
+          { type: "get-property", property: "is_using_compare_preset_b" },
         ],
       },
     }),
   );
 
-  return result.results[0]!.result as number;
+  return result.results[0] as number;
 }
 
 async function abCompare(path: string, action: string): Promise<string[]> {

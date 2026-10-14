@@ -44,6 +44,14 @@ source models.
 - **Setup:** Create account and add credits
 - **[Setup instructions →](./chat-ui-other-providers#openrouter)**
 
+### Vercel AI Gateway
+
+Like OpenRouter: hundreds of models through one API.
+
+- **Cost:** Pay-as-you-go (free monthly credits for some models)
+- **Setup:** Create a Vercel account and add a credit card
+- **[Setup instructions →](./chat-ui-other-providers#vercel-ai-gateway)**
+
 ### Mistral
 
 AI models from a French company with competitive pricing.
@@ -82,15 +90,16 @@ Desktop app for running local models with a visual interface.
 
 ## Quick Comparison
 
-| Provider   | Cost               | Internet Required | Best For               |
-| ---------- | ------------------ | ----------------- | ---------------------- |
-| Ollama     | Free               | No                | Privacy, offline use   |
-| Anthropic  | Trial, then paid   | Yes               | Claude models directly |
-| Gemini     | Free tier (limits) | Yes               | Quick testing          |
-| OpenRouter | Pay-as-you-go      | Yes               | Access to many models  |
-| Mistral    | Free tier          | Yes               | Alternative to Gemini  |
-| OpenAI     | Pay-as-you-go      | Yes               | GPT models             |
-| Bionic     | Free               | No                | Visual local model UI  |
+| Provider          | Cost               | Internet Required | Best For               |
+| ----------------- | ------------------ | ----------------- | ---------------------- |
+| Ollama            | Free               | No                | Privacy, offline use   |
+| Anthropic         | Trial, then paid   | Yes               | Claude models directly |
+| Gemini            | Free tier (limits) | Yes               | Quick testing          |
+| OpenRouter        | Pay-as-you-go      | Yes               | Access to many models  |
+| Vercel AI Gateway | Pay-as-you-go      | Yes               | Access to many models  |
+| Mistral           | Free tier          | Yes               | Alternative to Gemini  |
+| OpenAI            | Pay-as-you-go      | Yes               | GPT models             |
+| Bionic            | Free               | No                | Visual local model UI  |
 
 ## Troubleshooting
 

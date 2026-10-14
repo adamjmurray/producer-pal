@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * The Producer Pal MCP endpoint every eval-side client connects to.
@@ -11,4 +11,6 @@
  * every path instead of only whichever one happened to check the env var.
  */
 
-export const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
+import { DEFAULT_MCP_URL } from "#src/shared/config.ts";
+
+export const MCP_URL = process.env.MCP_URL ?? DEFAULT_MCP_URL;

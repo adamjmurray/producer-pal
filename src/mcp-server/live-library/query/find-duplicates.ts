@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Surface near-duplicate samples in Live's library by grouping `fe_values`
@@ -36,6 +36,7 @@ import {
 } from "./candidate-query.ts";
 import { decodeFeatureVector } from "./feature-vectors.ts";
 import { withLiveDb } from "./live-db-query.ts";
+import { presetFolderNote } from "./preset-folder-note.ts";
 
 /** Default cap on duplicate groups returned (most-duplicated first). */
 const DEFAULT_FIND_DUPLICATES_LIMIT = 50;
@@ -89,12 +90,12 @@ function runFindDuplicates(
   // sampleFolder files aren't in Live's fe_values index, so the candidate query
   // can only ever match nothing (buildCandidateWhere emits an impossible
   // predicate). Explain it rather than returning a silent empty set.
-  if (args.source === "sampleFolder") {
+  if (args.source === "sample-folder") {
     return {
       ...base,
       groups: [],
       detail:
-        "duplicate detection uses Live's analyzed library; sampleFolder samples aren't indexed there — remove source:sampleFolder",
+        "duplicate detection uses Live's analyzed library; sample-folder samples aren't indexed there — remove source:sample-folder",
     };
   }
 
@@ -129,7 +130,11 @@ function runFindDuplicates(
     items: rowsInGroup.map((r) => buildLibraryItem(r, paths, tagsByFile)),
   }));
 
-  return { ...base, groups };
+  const note = presetFolderNote(db, args, resolved.parentId, {
+    analyzedOnly: true,
+  });
+
+  return { ...base, groups, ...(note != null && { note }) };
 }
 
 /**

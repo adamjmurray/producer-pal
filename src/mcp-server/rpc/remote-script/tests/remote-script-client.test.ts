@@ -1,17 +1,23 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
+import http from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  pingRemoteScript,
+  remoteScriptPing,
   remoteScriptRequest,
   replyError,
 } from "../remote-script-client.ts";
 import {
+  RemoteScriptConnectionLost,
+  RemoteScriptTimeout,
+} from "../remote-script-errors.ts";
+import {
   type FakeAnswer,
   type FakeRemoteScript,
+  callUntilItTimesOut,
   startFakeRemoteScript,
 } from "./remote-script-test-helpers.ts";
 
@@ -76,25 +82,114 @@ describe("remoteScriptRequest", () => {
     });
   });
 
-  it("is unavailable when whatever answers isn't sending a JSON object", async () => {
+  it("is unavailable, but says something answered, when it isn't sending a JSON object", async () => {
     await answerWith({ raw: "hello" });
     expect(await remoteScriptRequest({ route: "/ping" })).toStrictEqual({
       available: false,
+      otherAnswered: true,
     });
 
     await fake?.close();
     await answerWith({ raw: "[1]" });
     expect(await remoteScriptRequest({ route: "/ping" })).toStrictEqual({
       available: false,
+      otherAnswered: true,
     });
   });
 
   it("throws when the connection is taken but no answer comes", async () => {
-    await answerWith(null);
+    const remote = await answerWith(null);
 
     await expect(
-      remoteScriptRequest({ route: "/list", timeoutMs: 50 }),
+      callUntilItTimesOut(remote, 50, () =>
+        remoteScriptRequest({ route: "/list", timeoutMs: 50 }),
+      ),
     ).rejects.toThrow("Live's browser did not answer within 0.05s");
+  });
+
+  it("marks a timeout as sent, since Live may have acted on it", async () => {
+    const remote = await answerWith(null);
+
+    const error = await callUntilItTimesOut(remote, 50, () =>
+      remoteScriptRequest({ route: "/list", timeoutMs: 50 }).catch(
+        (caught: unknown) => caught,
+      ),
+    );
+
+    expect(error).toBeInstanceOf(RemoteScriptTimeout);
+    expect(error).toHaveProperty("sent", true);
+  });
+
+  it("marks a timeout before the connection as not sent", async () => {
+    await answerWith({ body: { ok: true } });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+    // Advancing before the event loop turns means the socket hasn't connected.
+    const reply = remoteScriptRequest({ route: "/list", timeoutMs: 50 }).catch(
+      (caught: unknown) => caught,
+    );
+
+    vi.advanceTimersByTime(50);
+
+    const error = await reply;
+
+    expect(error).toBeInstanceOf(RemoteScriptTimeout);
+    expect(error).toHaveProperty("sent", false);
+    expect(error).toHaveProperty(
+      "message",
+      "ran out of time before connecting to Live's browser",
+    );
+  });
+
+  describe("with an expiry", () => {
+    it("sends it as expires_in_ms: in the query of a GET, in the body of a POST", async () => {
+      const remote = await answerWith({ body: { ok: true } });
+
+      await remoteScriptRequest({ route: "/list", expiresInMs: 8000.7 });
+      await remoteScriptRequest({
+        method: "POST",
+        route: "/load",
+        body: { type: "plugin" },
+        expiresInMs: 8000,
+      });
+
+      expect(remote.requests).toStrictEqual([
+        {
+          method: "GET",
+          route: "/list",
+          query: { expires_in_ms: "8000" },
+          body: undefined,
+        },
+        {
+          method: "POST",
+          route: "/load",
+          query: {},
+          body: { type: "plugin", expires_in_ms: 8000 },
+        },
+      ]);
+    });
+
+    it("waits a moment past the expiry for the reply, not the fixed 35s", async () => {
+      const remote = await answerWith(null);
+
+      await expect(
+        callUntilItTimesOut(remote, 150, () =>
+          remoteScriptRequest({ route: "/list", expiresInMs: 100 }),
+        ),
+      ).rejects.toThrow("Live's browser did not answer within 0.15s");
+    });
+
+    it.each([0, -5])("sends nothing at %s", async (expiresInMs) => {
+      const remote = await answerWith({ body: { ok: true } });
+      const error = await remoteScriptRequest({
+        route: "/list",
+        expiresInMs,
+      }).catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(RemoteScriptTimeout);
+      expect(error).toHaveProperty("sent", false);
+      expect(remote.requests).toStrictEqual([]);
+    });
   });
 
   it("is unavailable when the connection isn't taken in time", async () => {
@@ -114,22 +209,7 @@ describe("remoteScriptRequest", () => {
 
     await expect(
       remoteScriptRequest({ route: "/ping", timeoutMs: 5000 }),
-    ).rejects.toThrow(/socket hang up|ECONNRESET/);
-  });
-
-  it("uses the default port when PPAL_REMOTE_SCRIPT_PORT isn't set", async () => {
-    const remote = await answerWith({ body: { ok: true } });
-
-    delete process.env.PPAL_REMOTE_SCRIPT_PORT;
-
-    // Whatever is or isn't on the default port here, it isn't the stand-in,
-    // which is listening on a port of its own. Either outcome is fine; what
-    // matters is that the request didn't go to the port the env var named.
-    await remoteScriptRequest({ route: "/ping", timeoutMs: 200 }).catch(
-      () => null,
-    );
-
-    expect(remote.requests).toStrictEqual([]);
+    ).rejects.toBeInstanceOf(RemoteScriptConnectionLost);
   });
 
   it("throws when the answer is cut off", async () => {
@@ -137,38 +217,82 @@ describe("remoteScriptRequest", () => {
 
     await expect(
       remoteScriptRequest({ route: "/ping", timeoutMs: 5000 }),
-    ).rejects.toThrow("aborted");
+    ).rejects.toBeInstanceOf(RemoteScriptConnectionLost);
+  });
+
+  it("reads a reply with no status code as status 0", async () => {
+    await answerWith({ body: { ok: true } });
+    const realRequest = http.request;
+
+    vi.spyOn(http, "request").mockImplementation(((
+      options: http.RequestOptions,
+      callback: (response: http.IncomingMessage) => void,
+    ) =>
+      realRequest(options, (response) => {
+        response.statusCode = undefined;
+        callback(response);
+      })) as typeof http.request);
+
+    expect(await remoteScriptRequest({ route: "/ping" })).toStrictEqual({
+      available: true,
+      status: 0,
+      body: { ok: true },
+    });
   });
 });
 
-describe("pingRemoteScript", () => {
-  it("is true when the remote script answers ok", async () => {
-    await answerWith({ body: { ok: true, live_version: "12.4.5" } });
+describe("remoteScriptPing", () => {
+  it("reports the versions of our script", async () => {
+    await answerWith({
+      body: { ok: true, live_version: "12.4.5", script_version: "2.4.1" },
+    });
 
-    expect(await pingRemoteScript()).toBe(true);
+    expect(await remoteScriptPing()).toStrictEqual({
+      running: true,
+      liveVersion: "12.4.5",
+      scriptVersion: "2.4.1",
+      userLibrary: null,
+      otherOnPort: null,
+    });
   });
 
-  it("is false for any other answer", async () => {
-    await answerWith({ status: 500, body: { ok: false } });
+  it("reports the User Library the script runs from", async () => {
+    await answerWith({
+      body: {
+        ok: true,
+        script_version: "2.5.0",
+        user_library: "/Music/Ableton/User Library",
+      },
+    });
 
-    expect(await pingRemoteScript()).toBe(false);
+    const ping = await remoteScriptPing();
+
+    expect(ping.userLibrary).toBe("/Music/Ableton/User Library");
   });
 
-  it("is false when nothing is listening", async () => {
-    expect(await pingRemoteScript()).toBe(false);
+  it("reads a null User Library as unknown", async () => {
+    await answerWith({
+      body: { ok: true, script_version: "2.5.0", user_library: null },
+    });
+
+    const ping = await remoteScriptPing();
+
+    expect(ping.userLibrary).toBeNull();
   });
 
-  it("is false when the connection is taken but no answer comes", async () => {
-    const remote = await answerWith(null);
+  it("names the port when something else answers there", async () => {
+    const remote = await answerWith({ body: { ok: true } });
 
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const ping = await remoteScriptPing();
 
-    const ping = pingRemoteScript();
+    expect(ping.running).toBe(false);
+    expect(ping.otherOnPort).toBe(remote.port);
+  });
 
-    await vi.waitFor(() => expect(remote.requests).toHaveLength(1));
-    vi.advanceTimersByTime(1000);
+  it("names no port when nothing answers", async () => {
+    const ping = await remoteScriptPing();
 
-    expect(await ping).toBe(false);
+    expect(ping.otherOnPort).toBeNull();
   });
 });
 

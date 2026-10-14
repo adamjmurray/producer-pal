@@ -28,10 +28,35 @@ the build-verification job, right after the build that produces it.
 - `tests/portal-reconnect.test.ts` — a portal that came up before the device:
   the fallback list, then the `tools/list_changed` nudge once the device answers
   (and no nudge when it was there all along).
+- `tests/portal-offline-manage.test.ts` — what the portal answers itself while
+  the device is down: the setup guidance (by whether the remote script answers,
+  and what is installed in the User Library) and `ppal-manage`
+  `install-remote-script`. The portal's HOME points at a temp folder so its User
+  Library lookup is repeatable; finding one there works on macOS and Windows
+  only.
+- `tests/portal-add-producer-pal.test.ts` — `ppal-manage` `add-producer-pal`
+  against the stub remote script, which starts the stub device on `/load`. It
+  runs a copy of the portal with a stand-in `Producer_Pal.amxd` beside it.
+
+- `tests/portal-update-producer-pal.test.ts` — `ppal-manage`
+  `update-producer-pal` with the device up. The stub remote script plays Live:
+  on `/replace-producer-pal` it makes the stub device report the portal's
+  version. Covers the swap, already current, a device newer than the portal, a
+  refused swap, a remote script without the route, and a device that isn't
+  running. The stub device has no `ppal-connect`, so the connect hint is only
+  unit tested.
 
 Unit tests in `src/portal/tests/` already cover how tool names and group aliases
 resolve. These cover what only a real process can show: argv parsed by the
 shipped bundle, and the result on the wire.
+
+## The stub remote script
+
+`stub-remote-script.ts` stands in for the Producer Pal remote script inside
+Live. The portal finds it through `PPAL_REMOTE_SCRIPT_PORT` (`script.env`). It
+answers `/ping` and any route a test gives it, and records what it was sent.
+With `online: false` the port is reserved but nothing answers, like a Live with
+no script.
 
 ## The stub device
 

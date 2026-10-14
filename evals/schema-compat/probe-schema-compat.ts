@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * One-off probe: do LLM providers accept (and correctly fill) richer tool-input
@@ -16,7 +16,7 @@
  *
  * Run: node --env-file=.env evals/schema-compat/probe-schema-compat.ts [models...] [flags]
  *   models: provider/model or prefix-inferred (e.g. gemini-3.5-flash,
- *           mistral/mistral-small-latest, openrouter/anthropic/claude-haiku-4.5).
+ *           mistral/mistral-small-latest, openrouter/anthropic/claude-haiku-5.5).
  *           Defaults to one per supported provider; a missing API key skips it.
  *   flags:  --repeat=N   draws per cell (default 3; controls for sampling noise)
  *           --temp=N     sampling temperature (default: provider default; forcing

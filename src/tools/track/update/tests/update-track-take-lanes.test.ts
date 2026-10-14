@@ -1,9 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// SPDX-License-Identifier: MIT
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -13,7 +13,11 @@ import {
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { MAX_TAKE_LANES } from "#src/tools/constants.ts";
-import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
+import {
+  registerTakeLaneTrack,
+  stopMakingTakeLanesAfter,
+} from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
+import { updateTakeLane } from "../helpers/track-take-lanes.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
@@ -41,13 +45,12 @@ describe("updateTrack take lane targets", () => {
     expect(result).toStrictEqual({
       id: lane(0)!.id,
       path: "t0/l0",
-      name: "Take A",
       created: "l0",
     });
   });
 
-  // With no name to echo, the entry says what Live called the new lane.
-  it("appends a lane with no name, reading the name back off it", () => {
+  // Nothing else shows the name Live gave a lane this call made.
+  it("appends a lane with no name, reporting the name Live gave it", () => {
     const result = updateTrack({ path: "t0/l+" });
 
     expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
@@ -70,8 +73,8 @@ describe("updateTrack take lane targets", () => {
     expect(lane(0)?.set).toHaveBeenCalledWith("name", "Take A");
     expect(lane(1)?.set).toHaveBeenCalledWith("name", "Take B");
     expect(result).toStrictEqual([
-      { id: lane(0)!.id, path: "t0/l0", name: "Take A", created: "l0" },
-      { id: lane(1)!.id, path: "t0/l1", name: "Take B", created: "l1" },
+      { id: lane(0)!.id, path: "t0/l0", created: "l0" },
+      { id: lane(1)!.id, path: "t0/l1", created: "l1" },
     ]);
   });
 
@@ -86,7 +89,6 @@ describe("updateTrack take lane targets", () => {
     expect(result).toStrictEqual({
       id: lane(2)!.id,
       path: "t0/l2",
-      name: "Third",
       created: "l0-l2",
     });
   });
@@ -100,18 +102,50 @@ describe("updateTrack take lane targets", () => {
     expect(result).toStrictEqual({
       id: lane(1)!.id,
       path: "t0/l1",
-      name: "Renamed",
     });
   });
 
-  it("reads a lane with no name param as nothing to change", () => {
+  it("keeps the rename when reading the name back throws", () => {
     registerTakeLaneTrack({ initialLanes: 1 });
 
-    expect(updateTrack({ path: "t0/l0" })).toStrictEqual({
+    const original = lane(0)!.get.getMockImplementation()!;
+
+    lane(0)!.get.mockImplementation((property: string) => {
+      if (property === "name") {
+        throw new Error("Live went away");
+      }
+
+      return original(property);
+    });
+
+    const result = updateTrack({ path: "t0/l0", name: "Renamed" });
+
+    expect(lane(0)?.set).toHaveBeenCalledWith("name", "Renamed");
+    expect(result).toStrictEqual({
+      id: lane(0)!.id,
+      path: "t0/l0",
+      detail: expect.stringContaining("already changed: name"),
+    });
+  });
+
+  it("reports the name Live kept when it isn't the one sent", () => {
+    registerTakeLaneTrack({ initialLanes: 1 });
+    // Live ignores the write, so the lane keeps its old name.
+    lane(0)!.set.mockImplementation(() => {});
+
+    const result = updateTrack({ path: "t0/l0", name: "Renamed" });
+
+    expect(result).toStrictEqual({
       id: lane(0)!.id,
       path: "t0/l0",
       name: "Lane",
     });
+  });
+
+  it("refuses a lane that exists and nothing to do to it", () => {
+    registerTakeLaneTrack({ initialLanes: 1 });
+
+    expect(() => updateTrack({ path: "t0/l0" })).toThrow("nothing to update");
   });
 
   it("mixes tracks and lanes in one list, pairing the names in order", () => {
@@ -127,8 +161,8 @@ describe("updateTrack take lane targets", () => {
 
     expect(result).toStrictEqual([
       { id: "t1", path: "t1" },
-      { id: lane(0)!.id, path: "t0/l0", name: "First", created: "l0" },
-      { id: lane(1)!.id, path: "t0/l1", name: "Second", created: "l1" },
+      { id: lane(0)!.id, path: "t0/l0", created: "l0" },
+      { id: lane(1)!.id, path: "t0/l1", created: "l1" },
     ]);
   });
 
@@ -144,33 +178,39 @@ describe("updateTrack take lane targets", () => {
     expect(result).toStrictEqual({
       id: lane(0)!.id,
       path: "t0/l0",
-      name: "Take A",
       created: "l0",
-      detail: "a take lane takes only name; ignored color, mute",
+      detail: "color, mute ignored: a take lane takes only name",
     });
   });
 
-  it("skips a lane the call could do nothing to", () => {
+  it("skips a lane the call could do nothing to, and the mention before it", () => {
     registerTakeLaneTrack({ initialLanes: 1 });
 
     const result = updateTrack({ path: "t0/l0,t0/l0", color: "#FF0000" });
 
     expect(result).toStrictEqual([
       {
-        id: lane(0)!.id,
         path: "t0/l0",
-        name: "Lane",
         ok: false,
-        detail: "a take lane takes only name; ignored color",
+        detail: 'not written: "t0/l0" was meant to replace it, but failed',
       },
       {
-        id: lane(0)!.id,
         path: "t0/l0",
-        name: "Lane",
         ok: false,
-        detail: "a take lane takes only name; ignored color",
+        detail: "color ignored: a take lane takes only name",
       },
     ]);
+  });
+
+  it("throws for a lone lane the call could do nothing to", () => {
+    registerTakeLaneTrack({ initialLanes: 1 });
+
+    expect(() => updateTrack({ path: "t0/l0", gainDb: -3 })).toThrow(
+      "gainDb ignored: a take lane takes only name",
+    );
+    expect(() => updateTrack({ id: lane(0)!.id, color: "#FF0000" })).toThrow(
+      "color ignored: a take lane takes only name",
+    );
   });
 
   it("names a lane by the id it reported, with the same entry back", () => {
@@ -183,7 +223,6 @@ describe("updateTrack take lane targets", () => {
     expect(byId).toStrictEqual({
       id: lane(1)!.id,
       path: "t0/l1",
-      name: "Renamed",
     });
   });
 
@@ -202,25 +241,27 @@ describe("updateTrack take lane targets", () => {
     });
 
     expect(result).toStrictEqual([
-      { id: existing, path: "t0/l0", name: "First" },
+      { id: existing, path: "t0/l0" },
       { id: "t1", path: "t1" },
-      { id: lane(1)!.id, path: "t0/l1", name: "Third", created: "l1" },
+      { id: lane(1)!.id, path: "t0/l1", created: "l1" },
     ]);
   });
 
-  it("says which params a lane named by id had no use for", () => {
+  it("skips a lane named by id that the call could do nothing to", () => {
     registerTakeLaneTrack({ initialLanes: 1 });
 
-    const result = updateTrack({ id: lane(0)!.id, color: "#FF0000" });
+    const id = lane(0)!.id;
+    const result = updateTrack({ id: `${id},${id}`, color: "#FF0000" });
 
     expect(lane(0)?.set).not.toHaveBeenCalledWith("color", expect.anything());
-    expect(result).toStrictEqual({
-      id: lane(0)!.id,
-      path: "t0/l0",
-      name: "Lane",
-      ok: false,
-      detail: "a take lane takes only name; ignored color",
-    });
+    expect(result).toStrictEqual([
+      {
+        id,
+        ok: false,
+        detail: `not written: id ${id} was meant to replace it, but failed`,
+      },
+      { id, ok: false, detail: "color ignored: a take lane takes only name" },
+    ]);
   });
 
   it("counts a lane named by id against the cap without adding to it", () => {
@@ -234,7 +275,6 @@ describe("updateTrack take lane targets", () => {
     expect(result).toStrictEqual({
       id: lane(MAX_TAKE_LANES - 1)!.id,
       path: `t0/l${MAX_TAKE_LANES - 1}`,
-      name: "Last",
     });
   });
 
@@ -250,9 +290,8 @@ describe("updateTrack take lane targets", () => {
     expect(result).toStrictEqual([
       expect.objectContaining({
         path: `t0/l${MAX_TAKE_LANES + 1}`,
-        name: "Keep",
       }),
-      expect.objectContaining({ path: "t0/l2", name: "Also" }),
+      expect.objectContaining({ path: "t0/l2" }),
     ]);
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
   });
@@ -308,23 +347,11 @@ describe("updateTrack take lane targets", () => {
     });
 
     const result = updateTrack({
-      path: "rt0/l0,mt/l0,t1/l0,t9/l0,t0/l+",
-      name: "A,B,C,D,E",
+      path: "t1/l0,t9/l0,t0/l+",
+      name: "A,B,C",
     });
 
     expect(result).toStrictEqual([
-      {
-        path: "rt0/l0",
-        ok: false,
-        detail:
-          'invalid path "rt0/l0" - a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',
-      },
-      {
-        path: "mt/l0",
-        ok: false,
-        detail:
-          'invalid path "mt/l0" - a take lane is "t<track>/l<lane>" (e.g. "t0/l0"); only regular tracks have take lanes',
-      },
       {
         path: "t1/l0",
         ok: false,
@@ -335,8 +362,76 @@ describe("updateTrack take lane targets", () => {
         ok: false,
         detail: 'no track at path "t9/l0"; ppal-create-track adds tracks',
       },
-      { id: lane(0)!.id, path: "t0/l0", name: "E", created: "l0" },
+      { id: lane(0)!.id, path: "t0/l0", created: "l0" },
     ]);
+  });
+
+  it.each(["rt0/l0", "mt/l0"])(
+    "refuses the whole call for %s, which can't be parsed as a lane",
+    (path) => {
+      expect(() => updateTrack({ path: `t0/l+,${path}`, name: "A,B" })).toThrow(
+        `invalid path "${path}" - a take lane is "t<track>/l<lane>"`,
+      );
+      expect(track.call).not.toHaveBeenCalled();
+    },
+  );
+
+  // Appending a lane is something asked, so the refusal that comes back is the
+  // track's own, not "nothing to update".
+  it("says why an appended lane can't be had, rather than that nothing was asked", () => {
+    mockNonExistentObjects();
+    registerMockObject("group", {
+      path: livePath.track(1),
+      properties: { is_foldable: 1 },
+    });
+
+    expect(() => updateTrack({ path: "t9/l+" })).toThrow(
+      'no track at path "t9/l+"; ppal-create-track adds tracks',
+    );
+    expect(() => updateTrack({ path: "t1/l+" })).toThrow(
+      'only regular tracks have take lanes; "t1" is a group track',
+    );
+    expect(updateTrack({ path: "t9/l+,t1/l+" })).toStrictEqual([
+      {
+        path: "t9/l+",
+        ok: false,
+        detail: 'no track at path "t9/l+"; ppal-create-track adds tracks',
+      },
+      {
+        path: "t1/l+",
+        ok: false,
+        detail: 'only regular tracks have take lanes; "t1" is a group track',
+      },
+    ]);
+  });
+
+  it("says nothing was made when Live refuses the first lane", () => {
+    stopMakingTakeLanesAfter(track, 0);
+    const landed = vi.fn();
+
+    expect(() =>
+      updateTakeLane(
+        { entry: "t0/l+", trackIndex: 0, laneIndex: null, work: true },
+        "Take A",
+        [],
+        landed,
+      ),
+    ).toThrow("Live is unhappy");
+    expect(landed).not.toHaveBeenCalled();
+  });
+
+  it("leaves an existing lane as it is when asked nothing of it", () => {
+    registerTakeLaneTrack({ initialLanes: 1 });
+
+    const result = updateTakeLane(
+      { entry: "t0/l0", trackIndex: 0, laneIndex: 0, work: false },
+      undefined,
+      [],
+      vi.fn(),
+    );
+
+    expect(result).toStrictEqual({ id: lane(0)!.id, path: "t0/l0" });
+    expect(lane(0)?.set).not.toHaveBeenCalled();
   });
 
   it("throws for a lone lane target it can't reach", () => {

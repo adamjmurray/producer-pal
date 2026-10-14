@@ -1,11 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A published param and the deprecated one it replaced both naming something
 // has no reading the tool can act on: honoring either would use a target or a
-// destination the caller didn't ask for. So the call never picks.
+// destination the caller didn't ask for. So the call never picks, and refuses
+// in the one wording every target named twice gets (refuseNamedTwice).
 //
 // Reading both through the presence helpers is half the guard. A value the
 // schema coerced from a JSON null ("null" as the whole value, or an all-empty
@@ -13,7 +14,10 @@
 // conflict — a bug that has been fixed once per param until this became one
 // function.
 
-import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
+import {
+  namedParam,
+  refuseNamedTwice,
+} from "#src/tools/shared/helpers/param-presence.ts";
 import { namedHiddenPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 
 /** The two spellings of one thing, as the tool received them. */
@@ -26,7 +30,7 @@ export interface DoubledSpellingArgs {
   alias: string;
   /** The deprecated param's value, as received */
   aliasValue: string | null | undefined;
-  /** What the two both name, for the message ("a clip", "a destination") */
+  /** What the two both name, for the message ("clip", "destination") */
   noun: string;
 }
 
@@ -40,7 +44,7 @@ export interface NamedSpelling {
  * Reads the pair, refusing a call that spelled it both ways. The conflict is in
  * the args, so it is known before anything runs: refusing is atomic and the
  * caller retries with one spelling. Warning instead would return a
- * success-shaped result for the rest of a call we couldn't read (ADR-0035).
+ * success-shaped result for the rest of a call we couldn't read.
  * @param args - The two params as the tool received them
  * @returns What each spelling named
  */
@@ -49,12 +53,13 @@ export function refuseDoubledSpelling(
 ): NamedSpelling {
   const named = readSpellings(args);
 
-  if (named.value != null && named.aliasValue != null) {
-    throw new Error(
-      `${args.param} and ${args.alias} both name ${args.noun}; ` +
-        `use ${args.param} alone (${args.alias} is deprecated)`,
-    );
-  }
+  refuseNamedTwice({
+    param: args.param,
+    value: named.value,
+    noun: args.noun,
+    also: { [args.alias]: named.aliasValue },
+    hint: `${args.alias} is deprecated`,
+  });
 
   return named;
 }

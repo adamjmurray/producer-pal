@@ -26,7 +26,9 @@ no other app to install.
 - **New conversation** - Start a fresh conversation
 - **Bookmark star** - Pin the active conversation
 - **Logo, title & version** - Shows an "update" link when a newer version is
-  available
+  available, and "script update" or "restart Live" when the
+  [remote script](/guide/remote-script#updating) needs updating or Live needs a
+  restart to load the installed version
 - **Connection status** - Shows "Ready" when connected to Ableton
 
 ### Right
@@ -98,6 +100,10 @@ The toolbar at the top of the history panel has buttons to:
   is newer
 
 A notification banner confirms the result of each operation.
+
+An imported conversation keeps the system prompt it was exported with. If that
+prompt differs from yours, the conversation shows a warning with the full
+prompt, since the model will follow it. Only import files you trust.
 
 ## Conversations
 
@@ -236,7 +242,7 @@ AI out loud. It's available on two providers, each requiring that provider's API
 key:
 
 - **OpenAI**: the **GPT Realtime 2.1 (Voice)** model
-- **Google**: the **Gemini 3.1 Flash Live (Voice)** model
+- **Google**: the **Gemini 3.8 Live (Voice)** model
 
 To enter voice mode, open [Settings](#settings), set the **Provider**, and
 select that provider's voice model. The chat composer is replaced by the voice
@@ -326,7 +332,8 @@ The Connection tab is where you choose and configure your AI provider and model:
 <img src="/img/producer-pal-chat-settings-connection.png" alt="Connection settings" width="500"/>
 
 - **Provider** - Choose from Google, Mistral, OpenAI, Anthropic, Ollama (local),
-  Bionic / LM Studio (local), OpenRouter, or Custom (OpenAI-compatible)
+  Bionic / LM Studio (local), OpenRouter, Vercel AI Gateway, or Custom
+  (OpenAI-compatible)
 - **API Key** - Your API key (for cloud providers)
 - **Test Connection** - Verify your provider settings work before saving
 - **Model** - Select a model or enter a custom model name
@@ -362,7 +369,7 @@ The default is almost always right. Change it if:
 #### Voice
 
 There's no separate Voice tab. Select a voice model on this **Connection** tab
-(**GPT Realtime 2.1 (Voice)** for OpenAI, **Gemini 3.1 Flash Live (Voice)** for
+(**GPT Realtime 2.1 (Voice)** for OpenAI, **Gemini 3.8 Live (Voice)** for
 Google) and a **Voice** dropdown and a collapsible **Voice Settings** section
 appear below it. See [Voice Mode](#voice-mode) for what it does.
 
@@ -479,7 +486,7 @@ library search and the AI stops being told how to search a library it can't
 reach. The saving is therefore bigger than the tool's own schema, and you don't
 have to trim skills by hand to match your toolset.
 
-The header's count is out of all 23 tools, so it reads **21/23** out of the box:
+The header's count is out of all 24 tools, so it reads **22/24** out of the box:
 the two experimental ones (**Live API** and **Subagent**, both under
 **Advanced**) are off until you switch them on. The denominator stays put as
 they move, so the fraction always means how much of the full set you're running.
@@ -535,17 +542,42 @@ notation it has been using all along, and reopening an old conversation resumes
 in whatever notation its notes were written in. The AI is never taught one
 notation and then handed notes in another.
 
-### Remote Script
+### Installation
 
-The Remote Script tab installs the optional Producer Pal
-[remote script](/guide/remote-script), which lets the AI load plug-ins, Max for
-Live devices, and presets. It shows whether the script is installed and whether
-Live is running it, and offers an update when your Producer Pal build has a
-newer one.
+The Installation tab puts Producer Pal's files in your Live User Library. Both
+sections use the one User Library path at the top of the tab.
 
-<img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="Remote Script tab" width="500"/>
+- **Device:** copies the Producer Pal device you loaded into your User Library,
+  so every Live Set can find it. The device shows a **Finish installation…**
+  button until it's there (and the remote script is current); the button opens
+  this tab. A development (unfrozen) device can't be copied. A Live Set
+  remembers the file a device was loaded from, so a device loaded from Downloads
+  stays tied to that file. Once the [remote script](/guide/remote-script) is
+  running and your User Library has a copy that is the same version or newer,
+  **Swap this device for the User Library copy** replaces the device in your Set
+  with it. The AI connection drops for a moment while the new device starts.
+  Save your Live Set afterwards so it keeps using the User Library copy.
+- **Remote script:** installs the Producer Pal
+  [remote script](/guide/remote-script), which adds clip automation, undo and
+  redo, and loading plug-ins, Max for Live devices and presets. It shows whether
+  the script is installed and whether Live is running it, and offers an update
+  when your Producer Pal build has a newer one. The header also flags this, so
+  you can spot it without opening Settings.
+
+<img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="Installation tab" width="500"/>
 
 See the [remote script guide](/guide/remote-script) to install and enable it.
+
+Two checkboxes at the bottom of the tab control the notices on the device:
+
+- **Warn when installation is incomplete** - On by default. The device shows
+  **Finish installation…** while its User Library copy or the remote script is
+  missing or out of date. It gives way to the **Update available** notice, which
+  sits in the same spot. Turn this off and the device never shows it.
+- **Automatically check for new versions** - On by default. Producer Pal asks
+  GitHub once per device load whether a newer release exists, and shows an
+  `(update)` link next to the version number when there is one. Turn this off
+  and it never contacts GitHub.
 
 ### Preferences
 
@@ -559,10 +591,6 @@ The Preferences tab controls visual preferences and conversation management:
   header and settings
 - **Show message token usage** - Display token counts after each AI response
   (see [Token Usage](#token-usage) below)
-- **Automatically check for new versions** - On by default. Producer Pal asks
-  GitHub once per device load whether a newer release exists, and shows an
-  `(update)` link next to the version number when there is one. Turn this off
-  and it never contacts GitHub.
 - **Tool steps per turn** - How much tool work one turn may do before it stops
   and hands control back (5-100, default 25). Raise it if long arrangement tasks
   keep stopping partway; lower it to keep a looping model on a shorter leash.

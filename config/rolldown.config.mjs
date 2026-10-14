@@ -1,14 +1,19 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "rolldown";
 import { replacePlugin } from "rolldown/plugins";
+import {
+  DEV_BUILD_MARKER,
+  hasDevBuildFlags,
+} from "../scripts/build-and-release/helpers/build-flag-guard.ts";
 import { BUILD_SHA } from "./build-sha.mjs";
+import { bundleDevice } from "./rolldown-plugin-bundle-device.mjs";
 import { copyFiles } from "./rolldown-plugin-copy.mjs";
 import { embedRemoteScript } from "./rolldown-plugin-embed-remote-script.mjs";
 import { inlineChatUI } from "./rolldown-plugin-inline-chat-ui.mjs";
@@ -24,6 +29,10 @@ const licensePath = join(rootDir, "LICENSE");
 const licenseText = readFileSync(licensePath, "utf-8");
 
 const thirdPartyLicensesFolder = join(rootDir, "licenses");
+
+// The two folders the portal is written to.
+const extensionDir = join(rootDir, "claude-desktop-extension");
+const npmDir = join(rootDir, "npm");
 
 const envVarReplacements = {
   "process.env.BUILD_SHA": JSON.stringify(BUILD_SHA),
@@ -63,6 +72,12 @@ const outputBase = {
   minify: false,
 };
 
+// A build with any dev-only flag on says so in its header. The release steps
+// refuse a device carrying it (scripts/build-and-release/helpers/build-flag-guard.ts).
+const devBuildHeader = hasDevBuildFlags(process.env)
+  ? `/* ${DEV_BUILD_MARKER} */\n`
+  : "";
+
 // Rolldown's re-export trailer, always the last statement in the chunk.
 const EXPORT_TRAILER = /\nexport\s*\{[^{}]*\};?\s*$/;
 
@@ -71,7 +86,7 @@ const addLicenseHeader = (options = {}) => ({
   renderChunk(code) {
     const shebang = options.shebang ? `${options.shebang}\n` : "";
 
-    return `${shebang}/*\n${licenseText}${
+    return `${shebang}${devBuildHeader}/*\n${licenseText}${
       options.includeThirdPartyLicenses
         ? "\nThis file includes bundled dependencies.\nSee https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-party licenses."
         : ""
@@ -140,11 +155,11 @@ export default defineConfig([
     output: [
       {
         ...outputBase,
-        file: join(rootDir, "claude-desktop-extension/producer-pal-portal.js"),
+        file: join(extensionDir, "producer-pal-portal.js"),
       },
       {
         ...outputBase,
-        file: join(rootDir, "npm/producer-pal-portal.js"),
+        file: join(npmDir, "producer-pal-portal.js"),
       },
     ],
     platform: "node",
@@ -167,24 +182,33 @@ export default defineConfig([
         shebang: "#!/usr/bin/env node",
       }),
       replacePlugin(envVarReplacements, { preventAssignment: true }),
+      // Same reason as the device bundle: the portal installs the remote script
+      // and must not read remote-script/ off disk when it runs.
+      embedRemoteScript(),
+      // The frozen device ships as a file beside the portal, not inside it.
+      // Only `npm run release:mcpb` sets this; plain builds bundle none.
+      bundleDevice({
+        dirs: [extensionDir, npmDir],
+        deviceFile: process.env.PRODUCER_PAL_DEVICE_FILE,
+      }),
       copyFiles([
-        { src: licensePath, dest: "claude-desktop-extension" },
+        { src: licensePath, dest: extensionDir },
         {
           src: thirdPartyLicensesFolder,
-          dest: "claude-desktop-extension",
+          dest: extensionDir,
         },
-        { src: licensePath, dest: "npm" },
+        { src: licensePath, dest: npmDir },
         {
           src: [
             join(thirdPartyLicensesFolder, "mcp-typescript-sdk-license"),
             join(thirdPartyLicensesFolder, "zod-license"),
             join(thirdPartyLicensesFolder, "README.md"),
           ],
-          dest: "npm/licenses",
+          dest: join(npmDir, "licenses"),
         },
         {
           src: join(rootDir, "assets/image/producer-pal-logo.svg"),
-          dest: "npm",
+          dest: npmDir,
         },
       ]),
     ],

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Sources run in call order, so a copy landing on a later source of the same
 // call would destroy it before its turn. The call is refused before any copy.
@@ -23,6 +23,7 @@ import {
   type LaneCopyEntry,
   registerLaneSource,
   registerLiveSet,
+  registerMainLaneSource,
 } from "#src/tools/actions/duplicate/helpers/duplicate-take-lane-test-helpers.ts";
 import { updateClipMock } from "../../setup.ts";
 
@@ -87,6 +88,34 @@ function registerArrangementClip(
       length,
     },
   });
+}
+
+/**
+ * Source clips A and B, back to back on track 0's arrangement.
+ * @param a - A's [start, end, loop length] in beats
+ * @param b - B's [start, end] in beats
+ */
+function registerClipsAAndB(
+  a: [number, number, number?],
+  b: [number, number],
+): void {
+  registerArrangementClip("clipA", livePath.track(0).arrangementClip(0), ...a);
+  registerArrangementClip("clipB", livePath.track(0).arrangementClip(1), ...b);
+}
+
+/**
+ * Track 0 with two overlapping lanes to copy, and an empty track 1.
+ * @returns Track 1's mock
+ */
+function registerTwoLaneSourcesAndTrack1(): RegisteredMockObject {
+  registerLiveSet();
+  registerTakeLaneTrack({
+    trackIndex: 0,
+    initialLanes: 2,
+    initialLaneClips: [[{ start: 0, end: 4 }], [{ start: 2, end: 6 }]],
+  });
+
+  return registerTakeLaneTrack({ trackIndex: 1 });
 }
 
 /**
@@ -176,18 +205,7 @@ describe("duplicate - a copy onto another source", () => {
   describe("arrangement", () => {
     // The natural "shift a row" call: A's copy clears B before B's turn.
     it("refuses a copy over a later source's span", async () => {
-      registerArrangementClip(
-        "clipA",
-        livePath.track(0).arrangementClip(0),
-        0,
-        16,
-      );
-      registerArrangementClip(
-        "clipB",
-        livePath.track(0).arrangementClip(1),
-        16,
-        32,
-      );
+      registerClipsAAndB([0, 16], [16, 32]);
 
       const track = registerTrack0();
 
@@ -203,18 +221,7 @@ describe("duplicate - a copy onto another source", () => {
     });
 
     it("copies over an earlier source's span once its turn has run", async () => {
-      registerArrangementClip(
-        "clipA",
-        livePath.track(0).arrangementClip(0),
-        0,
-        16,
-      );
-      registerArrangementClip(
-        "clipB",
-        livePath.track(0).arrangementClip(1),
-        16,
-        32,
-      );
+      registerClipsAAndB([0, 16], [16, 32]);
 
       const track = registerTrack0();
 
@@ -237,18 +244,7 @@ describe("duplicate - a copy onto another source", () => {
     });
 
     it("copies when a copy only touches another source's start", async () => {
-      registerArrangementClip(
-        "clipA",
-        livePath.track(0).arrangementClip(0),
-        0,
-        16,
-      );
-      registerArrangementClip(
-        "clipB",
-        livePath.track(0).arrangementClip(1),
-        32,
-        48,
-      );
+      registerClipsAAndB([0, 16], [32, 48]);
 
       const track = registerTrack0();
 
@@ -272,18 +268,7 @@ describe("duplicate - a copy onto another source", () => {
 
     // Without the length, A's copy would end at beat 8, well short of B.
     it("measures a copy by its arrangementLength", async () => {
-      registerArrangementClip(
-        "clipA",
-        livePath.track(0).arrangementClip(0),
-        0,
-        4,
-      );
-      registerArrangementClip(
-        "clipB",
-        livePath.track(0).arrangementClip(1),
-        16,
-        32,
-      );
+      registerClipsAAndB([0, 4], [16, 32]);
 
       const track = registerTrack0();
 
@@ -299,22 +284,10 @@ describe("duplicate - a copy onto another source", () => {
       expectNoArrangementCopy(track);
     });
 
-    // A length at or past the loop lands the whole 4-bar clip first, so the
-    // copy at bar 5 clears into B even though it ends up 2 bars long.
-    it("measures a looped copy by its full extent when it lands whole", async () => {
-      registerArrangementClip(
-        "clipA",
-        livePath.track(0).arrangementClip(0),
-        0,
-        16,
-        4,
-      );
-      registerArrangementClip(
-        "clipB",
-        livePath.track(0).arrangementClip(1),
-        24,
-        40,
-      );
+    // A length that isn't shorter than the clip's 4-bar span lands the whole
+    // span first, so the copy at bar 5 clears into B at bar 7.
+    it("measures a looped copy by its full span when the length isn't shorter", async () => {
+      registerClipsAAndB([0, 16, 4], [24, 40]);
 
       const track = registerTrack0();
 
@@ -323,11 +296,27 @@ describe("duplicate - a copy onto another source", () => {
           type: "clip",
           id: "clipA,clipB",
           toPath: "t0[5|1],t0[13|1]",
-          arrangementLength: "2bar",
+          arrangementLength: "4bar",
         }),
       ).rejects.toThrow(overwrite("t0[5|1]", 'id "clipB"'));
 
       expectNoArrangementCopy(track);
+    });
+
+    // A shorter length is cut to size off to the side, so the copy clears only
+    // 2 bars and never reaches B.
+    it("measures a looped copy by the length asked when it is shorter than its span", async () => {
+      registerClipsAAndB([0, 16, 4], [24, 40]);
+      registerTrack0();
+
+      const result = (await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        toPath: "t0[5|1],t0[13|1]",
+        arrangementLength: "2bar",
+      })) as Array<{ detail?: string }>;
+
+      expect(result[0]?.detail ?? "").not.toContain("overwrite");
     });
 
     it("measures a session source by its clip length", async () => {
@@ -384,14 +373,7 @@ describe("duplicate - a copy onto another source", () => {
 
   describe("lane copies", () => {
     it("refuses a lane copied over another source lane's clips", async () => {
-      registerLiveSet();
-      registerTakeLaneTrack({
-        trackIndex: 0,
-        initialLanes: 2,
-        initialLaneClips: [[{ start: 0, end: 4 }], [{ start: 2, end: 6 }]],
-      });
-
-      const track1 = registerTakeLaneTrack({ trackIndex: 1 });
+      const track1 = registerTwoLaneSourcesAndTrack1();
 
       await expect(
         duplicateToLanes({ path: "t0/l0,t0/l1", toPath: "t0/l1,t1/l0" }),
@@ -435,13 +417,7 @@ describe("duplicate - a copy onto another source", () => {
     });
 
     it("copies a lane over an earlier source lane once its turn has run", async () => {
-      registerLiveSet();
-      registerTakeLaneTrack({
-        trackIndex: 0,
-        initialLanes: 2,
-        initialLaneClips: [[{ start: 0, end: 4 }], [{ start: 2, end: 6 }]],
-      });
-      registerTakeLaneTrack({ trackIndex: 1 });
+      registerTwoLaneSourcesAndTrack1();
 
       const result = await duplicateToLanes<LaneCopyEntry[]>({
         path: "t0/l0,t0/l1",
@@ -471,6 +447,53 @@ describe("duplicate - a copy onto another source", () => {
       expect(result.map((entry) => entry.path)).toStrictEqual([
         "t0/l1",
         "t1/l0",
+      ]);
+    });
+
+    it("leaves a destination refused in the plan out of the check", async () => {
+      registerTwoLaneSourcesAndTrack1();
+
+      const result = await duplicateToLanes<LaneCopyEntry[]>({
+        path: "t0/l0,t0/l1",
+        toPath: "t0/l0,t1/l0",
+      });
+
+      expect(result[1]?.path).toBe("t1/l0");
+      expect(result[0]).toStrictEqual({
+        path: "t0/l0",
+        ok: false,
+        detail: expect.stringContaining("is the source lane"),
+      });
+    });
+
+    // A return track holds no arrangement clips, so it sits on no lane a copy
+    // could land on.
+    it("checks nothing against a source track with no lane", async () => {
+      registerMainLaneSource([0]);
+      registerMockObject("return", {
+        path: livePath.returnTrack(0),
+        properties: {
+          has_midi_input: 1,
+          arrangement_clips: children(),
+          take_lanes: children(),
+        },
+      });
+      registerTakeLaneTrack({ trackIndex: 1 });
+
+      const result = await duplicateToLanes<LaneCopyEntry[]>({
+        id: "return,src_track",
+        toPath: "t1/l0,t1/l1",
+      });
+
+      expect(result[0]).toStrictEqual(
+        expect.objectContaining({
+          path: "t1/l0",
+          ok: false,
+          detail: expect.stringContaining("has no arrangement clips"),
+        }),
+      );
+      expect(result[1]?.clips.map((clip) => clip.path)).toStrictEqual([
+        "t1/l1[1|1]",
       ]);
     });
   });

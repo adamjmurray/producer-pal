@@ -8,7 +8,7 @@ from scratch.
 
 ## Live API Constraints
 
-These constraints drive every design decision. When something seems
+These constraints drive every design decision; when something seems
 over-engineered, one of these is usually why.
 
 ### Arrangement length is Immutable for Looped Clips
@@ -101,7 +101,7 @@ length. To create an audio clip with a specific arrangement length:
 2. Set content markers
 3. `duplicate_clip_to_arrangement` at the target position (inherits session
    length)
-4. Clean up the session clip
+4. Clean up with `removeSessionClip` (the clip, and any scene made for it)
 
 MIDI clips don't have this problem — `create_midi_clip` accepts position and
 length.
@@ -143,8 +143,9 @@ loop.
 This matters when you select a sub-region smaller than the clip's content and
 then double it. That takes **two calls**: `update-clip` refuses `start`/`length`
 alongside `duplicateLoop`, because they set the region being doubled and the
-combined call reads two ways (ADR-0040). `firstStart` still composes — it moves
-the playback marker, not the loop region.
+combined call reads two ways
+([why](../specs/tool-behavior/clips-playback-and-sends.md#duplicateloop)).
+`firstStart` still composes — it moves the playback marker, not the loop region.
 
 Empirical example (e2e, real Live, 2026-06-28): a 2-bar looping MIDI clip with
 `C3` at bar 1 and `E3` at bar 2, then `{ length: "1bar" }` followed by
@@ -175,7 +176,8 @@ can't reproduce Live's native shift.
 All complex arrangement operations use this pattern to isolate changes from
 adjacent clips:
 
-1. Read `song_length` to find a holding area beyond all existing content
+1. Find the lane's last clip end (`LaneView.lastEnd`) to place a holding area
+   beyond all content
 2. Duplicate clip there (safe working space far from actual content)
 3. Perform trim/adjustment operations there
 4. Duplicate result to final arrangement position
@@ -207,11 +209,15 @@ Files: `arrangement-tiling-clips.ts` (`createAndDeleteTempClip`),
 
 When you need an arrangement audio clip with a specific length:
 
-1. `createAudioClipInSession(track, length, filePath)` — creates in session view
+1. `createAudioClipInSession(track, length, filePath, report?)` — creates in
+   session view. If it throws, it removes what it made (clip, scene) first.
 2. Set content markers (`loop_start`, `loop_end`, `start_marker`, `end_marker`)
 3. `duplicate_clip_to_arrangement` at target position — inherits session clip's
    arrangement length
-4. Clean up session clip via `slot.call("delete_clip")`
+4. Clean up with `removeSessionClip`, in a `finally`: it removes the session
+   clip and the scene `createAudioClipInSession` made when the last one held
+   clips. It never throws; what it couldn't remove goes on the clip's entry
+   (`reportScratch`), or is a warning for the song extension, which has none.
 
 Files: `arrangement-tiling-clips.ts` (`createAudioClipInSession`),
 `unlooped-lengthening.ts` (`lengthenWarpedUnloopedAudio`)
@@ -236,6 +242,44 @@ algorithm. The workaround is guarded by a disable flag for periodic retesting.
 
 Files: `arrangement-tiling.ts` (`clearClipAtDuplicateTarget`,
 `clearOverlappingClip`)
+
+### Stamping a Session Clip's Automation
+
+Copying a session clip to the arrangement writes its automation into the lane
+over the copy's own span, and nothing else does (arrangement copies, tiles and
+holding-area moves write none). So at any other length than the clip's own, the
+lane would be wrong: a shortened copy goes through the holding area and writes
+past the song end, and a lengthened one tiles arrangement copies that carry
+none. `createClipsForLength` writes the lane first instead:
+
+1. Copy the session clip to a scratch slot on the destination track
+   (`openScratchSlot`, the same slot and scene logic `createAudioClipInSession`
+   uses).
+2. Work out the content playback goes through over the length: a looped clip
+   plays start marker to loop end (pre-roll included), then loop start to loop
+   end, cut at the length; an unlooped one plays on from its start marker
+   (`contentSegments`).
+3. For each stretch, set the scratch clip's markers to show just that, copy it
+   to the arrangement at its place, and delete the copy at once. The lane keeps
+   what the copy wrote. Looped clips set loop and markers (`clipRegionWrites`
+   orders them); unlooped ones set the start marker and loop end. Never toggle
+   `looping`: a warped clip's loop end resets.
+4. Copy the source onto the scratch slot again (exact markers), call
+   `clear_all_envelopes`, and run the normal shorten or lengthen with that
+   envelope-free clip as the source. Nothing it does touches the lane.
+
+Cost: about length / loop length + 2 copy and delete pairs. It is skipped when
+`has_envelopes` is false, for unwarped audio, for arrangement sources and when
+the length is the clip's own.
+
+The stamps clear what the final copy would clear (the same span), so the
+overwrite report is unchanged. Stamping stops at the request deadline or at the
+first failure and says how far the lane got on the clip's entry; the clip is
+still placed. A failure after the lane changed says so (`already changed:`). The
+scratch copy and its scene are always removed.
+
+Files: `stamp-automation.ts`, `content-segments.ts` (under
+`src/tools/actions/duplicate/helpers/clip/`)
 
 ### File Content Boundary Detection
 
@@ -385,20 +429,30 @@ Entry: `handleArrangementStartOperation()` in `arrangement-move.ts`
   instead of over the clip's old neighbors. Take-lane moves re-create the clip
   and take-lane clips refuse `arrangementLength`, so they keep this order too.
 
-If the second step throws, the clip's entry says what landed:
-`shortened, but the move didn't finish` or
-`moved, but arrangementLength didn't finish`. A move refused after the
-shortening adds `shortened in place` to the refusal.
+Shortening can't be undone, so a move that would be refused (a track that won't
+take the clip) is checked first: nothing is shortened, and the refusal is the
+reason on the entry. If Live throws after a step landed, the entry names what
+exists now (the copy, not the source it replaced) and says what landed:
+`<error>; already changed: shortened, copy at t0[5|1]` (a lengthening says
+`lengthened`, once it grew the clip or laid a tile). A resize that throws after
+a move landed says `moved, but arrangementLength didn't finish`, and a move
+refused after the shortening adds `shortened in place` to the refusal.
 
 **The duplicate clears its destination range first**, so it destroys whatever
 sat there — including another clip the same call names. A take-lane create does
 the same on its own lane. `update-clip-move-order.ts` orders the moves to avoid
 that where an order exists, keying each span by track AND lane so clips on
 different lanes never hold each other up. Two clips sent to one spot have no
-such order — that stack is what the call asked for. `buried-clips.ts` reports
-what is left: a clip found gone before its turn gets `deleted: true` and the
-address it had instead of an update read off a dead object, and a read-back at
-the end of the batch marks an entry whose clip a later sibling buried.
+such order — that stack is what the call asked for, and the write pipeline
+settles it before anything is written: a target a later one covers whole is left
+unwritten (`overwritten later in this call by t0[5|1]`, no `ok`), and one it
+covers only part of is written and says
+`shortened by t0[5|1] later in this call`. What nobody predicted is reported
+once the writes are done (`settle-clip-update.ts`): an entry whose clip a later
+write cleared drops its `id` and says it was overwritten, or follows what is
+left of it. A clip found gone before its turn is skipped
+(`not updated: the clip was overwritten earlier in this call`). Nothing is ever
+reported `deleted` unless the call asked.
 
 ### Splitting
 
@@ -423,13 +477,12 @@ A split can't be combined with `toPath`, `toSlot`, `arrangementStart` or
 `arrangementLength`, whatever they name. `refuseSplitWithMove()` throws before
 anything is cut. Live keeps only the first piece on the id that was named, so a
 list reaches that piece and no other; a single value reaches every piece, which
-is worse. One `arrangementStart` stacks them all on one bar and
-`computeOverwritePlan` deletes all but the last — an optimizer doing as it is
-told, not a guard. One `arrangementLength` longer than a piece tiles copies in
-from that piece's end, which is where the next piece starts, so each piece
-buries the one after it. Telling a safe length from a destructive one needs each
-piece's own length, and that needs a Live read this has to answer before, so the
-whole param is refused.
+is worse. One `arrangementStart` stacks them all on one bar and the covers leave
+all but the last unwritten — doing as it is told, not a guard. One
+`arrangementLength` longer than a piece tiles copies in from that piece's end,
+which is where the next piece starts, so each piece buries the one after it.
+Telling a safe length from a destructive one needs each piece's own length, and
+that needs a Live read this has to answer before, so the whole param is refused.
 
 ---
 
@@ -444,7 +497,7 @@ whole param is refused.
 | `arrangement-tiling-clips.ts`   | Low-level primitives (temp clips, session clip creation)  |
 | `arrangement-splitting.ts`      | Clip splitting algorithm                                  |
 | `arrangement-move.ts`           | Update-clip integration (move + lengthen orchestration)   |
+| `arrangement-lane-view.ts`      | What is on each lane; writes that leave no clip report it |
 
-All arrangement source files are under `src/tools/shared/arrangement/` or
-`src/tools/clip/arrangement/helpers/`. Test files are colocated under `tests/`
-subdirectories.
+Sources are under `src/tools/shared/arrangement/` or
+`src/tools/clip/arrangement/helpers/`; tests are colocated in `tests/`.

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -132,6 +132,45 @@ describe("useGlobalSettings", () => {
     // The optimistic flip must not stick when the server refused it.
     await waitForHookState(() => {
       expect(result.current.autoUpdateCheck).toBe(true);
+    });
+  });
+
+  it("reads the incomplete-installation warning, on unless stored off", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ warnIfInstallIncomplete: false })),
+    );
+
+    const { result } = renderHook(() => useGlobalSettings());
+
+    await waitForHookState(() => {
+      expect(result.current.warnIfInstallIncomplete).toBe(false);
+    });
+  });
+
+  it("writes the warning through, and reverts it when the write fails", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({})))
+      .mockResolvedValueOnce(new Response("nope", { status: 500 }));
+
+    const { result } = renderHook(() => useGlobalSettings());
+
+    await waitForHookState(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+    await act(() => {
+      result.current.setWarnIfInstallIncomplete(false);
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      getSettingsUrl(),
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ warnIfInstallIncomplete: false }),
+      }),
+    );
+    await waitForHookState(() => {
+      expect(result.current.warnIfInstallIncomplete).toBe(true);
     });
   });
 });

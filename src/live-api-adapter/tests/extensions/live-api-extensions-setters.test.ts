@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LiveAPI } from "#src/test/mocks/mock-live-api.ts";
@@ -64,6 +64,35 @@ describe("LiveAPI extensions - setter methods", () => {
       expect(api.setColor).toHaveBeenCalledWith("#FF0000");
       expect(api.set).toHaveBeenCalledTimes(1);
       expect(api.set).not.toHaveBeenCalledWith("color", "#FF0000");
+    });
+
+    it("tells the caller about each property as it is written", () => {
+      const landed: string[] = [];
+
+      api.setAll(
+        { name: "Heard", color: "#FF0000", loop_start: null, looping: true },
+        (property) => landed.push(property),
+      );
+
+      // A null is skipped, so it isn't heard of; the color goes by its own name.
+      expect(landed).toStrictEqual(["name", "color", "looping"]);
+    });
+
+    it("hears of the properties written before a write throws", () => {
+      const landed: string[] = [];
+
+      api.set.mockImplementation((property: string) => {
+        if (property === "looping") {
+          throw new Error("refused");
+        }
+      });
+
+      expect(() =>
+        api.setAll({ name: "Heard", looping: true }, (property) =>
+          landed.push(property),
+        ),
+      ).toThrow("refused");
+      expect(landed).toStrictEqual(["name"]);
     });
 
     it("handles empty object", () => {

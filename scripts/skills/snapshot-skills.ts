@@ -2,7 +2,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Writes the skills snapshot corpus — the assembled blob for every (toolset
 // profile x depth x notation) — and compares two of them. Output is gitignored:

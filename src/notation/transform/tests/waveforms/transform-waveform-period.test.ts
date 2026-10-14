@@ -1,11 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
-import { countTransformed } from "#src/notation/transform/transformed-count.ts";
+import { countTransforms } from "#src/notation/transform/transformed-count.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 
@@ -38,7 +38,7 @@ function runTransform(
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
   try {
-    const transformed = countTransformed(
+    const { transformed } = countTransforms(
       applyTransforms(notes, transform, 4, 4),
       notes,
     );
@@ -122,7 +122,8 @@ describe("waveform phase offset", () => {
     );
 
     expect(warnings).toStrictEqual([]);
-    expect(transformed).toBe(8);
+    // One note's phase lands on 100, the velocity it already had
+    expect(transformed).toBe(7);
     expect(new Set(velocities).size).toBeGreaterThan(1);
   });
 });

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { library } from "../library.ts";
@@ -30,7 +30,7 @@ describe("library tool — findSimilar / findDuplicates dispatch", () => {
     });
 
     const result = await library({
-      action: "findSimilar",
+      action: "find-similar",
       similarTo: "/x/kick.wav",
       tags: "Kick",
       limit: 5,
@@ -54,7 +54,7 @@ describe("library tool — findSimilar / findDuplicates dispatch", () => {
     });
 
     const result = await library({
-      action: "findDuplicates",
+      action: "find-duplicates",
       inFolder: "/Drums",
       source: "user",
     });

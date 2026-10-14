@@ -1,12 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z } from "zod";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { actionReadsTimeline } from "./helpers/playback/playback-action-params.ts";
 import { scenePathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
 
 export const toolDefPlayback = defineTool("ppal-playback", {
@@ -17,6 +18,14 @@ export const toolDefPlayback = defineTool("ppal-playback", {
     readOnlyHint: false,
     destructiveHint: true,
   },
+
+  // Firing and stopping session clips never touches the Set. The timeline
+  // actions write the arrangement start or loop, and a scene can carry its own
+  // tempo or time signature, so those may change it.
+  changesSet: ({ action }) =>
+    typeof action !== "string" ||
+    action === "play-scene" ||
+    actionReadsTimeline(action),
 
   inputSchema: {
     action: z
@@ -33,9 +42,9 @@ export const toolDefPlayback = defineTool("ppal-playback", {
         `play-arrangement: from startTime, or from wherever it already is
 update-arrangement: set startTime and/or loop, without playing
 play-scene: all clips in scene
-play-session-clips: by id(s) or path(s)
-stop-session-clips: by id(s) or path(s)
-(both answer with one clips entry per id/path named, in order: {id, path}, or {id|path, ok:false, detail} for one that couldn't be reached)
+play-session-clips: by id(s) or path(s); a group track's slot fires the tracks inside it
+stop-session-clips: by id(s) or path(s); stops each slot's whole track (a group track: all inside it)
+(both answer with clip: {id, path} for one id/path, an array of them for several, in order; {id|path, ok:false, detail} for one not reached, e.g. an empty slot to play; a slot named twice: the earlier entry says the later one replaced it)
 stop-all-session-clips: all
 stop: session and arrangement; takes startTime to park the next play`,
       ),
@@ -69,7 +78,7 @@ stop: session and arrangement; takes startTime to park the next play`,
       .string()
       .optional()
       .describe(
-        "clip ID(s), comma-separated for multiple; for play-scene, a scene ID (or a clip ID in that scene)",
+        "clip id(s), comma-separated; for play-scene, a scene id (or a clip id in that scene)",
       ),
 
     ...addressingAliases(),

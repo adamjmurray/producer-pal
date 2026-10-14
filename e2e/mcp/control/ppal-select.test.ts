@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-select tool
@@ -340,6 +340,32 @@ describe("ppal-select", () => {
     await expectRefusal({ path: "t0/d99" }, 'no device at "t0/d99"');
   });
 
+  it("refuses a path sent with trackIndex or sceneIndex, even one that agrees", async () => {
+    await expectRefusal(
+      { path: "t0/s0", trackIndex: 0, sceneIndex: 0 },
+      "path names the target on its own - don't send trackIndex or sceneIndex with it",
+    );
+    await expectRefusal(
+      { path: "s1", sceneIndex: 1 },
+      "path names the target on its own - don't send sceneIndex with it",
+    );
+    await expectRefusal(
+      { path: "t1", trackIndex: 2 },
+      "path names the target on its own - don't send trackIndex with it",
+    );
+  });
+
+  it("refuses the deprecated slot and devicePath sent with an index", async () => {
+    await expectRefusal(
+      { slot: "0/0", trackIndex: 0, sceneIndex: 0 },
+      "slot names the target on its own - don't send trackIndex or sceneIndex with it",
+    );
+    await expectRefusal(
+      { devicePath: "t3/d0", trackIndex: 3 },
+      "devicePath names the target on its own - don't send trackIndex with it",
+    );
+  });
+
   it("changes nothing when the select is refused", async () => {
     // A scene selection would have switched to session view before it ever
     // looked for the scene.
@@ -347,6 +373,18 @@ describe("ppal-select", () => {
     await expectRefusal({ sceneIndex: 99 }, 'no scene at "s99"');
 
     expect((await select({})).view).toBe("arrangement");
+  });
+
+  // The deprecated devicePath naming a chain was rejected only after the view
+  // had already switched.
+  it("refuses a devicePath that names a chain, leaving the view alone", async () => {
+    await select({ view: "session" });
+    await expectRefusal(
+      { devicePath: "t7/d0/c0", view: "arrangement" },
+      'devicePath "t7/d0/c0" does not resolve to a device',
+    );
+
+    expect((await select({})).view).toBe("session");
   });
 
   // The success path needs a VST/AU installed, which no machine is guaranteed
@@ -358,7 +396,7 @@ describe("ppal-select", () => {
     });
 
     expect(getToolWarnings(result).join("\n")).toContain(
-      "openPluginWindow requires a plug-in device",
+      "openPluginWindow ignored: it needs a plug-in device",
     );
   });
 

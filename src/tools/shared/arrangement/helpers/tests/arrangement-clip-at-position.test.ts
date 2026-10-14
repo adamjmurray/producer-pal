@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -12,79 +12,18 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { arrangementClipAtPosition } from "../arrangement-clip-at-position.ts";
 import {
-  type CompleteArrangementPosition,
-  type ArrangementLane,
-} from "#src/tools/shared/validation/helpers/object-path-position.ts";
+  positionPath as at,
+  registerBoundaryClips,
+  registerMainLaneClip,
+  registerSpanningClip,
+  registerTakeLaneClip,
+  registerTrackClips,
+} from "#src/tools/shared/arrangement/tests/helpers/arrangement-lane-clips.ts";
+import { arrangementClipAtPosition } from "../arrangement-clip-at-position.ts";
+import { MAIN as MAIN_LANE, TAKE as TAKE_LANE } from "./lane-view-fixtures.ts";
 
 const PARAM_NAME = "path";
-const MAIN_LANE: ArrangementLane = { kind: "track", trackIndex: 0 };
-const TAKE_LANE: ArrangementLane = {
-  kind: "take-lane",
-  trackIndex: 0,
-  laneIndex: 1,
-};
-
-/**
- * A complete arrangement path, the way the parser hands one over.
- * @param lane - The lane the path names
- * @param position - The song position, bar|beat or `loc:`
- * @returns The parsed path
- */
-function at(
-  lane: ArrangementLane,
-  position: string,
-): CompleteArrangementPosition {
-  return { kind: "arrangement-position", lane, position };
-}
-
-/**
- * Registers a clip on the track's main lane.
- * @param id - The clip's id
- * @param startTime - Where it starts, in Ableton beats
- * @param index - Its index in the track's arrangement clips
- * @param endTime - Where it ends, in Ableton beats
- */
-function registerMainLaneClip(
-  id: string,
-  startTime: number,
-  index = 0,
-  endTime = startTime + 4,
-): void {
-  registerMockObject(id, {
-    path: livePath.track(0).arrangementClip(index),
-    properties: { start_time: startTime, end_time: endTime },
-  });
-}
-
-/**
- * Registers a clip on take lane 1 of track 0.
- * @param id - The clip's id
- * @param startTime - Where it starts, in Ableton beats
- */
-function registerTakeLaneClip(id: string, startTime: number): void {
-  registerMockObject(id, {
-    path: livePath.track(0).takeLane(1).arrangementClip(0),
-    properties: { start_time: startTime, end_time: startTime + 4 },
-  });
-  registerMockObject("lane_1", {
-    path: livePath.track(0).takeLane(1),
-    properties: { arrangement_clips: children(id) },
-  });
-}
-
-/**
- * Registers what track 0 answers as its own arrangement clips.
- * @param clipIds - The clip ids, in order
- */
-function registerTrackClips(...clipIds: string[]): void {
-  registerMockObject("track_0", {
-    path: livePath.track(0),
-    type: "Track",
-    properties: { arrangement_clips: children(...clipIds) },
-  });
-}
 
 describe("arrangementClipAtPosition", () => {
   beforeEach(() => {
@@ -127,6 +66,19 @@ describe("arrangementClipAtPosition", () => {
     ).toBe("clip_main");
   });
 
+  it("reports a locator that isn't there as a problem with the path", () => {
+    setupCuePointMocksRegistry({
+      cuePoints: [{ id: "cue1", time: 16, name: "Verse" }],
+    });
+    registerTrackClips();
+
+    expect(() =>
+      arrangementClipAtPosition(at(MAIN_LANE, "loc:Chorus"), PARAM_NAME),
+    ).toThrow(
+      'invalid path "t0[loc:Chorus]" - no locator found with name "Chorus"',
+    );
+  });
+
   it("names nothing when no clip starts there", () => {
     registerMainLaneClip("clip_main", 16);
     registerTrackClips("clip_main");
@@ -137,13 +89,9 @@ describe("arrangementClipAtPosition", () => {
   });
 
   // A path is an address, not a "starts at": a clip running from bar 3 through
-  // bar 6 is the clip at 5|1 (ADR-0037).
+  // bar 6 is the clip at 5|1.
   it("finds a clip that only spans the position, not starts there", () => {
-    registerMockObject("clip_long", {
-      path: livePath.track(0).arrangementClip(0),
-      properties: { start_time: 8, end_time: 24 },
-    });
-    registerTrackClips("clip_long");
+    registerSpanningClip();
 
     expect(
       arrangementClipAtPosition(at(MAIN_LANE, "5|1"), PARAM_NAME)?.id,
@@ -153,12 +101,7 @@ describe("arrangementClipAtPosition", () => {
   // A clip's end is exclusive: back-to-back clips at the boundary resolve to
   // the one starting there, never the one ending there.
   it("resolves a boundary between two clips to the one starting there", () => {
-    registerMockObject("clip_before", {
-      path: livePath.track(0).arrangementClip(0),
-      properties: { start_time: 8, end_time: 16 },
-    });
-    registerMainLaneClip("clip_after", 16, 1);
-    registerTrackClips("clip_before", "clip_after");
+    registerBoundaryClips();
 
     expect(
       arrangementClipAtPosition(at(MAIN_LANE, "5|1"), PARAM_NAME)?.id,

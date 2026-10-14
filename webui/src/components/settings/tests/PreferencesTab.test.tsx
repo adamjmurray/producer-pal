@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -27,8 +27,6 @@ describe("PreferencesTab", () => {
     setShowHelpLinks: vi.fn(),
     showTokenUsage: false,
     setShowTokenUsage: vi.fn(),
-    autoUpdateCheck: true,
-    setAutoUpdateCheck: vi.fn(),
     maxToolSteps: DEFAULT_MAX_TOOL_STEPS,
     setMaxToolSteps: vi.fn(),
     onDeleteAllConversations: vi.fn(),
@@ -164,20 +162,6 @@ describe("PreferencesTab", () => {
 
     fireEvent.click(checkboxes[2]!);
     expect(setShowTokenUsage).toHaveBeenCalled();
-  });
-
-  it("calls setAutoUpdateCheck when checkbox toggled", () => {
-    const setAutoUpdateCheck = vi.fn();
-    const { container } = render(
-      <PreferencesTab
-        {...defaultProps}
-        setAutoUpdateCheck={setAutoUpdateCheck}
-      />,
-    );
-    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
-
-    fireEvent.click(checkboxes[3]!);
-    expect(setAutoUpdateCheck).toHaveBeenCalledWith(false);
   });
 
   it("shows the step budget with the supported range on the input", () => {

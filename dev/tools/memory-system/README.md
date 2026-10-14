@@ -3,9 +3,10 @@
 An indexed, LLM-managed memory: many small fact files under
 `~/.producer-pal/memory/`, a cheap always-injected index, and on-demand
 retrieval of full bodies. It sits alongside the pinned global context
-(`~/.producer-pal/context.md`, ADR-0010's content-override layer) as a second,
-structured layer: context is a hand-authored, always-on blob; memory is a
-lazy-loaded notebook the assistant reads and writes itself.
+(`~/.producer-pal/context.md`, part of the
+[content-override layer](../../architecture/user-content-overrides.md)) as a
+second, structured layer: context is a hand-authored, always-on blob; memory is
+a lazy-loaded notebook the assistant reads and writes itself.
 
 ## Parts
 
@@ -62,24 +63,30 @@ blob injectors.)
 
 These layers only earn their keep if something is in them, and nothing goes in
 unless the assistant asks. A user who never hears about the feature never gets
-one, so the next-step instruction that closes every `ppal-connect` response
+one, so the next-step line that closes every `ppal-connect` response
 (`helpers/connect/next-step-inject.ts`, `withNextStep`) varies on whether we
 know anything about this user at all:
 
-- **Global context empty AND no memories** (large-model mode): the next step
-  tells the assistant to briefly ask the user — in the same reply as the
-  connection report, not as a blocking questionnaire — about their musical
-  style, preferences, and goals, write what they get to **global context**, and
-  record a decline as a memory.
+- **Global context empty AND no memories** (large-model mode): the line adds
+  "New user: nothing is saved about them yet." That is all it says. The
+  procedure lives in the `New user` paragraph of the context Skill
+  (`src/skills/fragments/context.ts`), keyed on the same marker: end the connect
+  reply with a short yes/no question about their musical style, preferences, and
+  goals, write what they share to **global context**, and record a decline as a
+  memory.
 - **Otherwise**: the plain "report the overview, then wait for their
-  instructions" instruction, unchanged from the `nextStep` field it replaced.
+  instructions" instruction.
 
-It is phrased as a **yes/no question**, not an open offer, and that is not a
-style note. The first version said "tell me your style anytime"; a user replying
-"let's just make some music" was not answering anything, so the brush-off never
-registered as a decline, nothing got written, and the next session asked all
-over again. A question gives the user something to decline — which is the only
-way the one-shot mechanism below ever fires for someone who isn't interested.
+The procedure is in the Skill, not the connect result, because models such as
+Haiku ignore imperative instructions inside a tool result as untrusted; Skill
+text is treated as documentation and followed.
+
+It is a **yes/no question**, not an open offer, and that is not a style note.
+The first version said "tell me your style anytime"; a user replying "let's just
+make some music" was not answering anything, so the brush-off never registered
+as a decline, nothing got written, and the next session asked all over again. A
+question gives the user something to decline — which is the only way the
+one-shot mechanism below ever fires for someone who isn't interested.
 
 What they share goes to **global context, not memory** — who the user is should
 always apply, and always-on is what context is for; filing it in memory
@@ -89,24 +96,16 @@ exemption applies (see Layer discipline below).
 
 The offer is **one-shot without any dedicated flag**: sharing fills global
 context, declining writes a memory, and _either_ flips the check, so the next
-connect gets the plain instruction. Clearing both in the context editor brings
+connect no longer carries the marker. Clearing both in the context editor brings
 the offer back, which is the semantics you'd want anyway. Nothing else records
 the "already asked" state; there is deliberately no sentinel file and no
 frontmatter flag.
 
-Two design constraints worth preserving:
-
-- **It lives here, not in the skills.** As a connect-response block it costs
-  tokens only for the users who need it (zero for everyone else), and it arrives
-  as a just-in-time instruction rather than one rule inside a ~10k-token skills
-  blob. It also keeps the skills free of a contradiction: `context.ts` says to
-  save memories _quietly, as facts emerge_, which reads as the opposite of
-  "interview the user up front" when both sit in the same always-on document.
-- **`withNextStep` must stay outermost.** The old static `nextStep` field lived
-  inside V8's connect result, which put "wait for their instructions" _before_
-  the four appended blocks — a stop instruction the model read and then kept
-  reading past. As the final block it is the last word, and it can react to what
-  the blocks before it carried (which V8, having no filesystem, cannot see).
+`withNextStep` must stay outermost. The old static `nextStep` field lived inside
+V8's connect result, which put "wait for their instructions" _before_ the four
+appended blocks — a stop instruction the model read and then kept reading past.
+As the final block it is the last word, and it can react to what the blocks
+before it carried (which V8, having no filesystem, cannot see).
 
 Skipped in small-model mode, where `ppal-context` has no `scope:memory` at all:
 a small model could neither save what it learned nor record a decline, so it

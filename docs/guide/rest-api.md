@@ -391,32 +391,44 @@ object mid-sequence.
 
 Available operation types:
 
-| Type           | Properties used             | Description                                                                                                                                  |
-| -------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get`          | `property`                  | Read a property's raw value; a `_list` property returns the full array. Returns the number `1`, not an array, when the object doesn't exist  |
-| `set`          | `property`, `value`         | Write a property value. Always returns 1, even when the write is rejected, so read the property back to confirm it landed                    |
-| `set_property` | `property`, `value`         | The same write as `set`, but returns the value you sent                                                                                      |
-| `call`         | `method`, `args` (optional) | Call a method on the Live object                                                                                                             |
-| `goto`         | `value` (path)              | Navigate to a different object                                                                                                               |
-| `info`         | none                        | Get object info                                                                                                                              |
-| `getcount`     | `property` (child type)     | Count the object's children in a collection. `0` when the object doesn't exist                                                               |
-| `getstring`    | `property`                  | Read a property as a string. Returns the number `1`, not a string, when the object doesn't exist                                             |
-| `getProperty`  | `property`                  | Read a property, unwrapped to a scalar; truncates a `_list` property to its first element, so use `get` for the full array                   |
-| `getChildIds`  | `property` (child type)     | Get child object IDs                                                                                                                         |
-| `exists`       | none                        | Check if the object exists. Producer Pal's judgment, not Live's: Live's own `valid` field reads 1 even for a bad path, so this checks the id |
-| `getColor`     | none                        | Read object color                                                                                                                            |
-| `setColor`     | `value` (hex string)        | Write object color                                                                                                                           |
-| `get_property` | `property`                  | Read a JavaScript field on the LiveAPI object itself (`path`, `id`, `type`, `mode`, `valid`, `children`, …), not a Live property             |
-| `call_method`  | `method`, `args` (optional) | Call a JavaScript method on the LiveAPI object itself (`getProperty`, `getChildIds`, `child`, …), not a Live method                          |
-| `set_path`     | `value` (path)              | Assign the LiveAPI object's `path`, retargeting it. `""` clears it                                                                           |
-| `set_mode`     | `value` (`0` or `1`)        | Assign the LiveAPI object's `mode`: `0` follows the path, `1` follows the object                                                             |
+| Type            | Properties used             | Description                                                                                                                                  |
+| --------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get`           | `property`                  | Read a property's raw value; a `_list` property returns the full array. Returns the number `1`, not an array, when the object doesn't exist  |
+| `set`           | `property`, `value`         | Write a property value. Always returns 1, even when the write is rejected, so read the property back to confirm it landed                    |
+| `set-property`  | `property`, `value`         | The same write as `set`, but returns the value you sent                                                                                      |
+| `call`          | `method`, `args` (optional) | Call a method on the Live object                                                                                                             |
+| `goto`          | `value` (path)              | Navigate to a different object                                                                                                               |
+| `info`          | none                        | Get object info                                                                                                                              |
+| `getcount`      | `property` (child type)     | Count the object's children in a collection. `0` when the object doesn't exist                                                               |
+| `getstring`     | `property`                  | Read a property as a string. Returns the number `1`, not a string, when the object doesn't exist                                             |
+| `get-property`  | `property`                  | Read a property, unwrapped to a scalar; truncates a `_list` property to its first element, so use `get` for the full array                   |
+| `get-child-ids` | `property` (child type)     | Get child object IDs                                                                                                                         |
+| `exists`        | none                        | Check if the object exists. Producer Pal's judgment, not Live's: Live's own `valid` field reads 1 even for a bad path, so this checks the id |
+| `get-color`     | none                        | Read object color                                                                                                                            |
+| `set-color`     | `value` (hex string)        | Write object color                                                                                                                           |
+| `get-field`     | `property`                  | Read a JavaScript field on the LiveAPI object itself (`path`, `id`, `type`, `mode`, `valid`, `children`, …), not a Live property             |
+| `call-method`   | `method`, `args` (optional) | Call a JavaScript method on the LiveAPI object itself (`getProperty`, `getChildIds`, `child`, …), not a Live method                          |
+| `set-path`      | `value` (path)              | Assign the LiveAPI object's `path`, retargeting it. `""` clears it                                                                           |
+| `set-mode`      | `value` (`0` or `1`)        | Assign the LiveAPI object's `mode`: `0` follows the path, `1` follows the object                                                             |
 
 The last group operates on the JavaScript wrapper, not the Live object it points
-at. Despite the names, `get`/`get_property` and `call`/`call_method` are **not**
+at. Despite the names, `get`/`get-field` and `call`/`call-method` are **not**
 aliases. `call get_current_beats_song_time` works, while
-`call_method get_current_beats_song_time` fails because that method lives on the
-Live object, not the wrapper. Only `set` and `set_property` perform the same
+`call-method get_current_beats_song_time` fails because that method lives on the
+Live object, not the wrapper. Only `set` and `set-property` perform the same
 write, and even they report different results.
+
+#### Results
+
+`results` holds one value per operation, in order, without repeating the
+operation. Every operation is checked before any runs, and a malformed one
+refuses the whole call, naming it as `operations[N]` (counting from 0).
+
+If an operation throws at run time, the ones before it have already changed
+Live. The call returns their values in `results`, plus
+`"failed": {"index": 2, "detail": "..."}` for the one that threw, and nothing
+after it runs. If the first operation throws, nothing changed, so the call
+returns an error instead.
 
 #### When the object doesn't exist
 
@@ -434,12 +446,12 @@ value all return `1` and change nothing. Read the property back if you need to
 know whether a write took.
 
 Normalizing that away is most of what the Producer Pal operations add over the
-raw Live ones: `getProperty` gives `undefined`, `getChildIds` gives `[]`,
-`getColor` gives `null`, and `exists` gives `false`. Prefer `exists` over
-reading Live's own `valid` field, which reads `1` in all four cases. It
-describes the wrapper object, not the target it points at.
+raw Live ones: `get-property` gives no value (`null` in JSON), `get-child-ids`
+gives `[]`, `get-color` gives `null`, and `exists` gives `false`. Prefer
+`exists` over reading Live's own `valid` field, which reads `1` in all four
+cases. It describes the wrapper object, not the target it points at.
 
-You don't need to call `set_path ""` yourself for cleanup. Live arms a path
+You don't need to call `set-path ""` yourself for cleanup. Live arms a path
 listener on every collection along a path-based object's path and never takes
 them down, so every LiveAPI object a request creates has its path cleared once
 the request ends, whether or not it succeeded.
@@ -452,7 +464,7 @@ curl -X POST http://localhost:3350/api/tools/ppal-live-api \
   -H 'Content-Type: application/json' \
   -d '{
     "path": "live_set",
-    "operations": [{"type": "getProperty", "property": "tempo"}]
+    "operations": [{"type": "get-property", "property": "tempo"}]
   }'
 
 # Set the tempo to 140 BPM
@@ -460,7 +472,7 @@ curl -X POST http://localhost:3350/api/tools/ppal-live-api \
   -H 'Content-Type: application/json' \
   -d '{
     "path": "live_set",
-    "operations": [{"type": "set_property", "property": "tempo", "value": 140}]
+    "operations": [{"type": "set-property", "property": "tempo", "value": 140}]
   }'
 
 # Fire scene 0
@@ -500,6 +512,5 @@ When the **Direct Live API** toggle is off on the device Setup tab, requests to
   disabled on the device apply to both interfaces.
 - The REST API has no authentication (same as the MCP endpoint). It is designed
   for use on localhost or trusted networks only.
-- Browser pages can only call the REST API from localhost origins by default
-  (`ENABLE_REMOTE_CORS` widens this to any origin). curl and other non-browser
-  clients ignore CORS entirely and are unaffected either way.
+- Browser pages can only call the REST API from localhost origins. curl and
+  other non-browser clients ignore CORS entirely and are unaffected.

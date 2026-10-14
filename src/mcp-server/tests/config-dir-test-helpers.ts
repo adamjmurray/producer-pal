@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Shared setup for tests that exercise the ~/.producer-pal config-dir stores
 // and their REST routes against a real (temp) filesystem. Centralizes the
@@ -9,7 +9,8 @@
 // and the V8↔Node RPC-route dispatch harness so per-feature test files don't
 // each re-clone the boilerplate.
 
-import { mkdtempSync, rmSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync } from "node:fs";
+import type * as NodeFs from "node:fs";
 import { type Server } from "node:http";
 import { type AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -58,6 +59,14 @@ export function useTempConfigDir(): () => string {
   });
 
   afterEach(() => {
+    failingPaths.clear();
+
+    for (const path of lockedPaths) {
+      chmodSync(path, 0o700);
+    }
+
+    lockedPaths.clear();
+
     if (originalDir == null) {
       delete process.env.PRODUCER_PAL_CONFIG_DIR;
     } else {
@@ -69,6 +78,77 @@ export function useTempConfigDir(): () => string {
 
   return () => dir;
 }
+
+/** Paths whose reads and directory listings {@link withFsFaults} fails. */
+const failingPaths = new Set<string>();
+
+/** Paths chmod'ed shut, reopened after each test so the temp dir can go. */
+const lockedPaths = new Set<string>();
+
+/**
+ * Wrap `node:fs` so reads and listings of paths passed to {@link failFsAt}
+ * throw EACCES. For a `vi.mock(import("node:fs"), ...)` factory: unlike chmod,
+ * it also blocks root.
+ *
+ * @param actual - The real `node:fs` module
+ * @returns The module with failing reads/listings for the chosen paths
+ */
+export function withFsFaults(actual: typeof NodeFs): typeof actual {
+  const guard = <Fn extends (path: never, ...rest: never[]) => unknown>(
+    real: Fn,
+  ): Fn =>
+    ((path: never, ...rest: never[]) => {
+      if (failingPaths.has(String(path))) {
+        throw Object.assign(
+          new Error(`EACCES: permission denied, ${String(path)}`),
+          {
+            code: "EACCES",
+          },
+        );
+      }
+
+      return real(path, ...rest);
+    }) as Fn;
+
+  return {
+    ...actual,
+    readFileSync: guard(actual.readFileSync),
+    readdirSync: guard(actual.readdirSync),
+  };
+}
+
+/**
+ * Make reads of this path fail (see {@link withFsFaults}); cleared after each
+ * test.
+ *
+ * @param path - Absolute path to fail
+ */
+export function failFsAt(path: string): void {
+  failingPaths.add(path);
+}
+
+/**
+ * Make a file fail to read (EACCES) via chmod, while it still lists as a
+ * regular file.
+ * @param path - Absolute path of the file or folder
+ */
+function chmodUnreadable(path: string): void {
+  chmodSync(path, 0o000);
+  lockedPaths.add(path);
+}
+
+/**
+ * Ways to make a file or folder unreadable, for `describe.each`. chmod is
+ * skipped on Windows and as root (who reads anything).
+ */
+export const unreadableWays = [
+  { way: "a failing read", supported: true, block: failFsAt },
+  {
+    way: "chmod 000",
+    supported: process.platform !== "win32" && process.getuid?.() !== 0,
+    block: chmodUnreadable,
+  },
+];
 
 /** A started markdown-route test server plus a base URL and teardown. */
 export interface MarkdownRouteServer {
@@ -118,6 +198,38 @@ export function putJson(
   body: unknown,
   origin?: string,
 ): Promise<Response> {
+  return sendJson("PUT", url, body, origin);
+}
+
+/**
+ * POST a JSON body to an endpoint.
+ *
+ * @param url - Fully-qualified endpoint URL
+ * @param body - Request body (sent as JSON)
+ * @param origin - Optional Origin header to exercise the localhost gate
+ * @returns The fetch Response
+ */
+export function postJson(
+  url: string,
+  body: unknown,
+  origin?: string,
+): Promise<Response> {
+  return sendJson("POST", url, body, origin);
+}
+
+/**
+ * @param method - HTTP method
+ * @param url - Fully-qualified endpoint URL
+ * @param body - Request body (sent as JSON)
+ * @param origin - Optional Origin header
+ * @returns The fetch Response
+ */
+function sendJson(
+  method: "POST" | "PUT",
+  url: string,
+  body: unknown,
+  origin?: string,
+): Promise<Response> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
@@ -126,7 +238,7 @@ export function putJson(
     headers.Origin = origin;
   }
 
-  return fetch(url, { method: "PUT", headers, body: JSON.stringify(body) });
+  return fetch(url, { method, headers, body: JSON.stringify(body) });
 }
 
 /** The parsed payload a V8↔Node RPC route sends back. */

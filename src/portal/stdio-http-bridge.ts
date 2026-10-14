@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -17,12 +17,17 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import { formatErrorResponse } from "#src/shared/mcp-responses.ts";
 import { buildFallbackTools, type FallbackTool } from "./fallback-tools.ts";
 import { logger } from "./file-logger.ts";
+import { InFlightClients } from "./update/in-flight-clients.ts";
+import { answerOfflineCall, MANAGE_TOOL } from "./offline/offline-call.ts";
+import { type OfflineDeps, realOfflineDeps } from "./offline/offline-deps.ts";
+import { SETUP_URL } from "./offline/offline-setup-hints.ts";
+import { type RunningDevice } from "./update/running-device.ts";
+import { answerUpdateCall, isUpdateCall } from "./update/update-call.ts";
+import { withUpdateHint } from "./update/update-connect-hint.ts";
 import {
   type BridgeOptions,
   requestHeaderTransportOptions,
 } from "./portal-settings.ts";
-
-const SETUP_URL = "https://producer-pal.org/installation";
 
 // Widened to number on purpose: the code read off a thrown error is an
 // unknown narrowed to number, which shares no enum type with ErrorCode, and
@@ -47,6 +52,7 @@ export class StdioHttpBridge {
   // eslint-disable-next-line @typescript-eslint/no-deprecated -- Server needed for setRequestHandler proxying
   private mcpServer: Server | null = null;
   private httpClient: Client | null = null;
+  private inFlight = new InFlightClients();
   private isConnected = false;
   private connectionPromise: Promise<void> | null = null;
   private fallbackTools: { tools: FallbackTool[] };
@@ -54,20 +60,53 @@ export class StdioHttpBridge {
   // we serve the fallback, cleared once we've told the client to re-list.
   private servedFallbackTools = false;
   private options: BridgeOptions;
+  private offlineDeps: OfflineDeps;
 
-  constructor(httpUrl: string, options: BridgeOptions = {}) {
+  constructor(
+    httpUrl: string,
+    options: BridgeOptions = {},
+    offlineDeps: OfflineDeps = realOfflineDeps,
+  ) {
     this.httpUrl = httpUrl;
     this.options = options;
+    this.offlineDeps = offlineDeps;
     this.fallbackTools = buildFallbackTools(options);
   }
 
-  private _createSetupErrorResponse() {
-    return formatErrorResponse(`❌ Cannot connect to Ableton Live.
+  /**
+   * The answer to a call while the device is unreachable.
+   * @param request - The tool call
+   * @returns The response
+   */
+  private _answerOffline(request: CallToolRequest) {
+    return answerOfflineCall(
+      {
+        name: request.params.name,
+        args: request.params.arguments ?? {},
+        manageOffered: this._manageOffered(),
+        connect: () => this._ensureHttpConnection(),
+      },
+      this.offlineDeps,
+    );
+  }
 
-Ensure Ableton Live 12.3+ is running with the Producer Pal Max for Live device loaded.
-Tell the user to check ${SETUP_URL} for setup instructions.
+  /** @returns Whether this portal lists ppal-manage (small-model mode and `--disable-tools` drop it) */
+  private _manageOffered(): boolean {
+    return this.fallbackTools.tools.some((tool) => tool.name === MANAGE_TOOL);
+  }
 
-(Producer Pal ${VERSION})`);
+  /** @returns The running device, as ppal-manage's update sees it */
+  private _runningDevice(): RunningDevice {
+    return {
+      connect: () => this._ensureHttpConnection(),
+      version: () => this.httpClient?.getServerVersion()?.version,
+      // The next connect replaces the client and handshakes again; calls still
+      // on the old one finish first.
+      reset: () => {
+        this.isConnected = false;
+      },
+      toolsChanged: () => this._notifyToolListChanged(true),
+    };
   }
 
   private _createMisconfiguredUrlResponse() {
@@ -105,15 +144,12 @@ Tell the user to check ${SETUP_URL} for configuration help.
   }
 
   private async _doConnect(): Promise<void> {
-    // Clean up old client if it exists
+    // Calls already on the old client finish before it closes.
     if (this.httpClient) {
-      try {
-        await this.httpClient.close();
-      } catch (error) {
-        logger.error(`Error closing old client: ${errorMessage(error)}`);
-      }
+      const old = this.httpClient;
 
       this.httpClient = null;
+      await this.inFlight.retire(old);
     }
 
     // Create new connection
@@ -131,7 +167,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
       this.httpClient = new Client({
         name: "producer-pal-portal",
-        version: "1.0.0",
+        version: VERSION,
       });
 
       await this.httpClient.connect(httpTransport);
@@ -179,9 +215,12 @@ Tell the user to check ${SETUP_URL} for configuration help.
    * One direction only. Going offline needs no nudge: the next tools/list
    * serves the fallback anyway, and notifying from that handler would ask the
    * client to re-list the list it is already fetching.
+   *
+   * @param force - Send it even when no fallback list was served: a device
+   *   update can change the real list too
    */
-  private _notifyToolListChanged(): void {
-    if (!this.servedFallbackTools) {
+  private _notifyToolListChanged(force = false): void {
+    if (!force && !this.servedFallbackTools) {
       return;
     }
 
@@ -218,7 +257,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
     this.mcpServer = new Server(
       {
         name: "stdio-http-bridge",
-        version: "1.0.0",
+        version: VERSION,
       },
       {
         capabilities: {
@@ -237,7 +276,10 @@ Tell the user to check ${SETUP_URL} for configuration help.
       try {
         await this._ensureHttpConnection();
         // httpClient is guaranteed non-null after successful _ensureHttpConnection()
-        const result = await (this.httpClient as Client).listTools();
+        const client = this.httpClient as Client;
+        const result = await this.inFlight.run(client, () =>
+          client.listTools(),
+        );
 
         logger.debug(`[Bridge] tools/list successful via HTTP`);
 
@@ -263,9 +305,25 @@ Tell the user to check ${SETUP_URL} for configuration help.
           `[Bridge] Tool call: ${request.params.name} ${JSON.stringify(request.params.arguments)}`,
         );
 
+        const args = request.params.arguments ?? {};
+
+        // The device being updated can't answer its own replacement.
+        if (isUpdateCall(request.params.name, args, this._manageOffered())) {
+          return await answerUpdateCall(
+            args,
+            this._runningDevice(),
+            this.offlineDeps,
+          );
+        }
+
+        // The client this call is on, if it got that far
+        let client: Client | null = null;
+
         // Always try to connect to HTTP server first
         try {
           await this._ensureHttpConnection();
+          client = this.httpClient as Client;
+
           const toolRequest = {
             name: request.params.name,
             arguments: request.params.arguments ?? {},
@@ -275,17 +333,22 @@ Tell the user to check ${SETUP_URL} for configuration help.
           // Explicit timeout rather than the SDK's 60s default, which would
           // sit too close to the device's ceiling. The upstream client's own
           // deadline still binds first — this only keeps our leg out of the way.
-          const result = await (this.httpClient as Client).callTool(
-            toolRequest,
-            undefined,
-            { timeout: CLIENT_TOOL_TIMEOUT_MS },
+          const active = client;
+          const result = await this.inFlight.run(active, () =>
+            active.callTool(toolRequest, undefined, {
+              timeout: CLIENT_TOOL_TIMEOUT_MS,
+            }),
           );
 
           logger.debug(
             `[Bridge] Tool call successful for ${request.params.name}`,
           );
 
-          return result;
+          return await withUpdateHint(
+            result,
+            { name: request.params.name, manageOffered: this._manageOffered() },
+            this._runningDevice(),
+          );
         } catch (error) {
           logger.error(
             `HTTP tool call failed for ${request.params.name}: ${errorMessage(error)}`,
@@ -323,8 +386,11 @@ Tell the user to check ${SETUP_URL} for configuration help.
             return formatErrorResponse(errMsg);
           }
 
-          // This is a real connectivity/network error
-          this.isConnected = false;
+          // This is a real connectivity/network error. A call on a client
+          // we've since replaced says nothing about the new one.
+          if (client == null || client === this.httpClient) {
+            this.isConnected = false;
+          }
 
           if (errorCode === "ERR_INVALID_URL") {
             logger.debug(
@@ -335,12 +401,13 @@ Tell the user to check ${SETUP_URL} for configuration help.
           }
         }
 
-        // Return setup error when Producer Pal is not available
+        // Producer Pal is not available: do what can be done without it, or say
+        // how to get it running.
         logger.debug(
-          `[Bridge] Connectivity problem detected. Returning setup error response`,
+          `[Bridge] Connectivity problem detected. Answering offline`,
         );
 
-        return this._createSetupErrorResponse();
+        return await this._answerOffline(request);
       },
     );
 
@@ -363,6 +430,8 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
       this.httpClient = null;
     }
+
+    await this.inFlight.closeAll();
 
     if (this.mcpServer) {
       try {

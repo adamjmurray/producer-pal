@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
@@ -85,7 +85,7 @@ describe("Transform Parser - half-open range bounds", () => {
 
   it("rejects a mixed wildcard/beat range", () => {
     expect(() => parser.parse("3|*-4|1: velocity = 0")).toThrow(
-      'but "3" found',
+      'but "-" found',
     );
   });
 });

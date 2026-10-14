@@ -37,7 +37,7 @@ which Producer Pal requires.
 
 ## Installation Steps
 
-<!--@include: ../_partials/install-device.md-->
+<!--@include: ../_partials/setup-by-ai.md-->
 
 ### 2. Install a Compatible Model
 

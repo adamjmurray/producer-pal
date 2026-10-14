@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type Notation } from "#src/shared/notation";
 import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-detection-settings";
@@ -15,6 +15,7 @@ import { type TurnDetectionSettings } from "#webui/hooks/settings/helpers/turn-d
  * - OpenAI
  * - Mistral (OpenAI-compatible)
  * - OpenRouter (OpenAI-compatible)
+ * - Vercel AI Gateway
  * - LM Studio (local OpenAI-compatible)
  * - Ollama (local OpenAI-compatible)
  * - Custom (any OpenAI-compatible provider)
@@ -27,6 +28,7 @@ export type Provider =
   | "openai"
   | "mistral"
   | "openrouter"
+  | "vercel"
   | "lmstudio"
   | "ollama"
   | "custom";

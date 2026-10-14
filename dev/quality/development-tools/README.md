@@ -84,8 +84,6 @@ node scripts/ppal-client.ts tools/call ppal-read-live-set '{}'
 ### Full Validation
 
 ```bash
-# Clean build
-npm run clean
 npm run build:debug
 
 # Run all tests with coverage

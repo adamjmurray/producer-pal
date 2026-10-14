@@ -17,7 +17,7 @@ the top right of the app).
 
 ## Installation Steps
 
-<!--@include: ../_partials/install-device.md-->
+<!--@include: ../_partials/setup-by-ai.md-->
 
 ### 2. Open the MCP Config
 

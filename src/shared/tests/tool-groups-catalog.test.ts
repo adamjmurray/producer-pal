@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // tool-groups.ts is import-free so the web UI can compile it, which means it
 // spells the tool names as literals. These are the tests that keep those literals

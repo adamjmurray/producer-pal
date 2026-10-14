@@ -1,10 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
-import { type ProviderOptions } from "@ai-sdk/provider-utils";
 import {
+  isMistralModelId,
   MAX_REQUEST_IMAGES,
   MISTRAL_MAX_REQUEST_IMAGES,
 } from "#webui/chat/sdk/build-model-messages";
@@ -22,172 +22,15 @@ import {
   resolveLockedSmallModelMode,
   resolveMaxToolSteps,
 } from "#webui/hooks/chat/helpers/streaming/locked-settings";
-import {
-  isLegacyNonThinkingModel,
-  isLegacyThinkingModel,
-  isOpenAIReasoningModel,
-  mapThinkingToAnthropicEffort,
-  mapThinkingToOllamaThink,
-  mapThinkingToOpenRouterEffort,
-  mapThinkingToReasoningEffort,
-} from "#webui/hooks/settings/config-builders";
+import { buildProviderOptions } from "#webui/chat/sdk/provider-options";
 import {
   type ResolvedSubagentPreset,
   SUBAGENT_PRESET_PARAM,
 } from "#webui/hooks/settings/presets/preset-extra-params";
-import { getThinkingBudget, resolveSystemInstruction } from "#webui/lib/config";
+import { resolveSystemInstruction } from "#webui/lib/config";
 import { normalizeErrorMessage } from "#webui/lib/error-formatters";
 import { type Provider } from "#webui/types/settings";
 import { type ChatAdapter } from "./use-chat-types";
-
-/**
- * Build provider-specific options for reasoning/thinking.
- * Maps the Producer Pal thinking levels to AI SDK providerOptions format.
- * @param provider - Provider identifier
- * @param thinking - Thinking level from UI settings
- * @param model - Model identifier
- * @returns Provider options object for streamText
- */
-function buildProviderOptions(
-  provider: Provider,
-  thinking: string,
-  model: string,
-): ProviderOptions | undefined {
-  if (provider === "anthropic") {
-    return buildAnthropicOptions(thinking, model);
-  }
-
-  if (provider === "ollama") {
-    const ollamaThink = mapThinkingToOllamaThink(thinking, model);
-
-    if (ollamaThink != null) {
-      return { openai: { think: ollamaThink } };
-    }
-
-    return undefined;
-  }
-
-  if (provider === "openrouter") {
-    const effort = mapThinkingToOpenRouterEffort(thinking);
-
-    if (effort) {
-      return {
-        openrouter: {
-          reasoning: {
-            effort,
-          },
-        },
-      };
-    }
-
-    return undefined;
-  }
-
-  if (provider === "openai") {
-    return buildOpenAIOptions(thinking, model);
-  }
-
-  if (provider === "gemini") {
-    const thinkingBudget = getThinkingBudget(thinking);
-
-    if (thinkingBudget !== 0) {
-      return {
-        google: {
-          thinkingConfig: {
-            thinkingBudget,
-            includeThoughts: true,
-          },
-        },
-      };
-    }
-
-    return undefined;
-  }
-
-  return undefined;
-}
-
-/**
- * Build Anthropic-specific provider options for extended thinking.
- * Uses adaptive thinking with effort for most models, falls back to legacy
- * enabled+budgetTokens for Haiku 4.5 which doesn't support adaptive yet, and
- * omits the `thinking` field entirely for pre-3.7 models that don't support it.
- * @param thinking - Thinking level from UI settings
- * @param model - Model identifier
- * @returns Anthropic provider options or undefined
- */
-function buildAnthropicOptions(
-  thinking: string,
-  model: string,
-): ProviderOptions | undefined {
-  // Pre-3.7 Anthropic models (reachable only via the free-text "Other..." input)
-  // reject ANY `thinking` field with a 400, so never send one regardless of the
-  // UI thinking level — otherwise the default adaptive payload 400s on first send.
-  if (isLegacyNonThinkingModel(model)) {
-    return undefined;
-  }
-
-  // Legacy path for models that don't support adaptive thinking (Haiku 4.5)
-  if (isLegacyThinkingModel(model)) {
-    const budgetTokens = getThinkingBudget(thinking);
-
-    if (budgetTokens === 0) {
-      return undefined;
-    }
-
-    return {
-      anthropic: {
-        thinking: {
-          type: "enabled",
-          budgetTokens: budgetTokens === -1 ? 10240 : budgetTokens,
-        },
-      },
-    };
-  }
-
-  // Adaptive thinking with effort for Sonnet 4.6+, Opus 4.6+
-  const effort = mapThinkingToAnthropicEffort(thinking);
-
-  if (effort == null) {
-    return undefined;
-  }
-
-  return {
-    anthropic: {
-      thinking: { type: "adaptive" },
-      effort,
-    },
-  };
-}
-
-/**
- * Build OpenAI-specific provider options for reasoning.
- * @param thinking - Thinking level from UI settings
- * @param model - Model identifier
- * @returns OpenAI provider options or undefined
- */
-function buildOpenAIOptions(
-  thinking: string,
-  model: string,
-): ProviderOptions | undefined {
-  const effort = mapThinkingToReasoningEffort(thinking, model);
-  // Off thinking suppresses reasoning summaries even for reasoning models that
-  // generate reasoning internally — matching the openrouter/gemini paths, which
-  // return no reasoning options when thinking is Off.
-  const reasoningSummary =
-    thinking !== "Off" && isOpenAIReasoningModel(model) ? "auto" : undefined;
-
-  if (effort || reasoningSummary) {
-    return {
-      openai: {
-        ...(effort ? { reasoningEffort: effort } : {}),
-        ...(reasoningSummary ? { reasoningSummary } : {}),
-      },
-    };
-  }
-
-  return undefined;
-}
 
 /**
  * Build the model/inference override a spawned worker runs under from the
@@ -320,7 +163,7 @@ export const chatAdapter: ChatAdapter<
       buildProviderOptions: (overrideThinking: string) =>
         buildProviderOptions(provider, overrideThinking, model),
       maxRequestImages:
-        provider === "mistral"
+        provider === "mistral" || isMistralModelId(model)
           ? MISTRAL_MAX_REQUEST_IMAGES
           : MAX_REQUEST_IMAGES,
       chatHistory,

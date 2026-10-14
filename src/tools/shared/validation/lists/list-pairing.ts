@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // One rule for every comma-separated list a tool pairs against the items it
 // acts on: one value covers them all, or exactly N pair 1:1 in order, and no

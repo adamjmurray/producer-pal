@@ -62,8 +62,8 @@ in that run.
 | `transform-random-baked-or-replayed`    | —         | —          | —          | —            | 0/3       | 0/3       | 0/3       |
 | `drum-backbeat-midi-json`               | 3/3       | 1/1        | 1/1        | 1/1          | 3/3       | 3/3       | 2/3       |
 
-Three rows are not findings: `duplicate-loop` is run 2 predating ADR-0040,
-`drum-backbeat-stark` is
+Three rows are not findings: `duplicate-loop` is run 2 predating the
+`duplicateLoop` refusal, `drum-backbeat-stark` is
 [red on purpose](README.md#scenarios-that-are-red-on-purpose), and
 `legato-transforms` graded a spelling the parser accepts — two of its three
 trials failed only on writing `random()` where the check wanted `rand()`, and

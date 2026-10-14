@@ -42,7 +42,7 @@ In the chat UI settings:
 
 - Provider: **Google**
 - API Key: Paste your key
-- Model: `gemini-3.8-flash` (or `gemini-3.1-pro-preview` for more complex tasks)
+- Model: `gemini-3.8-flash` (or `gemini-4-argon` for more complex tasks)
 
 Click "Save".
 

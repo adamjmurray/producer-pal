@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The Presets tab in the stubbed suite, so it guards in CI. A preset bundles
 // the provider, model, inference settings and toolset — the mechanism worker

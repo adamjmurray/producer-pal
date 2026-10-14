@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   forgetRequestMemo,
@@ -420,7 +420,8 @@ export function nestedDrumRackHint(
 ): string {
   const device = LiveAPI.from(liveApiPath);
 
-  if (!device.exists()) {
+  // A Drum Rack is the kit itself, so a missing pad on it isn't a nesting miss.
+  if (!device.exists() || device.getProperty("can_have_drum_pads")) {
     return "";
   }
 

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -129,20 +129,21 @@ describe("duplicate - chain", () => {
     expect(created.set).toHaveBeenCalledWith("name", "Layer B");
   });
 
-  it("warns once that arrangement params do not apply to a chain", async () => {
-    setupRack();
+  it("refuses arrangement params on a chain, which has no position on the timeline", async () => {
+    const { rack } = setupRack();
 
-    await duplicate({
-      type: "chain",
-      id: "chain-0",
-      arrangementStart: "5|1",
-      arrangementLength: "1bar",
-    });
-
-    expect(consoleMock.warn).toHaveBeenCalledTimes(1);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      'arrangementStart/arrangementLength ignored: a chain has no arrangement position (type "chain")',
+    await expect(
+      duplicate({
+        type: "chain",
+        id: "chain-0",
+        arrangementStart: "5|1",
+        arrangementLength: "1bar",
+      }),
+    ).rejects.toThrow(
+      'arrangementStart is only for type "track", "scene" or "clip"; arrangementLength is only for type "clip" or "scene"; this call has type "chain".',
     );
+
+    expect(rack.call).not.toHaveBeenCalled();
   });
 
   it("refuses a rack return chain, saying why", async () => {
@@ -406,7 +407,10 @@ describe("duplicate - chain", () => {
 
     await expect(
       duplicate({ type: "chain", id: "chain-0", toPath: "t0/d0/pC1/d0" }),
-    ).rejects.toThrow("no destination rack at toPath");
+    ).rejects.toThrow(
+      'no destination rack at toPath "t0/d0/pC1/d0"; name a rack, e.g. ' +
+        '"t0/d0" or "t0/d0/c+" (not a pad, a chain or a plain device)',
+    );
   });
 
   it("says on the copy's entry that macro mappings do not come along", async () => {
@@ -429,13 +433,13 @@ describe("duplicate - chain", () => {
     expect(result).not.toHaveProperty("detail");
   });
 
-  it("warns that count is ignored, since only one copy is made", async () => {
+  it("refuses a count, since a chain copy goes one per toPath", async () => {
     setupRack();
 
-    await duplicate({ type: "chain", id: "chain-0", count: 2 });
-
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
-      "count 2 ignored: chain copies go one per toPath",
+    await expect(
+      duplicate({ type: "chain", id: "chain-0", count: 2 }),
+    ).rejects.toThrow(
+      'count is only for type "track" or "scene"; this call has type "chain".',
     );
   });
 
@@ -514,9 +518,7 @@ describe("duplicate - chain", () => {
     ).rejects.toThrow('nothing at toPath "t1/inst": t1 has no instrument');
   });
 
-  // A toPath that doesn't parse has no trailing "c+" to strip, so the rack
-  // lookup gets it as written and reports the parse error itself — one
-  // message about the path, not two.
+  // Refused with the parse error before the rack is looked up.
   it("reports the parse error for a toPath that isn't a path at all", async () => {
     setupRack();
     mockNonExistentObjects();
@@ -524,7 +526,7 @@ describe("duplicate - chain", () => {
     await expect(
       duplicate({ type: "chain", id: "chain-0", toPath: "nonsense!" }),
     ).rejects.toThrow(
-      'invalid path "nonsense!" - "nonsense!" is not a track or scene',
+      'invalid toPath "nonsense!" - "nonsense!" is not a track or scene',
     );
   });
 
@@ -580,6 +582,29 @@ describe("duplicate - chain", () => {
       path: "t0/d0/c1",
       detail:
         "t0/d0/c0/d0 could not be copied into the new chain: no chain there",
+    });
+  });
+
+  it("reports a chain whose temp track could not be deleted", async () => {
+    setupRack({ deviceIds: ["d-0"] });
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      methods: {
+        delete_track: () => {
+          throw new Error("Live is busy");
+        },
+      },
+    });
+    registerCarriedDevice();
+    vi.mocked(moveDeviceToPathMock).mockReturnValueOnce({ outcome: "moved" });
+
+    const result = await duplicate({ type: "chain", id: "chain-0" });
+
+    expect(result).toStrictEqual({
+      id: "chain-new",
+      path: "t0/d0/c1",
+      detail:
+        "the temporary track copy at t1 couldn't be deleted: Live is busy",
     });
   });
 

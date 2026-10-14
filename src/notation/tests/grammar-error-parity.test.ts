@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Cross-grammar ERROR-MESSAGE parity (L9).
 //
@@ -19,6 +19,7 @@
 // the same divergence-lock role note-value-grammar-parity plays for values.
 
 import { describe, expect, it } from "vitest";
+import { validateBarBeatPosition } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { parse as parseBarbeat } from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import { parse as parseTransform } from "#src/notation/transform/parser/transform-parser.ts";
 
@@ -51,6 +52,11 @@ function transformError(source: string): string {
 // a `start-end: assignment` range. The captured `text()` aligns (each grammar
 // reports just the beat portion), so the messages are identical.
 const POSITION_CASES = [
+  {
+    name: "0-indexed bar (0|1)",
+    posToken: "0|1",
+    phrase: "bars are 1-indexed",
+  },
   {
     name: "0-indexed beat (1|0)",
     posToken: "1|0",
@@ -92,6 +98,26 @@ describe("grammar error-message parity across surfaces (L9)", () => {
     }
   });
 
+  describe("a 0-indexed bar reports the same error at every position site", () => {
+    it("matches across note, bar copy, range, split and standalone-field sites", () => {
+      const fromBarbeat = barbeatError("C3 0|1");
+      let fromField = "";
+
+      try {
+        validateBarBeatPosition("0|1");
+      } catch (error) {
+        fromField = (error as Error).message;
+      }
+
+      expect(fromBarbeat).toContain("bars are 1-indexed");
+      expect(fromField).toBe(fromBarbeat);
+      expect(barbeatError("@0=1")).toBe(fromBarbeat);
+      expect(transformError("0|1: velocity = 1")).toBe(fromBarbeat);
+      expect(transformError("1|1-0|3: velocity = 1")).toBe(fromBarbeat);
+      expect(transformError("split(0|1)")).toBe(fromBarbeat);
+    });
+  });
+
   describe("a malformed duration reports the same error in both grammars", () => {
     for (const { name, durToken, phrase } of DURATION_CASES) {
       it(`${name} → identical message`, () => {
@@ -108,13 +134,13 @@ describe("grammar error-message parity across surfaces (L9)", () => {
   describe("the fix the error suggests parses cleanly on both surfaces", () => {
     // Each steer names a valid replacement; guard that the replacement actually
     // parses, so the error can never point at a form the grammar also rejects.
-    const VALID_POSITIONS = ["1|1", "1|1+n/12", "1|1.5"];
+    const VALID_POSITIONS = ["1|1", "1|1+n/12", "1|1.5", "10|1", "100|1"];
 
     for (const pos of VALID_POSITIONS) {
       it(`"${pos}" parses on both surfaces`, () => {
         expect(() => parseBarbeat(`C3 ${pos}`, OPTS)).not.toThrow();
         expect(() =>
-          parseTransform(`${pos}-9|1: velocity = 1`, OPTS),
+          parseTransform(`${pos}-999|1: velocity = 1`, OPTS),
         ).not.toThrow();
       });
     }

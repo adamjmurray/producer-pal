@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Gemini Live returns output audio as raw 16-bit PCM, 24 kHz, mono,
 // little-endian, in base64 chunks. WebRTC played OpenAI's audio for us; here we

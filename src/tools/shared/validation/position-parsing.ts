@@ -1,9 +1,8 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 
 export interface ClipSlotPosition {
@@ -14,18 +13,11 @@ export interface ClipSlotPosition {
 /**
  * Parses a single slot string into track and scene indices
  * @param input - Slot string (e.g., "0/3")
+ * @param label - The param the caller sent, for messages
  * @returns Parsed slot position
  */
-export function parseSlot(input: string): ClipSlotPosition {
-  const parts = input.split("/");
-
-  if (parts.length !== 2) {
-    throw new Error(
-      `invalid slot "${input}" - expected trackIndex/sceneIndex (e.g., "0/3")`,
-    );
-  }
-
-  return parseSlotParts(parts[0] as string, parts[1] as string, "slot", input);
+export function parseSlot(input: string, label: string): ClipSlotPosition {
+  return parseSlotEntry(input, label);
 }
 
 /**
@@ -40,23 +32,7 @@ export function parseSlotList(
 ): ClipSlotPosition[] {
   const entries = targetEntries(input, label);
 
-  return entries.map((entry) => {
-    const parts = entry.split("/");
-
-    if (parts.length < 2) {
-      throw new Error(
-        `invalid ${label} "${entry}" - expected trackIndex/sceneIndex format (e.g., "0/1")`,
-      );
-    }
-
-    if (parts.length > 2) {
-      console.warn(
-        `${label} "${entry}" has extra parts, using first two (trackIndex/sceneIndex)`,
-      );
-    }
-
-    return parseSlotParts(parts[0] as string, parts[1] as string, label, entry);
-  });
+  return entries.map((entry) => parseSlotEntry(entry, label));
 }
 
 /**
@@ -69,6 +45,25 @@ export function parseArrangementStartList(input?: string | null): string[] {
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Parse one trackIndex/sceneIndex entry.
+ * @param entry - The entry (e.g., "0/3")
+ * @param label - The param the caller sent, for messages
+ * @returns Parsed slot position
+ */
+function parseSlotEntry(entry: string, label: string): ClipSlotPosition {
+  const parts = entry.split("/");
+
+  // A third part has no reading: dropping it would guess which two were meant.
+  if (parts.length !== 2) {
+    throw new Error(
+      `invalid ${label} "${entry}" - expected trackIndex/sceneIndex format (e.g., "0/1")`,
+    );
+  }
+
+  return parseSlotParts(parts[0] as string, parts[1] as string, label, entry);
+}
 
 /**
  * Validate and parse two string parts into a ClipSlotPosition.

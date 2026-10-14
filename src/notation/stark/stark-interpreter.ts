@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2025 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Stark notation interpreter: converts a Stark expression into MIDI note events.
@@ -17,7 +17,8 @@
  */
 
 import { chordSymbolPitches } from "#src/notation/chords/chord-symbols.ts";
-import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
+import { sortNotes } from "#src/notation/note-sort.ts";
+import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import {
   drumHeaderPitch,
   noteLabel,
@@ -35,6 +36,7 @@ import {
   type StarkSection,
 } from "#src/notation/stark/parser/stark-parser.ts";
 import * as parser from "#src/notation/stark/parser/stark-parser.ts";
+import { formatStarkSyntaxError } from "#src/notation/stark/parser/stark-syntax-error.ts";
 import {
   BASS_REGISTER_DEFAULT,
   CHORDS_REGISTER_DEFAULT,
@@ -74,8 +76,8 @@ export function interpretNotation(
   // Warn only when drum and pitched lines share a clip — that crosses the
   // Drum-Rack/instrument track boundary and is usually a mistake. Mixing pitched
   // registers (bass:+melody:, melody:+chords:) is normal multi-part writing, so
-  // it must NOT warn (that was noise). Genuine same-pitch overlaps are caught
-  // separately by the dedupe warning below.
+  // it must NOT warn (that was noise). Same-pitch overlaps are dropped by the
+  // write path, which says so on the clip's entry.
   const hasDrums = ast.some((s) => "midi" in s);
   const hasPitched = ast.some((s) => !("midi" in s));
 
@@ -93,16 +95,9 @@ export function interpretNotation(
     }
   }
 
-  // Resolve same-pitch+start collisions (can arise from mixed sections).
-  const { notes: sorted, collisions } = dedupeAndSortNotes(notes);
-
-  if (collisions > 0) {
-    console.warn(
-      `Stark: ${collisions} same-pitch+start ${collisions === 1 ? "collision" : "collisions"} from mixed sections; keeping last note`,
-    );
-  }
-
-  return sorted;
+  // Same-pitch+start collisions (from mixed sections) are left for the write
+  // path to drop and count: it says so on the clip's entry.
+  return sortNotes(notes);
 }
 
 /**
@@ -119,9 +114,12 @@ export function parseNotation(starkExpression: string): StarkSection[] {
   try {
     return parser.parse(starkExpression);
   } catch (error) {
-    throw new Error(`Stark notation parse error: ${(error as Error).message}`, {
-      cause: error,
-    });
+    const message =
+      error instanceof Error && error.name === "SyntaxError"
+        ? formatStarkSyntaxError(error as PeggySyntaxError, starkExpression)
+        : `Stark notation parse error: ${(error as Error).message}`;
+
+    throw new Error(message, { cause: error });
   }
 }
 

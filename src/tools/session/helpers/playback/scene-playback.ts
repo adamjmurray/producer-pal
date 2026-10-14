@@ -1,10 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { type ClipSlotEntry } from "./session-clip-targets.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** The scene play-scene fired, for the response */
@@ -20,8 +19,6 @@ export interface PlaybackState {
    * in it, so the caller doesn't always know which one fired.
    */
   scene?: FiredScene;
-  /** Set by the clip actions: one entry per clip slot the call named */
-  clips?: ClipSlotEntry[];
 }
 
 /**

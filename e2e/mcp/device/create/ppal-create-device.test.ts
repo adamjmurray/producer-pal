@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-create-device tool
@@ -17,6 +17,7 @@ import {
   createTestDeviceAt,
   extractToolResultText,
   getToolErrorMessage,
+  getToolWarnings,
   isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
@@ -209,6 +210,21 @@ describe("ppal-create-device", () => {
     expect((await createDevice("Limiter", "mt")).id).toBeDefined();
   });
 
+  it("refuses device beside the deprecated deviceName, creating nothing", async () => {
+    const before = await readDeviceCount(ctx.client!, 0);
+    const refused = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { device: "Reverb", deviceName: "Delay", path: "t0/d+" },
+    });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "device names the device on its own - don't send deviceName with it (deviceName is deprecated)",
+    );
+
+    await sleep(100);
+    expect(await readDeviceCount(ctx.client!, 0)).toBe(before);
+  });
+
   it("refuses a device name Live doesn't have", async () => {
     const text = extractToolResultText(
       await ctx.client!.callTool({
@@ -299,50 +315,32 @@ describe("ppal-create-device", () => {
     expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(before);
   });
 
-  // A position past the end of a chain appends, and an appended audio effect
-  // goes last, so the entry after it still names the slot it named. This used
-  // to be read as two positioned inserts in one chain and refused.
-  it("allows a path list whose first entry is past the end of the chain", async () => {
+  // A position past the end is refused on its own entry and inserts nothing, so
+  // the entry after it still names the slot it named.
+  it("refuses a past-the-end entry of a path list and inserts the rest", async () => {
     const trackIndex = await createTrack("audio");
     const before = await readDeviceCount(ctx.client!, trackIndex);
-    const result = await ctx.client!.callTool({
-      name: "ppal-create-device",
-      arguments: {
-        device: "Utility",
-        path: `t${trackIndex}/d${before + 5},t${trackIndex}/d0`,
-      },
-    });
-
-    expect(isToolError(result)).toBe(false);
-    expect(extractToolResultText(result)).not.toContain("is spelled through");
-    expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(before + 2);
-  });
-
-  // Two entries both past the end of the same chain both just append, in the
-  // order named — an audio effect never re-sorts, so nothing about the first
-  // append moves what the second one lands after.
-  it("allows two past-the-end entries into the same chain, in order", async () => {
-    const trackIndex = await createTrack("audio");
-    const before = await readDeviceCount(ctx.client!, trackIndex);
+    const pastEnd = `t${trackIndex}/d${before + 5}`;
     const { data: results, warnings } = parseToolResultWithWarnings<
-      CreateDeviceResult[]
+      Array<CreateDeviceResult & { ok?: boolean; detail?: string }>
     >(
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
           device: "Utility",
-          path: `t${trackIndex}/d${before + 99},t${trackIndex}/d${before + 98}`,
-          name: "First,Second",
+          path: `${pastEnd},t${trackIndex}/d0`,
         },
       }),
     );
 
-    // Each past-the-end entry warns that it appended instead.
-    expect(warnings).toHaveLength(2);
     expect(results).toHaveLength(2);
-    expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(before + 2);
-    expect(results[0]?.path).toBe(`t${trackIndex}/d${before}`);
-    expect(results[1]?.path).toBe(`t${trackIndex}/d${before + 1}`);
+    expect(results[0]).toStrictEqual(
+      expect.objectContaining({ path: pastEnd, ok: false }),
+    );
+    expect(results[0]?.detail).toContain("is past the end of a container");
+    expect(results[1]?.path).toBe(`t${trackIndex}/d0`);
+    expect(warnings).toStrictEqual([]);
+    expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(before + 1);
   });
 
   // pD1/c0 and the rack's c1 are one chain, so the first insert renumbers what
@@ -369,25 +367,25 @@ describe("ppal-create-device", () => {
     expect(device.path).toBe("t1/d0");
   });
 
-  it("appends and warns for a position past the end of the chain", async () => {
-    // Live rejects an out-of-range insert position. Valid positions run
-    // 0..count, so count + 1 is past the end wherever the track started —
-    // hardcoding d1 only tests this on a machine whose default preset is empty.
+  it("refuses a lone position past the end of the chain", async () => {
+    // Valid positions run 0..count, so count + 1 is past the end wherever the
+    // track started — hardcoding d1 only tests this on a machine whose default
+    // preset is empty.
     const trackIndex = await createTrack("midi");
     const startingDevices = await readDeviceCount(ctx.client!, trackIndex);
-    const result = parseToolResultWithWarnings<CreateDeviceResult>(
-      await ctx.client!.callTool({
-        name: "ppal-create-device",
-        arguments: {
-          device: "Compressor",
-          path: `t${trackIndex}/d${startingDevices + 1}`,
-        },
-      }),
-    );
+    const pastEnd = `t${trackIndex}/d${startingDevices + 1}`;
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { device: "Compressor", path: pastEnd },
+    });
 
-    expect(result.data.path).toBe(`t${trackIndex}/d${startingDevices}`);
-    expect(result.warnings.join("\n")).toContain(
-      "past the end of the device chain",
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      `"${pastEnd}" is past the end of a container holding ${startingDevices} device`,
+    );
+    expect(getToolWarnings(result)).toStrictEqual([]);
+    expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(
+      startingDevices,
     );
   });
 
@@ -492,7 +490,7 @@ describe("ppal-create-device", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      '"d+" appends a device, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+      '"d+" appends a device, so it only works as a destination: path in ppal-create-device, toPath in ppal-duplicate and ppal-update-device',
     );
   });
 
@@ -559,7 +557,7 @@ describe("ppal-create-device", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      '"c+" appends a chain, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+      '"c+" appends a chain, so it only works as a destination: path in ppal-create-device, toPath in ppal-duplicate and ppal-update-device',
     );
   });
 

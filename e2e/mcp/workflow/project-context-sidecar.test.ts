@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for the project-context backup sidecar — the "Producer Pal Project
@@ -26,11 +26,11 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { connectMcp } from "#evals/chat/mcp.ts";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { openLiveSet } from "#evals/scenarios/open-live-set.ts";
 import {
   CONFIG_URL,
   LIVE_SET_PATH,
-  MCP_URL,
   setConfig,
   setupMcpTestContext,
   sleep,

@@ -9,5 +9,7 @@ Miscellaneous improvement plans not directly tied to the
   extensions.
 - [live-api-snapshot-verification.md](live-api-snapshot-verification.md) —
   checking our Live API mocks against a real Live.
+- [live-api-through-python.md](live-api-through-python.md) — the Python remote
+  script as the only way to call the Live API.
 - [stream-record-playback.md](stream-record-playback.md) — recording real AI SDK
   streams and replaying them in tests.

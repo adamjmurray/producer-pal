@@ -1,11 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
+
+import { DEFAULT_MCP_URL } from "#src/shared/config";
 
 const VITE_DEV_PORT = "5173";
-const DEFAULT_MCP_PORT = "3350";
-const DEFAULT_MCP_URL = `http://localhost:${DEFAULT_MCP_PORT}/mcp`;
 
 /**
  * Whether the page is served from the Vite dev server (port 5173).
@@ -125,6 +125,33 @@ export function getRemoteScriptUrl(): string {
  */
 export function getRemoteScriptInstallUrl(): string {
   return serverUrl("/remote-script/install");
+}
+
+/**
+ * Gets the device-install endpoint URL (whether this device is copied into
+ * Live's User Library, and whether that copy is current).
+ * @returns {string} The device-install endpoint URL
+ */
+export function getDeviceInstallUrl(): string {
+  return serverUrl("/device-install");
+}
+
+/**
+ * Gets the device-install action endpoint URL (POST copies the running device
+ * into the given User Library).
+ * @returns {string} The device-install action endpoint URL
+ */
+export function getDeviceInstallActionUrl(): string {
+  return serverUrl("/device-install/install");
+}
+
+/**
+ * Gets the device swap endpoint URL (POST replaces the running device in the
+ * Live Set with the User Library copy).
+ * @returns {string} The device swap endpoint URL
+ */
+export function getDeviceSwapUrl(): string {
+  return serverUrl("/device-install/swap");
 }
 
 /**

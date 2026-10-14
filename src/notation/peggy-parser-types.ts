@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Shared type declarations for peggy-generated parsers.
@@ -50,7 +50,7 @@ export interface SyntaxError extends Error {
 /** Peggy SyntaxError with detailed expected items for error formatting */
 export interface PeggySyntaxError extends Error {
   name: "SyntaxError";
-  expected?: Array<{ type: string; value?: string; description?: string }>;
+  expected?: Array<{ type: string; text?: string; description?: string }>;
   found: string | null;
   location: {
     start: { offset: number; line: number; column: number };

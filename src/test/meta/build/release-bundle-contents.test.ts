@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A release build must not contain the dev-only modules — code execution, or the
 // LiveAPI object counter. The stubs are swapped in by a resolveId hook, which is
@@ -12,16 +12,20 @@
 // So this builds the release bundles for real and inspects which modules went
 // in — the artifact, not the config text.
 
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { rolldown, type InputOptions, type RolldownOutput } from "rolldown";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
+import {
+  DEV_BUILD_MARKER,
+  GUARDED_BUILD_FLAGS,
+} from "../../../../scripts/build-and-release/helpers/build-flag-guard.ts";
 import {
   BUILD_STATS_STUBS,
   CODE_EXEC_STUBS,
 } from "../../../../config/rolldown-plugin-stub-modules.mjs";
-
-/** The flags whose absence puts a stub in each real module's place. */
-const DEV_ONLY_FLAGS = ["ENABLE_CODE_EXEC", "ENABLE_BUILD_STATS"];
 
 // Taken from the plugin's own tables rather than restated. A restated path that
 // went stale in a rename would filter for something that can never appear, and
@@ -56,15 +60,30 @@ const BUNDLES = [
   { name: "portal", index: 2, stubs: [] },
 ] as const;
 
+// Stands in for the frozen .amxd. Set before the config loads, as a release
+// package would, so a bundler that pulled the device in would carry this text.
+const FAKE_DEVICE_TEXT = "FAKE-AMXD-BYTES-4f1c9a";
+
 const moduleIds: Record<string, string[]> = {};
+const chunkCode: Record<string, string> = {};
+let portalWithInstaller = "";
 let bundleCount = 0;
+let scratchDir = "";
 
 beforeAll(async () => {
   // The config reads these at import time; a shell that happens to export one
-  // would otherwise turn this whole suite into a no-op.
-  for (const flag of DEV_ONLY_FLAGS) {
+  // (the test setup sets ENABLE_WARP_MARKERS) would otherwise turn this suite
+  // into a release check of a dev build.
+  for (const flag of GUARDED_BUILD_FLAGS) {
     delete process.env[flag];
   }
+
+  scratchDir = mkdtempSync(join(tmpdir(), "ppal-bundle-contents-"));
+
+  const fakeDevice = join(scratchDir, "Producer_Pal.amxd");
+
+  writeFileSync(fakeDevice, FAKE_DEVICE_TEXT);
+  process.env.PRODUCER_PAL_DEVICE_FILE = fakeDevice;
 
   const config = await import("../../../../config/rolldown.config.mjs");
   const configs = config.default as (InputOptions & { output: unknown })[];
@@ -72,9 +91,35 @@ beforeAll(async () => {
   bundleCount = configs.length;
 
   for (const { name, index } of BUNDLES) {
-    moduleIds[name] = await buildModuleIds(configs[index] as InputOptions);
+    const built = await buildChunks(configs[index] as InputOptions);
+
+    moduleIds[name] = built.ids;
+    chunkCode[name] = built.code;
   }
+
+  // The portal doesn't import the installer yet, and a module nothing imports
+  // is never loaded, so the real portal build can't show whether the embedding
+  // plugin is wired in. Build the portal's own config around an entry that does.
+  const probeEntry = join(scratchDir, "probe-entry.ts");
+
+  writeFileSync(
+    probeEntry,
+    `import { EMBEDDED_REMOTE_SCRIPT_FILES } from "#src/mcp-server/rpc/remote-script/embedded-remote-script.ts";\n` +
+      "console.log(EMBEDDED_REMOTE_SCRIPT_FILES);\n",
+  );
+
+  const probed = await buildChunks({
+    ...(configs[2] as InputOptions),
+    input: probeEntry,
+  });
+
+  portalWithInstaller = probed.code;
 }, 120_000);
+
+afterAll(() => {
+  delete process.env.PRODUCER_PAL_DEVICE_FILE;
+  rmSync(scratchDir, { recursive: true, force: true });
+});
 
 // BUNDLES addresses the configs by index, so a fourth one appended to the
 // rolldown config would ship unchecked by anything here.
@@ -110,18 +155,80 @@ describe.each(BUNDLES)("release bundle: $name", ({ name, stubs }) => {
     },
   );
 
+  it("carries no dev-build marker", () => {
+    expect(chunkCode[name]).not.toContain(DEV_BUILD_MARKER);
+  });
+
   it("does not import node:vm", () => {
     expect(moduleIds[name]).not.toContain("node:vm");
+  });
+
+  // The frozen device ships beside the portal as a file. Importing it would put
+  // 10 MB in the bundle, and in the device's own bundle the .amxd would contain
+  // itself.
+  it("does not contain the frozen device", () => {
+    expect(moduleIds[name]?.filter((id) => id.endsWith(".amxd"))).toStrictEqual(
+      [],
+    );
+    expect(chunkCode[name]).not.toContain(FAKE_DEVICE_TEXT);
+  });
+});
+
+// The release steps tell a debug device from a release one by this marker, so a
+// build with a dev flag on must carry it in every bundle that can end up frozen.
+describe("dev build marker", () => {
+  const devCode: Record<string, string> = {};
+
+  beforeAll(async () => {
+    // The config reads the environment at import time, so load a fresh copy.
+    vi.resetModules();
+    process.env.ENABLE_LIVE_API = "true";
+
+    try {
+      const config = await import("../../../../config/rolldown.config.mjs");
+      const configs = config.default as (InputOptions & { output: unknown })[];
+
+      for (const { name, index } of BUNDLES) {
+        const built = await buildChunks(configs[index] as InputOptions);
+
+        devCode[name] = built.code;
+      }
+    } finally {
+      delete process.env.ENABLE_LIVE_API;
+    }
+  }, 120_000);
+
+  it.each(BUNDLES.map((b) => b.name))("is in the %s bundle", (name) => {
+    expect(devCode[name]).toContain(`/* ${DEV_BUILD_MARKER} */`);
+  });
+});
+
+describe("remote script embedding", () => {
+  // Remote-script files are flat in the embedded map: a literal key per file.
+  const EMBEDDED_KEY = '"bridge.py":';
+
+  it("is in the device bundle", () => {
+    expect(chunkCode["mcp-server"]).toContain(EMBEDDED_KEY);
+  });
+
+  it("is in the portal bundle once the portal imports the installer", () => {
+    expect(portalWithInstaller).toContain(EMBEDDED_KEY);
+  });
+
+  it("does not read remote-script/ from disk at runtime", () => {
+    expect(portalWithInstaller).not.toContain("readRemoteScriptSource");
   });
 });
 
 /**
- * Bundle one rolldown config in memory and list the modules that went in.
+ * Bundle one rolldown config in memory.
  *
  * @param input - One entry from the rolldown config, output stripped
- * @returns Repo-relative module ids, in bundle order
+ * @returns The modules that went in (repo-relative, bundle order) and the generated code
  */
-async function buildModuleIds(input: InputOptions): Promise<string[]> {
+async function buildChunks(
+  input: InputOptions,
+): Promise<{ ids: string[]; code: string }> {
   const bundle = await rolldown(input);
 
   let generated: RolldownOutput;
@@ -132,13 +239,16 @@ async function buildModuleIds(input: InputOptions): Promise<string[]> {
     await bundle.close();
   }
 
-  return generated.output.flatMap((chunk) =>
-    chunk.type === "chunk"
-      ? Object.keys(chunk.modules).map((id) =>
-          id.startsWith(`${projectRoot}/`)
-            ? id.slice(projectRoot.length + 1)
-            : id,
-        )
-      : [],
-  );
+  const chunks = generated.output.filter((out) => out.type === "chunk");
+
+  return {
+    ids: chunks.flatMap((chunk) =>
+      Object.keys(chunk.modules).map((id) =>
+        id.startsWith(`${projectRoot}/`)
+          ? id.slice(projectRoot.length + 1)
+          : id,
+      ),
+    ),
+    code: chunks.map((chunk) => chunk.code).join("\n"),
+  };
 }

@@ -1,10 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { buildFlagGuard, DEV_BUILD_OVERRIDE } from "./build-flag-guard.ts";
+import {
+  buildFlagGuard,
+  DEV_BUILD_OVERRIDE,
+  GUARDED_BUILD_FLAGS,
+  hasDevBuildFlags,
+} from "./build-flag-guard.ts";
 
 describe("buildFlagGuard", () => {
   it("allows a build from a clean environment", () => {
@@ -63,6 +68,26 @@ describe("buildFlagGuard", () => {
     ).toContain("ENABLE_CODE_EXEC=true");
   });
 
+  it("refuses even with the override when it is not allowed", () => {
+    const refusal = buildFlagGuard(
+      { [DEV_BUILD_OVERRIDE]: "true", ENABLE_CODE_EXEC: "true" },
+      { allowOverride: false },
+    );
+
+    expect(refusal).toContain("ENABLE_CODE_EXEC=true");
+    expect(refusal).toContain("does not apply");
+    expect(refusal).not.toContain("On purpose");
+  });
+
+  it("passes a clean environment when the override is not allowed", () => {
+    expect(
+      buildFlagGuard(
+        { [DEV_BUILD_OVERRIDE]: "true" },
+        { allowOverride: false },
+      ),
+    ).toBeNull();
+  });
+
   it("lets a build opt in on purpose", () => {
     expect(
       buildFlagGuard({
@@ -70,5 +95,34 @@ describe("buildFlagGuard", () => {
         ENABLE_CODE_EXEC: "true",
       }),
     ).toBe(null);
+  });
+});
+
+describe("hasDevBuildFlags", () => {
+  it("is false for a clean environment", () => {
+    expect(hasDevBuildFlags({ PATH: "/usr/bin" })).toBe(false);
+  });
+
+  it.each(GUARDED_BUILD_FLAGS)("is true when %s is set", (flag) => {
+    expect(hasDevBuildFlags({ [flag]: "true" })).toBe(true);
+  });
+
+  it("ignores empty flags, unrelated ENABLE_ vars and the override alone", () => {
+    expect(
+      hasDevBuildFlags({
+        ENABLE_CODE_EXEC: "",
+        ENABLE_RUNNER_TRACING: "true",
+        [DEV_BUILD_OVERRIDE]: "true",
+      }),
+    ).toBe(false);
+  });
+
+  it("is true with the override, which only lets the build run", () => {
+    expect(
+      hasDevBuildFlags({
+        [DEV_BUILD_OVERRIDE]: "true",
+        ENABLE_LIVE_API: "true",
+      }),
+    ).toBe(true);
   });
 });

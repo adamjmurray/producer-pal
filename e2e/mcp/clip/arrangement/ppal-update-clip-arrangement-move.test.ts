@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for moving an arrangement clip to another track or take lane.
@@ -33,6 +33,8 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
+import { readClipsOnTrack } from "../helpers/arrangement-lengthening-test-helpers.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 import {
   arrangementClipAt,
   createArrangementClip,
@@ -40,6 +42,7 @@ import {
   moveOffTakeLane,
   readClipFully,
   updateClip,
+  readNoteDicts,
 } from "../helpers/clip-io-test-helpers.ts";
 import {
   AUDIO_TRACK,
@@ -120,7 +123,7 @@ describe("arrangement clip moved to another lane", () => {
 
     await writeOneMutedNote(source.id);
 
-    const before = await noteDicts(source.id);
+    const before = await readNoteDicts(ctx.client!, source.id);
 
     expect(before).toHaveLength(1);
     expect(before[0]!.mute).toBe(1);
@@ -132,7 +135,7 @@ describe("arrangement clip moved to another lane", () => {
 
     expect(moved.detail).toContain(`re-created on t${CHILD_TRACK}/l`);
 
-    const after = await noteDicts(moved.id!);
+    const after = await readNoteDicts(ctx.client!, moved.id!);
 
     expect(after[0]!.mute).toBe(1);
     expect(after[0]!.release_velocity).toBe(77);
@@ -245,32 +248,69 @@ describe("arrangement clip moved to another lane", () => {
     expect(warnings).toStrictEqual([]);
   });
 
-  // One lane, one position: these really do land on top of each other, and the
-  // clip that arrived second is the one that can say so.
-  it("says on the later clip's entry that it overwrote the earlier one", async () => {
+  // One lane, one position: the later move covers the earlier one whole, so the
+  // earlier is left unwritten and its clip stays where it was. The later entry
+  // names nothing it overwrote, since nothing was written under it.
+  it("leaves the earlier move unwritten when a later one lands on the same spot", async () => {
     const first = await createClip("77|1", "Stacked One");
     const second = await createClip("89|1", "Stacked Two");
+    const target = `t${CHILD_TRACK}/l2[93|1]`;
 
     const { data, warnings } = await updateClip(
       ctx.client!,
       `${first.id},${second.id}`,
-      {
-        toPath: `t${CHILD_TRACK}/l2[93|1],t${CHILD_TRACK}/l2[93|1]`,
-      },
+      { toPath: `${target},${target}` },
     );
     const entries = data as unknown as ReadClipResult[];
 
-    // Both moves ran, so the stack is real.
-    for (const entry of entries) {
-      expect(entry.detail).toContain(`re-created on t${CHILD_TRACK}/l`);
-    }
+    expect(entries[0]?.id).toBe(first.id);
+    expect(entries[0]?.detail).toBe(
+      `overwritten later in this call by ${target}`,
+    );
 
-    // The first found the lane empty; the second found the first there.
-    expect(entries[0]?.detail).not.toContain("overwrote");
-    expect(entries[1]?.detail).toMatch(
-      new RegExp(`overwrote the clip at t${CHILD_TRACK}/l\\d+\\[93\\|1\\]`),
+    // Only the later move ran.
+    expect(entries[1]?.detail).toContain(`re-created on t${CHILD_TRACK}/l`);
+    expect(entries[1]?.detail).not.toContain("overwrote the clip");
+    expect(entries[1]?.path).toMatch(
+      new RegExp(`^t${CHILD_TRACK}/l\\d+\\[93\\|1\\]$`),
     );
     expect(warnings).toStrictEqual([]);
+
+    // The first clip never moved; the second is gone from its source.
+    expect(
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "77|1"))?.id,
+    ).toBe(first.id);
+    expect(
+      await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "89|1"),
+    ).toBeUndefined();
+  });
+
+  // Each move reads only the lane it lands on, so each entry has to say what
+  // its own landing did.
+  it("says what each clip of one move displaced", async () => {
+    const first = await createClip("721|1", "Mover One");
+    const second = await createClip("725|1", "Mover Two");
+
+    await createClip("729|1", "Under One");
+    await createArrangementClip(ctx.client!, EMPTY_MIDI_TRACK, "733|1", {
+      name: "Under Two",
+      length: "4bar",
+    });
+
+    const { data } = await updateClip(ctx.client!, `${first.id},${second.id}`, {
+      arrangementStart: "729|1,734|1",
+    });
+    const entries = data as unknown as ReadClipResult[];
+    const track = `t${EMPTY_MIDI_TRACK}`;
+
+    expect(entries.map((entry) => entry.path)).toStrictEqual([
+      `${track}[729|1]`,
+      `${track}[734|1]`,
+    ]);
+    expect(entries.map((entry) => entry.detail)).toStrictEqual([
+      `overwrote the clip at ${track}[729|1]`,
+      `split the clip at ${track}[733|1] into ${track}[733|1] and ${track}[735|1]`,
+    ]);
   });
 
   // The planner runs the clip being landed on first, trusting its declared move
@@ -625,30 +665,85 @@ async function writeOneMutedNote(clipId: string): Promise<void> {
   await sleep(100);
 }
 
-/**
- * A clip's notes as Live reports them, minus the note_id it assigns itself.
- * @param clipId - The clip's Live API id
- * @returns One dictionary per note, in Live's own shape
- */
-async function noteDicts(
-  clipId: string,
-): Promise<Array<Record<string, number>>> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-live-api",
-    arguments: {
-      path: `id ${clipId}`,
-      operations: [
-        { type: "call", method: "get_notes_extended", args: [0, 128, 0, 4] },
-      ],
-    },
-  });
-
-  const [raw] = parseToolResult<{
-    results: Array<{ result: string }>;
-  }>(result).results;
-  const { notes } = JSON.parse(raw!.result) as {
-    notes: Array<Record<string, number>>;
-  };
-
-  return notes.map(({ note_id: _noteId, ...note }) => note);
+interface UpdatedEntry {
+  id: string;
+  path?: string;
+  detail?: string;
 }
+
+/**
+ * The clips on the track that start within a run of bars, by start.
+ * @param clips - Every arrangement clip on the track
+ * @param fromBar - First bar of the run
+ * @param toBar - Last bar of the run
+ * @returns Each clip's [start, arrangementLength], in bar order
+ */
+function spansBetween(
+  clips: ReadClipResult[],
+  fromBar: number,
+  toBar: number,
+): Array<[string, string | undefined]> {
+  return clips
+    .map((clip) => [arrangementStartOf(clip), clip.arrangementLength] as const)
+    .filter(([start]) => {
+      const bar = Number(start?.split("|")[0]);
+
+      return bar >= fromBar && bar <= toBar;
+    })
+    .toSorted(
+      (a, b) => Number(a[0]?.split("|")[0]) - Number(b[0]?.split("|")[0]),
+    )
+    .map(([start, length]) => [start as string, length]);
+}
+
+describe("update-clip: an edit after another in the same call", () => {
+  it("lands a clip on the tail another clip was just shortened off", async () => {
+    // A fills bars 901-904; B is one bar at 911.
+    const created = parseToolResult<Array<{ id: string }>>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${EMPTY_MIDI_TRACK}[901|1],t${EMPTY_MIDI_TRACK}[911|1]`,
+          notes: "C3 1|1",
+          length: "4bar,1bar",
+          looping: true,
+        },
+      }),
+    );
+    const [a, b] = created.map(({ id }) => id) as [string, string];
+
+    await sleep(200);
+
+    // A shortens to one bar (staying where it is) and B moves to bar 903, which
+    // A covered until this call. B lands on free ground.
+    const result = parseToolResult<UpdatedEntry[]>(
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: {
+          id: `${a},${b}`,
+          arrangementLength: "1bar,1bar",
+          toPath: `t${EMPTY_MIDI_TRACK}[901|1],t${EMPTY_MIDI_TRACK}[903|1]`,
+        },
+      }),
+    );
+
+    await sleep(200);
+
+    const moved = result.find(
+      ({ path }) => path === `t${EMPTY_MIDI_TRACK}[903|1]`,
+    );
+
+    // Nothing sat in B's way, so its entry says nothing was overwritten.
+    expect(moved).toBeDefined();
+    expect(moved?.detail ?? "").not.toMatch(/overwrote|shortened|split/);
+
+    const { clips } = await readClipsOnTrack(ctx.client!, EMPTY_MIDI_TRACK);
+
+    // Both clips are one bar long, A where it was and B on A's old tail; bar
+    // 911 is empty now.
+    expect(spansBetween(clips, 901, 915)).toStrictEqual([
+      ["901|1", "1bar"],
+      ["903|1", "1bar"],
+    ]);
+  });
+});

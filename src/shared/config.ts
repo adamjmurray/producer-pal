@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Shared, cross-cutting configuration constants used across the codebase
 // (notation layer, tools layer, server, portal, and web UI).
@@ -16,7 +16,7 @@
 // Currently in pre-release, working towards 1.0.0
 // NOTE: the VERSION value is updated in place by
 // scripts/build-and-release/bump-version.ts (regex on this exact line shape).
-export const VERSION = "2.4.0";
+export const VERSION = "2.5.0-rc1";
 
 // The short commit SHA this build came from, or "" when unknown (running from
 // source, tests). Substituted at build time by config/build-sha.mjs — read via
@@ -27,6 +27,12 @@ export const VERSION = "2.4.0";
 declare const process: { env: Record<string, string | undefined> };
 
 export const BUILD_SHA = process.env.BUILD_SHA ?? "";
+
+// The MCP server's default port: the device's Server Port starts at this value
+// (max-for-live-device/tab-setup.maxpat) and every client falls back to it.
+export const DEFAULT_MCP_PORT = 3350;
+export const DEFAULT_MCP_ORIGIN = `http://localhost:${DEFAULT_MCP_PORT}`;
+export const DEFAULT_MCP_URL = `${DEFAULT_MCP_ORIGIN}/mcp`;
 
 // Minimum required Ableton Live version (no "v" prefix)
 export const MIN_LIVE_VERSION = "12.3.0";
@@ -301,6 +307,43 @@ export function resolveCompactOutput(
   }
 
   return undefined;
+}
+
+// --- Portal version ---
+
+/**
+ * Header the portal sends on every request it forwards, carrying its own
+ * VERSION. The portal and the device are updated separately, and the device
+ * server is stateless (a fresh server per POST /mcp), so MCP `clientInfo` from
+ * `initialize` is gone by the time a tool is called. Only a header reaches
+ * ppal-connect, where the mismatch is reported (portal-version-inject.ts).
+ *
+ * Absent for every other caller (chat UI, direct HTTP clients).
+ */
+export const PORTAL_VERSION_HEADER = "x-producer-pal-portal-version";
+
+/** Where users get the portal, for telling them how to update it. */
+export const PORTAL_SOURCES =
+  "the npx producer-pal package or the Claude Desktop extension";
+
+/** What to tell the model when the portal is older than what it works with. */
+export const UPDATE_PORTAL_ADVICE = `Tell the user to update the portal: ${PORTAL_SOURCES}.`;
+
+/**
+ * The portal version a request carries, or undefined when the header is absent
+ * or isn't a version. It is quoted into the connect result the model reads, so
+ * anything but a plain version string is dropped.
+ *
+ * @param headerValue - The request's header value, or undefined when absent
+ * @returns The version string, or undefined
+ */
+export function resolvePortalVersion(
+  headerValue: string | undefined,
+): string | undefined {
+  return headerValue != null &&
+    /^\d+\.\d+\.\d+(-[\w.]{1,24})?$/.test(headerValue)
+    ? headerValue
+    : undefined;
 }
 
 // --- Subagent briefing ---

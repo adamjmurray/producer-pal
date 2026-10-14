@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   useCallback,
@@ -37,7 +37,7 @@ import {
   type ConversationStore,
   DEFAULT_META,
   createConversationStore,
-  type ConversationLockedSettings,
+  type RestoredSettings,
 } from "#webui/lib/conversations/conversation-store";
 import { type PendingForkRef } from "#webui/hooks/chat/use-chat-types";
 import {
@@ -51,7 +51,7 @@ interface UseConversationsProps {
   getChatHistory: () => unknown[];
   restoreChatHistory: (
     chatHistory: unknown[],
-    lockedSettings?: ConversationLockedSettings,
+    lockedSettings?: RestoredSettings,
   ) => void;
   clearConversation: () => void;
   /**

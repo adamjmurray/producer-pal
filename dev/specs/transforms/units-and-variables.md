@@ -60,15 +60,17 @@ A single trailing `d` (dotted, ×3/2) or `t` (triplet, ×2/3) suffix scales the
 note value, matching bar|beat: `n/4d` = dotted quarter (≡ `n3/8`), `n/4t` =
 quarter triplet (≡ `n/6`), `n/8t` = eighth triplet (≡ `n/12`). Mutually
 exclusive, non-stacking, and applies to any numerator (`n3/8d` = 9/16). Not the
-`.` glyph (bar|beat uses `.` for decimals).
+`.` glyph, because `.` is bar|beat's decimal glyph (`n1.5/4`) and would be
+ambiguous. A numerator may be a decimal, and a trailing dot is fine (`n3./4` ==
+`n3/4`), as in bar|beat.
 
 `n<fraction>` evaluates to a number and composes in any expression:
 
 ```
-duration = n/8; // every note → an eighth note (any meter)
-duration += n/16; // lengthen each note by a sixteenth
-duration = n/4 + n/8; // a dotted quarter
-duration = note.duration + n/16;
+duration = n/8 // every note → an eighth note (any meter)
+duration += n/16 // lengthen each note by a sixteenth
+duration = n/4 + n/8 // a dotted quarter
+duration = note.duration + n/16
 ```
 
 The denominator is required (`n1`, `n0.5` are parse errors); same rule as in
@@ -89,10 +91,10 @@ the beats-per-bar count:
 as in authoring:
 
 ```
-timing += 1bar; // shift every note one bar later
-duration = 1bar; // each note fills a bar
-duration = 1bar + n/4; // a bar plus a quarter
-velocity += 20 * cos(1bar, sync); // a bar-length cycle
+timing += 1bar // shift every note one bar later
+duration = 1bar // each note fills a bar
+duration = 1bar + n/4 // a bar plus a quarter
+velocity += 20 * cos(1bar, sync) // a bar-length cycle
 ```
 
 `<count>bar` is the meter-aware half of the duration vocabulary; `n<fraction>`
@@ -175,12 +177,12 @@ Access audio clip properties in expressions using the `audio.` prefix:
 Access clip and bar context in expressions:
 
 - `note.index` - 0-based order of note in clip (MIDI only)
-- `clip.duration` - Clip duration in musical beats (arrangement length for
-  arrangement clips, content length for session clips)
+- `clip.duration` - Length in musical beats of the region that plays (end minus
+  start, so 5|1 to 6|1 is 1 bar); for arrangement clips, the arrangement length
 - `clip.index` - 0-based clip order in multi-clip operations
 - `clip.position` - Arrangement position in musical beats (arrangement clips
-  only; on session clips it resolves to 0 with a warning, since session clips
-  have no arrangement origin)
+  only; on session clips it resolves to 0 with a detail on the clip's entry,
+  since session clips have no arrangement origin)
 - `clip.barDuration` - **Legacy alias**, still accepted by the parser but no
   longer taught. Equals the beats-per-bar count (e.g., 4 in 4/4, 3 in 3/4, 6 in
   6/8). Prefer the `<count>bar` literal: `1bar` == `clip.barDuration` and `4bar`
@@ -204,7 +206,9 @@ Functions can be combined using standard arithmetic operators:
 - Addition: `+`
 - Subtraction: `-`
 - Multiplication: `*`
-- Division: `/` (division by zero yields 0, not an error)
+- Division: `/` (division by zero yields 0, not an error). Because a velocity of
+  0 deletes the note, `velocity = 100 / clip.index` silently deletes every note
+  on clip 0.
 - Modulo: `%` (uses wraparound behavior for negative numbers, modulo by zero
   yields 0)
 

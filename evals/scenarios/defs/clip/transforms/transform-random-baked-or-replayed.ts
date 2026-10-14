@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Scenario: two opposite randomness requests, and one LFO period.
@@ -31,7 +31,6 @@
 import { argText } from "../../arg-text.ts";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
-import { interpretMidiJson } from "#src/notation/midi-json/midi-json-notation.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 import {
@@ -41,6 +40,7 @@ import {
   TOOL_UPDATE_CLIP,
 } from "../helpers/clip-tool-constants.ts";
 import { getTransforms } from "../helpers/clip-turn-readers.ts";
+import { readbackNotes } from "../helpers/midi-json-readback.ts";
 
 /** Snare and hats in the Set's drum map. */
 const SNARE = 40;
@@ -176,36 +176,16 @@ function clipStateAssertion(
     args: { path: "t0/s0", include: ["notes"] },
     notation: "midi-json",
     expect: (result: unknown): boolean => {
-      const notes = notesOf(result);
+      const notes = readbackNotes(result);
 
       return notes != null && problem(notes) == null;
     },
     explain: (result: unknown): string => {
-      const notes = notesOf(result);
+      const notes = readbackNotes(result);
 
       return notes == null
         ? `${description}: clip notes missing or not parseable as midi-json`
         : `${description}: ${problem(notes) ?? "ok"}`;
     },
   };
-}
-
-/**
- * Parse a read-clip result (read back in midi-json) into notes, or null when the
- * payload is missing or unparseable.
- * @param result - The ppal-read-clip result
- * @returns The clip's notes, or null
- */
-function notesOf(result: unknown): NoteEvent[] | null {
-  const clip = result as { notes?: unknown };
-
-  if (typeof clip.notes !== "string") {
-    return null;
-  }
-
-  try {
-    return interpretMidiJson(clip.notes);
-  } catch {
-    return null;
-  }
 }

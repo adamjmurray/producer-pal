@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { DEVICE_CLASS } from "#src/tools/constants.ts";
 import {
@@ -10,6 +10,10 @@ import {
   setSimplerSample,
 } from "#src/tools/shared/device/simpler-sample.ts";
 import { liveGainToDb } from "#src/tools/shared/helpers/gain-conversion.ts";
+import {
+  NOTE_PITCH_BEND_RANGE_MAX,
+  PITCH_BEND_RANGE_MAX,
+} from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
 import {
   enumParam,
   readBoolProp,
@@ -119,6 +123,13 @@ function sampleWriteFailed(write: PseudoParamWrite): string | undefined {
   return `not loaded — check the path; "${String(before)}" is still there`;
 }
 
+// Max can't reach the pitch bend ranges: ppal-update-device writes them through
+// the remote script and ppal-read-device lists them, so the sync dispatch here
+// never reads one and refuses a write that gets this far (create-device, or a
+// pad's `pC1/pitchBendRange`).
+const PITCH_BEND_ELSEWHERE =
+  "can only be set with ppal-update-device on the Simpler's own path, and needs the Producer Pal remote script";
+
 export const simplerSpec: SpecializedDeviceSpec = {
   displayNames: [DEVICE_CLASS.SIMPLER],
   params: [
@@ -151,6 +162,18 @@ export const simplerSpec: SpecializedDeviceSpec = {
       read: readVoices,
       write: (device, value) =>
         writeIntFromSet(device, "voices", value, VOICES, "voices"),
+    },
+    {
+      name: "pitchBendRange",
+      options: `0-${PITCH_BEND_RANGE_MAX}`,
+      read: () => undefined,
+      write: () => PITCH_BEND_ELSEWHERE,
+    },
+    {
+      name: "notePitchBendRange",
+      options: `0-${NOTE_PITCH_BEND_RANGE_MAX}`,
+      read: () => undefined,
+      write: () => PITCH_BEND_ELSEWHERE,
     },
     // Read-only state.
     {

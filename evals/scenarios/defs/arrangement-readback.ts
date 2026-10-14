@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Reading a track's arrangement out of a `ppal-read-track` result, for
@@ -21,6 +21,7 @@ const COORDINATE = /\[([^\]]*)\]$/;
 export interface TakeLane {
   /** The lane's own path, e.g. "t1/l0". */
   path?: string;
+  name?: string;
   clips?: ArrangementClip[];
 }
 

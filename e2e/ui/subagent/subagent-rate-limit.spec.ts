@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A worker rate-limited mid-run. Nothing it does reaches the orchestrator's
 // stream, so without the out-of-band status channel its card would sit on

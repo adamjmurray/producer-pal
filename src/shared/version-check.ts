@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // `/releases/latest` excludes anything marked as a pre-release, and we depend on
 // that: there is no opt-in beta track, so people on the current stable release
@@ -100,6 +100,25 @@ export function isNewerVersion(current: string, latest: string): boolean {
   return hasPreReleaseSuffix(current) && !hasPreReleaseSuffix(latest);
 }
 
+/**
+ * Whether an installed copy is behind a build: different from it, and not newer.
+ * An unreadable version counts as behind. Differs-from is the test, not
+ * `isNewerVersion`, which can't order two pre-releases of one version (rc1 vs
+ * rc2). Use this wherever an installed copy is judged against the build.
+ * @param installed - The installed version, or null when unreadable
+ * @param build - This build's version
+ * @returns True when the installed copy should be updated
+ */
+export function isBehindBuild(
+  installed: string | null,
+  build: string,
+): boolean {
+  return (
+    installed !== build &&
+    !(installed != null && isNewerVersion(build, installed))
+  );
+}
+
 function parseVersionParts(version: string): number[] {
   let cleaned = version.trim();
 
@@ -132,4 +151,63 @@ function hasPreReleaseSuffix(version: string): boolean {
   }
 
   return cleaned.includes("-");
+}
+
+/** The slice of the remote script status that decides whether it needs care. */
+export interface RemoteScriptAttentionInput {
+  installed: boolean;
+  installedVersion: string | null;
+  running: boolean;
+  runningVersion: string | null;
+  /** The port another program answered on, when it isn't our script. */
+  otherOnPort: number | null;
+  /** Installed differs from this build and isn't newer (or is unreadable). */
+  updateAvailable: boolean;
+}
+
+/**
+ * What the user has to do about the remote script: "update" when the installed
+ * copy is behind this build, "restart" when Live runs a different copy than the
+ * installed one. Null when neither, when it isn't installed, and when another
+ * program answers on the port (that is not a stale script).
+ *
+ * Shared by the ppal-connect line and the chat UI badge so they agree.
+ *
+ * @param status - The remote script status
+ * @returns The action needed, or null
+ */
+export function remoteScriptAttention(
+  status: RemoteScriptAttentionInput,
+): "update" | "restart" | null {
+  if (!status.installed || status.otherOnPort != null) {
+    return null;
+  }
+
+  if (status.updateAvailable) {
+    return "update";
+  }
+
+  return liveRunsOtherCopy(status) ? "restart" : null;
+}
+
+/**
+ * Whether Live is running a different copy than the one on disk. A restart
+ * fixes it either way (after an update, or a downgrade). Compared with `!==`,
+ * not `isNewerVersion`, which can't order two pre-releases of one version.
+ *
+ * @param status - The remote script status
+ * @returns True when Live needs a restart to load the installed copy
+ */
+export function liveRunsOtherCopy(
+  status: Pick<
+    RemoteScriptAttentionInput,
+    "running" | "runningVersion" | "installedVersion"
+  >,
+): boolean {
+  return (
+    status.running &&
+    status.runningVersion != null &&
+    status.installedVersion != null &&
+    status.runningVersion !== status.installedVersion
+  );
 }

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -394,9 +394,9 @@ describe("updateDevice - moving a drum chain", () => {
   });
 });
 
-// A toPath that names no place a device can go must warn and skip the move, so
-// the rest of the batch still gets its other updates. The bare-track shape
-// always did; the nested ones used to throw and take the whole call with them.
+// A toPath that parses but names no place a device can go skips only that
+// move, so the rest of the batch still gets its other updates. One that doesn't
+// parse was written wrong, and refuses the whole call.
 describe("updateDevice - a toPath that does not resolve", () => {
   let first: RegisteredMockObject;
   let second: RegisteredMockObject;
@@ -433,7 +433,6 @@ describe("updateDevice - a toPath that does not resolve", () => {
     ["t99/d0", 'not moved: nothing at toPath "t99/d0"'],
     ["t99/d0/c0", 'not moved: Track in path "t99/d0/c0" does not exist'],
     ["t0/d5/c0", 'not moved: Device in path "t0/d5/c0" does not exist'],
-    ["garbage", "not moved: invalid toPath"],
     ["t0/d0/c0", "not moved: Auto-creating chains in Drum Racks"],
     [
       "t0/d1/c0",
@@ -454,5 +453,17 @@ describe("updateDevice - a toPath that does not resolve", () => {
       { id: "456", detail: expect.stringContaining(reason) },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("refuses the call, renaming nothing, for a toPath that doesn't parse", () => {
+    expect(() =>
+      updateDevice({
+        id: "123,456",
+        toPath: "t0/d1/c0,garbage",
+        name: "X",
+      }),
+    ).toThrow('invalid toPath "garbage"');
+    expect(first.set).not.toHaveBeenCalled();
+    expect(second.set).not.toHaveBeenCalled();
   });
 });

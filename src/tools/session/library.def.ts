@@ -1,10 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z } from "zod";
 import {
+  LIBRARY_ACTION_ALIASES,
+  LIBRARY_ACTION_VALUES,
+  LIBRARY_SORT_ALIASES,
+  LIBRARY_SOURCE_ALIASES,
   LIBRARY_DEVICE_KIND_VALUES,
   LIBRARY_KIND_VALUES,
   LIBRARY_SORT_VALUES,
@@ -13,6 +17,7 @@ import {
   searchesInputSchema,
 } from "#src/tools/session/library-query-schema.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { aliasedEnum } from "#src/tools/shared/tool-framework/enum-aliases.ts";
 import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
@@ -20,7 +25,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
   title: "Library",
   description: {
     default:
-      "Search Live's browser library by name, tags, kind, or source. Defaults to audio samples; pass kind for anything else. Items from the user's configured sample folder always appear before Live's library items (sampleFolder is an explicit user choice); within each group, results sort by use_count desc by default.",
+      "Search Live's browser library by name, tags, kind, or source. Defaults to audio samples; pass kind for anything else. Items from the user's configured sample folder always appear before Live's library items (sample-folder is an explicit user choice); within each group, results sort by use-count desc by default.",
     smallModel:
       "Search Live's library by name/tags. Defaults to audio samples. Items from the user's sample folder appear before Live's library items.",
   },
@@ -32,36 +37,27 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
   inputSchema: {
     action: param(
-      z
-        .enum([
-          "search",
-          "listTags",
-          "listCategories",
-          "listPlugins",
-          "findSimilar",
-          "findDuplicates",
-          "searchBatch",
-        ])
+      aliasedEnum(LIBRARY_ACTION_VALUES, LIBRARY_ACTION_ALIASES)
         .optional()
         // Default required so the action's excludeEnumValues override can filter
         // it — filterEnumValues only accepts a schema with a top-level
         // .default(). Matches library.ts which treats a missing action as search.
         .default("search"),
       {
-        // searchBatch was folded into search + `searches`. Still honored, so a
+        // search-batch was folded into search + `searches`. Still honored, so a
         // caller on the old spelling gets the fan-out instead of a schema error.
         default: {
-          excludeEnumValues: ["searchBatch"],
+          excludeEnumValues: ["search-batch"],
           description:
-            "search: filter library items (default) | listTags: available tags | listCategories: Live's category taxonomy (Sounds, Drums, Genres, …); pass category to drill into its tags | listPlugins: installed VST/VST3/AU plugins (filter with query, vendor, format, deviceKind, subcategory) | findSimilar: rank samples by audio similarity to similarTo | findDuplicates: group library samples with identical audio. findSimilar and findDuplicates also take the search filters.",
+            "search: filter library items (default) | list-tags: available tags | list-categories: Live's category taxonomy (Sounds, Drums, Genres, …); pass category to drill into its tags | list-plugins: installed VST/VST3/AU plugins (filter with query, vendor, format, deviceKind, subcategory) | find-similar: rank samples by audio similarity to similarTo | find-duplicates: group library samples with identical audio. find-similar and find-duplicates also take the search filters.",
         },
         smallModel: {
-          description: "search (default) | listTags",
+          description: "search (default) | list-tags",
           excludeEnumValues: [
-            "listCategories",
-            "listPlugins",
-            "findSimilar",
-            "findDuplicates",
+            "list-categories",
+            "list-plugins",
+            "find-similar",
+            "find-duplicates",
           ],
         },
       },
@@ -69,7 +65,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     query: param(z.coerce.string().optional(), {
       default:
-        "name substring (search: supports * as a multi-character wildcard, e.g. kick*acoustic; listPlugins: plain case-insensitive substring)",
+        "name substring (search: supports * as a multi-character wildcard, e.g. kick*acoustic; list-plugins: plain case-insensitive substring)",
       smallModel: "name substring; use * as wildcard, e.g. kick*acoustic",
     }),
 
@@ -91,7 +87,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     kind: param(z.enum(LIBRARY_KIND_VALUES).optional().default("audio"), {
       default:
-        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler; a preset or device-group result's path loads as `preset` on ppal-create-device/ppal-update-device).audio=samples | midi=.mid files plus MIDI .alc clips, so it covers all MIDI content | live-clip=all .alc clips (MIDI+audio; each result reports subtype) | preset=instrument/effect presets | device-group=.adg racks | m4l-device=.amxd | live-set=.als | plugin=VST/AU | image/video=media | folder=directory entries (distinct from source:sampleFolder)",
+        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler).audio=samples | midi=.mid files plus MIDI .alc clips, so it covers all MIDI content | live-clip=all .alc clips (MIDI+audio; each result reports subtype) | preset=instrument/effect presets | device-group=.adg racks | m4l-device=.amxd | live-set=.als | plugin=VST/AU | image/video=media | folder=directory entries (distinct from source:sample-folder)",
       smallModel: {
         description:
           "content kind (default: audio). audio | midi (melody/chord ideas) | preset | device-group",
@@ -114,49 +110,52 @@ export const toolDefLibrary = defineTool("ppal-library", {
         "playback type: loop | oneshot | impulse-response. Prefer oneshot for hits, loop for grooves",
     }),
 
-    // listPlugins is discovery-only; its vendor/format filters are excluded
+    // list-plugins is discovery-only; its vendor/format filters are excluded
     // since the action itself is hidden from small models.
     category: param(z.coerce.string().optional(), {
       default:
-        "listCategories only: a top-level category name (from listCategories with no category) to drill into; returns its tag names, each usable as a tags filter",
+        "list-categories only: a top-level category name (from list-categories with no category) to drill into; returns its tag names, each usable as a tags filter",
       smallModel: null,
     }),
 
     similarTo: param(z.coerce.string().optional(), {
       default:
-        "findSimilar only: absolute path of a seed sample (e.g. a path from a prior search) to rank other samples by audio similarity. Combine with the search filters to constrain candidates — e.g. similarTo a kick + tags=Kick for 'more kicks like this one'. Like Live's Show Similar Files, identical audio is listed once. Each result carries a `distance` (lower = more similar; no fixed scale).",
+        "find-similar only: absolute path of a seed sample (e.g. a path from a prior search) to rank other samples by audio similarity. Combine with the search filters to constrain candidates — e.g. similarTo a kick + tags=Kick for 'more kicks like this one'. Like Live's Show Similar Files, identical audio is listed once. Each result carries a `distance` (lower = more similar; no fixed scale).",
       smallModel: null,
     }),
 
     deviceKind: param(z.enum(LIBRARY_DEVICE_KIND_VALUES).optional(), {
       default:
-        "device classification filter (search + listPlugins; for listPlugins only instrument/audiofx apply)",
+        "device classification filter (search + list-plugins; for list-plugins only instrument/audiofx apply)",
       smallModel: null,
     }),
 
     vendor: param(z.coerce.string().optional(), {
       default:
-        "vendor/manufacturer substring, case-insensitive (listPlugins only)",
+        "vendor/manufacturer substring, case-insensitive (list-plugins only)",
       smallModel: null,
     }),
 
     format: param(z.enum(["VST", "VST3", "AU"]).optional(), {
-      default: "plugin binary format filter (listPlugins only)",
+      default: "plugin binary format filter (list-plugins only)",
       smallModel: null,
     }),
 
     subcategory: param(z.coerce.string().optional(), {
       default:
-        "subcategory substring filter, case-insensitive (listPlugins only; matches any of a plugin's genre/role tags, e.g. reverb, delay, synth). Also reported per result as `subcategories`.",
+        "subcategory substring filter, case-insensitive (list-plugins only; matches any of a plugin's genre/role tags, e.g. reverb, delay, synth). Also reported per result as `subcategories`.",
       smallModel: null,
     }),
 
-    source: param(z.enum(LIBRARY_SOURCE_VALUES).optional(), {
-      default:
-        "where the file lives (search only). sampleFolder=user-configured sample folder on disk (bypasses Live's DB) | user=your User Library | pack=installed Packs (factory + 3rd-party) | builtin=Ableton's Core Library | cloud=Cloud-stored items | plugin=installed VST/AU/etc. plugins",
-      smallModel:
-        "where the file lives. sampleFolder | user | pack | builtin | cloud | plugin",
-    }),
+    source: param(
+      aliasedEnum(LIBRARY_SOURCE_VALUES, LIBRARY_SOURCE_ALIASES).optional(),
+      {
+        default:
+          "where the file lives (search only). sample-folder=user-configured sample folder on disk (bypasses Live's DB) | user=your User Library | pack=installed Packs (factory + 3rd-party) | builtin=Ableton's Core Library | cloud=Cloud-stored items | plugin=installed VST/AU/etc. plugins and their presets | preset-folder=other files in plug-ins' preset folders (Audio/Presets), which Live's browser hides",
+        smallModel:
+          "where the file lives. sample-folder | user | pack | builtin | cloud | plugin | preset-folder (other files in plug-ins' preset folders, hidden in Live's browser)",
+      },
+    ),
 
     inFolder: param(z.coerce.string().optional(), {
       default:
@@ -164,10 +163,13 @@ export const toolDefLibrary = defineTool("ppal-library", {
       smallModel: "absolute folder path; returns immediate children only",
     }),
 
-    sort: param(z.enum(LIBRARY_SORT_VALUES).optional(), {
-      default: "sort order (search only); defaults to use_count desc",
-      smallModel: null,
-    }),
+    sort: param(
+      aliasedEnum(LIBRARY_SORT_VALUES, LIBRARY_SORT_ALIASES).optional(),
+      {
+        default: "sort order (search only); defaults to use-count desc",
+        smallModel: null,
+      },
+    ),
 
     verifyPaths: param(z.boolean().optional(), {
       default:
@@ -176,8 +178,8 @@ export const toolDefLibrary = defineTool("ppal-library", {
     }),
 
     limit: param(z.coerce.number().optional(), {
-      default: "max results; defaults to 50 (search) or 200 (listTags)",
-      smallModel: "max results; defaults to 50 (search) or 200 (listTags)",
+      default: "max results; defaults to 50 (search) or 200 (list-tags)",
+      smallModel: "max results; defaults to 50 (search) or 200 (list-tags)",
     }),
   },
 });

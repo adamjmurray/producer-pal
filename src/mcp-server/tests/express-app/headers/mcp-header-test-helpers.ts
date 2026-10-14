@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Shared harness for the POST /mcp per-request header suites (small-model mode,
 // disabled tools, notation). The headers ride the same transport and drive the

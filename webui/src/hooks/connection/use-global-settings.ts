@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { useCallback, useState } from "preact/hooks";
 import { useAbortableLoad } from "#webui/hooks/connection/use-abortable-load";
@@ -11,6 +11,7 @@ import { getSettingsUrl } from "#webui/utils/mcp-url";
 export interface GlobalSettings {
   autoUpdateCheck: boolean;
   dismissedUpdateVersion: string | null;
+  warnIfInstallIncomplete: boolean;
 }
 
 export interface UseGlobalSettingsReturn {
@@ -18,6 +19,10 @@ export interface UseGlobalSettingsReturn {
   autoUpdateCheck: boolean;
   /** Persist a new value immediately; reverts on a failed write. */
   setAutoUpdateCheck: (enabled: boolean) => void;
+  /** Whether the device may show its "Finish installation" notice. */
+  warnIfInstallIncomplete: boolean;
+  /** Persist a new value immediately; reverts on a failed write. */
+  setWarnIfInstallIncomplete: (enabled: boolean) => void;
 }
 
 /**
@@ -68,6 +73,7 @@ export function useGlobalSettings(): UseGlobalSettingsReturn {
   // Guessing wrong here is harmless: the checkbox is the only reader, and a
   // stale render is replaced before the user can act on it.
   const [autoUpdateCheck, setLocalAutoUpdateCheck] = useState(true);
+  const [warnIfInstallIncomplete, setLocalWarn] = useState(true);
 
   const loadSettings = useCallback(async (signal: AbortSignal) => {
     // Nothing came back (server down, or the read aborted on unmount) — keep
@@ -80,19 +86,53 @@ export function useGlobalSettings(): UseGlobalSettingsReturn {
 
     if (settings) {
       setLocalAutoUpdateCheck(settings.autoUpdateCheck !== false);
+      setLocalWarn(settings.warnIfInstallIncomplete !== false);
     }
   }, []);
 
   useAbortableLoad(loadSettings);
 
-  const setAutoUpdateCheck = useCallback((enabled: boolean) => {
-    setLocalAutoUpdateCheck(enabled);
-    void patchGlobalSettings({ autoUpdateCheck: enabled }).then((ok) => {
-      if (!ok) {
-        setLocalAutoUpdateCheck(!enabled);
-      }
-    });
-  }, []);
+  const setAutoUpdateCheck = useCallback(
+    (enabled: boolean) =>
+      saveSetting(
+        { autoUpdateCheck: enabled },
+        enabled,
+        setLocalAutoUpdateCheck,
+      ),
+    [],
+  );
+  const setWarnIfInstallIncomplete = useCallback(
+    (enabled: boolean) =>
+      saveSetting({ warnIfInstallIncomplete: enabled }, enabled, setLocalWarn),
+    [],
+  );
 
-  return { autoUpdateCheck, setAutoUpdateCheck };
+  return {
+    autoUpdateCheck,
+    setAutoUpdateCheck,
+    warnIfInstallIncomplete,
+    setWarnIfInstallIncomplete,
+  };
+}
+
+// --- Helpers below main export ---
+
+/**
+ * Show a checkbox's new value now, write it, and put the old value back if the
+ * write fails.
+ * @param patch - The setting to write
+ * @param enabled - Its new value
+ * @param setLocal - Updates what the checkbox shows
+ */
+function saveSetting(
+  patch: Partial<GlobalSettings>,
+  enabled: boolean,
+  setLocal: (enabled: boolean) => void,
+): void {
+  setLocal(enabled);
+  void patchGlobalSettings(patch).then((ok) => {
+    if (!ok) {
+      setLocal(!enabled);
+    }
+  });
 }

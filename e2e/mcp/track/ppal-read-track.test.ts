@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-read-track tool
@@ -70,6 +70,8 @@ describe("ppal-read-track", () => {
 
     expect(returnTrack.id).toBeDefined();
     expect(returnTrack.path).toBe("rt0");
+    expect(returnTrack).not.toHaveProperty("sessionClipCount");
+    expect(returnTrack).not.toHaveProperty("arrangementClipCount");
 
     // Test 4: Read master track
     const masterResult = await ctx.client!.callTool({
@@ -79,7 +81,8 @@ describe("ppal-read-track", () => {
     const master = parseToolResult<ReadTrackResult>(masterResult);
 
     expect(master.id).toBeDefined();
-    expect(master.id).toBeDefined();
+    expect(master).not.toHaveProperty("sessionClipCount");
+    expect(master).not.toHaveProperty("arrangementClipCount");
 
     // Test 5: Default include - instruments, drum-map, all-clips
     expect(
@@ -173,6 +176,9 @@ describe("ppal-read-track", () => {
     const parentTrack = parseToolResult<ReadTrackResult>(parentResult);
 
     expect(parentTrack.isGroup).toBe(true);
+    // A group holds no clips, so it reports no counts
+    expect(parentTrack).not.toHaveProperty("sessionClipCount");
+    expect(parentTrack).not.toHaveProperty("arrangementClipCount");
 
     const childResult = await ctx.client!.callTool({
       name: "ppal-read-track",
@@ -319,6 +325,24 @@ describe("ppal-read-track over a list of targets", () => {
       },
       expect.objectContaining({ path: "t4", name: "Audio 1" }),
     ]);
+  });
+
+  it("refuses a path sent with trackIndex, even for a list", async () => {
+    for (const path of ["t0", "t0,t1"]) {
+      const refused = await readTracks({ path, trackIndex: 0 });
+
+      expect(getToolErrorMessage(refused)).toContain(
+        "path names the track on its own - don't send trackIndex with it",
+      );
+    }
+  });
+
+  it("refuses id beside ids with different values, even for a list", async () => {
+    const refused = await readTracks({ id: "1,2", ids: "3" });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "id names the target on its own - don't send ids with it",
+    );
   });
 
   it("unwraps a single target", async () => {

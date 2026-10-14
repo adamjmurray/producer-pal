@@ -55,7 +55,18 @@ DrumHeader
 // lines (melody/bass/chords are keyword-led) and against drum aliases (those
 // are two letters with no trailing digit).
 DrumPitchName "drum pitch name"
-  = $([A-Ga-g] [#b]? "-"? [0-9]+)
+  = letter:[A-Ga-g] acc:Accidental? neg:"-"? digits:$([0-9]+) {
+      return letter + (acc || "") + (neg || "") + digits;
+    }
+
+// Accidental: `#`/`b`, or the ♯/♭ glyphs, normalized to `#`/`b` so nothing
+// downstream sees the glyphs. Only lowercase `b` counts: an uppercase `B` is
+// the note B, never a flat.
+Accidental
+  = "#"
+  / "b"
+  / "♯" { return "#"; }
+  / "♭" { return "b"; }
 
 // A chords line is SYMBOLIC: each token is a chord symbol (Cm7, G7/B, Fmaj9) the
 // interpreter realizes into concrete notes. Unlike melody/bass it takes no bare
@@ -133,7 +144,7 @@ PitchedItem
 // a bare `b` = note B — this is the load-bearing rule that makes accidentals
 // unambiguous in a whitespace-tokenized stream.
 NoteToken
-  = letter:[A-Ga-g] acc:[#b]? oct:AbsoluteOctave? suffixes:NoteTokenSuffix* rep:Repeat? {
+  = letter:[A-Ga-g] acc:Accidental? oct:AbsoluteOctave? suffixes:NoteTokenSuffix* rep:Repeat? {
       var octaveShift = 0;
       var duration = null;
       var dynamic = "normal";
@@ -202,7 +213,7 @@ ChordToken
 // optional absolute octave + optional octave marks. Trailing _h consumes
 // inter-note whitespace inside the bracket.
 ChordNote
-  = letter:[A-Ga-g] acc:[#b]? oct:AbsoluteOctave? octaves:[',]* _h {
+  = letter:[A-Ga-g] acc:Accidental? oct:AbsoluteOctave? octaves:[',]* _h {
       var shift = 0;
       for (var i = 0; i < octaves.length; i++) {
         shift += octaves[i] === "'" ? 1 : -1;
@@ -258,7 +269,7 @@ ChordsItem
 // fail the parse with a cryptic position-only Peggy error.
 // Any well-formed token leaves `trailing` empty, so this can't change valid input.
 ChordSymbolToken
-  = letter:[A-Ga-g] acc:[#b]? quality:$([A-Za-z0-9#+]*) bass:SlashBass? suffixes:NoteTokenSuffix* rep:Repeat? trailing:$([^ \t\r\n|]*) {
+  = letter:[A-Ga-g] acc:Accidental? quality:ChordQuality bass:SlashBass? suffixes:NoteTokenSuffix* rep:Repeat? trailing:$([^ \t\r\n|]*) {
       var octaveShift = 0;
       var duration = null;
       var dynamic = "normal";
@@ -281,10 +292,16 @@ ChordSymbolToken
       };
     }
 
+// Chord quality text, with ♯/♭ normalized to `#`/`b` (`7♯9` = `7#9`).
+ChordQuality
+  = chars:([A-Za-z0-9#+] / "♯" { return "#"; } / "♭" { return "b"; })* {
+      return chars.join("");
+    }
+
 // Slash bass: `/` + a pitch letter (+ optional accidental). Distinct from a `/N`
 // duration suffix because the char after `/` is a letter, not a digit.
 SlashBass
-  = "/" letter:[A-Ga-g] acc:[#b]? { return letter.toUpperCase() + (acc || ""); }
+  = "/" letter:[A-Ga-g] acc:Accidental? { return letter.toUpperCase() + (acc || ""); }
 
 // Absolute note value with an optional trailing modifier: /4 = quarter (1 beat),
 // /4. = dotted quarter (×1.5 = 1.5 beats), /4t = quarter triplet (×2/3 ≈ 0.667

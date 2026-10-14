@@ -1,44 +1,43 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
-import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
-import { unwrapSingleResult } from "#src/tools/shared/helpers/target-entries.ts";
-import { newClipReasons } from "./helpers/entries/clip-reasons.ts";
+import { sharingLaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
+import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
 import {
-  type ClipEntry,
-  clipEntriesInCallOrder,
-  type ClipTargets,
-  resolveClipTargets,
-} from "./helpers/entries/clip-targets.ts";
-import { loneRefusal } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
-import { planClipUpdate, warnBlankArgs } from "./helpers/plan-clip-update.ts";
+  type PipelineResult,
+  type WriteSpec,
+} from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
+import { checkClipUpdate } from "./helpers/call/check-clip-update.ts";
+import { type ClipRun, newClipRun } from "./helpers/call/clip-run.ts";
+import { type ClipUpdateArgs } from "./helpers/call/clip-update-args.ts";
 import {
-  refuseRegionWithDuplicateLoop,
-  refuseUnreadableCall,
-} from "./helpers/update-clip-refusals.ts";
+  type ClipCall,
+  parseClipCall,
+} from "./helpers/call/parse-clip-call.ts";
 import {
-  type ClipUpdateArgs,
-  runClipBatch,
-} from "./helpers/batch/run-clip-batch.ts";
-import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
+  type ClipPlanned,
+  planClipMoves,
+} from "./helpers/call/plan-clip-moves.ts";
 import {
-  targetCount,
-  targetParamLabel,
-  warnBlankTarget,
-} from "#src/tools/shared/validation/lists/target-lists.ts";
+  type ClipPayload,
+  clipTargets,
+} from "./helpers/call/resolve-clip-targets.ts";
+import { settleClipUpdate } from "./helpers/call/settle-clip-update.ts";
+import { writeClip } from "./helpers/call/write-clip.ts";
+
+/** What update-clip answers: a lone entry, or one entry per target. */
+export type UpdateClipResult = PipelineResult<ClipResult>;
 
 /**
  * Updates properties of existing clips
  *
  * @param args - The clip parameters
  * @param args.id - Clip ID or comma-separated list of clip IDs to update
- * @param args.ids - Hidden alias for id
+ * @param args.ids - Hidden alias for id (args.paths is the one for path)
  * @param args.path - Clip slot(s) of clips to update, instead of id
- * @param args.paths - Hidden alias for path
  * @param args.notes - Musical notation string
  * @param args.transforms - Transform expressions applied AFTER merge, broadcast across all the clips
  * @param args.preTransforms - Transform expressions applied to existing notes BEFORE merging new notes (works with or without notes; bare "v0" clears the clip)
@@ -49,7 +48,7 @@ import {
  * @param args.length - Duration: <count>bar, n<fraction> note value, or <count>bar+n<fraction> (end = start + length), one per clip
  * @param args.firstStart - Bar|beat position for initial playback start, one per clip
  * @param args.looping - Enable looping for the clip
- * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Refuses start/length, which set the region it doubles (ADR-0040). Composes with the rest on a defined timeline: firstStart, then preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
+ * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Refuses start/length, which set the region it doubles. Composes with the rest on a defined timeline: firstStart, then preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
  * @param args.arrangementStart - Bar|beat position(s) to move arrangement clips to, one per id
  * @param args.arrangementLength - Duration(s) for the arrangement span, one per id: <count>bar, n<fraction>, or <count>bar+n<fraction>
  * @param args.toSlot - Deprecated session destination slot (trackIndex/sceneIndex); use toPath
@@ -68,6 +67,7 @@ import {
  * @param args.quantizeGrid - Note grid for quantization
  * @param args.quantizePitch - Limit quantization to specific pitch
  * @param args.code - JavaScript code to transform notes (broadcast across the clips; use context.clip.{index,count} for per-clip variation)
+ * @param args.envelopes - Clip automation, one "<target>: <notation>" line per parameter (broadcast across the clips)
  * @param args.focus - Select the clip and show clip detail view
  * @param context - Per-request context
  * @returns The clip when one was named, otherwise one entry per target named
@@ -75,163 +75,49 @@ import {
 export async function updateClip(
   args: ClipUpdateArgs = {},
   context: Partial<ToolContext> = {},
-): Promise<ClipEntry | ClipEntry[]> {
-  const { id, ids, path, paths, toPath, toSlot } = args;
-  const { arrangementStart, arrangementLength, arrangementSplit, split } = args;
-  // Set once per request by the V8 adapter, so a nested call (duplicate ->
-  // updateClip) spends the caller's remaining budget instead of restarting it.
-  const deadline = context.deadline ?? null;
+): Promise<UpdateClipResult> {
+  const run = newClipRun(context);
 
-  // Refuses a call whose lists disagree, or that names no clip at all, before
-  // resolving anything.
-  const targets = clipTargets({ id, ids, path, paths }, args);
-
-  refuseUnreadableCall(args, targets.named.length);
-  refuseRegionWithDuplicateLoop(args.start, args.length, args.duplicateLoop);
-
-  // Paired with the targets named, not the clips found, so name[k] lands on
-  // target k and every piece of a split takes its target's name. Done before
-  // the plan, which may split: a bad color or a gap in the names must be
-  // refused before anything is cut.
-  const labels = pairLabels({
-    noun: "clip",
-    count: targets.named.length,
-    name: args.name,
-    color: args.color,
-  });
-
-  // What the clips the call did reach have to say beyond their own results.
-  const reasons = newClipReasons();
-  const plan = planClipUpdate({
-    targets,
-    toPath,
-    toSlot,
-    arrangementStart,
-    arrangementLength,
-    arrangementSplit,
-    split,
-    reasons,
+  // Every arrangement write in the call, and in a call nested in it, shares the
+  // one lane view the context carries meanwhile.
+  return await sharingLaneView(
     context,
-  });
-
-  // Said here, not where the args are read: they claim what the call did, so a
-  // call refused above — or one whose paths found no clip — must not carry them.
-  warnBlankTarget({ id, ids, path, paths }, "clips", plan.clips.length);
-  warnBlankArgs(args);
-
-  const resultsPerSlot = await runClipBatch({
-    args,
-    plan,
-    targets,
-    labels,
-    reasons,
-    context,
-    deadline,
-  });
-
-  return finishUpdate({
-    targets,
-    resultsPerSlot,
-    focus: args.focus,
-  });
-}
-
-/**
- * Refuse a call whose lists disagree or that names no clip, then resolve the
- * clips it names.
- *
- * Every list is checked together, before any of them is split: once one is
- * split nothing knows whether the others are lists at all. `id` and `path` name
- * different clips and add up, so the target count is their sum — comparing the
- * two to each other would refuse a call naming two of each.
- * @param targets - The call's id/ids and path/paths params
- * @param values - The tool arguments as received, for the lists paired against
- *   the clips those params name
- * @returns The targets the call names, and the clips they found
- */
-function clipTargets(
-  targets: Pick<ClipUpdateArgs, "id" | "ids" | "path" | "paths">,
-  values: ClipUpdateArgs,
-): ClipTargets {
-  validateListLengths([
-    { param: targetParamLabel(targets), count: targetCount(targets) },
-    { param: "name", value: values.name },
-    { param: "color", value: values.color },
-    { param: "timeSignature", value: values.timeSignature },
-    { param: "start", value: values.start },
-    { param: "length", value: values.length },
-    { param: "firstStart", value: values.firstStart },
-    { param: "quantizePitch", value: values.quantizePitch },
-    { param: "arrangementStart", value: values.arrangementStart },
-    { param: "arrangementLength", value: values.arrangementLength },
-    {
-      param: values.toPath != null ? "toPath" : "toSlot",
-      value: values.toPath ?? values.toSlot,
-      isPath: true,
-    },
-  ]);
-
-  const resolved = resolveClipTargets(targets);
-
-  if (resolved.named.length === 0) {
-    throw new Error("id or path is required");
-  }
-
-  return resolved;
-}
-
-/**
- * Select the last clip the call wrote and show the clip detail view, when focus
- * is set.
- * @param entries - The call's result entries, in call order
- * @param focus - Whether to focus the last clip written
- */
-function focusLastUpdatedClip(
-  entries: ClipEntry[],
-  focus: boolean | undefined,
-): void {
-  // A skip names a target, not a clip, so there is nothing there to select.
-  const lastClip = entries.findLast((entry) => !("ok" in entry));
-
-  if (focus && lastClip != null) {
-    focusSelect({ id: (lastClip as ClipResult).id, detailView: "clip" });
-  }
-}
-
-interface FinishUpdateArgs {
-  targets: ClipTargets;
-  resultsPerSlot: Map<number, ClipResult[]>;
-  focus: boolean | undefined;
-}
-
-/**
- * Focuses the last clip written and shapes the result.
- * @param finish - The call's targets and what it wrote
- * @param finish.targets - The targets the call named
- * @param finish.resultsPerSlot - Each target's results, by its place in the call
- * @param finish.focus - Whether to select the last one in Live
- * @returns The single result, or one entry per target named
- * @throws Error when the call named one target and it got nothing done
- */
-function finishUpdate({
-  targets,
-  resultsPerSlot,
-  focus,
-}: FinishUpdateArgs): ClipEntry | ClipEntry[] {
-  const entries = clipEntriesInCallOrder(
-    targets.named,
-    targets.unused,
-    resultsPerSlot,
+    async () => await runWrite(clipWriteSpec(run), args, context),
   );
-  // A lone target that got nothing done has no list for an entry to hold a
-  // place in, so its reason goes back as the error it would have been.
-  const refusal = loneRefusal(entries);
+}
 
-  if (refusal != null) {
-    throw new Error(refusal);
-  }
+/**
+ * The hooks of one update-clip call. Built per call: the targets share what the
+ * run keeps, and nothing of it outlives the request.
+ * @param run - The call's shared state
+ * @returns The spec to run the call with
+ */
+function clipWriteSpec(
+  run: ClipRun,
+): WriteSpec<
+  ClipUpdateArgs,
+  ClipCall,
+  ClipPayload,
+  ClipCall,
+  ClipResult,
+  ClipPlanned
+> {
+  return {
+    tool: "ppal-update-clip",
+    words: { rerun: "clip" },
 
-  focusLastUpdatedClip(entries, focus);
+    parse: (args) => parseClipCall(args),
+    targets: (call) =>
+      clipTargets(call, {
+        lanes: run.context.lanes,
+        destinationTracks: run.destinationTracks,
+      }),
+    check: (call, targets) => checkClipUpdate(call, targets, run),
 
-  return unwrapSingleResult(entries);
+    plan: (targets, checked, _call, superseded) =>
+      planClipMoves(targets, checked, superseded),
+    write: (target, step) => writeClip(run, target, step),
+
+    settle: (done, call) => settleClipUpdate(run, done, call),
+  };
 }

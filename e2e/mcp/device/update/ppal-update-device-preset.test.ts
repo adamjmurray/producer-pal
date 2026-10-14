@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-update-device's `preset`, swapped onto a device through
@@ -15,19 +15,22 @@
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import {
+  callToolAndSettle,
+  createTestDeviceAt,
   getToolErrorMessage,
   isToolError,
   parseToolResult,
   setupMcpTestContext,
-  sleep,
   trackIndexFromPath,
 } from "../../mcp-test-helpers";
 import {
   type Preset,
   REMOTE_SCRIPT_E2E,
+  packDrumKitOrSkip,
   listPresets,
   presetEndingIn,
   presetName,
+  readDevice,
   requireRemoteScript,
 } from "../helpers/remote-script-test-helpers";
 
@@ -60,11 +63,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     name: string,
     args: Record<string, unknown>,
   ): Promise<unknown> {
-    const result = await ctx.client!.callTool({ name, arguments: args });
-
-    await sleep(100);
-
-    return result;
+    return callToolAndSettle(ctx.client!, name, args);
   }
 
   /**
@@ -85,18 +84,39 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
   }
 
   /**
-   * Read a device.
-   * @param path - Its path
-   * @returns Its id, type and name
+   * An Instrument Rack on a fresh MIDI track, with a Drift in its first chain.
+   * @returns The rack's path, and the Drift's id and path
    */
-  async function readDevice(path: string): Promise<DeviceRead> {
-    return parseToolResult<DeviceRead>(
-      await call("ppal-read-device", { path }),
+  async function createRackWithDrift(): Promise<{
+    rack: string;
+    drift: { id: string; path: string };
+  }> {
+    const track = parseToolResult<{ path: string }>(
+      await call("ppal-create-track", { type: "midi" }),
     );
+    const rack = await createTestDeviceAt(
+      ctx.client!,
+      "Instrument Rack",
+      `t${trackIndexFromPath(track.path)}`,
+    );
+    const drift = parseToolResult<{ id: string; path: string }>(
+      await call("ppal-create-device", {
+        device: "Drift",
+        path: `${rack}/c0`,
+      }),
+    );
+
+    return { rack, drift };
   }
 
-  it("keeps the device for one of its own presets", async () => {
-    const drift = await createDrift();
+  /**
+   * Load one of Drift's own presets, and check the device is kept.
+   * @param drift - The Drift's id and path
+   */
+  async function expectOwnPresetKeepsDevice(drift: {
+    id: string;
+    path: string;
+  }): Promise<void> {
     const updated = parseToolResult<UpdateResult>(
       await call("ppal-update-device", {
         path: drift.path,
@@ -105,7 +125,34 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     );
 
     expect(updated).toStrictEqual({ id: drift.id, path: drift.path });
-    expect((await readDevice(drift.path)).name).toBe(presetName(adv.name));
+    expect((await readDevice(ctx.client!, drift.path)).name).toBe(
+      presetName(adv.name),
+    );
+  }
+
+  it("keeps the device for one of its own presets", async () => {
+    const drift = await createDrift();
+
+    await expectOwnPresetKeepsDevice(drift);
+  });
+
+  it("loads a preset onto each of several devices", async () => {
+    const first = await createDrift();
+    const second = await createDrift();
+    const preset = presetName(adv.name);
+    const updated = parseToolResult<UpdateResult[]>(
+      await call("ppal-update-device", {
+        path: `${first.path},${second.path}`,
+        preset: `${preset},${preset}`,
+      }),
+    );
+
+    expect(updated).toStrictEqual([
+      { id: first.id, path: first.path },
+      { id: second.id, path: second.path },
+    ]);
+    expect((await readDevice(ctx.client!, first.path)).name).toBe(preset);
+    expect((await readDevice(ctx.client!, second.path)).name).toBe(preset);
   });
 
   it("puts a new device in place for a rack preset, and says so", async () => {
@@ -116,12 +163,61 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
         preset: `Instruments/${adg.path}`,
       }),
     );
-    const device = await readDevice(drift.path);
+    const device = await readDevice(ctx.client!, drift.path);
 
     expect(updated.id).not.toBe(drift.id);
     expect(updated.detail).toContain("replaced the device");
     expect(device.id).toBe(updated.id);
     expect(device.type).toBe("instrument-rack");
+  });
+
+  it("loads a preset onto a device inside a rack chain", async () => {
+    const { drift } = await createRackWithDrift();
+
+    await expectOwnPresetKeepsDevice(drift);
+  });
+
+  it("skips a device in a rack that an earlier target replaced", async () => {
+    // A Drift preset replaces the rack itself, taking the Drift inside it.
+    // (A rack preset on the rack keeps the rack and its devices.)
+    const { rack, drift } = await createRackWithDrift();
+    const updated = parseToolResult<UpdateResult[]>(
+      await call("ppal-update-device", {
+        path: `${rack},${drift.path}`,
+        preset: presetName(adv.name),
+      }),
+    );
+
+    expect(updated[0]?.detail).toContain("replaced the device");
+    expect(updated[1]).toStrictEqual({
+      path: drift.path,
+      ok: false,
+      detail: expect.stringContaining("no longer exists"),
+    });
+  });
+
+  it("swaps a Drum Rack for a pack's drum kit, by name", async ({ skip }) => {
+    const kit = await packDrumKitOrSkip(ctx.client!, skip);
+    const track = parseToolResult<{ path: string }>(
+      await call("ppal-create-track", { type: "midi" }),
+    );
+    const rack = parseToolResult<{ id: string; path: string }>(
+      await call("ppal-create-device", {
+        device: "Drum Rack",
+        path: `t${trackIndexFromPath(track.path)}/d0`,
+      }),
+    );
+    const updated = parseToolResult<UpdateResult>(
+      await call("ppal-update-device", {
+        path: rack.path,
+        preset: presetName(kit.name),
+      }),
+    );
+    const device = await readDevice(ctx.client!, rack.path);
+
+    expect(updated.path).toBe(rack.path);
+    expect(device.id).toBe(updated.id);
+    expect(device.type).toBe("drum-rack");
   });
 
   it("loads nothing for a preset of another kind", async () => {
@@ -135,7 +231,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     expect(getToolErrorMessage(result)).toContain(
       "is an audio effect, and the device is an instrument",
     );
-    expect((await readDevice(drift.path)).id).toBe(drift.id);
+    expect((await readDevice(ctx.client!, drift.path)).id).toBe(drift.id);
   });
 
   it("loads a preset file ppal-library found", async () => {
@@ -156,7 +252,9 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
       preset: file?.path,
     });
 
-    expect((await readDevice(drift.path)).name).toBe(presetName(adv.name));
+    expect((await readDevice(ctx.client!, drift.path)).name).toBe(
+      presetName(adv.name),
+    );
   });
 });
 
@@ -164,10 +262,4 @@ interface UpdateResult {
   id: string;
   path: string;
   detail?: string;
-}
-
-interface DeviceRead {
-  id: string;
-  type: string;
-  name?: string;
 }

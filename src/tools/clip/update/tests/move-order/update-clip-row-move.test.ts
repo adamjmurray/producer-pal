@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -136,6 +136,27 @@ describe("updateClip - moving a row of arrangement clips", () => {
     expectNoSessionClipWarning();
   });
 
+  // A slot sent beside arrangementStart is ignored, so the row moves exactly
+  // as it does without one: back-to-front, each clip keeping its note.
+  it("keeps every clip when the row shift also names ignored slots", async () => {
+    const result = (await updateClip({
+      id: "113,114,115",
+      arrangementStart: "5|1,9|1,13|1",
+      toPath: "t0/s0,t0/s1,t0/s2",
+    })) as ClipResult[];
+
+    expect(movedTo()).toStrictEqual([48, 32, 16]);
+    expect(result).toHaveLength(3);
+
+    for (const entry of result) {
+      expect(entry).not.toHaveProperty("ok");
+      expect(entry.detail).toContain("toPath ignored:");
+      expect(entry.detail).not.toContain("overwritten");
+    }
+
+    expectNoSessionClipWarning();
+  });
+
   it("keeps a row shifting four bars earlier working", async () => {
     setupTrack([
       { id: "113", start: 16, end: 32 },
@@ -183,12 +204,13 @@ describe("updateClip - moving a row of arrangement clips", () => {
     ]);
   });
 
-  // The first id's toPath doesn't parse, so that clip goes nowhere — and the
-  // second one's destination is the span it is sitting in.
-  it("keeps a clip whose toPath entry didn't parse", async () => {
+  // The first id's toPath names a scene, which no clip can go to, so that clip
+  // goes nowhere — and the second one's destination is the span it is sitting
+  // in.
+  it("keeps a clip whose toPath entry names no place for it", async () => {
     const result = await updateClip({
       id: "113,114",
-      toPath: "not-a-real-path,t0[1|1]",
+      toPath: "s3,t0[1|1]",
     });
 
     expect(movedTo()).toStrictEqual([]);
@@ -197,8 +219,8 @@ describe("updateClip - moving a row of arrangement clips", () => {
         id: "113",
         ok: false,
         detail:
-          'not moved: invalid toPath "not-a-real-path" - "not-a-real-path" is not ' +
-          'a track or scene; expected "t<index>", "rt<index>", "mt", or "s<index>"',
+          'not moved: invalid toPath "s3" - a scene alone names no track; clips ' +
+          'go to a track ("t0"), a take lane on it ("t0/l0"), or a clip slot ("t0/s1")',
       },
       {
         id: "114",
@@ -383,6 +405,37 @@ describe("updateClip - a move Live turns down at write time", () => {
       expect.anything(),
     );
   });
+
+  // A switch sent off asks nothing, so it can't turn the refusal into an entry.
+  it.each([{}, { duplicateLoop: false }])(
+    "refuses a lone move to an audio track the same way with %j",
+    async (extra) => {
+      setupRefusingTrack([{ id: "113", start: 0, end: 16 }]);
+
+      await expect(
+        updateClip({ id: "113", toPath: `t${AUDIO_TRACK}[1|1]`, ...extra }),
+      ).rejects.toThrow(
+        "not moved: track t1 (id track-1) is audio; a MIDI clip needs a MIDI track",
+      );
+    },
+  );
+
+  it("keeps the entry when duplicateLoop is true beside a refused move", async () => {
+    setupRefusingTrack([{ id: "113", start: 0, end: 16 }]);
+
+    const result = await updateClip({
+      id: "113",
+      toPath: `t${AUDIO_TRACK}[1|1]`,
+      duplicateLoop: true,
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        id: "113",
+        detail: expect.stringContaining("not moved:") as string,
+      }),
+    );
+  });
 });
 
 describe("updateClip - moving a row of take-lane clips", () => {
@@ -431,8 +484,23 @@ describe("updateClip - moving a row of take-lane clips", () => {
     ]);
 
     for (const entry of result) {
-      expect(entry.deleted).toBeUndefined();
+      expect(entry).not.toHaveProperty("deleted");
       expect(entry.detail).toContain("re-created on t0/l0");
     }
+  });
+
+  // A position with no lane keeps a take-lane clip on its lane; a slot that is
+  // ignored must not change that.
+  it("keeps a take-lane clip on its lane when the slot toPath is ignored", async () => {
+    const [first] = setupTakeLane();
+
+    const result = (await updateClip({
+      id: first as string,
+      arrangementStart: "9|1",
+      toPath: "t0/s0",
+    })) as ClipResult;
+
+    expect(result.path).toBe("t0/l0[9|1]");
+    expect(result.detail).toContain("toPath ignored:");
   });
 });

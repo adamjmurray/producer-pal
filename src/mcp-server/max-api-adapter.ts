@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Adapter for communication between Node.js MCP server and Max v8 environment
 
@@ -16,6 +16,7 @@ import {
 } from "#src/shared/mcp-responses.ts";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
+import { markChangedNothing } from "./rpc/remote-script/forwarded/changed-nothing.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 import * as console from "./node-for-max-logger.ts";
@@ -44,6 +45,12 @@ export interface McpResponse {
    * reaches the SDK.
    */
   warnings?: string[];
+}
+
+/** What V8 sends: a response, plus sidecars Node consumes. */
+interface WireResponse extends McpResponse {
+  /** V8 proved the call changed nothing in the Set; see changed-nothing.ts */
+  changedNothing?: boolean;
 }
 
 interface PendingRequest {
@@ -174,10 +181,16 @@ function handleLiveApiResult(...args: unknown[]): void {
 
   if (resolve) {
     try {
-      const result = JSON.parse(reassembleChunks(params)) as McpResponse;
+      const result = JSON.parse(reassembleChunks(params)) as WireResponse;
       const warnings = result.warnings ?? [];
 
       delete result.warnings;
+
+      if (result.changedNothing === true) {
+        markChangedNothing(result);
+      }
+
+      delete result.changedNothing;
 
       const resultLength = result.content.reduce(
         (sum: number, { text }: { text: string }) => sum + text.length,

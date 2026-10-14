@@ -5,10 +5,15 @@
 ### swing(amount [, grid] [, raw])
 
 Delays off-beat notes to create a swing feel. Returns absolute position — use
-with `timing =`.
+with `timing =`. `timing += swing(...)` (or `-=`, `*=`, `/=`) is refused.
 
 - **amount**: Delay in musical beats applied to off-beat notes (0.02=subtle,
-  0.05=medium, 0.1=heavy). Negative values push off-beats early.
+  0.05=medium, 0.1=heavy). Negative values push off-beats early. Must be under
+  the grid in beats (|amount| < grid): a delay of a whole grid or more lands the
+  off-beat on or past the next on-beat, which is never swing, so the call is
+  refused. A value that looks like an MPC swing percent (0.5-0.75 or 50-75, as
+  in `swing(0.56)`) gets the equivalent delay in the message:
+  `(percent - 50)% * 2 * grid`, e.g. 56% on `n/8` is 0.06.
 - **grid**: Swing subdivision grid. Default is half the meter's beat — the
   off-beat between beats: an 8th note in x/4 meters, a 16th in x/8 (the natural
   swing subdivision per meter). It is _not_ a fixed `n/8`, which would coincide
@@ -19,7 +24,8 @@ with `timing =`.
 **Algorithm**: Each period (2× grid) is split into two halves. Notes in the
 first half (on-beat) get no offset. Notes in the second half (off-beat) get the
 full amount as offset. This is a step function, not a wave — every off-beat note
-gets the same delay.
+gets the same delay. Notes before the clip start (pickups) follow the same
+on/off pattern, continued backwards from 0.
 
 **Auto-quantize**: Before applying swing, notes are snapped to a `grid/4`
 quantize grid. This serves two purposes:
@@ -34,26 +40,26 @@ The `raw` keyword skips auto-quantize entirely, applying swing to whatever
 position the note is currently at.
 
 ```
-timing = swing(0.05); // default swing: half the meter's beat (8th notes in 4/4)
-timing = swing(0.03, n/16); // 16th-note swing
-timing = swing(0.05, raw); // no auto-quantize
-timing = swing(0.05, n/16, raw); // 16th-note swing, no auto-quantize
+timing = swing(0.05) // default swing: half the meter's beat (8th notes in 4/4)
+timing = swing(0.03, n/16) // 16th-note swing
+timing = swing(0.05, raw) // no auto-quantize
+timing = swing(0.05, n/16, raw) // 16th-note swing, no auto-quantize
 ```
 
 ### quant(grid)
 
 Snaps note timing to the nearest grid point. Returns absolute position — use
-with `timing =`.
+with `timing =`; a compound assignment is refused, as for `swing()`.
 
 - **grid**: Grid size as a note value or numeric musical beats. Must be > 0 —
   unlike a waveform period, a zero or negative grid has nothing to snap to. Same
   for `swing()`'s optional grid.
 
 ```
-timing = quant(n/8); // snap to 8th-note grid (0.5 beats in 4/4)
-timing = quant(n/16); // snap to 16th-note grid (0.25 beats in 4/4)
-timing = quant(n/4); // snap to quarter-note grid (1 beat in 4/4)
-timing = quant(n/12); // snap to triplet grid
+timing = quant(n/8) // snap to 8th-note grid (0.5 beats in 4/4)
+timing = quant(n/16) // snap to 16th-note grid (0.25 beats in 4/4)
+timing = quant(n/4) // snap to quarter-note grid (1 beat in 4/4)
+timing = quant(n/12) // snap to triplet grid
 ```
 
 ### legato([tolerance])
@@ -89,8 +95,8 @@ note op sees the rebuilt note list (e.g. `note.index` re-derives over the denser
 or sparser set). The optional selector scopes which notes the op touches; notes
 outside the selector pass through untouched. A note op's selector — like every
 selector — is **per-line**: it applies to that op only and is not carried to or
-from neighboring statements. Note ops are MIDI-only; they are ignored (with a
-warning) on audio clips.
+from neighboring statements. Note ops are MIDI-only; they are ignored (reported
+on the clip's entry) on audio clips.
 
 ### ratchet(count) / ratchet(noteValue)
 
@@ -100,20 +106,23 @@ argument forms differ in geometry:
 
 - **count** form (a bare number, e.g. `ratchet(4)`): exactly `count` EQUAL
   pieces, regardless of where the note sits — child duration = parent duration /
-  count. Rounded to the nearest integer; a count below 2 warns and is skipped (1
-  piece is a no-op). Counts above the per-note cap (64) are clamped with a
-  warning. A bare pitch literal (e.g. `ratchet(C2)`) is not a valid count — it
-  warns and is skipped rather than coercing to its MIDI number (a pitch literal
-  nested in arithmetic, e.g. `ratchet(C2 - C1)`, still resolves to a number).
+  count. Rounded to the nearest integer; a count below 2 is refused (1 piece is
+  a no-op). Counts above the per-note cap (64) are clamped and said on the
+  clip's entry. A bare pitch literal (e.g. `ratchet(C2)`) is not a valid count —
+  it is refused rather than coerced to its MIDI number (a pitch literal nested
+  in arithmetic, e.g. `ratchet(C2 - C1)`, still resolves to a number).
 - **noteValue** form (a note value or `<count>bar`, e.g. `ratchet(n/16)`,
   `ratchet(1bar)`): cuts the note on the ABSOLUTE grid of that size (multiples
   of the grid from bar|beat `1|1`), so the pieces line up with bar positions — a
   true grid ratchet, not an equal division. A note that starts and/or ends
   off-grid keeps a partial sliver at that end. A note that spans no grid line
-  (it fits within a single grid cell) is left unchanged with a warning. The
-  per-note cap (64) still applies.
-- The argument is a constant (no per-note variables); an unusable argument warns
-  and the op is skipped (notes pass through unchanged).
+  (it fits within a single grid cell) is left unchanged, and the clip's entry
+  says how many. The per-note cap (64) still applies.
+- The argument is a constant (no per-note variables). A constant that is
+  unusable (no argument, a second argument, a count below 2, a grid of 0, a
+  value that can't be evaluated) is refused up front. One that can only be known
+  as the op runs (it uses a random function or a variable) warns and the op is
+  skipped (notes pass through unchanged).
 - Zero/negative-duration notes are left unchanged (and are removed later by the
   standard zero-duration deletion sweep).
 
@@ -136,16 +145,16 @@ unchanged — `repeat` translates notes, it does not stretch them.
 
 - **offset** (first argument, required): a **note value** (`n/8`, `n/4`, …) or a
   bar duration (`<count>bar`). This is the only dialect accepted here — a bare
-  number, a pitch, or any other expression warns and the op is skipped. The
-  offset must be greater than 0. It is meter-aware: `1bar` resolves through the
-  clip's beats-per-bar (one bar in 6/8 is three Ableton beats).
+  number, a pitch, or any other expression is refused. The offset must be
+  greater than 0. It is meter-aware: `1bar` resolves through the clip's
+  beats-per-bar (one bar in 6/8 is three Ableton beats).
 - **copies** (second argument, optional, default 1): the number of echoes to
-  add. Rounded to the nearest integer; a count below 1 warns and is skipped (0
-  echoes is a no-op). Counts above the per-note cap (64) are clamped with a
-  warning. A bare pitch literal (e.g. `repeat(n/8, C2)`) is not a valid count —
-  it warns and is skipped rather than coercing to its MIDI number (a pitch
-  literal nested in arithmetic still resolves to a number). An arithmetic count
-  (e.g. `repeat(n/4, 1 + 2)`) is fine. Omit it for the common single-echo case:
+  add. Rounded to the nearest integer; a count below 1 is refused (0 echoes is a
+  no-op). Counts above the cap (64) are clamped and said on the clip's entry. A
+  bare pitch literal (e.g. `repeat(n/8, C2)`) is not a valid count — it is
+  refused rather than coerced to its MIDI number (a pitch literal nested in
+  arithmetic still resolves to a number). An arithmetic count (e.g.
+  `repeat(n/4, 1 + 2)`) is fine. Omit it for the common single-echo case:
   `repeat(n/8)`.
 - **Does NOT resize the clip.** Unlike `update-clip`'s `duplicateLoop` (which
   doubles clip length via Live's native Duplicate Loop), `repeat` only adds
@@ -153,15 +162,16 @@ unchanged — `repeat` translates notes, it does not stretch them.
   past the clip's end are still emitted; in Live they sit beyond the loop/end
   marker, hidden until the clip is lengthened. To grow the clip to fit the
   echoes, set `length` on the same `update-clip` call (or a follow-up).
-- The arguments are constants (no per-note variables); an unusable argument
-  warns and the op is skipped (notes pass through unchanged). A third positional
-  argument warns and is ignored (the first two are used).
+- The arguments are constants (no per-note variables). An unusable constant (no
+  offset, a third argument, a count below 1, a value that can't be evaluated) is
+  refused up front; a count that can only be known as the op runs warns and the
+  op is skipped (notes pass through unchanged).
 - **Same-pitch onset collisions collapse keep-last.** When a copy lands on the
   exact onset of another same-pitch note (an existing note or an earlier copy,
   within `SAME_TIME_EPSILON`), the write-path dedupe keeps the last write and
   drops the other — deterministic, but the displaced note (with its own
-  velocity/probability) is replaced. `repeat` emits a warning counting how many
-  collisions collapsed; the op is not skipped.
+  velocity/probability) is replaced. The clip's entry says how many duplicate
+  notes were dropped; the op is not skipped.
 
 `repeat` runs in the same statement-major pipeline as the other note ops, so
 **order matters** when it composes with a `merge`. `repeat` then `merge` first
@@ -198,19 +208,20 @@ probability, and deviation.
   beats-per-bar.
 - A position only cuts a note when it falls **strictly inside** that note's
   span; a position on a note's own onset/offset is a boundary, not a cut. A note
-  containing none of the positions is left unchanged (with a warning).
+  containing none of the positions is left unchanged (reported on the clip's
+  entry).
 - Positions are de-duplicated, so a repeated position never makes a zero-width
   sliver. The per-note piece cap (64) still applies.
 - Zero/negative-duration notes are left unchanged (and are removed later by the
-  standard zero-duration deletion sweep). Calling `split()` with no positions
-  warns and is skipped.
+  standard zero-duration deletion sweep). Calling `split()` with no positions is
+  refused.
 - **`sync`** (optional trailing keyword, same form as the waveform `sync`): the
   positions are interpreted against the **arrangement timeline** instead of the
   clip origin. Each position is mapped into note time through the clip's
   arrangement start and start marker, so e.g. a clip starting at bar 5 (start
   marker at 1|1) cut with `split(6|1, sync)` cuts at clip bar 2. Session clips
-  have no arrangement origin, so `sync` is ignored (warn-and-degrade to
-  clip-relative), mirroring the waveform `sync` fallback.
+  have no arrangement origin, so `sync` is ignored (degrades to clip-relative,
+  reported on the clip's entry), mirroring the waveform `sync` fallback.
 
 ```
 split(2|1)            // cut every note that spans bar 2's downbeat
@@ -240,9 +251,8 @@ two same-pitch notes may sit and still merge:
   meter-invariant in absolute time (an 8th is always an 8th).
 
 Any other argument — a non-zero bare number (`merge(2)`, `merge(0.25)`), a bar
-value (`merge(1bar)`), a pitch literal, or an expression — warns and the merge
-is skipped (notes pass through unchanged). A second argument warns and is
-ignored (the first is used).
+value (`merge(1bar)`), a pitch literal, or an expression — is refused, as is a
+second argument.
 
 ```
 merge()               // span every pitch's notes across the whole clip

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type NoteEvent } from "#src/notation/types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
@@ -129,9 +129,7 @@ function noteMatchesPredicate(
   try {
     return evaluatePredicate(predicate, ctx);
   } catch (error) {
-    console.warn(
-      `Failed to evaluate where() predicate: ${errorMessage(error)}`,
-    );
+    console.clipDetail(`where() failed: ${errorMessage(error)}`);
 
     return false;
   }

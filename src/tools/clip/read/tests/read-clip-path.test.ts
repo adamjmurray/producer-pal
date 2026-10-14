@@ -1,10 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import { z } from "zod";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
@@ -13,8 +12,9 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { toolDefReadClip } from "#src/tools/clip/read/read-clip.def.ts";
-import { readOneClip } from "#src/tools/clip/read/read-clip.ts";
+import { readClip, readOneClip } from "#src/tools/clip/read/read-clip.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { parseNullLocationArgs } from "#src/tools/clip/helpers/tests/null-location-params-test-helpers.ts";
 import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import { setupMidiClipMock } from "./read-clip-test-helpers.ts";
 
@@ -30,10 +30,8 @@ describe("readOneClip location params through the tool schema", () => {
 
   it("refuses a null trackIndex/sceneIndex instead of reading t0/s0", () => {
     const raw = { id: null, trackIndex: null, sceneIndex: null };
-    const args = z.object(params).parse(unsetEmptyParams(raw, params));
+    const args = parseNullLocationArgs(params, raw);
 
-    expect(args.trackIndex).toBeUndefined();
-    expect(args.sceneIndex).toBeUndefined();
     expect(() => readOneClip(args)).toThrow("id or path is required");
   });
 
@@ -216,7 +214,7 @@ describe("readOneClip path param", () => {
     });
 
     expect(() => readOneClip({ path: "t1/s1", slot: "2/3" })).toThrow(
-      "path and slot both name a clip; use path alone (slot is deprecated)",
+      "path names the clip on its own - don't send slot with it (slot is deprecated)",
     );
   });
 
@@ -338,22 +336,16 @@ describe("readOneClip path param", () => {
     expect(readOneClip({ clipId: "123" }).name).toBe("Test Clip");
   });
 
-  // trackIndex/sceneIndex are permanent aliases, not deprecated, so they warn
-  // rather than throw — matching create-clip.
-  it("warns that trackIndex/sceneIndex went unused when path names the clip", () => {
-    const warn = vi.spyOn(console, "warn");
+  it("refuses a path sent with trackIndex or sceneIndex", async () => {
+    setupMidiClipMock({ trackIndex: 1, sceneIndex: 1, clipProps: {} });
 
-    setupMidiClipMock({
-      trackIndex: 1,
-      sceneIndex: 1,
-      clipProps: { name: "From path" },
-    });
-
-    expect(
-      readOneClip({ path: "t1/s1", trackIndex: 2, sceneIndex: 3 }).name,
-    ).toBe("From path");
-    expect(warn).toHaveBeenCalledWith(
-      'trackIndex/sceneIndex ignored — "path" already names the clip',
+    await expect(
+      readClip({ path: "t1/s1", trackIndex: 2, sceneIndex: 3 }),
+    ).rejects.toThrow(
+      "path names the clip on its own - don't send trackIndex or sceneIndex with it",
+    );
+    await expect(readClip({ path: "t1/s1", sceneIndex: 3 })).rejects.toThrow(
+      "path names the clip on its own - don't send sceneIndex with it",
     );
   });
 });

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   type CreatedChains,
@@ -9,6 +9,7 @@ import {
   resolveContainerWithAutoCreate,
   resolveOrCreateDrumPadChain,
 } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
+import { errorWithChainsLeft } from "#src/tools/shared/device/helpers/path/chains-left.ts";
 import {
   requireDeviceContainer,
   trackSegmentPath,
@@ -19,7 +20,9 @@ import {
   pathPrefix,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
+  formatDeviceSegment,
   formatObjectPath,
+  liveApiCollection,
   namesDevice,
   parseObjectPath,
   type CanonicalDeviceSegment,
@@ -29,6 +32,7 @@ import {
 } from "#src/tools/shared/validation/object-path.ts";
 import { resolveDevicePath } from "./device-path-to-live-api.ts";
 import { resolveDeviceTypeSegments } from "./device-type-segments.ts";
+import { resolveDrumPadFromPath } from "./device-drumpad-navigation.ts";
 import { liveApiAtDevicePath } from "./with-device-path-cache.ts";
 
 // Re-export all functions for backwards compatibility
@@ -57,6 +61,10 @@ export interface InsertionPathResolution {
   /** The rack chains the path had to make first ("c2-c3"), when it made any.
    * Numbered within the rack the path names. */
   createdChains?: string;
+  /** Every chain the path made, including the one a `c+` appended, which
+   * `createdChains` leaves out because `containerPath` already names it. For a
+   * failure to say what it left behind. */
+  madeChains?: string;
 }
 
 /**
@@ -106,9 +114,24 @@ export function resolveInsertionPath(
   // name the wrong thing — echo what the call wrote instead.
   const spelled = resolved ? above : held(segments);
   const created: CreatedChains = [];
-  const container = resolved
-    ? resolveContainer(root, above, path, appendsChain, created)
-    : null;
+  let container: LiveAPI | null;
+
+  try {
+    container = resolved
+      ? resolveContainer(root, above, path, appendsChain, created)
+      : null;
+  } catch (error) {
+    // Chains made on the way down stay in the Set, so the refusal names them.
+    throw errorWithChainsLeft(error, created.join(", "));
+  }
+
+  // The chain a `c+` made has an index only now that it exists, and the
+  // result has to name it rather than the `c+` the call wrote.
+  const appendedPath =
+    appendsChain && container != null ? objectPathForApi(container) : undefined;
+  const made = [...created, appendedPath?.split("/").at(-1) ?? ""].filter(
+    (range) => range !== "",
+  );
 
   return {
     container,
@@ -116,14 +139,60 @@ export function resolveInsertionPath(
     ...(appendsDevice ? { appendsDevice } : {}),
     ...(resolved ? {} : { namesNothing }),
     ...(created.length > 0 ? { createdChains: created.join(", ") } : {}),
-    // The chain a `c+` made has an index only now that it exists, and the
-    // result has to name it rather than the `c+` the call wrote.
+    ...(made.length > 0 ? { madeChains: made.join(", ") } : {}),
     containerPath:
-      (appendsChain && container != null
-        ? objectPathForApi(container)
-        : null) ??
+      appendedPath ??
       formatObjectPath({ kind: "device", root, segments: spelled }),
   };
+}
+
+/**
+ * The Live path of the container a destination names, read without making
+ * anything: no chain is created, so a path through one that doesn't exist yet
+ * answers null. A `c+` or a pad's new layer answers the rack it would go in,
+ * since the chain it makes isn't there to name. Lets a caller ask whether two
+ * spellings (`c2` and `pC1`) reach the same container.
+ * @param path - Device insertion path
+ * @param label - Param name the path came from, for error messages
+ * @returns The Live API path, or null when it can't be found without creating
+ */
+export function peekInsertionContainerPath(
+  path: string,
+  label = "path",
+): string | null {
+  const {
+    root,
+    segments,
+    appendsChain = false,
+    appendsDevice = false,
+  } = requireDeviceContainer(parseObjectPath(path, label), label);
+  const { segments: canonical, namesNothing } = resolveDeviceTypeSegments(
+    root,
+    segments,
+  );
+
+  if (namesNothing != null) {
+    return null;
+  }
+
+  const above =
+    appendsChain || appendsDevice ? canonical : containerSegments(canonical);
+  let liveApiPath = trackSegmentPath(root).toString();
+
+  for (const [index, segment] of above.entries()) {
+    if (segment.kind === "drum-pad") {
+      const tail = above.slice(index + 1).map(formatDeviceSegment);
+
+      return appendsChain && tail.length === 0
+        ? liveApiPath
+        : (resolveDrumPadFromPath(liveApiPath, segment.note, tail).target
+            ?.path ?? null);
+    }
+
+    liveApiPath += ` ${liveApiCollection(segment)} ${segment.index}`;
+  }
+
+  return liveApiPath;
 }
 
 // --- Helpers below main exports ---
@@ -237,4 +306,25 @@ function appendChainTo(rack: LiveAPI, path: string): LiveAPI {
   }
 
   return created;
+}
+
+/**
+ * Why a device can't go at this index, when it can't. Live takes 0 through the
+ * container's device count (the count itself appends) and ignores anything
+ * higher without a word, so every tool that places a device refuses it.
+ * @param position - The index aimed at, or null to insert at the top
+ * @param deviceCount - How many devices the container holds
+ * @param reportPath - How to spell the destination back to the caller
+ * @returns The reason, or null when the index is in range
+ */
+export function pastTheEndReason(
+  position: number | null,
+  deviceCount: number,
+  reportPath: string,
+): string | null {
+  if (position == null || position <= deviceCount) {
+    return null;
+  }
+
+  return `"${reportPath}" is past the end of a container holding ${deviceCount} device${deviceCount === 1 ? "" : "s"}`;
 }

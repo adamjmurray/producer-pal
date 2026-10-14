@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Scenario for the `n/N`-vs-bare-`1/N` "make it a quarter note" reach-for
@@ -127,6 +127,7 @@ export const durationReachForQuarter: EvalScenario = {
   description:
     "`make it a quarter note` → n/4 (absolute), not bare 1/4 (a 16th in 4/4)",
   kind: "capability",
+  requires: { transforms: true },
   liveSet: LIVE_SET,
 
   messages: [

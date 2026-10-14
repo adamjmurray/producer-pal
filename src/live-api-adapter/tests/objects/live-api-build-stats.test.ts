@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The counter tests read the recorder through LiveAPI.from rather than calling
 // record*() by hand, so they also pin the hooks in live-api-build.ts.

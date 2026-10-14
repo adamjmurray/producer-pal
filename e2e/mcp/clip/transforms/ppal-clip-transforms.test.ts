@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for clip transforms (audio gain and MIDI parameters)
@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   type CreateTrackResult,
+  getToolErrorMessage,
   getToolWarnings,
   parseToolResult,
   type ReadClipResult,
@@ -128,15 +129,22 @@ async function applyGainTransformToTwoAudioClips(
 }
 
 /**
- * Asserts that a transform result carries at least one warning mentioning the
- * given keyword (case-insensitive). Centralizes the warn-and-skip assertion
- * shared across the cross-type handling tests.
+ * Asserts that a transform result says, on the clip's entry and not as a
+ * warning, something mentioning the keyword (case-insensitive).
  */
-function assertWarningContains(result: unknown, keyword: string): void {
-  const warnings = getToolWarnings(result);
+function assertDetailContains(result: unknown, keyword: string): void {
+  const { detail } = parseToolResult<{ detail?: string }>(result);
 
-  expect(warnings.length).toBeGreaterThan(0);
-  expect(warnings.some((w) => w.toLowerCase().includes(keyword))).toBe(true);
+  expect(detail?.toLowerCase()).toContain(keyword);
+  expect(getToolWarnings(result)).toStrictEqual([]);
+}
+
+/**
+ * Asserts that a transform whose every line was ignored is refused with a
+ * message mentioning the keyword (case-insensitive).
+ */
+function assertRefusalContains(result: unknown, keyword: string): void {
+  expect(getToolErrorMessage(result).toLowerCase()).toContain(keyword);
 }
 
 /** Reads a sample property (gainDb or pitchShift) from a clip. */
@@ -580,35 +588,35 @@ describe("ppal-clip-transforms (math functions)", () => {
 // =============================================================================
 
 describe("ppal-clip-transforms (cross-type handling)", () => {
-  it("ignores MIDI transforms on audio clips with warnings", async () => {
+  it("refuses or ignores MIDI transforms on audio clips", async () => {
     const { clipId } = await createAudioTrackWithClip("Audio Ignore MIDI");
 
     await applyTransform(clipId, "gain = -6");
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
 
-    // Apply MIDI-only transform - should emit warning, gain unchanged
-    assertWarningContains(
+    // MIDI-only transform: refused, gain unchanged
+    assertRefusalContains(
       await applyTransform(clipId, "velocity = 64"),
       "velocity",
     );
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
 
-    // Apply pitch transform - should emit warning (pitch is MIDI-only)
-    assertWarningContains(await applyTransform(clipId, "pitch += 12"), "pitch");
+    // pitch is MIDI-only too
+    assertRefusalContains(await applyTransform(clipId, "pitch += 12"), "pitch");
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
 
-    // Mixed transform - gain should apply, velocity ignored with warning
-    assertWarningContains(
+    // Mixed transform: gain applies, velocity is ignored on the entry
+    assertDetailContains(
       await applyTransform(clipId, "velocity = 100\ngain = -12"),
       "velocity",
     );
     expect(await readClipGain(clipId)).toBeCloseTo(-12, 0);
   });
 
-  it("ignores gain transforms on MIDI clips with warnings", async () => {
+  it("refuses gain transforms on MIDI clips", async () => {
     const clipId = await createMidiClip(13, "v80 C3 1|1");
 
-    assertWarningContains(await applyTransform(clipId, "gain = -6"), "gain");
+    assertRefusalContains(await applyTransform(clipId, "gain = -6"), "gain");
 
     const notes = await readClipNotes(clipId);
 
@@ -616,23 +624,23 @@ describe("ppal-clip-transforms (cross-type handling)", () => {
     expect(notes).toContain("C3");
   });
 
-  it("ignores note.* variables in audio context with warnings", async () => {
+  it("ignores note.* variables in audio context on the entry", async () => {
     const { clipId } = await createAudioTrackWithClip("Audio Note Var");
 
     await applyTransform(clipId, "gain = -6");
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
 
-    assertWarningContains(
+    assertDetailContains(
       await applyTransform(clipId, "gain = note.pitch"),
       "note",
     );
     expect(await readClipGain(clipId)).toBeCloseTo(-6, 0);
   });
 
-  it("ignores audio.* variables in MIDI context with warnings", async () => {
+  it("ignores audio.* variables in MIDI context on the entry", async () => {
     const clipId = await createMidiClip(14, "v80 C3 1|1");
 
-    assertWarningContains(
+    assertDetailContains(
       await applyTransform(clipId, "velocity = audio.gain"),
       "audio",
     );

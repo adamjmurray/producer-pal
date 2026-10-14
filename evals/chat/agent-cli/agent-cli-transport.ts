@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Taylor Haun, Adam Murray
 // AI assistance: Codex (OpenAI), Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * The contract every agent-CLI eval transport implements.

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A batch move can destroy a clip the same call names, and used to report it as
 // if the update had run: the batch reached a dead object, read nothing off it,
@@ -29,9 +29,6 @@ import {
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-
-/** What a buried clip's entry says it was. */
-const BURIED = "another clip in this call was moved onto it";
 
 /** The clip the main-lane duplicate lands, so a test can name it. */
 const LANDED = "landed";
@@ -67,6 +64,8 @@ function registerMainLaneTrack(clipIds: string[], length: number): void {
     properties: { arrangement_clips: children(...clipIds) },
     methods: {
       duplicate_clip_to_arrangement: (_id, start) => {
+        const left: string[] = [];
+
         for (const id of clipIds) {
           const props = lookupMockObject(id)?.properties;
 
@@ -76,6 +75,8 @@ function registerMainLaneTrack(clipIds: string[], length: number): void {
             props.start_time < (start as number) + length
           ) {
             deleteMockObject(id);
+          } else {
+            left.push(id);
           }
         }
 
@@ -85,6 +86,10 @@ function registerMainLaneTrack(clipIds: string[], length: number): void {
           start as number,
           (start as number) + length,
         );
+        // The lane's own list shows the clip cleared gone and the copy there.
+        registerMockObject("main-lane-track", {
+          properties: { arrangement_clips: children(...left, LANDED) },
+        });
 
         return ["id", LANDED];
       },
@@ -94,21 +99,23 @@ function registerMainLaneTrack(clipIds: string[], length: number): void {
 }
 
 /**
- * Seed a take lane, then send both of its clips to bar 5 so the second lands
- * on top of the first.
+ * Seed a take lane, then send its clips to bar 5, or wherever `at` says, so
+ * each lands on top of the one before.
  * @param spans - Each clip's arrangement span, in beats
- * @returns The two clip ids and the response, one entry per id
+ * @param at - Where each goes, as positions on the lane (default bar 5)
+ * @returns The clip ids and the response, one entry per id
  */
 async function collideAtBarFive(
   spans: Array<{ start: number; end: number }>,
-): Promise<{ first?: string; second?: string; result: ClipResult[] }> {
-  const [first, second] = seedTakeLane(spans);
+  at: string[] = spans.map(() => "5|1"),
+): Promise<{ ids: string[]; result: ClipResult[] }> {
+  const ids = seedTakeLane(spans);
   const result = (await updateClip({
-    id: `${first},${second}`,
-    toPath: "t0/l0[5|1],t0/l0[5|1]",
+    id: ids.join(","),
+    toPath: at.map((position) => `t0/l0[${position}]`).join(","),
   })) as ClipResult[];
 
-  return { first, second, result };
+  return { ids, result };
 }
 
 describe("updateClip reports a clip the batch buried", () => {
@@ -117,20 +124,20 @@ describe("updateClip reports a clip the batch buried", () => {
   });
 
   it("reports the take-lane clip a sibling was re-created on top of", async () => {
-    const { second, result } = await collideAtBarFive([
+    const { ids, result } = await collideAtBarFive([
       { start: 0, end: 4 },
       { start: 16, end: 20 },
     ]);
 
-    // The mover landed at bar 5; the clip that was sitting there is gone, named
-    // by the address it had, and says nothing about being a session clip.
-    expect(result[0]?.path).toBe("t0/l0[5|1]");
-    expect(result[1]).toStrictEqual({
-      id: second,
-      path: "t0/l0[5|1]",
-      deleted: true,
-      detail: `not updated: ${BURIED}`,
-    });
+    // The first mover is left where it was: the second lands on the same spot
+    // and covers all of it, so the first's move is the one that is skipped.
+    expect(result).toStrictEqual([
+      {
+        id: ids[0],
+        detail: "overwritten later in this call by t0/l0[5|1]",
+      },
+      expect.objectContaining({ path: "t0/l0[5|1]" }),
+    ]);
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
@@ -155,27 +162,32 @@ describe("updateClip reports a clip the batch buried", () => {
       },
       {
         id: "short",
-        path: "t0[26|1]",
-        deleted: true,
-        detail: `not updated: ${BURIED}`,
+        ok: false,
+        detail:
+          "not updated: the clip was overwritten earlier in this call by t0[26|1]",
       },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
-  it("marks a clip that landed and a later sibling then buried", async () => {
-    // Both land on bar 5: the first is re-created there, the second over it.
-    const { result } = await collideAtBarFive([
-      { start: 0, end: 4 },
-      { start: 32, end: 36 },
-    ]);
+  it("says a clip was overwritten when later landings cover all of it between them", async () => {
+    // The first (8 beats) lands on bar 5; the second (4) and the third (4)
+    // each cover half of it, so neither alone does.
+    const { ids, result } = await collideAtBarFive(
+      [
+        { start: 0, end: 8 },
+        { start: 32, end: 36 },
+        { start: 64, end: 68 },
+      ],
+      ["5|1", "5|1", "6|1"],
+    );
 
-    // The first mover's own copy is what the second one cleared, so its entry
-    // names an id that is gone by the time the call answers.
-    expect(result[0]?.path).toBe("t0/l0[5|1]");
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
-    expect(result[1]?.deleted).toBeUndefined();
+    expect(result[0]).toStrictEqual({
+      id: ids[0],
+      detail: "overwritten later in this call by t0/l0[6|1]",
+    });
+    expect(result[1]?.path).toBe("t0/l0[5|1]");
+    expect(result[2]?.path).toBe("t0/l0[6|1]");
   });
 
   // The second move fails after Live made its clip, and that half-made clip
@@ -223,8 +235,12 @@ describe("updateClip reports a clip the batch buried", () => {
     })) as ClipResult[];
 
     expect(result[1]?.detail).toContain("an incomplete clip was left");
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    // The move that was to replace it failed, so nothing did.
+    expect(result[0]).toStrictEqual({
+      id: first,
+      ok: false,
+      detail: "not written: t0/l0[5|1] was meant to replace it, but failed",
+    });
   });
 
   it("reads nothing back for a batch that clears no span", async () => {
@@ -238,10 +254,7 @@ describe("updateClip reports a clip the batch buried", () => {
       name: "Renamed",
     })) as ClipResult[];
 
-    expect(result.map((entry) => entry.deleted)).toStrictEqual([
-      undefined,
-      undefined,
-    ]);
+    expect(result.every((entry) => !("deleted" in entry))).toBe(true);
   });
 });
 
@@ -250,14 +263,12 @@ describe("a clip the call holds back for an overwrite", () => {
     vi.clearAllMocks();
   });
 
-  // The blocker stayed put by design, not because Live turned its move down,
-  // and nothing clears it until every move has run — so "move that clip first"
-  // is advice the caller can't take.
-  it("says the call clears it only after every move has run", async () => {
+  // "held" is left unwritten, so it stays where it is; what is sent there
+  // afterwards lands over it, and says so on its own entry.
+  it("leaves it where it sits for a clip sent to its span to land over", async () => {
     registerLiveSet();
-    // "held" is shorter than "mover" and headed for the same spot, so the plan
-    // holds it back for "mover" to land on top of. "waiter" is sent to the span
-    // "held" is still sitting in.
+    // "held" is shorter than "mover" and headed for the same spot, so "mover"
+    // covers it. "waiter" is sent to the span "held" is still sitting in.
     registerArrangementClip("held", 0, 0, 8);
     registerArrangementClip("mover", 1, 16, 32);
     registerArrangementClip("waiter", 2, 40, 44);
@@ -270,21 +281,17 @@ describe("a clip the call holds back for an overwrite", () => {
 
     expect(result[0]).toStrictEqual({
       id: "held",
-      path: "t0[1|1]",
-      deleted: true,
-      detail: BURIED,
+      detail: "overwritten later in this call by t0[17|1]",
     });
-    expect(result[2]).toStrictEqual({
-      id: "waiter",
-      ok: false,
-      detail:
-        "not moved: it would land on clip t0[1|1] (id held), which this call " +
-        "clears only after every move has run; use separate calls",
-    });
+    // Not blocked by "held": it lands, at bar 1, where "held" still sits.
+    expect(result[2]).toStrictEqual(
+      expect.objectContaining({ path: "t0[1|1]" }),
+    );
+    expect(result[2]).not.toHaveProperty("ok");
   });
 
   // The read-back would find it gone too; the detail must not be said twice.
-  it("says once that it was moved onto when the landing cleared it", async () => {
+  it("says once that it was overwritten when the landing cleared it", async () => {
     registerLiveSet();
     // "held" is already sitting on the spot both clips are sent to, and it is
     // shorter, so the landing clears it before the call settles it.
@@ -297,16 +304,30 @@ describe("a clip the call holds back for an overwrite", () => {
       arrangementStart: "17|1,17|1",
     })) as ClipResult[];
 
+    // Its move was never written, but the mover's landing cleared the clip where
+    // it sat: it names nothing now, and the mover says what it destroyed.
     expect(result[0]).toStrictEqual({
-      id: "held",
-      path: "t0[17|1]",
-      deleted: true,
-      detail: BURIED,
+      detail: "overwritten later in this call by t0[17|1]",
     });
-    expect(result[1]?.id).toBe(LANDED);
+    expect(result[1]).toStrictEqual({
+      id: LANDED,
+      path: "t0[17|1]",
+      detail: "overwrote the clip at t0[17|1]",
+    });
     expect(capturedWarnings()).toStrictEqual([]);
   });
 });
+
+/**
+ * Expect an entry to say a later write of the call went over its clip, without
+ * claiming the clip was deleted or that the call failed.
+ * @param entry - The clip's result entry
+ */
+function expectOverwritten(entry: ClipResult | undefined): void {
+  expect(entry).not.toHaveProperty("deleted");
+  expect(entry).not.toHaveProperty("ok");
+  expect(entry?.detail).toContain("overwritten later in this call");
+}
 
 /**
  * Move every clip on the simulated track.
@@ -326,7 +347,7 @@ async function moveAll(
   })) as ClipResult[];
 }
 
-describe("a survivor a shorter clip landed on", () => {
+describe("a clip a shorter clip landed on", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -336,28 +357,28 @@ describe("a survivor a shorter clip landed on", () => {
   it("reports where the trim left it, not as deleted", async () => {
     const result = await moveAll([4, 8, 2]);
 
-    expect(result[0]?.deleted).toBe(true);
+    expectOverwritten(result[0]);
     expect(result[1]).toStrictEqual({
       id: expect.any(String),
       path: "t0[101|3]",
       arrangementLength: "1bar+n/2",
-      detail: "trimmed: another clip in this call landed on part of it",
+      detail: expect.stringContaining("shortened by"),
     });
     expect(result[2]?.path).toBe("t0[101|1]");
-    expect(result[2]?.deleted).toBeUndefined();
+    expect(result[2]).not.toHaveProperty("deleted");
     // The trim re-created it, so the entry has to name the clip that is there.
     expect(stackedLaneClips()).toContain(result[1]?.id);
   });
 
-  // Survivors descend in length, but a non-survivor can outlast a later,
-  // shorter one: the 12 trims the 40 without being long enough to bury the 20.
-  it("reports the trim when a non-survivor sits between the lengths", async () => {
+  // A clip can outlast a later, shorter one: the 12 trims the 40 without being
+  // long enough to cover the 20, which the 40 covers whole.
+  it("reports the trim when a covered clip sits between the lengths", async () => {
     const result = await moveAll([20, 40, 12]);
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[1]?.deleted).toBeUndefined();
+    expectOverwritten(result[0]);
+    expect(result[1]).not.toHaveProperty("deleted");
     expect(result[1]?.path).toBe("t0[104|1]");
-    expect(result[2]?.deleted).toBeUndefined();
+    expect(result[2]).not.toHaveProperty("deleted");
   });
 
   // The remainder is only a prediction until something is found there: a later
@@ -365,11 +386,10 @@ describe("a survivor a shorter clip landed on", () => {
   it("still reports a trimmed clip a later landing then buried", async () => {
     const result = await moveAll([8, 2, 16], ["101|1", "101|1", "100|1"]);
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
-    expect(result[1]?.deleted).toBe(true);
+    expectOverwritten(result[0]);
+    expectOverwritten(result[1]);
     expect(result[2]?.path).toBe("t0[100|1]");
-    expect(result[2]?.deleted).toBeUndefined();
+    expect(result[2]).not.toHaveProperty("deleted");
   });
 
   // Everything in a group starts at the same beat, so a landing from another
@@ -378,8 +398,7 @@ describe("a survivor a shorter clip landed on", () => {
   it("does not mistake a landing at the trim point for the remainder", async () => {
     const result = await moveAll([8, 2, 12], ["101|1", "101|1", "101|3"]);
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    expectOverwritten(result[0]);
     expect(result[1]?.path).toBe("t0[101|1]");
     expect(result[2]?.path).toBe("t0[101|3]");
   });
@@ -389,9 +408,9 @@ describe("a survivor a shorter clip landed on", () => {
   it("follows a remainder a second landing pushed further along", async () => {
     const result = await moveAll([8, 2, 4], ["101|1", "101|1", "101|3"]);
 
-    expect(result[0]?.deleted).toBeUndefined();
+    expect(result[0]).not.toHaveProperty("deleted");
     expect(result[0]?.path).toBe("t0[102|3]");
-    expect(result[0]?.detail).toContain("trimmed:");
+    expect(result[0]?.detail).toContain("shortened by");
     expect(stackedLaneClips()).toContain(result[0]?.id);
     expect(result[2]?.path).toBe("t0[101|3]");
   });
@@ -405,10 +424,9 @@ describe("a survivor a shorter clip landed on", () => {
       ["101|1", "101|1", "102|1", "102|1"],
     );
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    expectOverwritten(result[0]);
     expect(result[2]?.path).toBe("t0[103|1]");
-    expect(result[2]?.detail).toContain("trimmed:");
+    expect(result[2]?.detail).toContain("shortened by");
     expect(stackedLaneClips()).toContain(result[2]?.id);
     expect(new Set(result.map((entry) => entry.id)).size).toBe(4);
   });
@@ -418,10 +436,9 @@ describe("a survivor a shorter clip landed on", () => {
   it("does not name a sibling's own landing as a remainder", async () => {
     const result = await moveAll([32, 8, 24], ["101|1", "101|1", "103|1"]);
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    expectOverwritten(result[0]);
     expect(result[2]?.path).toBe("t0[103|1]");
-    expect(result[2]?.detail).not.toContain("trimmed:");
+    expect(result[2]?.detail).toBeUndefined();
     expect(new Set(result.map((entry) => entry.id)).size).toBe(3);
   });
 
@@ -434,7 +451,7 @@ describe("a survivor a shorter clip landed on", () => {
       id: expect.any(String),
       path: "t0[103|1]",
       arrangementLength: "2bar",
-      detail: "trimmed: another clip in this call landed on part of it",
+      detail: expect.stringContaining("shortened by"),
     });
     expect(stackedLaneClips()).toContain(result[0]?.id);
     expect(new Set(result.map((entry) => entry.id)).size).toBe(3);
@@ -447,7 +464,7 @@ describe("a survivor a shorter clip landed on", () => {
 
     expect(result[0]?.path).toBe("t0[106|1]");
     expect(result[0]?.arrangementLength).toBe("3bar");
-    expect(result[0]?.deleted).toBeUndefined();
+    expect(result[0]).not.toHaveProperty("deleted");
     expect(stackedLaneClips()).toContain(result[0]?.id);
   });
 
@@ -461,7 +478,7 @@ describe("a survivor a shorter clip landed on", () => {
 
     expect(result[0]?.path).toBe("t0[103|1]");
     expect(result[0]?.arrangementLength).toBe("2bar");
-    expect(result[0]?.deleted).toBeUndefined();
+    expect(result[0]).not.toHaveProperty("deleted");
     expect(stackedLaneClips()).toContain(result[0]?.id);
     expect(new Set(result.map((entry) => entry.id)).size).toBe(4);
   });
@@ -476,7 +493,7 @@ describe("a survivor a shorter clip landed on", () => {
       arrangementLength: "4bar,1bar",
     })) as ClipResult[];
 
-    expect(result[0]?.deleted).toBeUndefined();
+    expect(result[0]).not.toHaveProperty("deleted");
     expect(result[0]?.path).toBe("t0[102|1]");
     expect(result[0]?.arrangementLength).toBe("3bar");
     expect(stackedLaneClips()).toContain(result[0]?.id);
@@ -486,11 +503,7 @@ describe("a survivor a shorter clip landed on", () => {
   it("reports each clip of a descending stack", async () => {
     const result = await moveAll([8, 4, 2]);
 
-    expect(result.map((entry) => entry.deleted)).toStrictEqual([
-      undefined,
-      undefined,
-      undefined,
-    ]);
+    expect(result.every((entry) => !("deleted" in entry))).toBe(true);
     expect(result.map((entry) => entry.path)).toStrictEqual([
       "t0[102|1]",
       "t0[101|3]",
@@ -519,8 +532,7 @@ describe("a sibling's pieces inside a clip's span", () => {
       ["101|1", "101|1", "102|1", "104|1", "102|3"],
     );
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    expectOverwritten(result[0]);
     expect(result[2]?.path).toBe("t0[102|1]");
   });
 
@@ -531,8 +543,7 @@ describe("a sibling's pieces inside a clip's span", () => {
       ["101|1", "101|1", "102|1", "103|1"],
     );
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    expectOverwritten(result[0]);
   });
 
   // The 6 cuts the front off the second 4, which landed inside the 16. What is
@@ -543,13 +554,11 @@ describe("a sibling's pieces inside a clip's span", () => {
       ["101|1", "101|1", "103|1", "102|1", "104|1"],
     );
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[2]?.deleted).toBeUndefined();
+    expectOverwritten(result[0]);
+    expect(result[2]).not.toHaveProperty("deleted");
     expect(result[2]?.path).toBe("t0[103|3]");
     expect(result[2]?.arrangementLength).toBe("n/2");
-    expect(result[2]?.detail).toContain(
-      "trimmed: another clip in this call landed on part of it",
-    );
+    expect(result[2]?.detail).toContain("shortened by");
     expect(stackedLaneClips()).toContain(result[2]?.id);
   });
 
@@ -581,7 +590,6 @@ describe("a sibling's pieces inside a clip's span", () => {
       arrangementLength: "8bar,6bar,2bar,2bar",
     })) as ClipResult[];
 
-    expect(result[0]?.deleted).toBe(true);
-    expect(result[0]?.detail).toContain(BURIED);
+    expectOverwritten(result[0]);
   });
 });

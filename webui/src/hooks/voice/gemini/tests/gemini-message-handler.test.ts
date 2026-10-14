@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type Session } from "@google/genai";
 import { describe, expect, it, vi } from "vitest";
@@ -166,6 +166,53 @@ describe("handleGeminiMessage", () => {
     });
     expect(deps.setAssistantThinking).toHaveBeenCalledWith(true);
     expect(deps.setAssistantThinking).toHaveBeenCalledWith(false);
+  });
+
+  it("keeps the reply after a turnComplete that lands mid-tool-call", async () => {
+    // gemini-3.8-live sends turnComplete right after a toolCall, while the tool
+    // still runs, and speaks the reply as a new turn.
+    let finishTool = (_output: string): void => {};
+    const executeTool = vi.fn(
+      () => new Promise<string>((resolve) => (finishTool = resolve)),
+    );
+    const { deps, sendToolResponse } = makeMessageDeps({ executeTool });
+
+    const toolDone = handleGeminiMessage(
+      msg({
+        toolCall: { functionCalls: [{ id: "c1", name: "ppal-read-live-set" }] },
+      }),
+      deps,
+    );
+
+    await handleGeminiMessage(
+      msg({ serverContent: { turnComplete: true } }),
+      deps,
+    );
+    finishTool("Tempo is 128.");
+    await toolDone;
+    await handleGeminiMessage(
+      msg({ serverContent: { outputTranscription: { text: "It's 128." } } }),
+      deps,
+    );
+
+    expect(sendToolResponse).toHaveBeenCalledOnce();
+    expect(deps.builder.toRealtimeItems()).toStrictEqual([
+      {
+        itemId: "c1",
+        type: "function_call",
+        status: "completed",
+        name: "ppal-read-live-set",
+        arguments: "{}",
+        output: "Tempo is 128.",
+      },
+      {
+        itemId: GEM_ITEM_ID,
+        type: "message",
+        role: "assistant",
+        status: "in_progress",
+        content: [{ type: "output_audio", transcript: "It's 128." }],
+      },
+    ]);
   });
 
   it("falls back to the tool name as id when none is provided", async () => {

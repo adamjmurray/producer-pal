@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 
@@ -49,14 +49,9 @@ export function noteSpanLoss(
     return;
   }
 
-  const landed =
-    (newClip.getProperty("end_time") as number) -
-    (newClip.getProperty("start_time") as number);
+  const landed = landedSpan(newClip);
 
-  if (
-    !Number.isFinite(landed) ||
-    Math.abs(landed - sourceSpan) < SPAN_EPSILON
-  ) {
+  if (landed == null || Math.abs(landed - sourceSpan) < SPAN_EPSILON) {
     return;
   }
 
@@ -67,6 +62,23 @@ export function noteSpanLoss(
 }
 
 /**
+ * Whether a copy was read back at exactly the source's span. False when it
+ * differs or can't be read, so a true answer is always a verified one.
+ * @param newClip - The clip just created
+ * @param sourceSpan - The source's span, or null when it had none
+ * @returns True only when both spans were read and match
+ */
+export function keptSpan(newClip: LiveAPI, sourceSpan: number | null): boolean {
+  const landed = landedSpan(newClip);
+
+  return (
+    sourceSpan != null &&
+    landed != null &&
+    Math.abs(landed - sourceSpan) < SPAN_EPSILON
+  );
+}
+
+/**
  * Whether a loss is {@link noteSpanLoss}'s, which belongs to one clip's own
  * entry rather than a shared one.
  * @param loss - One entry of a `losses` list
@@ -74,4 +86,16 @@ export function noteSpanLoss(
  */
 export function isSpanLoss(loss: string): boolean {
   return loss.startsWith("length is ");
+}
+
+/**
+ * @param clip - A clip just created
+ * @returns Its span in beats, or null when Live gave no readable edges
+ */
+function landedSpan(clip: LiveAPI): number | null {
+  const span =
+    (clip.getProperty("end_time") as number) -
+    (clip.getProperty("start_time") as number);
+
+  return Number.isFinite(span) ? span : null;
 }

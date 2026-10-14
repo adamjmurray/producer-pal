@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-update-device wrapInRack.
@@ -18,6 +18,7 @@ import {
   getToolWarnings,
   isToolError,
   parseToolResult,
+  readDeviceCount,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers";
@@ -103,6 +104,43 @@ describe("ppal-update-device wrapInRack", () => {
     expect(result.path).toBe(devicePath);
   });
 
+  // toPath names a slot in the container as the call found it, so the slot
+  // past its last device is accepted even though the instrument leaves the
+  // container while the rack is made. Live keeps an instrument ahead of audio
+  // effects, so the rack lands before the Reverb rather than at the end.
+  it("wraps an instrument to the slot past its own track's last device", async () => {
+    const trackIndex = await createMidiTrack(ctx.client!);
+    const synth = await createTestDeviceAt(
+      ctx.client!,
+      "Operator",
+      `t${trackIndex}`,
+    );
+
+    await createTestDeviceAt(ctx.client!, "Reverb", `t${trackIndex}`);
+
+    const count = await readDeviceCount(ctx.client!, trackIndex);
+
+    const result = parseToolResult<WrapResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: {
+          path: synth,
+          wrapInRack: true,
+          toPath: `t${trackIndex}/d${count}`,
+        },
+      }),
+    );
+
+    expect(result.type).toBe("instrument-rack");
+    expect(result.deviceCount).toBe(1);
+    expect(result.path).toMatch(new RegExp(`^t${trackIndex}/d\\d+$`));
+    // The rack holds the instrument, read back from where the result says.
+    expect((await readDevice(`${result.path}/c0/d0`)).type).toContain(
+      "Operator",
+    );
+    expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(count);
+  });
+
   it("wraps an instrument and its effect in series in one chain", async () => {
     const result = await wrapPairInSeries("Operator", "Reverb");
 
@@ -168,6 +206,31 @@ describe("ppal-update-device wrapInRack", () => {
         }),
       ).path,
     ).toBe(devicePath);
+  });
+
+  // A path that can't be parsed was written wrong: the whole wrap is refused,
+  // not run on the entries that did parse.
+  it("refuses a wrap whose list has an unparsable path, wrapping nothing", async () => {
+    const trackIndex = await createMidiTrack(ctx.client!);
+    const devicePath = await createTestDeviceAt(
+      ctx.client!,
+      "Compressor",
+      `t${trackIndex}`,
+    );
+    const count = await readDeviceCount(ctx.client!, trackIndex);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path: `${devicePath},zzz`, wrapInRack: true },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain('invalid path "zzz"');
+    expect(getToolWarnings(result)).toStrictEqual([]);
+
+    // Nothing was wrapped: the device is still where it was, and no rack came.
+    expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(count);
+    expect((await readDevice(devicePath)).type).toContain("Compressor");
   });
 
   it("appends the rack when toPath names a track and no index", async () => {

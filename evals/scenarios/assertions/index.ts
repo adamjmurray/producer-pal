@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Assertion utilities for the evaluation system
@@ -30,4 +30,4 @@ export {
   normalizeCount,
   partialMatch,
 } from "./helpers/argument-matching.ts";
-export { isSignalAssertion } from "./helpers/signal-assertions.ts";
+export { asSignal, isSignalAssertion } from "./helpers/signal-assertions.ts";

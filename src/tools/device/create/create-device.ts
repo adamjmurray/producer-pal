@@ -1,44 +1,39 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
-import { type BrowserItem } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.ts";
+import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
-import { validateParamEntries } from "#src/tools/device/update/helpers/params/param-entry-validation.ts";
-import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
-import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
-import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
+import { refuseNamedTwice } from "#src/tools/shared/helpers/param-presence.ts";
+import { withDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
+import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
 import {
-  splitList,
-  valueForIndex,
-} from "#src/tools/shared/validation/lists/list-pairing.ts";
-import { type WriteResult } from "#src/tools/shared/validation/lists/write-fan-out.ts";
+  type PipelineResult,
+  type WriteSpec,
+} from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import {
-  REMOTE_SCRIPT_SETUP,
-  resolveBrowserDevice,
-} from "./helpers/browser-devices.ts";
+  type CreateChecked,
+  checkCreateCall,
+} from "./helpers/call/check-create-call.ts";
 import {
-  presetScopeForDevice,
-  resolveBrowserPreset,
-} from "./helpers/browser-presets.ts";
-import {
-  type DevicePlan,
-  createDevicesAtPaths,
-} from "./helpers/create-devices-at-paths.ts";
+  type CreateCall,
+  type CreateCallArgs,
+  type CreateDeviceArgs,
+  type CreatePayload,
+  createListArgs,
+  createTargets,
+  namesOnlyNativeDevices,
+  parseCreateCall,
+} from "./helpers/call/parse-create-call.ts";
+import { settleCreatedDevices } from "./helpers/call/settle-created-devices.ts";
+import { writeCreatedDevice } from "./helpers/call/write-created-device.ts";
 import { type CreateDeviceResult } from "./helpers/device-creation.ts";
 
-interface CreateDeviceArgs {
-  device?: string;
-  /** Deprecated spelling of `device`. */
-  deviceName?: string;
-  preset?: string;
-  path?: string;
-  name?: string;
-  params?: ParamEntry[];
-  focus?: boolean;
-}
+/** What create-device answers: the catalog, or the device(s) it created. */
+export type CreateDeviceAnswer =
+  | typeof VALID_DEVICES
+  | PipelineResult<CreateDeviceResult>;
 
 /**
  * Refuse a list-mode call that also carries create-only args.
@@ -87,210 +82,51 @@ function validateListModeArgs(args: {
  * @returns Device list, or object(s) naming each created device
  */
 export async function createDevice(
-  {
-    device,
-    deviceName: deprecatedDeviceName,
-    preset,
-    path,
-    name,
-    params,
-    focus,
-  }: CreateDeviceArgs = {},
+  args: CreateDeviceArgs = {},
   context: Partial<ToolContext> = {},
-): Promise<typeof VALID_DEVICES | WriteResult<CreateDeviceResult>> {
-  const deviceArg = device ?? deprecatedDeviceName;
-  const { deadline, timeoutMs } = context;
+): Promise<CreateDeviceAnswer> {
+  // Both spellings name the device, so neither is honored over the other.
+  refuseNamedTwice({
+    param: "device",
+    value: args.device,
+    noun: "device",
+    also: { deviceName: args.deviceName },
+    hint: "deviceName is deprecated",
+  });
 
   // List mode: return valid devices when no device is named
-  if (deviceArg == null && preset == null) {
-    validateListModeArgs({ path, name, params });
+  if (args.device == null && args.deviceName == null && args.preset == null) {
+    validateListModeArgs(args);
 
     return VALID_DEVICES;
   }
 
-  if (path == null || path.trim() === "") {
-    // A name Live doesn't have is the mistake to report first, as it always
-    // was; with no path there is nothing to pair a list against.
-    if (deviceArg != null && preset == null) {
-      await findBrowserItem(deviceArg, deadline);
-    }
-
-    throw new Error("path is required when creating a device");
-  }
-
-  const paramEntries = validateParamEntries(params);
-
-  validateListLengths([
-    { param: "path", value: path, target: true },
-    { param: "device", value: deviceArg },
-    { param: "preset", value: preset },
-    { param: "name", value: name },
-  ]);
-
-  const plans = await devicePlans(
-    { device: deviceArg, preset },
-    targetEntries(path, "path"),
-    deadline,
-  );
-  const result = await createDevicesAtPaths({
-    plans,
-    name,
-    params: paramEntries,
-    timing: { deadline, timeoutMs },
-  });
-
-  if (focus) {
-    // Focus follows the call, not a target, so it lands on the last device the
-    // call actually created — a skip has no device to select.
-    const lastCreated = createdEntries(result).at(-1);
-
-    if (lastCreated != null) {
-      focusSelect({ id: lastCreated.id, detailView: "device" });
-    }
-  }
-
-  return result;
-}
-
-// What each path creates: its device, and the browser item to load when that
-// device isn't native or comes from a preset. A name is looked up once however
-// many paths want it.
-async function devicePlans(
-  args: { device: string | undefined; preset: string | undefined },
-  paths: string[],
-  deadline: number | null | undefined,
-): Promise<DevicePlan[]> {
-  const devices = perPath(args.device, paths, "device");
-  const presets = perPath(args.preset, paths, "preset");
-  const found = new Map<string, BrowserItem | null>();
-  const plans: DevicePlan[] = [];
-
-  const cached = async (
-    key: string,
-    look: () => Promise<BrowserItem | null>,
-  ): Promise<BrowserItem | null> => {
-    if (!found.has(key)) {
-      found.set(key, await look());
-    }
-
-    return found.get(key) as BrowserItem | null;
+  const call: CreateCallArgs = {
+    ...args,
+    native: namesOnlyNativeDevices(args),
   };
 
-  for (const [index, path] of paths.entries()) {
-    const deviceName = devices[index];
-    const presetName = presets[index];
-    const deviceItem =
-      deviceName == null
-        ? null
-        : await cached(deviceName, () => findBrowserItem(deviceName, deadline));
-
-    if (presetName == null) {
-      plans.push({ path, device: deviceName as string, item: deviceItem });
-      continue;
-    }
-
-    const scope =
-      deviceName == null
-        ? undefined
-        : presetScopeForDevice(deviceName, deviceItem);
-    const item = await cached(`${deviceName ?? ""}\n${presetName}`, () =>
-      resolveBrowserPreset(presetName, scope, deadline),
-    );
-
-    plans.push({ path, device: presetName, item });
-  }
-
-  return plans;
+  // A call with nothing to await shares one path cache across its inserts. A
+  // load can't: the cache is torn down before an awaited step would finish.
+  return call.native
+    ? await withDevicePathCache(() => runWrite(CREATE_WRITE, call, context))
+    : await runWrite(CREATE_WRITE, call, context);
 }
 
-/**
- * One value per path from a list arg. The lists agreed before anything ran, so
- * a split names one per path.
- * @param value - The arg, or undefined when the call didn't send it
- * @param paths - The paths
- * @param param - The arg's name, for errors
- * @returns Each path's value
- */
-function perPath(
-  value: string | undefined,
-  paths: string[],
-  param: string,
-): Array<string | undefined> {
-  const parsed = splitList(value, paths.length, param);
-
-  return paths.map((_path, i) => valueForIndex(value, i, parsed));
-}
-
-/**
- * The devices a call created, dropping the targets it skipped.
- * @param result - What the fan-out returned
- * @returns The created devices, in the order the call named them
- */
-function createdEntries(
-  result: WriteResult<CreateDeviceResult>,
-): CreateDeviceResult[] {
-  const entries = Array.isArray(result) ? result : [result];
-
-  return entries.filter(
-    (entry): entry is CreateDeviceResult => !("ok" in entry),
-  );
-}
-
-/**
- * Look up a device that isn't native in Live's browser.
- * @param deviceName - Device name
- * @param deadline - The request deadline
- * @returns The browser item, or null for a native device
- * @throws Error listing the native devices when the remote script isn't
- *   answering, since without it they are all there is
- * @throws Error when the item is Producer Pal itself
- */
-async function findBrowserItem(
-  deviceName: string,
-  deadline: number | null | undefined,
-): Promise<BrowserItem | null> {
-  if (ALL_VALID_DEVICES.includes(deviceName)) {
-    return null;
-  }
-
-  const item = await resolveBrowserDevice(deviceName, deadline);
-
-  if (item != null && isProducerPalBrowserItem(item)) {
-    throw new Error(
-      "cannot create the Producer Pal device: it is already running in this " +
-        "Set, and a second copy would break the connection this tool runs on",
-    );
-  }
-
-  if (item == null) {
-    const validList =
-      `Instruments: ${VALID_DEVICES.instruments.join(", ")} | ` +
-      `MIDI Effects: ${VALID_DEVICES.midiEffects.join(", ")} | ` +
-      `Audio Effects: ${VALID_DEVICES.audioEffects.join(", ")}`;
-
-    throw new Error(
-      `invalid device "${deviceName}". Valid devices - ${validList}. ` +
-        "A plug-in or Max for Live device loads only with the Producer Pal " +
-        `remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`,
-    );
-  }
-
-  return item;
-}
-
-/**
- * Whether a browser item is the Producer Pal device.
- *
- * The browser reports the name with or without the file extension, and a
- * renamed entry still sits at the .amxd, so check both.
- * @param item - The item the browser lookup resolved
- * @returns True when loading it would add a second Producer Pal
- */
-function isProducerPalBrowserItem(item: BrowserItem): boolean {
-  const name = item.name.replace(/\.amxd$/i, "").toLowerCase();
-
-  return (
-    name === "producer_pal" ||
-    item.path.toLowerCase().endsWith("producer_pal.amxd")
-  );
-}
+const CREATE_WRITE: WriteSpec<
+  CreateCallArgs,
+  CreateCall,
+  CreatePayload,
+  CreateChecked,
+  CreateDeviceResult
+> = {
+  tool: "ppal-create-device",
+  words: { rerun: "path" },
+  parse: parseCreateCall,
+  lists: createListArgs,
+  targets: createTargets,
+  check: (call, targets, { ctx }) =>
+    checkCreateCall(call, targets, ctx.deadline),
+  write: writeCreatedDevice,
+  settle: settleCreatedDevices,
+};

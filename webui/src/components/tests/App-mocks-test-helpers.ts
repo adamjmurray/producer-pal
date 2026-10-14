@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Shared vi.mock setup for the App tests: App's hook dependencies, plus the two
 // context modules that would otherwise fetch a same-origin endpoint. Import
@@ -22,6 +22,10 @@ vi.mock(import("#webui/hooks/settings/use-settings"), () => ({
   useSettings: vi.fn(),
 }));
 vi.mock(import("#webui/hooks/theme/use-theme"), () => ({ useTheme: vi.fn() }));
+vi.mock(import("#webui/hooks/connection/use-remote-script-notice"), () => ({
+  useRemoteScriptNotice: () => null,
+}));
+
 vi.mock(import("#webui/hooks/connection/use-update-check"), () => ({
   useUpdateCheck: () => ({ update: null, dismissUpdate: () => {} }),
 }));

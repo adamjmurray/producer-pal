@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // ppal-connect is the one tool whose response is more than the V8 result. The
 // Node side appends the skills, the context layers, the memory index, and the

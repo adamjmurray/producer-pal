@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The machine-global settings file, ~/.producer-pal/settings.json. Small
 // non-content preferences shared by the device and every client — as opposed to
@@ -36,11 +36,18 @@ export interface GlobalSettings {
    * suppresses exactly that release and lifts on the next one.
    */
   dismissedUpdateVersion: string | null;
+  /**
+   * Whether the device may show its "Finish installation" notice while the
+   * device copy or the remote script in the User Library is missing or behind.
+   * Opt-OUT, like the update check: the default is true.
+   */
+  warnIfInstallIncomplete: boolean;
 }
 
 export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   autoUpdateCheck: true,
   dismissedUpdateVersion: null,
+  warnIfInstallIncomplete: true,
 };
 
 /**
@@ -62,6 +69,10 @@ export function readGlobalSettings(): GlobalSettings {
       typeof raw.dismissedUpdateVersion === "string"
         ? raw.dismissedUpdateVersion
         : DEFAULT_GLOBAL_SETTINGS.dismissedUpdateVersion,
+    warnIfInstallIncomplete:
+      typeof raw.warnIfInstallIncomplete === "boolean"
+        ? raw.warnIfInstallIncomplete
+        : DEFAULT_GLOBAL_SETTINGS.warnIfInstallIncomplete,
   };
 }
 

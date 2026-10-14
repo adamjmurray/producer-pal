@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -28,6 +28,7 @@ vi.mock(import("../../rpc/node-request-protocol.ts"), () => ({
   handleNodeRequest: vi.fn().mockResolvedValue(undefined),
 }));
 
+import { isChangedNothing } from "../../rpc/remote-script/forwarded/changed-nothing.ts";
 import { handleCodeExecRequest } from "../../code-exec-protocol.ts";
 import { handleNodeRequest } from "../../rpc/node-request-protocol.ts";
 
@@ -424,6 +425,30 @@ describe("Max API Adapter", () => {
           { type: "text", text: "WARNING: Warning 2" },
         ],
       });
+    });
+
+    it("should keep the changedNothing sidecar off the response, but note it", async () => {
+      const result = await resolveWithResult({
+        content: [{ type: "text", text: "success" }],
+        changedNothing: true,
+      });
+
+      expect(result).toStrictEqual({
+        content: [{ type: "text", text: "success" }],
+      });
+      expect(isChangedNothing(result)).toBe(true);
+    });
+
+    it("should not note a response V8 didn't prove changed nothing", async () => {
+      const result = await resolveWithResult({
+        content: [{ type: "text", text: "success" }],
+        changedNothing: false,
+      });
+
+      expect(result).toStrictEqual({
+        content: [{ type: "text", text: "success" }],
+      });
+      expect(isChangedNothing(result)).toBe(false);
     });
 
     it("should filter out empty warnings", async () => {

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Pins what Live keeps when you write a raw value to a DeviceParameter.
@@ -21,7 +21,7 @@ import {
 } from "../../mcp-test-helpers";
 
 interface LiveApiResult {
-  results: Array<{ result?: unknown }>;
+  results: unknown[];
 }
 
 const VOLUME = "live_set tracks 0 mixer_device volume";
@@ -41,7 +41,7 @@ async function volume(operations: unknown[]): Promise<unknown[]> {
     }),
   );
 
-  return result.results.map((entry) => entry.result);
+  return result.results;
 }
 
 /**
@@ -115,7 +115,7 @@ describe("device parameter storage", () => {
 
   it("renders a written value and the value it stored the same way", async () => {
     const [original] = (await volume([
-      { type: "getProperty", property: "value" },
+      { type: "get-property", property: "value" },
     ])) as [number];
     const [below, above] = await findDisplayBoundary();
 
@@ -130,7 +130,7 @@ describe("device parameter storage", () => {
         const stored = (
           await volume([
             { type: "set", property: "value", value: raw },
-            { type: "getProperty", property: "value" },
+            { type: "get-property", property: "value" },
           ])
         )[1] as number;
         const [storedLabel] = await labels([stored]);
@@ -152,7 +152,7 @@ describe("device parameter storage", () => {
   // changed" about a write that went in exactly as asked.
   it("is not predicted by rounding the request to a 32-bit float", async () => {
     const [original] = (await volume([
-      { type: "getProperty", property: "value" },
+      { type: "get-property", property: "value" },
     ])) as [number];
     const [below] = await findDisplayBoundary();
 

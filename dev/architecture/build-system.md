@@ -46,7 +46,7 @@ Four separate bundles built with rolldown (MCP server, V8, Portal) and Vite
   - Served from MCP server's Express app
   - Opened in system default browser (avoids Max jweb keyboard issues)
   - Uses Vercel AI SDK (`streamText()`) for all providers (Anthropic, Google,
-    OpenAI, Mistral, OpenRouter, Ollama)
+    OpenAI, Mistral, OpenRouter, Vercel AI Gateway, Ollama)
   - Real-time streaming chat interface with automatic MCP tool calling
   - Settings persistence via localStorage
 

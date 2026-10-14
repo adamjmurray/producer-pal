@@ -1,10 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 export const MAX_AUTO_CREATED_TRACKS = 100;
 export const MAX_AUTO_CREATED_SCENES = 1000;
+// Copies per source in one ppal-duplicate call (tracks and scenes).
+export const MAX_DUPLICATE_COUNT = 25;
 export const MAX_ARRANGEMENT_POSITION_BEATS = 1_576_800;
 export const MAX_SPLIT_POINTS = 32;
 /** Take lanes per track (total non-main lanes). Producer Pal's cap, not one of
