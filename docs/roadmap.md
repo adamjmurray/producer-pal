@@ -5,6 +5,7 @@
 - Plug-in control: read and set any VST/AU parameter
 - Improved automation: read and write automation envelopes in the units of the
   underlying parameter
+- Slicing a sample to a drum rack
 
 In consideration:
 
@@ -33,7 +34,7 @@ for more detailed information.
 - Version checks between the portal (for Claude Desktop and some coding agent
   setups), the device, and the remote script, with a prompt when one needs
   updating
-- Built-in chat: Support for Vercel AI Gateway and Claude Haiku 5.5
+- Built-in chat: Support for Vercel AI Gateway
 
 Producer Pal is now MIT licensed.
 
