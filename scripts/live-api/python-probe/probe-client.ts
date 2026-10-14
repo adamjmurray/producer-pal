@@ -11,7 +11,6 @@ const SNIPPETS_DIR = join(import.meta.dirname, "snippets");
 
 /**
  * Run Python on Live's main thread through the dev-only /probe route.
- *
  * @param code - Python source; whatever it assigns to `result` comes back
  * @param timeoutMs - How long to wait for Live to run it
  * @returns The `result` the code assigned, made JSON-safe
@@ -30,13 +29,9 @@ export async function runProbe(
 
   if (!reply.available) {
     throw new Error(
-      reply.outdated ?? "The remote script isn't running in Live",
-    );
-  }
-
-  if (reply.status === 404) {
-    throw new Error(
-      "No /probe route: run `npm run remote-script:install -- --probe` and restart Live",
+      reply.outdated == null
+        ? "The remote script isn't running in Live"
+        : "The running remote script has no /probe route, or is out of date: run `npm run remote-script:install -- --probe` and restart Live",
     );
   }
 
@@ -49,7 +44,6 @@ export async function runProbe(
 
 /**
  * Read one of the bundled snippets.
- *
  * @param name - File name in snippets/, e.g. "python-surface.py"
  * @returns Its Python source
  */
