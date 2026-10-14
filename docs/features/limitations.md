@@ -2,7 +2,7 @@
 title: Limitations
 description:
   What Producer Pal can't do, and the workarounds. No control over VST/AU
-  plug-in internals, arrangement automation only through Session clips, no audio
+  plug-in internals, arrangement automation written but not read, no audio
   analysis or synthesis, no visibility into arrangement time signature changes,
   one drum pitch map per track, and backslashes in names read back changed.
 ---
