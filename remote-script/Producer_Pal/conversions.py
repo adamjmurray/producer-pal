@@ -17,21 +17,13 @@ import Live
 from .clip_address import clip_in_track, regular_track
 from .errors import RouteError
 
-# `type` -> the AudioToMidiType member, for the kinds that make a MIDI clip.
+# `type` -> the AudioToMidiType member.
 AUDIO_TO_MIDI = {
     "harmony": "harmony_to_midi",
     "melody": "melody_to_midi",
     "drums": "drums_to_midi",
 }
-# The kinds that load the clip into an instrument and make no clip.
-INSTRUMENT_KINDS = ("simpler", "drum-rack")
-KINDS = tuple(AUDIO_TO_MIDI) + INSTRUMENT_KINDS
-
-# What each kind calls on `Live.Conversions`. An older Live may lack some.
-FUNCTIONS = {
-    "simpler": "create_midi_track_with_simpler",
-    "drum-rack": "create_drum_rack_from_audio_clip",
-}
+KINDS = tuple(AUDIO_TO_MIDI)
 CANT_CONVERT = "this Live version can't convert clips"
 
 
@@ -51,23 +43,17 @@ def convert(bridge, params):
         raise RouteError(409, "a clip that is recording can't be converted")
 
     conversions = getattr(Live, "Conversions", None)
-    needed = FUNCTIONS.get(kind, "audio_to_midi_clip")
-    if conversions is None or not hasattr(conversions, needed):
+    types = getattr(conversions, "AudioToMidiType", None)
+    if (
+        not hasattr(types, AUDIO_TO_MIDI[kind])
+        or not hasattr(conversions, "audio_to_midi_clip")
+        or not hasattr(conversions, "is_convertible_to_midi")
+    ):
         raise RouteError(409, CANT_CONVERT)
     try:
-        if kind in AUDIO_TO_MIDI:
-            types = getattr(conversions, "AudioToMidiType", None)
-            if not hasattr(types, AUDIO_TO_MIDI[kind]) or not hasattr(
-                conversions, "is_convertible_to_midi"
-            ):
-                raise RouteError(409, CANT_CONVERT)
-            if not conversions.is_convertible_to_midi(song, clip):
-                raise RouteError(409, "Live can't convert this clip to MIDI")
-            conversions.audio_to_midi_clip(
-                song, clip, getattr(types, AUDIO_TO_MIDI[kind])
-            )
-        else:
-            getattr(conversions, FUNCTIONS[kind])(song, clip)
+        if not conversions.is_convertible_to_midi(song, clip):
+            raise RouteError(409, "Live can't convert this clip to MIDI")
+        conversions.audio_to_midi_clip(song, clip, getattr(types, AUDIO_TO_MIDI[kind]))
     except RuntimeError as err:
         raise RouteError(409, "Live refused the conversion: %s" % err)
 

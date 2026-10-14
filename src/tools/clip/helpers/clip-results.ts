@@ -46,7 +46,7 @@ export interface NoteUpdateResult {
   putOutside?: number;
 }
 
-/** What `convert` made: the new track, and its MIDI clip when the kind makes one. */
+/** What `convert` made: the new track, and its MIDI clip if Live made one. */
 export interface ConvertedResult {
   track: { id: string; path?: string };
   /** `noteCount` can be 0: Live found no notes in the audio */

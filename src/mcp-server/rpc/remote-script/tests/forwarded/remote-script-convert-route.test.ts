@@ -61,14 +61,14 @@ describe("remoteScript.clip.convert", () => {
     await dispatchNodeRoute(CONVERT_ROUTE, {
       track: "t0",
       arrangementIndex: 3,
-      type: "simpler",
+      type: "melody",
       expiresInMs: 5000,
     });
 
     expect(remote.requests[0]?.body).toStrictEqual({
       track: "t0",
       arrangement_index: 3,
-      type: "simpler",
+      type: "melody",
       expires_in_ms: 5000,
     });
   });

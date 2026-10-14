@@ -6,7 +6,6 @@
 import {
   arpeggioBracketIdiom,
   arrangementClipWorkflow,
-  audioConvertDrumRack,
   audioConvertToMidi,
   audioSampleWorkflow,
   automationArrangementDirect,
@@ -187,7 +186,6 @@ export const allScenarios: EvalScenario[] = [
   negativeCases,
   arrangementClipWorkflow,
   audioSampleWorkflow,
-  audioConvertDrumRack,
   audioConvertToMidi,
   arpeggioBracketIdiom,
   sceneAndPlayback,

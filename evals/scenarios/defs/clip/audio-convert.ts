@@ -4,17 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Scenarios: turn an audio clip into a new track.
- *
- * `ppal-update-clip` `convert` makes a new track from an audio clip (a MIDI
- * clip of the notes Live detects, or a Simpler or Drum Rack playing it), and
- * needs the remote script. The model has to find that param from the request
- * alone, since nothing else can do it.
- *
- * `setup` puts an audio clip on a new audio track, so the Set holds one. Graded
- * on the Set: one track more than the seeded Set has, with the asked-for
- * instrument or clip. Where Live puts the new track varies, so neither check
- * assumes a position, and neither names the tool route.
+ * Scenarios: `ppal-update-clip` `convert` turns an audio clip into a MIDI clip
+ * on a new track. It needs the remote script, so the model must find the param
+ * from the request alone. Where Live puts the new track varies, so no check
+ * assumes a position.
  */
 
 import { type EvalScenario } from "../../types.ts";
@@ -41,32 +34,17 @@ interface TrackRead {
   sessionClips?: unknown[];
 }
 
-/**
- * The tracks of a read-live-set result.
- *
- * @param result - Parsed ppal-read-live-set result
- * @returns The track overviews, empty when there are none
- */
+// The tracks of a read-live-set result.
 function tracksOf(result: unknown): TrackOverview[] {
   return (result as { tracks?: TrackOverview[] }).tracks ?? [];
 }
 
-/**
- * Whether the Set holds exactly one track more than the seeded Set.
- *
- * @param result - Parsed ppal-read-live-set result
- * @returns True when one track was added, not zero or several
- */
+// Whether the Set holds exactly one track more than the seeded Set.
 function addedOneTrack(result: unknown): boolean {
   return tracksOf(result).length === SEEDED_TRACKS + 1;
 }
 
-/**
- * Describe the Set's tracks for a failure message.
- *
- * @param result - Parsed ppal-read-live-set result
- * @returns "name (instrument)" per track
- */
+// "name (instrument)" per track, for a failure message.
 function describeTracks(result: unknown): string {
   return tracksOf(result)
     .map(
@@ -75,54 +53,6 @@ function describeTracks(result: unknown): string {
     )
     .join(", ");
 }
-
-export const audioConvertDrumRack: EvalScenario = {
-  id: "audio-convert-drum-rack",
-  tags: ["clips", "devices"],
-  description: "Turn an audio clip into a Drum Rack on a new track",
-  kind: "capability",
-  liveSet: "basic-midi-4-track",
-  judgeAdvisory: true,
-  requires: {
-    tools: [TOOL_UPDATE_CLIP],
-    params: ["convert"],
-  },
-
-  setup: (mcpClient) => seedAudioClip(mcpClient, "Kick", "drums/kick.aiff"),
-
-  messages: [
-    MSG_CONNECT,
-    "Turn the audio clip on the Kick track into a Drum Rack on a new track.",
-  ],
-
-  assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-
-    // The Set's own drum kit sits inside an Instrument Rack, so it reads as
-    // that, not as "Drum Rack": only the new track reads as a bare Drum Rack.
-    {
-      type: "state",
-      tool: "ppal-read-live-set",
-      args: { include: ["tracks"] },
-      expect: (result) =>
-        addedOneTrack(result) &&
-        tracksOf(result).filter((track) => track.instrument === "Drum Rack")
-          .length === 1,
-      explain: (result) =>
-        `expected one new track and exactly one with a Drum Rack, tracks are: ${describeTracks(result)}`,
-    },
-
-    { type: "token_usage", maxTokens: 4_000 },
-
-    {
-      type: "llm_judge",
-      prompt: `The user asked for the audio clip on the Kick track to be turned into a Drum
-Rack on a new track. Evaluate the final reply: it says a new track with a Drum
-Rack playing that clip was made, and does not claim to have changed anything
-else.`,
-    },
-  ],
-};
 
 export const audioConvertToMidi: EvalScenario = {
   id: "audio-convert-to-midi",

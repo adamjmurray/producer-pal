@@ -14,7 +14,6 @@ import {
   type ConvertReply,
   type ConvertRequest,
   type ConvertType,
-  MIDI_CONVERT_TYPES,
 } from "#src/tools/clip/convert/remote-script-convert-contract.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
@@ -160,7 +159,6 @@ export async function applyClipConvert(convert: ClipConvert): Promise<void> {
   progress.stalled = arrived.length !== 1 || started.unsure != null;
 
   await reportArrival(entry, arrived, {
-    type,
     place: source.place,
     unsure: started.unsure,
   });
@@ -263,7 +261,6 @@ function arrivalWait(deadline: number | null | undefined): number {
 
 /** What a started conversion is looking for. */
 interface Looking {
-  type: ConvertType;
   place: SourcePlace;
   /** Why Live may not have taken the job, when that isn't known */
   unsure?: string;
@@ -300,14 +297,11 @@ async function reportArrival(
     return;
   }
 
-  const wantsClip = MIDI_CONVERT_TYPES.has(looking.type);
-  const clip = wantsClip
-    ? await findConvertedClip(trackId, looking.place)
-    : null;
+  const clip = await findConvertedClip(trackId, looking.place);
 
   entry.converted = convertedResult(trackId, clip);
 
-  if (wantsClip && clip == null) {
+  if (clip == null) {
     appendDetail(entry, "the new track has no MIDI clip where this clip was");
   }
 }

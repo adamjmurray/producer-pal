@@ -360,11 +360,11 @@ macro can still be mapped.
 Starts converting an audio clip into a new track, as Live's "Convert ... to New
 MIDI Track" menu does. Max for Live can't reach `Live.Conversions`.
 
-| Param   | Meaning                                                                                                                            |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `track` | `t0`, `t1`.. a regular track                                                                                                       |
-| `slot`  | 0-based Session slot, or `arrangement_index` for an Arrangement clip                                                               |
-| `type`  | `drums`, `melody`, `harmony` (a MIDI clip of the detected notes), `simpler` (a MIDI track with Simpler), `drum-rack` (a Drum Rack) |
+| Param   | Meaning                                                              |
+| ------- | -------------------------------------------------------------------- |
+| `track` | `t0`, `t1`.. a regular track                                         |
+| `slot`  | 0-based Session slot, or `arrangement_index` for an Arrangement clip |
+| `type`  | `drums`, `melody` or `harmony`: a MIDI clip of the detected notes    |
 
 Answers `{started: true, type}`. It's a 409 for a clip that isn't audio, is
 recording, or Live says isn't convertible, and for anything Live refuses.

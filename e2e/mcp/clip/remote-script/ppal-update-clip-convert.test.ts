@@ -5,8 +5,8 @@
 
 /**
  * E2E tests for ppal-update-clip `convert`: an audio clip becomes a new track
- * (MIDI clip of the detected notes, Simpler, or Drum Rack) through the remote
- * script. Each test deletes the tracks it made.
+ * with a MIDI clip of the detected notes, through the remote script. Each test
+ * deletes the tracks it made.
  *
  * Uses: e2e-test-set — audio clips at t4/s0 and t5/s0, an arrangement audio clip
  * at t4@17|1, and a MIDI clip at t0/s0.
@@ -92,30 +92,6 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-clip — convert", () => {
     }
   });
 
-  it("simpler and drum-rack: a track and no clip", async () => {
-    const simpler = parseToolResult<Converted>(
-      await update({ path: "t4/s0", convert: "simpler" }),
-    );
-
-    try {
-      expect(simpler.converted?.track.id).toStrictEqual(expect.any(String));
-      expect(simpler.converted?.clip).toBeUndefined();
-    } finally {
-      await deleteTracks(simpler);
-    }
-
-    const rack = parseToolResult<Converted>(
-      await update({ path: "t4/s0", convert: "drum-rack" }),
-    );
-
-    try {
-      expect(rack.converted?.track.id).toStrictEqual(expect.any(String));
-      expect(rack.converted?.clip).toBeUndefined();
-    } finally {
-      await deleteTracks(rack);
-    }
-  });
-
   it("converts an arrangement clip to a clip at the same start", async () => {
     const result = parseToolResult<Converted>(
       await update({ path: "t4[17|1]", convert: "harmony" }),
@@ -133,7 +109,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-clip — convert", () => {
       await update({
         path: "t4/s0",
         name: "converted source",
-        convert: "simpler",
+        convert: "drums",
       }),
     );
 
@@ -146,7 +122,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-clip — convert", () => {
 
   it("converts each clip of a call, one entry each", async () => {
     const results = parseToolResult<Converted[]>(
-      await update({ path: "t4/s0,t5/s0", convert: "simpler" }),
+      await update({ path: "t4/s0,t5/s0", convert: "drums" }),
     );
 
     try {

@@ -11,6 +11,12 @@ Measured on Live 12.4.6; not checked on 12.3, the minimum version.
 | `create_midi_track_with_simpler(song, clip)`   | a MIDI track with a Simpler (classic mode, warp off) holding the sample; no clip          |
 | `create_drum_rack_from_audio_clip(song, clip)` | a track with a Drum Rack, a Simpler on pad C1 (36); no clip                               |
 
+`update-clip` doesn't expose the last two. They load the same sample file
+(nothing is rendered, so clip and track automation isn't baked in), drop the
+clip's warp, and carry over only the clip's gain (the Simpler gets it) and name.
+`create-device` with a Simpler `sample` param, or a Drum Rack `pC1/sample`
+param, does the same and more.
+
 ## It returns before it works
 
 Every call returns `None` at once and does the work on Live's main thread on a

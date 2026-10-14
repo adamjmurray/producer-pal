@@ -25,10 +25,7 @@ export {
 } from "./clip/automation/automation-write.ts";
 export { arrangementClipWorkflow } from "./clip/arrangement-clip-workflow.ts";
 export { arpeggioBracketIdiom } from "./clip/notation/arpeggio-bracket-idiom.ts";
-export {
-  audioConvertDrumRack,
-  audioConvertToMidi,
-} from "./clip/audio-convert.ts";
+export { audioConvertToMidi } from "./clip/audio-convert.ts";
 export { audioSampleWorkflow } from "./clip/audio-sample-workflow.ts";
 export {
   barBeatAbsoluteDurationUniformity,

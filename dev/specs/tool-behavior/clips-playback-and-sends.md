@@ -165,24 +165,23 @@ with both kinds lists the readable ones and says nothing of the rest.
 
 Mechanics: [conversions.md](../../live-api/conversions.md).
 
-`ppal-update-clip` `convert` (`drums`, `melody`, `harmony`, `simpler`,
-`drum-rack`) makes a new track from an audio clip, through the remote script. It
-runs last in the clip's turn, after the other edits and after `envelopes`, on
-the clip those left. One conversion per clip: each clip's entry reports its own,
-and one that fails doesn't stop the rest, except as noted below.
+`ppal-update-clip` `convert` (`drums`, `melody`, `harmony`) makes a new track
+from an audio clip, through the remote script. It runs last in the clip's turn,
+after the other edits and after `envelopes`, on the clip those left. One
+conversion per clip: each clip's entry reports its own, and one that fails
+doesn't stop the rest, except as noted below.
 
 The entry gets
 `converted: { track: { id, path }, clip?: { id, path, noteCount } }`. `clip` is
-the MIDI clip of `drums`, `melody` and `harmony`, in the source's slot (Session)
-or starting where it started (Arrangement); its `noteCount` can be 0, which is
-an answer, not a failure. `simpler` and `drum-rack` make no clip.
+the MIDI clip, in the source's slot (Session) or starting where it started
+(Arrangement); its `noteCount` can be 0, which is an answer, not a failure. It
+is missing when the new track has none there.
 
-- **Paths are read again at the end of the call.** The new track can land
-  anywhere (a Simpler or Drum Rack track doesn't follow the source), and each
-  conversion shifts the tracks after it. So once the call is done, every written
-  entry's `path`, and the `path` of each `converted` track and clip, is read
-  again. The param description says once that it adds a track; results don't
-  warn.
+- **Paths are read again at the end of the call.** Live doesn't say where the
+  new track lands, and each conversion shifts the tracks after it. So once the
+  call is done, every written entry's `path`, and the `path` of each `converted`
+  track and clip, is read again. The param description says once that it adds a
+  track; results don't warn.
 - **Refused, so nothing changed**: not an audio clip, a take lane clip, a clip
   that is recording, one Live says isn't convertible, a Live without the
   conversions, no time left, or no remote script. With nothing else asked of the

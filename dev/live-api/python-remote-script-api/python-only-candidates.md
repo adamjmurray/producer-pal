@@ -37,10 +37,10 @@ envelopes, `MidiNote` and `WarpMarker` structs, routing structs, and licensing.
 Max can't call any of these. The useful ones:
 
 - **`Live.Conversions`**: what Push 2's Convert button does (`Push2/convert.py`
-  in Live's MIDI Remote Scripts). Used: `audio_to_midi_clip`,
-  `create_midi_track_with_simpler` and `create_drum_rack_from_audio_clip` back
+  in Live's MIDI Remote Scripts). Used: `audio_to_midi_clip` backs
   `update-clip`'s `convert` (see [conversions.md](../conversions.md), which also
-  says they return before the work is done).
+  says it returns before the work is done and why the two instrument calls below
+  aren't used).
   - `audio_to_midi_clip(song, clip, type)`: Convert Drums, Harmony or Melody to
     a new MIDI track. `type` is a `Conversions.AudioToMidiType`;
     `is_convertible_to_midi(song, clip)` says whether a clip can be converted.

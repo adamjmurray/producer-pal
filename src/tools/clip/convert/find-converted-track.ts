@@ -78,7 +78,7 @@ export async function findConvertedClip(
 /**
  * What the entry says about the new track, and its clip when there is one.
  * @param trackId - The new track
- * @param clip - Its MIDI clip, if the conversion makes one
+ * @param clip - Its MIDI clip, if Live made one
  * @returns The `converted` field
  */
 export function convertedResult(

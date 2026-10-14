@@ -9,22 +9,9 @@
 import { type RemoteScriptUnavailable } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 
 /** What a clip can be converted to. */
-export const CONVERT_TYPES = [
-  "drums",
-  "melody",
-  "harmony",
-  "simpler",
-  "drum-rack",
-] as const;
+export const CONVERT_TYPES = ["drums", "melody", "harmony"] as const;
 
 export type ConvertType = (typeof CONVERT_TYPES)[number];
-
-/** The kinds that make a MIDI clip on the new track. */
-export const MIDI_CONVERT_TYPES: ReadonlySet<ConvertType> = new Set([
-  "drums",
-  "melody",
-  "harmony",
-]);
 
 /** The Node route V8 calls to reach the remote script's `/clip/convert`. */
 export const CONVERT_ROUTE = "remoteScript.clip.convert";

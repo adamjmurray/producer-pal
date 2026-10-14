@@ -47,12 +47,6 @@ class FakeConversions:
     def audio_to_midi_clip(self, song, clip, kind):
         self._run("audio_to_midi_clip", clip, kind)
 
-    def create_midi_track_with_simpler(self, song, clip):
-        self._run("create_midi_track_with_simpler", clip)
-
-    def create_drum_rack_from_audio_clip(self, song, clip):
-        self._run("create_drum_rack_from_audio_clip", clip)
-
 
 class FakeClip:
     def __init__(self, is_audio_clip=True, is_recording=False):
@@ -109,20 +103,6 @@ class ConvertTest(unittest.TestCase):
                 self.conversions.calls, [("audio_to_midi_clip", self.audio, algorithm)]
             )
 
-    def test_simpler_and_drum_rack_skip_the_convertible_check(self):
-        self.conversions.convertible = False
-
-        self.convert(type="simpler")
-        self.convert(type="drum-rack")
-
-        self.assertEqual(
-            self.conversions.calls,
-            [
-                ("create_midi_track_with_simpler", self.audio),
-                ("create_drum_rack_from_audio_clip", self.audio),
-            ],
-        )
-
     def test_reaches_an_arrangement_clip(self):
         params = {"track": "t0", "arrangement_index": 0, "type": "melody"}
 
@@ -140,24 +120,23 @@ class ConvertTest(unittest.TestCase):
     def test_an_older_live_without_conversions_is_a_409(self):
         del Live.Conversions
 
-        for kind in ("drums", "simpler"):
-            error = self.refusal(type=kind)
-            self.assertEqual(error.status, 409)
-            self.assertEqual(
-                error.payload["error"], "this Live version can't convert clips"
-            )
+        error = self.refusal()
 
-    def test_a_live_missing_one_function_refuses_only_what_needs_it(self):
-        del FakeConversions.create_midi_track_with_simpler
+        self.assertEqual(error.status, 409)
+        self.assertEqual(
+            error.payload["error"], "this Live version can't convert clips"
+        )
+
+    def test_a_live_missing_the_convertible_check_is_a_409(self):
+        del FakeConversions.is_convertible_to_midi
         self.addCleanup(
             setattr,
             FakeConversions,
-            "create_midi_track_with_simpler",
-            lambda self, song, clip: self._run("create_midi_track_with_simpler", clip),
+            "is_convertible_to_midi",
+            lambda self, song, clip: self.convertible,
         )
 
-        self.assertEqual(self.refusal(type="simpler").status, 409)
-        self.assertEqual(self.convert(type="drum-rack")["started"], True)
+        self.assertEqual(self.refusal().status, 409)
 
     def test_a_live_without_the_algorithm_list_is_a_409(self):
         del FakeConversions.AudioToMidiType
@@ -202,7 +181,7 @@ class ConvertTest(unittest.TestCase):
         error = self.refusal(type="bass")
 
         self.assertEqual(error.status, 400)
-        self.assertIn("type must be one of harmony, melody, drums, simpler, drum-rack", error.payload["error"])
+        self.assertIn("type must be one of harmony, melody, drums", error.payload["error"])
 
     def test_refuses_a_missing_type(self):
         error = self.refusal(type=None)

@@ -171,21 +171,6 @@ describe("updateClip - convert", () => {
     );
   });
 
-  it("reports only the track for simpler and drum-rack, which make no clip", async () => {
-    answerRoute(() => addTrack("200", 4));
-
-    const result = await updateClip({ id: "123", convert: "drum-rack" });
-
-    expect(routeArgs()).toStrictEqual(
-      expect.objectContaining({ type: "drum-rack" }),
-    );
-    expect(result).toStrictEqual({
-      id: "123",
-      path: "t0/s0",
-      converted: { track: { id: "200", path: "t4" } },
-    });
-  });
-
   it("finds an arrangement clip's MIDI clip where the source started", async () => {
     setupArrangementAudioClipMock(mocks.clip789, { start_time: 16 });
     answerRoute(() => {
@@ -233,7 +218,7 @@ describe("updateClip - convert", () => {
   it("keeps the entry when no track ever appears, saying it was started", async () => {
     answerRoute();
 
-    const result = await updateClip({ id: "123", convert: "simpler" });
+    const result = await updateClip({ id: "123", convert: "drums" });
 
     expect(result).toStrictEqual({
       id: "123",
@@ -246,7 +231,7 @@ describe("updateClip - convert", () => {
   it("keeps the entry when the route never answered, saying it may not have started", async () => {
     vi.mocked(requestNode).mockResolvedValue({ success: false, error: "gone" });
 
-    const result = await updateClip({ id: "123", convert: "simpler" });
+    const result = await updateClip({ id: "123", convert: "drums" });
 
     expect(result).toStrictEqual(
       expect.objectContaining({
@@ -264,7 +249,7 @@ describe("updateClip - convert", () => {
       unfinished: true,
     });
 
-    const result = await updateClip({ id: "123", convert: "simpler" });
+    const result = await updateClip({ id: "123", convert: "drums" });
 
     expect(result).toStrictEqual(
       expect.objectContaining({
@@ -279,7 +264,7 @@ describe("updateClip - convert", () => {
       addTrack("201", 5);
     });
 
-    const result = await updateClip({ id: "123", convert: "simpler" });
+    const result = await updateClip({ id: "123", convert: "drums" });
 
     expect(result).toStrictEqual({
       id: "123",
@@ -295,7 +280,7 @@ describe("updateClip - convert", () => {
       mocks.clip123.path = livePath.track(1).clipSlot(0).clip();
     });
 
-    const result = await updateClip({ id: "123", convert: "simpler" });
+    const result = await updateClip({ id: "123", convert: "drums" });
 
     expect(result).toStrictEqual(expect.objectContaining({ path: "t1/s0" }));
   });
@@ -304,7 +289,7 @@ describe("updateClip - convert", () => {
     setupMidiClipMock(mocks.clip456);
     answerRoute(() => addTrack("200", 4));
 
-    const result = await updateClip({ id: "456,123", convert: "simpler" });
+    const result = await updateClip({ id: "456,123", convert: "drums" });
 
     expect(result).toStrictEqual([
       {
@@ -315,6 +300,7 @@ describe("updateClip - convert", () => {
       expect.objectContaining({
         id: "123",
         converted: { track: { id: "200", path: "t4" } },
+        detail: "the new track has no MIDI clip where this clip was",
       }),
     ]);
     expect(vi.mocked(requestNode)).toHaveBeenCalledTimes(1);
@@ -324,7 +310,7 @@ describe("updateClip - convert", () => {
     setupAudioClipMock(mocks.clip456);
     answerRoute();
 
-    const result = await updateClip({ id: "123,456", convert: "simpler" });
+    const result = await updateClip({ id: "123,456", convert: "drums" });
 
     expect(result).toStrictEqual([
       expect.objectContaining({
@@ -350,7 +336,7 @@ describe("updateClip - convert", () => {
 
     const result = (await updateClip({
       id: "123,456",
-      convert: "simpler",
+      convert: "drums",
     })) as Array<{ ok?: boolean }>;
 
     expect(result[1]?.ok).toBe(false);
@@ -382,18 +368,20 @@ describe("updateClip - convert", () => {
       }
     });
 
-    const result = await updateClip({ id: "123,456", convert: "simpler" });
+    const result = await updateClip({ id: "123,456", convert: "drums" });
 
     expect(result).toStrictEqual([
       {
         id: "123",
         path: "t1/s0",
         converted: { track: { id: "200", path: "t5" } },
+        detail: "the new track has no MIDI clip where this clip was",
       },
       {
         id: "456",
         path: "t2/s1",
         converted: { track: { id: "201", path: "t0" } },
+        detail: "the new track has no MIDI clip where this clip was",
       },
     ]);
   });
@@ -420,7 +408,7 @@ describe("updateClip - convert", () => {
 
     const result = (await updateClip({
       id: "123,456",
-      convert: "simpler",
+      convert: "drums",
       arrangementLength: "2bar",
     })) as Array<{ id?: string; path?: string; detail?: string }>;
 
@@ -434,7 +422,7 @@ describe("updateClip - convert", () => {
   it("converts the clip as the same call left it", async () => {
     answerRoute(() => addTrack("200", 4));
 
-    await updateClip({ id: "123", gainDb: -6, convert: "simpler" });
+    await updateClip({ id: "123", gainDb: -6, convert: "drums" });
 
     const order = [
       mocks.clip123.set.mock.invocationCallOrder[0],

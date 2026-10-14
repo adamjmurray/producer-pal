@@ -190,7 +190,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     convert: param(z.enum(CONVERT_TYPES).optional(), {
       default:
         "audio clips only: make a new track from each clip, after the other edits (adds a track, shifting the ones after it). " +
-        "drums/melody/harmony: a MIDI clip of the notes Live detects; simpler: a MIDI track with Simpler playing it; drum-rack: a Drum Rack with it on the first pad. " +
+        "drums/melody/harmony: a MIDI clip of the notes Live detects. " +
         "Needs the remote script. Cannot be combined with arrangementSplit or a move (toPath)",
       smallModel: null,
     }),
