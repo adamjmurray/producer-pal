@@ -1,23 +1,41 @@
 # Roadmap
 
-## Next
+## Next (2.6 - Plug-in Control)
 
-- Arrangement automation: read and draw automation on the track's timeline, so
-  the AI can shape filter sweeps, volume fades, and other changes across a song.
-- Copy all parameters from one device to another (e.g. apply the EQ curve from
-  track A to tracks B and C)
-- Improved undo/redo support
+- Plug-in control: read and set any VST/AU parameter
+- Improved automation: read and write automation envelopes in the units of the
+  underlying parameter
 
 In consideration:
 
-- Directly support Vercel's AI Gateway in the built-in chat UI
-- Fetch available models from Ollama and LM Studio/Bionic servers instead of
-  manually configuring in the built-in chat
+- Easier, one-click update process
+- Fetch available local models instead of configuring manually in the built-in
+  chat
 
 ## Changelog
 
 See [the list of releases](https://github.com/adamjmurray/producer-pal/releases)
 for more detailed information.
+
+### 2.5 - Automation (October 2026)
+
+- Session clip automation and, to a limited degree, arrangement automation
+- With the remote script, one Cmd+Z undoes one Producer Pal request. Before,
+  everything it did since you last clicked in Live was a single undo step. The
+  AI can also undo and redo for you
+- Performance improvements: big arrangement edits are much faster (10-30 s down
+  to under 2 s), and calls through the remote script answer about 10x faster
+- Every write tool now answers the same way when a target is named twice or
+  fails partway
+- Set up and update Producer Pal by asking the AI (coding agents / npx and
+  Claude Desktop): it installs the remote script, adds the device to your Set,
+  and swaps in a newer version
+- Version checks between the portal (for Claude Desktop and some coding agent
+  setups), the device, and the remote script, with a prompt when one needs
+  updating
+- Built-in chat: Support for Vercel AI Gateway and Claude Haiku 5.5
+
+Producer Pal is now MIT licensed.
 
 ### 2.4 - Fewer dead ends (September 2026)
 
