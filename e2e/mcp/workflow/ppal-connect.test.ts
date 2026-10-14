@@ -284,10 +284,10 @@ describe("ppal-connect", () => {
       );
     });
 
-    it("tells the user to update an older device", async () => {
-      expect(await portalBlock("99.0.0")).toContain(
-        "The device is older than the portal",
-      );
+    // The portal flags an older device itself, since an old device can't learn
+    // new wording.
+    it("leaves an older device for the portal to flag", async () => {
+      expect(await portalBlock("99.0.0")).toBe(`${PORTAL_PREFIX} 99.0.0`);
     });
 
     it("says nothing for a caller that is not a portal", async () => {
