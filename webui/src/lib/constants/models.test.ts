@@ -120,7 +120,7 @@ describe("isGeminiRealtimeModelId", () => {
 
   it("does not match standard Gemini chat ids", () => {
     expect(isGeminiRealtimeModelId("gemini-3.8-flash")).toBe(false);
-    expect(isGeminiRealtimeModelId("gemini-3.1-pro-preview")).toBe(false);
+    expect(isGeminiRealtimeModelId("gemini-4-argon")).toBe(false);
   });
 
   it("returns false for null or undefined", () => {

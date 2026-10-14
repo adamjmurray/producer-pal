@@ -51,7 +51,7 @@ describe("ModelSelector", () => {
   it("displays all model options", () => {
     renderModelSelector();
     expect(
-      screen.getByRole("option", { name: /^Gemini 3\.1 Pro$/ }),
+      screen.getByRole("option", { name: /^Gemini 4 Argon$/ }),
     ).toBeDefined();
     expect(
       screen.getByRole("option", { name: /^Gemini 3\.8 Flash$/ }),
@@ -63,15 +63,15 @@ describe("ModelSelector", () => {
     const options = screen.getAllByRole("option") as HTMLOptionElement[];
 
     expect(options[0]!.value).toBe("gemini-3.8-flash");
-    expect(options[1]!.value).toBe("gemini-3.1-pro-preview");
+    expect(options[1]!.value).toBe("gemini-4-argon");
     expect(options[2]!.value).toBe("gemini-3.5-flash-lite");
   });
 
   it("triggers setModel callback on change", () => {
     const { setModel } = renderModelSelector();
 
-    expectModelSelected("gemini-3.1-pro-preview", setModel);
-    expect(setModel).toHaveBeenCalledExactlyOnceWith("gemini-3.1-pro-preview");
+    expectModelSelected("gemini-4-argon", setModel);
+    expect(setModel).toHaveBeenCalledExactlyOnceWith("gemini-4-argon");
   });
 
   it("can select gemini-3.8-flash", () => {

@@ -15,7 +15,7 @@ import { VersionDisplay } from "#webui/components/chat/controls/header/VersionDi
 const defaultHeaderInfo: HeaderInfo = {
   activeModel: null,
   activeProvider: null,
-  model: "gemini-3.1-pro-preview",
+  model: "gemini-4-argon",
   provider: "gemini",
   enabledToolsCount: 20,
   totalToolsCount: 20,
@@ -111,7 +111,7 @@ describe("ChatHeader", () => {
       );
       // Falls back to model prop from settings
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 3.1 Pro")).toBeDefined();
+      expect(screen.getByText("Gemini 4 Argon")).toBeDefined();
     });
 
     it("shows provider and model name when both are set", () => {
@@ -119,13 +119,13 @@ describe("ChatHeader", () => {
         <ChatHeader
           {...defaultProps}
           headerInfo={hi({
-            activeModel: "gemini-3.1-pro-preview",
+            activeModel: "gemini-4-argon",
             activeProvider: "gemini",
           })}
         />,
       );
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 3.1 Pro")).toBeDefined();
+      expect(screen.getByText("Gemini 4 Argon")).toBeDefined();
     });
 
     it("shows Flash model with provider", () => {
@@ -175,14 +175,14 @@ describe("ChatHeader", () => {
         <ChatHeader
           {...defaultProps}
           headerInfo={hi({
-            activeModel: "gemini-3.1-pro-preview",
+            activeModel: "gemini-4-argon",
             activeProvider: null,
           })}
         />,
       );
       // Falls back to provider prop from settings
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 3.1 Pro")).toBeDefined();
+      expect(screen.getByText("Gemini 4 Argon")).toBeDefined();
     });
   });
 
@@ -360,7 +360,7 @@ describe("ChatHeader", () => {
           {...defaultProps}
           mcpStatus="connected"
           headerInfo={hi({
-            activeModel: "gemini-3.1-pro-preview",
+            activeModel: "gemini-4-argon",
             activeProvider: "gemini",
             enabledToolsCount: 18,
             totalToolsCount: 20,
@@ -370,7 +370,7 @@ describe("ChatHeader", () => {
 
       expect(screen.getByText(/Ready/)).toBeDefined();
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 3.1 Pro")).toBeDefined();
+      expect(screen.getByText("Gemini 4 Argon")).toBeDefined();
       expect(screen.getByText("18/20 tools")).toBeDefined();
     });
   });
@@ -394,7 +394,7 @@ describe("ChatHeader", () => {
         <ChatHeader
           {...defaultProps}
           headerInfo={hi({
-            activeModel: "gemini-3.1-pro-preview",
+            activeModel: "gemini-4-argon",
             activeProvider: "gemini",
           })}
         />,
@@ -580,7 +580,7 @@ describe("ChatHeader", () => {
           {...defaultProps}
           headerInfo={hi({
             // The lock only exists once a conversation has connected.
-            activeModel: "gemini-3.1-pro-preview",
+            activeModel: "gemini-4-argon",
             smallModelMode: true,
             defaultSmallModelMode: false,
           })}

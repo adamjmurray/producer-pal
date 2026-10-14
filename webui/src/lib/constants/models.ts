@@ -133,7 +133,7 @@ export const ANTHROPIC_MODELS = [
 
 export const GEMINI_MODELS: ModelPresetItem[] = [
   { value: "gemini-3.8-flash", label: "Gemini 3.8 Flash" },
-  { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
+  { value: "gemini-4-argon", label: "Gemini 4 Argon" },
   { value: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite" },
   {
     value: GEMINI_REALTIME_MODEL,
@@ -180,8 +180,8 @@ export const OPENROUTER_MODELS = [
     label: "[Paid] Google Gemini 3.8 Flash",
   },
   {
-    value: "google/gemini-3.1-pro-preview",
-    label: "[Paid] Google Gemini 3.1 Pro",
+    value: "google/gemini-4-argon",
+    label: "[Paid] Google Gemini 4 Argon",
   },
   { value: "qwen/qwen3.8-max", label: "[Paid] Qwen 3.8 Max" },
   {
@@ -221,7 +221,7 @@ export const VERCEL_MODELS = [
   { value: "openai/gpt-6.1-sol", label: "OpenAI GPT-6.1 Sol" },
   { value: "openai/gpt-6-luna", label: "OpenAI GPT-6 Luna" },
   { value: "google/gemini-3.8-flash", label: "Google Gemini 3.8 Flash" },
-  { value: "google/gemini-3.1-pro-preview", label: "Google Gemini 3.1 Pro" },
+  { value: "google/gemini-4-argon", label: "Google Gemini 4 Argon" },
   { value: "alibaba/qwen3.8-max", label: "Qwen 3.8 Max" },
   { value: "deepseek/deepseek-v4.1-flash", label: "DeepSeek V4.1 Flash" },
   { value: "mistral/mistral-large-3", label: "Mistral Large" },
