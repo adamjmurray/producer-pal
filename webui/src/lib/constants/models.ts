@@ -30,13 +30,13 @@ export const OPENAI_REALTIME_MODEL = "gpt-realtime-2.1";
  * the realtime fallback when the saved Gemini selection isn't itself a realtime
  * model, mirroring OPENAI_REALTIME_MODEL for the OpenAI side.
  */
-export const GEMINI_REALTIME_MODEL = "gemini-3.1-flash-live-preview";
+export const GEMINI_REALTIME_MODEL = "gemini-3.8-live";
 
 /**
  * Prebuilt voices for the Gemini Live API (distinct from OpenAI's
  * REALTIME_VOICES). The voice is set in the session config at connect time.
  * Labels include Google's tonal descriptor. All 30 are empirically verified to
- * produce audio on gemini-3.1-flash-live-preview; Puck is listed first as the
+ * produce audio on gemini-3.8-live; Puck is listed first as the
  * default. Source: Gemini TTS voice catalog (ai.google.dev).
  */
 export const GEMINI_REALTIME_VOICES = [
@@ -137,7 +137,7 @@ export const GEMINI_MODELS: ModelPresetItem[] = [
   { value: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite" },
   {
     value: GEMINI_REALTIME_MODEL,
-    label: "Gemini 3.1 Flash Live (Voice)",
+    label: "Gemini 3.8 Live (Voice)",
     kind: "realtime",
   },
   OTHER_MODEL_OPTION,
@@ -277,13 +277,12 @@ export const PROVIDER_MODELS: Partial<
 };
 
 const REALTIME_MODEL_ID = /realtime/i;
-// Gemini's realtime/voice models don't carry "realtime" — they're named with
-// "-live-" (gemini-3.1-flash-live-preview, gemini-2.0-flash-live-001) or
-// "native-audio" (gemini-2.5-flash-native-audio-*). Deliberately excludes
-// "realtime" so a foreign OpenAI id (gpt-realtime-2) under the gemini provider
-// does NOT route to Gemini voice. Lets a free-text "Other..." Gemini live model
-// enable voice without a preset for every id.
-const GEMINI_REALTIME_MODEL_ID = /(-live-|native-audio)/i;
+// Gemini's voice models don't carry "realtime" — they're named with "-live"
+// as a word (gemini-3.8-live, gemini-3.1-flash-live-preview) or "native-audio".
+// Deliberately excludes "realtime" so a foreign OpenAI id (gpt-realtime-2)
+// under the gemini provider does NOT route to Gemini voice. Lets a free-text
+// "Other..." Gemini live model enable voice without a preset for every id.
+const GEMINI_REALTIME_MODEL_ID = /(-live(-|$)|native-audio)/i;
 
 /**
  * Heuristic: does a model id name a realtime (voice) model? OpenAI's realtime

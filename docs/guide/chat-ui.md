@@ -242,7 +242,7 @@ AI out loud. It's available on two providers, each requiring that provider's API
 key:
 
 - **OpenAI**: the **GPT Realtime 2.1 (Voice)** model
-- **Google**: the **Gemini 3.1 Flash Live (Voice)** model
+- **Google**: the **Gemini 3.8 Live (Voice)** model
 
 To enter voice mode, open [Settings](#settings), set the **Provider**, and
 select that provider's voice model. The chat composer is replaced by the voice
@@ -369,7 +369,7 @@ The default is almost always right. Change it if:
 #### Voice
 
 There's no separate Voice tab. Select a voice model on this **Connection** tab
-(**GPT Realtime 2.1 (Voice)** for OpenAI, **Gemini 3.1 Flash Live (Voice)** for
+(**GPT Realtime 2.1 (Voice)** for OpenAI, **Gemini 3.8 Live (Voice)** for
 Google) and a **Voice** dropdown and a collapsible **Voice Settings** section
 appear below it. See [Voice Mode](#voice-mode) for what it does.
 

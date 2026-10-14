@@ -109,6 +109,10 @@ describe("isRealtimeModelId", () => {
 
 describe("isGeminiRealtimeModelId", () => {
   it("matches Gemini live / native-audio ids, not 'realtime' ids", () => {
+    expect(isGeminiRealtimeModelId("gemini-3.8-live")).toBe(true);
+    expect(isGeminiRealtimeModelId("gemini-3.8-live-extended-thinking")).toBe(
+      true,
+    );
     expect(isGeminiRealtimeModelId("gemini-3.1-flash-live-preview")).toBe(true);
     expect(isGeminiRealtimeModelId("gemini-2.0-flash-live-001")).toBe(true);
     expect(

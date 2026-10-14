@@ -134,7 +134,7 @@ export function buildOpenAIVoiceInstructions(lang: VoiceLanguage): string {
 
 /**
  * Agent instructions for the Gemini Live backend. The native-audio model
- * (gemini-3.1-flash-live-preview) ignores speechConfig.languageCode, so the lock
+ * (gemini-3.8-live) ignores speechConfig.languageCode, so the lock
  * is instructions-only — prepend Google's emphatic recommended phrasing to the
  * shared anti-drift rules for the strongest soft lock available.
  * @param lang - The locked language

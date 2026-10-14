@@ -47,7 +47,7 @@ describe("gemini-voice-token route", () => {
   it("returns the key as a non-ephemeral credential (localhost passthrough)", async () => {
     const res = await postGeminiToken(appState.baseUrl, {
       key: "gem-secret-key",
-      body: { model: "gemini-3.1-flash-live-preview" },
+      body: { model: "gemini-3.8-live" },
     });
 
     expect(res.status).toBe(200);
