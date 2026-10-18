@@ -16,7 +16,8 @@ npm run e2e:portal
 ```
 
 The suite fails with a clear message if the bundle isn't built. In CI it runs in
-the build-verification job, right after the build that produces it.
+the playwright-tests job after `npm run build:bundles`, so its results join the
+other end-to-end suites in the CI summary.
 
 ## Test Files
 

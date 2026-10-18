@@ -5,13 +5,14 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Print end-to-end test statistics per Playwright suite: test counts, outcomes,
- * timing, and the slowest individual tests. Reads the JSON reports written by
- * the suites — it does not run them.
+ * Print end-to-end test statistics per suite: test counts, outcomes, timing,
+ * and the slowest individual tests. Reads the JSON reports written by the
+ * suites — it does not run them.
  *
- * Requires (produced by npm run ui:test / npm run docs:test):
+ * Requires (produced by npm run ui:test / docs:test / e2e:portal):
  *   test-reports/playwright-ui.json
  *   test-reports/playwright-docs.json
+ *   test-reports/vitest-portal.json
  *
  * A suite whose report is missing is reported as "not run" rather than failing,
  * so the CI summary still renders when an earlier suite fails and later ones
@@ -22,8 +23,12 @@
  *   node scripts/stats/e2e-stats.ts --markdown   # Markdown tables (for CI)
  */
 
-import fs from "node:fs";
-import path from "node:path";
+import {
+  type SlowTest,
+  type SuiteStats,
+  readPlaywrightSuite,
+  readVitestSuite,
+} from "./e2e-report-readers.ts";
 import {
   type Row,
   duration,
@@ -33,13 +38,24 @@ import {
   printMarkdownTable,
 } from "./stats-tables.ts";
 
-const PROJECT_ROOT = path.resolve(import.meta.dirname, "../..");
-
-/** The CI-runnable Playwright suites, in the order CI runs them. */
+/** The CI-runnable suites, in the order CI runs them. */
 const SUITES = [
-  { label: "Chat UI", report: "test-reports/playwright-ui.json" },
-  { label: "Docs", report: "test-reports/playwright-docs.json" },
-] as const;
+  {
+    label: "Chat UI",
+    report: "test-reports/playwright-ui.json",
+    read: readPlaywrightSuite,
+  },
+  {
+    label: "Docs",
+    report: "test-reports/playwright-docs.json",
+    read: readPlaywrightSuite,
+  },
+  {
+    label: "Portal",
+    report: "test-reports/vitest-portal.json",
+    read: readVitestSuite,
+  },
+];
 
 /** How many slowest tests to list. */
 const SLOWEST_COUNT = 5;
@@ -56,65 +72,18 @@ const TABLE_HEADERS = [
 
 const SLOWEST_HEADERS = ["Test", "Suite", "Duration"];
 
-interface PlaywrightResult {
-  duration: number;
-}
-
-interface PlaywrightTest {
-  results: PlaywrightResult[];
-}
-
-interface PlaywrightSpec {
-  title: string;
-  file: string;
-  line: number;
-  tests: PlaywrightTest[];
-}
-
-interface PlaywrightSuite {
-  specs?: PlaywrightSpec[];
-  suites?: PlaywrightSuite[];
-}
-
-interface PlaywrightReport {
-  suites: PlaywrightSuite[];
-  stats: {
-    duration: number;
-    expected: number;
-    unexpected: number;
-    flaky: number;
-    skipped: number;
-  };
-}
-
-interface SuiteStats {
-  label: string;
-  ran: boolean;
-  passed: number;
-  failed: number;
-  flaky: number;
-  skipped: number;
-  durationMs: number;
-}
-
-interface SlowTest {
-  name: string;
-  suite: string;
-  durationMs: number;
-}
-
 /**
  * Read each suite's report and print the e2e stats tables.
  */
 function main(): void {
   const markdown = process.argv.includes("--markdown");
-  const reports = SUITES.map((suite) => ({
-    label: suite.label,
-    report: readReport(suite.report),
-  }));
+  const results = SUITES.map((s) => s.read(s.label, s.report));
 
-  const stats = reports.map(({ label, report }) => toSuiteStats(label, report));
-  const slowest = findSlowestTests(reports);
+  const stats = results.map((r) => r.stats);
+  const slowest = results
+    .flatMap((r) => r.tests)
+    .toSorted((a, b) => b.durationMs - a.durationMs)
+    .slice(0, SLOWEST_COUNT);
 
   if (markdown) {
     printMarkdownReport(stats, slowest);
@@ -122,98 +91,6 @@ function main(): void {
     printCliReport(stats, slowest);
     console.log();
   }
-}
-
-/**
- * Read a Playwright JSON report if it exists.
- * @param relativePath - Report path relative to the project root
- * @returns Parsed report, or null when the suite did not run
- */
-function readReport(relativePath: string): PlaywrightReport | null {
-  try {
-    return JSON.parse(
-      fs.readFileSync(path.join(PROJECT_ROOT, relativePath), "utf8"),
-    ) as PlaywrightReport;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Convert a Playwright report into suite stats.
- * @param label - Display name for the suite
- * @param report - Parsed report, or null when the suite did not run
- * @returns Suite stats
- */
-function toSuiteStats(
-  label: string,
-  report: PlaywrightReport | null,
-): SuiteStats {
-  if (!report) {
-    return {
-      label,
-      ran: false,
-      passed: 0,
-      failed: 0,
-      flaky: 0,
-      skipped: 0,
-      durationMs: 0,
-    };
-  }
-
-  const { stats } = report;
-
-  return {
-    label,
-    ran: true,
-    passed: stats.expected,
-    failed: stats.unexpected,
-    flaky: stats.flaky,
-    skipped: stats.skipped,
-    durationMs: stats.duration,
-  };
-}
-
-/**
- * Find the slowest individual tests across all suites.
- * @param reports - Each suite's label and parsed report
- * @returns Slowest tests, descending
- */
-function findSlowestTests(
-  reports: { label: string; report: PlaywrightReport | null }[],
-): SlowTest[] {
-  const all: SlowTest[] = [];
-
-  for (const { label, report } of reports) {
-    for (const spec of collectSpecs(report?.suites ?? [])) {
-      // Sum retries: the total time the suite spent on this test.
-      const durationMs = spec.tests
-        .flatMap((t) => t.results)
-        .reduce((acc, r) => acc + r.duration, 0);
-
-      all.push({
-        name: `${spec.file}:${spec.line} › ${spec.title}`,
-        suite: label,
-        durationMs,
-      });
-    }
-  }
-
-  return all
-    .toSorted((a, b) => b.durationMs - a.durationMs)
-    .slice(0, SLOWEST_COUNT);
-}
-
-/**
- * Flatten Playwright's nested suite tree into a flat list of specs.
- * @param suites - Suites to walk
- * @returns Every spec found, at any depth
- */
-function collectSpecs(suites: PlaywrightSuite[]): PlaywrightSpec[] {
-  return suites.flatMap((suite) => [
-    ...(suite.specs ?? []),
-    ...collectSpecs(suite.suites ?? []),
-  ]);
 }
 
 /**

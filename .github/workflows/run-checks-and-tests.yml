@@ -71,12 +71,6 @@ jobs:
       - name: Build documentation site
         run: npm run docs:build
 
-      # Lives here because it drives the portal bundle the build step just
-      # produced. It needs no Ableton and no browser, so it costs this job a
-      # second rather than an `npm ci` of its own.
-      - name: Test the portal binary end to end
-        run: npm run e2e:portal
-
       - name: Verify all build artifacts exist
         id: summary
         run: |
@@ -134,11 +128,20 @@ jobs:
 
       # The remote script's Python, against fake Live objects. ubuntu-latest
       # ships python3, and the tests use only the standard library.
+      # Its output is saved for the summary: unittest has no JSON reporter.
       - name: Test the remote script
-        run: npm run remote-script:test
+        id: remote-script
+        run: |
+          set -o pipefail
+          mkdir -p test-reports
+          npm run remote-script:test 2>&1 | tee test-reports/remote-script.log
 
+      # Runs even when the Python tests fail, so one run reports both suites.
       - name: Run tests with coverage
         id: tests
+        if:
+          ${{ !cancelled() && (steps.remote-script.outcome == 'success' ||
+          steps.remote-script.outcome == 'failure') }}
         run: FORCE_COLOR=3 npm run test:coverage:verbose
 
       - name: Report test stats and coverage
@@ -281,6 +284,14 @@ jobs:
       - name: Test documentation site with Playwright
         id: docs-tests
         run: npm run docs:test
+
+      # Drives the built portal against a stub device: no Ableton, no browser.
+      # It sits here so its results share the end-to-end summary table.
+      - name: Build bundles for the portal test
+        run: npm run build:bundles
+
+      - name: Test the portal binary end to end
+        run: npm run e2e:portal
 
       - name: Report end-to-end test stats
         id: summary

@@ -15,6 +15,9 @@ export default defineConfig({
     // Spawning a Node process per test is slower than a unit test, and CI
     // machines are slower still.
     testTimeout: 20000,
+    // The JSON report feeds the CI e2e stats summary (scripts/stats/e2e-stats.ts).
+    reporters: ["default", "json"],
+    outputFile: { json: "test-reports/vitest-portal.json" },
     // No coverage thresholds - e2e tests are optional
   },
 });
