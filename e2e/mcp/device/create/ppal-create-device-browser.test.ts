@@ -7,9 +7,10 @@
  * E2E tests for ppal-create-device loading a device from Live's browser through
  * the Producer Pal remote script. Opt-in: skipped unless E2E_REMOTE_SCRIPT=true,
  * and failed, not skipped, when that's set but the remote script isn't
- * answering. Loads the LFO (a Max for Live device) by its bare name: Live 12.4
- * lists it under Audio Effects, older Live under Max for Live > Max Audio
- * Effect, so a browser path would only work on one. Never a machine-specific
+ * answering. Loads the LFO (a Max for Live device) by a browser path picked by
+ * Live version: 12.4 lists it under Audio Effects, older Live under Max for Live
+ * > Max Audio Effect. Not by bare name: a Live 12.4 with an older Max for Live
+ * pack lists it in both, so the name is ambiguous. Never a machine-specific
  * plug-in.
  *
  * Uses: e2e-test-set (rt0 is a return track)
@@ -36,6 +37,7 @@ import {
   requireRemoteScript,
 } from "../helpers/remote-script-test-helpers";
 import { readTrackCount } from "../helpers/track-count-test-helpers";
+import { liveVersionAtLeast } from "../../workflow/helpers/server-capability-test-helpers";
 
 describe.skipIf(!REMOTE_SCRIPT_E2E)(
   "ppal-create-device — devices from Live's browser",
@@ -43,6 +45,20 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
     requireRemoteScript();
 
     const ctx = setupMcpTestContext();
+
+    let lfoPath: string | undefined;
+
+    /**
+     * The LFO's browser path on the running Live, read once.
+     * @returns Its path under Audio Effects or Max for Live
+     */
+    async function lfoBrowserPath(): Promise<string> {
+      lfoPath ??= (await liveVersionAtLeast(ctx.client!, "12.4"))
+        ? "Audio Effects/LFO"
+        : "Max for Live/Max Audio Effect/LFO";
+
+      return lfoPath;
+    }
 
     /**
      * Create a device and parse the result.
@@ -94,7 +110,10 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
     it("appends LFO to a track and leaves no temp track behind", async () => {
       const trackIndex = await createTrack("audio");
       const before = await trackCount();
-      const lfo = await createDevice("LFO", `t${trackIndex}/d+`);
+      const lfo = await createDevice(
+        await lfoBrowserPath(),
+        `t${trackIndex}/d+`,
+      );
 
       expect(lfo.path).toMatch(new RegExp(`^t${trackIndex}/d\\d+$`));
       expect(await idAt(lfo.path)).toBe(lfo.id);
@@ -106,7 +125,10 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
 
       await createDevice("Compressor", `t${trackIndex}/d+`);
 
-      const lfo = await createDevice("LFO", `t${trackIndex}/d0`);
+      const lfo = await createDevice(
+        await lfoBrowserPath(),
+        `t${trackIndex}/d0`,
+      );
 
       expect(lfo.path).toBe(`t${trackIndex}/d0`);
       expect(await idAt(lfo.path)).toBe(lfo.id);
@@ -115,7 +137,10 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
     it("loads LFO into a rack chain", async () => {
       const trackIndex = await createTrack("audio");
       const rack = await createDevice("Audio Effect Rack", `t${trackIndex}`);
-      const lfo = await createDevice("LFO", `${rack.path}/c0/d+`);
+      const lfo = await createDevice(
+        await lfoBrowserPath(),
+        `${rack.path}/c0/d+`,
+      );
 
       expect(lfo.path.startsWith(`${rack.path}/c0/d`)).toBe(true);
       expect(await idAt(lfo.path)).toBe(lfo.id);
@@ -123,7 +148,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
 
     it("loads LFO onto a return track", async () => {
       const before = await trackCount();
-      const lfo = await createDevice("LFO", "rt0/d+");
+      const lfo = await createDevice(await lfoBrowserPath(), "rt0/d+");
 
       expect(lfo.path).toMatch(/^rt0\/d\d+$/);
       expect(await idAt(lfo.path)).toBe(lfo.id);
@@ -173,17 +198,38 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       expect(body.error).toContain("expired before Live ran it");
     });
 
+    /**
+     * How many devices a track holds.
+     * @param trackIndex - The track's index
+     * @returns Its device count
+     */
+    async function deviceCount(trackIndex: number): Promise<number> {
+      const track = parseToolResult<{ devices?: unknown[] }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-track",
+          arguments: { path: `t${trackIndex}`, include: ["devices"] },
+        }),
+      );
+
+      return track.devices?.length ?? 0;
+    }
+
     // Too short a Timeout can't finish a load: the call must say so, and leave
-    // no temp track or device behind.
+    // no temp track or device behind. A new track may already hold devices from
+    // the user's default track preset, so compare counts.
     it("under a short Timeout says it ran out of time, leaving nothing behind", async () => {
       const trackIndex = await createTrack("audio");
       const before = await trackCount();
+      const devicesBefore = await deviceCount(trackIndex);
       const response = await fetch(
         `${MCP_URL.replace("/mcp", "/api/tools/ppal-create-device")}?format=json&timeoutMs=1000`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ device: "LFO", path: `t${trackIndex}/d+` }),
+          body: JSON.stringify({
+            device: await lfoBrowserPath(),
+            path: `t${trackIndex}/d+`,
+          }),
         },
       );
 
@@ -199,14 +245,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
 
       await sleep(100);
 
-      const track = parseToolResult<{ devices?: unknown[] }>(
-        await ctx.client!.callTool({
-          name: "ppal-read-track",
-          arguments: { path: `t${trackIndex}`, include: ["devices"] },
-        }),
-      );
-
-      expect(track.devices?.length ?? 0).toBe(0);
+      expect(await deviceCount(trackIndex)).toBe(devicesBefore);
       expect(await trackCount()).toBe(before);
     });
 
