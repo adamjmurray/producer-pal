@@ -135,8 +135,7 @@ async function hotswapBrowserItem(args: unknown): Promise<BrowserItemHotswap> {
     body: {
       type: requireString(args, "type"),
       path: requireString(args, "path"),
-      device_path: requireString(args, "devicePath"),
-      device_name: requireString(args, "deviceName"),
+      ...namedDevice(args),
     },
     expiresInMs: requireExpiry(args),
   });
@@ -167,8 +166,7 @@ async function duplicateDevice(args: unknown): Promise<DeviceDuplication> {
   const reply = await requestChange({
     route: "/device/duplicate",
     body: {
-      device_path: requireString(args, "devicePath"),
-      device_name: requireString(args, "deviceName"),
+      ...namedDevice(args),
     },
     expiresInMs: requireExpiry(args),
   });
@@ -191,6 +189,21 @@ async function duplicateDevice(args: unknown): Promise<DeviceDuplication> {
         error: "the remote script copied the device but didn't say where",
         unfinished: true,
       };
+}
+
+/**
+ * The device a change acts on, by path and by the name it must still have.
+ * @param args - The route args, with `devicePath` and `deviceName`
+ * @returns The body fields that name it
+ */
+function namedDevice(args: unknown): {
+  device_path: string;
+  device_name: string;
+} {
+  return {
+    device_path: requireString(args, "devicePath"),
+    device_name: requireString(args, "deviceName"),
+  };
 }
 
 /**

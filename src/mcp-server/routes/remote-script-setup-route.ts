@@ -10,10 +10,12 @@
 import { type Express, type Request, type Response } from "express";
 import { VERSION } from "#src/shared/config.ts";
 import { syncDeviceInstallNotice } from "../rpc/device-install/device-install-notice.ts";
-import { rejectForeignOriginWrite } from "../helpers/http/request-origin.ts";
+import {
+  answerUserLibraryError,
+  readUserLibraryPost,
+} from "../helpers/http/user-library-post.ts";
 import { installRemoteScript } from "../rpc/remote-script/install/remote-script-install.ts";
 import { remoteScriptStatus } from "../rpc/remote-script/remote-script-status.ts";
-import { UserLibraryFolderError } from "../rpc/remote-script/user-library/user-library-folder.ts";
 
 /**
  * Register GET /remote-script (status) and POST /remote-script/install.
@@ -33,38 +35,20 @@ export function registerRemoteScriptSetupRoutes(app: Express): void {
   });
 
   app.post("/remote-script/install", (req: Request, res: Response): void => {
-    if (
-      rejectForeignOriginWrite(
-        req,
-        res,
-        "cross-site /remote-script writes are not allowed",
-      )
-    ) {
-      return;
-    }
+    const posted = readUserLibraryPost(req, res, "/remote-script");
 
-    const body = req.body as { userLibrary?: unknown } | undefined;
-    const userLibrary =
-      typeof body?.userLibrary === "string" ? body.userLibrary.trim() : "";
-
-    if (userLibrary === "") {
-      res.status(400).json({ error: "userLibrary must be a non-empty string" });
-
+    if (posted == null) {
       return;
     }
 
     try {
-      const { path } = installRemoteScript(userLibrary);
+      const { path } = installRemoteScript(posted.userLibrary);
 
       // The device's "Finish installation" notice may be done with.
       void syncDeviceInstallNotice();
       res.json({ path, version: VERSION });
     } catch (error) {
-      if (!(error instanceof UserLibraryFolderError)) {
-        throw error;
-      }
-
-      res.status(400).json({ error: error.message });
+      answerUserLibraryError(error, res);
     }
   });
 }

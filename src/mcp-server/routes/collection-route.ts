@@ -114,6 +114,30 @@ export function registerCollectionRoutes<TInput, TEntry>(
   registerRenameRoute(app, config);
 }
 
+/**
+ * Read the fields every markdown entry has from a PUT body: a required
+ * `content` (the body) and an optional `description`.
+ *
+ * @param name - The entry's name
+ * @param reqBody - The request body
+ * @returns The name, description and body, or a 400 message
+ */
+export function markdownEntryInput(
+  name: string,
+  reqBody: Record<string, unknown>,
+): BuildInputResult<{ name: string; description: string; body: string }> {
+  if (typeof reqBody.content !== "string") {
+    return { error: "content must be a string" };
+  }
+
+  return {
+    name,
+    description:
+      typeof reqBody.description === "string" ? reqBody.description : "",
+    body: reqBody.content,
+  };
+}
+
 // --- Helpers below main export ---
 
 /**

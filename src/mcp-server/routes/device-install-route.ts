@@ -12,8 +12,12 @@ import { deviceInstallStatus } from "../rpc/device-install/device-install-status
 import { deviceSwapCheck } from "../rpc/device-install/device-swap-check.ts";
 import { swapForLibraryCopy } from "../rpc/device-install/device-swap.ts";
 import { remoteScriptPing } from "../rpc/remote-script/remote-script-client.ts";
-import { rejectForeignOriginWrite } from "../helpers/http/request-origin.ts";
-import { UserLibraryFolderError } from "../rpc/remote-script/user-library/user-library-folder.ts";
+import {
+  answerUserLibraryError,
+  readUserLibraryPost,
+} from "../helpers/http/user-library-post.ts";
+
+const ROUTE = "/device-install";
 
 /**
  * Register GET /device-install (status), POST /device-install/install, and
@@ -33,7 +37,7 @@ import { UserLibraryFolderError } from "../rpc/remote-script/user-library/user-l
  * @param app - Express application
  */
 export function registerDeviceInstallRoutes(app: Express): void {
-  app.get("/device-install", async (_req: Request, res: Response) => {
+  app.get(ROUTE, async (_req: Request, res: Response) => {
     // An install, or a copy changed by hand, must show up on the next fetch.
     res.set("Cache-Control", "no-store");
 
@@ -44,7 +48,7 @@ export function registerDeviceInstallRoutes(app: Express): void {
   });
 
   app.post("/device-install/install", (req: Request, res: Response): void => {
-    const posted = readPost(req, res);
+    const posted = readUserLibraryPost(req, res, ROUTE);
 
     if (posted == null) {
       return;
@@ -66,14 +70,14 @@ export function registerDeviceInstallRoutes(app: Express): void {
         .status(install.status === "refused" ? 409 : 500)
         .json({ ...install.result, error: install.error });
     } catch (error) {
-      libraryError(error, res);
+      answerUserLibraryError(error, res);
     }
   });
 
   app.post(
     "/device-install/swap",
     async (req: Request, res: Response): Promise<void> => {
-      const posted = readPost(req, res);
+      const posted = readUserLibraryPost(req, res, ROUTE);
 
       if (posted == null) {
         return;
@@ -94,63 +98,8 @@ export function registerDeviceInstallRoutes(app: Express): void {
             .json({ error: swap.error });
         }
       } catch (error) {
-        libraryError(error, res);
+        answerUserLibraryError(error, res);
       }
     },
   );
-}
-
-/**
- * Check a same-origin POST that names a User Library.
- *
- * @param req - The request
- * @param res - The response, answered here when the request is refused
- * @returns The User Library and body, or null once answered
- */
-function readPost(
-  req: Request,
-  res: Response,
-): {
-  userLibrary: string;
-  body: { force?: unknown } | undefined;
-} | null {
-  if (
-    rejectForeignOriginWrite(
-      req,
-      res,
-      "cross-site /device-install writes are not allowed",
-    )
-  ) {
-    return null;
-  }
-
-  const body = req.body as
-    | { userLibrary?: unknown; force?: unknown }
-    | undefined;
-  const userLibrary =
-    typeof body?.userLibrary === "string" ? body.userLibrary.trim() : "";
-
-  if (userLibrary === "") {
-    res.status(400).json({ error: "userLibrary must be a non-empty string" });
-
-    return null;
-  }
-
-  return { userLibrary, body };
-}
-
-/**
- * Answer a bad User Library path with a 400; anything else is not ours to
- * explain.
- *
- * @param error - What the install or swap threw
- * @param res - The response
- * @throws The error, when it isn't a bad User Library path
- */
-function libraryError(error: unknown, res: Response): void {
-  if (!(error instanceof UserLibraryFolderError)) {
-    throw error;
-  }
-
-  res.status(400).json({ error: error.message });
 }

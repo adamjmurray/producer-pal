@@ -23,12 +23,10 @@ import {
   findAtPath,
   found,
   listBrowser,
-  listedItems,
   normalizedName,
-  searchFailed,
+  pooledCandidates,
   sectionPrefixed,
 } from "./browser-device-lookup.ts";
-import { unavailableReply } from "../remote-script-client.ts";
 import { lookUpPresetFile, presetFile } from "./browser-preset-files.ts";
 import { presetFileIsFor } from "./preset-file-device.ts";
 
@@ -175,9 +173,10 @@ async function searchPresets(
     scope == null
       ? PRESET_SECTIONS.map((section) => ({ section }))
       : scopeSection(scope);
-  const replies = await Promise.all(
-    searches.map(({ section, path }) =>
-      listBrowser(
+  const searched = await Promise.all(
+    searches.map(async ({ section, path }) => ({
+      section,
+      reply: await listBrowser(
         {
           type: section.type,
           presets: "true",
@@ -186,32 +185,11 @@ async function searchPresets(
         },
         endsAt,
       ),
-    ),
+    })),
   );
-  const candidates: Candidate[] = [];
 
-  for (const [index, reply] of replies.entries()) {
-    if (!reply.available) {
-      return unavailableReply(reply);
-    }
-
-    // A device with no preset folder is a 404: it has no presets.
-    if (reply.status === 404 && scope != null) {
-      continue;
-    }
-
-    if (reply.status !== 200) {
-      return searchFailed(preset, reply);
-    }
-
-    const { section } = searches[index] as { section: Section };
-
-    candidates.push(
-      ...listedItems(reply).map((item) => ({ ...item, section })),
-    );
-  }
-
-  return candidates;
+  // A device with no preset folder is a 404: it has no presets.
+  return pooledCandidates(preset, searched, scope != null);
 }
 
 /**

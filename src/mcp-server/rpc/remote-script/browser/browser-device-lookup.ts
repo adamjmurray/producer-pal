@@ -209,6 +209,41 @@ export function listedItems(reply: RemoteScriptAnswer): ListedItem[] {
 }
 
 /**
+ * Pool what each section's search listed, tagged with its section.
+ * @param name - The name the call used, for a failed search's error
+ * @param searched - Each search's section and reply
+ * @param skipNotFound - Pass over a 404 instead of failing on it
+ * @returns The candidates, or the first failure
+ */
+export function pooledCandidates(
+  name: string,
+  searched: Array<{ section: Section; reply: RemoteScriptReply }>,
+  skipNotFound = false,
+): Candidate[] | BrowserItemResolution {
+  const candidates: Candidate[] = [];
+
+  for (const { section, reply } of searched) {
+    if (!reply.available) {
+      return unavailableReply(reply);
+    }
+
+    if (reply.status === 404 && skipNotFound) {
+      continue;
+    }
+
+    if (reply.status !== 200) {
+      return searchFailed(name, reply);
+    }
+
+    candidates.push(
+      ...listedItems(reply).map((item) => ({ ...item, section })),
+    );
+  }
+
+  return candidates;
+}
+
+/**
  * A name compared the way the remote script compares it: trimmed, any case,
  * accents composed, in path form, and without a filename suffix.
  * @param name - A browser name or the name the call used
@@ -310,27 +345,18 @@ async function searchSections(
     return nothingNamed(deviceName);
   }
 
-  const replies = await Promise.all(
-    SECTIONS.map((section) =>
-      listBrowser({ type: section.type, q: key }, endsAt),
+  const candidates = pooledCandidates(
+    deviceName,
+    await Promise.all(
+      SECTIONS.map(async (section) => ({
+        section,
+        reply: await listBrowser({ type: section.type, q: key }, endsAt),
+      })),
     ),
   );
-  const candidates: Candidate[] = [];
 
-  for (const [index, reply] of replies.entries()) {
-    if (!reply.available) {
-      return unavailableReply(reply);
-    }
-
-    if (reply.status !== 200) {
-      return searchFailed(deviceName, reply);
-    }
-
-    const section = SECTIONS[index] as Section;
-
-    candidates.push(
-      ...listedItems(reply).map((item) => ({ ...item, section })),
-    );
+  if (!Array.isArray(candidates)) {
+    return candidates;
   }
 
   const matches = nameMatches(candidates, key);

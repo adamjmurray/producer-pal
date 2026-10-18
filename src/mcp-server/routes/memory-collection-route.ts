@@ -18,7 +18,10 @@ import {
   renameMemory,
   slugifyMemoryName,
 } from "../helpers/memory/memory-store.ts";
-import { registerCollectionRoutes } from "./collection-route.ts";
+import {
+  markdownEntryInput,
+  registerCollectionRoutes,
+} from "./collection-route.ts";
 
 /**
  * Register the /memory collection REST endpoints on the Express app.
@@ -34,17 +37,6 @@ export function registerMemoryCollectionRoutes(app: Express): void {
     forget: forgetMemory,
     remember: rememberMemory,
     rename: renameMemory,
-    buildInput: (name, reqBody) => {
-      if (typeof reqBody.content !== "string") {
-        return { error: "content must be a string" };
-      }
-
-      return {
-        name,
-        description:
-          typeof reqBody.description === "string" ? reqBody.description : "",
-        body: reqBody.content,
-      };
-    },
+    buildInput: markdownEntryInput,
   });
 }
