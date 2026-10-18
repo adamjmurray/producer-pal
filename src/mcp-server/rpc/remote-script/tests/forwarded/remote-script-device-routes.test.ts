@@ -8,8 +8,9 @@ import { RACK_MACROS_ROUTE } from "#src/tools/shared/remote-script/rack-macros-c
 import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
 import { dispatchNodeRoute } from "../../../../tests/config-dir-test-helpers.ts";
 import { registerRemoteScriptDeviceRoutes } from "../../forwarded/remote-script-device-routes.ts";
-import { CONNECTION_LOST } from "../../remote-script-errors.ts";
 import {
+  CONNECTION_LOST_ANSWER,
+  EXPIRED_UNSENT_ANSWER,
   OUTDATED_ANSWER,
   callUntilItTimesOut,
   unknownRouteAnswer,
@@ -19,6 +20,7 @@ import {
 const PATHS = ["live_set tracks 0 devices 0", "live_set tracks 1 devices 2"];
 
 const EXPIRES_IN_MS = 5000;
+const PITCH_BEND_WRITE = { devicePath: PATHS[0], pitchBendRange: 3 };
 
 const answerWith = useFakeRemoteScriptRoutes(registerRemoteScriptDeviceRoutes);
 
@@ -64,14 +66,7 @@ describe("remoteScript.device.macros", () => {
 
     expect(
       await dispatchNodeRoute(RACK_MACROS_ROUTE, { devicePaths: PATHS }),
-    ).toStrictEqual({
-      success: true,
-      result: {
-        available: true,
-        error: CONNECTION_LOST,
-        unfinished: true,
-      },
-    });
+    ).toStrictEqual({ success: true, result: CONNECTION_LOST_ANSWER });
   });
 
   it("refuses args that aren't a list of paths", async () => {
@@ -205,8 +200,7 @@ describe("remoteScript.device.simplerWrite", () => {
 
     expect(
       await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
-        devicePath: PATHS[0],
-        pitchBendRange: 3,
+        ...PITCH_BEND_WRITE,
         expiresInMs: EXPIRES_IN_MS,
       }),
     ).toStrictEqual({ success: true, result: OUTDATED_ANSWER });
@@ -217,18 +211,10 @@ describe("remoteScript.device.simplerWrite", () => {
 
     expect(
       await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
-        devicePath: PATHS[0],
-        pitchBendRange: 3,
+        ...PITCH_BEND_WRITE,
         expiresInMs: EXPIRES_IN_MS,
       }),
-    ).toStrictEqual({
-      success: true,
-      result: {
-        available: true,
-        error: CONNECTION_LOST,
-        unfinished: true,
-      },
-    });
+    ).toStrictEqual({ success: true, result: CONNECTION_LOST_ANSWER });
   });
 
   it("calls a write the remote script never answered a timeout", async () => {
@@ -237,8 +223,7 @@ describe("remoteScript.device.simplerWrite", () => {
     expect(
       await callUntilItTimesOut(remote, 60, () =>
         dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
-          devicePath: PATHS[0],
-          pitchBendRange: 3,
+          ...PITCH_BEND_WRITE,
           expiresInMs: 40,
         }),
       ),
@@ -253,8 +238,7 @@ describe("remoteScript.device.simplerWrite", () => {
 
     expect(
       await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
-        devicePath: PATHS[0],
-        pitchBendRange: 3,
+        ...PITCH_BEND_WRITE,
       }),
     ).toStrictEqual({
       success: false,
@@ -268,17 +252,10 @@ describe("remoteScript.device.simplerWrite", () => {
 
     expect(
       await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
-        devicePath: PATHS[0],
-        pitchBendRange: 3,
+        ...PITCH_BEND_WRITE,
         expiresInMs: 0,
       }),
-    ).toStrictEqual({
-      success: true,
-      result: {
-        available: true,
-        error: "ran out of time before the request left",
-      },
-    });
+    ).toStrictEqual({ success: true, result: EXPIRED_UNSENT_ANSWER });
     expect(remote.requests).toStrictEqual([]);
   });
 
@@ -293,8 +270,7 @@ describe("remoteScript.device.simplerWrite", () => {
 
     expect(
       await dispatchNodeRoute(SIMPLER_SETTINGS_ROUTES.write, {
-        devicePath: PATHS[0],
-        pitchBendRange: 3,
+        ...PITCH_BEND_WRITE,
         expiresInMs: EXPIRES_IN_MS,
       }),
     ).toStrictEqual({

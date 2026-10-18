@@ -15,20 +15,17 @@ import {
   frozenDevice,
   useDeviceScratch,
 } from "./device-install-test-helpers.ts";
-
-const { findUserLibraryPath } = vi.hoisted(() => ({
-  findUserLibraryPath: vi.fn<() => Promise<string | null>>(),
-}));
+import { findUserLibraryPath } from "../../../live-library/query/user-library-path.ts";
 
 vi.mock(import("../../../live-library/query/user-library-path.ts"), () => ({
-  findUserLibraryPath,
+  findUserLibraryPath: vi.fn(),
 }));
 
 describe("deviceInstallStatus", () => {
   const scratch = useDeviceScratch();
 
   beforeEach(() => {
-    findUserLibraryPath.mockReset();
+    vi.mocked(findUserLibraryPath).mockReset();
     vi.mocked(Max.outlet).mockClear();
   });
 
@@ -36,7 +33,7 @@ describe("deviceInstallStatus", () => {
     const { library, runFromDownloads, installed } = scratch();
     const source = runFromDownloads(frozenDevice(VERSION));
 
-    findUserLibraryPath.mockResolvedValue(library);
+    vi.mocked(findUserLibraryPath).mockResolvedValue(library);
 
     expect(await deviceInstallStatus()).toStrictEqual({
       source,
@@ -58,7 +55,7 @@ describe("deviceInstallStatus", () => {
     runFromDownloads(frozenDevice(VERSION));
     put(installed, frozenDevice("0.0.1"));
     put(other, frozenDevice("0.0.1"));
-    findUserLibraryPath.mockResolvedValue(library);
+    vi.mocked(findUserLibraryPath).mockResolvedValue(library);
 
     const status = await deviceInstallStatus();
 
@@ -97,7 +94,7 @@ describe("deviceInstallStatus", () => {
     const { library, runFromDownloads } = scratch();
 
     runFromDownloads(developmentDevice());
-    findUserLibraryPath.mockResolvedValue(library);
+    vi.mocked(findUserLibraryPath).mockResolvedValue(library);
 
     expect(await deviceInstallStatus()).toStrictEqual(
       expect.objectContaining({
@@ -114,7 +111,7 @@ describe("deviceInstallStatus", () => {
     const missing = join(downloads, "gone.amxd");
 
     recordDeviceSource(missing);
-    findUserLibraryPath.mockResolvedValue(library);
+    vi.mocked(findUserLibraryPath).mockResolvedValue(library);
 
     expect(await deviceInstallStatus()).toStrictEqual(
       expect.objectContaining({
@@ -128,7 +125,7 @@ describe("deviceInstallStatus", () => {
   it("asks the device to report when it hasn't yet", async () => {
     const { library } = scratch();
 
-    findUserLibraryPath.mockResolvedValue(library);
+    vi.mocked(findUserLibraryPath).mockResolvedValue(library);
 
     expect(await deviceInstallStatus()).toStrictEqual(
       expect.objectContaining({
@@ -144,7 +141,7 @@ describe("deviceInstallStatus", () => {
     const { runFromDownloads } = scratch();
 
     runFromDownloads(frozenDevice(VERSION));
-    findUserLibraryPath.mockResolvedValue(null);
+    vi.mocked(findUserLibraryPath).mockResolvedValue(null);
 
     expect(await deviceInstallStatus()).toStrictEqual(
       expect.objectContaining({

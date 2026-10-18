@@ -63,6 +63,14 @@ async function settle(): Promise<void> {
 }
 
 /**
+ * A call that answers OK at once.
+ * @returns The wrapped call
+ */
+function instantCalls(): ReturnType<typeof withUndoStepEnd> {
+  return withUndoStepEnd(() => Promise.resolve(OK));
+}
+
+/**
  * A call that stays open until the test finishes it.
  * @returns The wrapped call, and a function that finishes the open call
  */
@@ -81,7 +89,7 @@ function deferredCalls(): {
 describe("withUndoStepEnd", () => {
   it("asks the remote script to end the undo step after a write call", async () => {
     const script = await startScript();
-    const call = withUndoStepEnd(() => Promise.resolve(OK));
+    const call = instantCalls();
 
     expect(await call("ppal-create-track", {})).toBe(OK);
     await vi.waitFor(() => expect(script.requests).toHaveLength(1));
@@ -96,7 +104,7 @@ describe("withUndoStepEnd", () => {
   it("does not wait for the remote script", async () => {
     await startScript(null);
 
-    const call = withUndoStepEnd(() => Promise.resolve(OK));
+    const call = instantCalls();
 
     expect(await call("ppal-create-track", {})).toBe(OK);
   });
@@ -132,7 +140,7 @@ describe("withUndoStepEnd", () => {
 
   it("sends an end for exactly the tools that can change the Set", async () => {
     const script = await startScript();
-    const call = withUndoStepEnd(() => Promise.resolve(OK));
+    const call = instantCalls();
     const names = [
       ...STANDARD_TOOL_DEFS.map((def) => def.toolName),
       "ppal-live-api",
@@ -181,7 +189,7 @@ describe("withUndoStepEnd", () => {
     "ppal-context %j sends an end: %s",
     async (args: Record<string, unknown>, ends: boolean) => {
       const script = await startScript();
-      const call = withUndoStepEnd(() => Promise.resolve(OK));
+      const call = instantCalls();
 
       await call("ppal-context", args);
       await settle();
@@ -202,7 +210,7 @@ describe("withUndoStepEnd", () => {
     "ppal-playback %j sends an end: %s",
     async (args: Record<string, unknown>, ends: boolean) => {
       const script = await startScript();
-      const call = withUndoStepEnd(() => Promise.resolve(OK));
+      const call = instantCalls();
 
       await call("ppal-playback", args);
       await settle();
@@ -236,7 +244,7 @@ describe("withUndoStepEnd", () => {
     "ppal-live-api %j sends an end: %s",
     async (args: Record<string, unknown>, ends: boolean) => {
       const script = await startScript();
-      const call = withUndoStepEnd(() => Promise.resolve(OK));
+      const call = instantCalls();
 
       await call("ppal-live-api", args);
       await settle();
@@ -246,7 +254,7 @@ describe("withUndoStepEnd", () => {
 
   it("never ends the step after ppal-manage", async () => {
     const script = await startScript();
-    const call = withUndoStepEnd(() => Promise.resolve(OK));
+    const call = instantCalls();
 
     await call("ppal-manage", { action: "undo" });
     await call("ppal-manage", { action: "redo" });
@@ -388,7 +396,7 @@ describe("withUndoStepEnd", () => {
 
   it("returns the result when the remote script drops the connection", async () => {
     const script = await startScript({ drop: true });
-    const call = withUndoStepEnd(() => Promise.resolve(OK));
+    const call = instantCalls();
 
     expect(await call("ppal-create-track", {})).toBe(OK);
     await vi.waitFor(() => expect(script.requests).toHaveLength(1));
@@ -397,7 +405,7 @@ describe("withUndoStepEnd", () => {
 
   it("returns the result when no remote script answers", async () => {
     // test-setup.ts points the client at a port nothing listens on.
-    const call = withUndoStepEnd(() => Promise.resolve(OK));
+    const call = instantCalls();
 
     expect(await call("ppal-create-track", {})).toBe(OK);
     await settle();

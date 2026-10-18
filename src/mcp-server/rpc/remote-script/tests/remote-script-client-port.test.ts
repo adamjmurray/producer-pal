@@ -14,6 +14,7 @@ import {
   type FakeAnswer,
   type FakeRemoteScript,
   type ReceivedRequest,
+  expectUnsentTimeout,
   startFakeRemoteScript,
 } from "./remote-script-test-helpers.ts";
 
@@ -313,13 +314,10 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
 
     it("gives up unsent when finding the port used the time up", async () => {
       const fake = await slowToFind();
-      const error: unknown = await remoteScriptRequest({
-        route: "/list",
-        expiresInMs: 300,
-      }).catch((caught: unknown) => caught);
 
-      expect(error).toBeInstanceOf(RemoteScriptTimeout);
-      expect(error).toHaveProperty("sent", false);
+      await expectUnsentTimeout(
+        remoteScriptRequest({ route: "/list", expiresInMs: 300 }),
+      );
       expect(fake.requests.map((r) => r.route)).toStrictEqual(["/ping"]);
     });
   });

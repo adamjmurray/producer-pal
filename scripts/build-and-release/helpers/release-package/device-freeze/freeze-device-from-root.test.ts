@@ -21,6 +21,7 @@ import {
 } from "./amxd-container.ts";
 import { DEV_BUILD_MARKER } from "../../build-flag-guard.ts";
 import { freezeDeviceFromRoot } from "./freeze-device-from-root.ts";
+import { readFrozenDirectory } from "./frozen-body-test-helpers.ts";
 
 const MAC_EPOCH_OFFSET = 2_082_844_800;
 const UNIX_TIME = 1_700_000_000;
@@ -75,19 +76,8 @@ function readEntries(
     string,
     { type: string; flag: number; mdat: number; data: Buffer }
   > = {};
-  const start = body.readUInt32BE(12);
 
-  for (let at = start + 8; at < body.length; at += body.readUInt32BE(at + 4)) {
-    const fields: Record<string, Buffer> = {};
-    const end = at + body.readUInt32BE(at + 4);
-
-    for (let f = at + 8; f < end; f += body.readUInt32BE(f + 4)) {
-      fields[body.toString("latin1", f, f + 4)] = body.subarray(
-        f + 8,
-        f + body.readUInt32BE(f + 4),
-      );
-    }
-
+  for (const fields of readFrozenDirectory(body)) {
     const offset = fields.of32!.readUInt32BE(0);
 
     entries[fields.fnam!.toString("latin1").replace(/\0+$/, "")] = {

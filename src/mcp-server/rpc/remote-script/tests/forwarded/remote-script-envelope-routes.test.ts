@@ -7,8 +7,9 @@ import { describe, expect, it } from "vitest";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import { dispatchNodeRoute } from "../../../../tests/config-dir-test-helpers.ts";
 import { registerRemoteScriptEnvelopeRoutes } from "../../forwarded/remote-script-envelope-routes.ts";
-import { CONNECTION_LOST } from "../../remote-script-errors.ts";
 import {
+  CONNECTION_LOST_ANSWER,
+  EXPIRED_UNSENT_ANSWER,
   OUTDATED_ANSWER,
   callUntilItTimesOut,
   unknownRouteAnswer,
@@ -27,6 +28,7 @@ const PARAMETER = {
 };
 
 const EXPIRES_IN_MS = 5000;
+const WRITE = { track: "t0", slot: 0, points: [{ time: 0, value: 0 }] };
 
 const answerWith = useFakeRemoteScriptRoutes(
   registerRemoteScriptEnvelopeRoutes,
@@ -115,19 +117,10 @@ describe("remoteScript.envelope failures", () => {
 
     expect(
       await dispatchNodeRoute(ENVELOPE_ROUTES.write, {
-        track: "t0",
-        slot: 0,
-        points: [{ time: 0, value: 0 }],
+        ...WRITE,
         expiresInMs: EXPIRES_IN_MS,
       }),
-    ).toStrictEqual({
-      success: true,
-      result: {
-        available: true,
-        error: CONNECTION_LOST,
-        unfinished: true,
-      },
-    });
+    ).toStrictEqual({ success: true, result: CONNECTION_LOST_ANSWER });
   });
 
   it("says a dropped connection is not a timeout for a read, and stops like no answer", async () => {
@@ -135,14 +128,7 @@ describe("remoteScript.envelope failures", () => {
 
     expect(
       await dispatchNodeRoute(ENVELOPE_ROUTES.list, { track: "t0", slot: 0 }),
-    ).toStrictEqual({
-      success: true,
-      result: {
-        available: true,
-        error: CONNECTION_LOST,
-        unfinished: true,
-      },
-    });
+    ).toStrictEqual({ success: true, result: CONNECTION_LOST_ANSWER });
   });
 
   it("calls a write the remote script never answered a timeout", async () => {
@@ -151,9 +137,7 @@ describe("remoteScript.envelope failures", () => {
     expect(
       await callUntilItTimesOut(remote, 60, () =>
         dispatchNodeRoute(ENVELOPE_ROUTES.write, {
-          track: "t0",
-          slot: 0,
-          points: [{ time: 0, value: 0 }],
+          ...WRITE,
           expiresInMs: 40,
         }),
       ),
@@ -215,9 +199,7 @@ describe("remoteScript.envelope.write", () => {
   it("says so when the remote script isn't running", async () => {
     expect(
       await dispatchNodeRoute(ENVELOPE_ROUTES.write, {
-        track: "t0",
-        slot: 0,
-        points: [{ time: 0, value: 0 }],
+        ...WRITE,
         expiresInMs: EXPIRES_IN_MS,
       }),
     ).toStrictEqual({ success: true, result: { available: false } });
@@ -263,12 +245,6 @@ describe("remoteScript.envelope.clear", () => {
 });
 
 describe("remoteScript.envelope changes carry an expiry", () => {
-  const WRITE = {
-    track: "t0",
-    slot: 0,
-    points: [{ time: 0, value: 0 }],
-  };
-
   it.each([
     ["write", WRITE],
     ["clear", { track: "t0", slot: 0 }],
@@ -297,13 +273,7 @@ describe("remoteScript.envelope changes carry an expiry", () => {
           ...WRITE,
           expiresInMs: 0,
         }),
-      ).toStrictEqual({
-        success: true,
-        result: {
-          available: true,
-          error: "ran out of time before the request left",
-        },
-      });
+      ).toStrictEqual({ success: true, result: EXPIRED_UNSENT_ANSWER });
       expect(remote.requests).toStrictEqual([]);
     },
   );

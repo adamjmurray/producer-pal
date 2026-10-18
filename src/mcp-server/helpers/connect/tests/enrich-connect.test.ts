@@ -13,6 +13,7 @@ import {
   useTempConfigDir,
 } from "#src/mcp-server/tests/config-dir-test-helpers.ts";
 import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { currentRemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/tests/remote-script-test-helpers.ts";
 import { type RemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { DEFAULT_NOTATION } from "#src/shared/notation.ts";
@@ -39,29 +40,6 @@ vi.mock(
 
 const getDir = useTempConfigDir();
 
-/**
- * A status for an installed, current script that Live is running.
- * @param overrides - Fields to change
- * @returns The status
- */
-function currentStatus(
-  overrides: Partial<RemoteScriptStatus> = {},
-): RemoteScriptStatus {
-  return {
-    userLibrary: "/lib",
-    installed: true,
-    installedVersion: VERSION,
-    bundledVersion: VERSION,
-    running: true,
-    runningVersion: VERSION,
-    liveVersion: "12.4.0",
-    otherOnPort: null,
-    updateAvailable: false,
-    installedNewer: false,
-    ...overrides,
-  };
-}
-
 beforeEach(() => {
   remoteScriptPing.mockReset();
   remoteScriptStatus.mockReset();
@@ -72,7 +50,7 @@ beforeEach(() => {
     userLibrary: null,
     otherOnPort: null,
   });
-  remoteScriptStatus.mockResolvedValue(currentStatus());
+  remoteScriptStatus.mockResolvedValue(currentRemoteScriptStatus());
 });
 
 /**
@@ -130,7 +108,10 @@ describe("enrichConnect", () => {
 
   it("puts the remote script line after the portal line and before the skills", async () => {
     remoteScriptStatus.mockResolvedValue(
-      currentStatus({ installedVersion: "0.0.1", updateAvailable: true }),
+      currentRemoteScriptStatus({
+        installedVersion: "0.0.1",
+        updateAvailable: true,
+      }),
     );
 
     const blocks = await enrichedBlocks({ portalVersion: "1.0.0" });
@@ -167,7 +148,9 @@ describe("enrichConnect", () => {
     async function lineFor(
       overrides: Partial<ConnectEnrichmentConfig>,
     ): Promise<string | undefined> {
-      remoteScriptStatus.mockResolvedValue(currentStatus(NOT_INSTALLED));
+      remoteScriptStatus.mockResolvedValue(
+        currentRemoteScriptStatus(NOT_INSTALLED),
+      );
 
       const blocks = await enrichedBlocks(overrides);
 

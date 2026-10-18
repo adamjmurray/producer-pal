@@ -10,10 +10,10 @@ import {
   remoteScriptRequest,
   resolveRemoteScriptPort,
 } from "../remote-script-client.ts";
-import { RemoteScriptTimeout } from "../remote-script-errors.ts";
 import { setRemoteScriptMinVersion } from "../port/remote-script-version.ts";
 import {
   type FakeRemoteScript,
+  expectUnsentTimeout,
   startFakeRemoteScript,
   unknownRouteAnswer,
 } from "./remote-script-test-helpers.ts";
@@ -198,13 +198,10 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
     ports.file = fake.port;
 
     const started = Date.now();
-    const error: unknown = await remoteScriptRequest({
-      route: "/list",
-      expiresInMs: 300,
-    }).catch((caught: unknown) => caught);
 
-    expect(error).toBeInstanceOf(RemoteScriptTimeout);
-    expect(error).toHaveProperty("sent", false);
+    await expectUnsentTimeout(
+      remoteScriptRequest({ route: "/list", expiresInMs: 300 }),
+    );
     expect(Date.now() - started).toBeLessThan(800);
   });
 

@@ -8,10 +8,16 @@ import http from "node:http";
 import { type AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, expect, vi } from "vitest";
+import { VERSION } from "#src/shared/config.ts";
 import { outdatedReason } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import { clearNodeRoutes } from "../../node-request-protocol.ts";
 import { MIN_REMOTE_SCRIPT_VERSION } from "../port/remote-script-version.ts";
+import {
+  CONNECTION_LOST,
+  RemoteScriptTimeout,
+} from "../remote-script-errors.ts";
+import { type RemoteScriptStatus } from "../remote-script-status.ts";
 
 /**
  * Make a throwaway directory to stand in for the User Library.
@@ -35,11 +41,60 @@ export function unknownRouteAnswer(route: string): FakeAnswer {
   };
 }
 
+/**
+ * A status for an installed, current script that Live is running.
+ * @param overrides - Fields to change
+ * @returns The status
+ */
+export function currentRemoteScriptStatus(
+  overrides: Partial<RemoteScriptStatus> = {},
+): RemoteScriptStatus {
+  return {
+    userLibrary: "/lib",
+    installed: true,
+    installedVersion: VERSION,
+    bundledVersion: VERSION,
+    running: true,
+    runningVersion: VERSION,
+    liveVersion: "12.4.0",
+    otherOnPort: null,
+    updateAvailable: false,
+    installedNewer: false,
+    ...overrides,
+  };
+}
+
 /** What a route answers when a script of unknown version lacks the route. */
 export const OUTDATED_ANSWER = {
   available: false,
   outdated: outdatedReason(null, MIN_REMOTE_SCRIPT_VERSION),
 };
+
+/** What a write answers when the connection drops: it may have landed. */
+export const CONNECTION_LOST_ANSWER = {
+  available: true,
+  error: CONNECTION_LOST,
+  unfinished: true,
+};
+
+/** What a route answers when its expiry ran out before anything was sent. */
+export const EXPIRED_UNSENT_ANSWER = {
+  available: true,
+  error: "ran out of time before the request left",
+};
+
+/**
+ * Expect a request to time out before anything was sent.
+ * @param request - The request
+ */
+export async function expectUnsentTimeout(
+  request: Promise<unknown>,
+): Promise<void> {
+  const error = await request.catch((caught: unknown) => caught);
+
+  expect(error).toBeInstanceOf(RemoteScriptTimeout);
+  expect(error).toHaveProperty("sent", false);
+}
 
 /** One request the stand-in remote script received. */
 export interface ReceivedRequest {

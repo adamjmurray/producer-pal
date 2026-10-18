@@ -9,6 +9,7 @@ import { dispatchNodeRoute } from "../../../tests/config-dir-test-helpers.ts";
 import { setRunningLiveMajor } from "../../../live-library/live-db-path.ts";
 import { registerRemoteScriptRoutes } from "../remote-script-routes.ts";
 import {
+  EXPIRED_UNSENT_ANSWER,
   OUTDATED_ANSWER,
   unknownRouteAnswer,
   callUntilItTimesOut,
@@ -229,13 +230,7 @@ describe("remoteScript.load", () => {
         ...LOAD_ARGS,
         expiresInMs: 0,
       }),
-    ).toStrictEqual({
-      success: true,
-      result: {
-        available: true,
-        error: "ran out of time before the request left",
-      },
-    });
+    ).toStrictEqual({ success: true, result: EXPIRED_UNSENT_ANSWER });
     expect(remote.requests).toStrictEqual([]);
   });
 

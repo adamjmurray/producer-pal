@@ -26,14 +26,11 @@ import {
   startMarkdownRouteServer,
 } from "../../tests/config-dir-test-helpers.ts";
 import { registerDeviceInstallRoutes } from "../device-install-route.ts";
-
-const { findUserLibraryPath } = vi.hoisted(() => ({
-  findUserLibraryPath: vi.fn<() => Promise<string | null>>(),
-}));
+import { findUserLibraryPath } from "../../live-library/query/user-library-path.ts";
 
 // The real lookup reads Live's browser database off the developer's machine.
 vi.mock(import("../../live-library/query/user-library-path.ts"), () => ({
-  findUserLibraryPath,
+  findUserLibraryPath: vi.fn(),
 }));
 
 // The real ones would talk to a Live running on the developer's machine.
@@ -84,7 +81,9 @@ describe("device-install routes", () => {
   beforeEach(async () => {
     fault.copy = false;
     fault.stat = false;
-    findUserLibraryPath.mockReset().mockResolvedValue(scratch().library);
+    vi.mocked(findUserLibraryPath)
+      .mockReset()
+      .mockResolvedValue(scratch().library);
     vi.mocked(remoteScriptPing).mockReset().mockResolvedValue(RUNNING_PING);
     vi.mocked(remoteScriptRequest).mockReset();
     vi.mocked(Max.outlet).mockClear();

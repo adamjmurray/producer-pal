@@ -9,6 +9,7 @@ import {
   fakeInnerCall,
 } from "#src/mcp-server/tests/config-dir-test-helpers.ts";
 import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { currentRemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/tests/remote-script-test-helpers.ts";
 import { type RemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { withRemoteScriptNotice } from "../remote-script-notice-inject.ts";
@@ -44,29 +45,6 @@ const PING: RemoteScriptPing = {
 };
 
 /**
- * A status for an installed, current script that Live is running.
- * @param overrides - Fields to change
- * @returns The status
- */
-function status(
-  overrides: Partial<RemoteScriptStatus> = {},
-): RemoteScriptStatus {
-  return {
-    userLibrary: "/lib",
-    installed: true,
-    installedVersion: VERSION,
-    bundledVersion: VERSION,
-    running: true,
-    runningVersion: VERSION,
-    liveVersion: "12.4.0",
-    otherOnPort: null,
-    updateAvailable: false,
-    installedNewer: false,
-    ...overrides,
-  };
-}
-
-/**
  * Run withRemoteScriptNotice over a ppal-connect call.
  * @param getPing - Reads the ping
  * @param manage - Whether the caller can use ppal-manage
@@ -99,7 +77,10 @@ const INSTALL = 'ppal-manage action "install-remote-script"';
 describe("withRemoteScriptNotice", () => {
   it("tells the model to reinstall an installed script older than this build", async () => {
     remoteScriptStatus.mockResolvedValue(
-      status({ installedVersion: "2.3.0", updateAvailable: true }),
+      currentRemoteScriptStatus({
+        installedVersion: "2.3.0",
+        updateAvailable: true,
+      }),
     );
 
     const content = await connectThrough();
@@ -113,7 +94,10 @@ describe("withRemoteScriptNotice", () => {
 
   it("points at the Chat UI to update when ppal-manage is unavailable", async () => {
     remoteScriptStatus.mockResolvedValue(
-      status({ installedVersion: "2.3.0", updateAvailable: true }),
+      currentRemoteScriptStatus({
+        installedVersion: "2.3.0",
+        updateAvailable: true,
+      }),
     );
 
     const content = await connectThrough(undefined, false);
@@ -126,7 +110,10 @@ describe("withRemoteScriptNotice", () => {
 
   it("says so when the installed version can't be read", async () => {
     remoteScriptStatus.mockResolvedValue(
-      status({ installedVersion: null, updateAvailable: true }),
+      currentRemoteScriptStatus({
+        installedVersion: null,
+        updateAvailable: true,
+      }),
     );
 
     const content = await connectThrough();
@@ -138,7 +125,7 @@ describe("withRemoteScriptNotice", () => {
 
   it("tells the model how to install a script that isn't installed", async () => {
     remoteScriptStatus.mockResolvedValue(
-      status({
+      currentRemoteScriptStatus({
         installed: false,
         installedVersion: null,
         running: false,
@@ -155,7 +142,7 @@ describe("withRemoteScriptNotice", () => {
 
   it("points at the Chat UI to install when ppal-manage is unavailable", async () => {
     remoteScriptStatus.mockResolvedValue(
-      status({
+      currentRemoteScriptStatus({
         installed: false,
         installedVersion: null,
         running: false,
@@ -172,7 +159,7 @@ describe("withRemoteScriptNotice", () => {
 
   it("only gives the version when a copy Live runs isn't found installed", async () => {
     remoteScriptStatus.mockResolvedValue(
-      status({ installed: false, installedVersion: null }),
+      currentRemoteScriptStatus({ installed: false, installedVersion: null }),
     );
 
     const content = await connectThrough();
@@ -182,7 +169,7 @@ describe("withRemoteScriptNotice", () => {
 
   it("says the script isn't running without suggesting a reinstall", async () => {
     remoteScriptStatus.mockResolvedValue(
-      status({ running: false, runningVersion: null }),
+      currentRemoteScriptStatus({ running: false, runningVersion: null }),
     );
 
     for (const manage of [true, false]) {
@@ -195,7 +182,9 @@ describe("withRemoteScriptNotice", () => {
   });
 
   it("tells the user to restart Live when it runs an older copy than the installed one", async () => {
-    remoteScriptStatus.mockResolvedValue(status({ runningVersion: "2.3.0" }));
+    remoteScriptStatus.mockResolvedValue(
+      currentRemoteScriptStatus({ runningVersion: "2.3.0" }),
+    );
 
     const content = await connectThrough();
 
@@ -205,7 +194,9 @@ describe("withRemoteScriptNotice", () => {
   });
 
   it("tells the user to restart Live when it runs a newer copy than the installed one", async () => {
-    remoteScriptStatus.mockResolvedValue(status({ runningVersion: "999.0.0" }));
+    remoteScriptStatus.mockResolvedValue(
+      currentRemoteScriptStatus({ runningVersion: "999.0.0" }),
+    );
 
     const content = await connectThrough();
 
@@ -215,7 +206,7 @@ describe("withRemoteScriptNotice", () => {
   });
 
   it("hands the ping it was given to the status read", async () => {
-    remoteScriptStatus.mockResolvedValue(status());
+    remoteScriptStatus.mockResolvedValue(currentRemoteScriptStatus());
 
     await connectThrough();
 
@@ -223,7 +214,7 @@ describe("withRemoteScriptNotice", () => {
   });
 
   it("gives just the version when the script is current and running", async () => {
-    remoteScriptStatus.mockResolvedValue(status());
+    remoteScriptStatus.mockResolvedValue(currentRemoteScriptStatus());
 
     const content = await connectThrough();
 
@@ -232,7 +223,9 @@ describe("withRemoteScriptNotice", () => {
   });
 
   it("says only that it is running when the running version is unknown", async () => {
-    remoteScriptStatus.mockResolvedValue(status({ runningVersion: null }));
+    remoteScriptStatus.mockResolvedValue(
+      currentRemoteScriptStatus({ runningVersion: null }),
+    );
 
     const content = await connectThrough();
 
@@ -241,7 +234,7 @@ describe("withRemoteScriptNotice", () => {
 
   it("names the port when another program answers on it", async () => {
     remoteScriptStatus.mockResolvedValue(
-      status({
+      currentRemoteScriptStatus({
         running: false,
         runningVersion: null,
         otherOnPort: 3349,
@@ -259,7 +252,7 @@ describe("withRemoteScriptNotice", () => {
 
   it("adds nothing when installed newer than this build and running", async () => {
     remoteScriptStatus.mockResolvedValue(
-      status({
+      currentRemoteScriptStatus({
         installedVersion: "999.0.0",
         runningVersion: "999.0.0",
         installedNewer: true,
@@ -298,7 +291,9 @@ describe("withRemoteScriptNotice", () => {
   });
 
   it("leaves other tools alone", async () => {
-    remoteScriptStatus.mockResolvedValue(status({ runningVersion: "2.3.0" }));
+    remoteScriptStatus.mockResolvedValue(
+      currentRemoteScriptStatus({ runningVersion: "2.3.0" }),
+    );
 
     const result = await withRemoteScriptNotice(
       fakeInnerCall(connectResponse()),

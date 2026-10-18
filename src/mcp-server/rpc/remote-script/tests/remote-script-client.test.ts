@@ -18,6 +18,7 @@ import {
   type FakeAnswer,
   type FakeRemoteScript,
   callUntilItTimesOut,
+  expectUnsentTimeout,
   startFakeRemoteScript,
 } from "./remote-script-test-helpers.ts";
 
@@ -181,13 +182,10 @@ describe("remoteScriptRequest", () => {
 
     it.each([0, -5])("sends nothing at %s", async (expiresInMs) => {
       const remote = await answerWith({ body: { ok: true } });
-      const error = await remoteScriptRequest({
-        route: "/list",
-        expiresInMs,
-      }).catch((caught: unknown) => caught);
 
-      expect(error).toBeInstanceOf(RemoteScriptTimeout);
-      expect(error).toHaveProperty("sent", false);
+      await expectUnsentTimeout(
+        remoteScriptRequest({ route: "/list", expiresInMs }),
+      );
       expect(remote.requests).toStrictEqual([]);
     });
   });

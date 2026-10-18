@@ -20,13 +20,10 @@ import {
   frozenDevice,
   useDeviceScratch,
 } from "./device-install-test-helpers.ts";
-
-const { findUserLibraryPath } = vi.hoisted(() => ({
-  findUserLibraryPath: vi.fn<() => Promise<string | null>>(),
-}));
+import { findUserLibraryPath } from "../../../live-library/query/user-library-path.ts";
 
 vi.mock(import("../../../live-library/query/user-library-path.ts"), () => ({
-  findUserLibraryPath,
+  findUserLibraryPath: vi.fn(),
 }));
 
 // The real check would ask GitHub.
@@ -95,6 +92,9 @@ function summarize(install: RunningDeviceInstall): {
   };
 }
 
+/** A failed install that changed nothing, as summarize() reads it. */
+const FAILED = { status: "failed", outcome: "failed", changed: false };
+
 describe("installRunningDevice", () => {
   const scratch = useDeviceScratch();
 
@@ -102,7 +102,7 @@ describe("installRunningDevice", () => {
     fault.copy = false;
     fault.rename = false;
     fault.readsLeft = undefined;
-    findUserLibraryPath.mockReset();
+    vi.mocked(findUserLibraryPath).mockReset();
     vi.mocked(Max.outlet).mockClear();
   });
 
@@ -110,7 +110,7 @@ describe("installRunningDevice", () => {
     const { library, runFromDownloads, installed } = scratch();
     const bytes = frozenDevice(VERSION);
 
-    findUserLibraryPath.mockResolvedValue(library);
+    vi.mocked(findUserLibraryPath).mockResolvedValue(library);
     installRemoteScript(library);
     runFromDownloads(bytes);
 
@@ -130,7 +130,7 @@ describe("installRunningDevice", () => {
   it("keeps the notice up after the copy while the remote script is still missing", async () => {
     const { library, runFromDownloads } = scratch();
 
-    findUserLibraryPath.mockResolvedValue(library);
+    vi.mocked(findUserLibraryPath).mockResolvedValue(library);
     runFromDownloads(frozenDevice(VERSION));
     installRunningDevice(library);
 
@@ -284,11 +284,7 @@ describe("installRunningDevice", () => {
 
     const result = installRunningDevice(library);
 
-    expect(summarize(result)).toStrictEqual({
-      status: "failed",
-      outcome: "failed",
-      changed: false,
-    });
+    expect(summarize(result)).toStrictEqual(FAILED);
     expect(result).toHaveProperty("error", expect.stringContaining("ENOSPC"));
     expect(readFileSync(installed).equals(old)).toBe(true);
     // The half-written temp file is gone.
@@ -306,11 +302,7 @@ describe("installRunningDevice", () => {
 
     const result = installRunningDevice(library);
 
-    expect(summarize(result)).toStrictEqual({
-      status: "failed",
-      outcome: "failed",
-      changed: false,
-    });
+    expect(summarize(result)).toStrictEqual(FAILED);
     expect(result).toHaveProperty(
       "error",
       expect.stringContaining("may be open in Live"),
