@@ -27,6 +27,7 @@ import {
 import { mockWorkingDeviceMoves } from "#src/tools/device/update/tests/update-device-test-helpers.ts";
 import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { createDevice } from "../../create-device.ts";
+import { registerTempTrack, TEMP_TRACK } from "./temp-track-test-helpers.ts";
 
 /** What the remote script is told to say when it is too old. */
 const OUTDATED =
@@ -42,7 +43,6 @@ const ITEM = {
   path: "VST3/FabFilter/Pro-Q 4",
   name: "Pro-Q 4",
 };
-const TEMP_TRACK = livePath.track(1);
 
 let liveSet: RegisteredMockObject;
 let track: RegisteredMockObject;
@@ -115,7 +115,6 @@ describe("createDevice — a plug-in or Max for Live device", () => {
   beforeEach(() => {
     loads = 0;
     liveSet = mockWorkingDeviceMoves();
-    liveSet.methods.create_midi_track = () => ["id", "temp-track"];
     liveSet.methods.delete_track = vi.fn();
     track = registerMockObject("track-0", {
       path: livePath.track(0),
@@ -123,13 +122,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
       properties: { devices: children("existing") },
     });
     registerMockObject("existing", { path: livePath.track(0).device(0) });
-    tempTrack = registerMockObject("temp-track", {
-      path: TEMP_TRACK,
-      type: "Track",
-      properties: { devices: [] },
-    });
-    registerMockObject("selected-track", { path: livePath.view.selectedTrack });
-    songView = registerMockObject("song-view", { path: livePath.view.song });
+    ({ tempTrack, songView } = registerTempTrack(liveSet));
     answerRemoteScript();
   });
 

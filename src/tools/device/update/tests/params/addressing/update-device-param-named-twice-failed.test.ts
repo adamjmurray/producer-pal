@@ -6,47 +6,19 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
-  children,
-  livePath,
   paramsOf,
-  registerMockObject,
   updateDevice,
 } from "../../update-device-test-helpers.ts";
+import { registerDeviceAtD2 } from "./param-addressing-fixtures.ts";
 
 describe("updateDevice - a param named twice, the last one failing", () => {
   let paramThreshold: RegisteredMockObject;
 
   beforeEach(() => {
-    registerMockObject("125", {
-      path: livePath.track(0).device(2),
-      type: "Device",
-      properties: { parameters: children("789", "p-other") },
-    });
-
-    paramThreshold = registerMockObject("789", {
-      path: livePath.track(0).device(2).parameter(0),
-      type: "DeviceParameter",
-      properties: {
-        name: "Threshold",
-        original_name: "Threshold",
-        is_quantized: 0,
-        value: 0.5,
-        min: 0,
-        max: 1,
-      },
-    });
-    registerMockObject("p-other", {
-      path: livePath.track(0).device(2).parameter(1),
-      type: "DeviceParameter",
-      properties: {
-        name: "Other",
-        original_name: "Other",
-        is_quantized: 0,
-        value: 0.5,
-        min: 0,
-        max: 1,
-      },
-    });
+    [paramThreshold] = registerDeviceAtD2(
+      { id: "789", name: "Threshold" },
+      { id: "p-other", name: "Other" },
+    ) as [RegisteredMockObject];
   });
 
   it("fails the earlier entry when the later value is invalid", () => {

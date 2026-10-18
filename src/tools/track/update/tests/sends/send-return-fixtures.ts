@@ -8,21 +8,23 @@ import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 /**
- * Registers a live set with two return tracks: A-Reverb and B-Delay.
+ * Registers a live set with return tracks `return_A`, `return_B`, and so on.
+ * @param names - Their names, in order
  */
-export function registerReturnTracks(): void {
+export function registerReturnTracks(...names: string[]): void {
+  const idOf = (index: number): string => `return_${"ABCDEFGH"[index]}`;
+
   registerMockObject("liveSet", {
     path: livePath.liveSet,
-    properties: { return_tracks: children("return_A", "return_B") },
+    properties: { return_tracks: children(...names.map((_, i) => idOf(i))) },
   });
-  registerMockObject("return_A", {
-    path: livePath.returnTrack(0),
-    properties: { name: "A-Reverb" },
-  });
-  registerMockObject("return_B", {
-    path: livePath.returnTrack(1),
-    properties: { name: "B-Delay" },
-  });
+
+  for (const [index, name] of names.entries()) {
+    registerMockObject(idOf(index), {
+      path: livePath.returnTrack(index),
+      properties: { name },
+    });
+  }
 }
 
 /**

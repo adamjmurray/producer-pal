@@ -40,6 +40,19 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/**
+ * Register Drift at t0/d0.
+ * @returns The device
+ */
+function driftDevice(): LiveAPI {
+  registerMockObject("drift", {
+    path: livePath.track(0).device(0),
+    properties: { name: "Drift" },
+  });
+
+  return LiveAPI.from("drift");
+}
+
 describe("resolveBrowserPreset", () => {
   it("says the lookup ran out of time when V8 stopped waiting for it", async () => {
     let now = 1000;
@@ -81,17 +94,8 @@ describe("resolveBrowserPreset", () => {
 });
 
 describe("hotswapPreset", () => {
-  const device = (): LiveAPI => {
-    registerMockObject("drift", {
-      path: livePath.track(0).device(0),
-      properties: { name: "Drift" },
-    });
-
-    return LiveAPI.from("drift");
-  };
-
   it("sends nothing once the request is out of time", async () => {
-    const result = await hotswapPreset(device(), PRESET, Date.now() - 1);
+    const result = await hotswapPreset(driftDevice(), PRESET, Date.now() - 1);
 
     expect(result).toStrictEqual({ error: unreachedDetail("target") });
     expect(requestNode).not.toHaveBeenCalled();
@@ -100,7 +104,7 @@ describe("hotswapPreset", () => {
   it("says the remote script returned nothing when a failure gives no reason", async () => {
     vi.mocked(requestNode).mockResolvedValue({ success: false });
 
-    expect(await hotswapPreset(device(), PRESET, null)).toStrictEqual({
+    expect(await hotswapPreset(driftDevice(), PRESET, null)).toStrictEqual({
       error: "the remote script returned nothing",
     });
   });
@@ -108,10 +112,8 @@ describe("hotswapPreset", () => {
 
 describe("hotswapPreset when the connection dropped after the request went out", () => {
   it("says Live may have loaded it anyway", async () => {
-    registerMockObject("drift", {
-      path: livePath.track(0).device(0),
-      properties: { name: "Drift" },
-    });
+    const drift = driftDevice();
+
     vi.mocked(requestNode).mockResolvedValue({
       success: true,
       result: {
@@ -121,9 +123,7 @@ describe("hotswapPreset when the connection dropped after the request went out",
       },
     });
 
-    expect(
-      await hotswapPreset(LiveAPI.from("drift"), PRESET, null),
-    ).toStrictEqual({
+    expect(await hotswapPreset(drift, PRESET, null)).toStrictEqual({
       error: `${CONNECTION_LOST}; Live may have loaded it anyway, so check the device before re-running`,
       unfinished: true,
     });
@@ -132,18 +132,17 @@ describe("hotswapPreset when the connection dropped after the request went out",
 
 describe("hotswapPreset after Live changed the device", () => {
   it("passes on that the device changed", async () => {
-    registerMockObject("drift", {
-      path: livePath.track(0).device(0),
-      properties: { name: "Drift" },
-    });
+    const drift = driftDevice();
+
     vi.mocked(requestNode).mockResolvedValue({
       success: true,
       result: { available: true, error: "slot is now empty", changed: true },
     });
 
-    expect(
-      await hotswapPreset(LiveAPI.from("drift"), PRESET, null),
-    ).toStrictEqual({ error: "slot is now empty", changed: true });
+    expect(await hotswapPreset(drift, PRESET, null)).toStrictEqual({
+      error: "slot is now empty",
+      changed: true,
+    });
   });
 });
 

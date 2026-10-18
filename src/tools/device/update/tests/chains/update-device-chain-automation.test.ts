@@ -5,22 +5,20 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   automatedParam,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "../../update-device.ts";
+import {
+  NOT_OVERRIDING_CASES,
+  OVERRIDDEN,
+} from "#src/tools/shared/arrangement/tracks/tests/automation-override-test-helpers.ts";
+import { registerChainMixer } from "./chain-mixer-test-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
-const OVERRIDDEN =
-  "arrangement automation overridden — Live ignores it until Re-Enable Automation";
-
 describe("updateDevice - chain mixer with arrangement automation", () => {
-  const rackPath = livePath.track(0).device(0);
-  const chainPath = rackPath.chain(0);
-  const mixerPath = `${chainPath} mixer_device`;
   let chain: RegisteredMockObject;
   let volume: RegisteredMockObject;
   let panning: RegisteredMockObject;
@@ -28,28 +26,7 @@ describe("updateDevice - chain mixer with arrangement automation", () => {
   let send: RegisteredMockObject;
 
   beforeEach(() => {
-    chain = registerMockObject("chain-0", { path: chainPath, type: "Chain" });
-    registerMockObject("mixer-0", {
-      path: mixerPath,
-      properties: { sends: children("send-0") },
-    });
-    send = registerMockObject("send-0");
-    registerMockObject("rack-0", {
-      path: rackPath,
-      properties: { return_chains: children("rc-0") },
-    });
-    registerMockObject("rc-0", { properties: { name: "a Reverb" } });
-    volume = registerMockObject("volume-0", {
-      path: `${mixerPath} volume`,
-      properties: { display_value: 0 },
-    });
-    panning = registerMockObject("panning-0", {
-      path: `${mixerPath} panning`,
-      properties: { value: 0 },
-    });
-    activator = registerMockObject("activator-0", {
-      path: `${mixerPath} chain_activator`,
-    });
+    ({ chain, volume, panning, activator, send } = registerChainMixer("Chain"));
   });
 
   it("says so for gain and pan on the chain's entry", () => {
@@ -122,11 +99,7 @@ describe("updateDevice - chain mixer with arrangement automation", () => {
     ]);
   });
 
-  it.each([
-    ["already overridden", 2, true],
-    ["no lane, or unknown while playing from Session", 0, true],
-    ["a lane whose value the write left as it was", 1, false],
-  ])("says nothing for %s", (_, state, changes) => {
+  it.each(NOT_OVERRIDING_CASES)("says nothing for %s", (_, state, changes) => {
     automatedParam(volume, state, changes);
     automatedParam(send, state, changes);
     automatedParam(activator, state, changes, chain);

@@ -17,13 +17,16 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { mockWorkingDeviceMoves } from "#src/tools/device/update/tests/update-device-test-helpers.ts";
 import { createDevice } from "../../create-device.ts";
+import {
+  registerTempTrack,
+  TEMP_TRACK,
+} from "../browser/temp-track-test-helpers.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),
   handleNodeResponse: vi.fn(),
 }));
 
-const TEMP_TRACK = livePath.track(1);
 const REFUSED =
   'group track t0 (id group) takes only audio effects; "Pro-Q 4" ';
 
@@ -64,7 +67,6 @@ function answerRemoteScript(
 describe("createDevice — a browser device the place can't take", () => {
   beforeEach(() => {
     liveSet = mockWorkingDeviceMoves();
-    liveSet.methods.create_midi_track = vi.fn(() => ["id", "temp-track"]);
     liveSet.methods.delete_track = vi.fn();
     registerMockObject("group", {
       path: livePath.track(0),
@@ -76,13 +78,7 @@ describe("createDevice — a browser device the place can't take", () => {
       },
     });
     registerMockObject("existing", { path: livePath.track(0).device(0) });
-    tempTrack = registerMockObject("temp-track", {
-      path: TEMP_TRACK,
-      type: "Track",
-      properties: { devices: [] },
-    });
-    registerMockObject("selected-track", { path: livePath.view.selectedTrack });
-    registerMockObject("song-view", { path: livePath.view.song });
+    ({ tempTrack } = registerTempTrack(liveSet));
   });
 
   it("refuses an item of a known kind before loading it", async () => {

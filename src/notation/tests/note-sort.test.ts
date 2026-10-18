@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
+import { seededRandom } from "#src/test/test-data-builders.ts";
 import { dedupeNotesKeepingLast, isSameSlot } from "../note-sort.ts";
 
 // SAME_TIME_EPSILON is 0.001. The boundary is what the three callers must agree
@@ -62,21 +63,6 @@ function dedupeReference(notes: Slot[]): Slot[] {
 
     return kept;
   }, []);
-}
-
-// Small seeded generator (mulberry32) so failures reproduce.
-function seededRandom(seed: number): () => number {
-  let state = seed;
-
-  return () => {
-    state = (state + 0x6d2b79f5) | 0;
-
-    let t = Math.imul(state ^ (state >>> 15), 1 | state);
-
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 function randomNotes(seed: number, count: number): Slot[] {

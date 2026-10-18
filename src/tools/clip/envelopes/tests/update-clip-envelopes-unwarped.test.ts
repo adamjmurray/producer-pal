@@ -13,6 +13,10 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  answerEnvelopeRoutes,
+  envelopeRoutesCalled,
+} from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import {
   setupAudioClipMock,
@@ -44,20 +48,8 @@ describe("updateClip - envelopes on an audio clip", () => {
       path: livePath.track(0).device(0).parameter(2),
     });
     mockNonExistentObjects();
-    vi.mocked(requestNode).mockReset();
-    vi.mocked(requestNode).mockResolvedValue({
-      success: true,
-      result: { available: true, result: { cleared: true } },
-    });
+    answerEnvelopeRoutes({ cleared: true });
   });
-
-  /**
-   * The routes called, in order.
-   * @returns The route names
-   */
-  function routesCalled(): unknown[] {
-    return vi.mocked(requestNode).mock.calls.map((call) => call[0]);
-  }
 
   it("writes to a warped audio clip", async () => {
     setupAudioClipMock(mocks.clip123, { warping: 1 });
@@ -67,7 +59,7 @@ describe("updateClip - envelopes on an audio clip", () => {
       envelopes: `volume: ${NOTATION}`,
     });
 
-    expect(routesCalled()).toStrictEqual([ENVELOPE_ROUTES.write]);
+    expect(envelopeRoutesCalled()).toStrictEqual([ENVELOPE_ROUTES.write]);
     expect(result).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
   });
 
@@ -96,7 +88,7 @@ describe("updateClip - envelopes on an audio clip", () => {
       envelopes: `volume: ${NOTATION}\n${FILTER_ID}:\npan: ${NOTATION}`,
     });
 
-    expect(routesCalled()).toStrictEqual([ENVELOPE_ROUTES.clear]);
+    expect(envelopeRoutesCalled()).toStrictEqual([ENVELOPE_ROUTES.clear]);
     expect(result).toStrictEqual(
       expect.objectContaining({
         envelopes: 1,
@@ -132,7 +124,7 @@ describe("updateClip - envelopes on an audio clip", () => {
       envelopes: `volume: ${NOTATION}`,
     });
 
-    expect(routesCalled()).toStrictEqual([ENVELOPE_ROUTES.write]);
+    expect(envelopeRoutesCalled()).toStrictEqual([ENVELOPE_ROUTES.write]);
     expect(result).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
   });
 });

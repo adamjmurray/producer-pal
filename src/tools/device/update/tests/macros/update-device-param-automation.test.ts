@@ -9,13 +9,12 @@ import {
   children,
   livePath,
   registerContinuousParam,
+  registerVariationRack,
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
 import { automatedParam } from "#src/test/mocks/mock-registry.ts";
-
-const OVERRIDDEN =
-  "arrangement automation overridden — Live ignores it until Re-Enable Automation";
+import { OVERRIDDEN } from "#src/tools/shared/arrangement/tracks/tests/automation-override-test-helpers.ts";
 
 /**
  * Register a device whose params are continuous 0..1 and not automated yet.
@@ -80,21 +79,7 @@ describe("updateDevice - params with arrangement automation", () => {
     const macro = registerContinuousParam("macro-1", { name: "Macro 1" });
 
     automatedParam(macro);
-    registerMockObject("rack", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: {
-        can_have_chains: 1,
-        variation_count: 3,
-        selected_variation_index: 0,
-        parameters: children("macro-1"),
-      },
-      methods: {
-        recall_selected_variation: () => {
-          macro.properties.value = 0.9;
-        },
-      },
-    });
+    registerVariationRack(macro);
 
     const result = updateDevice({
       id: "rack",

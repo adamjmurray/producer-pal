@@ -11,9 +11,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
-
-const OVERRIDDEN =
-  "arrangement automation overridden — Live ignores it until Re-Enable Automation";
+import { OVERRIDDEN } from "#src/tools/shared/arrangement/tracks/tests/automation-override-test-helpers.ts";
 
 describe("updateLiveSet - tempo automation", () => {
   let liveSet: RegisteredMockObject;

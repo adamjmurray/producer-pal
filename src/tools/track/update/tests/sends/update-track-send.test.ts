@@ -32,7 +32,7 @@ describe("updateTrack - send properties", () => {
     registerTwoTracksWithSends(["send_1", "send_2"], ["send_3", "send_4"]);
     track123 = lookupMockObject("123") as RegisteredMockObject;
 
-    registerReturnTracks();
+    registerReturnTracks("A-Reverb", "B-Delay");
 
     send1 = registerMockObject("send_1", {});
     send2 = registerMockObject("send_2", {});

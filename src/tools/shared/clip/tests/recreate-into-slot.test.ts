@@ -5,7 +5,6 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   lookupMockObject,
   mockNonExistentObjects,
@@ -14,6 +13,7 @@ import {
 import { copyClipToSlot } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { recreateClipInSlot } from "#src/tools/shared/clip/recreate-clip.ts";
 import { recreateIntoSlot } from "#src/tools/shared/clip/recreate-into-slot.ts";
+import { registerTrackSlots } from "./track-slots-test-helpers.ts";
 
 vi.mock(import("#src/tools/shared/clip/copy-clip-to-slot.ts"), () => ({
   copyClipToSlot: vi.fn(),
@@ -28,25 +28,7 @@ vi.mock(import("#src/tools/shared/clip/recreate-clip.ts"), () => ({
  * @param otherSlotHasClip - has_clip for each slot after the destination
  */
 function registerTrack(otherSlotHasClip: number[]): void {
-  const hasClips = [1, ...otherSlotHasClip];
-  const ids = hasClips.map((_, i) => `slot${i}`);
-
-  registerMockObject("track-0", {
-    path: livePath.track(0),
-    properties: { clip_slots: children(...ids) },
-  });
-
-  for (const [sceneIndex, hasClip] of hasClips.entries()) {
-    registerMockObject(ids[sceneIndex] as string, {
-      path: livePath.track(0).clipSlot(sceneIndex),
-      properties: { has_clip: hasClip },
-    });
-  }
-
-  registerMockObject("live-set", {
-    path: livePath.liveSet,
-    properties: { scenes: children(...ids) },
-  });
+  registerTrackSlots([1, ...otherSlotHasClip]);
 }
 
 /**

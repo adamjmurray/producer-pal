@@ -9,7 +9,6 @@ import {
   MAX_AUTO_CREATED_SCENES,
 } from "#src/tools/constants.ts";
 import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -18,6 +17,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { captureAddsScene } from "./capture-scene-mocks.ts";
 import { expectSceneSetToRed34 } from "../scene-assertions.ts";
 import { createScene } from "../../create-scene.ts";
+import { registerTwoSceneSet } from "../scene-fixtures.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
@@ -30,13 +30,7 @@ describe("createScene", () => {
   let scene2: RegisteredMockObject;
 
   beforeEach(() => {
-    liveSet = registerMockObject("live_set", {
-      path: livePath.liveSet,
-      properties: { scenes: children("existing1", "existing2") },
-    });
-    registerMockObject("app-view", {
-      path: livePath.view.app,
-    });
+    liveSet = registerTwoSceneSet();
     scene0 = registerMockObject("live_set/scenes/0", {
       path: livePath.scene(0),
     });

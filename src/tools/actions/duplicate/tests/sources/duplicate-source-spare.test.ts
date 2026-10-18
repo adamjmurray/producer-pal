@@ -14,7 +14,9 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
+  failCopy,
   registerLiveLane,
+  slowCopies,
   type LiveLane,
 } from "#src/tools/actions/duplicate/tests/clip/overwrites/duplicate-live-lane-test-helpers.ts";
 
@@ -40,24 +42,6 @@ function registerSourceOnTrack0(): LiveLane {
     clips: [{ id: "src", start: 0, end: 16 }],
     copiesSourceLength: true,
   });
-}
-
-/**
- * Make one of a lane's arrangement duplicates throw.
- * @param lane - The lane
- * @param nth - Which duplicate fails, counting from 1
- */
-function failDuplicate(lane: LiveLane, nth: number): void {
-  const make = lane.track.methods.duplicate_clip_to_arrangement as Method;
-  let made = 0;
-
-  lane.track.methods.duplicate_clip_to_arrangement = (...args) => {
-    if (++made === nth) {
-      throw new Error("Live is unhappy");
-    }
-
-    return make(...args);
-  };
 }
 
 /**
@@ -320,7 +304,7 @@ describe("duplicate - several copies onto the source clip itself", () => {
     it("deletes the spare after a first copy Live refuses", async () => {
       const lane = registerSourceOnTrack0();
 
-      failDuplicate(lane, 2);
+      failCopy(lane, 2);
 
       const result = await duplicate({
         type: "clip",
@@ -345,7 +329,7 @@ describe("duplicate - several copies onto the source clip itself", () => {
     it("deletes the spare after the last copy is refused", async () => {
       const lane = registerSourceOnTrack0();
 
-      failDuplicate(lane, 3);
+      failCopy(lane, 3);
 
       const result = await duplicate({
         type: "clip",
@@ -370,16 +354,8 @@ describe("duplicate - several copies onto the source clip itself", () => {
 
     it("deletes the spare when the deadline stops the call", async () => {
       const lane = registerSourceOnTrack0();
-      const make = lane.track.methods.duplicate_clip_to_arrangement as Method;
-      let now = 0;
 
-      vi.spyOn(Date, "now").mockImplementation(() => now);
-
-      lane.track.methods.duplicate_clip_to_arrangement = (...args) => {
-        now += 600;
-
-        return make(...args);
-      };
+      slowCopies(lane, 600);
 
       const result = await duplicate(
         { type: "clip", id: "src", toPath: "t0[2|1],t0[3|1]" },
@@ -404,7 +380,7 @@ describe("duplicate - several copies onto the source clip itself", () => {
     it("makes none of them when no spare can be made", async () => {
       const lane = registerSourceOnTrack0();
 
-      failDuplicate(lane, 1);
+      failCopy(lane, 1);
 
       const result = await duplicate({
         type: "clip",
@@ -431,55 +407,39 @@ describe("duplicate - several copies onto the source clip itself", () => {
   });
 
   describe("when the spare cannot be deleted", () => {
-    it("says on the last copy's entry where it is left", async () => {
-      const lane = registerSourceOnTrack0();
+    it.each([
+      ["ignores", keepClip],
+      ["throws on", refuseDeleting],
+    ])(
+      "says on the last copy's entry where it is left when Live %s the delete",
+      async (_, failDelete) => {
+        const lane = registerSourceOnTrack0();
 
-      keepClip(lane, "copy-0-0");
+        failDelete(lane, "copy-0-0");
 
-      const result = await duplicate({
-        type: "clip",
-        id: "src",
-        toPath: "t0[2|1],t0[3|1]",
-      });
+        const result = await duplicate({
+          type: "clip",
+          id: "src",
+          toPath: "t0[2|1],t0[3|1]",
+        });
 
-      expect(result).toStrictEqual([
-        expect.objectContaining({ path: "t0[2|1]" }),
-        {
-          id: "copy-0-4",
-          path: "t0[3|1]",
-          detail:
-            "a spare copy of the source clip is still at t0[32|1] (id copy-0-0); delete it",
-        },
-      ]);
-    });
-
-    it("says so when Live throws on the delete", async () => {
-      const lane = registerSourceOnTrack0();
-
-      refuseDeleting(lane, "copy-0-0");
-
-      const result = await duplicate({
-        type: "clip",
-        id: "src",
-        toPath: "t0[2|1],t0[3|1]",
-      });
-
-      expect(result).toStrictEqual([
-        expect.objectContaining({ path: "t0[2|1]" }),
-        {
-          id: "copy-0-4",
-          path: "t0[3|1]",
-          detail:
-            "a spare copy of the source clip is still at t0[32|1] (id copy-0-0); delete it",
-        },
-      ]);
-    });
+        expect(result).toStrictEqual([
+          expect.objectContaining({ path: "t0[2|1]" }),
+          {
+            id: "copy-0-4",
+            path: "t0[3|1]",
+            detail:
+              "a spare copy of the source clip is still at t0[32|1] (id copy-0-0); delete it",
+          },
+        ]);
+      },
+    );
 
     it("says it on a last copy that was refused, with what already changed", async () => {
       const lane = registerSourceOnTrack0();
 
       keepClip(lane, "copy-0-0");
-      failDuplicate(lane, 3);
+      failCopy(lane, 3);
 
       const result = await duplicate({
         type: "clip",
@@ -499,17 +459,9 @@ describe("duplicate - several copies onto the source clip itself", () => {
 
     it("says it on the first copy's entry when the deadline stops the call", async () => {
       const lane = registerSourceOnTrack0();
-      const make = lane.track.methods.duplicate_clip_to_arrangement as Method;
-      let now = 0;
 
       keepClip(lane, "copy-0-0");
-      vi.spyOn(Date, "now").mockImplementation(() => now);
-
-      lane.track.methods.duplicate_clip_to_arrangement = (...args) => {
-        now += 600;
-
-        return make(...args);
-      };
+      slowCopies(lane, 600);
 
       const result = (await duplicate(
         { type: "clip", id: "src", toPath: "t0[2|1],t0[3|1]" },

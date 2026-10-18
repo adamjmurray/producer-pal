@@ -15,7 +15,10 @@ import {
   registerMockObject,
   updateDevice,
 } from "../../update-device-test-helpers.ts";
-import { registerDevice } from "./param-addressing-fixtures.ts";
+import {
+  registerDeviceAtD2,
+  registerDevice,
+} from "./param-addressing-fixtures.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateDevice - params by name", () => {
@@ -411,37 +414,10 @@ describe("updateDevice - one param named twice", () => {
   let paramMacro1: RegisteredMockObject;
 
   beforeEach(() => {
-    registerMockObject("125", {
-      path: livePath.track(0).device(2),
-      type: "Device",
-      properties: { parameters: children("789", "p-macro-1") },
-    });
-
-    paramThreshold = registerMockObject("789", {
-      path: livePath.track(0).device(2).parameter(0),
-      type: "DeviceParameter",
-      properties: {
-        name: "Threshold",
-        original_name: "Threshold",
-        is_quantized: 0,
-        value: 0.5,
-        min: 0,
-        max: 1,
-      },
-    });
-
-    paramMacro1 = registerMockObject("p-macro-1", {
-      path: livePath.track(0).device(2).parameter(1),
-      type: "DeviceParameter",
-      properties: {
-        name: "Reverb",
-        original_name: "Macro 1",
-        is_quantized: 0,
-        value: 0.5,
-        min: 0,
-        max: 1,
-      },
-    });
+    [paramThreshold, paramMacro1] = registerDeviceAtD2(
+      { id: "789", name: "Threshold" },
+      { id: "p-macro-1", name: "Reverb", originalName: "Macro 1" },
+    ) as [RegisteredMockObject, RegisteredMockObject];
   });
 
   it("writes only the last of the same name in different case", () => {

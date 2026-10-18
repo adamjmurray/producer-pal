@@ -5,13 +5,15 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { registerTwoTracksWithSends } from "./sends/send-return-fixtures.ts";
+import {
+  registerReturnTracks,
+  registerTwoTracksWithSends,
+} from "./sends/send-return-fixtures.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -275,14 +277,7 @@ describe("updateTrack - every send failed", () => {
     registerTwoTracksWithSends(["send_1"], ["send_2"]);
     registerMockObject("send_1", { properties: { is_enabled: 0 } });
     registerMockObject("send_2", {});
-    registerMockObject("liveSet", {
-      path: livePath.liveSet,
-      properties: { return_tracks: children("return_A") },
-    });
-    registerMockObject("return_A", {
-      path: livePath.returnTrack(0),
-      properties: { name: "A-Reverb" },
-    });
+    registerReturnTracks("A-Reverb");
   });
 
   it("throws for a lone track, naming each send", () => {

@@ -70,7 +70,7 @@ describe("updateTrack - a throw after a change landed", () => {
   let tracks: Parts[];
 
   beforeEach(() => {
-    registerReturnTracks();
+    registerReturnTracks("A-Reverb", "B-Delay");
     tracks = [0, 1, 2].map(registerTrack);
   });
 

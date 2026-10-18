@@ -16,6 +16,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "../../update-device.ts";
+import { registerChainMixer } from "./chain-mixer-test-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -23,32 +24,12 @@ const SNAPPED_SEND = "gainDb read back as shown, not as sent";
 
 describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
   const rackPath = livePath.track(0).device(0);
-  const chainPath = rackPath.chain(0);
-  const mixerPath = `${chainPath} mixer_device`;
   let volume: RegisteredMockObject;
   let panning: RegisteredMockObject;
   let send: RegisteredMockObject;
 
   beforeEach(() => {
-    registerMockObject("chain-0", { path: chainPath, type: "DrumChain" });
-    registerMockObject("mixer-0", {
-      path: mixerPath,
-      properties: { sends: children("send-0") },
-    });
-    send = registerMockObject("send-0");
-    registerMockObject("rack-0", {
-      path: rackPath,
-      properties: { return_chains: children("rc-0") },
-    });
-    registerMockObject("rc-0", { properties: { name: "a Reverb" } });
-    volume = registerMockObject("volume-0", {
-      path: `${mixerPath} volume`,
-      properties: { display_value: 0 },
-    });
-    panning = registerMockObject("panning-0", {
-      path: `${mixerPath} panning`,
-      properties: { value: 0 },
-    });
+    ({ volume, panning, send } = registerChainMixer("DrumChain"));
   });
 
   /**

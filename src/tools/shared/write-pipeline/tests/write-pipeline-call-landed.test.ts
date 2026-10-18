@@ -12,7 +12,7 @@ import {
 } from "#src/shared/max/v8-warning-capture.ts";
 import { type Call } from "../write-pipeline-types.ts";
 import { runWrite } from "../write-pipeline.ts";
-import { newToyLog, toySpec } from "./toy-write-spec.ts";
+import { newToyLog, type ToyLog, toySpec } from "./toy-write-spec.ts";
 
 /**
  * An async settle that notes a change, then throws.
@@ -24,6 +24,24 @@ async function refusingLoop(_done: unknown, call: Call): Promise<void> {
   call.landed("loop");
 
   throw new Error("loop refused");
+}
+
+/**
+ * A toy spec whose `before` stops the transport and whose settle step then
+ * fails to restart it.
+ * @param log - The toy log
+ * @returns The spec
+ */
+function stopsThenFailsRestart(log: ToyLog): ReturnType<typeof toySpec> {
+  return {
+    ...toySpec(log),
+    before: (_checked, call) => {
+      call.landed("transport stopped");
+    },
+    settle: () => {
+      throw new Error("restart refused");
+    },
+  };
 }
 
 describe("runWrite: what the whole call changed", () => {
@@ -75,17 +93,9 @@ describe("runWrite: what the whole call changed", () => {
 
   it("keeps the entries and warns, naming what `before` landed, when the settle step throws after the targets wrote", () => {
     const log = newToyLog();
-    const spec = toySpec(log);
+    const spec = stopsThenFailsRestart(log);
 
-    const settle: typeof spec.settle = () => {
-      throw new Error("restart refused");
-    };
-
-    const before: typeof spec.before = (_checked, call) => {
-      call.landed("transport stopped");
-    };
-
-    const result = runWrite({ ...spec, before, settle }, { ids: "a,b" });
+    const result = runWrite(spec, { ids: "a,b" });
 
     expect(result).toStrictEqual([
       { id: "a", wrote: true },
@@ -99,21 +109,10 @@ describe("runWrite: what the whole call changed", () => {
 
   it("throws, naming what `before` landed, when the settle step throws and no target wrote", () => {
     const log = newToyLog();
-    const spec = toySpec(log);
-
-    const settle: typeof spec.settle = () => {
-      throw new Error("restart refused");
-    };
-
-    const before: typeof spec.before = (_checked, call) => {
-      call.landed("transport stopped");
-    };
+    const spec = stopsThenFailsRestart(log);
 
     expect(() =>
-      runWrite(
-        { ...spec, before, settle },
-        { ids: "a,b", skip: { a: "gone", b: "gone" } },
-      ),
+      runWrite(spec, { ids: "a,b", skip: { a: "gone", b: "gone" } }),
     ).toThrow("restart refused; already changed: transport stopped");
     expect(capturedWarnings()).toStrictEqual([]);
   });

@@ -381,6 +381,33 @@ export function expectValueSet(param: RegisteredMockObject): number {
   return setCall[1];
 }
 
+/**
+ * Register a rack at t0/d0 holding `macro-1`, with three macro variations.
+ * Recalling one sets the macro to 0.9, the way Live restores a variation's
+ * stored values over what was just written.
+ * @param macro - The rack's macro param
+ * @returns The registered rack mock
+ */
+export function registerVariationRack(
+  macro: RegisteredMockObject,
+): RegisteredMockObject {
+  return registerMockObject("rack", {
+    path: livePath.track(0).device(0),
+    type: "RackDevice",
+    properties: {
+      can_have_chains: 1,
+      variation_count: 3,
+      selected_variation_index: 0,
+      parameters: children("macro-1"),
+    },
+    methods: {
+      recall_selected_variation: () => {
+        macro.properties.value = 0.9;
+      },
+    },
+  });
+}
+
 /** What a registered rack does with its macros. */
 export interface MacroRackSpec {
   /** The macros it shows to begin with */

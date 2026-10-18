@@ -8,10 +8,10 @@
 // never deleted until it is back.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { deleteMockObject } from "#src/test/mocks/mock-registry.ts";
 import { applyClipEnvelopes } from "#src/tools/clip/envelopes/apply-clip-envelopes.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
+import { answerEnvelopeRoutes } from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import {
   CLIP_ID,
   type LaneWorld,
@@ -67,11 +67,7 @@ describe("arrangement envelopes - failure after Live changed", () => {
   let world: LaneWorld;
 
   beforeEach(() => {
-    vi.mocked(requestNode).mockReset();
-    vi.mocked(requestNode).mockResolvedValue({
-      success: true,
-      result: { available: true, result: {} },
-    });
+    answerEnvelopeRoutes();
     world = registerLaneWorld();
   });
 

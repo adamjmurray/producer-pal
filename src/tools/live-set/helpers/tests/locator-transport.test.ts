@@ -47,6 +47,32 @@ function playheadWrites(liveSet: RegisteredMockObject): unknown[] {
     .map(([, value]) => value);
 }
 
+/**
+ * Make Live refuse (throw) or silently drop the Set writes `matches` picks.
+ * The rest land.
+ * @param liveSet - The live_set mock
+ * @param how - Whether Live throws or drops the write
+ * @param matches - Picks the writes by property and value
+ */
+function failWrites(
+  liveSet: RegisteredMockObject,
+  how: "throw" | "drop",
+  matches: (property: string, value: unknown) => boolean,
+): void {
+  const land = liveSet.set.getMockImplementation() as (
+    property: string,
+    value: unknown,
+  ) => void;
+
+  liveSet.set.mockImplementation((property: string, value: unknown) => {
+    if (!matches(property, value)) {
+      land(property, value);
+    } else if (how === "throw") {
+      throw new Error("Live refused the write");
+    }
+  });
+}
+
 describe("the playhead after locator edits", () => {
   let liveSet: RegisteredMockObject;
 
@@ -308,66 +334,33 @@ describe("the start marker after locator edits", () => {
     expect(startTimeWrites(liveSet)).toStrictEqual([]);
   });
 
-  it("warns when Live refuses the write, and the playhead is still put back", async () => {
-    const set = simulateLocators(liveSet, [], {
-      playhead: PLAYHEAD,
-      playing: true,
-      startTime: START,
-    });
-    const moveTo = liveSet.set.getMockImplementation() as (
-      property: string,
-      value: unknown,
-    ) => void;
+  it.each([
+    ["refuses", "throw", "Start marker not put back: Live refused the write"],
+    ["never lands", "drop", "Start marker not put back at 2|3"],
+  ] as const)(
+    "warns when Live %s the write, and still puts the playhead back and answers",
+    async (_, how, warning) => {
+      const set = simulateLocators(liveSet, [], {
+        playhead: PLAYHEAD,
+        playing: true,
+        startTime: START,
+      });
 
-    liveSet.set.mockImplementation((property: string, value: unknown) => {
-      if (property === "start_time") {
-        throw new Error("Live refused the write");
-      }
+      failWrites(liveSet, how, (property) => property === "start_time");
 
-      moveTo(property, value);
-    });
+      const result = await updateLiveSet({
+        locatorOperation: "create",
+        locatorTime: "5|1",
+      });
 
-    const result = await updateLiveSet({
-      locatorOperation: "create",
-      locatorTime: "5|1",
-    });
-
-    expect(result.locator).toStrictEqual({ operation: "create", id: "26" });
-    expect(set.playhead()).toBe(PLAYHEAD);
-    expect(capturedWarnings()).toStrictEqual([
-      "Playback stopped to modify locators",
-      "Start marker not put back: Live refused the write",
-    ]);
-  });
-
-  it("warns when Live never lands it, and still answers the call", async () => {
-    simulateLocators(liveSet, [], {
-      playhead: PLAYHEAD,
-      playing: true,
-      startTime: START,
-    });
-    const moveTo = liveSet.set.getMockImplementation() as (
-      property: string,
-      value: unknown,
-    ) => void;
-
-    liveSet.set.mockImplementation((property: string, value: unknown) => {
-      if (property !== "start_time") {
-        moveTo(property, value);
-      }
-    });
-
-    const result = await updateLiveSet({
-      locatorOperation: "create",
-      locatorTime: "5|1",
-    });
-
-    expect(result.locator).toStrictEqual({ operation: "create", id: "26" });
-    expect(capturedWarnings()).toStrictEqual([
-      "Playback stopped to modify locators",
-      "Start marker not put back at 2|3",
-    ]);
-  });
+      expect(result.locator).toStrictEqual({ operation: "create", id: "26" });
+      expect(set.playhead()).toBe(PLAYHEAD);
+      expect(capturedWarnings()).toStrictEqual([
+        "Playback stopped to modify locators",
+        warning,
+      ]);
+    },
+  );
 });
 
 describe("when the playhead can't be put back", () => {
@@ -428,17 +421,6 @@ describe("when the playhead can't be put back", () => {
    * @param beats - The spot
    */
   function refuseSendingTo(beats: number): void {
-    const moveTo = liveSet.set.getMockImplementation() as (
-      property: string,
-      value: unknown,
-    ) => void;
-
-    liveSet.set.mockImplementation((property: string, value: unknown) => {
-      if (value === beats) {
-        throw new Error("Live refused the write");
-      }
-
-      moveTo(property, value);
-    });
+    failWrites(liveSet, "throw", (_, value) => value === beats);
   }
 });

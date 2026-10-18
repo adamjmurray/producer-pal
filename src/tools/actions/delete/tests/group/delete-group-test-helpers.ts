@@ -23,6 +23,28 @@ export interface GroupTrack {
   foldable?: boolean;
 }
 
+/** t0 holds a and b. */
+export const PAIR: GroupTrack[] = [
+  { id: "g", foldable: true },
+  { id: "a", group: "g" },
+  { id: "b", group: "g" },
+];
+
+/** t0 holds only group g, which holds a and b. */
+export const PAIR_IN_NESTED: GroupTrack[] = [
+  { id: "p", foldable: true },
+  { id: "g", group: "p", foldable: true },
+  { id: "a", group: "g" },
+  { id: "b", group: "g" },
+];
+
+/** t0 holds only group g, which holds only a. */
+export const LONE_IN_NESTED: GroupTrack[] = [
+  { id: "p", foldable: true },
+  { id: "g", group: "p", foldable: true },
+  { id: "a", group: "g" },
+];
+
 interface GroupSetOptions {
   /** Runs when Live is asked to delete a track, before it acts */
   onDelete?: (index: number) => void;

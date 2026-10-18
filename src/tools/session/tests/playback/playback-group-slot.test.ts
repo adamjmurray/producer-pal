@@ -310,16 +310,19 @@ describe("playback - stopping a group track's slot", () => {
 describe("playback - a failure around a group track's slot", () => {
   let liveSet: RegisteredMockObject;
 
+  // A group of one track with a clip, then a track with a clip on its own.
+  const GROUP_AND_SOLO: TrackSpec[] = [
+    { id: "group", foldable: true },
+    { id: "a", group: "group", clips: { [SCENE]: "clipA" } },
+    { id: "solo", clips: { [SCENE]: "clipS" } },
+  ];
+
   beforeEach(() => {
     liveSet = setupPlaybackLiveSet();
   });
 
   it("claims no launch when the fire itself throws", () => {
-    const { slots } = setUpTracks([
-      { id: "group", foldable: true },
-      { id: "a", group: "group", clips: { [SCENE]: "clipA" } },
-      { id: "solo", clips: { [SCENE]: "clipS" } },
-    ]);
+    const { slots } = setUpTracks(GROUP_AND_SOLO);
 
     slots[0]?.call.mockImplementation(() => {
       throw new Error("Live refused fire");
@@ -337,11 +340,7 @@ describe("playback - a failure around a group track's slot", () => {
   });
 
   it("keeps the fire entries and warns when the transport restart then throws", () => {
-    const { slots } = setUpTracks([
-      { id: "group", foldable: true },
-      { id: "a", group: "group", clips: { [SCENE]: "clipA" } },
-      { id: "solo", clips: { [SCENE]: "clipS" } },
-    ]);
+    const { slots } = setUpTracks(GROUP_AND_SOLO);
 
     liveSet.call.mockImplementation((name: string) => {
       if (name === "start_playing") {

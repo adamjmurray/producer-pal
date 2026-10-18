@@ -7,7 +7,11 @@ import { describe, expect, it } from "vitest";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { resolves } from "#src/live-api-adapter/tests/objects/build-budget-resolves.ts";
 import { deleteObject } from "../../delete.ts";
-import { type GroupTrack, setUpGroupSet } from "./delete-group-test-helpers.ts";
+import {
+  type GroupTrack,
+  PAIR,
+  setUpGroupSet,
+} from "./delete-group-test-helpers.ts";
 
 // Live deletes a group track together with every track inside it. The group's
 // entry says what else went; a track the call named too gets its own plain one.
@@ -20,13 +24,6 @@ const NESTED: GroupTrack[] = [
   { id: "b", group: "h" },
   { id: "c", group: "h" },
   { id: "z" },
-];
-
-// t0 holds a and b.
-const PAIR: GroupTrack[] = [
-  { id: "g", foldable: true },
-  { id: "a", group: "g" },
-  { id: "b", group: "g" },
 ];
 
 describe("deleteObject of a group track", () => {
@@ -44,11 +41,7 @@ describe("deleteObject of a group track", () => {
   });
 
   it("lists a lone track in the singular", () => {
-    setUpGroupSet([
-      { id: "g", foldable: true },
-      { id: "a", group: "g" },
-      { id: "b", group: "g" },
-    ]);
+    setUpGroupSet(PAIR);
 
     expect(deleteObject({ id: "g, a", type: "track" })).toStrictEqual([
       {

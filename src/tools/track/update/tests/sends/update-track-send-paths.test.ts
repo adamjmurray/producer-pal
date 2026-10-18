@@ -25,7 +25,7 @@ describe("updateTrack - return tracks named by path", () => {
       path: livePath.track(0).mixerDevice(),
       properties: { sends: children("send_1", "send_2") },
     });
-    registerReturnTracks();
+    registerReturnTracks("A-Reverb", "B-Delay");
     send1 = registerMockObject("send_1", {});
     send2 = registerMockObject("send_2", {});
   });

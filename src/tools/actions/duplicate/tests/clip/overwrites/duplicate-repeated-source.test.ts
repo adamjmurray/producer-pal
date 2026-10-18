@@ -14,7 +14,9 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { setupArrangementSceneMocks } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import {
+  failCopy,
   registerLiveLane,
+  slowCopies,
   type LiveLane,
 } from "#src/tools/actions/duplicate/tests/clip/overwrites/duplicate-live-lane-test-helpers.ts";
 
@@ -42,26 +44,6 @@ function madeFrom(lane: LiveLane): Array<[unknown, unknown]> {
   return lane.track.call.mock.calls
     .filter(([method]) => method === "duplicate_clip_to_arrangement")
     .map(([, source, beats]) => [source, beats]);
-}
-
-type Method = (...args: unknown[]) => unknown;
-
-/**
- * Make one of a lane's arrangement copies throw before it lands.
- * @param lane - The lane
- * @param nth - Which copy made fails, counting from 1
- */
-function failCopy(lane: LiveLane, nth: number): void {
-  const make = lane.track.methods.duplicate_clip_to_arrangement as Method;
-  let made = 0;
-
-  lane.track.methods.duplicate_clip_to_arrangement = (...args) => {
-    if (++made === nth) {
-      throw new Error("Live is unhappy");
-    }
-
-    return make(...args);
-  };
 }
 
 afterEach(() => {
@@ -200,16 +182,8 @@ describe("duplicate - a source named twice, apart", () => {
     registerSources();
 
     const lane = registerLiveLane({ trackIndex: 1 });
-    const make = lane.track.methods.duplicate_clip_to_arrangement as Method;
-    let now = 0;
 
-    vi.spyOn(Date, "now").mockImplementation(() => now);
-
-    lane.track.methods.duplicate_clip_to_arrangement = (...args) => {
-      now += 600;
-
-      return make(...args);
-    };
+    slowCopies(lane, 600);
 
     expect(
       await duplicate(

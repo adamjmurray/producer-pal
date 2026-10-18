@@ -8,7 +8,12 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { deleteObject } from "../../delete.ts";
-import { setUpGroupSet } from "./delete-group-test-helpers.ts";
+import {
+  LONE_IN_NESTED,
+  PAIR,
+  PAIR_IN_NESTED,
+  setUpGroupSet,
+} from "./delete-group-test-helpers.ts";
 
 // Live ignores a delete of the only track in a group track without saying so.
 // The target is skipped at its turn, just before the Live call, naming the
@@ -46,11 +51,7 @@ describe("deleteObject of the only track in a group track", () => {
   });
 
   it("goes up to the first group that can be deleted", () => {
-    const liveSet = setUpGroupSet([
-      { id: "p", foldable: true },
-      { id: "g", group: "p", foldable: true },
-      { id: "a", group: "g" },
-    ]);
+    const liveSet = setUpGroupSet(LONE_IN_NESTED);
 
     expect(() => deleteObject({ id: "a", type: "track" })).toThrow(
       "delete group track t0 (id p) instead, which deletes the tracks inside it too",
@@ -59,12 +60,7 @@ describe("deleteObject of the only track in a group track", () => {
   });
 
   it("covers an only member that is a group itself", () => {
-    setUpGroupSet([
-      { id: "p", foldable: true },
-      { id: "g", group: "p", foldable: true },
-      { id: "a", group: "g" },
-      { id: "b", group: "g" },
-    ]);
+    setUpGroupSet(PAIR_IN_NESTED);
 
     expect(() => deleteObject({ id: "g", type: "track" })).toThrow(
       "delete group track t0 (id p) instead, which deletes the tracks inside it too",
@@ -100,14 +96,7 @@ describe("deleteObject of the only track in a group track", () => {
   });
 
   it("stops going up at a group that holds the device", () => {
-    setUpGroupSet(
-      [
-        { id: "p", foldable: true },
-        { id: "g", group: "p", foldable: true },
-        { id: "a", group: "g" },
-      ],
-      { host: 1 },
-    );
+    setUpGroupSet(LONE_IN_NESTED, { host: 1 });
 
     expect(() => deleteObject({ id: "a", type: "track" })).toThrow(
       "group track t1 (id g) can't be deleted because it holds the Producer Pal device",
@@ -115,14 +104,7 @@ describe("deleteObject of the only track in a group track", () => {
   });
 
   it("stops going up at the group that is the host track", () => {
-    setUpGroupSet(
-      [
-        { id: "p", foldable: true },
-        { id: "g", group: "p", foldable: true },
-        { id: "a", group: "g" },
-      ],
-      { host: 0 },
-    );
+    setUpGroupSet(LONE_IN_NESTED, { host: 0 });
 
     expect(() => deleteObject({ id: "a", type: "track" })).toThrow(
       "group track t0 (id p) can't be deleted because it holds the Producer Pal device",
@@ -144,11 +126,7 @@ describe("deleteObject of the only track in a group track", () => {
   });
 
   it("deletes a member that has a sibling", () => {
-    const liveSet = setUpGroupSet([
-      { id: "g", foldable: true },
-      { id: "a", group: "g" },
-      { id: "b", group: "g" },
-    ]);
+    const liveSet = setUpGroupSet(PAIR);
 
     expect(deleteObject({ id: "b", type: "track" })).toStrictEqual({
       id: "b",

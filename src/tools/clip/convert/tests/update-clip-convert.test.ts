@@ -138,6 +138,13 @@ describe("updateClip - convert", () => {
     return track;
   }
 
+  /** Add track 201 at t0, ahead of both clips, which each move down a track. */
+  function addTrackAheadOfClips(): void {
+    addTrack("201", 0);
+    mocks.clip123.path = livePath.track(1).clipSlot(0).clip();
+    mocks.clip456.path = livePath.track(2).clipSlot(1).clip();
+  }
+
   /**
    * A MIDI clip on a new track's slot.
    * @param id - The clip's id
@@ -436,9 +443,7 @@ describe("updateClip - convert", () => {
       }
 
       // The second conversion's track lands ahead of everything.
-      addTrack("201", 0);
-      mocks.clip123.path = livePath.track(1).clipSlot(0).clip();
-      mocks.clip456.path = livePath.track(2).clipSlot(1).clip();
+      addTrackAheadOfClips();
 
       if (first != null) {
         first.path = "live_set tracks 5";
@@ -486,10 +491,8 @@ describe("updateClip - convert", () => {
         return;
       }
 
-      // The second conversion's track lands ahead of both clips.
-      addTrack("201", 0);
-      mocks.clip123.path = livePath.track(1).clipSlot(0).clip();
-      mocks.clip456.path = livePath.track(2).clipSlot(1).clip();
+      // The second conversion's track lands ahead of everything.
+      addTrackAheadOfClips();
     });
 
     const result = (await updateClip({

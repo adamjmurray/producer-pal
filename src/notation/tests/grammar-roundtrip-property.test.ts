@@ -34,20 +34,7 @@ import { formatNotation, interpretNotation } from "#src/notation/notation.ts";
 import { parse as parseTransform } from "#src/notation/transform/parser/transform-parser.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { type Notation } from "#src/shared/notation.ts";
-
-// Small, fast, seedable PRNG (mulberry32). Returns floats in [0, 1).
-function mulberry32(seed: number): () => number {
-  let state = seed >>> 0;
-
-  return function next(): number {
-    state = (state + 0x6d2b79f5) | 0;
-    let t = Math.imul(state ^ (state >>> 15), 1 | state);
-
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import { seededRandom } from "#src/test/test-data-builders.ts";
 
 function randomInt(rng: () => number, min: number, max: number): number {
   return min + Math.floor(rng() * (max - min + 1));
@@ -138,7 +125,7 @@ function isCrash(error: unknown): boolean {
 describe("notation grammar round-trip + crash properties", () => {
   for (const { notation, label } of ROUTER_NOTATIONS) {
     it(`${label}: format→interpret→format is idempotent over random clips`, () => {
-      const rng = mulberry32(0x1234_5678);
+      const rng = seededRandom(0x1234_5678);
       let checked = 0;
 
       for (let seed = 0; seed < 600; seed++) {
@@ -174,7 +161,7 @@ describe("notation grammar round-trip + crash properties", () => {
   // reads drum vs pitched from the section headers the serializer emits — so only
   // format needs `drumMode`.
   it("stark (drum mode): format→interpret→format is idempotent over random clips", () => {
-    const rng = mulberry32(0x1234_5678);
+    const rng = seededRandom(0x1234_5678);
     let checked = 0;
 
     for (let seed = 0; seed < 600; seed++) {
@@ -196,7 +183,7 @@ describe("notation grammar round-trip + crash properties", () => {
 
   for (const { notation, label } of ROUTER_NOTATIONS) {
     it(`${label}: interpretNotation never crashes on arbitrary input`, () => {
-      const rng = mulberry32(0x0bad_f00d);
+      const rng = seededRandom(0x0bad_f00d);
       const crashed: string[] = [];
 
       for (let i = 0; i < 1500; i++) {
@@ -212,7 +199,7 @@ describe("notation grammar round-trip + crash properties", () => {
   }
 
   it("the bar|beat parser never crashes on arbitrary input", () => {
-    const rng = mulberry32(0x00c0_ffee);
+    const rng = seededRandom(0x00c0_ffee);
     const crashed: string[] = [];
 
     for (let i = 0; i < 1500; i++) {
@@ -225,7 +212,7 @@ describe("notation grammar round-trip + crash properties", () => {
   });
 
   it("the transform parser never crashes on arbitrary input", () => {
-    const rng = mulberry32(0xfeed_face);
+    const rng = seededRandom(0xfeed_face);
     const crashed: string[] = [];
 
     for (let i = 0; i < 1500; i++) {

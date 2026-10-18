@@ -6,7 +6,12 @@
 import { describe, expect, it } from "vitest";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { deleteObject } from "../../delete.ts";
-import { setUpGroupSet } from "./delete-group-test-helpers.ts";
+import {
+  LONE_IN_NESTED,
+  PAIR,
+  PAIR_IN_NESTED,
+  setUpGroupSet,
+} from "./delete-group-test-helpers.ts";
 
 // A track named with its group goes with the group. When the group's delete
 // doesn't happen, that track gets its own, and its entry says what is true.
@@ -64,12 +69,7 @@ describe("deleteObject of a group track and a track inside it", () => {
 
   it("falls back to the only-member rule for an inner track when the group is skipped", () => {
     // g is alone in p, so it can't be deleted; a is one of two in g.
-    const liveSet = setUpGroupSet([
-      { id: "p", foldable: true },
-      { id: "g", group: "p", foldable: true },
-      { id: "a", group: "g" },
-      { id: "b", group: "g" },
-    ]);
+    const liveSet = setUpGroupSet(PAIR_IN_NESTED);
 
     expect(deleteObject({ id: "g, a", type: "track" })).toStrictEqual([
       {
@@ -85,11 +85,7 @@ describe("deleteObject of a group track and a track inside it", () => {
 
   it("does not call an inner track deleted when its group is still there", () => {
     // g is alone in p, and a alone in g: neither can go, and neither is lost.
-    const liveSet = setUpGroupSet([
-      { id: "p", foldable: true },
-      { id: "g", group: "p", foldable: true },
-      { id: "a", group: "g" },
-    ]);
+    const liveSet = setUpGroupSet(LONE_IN_NESTED);
 
     expect(deleteObject({ id: "g, a", type: "track" })).toStrictEqual([
       {
@@ -107,18 +103,11 @@ describe("deleteObject of a group track and a track inside it", () => {
   });
 
   it("keeps the group's entry and reports the inner track as deleted when Live threw after deleting", () => {
-    const liveSet = setUpGroupSet(
-      [
-        { id: "g", foldable: true },
-        { id: "a", group: "g" },
-        { id: "b", group: "g" },
-      ],
-      {
-        afterDelete: () => {
-          throw new Error("Live lost its place");
-        },
+    const liveSet = setUpGroupSet(PAIR, {
+      afterDelete: () => {
+        throw new Error("Live lost its place");
       },
-    );
+    });
 
     expect(deleteObject({ id: "a, g", type: "track" })).toStrictEqual([
       { id: "a", deletedPath: "t1" },
@@ -154,20 +143,13 @@ describe("deleteObject of a group track and a track inside it", () => {
   });
 
   it("skips a group Live threw on before deleting, and its inner track is deleted on its own", () => {
-    setUpGroupSet(
-      [
-        { id: "g", foldable: true },
-        { id: "a", group: "g" },
-        { id: "b", group: "g" },
-      ],
-      {
-        onDelete: (index) => {
-          if (index === 0) {
-            throw new Error("Live said no");
-          }
-        },
+    setUpGroupSet(PAIR, {
+      onDelete: (index) => {
+        if (index === 0) {
+          throw new Error("Live said no");
+        }
       },
-    );
+    });
 
     expect(deleteObject({ id: "g, a", type: "track" })).toStrictEqual([
       { id: "g", ok: false, detail: "Live said no" },

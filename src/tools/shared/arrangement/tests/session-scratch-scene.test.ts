@@ -159,6 +159,18 @@ function refuseSceneRemoval(): void {
   };
 }
 
+/**
+ * A track Live won't give the index of.
+ * @returns The track
+ */
+function trackWithoutIndex(): LiveAPI {
+  return {
+    get trackIndex(): number {
+      throw new Error("Live says no");
+    },
+  } as unknown as LiveAPI;
+}
+
 describe("the scene an audio helper makes for its scratch clip", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -416,25 +428,15 @@ describe("a failure while the scratch clip is made", () => {
 
   it("removes the scene it made when finding the slot fails", () => {
     const world = registerSceneWorld(false);
-    const trackWithoutIndex = {
-      get trackIndex(): number {
-        throw new Error("Live says no");
-      },
-    } as unknown as LiveAPI;
 
-    expect(() => openScratchSlot(trackWithoutIndex)).toThrow("Live says no");
+    expect(() => openScratchSlot(trackWithoutIndex())).toThrow("Live says no");
     expect(world.sceneCount()).toBe(1);
   });
 
   it("makes no scene to remove when finding the slot fails in an empty last scene", () => {
     const world = registerSceneWorld(true);
-    const trackWithoutIndex = {
-      get trackIndex(): number {
-        throw new Error("Live says no");
-      },
-    } as unknown as LiveAPI;
 
-    expect(() => openScratchSlot(trackWithoutIndex)).toThrow("Live says no");
+    expect(() => openScratchSlot(trackWithoutIndex())).toThrow("Live says no");
     expect(world.sceneCount()).toBe(1);
     expect(
       lookupMockObject(undefined, livePath.liveSet)?.call,

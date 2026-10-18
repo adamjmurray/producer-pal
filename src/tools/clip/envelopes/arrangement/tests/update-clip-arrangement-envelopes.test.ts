@@ -8,8 +8,8 @@
 // turn.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { answerEnvelopeRoutes } from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import { CLIP_ID, registerLaneWorld } from "./lane-world-test-helpers.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
@@ -19,11 +19,7 @@ vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
 
 describe("updateClip - envelopes on an arrangement clip", () => {
   beforeEach(() => {
-    vi.mocked(requestNode).mockReset();
-    vi.mocked(requestNode).mockResolvedValue({
-      success: true,
-      result: { available: true, result: {} },
-    });
+    answerEnvelopeRoutes();
   });
 
   it("returns the clip under its new id", async () => {

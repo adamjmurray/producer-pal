@@ -12,10 +12,12 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateTrack } from "../update-track.ts";
+import { registerReturnTracks } from "./sends/send-return-fixtures.ts";
+import {
+  NOT_OVERRIDING_CASES,
+  OVERRIDDEN,
+} from "#src/tools/shared/arrangement/tracks/tests/automation-override-test-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
-
-const OVERRIDDEN =
-  "arrangement automation overridden — Live ignores it until Re-Enable Automation";
 
 describe("updateTrack - overriding arrangement automation", () => {
   let volume: RegisteredMockObject;
@@ -42,14 +44,7 @@ describe("updateTrack - overriding arrangement automation", () => {
       path: `${mixer(0)} track_activator`,
     });
     send = registerMockObject("send_1", {});
-    registerMockObject("liveSet", {
-      path: livePath.liveSet,
-      properties: { return_tracks: children("return_A") },
-    });
-    registerMockObject("return_A", {
-      path: livePath.returnTrack(0),
-      properties: { name: "A-Reverb" },
-    });
+    registerReturnTracks("A-Reverb");
   });
 
   it("says so when a gain write overrides the lane", () => {
@@ -111,11 +106,7 @@ describe("updateTrack - overriding arrangement automation", () => {
     ]);
   });
 
-  it.each([
-    ["already overridden", 2, true],
-    ["no lane, or unknown while playing from Session", 0, true],
-    ["a lane whose value the write left as it was", 1, false],
-  ])("says nothing for %s", (_, state, changes) => {
+  it.each(NOT_OVERRIDING_CASES)("says nothing for %s", (_, state, changes) => {
     automatedParam(volume, state, changes);
     automatedParam(activator, state, changes, track);
     automatedParam(send, state, changes);

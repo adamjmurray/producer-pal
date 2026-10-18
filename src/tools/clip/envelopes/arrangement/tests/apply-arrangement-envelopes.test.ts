@@ -15,6 +15,7 @@ import { applyClipEnvelopes } from "#src/tools/clip/envelopes/apply-clip-envelop
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
+import { answerEnvelopeRoutes } from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import {
   CLIP_ID,
   CLIP_START,
@@ -57,15 +58,29 @@ function writes(): unknown[] {
     });
 }
 
+/**
+ * @param world - The Set
+ * @returns The clip copied, and where, per arrangement copy
+ */
+function copiesMade(world: LaneWorld): unknown[][] {
+  return world.copies.map(({ source, at }) => [source, at]);
+}
+
+/**
+ * Park the clip past the end of the Set (32) and the clip (24), stamp the
+ * scratch clip over it, and put the parked copy back.
+ */
+const PARK_STAMP_RESTORE = [
+  [CLIP_ID, 36],
+  ["carrier1", CLIP_START],
+  ["800", CLIP_START],
+];
+
 describe("applyClipEnvelopes - arrangement clip", () => {
   let world: LaneWorld;
 
   beforeEach(() => {
-    vi.mocked(requestNode).mockReset();
-    vi.mocked(requestNode).mockResolvedValue({
-      success: true,
-      result: { available: true, result: {} },
-    });
+    answerEnvelopeRoutes();
     world = registerLaneWorld();
   });
 
@@ -92,12 +107,7 @@ describe("applyClipEnvelopes - arrangement clip", () => {
   it("writes the lane over the clip's span and puts the clip back under a new id", async () => {
     const entry = await apply([RAMP]);
 
-    expect(world.copies.map(({ source, at }) => [source, at])).toStrictEqual([
-      // Parked past the end of the Set (32) and the clip (24).
-      [CLIP_ID, 36],
-      ["carrier1", CLIP_START],
-      ["800", CLIP_START],
-    ]);
+    expect(copiesMade(world)).toStrictEqual(PARK_STAMP_RESTORE);
     expect(entry).toStrictEqual({ id: "802", path: "t0[5|1]", envelopes: 1 });
     expect(world.laneIds()).toStrictEqual(["802"]);
     expect(world.deleted).toStrictEqual(["800"]);
@@ -380,11 +390,7 @@ describe("applyClipEnvelopes - arrangement clip", () => {
     expect(carrier?.set).toHaveBeenCalledWith("looping", 1);
     expect(carrier?.set).toHaveBeenCalledWith("loop_end", 8);
     expect(writes()).toHaveLength(1);
-    expect(world.copies.map(({ source, at }) => [source, at])).toStrictEqual([
-      [CLIP_ID, 36],
-      ["carrier1", CLIP_START],
-      ["800", CLIP_START],
-    ]);
+    expect(copiesMade(world)).toStrictEqual(PARK_STAMP_RESTORE);
     expect(entry).toStrictEqual({ id: "802", path: "t0[5|1]", envelopes: 1 });
     expect(world.scratchClipLeft()).toBe(false);
     expect(world.sceneCount()).toBe(1);

@@ -10,6 +10,7 @@
 // and re-creates the rest under a new id. A split keeps the head's id and gives
 // the tail a new one.
 
+import { vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -254,6 +255,45 @@ export function registerLiveLane(options: LiveLaneOptions): LiveLane {
       declining = true;
     },
     mocks,
+  };
+}
+
+type Method = (...args: unknown[]) => unknown;
+
+/**
+ * Make one of a lane's arrangement copies throw before it lands.
+ * @param lane - The lane
+ * @param nth - Which copy fails, counting from 1
+ */
+export function failCopy(lane: LiveLane, nth: number): void {
+  const make = lane.track.methods.duplicate_clip_to_arrangement as Method;
+  let made = 0;
+
+  lane.track.methods.duplicate_clip_to_arrangement = (...args) => {
+    if (++made === nth) {
+      throw new Error("Live is unhappy");
+    }
+
+    return make(...args);
+  };
+}
+
+/**
+ * Make each of a lane's arrangement copies move `Date.now()` on. Restore with
+ * `vi.restoreAllMocks()`.
+ * @param lane - The lane
+ * @param msPerCopy - How far one copy moves the clock
+ */
+export function slowCopies(lane: LiveLane, msPerCopy: number): void {
+  const make = lane.track.methods.duplicate_clip_to_arrangement as Method;
+  let now = 0;
+
+  vi.spyOn(Date, "now").mockImplementation(() => now);
+
+  lane.track.methods.duplicate_clip_to_arrangement = (...args) => {
+    now += msPerCopy;
+
+    return make(...args);
   };
 }
 

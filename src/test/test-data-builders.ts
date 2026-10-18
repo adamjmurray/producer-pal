@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
 interface NoteOverrides {
@@ -66,4 +67,22 @@ export function expectedDrumPatternNotes(): Note[] {
       probability: 0.9,
     }),
   ];
+}
+
+/**
+ * Seeded mulberry32 PRNG, so a failing randomized test reproduces from its seed.
+ * @param seed - Starting state
+ * @returns A function returning floats in [0, 1)
+ */
+export function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+
+  return function next(): number {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }

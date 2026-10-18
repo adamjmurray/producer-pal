@@ -9,6 +9,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  answerEnvelopeRoutes,
+  envelopeRoutesCalled,
+} from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import {
   setupMidiClipMock,
@@ -40,20 +44,8 @@ function liveVersion(version: string): void {
 describe("updateClip - envelopes by Live version", () => {
   beforeEach(() => {
     setupMidiClipMock(setupUpdateClipMocks().clip123);
-    vi.mocked(requestNode).mockReset();
-    vi.mocked(requestNode).mockResolvedValue({
-      success: true,
-      result: { available: true, result: { cleared: true } },
-    });
+    answerEnvelopeRoutes({ cleared: true });
   });
-
-  /**
-   * The routes called, in order.
-   * @returns The route names
-   */
-  function routesCalled(): unknown[] {
-    return vi.mocked(requestNode).mock.calls.map((call) => call[0]);
-  }
 
   it("refuses points on Live 12.3, saying what still works", async () => {
     liveVersion("12.3.8");
@@ -80,7 +72,7 @@ describe("updateClip - envelopes by Live version", () => {
       envelopes: `volume:\npan: ${NOTATION}`,
     });
 
-    expect(routesCalled()).toStrictEqual([ENVELOPE_ROUTES.clear]);
+    expect(envelopeRoutesCalled()).toStrictEqual([ENVELOPE_ROUTES.clear]);
     expect(result).toStrictEqual(
       expect.objectContaining({
         envelopes: 1,
@@ -94,6 +86,6 @@ describe("updateClip - envelopes by Live version", () => {
 
     await updateClip({ id: "123", envelopes: `volume: ${NOTATION}` });
 
-    expect(routesCalled()).toStrictEqual([ENVELOPE_ROUTES.write]);
+    expect(envelopeRoutesCalled()).toStrictEqual([ENVELOPE_ROUTES.write]);
   });
 });

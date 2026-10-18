@@ -118,6 +118,34 @@ function setupClip(
   mockNonExistentObjects();
 }
 
+/** A read route's answer with the default events. */
+const READ_EVENTS = {
+  available: true,
+  result: { exists: true, event_count: 2, events: EVENTS },
+};
+
+/**
+ * Answer the envelope routes: one list, then each read by its parameter.
+ * @param listed - What the list route reports
+ * @param readOf - What the read route answers for a parameter
+ */
+function answerEachRead(
+  listed: ListedEnvelope[],
+  readOf: (parameter: unknown) => unknown,
+): void {
+  vi.mocked(requestNode).mockImplementation(async (route, args) =>
+    route === ENVELOPE_ROUTES.list
+      ? {
+          success: true,
+          result: { available: true, result: { envelopes: listed } },
+        }
+      : {
+          success: true,
+          result: readOf((args as { parameter?: unknown }).parameter),
+        },
+  );
+}
+
 /**
  * Answer the envelope routes: one list, then the same events for every read.
  * @param listed - What the list route reports
@@ -127,26 +155,16 @@ function answerEnvelopeRoutes(
   listed: ListedEnvelope[],
   read: Partial<EnvelopeReadResult> = {},
 ): void {
-  vi.mocked(requestNode).mockImplementation(async (route) =>
-    route === ENVELOPE_ROUTES.list
-      ? {
-          success: true,
-          result: { available: true, result: { envelopes: listed } },
-        }
-      : {
-          success: true,
-          result: {
-            available: true,
-            result: {
-              exists: true,
-              parameter: parameterInfo("Track Volume"),
-              event_count: EVENTS.length,
-              events: EVENTS,
-              ...read,
-            },
-          },
-        },
-  );
+  answerEachRead(listed, () => ({
+    available: true,
+    result: {
+      exists: true,
+      parameter: parameterInfo("Track Volume"),
+      event_count: EVENTS.length,
+      events: EVENTS,
+      ...read,
+    },
+  }));
 }
 
 /**
@@ -442,30 +460,11 @@ describe("readClip - envelopes", () => {
 
   it("keeps the envelopes it read when one parameter's read fails", async () => {
     setupClip();
-    vi.mocked(requestNode).mockImplementation(async (route, args) => {
-      if (route === ENVELOPE_ROUTES.list) {
-        return {
-          success: true,
-          result: {
-            available: true,
-            result: { envelopes: [MIXER_VOLUME, MIXER_SEND, DEVICE_PARAM] },
-          },
-        };
-      }
-
-      return (args as { parameter?: unknown }).parameter === "send0"
-        ? {
-            success: true,
-            result: { available: true, error: "parameter send0 is gone" },
-          }
-        : {
-            success: true,
-            result: {
-              available: true,
-              result: { exists: true, event_count: 2, events: EVENTS },
-            },
-          };
-    });
+    answerEachRead([MIXER_VOLUME, MIXER_SEND, DEVICE_PARAM], (parameter) =>
+      parameter === "send0"
+        ? { available: true, error: "parameter send0 is gone" }
+        : READ_EVENTS,
+    );
 
     expect(await readEnvelopes()).toStrictEqual([
       {
@@ -492,14 +491,7 @@ describe("readClip - envelopes", () => {
 
   it("reports the whole read as unreachable if the remote script is missing for the first read", async () => {
     setupClip();
-    vi.mocked(requestNode).mockImplementation(async (route) =>
-      route === ENVELOPE_ROUTES.list
-        ? {
-            success: true,
-            result: { available: true, result: { envelopes: [MIXER_VOLUME] } },
-          }
-        : { success: true, result: { available: false } },
-    );
+    answerEachRead([MIXER_VOLUME], () => ({ available: false }));
 
     expect(await readEnvelopes()).toBe(
       "the Producer Pal remote script isn't running, so clip automation can't be reached",
@@ -512,27 +504,9 @@ describe("readClip - envelopes", () => {
     const missing =
       "the Producer Pal remote script isn't running, so clip automation can't be reached";
 
-    vi.mocked(requestNode).mockImplementation(async (route, args) => {
-      if (route === ENVELOPE_ROUTES.list) {
-        return {
-          success: true,
-          result: {
-            available: true,
-            result: { envelopes: [MIXER_VOLUME, MIXER_SEND, DEVICE_PARAM] },
-          },
-        };
-      }
-
-      return (args as { parameter?: unknown }).parameter === "volume"
-        ? {
-            success: true,
-            result: {
-              available: true,
-              result: { exists: true, event_count: 2, events: EVENTS },
-            },
-          }
-        : { success: true, result: { available: false } };
-    });
+    answerEachRead([MIXER_VOLUME, MIXER_SEND, DEVICE_PARAM], (parameter) =>
+      parameter === "volume" ? READ_EVENTS : { available: false },
+    );
 
     expect(await readEnvelopes()).toStrictEqual([
       {

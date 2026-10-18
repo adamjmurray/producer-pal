@@ -26,6 +26,10 @@ import {
   registerTracks,
 } from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
 import { createDevice } from "../create-device.ts";
+import {
+  registerTempTrack,
+  TEMP_TRACK,
+} from "./browser/temp-track-test-helpers.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),
@@ -207,7 +211,6 @@ function songView(): RegisteredMockObject {
 describe("createDevice — a browser load's cleanup", () => {
   const ITEM = { type: "plugin", path: "VST3/Pro-Q 4", name: "Pro-Q 4" };
   const PRESET = { type: "preset", path: "Presets/Warm", name: "Warm" };
-  const TEMP_TRACK = livePath.track(1);
   let liveSet: RegisteredMockObject;
   let tempTrack: RegisteredMockObject;
   let loads = 0;
@@ -217,7 +220,6 @@ describe("createDevice — a browser load's cleanup", () => {
     loads = 0;
     onLoaded = undefined;
     liveSet = mockWorkingDeviceMoves();
-    liveSet.methods.create_midi_track = () => ["id", "temp-track"];
     // The first temp track won't go; later ones do.
     liveSet.methods.delete_track = vi
       .fn()
@@ -230,13 +232,7 @@ describe("createDevice — a browser load's cleanup", () => {
       type: "Track",
       properties: { devices: children() },
     });
-    tempTrack = registerMockObject("temp-track", {
-      path: TEMP_TRACK,
-      type: "Track",
-      properties: { devices: [] },
-    });
-    registerMockObject("selected-track", { path: livePath.view.selectedTrack });
-    registerMockObject("song-view", { path: livePath.view.song });
+    ({ tempTrack } = registerTempTrack(liveSet));
     vi.mocked(requestNode).mockImplementation(async (route) => {
       if (route === REMOTE_SCRIPT_ROUTES.resolve) {
         return { success: true, result: { available: true, item: ITEM } };
