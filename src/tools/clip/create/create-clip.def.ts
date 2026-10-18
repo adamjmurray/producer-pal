@@ -6,12 +6,10 @@
 import { z } from "zod";
 import { MAX_CODE_LENGTH, TAKE_LANE_NOTE } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
+import { clipSlotAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { audioClipParams } from "#src/tools/shared/schema/audio-clip-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import {
-  aliasParam,
-  deprecatedParam,
-} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
@@ -50,22 +48,10 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         "where the clip goes, 0-based: 't0/s0' = first track, first scene (session); 't0[5|1]' = bar 5 on the first track's arrangement. A number the user says is 1-based - their \"scene 3\" is s2",
     }),
 
-    slot: deprecatedParam(z.coerce.string().optional(), {
-      replacedBy: "path",
-    }),
-
-    // Models reach for these on their own, well-foundedly: they name a track
-    // and a scene everywhere else in the toolset. Catching the guess costs a
-    // warning; refusing it costs a round trip.
-    trackIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
-      canonical: "path",
-      example: "t0/s0",
-    }),
-
-    sceneIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
-      canonical: "path",
-      example: "t0/s0",
-    }),
+    // Models reach for the index aliases on their own, well-foundedly: they
+    // name a track and a scene everywhere else in the toolset. Catching the
+    // guess costs a warning; refusing it costs a round trip.
+    ...clipSlotAliases("t0/s0"),
 
     arrangementStart: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",

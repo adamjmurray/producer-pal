@@ -25,12 +25,14 @@ import {
   notePitch,
 } from "#src/notation/stark/helpers/stark-interpreter-pitch.ts";
 import {
+  type BarMarkerItem,
   type ChordItem,
   type ChordsContentItem,
   type ChordsSection,
   type DrumSection,
   type PitchedContentItem,
   type PitchedSection,
+  type RestItem,
   type StarkDuration,
   type StarkDynamic,
   type StarkSection,
@@ -149,31 +151,20 @@ function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
 
   const lineDefault = section.defaultDuration ?? DRUM_DEFAULT;
 
-  let time = 0;
+  // Each copy of a `*N` hit re-rolls its velocity.
+  runLine(section.content, lineDefault, (hit, time) => {
+    const beats = durationBeats(hit.duration ?? lineDefault);
 
-  for (const item of section.content) {
-    if ("barMarker" in item) {
-      continue;
-    }
+    notes.push({
+      pitch,
+      start_time: time,
+      duration: beats,
+      velocity: velocityFor(hit.velocity),
+      probability: 1.0,
+    });
 
-    const beats = durationBeats(item.duration ?? lineDefault);
-    const count = item.repeat ?? 1;
-
-    // `*N` expands one token into N copies; each hit re-rolls its velocity.
-    for (let i = 0; i < count; i++) {
-      if (item.type !== "rest") {
-        notes.push({
-          pitch,
-          start_time: time,
-          duration: beats,
-          velocity: velocityFor(item.velocity),
-          probability: 1.0,
-        });
-      }
-
-      time += beats;
-    }
-  }
+    return time + beats;
+  });
 }
 
 // Convert a dynamic level to a random velocity within its range.
@@ -206,7 +197,7 @@ function processPitchedSection(
 
   const lineDefault = section.defaultDuration ?? LINE_DEFAULT[section.type];
 
-  runLine(section.content, (item, time) =>
+  runLine(section.content, lineDefault, (item, time) =>
     processItem(item, time, registerDefault, lineDefault, notes),
   );
 }
@@ -219,27 +210,38 @@ function processChordsSection(
 ): void {
   const lineDefault = section.defaultDuration ?? LINE_DEFAULT.chords;
 
-  runLine(section.content, (item, time) =>
+  runLine(section.content, lineDefault, (item, time) =>
     processChordItem(item, time, lineDefault, notes),
   );
 }
 
-// Walk one line's content from time 0, advancing the cursor by whatever `step`
-// returns. `*N` expands one token into N copies (a barMarker has no repeat →
-// once).
-function runLine<T extends { repeat?: number | null } | { barMarker: unknown }>(
+// Walk one line's content from time 0. A bar marker doesn't move the cursor, a
+// rest moves it by its duration, and every other token moves it by whatever
+// `step` returns. `*N` expands one token into N copies.
+function runLine<T extends BarMarkerItem | { repeat?: number | null }>(
   content: T[],
-  step: (item: T, time: number) => number,
+  lineDefault: StarkDuration,
+  step: (item: Exclude<T, BarMarkerItem | RestItem>, time: number) => number,
 ): void {
   let time = 0;
 
   for (const item of content) {
-    const count = "barMarker" in item ? 1 : (item.repeat ?? 1);
+    if ("barMarker" in item) {
+      continue;
+    }
+
+    const count = item.repeat ?? 1;
 
     for (let i = 0; i < count; i++) {
-      time = step(item, time);
+      time = isRest(item)
+        ? time + durationBeats(item.duration ?? lineDefault)
+        : step(item as Exclude<T, BarMarkerItem | RestItem>, time);
     }
   }
+}
+
+function isRest(item: object): item is RestItem {
+  return "type" in item && item.type === "rest";
 }
 
 // Process one chords-line item; returns the updated time cursor. Tokens are chord
@@ -248,19 +250,11 @@ function runLine<T extends { repeat?: number | null } | { barMarker: unknown }>(
 // invalid Stark token — so a missing space (`CG` = root C, quality "G") can't
 // silently drop chords and desync the rest of the line.
 function processChordItem(
-  item: ChordsContentItem,
+  item: Exclude<ChordsContentItem, BarMarkerItem | RestItem>,
   time: number,
   lineDefault: StarkDuration,
   notes: NoteEvent[],
 ): number {
-  if ("barMarker" in item) {
-    return time;
-  }
-
-  if (item.type === "rest") {
-    return time + durationBeats(item.duration ?? lineDefault);
-  }
-
   if (item.type === "chord") {
     return pushBracketChord(
       item,
@@ -312,20 +306,12 @@ function processChordItem(
 
 // Process one pitched content item; returns updated time cursor.
 function processItem(
-  item: PitchedContentItem,
+  item: Exclude<PitchedContentItem, BarMarkerItem | RestItem>,
   time: number,
   registerDefault: number,
   lineDefault: StarkDuration,
   notes: NoteEvent[],
 ): number {
-  if ("barMarker" in item) {
-    return time;
-  }
-
-  if (item.type === "rest") {
-    return time + durationBeats(item.duration ?? lineDefault);
-  }
-
   if (item.type === "note") {
     const beats = durationBeats(item.duration ?? lineDefault);
     const midi = notePitch(item, registerDefault);

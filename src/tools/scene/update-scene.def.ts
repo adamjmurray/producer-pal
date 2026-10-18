@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
+import { sceneNameColorParams } from "#src/tools/shared/schema/scene-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
@@ -27,14 +28,7 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
         "scene path to update instead of id: 's<index>', where s0 is the first scene (a user's \"scene 3\" is s2)",
     }),
 
-    name: param(z.string().optional(), {
-      default: "name, or comma-separated one per scene",
-      smallModel: "scene name",
-    }),
-    color: param(z.string().optional(), {
-      default: "#RRGGBB, or comma-separated one per scene",
-      smallModel: "#RRGGBB",
-    }),
+    ...sceneNameColorParams(),
     tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),
     timeSignature: z
       .string()

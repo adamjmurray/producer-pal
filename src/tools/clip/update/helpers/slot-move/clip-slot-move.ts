@@ -69,20 +69,14 @@ interface SlotMoveArgs {
  * @param args.noteResult - Note update result for result
  * @param args.reasons - What each clip has to say beyond its result
  */
-export function handleClipSlotMove({
-  clip,
-  toSlot,
-  destinationTracks,
-  updatedClips,
-  noteResult,
-  reasons,
-}: SlotMoveArgs): void {
+export function handleClipSlotMove(args: SlotMoveArgs): void {
+  const { clip, toSlot, destinationTracks, updatedClips, noteResult, reasons } =
+    args;
   const srcTrackIndex = clip.trackIndex;
   const srcSceneIndex = clip.sceneIndex;
 
   if (srcTrackIndex == null || srcSceneIndex == null) {
-    refuseClipWork(reasons, clip.id, "not moved: could not determine its slot");
-    keepClip(clip, updatedClips, noteResult);
+    refuseSlotMove(args, "could not determine its slot");
 
     return;
   }
@@ -109,19 +103,12 @@ export function handleClipSlotMove({
   );
 
   if (blocker != null) {
-    refuseClipWork(reasons, clip.id, `not moved: ${blocker}`);
-    keepClip(clip, updatedClips, noteResult);
+    refuseSlotMove(args, blocker);
 
     return;
   }
 
-  const destination = destinationSlot({
-    clip,
-    toSlot,
-    updatedClips,
-    noteResult,
-    reasons,
-  });
+  const destination = destinationSlot(args);
 
   if (destination == null) {
     return;
@@ -144,15 +131,13 @@ export function handleClipSlotMove({
   const newClip = copyClipToSlot(sourceClipSlot, destClipSlot);
 
   if (newClip == null) {
-    refuseClipWork(
-      reasons,
-      clip.id,
+    refuseSlotMove(
+      args,
       withCreatedScenes(
-        `not moved: no clip landed at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}, so the original was kept`,
+        `no clip landed at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}, so the original was kept`,
         created,
       ),
     );
-    keepClip(clip, updatedClips, noteResult);
 
     return;
   }
@@ -194,29 +179,17 @@ export function handleClipSlotMove({
  * @param args.noteResult - Note update result for result
  * @param args.reasons - What each clip has to say beyond its result
  */
-export function handleArrangementToSlotMove({
-  clip,
-  toSlot,
-  updatedClips,
-  noteResult,
-  reasons,
-}: SlotMoveArgs): void {
+export function handleArrangementToSlotMove(args: SlotMoveArgs): void {
+  const { clip, toSlot, updatedClips, noteResult, reasons } = args;
   const blocker = arrangementToSlotBlocker(clip, toSlot);
 
   if (blocker != null) {
-    refuseClipWork(reasons, clip.id, `not moved: ${blocker}`);
-    keepClip(clip, updatedClips, noteResult);
+    refuseSlotMove(args, blocker);
 
     return;
   }
 
-  const destination = destinationSlot({
-    clip,
-    toSlot,
-    updatedClips,
-    noteResult,
-    reasons,
-  });
+  const destination = destinationSlot(args);
 
   if (destination == null) {
     return;
@@ -231,15 +204,13 @@ export function handleArrangementToSlotMove({
   const recreated = recreateIntoSlot(clip, toSlot, destClipSlot, {}, losses);
 
   if (!recreated.ok) {
-    refuseClipWork(
-      reasons,
-      clip.id,
+    refuseSlotMove(
+      args,
       withCreatedScenes(
-        `not moved: ${recreated.reason} The source clip in the arrangement is untouched.`,
+        `${recreated.reason} The source clip in the arrangement is untouched.`,
         created,
       ),
     );
-    keepClip(clip, updatedClips, noteResult);
 
     return;
   }
@@ -453,7 +424,7 @@ function destinationSlot(
  * @param args.updatedClips - Array to collect results
  * @param args.noteResult - Note update result for result
  * @param args.reasons - What each clip has to say beyond its result
- * @param reason - Why the destination couldn't be reached
+ * @param reason - Why it didn't move
  * @returns Null, for the caller to return
  */
 function refuseSlotMove(

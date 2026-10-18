@@ -4,12 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from "zod";
-import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
-import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import {
-  aliasParam,
-  deprecatedParam,
-} from "#src/tools/shared/tool-framework/hidden-param.ts";
+  addressingAliases,
+  clipSlotAliases,
+} from "#src/tools/shared/schema/addressing-params.ts";
+import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefReadClip = defineTool("ppal-read-clip", {
@@ -31,19 +30,7 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
         "clip location(s) to read, comma-separated, 0-based: a clip slot 't<track>/s<scene>' (e.g., 't0/s3'), or an arrangement clip covering a position, 't<track>[<position>]' (e.g., 't0[5|1]')",
       ),
 
-    slot: deprecatedParam(z.coerce.string().optional(), {
-      replacedBy: "path",
-    }),
-
-    trackIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
-      canonical: "path",
-      example: "t0/s3",
-    }),
-
-    sceneIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
-      canonical: "path",
-      example: "t0/s3",
-    }),
+    ...clipSlotAliases("t0/s3"),
     include: param(
       z
         .array(

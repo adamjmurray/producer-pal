@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from "zod";
+import { sceneNameColorParams } from "#src/tools/shared/schema/scene-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
@@ -51,14 +52,7 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       default: "copy playing session clips instead of creating empty?",
       smallModel: null,
     }),
-    name: param(z.string().optional(), {
-      default: "name, or comma-separated one per scene",
-      smallModel: "scene name",
-    }),
-    color: param(z.string().optional(), {
-      default: "#RRGGBB, or comma-separated one per scene",
-      smallModel: "#RRGGBB",
-    }),
+    ...sceneNameColorParams(),
     tempo: param(z.coerce.number().optional(), {
       default: "BPM (-1 disables)",
       smallModel: null,
