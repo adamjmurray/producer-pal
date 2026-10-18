@@ -16,7 +16,10 @@ import {
   installFetchMock,
   jsonResponse,
 } from "#webui/hooks/context/tests/doc-transport-test-helpers";
-import { useRemoteScript } from "#webui/hooks/settings/installation/use-remote-script";
+import {
+  type RemoteScriptStatus,
+  useRemoteScript,
+} from "#webui/hooks/settings/installation/use-remote-script";
 import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 
 const OLD_INSTALL = {
@@ -26,9 +29,36 @@ const OLD_INSTALL = {
   running: true,
   runningVersion: "1.1.0",
 };
+// Installed is current, but Live still runs the older copy.
+const NEEDS_RESTART = {
+  installed: true,
+  installedVersion: "1.2.0",
+  running: true,
+  runningVersion: "1.1.0",
+};
+const CURRENT = { ...NEEDS_RESTART, runningVersion: "1.2.0" };
 
 describe("useRemoteScriptNotice", () => {
   const fetchMock = installFetchMock();
+
+  /**
+   * Queue the next status read's answer.
+   * @param fields - Status fields to change
+   */
+  function queueStatus(fields: Partial<RemoteScriptStatus> = {}): void {
+    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody(fields)));
+  }
+
+  /**
+   * Render the notice while connecting, with its first read answering this.
+   * @param fields - Status fields to change
+   * @returns The rendered hook
+   */
+  function renderNotice(fields: Partial<RemoteScriptStatus>) {
+    queueStatus(fields);
+
+    return renderHook(() => useRemoteScriptNotice("connecting"));
+  }
 
   it("is null until the status lands", () => {
     fetchMock.mockReturnValueOnce(new Promise(() => {}));
@@ -39,54 +69,25 @@ describe("useRemoteScriptNotice", () => {
   });
 
   it("asks for an update when the installed script is older than this build", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody(OLD_INSTALL)));
-
-    const { result } = renderHook(() => useRemoteScriptNotice("connecting"));
+    const { result } = renderNotice(OLD_INSTALL);
 
     await waitForHookState(() => expect(result.current).toBe("update"));
   });
 
   it("asks for a restart when Live runs an older copy than the installed one", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(
-        statusBody({
-          installed: true,
-          installedVersion: "1.2.0",
-          running: true,
-          runningVersion: "1.1.0",
-        }),
-      ),
-    );
-
-    const { result } = renderHook(() => useRemoteScriptNotice("connecting"));
+    const { result } = renderNotice(NEEDS_RESTART);
 
     await waitForHookState(() => expect(result.current).toBe("restart"));
   });
 
-  it("stays null when the script is current", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(
-        statusBody({
-          installed: true,
-          installedVersion: "1.2.0",
-          running: true,
-          runningVersion: "1.2.0",
-        }),
-      ),
-    );
-
-    const { result } = renderHook(() => useRemoteScriptNotice("connecting"));
-
-    await waitForHookState(() => expect(fetchMock).toHaveBeenCalled());
-    await act(() => Promise.resolve());
-
-    expect(result.current).toBeNull();
-  });
-
-  it("stays null when the read fails", async () => {
-    fetchMock.mockResolvedValueOnce(
-      new Response("nope", { status: 404, statusText: "Not Found" }),
-    );
+  it.each([
+    ["the script is current", () => jsonResponse(statusBody(CURRENT))],
+    [
+      "the read fails",
+      () => new Response("nope", { status: 404, statusText: "Not Found" }),
+    ],
+  ])("stays null when %s", async (_, response) => {
+    fetchMock.mockResolvedValueOnce(response());
 
     const { result } = renderHook(() => useRemoteScriptNotice("connecting"));
 
@@ -97,31 +98,11 @@ describe("useRemoteScriptNotice", () => {
   });
 
   it("clears once Live is restarted and the window regains focus", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(
-        statusBody({
-          installed: true,
-          installedVersion: "1.2.0",
-          running: true,
-          runningVersion: "1.1.0",
-        }),
-      ),
-    );
-
-    const { result } = renderHook(() => useRemoteScriptNotice("connecting"));
+    const { result } = renderNotice(NEEDS_RESTART);
 
     await waitForHookState(() => expect(result.current).toBe("restart"));
 
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(
-        statusBody({
-          installed: true,
-          installedVersion: "1.2.0",
-          running: true,
-          runningVersion: "1.2.0",
-        }),
-      ),
-    );
+    queueStatus(CURRENT);
     await act(() => {
       window.dispatchEvent(new Event("focus"));
     });
@@ -130,39 +111,19 @@ describe("useRemoteScriptNotice", () => {
   });
 
   it("follows a status the Installation tab reads", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody(OLD_INSTALL)));
-
-    const notice = renderHook(() => useRemoteScriptNotice("connecting"));
+    const notice = renderNotice(OLD_INSTALL);
 
     await waitForHookState(() => expect(notice.result.current).toBe("update"));
 
     // The tab's own mount read, after an Update landed.
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(
-        statusBody({
-          installed: true,
-          installedVersion: "1.2.0",
-          running: true,
-          runningVersion: "1.1.0",
-        }),
-      ),
-    );
+    queueStatus(NEEDS_RESTART);
     renderHook(() => useRemoteScript());
 
     await waitForHookState(() => expect(notice.result.current).toBe("restart"));
   });
 
   it("re-reads when the connection comes back, and clears the badge", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(
-        statusBody({
-          installed: true,
-          installedVersion: "1.2.0",
-          running: true,
-          runningVersion: "1.1.0",
-        }),
-      ),
-    );
+    queueStatus(NEEDS_RESTART);
 
     let mcpStatus: McpStatus = "error";
     const { result, rerender } = renderHook(() =>
@@ -175,16 +136,7 @@ describe("useRemoteScriptNotice", () => {
     rerender();
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(
-        statusBody({
-          installed: true,
-          installedVersion: "1.2.0",
-          running: true,
-          runningVersion: "1.2.0",
-        }),
-      ),
-    );
+    queueStatus(CURRENT);
     mcpStatus = "connected";
     rerender();
 
@@ -193,9 +145,7 @@ describe("useRemoteScriptNotice", () => {
   });
 
   it("keeps the badge when a later read fails", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody(OLD_INSTALL)));
-
-    const { result } = renderHook(() => useRemoteScriptNotice("connecting"));
+    const { result } = renderNotice(OLD_INSTALL);
 
     await waitForHookState(() => expect(result.current).toBe("update"));
 
@@ -216,7 +166,7 @@ describe("useRemoteScriptNotice", () => {
 
     const { result } = renderHook(() => useRemoteScriptNotice("connecting"));
 
-    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
+    queueStatus();
     await act(() => {
       window.dispatchEvent(new Event("focus"));
     });
@@ -232,14 +182,12 @@ describe("useRemoteScriptNotice", () => {
   });
 
   it("stops listening when it unmounts", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody(OLD_INSTALL)));
-
-    const notice = renderHook(() => useRemoteScriptNotice("connecting"));
+    const notice = renderNotice(OLD_INSTALL);
 
     await waitForHookState(() => expect(notice.result.current).toBe("update"));
     notice.unmount();
 
-    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
+    queueStatus();
     renderHook(() => useRemoteScript());
 
     await waitForHookState(() => expect(fetchMock).toHaveBeenCalledTimes(2));

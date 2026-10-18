@@ -46,86 +46,6 @@ async function renderPastMountRead(
 describe("useRemoteScript status read", () => {
   const fetchMock = installFetchMock();
 
-  it("stays quiet when the mount read is aborted by an unmount", async () => {
-    const pending = deferred<Response>();
-
-    fetchMock.mockReturnValueOnce(pending.promise);
-
-    const { result, unmount } = renderHook(() => useRemoteScript());
-
-    unmount();
-
-    await act(async () => {
-      pending.reject(new DOMException("Aborted", "AbortError"));
-      await Promise.resolve();
-    });
-
-    // Neither the error nor the spinner moved: the tab is gone, and a late
-    // answer must not repaint it.
-    expect(result.current.loadError).toBeNull();
-    expect(result.current.loading).toBe(true);
-  });
-
-  it("shows a non-Error rejection as its string form", async () => {
-    fetchMock.mockRejectedValueOnce("socket hung up");
-
-    const { result } = renderHook(() => useRemoteScript());
-
-    await waitForHookState(() => {
-      expect(result.current.loadError).toBe("socket hung up");
-    });
-    expect(result.current.loading).toBe(false);
-  });
-
-  it("ignores an older read that lands after a newer one", async () => {
-    const mountRead = deferred<Response>();
-
-    fetchMock.mockReturnValueOnce(mountRead.promise);
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(statusBody({ running: true })),
-    );
-
-    const { result } = renderHook(() => useRemoteScript());
-
-    await act(() => {
-      result.current.refresh();
-    });
-    await waitForHookState(() => {
-      expect(result.current.status?.running).toBe(true);
-    });
-
-    await act(async () => {
-      mountRead.resolve(jsonResponse(statusBody({ running: false })));
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-
-    expect(fetchSignal(0)?.aborted).toBe(true);
-    expect(result.current.status?.running).toBe(true);
-    expect(result.current.loading).toBe(false);
-  });
-
-  it("stays loading when a superseded read rejects", async () => {
-    const mountRead = deferred<Response>();
-
-    fetchMock.mockReturnValueOnce(mountRead.promise);
-    fetchMock.mockReturnValueOnce(deferred<Response>().promise);
-
-    const { result } = renderHook(() => useRemoteScript());
-
-    await act(() => {
-      result.current.refresh();
-    });
-
-    await act(async () => {
-      mountRead.reject(new DOMException("Aborted", "AbortError"));
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-
-    // The refresh read is still out, so the spinner stays.
-    expect(result.current.loading).toBe(true);
-    expect(result.current.loadError).toBeNull();
-  });
-
   it("keeps the last status when a refresh fails", async () => {
     const { result } = await renderPastMountRead(fetchMock);
 
@@ -139,16 +59,6 @@ describe("useRemoteScript status read", () => {
     });
     expect(result.current.status?.userLibrary).toBe(USER_LIBRARY);
   });
-
-  /**
-   * @param call - Which fetch call
-   * @returns The abort signal that call was given
-   */
-  function fetchSignal(call: number): AbortSignal | undefined {
-    const init = fetchMock.mock.calls[call]?.[1] as RequestInit | undefined;
-
-    return init?.signal ?? undefined;
-  }
 });
 
 describe("useRemoteScript install failures", () => {

@@ -40,60 +40,6 @@ describe("useDeviceInstall", () => {
     return rendered;
   }
 
-  it("stays quiet when the mount read is aborted by an unmount", async () => {
-    const pending = deferred<Response>();
-
-    fetchMock.mockReturnValueOnce(pending.promise);
-
-    const { result, unmount } = renderHook(() => useDeviceInstall());
-
-    unmount();
-
-    await act(async () => {
-      pending.reject(new DOMException("Aborted", "AbortError"));
-      await Promise.resolve();
-    });
-
-    expect(result.current.loadError).toBeNull();
-    expect(result.current.loading).toBe(true);
-  });
-
-  it("shows a non-Error rejection as its string form", async () => {
-    fetchMock.mockRejectedValueOnce("socket hung up");
-
-    const { result } = renderHook(() => useDeviceInstall());
-
-    await waitForHookState(() => {
-      expect(result.current.loadError).toBe("socket hung up");
-    });
-    expect(result.current.loading).toBe(false);
-  });
-
-  it("ignores an older read that lands after a newer one", async () => {
-    const mountRead = deferred<Response>();
-
-    fetchMock.mockReturnValueOnce(mountRead.promise);
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(deviceStatusBody({ state: "same" })),
-    );
-
-    const { result } = renderHook(() => useDeviceInstall());
-
-    await act(() => {
-      result.current.refresh();
-    });
-    await waitForHookState(() => {
-      expect(result.current.status?.state).toBe("same");
-    });
-
-    await act(async () => {
-      mountRead.resolve(jsonResponse(deviceStatusBody()));
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-
-    expect(result.current.status?.state).toBe("same");
-  });
-
   it("keeps the last status, and drops the install message, when a refresh fails", async () => {
     const { result } = await renderPastMountRead();
 

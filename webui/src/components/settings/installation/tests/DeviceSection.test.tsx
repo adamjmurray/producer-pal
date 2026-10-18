@@ -64,6 +64,23 @@ describe("InstallationTab device section", () => {
     return screen.queryByTestId("device-install")?.textContent ?? null;
   }
 
+  /**
+   * Click Install, wait for it to finish, and read what the POST sent.
+   * @returns The install request's body
+   */
+  async function installAndReadBody(): Promise<unknown> {
+    fireEvent.click(screen.getByTestId("device-install"));
+    await waitForHookState(() => screen.getByTestId("device-installed-path"));
+
+    const post = fetchMock.mock.calls.find(([url]) =>
+      String(url).includes("/device-install/install"),
+    );
+
+    const init = post?.[1] as RequestInit | undefined;
+
+    return JSON.parse(init?.body as string);
+  }
+
   it("shows the shared path field above both sections", async () => {
     await renderDevice();
 
@@ -137,15 +154,10 @@ describe("InstallationTab device section", () => {
     expect(installLabel()).toBe("Replace with this device");
 
     routes.device(jsonResponse({ ...INSTALL_DONE, outcome: "updated" }));
-    fireEvent.click(screen.getByTestId("device-install"));
-
-    await waitForHookState(() => screen.getByTestId("device-installed-path"));
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/device-install/install"),
-      expect.objectContaining({
-        body: JSON.stringify({ userLibrary: USER_LIBRARY, force: true }),
-      }),
-    );
+    expect(await installAndReadBody()).toStrictEqual({
+      userLibrary: USER_LIBRARY,
+      force: true,
+    });
   });
 
   it("describes a copy that can't be ordered, without saying vnull", async () => {
@@ -169,15 +181,10 @@ describe("InstallationTab device section", () => {
     await waitForHookState(() => expect(installLabel()).toBe("Install"));
 
     routes.device(jsonResponse(INSTALL_DONE));
-    fireEvent.click(screen.getByTestId("device-install"));
-
-    await waitForHookState(() => screen.getByTestId("device-installed-path"));
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/device-install/install"),
-      expect.objectContaining({
-        body: JSON.stringify({ userLibrary: "/elsewhere", force: false }),
-      }),
-    );
+    expect(await installAndReadBody()).toStrictEqual({
+      userLibrary: "/elsewhere",
+      force: false,
+    });
   });
 
   it("keeps the Install button for a typed path even when the detected copy is current", async () => {
