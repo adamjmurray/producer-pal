@@ -5,8 +5,7 @@ outline: [2, 3]
 # Upgrading Producer Pal
 
 Upgrading takes two steps for most people. The latest version is
-v{{ $frontmatter.version }}
-([what's new?](https://github.com/adamjmurray/producer-pal/releases/latest)).
+v{{ $frontmatter.version }} ([what's new?](https://github.com/adamjmurray/producer-pal/releases/latest)).
 
 ::: tip Let your AI do it
 
