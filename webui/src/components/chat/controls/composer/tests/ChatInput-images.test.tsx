@@ -16,6 +16,7 @@ import {
   NOT_AN_IMAGE_MESSAGE,
   TOO_MANY_IMAGES_MESSAGE,
 } from "#webui/utils/image-attachments";
+import { deferSelectionChange } from "#webui/test-utils/dom-test-helpers";
 
 const DROP_OVERLAY_TEXT = "Drop images to attach";
 
@@ -86,6 +87,8 @@ async function attachViaPicker(files: File[]): Promise<void> {
   fireEvent.change(input);
   await screen.findByAltText("Attachment 1");
 }
+
+beforeEach(deferSelectionChange);
 
 describe("ChatInput image attachments", () => {
   beforeEach(() => {

@@ -8,9 +8,10 @@
  */
 import { EditorView } from "@codemirror/view";
 import { act, render, screen, fireEvent } from "@testing-library/preact";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatInput } from "#webui/components/chat/controls/composer/ChatInput";
 import { chatInputProps } from "#webui/components/chat/controls/composer/tests/chat-input-props";
+import { deferSelectionChange } from "#webui/test-utils/dom-test-helpers";
 
 /**
  * The chat input's live CodeMirror view.
@@ -53,6 +54,8 @@ function placeholderText(): string | null {
 }
 
 const defaultProps = chatInputProps();
+
+beforeEach(deferSelectionChange);
 
 describe("ChatInput", () => {
   describe("rendering", () => {
