@@ -187,6 +187,7 @@
     "external-editor": {
       "tmp": "0.2.7"
     },
-    "qs": "6.16.0"
+    "qs": "6.16.0",
+    "postcss-selector-parser": "7.1.6"
   }
 }
