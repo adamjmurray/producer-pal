@@ -19,6 +19,7 @@ import {
   isToolError,
   parseToolResult,
   readDeviceCount,
+  readIdAtPath,
   setupMcpTestContext,
   sleep,
   trackIndexFromPath,
@@ -136,19 +137,8 @@ describe("ppal-create-device path lists", () => {
     }
   });
 
-  /**
-   * A track's id.
-   * @param path - The track's path
-   * @returns The id
-   */
-  async function trackId(path: string): Promise<string> {
-    return parseToolResult<{ id: string }>(
-      await ctx.client!.callTool({
-        name: "ppal-read-track",
-        arguments: { path },
-      }),
-    ).id;
-  }
+  const trackId = (path: string): Promise<string> =>
+    readIdAtPath(ctx.client!, "ppal-read-track", path);
 
   // Live turns these down with no reason, so the entry has to give it.
   it("says why a group or audio track can't take an instrument, and makes the rest", async () => {

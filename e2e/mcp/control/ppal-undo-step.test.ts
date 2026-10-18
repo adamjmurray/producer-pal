@@ -16,19 +16,17 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  parseToolResult,
   resetConfig,
   setConfig,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
 import {
+  appendTracksInOneCall,
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../device/helpers/remote-script-test-helpers.ts";
-
-/** Long enough for the end request, which isn't waited for, to reach Live. */
-const END_LANDS_MS = 300;
+import { readTrackCount } from "../device/helpers/track-count-test-helpers.ts";
 
 describe.skipIf(!REMOTE_SCRIPT_E2E)("one undo step per write call", () => {
   requireRemoteScript();
@@ -42,33 +40,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("one undo step per write call", () => {
 
   afterEach(resetConfig);
 
-  /**
-   * How many tracks the Set holds right now.
-   * @returns The track count
-   */
-  async function trackCount(): Promise<number> {
-    const liveSet = parseToolResult<{ tracks?: unknown[] }>(
-      await ctx.client!.callTool({
-        name: "ppal-read-live-set",
-        arguments: { include: ["tracks"] },
-      }),
-    );
-
-    return liveSet.tracks?.length ?? 0;
-  }
-
-  /**
-   * One ppal-create-track call that appends a track per entry, then a wait for
-   * the undo step to close.
-   * @param entries - How many tracks the one call makes
-   */
-  async function createTracks(entries: number): Promise<void> {
-    await ctx.client!.callTool({
-      name: "ppal-create-track",
-      arguments: { path: Array(entries).fill("t+").join(",") },
-    });
-    await sleep(END_LANDS_MS);
-  }
+  const trackCount = (): Promise<number> => readTrackCount(ctx.client!);
 
   /** Undo once, as Cmd+Z in Live would. */
   async function undoOnce(): Promise<void> {
@@ -82,21 +54,30 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("one undo step per write call", () => {
     await sleep(150);
   }
 
-  it("undoes only the last of two write calls", async () => {
+  /**
+   * Make two write calls of one track each, then undo once.
+   * @returns How many of the two tracks the undo removed
+   */
+  async function undoAfterTwoCalls(): Promise<number> {
     const before = await trackCount();
 
-    await createTracks(1);
-    await createTracks(1);
+    await appendTracksInOneCall(ctx.client!, 1);
+    await appendTracksInOneCall(ctx.client!, 1);
     expect(await trackCount()).toBe(before + 2);
 
     await undoOnce();
-    expect(await trackCount()).toBe(before + 1);
+
+    return before + 2 - (await trackCount());
+  }
+
+  it("undoes only the last of two write calls", async () => {
+    expect(await undoAfterTwoCalls()).toBe(1);
   });
 
   it("undoes a call that makes several changes in one undo", async () => {
     const before = await trackCount();
 
-    await createTracks(3);
+    await appendTracksInOneCall(ctx.client!, 3);
     expect(await trackCount()).toBe(before + 3);
 
     await undoOnce();
@@ -106,13 +87,6 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("one undo step per write call", () => {
   it("undoes both calls together when the remote script is switched off", async () => {
     await setConfig({ remoteScriptEnabled: false });
 
-    const before = await trackCount();
-
-    await createTracks(1);
-    await createTracks(1);
-    expect(await trackCount()).toBe(before + 2);
-
-    await undoOnce();
-    expect(await trackCount()).toBe(before);
+    expect(await undoAfterTwoCalls()).toBe(2);
   });
 });

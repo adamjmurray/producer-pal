@@ -11,8 +11,10 @@
 import { type Page, expect, test } from "@playwright/test";
 import { installStubs } from "../ui-test-helpers";
 import {
+  type InstallStub,
   openInstallationTab,
   setupSettingsTest,
+  stubStatusAndInstall,
 } from "./settings-test-helpers";
 
 const USER_LIBRARY = "/Users/me/Music/Ableton/User Library";
@@ -29,14 +31,6 @@ interface RemoteScriptStatus {
   otherOnPort: number | null;
   updateAvailable: boolean;
   installedNewer: boolean;
-}
-
-/** How the stubbed install answers, and what it does to the status after. */
-interface InstallStub {
-  status: number;
-  body: unknown;
-  /** Status fields the install changes, applied on a 200. */
-  after?: Partial<RemoteScriptStatus>;
 }
 
 /**
@@ -63,8 +57,7 @@ function status(
 }
 
 /**
- * Stub both remote-script endpoints. A successful install rewrites the status
- * the next read answers with, the way the real server would.
+ * Stub both remote-script endpoints.
  * @param page - Playwright page
  * @param initial - What the first status read returns
  * @param install - How the install POST answers
@@ -72,29 +65,35 @@ function status(
 async function stubRemoteScript(
   page: Page,
   initial: RemoteScriptStatus,
-  install: InstallStub,
+  install: InstallStub<RemoteScriptStatus>,
 ): Promise<void> {
-  let current = initial;
+  await stubStatusAndInstall(page, "remote-script", initial, install);
+}
 
-  await page.route("**/remote-script", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(current),
+/**
+ * Stub a script installed and running at v1.1.0, which the install updates to
+ * this build's v1.2.0.
+ * @param page - Playwright page
+ */
+async function stubUpdateAvailable(page: Page): Promise<void> {
+  await stubRemoteScript(
+    page,
+    status({
+      installed: true,
+      installedVersion: "1.1.0",
+      running: true,
+      runningVersion: "1.1.0",
+      updateAvailable: true,
     }),
+    {
+      status: 200,
+      body: {
+        path: `${USER_LIBRARY}/Remote Scripts/Producer_Pal`,
+        version: "1.2.0",
+      },
+      after: { installedVersion: "1.2.0", updateAvailable: false },
+    },
   );
-
-  await page.route("**/remote-script/install", (route) => {
-    if (install.status === 200) {
-      current = { ...current, ...install.after };
-    }
-
-    return route.fulfill({
-      status: install.status,
-      contentType: "application/json",
-      body: JSON.stringify(install.body),
-    });
-  });
 }
 
 test.describe("Settings — installation: remote script (stubbed backend)", () => {
@@ -138,24 +137,7 @@ test.describe("Settings — installation: remote script (stubbed backend)", () =
     page,
   }) => {
     await setupSettingsTest(page);
-    await stubRemoteScript(
-      page,
-      status({
-        installed: true,
-        installedVersion: "1.1.0",
-        running: true,
-        runningVersion: "1.1.0",
-        updateAvailable: true,
-      }),
-      {
-        status: 200,
-        body: {
-          path: `${USER_LIBRARY}/Remote Scripts/Producer_Pal`,
-          version: "1.2.0",
-        },
-        after: { installedVersion: "1.2.0", updateAvailable: false },
-      },
-    );
+    await stubUpdateAvailable(page);
     await openInstallationTab(page);
 
     await expect(page.getByTestId("remote-script-status")).toHaveText(
@@ -221,24 +203,7 @@ test.describe("Settings — installation: remote script (stubbed backend)", () =
     page,
   }) => {
     await installStubs(page);
-    await stubRemoteScript(
-      page,
-      status({
-        installed: true,
-        installedVersion: "1.1.0",
-        running: true,
-        runningVersion: "1.1.0",
-        updateAvailable: true,
-      }),
-      {
-        status: 200,
-        body: {
-          path: `${USER_LIBRARY}/Remote Scripts/Producer_Pal`,
-          version: "1.2.0",
-        },
-        after: { installedVersion: "1.2.0", updateAvailable: false },
-      },
-    );
+    await stubUpdateAvailable(page);
     await page.goto("/chat-ui.html");
 
     await page.getByRole("button", { name: "(script update)" }).click();

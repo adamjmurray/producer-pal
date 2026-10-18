@@ -29,6 +29,7 @@ import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../device/helpers/remote-script-test-helpers.ts";
+import { readConnectSkills } from "../workflow/helpers/server-capability-test-helpers.ts";
 
 /** Skills sections that ship only while the remote script answers. */
 const AUTOMATION_HEADING = "## Clip Automation";
@@ -39,22 +40,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("remoteScriptEnabled config switch", () => {
 
   const ctx = setupMcpTestContext();
 
-  /**
-   * The Producer Pal Skills block ppal-connect injects.
-   * @returns Its text, or "" when there is none
-   */
-  async function connectSkills(): Promise<string> {
-    const result = (await ctx.client!.callTool({
-      name: "ppal-connect",
-      arguments: {},
-    })) as { content?: Array<{ text?: string }> };
-
-    return (
-      result.content?.find((block) =>
-        block.text?.startsWith("# Producer Pal Skills"),
-      )?.text ?? ""
-    );
-  }
+  const connectSkills = (): Promise<string> => readConnectSkills(ctx.client!);
 
   it("drops the remote-script skills while off, and brings them back on", async () => {
     await setConfig({ smallModelMode: false });

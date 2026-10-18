@@ -28,6 +28,7 @@ import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../device/helpers/remote-script-test-helpers.ts";
+import { readConnectSkills } from "../workflow/helpers/server-capability-test-helpers.ts";
 
 /** Newer than any release, so the running script is always older. */
 const TOO_NEW = "99.0.0";
@@ -41,6 +42,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
     requireRemoteScript();
 
     const ctx = setupMcpTestContext();
+    const connectSkills = (): Promise<string> => readConnectSkills(ctx.client!);
 
     afterEach(async () => {
       await setConfig({ remoteScriptMinVersion: null });
@@ -99,22 +101,5 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       await setConfig({ remoteScriptMinVersion: null });
       expect(await connectSkills()).toContain(AUTOMATION_HEADING);
     });
-
-    /**
-     * The Producer Pal Skills block ppal-connect injects.
-     * @returns Its text, or "" when there is none
-     */
-    async function connectSkills(): Promise<string> {
-      const result = (await ctx.client!.callTool({
-        name: "ppal-connect",
-        arguments: {},
-      })) as { content?: Array<{ text?: string }> };
-
-      return (
-        result.content?.find((block) =>
-          block.text?.startsWith("# Producer Pal Skills"),
-        )?.text ?? ""
-      );
-    }
   },
 );

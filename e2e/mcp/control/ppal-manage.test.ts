@@ -24,12 +24,12 @@ import {
   sleep,
 } from "../mcp-test-helpers.ts";
 import {
+  appendTracksInOneCall,
+  END_LANDS_MS,
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../device/helpers/remote-script-test-helpers.ts";
-
-/** Long enough for the end request, which isn't waited for, to reach Live. */
-const END_LANDS_MS = 300;
+import { readTrackCount } from "../device/helpers/track-count-test-helpers.ts";
 
 /** What a step reports about Live's history afterwards. */
 interface HistoryResult {
@@ -47,29 +47,11 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-manage undo and redo", () => {
 
   afterEach(resetConfig);
 
-  /**
-   * How many tracks the Set holds right now.
-   * @returns The track count
-   */
-  async function trackCount(): Promise<number> {
-    const liveSet = parseToolResult<{ tracks?: unknown[] }>(
-      await ctx.client!.callTool({
-        name: "ppal-read-live-set",
-        arguments: { include: ["tracks"] },
-      }),
-    );
-
-    return liveSet.tracks?.length ?? 0;
-  }
+  const trackCount = (): Promise<number> => readTrackCount(ctx.client!);
 
   /** One ppal-create-track call, then a wait for its undo step to close. */
-  async function createTrack(): Promise<void> {
-    await ctx.client!.callTool({
-      name: "ppal-create-track",
-      arguments: { path: "t+" },
-    });
-    await sleep(END_LANDS_MS);
-  }
+  const createTrack = (): Promise<void> =>
+    appendTracksInOneCall(ctx.client!, 1);
 
   /**
    * Call ppal-manage.

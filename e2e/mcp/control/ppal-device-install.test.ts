@@ -52,6 +52,26 @@ async function statusWithSource(): Promise<DeviceInstallStatus> {
   }
 }
 
+/**
+ * POST an install or swap into a User Library.
+ * @param action - "install" or "swap"
+ * @param userLibrary - The User Library to target
+ * @returns The HTTP status and the error the server gave
+ */
+async function postAction(
+  action: "install" | "swap",
+  userLibrary: string,
+): Promise<{ status: number; error: string }> {
+  const response = await fetch(`${DEVICE_URL}/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userLibrary }),
+  });
+  const body = (await response.json()) as { error: string };
+
+  return { status: response.status, error: body.error };
+}
+
 describe("device self-install (unfrozen development device)", () => {
   setupMcpTestContext({ once: true });
 
@@ -84,15 +104,10 @@ describe("device self-install (unfrozen development device)", () => {
   it("refuses to install it, and writes nothing", async () => {
     await statusWithSource();
 
-    const response = await fetch(`${DEVICE_URL}/install`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userLibrary: scratchLibrary }),
-    });
-    const body = (await response.json()) as { error: string };
+    const { status, error } = await postAction("install", scratchLibrary);
 
-    expect(response.status).toBe(409);
-    expect(body.error).toContain("development device");
+    expect(status).toBe(409);
+    expect(error).toContain("development device");
     expect(readdirSync(scratchLibrary)).toStrictEqual([]);
   });
 
@@ -100,15 +115,10 @@ describe("device self-install (unfrozen development device)", () => {
     const before = await statusWithSource();
 
     // The copy check comes first, so no remote script is needed to see this.
-    const response = await fetch(`${DEVICE_URL}/swap`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userLibrary: scratchLibrary }),
-    });
-    const body = (await response.json()) as { error: string };
+    const { status, error } = await postAction("swap", scratchLibrary);
 
-    expect(response.status).toBe(409);
-    expect(body.error).toContain("no copy of this device");
+    expect(status).toBe(409);
+    expect(error).toContain("no copy of this device");
     expect(readdirSync(scratchLibrary)).toStrictEqual([]);
 
     // Still the same device answering, from the same file.

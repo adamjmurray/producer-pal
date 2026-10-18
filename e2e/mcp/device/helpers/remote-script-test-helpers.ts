@@ -8,11 +8,38 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { beforeAll } from "vitest";
-import { callToolAndSettle, parseToolResult } from "../../mcp-test-helpers";
+import {
+  callToolAndSettle,
+  parseToolResult,
+  sleep,
+} from "../../mcp-test-helpers";
 import { remoteScriptAnswers } from "../../workflow/helpers/server-capability-test-helpers";
 
 /** Whether the suites that need the remote script run at all. */
 export const REMOTE_SCRIPT_E2E = process.env.E2E_REMOTE_SCRIPT === "true";
+
+/**
+ * Long enough for the end-undo-step request, which a write call doesn't wait
+ * for, to reach Live.
+ */
+export const END_LANDS_MS = 300;
+
+/**
+ * One ppal-create-track call that appends `count` tracks, then a wait for its
+ * undo step to close.
+ * @param client - Connected MCP client
+ * @param count - How many tracks the one call makes
+ */
+export async function appendTracksInOneCall(
+  client: Client,
+  count: number,
+): Promise<void> {
+  await client.callTool({
+    name: "ppal-create-track",
+    arguments: { path: Array(count).fill("t+").join(",") },
+  });
+  await sleep(END_LANDS_MS);
+}
 
 /**
  * Fail the suite, rather than skip it, when E2E_REMOTE_SCRIPT is set but the

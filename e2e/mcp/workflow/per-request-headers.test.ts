@@ -40,7 +40,10 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
-import { remoteScriptAnswers } from "./helpers/server-capability-test-helpers.ts";
+import {
+  readConnectSkills,
+  remoteScriptAnswers,
+} from "./helpers/server-capability-test-helpers.ts";
 import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
@@ -102,34 +105,6 @@ async function toolNames(client: Client): Promise<string[]> {
   const { tools } = await client.listTools();
 
   return tools.map((tool) => tool.name);
-}
-
-/**
- * The "# Producer Pal Skills" block from a ppal-connect result. Skills are
- * appended Node-side as their own content block, not carried in the JSON body.
- * @param result - Raw ppal-connect tool result
- * @returns The skills text, or "" when absent
- */
-function extractSkills(result: unknown): string {
-  const typed = result as {
-    content?: Array<{ text?: string }>;
-  } | null;
-
-  return (
-    typed?.content?.find((c) => c.text?.startsWith("# Producer Pal Skills"))
-      ?.text ?? ""
-  );
-}
-
-/**
- * Call ppal-connect and return the skills it injected.
- * @param client - The MCP client
- * @returns The assembled skills blob
- */
-async function connectSkills(client: Client): Promise<string> {
-  return extractSkills(
-    await client.callTool({ name: "ppal-connect", arguments: {} }),
-  );
 }
 
 /**
@@ -240,8 +215,8 @@ describe("x-producer-pal-disabled-tools", () => {
     // from config.tools by ppal-live-api, which no fragment gates on, so the
     // assembled blob is the same either way.
     const tools = await toolNames(subset);
-    const skills = await connectSkills(subset);
-    const ungated = await connectSkills(ctx.client!);
+    const skills = await readConnectSkills(subset);
+    const ungated = await readConnectSkills(ctx.client!);
     const removed = removedLines(ungated, skills);
     // e2e runs against a live ~/.producer-pal, so the dev machine's own skills
     // overrides are part of both blobs the server just served.

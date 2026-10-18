@@ -73,6 +73,56 @@ export async function openInstallationTab(page: Page): Promise<void> {
   await expect(page.getByTestId("remote-script-status")).toBeVisible();
 }
 
+/** How a stubbed install POST answers, and what it does to the status after. */
+export interface InstallStub<Status> {
+  status: number;
+  body: unknown;
+  /** Status fields the install changes, applied on a 200. */
+  after?: Partial<Status>;
+}
+
+/**
+ * Stub a status endpoint and its `/install` POST. A successful install rewrites
+ * the status the next read answers with, as the real server would.
+ * @param page - Playwright page
+ * @param endpoint - The status route, e.g. "remote-script"
+ * @param initial - What the first status read returns
+ * @param install - How the install POST answers
+ * @returns The bodies the install POST received
+ */
+export async function stubStatusAndInstall<Status extends object>(
+  page: Page,
+  endpoint: string,
+  initial: Status,
+  install: InstallStub<Status>,
+): Promise<unknown[]> {
+  let current = initial;
+  const posted: unknown[] = [];
+
+  await page.route(`**/${endpoint}`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(current),
+    }),
+  );
+  await page.route(`**/${endpoint}/install`, (route) => {
+    posted.push(route.request().postDataJSON());
+
+    if (install.status === 200) {
+      current = { ...current, ...install.after };
+    }
+
+    return route.fulfill({
+      status: install.status,
+      contentType: "application/json",
+      body: JSON.stringify(install.body),
+    });
+  });
+
+  return posted;
+}
+
 /**
  * Commit the buffered settings through the footer Save and wait for the modal
  * to close.

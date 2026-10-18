@@ -29,6 +29,26 @@ export async function readLiveVersion(client: Client): Promise<string> {
 }
 
 /**
+ * The Producer Pal Skills block ppal-connect injects. Node appends it as its own
+ * content block, not in the JSON body.
+ *
+ * @param client - Connected MCP client
+ * @returns Its text, or "" when there is none
+ */
+export async function readConnectSkills(client: Client): Promise<string> {
+  const result = (await client.callTool({
+    name: "ppal-connect",
+    arguments: {},
+  })) as { content?: Array<{ text?: string }> };
+
+  return (
+    result.content?.find((block) =>
+      block.text?.startsWith("# Producer Pal Skills"),
+    )?.text ?? ""
+  );
+}
+
+/**
  * Whether the Live under test is at least a version.
  *
  * @param client - Connected MCP client

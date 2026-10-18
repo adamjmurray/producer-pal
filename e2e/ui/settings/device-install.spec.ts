@@ -12,8 +12,10 @@
 import { type Page, expect, test } from "@playwright/test";
 import { installStubs } from "../ui-test-helpers";
 import {
+  type InstallStub,
   openInstallationTab,
   setupSettingsTest,
+  stubStatusAndInstall,
 } from "./settings-test-helpers";
 
 const USER_LIBRARY = "/Users/me/Music/Ableton/User Library";
@@ -59,50 +61,18 @@ function status(overrides: Partial<DeviceStatus> = {}): DeviceStatus {
 }
 
 /**
- * Stub both device-install endpoints. A successful install rewrites the status
- * the next read answers with, as the real server would.
+ * Stub both device-install endpoints.
  * @param page - Playwright page
  * @param initial - What the first status read returns
  * @param install - How the install POST answers
- * @param install.status - HTTP status of the answer
- * @param install.body - JSON body of the answer
- * @param install.after - Status fields the install changes, applied on a 200
  * @returns The bodies the install POST received
  */
-async function stubDevice(
+function stubDevice(
   page: Page,
   initial: DeviceStatus,
-  install: {
-    status: number;
-    body: unknown;
-    after?: Partial<DeviceStatus>;
-  } = { status: 200, body: {} },
+  install: InstallStub<DeviceStatus> = { status: 200, body: {} },
 ): Promise<unknown[]> {
-  let current = initial;
-  const posted: unknown[] = [];
-
-  await page.route("**/device-install", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(current),
-    }),
-  );
-  await page.route("**/device-install/install", (route) => {
-    posted.push(route.request().postDataJSON());
-
-    if (install.status === 200) {
-      current = { ...current, ...install.after };
-    }
-
-    return route.fulfill({
-      status: install.status,
-      contentType: "application/json",
-      body: JSON.stringify(install.body),
-    });
-  });
-
-  return posted;
+  return stubStatusAndInstall(page, "device-install", initial, install);
 }
 
 test.describe("Settings — installation: device (stubbed backend)", () => {

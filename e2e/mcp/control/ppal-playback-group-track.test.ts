@@ -16,6 +16,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateTrackResult,
   parseToolResult,
+  readIdAtPath,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -48,19 +49,8 @@ async function addMemberToGroup(): Promise<string> {
   return made.id;
 }
 
-/**
- * A track's id.
- * @param path - The track's path
- * @returns The id
- */
-async function trackId(path: string): Promise<string> {
-  return parseToolResult<{ id: string }>(
-    await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { path },
-    }),
-  ).id;
-}
+const trackId = (path: string): Promise<string> =>
+  readIdAtPath(ctx.client!, "ppal-read-track", path);
 
 /**
  * Wait for a clip to be stopped, which Live does at its launch quantization.

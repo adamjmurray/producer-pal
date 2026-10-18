@@ -26,6 +26,7 @@ import {
   getToolErrorMessage,
   isToolError,
   parseToolResult,
+  readIdAtPath,
   setupMcpTestContext,
   sleep,
   trackIndexFromPath,
@@ -34,6 +35,7 @@ import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../helpers/remote-script-test-helpers";
+import { readTrackCount } from "../helpers/track-count-test-helpers";
 
 describe.skipIf(!REMOTE_SCRIPT_E2E)(
   "ppal-create-device — devices from Live's browser",
@@ -82,34 +84,12 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       return trackIndexFromPath(track.path);
     }
 
-    /**
-     * How many regular tracks the Set has, to prove the temp track is gone.
-     * @returns The track count
-     */
-    async function trackCount(): Promise<number> {
-      const liveSet = parseToolResult<{ tracks?: unknown[] }>(
-        await ctx.client!.callTool({
-          name: "ppal-read-live-set",
-          arguments: { include: ["tracks"] },
-        }),
-      );
+    // How many regular tracks the Set has, to prove the temp track is gone.
+    const trackCount = (): Promise<number> => readTrackCount(ctx.client!);
 
-      return liveSet.tracks?.length ?? 0;
-    }
-
-    /**
-     * The id of the device at a path, to check a result's path names it.
-     * @param path - Producer Pal path to the device
-     * @returns The device's id
-     */
-    async function idAt(path: string): Promise<string> {
-      return parseToolResult<{ id: string }>(
-        await ctx.client!.callTool({
-          name: "ppal-read-device",
-          arguments: { path },
-        }),
-      ).id;
-    }
+    // The id of the device at a path, to check a result's path names it.
+    const idAt = (path: string): Promise<string> =>
+      readIdAtPath(ctx.client!, "ppal-read-device", path);
 
     it("appends LFO to a track and leaves no temp track behind", async () => {
       const trackIndex = await createTrack("audio");
