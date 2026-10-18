@@ -205,6 +205,7 @@ jobs:
           MAX_SCRIPTS=$(node scripts/build-and-release/get-thresholds.ts duplication scripts)
           MAX_EVALS=$(node scripts/build-and-release/get-thresholds.ts duplication evals)
           MAX_E2E=$(node scripts/build-and-release/get-thresholds.ts duplication e2e)
+          MAX_DOCS=$(node scripts/build-and-release/get-thresholds.ts duplication docs)
 
           # Format duplication report as markdown table
           cat > /tmp/summary.md << EOF
@@ -225,6 +226,7 @@ jobs:
           dup_row Scripts "${MAX_SCRIPTS}" >> /tmp/summary.md
           dup_row Evals "${MAX_EVALS}" >> /tmp/summary.md
           dup_row E2E "${MAX_E2E}" >> /tmp/summary.md
+          dup_row Docs "${MAX_DOCS}" >> /tmp/summary.md
 
           # Write to step summary and output (base64 encoded for multiline)
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
