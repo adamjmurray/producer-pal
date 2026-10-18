@@ -48,9 +48,10 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     **The two forms are NOT interchangeable.** The decimal is meter-relative and
     the `±n` offset is absolute, so they denote the same time **only in `x/4`
     meters**. In compound/odd meters they diverge: in 6/8, `1|1.5` is half a
-    musical (eighth) beat = 0.25 quarter, while `1|1+n/8` is a full eighth note
-    = 0.5 quarter — off by a factor of 2. Reach for the decimal when you mean "a
-    fraction of the beat" and the `±n` offset when you mean an exact note value.
+    musical (eighth) beat = 0.25 quarter, while `1|1+n/8` is a full eighth
+    note = 0.5 quarter — off by a factor of 2. Reach for the decimal when you
+    mean "a fraction of the beat" and the `±n` offset when you mean an exact
+    note value.
 
     Bare fractions (`4/3`) and bar-relative mixed numbers (`1+1/3`) are rejected
     — note values always wear the `n`. A `-n` offset may pull a position earlier
@@ -188,8 +189,8 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
       F, F#/Gb, G, G#/Ab, A, A#/Bb, B.
     - Enharmonic spellings are accepted and normalized: `E#`→F, `Fb`→E, and the
       two octave-wrapping edges `B#`→C of the next octave, `Cb`→B of the
-      previous octave (the `(octave+2)*12+value` formula carries the wrap: `B#3`
-      = `C4`, `Cb4` = `B3`).
+      previous octave (the `(octave+2)*12+value` formula carries the wrap:
+      `B#3` = `C4`, `Cb4` = `B3`).
     - A double accidental (`Cbb`, `C##`) or a non-letter (`H`) is rejected.
   - Octave is a signed integer (e.g., `C3`, `A#-1`)
   - MIDI pitch is computed as `(octave + 2) * 12 + pitchClassValue`

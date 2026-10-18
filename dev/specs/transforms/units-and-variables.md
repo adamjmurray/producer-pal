@@ -185,8 +185,8 @@ Access clip and bar context in expressions:
   since session clips have no arrangement origin)
 - `clip.barDuration` - **Legacy alias**, still accepted by the parser but no
   longer taught. Equals the beats-per-bar count (e.g., 4 in 4/4, 3 in 3/4, 6 in
-  6/8). Prefer the `<count>bar` literal: `1bar` == `clip.barDuration` and `4bar`
-  == `clip.barDuration * 4`, and it composes in any expression
+  6/8). Prefer the `<count>bar` literal: `1bar` == `clip.barDuration` and
+  `4bar` == `clip.barDuration * 4`, and it composes in any expression
   (`note.start % 1bar`), so it fully subsumes the variable while staying uniform
   with the length/duration fields.
 
