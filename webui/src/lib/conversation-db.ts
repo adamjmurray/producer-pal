@@ -32,38 +32,29 @@ export interface ConversationRecord {
   totalUsage: TokenUsage | null;
   sessionType: SessionType;
   messages: ChatMessage[];
-  // RealtimeItem[] for voice records, null for text. Typed as unknown[] so the
-  // storage layer stays decoupled from @openai/agents/realtime.
+  // RealtimeItem[] for voice records, null for text. unknown[] keeps storage
+  // decoupled from @openai/agents/realtime.
   voiceHistory: unknown[] | null;
-  // The system instruction this conversation ran with (resolved override or the
-  // built-in), snapshotted at the first save and preserved on later saves so the
-  // transcript shows what it actually ran with even after the global override is
-  // edited. Optional/schemaless: legacy records read fine without it (no
-  // DB_VERSION bump), and it rides the conversation export/import.
+  // The optional fields below are schemaless: legacy records read fine without
+  // them (no DB_VERSION bump), and they ride conversation export/import.
+  // The system instruction it ran with (override or built-in), snapshotted at
+  // the first save and kept after, so the transcript shows what it ran with
+  // even after the global override is edited.
   systemInstruction?: string;
-  // The notation this conversation ran with, snapshotted on the same terms as
-  // systemInstruction. Restoring a conversation sends this rather than the
-  // current device global, so a transcript written in one notation keeps being
-  // parsed in it. Optional/schemaless: legacy records read fine without it (no
-  // DB_VERSION bump), and it rides the conversation export/import.
+  // The notation it ran with, snapshotted the same way. Restoring sends this,
+  // not the current device global, so the transcript keeps parsing in it.
   notation?: Notation;
-  // The tool selection this conversation runs with, pinned like the two snapshots
-  // above: a transcript full of calls to a tool is itself an instruction to keep
-  // calling it, so restoring re-sends this rather than the current selection.
-  // Written from the already-pinned active toolset on every save rather than
-  // frozen at the first. Optional/schemaless: legacy records read fine without it
-  // (no DB_VERSION bump) and reconnect on the current selection, and it rides the
-  // conversation export/import.
+  // The tool selection it runs with. A transcript full of calls to a tool is an
+  // instruction to keep calling it, so restoring re-sends this, not the current
+  // selection. Written from the pinned toolset on every save, not frozen at the
+  // first; a legacy record reconnects on the current selection.
   enabledTools?: Record<string, boolean>;
-  // Set by the importer, never trusted from the file. The imported
+  // Set by the importer, never trusted from the file: the imported
   // systemInstruction is untrusted, so the UI warns when it differs from the
-  // user's own prompt. Carried through later saves and forks of the record.
+  // user's own. Carried through later saves and forks.
   imported?: boolean;
-  // --- Conversation branching (edit/retry forks) ---
-  // Set on records created by forking an earlier turn. The fork stores a pointer
-  // back to the record it diverged from (its "trunk") plus the UI message index
-  // the ‹ n/m › arrows sit under. Absent on non-forked records. Schemaless: these
-  // are optional, so legacy records read fine without a DB_VERSION bump.
+  // An edit/retry fork points back at the record it diverged from and the UI
+  // message index its ‹ n/m › arrows sit under.
   /** Id of the record this was forked from (the trunk of its divergence set). */
   forkParentId?: string;
   /** UI message index where this fork's arrows anchor (the fork-point message). */
@@ -85,23 +76,17 @@ export interface EnforceLimitResult {
 
 /** Options for {@link saveConversation}. */
 export interface SaveConversationOptions {
-  /** Extra ids the limit must NOT trim (e.g. the whole batch during an import,
-   * so saving one imported record can't delete another just-imported record
-   * that happens to carry an older timestamp). The saved record's own branch
-   * family is always protected — this is for ids beyond it. */
+  /** Extra ids the limit must NOT trim beyond the saved record's own branch
+   * family, e.g. a whole import batch, whose older timestamps would lose. */
   protectedIds?: ReadonlySet<string>;
   /**
-   * True when this record has been written before, which makes a missing row
-   * proof that it was deleted — so the write is refused instead of resurrecting
-   * it. This is the anti-resurrection guard, and it lives here rather than in
-   * the caller for two reasons: it reads the store inside the write transaction,
-   * so it also holds against a delete from another tab; and it heals itself when
-   * the record legitimately comes back (undo, import), unlike a tombstone
-   * somebody has to remember to lift.
+   * True when this record has been written before, so a missing row means it
+   * was deleted and the write is refused instead of resurrecting it. Checked
+   * here, inside the write transaction, so it holds against another tab's
+   * delete and heals when the record comes back (undo, import).
    *
-   * False for a first save — there is nothing on disk to resurrect. Losing a
-   * brand-new conversation the user just deleted is the caller's problem (see
-   * the conversation store's generation check).
+   * False for a first save. Losing a brand-new conversation the user just
+   * deleted is the caller's problem (the conversation store's generation check).
    */
   expectPersisted?: boolean;
 }
@@ -224,8 +209,7 @@ export async function deleteUnbookmarkedConversations(): Promise<void> {
 }
 
 /**
- * Rename a conversation. Reads and writes in one transaction, so a delete
- * landing between them can't resurrect the row (see {@link saveConversation}).
+ * Rename a conversation.
  * @param id - Conversation ID
  * @param title - New title (null to clear)
  */
@@ -233,25 +217,13 @@ export async function renameConversation(
   id: string,
   title: string | null,
 ): Promise<void> {
-  const db = await getConversationDb();
-  const tx = db.transaction(STORE_NAME, "readwrite");
-  const record = (await tx.store.get(id)) as ConversationRecord | undefined;
-
-  if (!record) {
-    await tx.done;
-
-    return;
-  }
-
-  record.title = title;
-  void tx.store.put(record);
-  await tx.done;
+  await updateRecord(id, (record) => {
+    record.title = title;
+  });
 }
 
 /**
- * Set the bookmarked state of a conversation. Reads and writes in one
- * transaction, so a delete landing between them can't resurrect the row (see
- * {@link saveConversation}).
+ * Set the bookmarked state of a conversation.
  * @param id - Conversation ID
  * @param bookmarked - Whether to bookmark
  */
@@ -259,19 +231,9 @@ export async function setBookmark(
   id: string,
   bookmarked: boolean,
 ): Promise<void> {
-  const db = await getConversationDb();
-  const tx = db.transaction(STORE_NAME, "readwrite");
-  const record = (await tx.store.get(id)) as ConversationRecord | undefined;
-
-  if (!record) {
-    await tx.done;
-
-    return;
-  }
-
-  record.bookmarked = bookmarked;
-  void tx.store.put(record);
-  await tx.done;
+  await updateRecord(id, (record) => {
+    record.bookmarked = bookmarked;
+  });
 }
 
 /**
@@ -409,6 +371,32 @@ export async function resetDbCache(): Promise<void> {
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Change one stored conversation; a missing one is left alone. Reads and
+ * writes in one transaction, so a delete landing between them can't resurrect
+ * the row (see {@link saveConversation}).
+ * @param id - Conversation ID
+ * @param change - Edits the record in place
+ */
+async function updateRecord(
+  id: string,
+  change: (record: ConversationRecord) => void,
+): Promise<void> {
+  const db = await getConversationDb();
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  const record = (await tx.store.get(id)) as ConversationRecord | undefined;
+
+  if (!record) {
+    await tx.done;
+
+    return;
+  }
+
+  change(record);
+  void tx.store.put(record);
+  await tx.done;
+}
 
 /**
  * Fill in fields missing from records written by earlier schema versions, so

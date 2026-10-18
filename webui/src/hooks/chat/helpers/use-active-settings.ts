@@ -14,9 +14,13 @@ export interface ActiveSettings {
   activeProvider: Provider | null;
   activeThinking: string | null;
   activeSmallModelMode: boolean | null;
+  /** The resolved system instruction locked for the active conversation. */
   activeSystemInstruction: string | null;
+  /** The notation locked for the active conversation. */
   activeNotation: Notation | null;
+  /** The tool selection the active conversation last connected with. */
   activeEnabledTools: Record<string, boolean> | null;
+  /** The per-turn tool-step budget pinned for the active conversation. */
   activeMaxToolSteps: number | null;
   /** The active conversation was imported from a file. */
   activeImported: boolean;

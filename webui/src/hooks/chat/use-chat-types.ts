@@ -3,9 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { type Notation } from "#src/shared/notation";
 import { type ChatImage, type UserMessage } from "#webui/chat/sdk/types";
 import { type RestoredSettings } from "#webui/lib/conversations/conversation-store";
+import { type ActiveSettings } from "#webui/hooks/chat/helpers/use-active-settings";
 import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
@@ -30,11 +30,8 @@ export type EnqueueMessageHandler = (
 /** Chat client interface that all providers must implement */
 export interface ChatClient<TMessage> {
   chatHistory: TMessage[];
-  /**
-   * True when the last stream stopped because it hit the tool-call step limit
-   * while the model still wanted to call more tools. Optional: clients that do
-   * not support multi-step tool calling may omit it.
-   */
+  /** True when the last stream hit the tool-call step limit while the model
+   * still wanted more tools. Omitted by clients without multi-step tool calls. */
   toolLimitReached?: boolean;
   initialize: () => Promise<void>;
   sendMessage: (
@@ -43,27 +40,18 @@ export interface ChatClient<TMessage> {
     overrides?: MessageOverrides,
     shouldInterrupt?: () => boolean,
   ) => AsyncIterable<TMessage[]>;
-  /**
-   * Re-stream the current turn after a rate limit WITHOUT re-sending the user's
-   * message, which is already in chatHistory. The client owns whether the resume
-   * needs a synthetic user turn to be a valid request — that depends on the wire
-   * shape, which only it knows.
-   */
+  /** Re-stream the current turn after a rate limit WITHOUT re-sending the
+   * user's message, already in chatHistory. Whether that needs a synthetic user
+   * turn depends on the wire shape, so the client decides. */
   resumeStream: (
     signal: AbortSignal,
     overrides?: MessageOverrides,
     shouldInterrupt?: () => boolean,
   ) => AsyncIterable<TMessage[]>;
-  /**
-   * Summarize a slice of history into a compaction summary string. Optional:
-   * clients that don't support compaction may omit it.
-   */
+  /** Summarize a slice of history for compaction; omitted without compaction support. */
   summarize?: (history: TMessage[]) => Promise<string>;
-  /**
-   * Release any resources held by the client (e.g. an open MCP connection).
-   * Called by useChat whenever the client is discarded. Optional and must be
-   * idempotent: clients that hold no resources may omit it.
-   */
+  /** Release what the client holds (e.g. an MCP connection) when useChat
+   * discards it. Must be idempotent; omitted by clients that hold nothing. */
   dispose?: () => void;
 }
 
@@ -107,11 +95,9 @@ export interface ChatAdapter<
 }
 
 /**
- * Signal that the next conversation save should branch (fork) into a new record
- * instead of overwriting the active one. Set by the fork action right before it
- * streams the new turn, and consumed by the conversation save. Lives in a ref
- * shared across hooks because the fork action (in useChat) and the save (in
- * useConversations) are otherwise decoupled.
+ * Tells the next conversation save to fork into a new record instead of
+ * overwriting the active one. The fork action (useChat) sets it before
+ * streaming; the save (useConversations) consumes it through a shared ref.
  */
 export interface PendingFork {
   /** UI message index the fork diverges at (where the ‹ n/m › arrows anchor). */
@@ -129,23 +115,9 @@ export interface RateLimitState {
   delayMs: number;
 }
 
-export interface UseChatReturn {
+export interface UseChatReturn extends ActiveSettings {
   messages: UIMessage[];
   isAssistantResponding: boolean;
-  activeModel: string | null;
-  activeProvider: Provider | null;
-  activeThinking: string | null;
-  activeSmallModelMode: boolean | null;
-  /** The resolved system instruction locked for the active conversation. */
-  activeSystemInstruction: string | null;
-  /** The notation locked for the active conversation. */
-  activeNotation: Notation | null;
-  /** The tool selection the active conversation last connected with. */
-  activeEnabledTools: Record<string, boolean> | null;
-  /** The per-turn tool-step budget pinned for the active conversation. */
-  activeMaxToolSteps: number | null;
-  /** The active conversation was imported from a file. */
-  activeImported: boolean;
   rateLimitState: RateLimitState | null;
   queuedMessages: QueuedMessage[];
   enqueueMessage: EnqueueMessageHandler;

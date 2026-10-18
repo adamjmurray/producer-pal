@@ -22,12 +22,13 @@ import { ChatInput } from "./controls/composer/ChatInput";
 import { type HeaderInfo } from "./controls/header/HeaderActions";
 import { RateLimitIndicator } from "./controls/RateLimitIndicator";
 import { ToolLimitNotice } from "./controls/ToolLimitNotice";
+import { type MessageActions } from "./assistant/MessageRow";
 import { MessageList } from "./MessageList";
 
 /**
  * Props for the main chat screen layout
  */
-interface ChatScreenProps {
+interface ChatScreenProps extends MessageActions {
   messages: UIMessage[];
   isAssistantResponding: boolean;
   /** Whether a manual compaction is in progress (drives the "Compacting…" footer) */
@@ -38,13 +39,6 @@ interface ChatScreenProps {
   enqueueMessage: EnqueueMessageHandler;
   queuedMessages: QueuedMessage[];
   onRemoveQueued: (id: number) => void;
-  handleRetry: (messageIndex: number) => Promise<void>;
-  handleEdit: (
-    messageIndex: number,
-    newMessage: string,
-    removedImages?: number[],
-  ) => Promise<void>;
-  handleCompact?: (messageIndex: number) => Promise<void>;
   onUndoCompaction?: () => void;
   canUndoCompaction?: boolean;
   headerInfo: HeaderInfo;

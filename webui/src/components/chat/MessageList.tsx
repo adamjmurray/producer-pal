@@ -12,7 +12,11 @@ import {
 } from "#webui/lib/conversation-branches";
 import { type UIMessage } from "#webui/types/messages";
 import { CompactionDivider } from "./assistant/CompactionDivider";
-import { MessageRow, type MessageRowProps } from "./assistant/MessageRow";
+import {
+  type MessageActions,
+  MessageRow,
+  type MessageRowProps,
+} from "./assistant/MessageRow";
 import { SystemPromptNotice } from "./assistant/SystemPromptNotice";
 import { ActivityIndicator } from "./controls/ActivityIndicator";
 import { BranchNav } from "./controls/BranchNav";
@@ -20,21 +24,13 @@ import { QueuedMessages } from "./controls/QueuedMessages";
 
 const STILL_THINKING_DELAY_MS = 4000;
 
-interface MessageListProps {
+interface MessageListProps extends MessageActions {
   messages: UIMessage[];
   queuedMessages: QueuedMessage[];
   onRemoveQueued: (id: number) => void;
   isAssistantResponding: boolean;
   /** Whether a manual compaction is in progress (footer shows "Compacting…") */
   isCompacting?: boolean;
-  handleRetry: (messageIndex: number) => Promise<void>;
-  handleEdit: (
-    messageIndex: number,
-    newMessage: string,
-    removedImages?: number[],
-  ) => Promise<void>;
-  /** Compact-up-to-here; omitted in surfaces that don't support compaction (voice/demo) */
-  handleCompact?: (messageIndex: number) => Promise<void>;
   onUndoCompaction?: () => void;
   canUndoCompaction?: boolean;
   showTimestamps: boolean;

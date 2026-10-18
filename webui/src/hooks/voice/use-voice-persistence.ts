@@ -14,6 +14,7 @@ import {
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
+import { type ConversationListActions } from "#webui/hooks/chat/use-conversations";
 import {
   deleteOneConversation,
   renameStoredConversation,
@@ -41,60 +42,40 @@ import {
 interface UseVoicePersistenceParams {
   /** Current live voice transcript from useVoiceSession (drives auto-save). */
   liveHistory: RealtimeItem[];
-  /** Realtime model id to stamp on saved voice records. Defaults to
-   * OPENAI_REALTIME_MODEL. */
+  /** Realtime model id to stamp on saved voice records (default OPENAI_REALTIME_MODEL). */
   model?: string;
-  /** Invoked when a non-voice (chat) record is encountered. The parent (App.tsx)
-   * switches modes via viewingMode so the chat hook can pick up the conversation
-   * from the URL hash. When omitted, the hook falls back to clearing the active
-   * id. */
+  /** Invoked on a chat record, so the parent switches modes and the chat hook
+   * picks it up from the URL hash. Omitted: the active id is cleared. */
   onForeignRecord?: (record: ConversationRecord) => void;
-  /** Invoked when a bulk delete (all / unbookmarked) removes the in-progress
-   * live record. The voice layer wires this to stop and reset the live session
-   * so a deleted conversation isn't left streaming on screen and re-saved under
-   * a fresh id. Unlike the sidebar delete paths, the Settings bulk deletes have
-   * no other route to the session controls. */
+  /** Invoked when a Settings bulk delete removes the live record, so the voice
+   * layer stops the session instead of streaming and re-saving a deleted
+   * conversation. Those deletes have no other route to the session controls. */
   onLiveRecordDeleted?: () => void;
   /** App-owned undo stack. Voice deletes snapshot through it so the sidebar's
    * delete control is as recoverable here as it is in chat. */
   undoDelete: UndoDeleteReturn;
 }
 
-export interface UseVoicePersistenceReturn {
+export interface UseVoicePersistenceReturn extends ConversationListActions {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
-  /** Banner for an autosave that was refused or failed. Named to match
-   * useLimitNotification so the panel can rank it against the undo banner with
-   * chat's resolvePanelNotification. */
+  /** Banner for a refused or failed autosave. Named like useLimitNotification's
+   * so chat's resolvePanelNotification can rank it against the undo banner. */
   limitNotification: TransferNotificationData | null;
   dismissLimitNotification: () => void;
-  /** Realtime model of the currently-loaded saved record, or null for a fresh
-   * (unsaved) session. Lets the header lock show the model the conversation was
-   * recorded with rather than the current-settings model when viewing or
-   * continuing a saved conversation. */
+  /** Realtime model of the loaded saved record (null when unsaved), so the
+   * header lock shows the model it was recorded with, not the current one. */
   activeRecordModel: string | null;
-  /** Provider stored on the currently-loaded saved record, or null for a fresh
-   * session. Drives record-aware voice routing — a loaded Gemini record resumes
-   * on the Gemini backend even when current settings select OpenAI (and vice
-   * versa), instead of mounting the wrong backend with a missing-key state. */
+  /** Provider of the loaded saved record (null when unsaved). A record resumes
+   * on its own backend whatever the current settings select. */
   activeRecordProvider: string | null;
   /** Items to render when no live session is producing transcript (saved record). */
   savedItems: RealtimeItem[];
-  /** Promote the given items (typically the full displayed transcript) into the
-   * prior-history snapshot used by the autosave merge and the read-only view.
-   * Called at the Stop → Talk boundary: the realtime reseed drops function_call
-   * items, so without this a same-sitting reconnect would merge against an empty
-   * prior and overwrite the saved record's historical tool calls (and drop them
-   * from the transcript on screen). */
+  /** Make these items (usually the displayed transcript) the prior history the
+   * autosave merges against. Called at Stop → Talk: the realtime reseed drops
+   * function_call items, so a reconnect would otherwise overwrite the saved
+   * record's tool calls. */
   retainPriorHistory: (items: RealtimeItem[]) => void;
-  refreshList: () => Promise<void>;
-  switchConversation: (id: string) => Promise<void>;
-  startNewConversation: () => void;
-  deleteConversation: (id: string) => Promise<void>;
-  deleteAllConversations: () => Promise<void>;
-  deleteUnbookmarkedConversations: () => Promise<void>;
-  renameConversation: (id: string, title: string | null) => Promise<void>;
-  toggleBookmark: (id: string) => Promise<void>;
 }
 
 /**
@@ -103,12 +84,10 @@ export interface UseVoicePersistenceReturn {
  * can still be viewed read-only. Text records selected from the sidebar
  * navigate to /chat — the chat hook owns those.
  *
- * The live conversation and its write queue live in the shared conversation
- * store, so voice gets the same two rules chat does: no save may start for a
- * conversation being deleted, and a write whose row has gone is refused by the
- * DB. Voice adds one wrinkle — its saves are debounced, so a save can be
- * scheduled long before it starts. The debounce holds the id it was scheduled
- * for and drops itself if the live conversation has moved on since.
+ * The shared conversation store gives voice chat's two rules: no save starts
+ * for a conversation being deleted, and the DB refuses a write whose row is
+ * gone. Voice saves are debounced, so each holds the id it was scheduled for
+ * and drops itself if the live conversation has moved on.
  *
  * @param params - hook parameters
  * @param params.liveHistory - Live voice transcript from useVoiceSession
@@ -125,9 +104,8 @@ export function useVoicePersistence(
     undoDelete,
   } = params;
   const limit = useLimitNotification();
-  // Destructured because the hook returns a fresh object every render, and the
-  // autosave effect below depends on these: taking `limit` itself would restart
-  // the debounce on every render.
+  // Destructured: `limit` is a fresh object every render, and depending on it
+  // would restart the autosave debounce each time.
   const { showSaveRefused, showSaveError, retireSaveRefused } = limit;
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<
@@ -140,9 +118,8 @@ export function useVoicePersistence(
   const [activeRecordProvider, setActiveRecordProvider] = useState<
     string | null
   >(null);
-  // Snapshot of the loaded record's full voiceHistory (including function_call
-  // items). Used by the auto-save merge so historical tool calls survive a
-  // continued session even though the Realtime SDK can't re-seed them.
+  // The loaded record's full voiceHistory, function_call items included, so the
+  // autosave merge keeps tool calls the Realtime SDK can't re-seed.
   const priorItemsRef = useRef<RealtimeItem[]>([]);
 
   const publishActiveId = useCallback((id: string | null) => {
