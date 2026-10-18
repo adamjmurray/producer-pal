@@ -7,12 +7,11 @@ import { type Page, expect, test } from "@playwright/test";
 
 /**
  * Network errors the stubs make unavoidable: 405 on /mcp (a stateless
- * endpoint), 403/429 from API providers (tests use fake keys). Matched as whole
- * numbers — a bundled stack trace carries line:column offsets, and a plain
- * substring test drops a real error whose offset happens to contain a code
- * (column 42934 reads as a 429).
+ * endpoint), 403/429 from API providers (tests use fake keys). Matched on the
+ * browser's own wording — a bare code would also match a real error's bundled
+ * stack trace, whose line:column offsets can be any number.
  */
-const EXPECTED_NETWORK_ERROR = /\b(?:403|405|429)\b/;
+const EXPECTED_NETWORK_ERROR = /status of (?:403|405|429)\b/;
 
 interface ConsoleLogs {
   errors: string[];
