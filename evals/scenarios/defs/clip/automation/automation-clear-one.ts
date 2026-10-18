@@ -17,6 +17,7 @@ import { MSG_CONNECT, TOOL_CONNECT } from "../helpers/clip-tool-constants.ts";
 import {
   assertLeadEnvelopes,
   envelopeValues,
+  parameterNames,
   sortEnvelopes,
   TOOL_READ_CLIP,
   TOOL_UPDATE_CLIP,
@@ -62,9 +63,7 @@ export const automationClearOne: EvalScenario = {
       }
 
       if (volumeKept == null || sendKept == null || envelopes.length !== 2) {
-        return `expected only volume and a send left, got ${
-          envelopes.map((envelope) => envelope.parameter).join(", ") || "none"
-        }`;
+        return `expected only volume and a send left, got ${parameterNames(envelopes)}`;
       }
 
       for (const [kept, seedName] of [

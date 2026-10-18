@@ -6,29 +6,28 @@
 /**
  * Scenario: write a curved volume fade-in on the Lead clip.
  *
- * Envelope notation joins points with `/` (straight), `_` (jump) or `~N`
- * (curve: positive bends above the straight line, negative below). A fade that
- * "starts slow and speeds up" rises below the straight line, so it needs a
- * negative `~N`. The model must pick a curve over a straight ramp or steps, and
- * get the sign right.
+ * Points join with `/` (straight), `_` (jump) or `~N` (curve: positive bends
+ * above the straight line, negative below). "Start slow and speed up" needs a
+ * negative `~N`, so the model must pick a curve and get the sign right.
  *
- * Graded on the read-back: Live prints each ramp it stored as `/` or `~N`, so a
- * straight ramp and a curve read differently. A write that lands on the clip
- * as a straight ramp or a hand-made staircase fails.
+ * Graded on the read-back, where Live prints each stored ramp as `/` or `~N`:
+ * a straight ramp or a hand-made staircase fails.
  */
 
 import { type EvalScenario } from "../../../types.ts";
 import { MSG_CONNECT, TOOL_CONNECT } from "../helpers/clip-tool-constants.ts";
 import {
+  assertEnvelopeWriteLanded,
   assertLeadEnvelopes,
   curveAmounts,
   envelopeValues,
   envelopeWrites,
+  parameterNames,
   sortEnvelopes,
   TOOL_READ_CLIP,
   TOOL_UPDATE_CLIP,
 } from "./helpers/clip-envelope-readback.ts";
-import { seedLeadEnvelopes } from "./helpers/seed-clip-envelopes.ts";
+import { ON_BARE_LEAD_CLIP } from "./helpers/seed-clip-envelopes.ts";
 
 /** How far a curve must bend to count as one, not a rounding of a straight line. */
 const MIN_BEND = 0.2;
@@ -37,19 +36,14 @@ const MIN_BEND = 0.2;
 const NEGATIVE_CURVE = /\s~-\d/;
 
 export const automationWriteCurve: EvalScenario = {
+  ...ON_BARE_LEAD_CLIP,
   id: "automation-write-curve",
-  tags: ["automation"],
   description:
     "Write a slow-then-fast volume fade-in as a curved ramp on the Lead clip",
-  kind: "capability",
-  liveSet: "basic-with-drum-and-lead-clips",
-  judgeAdvisory: true,
   requires: {
     tools: [TOOL_READ_CLIP, TOOL_UPDATE_CLIP],
     params: ["envelopes"],
   },
-
-  setup: (mcpClient) => seedLeadEnvelopes(mcpClient, []),
 
   messages: [
     MSG_CONNECT,
@@ -58,11 +52,7 @@ export const automationWriteCurve: EvalScenario = {
 
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    {
-      type: "custom",
-      description: "an envelopes write landed",
-      assert: (turns) => envelopeWrites(turns).length > 0,
-    },
+    assertEnvelopeWriteLanded(),
 
     // One volume envelope, rising from near silence, whose ramp bends below
     // the straight line (slow start) and never above it.
@@ -71,9 +61,7 @@ export const automationWriteCurve: EvalScenario = {
       const [fade] = volume;
 
       if (envelopes.length !== 1 || fade == null) {
-        return `expected one volume envelope, got ${
-          envelopes.map((envelope) => envelope.parameter).join(", ") || "none"
-        }`;
+        return `expected one volume envelope, got ${parameterNames(envelopes)}`;
       }
 
       const values = envelopeValues(fade.events);

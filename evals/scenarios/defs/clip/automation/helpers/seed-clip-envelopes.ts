@@ -14,6 +14,7 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
 import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import { type EvalScenario } from "../../../../types.ts";
 import {
   type ClipEnvelopeRead,
   envelopesOf,
@@ -53,6 +54,18 @@ export const LEAD_SEEDS: SeedEnvelope[] = [
     ],
   },
 ];
+
+/** Shared by the scenarios that write onto a Lead clip cleared of automation. */
+export const ON_BARE_LEAD_CLIP: Pick<
+  EvalScenario,
+  "tags" | "kind" | "liveSet" | "judgeAdvisory" | "setup"
+> = {
+  tags: ["automation"],
+  kind: "capability",
+  liveSet: "basic-with-drum-and-lead-clips",
+  judgeAdvisory: true,
+  setup: (mcpClient) => seedLeadEnvelopes(mcpClient, []),
+};
 
 const TRACK = "t3";
 const SLOT = 0;

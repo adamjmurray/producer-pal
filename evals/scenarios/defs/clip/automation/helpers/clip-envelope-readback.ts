@@ -219,6 +219,27 @@ export function envelopeWrites(turns: EvalTurnResult[]): ToolCall[] {
 }
 
 /**
+ * Passes when at least one envelopes write landed.
+ * @returns A custom assertion over every turn
+ */
+export function assertEnvelopeWriteLanded(): EvalAssertion {
+  return {
+    type: "custom",
+    description: "an envelopes write landed",
+    assert: (turns) => envelopeWrites(turns).length > 0,
+  };
+}
+
+/**
+ * The parameters a clip automates, for a failure message.
+ * @param envelopes - The envelopes a clip reports
+ * @returns Their names, comma-separated, or "none"
+ */
+export function parameterNames(envelopes: ClipEnvelopeRead[]): string {
+  return envelopes.map((envelope) => envelope.parameter).join(", ") || "none";
+}
+
+/**
  * Whether a call put a clip on the arrangement: a duplicate or create with a
  * `[position]` destination.
  *

@@ -17,8 +17,7 @@ import {
 } from "../../../types.ts";
 import { assertNamesTarget } from "../../path/path-assertions.ts";
 import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
-import { TOOL_READ_CLIP } from "../helpers/clip-tool-constants.ts";
-import { readbackNotes } from "../helpers/midi-json-readback.ts";
+import { assertMidiJsonNotes } from "../helpers/midi-json-readback.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
@@ -86,7 +85,7 @@ export const swingAndQuantize: EvalScenario = {
     // Turn 4: graded by where the hats end up, not by how the transform is
     // spelled (`quant(n/16)`, `round(note.start * 4) / 4`, preTransforms, ...).
     assertNamesTarget({ turn: 4, tool: TOOL_UPDATE_CLIP }),
-    hatsQuantizedState(),
+    assertMidiJsonNotes("t0/s0", hatsProblem),
     {
       type: "custom",
       description: "quantize used quant() (signal)",
@@ -137,32 +136,6 @@ function hatSwingAmount(turns: EvalTurnResult[], turn: number): number {
   }
 
   throw new Error(`no hat swing() in turn ${turn}: ${texts.join(" | ")}`);
-}
-
-/**
- * The drum clip's end state, read back as midi-json: every hat on the 16th
- * grid and none lost.
- * @returns State assertion over the clip's notes
- */
-function hatsQuantizedState(): EvalAssertion {
-  return {
-    type: "state",
-    tool: TOOL_READ_CLIP,
-    args: { path: "t0/s0", include: ["notes"] },
-    notation: "midi-json",
-    expect: (result: unknown): boolean => {
-      const notes = readbackNotes(result);
-
-      return notes != null && hatsProblem(notes) == null;
-    },
-    explain: (result: unknown): string => {
-      const notes = readbackNotes(result);
-
-      return notes == null
-        ? "clip notes missing or not parseable as midi-json"
-        : (hatsProblem(notes) ?? "ok");
-    },
-  };
 }
 
 /**

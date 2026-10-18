@@ -33,7 +33,10 @@ import {
   TOOL_DUPLICATE,
   TOOL_UPDATE_CLIP,
 } from "./helpers/clip-envelope-readback.ts";
-import { seedLeadEnvelopes } from "./helpers/seed-clip-envelopes.ts";
+import {
+  ON_BARE_LEAD_CLIP,
+  seedLeadEnvelopes,
+} from "./helpers/seed-clip-envelopes.ts";
 
 const TOOL_READ_TRACK = "ppal-read-track";
 
@@ -120,19 +123,14 @@ function assertLeadAtSpot() {
 }
 
 export const automationArrangementViaSession: EvalScenario = {
+  ...ON_BARE_LEAD_CLIP,
   id: "automation-arrangement-via-session",
-  tags: ["automation"],
   description:
     "Copy a session clip to the arrangement with a fade, by either route",
-  kind: "capability",
-  liveSet: "basic-with-drum-and-lead-clips",
-  judgeAdvisory: true,
   requires: {
     tools: [TOOL_UPDATE_CLIP, TOOL_DUPLICATE, TOOL_READ_TRACK],
     params: ["envelopes"],
   },
-
-  setup: (mcpClient) => seedLeadEnvelopes(mcpClient, []),
 
   messages: [
     MSG_CONNECT,

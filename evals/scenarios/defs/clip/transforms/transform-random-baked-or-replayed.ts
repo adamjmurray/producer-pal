@@ -6,26 +6,18 @@
 /**
  * Scenario: two opposite randomness requests, and one LFO period.
  *
- * Live stores two different things a user calls "random velocities". One value
- * per note, written into the clip, plays back the same every time. A base plus
- * `velocity_deviation` is a spread Live re-rolls on every playback. `rand()`
- * writes the first, the `vA-B` shorthand writes the second, and both read as
- * "randomize the velocities" — luna picked the spread (or fled to a
- * deterministic wave) in 3 of 3 `drum-transforms` trials on the baked arm.
+ * Live stores two things a user calls "random velocities": one value per note
+ * written into the clip (`rand()`), which plays back the same every time, and a
+ * base plus `velocity_deviation` (the `vA-B` shorthand), which Live re-rolls on
+ * every playback. Both arms are graded, so an "always use rand()" nudge fails
+ * the second: only teaching the distinction scores.
  *
- * Both arms are graded, and that is the point. An "always use rand()" nudge
- * would pass the first and fail the second, so only a change that teaches the
- * DISTINCTION scores here.
+ * Graded on the clip, not the argument: hand-written distinct velocities are
+ * the baked outcome too.
  *
- * GRADED ON THE CLIP, NOT THE ARGUMENT. An earlier draft required the
- * `transforms` param and failed a gemma trial that hand-wrote four different
- * snare velocities — which is the baked outcome, reached another way. Only the
- * end state can tell these two apart without scripting the route.
- *
- * The last turn is a separate question sharing the run: every luna trial wrote
- * `sin(note.start * 3.14159)` before revising to `sin(2bar)`, so the waveform
- * argument reads as radians and costs a round trip. Graded as one call, because
- * the wasted call IS the cost.
+ * The last turn asks for an LFO period. Models tend to write it as radians
+ * (`sin(note.start * 3.14159)`) and then revise, so it is graded as one call:
+ * the wasted call is the cost.
  */
 
 import { argText } from "../../arg-text.ts";
@@ -36,15 +28,20 @@ import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 import {
   MSG_CONNECT,
   READ_DRUM_NOTES,
-  TOOL_READ_CLIP,
   TOOL_UPDATE_CLIP,
 } from "../helpers/clip-tool-constants.ts";
 import { getTransforms } from "../helpers/clip-turn-readers.ts";
-import { readbackNotes } from "../helpers/midi-json-readback.ts";
+import { assertMidiJsonNotes } from "../helpers/midi-json-readback.ts";
 
 /** Snare and hats in the Set's drum map. */
 const SNARE = 40;
 const HATS = 44;
+
+// Grades the drum clip's notes; `description` labels a failure.
+const drumClipState = (
+  description: string,
+  problem: (notes: NoteEvent[]) => string | null,
+): EvalAssertion => assertMidiJsonNotes("t0/s0", problem, description);
 
 export const transformRandomBakedOrReplayed: EvalScenario = {
   id: "transform-random-baked-or-replayed",
@@ -80,7 +77,7 @@ export const transformRandomBakedOrReplayed: EvalScenario = {
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 3 },
 
-    clipStateAssertion(
+    drumClipState(
       "snare velocities vary and are baked in (no per-playback spread)",
       (notes) => {
         const snare = notes.filter((n) => n.pitch === SNARE);
@@ -101,7 +98,7 @@ export const transformRandomBakedOrReplayed: EvalScenario = {
       },
     ),
 
-    clipStateAssertion("hats carry a per-playback velocity spread", (notes) => {
+    drumClipState("hats carry a per-playback velocity spread", (notes) => {
       const hats = notes.filter((n) => n.pitch === HATS);
 
       if (hats.length < 2) {
@@ -158,34 +155,3 @@ export const transformRandomBakedOrReplayed: EvalScenario = {
     { type: "token_usage", maxTokens: 6_000 },
   ],
 };
-
-/**
- * Grade the drum clip's end state, read back as midi-json so the check never
- * touches the notation the model happened to write in.
- * @param description - Check label
- * @param problem - Returns a diagnostic string, or null when the notes are right
- * @returns State assertion over the clip's notes
- */
-function clipStateAssertion(
-  description: string,
-  problem: (notes: NoteEvent[]) => string | null,
-): EvalAssertion {
-  return {
-    type: "state",
-    tool: TOOL_READ_CLIP,
-    args: { path: "t0/s0", include: ["notes"] },
-    notation: "midi-json",
-    expect: (result: unknown): boolean => {
-      const notes = readbackNotes(result);
-
-      return notes != null && problem(notes) == null;
-    },
-    explain: (result: unknown): string => {
-      const notes = readbackNotes(result);
-
-      return notes == null
-        ? `${description}: clip notes missing or not parseable as midi-json`
-        : `${description}: ${problem(notes) ?? "ok"}`;
-    },
-  };
-}

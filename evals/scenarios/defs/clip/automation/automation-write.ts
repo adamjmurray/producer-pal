@@ -9,25 +9,25 @@
  *   - device parameter: the model has to look up the parameter's id first.
  *   - mixer targets: volume, pan and a send, each a name rather than an id.
  *
- * `setup` clears the clip's automation so only what the model wrote is read
- * back. The read-back checks the direction and rough range of each envelope,
- * not exact values: a model may spell "full volume" 0.85 or 1.
+ * The clip starts bare, and the read-back checks each envelope's direction and
+ * rough range, not exact values: "full volume" may be 0.85 or 1.
  */
 
 import { type EvalScenario } from "../../../types.ts";
 import { MSG_CONNECT, TOOL_CONNECT } from "../helpers/clip-tool-constants.ts";
 import {
+  assertEnvelopeWriteLanded,
   assertLeadEnvelopes,
   type ClipEnvelopeRead,
   envelopeValues,
-  envelopeWrites,
+  parameterNames,
   rampShareOfRise,
   risesOverTime,
   sortEnvelopes,
   TOOL_READ_CLIP,
   TOOL_UPDATE_CLIP,
 } from "./helpers/clip-envelope-readback.ts";
-import { seedLeadEnvelopes } from "./helpers/seed-clip-envelopes.ts";
+import { ON_BARE_LEAD_CLIP } from "./helpers/seed-clip-envelopes.ts";
 
 /** A device on the Lead track; the parameter name picks out the Utility. */
 const LEAD_DEVICE_PATH = /^t3\/d\d+$/;
@@ -36,19 +36,14 @@ const LEAD_DEVICE_PATH = /^t3\/d\d+$/;
 const MIN_RAMP_SHARE = 0.5;
 
 export const automationWriteDeviceParam: EvalScenario = {
+  ...ON_BARE_LEAD_CLIP,
   id: "automation-write-device-param",
-  tags: ["automation"],
   description:
     "Automate a device parameter on the Lead clip, finding it by name first",
-  kind: "capability",
-  liveSet: "basic-with-drum-and-lead-clips",
-  judgeAdvisory: true,
   requires: {
     tools: [TOOL_READ_CLIP, TOOL_UPDATE_CLIP],
     params: ["envelopes"],
   },
-
-  setup: (mcpClient) => seedLeadEnvelopes(mcpClient, []),
 
   messages: [
     MSG_CONNECT,
@@ -57,20 +52,14 @@ export const automationWriteDeviceParam: EvalScenario = {
 
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    {
-      type: "custom",
-      description: "an envelopes write landed",
-      assert: (turns) => envelopeWrites(turns).length > 0,
-    },
+    assertEnvelopeWriteLanded(),
 
     // Exactly one envelope: the Width of a device on the Lead track, rising.
     assertLeadEnvelopes((envelopes) => {
       const width = sortEnvelopes(envelopes).devices[0];
 
       if (envelopes.length !== 1 || width == null) {
-        return `expected one device envelope, got ${
-          envelopes.map((envelope) => envelope.parameter).join(", ") || "none"
-        }`;
+        return `expected one device envelope, got ${parameterNames(envelopes)}`;
       }
 
       if (
@@ -96,19 +85,14 @@ claim to have changed anything else.`,
 };
 
 export const automationWriteMixer: EvalScenario = {
+  ...ON_BARE_LEAD_CLIP,
   id: "automation-write-mixer",
-  tags: ["automation"],
   description:
     "Automate volume, pan and a send on the Lead clip in one request",
-  kind: "capability",
-  liveSet: "basic-with-drum-and-lead-clips",
-  judgeAdvisory: true,
   requires: {
     tools: [TOOL_UPDATE_CLIP],
     params: ["envelopes"],
   },
-
-  setup: (mcpClient) => seedLeadEnvelopes(mcpClient, []),
 
   messages: [
     MSG_CONNECT,
@@ -117,11 +101,7 @@ export const automationWriteMixer: EvalScenario = {
 
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    {
-      type: "custom",
-      description: "an envelopes write landed",
-      assert: (turns) => envelopeWrites(turns).length > 0,
-    },
+    assertEnvelopeWriteLanded(),
 
     assertLeadEnvelopes((envelopes) => {
       const { volume, pan, sends, devices } = sortEnvelopes(envelopes);
@@ -129,9 +109,7 @@ export const automationWriteMixer: EvalScenario = {
 
       if (envelopes.length !== 3 || devices.length > 0) {
         problems.push(
-          `expected exactly volume, pan and one send, got ${
-            envelopes.map((envelope) => envelope.parameter).join(", ") || "none"
-          }`,
+          `expected exactly volume, pan and one send, got ${parameterNames(envelopes)}`,
         );
       }
 
@@ -184,7 +162,6 @@ were written, and does not claim anything it didn't do.`,
 /**
  * A "fade" is a ramp (`/` or `~N`); a hold-then-jump (`_`) is a step. Only
  * judges a single rising volume envelope: other faults are reported elsewhere.
- *
  * @param volume - The clip's volume envelopes
  * @returns What's wrong, or null when the rise is a ramp (or not judged)
  */
