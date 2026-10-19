@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // What an arrangement position MEANS, whichever direction it travels. Gated by
@@ -52,8 +52,7 @@ ppal-create-clip's \`path\` takes a comma-separated list and may mix the two kin
 |---|---|---|
 | one bare \`[5|1]\` | any N | every clip keeps its own lane and moves to that position |
 | one \`t0[5|1]\`, \`t0/l0[5|1]\`, or \`t0/s1\` | N > 1 | refused: a lane or slot names one place, so it can't cover several clips |
-| one \`t0\` or \`t0/l0\` with \`arrangementStart\` naming one position per clip | N | each clip lands on that lane at its own position (one position for all N is refused) |
-| N destinations (\`[1|1],[5|1]\`, \`t0,t1\`, ...) | N | each clip gets the destination at its own position |
+| N destinations (\`t0[1|1],t0[5|1]\`, \`[1|1],[5|1]\`, \`t0,t1\`, ...) | N | each clip gets the destination at its own position |
 
 A clip moved into a slot or onto a take lane is re-created there, so it loses its automation envelopes. Moving clips changes their IDs - re-read to get new IDs.
 \`arrangementLength\` sets arrangement playback region.
@@ -63,7 +62,7 @@ Writing into an occupied range overwrites what is there — that's normal, and t
 A duplicate without \`toPath\` lands on the source's own track, which overwrites the source when the position matches.
 Duplicating a *scene* to the arrangement uses \`toPath: "[5|1]"\` — a scene copy lands a clip on every track, so it has no lane of its own to name.
 
-duplicate's \`id\` takes a list, copying each source in turn: \`count\` applies to every one. Several sources take one destination each, in order, and nothing cycles — \`toPath: "t0[1|1],t0[17|1],t0[33|1]"\` gives each source its own bar. Only a bare position covers them all: \`id: "c1,c2,c3"\` with \`toPath: "[5|1]"\` (or \`arrangementStart: "5|1"\` alone) drops each clip at bar 5 on its own track. One \`t0[5|1]\`, one clip slot, or one position for several scenes is refused: the copies would bury each other. A copy landing on a later source of the same call is refused too: list that source first, or copy it in its own call. \`name\`, \`color\`, \`arrangementLength\` and \`clip.index\` count across every copy, not per source: one clip to \`[1|1],[3|1],[5|1]\` with \`arrangementLength: "2bar,2bar,4bar"\` lays it out A-A-AB.
+duplicate's \`id\` takes a list, copying each source in turn: for scenes and tracks, \`count\` applies to every one; clips take no \`count\`. Several sources take one destination each, in order, and nothing cycles — \`toPath: "t0[1|1],t0[17|1],t0[33|1]"\` gives each source its own bar. Only a bare position covers them all: \`id: "c1,c2,c3"\` with \`toPath: "[5|1]"\` drops each clip at bar 5 on its own track. One \`t0[5|1]\`, one clip slot, or one position for several scenes is refused: the copies would bury each other. A copy landing on a later source of the same call is refused too: list that source first, or copy it in its own call. \`name\`, \`color\`, \`arrangementLength\` and \`clip.index\` count across every copy, not per source: one clip to \`[1|1],[3|1],[5|1]\` with \`arrangementLength: "2bar,2bar,4bar"\` lays it out A-A-AB.
 
 ### Take Lanes (Arrangement Variations)
 
