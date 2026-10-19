@@ -31,6 +31,10 @@ import {
   postEnvelopeRoute,
   settledTool,
 } from "../helpers/envelope-route-test-helpers.ts";
+import {
+  ENVELOPE_WRITE_NEEDS,
+  skipTestBeforeLive,
+} from "../../workflow/helpers/server-capability-test-helpers.ts";
 
 const TRACK = `t${String(AUDIO_TRACK)}`;
 const SLOT_PATH = `${TRACK}/s1`;
@@ -82,7 +86,8 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       expect(await readEnvelopes(id)).toStrictEqual([]);
     });
 
-    it("writes when the same call turns warping on", async () => {
+    it("writes when the same call turns warping on", async ({ skip }) => {
+      await skipTestBeforeLive(ctx.client!, skip, "12.4", ENVELOPE_WRITE_NEEDS);
       const id = await createUnwarpedDrumLoop(ctx.client!, SLOT_PATH);
 
       expect(
@@ -104,7 +109,10 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       );
     });
 
-    it("reads an envelope on an unwarped clip with a note that it doesn't play, and a clear still runs", async () => {
+    it("reads an envelope on an unwarped clip with a note that it doesn't play, and a clear still runs", async ({
+      skip,
+    }) => {
+      await skipTestBeforeLive(ctx.client!, skip, "12.4", ENVELOPE_WRITE_NEEDS);
       const id = await createWarpedDrumLoop();
 
       expect(

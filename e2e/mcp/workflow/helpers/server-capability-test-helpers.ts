@@ -83,6 +83,32 @@ export function skipBeforeLive(
   });
 }
 
+/** Why a test that searches with ppal-library needs Live 12.4. */
+export const LIBRARY_NEEDS = "ppal-library reads Live's browser database";
+
+/** Why a test that writes envelope points needs Live 12.4. */
+export const ENVELOPE_WRITE_NEEDS =
+  "Envelope.create_event, which writes envelope points";
+
+/**
+ * Skip the running test on a Live older than `min`.
+ *
+ * @param client - Connected MCP client
+ * @param skip - The test's `skip`
+ * @param min - The oldest Live the test runs on, like "12.4"
+ * @param reason - What the older Live lacks
+ */
+export async function skipTestBeforeLive(
+  client: Client,
+  skip: (note?: string) => never,
+  min: string,
+  reason: string,
+): Promise<void> {
+  if (!(await liveVersionAtLeast(client, min))) {
+    skip(`needs Live ${min} or later: ${reason}`);
+  }
+}
+
 /**
  * Whether the SERVED build has code execution compiled in. The flag is baked in
  * at build time (`build:debug` forces it on), so this process's own

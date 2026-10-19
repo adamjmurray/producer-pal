@@ -33,6 +33,10 @@ import {
   createArrangementClip,
   createClipInSlot,
 } from "../helpers/ppal-clip-transforms-test-helpers.ts";
+import {
+  ENVELOPE_WRITE_NEEDS,
+  skipTestBeforeLive,
+} from "../../workflow/helpers/server-capability-test-helpers.ts";
 
 const TRACK = `t${String(EMPTY_MIDI_TRACK)}`;
 
@@ -106,7 +110,8 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       return id;
     }
 
-    it("reads back an envelope the remote script wrote", async () => {
+    it("reads back an envelope the remote script wrote", async ({ skip }) => {
+      await skipTestBeforeLive(ctx.client!, skip, "12.4", ENVELOPE_WRITE_NEEDS);
       const id = await clipWithVolumeEnvelope();
 
       expect(await readEnvelopes(id)).toStrictEqual([
@@ -122,13 +127,17 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       ]);
     });
 
-    it("leaves envelopes out of a '*' read", async () => {
+    it("leaves envelopes out of a '*' read", async ({ skip }) => {
+      await skipTestBeforeLive(ctx.client!, skip, "12.4", ENVELOPE_WRITE_NEEDS);
       const id = await clipWithVolumeEnvelope();
 
       expect(await readEnvelopes(id, ["*"])).toBeUndefined();
     });
 
-    it("flags a session clip with envelopes in a default read", async () => {
+    it("flags a session clip with envelopes in a default read", async ({
+      skip,
+    }) => {
+      await skipTestBeforeLive(ctx.client!, skip, "12.4", ENVELOPE_WRITE_NEEDS);
       const id = await clipWithVolumeEnvelope();
 
       expect(await readClip(id)).toHaveProperty("envs", true);

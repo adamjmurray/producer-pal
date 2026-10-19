@@ -32,7 +32,10 @@ import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../../device/helpers/remote-script-test-helpers.ts";
-import { skipBeforeLive } from "../../workflow/helpers/server-capability-test-helpers.ts";
+import {
+  ENVELOPE_WRITE_NEEDS,
+  skipBeforeLive,
+} from "../../workflow/helpers/server-capability-test-helpers.ts";
 import {
   beats,
   callTool,
@@ -59,7 +62,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
 
     const ctx = setupMcpTestContext();
 
-    skipBeforeLive(ctx, "12.4", "Envelope.create_event, which writes points");
+    skipBeforeLive(ctx, "12.4", ENVELOPE_WRITE_NEEDS);
 
     const lane = (track: number, songBeats: number): Promise<number> =>
       laneAt(ctx.client!, track, songBeats);

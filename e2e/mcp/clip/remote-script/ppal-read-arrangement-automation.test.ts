@@ -30,7 +30,10 @@ import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../../device/helpers/remote-script-test-helpers.ts";
-import { skipBeforeLive } from "../../workflow/helpers/server-capability-test-helpers.ts";
+import {
+  ENVELOPE_WRITE_NEEDS,
+  skipBeforeLive,
+} from "../../workflow/helpers/server-capability-test-helpers.ts";
 import { callTool } from "../helpers/arrangement-clip-query-test-helpers.ts";
 import { createClipInSlot } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 import { settledTool } from "../helpers/envelope-route-test-helpers.ts";
@@ -58,7 +61,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
 
     const ctx = setupMcpTestContext({ once: true });
 
-    skipBeforeLive(ctx, "12.4", "Envelope.create_event, which writes points");
+    skipBeforeLive(ctx, "12.4", ENVELOPE_WRITE_NEEDS);
 
     /** Run operations on a Live object through ppal-live-api. */
     const liveApi = async (

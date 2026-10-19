@@ -33,6 +33,10 @@ import {
   readDevice,
   requireRemoteScript,
 } from "../helpers/remote-script-test-helpers";
+import {
+  LIBRARY_NEEDS,
+  skipTestBeforeLive,
+} from "../../workflow/helpers/server-capability-test-helpers.ts";
 
 describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
   requireRemoteScript();
@@ -234,7 +238,8 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     expect((await readDevice(ctx.client!, drift.path)).id).toBe(drift.id);
   });
 
-  it("loads a preset file ppal-library found", async () => {
+  it("loads a preset file ppal-library found", async ({ skip }) => {
+    await skipTestBeforeLive(ctx.client!, skip, "12.4", LIBRARY_NEEDS);
     const found = parseToolResult<{ items: Array<{ path: string }> }>(
       await call("ppal-library", {
         kind: "preset",

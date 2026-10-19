@@ -13,7 +13,11 @@ import {
   parseToolResult,
   sleep,
 } from "../../mcp-test-helpers";
-import { remoteScriptAnswers } from "../../workflow/helpers/server-capability-test-helpers";
+import {
+  LIBRARY_NEEDS,
+  remoteScriptAnswers,
+  skipTestBeforeLive,
+} from "../../workflow/helpers/server-capability-test-helpers";
 
 /** Whether the suites that need the remote script run at all. */
 export const REMOTE_SCRIPT_E2E = process.env.E2E_REMOTE_SCRIPT === "true";
@@ -137,13 +141,16 @@ export async function readDevice(
  * time and skips when there is none. Live's browser files these under Drums,
  * not under any device, so only the library has them.
  * @param client - Connected MCP client
- * @param skip - The test's `skip`, called when no pack has such a kit
+ * @param skip - The test's `skip`, called when no pack has such a kit or Live
+ *   has no library
  * @returns The kit's file name and absolute path
  */
 export async function packDrumKitOrSkip(
   client: Client,
-  skip: () => never,
+  skip: (note?: string) => never,
 ): Promise<Preset> {
+  await skipTestBeforeLive(client, skip, "12.4", LIBRARY_NEEDS);
+
   const search = async (kind: string, query: string): Promise<Preset[]> =>
     parseToolResult<{ items?: Preset[] }>(
       await callToolAndSettle(client, "ppal-library", {

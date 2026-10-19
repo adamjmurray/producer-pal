@@ -32,6 +32,10 @@ import {
   readDevice,
   requireRemoteScript,
 } from "../helpers/remote-script-test-helpers";
+import {
+  LIBRARY_NEEDS,
+  skipTestBeforeLive,
+} from "../../workflow/helpers/server-capability-test-helpers.ts";
 
 describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
   requireRemoteScript();
@@ -85,9 +89,13 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
 
   /**
    * The absolute path of the Drift .adv preset, from ppal-library.
+   * @param skip - The test's `skip`, called on a Live without the library
    * @returns The file path
    */
-  async function driftPresetFile(): Promise<string> {
+  async function driftPresetFile(
+    skip: (note?: string) => never,
+  ): Promise<string> {
+    await skipTestBeforeLive(ctx.client!, skip, "12.4", LIBRARY_NEEDS);
     const library = parseToolResult<{
       items: { name: string; path: string }[];
     }>(
@@ -103,10 +111,10 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     return file as string;
   }
 
-  it("creates a device from a preset's file path", async () => {
+  it("creates a device from a preset's file path", async ({ skip }) => {
     // A Core Library file: the remote script finds it under the "Core Library"
     // pack, which it can only match by name.
-    const file = await driftPresetFile();
+    const file = await driftPresetFile(skip);
     const track = await createMidiTrack(ctx.client!);
     const created = parseToolResult<{ path: string }>(
       await create({ preset: file, path: `t${track}/d0` }),
@@ -117,10 +125,12 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     );
   });
 
-  it("refuses a preset file that isn't the named device's", async () => {
+  it("refuses a preset file that isn't the named device's", async ({
+    skip,
+  }) => {
     const result = await create({
       device: "Operator",
-      preset: await driftPresetFile(),
+      preset: await driftPresetFile(skip),
       path: "t0/d+",
     });
 

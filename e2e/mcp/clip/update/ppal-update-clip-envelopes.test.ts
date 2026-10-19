@@ -32,7 +32,10 @@ import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../../device/helpers/remote-script-test-helpers.ts";
-import { skipBeforeLive } from "../../workflow/helpers/server-capability-test-helpers.ts";
+import {
+  ENVELOPE_WRITE_NEEDS,
+  skipBeforeLive,
+} from "../../workflow/helpers/server-capability-test-helpers.ts";
 import { postEnvelopeRoute } from "../helpers/envelope-route-test-helpers.ts";
 import { createClipInSlot } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
@@ -56,11 +59,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
 
     const ctx = setupMcpTestContext();
 
-    skipBeforeLive(
-      ctx,
-      "12.4",
-      "Envelope.create_event, which writes envelope points",
-    );
+    skipBeforeLive(ctx, "12.4", ENVELOPE_WRITE_NEEDS);
 
     /**
      * Write one clip's automation.
