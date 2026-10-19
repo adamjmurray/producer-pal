@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,6 +22,7 @@ vi.mock(
     applyTransforms: vi.fn(() => ({
       changed: new Set<NoteEvent>(),
       original: new Map<NoteEvent, NoteEvent>(),
+      roots: new Map(),
       deleted: [60, 61, 62].map((pitch) => ({
         pitch,
         start_time: 0,
@@ -77,6 +78,7 @@ describe("resolveClipTransform", () => {
     vi.mocked(applyTransforms).mockReturnValue({
       changed: new Set<NoteEvent>(),
       original: new Map<NoteEvent, NoteEvent>(),
+      roots: new Map(),
       deleted: [60, 61, 62].map((pitch) => ({
         pitch,
         start_time: 0,

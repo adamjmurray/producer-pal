@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
@@ -144,6 +144,62 @@ describe("combineOutcomes with note-count ops in the first pass", () => {
     expect(combinedCounts("C3: repeat(n/4)", "C3: velocity = 0")).toStrictEqual(
       { transformed: 0, deletedNotes: 1 },
     );
+  });
+});
+
+describe("combineOutcomes when the second pass rebuilds what the first made", () => {
+  /**
+   * Count two passes, and the same lines run as one pass.
+   * @param starting - The clip's notes, made fresh for each run
+   * @param pre - First pass (preTransforms)
+   * @param post - Second pass (transforms)
+   * @returns The two-pass counts and the one-pass counts
+   */
+  function bothWays(
+    starting: () => NoteEvent[],
+    pre: string,
+    post: string,
+  ): { twoPasses: TransformCounts; onePass: TransformCounts } {
+    const notes = starting();
+    const first = applyTransforms(notes, pre, 4, 4);
+    const second = applyTransforms(notes, post, 4, 4);
+    const together = starting();
+    const outcome = applyTransforms(together, `${pre}\n${post}`, 4, 4);
+
+    return {
+      twoPasses: countTransforms(combineOutcomes(first, second), notes),
+      onePass: countTransforms(outcome, together),
+    };
+  }
+
+  /** A long C3 with a short one inside it, for merge(). */
+  const nestedC3s = (): NoteEvent[] =>
+    createTestNotes([
+      { pitch: 60, start_time: 0, duration: 4 },
+      { pitch: 60, start_time: 1, duration: 1 },
+    ]);
+
+  it.each([
+    ["E3: ratchet(2)", "E3: velocity = 0", { transformed: 0, deletedNotes: 1 }],
+    ["split(1|1.5)", "C3: velocity = 0", { transformed: 0, deletedNotes: 1 }],
+  ])(
+    "counts the note %s replaced when %s deletes its pieces",
+    (pre, post, expected) => {
+      const { twoPasses, onePass } = bothWays(cMajorTriad, pre, post);
+
+      expect(twoPasses).toStrictEqual(expected);
+      expect(twoPasses).toStrictEqual(onePass);
+    },
+  );
+
+  it.each([
+    ["velocity = 50", "merge()", { transformed: 1, deletedNotes: 1 }],
+    ["merge()", "velocity = 0", { transformed: 0, deletedNotes: 2 }],
+  ])("counts %s then %s as one pass would", (pre, post, expected) => {
+    const { twoPasses, onePass } = bothWays(nestedC3s, pre, post);
+
+    expect(twoPasses).toStrictEqual(expected);
+    expect(twoPasses).toStrictEqual(onePass);
   });
 });
 

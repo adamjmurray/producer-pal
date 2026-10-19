@@ -245,13 +245,14 @@ after:
   the caller's only sign that its selector matched nothing or its edit was a
   no-op. Only `deletedNotes` is left out at 0, and `transformed` is absent when
   no transform ran.
-- `preTransforms` and `transforms` in one call count against how each note
-  started: a note both changed counts once, and one that `transforms` puts back
-  as it was counts as neither. A note `preTransforms` made (a `repeat` copy, a
-  `ratchet` or `split` piece) counts whatever `transforms` does to it. With
-  `duplicateLoop` the two passes re-read the clip around Live's double, so they
-  can't share a starting point: each compares its own before and after, the
-  report is their sum, and a note changed in both counts twice.
+- `preTransforms` and `transforms` in one call count as one pass running both
+  would, against how each note started: a note both changed counts once, and one
+  that `transforms` puts back as it was counts as neither. When `transforms`
+  deletes every piece a `preTransforms` `ratchet` or `split` made, the note they
+  replaced counts as deleted. With `duplicateLoop` the two passes re-read the
+  clip around Live's double, so they can't share a starting point: each compares
+  its own before and after, the report is their sum, and a note changed in both
+  counts twice.
 
 ## Notes outside the region
 

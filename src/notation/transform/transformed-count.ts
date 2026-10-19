@@ -1,11 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { dedupeNotesKeepingLast } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { sameNoteValues } from "./helpers/note-ops/transform-outcome.ts";
+import { isChanged } from "./helpers/note-ops/transform-outcome.ts";
 
 /**
  * What a transform did to the notes it selected, tracked by note object so the
@@ -15,10 +15,12 @@ import { sameNoteValues } from "./helpers/note-ops/transform-outcome.ts";
 export interface TransformOutcome {
   /** Notes the transform changed or made, still in the clip */
   changed: Set<NoteEvent>;
-  /** The notes the transform removed (driven to 0, or merged into another), as they started */
+  /** The notes the transform removed (driven to 0, or merged into another): their values in `original` */
   deleted: NoteEvent[];
   /** Each note the transform started with, as it started, by note */
   original: ReadonlyMap<NoteEvent, NoteEvent>;
+  /** For each note an op made, the starting notes it came from */
+  roots: ReadonlyMap<NoteEvent, ReadonlySet<NoteEvent>>;
 }
 
 /** What a result entry reports about a transform. */
@@ -31,11 +33,11 @@ export interface TransformCounts {
 
 /**
  * Join the outcomes of several passes over the same notes (preTransforms, then
- * transforms). A note counts as changed if it ended up different from how the
- * first pass found it, so a note one pass changes and a later one puts back
- * counts as neither, and a note both changed counts once. A note an earlier
- * pass made (a repeat copy, a ratchet or split piece) counts as changed no
- * matter what a later pass does to it: a later pass sees it as already there.
+ * transforms), counting as if one pass ran them all. Each note is judged
+ * against how it started before the first pass that saw it, and a note a pass
+ * made against the starting notes it came from. So a note one pass changes and
+ * a later one puts back counts as neither, and a note both changed counts once.
+ * A starting note is deleted once a pass removes the last of its pieces.
  * @param outcomes - Outcomes to combine; undefined ones (no transform ran) are skipped
  * @returns The combined outcome, or undefined when none of them ran
  */
@@ -48,44 +50,55 @@ export function combineOutcomes(
     return undefined;
   }
 
-  // The first pass to see a note holds how it started; notes a pass made
-  // have no start.
+  // The first pass to see a note holds how it started. A note a pass made has
+  // no start of its own; it maps to the starting notes it came from.
   const original = new Map<NoteEvent, NoteEvent>();
-  const made = new Set<NoteEvent>();
-  const deleted: NoteEvent[] = [];
+  const roots = new Map<NoteEvent, ReadonlySet<NoteEvent>>();
+  const gone = new Set<NoteEvent>();
+  const touched = new Set<NoteEvent>();
+  const rootsOf = (note: NoteEvent): ReadonlySet<NoteEvent> =>
+    roots.get(note) ?? new Set([note]);
 
   for (const outcome of ran) {
-    const madeValues = new Set<NoteEvent | undefined>(
-      [...made].map((note) => outcome.original.get(note)),
-    );
-
     for (const [note, values] of outcome.original) {
-      if (!original.has(note) && !made.has(note)) {
+      if (!original.has(note) && !roots.has(note)) {
         original.set(note, values);
       }
     }
 
-    // Notes that never existed in the clip are not "deleted notes".
-    deleted.push(...outcome.deleted.filter((note) => !madeValues.has(note)));
+    for (const root of removedRoots(outcome, rootsOf)) {
+      gone.add(root);
+    }
 
-    for (const note of outcome.changed) {
-      if (!original.has(note)) {
-        made.add(note);
-      }
+    // A pass's roots are notes it started with; map them through earlier passes.
+    const madeNow = [...outcome.roots].map(
+      ([note, from]) =>
+        [
+          note,
+          new Set([...from].flatMap((parent) => [...rootsOf(parent)])),
+        ] as const,
+    );
+
+    for (const [note, from] of madeNow) {
+      roots.set(note, from);
+    }
+
+    for (const note of [...outcome.changed, ...outcome.roots.keys()]) {
+      touched.add(note);
     }
   }
 
   const changed = new Set<NoteEvent>();
 
-  for (const note of ran.flatMap((outcome) => [...outcome.changed])) {
-    const started = original.get(note);
-
-    if (started == null || !sameNoteValues(note, started)) {
+  for (const note of touched) {
+    if (isChanged(note, original, rootsOf(note))) {
       changed.add(note);
     }
   }
 
-  return { changed, deleted, original };
+  const deleted = [...gone].map((note) => original.get(note) as NoteEvent);
+
+  return { changed, deleted, original, roots };
 }
 
 /**
@@ -143,4 +156,46 @@ export function addCounts(
   }
 
   return counts;
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * The starting notes one pass removed the last piece of.
+ * @param outcome - The pass
+ * @param rootsOf - The starting notes a note the pass began with came from
+ * @returns Those starting notes
+ */
+function removedRoots(
+  outcome: TransformOutcome,
+  rootsOf: (note: NoteEvent) => ReadonlySet<NoteEvent>,
+): Set<NoteEvent> {
+  // `deleted` holds the pass's own snapshots; map them back to its notes.
+  const noteOf = new Map(
+    [...outcome.original].map(([note, values]) => [values, note]),
+  );
+  const removed = new Set(
+    outcome.deleted.map((values) => noteOf.get(values) as NoteEvent),
+  );
+  const kept = new Set<NoteEvent>();
+
+  for (const note of outcome.original.keys()) {
+    if (!removed.has(note)) {
+      for (const root of rootsOf(note)) {
+        kept.add(root);
+      }
+    }
+  }
+
+  const roots = new Set<NoteEvent>();
+
+  for (const note of removed) {
+    for (const root of rootsOf(note)) {
+      if (!kept.has(root)) {
+        roots.add(root);
+      }
+    }
+  }
+
+  return roots;
 }

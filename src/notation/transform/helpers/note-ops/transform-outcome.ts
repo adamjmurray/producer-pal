@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { type NoteEvent } from "#src/notation/types.ts";
@@ -87,6 +87,7 @@ export function buildOutcome(
     changed,
     deleted: removedNotes(groups, alive, left, original),
     original,
+    roots,
   };
 }
 
@@ -115,12 +116,14 @@ function joinGroups(
 }
 
 /**
+ * Whether a note differs from how it started: a starting note from its own
+ * start, a note an op made from every starting note it came from.
  * @param note - A selected note that is still there
  * @param original - Each starting note's values, by note
  * @param roots - The starting notes it came from
  * @returns True when its values differ from where it started
  */
-function isChanged(
+export function isChanged(
   note: NoteEvent,
   original: ReadonlyMap<NoteEvent, NoteEvent>,
   roots: Iterable<NoteEvent>,
