@@ -41,9 +41,10 @@ Writes the bundled script into the User Library, replacing any copy, as Settings
   installed, with the same advice.
 - **A write that fails partway:** throws, saying what it left. The new copy is
   written beside the old and swapped in, so the old install is unchanged and no
-  half-written folder is kept. If the swap itself fails and the old copy can't
-  be put back, it says the previous copy was moved aside (the error names where)
-  and the remote script is missing until the install runs again.
+  half-written folder is kept (if it can't be removed, the error names where it
+  is). If the swap itself fails and the old copy can't be put back, it says the
+  previous copy was moved aside (the error names where) and the remote script is
+  missing until the install runs again.
 - **No answer from Node:** throws, saying the install may or may not have
   finished and to run it again. An install replaces the old copy whole, so
   repeating it is safe.

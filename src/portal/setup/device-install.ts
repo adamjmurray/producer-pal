@@ -11,11 +11,11 @@ import {
   isLibraryFolder,
   listLibraryFolder,
   makeLibraryFolder,
-  libraryModifiedMs,
   removeFromLibrary,
   renameInLibrary,
   setLibraryFileMode,
 } from "#src/mcp-server/rpc/remote-script/user-library/user-library-fs.ts";
+import { isStaleLeftover } from "#src/mcp-server/rpc/remote-script/user-library/stale-leftover.ts";
 import {
   DEVICE_FILE_NAME,
   type DeviceFileStatus,
@@ -31,9 +31,6 @@ const LEFTOVER = new RegExp(
 const INSTALLED_MODE = 0o644;
 
 const DEFAULT_SOURCE_NAME = "the bundled one";
-
-// Leftovers younger than this may belong to an install running right now.
-const LEFTOVER_MIN_AGE_MS = 60_000;
 
 // Windows refuses to replace a file that Live has open.
 const IN_USE_CODES = new Set(["EPERM", "EBUSY", "EACCES"]);
@@ -297,9 +294,8 @@ function removeLeftovers(folder: string): void {
   try {
     for (const name of listLibraryFolder(folder)) {
       const path = join(folder, name);
-      const modified = LEFTOVER.test(name) ? libraryModifiedMs(path) : null;
 
-      if (modified != null && Date.now() - modified > LEFTOVER_MIN_AGE_MS) {
+      if (LEFTOVER.test(name) && isStaleLeftover(path)) {
         deleteTemp(path);
       }
     }

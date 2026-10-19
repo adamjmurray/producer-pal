@@ -92,14 +92,9 @@ export function useDeviceInstall(): UseDeviceInstallReturn {
       void postInstall(userLibrary, force).then((result) => {
         setInstalling(false);
 
-        if (result.error != null) {
-          setInstallError(result.error);
-          setInstallResult(null);
-
-          return;
-        }
-
+        setInstallError(result.error);
         setInstallResult(result.done);
+        // A failed install can still have made folders the status shows.
         refresh();
       });
     },

@@ -46,9 +46,24 @@ export async function installRemoteScriptReply(
 }
 
 /**
- * Word a failed install, including what it left behind. The install writes to a
- * temp folder and swaps it in, so a failed write leaves any old install as it
- * was; only a swap that can't be undone moves it aside, and its error says where.
+ * Say what a failed install left. The new copy is written to a temp folder and
+ * swapped in, so the old install stays as it was unless the swap couldn't be
+ * undone. The install's error names anything it couldn't clean up.
+ * @param message - The install's error message
+ * @returns What's left of the old install and the new copy
+ */
+export function installLeftText(message: string): string {
+  if (message.includes("old install left at")) {
+    return "The previous copy was moved aside and not put back, so the remote script is missing until you run the install again";
+  }
+
+  return message.includes("new copy left at")
+    ? "Any previous install is unchanged"
+    : "Nothing half-written was kept, and any previous install is unchanged";
+}
+
+/**
+ * Word a failed install, including what it left behind.
  * @param error - What the install threw
  * @returns The reason and the state, worded for the model
  */
@@ -59,7 +74,5 @@ function failureText(error: unknown): string {
     return `${message}; nothing was installed. ${ASK_FOR_LIBRARY}`;
   }
 
-  return message.includes("old install left at")
-    ? `the install failed (${message}). The previous copy was moved aside and not put back, so the remote script is missing until you run the install again`
-    : `the install failed (${message}). Nothing half-written was kept, and any previous install is unchanged`;
+  return `the install failed (${message}). ${installLeftText(message)}`;
 }

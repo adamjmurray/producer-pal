@@ -99,13 +99,12 @@ export function useRemoteScript(): UseRemoteScriptReturn {
 
         if (result.error != null) {
           setInstallError(result.error);
-
-          return;
+        } else {
+          setInstalledPath(result.path);
         }
 
-        setInstalledPath(result.path);
-        // The summary above the steps has to say "installed" now, and only the
-        // server knows the version that landed.
+        // Only the server knows what landed, and a failed install may have
+        // moved the old one aside.
         refresh();
       });
     },

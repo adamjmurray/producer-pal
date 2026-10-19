@@ -71,6 +71,28 @@ describe("useDeviceInstall", () => {
     });
   });
 
+  it("re-reads the status after a failed install, which may have changed it", async () => {
+    const { result } = await renderPastMountRead();
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "Couldn't install the device." }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    fetchMock.mockResolvedValueOnce(jsonResponse(deviceStatusBody()));
+
+    await act(() => {
+      result.current.install(USER_LIBRARY, false);
+    });
+    await waitForHookState(() => {
+      expect(result.current.installError).toBe("Couldn't install the device.");
+    });
+    await waitForHookState(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+  });
+
   it("clears an earlier error when the next install works", async () => {
     const { result } = await renderPastMountRead();
 

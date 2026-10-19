@@ -9,12 +9,16 @@
 
 import { type Express, type Request, type Response } from "express";
 import { VERSION } from "#src/shared/config.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
+import * as console from "../node-for-max-logger.ts";
 import { syncDeviceInstallNotice } from "../rpc/device-install/device-install-notice.ts";
 import {
   answerUserLibraryError,
   readUserLibraryPost,
 } from "../helpers/http/user-library-post.ts";
+import { UserLibraryFolderError } from "../rpc/remote-script/user-library/user-library-folder.ts";
 import { installRemoteScript } from "../rpc/remote-script/install/remote-script-install.ts";
+import { installLeftText } from "../rpc/remote-script/install/remote-script-install-reply.ts";
 import { remoteScriptStatus } from "../rpc/remote-script/remote-script-status.ts";
 
 /**
@@ -22,7 +26,8 @@ import { remoteScriptStatus } from "../rpc/remote-script/remote-script-status.ts
  *
  * The install is a same-origin write, like the other content endpoints, so a
  * LAN or tunnel chat UI can run it and only a foreign browser origin 403s. A
- * User Library path that isn't absolute (after a leading `~`) is a 400.
+ * User Library path that isn't an existing absolute folder (after a leading
+ * `~`) is a 400; a failed install is a 500 saying what it left.
  *
  * @param app - Express application
  */
@@ -48,7 +53,18 @@ export function registerRemoteScriptSetupRoutes(app: Express): void {
       void syncDeviceInstallNotice();
       res.json({ path, version: VERSION });
     } catch (error) {
-      answerUserLibraryError(error, res);
+      if (error instanceof UserLibraryFolderError) {
+        answerUserLibraryError(error, res);
+
+        return;
+      }
+
+      const message = errorMessage(error);
+
+      console.error(`Remote script install failed: ${message}`);
+      res.status(500).json({
+        error: `Couldn't install the remote script (${message}). ${installLeftText(message)}`,
+      });
     }
   });
 }

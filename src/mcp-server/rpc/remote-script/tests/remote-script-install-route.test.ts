@@ -179,4 +179,17 @@ describe("manage.installRemoteScript", () => {
         "the install failed (EPERM: rename x (old install left at /lib/old)). The previous copy was moved aside and not put back, so the remote script is missing until you run the install again",
     });
   });
+
+  it("doesn't claim nothing was kept when the new copy couldn't be removed", async () => {
+    mkdirSync(join(library, "Remote Scripts"), { recursive: true });
+    vi.mocked(installRemoteScript).mockImplementationOnce(() => {
+      throw new Error("EPERM: rename x (new copy left at /lib/tmp)");
+    });
+
+    expect(await install()).toStrictEqual({
+      installed: false,
+      error:
+        "the install failed (EPERM: rename x (new copy left at /lib/tmp)). Any previous install is unchanged",
+    });
+  });
 });

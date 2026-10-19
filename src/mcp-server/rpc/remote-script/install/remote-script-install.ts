@@ -15,6 +15,7 @@ import {
   renameInLibrary,
   writeLibraryFile,
 } from "../user-library/user-library-fs.ts";
+import { isStaleLeftover } from "../user-library/stale-leftover.ts";
 import { resolveUserLibraryFolder } from "../user-library/user-library-folder.ts";
 
 // Live runs `import <folder>`, so the folder name must be a valid Python name.
@@ -30,8 +31,8 @@ const LEFTOVER = new RegExp(
  * is there. The whole folder goes so removed modules and stale bytecode don't
  * linger. The new copy is written to a sibling temp folder and swapped in, so
  * a failed write or swap keeps the working install (under a backup name only
- * if putting it back fails too — the error says where). The only paths ever
- * deleted are temp and backup folders.
+ * if putting it back fails too). The error says where anything was left. The
+ * only paths ever deleted are temp and backup folders.
  *
  * Live only scans Remote Scripts at startup, so it needs a restart.
  *
@@ -51,7 +52,11 @@ export function installRemoteScript(userLibrary: string): { path: string } {
     writeScriptFiles(temp);
     swapInstall(temp, path, backup);
   } catch (error) {
-    removeFromLibrary(temp);
+    try {
+      removeFromLibrary(temp);
+    } catch {
+      noteLeftAt(error, `new copy left at ${temp}`);
+    }
 
     throw error;
   }
@@ -115,15 +120,27 @@ function restoreBackup(backup: string, path: string, swapError: unknown): void {
   try {
     renameInLibrary(backup, path);
   } catch {
-    if (swapError instanceof Error) {
-      swapError.message += ` (old install left at ${backup})`;
-    }
+    noteLeftAt(swapError, `old install left at ${backup}`);
+  }
+}
+
+/**
+ * Add what a failure left behind to its error, so a cleanup that also fails
+ * never hides the first error.
+ *
+ * @param error - The failure being reported
+ * @param note - What was left where
+ */
+function noteLeftAt(error: unknown, note: string): void {
+  if (error instanceof Error) {
+    error.message += ` (${note})`;
   }
 }
 
 /**
  * Best-effort removal of temp and backup folders from earlier installs that
- * went wrong, in this process or any other.
+ * went wrong, in this process or any other. Young temp folders are left, since
+ * another install may be writing them.
  *
  * @param path - The script folder
  */
@@ -141,10 +158,14 @@ function removeLeftovers(path: string): void {
 
   for (const name of names) {
     const kind = LEFTOVER.exec(name)?.[1];
+    const leftover = join(folder, name);
 
-    if (kind === "tmp" || (kind === "old" && !keepBackups)) {
+    if (
+      (kind === "tmp" && isStaleLeftover(leftover)) ||
+      (kind === "old" && !keepBackups)
+    ) {
       try {
-        removeFromLibrary(join(folder, name));
+        removeFromLibrary(leftover);
       } catch {
         // A leftover is harmless; the new one gets a unique name.
       }

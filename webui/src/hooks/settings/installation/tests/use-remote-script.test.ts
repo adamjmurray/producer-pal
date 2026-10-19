@@ -96,6 +96,28 @@ describe("useRemoteScript install failures", () => {
     expect(await installRejectedWith("EPIPE")).toBe("EPIPE");
   });
 
+  it("re-reads the status after a failed install, which may have changed it", async () => {
+    const { result } = await renderPastMountRead(fetchMock);
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "the install failed" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    fetchMock.mockResolvedValueOnce(jsonResponse(statusBody()));
+
+    await act(() => {
+      result.current.install(USER_LIBRARY);
+    });
+    await waitForHookState(() => {
+      expect(result.current.installError).toBe("the install failed");
+    });
+    await waitForHookState(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+  });
+
   it("skips the status re-read when the install lands after unmount", async () => {
     const { result, unmount } = await renderPastMountRead(fetchMock);
 

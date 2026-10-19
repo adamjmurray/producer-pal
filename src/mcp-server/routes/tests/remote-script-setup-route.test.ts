@@ -6,6 +6,7 @@
 import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as maxConsole from "#src/mcp-server/node-for-max-logger.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { syncDeviceInstallNotice } from "../../rpc/device-install/device-install-notice.ts";
 import { errorHandlerMiddleware } from "../../helpers/http/error-handler-middleware.ts";
@@ -144,14 +145,22 @@ describe("POST /remote-script/install", () => {
     expect(res.status).toBe(403);
   });
 
-  it("answers 500 when the write itself fails", async () => {
+  it("answers 500 with what it left when the write itself fails", async () => {
     // "Remote Scripts" as a file makes the write fail for a reason that isn't
     // the caller's bad input, so it must not read as a 400.
     writeFileSync(join(scratchDir, "Remote Scripts"), "", "utf8");
 
+    const logged = vi.spyOn(maxConsole, "error").mockImplementation(() => {});
     const res = await postInstall({ userLibrary: scratchDir });
 
     expect(res.status).toBe(500);
+    expect(logged).toHaveBeenCalledWith(
+      expect.stringMatching(/^Remote script install failed: /),
+    );
+    logged.mockRestore();
+    expect(await errorOf(res)).toMatch(
+      /^Couldn't install the remote script \(.*\)\. Nothing half-written was kept, and any previous install is unchanged$/,
+    );
     expect(syncDeviceInstallNotice).not.toHaveBeenCalled();
   });
 });

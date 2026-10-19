@@ -14,6 +14,7 @@ import {
   readdirSync,
   rmSync,
   symlinkSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -292,11 +293,13 @@ describe("installRemoteScript", () => {
   it("clears only its own leftovers, whatever process made them", () => {
     const scripts = join(scratchDir, "Remote Scripts");
     const ours = [`tmp-${UUID}`, `old-${UUID}`].map((s) => `Producer_Pal.${s}`);
+    const longAgo = new Date(Date.now() - 120_000);
 
     installRemoteScript(scratchDir);
 
     for (const name of [...ours, "Producer_Pal.old-mybackup", "Other"]) {
       mkdirSync(join(scripts, name));
+      utimesSync(join(scripts, name), longAgo, longAgo);
     }
 
     installRemoteScript(scratchDir);
@@ -306,6 +309,61 @@ describe("installRemoteScript", () => {
       "Producer_Pal",
       "Producer_Pal.old-mybackup",
     ]);
+  });
+
+  it("leaves a young temp folder alone, since another install may be writing it", () => {
+    const young = join(
+      scratchDir,
+      "Remote Scripts",
+      `Producer_Pal.tmp-${UUID}`,
+    );
+
+    installRemoteScript(scratchDir);
+    mkdirSync(young);
+    installRemoteScript(scratchDir);
+
+    expect(existsSync(young)).toBe(true);
+  });
+
+  it("clears a temp leftover it can't read the age of, like a looped link", () => {
+    const looped = join(
+      scratchDir,
+      "Remote Scripts",
+      `Producer_Pal.tmp-${UUID}`,
+    );
+
+    installRemoteScript(scratchDir);
+    symlinkSync(looped, looped);
+
+    expect(installRemoteScript(scratchDir).path).toBe(
+      remoteScriptPath(scratchDir),
+    );
+    expect(readdirSync(join(scratchDir, "Remote Scripts"))).toStrictEqual([
+      "Producer_Pal",
+    ]);
+  });
+
+  it("reports the swap failure, not the cleanup's, when the new copy can't be removed", () => {
+    const { path } = installRemoteScript(scratchDir);
+
+    fault.renameFrom = [`${path}.tmp-`];
+    fault.rm = [`${path}.tmp-`];
+
+    expect(() => installRemoteScript(scratchDir)).toThrow(
+      /^EPERM: rename .*Producer_Pal\.tmp-.*new copy left at .*Producer_Pal\.tmp-/,
+    );
+    expect(existsSync(join(path, "__init__.py"))).toBe(true);
+  });
+
+  it("keeps the old install's whereabouts when the new copy can't be removed either", () => {
+    const { path } = installRemoteScript(scratchDir);
+
+    fault.renameFrom = [`${path}.tmp-`, `${path}.old-`];
+    fault.rm = [`${path}.tmp-`];
+
+    expect(() => installRemoteScript(scratchDir)).toThrow(
+      /old install left at .*Producer_Pal\.old-.*new copy left at/,
+    );
   });
 
   it("keeps a backup when there's no install, since it may be the only copy", () => {
