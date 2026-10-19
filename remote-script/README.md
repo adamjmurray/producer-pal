@@ -268,6 +268,8 @@ the new `device` name.
 - **The old device's server dies with the swap** and the new one starts its own,
   usually within a second. The track, the device's position and its saved
   settings (the project context) stay.
+- **The swap is closed as its own undo step,** as `/undo/end` would, since the
+  server that would close it is gone. Undoing it puts the old build back.
 - **Refused before anything changes** with a 409: the file isn't a Producer Pal
   device, the Set has none, or it has more than one. A file the browser can't
   find is a 404 (a file just written can take a few seconds to show up), and a

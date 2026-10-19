@@ -7,10 +7,11 @@ are no target lists, no entries and no skips: a call that can't do its action
 throws.
 
 It is not a target-list write, so it doesn't run through the
-[write pipeline](../../tools/write-pipeline.md), and it gets no undo step of its
-own: an end clears the guard that stops the next undo from removing Producer Pal
-(see [`undo` and `redo`](#undo-and-redo)), and an install changes nothing in the
-Set.
+[write pipeline](../../tools/write-pipeline.md), and the tool closes no undo
+step: an end clears the guard that stops the next undo from removing Producer
+Pal (see [`undo` and `redo`](#undo-and-redo)), and an install changes nothing in
+the Set. The one exception is the `update-producer-pal` swap, which the remote
+script closes itself.
 
 Small-model mode leaves it out entirely (not in MCP, not in REST), and users can
 switch it off like any tool. It sits in the `core` group.
@@ -110,6 +111,12 @@ to ask the user first.
   7. The bridge drops its connection and reconnects until a server answers with
      a newer version than the old one (30 s), then tells the client to re-list
      tools, which may differ between versions.
+- **Undo:** the remote script closes the swap as its own undo step (and clears
+  the guard, as any write does), since the server that would close it dies with
+  the swap. Left open, it would merge with the next edit. Undoing that step puts
+  the old build back, which the guard allows: Producer Pal is still in the Set.
+  That undo replaces the server answering it, so its answer is lost; call
+  `ppal-connect` to see which build runs.
 - **After Live may have acted** (no answer to the swap request, a lost
   connection, a 500, a 504 that started), the error says the device may have
   been replaced and to call `ppal-connect` to see which version runs. If the

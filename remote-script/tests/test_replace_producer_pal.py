@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Only Live's own Python has this module; the package imports it on load.
 sys.modules.setdefault("Live", types.ModuleType("Live"))
 
-from Producer_Pal import routes  # noqa: E402
+from Producer_Pal import routes, undo  # noqa: E402
 
 DEVICE_FILE = "/Users/me/Presets/Producer_Pal.amxd"
 MAX_MIDI_EFFECT = 4
@@ -60,10 +60,13 @@ class FakeBrowser:
         self.user_folders = [FakeItem("Presets", [FakeItem(file_name)])]
         self.hotswap_target = None
         self.loads = 0
+        # Loads and closed undo steps, in order.
+        self.events = []
         self._tracks = tracks
 
     def load_item(self, item):
         self.loads += 1
+        self.events.append("load")
         target = self.hotswap_target
         for track in self._tracks:
             if target in track.devices:
@@ -81,17 +84,22 @@ def replace(
     """POST /replace-producer-pal for the file under a Places folder."""
     master = master or FakeTrack("Main", [])
     browser = FakeBrowser([*tracks, *return_tracks, master], file_name)
-    bridge = types.SimpleNamespace(
-        app=types.SimpleNamespace(browser=browser),
-        song=types.SimpleNamespace(
-            tracks=list(tracks),
-            return_tracks=list(return_tracks),
-            master_track=master,
-        ),
-    )
+    bridge = bridge_for(browser, list(tracks), list(return_tracks), master)
     params = {"path": "/Users/me/Presets/" + file_name} if params is None else params
     result = routes.ROUTES["/replace-producer-pal"](bridge, params)
     return result, browser
+
+
+def bridge_for(browser, tracks, return_tracks, master):
+    return types.SimpleNamespace(
+        app=types.SimpleNamespace(browser=browser),
+        song=types.SimpleNamespace(
+            tracks=tracks,
+            return_tracks=return_tracks,
+            master_track=master,
+            end_undo_step=lambda: browser.events.append("end_undo_step"),
+        ),
+    )
 
 
 def refused(*args, **kwargs):
@@ -141,22 +149,43 @@ class ReplaceProducerPalTest(unittest.TestCase):
                 self._tracks[0].devices.clear()
 
         browser = Vanishing(tracks)
-        bridge = types.SimpleNamespace(
-            app=types.SimpleNamespace(browser=browser),
-            song=types.SimpleNamespace(
-                tracks=tracks, return_tracks=[], master_track=FakeTrack("Main", [])
-            ),
-        )
+        bridge = bridge_for(browser, tracks, [], FakeTrack("Main", []))
 
         result = routes.ROUTES["/replace-producer-pal"](bridge, {"path": DEVICE_FILE})
 
         self.assertEqual(result["device"], {"name": "Producer_Pal.amxd"})
+        self.assertEqual(browser.events, ["end_undo_step"])
+
+    def test_closes_the_swap_as_its_own_undo_step(self):
+        # Left open, the swap merges with the next edit, and undoing that edit
+        # swaps the old build back in.
+        _, browser = replace([FakeTrack("0-MIDI", [FakeDevice("Producer_Pal")])])
+
+        self.assertEqual(browser.events, ["load", "end_undo_step"])
+
+    def test_clears_the_undo_guard_like_any_write(self):
+        tracks = [FakeTrack("0-MIDI", [FakeDevice("Producer_Pal")])]
+        browser = FakeBrowser(tracks)
+        bridge = bridge_for(browser, tracks, [], FakeTrack("Main", []))
+        # The next undo would have removed Producer Pal; now it undoes the swap.
+        setattr(bridge, undo._BLOCKED, "undo")
+
+        routes.ROUTES["/replace-producer-pal"](bridge, {"path": DEVICE_FILE})
+
+        self.assertIsNone(getattr(bridge, undo._BLOCKED))
 
     def test_refuses_a_set_without_producer_pal(self):
-        error = refused([FakeTrack("0-MIDI", [FakeDevice("Eq")])])
+        tracks = [FakeTrack("0-MIDI", [FakeDevice("Eq")])]
+        browser = FakeBrowser(tracks)
+        bridge = bridge_for(browser, tracks, [], FakeTrack("Main", []))
 
-        self.assertEqual(error.status, 409)
-        self.assertIn("isn't in this Live Set", error.payload["error"])
+        with self.assertRaises(routes.RouteError) as caught:
+            routes.ROUTES["/replace-producer-pal"](bridge, {"path": DEVICE_FILE})
+
+        self.assertEqual(caught.exception.status, 409)
+        self.assertIn("isn't in this Live Set", caught.exception.payload["error"])
+        # Nothing changed, so no undo step is closed.
+        self.assertEqual(browser.events, [])
 
     def test_does_not_look_inside_racks(self):
         rack = FakeDevice("Rack", chains=[FakeChain([FakeDevice("Producer_Pal")])])

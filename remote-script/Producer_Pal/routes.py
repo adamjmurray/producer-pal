@@ -5,7 +5,7 @@
 
 """What the HTTP routes do. Every function here runs on Live's main thread."""
 
-from . import browser, hot_reload, hotswap
+from . import browser, hot_reload, hotswap, undo
 from .conversions import ROUTES as _CONVERSION_ROUTES
 from .device_copy import ROUTES as _DEVICE_COPY_ROUTES
 from .envelopes import ROUTES as _ENVELOPE_ROUTES
@@ -275,6 +275,9 @@ def replace_producer_pal(bridge, params):
     except hotswap.DevicePathError:
         # The swap was made; only reading the device back failed.
         name = item.name
+    # The old server can't close the step, so close it here. Left open, the
+    # swap merges with the next edit, and undoing that edit swaps it back.
+    undo.end(bridge, {})
 
     return {
         "track": {"path": pal.track_path, "name": pal.track.name},
