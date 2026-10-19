@@ -106,7 +106,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "destination(s). Clips: 't2/s1' = a clip slot, third track and second scene (both count from 0, and scenes are created up to that index); " +
         "'t2[5|1]' or 't2[loc:Chorus]' = that spot (bar|beat, or loc:<locator name or id>) on that track's arrangement, " +
         "and '[5|1]' the same spot on the source clip's own track " +
-        "(an arrangement track must match the clip's MIDI/audio type); 't2/l0' = its first take lane, and lanes are created up to that " +
+        "(an arrangement track must match the clip's MIDI/audio type; copying an arrangement clip leaves the track's automation behind); 't2/l0' = its first take lane, and lanes are created up to that " +
         "index; " +
         "'t2' alone needs a position, and omitting toPath uses the source clip's own track. Devices: 't1/d+' appends, 't1/d0' inserts at 0. " +
         "Chains: 't1/d0/c+' appends the copy to that rack (any rack of the same kind); omitting toPath appends to the chain's own rack. " +
@@ -119,7 +119,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +
         "Comma-separated, one per copy; several sources need one each, except a bare '[5|1]' for clips",
       smallModel:
-        "destination(s): clip slot 't2/s1', clip arrangement spot 't2[5|1]', device 't1/d0', drum pad 't0/d0/pD1'",
+        "destination(s): clip slot 't2/s1', clip arrangement spot 't2[5|1]' (an arrangement clip's automation isn't copied), device 't1/d0', drum pad 't0/d0/pD1'",
     }),
 
     routeToSource: param(z.boolean().optional(), {

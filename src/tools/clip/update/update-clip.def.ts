@@ -119,7 +119,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
           "index), or " +
           "'[<position>]' alone to keep the clip's own lane (e.g., 't2/s3' or 't2[5|1],[loc:Chorus]'). " +
           "A lane with no position keeps the clip's own start. A clip re-created in a slot or on a " +
-          "take lane drops its automation. Comma-separated, one per clip; a lone " +
+          "take lane drops its automation; one moved on the arrangement leaves the track's automation " +
+          "where it was. Comma-separated, one per clip; a lone " +
           "'[<position>]' moves every clip, each on its own lane",
       ),
     // Deprecated because its positions are clip-relative: models reason in song
