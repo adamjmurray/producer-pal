@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
@@ -12,12 +12,15 @@ import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
  * @returns The return track index, or -1
  */
 export function returnTrackPathIndex(value: string): number {
-  if (!value.trim().startsWith("rt")) {
+  // Every other way a send names its return ignores case, so the path does too.
+  const wanted = value.trim().toLowerCase();
+
+  if (!wanted.startsWith("rt")) {
     return -1;
   }
 
   try {
-    const path = parseObjectPath(value);
+    const path = parseObjectPath(wanted);
 
     return path.kind === "return-track" ? path.returnIndex : -1;
   } catch {

@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
@@ -95,6 +95,11 @@ describe("returnTrackPathIndex", () => {
   it("reads a return track path", () => {
     expect(returnTrackPathIndex("rt0")).toBe(0);
     expect(returnTrackPathIndex(" rt12 ")).toBe(12);
+  });
+
+  it("reads a path in any case, like the rest of the send match", () => {
+    expect(returnTrackPathIndex("RT0")).toBe(0);
+    expect(returnTrackPathIndex(" Rt3 ")).toBe(3);
   });
 
   it("is -1 for anything else", () => {
