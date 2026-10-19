@@ -113,6 +113,7 @@ All checks run via `npm run check` and must pass before merging:
 | **TypeScript-only** | Custom script | No `.js` files in `src/`, `webui/`, or `scripts/` (with narrow exceptions for generated parsers)                                        |
 | **Duplication**     | JSCPD         | Low duplication thresholds per source tree (see `config/.jscpd*.json`)                                                                  |
 | **Test coverage**   | Vitest        | High thresholds for statements, branches, and lines; 100% function coverage (see `vitest.config.ts`)                                    |
+| **Remote script**   | unittest      | The Python remote script's tests, against fake Live objects                                                                             |
 
 Additional checks enforced within tests:
 
@@ -127,6 +128,7 @@ And `npm run check:build` additionally validates:
 | ----------------------- | ---------------------------------------------------------------------------------- |
 | **Production build**    | Rolldown bundles (MCP server, V8, portal) and Vite UI build compile without errors |
 | **Documentation build** | VitePress site compiles successfully                                               |
+| **Portal e2e**          | The built portal binary against a stub device (`e2e/portal/`), no Live needed      |
 
 ### Key oxlint limits
 

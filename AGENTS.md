@@ -255,6 +255,8 @@ The practical consequences:
 - Run `npm run check` after any code change. **Before claiming done**:
   `npm run fix`, then `npm run check`, then `npm run check:build`. If you
   touched `webui/**`, also run `npm run ui:test` — `check` doesn't include it.
+  The portal e2e suite runs in `check:build`, not `check`: it drives the built
+  bundle, so outside a fresh build it tests stale code.
 - `npm run build:debug` is the dev build. It force-enables the Direct Live API
   tool, which a release build gates off — harmless for evals and e2e, since it
   stays off until `POST /config { liveApiEnabled }` turns it on. The `code`
