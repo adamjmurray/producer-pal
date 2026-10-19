@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // How V8 calls one remote-script route, folding every way it can fail into one
@@ -15,6 +15,10 @@ import {
 import { whyUnavailable } from "./outdated-remote-script.ts";
 import { remoteScriptExpiry, remoteScriptWait } from "./remote-script-wait.ts";
 
+/** Why a request too large for one Max message was never sent. */
+const REQUEST_TOO_LARGE =
+  "too large to send to the remote script, so nothing was sent";
+
 /**
  * What one route answered: its result, or why there isn't one. `stalled` marks
  * a failure that the next call would meet too: no time left (`out-of-time`,
@@ -28,6 +32,8 @@ export type RouteOutcome<T> =
       available: boolean;
       /** The remote script is running but too old: `reason` says so. */
       outdated?: true;
+      /** Too large to send in one Max message; nothing was sent. */
+      tooLarge?: true;
       stalled?: "out-of-time" | "unanswered";
     };
 
@@ -111,6 +117,15 @@ async function callRoute<T>(
     waitMs,
   );
   const reply = response.result;
+
+  if (response.tooLarge === true) {
+    return {
+      ok: false,
+      reason: REQUEST_TOO_LARGE,
+      available: true,
+      tooLarge: true,
+    };
+  }
 
   if (!response.success || reply == null) {
     // The text on a failed response is V8's or Node's own, not ours to show.

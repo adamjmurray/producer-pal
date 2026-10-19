@@ -63,6 +63,9 @@ remote script. A line it can't write is a `detail` on that clip's entry
   started it changed nothing: its `detail` says so and the other lines still
   run.
 
+- **A line too large for one Max message isn't sent.** Its `detail` gives the
+  point count and roughly how many fit, and the other lines still run.
+
 - **A remote script that goes missing mid-call keeps what landed.** With no line
   written yet, `envelopes` is the reason. After some were, `envelopes` counts
   them and a `detail` gives the reason, then `envelopes not written, re-run for`

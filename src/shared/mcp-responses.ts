@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 /**
@@ -75,26 +75,31 @@ export function reassembleChunks(rest: unknown[]): string {
   return rest.slice(0, endIndex).map(String).join("");
 }
 
+/** What a too-large code-exec message tells the caller to do. */
+export const CODE_EXEC_TOO_LARGE_ADVICE =
+  "The code-exec protocol does not chunk: use fewer notes or a smaller clip.";
+
 /**
- * Guard for a payload sent as a SINGLE unchunked Max IPC string — the code-exec
- * sub-protocol, unlike node_response which splits with planChunks. Max silently
- * truncates or drops a string past its ~32,767-char limit, corrupting the
- * message. Reject at MAX_CHUNK_SIZE (the same conservative bound a single chunk
- * uses) so the caller fails loudly with a clear message instead.
+ * Guard for a payload sent as a SINGLE unchunked Max IPC string (code-exec and
+ * node_request, unlike responses, which split with planChunks). Max silently
+ * truncates a string past ~32,767 chars, so reject at MAX_CHUNK_SIZE and fail
+ * loudly instead.
  *
  * @param jsonString - The stringified payload about to be sent
  * @param label - Human label for the payload (e.g. "code-exec request")
+ * @param advice - What the caller can do about it
  * @returns An error message when too large, or null when it fits
  */
 export function oversizedSingleMessageError(
   jsonString: string,
   label: string,
+  advice: string,
 ): string | null {
   if (jsonString.length <= MAX_CHUNK_SIZE) {
     return null;
   }
 
-  return `${label} too large for a single Max IPC message: ${jsonString.length} chars exceeds ${MAX_CHUNK_SIZE} (the code-exec protocol does not chunk). Use fewer notes or a smaller clip.`;
+  return `${label} too large for a single Max IPC message: ${jsonString.length} chars exceeds ${MAX_CHUNK_SIZE}. ${advice}`;
 }
 
 interface McpTextContent {

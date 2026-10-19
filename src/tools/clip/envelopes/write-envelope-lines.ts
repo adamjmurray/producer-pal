@@ -10,6 +10,7 @@
 import { parseEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
+import { MAX_CHUNK_SIZE } from "#src/shared/mcp-responses.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   appendDetail,
@@ -27,6 +28,7 @@ import {
 import {
   ENVELOPE_ROUTES,
   type EnvelopeClearResult,
+  type EnvelopeWritePoint,
   type EnvelopeWriteResult,
 } from "./remote-script-envelope-contract.ts";
 
@@ -272,14 +274,16 @@ async function writeOneLine(
     return { ok: false, reason: errorMessage(error), available: true };
   }
 
+  const writePoints = envelopeWritePoints(points);
   const outcome = await envelopeChange<EnvelopeWriteResult>(
     ENVELOPE_ROUTES.write,
-    {
-      ...request,
-      points: envelopeWritePoints(points),
-    },
+    { ...request, points: writePoints },
     deadline,
   );
+
+  if (!outcome.ok && outcome.tooLarge === true) {
+    return { ...outcome, reason: tooManyPoints(request, writePoints) };
+  }
 
   return outcome.ok
     ? {
@@ -290,6 +294,31 @@ async function writeOneLine(
         ]),
       }
     : outcome;
+}
+
+/**
+ * Why a line too large for one Max message wasn't sent.
+ * @param request - The rest of what the write sends
+ * @param points - The points that didn't fit
+ * @returns The reason, with a rough count of how many would fit
+ */
+function tooManyPoints(
+  request: object,
+  points: readonly EnvelopeWritePoint[],
+): string {
+  // Room left once the route, the clip and the longest expiry are in.
+  const room =
+    MAX_CHUNK_SIZE -
+    JSON.stringify({
+      route: ENVELOPE_ROUTES.write,
+      args: { ...request, points: [], expiresInMs: Number.MAX_SAFE_INTEGER },
+    }).length;
+  const fit = Math.min(
+    points.length - 1,
+    Math.floor((points.length * room) / JSON.stringify(points).length),
+  );
+
+  return `not written: ${points.length} points are too many to send in one write (about ${fit} fit)`;
 }
 
 /**

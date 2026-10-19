@@ -282,8 +282,10 @@ Node strips before the SDK sees them: `errorCode` (a structured error category)
 and `warnings` (the warnings that request raised, which `handleLiveApiResult`
 collapses and appends as `WARNING:` content items).
 
-`node_request` / `node_response`, the V8→Node RPC going the other way, uses the
-same chunking and terminator.
+`node_request` / `node_response` is the V8→Node RPC going the other way. Its
+`node_response` uses the same chunking and terminator, but a `node_request` goes
+as one message: V8 refuses one too large to send rather than let Max cut it
+short.
 
 ### Write calls run one at a time
 

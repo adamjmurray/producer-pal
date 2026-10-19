@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -85,6 +85,21 @@ describe("remoteScriptChange", () => {
       ok: false,
       reason: "nothing changed",
       available: true,
+    });
+  });
+
+  it("calls a request too large to send a plain failure, not a stall", async () => {
+    vi.mocked(requestNode).mockResolvedValue({
+      success: false,
+      error: "too large",
+      tooLarge: true,
+    });
+
+    expect(await remoteScriptChange("w", {}, null, MISSING)).toStrictEqual({
+      ok: false,
+      reason: "too large to send to the remote script, so nothing was sent",
+      available: true,
+      tooLarge: true,
     });
   });
 

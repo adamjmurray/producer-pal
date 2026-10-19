@@ -1,11 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // V8 asks Node to run user code in its sandboxed VM and awaits the result.
 
-import { oversizedSingleMessageError } from "#src/shared/mcp-responses.ts";
+import {
+  CODE_EXEC_TOO_LARGE_ADVICE,
+  oversizedSingleMessageError,
+} from "#src/shared/mcp-responses.ts";
 import {
   extractNotesFromClip,
   validateCodeNotes,
@@ -42,7 +45,11 @@ export function requestCodeExecution(
     "Code execution",
     // A large clip's notes can push the request past the single-message IPC
     // limit, where Max would silently truncate it. Fail loudly before sending.
-    oversizedSingleMessageError(request, "code-exec request"),
+    oversizedSingleMessageError(
+      request,
+      "code-exec request",
+      CODE_EXEC_TOO_LARGE_ADVICE,
+    ),
   );
 }
 

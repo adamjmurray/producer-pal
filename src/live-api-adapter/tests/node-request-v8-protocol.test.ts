@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -168,6 +168,22 @@ describe("node-request-v8-protocol", () => {
 
     expect(response.success).toBe(true);
     expect(response.result?.payload).toBe(payload);
+  });
+
+  // Max cuts a single message past ~32k chars, so Node would get broken JSON.
+  it("sends nothing when the request is too large for one Max message", async () => {
+    vi.mocked(globalThis.outlet).mockClear();
+
+    const response = await requestNode("test.huge", {
+      blob: "x".repeat(MAX_CHUNK_SIZE),
+    });
+
+    expect(globalThis.outlet).not.toHaveBeenCalled();
+    expect(response.success).toBe(false);
+    expect(response.tooLarge).toBe(true);
+    expect(response.error).toContain(
+      "node_request 'test.huge' too large for a single Max IPC message",
+    );
   });
 
   it("logs error and ignores response for unknown requestId", async () => {

@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
@@ -222,10 +222,16 @@ describe("mcp-responses", () => {
 
   describe("oversizedSingleMessageError", () => {
     it("returns null when the payload fits in one IPC message", () => {
-      expect(oversizedSingleMessageError("x".repeat(100), "x")).toBeNull();
+      expect(
+        oversizedSingleMessageError("x".repeat(100), "x", "Send less."),
+      ).toBeNull();
       // Exactly MAX_CHUNK_SIZE is the boundary and still allowed.
       expect(
-        oversizedSingleMessageError("x".repeat(MAX_CHUNK_SIZE), "x"),
+        oversizedSingleMessageError(
+          "x".repeat(MAX_CHUNK_SIZE),
+          "x",
+          "Send less.",
+        ),
       ).toBeNull();
     });
 
@@ -233,9 +239,11 @@ describe("mcp-responses", () => {
       const error = oversizedSingleMessageError(
         "x".repeat(MAX_CHUNK_SIZE + 1),
         "code-exec request",
+        "Send less.",
       );
 
       expect(error).toContain("code-exec request too large");
+      expect(error).toMatch(/\. Send less\.$/);
       expect(error).toContain(String(MAX_CHUNK_SIZE + 1));
       expect(error).toContain(String(MAX_CHUNK_SIZE));
     });
