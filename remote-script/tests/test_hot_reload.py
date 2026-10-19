@@ -40,6 +40,9 @@ from Producer_Pal import hot_reload as real_hot_reload  # noqa: E402
 # The hash of fixture_files(), also pinned in the TypeScript tests so both
 # languages are held to the same value.
 FIXTURE_HASH = "ef65924eed9afdbfa81ade6f73039bf11bab300dfbee03cf70ab80759514642b"
+# Its build hash: every top-level .py file, bootstrap included. Pinned in
+# remote-script-build.test.ts too.
+FIXTURE_BUILD_HASH = "008a3bbe074cb6d740d9baecb1668fda332be74d7b232f5fe6757b7cf20147d9"
 
 _counter = itertools.count()
 
@@ -118,12 +121,23 @@ class HashTest(unittest.TestCase):
 
     def test_unreadable_files_give_no_hash_instead_of_an_error(self):
         missing = os.path.join(self.dir, "missing")
-        self.assertIsNone(real_hot_reload._hash_or_none(missing))
+        self.assertIsNone(real_hot_reload._loaded_or_none(missing))
 
     def test_the_loaded_hash_starts_as_the_hash_of_the_files(self):
         self.assertEqual(
             real_hot_reload.loaded_hash, real_hot_reload.implementation_hash()
         )
+
+    def test_the_build_hash_matches_the_value_the_device_expects(self):
+        self.assertEqual(real_hot_reload.script_hash(self.dir), FIXTURE_BUILD_HASH)
+
+    def test_the_build_hash_covers_bootstrap_files(self):
+        before = real_hot_reload.script_hash(self.dir)
+        write_tree(self.dir, {"bridge.py": "z = 4\n"})
+        self.assertNotEqual(real_hot_reload.script_hash(self.dir), before)
+
+    def test_the_build_hash_starts_as_the_hash_of_every_file(self):
+        self.assertEqual(real_hot_reload.build_hash, real_hot_reload.script_hash())
 
 
 class ReloadOrderTest(unittest.TestCase):
@@ -249,6 +263,22 @@ class ReloadTest(unittest.TestCase):
         self.reload()
 
         self.assertEqual(clip_address.parse_index("1", "x"), 42)
+
+    def test_a_reload_moves_the_build_hash_with_the_new_code(self):
+        self.append("version.py", "# edited\n")
+
+        self.reload()
+
+        self.assertEqual(self.hot_reload.build_hash, self.hot_reload.script_hash())
+
+    def test_a_reload_keeps_the_bootstrap_files_as_live_loaded_them(self):
+        before = self.hot_reload.build_hash
+        # A bootstrap edit needs a Live restart, so the running build is unchanged.
+        self.append("bridge.py", "# edited\n")
+
+        self.reload()
+
+        self.assertEqual(self.hot_reload.build_hash, before)
 
     def test_the_hash_changes_when_the_code_does(self):
         before = self.reload()[1]["hash"]

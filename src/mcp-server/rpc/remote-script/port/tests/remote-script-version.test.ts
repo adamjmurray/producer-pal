@@ -69,6 +69,12 @@ describe("unknownRouteReason", () => {
     );
   });
 
+  it("calls a script that is new enough by version another build", () => {
+    expect(
+      unknownRouteReason(404, UNKNOWN, MIN_REMOTE_SCRIPT_VERSION),
+    ).toContain("is a different build than this device's");
+  });
+
   it.each([
     ["a missing track", 404, { error: "no track t9" }],
     ["a 404 with no routes listed", 404, { error: "unknown route: /x" }],

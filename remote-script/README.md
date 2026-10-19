@@ -164,6 +164,13 @@ from; `null` for a dev checkout, absent from older scripts), and `source_hash`:
 a hash of the implementation files when they were last loaded. See
 [Hot reload](#hot-reload).
 
+`script_build` is the build ID: the same hash over every top-level `.py` file,
+bootstrap included, as Live loaded them. The device hashes its bundled copy the
+same way, so it can tell two builds of one version apart and offer an update.
+`script_commit` is the commit of the device that installed the script (from the
+`BUILD_COMMIT` file the installer writes), for diagnostics only. Both are `null`
+when unknown and absent from older scripts.
+
 ### `GET /list`
 
 | Param       | Default  | Meaning                                                                                                             |

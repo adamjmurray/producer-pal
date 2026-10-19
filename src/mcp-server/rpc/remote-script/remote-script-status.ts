@@ -14,9 +14,19 @@ import {
   type RemoteScriptPing,
 } from "./remote-script-client.ts";
 import { remoteScriptPath } from "./install/remote-script-install.ts";
+import {
+  bundledRemoteScriptBuild,
+  installedRemoteScriptBuild,
+} from "./bundle/remote-script-build.ts";
 
-/** Matches the one line version.py holds. */
+/** Matches the version line in version.py. */
 const VERSION_LINE = /^VERSION\s*=\s*["']([^"']*)["']/m;
+
+/**
+ * Added only by `npm run remote-script:install -- --probe`: a dev copy that
+ * differs from every device build on purpose, so it is never offered an update.
+ */
+const DEV_PROBE_FILE = "probe.py";
 
 /** What the chat UI needs to offer an install, an update, or nothing. */
 export interface RemoteScriptStatus {
@@ -24,13 +34,20 @@ export interface RemoteScriptStatus {
   userLibrary: string | null;
   installed: boolean;
   installedVersion: string | null;
+  /** The installed files' build ID, or null when not installed. */
+  installedBuild: string | null;
   bundledVersion: string;
   running: boolean;
   runningVersion: string | null;
+  /** The build ID Live loaded, or null when not running or too old to say. */
+  runningBuild: string | null;
   liveVersion: string | null;
   /** The port another program answered on, when it isn't our script. */
   otherOnPort: number | null;
-  /** Installed is older than this build (or unreadable): offer an Update. */
+  /**
+   * Installed is older than this build, a different build of the same version,
+   * or unreadable: offer an Update.
+   */
   updateAvailable: boolean;
   /** Installed is newer than this build: installing would downgrade it. */
   installedNewer: boolean;
@@ -61,23 +78,22 @@ export async function remoteScriptStatus(
   }
 
   const userLibrary = await findUserLibraryPath();
-  const { installed, installedVersion } =
-    userLibrary == null
-      ? { installed: false, installedVersion: null }
-      : installedRemoteScript(userLibrary);
-  const installedNewer = isInstalledNewer(installedVersion);
+  const script =
+    userLibrary == null ? null : installedRemoteScript(userLibrary);
 
   return {
     userLibrary,
-    installed,
-    installedVersion,
+    installed: script?.installed ?? false,
+    installedVersion: script?.installedVersion ?? null,
+    installedBuild: script?.installedBuild ?? null,
     bundledVersion: VERSION,
     running: ping.running,
     runningVersion: ping.scriptVersion,
+    runningBuild: ping.scriptBuild,
     liveVersion: ping.liveVersion,
     otherOnPort: ping.otherOnPort,
-    updateAvailable: isBehind(installed, installedVersion),
-    installedNewer,
+    updateAvailable: script != null && isBehind(script),
+    installedNewer: isInstalledNewer(script?.installedVersion ?? null),
   };
 }
 
@@ -89,9 +105,9 @@ export async function remoteScriptStatus(
  * @returns False when the script is missing or older than the bundled one
  */
 export function remoteScriptCurrent(userLibrary: string): boolean {
-  const { installed, installedVersion } = installedRemoteScript(userLibrary);
+  const script = installedRemoteScript(userLibrary);
 
-  return installed && !isBehind(installed, installedVersion);
+  return script.installed && !isBehind(script);
 }
 
 /** The remote script as installed in one User Library. */
@@ -101,6 +117,10 @@ export interface InstalledRemoteScript {
   installed: boolean;
   /** Null when not installed or version.py can't be read */
   installedVersion: string | null;
+  /** The files' build ID. Null when not installed or unreadable */
+  installedBuild: string | null;
+  /** A dev copy with the probe route, which never matches a device build */
+  devProbe: boolean;
 }
 
 /**
@@ -121,19 +141,28 @@ export function installedRemoteScript(
     installedVersion: installed
       ? readScriptVersion(join(path, "version.py"))
       : null,
+    installedBuild: installed ? installedRemoteScriptBuild(path) : null,
+    devProbe: installed && existsSync(join(path, DEV_PROBE_FILE)),
   };
 }
 
 /**
- * @param installed - Whether a script is installed
- * @param installedVersion - Its version, if it names one
- * @returns Whether it is older than this build, or unreadable
+ * @param script - The script as installed
+ * @returns Whether it is older than this build, a different build of this
+ *   version, or unreadable
  */
-function isBehind(
-  installed: boolean,
-  installedVersion: string | null,
-): boolean {
-  return installed && isBehindBuild(installedVersion, VERSION);
+function isBehind(script: InstalledRemoteScript): boolean {
+  if (!script.installed) {
+    return false;
+  }
+
+  if (script.installedVersion !== VERSION) {
+    return isBehindBuild(script.installedVersion, VERSION);
+  }
+
+  return (
+    !script.devProbe && script.installedBuild !== bundledRemoteScriptBuild()
+  );
 }
 
 /**

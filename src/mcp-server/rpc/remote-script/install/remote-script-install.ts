@@ -5,7 +5,9 @@
 
 import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
-import { EMBEDDED_REMOTE_SCRIPT_FILES } from "../embedded-remote-script.ts";
+import { BUILD_SHA } from "#src/shared/config.ts";
+import { EMBEDDED_REMOTE_SCRIPT_FILES } from "../bundle/embedded-remote-script.ts";
+import { BUILD_COMMIT_FILE } from "../bundle/remote-script-build.ts";
 import {
   libraryPathExists,
   listLibraryFolder,
@@ -151,7 +153,7 @@ function removeLeftovers(path: string): void {
 }
 
 /**
- * Write every embedded file into one folder.
+ * Write every embedded file into one folder, plus the commit it came from.
  *
  * @param dir - The folder to write into
  */
@@ -160,5 +162,9 @@ function writeScriptFiles(dir: string): void {
     EMBEDDED_REMOTE_SCRIPT_FILES,
   )) {
     writeLibraryFile(join(dir, relative), contents);
+  }
+
+  if (BUILD_SHA !== "") {
+    writeLibraryFile(join(dir, BUILD_COMMIT_FILE), `${BUILD_SHA}\n`);
   }
 }

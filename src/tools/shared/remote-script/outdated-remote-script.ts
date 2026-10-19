@@ -24,6 +24,16 @@ export function outdatedReason(running: string | null, needs: string): string {
 }
 
 /**
+ * What a call is told when the script is new enough by version but lacks a
+ * route this build needs: another build of the same version.
+ * @param running - The script's version
+ * @returns The reason, worded for the model
+ */
+export function differentBuildReason(running: string): string {
+  return `the Producer Pal remote script in Live (v${running}) is a different build than this device's and can't do this; update it with ${INSTALL_WITH_TOOL} or in ${INSTALL_IN_CHAT_UI}, then restart Live`;
+}
+
+/**
  * No remote script to ask. `outdated` is set when one is running but too old:
  * callers fall back as for a missing script, and word it with `whyUnavailable`.
  */

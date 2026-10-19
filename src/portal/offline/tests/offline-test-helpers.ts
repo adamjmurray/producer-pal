@@ -12,6 +12,8 @@ export const NOT_RUNNING: RemoteScriptPing = {
   running: false,
   liveVersion: null,
   scriptVersion: null,
+  scriptBuild: null,
+  scriptCommit: null,
   userLibrary: null,
   otherOnPort: null,
 };
@@ -20,6 +22,8 @@ export const RUNNING: RemoteScriptPing = {
   running: true,
   liveVersion: "12.4.0",
   scriptVersion: VERSION,
+  scriptBuild: null,
+  scriptCommit: null,
   userLibrary: null,
   otherOnPort: null,
 };

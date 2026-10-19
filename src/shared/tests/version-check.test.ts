@@ -264,8 +264,10 @@ function status(
   return {
     installed: true,
     installedVersion: "2.4.0",
+    installedBuild: "build-1",
     running: true,
     runningVersion: "2.4.0",
+    runningBuild: "build-1",
     otherOnPort: null,
     updateAvailable: false,
     ...overrides,
@@ -320,6 +322,16 @@ describe("remoteScriptAttention", () => {
     expect(remoteScriptAttention(status({ runningVersion: "2.5.0" }))).toBe(
       "restart",
     );
+  });
+
+  it("asks for a restart when Live runs another build of the installed version", () => {
+    expect(remoteScriptAttention(status({ runningBuild: "build-2" }))).toBe(
+      "restart",
+    );
+  });
+
+  it("can't compare builds with a script too old to report one", () => {
+    expect(remoteScriptAttention(status({ runningBuild: null }))).toBeNull();
   });
 
   it("asks for a restart between two pre-releases of one version", () => {

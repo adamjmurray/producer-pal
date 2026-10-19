@@ -11,6 +11,9 @@ bridge, which owns the server thread and the job queue. Every other top-level
 `npm run remote-script:install -- --probe`) calls `reload_route`.
 
 Main thread only. Reloading from a job means no other job is mid-run.
+
+It also hashes what Live loaded, for `/ping`: the reloadable files, and every
+file as the build ID.
 """
 
 import ast
@@ -40,14 +43,7 @@ class ReloadError(Exception):
 
 def implementation_files(directory=PACKAGE_DIR):
     """Sorted names of the reloadable .py files: every top-level one but the bootstrap."""
-    return sorted(
-        name
-        for name in os.listdir(directory)
-        if name.endswith(".py")
-        and not name.startswith(".")
-        and name[:-3] not in BOOTSTRAP
-        and os.path.isfile(os.path.join(directory, name))
-    )
+    return [name for name in script_files(directory) if name[:-3] not in BOOTSTRAP]
 
 
 def implementation_hash(directory=PACKAGE_DIR):
@@ -55,24 +51,69 @@ def implementation_hash(directory=PACKAGE_DIR):
 
     Per file, in name order: `<name>\\0<sha256 of its bytes>\\n`.
     """
-    digest = hashlib.sha256()
-    for name in implementation_files(directory):
+    return _digest(_content_hashes(implementation_files(directory), directory))
+
+
+def script_hash(directory=PACKAGE_DIR):
+    """The same hash over every top-level .py file: the build ID."""
+    return _digest(_content_hashes(script_files(directory), directory))
+
+
+def script_files(directory=PACKAGE_DIR):
+    """Sorted names of every top-level .py file, bootstrap included."""
+    return sorted(
+        name
+        for name in os.listdir(directory)
+        if name.endswith(".py")
+        and not name.startswith(".")
+        and os.path.isfile(os.path.join(directory, name))
+    )
+
+
+def _content_hashes(names, directory=PACKAGE_DIR):
+    """Each file's name to the SHA-256 hex of its bytes."""
+    hashes = {}
+    for name in names:
         with open(os.path.join(directory, name), "rb") as file:
-            content_hash = hashlib.sha256(file.read()).hexdigest()
-        digest.update(("%s\0%s\n" % (name, content_hash)).encode("utf-8"))
+            hashes[name] = hashlib.sha256(file.read()).hexdigest()
+    return hashes
+
+
+def _digest(content_hashes):
+    """SHA-256 hex over `<name>\\0<content hash>\\n` per file, in name order."""
+    digest = hashlib.sha256()
+    for name in sorted(content_hashes):
+        digest.update(("%s\0%s\n" % (name, content_hashes[name])).encode("utf-8"))
     return digest.hexdigest()
 
 
-def _hash_or_none(directory=PACKAGE_DIR):
-    """The hash, or None when the files can't be read: that must never stop Live loading us."""
+def _loaded_or_none(directory=PACKAGE_DIR):
+    """Every file's hash, or None when they can't be read: that must never stop Live loading us."""
     try:
-        return implementation_hash(directory)
+        return _content_hashes(script_files(directory), directory)
     except Exception:
         return None
 
 
-# What `/ping` reports. Set when this module first loads, then by each reload.
-loaded_hash = _hash_or_none()
+# Each file's hash as Live last loaded it: bootstrap files at startup, the rest
+# at startup and after each reload.
+_loaded = _loaded_or_none()
+
+
+def _part(content_hashes, bootstrap):
+    """The bootstrap files' hashes, or the reloadable ones'."""
+    return {
+        name: value
+        for name, value in content_hashes.items()
+        if (name[:-3] in BOOTSTRAP) == bootstrap
+    }
+
+
+# What `/ping` reports. `loaded_hash` covers the reloadable files; `build_hash`
+# every file, so it names the build Live runs. The device hashes its bundled
+# copy the same way (remote-script-build.ts) to spot a different install.
+loaded_hash = None if _loaded is None else _digest(_part(_loaded, bootstrap=False))
+build_hash = None if _loaded is None else _digest(_loaded)
 
 
 def reload_order(directory=PACKAGE_DIR):
@@ -108,10 +149,11 @@ def reload_implementation(package=__package__):
     put back as it was and ReloadError is raised: the previous code keeps
     running.
     """
-    global loaded_hash
+    global loaded_hash, build_hash, _loaded
 
     importlib.invalidate_caches()
-    digest = implementation_hash()
+    implementation = _content_hashes(implementation_files())
+    digest = _digest(implementation)
     # Working out the order reads the new source, so a syntax error or an
     # import cycle fails here, before anything has changed.
     try:
@@ -142,6 +184,9 @@ def reload_implementation(package=__package__):
         raise ReloadError(current, trace)
 
     loaded_hash = digest
+    if _loaded is not None:
+        _loaded = dict(_part(_loaded, bootstrap=True), **implementation)
+        build_hash = _digest(_loaded)
     return reloaded, digest
 
 

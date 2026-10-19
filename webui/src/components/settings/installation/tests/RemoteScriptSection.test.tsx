@@ -197,6 +197,23 @@ describe("InstallationTab remote script section", () => {
     );
   });
 
+  it("offers Update for another build of this version", async () => {
+    const summary = await renderTab({
+      installed: true,
+      installedVersion: "1.2.0",
+      running: true,
+      runningVersion: "1.2.0",
+      updateAvailable: true,
+    });
+
+    expect(summary).toBe(
+      "Update available: installed v1.2.0 is a different build than this device's (running v1.2.0 in Live 12.1)",
+    );
+    expect(screen.getByTestId("remote-script-install").textContent).toBe(
+      "Update",
+    );
+  });
+
   it("offers Update when this build ships a newer version", async () => {
     const summary = await renderTab({
       installed: true,

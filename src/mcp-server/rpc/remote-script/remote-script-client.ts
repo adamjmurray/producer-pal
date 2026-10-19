@@ -25,6 +25,7 @@ import {
   outdatedScript,
   unknownRouteReason,
 } from "./port/remote-script-version.ts";
+import { notRunning, pingFromReply } from "./remote-script-ping-reply.ts";
 
 const HOST = "127.0.0.1";
 
@@ -435,6 +436,10 @@ export interface RemoteScriptPing {
   running: boolean;
   liveVersion: string | null;
   scriptVersion: string | null;
+  /** The build ID of what Live loaded (see remote-script-build.ts). */
+  scriptBuild: string | null;
+  /** The commit of the device that installed it. Diagnostic only. */
+  scriptCommit: string | null;
   /**
    * The User Library the script runs from, which is where Live finds the files
    * it loads. Null when it doesn't say: a dev checkout, or a script too old to.
@@ -540,56 +545,17 @@ async function askForPing(
         : { ping: notRunning(), kind: "none" };
     }
 
-    const scriptVersion = stringOrNull(reply.body.script_version);
+    const ping = pingFromReply(reply.status, reply.body);
 
-    if (
-      reply.status !== 200 ||
-      reply.body.ok !== true ||
-      scriptVersion == null
-    ) {
-      return { ping: notRunning(port), kind: "other" };
-    }
-
-    return {
-      ping: {
-        running: true,
-        liveVersion: stringOrNull(reply.body.live_version),
-        scriptVersion,
-        userLibrary: stringOrNull(reply.body.user_library),
-        otherOnPort: null,
-      },
-      kind: "ours",
-    };
+    return ping == null
+      ? { ping: notRunning(port), kind: "other" }
+      : { ping, kind: "ours" };
   } catch (error) {
     return {
       ping: notRunning(),
       kind: error instanceof RemoteScriptTimeout ? "slow" : "none",
     };
   }
-}
-
-/**
- * A ping reply for a remote script that isn't there.
- * @param otherOnPort - The port something else answered on, if it did
- * @returns The all-null reply
- */
-function notRunning(otherOnPort: number | null = null): RemoteScriptPing {
-  return {
-    running: false,
-    liveVersion: null,
-    scriptVersion: null,
-    userLibrary: null,
-    otherOnPort,
-  };
-}
-
-/**
- * Narrow a reply field to a string.
- * @param value - The raw field
- * @returns The string, or null when it isn't one
- */
-function stringOrNull(value: unknown): string | null {
-  return typeof value === "string" ? value : null;
 }
 
 /**

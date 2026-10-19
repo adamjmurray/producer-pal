@@ -157,8 +157,12 @@ function hasPreReleaseSuffix(version: string): boolean {
 export interface RemoteScriptAttentionInput {
   installed: boolean;
   installedVersion: string | null;
+  /** The installed files' build ID. */
+  installedBuild: string | null;
   running: boolean;
   runningVersion: string | null;
+  /** The build ID Live loaded; null from a script too old to report one. */
+  runningBuild: string | null;
   /** The port another program answered on, when it isn't our script. */
   otherOnPort: number | null;
   /** Installed differs from this build and isn't newer (or is unreadable). */
@@ -191,9 +195,10 @@ export function remoteScriptAttention(
 }
 
 /**
- * Whether Live is running a different copy than the one on disk. A restart
- * fixes it either way (after an update, or a downgrade). Compared with `!==`,
- * not `isNewerVersion`, which can't order two pre-releases of one version.
+ * Whether Live is running a different copy than the one on disk: another
+ * version, or another build of the same one. A restart fixes it either way
+ * (after an update, or a downgrade). Compared with `!==`, not `isNewerVersion`,
+ * which can't order two pre-releases of one version.
  *
  * @param status - The remote script status
  * @returns True when Live needs a restart to load the installed copy
@@ -201,13 +206,25 @@ export function remoteScriptAttention(
 export function liveRunsOtherCopy(
   status: Pick<
     RemoteScriptAttentionInput,
-    "running" | "runningVersion" | "installedVersion"
+    | "running"
+    | "runningVersion"
+    | "installedVersion"
+    | "runningBuild"
+    | "installedBuild"
   >,
 ): boolean {
+  if (
+    !status.running ||
+    status.runningVersion == null ||
+    status.installedVersion == null
+  ) {
+    return false;
+  }
+
   return (
-    status.running &&
-    status.runningVersion != null &&
-    status.installedVersion != null &&
-    status.runningVersion !== status.installedVersion
+    status.runningVersion !== status.installedVersion ||
+    (status.runningBuild != null &&
+      status.installedBuild != null &&
+      status.runningBuild !== status.installedBuild)
   );
 }

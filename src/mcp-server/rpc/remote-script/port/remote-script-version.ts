@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { outdatedReason } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
+import {
+  differentBuildReason,
+  outdatedReason,
+} from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 
 /**
@@ -63,7 +66,16 @@ export function unknownRouteReason(
     body.error.startsWith("unknown route: ") &&
     Array.isArray(body.routes);
 
-  return unknown ? outdatedReason(running, minRemoteScriptVersion()) : null;
+  if (!unknown) {
+    return null;
+  }
+
+  const needs = minRemoteScriptVersion();
+
+  // New enough by version, so it's another build of it.
+  return running != null && !isNewerVersion(running, needs)
+    ? differentBuildReason(running)
+    : outdatedReason(running, needs);
 }
 
 /** @returns The minimum in force: the dev override, else the built-in one */

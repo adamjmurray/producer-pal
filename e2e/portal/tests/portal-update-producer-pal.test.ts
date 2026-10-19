@@ -159,13 +159,14 @@ describe("ppal-manage update-producer-pal", () => {
     expect(retry.text).not.toContain("User Library was updated");
   });
 
-  it("says a remote script without the route is out of date", async () => {
+  // The stand-in script is new enough by version, so it is another build.
+  it("says a remote script without the route needs updating", async () => {
     const { portal } = await setup(OLD, null);
 
     const { text, isError } = await callToolText(portal, "ppal-manage", UPDATE);
 
     expect(isError).toBe(true);
-    expect(text).toContain("remote script is out of date");
+    expect(text).toContain("is a different build than this device's");
     expect(text).toContain(
       "The Live Set wasn't changed, but the Producer Pal device in the User Library was updated.",
     );

@@ -15,7 +15,7 @@ import {
   PY_ONLY_SOURCE,
   writeScriptTreeWithJunk,
 } from "#src/mcp-server/rpc/remote-script/tests/remote-script-test-helpers.ts";
-import { readRemoteScriptSource } from "#src/mcp-server/rpc/remote-script/remote-script-source.ts";
+import { readRemoteScriptSource } from "#src/mcp-server/rpc/remote-script/bundle/remote-script-source.ts";
 import { readScriptSource } from "../../../../config/rolldown-plugin-embed-remote-script.mjs";
 
 let scratchDir: string;

@@ -19,12 +19,13 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EMBEDDED_REMOTE_SCRIPT_FILES } from "../embedded-remote-script.ts";
+import { EMBEDDED_REMOTE_SCRIPT_FILES } from "../bundle/embedded-remote-script.ts";
 import {
   installRemoteScript,
   remoteScriptPath,
 } from "../install/remote-script-install.ts";
-import { readRemoteScriptSource } from "../remote-script-source.ts";
+import { BUILD_COMMIT_FILE } from "../bundle/remote-script-build.ts";
+import { readRemoteScriptSource } from "../bundle/remote-script-source.ts";
 import { UserLibraryFolderError } from "../user-library/user-library-folder.ts";
 import {
   PY_ONLY_SOURCE,
@@ -133,6 +134,25 @@ describe("installRemoteScript", () => {
     )) {
       expect(readFileSync(join(path, relative), "utf8")).toBe(contents);
     }
+  });
+
+  it("writes the installing commit beside the script, for /ping", async () => {
+    vi.stubEnv("BUILD_SHA", "1a2b3c4");
+    vi.resetModules();
+    const fresh = await import("../install/remote-script-install.ts");
+
+    const { path } = fresh.installRemoteScript(scratchDir);
+
+    expect(readFileSync(join(path, BUILD_COMMIT_FILE), "utf8")).toBe(
+      "1a2b3c4\n",
+    );
+    vi.unstubAllEnvs();
+  });
+
+  it("writes no commit file when the build doesn't know its commit", () => {
+    const { path } = installRemoteScript(scratchDir);
+
+    expect(existsSync(join(path, BUILD_COMMIT_FILE))).toBe(false);
   });
 
   it("replaces the folder, so a removed module doesn't linger", () => {

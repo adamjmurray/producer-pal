@@ -13,7 +13,7 @@ import { readRemoteScriptSource } from "./remote-script-source.ts";
 // file without updating that plugin fails the build.
 const SOURCE_DIR = join(
   import.meta.dirname,
-  "../../../../remote-script/Producer_Pal",
+  "../../../../../remote-script/Producer_Pal",
 );
 
 /** The remote script's Python sources, keyed by path relative to its folder. */

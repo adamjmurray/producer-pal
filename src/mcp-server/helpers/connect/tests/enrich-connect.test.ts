@@ -47,6 +47,8 @@ beforeEach(() => {
     running: true,
     liveVersion: "12.4.0",
     scriptVersion: VERSION,
+    scriptBuild: null,
+    scriptCommit: null,
     userLibrary: null,
     otherOnPort: null,
   });

@@ -114,7 +114,12 @@ function summarize(status: RemoteScriptStatus): string {
   const running = runningText(status);
 
   if (status.updateAvailable) {
-    return `Update available: installed ${versionText(status.installedVersion)}, this build has v${status.bundledVersion} (${running})`;
+    const installed =
+      status.installedVersion === status.bundledVersion
+        ? `installed v${status.bundledVersion} is a different build than this device's`
+        : `installed ${versionText(status.installedVersion)}, this build has v${status.bundledVersion}`;
+
+    return `Update available: ${installed} (${running})`;
   }
 
   if (status.installedNewer) {

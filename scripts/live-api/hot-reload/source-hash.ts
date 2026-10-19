@@ -3,9 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { hashScriptFiles } from "#src/mcp-server/rpc/remote-script/bundle/remote-script-build.ts";
 
 // Loaded once by Live and never hot-reloaded. Mirrors BOOTSTRAP in
 // remote-script/Producer_Pal/hot_reload.py, which hashes the other files.
@@ -20,33 +20,24 @@ export const BOOTSTRAP_FILES: readonly string[] = [
 /**
  * Hash the remote script's reloadable files the way hot_reload.py does, so the
  * hash Live reports after a reload can be checked against what was installed.
- *
- * Per file, in name order: `<name>\0<sha256 of its bytes>\n`. Covers every
- * top-level .py file except the bootstrap ones and dot-files.
+ * Covers every top-level .py file except the bootstrap ones and dot-files.
  *
  * @param dir - An installed (or repo) Producer_Pal folder
  * @returns The SHA-256 as lowercase hex
  */
 export function hashRemoteScript(dir: string): string {
-  const names = readdirSync(dir)
-    .filter(
-      (name) =>
-        name.endsWith(".py") &&
-        !name.startsWith(".") &&
-        !BOOTSTRAP_FILES.includes(name) &&
-        statSync(join(dir, name)).isFile(),
-    )
-    // Byte order, like Python's sort of the same names.
-    .toSorted((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
-  const digest = createHash("sha256");
+  const files: Record<string, Buffer> = {};
 
-  for (const name of names) {
-    const contentHash = createHash("sha256")
-      .update(readFileSync(join(dir, name)))
-      .digest("hex");
-
-    digest.update(`${name}\0${contentHash}\n`);
+  for (const name of readdirSync(dir)) {
+    if (
+      name.endsWith(".py") &&
+      !name.startsWith(".") &&
+      !BOOTSTRAP_FILES.includes(name) &&
+      statSync(join(dir, name)).isFile()
+    ) {
+      files[name] = readFileSync(join(dir, name));
+    }
   }
 
-  return digest.digest("hex");
+  return hashScriptFiles(files);
 }

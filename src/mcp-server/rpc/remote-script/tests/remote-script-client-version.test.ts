@@ -254,6 +254,8 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
       running: true,
       liveVersion: "12.4.5",
       scriptVersion: "2.4.0",
+      scriptBuild: null,
+      scriptCommit: null,
       userLibrary: null,
       otherOnPort: null,
     });
@@ -299,7 +301,7 @@ describe("remoteScriptRequest against a current remote script", () => {
     expect(routesAsked(remote)).toStrictEqual(["/ping", "/list"]);
   });
 
-  it("words a 404 for an unknown route as out of date", async () => {
+  it("words a 404 for an unknown route from a new-enough script as another build", async () => {
     version = "2.5.0";
     await standIn(() => unknownRouteAnswer("/envelope/read"));
 
@@ -308,7 +310,7 @@ describe("remoteScriptRequest against a current remote script", () => {
     ).toStrictEqual({
       available: false,
       outdated:
-        'the Producer Pal remote script is out of date (running 2.5.0, needs 2.5.0-rc1 or later); update it with ppal-manage action "install-remote-script" or in the Producer Pal chat UI\'s Settings → Installation, then restart Live',
+        "the Producer Pal remote script in Live (v2.5.0) is a different build than this device's and can't do this; update it with ppal-manage action \"install-remote-script\" or in the Producer Pal chat UI's Settings → Installation, then restart Live",
     });
   });
 

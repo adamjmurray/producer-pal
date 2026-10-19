@@ -104,7 +104,7 @@ beforeAll(async () => {
 
   writeFileSync(
     probeEntry,
-    `import { EMBEDDED_REMOTE_SCRIPT_FILES } from "#src/mcp-server/rpc/remote-script/embedded-remote-script.ts";\n` +
+    `import { EMBEDDED_REMOTE_SCRIPT_FILES } from "#src/mcp-server/rpc/remote-script/bundle/embedded-remote-script.ts";\n` +
       "console.log(EMBEDDED_REMOTE_SCRIPT_FILES);\n",
   );
 

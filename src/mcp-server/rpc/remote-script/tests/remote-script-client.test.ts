@@ -240,15 +240,23 @@ describe("remoteScriptRequest", () => {
 });
 
 describe("remoteScriptPing", () => {
-  it("reports the versions of our script", async () => {
+  it("reports the versions and build of our script", async () => {
     await answerWith({
-      body: { ok: true, live_version: "12.4.5", script_version: "2.4.1" },
+      body: {
+        ok: true,
+        live_version: "12.4.5",
+        script_version: "2.4.1",
+        script_build: "build-1",
+        script_commit: "abc1234",
+      },
     });
 
     expect(await remoteScriptPing()).toStrictEqual({
       running: true,
       liveVersion: "12.4.5",
       scriptVersion: "2.4.1",
+      scriptBuild: "build-1",
+      scriptCommit: "abc1234",
       userLibrary: null,
       otherOnPort: null,
     });

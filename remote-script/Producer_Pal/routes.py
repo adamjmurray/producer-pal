@@ -23,7 +23,7 @@ from .producer_pal_device import (
 from .rack_macros import ROUTES as _RACK_MACRO_ROUTES
 from .simpler_settings import ROUTES as _SIMPLER_ROUTES
 from .undo import ROUTES as _UNDO_ROUTES
-from .version import VERSION
+from .version import VERSION, build_commit
 
 # A new track's type follows what's being loaded. When that's unknown (plugins),
 # use MIDI: Live refuses an instrument on an audio track and makes a track of
@@ -71,6 +71,10 @@ def ping(bridge, params):
         "port": getattr(bridge, "port", None),
         # Of the implementation files when they were last loaded.
         "source_hash": hot_reload.loaded_hash,
+        # Of every file as loaded: which build Live runs.
+        "script_build": hot_reload.build_hash,
+        # The commit of the device that installed this copy. Diagnostic only.
+        "script_commit": build_commit(),
     }
 
 

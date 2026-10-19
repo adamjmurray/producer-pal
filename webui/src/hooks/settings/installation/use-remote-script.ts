@@ -20,11 +20,15 @@ export interface RemoteScriptStatus {
   userLibrary: string | null;
   installed: boolean;
   installedVersion: string | null;
+  /** The installed files' build ID. */
+  installedBuild: string | null;
   /** The version this build of Producer Pal ships. */
   bundledVersion: string;
   /** Whether Live currently has the script loaded as a control surface. */
   running: boolean;
   runningVersion: string | null;
+  /** The build ID Live loaded; null from a script too old to report one. */
+  runningBuild: string | null;
   liveVersion: string | null;
   /** The port another program answered on, when it isn't our script. */
   otherOnPort: number | null;

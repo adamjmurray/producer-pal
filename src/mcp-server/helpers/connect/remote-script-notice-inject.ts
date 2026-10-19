@@ -76,7 +76,10 @@ function remoteScriptLine(status: RemoteScriptStatus, manage: boolean): string {
   }
 
   if (remoteScriptAttention(status) === "update") {
-    const behind = `remoteScript: ${versionText(status.installedVersion)} is installed, but this device ships v${VERSION}.`;
+    const behind =
+      status.installedVersion === VERSION
+        ? `remoteScript: the installed v${VERSION} is a different build than this device ships.`
+        : `remoteScript: ${versionText(status.installedVersion)} is installed, but this device ships v${VERSION}.`;
 
     return manage
       ? `${behind} To update it, call ${INSTALL_WITH_TOOL}, then tell the user to restart Live.`
@@ -88,7 +91,12 @@ function remoteScriptLine(status: RemoteScriptStatus, manage: boolean): string {
   }
 
   if (liveRunsOtherCopy(status)) {
-    return `remoteScript: Live is running v${String(status.runningVersion)}, but v${String(status.installedVersion)} is installed. Tell the user to restart Live.`;
+    const running =
+      status.runningVersion === status.installedVersion
+        ? `a different build of v${String(status.runningVersion)} than the one installed`
+        : `v${String(status.runningVersion)}, but v${String(status.installedVersion)} is installed`;
+
+    return `remoteScript: Live is running ${running}. Tell the user to restart Live.`;
   }
 
   return runningLine(status);

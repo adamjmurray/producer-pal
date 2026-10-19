@@ -3,12 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
 import { installedRemoteScript } from "../../remote-script/remote-script-status.ts";
-import { remoteScriptPath } from "../../remote-script/install/remote-script-install.ts";
+import { installRemoteScript } from "../../remote-script/install/remote-script-install.ts";
 import { type DeviceInstallStatus } from "../device-install-status.ts";
 import { installIncomplete } from "../install-incomplete.ts";
 import { useDeviceScratch } from "./device-install-test-helpers.ts";
@@ -17,18 +17,18 @@ describe("installIncomplete", () => {
   const scratch = useDeviceScratch();
 
   /**
-   * Put a remote script of some version in the scratch User Library.
+   * Install the bundled remote script in the scratch User Library, then give
+   * it another version when asked. Only a real install matches this build.
    *
    * @param version - Its version, or null for a script with no readable one
    */
   function installScript(version: string | null): void {
-    const folder = remoteScriptPath(scratch().library);
+    const { path } = installRemoteScript(scratch().library);
 
-    mkdirSync(folder, { recursive: true });
-    writeFileSync(join(folder, "__init__.py"), "");
-
-    if (version != null) {
-      writeFileSync(join(folder, "version.py"), `VERSION = "${version}"\n`);
+    if (version == null) {
+      rmSync(join(path, "version.py"));
+    } else if (version !== VERSION) {
+      writeFileSync(join(path, "version.py"), `VERSION = "${version}"\n`);
     }
   }
 

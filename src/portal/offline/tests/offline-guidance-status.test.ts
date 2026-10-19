@@ -46,13 +46,21 @@ function olderPortal(what: string): string {
  * @returns A script installed in the library
  */
 function script(installedVersion: string | null): InstalledRemoteScript {
-  return { path: SCRIPT_PATH, installed: true, installedVersion };
+  return {
+    path: SCRIPT_PATH,
+    installed: true,
+    installedVersion,
+    installedBuild: null,
+    devProbe: false,
+  };
 }
 
 const NO_SCRIPT: InstalledRemoteScript = {
   path: SCRIPT_PATH,
   installed: false,
   installedVersion: null,
+  installedBuild: null,
+  devProbe: false,
 };
 
 /**

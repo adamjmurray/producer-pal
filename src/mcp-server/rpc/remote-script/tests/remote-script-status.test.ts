@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
@@ -11,6 +11,7 @@ import {
   installRemoteScript,
   remoteScriptPath,
 } from "../install/remote-script-install.ts";
+import { bundledRemoteScriptBuild } from "../bundle/remote-script-build.ts";
 import { remoteScriptStatus } from "../remote-script-status.ts";
 import {
   type FakeRemoteScript,
@@ -68,9 +69,11 @@ describe("remoteScriptStatus", () => {
       userLibrary: null,
       installed: false,
       installedVersion: null,
+      installedBuild: null,
       bundledVersion: VERSION,
       running: false,
       runningVersion: null,
+      runningBuild: null,
       liveVersion: null,
       otherOnPort: null,
       updateAvailable: false,
@@ -93,6 +96,29 @@ describe("remoteScriptStatus", () => {
 
     expect(status.installed).toBe(true);
     expect(status.installedVersion).toBe(VERSION);
+    expect(status.installedBuild).toBe(bundledRemoteScriptBuild());
+    expect(status.updateAvailable).toBe(false);
+  });
+
+  it("offers an update when the installed files are another build of this version", async () => {
+    installRemoteScript(scratchDir);
+    appendFileSync(
+      join(remoteScriptPath(scratchDir), "http_server.py"),
+      "# older build\n",
+    );
+
+    const status = await remoteScriptStatus();
+
+    expect(status.installedVersion).toBe(VERSION);
+    expect(status.updateAvailable).toBe(true);
+  });
+
+  it("never offers to replace a dev copy with the probe route", async () => {
+    installRemoteScript(scratchDir);
+    writeFileSync(join(remoteScriptPath(scratchDir), "probe.py"), "# dev\n");
+
+    const status = await remoteScriptStatus();
+
     expect(status.updateAvailable).toBe(false);
   });
 
@@ -165,7 +191,18 @@ describe("remoteScriptStatus", () => {
 
     expect(status.running).toBe(true);
     expect(status.runningVersion).toBe("2.0.0");
+    expect(status.runningBuild).toBeNull();
     expect(status.liveVersion).toBe("12.4.5");
+  });
+
+  it("reports the build a running script answers with", async () => {
+    remote = await startFakeRemoteScript(() => ({
+      body: { ok: true, script_version: "2.0.0", script_build: "build-1" },
+    }));
+
+    const status = await remoteScriptStatus();
+
+    expect(status.runningBuild).toBe("build-1");
   });
 
   it("uses a ping it is handed instead of asking Live again", async () => {
@@ -177,6 +214,8 @@ describe("remoteScriptStatus", () => {
       running: true,
       liveVersion: "12.1.0",
       scriptVersion: "1.0.0",
+      scriptBuild: null,
+      scriptCommit: null,
       userLibrary: null,
       otherOnPort: null,
     });

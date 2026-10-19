@@ -40,6 +40,8 @@ const PING: RemoteScriptPing = {
   running: true,
   liveVersion: "12.4.0",
   scriptVersion: "2.3.0",
+  scriptBuild: null,
+  scriptCommit: null,
   userLibrary: null,
   otherOnPort: null,
 };
@@ -88,6 +90,19 @@ describe("withRemoteScriptNotice", () => {
     expect(content).toHaveLength(2);
     expect(content[1]?.text).toBe(
       `remoteScript: v2.3.0 is installed, but this device ships v${VERSION}. ` +
+        `To update it, call ${INSTALL}, then tell the user to restart Live.`,
+    );
+  });
+
+  it("calls it a different build when the installed version is this one", async () => {
+    remoteScriptStatus.mockResolvedValue(
+      currentRemoteScriptStatus({ updateAvailable: true }),
+    );
+
+    const content = await connectThrough();
+
+    expect(content[1]?.text).toBe(
+      `remoteScript: the installed v${VERSION} is a different build than this device ships. ` +
         `To update it, call ${INSTALL}, then tell the user to restart Live.`,
     );
   });
@@ -190,6 +205,18 @@ describe("withRemoteScriptNotice", () => {
 
     expect(content[1]?.text).toBe(
       `remoteScript: Live is running v2.3.0, but v${VERSION} is installed. Tell the user to restart Live.`,
+    );
+  });
+
+  it("tells the user to restart Live when it runs another build of the installed version", async () => {
+    remoteScriptStatus.mockResolvedValue(
+      currentRemoteScriptStatus({ runningBuild: "build-0" }),
+    );
+
+    const content = await connectThrough();
+
+    expect(content[1]?.text).toBe(
+      `remoteScript: Live is running a different build of v${VERSION} than the one installed. Tell the user to restart Live.`,
     );
   });
 

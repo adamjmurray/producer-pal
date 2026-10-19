@@ -33,10 +33,10 @@ The chat UI can install Live's Producer Pal remote script (`remote-script/`),
 and the device is a frozen `.amxd` with no repo to copy from. So the Python
 sources ride inside the MCP server bundle:
 `config/rolldown-plugin-embed-remote-script.mjs` replaces
-`src/mcp-server/rpc/remote-script/embedded-remote-script.ts` with the files
-written out as literals, and stamps `version.py` with `package.json`'s version
-so an installed copy reports what installed it. The checked-in module reads the
-same files off disk, which is what tests and the dev installer use.
+`src/mcp-server/rpc/remote-script/bundle/embedded-remote-script.ts` with the
+files written out as literals, and stamps `version.py` with `package.json`'s
+version so an installed copy reports what installed it. The checked-in module
+reads the same files off disk, which is what tests and the dev installer use.
 
 Installing is Node-side filesystem work like any other: `GET /remote-script`
 reports where Live's User Library is (read from its browser database), what is
@@ -51,6 +51,12 @@ different version than the installed one, in either direction (after an update
 or a downgrade). Both use `!==` rather than `isNewerVersion`, which can't order
 two pre-releases of one version (`-rc1` vs `-rc2`). Nothing is flagged when the
 script isn't installed or another program answers on the port.
+
+Two copies of one version are told apart by build ID, a hash of the script's
+`.py` files (`bundle/remote-script-build.ts`, matched by `hot_reload.py`): a
+different installed build is an **update**, and a different build running in
+Live a **restart**. A dev copy installed with `--probe` never matches a device
+build, so it is never offered an update.
 
 - **Chat UI:** a `(script update)` or `(restart Live)` badge beside the version
   opens Settings → Installation. It reads `GET /remote-script` on load, on

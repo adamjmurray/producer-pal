@@ -17,6 +17,8 @@ export const RUNNING_PING: RemoteScriptPing = {
   running: true,
   liveVersion: "12.4.0",
   scriptVersion: MIN_REMOTE_SCRIPT_VERSION,
+  scriptBuild: null,
+  scriptCommit: null,
   userLibrary: null,
   otherOnPort: null,
 };
