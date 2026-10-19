@@ -28,9 +28,10 @@ One shape is refused rather than half-applied:
   created, moved or copied: `path: "t0/d1,t0/d2"`, or a move
   `path: "t0/d2,t0/d5", toPath: "t0/d3/c0,t0/d3/c0"`. The refusal names the
   entry and the earlier one, and says to make separate calls. Entries in chains
-  no earlier entry changed are fine, and so is appending an audio effect. An
-  entry past the end of its chain, or a move or copy to a track, device or
-  return chain that isn't there, changes nothing and skips only itself; a chain
-  the path would make still counts. Tracks and scenes have no such case: they
-  sit in one flat list each, so the tool can work out every final position up
-  front.
+  no earlier entry changed are fine, and so is appending an audio effect. A pad
+  is named by its note, so a pad move to a bare pad (`toPath: "t0/d0/pC1"`) is
+  fine after other pad moves: swaps and rotations work. An entry past the end of
+  its chain, or a move or copy to a track, device or return chain that isn't
+  there, changes nothing and skips only itself; a chain the path would make
+  still counts. Tracks and scenes have no such case: they sit in one flat list
+  each, so the tool can work out every final position up front.

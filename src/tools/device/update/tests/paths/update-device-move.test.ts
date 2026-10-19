@@ -218,6 +218,89 @@ describe("updateDevice - moving a drum chain", () => {
     );
   });
 
+  // A pad is named by its note, so an earlier pad move leaves a bare pad
+  // destination meaning the same pad.
+  it("swaps two pads", () => {
+    const result = updateDevice({
+      path: "t0/d0/pC1,t0/d0/pD1",
+      toPath: "t0/d0/pD1,t0/d0/pC1",
+    });
+
+    expect(chain0.set).toHaveBeenCalledExactlyOnceWith("in_note", 38);
+    expect(chain1.set).toHaveBeenCalledExactlyOnceWith("in_note", 38);
+    expect(chain2.set).toHaveBeenCalledExactlyOnceWith("in_note", 36);
+    expect(JSON.stringify(result)).not.toContain("layers");
+  });
+
+  it("rotates three pads", () => {
+    const chain3 = registerMockObject("chain-3", {
+      path: livePath.track(0).device(0).chain(3),
+      type: "DrumChain",
+      properties: { in_note: 40 },
+    });
+
+    writesThroughSets(chain3);
+    registerMockObject("drumrack-id", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: {
+        can_have_drum_pads: 1,
+        chains: children("chain-0", "chain-1", "chain-2", "chain-3"),
+        drum_pads: children("pad-36", "pad-38"),
+      },
+    });
+
+    const result = updateDevice({
+      path: "t0/d0/pC1,t0/d0/pD1,t0/d0/pE1",
+      toPath: "t0/d0/pD1,t0/d0/pE1,t0/d0/pC1",
+    });
+
+    expect(chain0.set).toHaveBeenCalledExactlyOnceWith("in_note", 38);
+    expect(chain2.set).toHaveBeenCalledExactlyOnceWith("in_note", 40);
+    expect(chain3.set).toHaveBeenCalledExactlyOnceWith("in_note", 36);
+    expect(JSON.stringify(result)).not.toContain("layers");
+  });
+
+  it("still refuses a pad move spelled through a pad an earlier move changed", () => {
+    expect(() =>
+      updateDevice({
+        path: "t0/d0/pC1,t0/d0/pD1",
+        toPath: "t0/d0/pD1,t0/d0/pC1/c0",
+      }),
+    ).toThrow('toPath entry "t0/d0/pC1/c0" is spelled through "t0/d0/pC1"');
+    expect(chain0.set).not.toHaveBeenCalled();
+  });
+
+  it("still refuses a pad move to a bare pad when an earlier move renumbers the rack's track", () => {
+    registerMockObject("track-1", { path: livePath.track(1), type: "Track" });
+    registerMockObject("fx", {
+      path: livePath.track(0).device(1),
+      type: "Device",
+    });
+
+    expect(() =>
+      updateDevice({ path: "t0/d1,t0/d0/pC1", toPath: "t1,t0/d0/pD1" }),
+    ).toThrow('toPath entry "t0/d0/pD1" is spelled through "t0"');
+    expect(chain0.set).not.toHaveBeenCalled();
+  });
+
+  it("still refuses a pad move to a nested rack's pad under a pad an earlier move changed", () => {
+    registerMockObject("nested-kit", {
+      path: livePath.track(0).device(0).chain(0).device(0),
+      type: "RackDevice",
+      properties: { can_have_drum_pads: 1, chains: children() },
+    });
+    chain0.properties.devices = children("nested-kit");
+
+    expect(() =>
+      updateDevice({
+        path: "t0/d0/pC1,t0/d0/pD1",
+        toPath: "t0/d0/pD1,t0/d0/pC1/d0/pB1",
+      }),
+    ).toThrow('toPath entry "t0/d0/pC1/d0/pB1" is spelled through "t0/d0/pC1"');
+    expect(chain0.set).not.toHaveBeenCalled();
+  });
+
   // A drum chain moved to another pad renumbers both pads' layers.
   it.each([
     [

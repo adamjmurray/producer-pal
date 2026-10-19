@@ -36,6 +36,8 @@ interface InsertionTarget {
   key: string;
   /** The pad itself, when the container is one: what a pad move renumbers. */
   padKey: string | null;
+  /** The path is the pad alone (`pC1`), with nothing spelled below it. */
+  barePad: boolean;
   /** Live's own path, when the container exists: two input spellings of one
    * chain differ as text and match here. */
   liveKey: string | null;
@@ -124,7 +126,8 @@ export function validateInsertionOrder(
       continue;
     }
 
-    const stale = renumbered.find((earlier) => isStale(target, earlier));
+    const padMove = from != null && "pad" in from;
+    const stale = staleAgainst(target, padMove, renumbered);
 
     if (stale != null) {
       throw new Error(
@@ -143,7 +146,7 @@ export function validateInsertionOrder(
     }
 
     // A pad move re-maps chains onto the destination pad.
-    if (from != null && "pad" in from) {
+    if (padMove) {
       renumbered.push(padChanged(target, by));
       continue;
     }
@@ -325,6 +328,7 @@ function leaving(
     display,
     key: display,
     padKey: null,
+    barePad: false,
     liveKey: chain,
     reachesNothing: false,
     positioned: false,
@@ -332,6 +336,62 @@ function leaving(
     appendsChain: false,
     by,
   };
+}
+
+/**
+ * Whether a path ends at its container, with no position, `d+` or `c+` after.
+ * @param parsed - The parsed path
+ * @param position - The device position it names, if any
+ * @returns True for a bare container
+ */
+function isBareContainer(
+  parsed: DeviceContainerPath,
+  position: number | null,
+): boolean {
+  return (
+    position == null &&
+    parsed.appendsDevice !== true &&
+    parsed.appendsChain !== true
+  );
+}
+
+/**
+ * The earlier change an entry reads through, if any. A pad is named by its
+ * note, so a pad move to a bare pad isn't stale against another pad of the same
+ * rack an earlier entry changed: swaps and rotations are fine. Anything above
+ * the rack still counts.
+ * @param target - The entry being checked
+ * @param padMove - Whether the entry moves drum chains onto a pad
+ * @param renumbered - What earlier entries changed
+ * @returns The change it reads through, or undefined
+ */
+function staleAgainst(
+  target: InsertionTarget,
+  padMove: boolean,
+  renumbered: Renumbered[],
+): Renumbered | undefined {
+  const rack =
+    padMove && target.barePad && target.padKey != null
+      ? padRack(target.padKey)
+      : null;
+
+  return renumbered.find(
+    (earlier) =>
+      !(
+        rack != null &&
+        earlier.padKey != null &&
+        padRack(earlier.padKey) === rack
+      ) && isStale(target, earlier),
+  );
+}
+
+/**
+ * The rack a pad spelling sits in.
+ * @param padKey - A pad, spelled by note ("t0/d0/pC1")
+ * @returns The rack's spelling ("t0/d0")
+ */
+function padRack(padKey: string): string {
+  return padKey.replace(/\/p[^/]+$/, "");
 }
 
 /**
@@ -406,6 +466,7 @@ function insertionTarget(
     display: formatObjectPath(container),
     key: isPad ? `${spelled}/c0` : spelled,
     padKey: isPad ? spelled : null,
+    barePad: isPad && isBareContainer(parsed, position),
     liveKey: live?.path ?? null,
     reachesNothing:
       live == null && reachesNothing(parsed.root, segments, chainsMemo),
