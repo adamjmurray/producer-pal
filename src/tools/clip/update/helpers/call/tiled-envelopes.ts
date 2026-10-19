@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { EPSILON } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
@@ -32,8 +32,13 @@ export function tiledEnvelopesRefusal(
     destination == null
       ? takeLaneIndexOfClip(clip) != null
       : destination.kind === "take-lane";
+  // Unwarping an audio clip turns its looping off, unless the call loops it.
+  const unwarps =
+    call.args.warping === false &&
+    (clip.getProperty("is_audio_clip") as number) > 0;
   const looping =
-    call.args.looping ?? (clip.getProperty("looping") as number) > 0;
+    call.args.looping ??
+    (!unwarps && (clip.getProperty("looping") as number) > 0);
 
   if (
     onTakeLane ||

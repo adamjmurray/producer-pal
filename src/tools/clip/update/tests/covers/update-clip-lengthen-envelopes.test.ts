@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // Lengthening a looped arrangement clip tiles it into new clips, and envelopes
@@ -74,6 +74,48 @@ describe("updateClip - envelopes beside an arrangementLength that tiles", () => 
     ).rejects.toThrow(REFUSED);
   });
 
+  it("lets through a looped audio clip the same call unwarps", async () => {
+    // Unwarping turns looping off, so the clip grows in place.
+    setUpLoopedAudioClip();
+
+    await updateClip({
+      id: "100",
+      warping: false,
+      arrangementLength: "2bar",
+      envelopes: "pan: 1|1 0.5",
+    });
+
+    expect(applyClipEnvelopes).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses an unwarp the same call loops again", async () => {
+    // looping: true vetoes warping: false, so the clip still tiles.
+    setUpLoopedAudioClip();
+
+    await expect(
+      updateClip({
+        id: "100",
+        warping: false,
+        looping: true,
+        arrangementLength: "2bar",
+        envelopes: "pan: 1|1 0.5",
+      }),
+    ).rejects.toThrow(REFUSED);
+  });
+
+  it("refuses a looped MIDI clip sent warping: false, which it ignores", async () => {
+    setUpLane([{ id: "100", start: 0, length: 4, looping: true }]);
+
+    await expect(
+      updateClip({
+        id: "100",
+        warping: false,
+        arrangementLength: "2bar",
+        envelopes: "pan: 1|1 0.5",
+      }),
+    ).rejects.toThrow(REFUSED);
+  });
+
   it.each([
     ["an unlooped lengthen, which grows in place", false, "2bar", undefined],
     ["a shorten", true, "n/2", undefined],
@@ -92,3 +134,27 @@ describe("updateClip - envelopes beside an arrangementLength that tiles", () => 
     expect(applyClipEnvelopes).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * A looped, warped audio clip at 1|1 that stops looping when unwarped, as in
+ * Live.
+ */
+function setUpLoopedAudioClip(): void {
+  setUpLane([{ id: "100", start: 0, length: 4, looping: true }]);
+  const clip = lookupMockObject("100");
+
+  if (clip == null) {
+    throw new Error("clip 100 not registered");
+  }
+
+  Object.assign(clip.properties, {
+    is_audio_clip: 1,
+    is_midi_clip: 0,
+    warping: 1,
+  });
+  clip.set.mockImplementation((property: string, value: unknown) => {
+    if (property === "warping" && value === 0) {
+      Object.assign(clip.properties, { warping: 0, looping: 0 });
+    }
+  });
+}
