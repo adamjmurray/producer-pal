@@ -185,9 +185,10 @@ export function tileClipToRange(
   // Determine arrangement length per tile (defaults to clip content length)
   const arrangementTileLength = tileLength ?? clipLength;
 
-  // Calculate tiling requirements based on arrangement tile length
-  const fullTiles = Math.floor(totalLength / arrangementTileLength);
-  const remainder = totalLength % arrangementTileLength;
+  // Tolerance and subtraction, not floor and %: for a tile like 4/3 the two
+  // disagree, giving a whole tile as remainder after the last full tile.
+  const fullTiles = Math.floor((totalLength + EPSILON) / arrangementTileLength);
+  const remainder = totalLength - fullTiles * arrangementTileLength;
 
   // Check the deadline BEFORE clearing anything. A clear empties its span before
   // anything refills it, so bailing out after one would leave the caller with a

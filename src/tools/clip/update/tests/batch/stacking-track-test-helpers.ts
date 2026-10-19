@@ -50,6 +50,9 @@ export function registerArrangementClip(
   });
 }
 
+/** The simulated track's mock registry key. */
+const STACKING_TRACK = "stacking-track";
+
 /** The clips on the simulated track, in the order they were created. */
 const laneClips: string[] = [];
 let nextLaneClipId = 0;
@@ -66,7 +69,7 @@ export function registerStackingTrack(lengths: number[]): string[] {
   laneClips.length = 0;
   nextLaneClipId = 0;
   registerLiveSet();
-  registerMockObject("stacking-track", {
+  registerMockObject(STACKING_TRACK, {
     path: livePath.track(0),
     type: "Track",
     properties: { track_index: 0, arrangement_clips: children() },
@@ -182,7 +185,7 @@ function removeLaneClip(id: string): void {
 
 /** Tell the track which clips it has now. */
 function syncLaneClips(): void {
-  const track = lookupMockObject("stacking-track");
+  const track = lookupMockObject(STACKING_TRACK);
 
   if (track != null) {
     track.properties.arrangement_clips = children(...laneClips);
@@ -251,6 +254,17 @@ export function stackedLaneClips(): string[] {
  */
 export function stackedLaneSpans(): Array<[number, number]> {
   return laneClips.map(laneClipSpan).toSorted((a, b) => a[0] - b[0]);
+}
+
+/**
+ * @returns The temp clips made on the simulated track so far
+ */
+export function tempClipsMade(): number {
+  return (
+    lookupMockObject(STACKING_TRACK)?.call.mock.calls.filter(
+      ([name]) => name === "create_midi_clip",
+    ).length ?? 0
+  );
 }
 
 /**

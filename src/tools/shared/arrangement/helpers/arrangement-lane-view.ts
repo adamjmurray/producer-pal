@@ -94,7 +94,8 @@ export class LaneView {
    * @param start - Where the stretch begins, in beats
    * @param end - Where it ends, in beats
    * @param api - The lane object, when the caller already has it
-   * @returns The clips; one that only touches an edge isn't in it
+   * @returns The clips; one that only touches an edge, or reaches in from
+   *   outside by less than EPSILON, isn't in it
    */
   overlapping(
     lane: ArrangementLane,
@@ -102,9 +103,7 @@ export class LaneView {
     end: number,
     api?: LiveAPI,
   ): ClipSpan[] {
-    return this.clips(lane, api).filter(
-      (clip) => clip.start < end && clip.end > start,
-    );
+    return this.clips(lane, api).filter((clip) => sharesTime(clip, start, end));
   }
 
   /**
@@ -489,6 +488,29 @@ function readIfNew(
  */
 function readIfChanged(state: LaneState, id: string): ClipSpan | null {
   return state.changed.has(id) && state.clips.has(id) ? spanOf(id) : null;
+}
+
+/**
+ * Whether a clip shares time with a stretch. A clip reaching in from outside by
+ * less than EPSILON doesn't: Live rounds clip times, so tiles laid end to end
+ * overlap by a hair, and trimming that hair off leaves a zero-length clip Live
+ * won't delete. A clip wholly inside counts however short it is.
+ * @param clip - A clip's span
+ * @param start - Where the stretch begins, in beats
+ * @param end - Where it ends, in beats
+ * @returns Whether the clip is in the stretch
+ */
+function sharesTime(clip: ClipSpan, start: number, end: number): boolean {
+  if (clip.start >= end || clip.end <= start) {
+    return false;
+  }
+
+  const endsJustInside =
+    clip.start < start && clip.end <= end && clip.end < start + EPSILON;
+  const startsJustInside =
+    clip.end > end && clip.start >= start && clip.start > end - EPSILON;
+
+  return !endsJustInside && !startsJustInside;
 }
 
 /**

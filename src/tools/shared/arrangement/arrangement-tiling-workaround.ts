@@ -411,8 +411,10 @@ function clearOverlappingClip(
 ): void {
   const { start: clipStart, end: clipEnd, id: clipId } = overlappingClip;
 
-  const hasBefore = clipStart < targetPosition;
-  const hasAfter = clipEnd > targetEnd;
+  // Less than EPSILON outside the range is Live's rounding: trimming to keep it
+  // leaves a zero-length clip Live won't delete.
+  const hasBefore = clipStart < targetPosition - EPSILON;
+  const hasAfter = clipEnd > targetEnd + EPSILON;
 
   if (!hasAfter) {
     // No "after" portion to preserve — simple handling

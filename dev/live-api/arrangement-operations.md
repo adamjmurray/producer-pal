@@ -237,6 +237,10 @@ uniformly:
 - **Both sides** (mid-clip overlap): dup to holding, right-trim original,
   left-trim holding, move "after" to target end
 
+Overlaps under `EPSILON` (0.001 beats) are Live's rounding and are left alone:
+trimming them leaves a zero-length clip Live won't delete. A clip wholly inside
+the range is still cleared however short.
+
 This reuses the same holding area + edge trim primitives as the splitting
 algorithm. The workaround is guarded by a disable flag for periodic retesting.
 

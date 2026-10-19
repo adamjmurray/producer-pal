@@ -6,7 +6,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { requireMockTrack } from "#src/test/helpers/mock-registry-test-helpers.ts";
-import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
+import {
+  clearMockRegistry,
+  lookupMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import {
+  registerStackingTrack,
+  stackedLaneSpans,
+  tempClipsMade,
+} from "#src/tools/clip/update/tests/batch/stacking-track-test-helpers.ts";
+import { LaneView } from "../helpers/arrangement-lane-view.ts";
 import { setArrangementDuplicateCrashWorkaround } from "../arrangement-tiling-workaround.ts";
 import {
   createQueuedMethod,
@@ -283,5 +292,93 @@ describe("tileClipToRange clearing ahead", () => {
       "delete_clip",
       "id 700",
     );
+  });
+});
+
+/** 4/3 beat as Live reads a loop of that length back. */
+const LIVE_FOUR_THIRDS = 1.3333330731766182;
+
+/** A stand-in for Live's rounding of clip times: a grid coarser than a double. */
+const GRID = 2 ** -20;
+
+/**
+ * A track holding one looped clip at beat 0 that is `length` beats long.
+ * @param length - The loop length in beats
+ * @returns The source clip and the track
+ */
+function setupLoop(length: number): { source: LiveAPI; track: LiveAPI } {
+  const [id] = registerStackingTrack([length]) as [string];
+
+  Object.assign(lookupMockObject(id)?.properties ?? {}, {
+    looping: 1,
+    loop_start: 0,
+    loop_end: length,
+    start_marker: 0,
+    end_marker: length,
+  });
+
+  return {
+    source: LiveAPI.from(`id ${id}`),
+    track: LiveAPI.from(livePath.track(0)),
+  };
+}
+
+/**
+ * Make the track round each copy's start up to {@link GRID}, a stand-in for
+ * Live's rounding, so every tile ends a hair past where the next one is
+ * computed to start.
+ */
+function placeCopiesOnGrid(): void {
+  const methods = lookupMockObject("stacking-track")?.methods ?? {};
+  const duplicate = methods.duplicate_clip_to_arrangement as (
+    ...args: unknown[]
+  ) => unknown;
+
+  methods.duplicate_clip_to_arrangement = (id, start) =>
+    duplicate(id, Math.ceil((start as number) / GRID) * GRID);
+}
+
+/**
+ * Lengthen the loop at beat 0 to `target` beats by tiling after it.
+ * @param source - The looped clip
+ * @param track - Its track
+ * @param target - The length to reach, in beats
+ * @returns The tiles' ids
+ */
+function lengthenTo(source: LiveAPI, track: LiveAPI, target: number): string[] {
+  const length = source.getProperty("end_time") as number;
+
+  return tileClipToRange(source, track, length, target - length, {
+    ...mockContext,
+    lanes: new LaneView(),
+  }).map(({ id }) => id);
+}
+
+describe("tileClipToRange with triplet loop lengths", () => {
+  it("doesn't trim a tile that ends a hair past the next clear", () => {
+    const { source, track } = setupLoop(LIVE_FOUR_THIRDS);
+
+    placeCopiesOnGrid();
+
+    const ids = lengthenTo(source, track, 36);
+
+    // A trim that small is what left a zero-length clip in Live.
+    expect(tempClipsMade()).toBe(0);
+    expect(ids).toHaveLength(26);
+    expect(new Set(ids).size).toBe(26);
+    expect(stackedLaneSpans()).toHaveLength(27);
+  });
+
+  it("fills an exact multiple of a 4/3-beat tile with full tiles only", () => {
+    const { source, track } = setupLoop(4 / 3);
+
+    const ids = lengthenTo(source, track, 36);
+
+    expect(ids).toHaveLength(26);
+    expect(tempClipsMade()).toBe(0);
+
+    const lastEnd = stackedLaneSpans().at(-1)?.[1] as number;
+
+    expect(lastEnd).toBeCloseTo(36, 6);
   });
 });

@@ -81,6 +81,18 @@ describe("LaneView", () => {
       expect(view.overlapping(MAIN, 16, 24)).toStrictEqual([]);
     });
 
+    it("leaves out a clip that reaches in by less than Live's rounding, but not a tiny clip inside", () => {
+      setMainLane([
+        { id: "a", start: 0, end: 8.0000003 },
+        { id: "tiny", start: 10, end: 10.0002 },
+        { id: "b", start: 15.9999997, end: 24 },
+      ]);
+
+      expect(
+        new LaneView().overlapping(MAIN, 8, 16).map(({ id }) => id),
+      ).toStrictEqual(["tiny"]);
+    });
+
     it("finds the clip covering a position, with a start winning over an end", () => {
       const view = new LaneView();
 

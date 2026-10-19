@@ -8,12 +8,12 @@
 // many times the call asks.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   expectUntouchedClipsReadOnce,
   readsOf,
   registerStackingTrack,
   stackedLaneSpans,
+  tempClipsMade,
 } from "#src/tools/clip/update/tests/batch/stacking-track-test-helpers.ts";
 import {
   clearArrangementRange,
@@ -38,17 +38,6 @@ describe("a lane the call shares", () => {
     ids = registerStackingTrack(Array.from({ length: LANE }, () => 4));
     track = LiveAPI.from("live_set tracks 0");
   });
-
-  /**
-   * @returns The temp clips made on the track so far
-   */
-  function tempClipsMade(): number {
-    return (
-      lookupMockObject("stacking-track")?.call.mock.calls.filter(
-        ([name]) => name === "create_midi_clip",
-      ).length ?? 0
-    );
-  }
 
   it("clears three ranges without reading a clip none of them touch more than once", () => {
     const shared = context();
@@ -119,4 +108,20 @@ describe("a lane the call shares", () => {
 
     expect(readsOf(ids)).toStrictEqual(before);
   });
+
+  it.each([
+    ["starts", 3e-7, 4],
+    ["ends", 0, 4 - 3e-7],
+  ])(
+    "deletes a clip that %s a hair outside the range, keeping no sliver",
+    (_, start, end) => {
+      registerStackingTrack([4]);
+
+      // A hair is Live's rounding; trimming it off leaves a zero-length clip.
+      clearArrangementRange(track, start, end, true, context());
+
+      expect(tempClipsMade()).toBe(0);
+      expect(stackedLaneSpans()).toStrictEqual([]);
+    },
+  );
 });
