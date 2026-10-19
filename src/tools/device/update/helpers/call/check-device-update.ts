@@ -45,6 +45,7 @@ import { type MappedMacros } from "#src/tools/shared/device/rack-macro-mappings.
 import { type PitchBendStall } from "./simpler-pitch-bend.ts";
 import { type DeviceCall } from "./parse-device-call.ts";
 import { type ResolvedTarget } from "./resolve-device-target.ts";
+import { type PadMove } from "../move-drum-chain.ts";
 import { type UpdateTargetOptions } from "../update-device-properties.ts";
 import { type wrapDevicesInRack } from "../wrap/wrap-devices-in-rack.ts";
 
@@ -87,6 +88,8 @@ export interface DeviceChecked {
   pitchBend: PitchBendStall;
   /** The call's spelling of each written entry's container, where it is kept */
   written: Map<object, WrittenContainer | undefined>;
+  /** Each target's move of drum chains to another pad, by position */
+  padMoves: Array<PadMove | undefined>;
 }
 
 /** The other string params that pair per target, beside name and color. */
@@ -177,6 +180,7 @@ export function checkDeviceUpdate(
       focus,
       pitchBend: {},
       written,
+      padMoves: [],
     };
   }
 
@@ -212,6 +216,7 @@ export function checkDeviceUpdate(
     focus,
     pitchBend: {},
     written,
+    padMoves: padMoves(targets, lists.destinations),
   };
   const racks =
     options.macroCount == null
@@ -329,6 +334,39 @@ function moveEntries(
           },
         ]
       : [];
+  });
+}
+
+/**
+ * The drum chains each target moves to another pad, and the pad they start on,
+ * so settle can tell whether the move landed.
+ * @param targets - The call's targets
+ * @param destinations - Where each moves, undefined where it doesn't
+ * @returns Each target's pad move, undefined where it makes none
+ */
+function padMoves(
+  targets: Array<Target<DevicePayload>>,
+  destinations: Array<string | undefined>,
+): Array<PadMove | undefined> {
+  return targets.map((target, i) => {
+    const data = target.data;
+
+    if (destinations[i] == null || data == null || !("resolved" in data)) {
+      return undefined;
+    }
+
+    const { resolved } = data;
+    const chains =
+      resolved.kind === "drum-pad"
+        ? resolved.group.chains
+        : resolved.target.type === "DrumChain"
+          ? [resolved.target]
+          : [];
+    const first = chains[0];
+
+    return first == null
+      ? undefined
+      : { chains, fromNote: first.getProperty("in_note") as number };
   });
 }
 

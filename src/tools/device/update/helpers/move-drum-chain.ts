@@ -9,9 +9,12 @@
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import {
+  type EntryWithDetail,
+  appendDetail,
+} from "#src/tools/shared/helpers/entry-details.ts";
+import {
   type TargetNotes,
   noteLanded,
-  noteTarget,
   refuseTargetWork,
 } from "#src/tools/shared/helpers/target-notes.ts";
 import { findDrumPadByNote } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
@@ -58,59 +61,65 @@ export function moveDrumChainToPath(
 
   const targetInNote = noteNameToMidi(targetNote) as number;
 
-  const sourceInNote = chain.getProperty("in_note") as number;
-  const rack = LiveAPI.from(drumRackPath);
-  const rackChains = rack.getChildren("chains");
-  const inNotes = rackChains.map((c) => c.getProperty("in_note") as number);
-
-  noteIfDestinationOccupied(
-    rack,
-    toPath,
-    inNotes,
-    sourceInNote,
-    targetInNote,
-    notes,
-  );
-
   for (const moving of chains) {
     moving.set("in_note", targetInNote);
     noteLanded(notes, "move");
   }
 }
 
+/** A target's drum chains moving to another pad, read before the first write. */
+export interface PadMove {
+  chains: LiveAPI[];
+  /** The note they start on */
+  fromNote: number;
+}
+
 /**
- * Live layers a moved chain onto whatever the destination pad already holds
- * rather than replacing it, so the pad ends up playing both. Say so — the
- * caller asked for a move and would otherwise read the result as a swap.
- * @param rack - The Drum Rack both pads live on
- * @param toPath - Destination pad path as written, for the warning
- * @param inNotes - Every rack chain's in_note, in rack order
- * @param sourceInNote - The moving chain's in_note
- * @param targetInNote - The destination pad's in_note
- * @param notes - What the pad's entry has to say, added to
+ * Live layers a moved chain onto whatever the destination pad holds rather
+ * than replacing it, so the pad ends up playing both. Say so — the caller asked
+ * for a move and would otherwise read the result as a swap. Checked once every
+ * target has run, since a later one may move the destination's chains away,
+ * or fail to.
+ * @param entry - The target's entry, added to
+ * @param move - Its chains and where they started
+ * @param toPath - Destination pad path as written, for the detail
  */
-function noteIfDestinationOccupied(
-  rack: LiveAPI,
+export function noteLayeredLanding(
+  entry: EntryWithDetail,
+  move: PadMove,
   toPath: string,
-  inNotes: number[],
-  sourceInNote: number,
-  targetInNote: number,
-  notes: TargetNotes,
 ): void {
-  if (targetInNote === sourceInNote) {
+  const first = move.chains[0] as LiveAPI;
+
+  // A later target's preset can take the chains with their rack.
+  if (!first.exists()) {
     return;
   }
 
-  const occupants = inNotes.filter((note) => note === targetInNote).length;
+  const landedOn = first.getProperty("in_note") as number;
+
+  // Not moved: refused, skipped, or already on that pad.
+  if (landedOn === move.fromNote) {
+    return;
+  }
+
+  const own = new Set(move.chains.map((chain) => chain.id));
+  const rack = LiveAPI.from(first.path.replace(/ chains \d+$/, ""));
+  const occupants = rack
+    .getChildren("chains")
+    .filter(
+      (chain) =>
+        !own.has(chain.id) && chain.getProperty("in_note") === landedOn,
+    ).length;
 
   if (occupants === 0) {
     return;
   }
 
-  const label = pathTargetLabel(findDrumPadByNote(rack, targetInNote), toPath);
+  const label = pathTargetLabel(findDrumPadByNote(rack, landedOn), toPath);
 
-  noteTarget(
-    notes,
+  appendDetail(
+    entry,
     `drum pad ${label} already had ${occupants} chain(s), ` +
       `so the move layers on top of them rather than replacing them`,
   );

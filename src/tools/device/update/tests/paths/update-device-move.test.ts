@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type RegisteredMockObject,
   children,
@@ -170,6 +170,52 @@ describe("updateDevice - moving a drum chain", () => {
     expect(chain0.set).toHaveBeenCalledExactlyOnceWith("in_note", 38);
     expect(chain1.set).toHaveBeenCalledExactlyOnceWith("in_note", 38);
     expect(chain2.set).toHaveBeenCalledExactlyOnceWith("in_note", 40);
+  });
+
+  // D1's chain moves on in the same call, so nothing ends up layered.
+  it.each([
+    ["a pad", "t0/d0/pC1,t0/d0/pD1"],
+    ["a chain", "t0/d0/pC1/c0,t0/d0/pD1/c0"],
+  ])(
+    "says nothing layers when %s moves onto a pad that moves on",
+    (_case, path) => {
+      const result = updateDevice({ path, toPath: "t0/d0/pD1,t0/d0/pE1" });
+
+      expect(chain0.set).toHaveBeenCalledWith("in_note", 38);
+      expect(chain2.set).toHaveBeenCalledExactlyOnceWith("in_note", 40);
+      expect(JSON.stringify(result)).not.toContain("layers");
+    },
+  );
+
+  // D1's chain was to move on, but didn't, so the first move did layer.
+  it.each<[string, string, { deadline?: number }]>([
+    ["is refused", "t0/d0/pD1,t0/d0/p*", {}],
+    ["names another rack", "t0/d0/pD1,t9/d0/pE1", {}],
+    ["runs out of time", "t0/d0/pD1,t0/d0/pE1", { deadline: 1 }],
+  ])("says the move layers when the move on %s", (_case, toPath, ctx) => {
+    if (ctx.deadline != null) {
+      const now = vi.spyOn(Date, "now").mockReturnValue(0);
+
+      // The deadline passes once the first move lands.
+      chain0.set.mockImplementation((property: string, value: unknown) => {
+        chain0.properties[property] = value;
+        now.mockReturnValue(2);
+      });
+    }
+
+    const result = updateDevice(
+      { path: "t0/d0/pC1/c0,t0/d0/pD1/c0", toPath },
+      ctx,
+    );
+
+    expect(chain2.properties.in_note).toBe(38);
+    expect((result as unknown[])[0]).toStrictEqual(
+      expect.objectContaining({
+        detail: expect.stringContaining(
+          "drum pad t0/d0/pD1 (id pad-38) already had 1 chain(s), so the move layers",
+        ),
+      }),
+    );
   });
 
   // A drum chain moved to another pad renumbers both pads' layers.

@@ -55,6 +55,7 @@ import {
 } from "./helpers/call/simpler-pitch-bend.ts";
 import { type UpdateTargetOptions } from "./helpers/update-device-properties.ts";
 import { updateDeviceTarget } from "./helpers/update-device-target.ts";
+import { noteLayeredLanding } from "./helpers/move-drum-chain.ts";
 import { updateDrumPadGroup } from "./helpers/update-drum-pad-group.ts";
 import { wrapDevicesInRack } from "./helpers/wrap/wrap-devices-in-rack.ts";
 
@@ -424,6 +425,13 @@ function settleDeviceUpdate(
         checked.written.get(entry),
         data.before,
       );
+    }
+
+    const move = checked.padMoves[index];
+    const toPath = checked.lists.destinations[index];
+
+    if (outcomes[index] === "written" && move != null && toPath != null) {
+      noteLayeredLanding(entry, move, toPath);
     }
 
     if (outcomes[index] === "written" && typeof id === "string") {
