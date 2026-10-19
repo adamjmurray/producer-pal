@@ -56,6 +56,12 @@ with a tool, the tool wins.
   (not even its meter or name), and the other clips go on. The call is refused
   instead when every meter fails, or a clip the call will split fails: a cut
   can't be undone.
+- **update-clip: `envelopes` beside an `arrangementLength` that tiles is a
+  skip.** Lengthening a looped arrangement clip (looped as the call leaves it)
+  tiles it into new clips, and the envelopes would reach only the first. That
+  clip is `{id, ok: false, detail}`, written nothing, and the other clips go on.
+  An unlooped clip grows in place and a shorten makes no tiles, so both still
+  take envelopes.
 - **create-clip answers per destination named.** Its `path` list, clip slots and
   arrangement positions mixed, comes back one entry per destination in the order
   the call named them, and `name`/`color` pair by that place — it used to answer

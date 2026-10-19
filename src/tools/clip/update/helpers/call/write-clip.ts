@@ -124,12 +124,12 @@ export async function writeClip(
       );
     }
 
-    // Its meter can't read the note edits: refused before anything is written
-    // to it, so the clip keeps the meter it has.
-    const unreadable = run.unreadable.get(clip.id);
+    // Refused before anything is written to it (its meter can't read the note
+    // edits, or its envelopes would miss the tiles), so the clip is unchanged.
+    const refused = run.refused.get(clip.id);
 
-    if (unreadable != null) {
-      throw new Error(unreadable);
+    if (refused != null) {
+      throw new Error(refused);
     }
 
     if (refusedMove != null) {

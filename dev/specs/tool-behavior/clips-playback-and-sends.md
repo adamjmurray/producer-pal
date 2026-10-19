@@ -135,6 +135,10 @@ stamp writes them all.
   names the rest.
 - **Refused before anything is touched**, as the `envelopes` text: a clip on a
   take lane, a frozen track, an audio clip when the silence file isn't known.
+- **Not beside an `arrangementLength` that tiles.** Lengthening a looped clip
+  tiles it into new clips, and the lines would reach only the first, so the clip
+  is skipped with nothing written:
+  `not updated: arrangementLength tiles this looped clip into new clips, and envelopes would reach only the first. Send arrangementLength on its own, then envelopes in a separate call on the clips it returns`.
 - **Failure after Live changed.** The clip is parked a bar past the Set's end
   while the lane is stamped, then copied back.
   - Parking fails: `envelopes: 0`,

@@ -40,8 +40,11 @@ export interface ClipRun {
   scaleMask: ScaleMaskReader;
   /** The call's cuts, once its first split clip is reached */
   split?: SplitRun;
-  /** Clips whose own meter can't read the note edits, and why, by clip id */
-  unreadable: Map<string, string>;
+  /**
+   * Clips refused before anything is written to them, and why, by clip id: a
+   * meter that can't read the note edits, or envelopes beside a tiling length
+   */
+  refused: Map<string, string>;
   /** How many clips the call set out to cut */
   splitCount: number;
   /** What the call's conversions know of each other */
@@ -62,7 +65,7 @@ export function newClipRun(context: Partial<ToolContext>): ClipRun {
     destinationTracks: new Map(),
     stayed: new Set(),
     calledOff: new Set(),
-    unreadable: new Map(),
+    refused: new Map(),
     splitCount: 0,
     convert: newConvertProgress(),
   };

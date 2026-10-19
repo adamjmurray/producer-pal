@@ -53,8 +53,9 @@ describe("a resize in place", () => {
   });
 
   it("still replaces the clip it covers when a later step throws", async () => {
+    // Unlooped: a looped clip that tiles refuses envelopes up front.
     setUpLane([
-      { id: "100", start: 0, length: 16, looping: true },
+      { id: "100", start: 0, length: 16 },
       { id: "101", start: 20, length: 8 },
     ]);
     envelopesThrowFor("100");
