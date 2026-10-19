@@ -51,6 +51,7 @@ export const updateLiveSetAdapter: WriteToolAdapter = {
     return result.locator;
   },
   na: {
+    leftBehind: "a locator it makes keeps its entry, so it is never a skip",
     unparsableDestination: "no destination list",
     replacedLater:
       "a locator at one time is one locator: naming the time twice is a repeat",

@@ -9,6 +9,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  beginWarningCapture,
+  changedNothing,
+} from "#src/shared/max/v8-warning-capture.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
   children,
@@ -308,5 +312,72 @@ describe("duplicate device - a copy the remote script didn't make", () => {
       "may have been copied (no answer), but the device at t0/d2 isn't a copy of it; nothing was moved or deleted",
     );
     expect(moveDeviceToPath).not.toHaveBeenCalled();
+  });
+});
+
+describe("duplicate device - whether a failed copy changed the Set", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * Run a lone device copy that fails, in a request of its own.
+   * @param message - Part of what the copy fails with
+   * @param toPath - Where the copy goes, if anywhere
+   * @returns Whether the call proved it changed nothing
+   */
+  async function verdictOfFailedCopy(
+    message: string,
+    toPath?: string,
+  ): Promise<boolean> {
+    const capture = beginWarningCapture();
+
+    await expect(
+      duplicate({ type: "device", id: "reverb", toPath }),
+    ).rejects.toThrow(message);
+
+    return changedNothing(capture);
+  }
+
+  // A copy left in the Set needs its own undo step, not a share of the next.
+  it.each([
+    [
+      "the copy can't be deleted",
+      "the copy may be left at",
+      (): void => {
+        registerReverb(true);
+        vi.mocked(moveDeviceToPath).mockReturnValue({
+          outcome: "unresolvable",
+          reason: "no such track",
+        });
+      },
+    ],
+    [
+      "the copy is at another index",
+      "was copied, but to t0/d3",
+      (): void => {
+        registerReverb(true);
+        remoteScriptAnswers({ available: true, index: 3 });
+      },
+    ],
+    [
+      "another device is in the copy's slot",
+      "isn't a copy of it",
+      (): void => {
+        registerReverb(true, "Compressor");
+      },
+    ],
+  ])("may have changed something when %s", async (_what, message, setUp) => {
+    remoteScriptAnswers({ available: true, index: 2 });
+    setUp();
+
+    expect(await verdictOfFailedCopy(message, "t1/d0")).toBe(false);
+  });
+
+  it("changed nothing when Live refused the copy", async () => {
+    registerReverb(false);
+    remoteScriptAnswers({ available: true, error: "Can not duplicate it" });
+
+    expect(await verdictOfFailedCopy("not copied")).toBe(true);
   });
 });

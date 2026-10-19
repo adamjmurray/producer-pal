@@ -43,6 +43,7 @@ import {
   recordLandedClip,
   recordResize,
 } from "#src/tools/shared/clip/landings/landing-log.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 
 interface HandleArrangementStartArgs {
   clip: LiveAPI;
@@ -160,11 +161,14 @@ export function handleArrangementStartOperation({
     // will read the lane back, so the view forgets both lanes it touched.
     ledger.forget(lane);
     context.lanes?.clipChanged(clip);
+    markSetChanged();
     throw error;
   }
 
   if (displaced != null) {
     noteClipReason(reasons, clip.id, displaced);
+    // What the landing cleared stays cleared, even if no copy follows.
+    markSetChanged();
   }
 
   // Null covers two cases, both already on the clip's entry: refused before

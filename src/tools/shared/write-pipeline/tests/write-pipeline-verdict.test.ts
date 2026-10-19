@@ -12,6 +12,7 @@ import {
   suspendWarningCapture,
   type WarningCapture,
 } from "#src/shared/max/v8-warning-capture.ts";
+import { markSetChanged } from "../set-changed.ts";
 import { runWrite } from "../write-pipeline.ts";
 import { newToyLog, toySpec, type ToyArgs } from "./toy-write-spec.ts";
 
@@ -104,6 +105,33 @@ describe("runWrite: did the call change anything", () => {
         { settle },
       ),
     ).toBe(false);
+  });
+
+  it("changed nothing when the plan refuses", async () => {
+    const plan = (): never => {
+      throw new Error("can't be ordered");
+    };
+
+    expect(await verdictOf({ ids: "a,b" }, { plan })).toBe(true);
+  });
+
+  it("may have changed something when a skipped write left something in the Set", async () => {
+    const capture = beginWarningCapture();
+    const spec = toySpec(newToyLog());
+
+    const write: typeof spec.write = () => {
+      markSetChanged();
+      throw new Error("not moved; left an empty chain: c1");
+    };
+
+    const entries = await runWrite({ ...spec, write }, { ids: "a,b" });
+
+    // The entries stay skips: only the verdict changes.
+    expect(entries).toStrictEqual([
+      { id: "a", ok: false, detail: "not moved; left an empty chain: c1" },
+      { id: "b", ok: false, detail: "not moved; left an empty chain: c1" },
+    ]);
+    expect(finished(capture)).toBe(false);
   });
 
   it("changed nothing when an async check refuses", async () => {

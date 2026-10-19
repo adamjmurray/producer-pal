@@ -34,7 +34,11 @@ import {
   readClipNotes,
   removeAllClipNotes,
 } from "#src/tools/shared/clip/clip-notes.ts";
-import { type ClipReasons, noteClipReason } from "../entries/clip-reasons.ts";
+import {
+  type ClipReasons,
+  noteClipReason,
+  noteLanded,
+} from "../entries/clip-reasons.ts";
 import { mutedNotesHit, reportMutedNoteEffects } from "./muted-note-effects.ts";
 
 /**
@@ -109,6 +113,7 @@ export function applyTransformsToExistingNotes(
   const region = clipPlayRegion(clip);
 
   removeAllClipNotes(clip);
+  noteLanded(reasons, "notes", { id: clip.id });
 
   // Dedupe then sort before re-adding, identically to the merge path: a
   // transform can collapse two notes onto the same pitch+exact-onset (dedupe

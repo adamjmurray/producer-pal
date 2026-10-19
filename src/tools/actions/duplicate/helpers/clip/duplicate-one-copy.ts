@@ -14,6 +14,7 @@ import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { duplicateClipToArrangement } from "./duplicate-clip-to-arrangement.ts";
 import { withLandedColor } from "../minimal-clip-info.ts";
 import {
+  changedBefore,
   clearedBefore,
   copiedIds,
   copyClearingAsync,
@@ -40,7 +41,13 @@ import {
  * what was asked for), or why there is none. */
 export type CopyAttempt =
   | { copy: object; refused?: undefined; cleared?: undefined }
-  | { copy?: undefined; refused: string; cleared?: string };
+  | {
+      copy?: undefined;
+      refused: string;
+      cleared?: string;
+      /** The copy changed the Set before it failed; `refused` says how */
+      changed?: true;
+    };
 
 export interface CopyOptions {
   target: ArrangementTrack;
@@ -74,13 +81,14 @@ export async function duplicateOneCopy(
   try {
     return await copyAtDestination(options);
   } catch (error) {
-    // A copy that cleared clips before it threw changed the Set: the entry
-    // says so, and isn't a skip.
+    // A copy that cleared clips or wrote the lane before it threw changed the
+    // Set: the entry says so, and isn't a skip.
     const cleared = clearedBefore(error);
 
     return {
       refused: errorMessage(error),
       ...(cleared != null && { cleared }),
+      ...(changedBefore(error) && { changed: true as const }),
     };
   }
 }

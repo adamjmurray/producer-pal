@@ -9,6 +9,10 @@
 
 import { describe, expect, it } from "vitest";
 import "../../../tests/duplicate-mocks-test-helpers.ts";
+import {
+  beginWarningCapture,
+  changedNothing,
+} from "#src/shared/max/v8-warning-capture.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { LANE_WRITE_NOTE } from "./stamp-automation-test-helpers.ts";
 import { registerStampWorld } from "./stamp-world-test-helpers.ts";
@@ -72,5 +76,48 @@ describe("duplicate - a session clip with automation, at another length", () => 
       detail:
         "Live made no copy there; already changed: automation written for all 8 beats; overwrote the clip at t0[5|1]",
     });
+  });
+
+  // The lane changed even with nothing there to clear, so the entry is a
+  // normal one, and the call counts as a change.
+  it("keeps a normal entry for a lane it wrote when the clip isn't placed", async () => {
+    const world = registerStampWorld();
+
+    world.declinesCopy = (count) => count === 2;
+
+    const capture = beginWarningCapture();
+    const result = await duplicate({
+      type: "clip",
+      id: world.source.id,
+      arrangementStart: "5|1",
+      arrangementLength: "2bar",
+    });
+
+    expect(result).toStrictEqual({
+      path: "t0[5|1]",
+      detail:
+        "Live made no copy there; already changed: automation written for all 8 beats",
+    });
+    expect(changedNothing(capture)).toBe(false);
+  });
+
+  it("keeps that entry beside the other copies of a call", async () => {
+    const world = registerStampWorld();
+
+    world.declinesCopy = (count) => count === 2;
+
+    const result = (await duplicate({
+      type: "clip",
+      id: world.source.id,
+      toPath: "t0[5|1],t0[13|1]",
+      arrangementLength: "2bar",
+    })) as object[];
+
+    expect(result[0]).toStrictEqual({
+      path: "t0[5|1]",
+      detail:
+        "Live made no copy there; already changed: automation written for all 8 beats",
+    });
+    expect(result[1]).not.toHaveProperty("ok");
   });
 });

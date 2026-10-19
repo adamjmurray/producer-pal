@@ -9,6 +9,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
+import { changedNothing } from "#src/shared/max/v8-warning-capture.ts";
+import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/proved-unchanged-request.ts";
 import { handleUnloopedLengthening } from "#src/tools/clip/arrangement/helpers/unlooped-lengthening.ts";
 import { handleArrangementShortening } from "#src/tools/clip/arrangement/helpers/arrangement-length-changes.ts";
 import {
@@ -268,6 +270,36 @@ describe("the scene an audio helper makes for its scratch clip", () => {
     ]);
     expect(world.sceneCount()).toBe(1);
   });
+
+  // What stays needs an undo step of its own; what was cleaned up doesn't.
+  it.each([
+    ["the scene stays", false, false, true, false],
+    ["the clip stays, with no scene to take it", true, true, false, false],
+    ["the clip sticks, but its scene takes it", false, true, false, true],
+    ["both go", false, false, false, true],
+  ])(
+    "changes the Set only when something stays: %s",
+    (_what, lastSceneEmpty, clipStays, sceneStays, unchanged) => {
+      registerSceneWorld(lastSceneEmpty);
+
+      const session = createAudioClipInSession(track(), 4, "/tmp/a.wav");
+
+      if (clipStays) {
+        session.slot.call = () => {
+          throw new Error("Live says no");
+        };
+      }
+
+      if (sceneStays) {
+        refuseSceneRemoval();
+      }
+
+      const capture = provedUnchangedRequest();
+
+      removeSessionClip(session, () => {});
+      expect(changedNothing(capture)).toBe(unchanged);
+    },
+  );
 });
 
 // A throw between making the scratch clip and removing it must not leave the

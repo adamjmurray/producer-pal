@@ -10,12 +10,16 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
+import { registerLiveSet } from "#src/tools/clip/update/tests/batch/stacking-track-test-helpers.ts";
+import { setUpLane } from "#src/tools/clip/update/tests/move-order/lane-with-clips-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
   LIVE_FAILURE,
   failOnSet,
   afterRenameScenario,
   manyScenario,
+  registerSlotPastLastScene,
   repeatScenario,
   replaceClipOnCopy,
 } from "../../write-conformance-fixtures.ts";
@@ -182,4 +186,63 @@ export const updateClipAdapter: WriteToolAdapter = {
 
     return { args: { id: "nowhere", name: "A" }, detail: "nowhere" };
   },
+
+  leftBehind: [
+    // The scenes made to reach the slot stay when no clip lands there.
+    () => {
+      setUpClips(1);
+      registerSlotPastLastScene(3);
+
+      return {
+        args: { id: "c0", toPath: "t0/s3" },
+        detail:
+          "no clip landed at t0/s3, so the original was kept; created s1-s3 to reach it",
+      };
+    },
+    // The landing cleared the clip there, then Live made no copy.
+    () => {
+      setUpLane(
+        [
+          { id: "100", start: 0, length: 16 },
+          { id: "101", start: 32, length: 16 },
+        ],
+        ["100"],
+      );
+
+      return {
+        args: { id: "100", arrangementStart: "9|1" },
+        detail: "Live made no copy at the destination",
+      };
+    },
+    // A take-lane re-create made a clip, then its notes failed.
+    () => {
+      registerLiveSet();
+      registerTakeLaneTrack({
+        initialLanes: 1,
+        initialLaneClips: [[{ start: 0, end: 4 }]],
+        postCreateFails: true,
+      });
+
+      const moved = lookupMockObject(
+        undefined,
+        livePath.track(0).takeLane(0).arrangementClip(0),
+      )?.id as string;
+
+      registerMockObject(moved, {
+        type: "Clip",
+        properties: lookupMockObject(moved)?.properties,
+        methods: {
+          get_notes_extended: () =>
+            JSON.stringify({
+              notes: [{ pitch: 60, start_time: 0, duration: 1, velocity: 100 }],
+            }),
+        },
+      });
+
+      return {
+        args: { id: moved, toPath: "t0/l0[5|1]" },
+        detail: "an incomplete clip was left on t0/l0",
+      };
+    },
+  ],
 };

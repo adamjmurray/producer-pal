@@ -8,6 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 import {
   type RackDestination,
   type ResolvedDevice,
@@ -162,6 +163,9 @@ export function wrapInstrumentInRack(
     if (notes.length === 0) {
       throw error;
     }
+
+    // Each note names something left in the Set.
+    markSetChanged();
 
     throw new Error(`${errorMessage(error)}; ${notes.join("; ")}`, {
       cause: error,

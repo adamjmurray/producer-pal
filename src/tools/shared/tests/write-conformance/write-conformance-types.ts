@@ -27,6 +27,7 @@ export const CASE_IDS = [
   "refusals",
   "countWithDestinations",
   "loneSkipped",
+  "leftBehind",
   "settleThrows",
 ] as const;
 
@@ -127,6 +128,11 @@ export interface WriteToolAdapter {
   /** `count` together with a list of destinations */
   countWithDestinations?: () => ToolArgs;
   loneSkipped?: () => LoneScenario;
+  /**
+   * Lone calls whose target is skipped after Live made something that stays
+   * (empty chains, scenes made to reach a slot), one per way the tool can
+   */
+  leftBehind?: Array<() => LoneScenario>;
   /**
    * A call whose final step throws after its targets wrote. Defaults to
    * `many(2)`; only a tool with no list of targets needs its own.

@@ -5,6 +5,10 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
+import {
+  beginWarningCapture,
+  changedNothing,
+} from "#src/shared/max/v8-warning-capture.ts";
 import "../duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
@@ -302,6 +306,7 @@ describe("duplicate clip fan-out order", () => {
   // so nothing is written.
   it("refuses copies that can't be ordered around the source", async () => {
     setupSource(true);
+    const capture = beginWarningCapture();
 
     await expect(
       duplicate({
@@ -314,6 +319,8 @@ describe("duplicate clip fan-out order", () => {
       'the copy to "t0[2|1]" lands on the source clip itself, so it has to be made after the others, but the copy to "t0[5|1]" has to be made after it. Split them into two calls.',
     );
     expect(opOrder).toStrictEqual([]);
+    // A refusal: no undo end, which would clear ppal-manage's undo guard.
+    expect(changedNothing(capture)).toBe(true);
   });
 
   it("writes a copy before the later copy that cuts it short", async () => {

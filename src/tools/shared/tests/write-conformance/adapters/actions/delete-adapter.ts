@@ -52,6 +52,7 @@ export const deleteAdapter: WriteToolAdapter = {
   tool: "ppal-delete",
   run: (args) => deleteObject({ type: "track", ...args }),
   na: {
+    leftBehind: "only removes; makes nothing on the way to a target",
     unparsableDestination:
       "no destination list: path names what is deleted, which the unparsable case covers",
     newTwice: "deletes existing objects; nothing is created",

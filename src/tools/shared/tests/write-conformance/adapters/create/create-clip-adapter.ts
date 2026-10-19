@@ -9,6 +9,7 @@ import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   lookupMockObject,
+  mockNonExistentObjects,
   registerMockObject,
   simulateMockDeletes,
 } from "#src/test/mocks/mock-registry.ts";
@@ -236,4 +237,22 @@ export const createClipAdapter: WriteToolAdapter = {
 
     return { args: { path: "t1/s0" }, detail: "t1" };
   },
+
+  // The scenes made to reach the slot stay when Live then creates no clip.
+  leftBehind: [
+    () => {
+      setUpSession();
+      mockNonExistentObjects();
+      registerMockObject("slot5", {
+        path: livePath.track(0).clipSlot(5),
+        properties: { has_clip: 0 },
+        methods: { create_clip: () => null },
+      });
+
+      return {
+        args: { path: "t0/s5" },
+        detail: "Live created no clip at t0/s5; created s4-s5 to reach it",
+      };
+    },
+  ],
 };

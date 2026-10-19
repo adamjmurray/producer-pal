@@ -12,6 +12,7 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 import {
   landTrackCopy,
   type LandedTrackCopy,
@@ -79,6 +80,10 @@ export function withTempTrackCopy<T>(
   }
 
   const stranded = deleteTempTrack(landing.index);
+
+  if (stranded != null) {
+    markSetChanged();
+  }
 
   if (failure != null) {
     throw stranded == null && failure instanceof Error

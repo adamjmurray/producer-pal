@@ -8,6 +8,8 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { changedNothing } from "#src/shared/max/v8-warning-capture.ts";
+import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/proved-unchanged-request.ts";
 import {
   overrideCall,
   requireMockObject,
@@ -115,11 +117,15 @@ describe("the temp clip that shortens an arrangement clip", () => {
       throw new Error("warping refused");
     });
 
+    const capture = provedUnchangedRequest();
+
     expect(() => shorten(true, { reportScratch })).toThrow("warping refused");
 
     expect(reportScratch).toHaveBeenCalledWith(
       `couldn't remove the temp arrangement clip (${REFUSED})`,
     );
+    // The temp clip stays, so the Set changed.
+    expect(changedNothing(capture)).toBe(false);
   });
 
   it("says a refused audio delete and still finishes the cut", () => {

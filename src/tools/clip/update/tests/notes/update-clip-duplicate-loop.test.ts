@@ -25,7 +25,11 @@ vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
 }));
 
 import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  beginWarningCapture,
+  capturedWarnings,
+  changedNothing,
+} from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Make a clip's call mock report `noteCount` notes from get_notes_extended, so
@@ -512,5 +516,43 @@ describe("updateClip - duplicateLoop", () => {
     expect(firstAdd).toBeGreaterThanOrEqual(0);
     expect(dup).toBeGreaterThan(firstAdd);
     expect(order.lastIndexOf("add_new_notes")).toBeGreaterThan(dup);
+  });
+});
+
+describe("updateClip - duplicateLoop, then the notes fail", () => {
+  let mocks: UpdateClipMocks;
+
+  // A zero repeat step in 4/4, which only shows once the notes are read.
+  const ZERO_STEP = "C1 1|1x3@1bar-n4/4";
+
+  beforeEach(() => {
+    mocks = setupUpdateClipMocks();
+    setupMidiClipMock(mocks.clip123);
+    mockNoteCount(mocks.clip123, 4);
+  });
+
+  it.each([
+    ["the loop was doubled", {}, "already changed: loop doubled"],
+    [
+      "the preTransforms were written first",
+      { preTransforms: "velocity = 50" },
+      "already changed: notes, loop doubled",
+    ],
+  ])("keeps the clip's entry, saying %s", async (_what, extra, landed) => {
+    const capture = beginWarningCapture();
+    const result = await updateClip({
+      id: "123",
+      duplicateLoop: true,
+      notes: ZERO_STEP,
+      ...extra,
+    });
+
+    expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      detail: `Repeat step size must be greater than 0; ${landed}`,
+    });
+    expect(changedNothing(capture)).toBe(false);
   });
 });

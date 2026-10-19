@@ -6,6 +6,7 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { withCreatedScenes } from "#src/tools/shared/clip/create-missing-scenes.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
 import { type Insertion } from "#src/tools/shared/validation/lists/insertion-plan.ts";
@@ -208,11 +209,15 @@ function insertScene(
 
     insertFailed(run, entry, ids.length === 0 ? undefined : { ids, reason });
 
+    if (ids.length === 0) {
+      throw error;
+    }
+
     // The empty scenes it padded stay in the Set though nothing landed.
-    throw ids.length === 0
-      ? error
-      : new Error(withCreatedScenes(reason, leftScenesAt(ids, now)), {
-          cause: error,
-        });
+    markSetChanged();
+
+    throw new Error(withCreatedScenes(reason, leftScenesAt(ids, now)), {
+      cause: error,
+    });
   }
 }

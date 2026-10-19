@@ -5,6 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 
 /** An empty clip slot to build a clip in before copying it where it goes. */
 export interface ScratchSlot {
@@ -44,11 +45,27 @@ export function withScratchSlot<T>(
       path: slotPath(trackIndex, tempSceneIndex),
     });
   } finally {
-    liveSet.call("delete_scene", tempSceneIndex);
+    deleteTempScene(liveSet, tempSceneIndex);
   }
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Delete the scene a scratch slot was made in.
+ * @param liveSet - The Live Set
+ * @param sceneIndex - The temp scene
+ * @throws Error when Live won't delete it
+ */
+function deleteTempScene(liveSet: LiveAPI, sceneIndex: number): void {
+  try {
+    liveSet.call("delete_scene", sceneIndex);
+  } catch (error) {
+    // The scene stays in the Set.
+    markSetChanged();
+    throw error;
+  }
+}
 
 /**
  * An empty slot on the track other than the destination's.

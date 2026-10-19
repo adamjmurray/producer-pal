@@ -31,8 +31,10 @@ import {
   joinDetails,
 } from "#src/tools/shared/helpers/entry-details.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 import { type MinimalClipInfo } from "../minimal-clip-info.ts";
 import { contentSegments, type ContentSegment } from "./content-segments.ts";
+import { ChangedThenFailedError } from "./overwrites/copy-overwrites.ts";
 
 type StampContext = Partial<ToolContext & TilingContext>;
 
@@ -164,7 +166,7 @@ export async function stampAutomation(
   const changed = joinDetails([changesNote(stamped, lengthBeats), ...notes]);
 
   if (changed != null) {
-    throw new Error(`Live made no copy there; ${changed}`);
+    throw failedAfter(`Live made no copy there; ${changed}`, stamped, notes);
   }
 
   return placed;
@@ -457,7 +459,32 @@ function failureWithChanges(
 
   return extra == null
     ? error
-    : new Error(`${errorMessage(error)}; ${extra}`, { cause: error });
+    : failedAfter(`${errorMessage(error)}; ${extra}`, stamped, notes, error);
+}
+
+/**
+ * The error for a failure after stamping began. A written lane makes it a
+ * change the copy's entry reports; a scratch clip or scene left behind only
+ * marks the Set changed.
+ * @param message - The failure, with what changed
+ * @param stamped - How far the stamping got
+ * @param notes - What couldn't be removed
+ * @param cause - What was thrown, if anything
+ * @returns The error to throw
+ */
+function failedAfter(
+  message: string,
+  stamped: Stamped,
+  notes: string[],
+  cause?: unknown,
+): Error {
+  if (notes.length > 0) {
+    markSetChanged();
+  }
+
+  return stamped.beats > 0
+    ? new ChangedThenFailedError(message, { cause })
+    : new Error(message, { cause });
 }
 
 /**

@@ -17,6 +17,7 @@ import {
   noteTarget,
 } from "#src/tools/shared/helpers/target-notes.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 import { calculateDefaultDestination } from "../default-device-destination.ts";
 import { type DeviceCopy } from "../device-copy-entry.ts";
 import { moveDeviceCopy, nameDeviceCopy } from "../device-copy-finish.ts";
@@ -99,6 +100,7 @@ export async function copyDeviceInPlace(
       );
     }
   } else if (answer.index !== spot) {
+    markSetChanged();
     throw new Error(
       `${sourceLabel} was copied, but to ${where(container, answer.index)}, not ${where(container, spot)}; nothing was moved or deleted, so check before re-running`,
     );
@@ -109,6 +111,8 @@ export async function copyDeviceInPlace(
   if (!isCopyOf(copy, original)) {
     const why = answer.kind === "failed" ? ` (${answer.reason})` : "";
 
+    // Live made a device somewhere, and nothing here removes it.
+    markSetChanged();
     throw new Error(
       `${sourceLabel} may have been copied${why}, but the device at ${where(container, spot)} isn't a copy of it; nothing was moved or deleted, so check before re-running`,
     );
@@ -220,6 +224,8 @@ function withStrayCopyDeleted(
   if (left == null) {
     return error;
   }
+
+  markSetChanged();
 
   return new Error(
     joinDetails([

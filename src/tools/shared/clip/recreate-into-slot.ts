@@ -12,6 +12,7 @@ import {
 } from "#src/tools/shared/clip/scratch-slot.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 
 /**
  * What re-creating a clip into a slot came to. A failure's reason says what's
@@ -157,6 +158,7 @@ function recreateViaScratchSlot(
     } catch {
       // Read back what's really there; a clip still there is said below.
       if (clipMayRemain(scratch.slot)) {
+        markSetChanged();
         throw new Error(
           `${errorMessage(error)}; couldn't delete the clip built at ${scratch.path}, it is still there`,
           { cause: error },
@@ -197,6 +199,10 @@ function failure(
   destPath: string,
   wasCleared = false,
 ): SlotRecreate {
+  if (attempt.incomplete && !wasCleared) {
+    markSetChanged();
+  }
+
   const outcome = attempt.incomplete
     ? `create at ${attemptPath} started but didn't finish (${errorMessage(attempt.error)}); ` +
       (wasCleared

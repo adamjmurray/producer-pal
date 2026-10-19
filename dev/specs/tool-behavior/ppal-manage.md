@@ -150,8 +150,9 @@ so. One step is one write call, since each is closed as one undo step.
     `undone: k` and `stopped`.
   - The remote script remembers the trip. Until Producer Pal writes again
     (`/undo/end`; a call that changes nothing doesn't count: a read, a refusal
-    before anything was written, or a write whose every target was skipped), a
-    step the same way is refused up front, touching nothing:
+    before anything was written, or a write whose every target was skipped
+    without leaving anything in the Set), a step the same way is refused up
+    front, touching nothing:
     `The next undo would remove Producer Pal from the Set, so it wasn't done. If the user wants that, or the next step is an edit of theirs, they can do it in Live.`
     A step in the other direction clears it, since the next step this way is
     then a different one. The memory lives on the bridge, so loading another Set

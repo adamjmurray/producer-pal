@@ -8,6 +8,8 @@
 // clear in the same call would otherwise miss an overlap, which crashes Live.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { changedNothing } from "#src/shared/max/v8-warning-capture.ts";
+import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/proved-unchanged-request.ts";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
@@ -140,6 +142,8 @@ describe("a lane view after a write that threw", () => {
       throw new Error("Live refused the copy");
     };
 
+    const capture = provedUnchangedRequest();
+
     expect(() =>
       handleArrangementStartOperation({
         clip: LiveAPI.from(ids[0] as string),
@@ -154,5 +158,6 @@ describe("a lane view after a write that threw", () => {
 
     expect(lanes.clips(MAIN).find(({ id }) => id === ids[3])?.start).toBe(26);
     expect(stackedLaneSpans().at(-1)).toStrictEqual([26, 28]);
+    expect(changedNothing(capture)).toBe(false);
   });
 });

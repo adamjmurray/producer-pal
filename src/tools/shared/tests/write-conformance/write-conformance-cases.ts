@@ -5,7 +5,11 @@
 
 import { isDeepStrictEqual } from "node:util";
 import { expect } from "vitest";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  beginWarningCapture,
+  capturedWarnings,
+  changedNothing,
+} from "#src/shared/max/v8-warning-capture.ts";
 import {
   armSettleFault,
   disarmSettleFault,
@@ -41,6 +45,7 @@ export const writeConformanceCases: Record<
   refusals: expectRefusalsWriteNothing,
   countWithDestinations: expectCountWithDestinationsRefused,
   loneSkipped: expectLoneSkipThrows,
+  leftBehind: expectLeftBehindIsAChange,
   settleThrows: expectSettleThrowKeepsEntries,
 };
 
@@ -87,8 +92,28 @@ async function expectRefusal(
   args: ToolArgs,
   message?: string,
 ): Promise<void> {
-  await expect(runTool(adapter, args)).rejects.toThrow(message);
+  const unchanged = await changedNothingAfter(async () => {
+    await expect(runTool(adapter, args)).rejects.toThrow(message);
+  });
+
   expect(writesMade()).toStrictEqual([]);
+  // Nothing written, so Node sends no undo end (one clears ppal-manage's guard).
+  expect(unchanged).toBe(true);
+}
+
+/**
+ * Run a check in a request of its own.
+ * @param check - Makes the call and checks what it answered
+ * @returns Whether the call proved it changed nothing
+ */
+async function changedNothingAfter(
+  check: () => Promise<void>,
+): Promise<boolean> {
+  const capture = beginWarningCapture();
+
+  await check();
+
+  return changedNothing(capture);
 }
 
 /**
@@ -315,8 +340,29 @@ async function expectCountWithDestinationsRefused(
 
 async function expectLoneSkipThrows(adapter: WriteToolAdapter): Promise<void> {
   const { args, detail } = needs(adapter, "loneSkipped")();
+  const unchanged = await changedNothingAfter(async () => {
+    await expect(runTool(adapter, args)).rejects.toThrow(detail);
+  });
 
-  await expect(runTool(adapter, args)).rejects.toThrow(detail);
+  expect(unchanged).toBe(true);
+}
+
+async function expectLeftBehindIsAChange(
+  adapter: WriteToolAdapter,
+): Promise<void> {
+  for (const [index, setUp] of needs(adapter, "leftBehind").entries()) {
+    if (index > 0) {
+      freshLive();
+    }
+
+    const { args, detail } = setUp();
+    const unchanged = await changedNothingAfter(async () => {
+      await expect(runTool(adapter, args)).rejects.toThrow(detail);
+    });
+
+    // What was left gets its own undo step, not a share of the next call's.
+    expect(unchanged).toBe(false);
+  }
 }
 
 async function expectSettleThrowKeepsEntries(

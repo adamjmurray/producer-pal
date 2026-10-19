@@ -8,8 +8,11 @@ import {
   type RegisteredMockObject,
   lookupMockObject,
   mockNonExistentObjects,
+  registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
+import { registerGrowingRack } from "#src/tools/device/tests/helpers/growing-rack-fixtures.ts";
 import {
   LIVE_FAILURE,
   failOnSet,
@@ -173,4 +176,21 @@ export const createDeviceAdapter: WriteToolAdapter = {
 
     return { args: { path: "t9/d+" }, detail: "t9" };
   },
+
+  // The path made a chain, then the chain turned the insert down.
+  leftBehind: [
+    () => {
+      registerMockObject("track-0", { path: livePath.track(0) });
+      registerGrowingRack({
+        track: 0,
+        existing: 2,
+        chainMethods: { insert_device: () => ["id", "0"] },
+      });
+
+      return {
+        args: { device: "Operator", path: "t0/d0/c+" },
+        detail: "left an empty chain: c2",
+      };
+    },
+  ],
 };

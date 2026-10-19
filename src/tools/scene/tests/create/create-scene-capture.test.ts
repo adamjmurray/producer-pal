@@ -6,6 +6,10 @@
 import { describe, expect, it } from "vitest";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  beginWarningCapture,
+  changedNothing,
+} from "#src/shared/max/v8-warning-capture.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   LIVE_FAILURE,
@@ -54,9 +58,13 @@ describe("createScene capture", () => {
 
     failCall(liveSet, /^capture_and_insert_scene$/, 1);
 
+    const capture = beginWarningCapture();
+
     expect(() => createScene({ capture: true, path: "s4" })).toThrow(
       `${LIVE_FAILURE}; created s2-s3 to reach it`,
     );
+    // The scenes stay, so the call isn't one that changed nothing.
+    expect(changedNothing(capture)).toBe(false);
   });
 
   it("throws when Live ignores the capture, though a scene stands at its index", () => {

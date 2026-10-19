@@ -38,6 +38,7 @@ import {
 } from "#src/tools/shared/helpers/entry-details.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 import {
   REQUEST_OUT_OF_TIME,
   unreachedDetail,
@@ -349,6 +350,8 @@ function deleteTempTrack(liveSet: LiveAPI, track: LiveAPI): string | undefined {
 
     return undefined;
   } catch (error) {
+    markSetChanged();
+
     return `the temporary track at ${formatObjectPath({ kind: "track", trackIndex: index })} couldn't be deleted: ${errorMessage(error)}`;
   }
 }

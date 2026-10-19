@@ -8,7 +8,11 @@
 // for the whole call rather than an entry per device.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  beginWarningCapture,
+  capturedWarnings,
+  changedNothing,
+} from "#src/shared/max/v8-warning-capture.ts";
 import {
   type RegisteredMockObject,
   livePath,
@@ -323,9 +327,13 @@ describe("updateDevice - wrapInRack with an instrument and its effects", () => {
     });
 
     it("deletes the empty rack, then moves the instrument back", () => {
+      const capture = beginWarningCapture();
+
       expect(() => updateDevice({ path: "t0/d0", wrapInRack: true })).toThrow(
         "wrapInRack: Live made no chain in the new rack",
       );
+      // Everything was put back.
+      expect(changedNothing(capture)).toBe(true);
 
       /**
        * When a mock first got a call matching a predicate.
@@ -353,9 +361,13 @@ describe("updateDevice - wrapInRack with an instrument and its effects", () => {
         throw new Error("delete_device failed");
       };
 
+      const capture = beginWarningCapture();
+
       expect(() => updateDevice({ path: "t0/d0", wrapInRack: true })).toThrow(
         "wrapInRack: Live made no chain in the new rack; the empty new rack t0/d9",
       );
+      // The rack stays, so the call changed the Set.
+      expect(changedNothing(capture)).toBe(false);
     });
   });
 

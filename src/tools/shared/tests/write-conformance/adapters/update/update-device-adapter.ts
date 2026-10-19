@@ -10,7 +10,17 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  registerGrowingRack,
+  registerMoveSourceAndRackTrack,
+} from "#src/tools/device/tests/helpers/growing-rack-fixtures.ts";
 import { updateDevice } from "#src/tools/device/update/update-device.ts";
+import {
+  INSERT_DEVICE_FAILURE,
+  registerInstrumentDevice,
+  registerTempTrackMocks,
+  registerThrowingTrack0,
+} from "#src/tools/device/update/tests/wrap-in-rack/update-device-wrap-in-rack-test-helpers.ts";
 import { mockWorkingDeviceMoves } from "#src/tools/device/update/tests/update-device-test-helpers.ts";
 import {
   LIVE_FAILURE,
@@ -191,4 +201,33 @@ export const updateDeviceAdapter: WriteToolAdapter = {
 
     return { args: { id: "nowhere", name: "A" }, detail: "nowhere" };
   },
+
+  // The toPath made a chain, then Live dropped the move.
+  leftBehind: [
+    () => {
+      mockNonExistentObjects();
+      registerMoveSourceAndRackTrack();
+      registerGrowingRack({ track: 1, existing: 1 });
+      registerMockObject("live-set", {
+        path: livePath.liveSet,
+        methods: { move_device: () => null },
+      });
+
+      return {
+        args: { id: "src-0", toPath: "t1/d0/c+" },
+        detail: "left an empty chain: c1",
+      };
+    },
+    // The wrap failed, and the instrument wouldn't go back off the temp track.
+    () => {
+      registerInstrumentDevice("device-3", 3);
+      registerThrowingTrack0();
+      registerTempTrackMocks((_id, to) => to === "id track-0");
+
+      return {
+        args: { path: "t0/d3", wrapInRack: true },
+        detail: `${INSERT_DEVICE_FAILURE}; the instrument was left on new track t1`,
+      };
+    },
+  ],
 };

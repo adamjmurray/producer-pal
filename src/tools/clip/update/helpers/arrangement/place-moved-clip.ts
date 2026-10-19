@@ -30,6 +30,7 @@ import {
   refuseClipWork,
   type ClipReasons,
 } from "../entries/clip-reasons.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 
 interface PlaceMovedClipArgs {
   clip: LiveAPI;
@@ -264,6 +265,7 @@ function recreateForMove(
     return newClip;
   } catch (error) {
     if (error instanceof PartialRecreateError) {
+      markSetChanged();
       refuseClipWork(
         reasons,
         clip.id,

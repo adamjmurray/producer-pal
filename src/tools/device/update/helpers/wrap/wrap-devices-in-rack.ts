@@ -26,6 +26,7 @@ import {
   type NamedTarget,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 import { liveObjectWords } from "#src/tools/shared/device/device-target-types.ts";
 import {
   refuseSecondInstrument,
@@ -108,6 +109,8 @@ function wrapEffectsInRack(
     getDeviceInsertionPoint(assertDefined(devices[0], "first device").device);
   const rack = insertRack(container, position, rackType);
 
+  // Nothing removes the rack, so a throw from here on still changed the Set.
+  markSetChanged();
   nameRack(rack, name);
   const chain = firstChain(rack);
 

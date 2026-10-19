@@ -15,6 +15,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 import { clipFromDuplicateResult } from "./arrangement-duplicate-result.ts";
 import { type LaneView } from "./arrangement-lane-view.ts";
 import { type ClipReporter } from "./clip-reporter.ts";
@@ -197,6 +198,11 @@ export function removeSessionClip(
     session.slot.call("delete_clip");
   } catch (error) {
     say(`couldn't remove the scratch session clip (${errorMessage(error)})`);
+
+    // Removing the scene below takes the clip; with no scene, it stays.
+    if (session.sceneId == null) {
+      markSetChanged();
+    }
   }
 
   // Tried even when the clip stayed: removing the scene takes its clips too.
@@ -221,6 +227,7 @@ export function removeTempArrangementClip(
   try {
     track.call("delete_clip", toLiveApiId(clipId));
   } catch (error) {
+    markSetChanged();
     reporter(report)(
       `couldn't remove the temp arrangement clip (${errorMessage(error)})`,
     );
@@ -318,6 +325,7 @@ function removeScratchScene(
 
     liveSet.call("delete_scene", sceneIndex);
   } catch (error) {
+    markSetChanged();
     say(
       `left an empty scene behind: couldn't remove the scratch scene (${errorMessage(error)})`,
     );

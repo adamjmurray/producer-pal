@@ -4,7 +4,15 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
+import {
+  beginWarningCapture,
+  changedNothing,
+} from "#src/shared/max/v8-warning-capture.ts";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  LIVE_FAILURE,
+  failOnSet,
+} from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
 import {
   type RegisteredMockObject,
   children,
@@ -131,6 +139,18 @@ describe("updateDevice - wrapInRack chain", () => {
         'path "t0/d1" is not in the rack: Live didn\'t move it; ' +
         "the new rack was left empty",
     });
+  });
+
+  // Nothing takes the rack out again, so the call changed the Set.
+  it("counts as a change when the wrap throws after the rack went in", () => {
+    failOnSet(registerGrowingChainRack(1), "name");
+
+    const capture = beginWarningCapture();
+
+    expect(() =>
+      updateDevice({ path: "t0/d0", wrapInRack: true, name: "Bus" }),
+    ).toThrow(LIVE_FAILURE);
+    expect(changedNothing(capture)).toBe(false);
   });
 });
 

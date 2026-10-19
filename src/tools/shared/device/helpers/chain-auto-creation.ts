@@ -10,6 +10,7 @@
 import { assertDefined } from "#src/shared/error-message.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 import { NEW_CHAIN } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import { trackSegmentPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
@@ -83,9 +84,14 @@ export function appendChain(rack: LiveAPI): LiveAPI | null {
 
   invalidateRackChains(rack);
 
-  return Array.isArray(result) && result[0] === "id"
-    ? LiveAPI.from(String(result[1]))
-    : null;
+  if (!Array.isArray(result) || result[0] !== "id") {
+    return null;
+  }
+
+  // A chain made is never removed, whatever the write then does.
+  markSetChanged();
+
+  return LiveAPI.from(String(result[1]));
 }
 
 /**
@@ -242,6 +248,7 @@ function autoCreateDrumPadChains(
     // A new chain appends to the end on note 36, so move it to the pad we want.
     device.call("insert_chain");
     invalidateRackChains(device);
+    markSetChanged();
 
     // By id, not getChildren: naming the last chain would otherwise build every
     // chain in the rack, once per chain created.

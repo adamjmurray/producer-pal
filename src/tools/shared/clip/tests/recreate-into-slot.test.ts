@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { changedNothing } from "#src/shared/max/v8-warning-capture.ts";
 import {
   lookupMockObject,
   mockNonExistentObjects,
@@ -13,6 +14,7 @@ import {
 import { copyClipToSlot } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { recreateClipInSlot } from "#src/tools/shared/clip/recreate-clip.ts";
 import { recreateIntoSlot } from "#src/tools/shared/clip/recreate-into-slot.ts";
+import { provedUnchangedRequest } from "#src/tools/shared/write-pipeline/tests/proved-unchanged-request.ts";
 import { registerTrackSlots } from "./track-slots-test-helpers.ts";
 
 vi.mock(import("#src/tools/shared/clip/copy-clip-to-slot.ts"), () => ({
@@ -117,5 +119,65 @@ describe("recreateIntoSlot when the copy onto the destination throws", () => {
     expect(recreateWithCopyRefused()).toThrow("Live says no");
     expect(liveSet?.call).toHaveBeenCalledWith("create_scene", -1);
     expect(liveSet?.call).toHaveBeenCalledWith("delete_scene", 2);
+  });
+});
+
+describe("recreateIntoSlot: whether a failure changed the Set", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(recreateClipInSlot).mockImplementation(() => {
+      throw new Error("notes failed");
+    });
+  });
+
+  /**
+   * Re-create into slot 0 in a request whose write otherwise proved it
+   * changed nothing.
+   * @returns Whether the request changed nothing
+   */
+  function verdictOfRecreate(): boolean {
+    const capture = provedUnchangedRequest();
+    const outcome = recreateIntoSlot(
+      LiveAPI.from("id source"),
+      { trackIndex: 0, sceneIndex: 0 },
+      LiveAPI.from(livePath.track(0).clipSlot(0)),
+      {},
+      [],
+    );
+
+    expect(outcome.ok).toBe(false);
+
+    return changedNothing(capture);
+  }
+
+  it("may have changed something when an incomplete clip is left in the empty slot", () => {
+    registerTrackSlots([0]);
+    registerMockObject("partial", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+    });
+
+    expect(verdictOfRecreate()).toBe(false);
+  });
+
+  it("changed nothing when the create made no clip", () => {
+    mockNonExistentObjects();
+    registerTrackSlots([0]);
+
+    expect(verdictOfRecreate()).toBe(true);
+  });
+
+  it("may have changed something when a clip built in a free slot stays", () => {
+    registerTrack([0]);
+    refuseDelete();
+    registerMockObject("stray", {
+      path: livePath.track(0).clipSlot(1).clip(),
+      type: "Clip",
+    });
+
+    const capture = provedUnchangedRequest();
+
+    expect(recreateWithCopyRefused()).toThrow("it is still there");
+    expect(changedNothing(capture)).toBe(false);
   });
 });

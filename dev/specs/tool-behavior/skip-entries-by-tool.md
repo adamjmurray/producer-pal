@@ -343,9 +343,11 @@ with a tool, the tool wins.
   early (a failure, the request deadline) the copy is still made, and its
   `detail` says how far the lane got
   (`automation written for the first 4 of 10 beats only (<why>)`, or
-  `automation not written (<why>)`). If the copy then fails, the failure adds
-  `already changed: automation written for ...`. A clip whose scratch copy can't
-  be made is refused before anything changes.
+  `automation not written (<why>)`). If the copy then fails, the lane has still
+  changed, so the entry is a normal one (no `ok: false`) whose `detail` adds
+  `already changed: automation written for ...`; in a scene copy, the position
+  keeps its entry. A clip whose scratch copy can't be made is refused before
+  anything changes.
 - **duplicate: a session clip's automation written to the lane.** Copying a
   session clip with automation (MIDI, or warped audio) to the arrangement, at
   any length, makes Live write that automation to the track's arrangement lane

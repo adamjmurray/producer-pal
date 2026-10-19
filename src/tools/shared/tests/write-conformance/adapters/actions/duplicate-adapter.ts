@@ -22,6 +22,7 @@ import {
   hookCalls,
   namedOrder,
   registerScenes,
+  registerSlotPastLastScene,
   registerTracks,
 } from "../../write-conformance-fixtures.ts";
 import { type WriteToolAdapter } from "../../write-conformance-types.ts";
@@ -204,4 +205,24 @@ export const duplicateAdapter: WriteToolAdapter = {
 
     return { args: { id: "nowhere" }, detail: "nowhere" };
   },
+
+  // The scenes made to reach the slot stay though no slot turned up there.
+  leftBehind: [
+    () => {
+      registerMockObject("track0", {
+        path: livePath.track(0),
+        properties: { has_midi_input: 1 },
+      });
+      registerMockObject("clip", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+      registerSlotPastLastScene(3);
+
+      return {
+        args: { type: "clip", id: "clip", toPath: "t0/s3" },
+        detail: "Live made no copy there; created s1-s3 to reach it",
+      };
+    },
+  ],
 };

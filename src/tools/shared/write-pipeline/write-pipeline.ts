@@ -69,10 +69,14 @@ export function runWrite<
 
   return reportingVerdict(verdict, () =>
     afterMaybe(
-      refusingUpFront(verdict, () => resolveTargets(spec, args, call)),
-      ({ targets, checked }) => {
-        const planned = planWrites(spec, targets, checked, call);
-
+      // The plan runs before anything is written, so its throw is a refusal too.
+      refusingUpFront(verdict, () =>
+        afterMaybe(resolveTargets(spec, args, call), (resolved) => ({
+          ...resolved,
+          planned: planWrites(spec, resolved.targets, resolved.checked, call),
+        })),
+      ),
+      ({ targets, checked, planned }) => {
         return afterMaybe(
           journal.guard(() => spec.before?.(checked, call)),
           () =>

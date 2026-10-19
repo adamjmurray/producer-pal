@@ -153,13 +153,19 @@ async function copyFrom(
       : Object.assign(attempt.copy, { created: lanes.made });
   }
 
-  // Live declined the copy after its landing cleared clips: the Set changed,
-  // so the entry says so without `ok: false`, and it counts as landed.
-  if (attempt.cleared != null) {
+  // Live declined the copy after its landing cleared clips or wrote the lane:
+  // the Set changed, so the entry says so without `ok: false`, and it counts
+  // as landed.
+  if (attempt.cleared != null || attempt.changed === true) {
     step.coverLanded();
 
     return {
-      ...clearedCopy(named.value, `${attempt.refused}; ${attempt.cleared}`),
+      ...clearedCopy(
+        named.value,
+        attempt.cleared == null
+          ? attempt.refused
+          : `${attempt.refused}; ${attempt.cleared}`,
+      ),
       ...(lanes.made == null ? {} : { created: lanes.made }),
     };
   }

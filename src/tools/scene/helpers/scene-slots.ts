@@ -7,6 +7,7 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { withCreatedScenes } from "#src/tools/shared/clip/create-missing-scenes.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
 import {
   type InsertionSpot,
@@ -87,6 +88,7 @@ export function padScenes(
   try {
     for (; made < count; made++) {
       liveSet.call("create_scene", -1);
+      markSetChanged();
     }
   } catch (error) {
     throw new Error(

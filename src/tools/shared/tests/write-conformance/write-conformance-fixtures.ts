@@ -9,6 +9,7 @@ import {
   type RegisteredMockObject,
   deleteMockObject,
   lookupMockObject,
+  mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
@@ -340,4 +341,30 @@ export function afterRenameScenario(
     landed: "name",
     expected: [{ id: id0 }, {}, { id: id2 }],
   };
+}
+
+/**
+ * Track 0's slot 0 holding a clip Live won't copy, in a Live Set with one
+ * scene. Slot `sceneIndex` exists only once the scenes up to it are made, and
+ * nothing else does.
+ * @param sceneIndex - The slot past the last scene that a copy is aimed at
+ */
+export function registerSlotPastLastScene(sceneIndex: number): void {
+  registerMockObject("slot0", {
+    path: livePath.track(0).clipSlot(0),
+    properties: { has_clip: 1 },
+    methods: { duplicate_clip_to: () => 0 },
+  });
+  registerMockObject("live_set", {
+    path: livePath.liveSet,
+    properties: { scenes: children("s0") },
+    methods: {
+      create_scene: () =>
+        registerMockObject(`slot${sceneIndex}`, {
+          path: livePath.track(0).clipSlot(sceneIndex),
+          properties: { has_clip: 0 },
+        }),
+    },
+  });
+  mockNonExistentObjects();
 }

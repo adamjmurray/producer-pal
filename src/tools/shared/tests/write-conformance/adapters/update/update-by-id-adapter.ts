@@ -50,6 +50,8 @@ export function updateByIdAdapter(config: UpdateByIdConfig): WriteToolAdapter {
     tool: config.tool,
     run: config.run,
     na: {
+      leftBehind:
+        "what it makes on the way (a take lane) keeps the entry, so it is never a skip",
       unparsableDestination:
         "no destination list: path names what is updated, which the unparsable case covers",
       newTwice: `updates existing ${config.nouns} only`,

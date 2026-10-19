@@ -10,6 +10,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  beginWarningCapture,
+  changedNothing,
+} from "#src/shared/max/v8-warning-capture.ts";
 import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -320,9 +324,13 @@ describe("createDevice — a browser load's cleanup", () => {
         : { success: true, result: { available: true, error: "no such item" } },
     );
 
+    const capture = beginWarningCapture();
+
     await expect(
       createDevice({ device: "Pro-Q 4", path: "t0/d+" }),
     ).rejects.toThrow(`could not load "Pro-Q 4": no such item; ${STRANDED}`);
+    // The track stays, so the call changed the Set.
+    expect(changedNothing(capture)).toBe(false);
   });
 
   it("does the same for a device loaded from a preset", async () => {

@@ -28,6 +28,8 @@ export const createTrackAdapter: WriteToolAdapter = {
   tool: "ppal-create-track",
   run: (args) => createTrack(args),
   na: {
+    leftBehind:
+      "a track that lands keeps its entry; nothing is made on the way to one",
     unparsableDestination:
       "path is the destination, which the unparsable case covers",
     unappliable:

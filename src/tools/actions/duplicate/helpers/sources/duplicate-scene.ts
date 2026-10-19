@@ -22,6 +22,7 @@ import {
 } from "../clip/arrangement-length.ts";
 import { refusedCopy } from "../clip/copy-entries.ts";
 import {
+  changedBefore,
   clearedBefore,
   copiedIds,
   copyClearingAsync,
@@ -185,7 +186,7 @@ function joinedDetail(...details: Array<string | undefined>): {
  * @param read - The scene as the call already read it, to share the pass
  * @returns The clips the copy landed, each with its own path, and what it did
  *   on a track where it landed none or failed. A position where no clip landed
- *   and nothing was cleared is a skip.
+ *   and nothing changed is a skip.
  */
 export async function duplicateSceneToArrangement(
   sceneId: string,
@@ -227,11 +228,11 @@ export async function duplicateSceneToArrangement(
   const duplicatedClips: MinimalClipInfo[] = [];
   // Tracks that got no copy, and why.
   const declined: string[] = [];
-  let clearedAny = false;
+  let changedAny = false;
 
   for (const { clip, trackIndex } of sceneClips) {
     const track = LiveAPI.from(livePath.track(trackIndex));
-    const { clips, cleared, failure } = await copyTrackClip(
+    const { clips, cleared, changed, failure } = await copyTrackClip(
       clip,
       trackIndex,
       track,
@@ -270,13 +271,13 @@ export async function duplicateSceneToArrangement(
         : `on ${where}: ${failure}`;
 
     declined.push(cleared == null ? why : `${why}, but ${cleared}`);
-    clearedAny ||= cleared != null;
+    changedAny ||= changed;
   }
 
   const detail = joinDetails(declined);
 
   // Nothing landed and nothing changed: the position got nothing.
-  if (duplicatedClips.length === 0 && !clearedAny) {
+  if (duplicatedClips.length === 0 && !changedAny) {
     return refusedCopy(
       { beats: arrangementStartBeats },
       { songTimeSigNumerator, songTimeSigDenominator },
@@ -299,7 +300,8 @@ export async function duplicateSceneToArrangement(
  * @param lengthBeats - How long the copy is
  * @param ledger - The call's arrangement lanes
  * @param write - Makes the copy
- * @returns The clips that landed, what they cleared, and why it failed if it did
+ * @returns The clips that landed, what they cleared, whether the Set changed,
+ *   and why it failed if it did
  */
 async function copyTrackClip(
   clip: LiveAPI,
@@ -312,6 +314,8 @@ async function copyTrackClip(
 ): Promise<{
   clips: MinimalClipInfo[];
   cleared?: string;
+  /** Whether the copy changed the Set (cleared clips, wrote the lane) */
+  changed: boolean;
   failure?: string;
 }> {
   try {
@@ -325,7 +329,11 @@ async function copyTrackClip(
       (clips) => clips.flatMap(copiedIds),
     );
 
-    return { clips: made, ...(cleared != null && { cleared }) };
+    return {
+      clips: made,
+      changed: cleared != null,
+      ...(cleared != null && { cleared }),
+    };
   } catch (error) {
     // What the failing copy cleared first stays with its failure.
     const cleared = clearedBefore(error);
@@ -333,6 +341,7 @@ async function copyTrackClip(
     return {
       clips: [],
       failure: errorMessage(error),
+      changed: changedBefore(error),
       ...(cleared != null && { cleared }),
     };
   }

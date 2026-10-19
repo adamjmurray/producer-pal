@@ -21,12 +21,12 @@ Types are in `write-pipeline-types.ts`; `runWrite()` is in `write-pipeline.ts`.
 |       | `lists`          | Then compare per-target list lengths. A mismatch refuses the call.                                                           |
 | 3     | `check`          | Look things up, never write. A throw refuses the call.                                                                       |
 | 3b    | `before`         | Write what the call as a whole changes (tempo, transport), once. Runs after every refusal, so a refused call writes nothing. |
-| 4a    | `plan`           | Pure: choose the write order and what each target's write needs (`order`, `each`).                                           |
+| 4a    | `plan`           | Pure: choose the write order and what each target's write needs (`order`, `each`). A throw refuses the call.                 |
 | 4b    | `write`          | Write one target; return its entry. A throw becomes that target's entry.                                                     |
 | 5     | `settle`         | After every target: fix up paths, focus, warnings. May await a write that needs every entry.                                 |
 |       | `loneSkipThrows` | Whether a lone skipped target throws its detail (default yes).                                                               |
 
-Refusals (stages 1 to 3) happen before the first write. Once targets are being
+Refusals (stages 1 to 4a) happen before the first write. Once targets are being
 written, a failed target costs only its own entry; the rest still run. A
 `settle` that throws after any target was written costs nothing either: the
 pipeline returns every entry with a `WARNING:`
@@ -92,6 +92,11 @@ All decided before the first write (`plans/`), so the loop never has to undo:
   Live. A throw after that keeps the target's normal entry (plus `partial`) with
   a detail `already changed: <phrases>`, not an `ok: false` skip.
 - `step.coverLanded()`: see above.
+- `markSetChanged()` (`set-changed.ts`): say that Live made something that stays
+  even if the target ends as a skip (empty chains or scenes made on the way, a
+  stray copy, a temp track or scratch clip Live won't delete). The entry is
+  unchanged; only the undo verdict is. Call it where the change is made: it
+  marks the request, so a deep helper needs no `step`.
 - `withPieces(entry, extra)`: return the target's own entry plus extra entries
   that ride behind it (a clip split into pieces).
 - `call.ignored(params, why)`: warn that a whole-call param did nothing, as
@@ -152,15 +157,16 @@ guard that `ppal-manage` keeps (see
 [ppal-manage](../specs/tool-behavior/ppal-manage.md)). Two ways to know:
 
 - **The pipeline proves it.** `runWrite()` reports a verdict to the request: it
-  changed nothing when it was refused before the first write (stages 1 to 3), or
-  when no target was written and nothing was noted with `call.landed`. V8 puts
-  `changedNothing` on the response, Node notes it, and the end is skipped when
-  every call in the group proved it. Anything else (a throw from `before` or
-  `settle`, a write that landed then threw, a response V8 never marked) counts
-  as a change. This is why `write` must say `step.landed`, and `before` and
-  `settle` must say `call.landed`, for every change they make: a change not
-  noted looks like none. A tool that writes outside `runWrite()` calls
-  `recordWriteRun(false)`.
+  changed nothing when it was refused before the first write (stages 1 to 4a),
+  or when no target was written and nothing was noted with `call.landed` or
+  `markSetChanged()`. V8 puts `changedNothing` on the response, Node notes it,
+  and the end is skipped when every call in the group proved it. Anything else
+  (a throw from `before` or `settle`, a write that landed then threw, a response
+  V8 never marked) counts as a change. This is why `write` must say
+  `step.landed`, and `before` and `settle` must say `call.landed`, for every
+  change they make: a change not noted looks like none, and so does a skip that
+  left something behind without `markSetChanged()`. A tool that writes outside
+  `runWrite()` calls `recordWriteRun(false)`.
 - **The def says so.** A tool outside the pipeline, or one whose actions never
   touch the Set, declares `changesSet(args)` in its def (`ppal-context`: reads,
   and global or memory writes; `ppal-playback`: session clip actions;
@@ -184,9 +190,9 @@ the call's other changes.
    (see `adapters/`). The conformance suite runs every write tool through the
    same cases: order, lone entry, named twice, replaced later, unparsable
    (targets and destinations), unappliable, failure midway and after a change,
-   wrong list length, refusals write nothing, count with destinations, lone
-   skip, final step throws. A case that can't apply is listed under `na` with
-   why.
+   wrong list length, refusals write nothing (and change nothing), count with
+   destinations, lone skip, a skip that left something behind, final step
+   throws. A case that can't apply is listed under `na` with why.
 4. Add per-tool tests for what the hooks do. Cover the pipeline's rules through
    the conformance suite, not by re-testing them per tool.
 5. Add a behavior case to `e2e/mcp/` for any change to what the tool does in

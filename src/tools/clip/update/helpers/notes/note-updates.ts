@@ -301,6 +301,8 @@ export function handleDuplicateLoop(
   const mutedBefore = readClipNotes(clip).muted.length;
 
   clip.call("duplicate_loop");
+  // A later failure keeps the entry and says the clip was doubled.
+  noteLanded(reasons, "loop doubled", { id: clip.id });
 
   // duplicate_loop mutates the clip in place (same id). Recreate from id to dodge
   // LiveAPI staleness - matters for arrangement clips - before reading the count.

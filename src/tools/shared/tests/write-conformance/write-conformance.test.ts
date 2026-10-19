@@ -26,6 +26,8 @@
 //  9. A lone target that is skipped makes the call throw with its detail.
 // 10. A throw in the final step, after targets wrote, keeps every entry and
 //     warns that the results may be incomplete or out of date.
+// 11. A skip that left something in the Set still throws its detail, but the
+//     call no longer counts as changing nothing; a refusal or a plain skip does.
 //
 // A case that can't apply to a tool is listed under `na` in its adapter, with
 // why.
@@ -99,6 +101,7 @@ function hasOwnHook(adapter: WriteToolAdapter, id: CaseId): boolean {
     refusals: adapter.refusals,
     countWithDestinations: adapter.countWithDestinations,
     loneSkipped: adapter.loneSkipped,
+    leftBehind: adapter.leftBehind,
     settleThrows: adapter.settleThrows ?? adapter.many,
   };
   const twin = id === "order" ? "lone" : "order";

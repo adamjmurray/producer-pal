@@ -14,6 +14,7 @@ export const selectAdapter: WriteToolAdapter = {
   tool: "ppal-select",
   run: (args) => select(args),
   na: {
+    leftBehind: "only selects; makes nothing on the way to a target",
     unparsableDestination:
       "no destination list: path names what is selected, which the unparsable case covers",
     order: ONE_TARGET,

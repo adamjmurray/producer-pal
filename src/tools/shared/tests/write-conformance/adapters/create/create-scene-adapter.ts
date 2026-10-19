@@ -130,4 +130,16 @@ export const createSceneAdapter: WriteToolAdapter = {
 
     return { args: { path: "s+" }, detail: "scene" };
   },
+
+  // The empty scenes padded to reach the spot stay when the insert is refused.
+  leftBehind: [
+    () => {
+      failCall(setUpSet(), /^create_scene$/, 3);
+
+      return {
+        args: { path: "s5" },
+        detail: `${LIVE_FAILURE}; created s2-s3 to reach it`,
+      };
+    },
+  ],
 };

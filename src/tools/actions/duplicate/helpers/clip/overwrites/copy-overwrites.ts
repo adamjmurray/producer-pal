@@ -41,11 +41,17 @@ export interface CopiedClearing<T> {
 }
 
 /**
+ * A copy that threw after it changed the Set (wrote the lane's automation), so
+ * its entry is a normal one, not a skip. The message says what changed.
+ */
+export class ChangedThenFailedError extends Error {}
+
+/**
  * A copy that threw after it may have cleared clips. The message is the
  * original's, so a lone failure still throws the same words; `cleared` says
  * what the write destroyed before it failed.
  */
-export class ClearedThenFailedError extends Error {
+export class ClearedThenFailedError extends ChangedThenFailedError {
   readonly cleared: string;
 
   constructor(original: unknown, cleared: string) {
@@ -61,6 +67,14 @@ export class ClearedThenFailedError extends Error {
  */
 export function clearedBefore(error: unknown): string | undefined {
   return error instanceof ClearedThenFailedError ? error.cleared : undefined;
+}
+
+/**
+ * @param error - What a failed copy threw
+ * @returns Whether the copy changed the Set before it threw
+ */
+export function changedBefore(error: unknown): boolean {
+  return error instanceof ChangedThenFailedError;
 }
 
 /** An entry that names a clip, or a group of clips. */

@@ -28,4 +28,23 @@ describe("duplicate - a scene with automated clips, at another length", () => {
     ]);
     expect(JSON.stringify(result)).toContain("overwrote the clip at");
   });
+
+  // The lane was written, so the position isn't a skip, though no clip landed.
+  it("keeps the position's entry when its only clip wrote the lane and then wasn't placed", async () => {
+    const world = registerStampWorld();
+
+    world.declinesCopy = (count) => count === 2;
+
+    const result = await duplicate({
+      type: "scene",
+      id: "world_scene_0",
+      arrangementStart: "5|1",
+      arrangementLength: "2bar",
+    });
+
+    expect(result).not.toHaveProperty("ok");
+    expect(JSON.stringify(result)).toContain(
+      "already changed: automation written for all 8 beats",
+    );
+  });
 });

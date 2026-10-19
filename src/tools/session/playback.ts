@@ -38,6 +38,7 @@ import {
 } from "./helpers/playback/group-slot-effects.ts";
 import {
   handlePlayScene,
+  sceneToPlay,
   type FiredScene,
   type PlaybackState,
 } from "./helpers/playback/scene-playback.ts";
@@ -292,12 +293,17 @@ function playsNothing(slot: LiveAPI): boolean {
 
 /**
  * Resolve the timeline, which reads Live but writes nothing, so a position or
- * loop bound that can't be read refuses the call whatever the action.
+ * loop bound that can't be read refuses the call whatever the action. So does
+ * play-scene with no scene to fire.
  * @param call - The call
  * @returns The call with what the hooks share
  */
 function checkPlayback(call: PlaybackCall): PlaybackChecked {
   const liveSet = LiveAPI.from(livePath.liveSet);
+
+  if (call.action === PLAY_SCENE) {
+    sceneToPlay(call.sceneIndex ?? undefined);
+  }
 
   return {
     ...call,
