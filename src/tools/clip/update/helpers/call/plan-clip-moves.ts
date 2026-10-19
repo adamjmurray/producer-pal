@@ -37,6 +37,15 @@ export interface ClipPlanned {
 }
 
 /**
+ * Each target's clip.index and the call's clip.count, for a caller that numbers
+ * the clips itself (duplicate numbers every tile of a copy by its copy).
+ */
+export interface ClipNumbering {
+  indexes: number[];
+  count: number;
+}
+
+/**
  * Order the call's targets so no move clears a span that still holds a clip the
  * call hasn't reached, and say which moves can't run at all. Targets that will
  * not be written are out of it: they neither move nor stand in anyone's way.
@@ -45,12 +54,14 @@ export interface ClipPlanned {
  * @param targets - The call's targets, in the order named
  * @param call - The update-clip call
  * @param superseded - The targets nothing will write, and the ones cut short
+ * @param numbering - The caller's own clip numbers, if it has them
  * @returns The order to write in, and what each target is to know
  */
 export function planClipMoves(
   targets: Array<Target<ClipPayload>>,
   call: ClipCall,
   superseded: Superseded,
+  numbering?: ClipNumbering,
 ): Plan<ClipPlanned> {
   const { unwritten } = superseded;
   const effective = targets.flatMap((target, index) =>
@@ -91,7 +102,13 @@ export function planClipMoves(
   }
 
   const ordered = orderArrangementMoves(clips, moves, reasons, after);
-  const numbers = clipNumbers(targets, call, unwritten);
+  const numbers =
+    numbering == null
+      ? clipNumbers(targets, call, unwritten)
+      : targets.map((_, index) => ({
+          firstIndex: numbering.indexes[index] as number,
+          clipCount: numbering.count,
+        }));
   const each = targets.map((_, index): ClipPlanned => ({
     blocked: null,
     waitsFor: [],

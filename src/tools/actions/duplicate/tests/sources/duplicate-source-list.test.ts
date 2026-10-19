@@ -708,7 +708,7 @@ describe("duplicate - a list of sources", () => {
         },
       ]);
       // The buried copy is out of the transform too: it was never written, so
-      // there is no clip to transform.
+      // there is no clip to transform. It still keeps its clip.index.
       expect(updateClipMock).toHaveBeenCalledWith(
         {
           ids: "live_set tracks 2 arrangement_clips 0",
@@ -716,6 +716,7 @@ describe("duplicate - a list of sources", () => {
           code: undefined,
         },
         expect.anything(),
+        { indexes: [1], count: 2 },
       );
     });
 

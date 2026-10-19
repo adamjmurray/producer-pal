@@ -18,6 +18,7 @@ import {
   parseClipCall,
 } from "./helpers/call/parse-clip-call.ts";
 import {
+  type ClipNumbering,
   type ClipPlanned,
   planClipMoves,
 } from "./helpers/call/plan-clip-moves.ts";
@@ -33,7 +34,6 @@ export type UpdateClipResult = PipelineResult<ClipResult>;
 
 /**
  * Updates properties of existing clips
- *
  * @param args - The clip parameters
  * @param args.id - Clip ID or comma-separated list of clip IDs to update
  * @param args.ids - Hidden alias for id (args.paths is the one for path)
@@ -70,11 +70,13 @@ export type UpdateClipResult = PipelineResult<ClipResult>;
  * @param args.envelopes - Clip automation, one "<target>: <notation>" line per parameter (broadcast across the clips)
  * @param args.focus - Select the clip and show clip detail view
  * @param context - Per-request context
+ * @param numbering - Clip numbers from an internal caller, in place of the call's own
  * @returns The clip when one was named, otherwise one entry per target named
  */
 export async function updateClip(
   args: ClipUpdateArgs = {},
   context: Partial<ToolContext> = {},
+  numbering?: ClipNumbering,
 ): Promise<UpdateClipResult> {
   const run = newClipRun(context);
 
@@ -82,7 +84,7 @@ export async function updateClip(
   // one lane view the context carries meanwhile.
   return await sharingLaneView(
     context,
-    async () => await runWrite(clipWriteSpec(run), args, context),
+    async () => await runWrite(clipWriteSpec(run, numbering), args, context),
   );
 }
 
@@ -90,10 +92,12 @@ export async function updateClip(
  * The hooks of one update-clip call. Built per call: the targets share what the
  * run keeps, and nothing of it outlives the request.
  * @param run - The call's shared state
+ * @param numbering - Clip numbers from an internal caller, if any
  * @returns The spec to run the call with
  */
 function clipWriteSpec(
   run: ClipRun,
+  numbering?: ClipNumbering,
 ): WriteSpec<
   ClipUpdateArgs,
   ClipCall,
@@ -115,7 +119,7 @@ function clipWriteSpec(
     check: (call, targets) => checkClipUpdate(call, targets, run),
 
     plan: (targets, checked, _call, superseded) =>
-      planClipMoves(targets, checked, superseded),
+      planClipMoves(targets, checked, superseded, numbering),
     write: (target, step) => writeClip(run, target, step),
 
     settle: (done, call) => settleClipUpdate(run, done, call),

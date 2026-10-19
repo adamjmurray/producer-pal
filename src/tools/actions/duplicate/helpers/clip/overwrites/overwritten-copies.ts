@@ -106,12 +106,16 @@ export function reportOverwrittenCopies(
  * tiling nests under `clips`. A copy that was cleared is left out — there is no
  * clip left to read or write.
  * @param createdObjects - Result objects from clip duplication
- * @returns The clips, in the order they were made
+ * @returns The clips in the order they were made, each with the index of the
+ *   result entry (the copy) it belongs to
  */
 export function collectClipResults(
   createdObjects: object[],
-): MinimalClipInfo[] {
-  return clipSlots(createdObjects).map((slot) => slot.entry);
+): Array<{ entry: MinimalClipInfo; copy: number }> {
+  return clipSlots(createdObjects).map(({ entry, target }) => ({
+    entry,
+    copy: target,
+  }));
 }
 
 // --- Helpers below main exports ---

@@ -8,6 +8,7 @@ import { getTimeSignature } from "#src/tools/clip/update/helpers/clip-beat-posit
 import { errorMessage } from "#src/shared/error-message.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { type ClipNumbering } from "#src/tools/clip/update/helpers/call/plan-clip-moves.ts";
 import { type MinimalClipInfo } from "../minimal-clip-info.ts";
 import { collectClipResults } from "./overwrites/overwritten-copies.ts";
 
@@ -46,10 +47,10 @@ export function refuseUnreadableCopyTransforms(
  * Delegates to updateClip so the duplicated clips reuse the exact transform DSL
  * and code-exec behavior as ppal-update-clip. transforms/code are single strings
  * broadcast across every duplicated clip — per-copy variation is expressed with
- * clip.index arithmetic and clipseq() inside the string. The
- * single updateClip call also keeps clip.index/clip.count spanning the whole
- * batch. Resulting noteCount, transformed and deletedNotes counts are merged back into the
- * duplicate result objects.
+ * clip.index arithmetic and clipseq() inside the string. clip.index numbers the
+ * copies, so every tile of a copy gets its copy's number, and clip.count is the
+ * number of copies, skipped ones included. Resulting noteCount, transformed and
+ * deletedNotes counts are merged back into the duplicate result objects.
  *
  * @param createdObjects - Result objects from clip duplication (mutated in place)
  * @param transforms - Transform expressions broadcast across all copies (optional)
@@ -62,14 +63,25 @@ export async function applyTransformsToDuplicatedClips(
   code: string | undefined,
   context: Partial<ToolContext>,
 ): Promise<void> {
-  const clipResults = collectClipResults(createdObjects);
+  const collected = collectClipResults(createdObjects);
+  const clipResults = collected.map(({ entry }) => entry);
 
   if (clipResults.length === 0) {
     return;
   }
 
   const ids = clipResults.map((clip) => clip.id).join(",");
-  const updated = await updateCopies(ids, transforms, code, context);
+  // Numbered by copy, as name is: a copy that made no clip still takes one.
+  const numbering = {
+    indexes: collected.map(({ copy }) => copy),
+    count: createdObjects.length,
+  };
+  const updated = await updateCopies(
+    ids,
+    numbering,
+    { transforms, code },
+    context,
+  );
 
   if (!Array.isArray(updated)) {
     // The copies are made and reported; only the edit didn't run, so each one
@@ -118,19 +130,25 @@ export async function applyTransformsToDuplicatedClips(
  * A lone copy whose update can't be done throws rather than answering with an
  * entry, and that throw would lose the copies this call already made.
  * @param ids - The copies to edit
- * @param transforms - Transform expressions, if any
- * @param code - Code to run, if any
+ * @param numbering - Each clip's clip.index, and clip.count
+ * @param edit - The edit to run
+ * @param edit.transforms - Transform expressions, if any
+ * @param edit.code - Code to run, if any
  * @param context - Tool execution context
  * @returns One entry per copy, or the reason none could be edited
  */
 async function updateCopies(
   ids: string,
-  transforms: string | undefined,
-  code: string | undefined,
+  numbering: ClipNumbering,
+  { transforms, code }: { transforms?: string; code?: string },
   context: Partial<ToolContext>,
 ): Promise<object[] | string> {
   try {
-    const result = await updateClip({ ids, transforms, code }, context);
+    const result = await updateClip(
+      { ids, transforms, code },
+      context,
+      numbering,
+    );
 
     return Array.isArray(result) ? result : [result];
   } catch (error) {

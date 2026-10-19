@@ -68,6 +68,7 @@ describe("duplicate - transforms/code", () => {
       expect(updateClipMock).toHaveBeenCalledWith(
         { ids: destId, transforms: "velocity *= 0.5", code: undefined },
         expect.anything(),
+        { indexes: [0], count: 1 },
       );
       // A clip legitimately supports transforms — the "ignored" warn (gated on
       // type !== "clip") must NOT fire here.
@@ -133,6 +134,7 @@ describe("duplicate - transforms/code", () => {
           code: undefined,
         },
         expect.anything(),
+        { indexes: [0, 1], count: 2 },
       );
       expect(result).toStrictEqual([
         { id: dest1, path: "t0/s1", noteCount: 3, transformed: 3 },
@@ -190,6 +192,7 @@ describe("duplicate - transforms/code", () => {
       expect(updateClipMock).toHaveBeenCalledWith(
         { ids: destId, transforms: undefined, code: "return notes;" },
         expect.anything(),
+        { indexes: [0], count: 1 },
       );
       expect(result).toStrictEqual({
         id: destId,
@@ -341,6 +344,7 @@ describe("duplicate - transforms/code", () => {
           code: undefined,
         },
         {},
+        { indexes: [0, 0], count: 1 },
       );
       expect(createdObjects).toStrictEqual([
         {
@@ -376,6 +380,29 @@ describe("duplicate - transforms/code", () => {
           code: undefined,
         },
         {},
+        { indexes: [0, 1, 2], count: 3 },
+      );
+    });
+
+    it("numbers each tile by its copy", async () => {
+      const createdObjects: object[] = [
+        { path: "t0", clips: [{ id: "a" }, { id: "b" }] },
+        { path: "t0", clips: [{ id: "c" }, { id: "d" }] },
+      ];
+
+      updateClipMock.mockReturnValueOnce([]);
+
+      await applyTransformsToDuplicatedClips(
+        createdObjects,
+        "pitch += clip.index * 12",
+        undefined,
+        {},
+      );
+
+      expect(updateClipMock).toHaveBeenCalledWith(
+        expect.objectContaining({ ids: "a,b,c,d" }),
+        {},
+        { indexes: [0, 0, 1, 1], count: 2 },
       );
     });
 
@@ -475,6 +502,7 @@ describe("duplicate - transforms/code", () => {
       expect(updateClipMock).toHaveBeenCalledWith(
         { ids: "a", transforms: undefined, code: "return notes;" },
         {},
+        { indexes: [0], count: 1 },
       );
     });
   });

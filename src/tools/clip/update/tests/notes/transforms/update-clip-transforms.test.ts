@@ -135,6 +135,22 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
     expect(addedVelocity(mocks.clip789)).toBe(43); // 2*20 + 3
   });
 
+  // How duplicate numbers each tile of a copy by its copy.
+  it("takes clip.index/clip.count from the caller when it numbers the clips", async () => {
+    await updateClip(
+      {
+        id: "123, 456, 789",
+        transforms: "velocity = clip.index * 20 + clip.count",
+      },
+      {},
+      { indexes: [0, 0, 1], count: 2 },
+    );
+
+    expect(addedVelocity(mocks.clip123)).toBe(2); // 0*20 + 2
+    expect(addedVelocity(mocks.clip456)).toBe(2); // 0*20 + 2
+    expect(addedVelocity(mocks.clip789)).toBe(22); // 1*20 + 2
+  });
+
   // clip.index pairs by target, like name does, so an empty slot among the
   // targets doesn't shift the clips after it.
   it("counts clip.index/clip.count over the targets named, empty ones included", async () => {
