@@ -240,10 +240,10 @@ describe("installDevice", () => {
       },
       {
         what: "unorderable",
-        installed: fakeDevice("2.5.0-rc1"),
+        installed: fakeDevice("2.5.0-beta"),
         source: fakeDevice("2.5.0-rc2"),
         expected: (name: string) =>
-          `The installed device (2.5.0-rc1) and ${name} (2.5.0-rc2) differ, and their order can't be told. Left unchanged. Use force to replace it.`,
+          `The installed device (2.5.0-beta) and ${name} (2.5.0-rc2) differ, and their order can't be told. Left unchanged. Use force to replace it.`,
       },
     ];
 
@@ -282,9 +282,26 @@ describe("installDevice", () => {
     expect(existsSync(other)).toBe(true);
   });
 
+  it("replaces an earlier release candidate of the same version", () => {
+    put(source, fakeDevice("2.5.0-rc2"));
+    put(device(), fakeDevice("2.5.0-rc1"));
+
+    expect(installDevice(library, source).outcome).toBe("updated");
+    expect(readFileSync(device())).toStrictEqual(fakeDevice("2.5.0-rc2"));
+  });
+
+  it("keeps a later release candidate of the same version as newer", () => {
+    put(source, fakeDevice("2.5.0-rc1"));
+    put(device(), fakeDevice("2.5.0-rc2"));
+
+    expect(installDevice(library, source).detail).toBe(
+      "The installed device (2.5.0-rc2) is newer than the bundled one (2.5.0-rc1). Left unchanged. Use force to replace it.",
+    );
+  });
+
   it.each([
-    ["2.5.0-rc1", "2.5.0-rc2"],
-    ["2.5.0-rc2", "2.5.0-rc1"],
+    ["2.5.0-beta", "2.5.0-rc2"],
+    ["2.5.0-rc2", "2.5.0-beta"],
   ])(
     "keeps installed %s when the bundled one is %s, and says their order can't be told",
     (installed, bundled) => {

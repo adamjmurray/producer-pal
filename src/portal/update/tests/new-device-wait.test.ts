@@ -20,8 +20,8 @@ describe("waitForNewDevice", () => {
 
   it("takes the version the new device file names even when a version can't be ordered against the old one", async () => {
     const version = await waitForNewDevice(
-      { from: "2.5.0-rc1", expected: "2.5.0-rc2" },
-      fakeDevice("2.5.0-rc1", "2.5.0-rc2"),
+      { from: "2.5.0-beta", expected: "2.5.0-rc2" },
+      fakeDevice("2.5.0-beta", "2.5.0-rc2"),
       updateDeps(),
     );
 

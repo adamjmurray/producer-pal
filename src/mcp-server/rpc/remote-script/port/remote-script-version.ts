@@ -12,8 +12,8 @@ import { isNewerVersion } from "#src/shared/version-check.ts";
 /**
  * The oldest remote script this server works with. Bump it to the release that
  * adds a route or changes what one answers, so an older script reads as out of
- * date instead of as missing a feature. The comparison ignores the -rcN number
- * (2.5.0-rc1 equals 2.5.0-rc2), so bump to a new x.y.z, not a new rc.
+ * date instead of as missing a feature. -rcN tags of one x.y.z order by N;
+ * other tags don't.
  */
 export const MIN_REMOTE_SCRIPT_VERSION = "2.5.0-rc1";
 

@@ -137,8 +137,21 @@ describe("deviceFileStatus", () => {
   });
 
   it.each([
-    ["2.5.0-rc1", "2.5.0-rc2"],
-    ["2.5.0-rc2", "2.5.0-rc1"],
+    ["2.5.0-rc1", "2.5.0-rc2", "installed-older"],
+    ["2.5.0-rc2", "2.5.0-rc1", "installed-newer"],
+  ])(
+    "orders installed %s against bundled %s by release candidate",
+    (installed, bundled, state) => {
+      put(source, fakeDevice(bundled));
+      installAt(fakeDevice(installed));
+
+      expect(deviceFileStatus(library, source).state).toBe(state);
+    },
+  );
+
+  it.each([
+    ["2.5.0-beta", "2.5.0-rc2"],
+    ["2.5.0-rc2", "2.5.0-beta"],
   ])("says different for installed %s and bundled %s", (installed, bundled) => {
     put(source, fakeDevice(bundled));
     installAt(fakeDevice(installed));

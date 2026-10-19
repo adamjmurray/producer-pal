@@ -123,10 +123,12 @@ describe("isNewerVersion", () => {
     expect(isNewerVersion("2.1.0-rc1", "2.0.0")).toBe(false);
   });
 
-  it("does not announce a mid-cycle re-cut to a tester on an earlier rc", () => {
-    // Accepted: `/releases/latest` would never surface rc2 anyway (it's marked
-    // pre-release), so the comparison is moot. Testers are told directly.
-    expect(isNewerVersion("2.1.0-rc1", "2.1.0-rc2")).toBe(false);
+  it("orders release candidates of one version by number", () => {
+    expect(isNewerVersion("2.1.0-rc1", "2.1.0-rc2")).toBe(true);
+    expect(isNewerVersion("2.1.0-rc2", "2.1.0-rc1")).toBe(false);
+    expect(isNewerVersion("2.1.0-rc2", "2.1.0-rc10")).toBe(true);
+    expect(isNewerVersion("v2.1.0-rc1", "2.1.0-rc2")).toBe(true);
+    expect(isNewerVersion("2.1.0-rc2", "2.1.0-rc2")).toBe(false);
   });
 
   it("does not treat pre-release latest as newer than same stable", () => {
@@ -134,9 +136,11 @@ describe("isNewerVersion", () => {
     expect(isNewerVersion("1.2.3", "1.2.3-beta")).toBe(false);
   });
 
-  it("treats both pre-release versions as equal", () => {
+  it("can't order other pre-release tags of one version", () => {
     expect(isNewerVersion("1.2.3-beta", "1.2.3-rc1")).toBe(false);
     expect(isNewerVersion("1.2.3-rc1", "1.2.3-beta")).toBe(false);
+    expect(isNewerVersion("1.2.3-beta1", "1.2.3-beta2")).toBe(false);
+    expect(isNewerVersion("1.2.3-rc1", "1.2.3-rc2-hotfix")).toBe(false);
   });
 
   it("numeric difference takes priority over pre-release suffix", () => {
@@ -335,7 +339,7 @@ describe("remoteScriptAttention", () => {
   });
 
   it("asks for a restart between two pre-releases of one version", () => {
-    // isNewerVersion can't order -rc1 and -rc2, so this must not rely on it.
+    // A restart is due in either direction, so this compares with !==.
     const rc = { installedVersion: "2.5.0-rc2", runningVersion: "2.5.0-rc1" };
 
     expect(remoteScriptAttention(status(rc))).toBe("restart");
@@ -413,6 +417,14 @@ describe("isBehindBuild", () => {
 
   it("is behind between two pre-releases of one version", () => {
     expect(isBehindBuild("2.5.0-rc1", "2.5.0-rc2")).toBe(true);
+  });
+
+  it("is not behind when the installed release candidate is a later one", () => {
+    expect(isBehindBuild("2.5.0-rc2", "2.5.0-rc1")).toBe(false);
+  });
+
+  it("is behind when two pre-release tags can't be ordered", () => {
+    expect(isBehindBuild("2.5.0-beta", "2.5.0-rc1")).toBe(true);
   });
 
   it("is behind when a pre-release is installed and the release ships", () => {

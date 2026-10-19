@@ -112,7 +112,8 @@ export async function updateProducerPal(
  * @param running - The version the running device reports
  * @returns The version, when it is older than this portal's; null when it is
  *   the same
- * @throws SetupFailed when there is nothing to update to
+ * @throws SetupFailed when there is nothing to update to, or its order against
+ *   this portal's can't be told
  */
 function versionToReplace(running: string | undefined): string | null {
   if (running == null) {
@@ -127,7 +128,17 @@ function versionToReplace(running: string | undefined): string | null {
     );
   }
 
-  return isNewerVersion(running, VERSION) ? running : null;
+  if (isNewerVersion(running, VERSION)) {
+    return running;
+  }
+
+  if (running !== VERSION) {
+    throw new SetupFailed(
+      `couldn't tell whether the running Producer Pal (${running}) is older than this portal (${VERSION}), so nothing was changed. Tell the user to update the Producer Pal device by hand.`,
+    );
+  }
+
+  return null;
 }
 
 /**
@@ -191,10 +202,17 @@ function deviceFile(result: DeviceInstallResult, running: string): DeviceFile {
     );
   }
 
+  const shipped = bundledVersion ?? VERSION;
+
   return {
     path,
     version: previousVersion,
     written: false,
-    note: `loaded the device already in the User Library (${previousVersion}), which is newer than this portal's (${bundledVersion ?? VERSION}). ${UPDATE_PORTAL_ADVICE}`,
+    // A skipped copy is newer than the portal's, or can't be ordered against it.
+    note: isNewerVersion(shipped, previousVersion)
+      ? `loaded the device already in the User Library (${previousVersion}), which is newer than this portal's (${shipped}). ${UPDATE_PORTAL_ADVICE}`
+      : previousVersion === shipped
+        ? `loaded the device already in the User Library as it is: another build of this portal's version (${shipped}).`
+        : `loaded the device already in the User Library (${previousVersion}) as it is. It differs from this portal's (${shipped}), and which is newer can't be told.`,
   };
 }

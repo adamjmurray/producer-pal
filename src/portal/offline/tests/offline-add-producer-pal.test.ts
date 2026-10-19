@@ -191,7 +191,12 @@ describe("add-producer-pal's device file", () => {
     [
       "skipped",
       { previousVersion: "2.5.0-rc2", bundledVersion: "2.5.0-rc1" },
-      "used the installed device as it is (2.5.0-rc2; the bundled one is 2.5.0-rc1 and the installed one is newer or can't be ordered against it)",
+      `used the installed device (2.5.0-rc2), which is newer than this portal's (2.5.0-rc1). ${UPDATE_PORTAL_ADVICE}`,
+    ],
+    [
+      "skipped",
+      { previousVersion: "2.5.0-beta", bundledVersion: "2.5.0-rc1" },
+      "used the installed device as it is (2.5.0-beta; the bundled one is 2.5.0-rc1 and the installed one is newer or can't be ordered against it)",
     ],
     [
       "skipped",

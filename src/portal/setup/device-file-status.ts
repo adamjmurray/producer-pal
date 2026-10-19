@@ -31,8 +31,8 @@ const MAX_VERSION_LENGTH = 32;
  * - `installed-older` / `installed-newer`: both name a version, installed is
  *   older / newer.
  * - `different`: the bytes differ and the versions can't order them: one or
- *   both name no version, or both name the same one (`2.5.0-rc1` and
- *   `2.5.0-rc2` count as the same).
+ *   both name no version, both name the same one, or their tags can't be
+ *   ordered (`-beta` vs `-rc1`).
  */
 export type DeviceState =
   | "not-installed"

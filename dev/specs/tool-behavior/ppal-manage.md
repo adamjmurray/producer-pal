@@ -87,8 +87,10 @@ to ask the user first.
      `add-producer-pal`.
   2. The running version is the device's own (`serverInfo.version`, asked
      afresh). Equal to the portal's: a plain success saying there is nothing to
-     update. Newer than the portal's: refused, with how to update the portal. No
-     version reported: refused.
+     update. Newer than the portal's: refused, with how to update the portal.
+     Different but impossible to order: refused, saying which is newer can't be
+     told. No version reported: refused. `-rcN` versions of one x.y.z order by
+     N; other pre-release tags can't be ordered against each other.
   3. No bundled device: refused, with the install guide.
   4. Remote script not running or too old: refused, as for `add-producer-pal`
      (and an old script that lacks the `/replace-producer-pal` route reads as
@@ -98,8 +100,9 @@ to ask the user first.
      in use. Whatever file would load, it must name a version newer than the
      running device's, else the call refuses before the swap (a swap for the
      same version would only restart the device). A different file left alone is
-     loaded only on those terms; the result then says so and that the portal is
-     older.
+     loaded only on those terms; the result then says so, and that the portal is
+     older when the file is newer than the portal's (else that which is newer
+     can't be told).
   6. The remote script's `/replace-producer-pal` hot-swaps the Set's one
      Producer Pal device with that file (a not-found is asked again for 15 s). A
      refusal there (none in the Set, more than one, bad file) says the Live Set
@@ -115,8 +118,7 @@ to ask the user first.
   old version still answers, to ask the user to check the device in Live).
 - **Result:** `{ device: { from, to }, track: { path, name }, nextSteps }`,
   where `path` is `t3`, `rt0` or `mt` as in the tools, plus `note` when the
-  loaded file was newer than the portal's. `nextSteps` is
-  `Call ppal-connect next.`
+  loaded file wasn't the portal's. `nextSteps` is `Call ppal-connect next.`
 - **The `ppal-connect` hint** comes from the portal, since old devices can't
   learn new wording: when a successful `ppal-connect` finds a device older than
   the portal, the portal appends a block telling the model to ask the user, then

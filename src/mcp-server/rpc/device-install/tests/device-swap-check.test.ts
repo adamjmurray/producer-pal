@@ -17,6 +17,14 @@ import {
   useDeviceScratch,
 } from "./device-install-test-helpers.ts";
 
+// A release candidate, so a test can put an earlier or later one beside it.
+// VERSION's type is its own literal value, hence the cast.
+vi.mock(import("#src/shared/config.ts"), async (importOriginal) => {
+  const actual = await importOriginal();
+
+  return { ...actual, VERSION: "2.5.0-rc2" as typeof actual.VERSION };
+});
+
 const NOT_RUNNING_PING: RemoteScriptPing = {
   ...RUNNING_PING,
   running: false,
@@ -136,6 +144,19 @@ describe("deviceSwapCheck", () => {
       allowed: false,
       reason: `The copy in your User Library (v0.0.1) is older than this device (v${VERSION}). Update it first.`,
     });
+  });
+
+  it("refuses a copy that is an earlier release candidate", async () => {
+    expect(await check(frozenDevice("2.5.0-rc1"))).toStrictEqual({
+      allowed: false,
+      reason: `The copy in your User Library (v2.5.0-rc1) is older than this device (v${VERSION}). Update it first.`,
+    });
+  });
+
+  it("allows a copy that is a later release candidate", async () => {
+    const result = await check(frozenDevice("2.5.0-rc3"));
+
+    expect(result.allowed).toBe(true);
   });
 
   it("refuses a copy that names no version", async () => {

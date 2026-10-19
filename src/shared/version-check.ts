@@ -95,16 +95,24 @@ export function isNewerVersion(current: string, latest: string): boolean {
     }
   }
 
-  // Numeric parts are equal — check pre-release suffixes (e.g., "-beta", "-rc1").
-  // A version with a suffix is earlier than the same version without one.
+  // Numeric parts are equal. "-rcN" tags order by N. Otherwise a version with a
+  // pre-release tag is earlier than the same version without one, and two
+  // other tags can't be ordered (false both ways).
+  const currentRc = releaseCandidate(current);
+  const latestRc = releaseCandidate(latest);
+
+  if (currentRc != null && latestRc != null) {
+    return latestRc > currentRc;
+  }
+
   return hasPreReleaseSuffix(current) && !hasPreReleaseSuffix(latest);
 }
 
 /**
  * Whether an installed copy is behind a build: different from it, and not newer.
  * An unreadable version counts as behind. Differs-from is the test, not
- * `isNewerVersion`, which can't order two pre-releases of one version (rc1 vs
- * rc2). Use this wherever an installed copy is judged against the build.
+ * `isNewerVersion`, which can't order every pair of pre-release tags (beta vs
+ * rc1). Use this wherever an installed copy is judged against the build.
  * @param installed - The installed version, or null when unreadable
  * @param build - This build's version
  * @returns True when the installed copy should be updated
@@ -120,11 +128,7 @@ export function isBehindBuild(
 }
 
 function parseVersionParts(version: string): number[] {
-  let cleaned = version.trim();
-
-  if (cleaned.startsWith("v")) {
-    cleaned = cleaned.slice(1);
-  }
+  const cleaned = withoutPrefix(version);
 
   // parseInt stops at first non-numeric char, handling suffixes like "4b7". A
   // part with no leading digits (e.g. "" from "1..3", or "x") parses to NaN;
@@ -144,13 +148,27 @@ function parseVersionParts(version: string): number[] {
  * @returns True if version contains a dash-delimited pre-release suffix
  */
 function hasPreReleaseSuffix(version: string): boolean {
-  let cleaned = version.trim();
+  return withoutPrefix(version).includes("-");
+}
 
-  if (cleaned.startsWith("v")) {
-    cleaned = cleaned.slice(1);
-  }
+/**
+ * @param version - Version string
+ * @returns N from a "-rcN" tag, or null when the version has no such tag
+ */
+function releaseCandidate(version: string): number | null {
+  const match = /-rc(\d+)$/.exec(withoutPrefix(version));
 
-  return cleaned.includes("-");
+  return match == null ? null : Number(match[1]);
+}
+
+/**
+ * @param version - Version string
+ * @returns It trimmed, without a leading "v"
+ */
+function withoutPrefix(version: string): string {
+  const cleaned = version.trim();
+
+  return cleaned.startsWith("v") ? cleaned.slice(1) : cleaned;
 }
 
 /** The slice of the remote script status that decides whether it needs care. */
@@ -198,7 +216,7 @@ export function remoteScriptAttention(
  * Whether Live is running a different copy than the one on disk: another
  * version, or another build of the same one. A restart fixes it either way
  * (after an update, or a downgrade). Compared with `!==`, not `isNewerVersion`,
- * which can't order two pre-releases of one version.
+ * since a restart is due in either direction.
  *
  * @param status - The remote script status
  * @returns True when Live needs a restart to load the installed copy

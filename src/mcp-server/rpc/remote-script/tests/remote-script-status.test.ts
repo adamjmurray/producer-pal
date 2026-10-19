@@ -134,8 +134,8 @@ describe("remoteScriptStatus", () => {
   });
 
   it("offers an update between two pre-releases of one version", async () => {
-    // isNewerVersion can't order -rc1 and -rc2 (both are "pre-release"), so
-    // "behind this build" can't depend on it.
+    // isNewerVersion can't order these two tags, so "behind this build" can't
+    // depend on it.
     installRemoteScript(scratchDir);
     writeInstalledVersion(`VERSION = "${VERSION}-older-rc"\n`);
 

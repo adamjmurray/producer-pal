@@ -49,7 +49,7 @@ header and `ppal-connect` flag it, using one rule (`remoteScriptAttention` in
 this build and isn't newer (`updateAvailable`), **restart** when Live runs a
 different version than the installed one, in either direction (after an update
 or a downgrade). Both use `!==` rather than `isNewerVersion`, which can't order
-two pre-releases of one version (`-rc1` vs `-rc2`). Nothing is flagged when the
+every pair of pre-release tags (`-beta` vs `-rc1`). Nothing is flagged when the
 script isn't installed or another program answers on the port.
 
 Two copies of one version are told apart by build ID, a hash of the script's
