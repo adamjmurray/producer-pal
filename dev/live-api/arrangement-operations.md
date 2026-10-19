@@ -429,10 +429,12 @@ Entry: `handleArrangementStartOperation()` in `arrangement-move.ts`
   instead of over the clip's old neighbors. Take-lane moves re-create the clip
   and take-lane clips refuse `arrangementLength`, so they keep this order too.
 
-Shortening can't be undone, so a move that would be refused (a track that won't
-take the clip) is checked first: nothing is shortened, and the refusal is the
-reason on the entry. If Live throws after a step landed, the entry names what
-exists now (the copy, not the source it replaced) and says what landed:
+Neither step can be undone, so a move that would be refused (a track that won't
+take the clip) is checked first: nothing is moved or resized, and the refusal is
+the reason on the entry. A lengthen whose move then fails anyway is skipped too
+(`not resized`): growing the clip where it sits would clear neighbors the call
+never named. If Live throws after a step landed, the entry names what exists now
+(the copy, not the source it replaced) and says what landed:
 `<error>; already changed: shortened, copy at t0[5|1]` (a lengthening says
 `lengthened`, once it grew the clip or laid a tile). A resize that throws after
 a move landed says `moved, but arrangementLength didn't finish`, and a move

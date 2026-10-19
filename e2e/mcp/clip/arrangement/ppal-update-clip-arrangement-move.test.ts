@@ -161,6 +161,26 @@ describe("arrangement clip moved to another lane", () => {
     ).toBe(source.id);
   });
 
+  // Lengthening where the clip sits would clear the neighbor it grows over.
+  it("refuses the lengthen too, and leaves the neighbor alone", async () => {
+    const source = await createClip("761|1", "Wrong Track Long");
+    const neighbor = await createClip("762|1", "Next Door");
+
+    await expectRefusedUpdate(
+      ctx.client!,
+      source.id,
+      { toPath: `t${AUDIO_TRACK}[781|1]`, arrangementLength: "4bar" },
+      "not moved or resized: track",
+    );
+
+    expect(
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "761|1"))?.id,
+    ).toBe(source.id);
+    expect(
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "762|1"))?.id,
+    ).toBe(neighbor.id);
+  });
+
   // A non-empty file_path only means Live once saw a sample there — not that
   // the file is still on disk. Delete it after the clip is created and
   // canRecreateClip has nothing to rebuild from, so the move is refused

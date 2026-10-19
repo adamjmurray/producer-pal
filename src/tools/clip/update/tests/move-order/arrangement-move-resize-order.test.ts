@@ -210,6 +210,27 @@ describe("handleArrangementOperations - move and resize order", () => {
     );
   });
 
+  it("checks the move before it lengthens, and leaves the clip as it was when the move would be refused", () => {
+    registerClip(SOURCE);
+    registerMockObject("audio-track", {
+      path: livePath.track(5),
+      type: "Track",
+      properties: { has_midi_input: 0 },
+    });
+
+    const steps = spyOnSteps();
+
+    moveAndResize(32, { trackIndex: 5, takeLane: null });
+
+    expect(steps.resize).not.toHaveBeenCalled();
+    expect(steps.place).not.toHaveBeenCalled();
+    expect(updatedClips.map(({ id }) => id)).toStrictEqual([SOURCE]);
+    expect(reasons.refused.has(SOURCE)).toBe(true);
+    expect(joinedClipReason(reasons, SOURCE)).toContain(
+      "not moved or resized: track",
+    );
+  });
+
   it("keeps a shortened clip's entry when the move is refused", () => {
     registerClip(SOURCE);
     const steps = spyOnSteps();
@@ -239,17 +260,17 @@ describe("handleArrangementOperations - move and resize order", () => {
     );
   });
 
-  it("lets a resize failure through when nothing moved", () => {
+  it("skips the resize when the move doesn't land", () => {
     registerClip(SOURCE);
     const steps = spyOnSteps();
 
     steps.place.mockReturnValue(null);
-    steps.resize.mockImplementation(() => {
-      throw new Error("boom");
-    });
 
-    // Lengthening moves first, so the refused move leaves the clip in place.
-    expect(() => moveAndResize(32)).toThrow("boom");
-    expect(updatedClips).toStrictEqual([]);
+    // Lengthening in place would clear neighbors the call never named.
+    moveAndResize(32);
+
+    expect(steps.resize).not.toHaveBeenCalled();
+    expect(updatedClips.map(({ id }) => id)).toStrictEqual([SOURCE]);
+    expect(joinedClipReason(reasons, SOURCE)).toBe("not resized");
   });
 });

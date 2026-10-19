@@ -390,13 +390,25 @@ describe("updateClip - a move Live turns down at write time", () => {
       { id: "114", start: 16, end: 32 },
     ]);
 
-    await updateClip({
+    const result = await updateClip({
       id: "113,114",
       toPath: `t0[5|1],t${AUDIO_TRACK}[9|1]`,
       arrangementLength: "8bar",
     });
 
     expect(movedTo()).toStrictEqual([]);
+    expect(result).toStrictEqual([
+      expect.objectContaining({
+        detail: expect.stringMatching(
+          /^not moved or resized: it would land on clip t0\[5\|1\]/,
+        ) as string,
+      }),
+      expect.objectContaining({
+        detail: expect.stringMatching(
+          /^not moved or resized: track t1 .* is audio/,
+        ) as string,
+      }),
+    ]);
     expect(lookupMockObject("113")?.call).not.toHaveBeenCalledWith(
       "duplicate_region",
       expect.anything(),

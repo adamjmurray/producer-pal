@@ -187,11 +187,13 @@ function motionFor(
   const { reasons } = run;
   const { blocked, waitsFor } = step.planned;
   const stuck = waitsFor.find(({ index }) => run.stayed.has(index));
+  const skipped =
+    payload.lengthBeats == null ? "not moved" : "not moved or resized";
   const reason =
     blocked ??
     (stuck == null
       ? null
-      : `not moved: it would land on clip ${stuck.label}, ${
+      : `${skipped}: it would land on clip ${stuck.label}, ${
           run.calledOff.has(stuck.index)
             ? "whose own move this call gave up on"
             : "which Live wouldn't move"

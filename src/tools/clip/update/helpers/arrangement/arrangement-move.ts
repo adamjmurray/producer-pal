@@ -253,14 +253,16 @@ export function handleArrangementOperations(
   // changes only the lane it sits on.
   const moves = args.arrangementStartBeats != null || args.destination != null;
 
-  if (
-    moves &&
-    arrangementLengthBeats != null &&
-    shortensBeforeMove(args, arrangementLengthBeats)
-  ) {
-    shortenThenMove(args, arrangementLengthBeats);
+  if (moves && arrangementLengthBeats != null) {
+    if (refusesMoveAndResize(args)) {
+      return;
+    }
 
-    return;
+    if (shortensBeforeMove(args, arrangementLengthBeats)) {
+      shortenThenMove(args, arrangementLengthBeats);
+
+      return;
+    }
   }
 
   let finalClipId = clip.id;
@@ -271,10 +273,18 @@ export function handleArrangementOperations(
     currentClip = LiveAPI.from(finalClipId);
   }
 
+  // A move that didn't land already said why. Resizing where the clip sits
+  // would clear neighbors the call never named.
+  const moveFailed = moves && finalClipId === clip.id;
+
+  if (moveFailed && arrangementLengthBeats != null) {
+    noteClipReason(reasons, clip.id, "not resized");
+  }
+
   let hasArrangementLengthResults = false;
   let finalNoteResult = noteResult;
 
-  if (arrangementLengthBeats != null) {
+  if (arrangementLengthBeats != null && !moveFailed) {
     // A lengthen writes past the span the clip landed at.
     recordResize(landings, currentClip, arrangementLengthBeats);
 
@@ -381,10 +391,33 @@ function shortensBeforeMove(
 }
 
 /**
+ * Refuse a move-and-resize whose destination track won't take the clip, before
+ * either step runs. Neither can be undone, so a refused move changes nothing.
+ * @param args - Operation arguments
+ * @returns True when the call was refused and the clip's entry written
+ */
+function refusesMoveAndResize(args: HandleArrangementOperationsArgs): boolean {
+  const { clip, reasons } = args;
+  const blocker =
+    args.destination == null
+      ? null
+      : clipCopyBlocker(!args.isAudioClip, args.destination.trackIndex);
+
+  if (blocker == null) {
+    return false;
+  }
+
+  refuseClipWork(reasons, clip.id, `not moved or resized: ${blocker}`);
+  args.updatedClips.push(
+    buildClipResultObject(clip.id, args.noteResult, objectPathForApi(clip)),
+  );
+
+  return true;
+}
+
+/**
  * Shorten the clip where it sits, then move it. Shortening lays a temp clip
  * over the clip's own tail, so it touches nothing the clip doesn't already fill.
- * Shortening can't be undone and the move can still be turned down, so the move
- * is checked first: a move that would be refused leaves the clip as it was.
  * @param args - Operation arguments
  * @param lengthBeats - Target length in beats
  */
@@ -393,19 +426,6 @@ function shortenThenMove(
   lengthBeats: number,
 ): void {
   const { clip, reasons } = args;
-  const blocker =
-    args.destination == null
-      ? null
-      : clipCopyBlocker(!args.isAudioClip, args.destination.trackIndex);
-
-  if (blocker != null) {
-    refuseClipWork(reasons, clip.id, `not moved or resized: ${blocker}`);
-    args.updatedClips.push(
-      buildClipResultObject(clip.id, args.noteResult, objectPathForApi(clip)),
-    );
-
-    return;
-  }
 
   recordResize(args.landings, clip, lengthBeats);
   handleArrangementLengthOperation({
