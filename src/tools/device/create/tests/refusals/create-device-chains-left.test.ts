@@ -7,6 +7,7 @@
 // refused, so the failure has to say they are there.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
@@ -20,6 +21,13 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
   warnOnce: vi.fn(),
 }));
+
+vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
+  requestNode: vi.fn(),
+  handleNodeResponse: vi.fn(),
+}));
+
+const PLUGIN = { type: "plugin", path: "VST3/Pro-Q 4", name: "Pro-Q 4" };
 
 /**
  * Register an Audio Effect Rack on track 0 whose chains turn down every insert,
@@ -103,5 +111,24 @@ describe("createDevice — chains left by a refused insert", () => {
           'could not insert "Operator" at end in path "t0/d0/c+"; left an empty chain: c2',
       },
     ]);
+  });
+
+  it("makes no chain for a browser load the Timeout is too short for", async () => {
+    vi.mocked(requestNode).mockResolvedValue({
+      success: true,
+      result: { available: true, item: PLUGIN },
+    });
+    registerMockObject("track-0", { path: livePath.track(0) });
+    const rack = registerGrowingRack({ track: 0, existing: 1 });
+
+    await expect(
+      createDevice(
+        { device: "Pro-Q 4", path: "t0/d0/c+" },
+        { timeoutMs: 4000, deadline: Date.now() + 2000 },
+      ),
+    ).rejects.toThrow(
+      /^could not load "Pro-Q 4": the Timeout setting \(4s\) is too short to load it; ask the user to raise it$/,
+    );
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
   });
 });

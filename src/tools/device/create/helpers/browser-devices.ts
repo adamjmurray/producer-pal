@@ -102,8 +102,8 @@ export interface BrowserLoadOptions extends RequestTiming {
 }
 
 /**
- * Load one device and move it to a path. The path resolves first, so it fails
- * the way a native insert does, and a `c+` makes its chain once.
+ * Load one device and move it to a path. The path resolves before the load, so
+ * it fails the way a native insert does, and a `c+` makes its chain once.
  * @param item - What to load
  * @param deviceName - The device as the call named it
  * @param path - Where it goes
@@ -116,6 +116,10 @@ export async function createBrowserDevice(
   path: string,
   options: BrowserLoadOptions = {},
 ): Promise<CreatedDevice> {
+  // Checked before the path makes any chain or the temp track exists, so a
+  // load with no time to start makes nothing.
+  loadWait(deviceName, options);
+
   const target = resolveCreationTarget(path);
   const arrival = { placed: false };
 
@@ -200,9 +204,6 @@ async function loadAndMove(
   path: string,
   options: BrowserLoadOptions,
 ): Promise<CreatedDevice> {
-  // Checked before the track exists, so a doomed load makes nothing.
-  loadWait(deviceName, options);
-
   let leftover: string | undefined;
 
   const created = await withTempTrack(
