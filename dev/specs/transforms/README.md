@@ -89,7 +89,10 @@ one used as a count (`2 * n/8`) still depends on the meter.
 
 A cap is reported, not refused: `ratchet(500)` is a valid request, and the
 64-piece cap is Producer Pal's, not a mistake in the text. The clip's entry says
-it was clamped. Handling differs by call kind:
+it was clamped. A grid ratchet (`ratchet(n/16)`) that would cut a note into more
+than 64 pieces keeps the first 63 grid cells and holds the rest as one note. On
+a grid finer than notes can be told apart (under 0.001 beats) it cuts 64 equal
+pieces instead, as `ratchet(64)` does. Handling differs by call kind:
 
 - **Expression functions** (`cos`, `ramp`, the math helpers, …): too few _or_
   too many arguments refuses the call.

@@ -1,10 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { sortNotes } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import * as console from "./transform-warning-label.ts";
 import {
   GRID_EPSILON,
@@ -128,7 +129,9 @@ function noteMatchesSelector(
  *   - note value (`ratchet(n/16)`) → cut on the ABSOLUTE 16th-note grid, so the
  *     pieces line up with bar positions. The first/last piece can be a partial
  *     sliver when the note doesn't start/end on a grid line; a note that spans no
- *     grid line is left unchanged (with a detail).
+ *     grid line is left unchanged (with a detail). A note with more cells than
+ *     the cap keeps the first cells and holds the rest, or gets equal pieces
+ *     when the grid is too fine for notes to be told apart.
  * checkTransformArgs has already refused a bad argument it can judge up front;
  * one it couldn't (it uses a variable or a random function) that turns out
  * unusable warns and the notes pass through unchanged.
@@ -179,8 +182,18 @@ function ratchetNotes(
       }
 
       if (cuts.length + 1 > MAX_NOTE_PIECES) {
-        cuts.length = MAX_NOTE_PIECES - 1; // keep pieces <= the cap
         clamped++;
+
+        // Cells this fine would merge into one note off the start once
+        // written, so give equal pieces, as ratchet(64) does.
+        if (plan.grid < SAME_TIME_EPSILON) {
+          out.push(
+            ...madeFrom(parents, note, splitNoteEqually(note, MAX_NOTE_PIECES)),
+          );
+          continue;
+        }
+
+        cuts.length = MAX_NOTE_PIECES - 1; // first cells, then one held tail
       }
 
       out.push(...madeFrom(parents, note, splitNoteAtCuts(note, cuts)));
@@ -284,6 +297,8 @@ function splitNoteEqually(note: NoteEvent, count: number): NoteEvent[] {
  * the cuts align a note's pieces to bar positions. A note that starts and/or ends
  * exactly on a grid line keeps that boundary as its own onset/offset (it is not a
  * cut), so a grid-aligned note of exactly one grid cell yields no cuts.
+ * Stops at MAX_NOTE_PIECES cuts, one past the cap: a tiny grid would otherwise
+ * build millions of cuts.
  * @param start - Note onset in the same beat unit as `grid`
  * @param end - Note offset in the same beat unit as `grid`
  * @param grid - Grid spacing (> 0)
@@ -293,7 +308,7 @@ function gridCutsWithin(start: number, end: number, grid: number): number[] {
   const cuts: number[] = [];
   let line = Math.ceil((start + GRID_EPSILON) / grid) * grid;
 
-  while (line < end - GRID_EPSILON) {
+  while (line < end - GRID_EPSILON && cuts.length < MAX_NOTE_PIECES) {
     cuts.push(line);
     line += grid;
   }

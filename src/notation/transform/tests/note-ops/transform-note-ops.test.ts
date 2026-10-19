@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
@@ -167,7 +167,40 @@ describe("note-count operations (ratchet/merge)", () => {
       applyTransforms(notes, "ratchet(n/16)", 4, 4);
 
       expect(notes).toHaveLength(64); // capped at MAX_NOTE_PIECES
+      expect(notes[62]).toStrictEqual(
+        expect.objectContaining({ start_time: 15.5, duration: 0.25 }),
+      );
+      expect(notes[63]).toStrictEqual(
+        expect.objectContaining({ start_time: 15.75, duration: 24.25 }),
+      );
       expect(warn).toHaveBeenCalledWith(expect.stringContaining("clamped"));
+      warn.mockRestore();
+    });
+
+    // Grid slivers that fine would collapse into one note off the note's start.
+    it("cuts a note too long for its grid into 64 equal pieces from its start", () => {
+      const { warn, notes } = warnSpyWithNote({ start_time: 0, duration: 16 });
+
+      applyTransforms(notes, "ratchet(n/1000000)", 4, 4);
+
+      expect(notes).toHaveLength(64);
+      expect(notes[0]).toStrictEqual(
+        expect.objectContaining({ start_time: 0, duration: 0.25 }),
+      );
+      expect(notes[63]).toStrictEqual(
+        expect.objectContaining({ start_time: 15.75, duration: 0.25 }),
+      );
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("clamped"));
+      warn.mockRestore();
+    });
+
+    // Building every cut before the cap would take minutes and run out of memory.
+    it("stops looking for grid lines once the note is past the cap", () => {
+      const { warn, notes } = warnSpyWithNote({ start_time: 0, duration: 16 });
+
+      applyTransforms(notes, "ratchet(n/1000000000000)", 4, 4);
+
+      expect(notes).toHaveLength(64);
       warn.mockRestore();
     });
 
