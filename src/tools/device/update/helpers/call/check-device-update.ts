@@ -4,6 +4,15 @@
 // SPDX-License-Identifier: MIT
 
 import { type BrowserItem } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+import { midiToNoteName } from "#src/shared/pitch.ts";
+import { LIVE_API_DEVICE_TYPE_AUDIO_EFFECT } from "#src/tools/constants.ts";
+import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
+import {
+  type InsertionEntry,
+  validateInsertionOrder,
+} from "#src/tools/shared/device/helpers/path/insertion-order.ts";
+import { withDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
+import { isDeviceClass } from "#src/tools/shared/device/is-device-class.ts";
 import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
@@ -187,6 +196,14 @@ export function checkDeviceUpdate(
       targets.length,
     ),
   };
+
+  withDevicePathCache(() =>
+    validateInsertionOrder(moveEntries(targets, lists.destinations), {
+      param: "toPath",
+      verb: "move to",
+    }),
+  );
+
   const checked: Omit<DeviceChecked, "presets" | "macros"> = {
     options,
     lists,
@@ -263,6 +280,69 @@ async function presetsFor(
   const presets = targets.map((_target, i) => lists.valuesAt(i).preset);
 
   return await lookUpPresets(devices, presets, deadline);
+}
+
+/**
+ * The moves a call makes, for refusing a toPath an earlier move renumbers. A
+ * chain that isn't a drum chain can't be moved, so it is left out.
+ * @param targets - The call's targets
+ * @param destinations - Where each moves, undefined where it doesn't
+ * @returns One entry per target that moves
+ */
+function moveEntries(
+  targets: Array<Target<DevicePayload>>,
+  destinations: Array<string | undefined>,
+): InsertionEntry[] {
+  return targets.flatMap((target, i): InsertionEntry[] => {
+    const path = destinations[i];
+
+    if (path == null || target.data == null || !("resolved" in target.data)) {
+      return [];
+    }
+
+    const { resolved } = target.data;
+    const { param, value } = target.named;
+    const named = param === "path" ? `"${value}"` : `id ${value}`;
+
+    if (resolved.kind === "drum-pad") {
+      return [
+        { path, appendRenumbers: true, from: { pad: resolved.padPath }, named },
+      ];
+    }
+
+    const object = resolved.target;
+
+    if (object.type === "DrumChain") {
+      return [
+        { path, appendRenumbers: true, from: drumChainPad(object), named },
+      ];
+    }
+
+    return isDeviceClass(object.type)
+      ? [
+          {
+            path,
+            appendRenumbers:
+              object.getProperty("type") !== LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+            from: { device: object.path },
+            named,
+          },
+        ]
+      : [];
+  });
+}
+
+/**
+ * The pad a drum chain sits on, spelled as a path.
+ * @param chain - The drum chain
+ * @returns Its pad, e.g. "t0/d0/pC1"
+ */
+function drumChainPad(chain: LiveAPI): { pad: string } {
+  const rack = chain.path.replace(/ chains \d+$/, "");
+  const note = chain.getProperty("in_note") as number;
+  const name = note === -1 ? "*" : midiToNoteName(note);
+
+  return { pad: `${extractDevicePath(rack) ?? rack}/p${name}` };
 }
 
 /**

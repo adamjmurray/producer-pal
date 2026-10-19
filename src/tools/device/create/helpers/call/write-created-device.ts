@@ -16,7 +16,7 @@ import {
   insertNativeDevice,
   labelCreatedDevice,
 } from "../device-creation.ts";
-import { refuseIndexInNewChain } from "../device-insertion-order.ts";
+import { refuseIndexInNewChain } from "../index-in-new-chain.ts";
 import { type CreateChecked, type DevicePlan } from "./check-create-call.ts";
 import { type CreatePayload } from "./parse-create-call.ts";
 

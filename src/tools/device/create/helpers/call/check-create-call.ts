@@ -4,7 +4,9 @@
 // SPDX-License-Identifier: MIT
 
 import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.ts";
+import { appendRenumbers } from "#src/tools/device/create/helpers/device-creation.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
+import { validateInsertionOrder } from "#src/tools/shared/device/helpers/path/insertion-order.ts";
 import { withDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import {
@@ -23,7 +25,6 @@ import {
   presetScopeForDevice,
   resolveBrowserPreset,
 } from "../browser-presets.ts";
-import { validateInsertionOrder } from "../device-insertion-order.ts";
 import { type BrowserItem } from "../remote-script-contract.ts";
 import { type CreateCall, type CreatePayload } from "./parse-create-call.ts";
 
@@ -81,7 +82,13 @@ export function checkCreateCall(
     // A native call is under the one path cache its inserts use, so the order
     // check reads the same objects. A load can't be: a cache can't span an
     // await.
-    const refuse = (): void => validateInsertionOrder(plans);
+    const refuse = (): void =>
+      validateInsertionOrder(
+        plans.map(({ path, device, item }) => ({
+          path,
+          appendRenumbers: appendRenumbers(device, item),
+        })),
+      );
 
     if (call.native) {
       refuse();

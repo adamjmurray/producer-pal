@@ -16,7 +16,7 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
 import { createDevice } from "../create-device.ts";
-import { validateInsertionOrder } from "../helpers/device-insertion-order.ts";
+import { validateInsertionOrder } from "#src/tools/shared/device/helpers/path/insertion-order.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({ select: vi.fn() }));
 
@@ -64,8 +64,8 @@ describe("createDevice by device type", () => {
 
     expect(() =>
       validateInsertionOrder([
-        { path: "t1/inst", device: "Compressor" },
-        { path: "t0/afx0", device: "Compressor" },
+        { path: "t1/inst", appendRenumbers: false },
+        { path: "t0/afx0", appendRenumbers: false },
       ]),
     ).not.toThrow();
   });

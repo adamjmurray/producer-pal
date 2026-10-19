@@ -45,6 +45,9 @@ follows the code; when it disagrees with a tool, the tool wins.
   before anything is copied or moved, for every kind of copy (clip, track onto a
   lane, scene, device, chain, drum pad). One that parses but can't be applied
   (no rack there, a move Live turned down) skips only its own destination.
+- **`duplicate` (device copies) and `updateDevice` refuse a `toPath` list
+  spelled through its own changes**, by the rule `createDevice` applies to
+  `path` ([Lists of Paths](object-paths/lists-of-paths.md)).
 - **`delete` refuses a `path` entry it can't parse** before anything is deleted,
   as well as a missing or unknown `type`, a call naming no target and a list
   with a hole. A path that parses but names the wrong kind of thing skips only

@@ -75,9 +75,8 @@ describe("createDevice insertion order", () => {
     await expect(
       createDevice({ path: "t0/d1,t0/d2", device: "Utility" }),
     ).rejects.toThrow(
-      'path entry "t0/d2" is spelled through "t0", which an ' +
-        "earlier entry renumbers by inserting into it. Make these calls " +
-        "separately, or name where the device should land after that insert.",
+      'path entry "t0/d2" is spelled through "t0", which the insert at ' +
+        '"t0/d1" renumbers. Make these calls separately.',
     );
   });
 

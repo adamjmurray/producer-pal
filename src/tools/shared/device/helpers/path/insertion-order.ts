@@ -3,11 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { type BrowserItem } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+// One rule for every tool that places devices from a path list (create, move,
+// copy): each entry runs in turn, but the call wrote every path against the
+// chains as they were, so a later entry spelled through a chain an earlier
+// one changed is refused before anything is made or moved.
+
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import { appendRenumbers } from "#src/tools/device/create/helpers/device-creation.ts";
-import { pastTheEndReason } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
 import { navigateRemainingSegments } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { resolveDevicePath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { resolveDeviceTypeSegments } from "#src/tools/shared/device/helpers/path/device-type-segments.ts";
 import { liveApiAtDevicePath } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
@@ -24,15 +27,21 @@ import {
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
 
-/** Where one path entry inserts, and whether it names a slot in that chain. */
+/** A chain an entry inserts into or takes from. */
 interface InsertionTarget {
   /** How the container is spelled back to the caller. */
   display: string;
-  /** The input spelling with pad notes resolved, so "pC1" and "pc1" match. */
+  /** The input spelling with pad notes resolved, so "pC1" and "pc1" match. A
+   * bare pad is spelled as its first layer (`pC1/c0`), where a device lands. */
   key: string;
+  /** The pad itself, when the container is one: what a pad move renumbers. */
+  padKey: string | null;
   /** Live's own path, when the container exists: two input spellings of one
    * chain differ as text and match here. */
   liveKey: string | null;
+  /** Names a track, device or return chain that isn't there, so the move or
+   * copy fails on its own turn. A missing chain doesn't count: one is made. */
+  reachesNothing: boolean;
   /** Names a slot an insert pushes the rest of the chain past. Position 0 of an
    * empty chain is an append, which pushes nothing. */
   positioned: boolean;
@@ -44,32 +53,58 @@ interface InsertionTarget {
   appendsChain: boolean;
 }
 
-/** One entry of the path list, and the device it inserts. */
+/** A chain an earlier entry changed, and which entry. */
+interface Renumbered extends InsertionTarget {
+  by: string;
+}
+
+/** One entry of a path list: where it puts something, and what it takes. */
 export interface InsertionEntry {
+  /** Where the device (or a pad move's chains) goes */
   path: string;
-  /** The device as the call named it; for a preset, the preset */
-  device: string;
-  /** What loads from Live's browser, or null for a native insert */
-  item?: BrowserItem | null;
+  /** Whether appending it renumbers the chain: Live re-sorts every device but
+   * an audio effect into place */
+  appendRenumbers: boolean;
+  /** On a move, what leaves its place first: the device's own Live path, or
+   * the pad path a drum chain leaves */
+  from?: { device: string } | { pad: string };
+  /** How the call named what moves, for the refusal */
+  named?: string;
+}
+
+/** How a tool's entries are named in a refusal. */
+export interface InsertionWords {
+  /** The param the entries came from */
+  param: "path" | "toPath";
+  /** What an entry does to its destination. A move or copy to nowhere skips
+   * on its own, so it changes nothing. */
+  verb: "insert at" | "move to" | "copy to";
 }
 
 /**
  * Refuse a path list whose later entries are spelled through a chain an earlier
- * entry has renumbered. An insert shifts every later device down a slot, so a
- * `d<n>` written after it — in that chain or below it — names something that
- * has already moved. An append renumbers too when Live re-sorts the chain
- * around it, which is every device but an audio effect.
- * @param entries - The path entries and the device each one inserts, in order
+ * entry has renumbered. An insert shifts every later device down a slot, and a
+ * device moved out shifts them up, so a `d<n>` written after it — in that
+ * chain or below it — names something that has already moved. An append
+ * renumbers too when Live re-sorts the chain around it, which is every device
+ * but an audio effect. A drum chain moved to another pad renumbers the layers
+ * of both pads.
+ * @param entries - The path entries, in order
+ * @param words - How the tool's entries are named in the refusal; a create
+ *   call's `path` by default
  * @throws Error when an entry is spelled through a renumbered chain
  */
-export function validateInsertionOrder(entries: InsertionEntry[]): void {
+export function validateInsertionOrder(
+  entries: InsertionEntry[],
+  words?: InsertionWords,
+): void {
   // One entry has nothing earlier to have gone stale against, and checking it
   // would read the Live Set for an answer that is already known.
   if (entries.length < 2) {
     return;
   }
 
-  const renumbered: InsertionTarget[] = [];
+  const renumbered: Renumbered[] = [];
   // Devices earlier entries add, per container, so a position is measured
   // against the chain as it will be when this entry runs.
   const pending = new Map<string, number>();
@@ -79,15 +114,13 @@ export function validateInsertionOrder(entries: InsertionEntry[]): void {
   // own.
   const chainsMemo = new Map<string, LiveAPI[]>();
 
-  for (const { path: p, device, item } of entries) {
+  for (const entry of entries) {
+    const { path: p, from } = entry;
     const target = insertionTarget(p, pending, chainsMemo);
 
-    if (target == null) {
-      continue;
-    }
-
-    // Refused, so it fills nothing and moves nothing.
-    if (target.pastTheEnd) {
+    // Names nowhere, or a slot past the end: refused on its own turn, so it
+    // fills, takes and moves nothing.
+    if (target == null || changesNothing(target, words)) {
       continue;
     }
 
@@ -95,10 +128,24 @@ export function validateInsertionOrder(entries: InsertionEntry[]): void {
 
     if (stale != null) {
       throw new Error(
-        `path entry "${p}" is spelled through "${stale.display}", ` +
-          `which an earlier entry renumbers by inserting into it. Make these calls ` +
-          `separately, or name where the device should land after that insert.`,
+        `${words?.param ?? "path"} entry "${p}" is spelled through ` +
+          `"${stale.display}", which ${stale.by} renumbers. Make these calls ` +
+          `separately.`,
       );
+    }
+
+    const by = `the ${words?.verb ?? "insert at"} "${p}"`;
+    const left =
+      from == null ? null : leaving(from, pending, chainsMemo, entry.named);
+
+    if (left != null) {
+      renumbered.push(left);
+    }
+
+    // A pad move re-maps chains onto the destination pad.
+    if (from != null && "pad" in from) {
+      renumbered.push(padChanged(target, by));
+      continue;
     }
 
     // A `c+` entry's device goes into a chain that doesn't exist yet, so it
@@ -111,78 +158,181 @@ export function validateInsertionOrder(entries: InsertionEntry[]): void {
       pending.set(target.liveKey, (pending.get(target.liveKey) ?? 0) + 1);
     }
 
-    if (target.positioned || appendRenumbers(device, item)) {
-      renumbered.push(target);
+    if (target.positioned || entry.appendRenumbers) {
+      renumbered.push({ ...target, by });
     }
   }
 }
 
 /**
- * Refuse an index past the end of a chain the path would have to make first. A
- * chain that doesn't exist holds no devices, so only index 0 (or `d+`) is in
- * range there. Checked before any chain is made: resolving the path creates
- * them, and a refusal after that would leave chains behind.
- * @param path - One path entry
- * @throws Error when the path names a slot past the end of a chain it creates
+ * The container a path names, but only when it is already there: nothing has
+ * run yet, so this must not auto-create chains on the way down.
+ * @param root - Parsed track root
+ * @param segments - The container's segments below the root
+ * @param chainsMemo - A drum rack's chains, once read for this call
+ * @returns The container, or null when any step of the path is missing
  */
-export function refuseIndexInNewChain(path: string): void {
-  let parsed: DeviceContainerPath;
-
-  try {
-    parsed = requireDeviceContainer(parseObjectPath(path, "path"), "path");
-  } catch {
-    // Unparsable paths were refused before this runs. This is a path that
-    // names something a device doesn't go in (a scene); its write skips it.
-    return;
+export function peekContainer(
+  root: TrackSegment,
+  segments: CanonicalDeviceSegment[],
+  chainsMemo: Map<string, LiveAPI[]>,
+): LiveAPI | null {
+  if (segments.length === 0) {
+    return existing(liveApiAtDevicePath(trackSegmentPath(root).toString()));
   }
 
-  const { segments, namesNothing } = resolveDeviceTypeSegments(
-    parsed.root,
-    parsed.segments,
+  const resolved = resolveDevicePath({ kind: "device", root, segments });
+
+  if (resolved.targetType !== "drum-pad") {
+    return existing(liveApiAtDevicePath(resolved.liveApiPath));
+  }
+
+  const rack = liveApiAtDevicePath(resolved.liveApiPath);
+
+  if (!rack.exists()) {
+    return null;
+  }
+
+  // Live indexes drum pads by note, so the tail only resolves against the
+  // rack's own chains, read once per rack rather than once per pad.
+  return existing(
+    drumPadChain(
+      rack,
+      resolved.drumPadNote as string,
+      resolved.remainingSegments,
+      chainsMemo,
+    ),
   );
-  const last = segments.at(-1);
+}
 
-  if (
-    namesNothing != null ||
-    parsed.appendsChain ||
-    parsed.appendsDevice ||
-    last?.kind !== "device" ||
-    last.index === 0
-  ) {
-    return;
-  }
-
-  const container = segments.slice(0, -1);
-  const newest = container.at(-1);
-  const memo = new Map<string, LiveAPI[]>();
-
-  if (
-    newest == null ||
-    newest.kind === "device" ||
-    newest.kind === "return-chain" ||
-    peekContainer(parsed.root, container, memo) != null
-  ) {
-    return;
-  }
-
-  // The container is missing: it is only made when what holds it is there and
-  // takes chains. Anything else fails its own way while resolving.
-  const parent = peekContainer(parsed.root, container.slice(0, -1), memo);
+/**
+ * Whether resolving a path makes a missing container: a pad's chain, a layer of
+ * a pad, or a chain of a plain rack. Anything else fails its own way.
+ * @param parent - What holds the container, when it is there
+ * @param container - The container's segments
+ * @returns True when the container is made on the way down
+ */
+export function makesContainer(
+  parent: LiveAPI | null,
+  container: CanonicalDeviceSegment[],
+): boolean {
   const isDrumRack = (parent?.getProperty("can_have_drum_pads") as number) > 0;
-  const makesIt =
+
+  return (
     parent != null &&
-    (newest.kind === "drum-pad"
+    (container.at(-1)?.kind === "drum-pad"
       ? isDrumRack
       : // A layer of a pad, or a chain of a plain rack
         container.at(-2)?.kind === "drum-pad" ||
-        ((parent.getProperty("can_have_chains") as number) > 0 && !isDrumRack));
-
-  if (makesIt) {
-    throw new Error(pastTheEndReason(last.index, 0, path) as string);
-  }
+        ((parent.getProperty("can_have_chains") as number) > 0 && !isDrumRack))
+  );
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Whether an entry is refused on its own turn: a slot past the end, or a move
+ * or copy to nowhere.
+ * @param target - Where the entry lands
+ * @param words - The tool's words; none for create
+ * @returns True when it fills, takes and moves nothing
+ */
+function changesNothing(
+  target: InsertionTarget,
+  words: InsertionWords | undefined,
+): boolean {
+  return (
+    target.pastTheEnd ||
+    (target.reachesNothing && words != null && words.verb !== "insert at")
+  );
+}
+
+/**
+ * A pad an entry renumbers: its layers, by spelling, since Live numbers a
+ * drum rack's chains across the whole rack.
+ * @param target - The pad, as a target
+ * @param by - The entry that renumbers it
+ * @returns The change
+ */
+function padChanged(target: InsertionTarget, by: string): Renumbered {
+  return { ...target, key: target.padKey ?? target.key, liveKey: null, by };
+}
+
+/**
+ * Whether a container that isn't there can't be made either: the first
+ * missing step is the track, a device or a return chain.
+ * @param root - Parsed track root
+ * @param segments - The container's segments
+ * @param chainsMemo - A drum rack's chains, once read for this call
+ * @returns True when nothing a device goes in will be there
+ */
+function reachesNothing(
+  root: TrackSegment,
+  segments: CanonicalDeviceSegment[],
+  chainsMemo: Map<string, LiveAPI[]>,
+): boolean {
+  // Called only when the whole container is missing, so the first missing
+  // step is at or above it.
+  let depth = 0;
+
+  while (
+    depth < segments.length &&
+    peekContainer(root, segments.slice(0, depth), chainsMemo) != null
+  ) {
+    depth++;
+  }
+
+  const prefix = segments.slice(0, depth);
+  const missing = prefix.at(-1);
+
+  return (
+    missing == null ||
+    missing.kind === "device" ||
+    missing.kind === "return-chain" ||
+    !makesContainer(
+      peekContainer(root, prefix.slice(0, -1), chainsMemo),
+      prefix,
+    )
+  );
+}
+
+/**
+ * The chain a moved object leaves, which renumbers when it goes.
+ * @param from - The device's Live path, or the pad a drum chain leaves
+ * @param pending - Devices earlier entries add, keyed by container
+ * @param chainsMemo - A drum rack's chains, once read for this call
+ * @param named - How the call named what moves
+ * @returns The chain, or null for a pad path that names nothing
+ */
+function leaving(
+  from: NonNullable<InsertionEntry["from"]>,
+  pending: Map<string, number>,
+  chainsMemo: Map<string, LiveAPI[]>,
+  named = "it",
+): Renumbered | null {
+  const by = `the move of ${named}`;
+
+  if ("pad" in from) {
+    const pad = insertionTarget(from.pad, pending, chainsMemo);
+
+    return pad == null ? null : padChanged(pad, by);
+  }
+
+  const chain = from.device.replace(/ devices \d+$/, "");
+  const display = extractDevicePath(chain) ?? chain;
+
+  return {
+    display,
+    key: display,
+    padKey: null,
+    liveKey: chain,
+    reachesNothing: false,
+    positioned: false,
+    pastTheEnd: false,
+    appendsChain: false,
+    by,
+  };
+}
 
 /**
  * Whether a later entry is spelled through a container an earlier one
@@ -246,57 +396,24 @@ function insertionTarget(
   const live = peekContainer(parsed.root, segments, chainsMemo);
 
   const count = chainSize(live, pending);
+  const spelled = formatObjectPath({
+    ...container,
+    segments: segments.map(padByNote),
+  });
+  const isPad = segments.at(-1)?.kind === "drum-pad";
 
   return {
     display: formatObjectPath(container),
-    key: formatObjectPath({ ...container, segments: segments.map(padByNote) }),
+    key: isPad ? `${spelled}/c0` : spelled,
+    padKey: isPad ? spelled : null,
     liveKey: live?.path ?? null,
+    reachesNothing:
+      live == null && reachesNothing(parsed.root, segments, chainsMemo),
     positioned:
       position != null && !(count != null && position === 0 && count === 0),
     pastTheEnd: position != null && count != null && position > count,
     appendsChain: parsed.appendsChain ?? false,
   };
-}
-
-/**
- * The container a path names, but only when it is already there: nothing has
- * run yet, so this must not auto-create chains on the way down.
- * @param root - Parsed track root
- * @param segments - The container's segments below the root
- * @param chainsMemo - A drum rack's chains, once read for this call
- * @returns The container, or null when any step of the path is missing
- */
-function peekContainer(
-  root: TrackSegment,
-  segments: CanonicalDeviceSegment[],
-  chainsMemo: Map<string, LiveAPI[]>,
-): LiveAPI | null {
-  if (segments.length === 0) {
-    return existing(liveApiAtDevicePath(trackSegmentPath(root).toString()));
-  }
-
-  const resolved = resolveDevicePath({ kind: "device", root, segments });
-
-  if (resolved.targetType !== "drum-pad") {
-    return existing(liveApiAtDevicePath(resolved.liveApiPath));
-  }
-
-  const rack = liveApiAtDevicePath(resolved.liveApiPath);
-
-  if (!rack.exists()) {
-    return null;
-  }
-
-  // Live indexes drum pads by note, so the tail only resolves against the
-  // rack's own chains, read once per rack rather than once per pad.
-  return existing(
-    drumPadChain(
-      rack,
-      resolved.drumPadNote as string,
-      resolved.remainingSegments,
-      chainsMemo,
-    ),
-  );
 }
 
 /**

@@ -18,10 +18,19 @@ list.
 
 One shape is refused rather than half-applied:
 
-- **A device list that reads through its own inserts.** Inserting a device
-  renumbers the chain, so `path: "t0/d1,t0/d2"` would put both new devices at d1
-  and d2 and push the originals past them — the second entry never lands where
-  it was named. Refused before anything is created. Entries naming different
-  chains are fine, and appending an audio effect renumbers nothing, so that
-  stays allowed. Tracks and scenes have no such case: they sit in one flat list
-  each, so the tool can work out every final position up front.
+- **A device list that reads through its own changes.** `createDevice` (`path`),
+  `updateDevice` and `duplicate` with `type: "device"` (`toPath`) share one
+  rule. Each entry runs in turn, and an entry renumbers a chain when it inserts
+  at a position, appends anything but an audio effect (Live re-sorts the chain),
+  moves a device out of it, or moves drum chains onto or off a pad. A later
+  entry that names a position in that chain, or is spelled through it, would
+  name something that has moved, so the call is refused before anything is
+  created, moved or copied: `path: "t0/d1,t0/d2"`, or a move
+  `path: "t0/d2,t0/d5", toPath: "t0/d3/c0,t0/d3/c0"`. The refusal names the
+  entry and the earlier one, and says to make separate calls. Entries in chains
+  no earlier entry changed are fine, and so is appending an audio effect. An
+  entry past the end of its chain, or a move or copy to a track, device or
+  return chain that isn't there, changes nothing and skips only itself; a chain
+  the path would make still counts. Tracks and scenes have no such case: they
+  sit in one flat list each, so the tool can work out every final position up
+  front.

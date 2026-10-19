@@ -85,17 +85,17 @@ describe("duplicate — drum chain path spelling", () => {
 
   it("spells every copy in one response the same way", async () => {
     registerSourceDevice();
-    mockMovesInto(0, 2);
+    mockMovesInto(0, 2, "append");
 
     expect(
       await duplicate({
         type: "device",
         id: "source-device",
-        toPath: "t0/d0/pC1/d0,t0/d0/pC1/d0",
+        toPath: "t0/d0/pC1/d+,t0/d0/pC1/d+",
       }),
     ).toStrictEqual([
-      { id: "copy-0", path: "t0/d0/pC1/c0/d1" },
-      { id: "copy-1", path: "t0/d0/pC1/c0/d0" },
+      { id: "copy-0", path: "t0/d0/pC1/c0/d0" },
+      { id: "copy-1", path: "t0/d0/pC1/c0/d1" },
     ]);
   });
 
@@ -150,12 +150,18 @@ function registerSourceDevice(): void {
 }
 
 /**
- * Stand in for Live's moves: each copy is found on the temp track, lands at the
- * front of the rack's chain `chain`, and pushes the earlier copies along.
+ * Stand in for Live's moves: each copy is found on the temp track and lands in
+ * the rack's chain `chain` — at the front, pushing the earlier copies along, or
+ * after them.
  * @param chain - The rack chain index every copy lands in
  * @param copies - How many moves to mock
+ * @param lands - Where in the chain each copy lands
  */
-function mockMovesInto(chain: number, copies: number): void {
+function mockMovesInto(
+  chain: number,
+  copies: number,
+  lands: "front" | "append" = "front",
+): void {
   const landed = livePath.track(0).device(0).chain(chain);
 
   registerPendingMockObject("copy-0", { path: livePath.track(1).device(1) });
@@ -164,7 +170,7 @@ function mockMovesInto(chain: number, copies: number): void {
     vi.mocked(moveDeviceToPathMock).mockImplementationOnce(() => {
       for (let copy = 0; copy <= move; copy++) {
         registerMockObject(`copy-${String(copy)}`, {
-          path: landed.device(move - copy),
+          path: landed.device(lands === "front" ? move - copy : copy),
         });
       }
 

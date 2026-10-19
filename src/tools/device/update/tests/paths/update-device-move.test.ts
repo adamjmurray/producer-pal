@@ -172,6 +172,49 @@ describe("updateDevice - moving a drum chain", () => {
     expect(chain2.set).toHaveBeenCalledExactlyOnceWith("in_note", 40);
   });
 
+  // A drum chain moved to another pad renumbers both pads' layers.
+  it.each([
+    [
+      "the pad it lands on",
+      "t0/d0/pD1/c0/d+",
+      "t0/d0/pD1",
+      'the move to "t0/d0/pD1"',
+    ],
+    [
+      "the pad it leaves",
+      "t0/d0/pC1/c0/d+",
+      "t0/d0/pC1",
+      "the move of id chain-0",
+    ],
+    // A bare pad means its first layer.
+    ["the pad, bare", "t0/d0/pD1/d+", "t0/d0/pD1", 'the move to "t0/d0/pD1"'],
+    [
+      "the pad it leaves, bare",
+      "t0/d0/pC1/d+",
+      "t0/d0/pC1",
+      "the move of id chain-0",
+    ],
+  ])("refuses a later toPath spelled through %s", (_case, later, pad, by) => {
+    registerMockObject("dev", { path: livePath.track(1).device(0) });
+
+    expect(() =>
+      updateDevice({ id: "chain-0,dev", toPath: `t0/d0/pD1,${later}` }),
+    ).toThrow(
+      `toPath entry "${later}" is spelled through "${pad}", which ${by} renumbers.`,
+    );
+    expect(chain0.set).not.toHaveBeenCalled();
+  });
+
+  it("lets a later layer move to another pad through", () => {
+    updateDevice({
+      path: "t0/d0/pC1/c0,t0/d0/pC1/c1",
+      toPath: "t0/d0/pD1,t0/d0/pE1",
+    });
+
+    expect(chain0.set).toHaveBeenCalledWith("in_note", 38);
+    expect(chain1.set).toHaveBeenCalledWith("in_note", 40);
+  });
+
   // Live layers rather than replaces, so the destination ends up playing both
   // the sound that was there and the one that arrived.
   it("says on the pad's entry that a move onto an occupied pad layers", () => {

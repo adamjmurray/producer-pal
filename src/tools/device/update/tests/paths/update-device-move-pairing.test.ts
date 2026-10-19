@@ -8,6 +8,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { LIVE_API_DEVICE_TYPE_AUDIO_EFFECT } from "#src/tools/constants.ts";
 import { registerC1PadRack } from "#src/tools/device/tests/helpers/device-rack-fixtures.ts";
 import {
   type RegisteredMockObject,
@@ -117,9 +118,18 @@ describe("updateDevice — pairing toPath with the targets", () => {
 
   // Each device is named once every move is done: src-1 lands ahead of src-0.
   it("reports a device where a later move pushed it", () => {
+    // Appending an audio effect renumbers nothing, so t1/d0 still means d0.
+    for (const index of [0, 1]) {
+      registerMockObject(`src-${index}`, {
+        path: livePath.track(0).device(index),
+        type: "Device",
+        properties: { type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT },
+      });
+    }
+
     const result = updateDevice({
       id: "src-0,src-1",
-      toPath: "t1/d0,t1/d0",
+      toPath: "t1/d+,t1/d0",
     });
 
     expect(result).toStrictEqual([

@@ -5,6 +5,7 @@
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { LIVE_API_DEVICE_TYPE_AUDIO_EFFECT } from "#src/tools/constants.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
   registerMockObject,
@@ -748,10 +749,12 @@ describe("duplicate - device copies pushed by later copies", () => {
     registerMockObject("device1", {
       path: livePath.track(0).device(0),
       type: "PluginDevice",
+      properties: { type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT },
     });
     registerMockObject("device2", {
       path: livePath.track(0).device(1),
       type: "PluginDevice",
+      properties: { type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT },
     });
     registerPendingMockObject("copyA", { path: livePath.track(1).device(0) });
     mockTwoMoves(String(livePath.track(1).device(1)), [
@@ -764,7 +767,7 @@ describe("duplicate - device copies pushed by later copies", () => {
       await duplicate({
         type: "device",
         id: "device1,device2",
-        toPath: "t1/d0,t1/d0",
+        toPath: "t1/d+,t1/d0",
       }),
     ).toStrictEqual([
       { id: "copyA", path: "t1/d1" },
