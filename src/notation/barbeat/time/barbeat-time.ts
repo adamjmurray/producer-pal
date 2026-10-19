@@ -10,6 +10,7 @@ import {
 import {
   formatBeatPosition,
   formatOffGridBeats,
+  printedWholeBeat,
 } from "#src/notation/barbeat/serializer/helpers/barbeat-serializer-fractions.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 
@@ -79,16 +80,22 @@ export function parseBeatsPerBar(options: BeatsPerBarOptions = {}): number {
  * `calculateBarBeat` (which needs the raw numeric split for time grouping).
  * @param musicalBeats - Position in musical beats
  * @param beatsPerBar - Beats per bar
+ * @param timeSigDenominator - Time signature denominator (how the beat prints)
  * @returns 1-based bar and beat
  */
 export function splitMusicalBeatsToBarBeat(
   musicalBeats: number,
   beatsPerBar: number,
+  timeSigDenominator?: number,
 ): { bar: number; beat: number } {
   const bar = Math.max(1, Math.floor(musicalBeats / beatsPerBar) + 1);
   const beat = musicalBeats - (bar - 1) * beatsPerBar + 1;
 
-  return { bar, beat };
+  // A hair under a bar line prints as one beat past the bar's last: that is
+  // the next bar's downbeat.
+  return printedWholeBeat(beat, timeSigDenominator) === beatsPerBar + 1
+    ? { bar: bar + 1, beat: 1 }
+    : { bar, beat };
 }
 
 /**
@@ -112,7 +119,11 @@ export function musicalBeatsToBarBeat(
   beatsPerBar: number,
   timeSigDenominator?: number,
 ): string {
-  const { bar, beat } = splitMusicalBeatsToBarBeat(beats, beatsPerBar);
+  const { bar, beat } = splitMusicalBeatsToBarBeat(
+    beats,
+    beatsPerBar,
+    timeSigDenominator,
+  );
 
   return `${bar}|${formatBeatPosition(beat, timeSigDenominator)}`;
 }

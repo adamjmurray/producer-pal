@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -388,6 +388,31 @@ describe("barbeat-time utilities", () => {
       expect(abletonBeatsToBarBeat(1.25, 4, 4)).toBe("1|2.25");
       expect(abletonBeatsToBarBeat(0.25, 6, 8)).toBe("1|1.5");
       expect(abletonBeatsToBarBeat(0.75, 6, 8)).toBe("1|2.5");
+    });
+
+    it("prints a position a hair from a bar line in the right bar", () => {
+      // Live stores times near float32, so a tile at bar 21 can read back as
+      // 79.99999896. That prints as a whole beat, so it must not be beat 5.
+      expect(abletonBeatsToBarBeat(79.99999896, 4, 4)).toBe("21|1");
+      expect(abletonBeatsToBarBeat(80.000001, 4, 4)).toBe("21|1");
+      expect(abletonBeatsToBarBeat(5.9999995, 6, 8)).toBe("3|1");
+      expect(abletonBeatsToBarBeat(-0.0000005, 4, 4)).toBe("1|1");
+      // Mid-bar beats and tuplets near a bar line keep their exact spelling.
+      expect(abletonBeatsToBarBeat(2.9999999, 4, 4)).toBe("1|4");
+      expect(abletonBeatsToBarBeat(4 - 1 / 3, 4, 4)).toBe("1|4+n/6");
+      // At the decimal fuzz's edge, and a 3-place beat that only looks close.
+      expect(abletonBeatsToBarBeat(3.99999, 4, 4)).toBe("2|1");
+      expect(abletonBeatsToBarBeat(3.999, 4, 4)).toBe("1|4.999");
+    });
+
+    it("carries an off-grid offset that rounds to a whole beat", () => {
+      // The `+n<quarters>/4` escape keeps 4 places, so a drift of ~1e-5 beats
+      // would print `+n1/4`: beat 5 in another spelling.
+      expect(abletonBeatsToBarBeat(1995.999989, 4, 4)).toBe("500|1");
+      expect(abletonBeatsToBarBeat(5.99999, 6, 8)).toBe("3|1");
+      expect(abletonBeatsToBarBeat(1.99998, 4, 4)).toBe("1|3");
+      expect(abletonBeatsToBarBeat(4.00002, 4, 4)).toBe("2|1");
+      expect(abletonBeatsToBarBeat(-0.00002, 4, 4)).toBe("1|1");
     });
   });
 
