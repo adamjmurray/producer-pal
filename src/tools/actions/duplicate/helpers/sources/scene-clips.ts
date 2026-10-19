@@ -9,7 +9,7 @@
 
 import { idDoesNotExist } from "#src/tools/shared/validation/id-validation.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
+import { copyLengthBeats } from "../clip/arrangement-length.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** One clip of a scene, and the track holding it. */
@@ -23,7 +23,7 @@ export interface ScenePass {
   sceneIndex: number;
   /** Its clips, in track order */
   clips: SceneClip[];
-  /** The longest clip, never under 4 beats, in Ableton beats */
+  /** The longest clip copy (pre-roll included), never under 4 beats, in Ableton beats */
   length: number;
 }
 
@@ -97,7 +97,7 @@ export function readSceneClips(sceneIndex: number): ScenePass {
 
   forEachClipInScene(sceneIndex, trackIds, (clip, _clipSlot, trackIndex) => {
     clips.push({ clip, trackIndex });
-    length = Math.max(length, clipLengthBeats(clip));
+    length = Math.max(length, copyLengthBeats(clip));
   });
 
   return { sceneIndex, clips, length };

@@ -98,6 +98,24 @@ describe("duplicate-scene", () => {
 
       expect(length).toBe(12);
     });
+
+    it("counts a looped clip's pre-roll", () => {
+      registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: { tracks: children("10") },
+      });
+      registerClipSlot(0, 0, true, {
+        is_midi_clip: 1,
+        length: 4,
+        looping: 1,
+        start_marker: 0,
+        loop_start: 1,
+      });
+
+      const length = readSceneClips(0).length;
+
+      expect(length).toBe(5);
+    });
   });
 
   /**
