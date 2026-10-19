@@ -8,6 +8,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   LAYERED_CHAIN_NOTES,
@@ -72,5 +73,52 @@ describe("createDevice — drum chain path spelling", () => {
     expect(
       await createDevice({ device: "Simpler", path: "t0/d0/pC1" }),
     ).toStrictEqual({ id: "device-in-chain-0", path: "t0/d0/pC1/d0" });
+  });
+
+  it("names a pad's device where it sits once a later entry pushes the rack along", async () => {
+    // Live sorts a MIDI effect to the front, so the rack slides to d1.
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      methods: {
+        insert_device: () => {
+          registerMockObject("drum-rack", {
+            path: livePath.track(0).device(1),
+            type: "RackDevice",
+            properties: {
+              chains: children("chain-0", "chain-1", "chain-2"),
+              can_have_drum_pads: 1,
+            },
+          });
+
+          for (const [index, inNote] of LAYERED_CHAIN_NOTES.entries()) {
+            const chain = livePath.track(0).device(1).chain(index);
+
+            registerMockObject(`chain-${String(index)}`, {
+              path: chain,
+              type: "DrumChain",
+              properties: { in_note: inNote, devices: children() },
+            });
+            registerMockObject(`device-in-chain-${String(index)}`, {
+              path: chain.device(0),
+            });
+          }
+
+          registerMockObject("arp", { path: livePath.track(0).device(0) });
+
+          return ["id", "arp"];
+        },
+      },
+    });
+
+    expect(
+      await createDevice({
+        device: "Simpler,Arpeggiator",
+        path: "t0/d0/pC1,t0",
+      }),
+    ).toStrictEqual([
+      // C1 is layered, so its own spelling names the layer.
+      { id: "device-in-chain-0", path: "t0/d1/pC1/c0/d0" },
+      { id: "arp", path: "t0/d0" },
+    ]);
   });
 });

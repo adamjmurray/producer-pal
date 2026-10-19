@@ -285,7 +285,9 @@ export function insertRefusalCause(
 }
 
 /**
- * How the call spelled the container a device went into.
+ * How the call spelled the container a device went into. A held container
+ * follows its rack when a later entry pushes it along, and then the spelling
+ * no longer names it, so the check only holds while it hasn't moved.
  * @param target - Where the device was created
  * @param target.container - The container
  * @param target.containerPath - How the call spelled the container
@@ -295,7 +297,12 @@ export function writtenContainer({
   container,
   containerPath,
 }: CreationTarget): WrittenContainer {
-  return { container: () => container, path: containerPath };
+  const heldAt = container.path;
+
+  return {
+    container: () => (container.path === heldAt ? container : null),
+    path: containerPath,
+  };
 }
 
 /**
