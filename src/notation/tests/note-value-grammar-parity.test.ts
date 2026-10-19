@@ -15,7 +15,7 @@
 //     4. barbeat `stepInterval` rule     (barbeat-grammar.peggy, `1|1x4@n/8`)
 //
 //   `±n` beat-offset sites (a `bar|beat` beat field → absolute musical beats)
-//     5. parseBeatValue / barBeatToMusicalBeats (regex, barbeat-time.ts)
+//     5. parseBeatValue / readBarBeat (regex, barbeat-time.ts)
 //     6. barbeat `beatValue` rule        (barbeat-grammar.peggy)
 //     7. transform `beatValue` rule      (transform-grammar.peggy, in timeRange)
 //

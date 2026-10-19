@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // Writing the `envelopes` lines to one clip, one round trip to the remote
@@ -266,7 +266,7 @@ async function writeOneLine(
   let points;
 
   try {
-    // The up-front check parsed in 4/4; this clip's meter can still refuse it.
+    // The up-front check read only the syntax; times need this clip's meter.
     points = parseEnvelopeNotation(line.notation, address);
   } catch (error) {
     return { ok: false, reason: errorMessage(error), available: true };

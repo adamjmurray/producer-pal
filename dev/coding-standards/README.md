@@ -215,7 +215,7 @@ The note-value notation (durations like `n/4`, `±n` beat offsets, the off-grid
 - the `transform-grammar.peggy` rules (transform expressions and time-range
   selectors), and
 - three regexes in `src/notation/barbeat/time/barbeat-time.ts`
-  (`durationToAbletonBeats`, `barBeatToMusicalBeats`, `parseBeatValue`).
+  (`durationToAbletonBeats`, `readBarBeat`, `parseBeatValue`).
 
 This duplication is deliberate and **should not be refactored away**:
 

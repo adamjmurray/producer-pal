@@ -75,6 +75,11 @@ remote script. A line it can't write is a `detail` on that clip's entry
   written, with an example that works. A read prints `/`, `~N` (hundredths) or
   `_`; a curve that rounds to 0, or sits on a flat segment, prints `/`.
 
+- **Times are read in each clip's meter.** Only the syntax (points, values,
+  curves, connectors) is checked before anything is written. Points that run
+  backwards in a clip's meter, or a third point at one time, are that line's
+  `detail` on that clip, and the other lines still run.
+
 - **A write that fails partway leaves no half envelope.** The clear and the
   rewrite are one step: if Live throws while the points go in, the remote script
   removes what it wrote, puts the old envelope back, and the line's `detail`

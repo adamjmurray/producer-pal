@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // Clip automation envelopes as one compact string:
@@ -27,6 +27,7 @@ import { formatDecimal } from "#src/notation/barbeat/serializer/helpers/barbeat-
 import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
+  readBarBeat,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 
@@ -133,6 +134,24 @@ export function parseEnvelopeNotation(
   }
 
   return points;
+}
+
+/**
+ * Check envelope notation's syntax without a meter: each point, value, curve
+ * and connector. Times and their order depend on the clip's meter, so
+ * {@link parseEnvelopeNotation} checks those once the clip is known.
+ * @param text - The notation
+ * @throws If a point, a value, a curve or a connector is malformed
+ */
+export function checkEnvelopeNotation(text: string): void {
+  if (text.trim() === "") {
+    return;
+  }
+
+  for (const segment of splitOnConnectors(text)) {
+    readConnector(segment.connector);
+    readBarBeat(readPoint(segment.text).barBeat);
+  }
 }
 
 // --- Helpers below main exports ---
@@ -381,6 +400,26 @@ function parsePoint(
   segment: string,
   meter: EnvelopeMeter,
 ): EnvelopeNotationPoint {
+  const { barBeat, value } = readPoint(segment);
+
+  return {
+    time: barBeatToAbletonBeats(
+      barBeat,
+      meter.timeSigNumerator,
+      meter.timeSigDenominator,
+    ),
+    value,
+    jump: false,
+  };
+}
+
+/**
+ * Read one segment's time text and value, leaving the time unconverted.
+ * @param segment - The text between two connectors
+ * @returns The bar|beat text and the value
+ * @throws If the segment isn't a point, or its value isn't a finite number
+ */
+function readPoint(segment: string): { barBeat: string; value: number } {
   const token = segment.trim();
 
   if (token === "") {
@@ -416,15 +455,7 @@ function parsePoint(
 
   validateBarBeatPosition(barBeat);
 
-  return {
-    time: barBeatToAbletonBeats(
-      barBeat,
-      meter.timeSigNumerator,
-      meter.timeSigDenominator,
-    ),
-    value,
-    jump: false,
-  };
+  return { barBeat, value };
 }
 
 /**

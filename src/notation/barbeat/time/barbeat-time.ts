@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import {
@@ -14,7 +14,7 @@ import {
 import * as console from "#src/shared/max/v8-max-console.ts";
 
 // NOTE-VALUE PARSING IS INTENTIONALLY DUPLICATED. The note-value regexes in
-// this file (durationToAbletonBeats, barBeatToMusicalBeats, parseBeatValue)
+// this file (durationToAbletonBeats, readBarBeat, parseBeatValue)
 // mirror the note-value rules in barbeat-grammar.peggy and
 // transform-grammar.peggy. Peggy can't share rules, and these run in per-note
 // hot paths, so the duplication is deliberate — see ADR-0003 "Notation grammar
@@ -136,23 +136,7 @@ export function barBeatToMusicalBeats(
   beatsPerBar: number,
   timeSigDenominator?: number,
 ): number {
-  // Beat base is an integer or decimal grid beat, optionally displaced by a
-  // `±n<frac>` note-value offset. The base group carries an optional `.\d*` so
-  // a decimal beat can also take an offset (`1|1.5+n/4`); the offset suffix is
-  // its own optional group. Kept in parity with parseBeatValue below.
-  const match = barBeat.match(
-    /^(-?\d+)\|((-?\d+(?:\.\d*)?)(?:[+-]n(?:\d+\.\d*|\d*)\/(?:0|[1-9]\d*)[dt]?)?)$/,
-  );
-
-  if (!match) {
-    throw new Error(
-      `Invalid bar|beat format: "${barBeat}". Expected "{int}|{beat}" like "1|2" or "2|3.5", or a note-value offset like "1|1+n/12" (beat 1 + an eighth triplet) or "2|2-n/24"`,
-    );
-  }
-
-  const bar = Number.parseInt(match[1] as string);
-  const beatStr = match[2] as string;
-  const beat = parseBeatValue(beatStr, barBeat, timeSigDenominator);
+  const { bar, beat } = readBarBeat(barBeat, timeSigDenominator);
 
   // Beats are 1-based, so beat == beatsPerBar+1 is the downbeat of the next bar
   // (still "within reach" of this bar's end via a sub-beat/`+n` offset); anything
@@ -171,6 +155,37 @@ export function barBeatToMusicalBeats(
   // low-level conversion stays otherwise silent because it runs per-note in
   // transform timeRange checks (a warning here would spam).
   return (bar - 1) * beatsPerBar + (beat - 1);
+}
+
+/**
+ * Read a bar|beat string's bar and beat, without the meter: this throws for any
+ * malformed string, but doesn't warn about a beat past the bar.
+ * @param barBeat - Bar|beat string like "1|2", "2|3.5" or "1|1+n/12"
+ * @param timeSigDenominator - Time signature denominator (for the `±n` offset unit)
+ * @returns The bar, and the 1-based beat within it
+ */
+export function readBarBeat(
+  barBeat: string,
+  timeSigDenominator?: number,
+): { bar: number; beat: number } {
+  // Beat base is an integer or decimal grid beat, optionally displaced by a
+  // `±n<frac>` note-value offset. The base group carries an optional `.\d*` so
+  // a decimal beat can also take an offset (`1|1.5+n/4`); the offset suffix is
+  // its own optional group. Kept in parity with parseBeatValue below.
+  const match = barBeat.match(
+    /^(-?\d+)\|((-?\d+(?:\.\d*)?)(?:[+-]n(?:\d+\.\d*|\d*)\/(?:0|[1-9]\d*)[dt]?)?)$/,
+  );
+
+  if (!match) {
+    throw new Error(
+      `Invalid bar|beat format: "${barBeat}". Expected "{int}|{beat}" like "1|2" or "2|3.5", or a note-value offset like "1|1+n/12" (beat 1 + an eighth triplet) or "2|2-n/24"`,
+    );
+  }
+
+  return {
+    bar: Number.parseInt(match[1] as string),
+    beat: parseBeatValue(match[2] as string, barBeat, timeSigDenominator),
+  };
 }
 
 /**
@@ -263,7 +278,7 @@ export function barBeatToAbletonBeats(
  *   0-indexed / zero-bar / negative-bar / leading-zero
  */
 export function validateBarBeatPosition(barBeat: string): void {
-  // Same regex shape as barBeatToMusicalBeats: capture the bar literal and the
+  // Same regex shape as readBarBeat: capture the bar literal and the
   // raw beat literal (the integer/decimal base, before any `±n` offset). Keep in
   // parity with that regex — only the OUTER structure matters here; the offset
   // suffix is allowed but not inspected (a pickup keeps a valid base).
@@ -523,7 +538,7 @@ function parseBeatValue(
   // `1.5+n/4` (decimal base), or the off-grid escape `1-n0.7/4` (decimal
   // numerator). The base carries an optional `.\d*`; the denominator is a
   // no-leading-zero integer (`0|[1-9]\d*`); a lone `0` reaches the division-by-
-  // zero guard. Kept consistent with the outer barBeatToMusicalBeats regex so a denom
+  // zero guard. Kept consistent with the outer readBarBeat regex so a denom
   // the outer accepts never silently mis-parses here.
   const offsetMatch = beatsStr.match(
     /^(-?\d+(?:\.\d*)?)([+-])n(\d+\.\d*|\d*)\/(0|[1-9]\d*)([dt]?)$/,

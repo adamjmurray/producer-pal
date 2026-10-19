@@ -1,13 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // Reading the `envelopes` param: one "<target>: <notation>" line per parameter.
-// Every line is checked before the call touches anything, because a half-written
-// batch of envelopes can't be cleaned up.
+// Every line's syntax is checked before the call touches anything, because a
+// half-written batch of envelopes can't be cleaned up. Times and their order
+// depend on each clip's meter, so the clip checks those.
 
-import { parseEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
+import { checkEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 
 /** A mixer parameter, as the remote script names it. */
@@ -15,9 +16,6 @@ const MIXER_TARGET = /^(?:volume|pan|send\d+)$/;
 
 /** A Live object id, which is how a device parameter is named. */
 const ID_TARGET = /^\d+$/;
-
-/** Any meter parses the same syntax, so the check up front picks one. */
-const SYNTAX_METER = { timeSigNumerator: 4, timeSigDenominator: 4 };
 
 /** One line of the `envelopes` param. */
 export interface EnvelopeLine {
@@ -96,15 +94,14 @@ function readLine(line: string): EnvelopeLine {
 }
 
 /**
- * Check a line's notation parses, in a meter of its own: the syntax is the same
- * in every meter, and the clip whose meter counts hasn't been reached yet.
+ * Check a line's notation syntax. Its times wait for the clip's meter.
  * @param line - The whole line, for the error
  * @param notation - The notation half of it
  * @throws Error naming the line when the notation is malformed
  */
 function checkNotation(line: string, notation: string): void {
   try {
-    parseEnvelopeNotation(notation, SYNTAX_METER);
+    checkEnvelopeNotation(notation);
   } catch (error) {
     throw new Error(
       `Invalid envelopes line "${line}": ${errorMessage(error)}`,
