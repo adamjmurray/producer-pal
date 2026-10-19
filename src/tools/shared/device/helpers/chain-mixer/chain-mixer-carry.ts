@@ -26,8 +26,8 @@ export interface ChainMixerCarry {
 
 /**
  * Apply a mixer read off one chain onto another, and say so: the caller asked
- * to move a device, not to touch a fader. Sends go one at a time so they match
- * by return-chain name rather than by index.
+ * to move a device, not to touch a fader. Sends go one at a time, matched by
+ * return-chain id: a carry stays in one rack, and names can repeat or be blank.
  *
  * Announce afterward, naming what landed: a disabled parameter is skipped, so
  * announcing the intent up front would claim it.
@@ -50,14 +50,18 @@ export function carryChainMixer(
     },
     notes,
   );
-  const sends = (mixer.sends ?? []) as { return: string; gainDb: number }[];
+  const sends = (mixer.sends ?? []) as {
+    return: string;
+    returnId?: string;
+    gainDb: number;
+  }[];
   // Only the sends that landed; a refused one is already noted.
   const landedSends = sends
     .flatMap(
       (send) =>
         applyChainMixerAside(
           destination,
-          { sendGainDb: send.gainDb, sendReturn: send.return },
+          { sendGainDb: send.gainDb, sendReturn: send.returnId ?? send.return },
           notes,
         ).sends ?? [],
     )
@@ -155,8 +159,8 @@ export function sourceChain(device: LiveAPI): LiveAPI | null {
  * Anything else keeps its own fader and says so instead: a chain already
  * holding devices would have them re-levelled by a write nobody asked for, and
  * a non-default trim is someone's deliberate setting. So does a destination in
- * another rack — sends match by return-chain name, which only lines up within
- * one rack, so a cross-rack carry would drop them and leave a partial trim.
+ * another rack: the carry stays in one rack and matches sends by return-chain
+ * id, so a cross-rack carry would drop them and leave a partial trim.
  *
  * Must be called BEFORE the move — afterward the destination holds the device
  * and no longer reads as untouched.

@@ -274,6 +274,61 @@ describe("carryChainMixer", () => {
     );
   });
 
+  describe("matches each send to its return by id", () => {
+    /**
+     * Register a destination with two sends onto returns with these names
+     * @param names - The two return chains' names
+     * @returns The destination's send parameters
+     */
+    function registerReturnsNamed(...names: string[]): RegisteredMockObject[] {
+      registerChainWithMixer({ sends: [silent, silent] });
+      registerReturnChains(...names);
+
+      return [0, 1].map((i) =>
+        registerMockObject(`send-${i}`, { type: "DeviceParameter" }),
+      );
+    }
+
+    it("when two returns share a name", () => {
+      const [first, second] = registerReturnsNamed("Reverb", "Reverb");
+
+      carryChainMixer(
+        {
+          from: 'chain "Snare"',
+          mixer: {
+            sends: [
+              { return: "Reverb", returnId: "rc-0", gainDb: -12 },
+              { return: "Reverb", returnId: "rc-1", gainDb: -6 },
+            ],
+          },
+        },
+        chainApi(),
+      );
+
+      expect(first?.set).toHaveBeenCalledExactlyOnceWith("display_value", -12);
+      expect(second?.set).toHaveBeenCalledExactlyOnceWith("display_value", -6);
+    });
+
+    it("when the returns have no names", () => {
+      const [first] = registerReturnsNamed("", "");
+
+      carryChainMixer(
+        {
+          from: 'chain "Snare"',
+          mixer: {
+            sends: [{ return: "Return 1", returnId: "rc-0", gainDb: -12 }],
+          },
+        },
+        chainApi(),
+      );
+
+      expect(first?.set).toHaveBeenCalledExactlyOnceWith("display_value", -12);
+      expect(capturedWarnings()).toContain(
+        'chain "Snare" trim (1 send) carried onto the destination chain, which was empty and at defaults',
+      );
+    });
+  });
+
   it("carries nothing onto a chain with no mixer device", () => {
     mockNonExistentObjects();
     const bare = registerMockObject("bare-chain", {
