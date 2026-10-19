@@ -9,6 +9,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
   type RegisteredMockObject,
   deleteMockObject,
@@ -34,6 +35,7 @@ const RACK_PATH = String(livePath.track(3).device(0));
 const NESTED_PATH = String(livePath.track(3).device(0).chain(0).device(0));
 
 const CHAIN_PATH = String(livePath.track(3).device(0).chain(0));
+const PAD_PATH = livePath.track(3).device(0).drumPad(36);
 
 const GONE =
   "no longer exists: an earlier target in this call replaced it or its rack";
@@ -176,6 +178,119 @@ describe("updateDevice - targets gone by their turn", () => {
       expect.objectContaining({ id: "newRack" }),
     ]);
     expect(hotswapCalls()).toHaveLength(1);
+  });
+});
+
+describe("updateDevice - targets a later target's preset replaces", () => {
+  const LATER_GONE =
+    "no longer exists: a later target in this call replaced it";
+
+  beforeEach(() => {
+    registerMockObject("rack", {
+      path: RACK_PATH,
+      type: "Device",
+      properties: { class_display_name: "Instrument Rack", type: 1 },
+    });
+    registerMockObject("chain", { path: CHAIN_PATH, type: "Chain" });
+    registerMockObject("nested", {
+      path: NESTED_PATH,
+      type: "Device",
+      properties: { class_display_name: "Drift", type: 1 },
+    });
+
+    // A nested hotswap replaces only that device; a rack hotswap kills the
+    // rack and everything inside it.
+    vi.mocked(requestNode).mockImplementation(async (route, args) => {
+      if (route === REMOTE_SCRIPT_ROUTES.resolvePreset) {
+        return { success: true, result: { available: true, item: PRESET } };
+      }
+
+      const { devicePath } = args as { devicePath: string };
+      const isRack = devicePath === RACK_PATH;
+
+      const inside = [CHAIN_PATH, NESTED_PATH, PAD_PATH];
+
+      for (const path of isRack ? [RACK_PATH, ...inside] : []) {
+        deleteMockObject(path);
+      }
+
+      registerMockObject(isRack ? "newRack" : "newNested", {
+        path: devicePath,
+        type: "Device",
+        properties: { class_display_name: "Instrument Rack", type: 1 },
+      });
+
+      return { success: true, result: { available: true, replaced: true } };
+    });
+  });
+
+  it("keeps the pre-call path of a nested device the rack's preset then replaced", async () => {
+    const result = await updateDevice({
+      path: "t3/d0/c0/d0,t3/d0",
+      preset: "Pad,Pad",
+    });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({
+        id: "newNested",
+        path: "t3/d0/c0/d0",
+        detail: expect.stringContaining(LATER_GONE),
+      }),
+      expect.objectContaining({ id: "newRack", path: "t3/d0" }),
+    ]);
+  });
+
+  it("keeps the pre-call path of a chain the rack's preset then replaced", async () => {
+    const result = await updateDevice({
+      path: "t3/d0/c0,t3/d0",
+      preset: "Pad",
+      name: "B,A",
+    });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({
+        id: "chain",
+        path: "t3/d0/c0",
+        detail: expect.stringContaining(LATER_GONE),
+      }),
+      expect.objectContaining({ id: "newRack", path: "t3/d0" }),
+    ]);
+  });
+
+  it("keeps the pre-call path of a pad the rack's preset then replaced", async () => {
+    registerMockObject("rack", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: {
+        can_have_drum_pads: 1,
+        chains: children("chain"),
+        drum_pads: children("pad-36"),
+      },
+    });
+    registerMockObject("chain", {
+      path: CHAIN_PATH,
+      type: "DrumChain",
+      properties: { in_note: 36 },
+    });
+    registerMockObject("pad-36", {
+      path: PAD_PATH,
+      type: "DrumPad",
+      properties: { note: 36 },
+    });
+    const result = await updateDevice({
+      path: "t3/d0/pC1,t3/d0",
+      preset: "Pad",
+      mute: true,
+    });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({
+        id: "pad-36",
+        path: "t3/d0/pC1",
+        detail: expect.stringContaining(LATER_GONE),
+      }),
+      expect.objectContaining({ id: "newRack", path: "t3/d0" }),
+    ]);
   });
 });
 

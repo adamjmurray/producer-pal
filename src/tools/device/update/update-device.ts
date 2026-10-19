@@ -186,8 +186,8 @@ function deviceTargets(call: DeviceCall): Array<Target<DevicePayload>> {
 
 /**
  * Where a target is before the first write, for the entry of one that a later
- * target deletes. Only a forced pad sample swap deletes a named target, and
- * naming a drum chain costs a rack scan, so other calls skip the read.
+ * target deletes: a forced pad sample swap, or a preset that replaces the rack
+ * it sits in. Naming a drum chain costs a rack scan, so other calls skip it.
  * @param call - The update-device call
  * @param resolved - The resolved target
  * @param named - The target as the call named it, for the spelling to keep
@@ -198,12 +198,18 @@ function pathBefore(
   resolved: ResolvedTarget,
   named: NamedTarget,
 ): string | undefined {
-  return call.options.force === true && resolved.kind === "object"
-    ? pathField(
+  const canDelete = call.options.force === true || call.options.preset != null;
+
+  if (!canDelete) {
+    return undefined;
+  }
+
+  return resolved.kind === "drum-pad"
+    ? resolved.padPath
+    : pathField(
         resolved.target,
         writtenContainer(named.param === "path" ? named.value : undefined),
-      ).path
-    : undefined;
+      ).path;
 }
 
 /**

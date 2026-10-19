@@ -399,8 +399,9 @@ warning says so; the entries and any error are unchanged.
   tool description says once that inserting, deleting or duplicating shifts
   later siblings. A deleted object's result path is its address from before the
   call; every other entry names its object where it is after the call. That
-  includes a device a later target deletes (a forced pad sample swap): its entry
-  keeps the pre-call path, with a `detail` saying it no longer exists.
+  includes a device, chain or pad a later target deletes (a forced pad sample
+  swap, or a preset that replaces its rack): its entry keeps the pre-call path,
+  with a `detail` saying it no longer exists.
 - **Paths in results and errors** follow
   [object-paths/results-and-errors.md](object-paths/results-and-errors.md).
 
