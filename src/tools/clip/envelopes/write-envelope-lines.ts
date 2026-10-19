@@ -141,7 +141,10 @@ export async function writeEachLine(
     }
 
     if (outcome.stalled != null) {
-      reportStalled(entry, outcome, line, lines.slice(index + 1), address);
+      reportStalled(entry, outcome, line, lines.slice(index + 1), {
+        address,
+        written,
+      });
       break;
     }
 
@@ -161,14 +164,16 @@ export async function writeEachLine(
  * @param outcome - The failed route call
  * @param line - The line that stalled
  * @param rest - The lines after it, none of them sent
- * @param address - The clip the lines write to
+ * @param progress - The clip the lines write to, and how many were written
+ * @param progress.address - The clip the lines write to
+ * @param progress.written - How many lines were written before this one
  */
 function reportStalled(
   entry: ClipResult,
   outcome: Extract<RouteOutcome<unknown>, { ok: false }>,
   line: EnvelopeLine,
   rest: readonly EnvelopeLine[],
-  address: ClipAddress,
+  { address, written }: { address: ClipAddress; written: number },
 ): void {
   if (outcome.stalled === "out-of-time") {
     appendDetail(
@@ -179,10 +184,10 @@ function reportStalled(
     return;
   }
 
-  appendDetail(
-    entry,
-    `envelope "${line.target}": ${outcome.reason}; ${stalledOutcome(line, address)}`,
-  );
+  const mayHave = stalledOutcome(line, address, written);
+  const said = `envelope "${line.target}": ${outcome.reason}`;
+
+  appendDetail(entry, mayHave == null ? said : `${said}; ${mayHave}`);
 
   if (rest.length > 0) {
     appendDetail(
@@ -196,11 +201,19 @@ function reportStalled(
  * What a stalled line may have done.
  * @param line - The line that stalled
  * @param address - The clip the lines write to
- * @returns The words for the entry
+ * @param written - How many lines were written before it
+ * @returns The words for the entry, or undefined when it can't have done anything
  */
-function stalledOutcome(line: EnvelopeLine, address: ClipAddress): string {
+function stalledOutcome(
+  line: EnvelopeLine,
+  address: ClipAddress,
+  written: number,
+): string | undefined {
   if (address.carrier === true) {
-    return "its points may or may not be in the lane";
+    // With nothing written, the lane is never stamped.
+    return written === 0
+      ? undefined
+      : "its points may or may not be in the lane";
   }
 
   return line.notation === ""

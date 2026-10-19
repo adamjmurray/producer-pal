@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // `envelopes` on an arrangement clip: the lines go into a scratch clip,
@@ -339,6 +339,22 @@ describe("applyClipEnvelopes - arrangement clip", () => {
       'envelope "pan": the Producer Pal remote script did not answer in time; its points may or may not be in the lane; envelopes not written, since the next would wait the same way: "send0"',
     );
     expect(world.copies).toHaveLength(3);
+  });
+
+  it("says only that the lane is unchanged when the first line stalls", async () => {
+    vi.mocked(requestNode).mockResolvedValueOnce({
+      success: false,
+      error: "node_request 'x' timed out after 45000ms",
+    });
+
+    const entry = await apply([RAMP, "pan: 1|1 0.5"]);
+
+    expect(entry.envelopes).toBe(0);
+    expect(entry.detail).toBe(
+      'envelope "volume": the Producer Pal remote script did not answer in time; envelopes not written, since the next would wait the same way: "pan"; the clip and its lane are unchanged',
+    );
+    expect(world.copies).toStrictEqual([]);
+    expect(world.scratchClipLeft()).toBe(false);
   });
 
   it("stops before parking when the request has run out of time", async () => {
