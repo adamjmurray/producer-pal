@@ -2,8 +2,12 @@
 
 How Live's Python API handles clip automation envelopes, as measured on Live
 12.4.6. Max for Live's LOM can't reach them, so Producer Pal goes through the
-remote script (`remote-script/Producer_Pal/envelopes.py`). Not yet checked on
-Live 12.3, the minimum version.
+remote script (`remote-script/Producer_Pal/envelopes.py`).
+
+On Live 12.3, the minimum version, reads (curves and jumps included) and clears
+work, but points can't be written: `Envelope.create_event` is new in 12.4, and
+12.3's `insert_step` only makes flat steps. Producer Pal refuses point writes
+before 12.4.
 
 ## What the API can reach
 

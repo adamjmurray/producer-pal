@@ -1,7 +1,9 @@
 # Arrangement Automation
 
 What Producer Pal can do with a track's arrangement automation lanes, as
-measured on Live 12.4.6 through the remote script. Not checked on Live 12.3.
+measured on Live 12.4.6 through the remote script. Not checked on Live 12.3,
+except that writing points needs 12.4 there too (see
+[clip-envelopes.md](clip-envelopes.md)).
 
 Measure on a track with an instrument. On a MIDI track with no audio output, the
 mixer volume's automation followed the clips instead: arrangement copies carried

@@ -428,9 +428,9 @@ sounding.
 - Create devices inside rack chains or drum pads using path notation
 - List the native Live devices
 - Create a device or rack from a preset (needs the remote script)
-- Load a sample into a Simpler instrument via
+- Load a sample into a Simpler instrument (Live 12.4+) via
   `params: [{name: "sample", value: "<path>"}]`, and set its level with
-  `{name: "gainDb", value: <dB>}` (new in Live 12.4)
+  `{name: "gainDb", value: <dB>}`
 
 <!--@include: ../_generated/ppal-create-device-schema.md-->
 
