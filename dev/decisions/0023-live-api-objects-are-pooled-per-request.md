@@ -49,5 +49,6 @@ dropped without an error and leaves the object on the last request's target.
   out each object once.
 - One slow request holds everyone's objects, and their listeners, until it
   finishes.
-- Concurrent writes from two agents still race on Set structure. No
-  object-lifetime rule fixes that.
+- No object-lifetime rule stops one request from shifting Set structure under
+  another. Node runs write calls one at a time for that (ADR-0059), but a user
+  editing Live while a write waits on the remote script can still do it.

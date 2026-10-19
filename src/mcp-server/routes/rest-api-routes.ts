@@ -208,7 +208,10 @@ export function registerRestApiRoutes(
       }
 
       try {
-        const overrides = buildOverrides(formatOverride, timeoutOverride);
+        const overrides = {
+          ...buildOverrides(formatOverride, timeoutOverride),
+          signal: callerGoneSignal(res),
+        };
 
         const mcpResponse = (await buildCallLiveApi(profile)(
           toolName,
@@ -408,6 +411,22 @@ function buildOverrides(
   }
 
   return overrides;
+}
+
+/**
+ * @param res - The REST response
+ * @returns A signal that aborts if the client hangs up before the answer
+ */
+function callerGoneSignal(res: Response): AbortSignal {
+  const controller = new AbortController();
+
+  res.on("close", () => {
+    if (!res.writableFinished) {
+      controller.abort();
+    }
+  });
+
+  return controller.signal;
 }
 
 interface UnwrappedResponse {

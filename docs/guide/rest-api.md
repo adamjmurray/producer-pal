@@ -79,7 +79,9 @@ Returns (the default `json` format, see
 
 - **200** with `isError: false`: tool ran successfully
 - **200** with `isError: true`: tool ran but reported an error (e.g. invalid
-  path, execution error)
+  path, execution error). A write that ran out of time waiting behind other
+  writes also answers this way, with a `result` starting `Not run`: nothing
+  changed
 - **404**: unknown or disabled tool
 - **400**: the body isn't valid JSON, isn't a JSON object, or the arguments
   don't validate. The message is in `error`, and a schema failure adds `details`
@@ -177,6 +179,11 @@ curl -X POST 'http://localhost:3350/api/tools/ppal-create-clip?timeoutMs=10000' 
   -H 'Content-Type: application/json' \
   -d '{"path": "t0/s0", "length": "16bar", "notes": "..."}'
 ```
+
+The timeout includes time spent waiting behind other writes: write calls run one
+at a time, across all clients. A write that runs out of time while waiting
+answers **200** with `isError: true` and a `Not run ...` result, having changed
+nothing.
 
 `timeoutMs` must be a positive integer up to **55000** (55 seconds). Other
 values return **400**. The cap stays under 60 seconds because that is where most

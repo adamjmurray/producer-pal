@@ -32,4 +32,9 @@ export interface RequestOverrides {
    * see resolveRequestProfile, which is what keeps them from drifting.
    */
   notation?: Notation;
+  /**
+   * Aborts when the caller goes away, so a queued write leaves without
+   * running. Node-only: the write queue strips it before the call reaches V8.
+   */
+  signal?: AbortSignal;
 }

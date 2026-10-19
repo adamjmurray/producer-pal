@@ -83,13 +83,18 @@ describe("createDevice — deprecated deviceName", () => {
 
     const handler = mockServer.registerTool.mock.calls[0]![2] as (
       args: Record<string, unknown>,
+      extra: { signal: AbortSignal },
     ) => Promise<{ content: { text?: string }[] }>;
-    const result = await handler({ deviceName: "Reverb", path: "t0/d+" });
+    const result = await handler(
+      { deviceName: "Reverb", path: "t0/d+" },
+      { signal: new AbortController().signal },
+    );
 
-    expect(callLiveApi).toHaveBeenCalledWith("ppal-create-device", {
-      deviceName: "Reverb",
-      path: "t0/d+",
-    });
+    expect(callLiveApi).toHaveBeenCalledWith(
+      "ppal-create-device",
+      { deviceName: "Reverb", path: "t0/d+" },
+      { signal: expect.any(AbortSignal) },
+    );
     expect(result.content.map((entry) => entry.text)).toContain(
       'WARNING: param "deviceName" is deprecated and will be removed; use "device" instead',
     );

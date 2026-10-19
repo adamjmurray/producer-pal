@@ -4,36 +4,25 @@
 // SPDX-License-Identifier: MIT
 
 import { MANAGE_TOOL_ID } from "#src/shared/tool-groups.ts";
-import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
-import {
-  STANDARD_TOOL_DEFS,
-  type CallLiveApiFunction,
-} from "../../../create-mcp-server.ts";
+import { type CallLiveApiFunction } from "../../../create-mcp-server.ts";
+import { isWriteCall } from "../../write-queue/write-calls.ts";
 import { isChangedNothing } from "./changed-nothing.ts";
 import { remoteScriptRequest } from "../remote-script-client.ts";
 import { type McpResponse } from "../../../max-api-adapter.ts";
 import { type RequestOverrides } from "../../../helpers/request-overrides/request-overrides.ts";
 
-type ChangesSet = (args: Record<string, unknown>) => boolean;
-
 /**
- * Tools that may change the Set, read off their defs, each with the check that
- * says whether a given call does. Not ppal-manage: an end clears the guard
+ * Whether a call gets an undo step. Not ppal-manage: an end clears the guard
  * that stops its next undo from removing Producer Pal, and installing changes
  * nothing in the Set.
+ *
+ * @param tool - Tool name
+ * @param args - The call's arguments
+ * @returns True for a write call other than ppal-manage
  */
-const WRITE_TOOLS: ReadonlyMap<string, ChangesSet> = new Map(
-  [...STANDARD_TOOL_DEFS, toolDefLiveApi]
-    .filter(
-      (def) =>
-        def.toolOptions.annotations?.readOnlyHint !== true &&
-        def.toolName !== MANAGE_TOOL_ID,
-    )
-    .map((def): [string, ChangesSet] => [
-      def.toolName,
-      def.toolOptions.changesSet ?? (() => true),
-    ]),
-);
+function endsUndoStep(tool: string, args: object): boolean {
+  return tool !== MANAGE_TOOL_ID && isWriteCall(tool, args);
+}
 
 /** Write calls running now, across MCP and REST. */
 let inFlight = 0;
@@ -72,7 +61,7 @@ export function withUndoStepEnd(
   inner: CallLiveApiFunction,
 ): CallLiveApiFunction {
   return async (tool: string, args: object, overrides?: RequestOverrides) => {
-    if (!WRITE_TOOLS.get(tool)?.(args as Record<string, unknown>)) {
+    if (!endsUndoStep(tool, args)) {
       return await inner(tool, args, overrides);
     }
 

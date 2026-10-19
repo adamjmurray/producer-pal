@@ -15,6 +15,9 @@ import {
 } from "../define-tool.ts";
 import { param } from "../modal-config.ts";
 
+/** The client abort signal define-tool forwards on every call. */
+const WITH_SIGNAL = { signal: expect.any(AbortSignal) };
+
 type MockServer = McpServer & { registerTool: Mock };
 
 function createMockServer(): MockServer {
@@ -91,9 +94,13 @@ function getRegisteredDescriptions(mockServer: MockServer) {
  * @returns async tool handler function
  */
 function getRegisteredHandler(mockServer: MockServer) {
-  return mockServer.registerTool.mock.calls[0]![2] as (
+  const handler = mockServer.registerTool.mock.calls[0]![2] as (
     args: Record<string, unknown>,
+    extra: { signal: AbortSignal },
   ) => Promise<{ content: Array<{ type: string; text: string }> }>;
+
+  return (args: Record<string, unknown>) =>
+    handler(args, { signal: new AbortController().signal });
 }
 
 describe("defineTool", () => {
@@ -149,10 +156,30 @@ describe("defineTool", () => {
     const validArgs = { param: "valid" };
     const result = await toolHandler(validArgs);
 
-    expect(mockCallLiveApi).toHaveBeenCalledWith("test-tool", validArgs);
+    expect(mockCallLiveApi).toHaveBeenCalledWith(
+      "test-tool",
+      validArgs,
+      WITH_SIGNAL,
+    );
     expect(result).toStrictEqual({
       content: [{ type: "text", text: "success" }],
     });
+  });
+
+  it("should forward the client's abort signal", async () => {
+    const { mockServer, mockCallLiveApi } = registerTestTool(
+      { description: "Test", inputSchema: {} },
+      { successMock: true },
+    );
+    const handler = mockServer.registerTool.mock.calls[0]![2] as (
+      args: Record<string, unknown>,
+      extra: { signal: AbortSignal },
+    ) => Promise<unknown>;
+    const { signal } = new AbortController();
+
+    await handler({}, { signal });
+
+    expect(mockCallLiveApi.mock.calls[0]![2]).toStrictEqual({ signal });
   });
 
   it("should drop params hidden in smallModelMode (smallModel: null)", () => {
@@ -230,10 +257,14 @@ describe("defineTool", () => {
     await toolHandler(args);
 
     // Verify callLiveApi was called WITHOUT the filtered parameter
-    expect(mockCallLiveApi).toHaveBeenCalledWith("test-tool", {
-      allowedParam: "valid",
-      // filteredParam should NOT be here
-    });
+    expect(mockCallLiveApi).toHaveBeenCalledWith(
+      "test-tool",
+      {
+        allowedParam: "valid",
+        // filteredParam should NOT be here
+      },
+      WITH_SIGNAL,
+    );
     expect(mockCallLiveApi.mock.calls[0]![1]).not.toHaveProperty(
       "filteredParam",
     );
@@ -364,10 +395,14 @@ describe("defineTool", () => {
     });
 
     // Tool should still succeed
-    expect(mockCallLiveApi).toHaveBeenCalledWith("test-tool", {
-      knownParam: "valid",
-      // Extra params should be stripped by Zod
-    });
+    expect(mockCallLiveApi).toHaveBeenCalledWith(
+      "test-tool",
+      {
+        knownParam: "valid",
+        // Extra params should be stripped by Zod
+      },
+      WITH_SIGNAL,
+    );
 
     // But a warning should be appended
     expect(result.content).toHaveLength(2);
@@ -388,9 +423,13 @@ describe("defineTool", () => {
     // Send valid values — runtime filter runs but nothing to remove
     await toolHandler({ include: ["notes", "sample"] });
 
-    expect(mockCallLiveApi).toHaveBeenCalledWith("test-tool", {
-      include: ["notes", "sample"],
-    });
+    expect(mockCallLiveApi).toHaveBeenCalledWith(
+      "test-tool",
+      {
+        include: ["notes", "sample"],
+      },
+      WITH_SIGNAL,
+    );
   });
 
   it("should reject excluded enum values via Zod in smallModelMode", async () => {
@@ -461,9 +500,13 @@ describe("defineTool", () => {
     expect(result).toStrictEqual({
       content: [{ type: "text", text: "success" }],
     });
-    expect(mockCallLiveApi).toHaveBeenCalledWith("test-tool", {
-      sceneIndex: "0",
-    });
+    expect(mockCallLiveApi).toHaveBeenCalledWith(
+      "test-tool",
+      {
+        sceneIndex: "0",
+      },
+      WITH_SIGNAL,
+    );
   });
 });
 

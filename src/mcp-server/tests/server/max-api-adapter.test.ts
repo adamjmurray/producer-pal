@@ -331,6 +331,56 @@ describe("Max API Adapter", () => {
       expect(context.silenceWavPath).not.toBe("/evil/path.wav");
       expect(typeof context.silenceWavPath).toBe("string");
     });
+
+    it("should send write calls to V8 one at a time", async () => {
+      setTimeoutForTesting(MAX_TIMEOUT_MS);
+      Max.outlet = vi.fn().mockResolvedValue(undefined);
+      const outlet = vi.mocked(Max.outlet);
+      const first = callLiveApi("ppal-create-track", {});
+      const second = callLiveApi("ppal-update-clip", {});
+
+      await vi.waitFor(() => expect(outlet).toHaveBeenCalledTimes(1));
+      handleLiveApiResult(outlet.mock.calls[0]![1], "{}", END_OF_CHUNKS);
+      await first;
+      await vi.waitFor(() => expect(outlet).toHaveBeenCalledTimes(2));
+      expect(outlet.mock.calls[1]![2]).toBe("ppal-update-clip");
+      handleLiveApiResult(outlet.mock.calls[1]![1], "{}", END_OF_CHUNKS);
+      await second;
+    });
+
+    it("should count queue time in a queued write's timeout", async () => {
+      vi.useFakeTimers();
+
+      try {
+        setTimeoutForTesting(MAX_TIMEOUT_MS);
+        Max.outlet = vi.fn().mockResolvedValue(undefined);
+        const outlet = vi.mocked(Max.outlet);
+        const first = callLiveApi("ppal-create-track", {});
+        const second = callLiveApi("ppal-update-clip", {}, { timeoutMs: 400 });
+
+        await vi.advanceTimersByTimeAsync(150);
+        handleLiveApiResult(outlet.mock.calls[0]![1], "{}", END_OF_CHUNKS);
+        await first;
+        await vi.advanceTimersByTimeAsync(0);
+
+        const context = JSON.parse(outlet.mock.calls[1]![4] as string) as {
+          timeoutMs: number;
+        };
+
+        expect(context.timeoutMs).toBe(250);
+
+        await vi.advanceTimersByTimeAsync(250);
+        const result = await second;
+
+        expect(result.content[0]?.text).toBe(
+          "Tool call 'ppal-update-clip' timed out after 400ms (150ms of it " +
+            "waiting for other writes). Live may still be applying it — " +
+            "wait, then re-read before acting.",
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   describe("timeoutMs handler", () => {

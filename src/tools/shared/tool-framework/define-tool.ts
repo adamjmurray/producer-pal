@@ -40,8 +40,9 @@ export interface ToolOptions {
   // True: small-model mode leaves the tool out entirely (see isOfferedInMode).
   omitInSmallModel?: boolean;
   // For a tool that isn't read-only: whether a call with these args can change
-  // the Set. Omitted means every call can. A call that can't gets no undo step
-  // closed after it (see with-undo-step-end.ts).
+  // the Set. Omitted means every call can. A call that can't skips the write
+  // queue (write-queue.ts) and gets no undo step closed after it
+  // (with-undo-step-end.ts).
   changesSet?: (args: Record<string, unknown>) => boolean;
   // Param descriptions/exclusions/enum-trims are co-located on each param via
   // param() (see modal-config.ts) — there is no separate override config.
@@ -56,6 +57,7 @@ export interface McpOptions {
 type CallLiveApiFunction = (
   name: string,
   data: Record<string, unknown>,
+  options?: { signal?: AbortSignal },
 ) => Promise<object>;
 
 export interface ToolDefFunction {
@@ -139,7 +141,7 @@ export function defineTool(
         description: finalDescription,
         inputSchema: passthroughSchema,
       },
-      async (args: Record<string, unknown>): Promise<CallToolResult> => {
+      async (args: Record<string, unknown>, extra): Promise<CallToolResult> => {
         // Detect unexpected arguments before stripping them. Hidden params are
         // expected here even though they were not published. Diffed against the
         // filtered schema, so a param this mode dropped is genuinely unexpected
@@ -168,10 +170,10 @@ export function defineTool(
             ? filterExcludedEnumValues(validated, excludeEnumValues)
             : validated;
 
-        const rawResult = (await callLiveApi(
-          name,
-          finalArgs,
-        )) as CallToolResult & {
+        // The signal aborts when the client disconnects.
+        const rawResult = (await callLiveApi(name, finalArgs, {
+          signal: extra.signal,
+        })) as CallToolResult & {
           errorCode?: unknown;
         };
 

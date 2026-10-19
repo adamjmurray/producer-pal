@@ -185,6 +185,15 @@ Script and restart Live. The same goes for a 404 that says the route is unknown;
 any other 404 still means "not found". The Skills teach remote-script features
 only for a current script.
 
+### A write that waits for another
+
+Write calls run one at a time, across every client; reads don't wait. A queued
+write counts the wait against its own timeout and runs with what is left. If it
+gets down to 5 s (or half its timeout, if shorter) before its turn, it doesn't
+run and answers
+`Not run: waited <N>s for other Producer Pal writes to finish and ran out of time. Nothing changed; retry it.`
+A write whose caller disconnects while it waits doesn't run either.
+
 ## Skips, no-ops and replaced targets
 
 A target the call couldn't carry out keeps its slot as a skip entry:
