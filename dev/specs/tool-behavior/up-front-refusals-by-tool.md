@@ -105,6 +105,10 @@ follows the code; when it disagrees with a tool, the tool wins.
 - **A list of locators reads `\,` as a comma in a name** wherever positions take
   `loc:` (`arrangementStart`, `arrangementSplit`, `duplicate`'s retired
   `locator`), and refuses a hole before any locator is looked up.
+- **`updateClip` refuses a split beside a move or resize** (`arrangementSplit`
+  or `split` with `toPath`, `toSlot`, `arrangementStart` or `arrangementLength`)
+  before any clip is cut: the split makes new clips, so a value paired with the
+  named clips would miss the pieces or reach all of them.
 - **`updateClip` refuses `convert` beside a split** (`arrangementSplit` or
   `split`): the split makes several clips and nothing says which to convert. It
   refuses `convert` beside a move (`toPath`, `toSlot`, `arrangementStart`) too:

@@ -14,10 +14,13 @@ with a tool, the tool wins.
   `track t9 (id 12) is a group track; it holds no clips`), a `toPath` entry that
   parses but names no place a clip can go (a scene), a target whose only
   requested work (a move, a position, a split) was refused, and a clip an
-  earlier write of the call already cleared hold their slot as a skip. The
-  `name` and `color` lists pair by the target's place, so a skip doesn't slide
-  them. The deadline skips every target it never reached; a split that already
-  cut keeps its pieces, each saying what did not run.
+  earlier write of the call already cleared hold their slot as a skip. A split
+  that misses a clip is not a skip: one list cutting many clips is expected to
+  miss some, so those clips keep plain entries, and a call or position that cut
+  nothing anywhere gets one WARNING for the call. The `name` and `color` lists
+  pair by the target's place, so a skip doesn't slide them. The deadline skips
+  every target it never reached; a split that already cut keeps its pieces, each
+  saying what did not run.
 - **update-clip: a clip named twice** (id and path, or an id repeated) is
   updated as its last mention asks. The earlier mention keeps its slot as
   `{ id | path, detail }` with no `ok`; if the last mention then fails with
