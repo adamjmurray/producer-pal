@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
 /**
@@ -48,6 +48,8 @@ interface PlaywrightSuite {
 
 interface PlaywrightReport {
   suites: PlaywrightSuite[];
+  /** Errors outside any test, such as a spec file that failed to load. */
+  errors?: unknown[];
   stats: {
     duration: number;
     expected: number;
@@ -65,8 +67,13 @@ interface VitestReport {
   startTime: number;
   testResults: {
     name: string;
+    status: string;
     endTime: number;
-    assertionResults: { title: string; duration?: number | null }[];
+    assertionResults: {
+      title: string;
+      status: string;
+      duration?: number | null;
+    }[];
   }[];
 }
 
@@ -101,7 +108,7 @@ export function readPlaywrightSuite(
       label,
       ran: true,
       passed: stats.expected,
-      failed: stats.unexpected,
+      failed: stats.unexpected + (report.errors?.length ?? 0),
       flaky: stats.flaky,
       skipped: stats.skipped,
       durationMs: stats.duration,
@@ -137,13 +144,19 @@ export function readVitestSuite(
       durationMs: test.duration ?? 0,
     })),
   );
+  // A file that fails to load reports no tests, so numFailedTests misses it.
+  const brokenFiles = report.testResults.filter(
+    (file) =>
+      file.status === "failed" &&
+      !file.assertionResults.some((test) => test.status === "failed"),
+  ).length;
 
   return {
     stats: {
       label,
       ran: true,
       passed: report.numPassedTests,
-      failed: report.numFailedTests,
+      failed: report.numFailedTests + brokenFiles,
       flaky: 0,
       skipped: report.numPendingTests + report.numTodoTests,
       durationMs: endTime - report.startTime,
