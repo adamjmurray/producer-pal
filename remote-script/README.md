@@ -251,14 +251,10 @@ Returns the device's name afterwards and whether Live `replaced` it.
   browser to that device, and the next `/load` would replace it.
 - **A preset holding Producer Pal is a 409** (see `/load`), and so is a target
   that is, or holds, the Producer Pal device (checked before loading). Live has
-  already changed the device by the time the preset is found, so the script
-  closes the pending undo step before every swap and **undoes the swap**: the
-  old device is back, same id and settings, and the 409 says the swap was
-  undone. Live then offers a redo that would bring the preset back, until the
-  next edit. Changes the same call made before the swap become their own undo
-  step. If the undo doesn't remove Producer Pal, the script deletes the new
-  device instead, the slot is left empty, and the 409 says so with
-  `changed: true`. If that delete fails too, it says where the device is.
+  already changed the device by the time the preset is found, and can't give the
+  old one back, so the script deletes the new one and **the slot is left
+  empty**. The 409 says so and has `changed: true`. If the delete fails, it says
+  where the device is, still with `changed: true`.
 
 ### `POST /replace-producer-pal`
 

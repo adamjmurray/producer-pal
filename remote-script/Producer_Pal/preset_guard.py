@@ -7,8 +7,7 @@
 
 A rack preset (.adg) or one saved from a Set can hold Producer Pal inside, and
 a second copy fights the first for its ports. The browser item's name can't say
-so, so look at what Live loaded, take it back out, and answer 409. Main thread
-only.
+so, so look at what Live loaded, delete it, and answer 409. Main thread only.
 """
 
 from . import hotswap
@@ -47,20 +46,16 @@ def refuse_loaded_producer_pal(song, track, before, created):
 
 
 def refuse_hotswapped_producer_pal(song, device_path):
-    """Raise 409 when the device at `device_path` now holds Producer Pal.
+    """Raise 409 and delete the device at `device_path` when it holds Producer Pal.
 
-    The caller gives the swap an undo step of its own, so one undo puts the old
-    device back. If it doesn't, the device is deleted and the slot left empty,
-    and `changed` tells the caller the old device is gone.
+    Live has already replaced or changed the target by now, and can't give the
+    old device back, so the slot is left empty. The error says so, and sets
+    `changed` so the caller knows the old device is gone.
     """
     holder, index, device = hotswap.locate_device(song, device_path)
     if not holds_producer_pal(device):
         return
 
-    if _undo_swap(song, device_path):
-        raise RouteError(409, "%s, so the swap was undone" % _CONTAINS)
-
-    holder, index, device = hotswap.locate_device(song, device_path)
     try:
         holder.delete_device(index)
     except Exception as err:
@@ -76,15 +71,3 @@ def refuse_hotswapped_producer_pal(song, device_path):
         "deleted and its slot is now empty" % _CONTAINS,
         changed=True,
     )
-
-
-def _undo_swap(song, device_path):
-    """Undo the swap; True when the device there no longer holds Producer Pal.
-
-    Undo leaves a redo that would bring the preset back, until the next edit.
-    """
-    try:
-        song.undo()
-        return not holds_producer_pal(hotswap.device_at(song, device_path))
-    except Exception:
-        return False
