@@ -406,6 +406,13 @@ function settleDeviceUpdate(
 ): void {
   const { checked, entries, outcomes, targets } = done;
   const written: Array<{ id: string }> = [];
+  const movedIds = new Set(
+    checked.padMoves.flatMap((move, index) =>
+      move != null && outcomes[index] === "written"
+        ? move.chains.map((chain) => chain.id)
+        : [],
+    ),
+  );
 
   // A later move can push an earlier target along, so name each one once every
   // target has had its turn. A wrap names its own rack.
@@ -431,7 +438,7 @@ function settleDeviceUpdate(
     const toPath = checked.lists.destinations[index];
 
     if (outcomes[index] === "written" && move != null && toPath != null) {
-      noteLayeredLanding(entry, move, toPath);
+      noteLayeredLanding(entry, move, toPath, movedIds);
     }
 
     if (outcomes[index] === "written" && typeof id === "string") {

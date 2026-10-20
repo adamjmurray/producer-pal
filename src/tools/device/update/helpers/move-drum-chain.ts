@@ -79,15 +79,18 @@ export interface PadMove {
  * than replacing it, so the pad ends up playing both. Say so — the caller asked
  * for a move and would otherwise read the result as a swap. Checked once every
  * target has run, since a later one may move the destination's chains away,
- * or fail to.
+ * or fail to. Chains any written move in the call brought don't count: they
+ * weren't there before the call.
  * @param entry - The target's entry, added to
  * @param move - Its chains and where they started
  * @param toPath - Destination pad path as written, for the detail
+ * @param movedIds - Ids of the chains every written pad move in the call sent
  */
 export function noteLayeredLanding(
   entry: EntryWithDetail,
   move: PadMove,
   toPath: string,
+  movedIds: ReadonlySet<string>,
 ): void {
   const first = move.chains[0] as LiveAPI;
 
@@ -103,13 +106,12 @@ export function noteLayeredLanding(
     return;
   }
 
-  const own = new Set(move.chains.map((chain) => chain.id));
   const rack = LiveAPI.from(first.path.replace(/ chains \d+$/, ""));
   const occupants = rack
     .getChildren("chains")
     .filter(
       (chain) =>
-        !own.has(chain.id) && chain.getProperty("in_note") === landedOn,
+        !movedIds.has(chain.id) && chain.getProperty("in_note") === landedOn,
     ).length;
 
   if (occupants === 0) {

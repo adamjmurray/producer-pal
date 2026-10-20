@@ -366,6 +366,30 @@ describe("updateDevice - moving a drum chain", () => {
     expect(result).toStrictEqual(unmovedPadC1);
   });
 
+  // A chain another move in the call brought wasn't there before it.
+  it.each([
+    ["empty", "t0/d0/pC1,t0/d0/pD1", "t0/d0/pE1", null],
+    ["occupied", "t0/d0/pC1/c0,t0/d0/pC1/c1", "t0/d0/pD1", 1],
+  ])(
+    "counts only earlier chains when two moves land on an %s pad",
+    (_case, path, to, had) => {
+      const result = updateDevice({ path, toPath: `${to},${to}` }) as unknown[];
+      const layered =
+        had == null
+          ? []
+          : [`already had ${had} chain(s)`, `already had ${had} chain(s)`];
+
+      expect(
+        result
+          .map(
+            (entry) =>
+              JSON.stringify(entry).match(/already had \d+ chain\(s\)/)?.[0],
+          )
+          .filter(Boolean),
+      ).toStrictEqual(layered);
+    },
+  );
+
   // A pad that is already where it is asked to go has nothing to layer onto.
   it("stays quiet moving a pad onto itself", () => {
     const result = updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pC1" });
