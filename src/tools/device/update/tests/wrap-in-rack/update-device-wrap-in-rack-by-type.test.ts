@@ -178,9 +178,14 @@ describe("updateDevice - wrapInRack with an instrument and its effects", () => {
       return null;
     };
 
+    const capture = beginWarningCapture();
+
     expect(() =>
       updateDevice({ path: "t0/d0,t0/d1", wrapInRack: true }),
-    ).toThrow(moveFailure);
+    ).toThrow(
+      `${moveFailure}; the new rack t0/d9 (id new-rack) was left in place, holding what moved in`,
+    );
+    expect(changedNothing(capture)).toBe(false);
 
     // The instrument was already in the rack, so nothing is left to restore.
     expectInChain("device-0", 0);
@@ -368,6 +373,30 @@ describe("updateDevice - wrapInRack with an instrument and its effects", () => {
       );
       // The rack stays, so the call changed the Set.
       expect(changedNothing(capture)).toBe(false);
+    });
+
+    it("keeps the temp track when the instrument can't move back", () => {
+      const moveBack = (_id: string, to: string): boolean =>
+        to === "id track-0";
+
+      liveSet = registerTempTrackMocks(moveBack);
+      registerTrackingChain(liveSet);
+
+      liveSet.methods.move_device = (_id: unknown, to: unknown) => {
+        if (to === "id track-0") {
+          throw new Error("move back failed");
+        }
+
+        return null;
+      };
+
+      const capture = beginWarningCapture();
+
+      expect(() => updateDevice({ path: "t0/d0", wrapInRack: true })).toThrow(
+        "wrapInRack: Live made no chain in the new rack; the instrument was left on new track t1",
+      );
+      expect(changedNothing(capture)).toBe(false);
+      expect(liveSet.call).not.toHaveBeenCalledWith("delete_track", 1);
     });
   });
 

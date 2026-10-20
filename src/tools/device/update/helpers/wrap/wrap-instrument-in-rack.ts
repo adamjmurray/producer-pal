@@ -150,12 +150,16 @@ export function wrapInstrumentInRack(
     const notes = rack == null ? [] : removeEmptyRack(rack);
 
     if (holdsDevice(tempTrack, device)) {
-      liveSet.call(
-        "move_device",
-        toLiveApiId(device.id),
-        toLiveApiId(sourceContainer.id),
-        devicePosition,
-      );
+      try {
+        liveSet.call(
+          "move_device",
+          toLiveApiId(device.id),
+          toLiveApiId(sourceContainer.id),
+          devicePosition,
+        );
+      } catch {
+        // The instrument stays on the temp track, which releaseTempTrack notes.
+      }
     }
 
     notes.push(...releaseTempTrack(liveSet, tempTrack, device));
@@ -215,7 +219,7 @@ function releaseTempTrack(
 /**
  * Delete the new rack if nothing got into it.
  * @param rack - The new rack
- * @returns A note when an empty rack was left behind
+ * @returns A note when the rack was left behind
  */
 function removeEmptyRack(rack: LiveAPI): string[] {
   const empty = rack
@@ -223,7 +227,9 @@ function removeEmptyRack(rack: LiveAPI): string[] {
     .every((chain) => chain.getChildCount("devices") === 0);
 
   if (!empty) {
-    return [];
+    return [
+      `the new rack ${targetLabel(rack)} was left in place, holding what moved in`,
+    ];
   }
 
   try {
