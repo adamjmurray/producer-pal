@@ -73,6 +73,7 @@ def refuse_hotswapped_producer_pal(song, device_path):
     raise RouteError(
         409,
         "%s; Live had already swapped it in, so it was deleted and the slot is "
-        "now empty; one undo brings the old device back" % _CONTAINS,
+        "now empty; undoing this call brings the old device back, and reverts "
+        "the rest of the call too" % _CONTAINS,
         changed=True,
     )

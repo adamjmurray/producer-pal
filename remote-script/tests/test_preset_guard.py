@@ -306,7 +306,7 @@ class HotswapTest(unittest.TestCase):
         message = caught.exception.payload["error"]
         self.assertIn("contains the Producer Pal device", message)
         self.assertIn("the slot is now empty", message)
-        self.assertIn("one undo brings the old device back", message)
+        self.assertIn("undoing this call brings the old device back", message)
         self.assertEqual(track.devices, [])
 
     def test_deletes_a_rack_kept_in_place_that_now_holds_producer_pal(self):

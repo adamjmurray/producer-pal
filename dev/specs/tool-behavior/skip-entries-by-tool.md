@@ -224,9 +224,9 @@ with a tool, the tool wins.
   create-device's entry is `{path, ok: false, detail}`. `/hotswap`: Live had
   already replaced the device, so the script deletes the new one and the slot is
   left empty. The swap and the delete share the call's undo step, so the 409
-  says one undo brings the old device back. update-device's entry names the
-  target by `path` (the old id is gone) with
-  `preset not loaded: <why>; already changed: the device was replaced`, and
+  says undoing the call brings the old device back, along with the rest of the
+  call. update-device's entry names the target by `path` (the old id is gone)
+  with `preset not loaded: <why>; already changed: the device was replaced`, and
   nothing else is written to that target. Later targets still load at their
   current path. If the delete fails, the 409 says where the device is instead
   (no undo hint: that undo would remove a Producer Pal, so it is refused). Only

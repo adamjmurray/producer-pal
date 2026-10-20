@@ -253,9 +253,9 @@ Returns the device's name afterwards and whether Live `replaced` it.
   that is, or holds, the Producer Pal device (checked before loading). Live has
   already changed the device by the time the preset is found, so the script
   deletes the new one and **the slot is left empty**. The 409 says so, and that
-  one undo brings the old device back (the swap and the delete share an undo
-  step), and has `changed: true`. If the delete fails, it says where the device
-  is, still with `changed: true`.
+  undoing the call brings the old device back, along with the rest of the call
+  (the swap and the delete share an undo step), and has `changed: true`. If the
+  delete fails, it says where the device is, still with `changed: true`.
 
 ### `POST /replace-producer-pal`
 
