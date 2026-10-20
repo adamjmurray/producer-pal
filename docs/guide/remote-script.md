@@ -12,10 +12,10 @@ The remote script is a small Ableton control surface script that runs inside
 Live and works alongside the Producer Pal device. Install it as part of the
 standard setup. It adds:
 
-- **Clip automation**: read and write automation on session clips (volume, pan,
-  sends, device parameters) with
-  [Update Clip](/features/tools#ppal-update-clip). Writing it needs Live 12.4 or
-  later.
+- **Clip automation**: read and write automation on clips (volume, pan, sends,
+  device parameters) with [Update Clip](/features/tools#ppal-update-clip).
+  Arrangement clips can be written, not read back. Writing it needs Live 12.4 or
+  later. See [Clip Automation](/guide/automation).
 - **Undo and redo**: each request is one undo step in Live, so Cmd+Z / Ctrl+Z
   reverts just that request. The AI can also undo and redo with the
   [Manage](/features/tools#ppal-manage) tool. Live's history includes your own

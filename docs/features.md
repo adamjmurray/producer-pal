@@ -38,10 +38,10 @@ the loop.
 - **Arrangement**: place, move, split, and duplicate clips along the timeline,
   add locators, and stack alternate versions on [take lanes](#take-lanes).
   [Clip tools →](/features/tools#clip-tools)
-- **Automation**: draw envelopes on Session clips for mixer and device
-  parameters, with ramps, jumps and curves. Copying an automated clip into the
-  Arrangement writes it onto the track. Needs the
-  [remote script](/guide/remote-script); see
+- **Automation**: draw envelopes on clips for mixer and device parameters, with
+  ramps, jumps and curves. On Arrangement clips it writes the track's automation
+  over the clip, with limits. Needs the [remote script](/guide/remote-script);
+  see [Clip Automation](/guide/automation) and
   [Limitations](/features/limitations).
 - **Session view**: create scenes, capture what's playing into a new one, and
   give a scene its own tempo and time signature.
