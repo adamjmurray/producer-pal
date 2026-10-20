@@ -48,9 +48,13 @@ def refuse_loaded_producer_pal(song, track, before, created):
 def refuse_hotswapped_producer_pal(song, device_path):
     """Raise 409 and delete the device at `device_path` when it holds Producer Pal.
 
-    Live has already replaced or changed the target by now, and can't give the
-    old device back, so the slot is left empty. The error says so, and sets
-    `changed` so the caller knows the old device is gone.
+    Live has already replaced or changed the target by now, so the slot is left
+    empty. The error says so, and sets `changed` so the caller knows the old
+    device is gone.
+
+    Don't undo the swap to get the old device back: undoing only the swap needs
+    an undo step closed before it, which splits a call that loads presets on
+    several targets into one undo step per target.
     """
     holder, index, device = hotswap.locate_device(song, device_path)
     if not holds_producer_pal(device):
