@@ -133,6 +133,31 @@ describe("copyChainMixerTo", () => {
     });
   });
 
+  // Two returns can share a name, so a name would land both sends on the first.
+  it("carries same-rack sends by return id", () => {
+    const rack = rackWithReturns("rack-0", SOURCE_RACK, ["Verb", "Verb"]);
+
+    const { created } = copyMixerToNewChain(
+      {
+        sends: [
+          { return: "Verb", returnId: "rack-0-rc-0", gainDb: -12 },
+          { return: "Verb", returnId: "rack-0-rc-1", gainDb: -6 },
+        ],
+      },
+      rack,
+      rack,
+    );
+
+    expectMixerApplied(created, {
+      gainDb: undefined,
+      pan: undefined,
+      sends: [
+        { return: "rack-0-rc-0", gainDb: -12 },
+        { return: "rack-0-rc-1", gainDb: -6 },
+      ],
+    });
+  });
+
   it("carries a cross-rack send whose return name exists on both sides", () => {
     const source = rackWithReturns("rack-0", SOURCE_RACK, ["a Verb"]);
     const destination = rackWithReturns("rack-1", OTHER_RACK, ["A VERB"]);
