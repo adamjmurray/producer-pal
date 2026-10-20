@@ -32,7 +32,7 @@ vi.mock(import("../port/remote-script-port-file.ts"), () => ({
 }));
 
 const OUTDATED_2_4 =
-  'the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0-rc1 or later); update it with ppal-manage action "install-remote-script" or in the Producer Pal chat UI\'s Settings → Installation, then restart Live';
+  'the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0-rc2 or later); update it with ppal-manage action "install-remote-script" or in the Producer Pal chat UI\'s Settings → Installation, then restart Live';
 
 let fake: FakeRemoteScript | undefined;
 let version = "2.4.0";
@@ -288,7 +288,7 @@ describe("remoteScriptRequest against a current remote script", () => {
   });
 
   it("sends the request", async () => {
-    version = "2.5.0-rc1";
+    version = "2.5.0-rc2";
 
     const remote = await standIn();
     const reply = await remoteScriptRequest({ route: "/list" });

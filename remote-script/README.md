@@ -136,10 +136,11 @@ matched against each item's `uri`, and `Foo.adv` never loads a Max device named
 
 ## Routes
 
-Adding a route, or changing what one answers? Bump `MIN_REMOTE_SCRIPT_VERSION`
-(`src/mcp-server/rpc/remote-script/port/remote-script-version.ts`) to the
-release that ships it. Producer Pal treats a script older than that as out of
-date and sends it nothing.
+`MIN_REMOTE_SCRIPT_VERSION`
+(`src/mcp-server/rpc/remote-script/port/remote-script-version.ts`) is the oldest
+script Producer Pal talks to; it treats an older one as out of date and sends it
+nothing. `npm run version:bump:*` raises it to the new release whenever
+`Producer_Pal/` changed since the last release tag.
 
 Any request with an `Origin` or `Sec-Fetch-Site` header, or a `Host` other than
 `127.0.0.1` or `localhost`, is refused with a 403, so a web page can't drive it.

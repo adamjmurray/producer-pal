@@ -26,7 +26,7 @@ describe("config constants", () => {
     // update check's behavior follows from its shape: an unrecognized suffix
     // would still parse as a pre-release (older than the same numbers without
     // one) and quietly nag testers to "upgrade" to what they already have.
-    // scripts/build-and-release/helpers/next-version.ts produces exactly this.
+    // scripts/build-and-release/helpers/version/next-version.ts produces exactly this.
     expect(VERSION).toMatch(/^\d+\.\d+\.\d+(-rc[1-9]\d*)?$/);
   });
 
