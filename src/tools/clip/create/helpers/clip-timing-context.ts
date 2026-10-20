@@ -24,8 +24,6 @@ export interface ClipTimingContext {
   startBeats: number | null;
   firstStartBeats: number | null;
   endBeats: number | null;
-  /** Whether firstStart was sent for a clip that won't loop, so it did nothing */
-  firstStartIgnored: boolean;
 }
 
 /** The MIDI-only timing params, as the tool received them. */
@@ -36,8 +34,6 @@ export interface ClipTimingParams {
   firstStart: string | null;
   /** Clip length (<count>bar, n<fraction>, or <count>bar+n<fraction>), or null */
   length: string | null;
-  /** Whether the clip is looping */
-  looping: boolean | null;
 }
 
 /**
@@ -50,7 +46,7 @@ export interface ClipTimingParams {
  * @param timeSignature - Custom clip time signature (e.g. "4/4"), or null
  * @param sampleFile - Audio file path, or null for a MIDI clip
  * @param timing - The MIDI-only timing params, ignored for an audio clip
- * @returns The clip's meter, its timing in beats, and whether firstStart did nothing
+ * @returns The clip's meter and its timing in beats
  */
 export function resolveClipTimingContext(
   song: SongMeter,
@@ -63,8 +59,8 @@ export function resolveClipTimingContext(
   // param we skipped, where the rule is warn and carry on. timeSignature still
   // applies to audio, so it stays.
   // Truthiness, not a null check: an empty sampleFile makes a MIDI clip.
-  const { start, firstStart, length, looping } = sampleFile
-    ? { start: null, firstStart: null, length: null, looping: null }
+  const { start, firstStart, length } = sampleFile
+    ? { start: null, firstStart: null, length: null }
     : timing;
 
   const { songTimeSigNumerator, songTimeSigDenominator } = song;
@@ -75,18 +71,16 @@ export function resolveClipTimingContext(
     songTimeSigDenominator,
   );
 
-  const { startBeats, firstStartBeats, endBeats, firstStartIgnored } =
-    convertTimingParameters(
-      null, // arrangementStart converted per-position
-      start,
-      firstStart,
-      length,
-      looping,
-      timeSigNumerator,
-      timeSigDenominator,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
+  const { startBeats, firstStartBeats, endBeats } = convertTimingParameters(
+    null, // arrangementStart converted per-position
+    start,
+    firstStart,
+    length,
+    timeSigNumerator,
+    timeSigDenominator,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+  );
 
   return {
     timeSigNumerator,
@@ -94,7 +88,6 @@ export function resolveClipTimingContext(
     startBeats,
     firstStartBeats,
     endBeats,
-    firstStartIgnored,
   };
 }
 

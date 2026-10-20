@@ -101,7 +101,6 @@ export function parseCreateCall(
     start: args.start ?? null,
     length: args.length ?? null,
     firstStart: args.firstStart ?? null,
-    looping: args.looping ?? null,
     notationString: args.notes ?? null,
     transformString: transforms,
     notation: call.ctx.notation,

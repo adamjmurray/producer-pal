@@ -384,32 +384,29 @@ describe("createClip - basic validation and time signatures", () => {
       expect.anything(),
     );
   });
+
+  it("says firstStart was ignored when it's past the region's end", async () => {
+    const { clip } = setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      clip: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    const result = (await createClip({
+      path: "t0/s0",
+      notes: "C4 1|1",
+      length: "2bar",
+      firstStart: "5|1",
+      looping: true,
+    })) as { detail?: string };
+
+    expect(result.detail).toBe(
+      "firstStart ignored: past the clip's content end",
+    );
+    expect(clip.set).toHaveBeenCalledWith("start_marker", 0);
+  });
 });
 
 describe("convertTimingParameters (unit)", () => {
-  // `firstStart != null && !looping`, one case per way it can go. Sending no
-  // firstStart is what kills the && → || mutant.
-  it.each([
-    ["firstStart on a non-looping clip is ignored", "1|2", false, true],
-    ["firstStart with looping unset is ignored", "1|2", null, true],
-    ["firstStart on a looping clip is used", "1|2", true, false],
-    ["no firstStart is nothing to ignore", null, false, false],
-  ])("%s", (_case, firstStart, looping, ignored) => {
-    const result = convertTimingParameters(
-      null,
-      null,
-      firstStart,
-      null,
-      looping,
-      4,
-      4,
-      4,
-      4,
-    );
-
-    expect(result.firstStartIgnored).toBe(ignored);
-  });
-
   it("adds startBeats to the length when computing endBeats (?? 0 fallback)", () => {
     // start "2|1" = 4 beats, length "1bar" = 4 beats → endBeats = 4 + 4 = 8.
     // The `startBeats ?? 0` → `startBeats && 0` mutant would zero the offset (→ 4).
@@ -418,7 +415,6 @@ describe("convertTimingParameters (unit)", () => {
       "2|1",
       null,
       "1bar",
-      null,
       4,
       4,
       4,
@@ -435,7 +431,6 @@ describe("convertTimingParameters (unit)", () => {
       null,
       null,
       "1bar",
-      null,
       4,
       4,
       4,

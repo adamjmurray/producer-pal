@@ -58,7 +58,10 @@ export function buildClipProperties(
   // Live keeps firstStart in start_marker, which only a looping clip can
   // separate from loop_start.
   const startMarker =
-    looping && firstStartBeats != null ? firstStartBeats : start;
+    firstStartBeats != null &&
+    firstStartProblem(firstStartBeats, looping, end) == null
+      ? firstStartBeats
+      : start;
   const propsToSet: ClipPropertiesToSet = {
     ...clipRegionWrites(
       { loop_end: createdLength, end_marker: createdLength },
@@ -88,6 +91,30 @@ export function buildClipProperties(
   propsToSet.signature_denominator = timeSigDenominator;
 
   return propsToSet;
+}
+
+/**
+ * Why a clip can't use the firstStart sent, or null when it can or none was
+ * sent. Live drops a start_marker at or past the end_marker.
+ * @param firstStartBeats - The firstStart sent, in beats, or null
+ * @param looping - Whether the clip loops
+ * @param end - Where the clip's region ends, in beats
+ * @returns The reason, or null
+ */
+export function firstStartProblem(
+  firstStartBeats: number | null,
+  looping: boolean | null,
+  end: number,
+): string | null {
+  if (firstStartBeats == null) {
+    return null;
+  }
+
+  if (!looping) {
+    return "set looping: true to use it";
+  }
+
+  return firstStartBeats < end ? null : "past the clip's content end";
 }
 
 /**

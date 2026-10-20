@@ -24,6 +24,7 @@ import { applyCodeToCreatedClip } from "../created-clip-code.ts";
 import {
   buildClipResult,
   type ClipResultObject,
+  firstStartProblem,
 } from "../created-clip-result.ts";
 import {
   configureAudioClip,
@@ -96,8 +97,15 @@ export async function writeCreatedClip(
     run.ledger.forgetAll();
   }
 
-  if (payload.plan.timing.firstStartIgnored) {
-    appendDetail(entry, "firstStart ignored: set looping: true to use it");
+  const { timing } = payload.plan;
+  const firstStartNote = firstStartProblem(
+    timing.firstStartBeats,
+    args.looping ?? null,
+    timing.endBeats ?? payload.transform.clipLength,
+  );
+
+  if (firstStartNote != null) {
+    appendDetail(entry, `firstStart ignored: ${firstStartNote}`);
   }
 
   return entry;

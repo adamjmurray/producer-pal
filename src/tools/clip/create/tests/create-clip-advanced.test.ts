@@ -14,6 +14,7 @@ import { createClip } from "../create-clip.ts";
 import {
   buildClipProperties,
   buildClipResult,
+  firstStartProblem,
 } from "../helpers/created-clip-result.ts";
 import {
   expectClipCreated,
@@ -564,6 +565,19 @@ describe("createClip - advanced features", () => {
       expect((result as { transformed?: number }).transformed).toBeUndefined();
       expectNotesAdded(clip, [note(60, 0, 1)]);
     });
+  });
+});
+
+describe("firstStartProblem (unit)", () => {
+  it.each([
+    ["no firstStart is nothing to ignore", null, false, null],
+    ["a non-looping clip ignores it", 1, false, "set looping: true to use it"],
+    ["looping unset ignores it", 1, null, "set looping: true to use it"],
+    ["a looping clip uses one before the end", 7.9, true, null],
+    ["one at the end is ignored", 8, true, "past the clip's content end"],
+    ["one past the end is ignored", 16, true, "past the clip's content end"],
+  ])("%s", (_case, firstStartBeats, looping, problem) => {
+    expect(firstStartProblem(firstStartBeats, looping, 8)).toBe(problem);
   });
 });
 

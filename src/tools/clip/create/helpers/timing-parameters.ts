@@ -14,8 +14,6 @@ export interface TimingParameters {
   startBeats: number | null;
   firstStartBeats: number | null;
   endBeats: number | null;
-  /** Whether firstStart was sent for a clip that won't loop, so it did nothing */
-  firstStartIgnored: boolean;
 }
 
 /**
@@ -24,19 +22,17 @@ export interface TimingParameters {
  * @param start - Loop start position in bar|beat format
  * @param firstStart - First playback start position in bar|beat format
  * @param length - Clip length in bar|beat duration format
- * @param looping - Whether the clip is looping
  * @param timeSigNumerator - Clip time signature numerator
  * @param timeSigDenominator - Clip time signature denominator
  * @param songTimeSigNumerator - Song time signature numerator
  * @param songTimeSigDenominator - Song time signature denominator
- * @returns Converted timing parameters in beats, plus whether firstStart did nothing
+ * @returns Converted timing parameters in beats
  */
 export function convertTimingParameters(
   arrangementStart: string | null,
   start: string | null,
   firstStart: string | null,
   length: string | null,
-  looping: boolean | null,
   timeSigNumerator: number,
   timeSigDenominator: number,
   songTimeSigNumerator: number,
@@ -78,11 +74,6 @@ export function convertTimingParameters(
     );
   }
 
-  // Only a looping clip gets a playback start, and `looping` unset means it
-  // won't loop — matches the write guard in buildClipProperties. The caller is
-  // told on the clip's own entry.
-  const firstStartIgnored = firstStart != null && !looping;
-
   // Convert length parameter to end position
   let endBeats: number | null = null;
 
@@ -102,6 +93,5 @@ export function convertTimingParameters(
     startBeats,
     firstStartBeats,
     endBeats,
-    firstStartIgnored,
   };
 }

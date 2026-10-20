@@ -246,7 +246,9 @@ It says the rest on the clip's entry too: a `firstStart` sent without
 `looping: true` used to warn (and, with `looping` left out, was dropped without
 a word); the created clip now carries
 `detail: "firstStart ignored: set looping: true to use it"` and no `ok`, since
-the clip was made.
+the clip was made. A `firstStart` at or past the region's end, also dropped
+without a word, now reads `firstStart ignored: past the clip's content end`, as
+on update-clip.
 
 **`ppal-create-device` keeps a failed path's slot.** It used to drop the path
 and warn, and threw when every path failed. A call naming two or more paths now

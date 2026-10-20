@@ -51,7 +51,6 @@ export interface ClipPlanInputs {
   start: string | null;
   length: string | null;
   firstStart: string | null;
-  looping: boolean | null;
   notationString: string | null;
   transformString: string | null;
   notation: Notation | undefined;
@@ -212,7 +211,6 @@ function buildPlan(inputs: ClipPlanInputs, values: ClipValues): ClipPlan {
       start: values.start,
       firstStart: values.firstStart,
       length: values.length,
-      looping: inputs.looping,
     },
   );
 

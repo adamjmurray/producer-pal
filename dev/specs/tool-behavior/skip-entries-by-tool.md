@@ -72,8 +72,8 @@ with a tool, the tool wins.
   clip holds its slot as a skip: a track that isn't there or won't take the
   clip, a transform its meter can't read, a create Live declined, a take lane
   past the cap, one the deadline never reached. A `firstStart` the call can't
-  use — it only lands alongside `looping: true` — is a `detail` on that clip's
-  entry rather than a warning, and no `ok`: the clip exists.
+  use — without `looping: true`, or at or past the region's end — is a `detail`
+  on that clip's entry rather than a warning, and no `ok`: the clip exists.
 - **create-clip: a place named twice** (the same slot or arrangement spot) is
   written once, by its last mention. The earlier one is
   `{ path, detail: 'named again as "<where>" later in this call' }` with no

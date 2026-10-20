@@ -119,7 +119,6 @@ describe("validateBarBeatPosition", () => {
         start,
         firstStart,
         null,
-        true,
         4,
         4,
         4,
