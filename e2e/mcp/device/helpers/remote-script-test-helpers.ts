@@ -6,6 +6,7 @@
 // What the E2E suites that need the Producer Pal remote script share.
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { presetFileIsFor } from "#src/mcp-server/rpc/remote-script/browser/preset-file-device.ts";
 import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { beforeAll } from "vitest";
 import {
@@ -139,7 +140,8 @@ export async function readDevice(
  * A pack's drum kit whose name nothing else in the library shares, found with
  * ppal-library. Installed packs differ per machine, so a test picks one at run
  * time and skips when there is none. Live's browser files these under Drums,
- * not under any device, so only the library has them.
+ * not under any device, so only the library has them. Some kits are an
+ * Instrument Rack holding a Drum Rack, so only a kit that is a Drum Rack counts.
  * @param client - Connected MCP client
  * @param skip - The test's `skip`, called when no pack has such a kit or Live
  *   has no library
@@ -166,6 +168,10 @@ export async function packDrumKitOrSkip(
   );
 
   for (const kit of kits) {
+    if (!(await presetFileIsFor(kit.path, "Drum Rack"))) {
+      continue;
+    }
+
     const name = presetName(kit.name).toLowerCase();
     const same = [
       ...(await search("device-group", presetName(kit.name))),
