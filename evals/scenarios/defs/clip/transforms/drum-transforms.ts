@@ -10,13 +10,18 @@
 
 import { type EvalScenario } from "../../../types.ts";
 import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
-import { getTransforms } from "../helpers/clip-turn-readers.ts";
+import {
+  getLastTransforms,
+  getTransforms,
+} from "../helpers/clip-turn-readers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
 /**
  * Extract the selector portion (before the first ":") of a transforms string
- * and assert it targets the expected pitch.
+ * and assert it targets the expected pitch. Pass one call's transforms
+ * (`getLastTransforms`): in a joined turn the first selector may be a draft
+ * that a later call fixed.
  * @param transforms - Raw transforms string from the update-clip call
  * @param pitch - Pitch the selector must reference (e.g. /Ab1/)
  * @param label - Human-readable pitch label for error messages
@@ -83,7 +88,7 @@ export const drumTransforms: EvalScenario = {
       description:
         "crescendo uses velocity ramp scoped to hats in last 2 beats",
       assert: (turns) => {
-        const transforms = getTransforms(turns, 2, TOOL_UPDATE_CLIP);
+        const transforms = getLastTransforms(turns, 2, TOOL_UPDATE_CLIP);
         const selector = selectorTargeting(
           transforms,
           HAT,
@@ -133,7 +138,7 @@ export const drumTransforms: EvalScenario = {
       type: "custom",
       description: "LFO targets hats before the crescendo, no ramp re-applied",
       assert: (turns) => {
-        const transforms = getTransforms(turns, 3, TOOL_UPDATE_CLIP);
+        const transforms = getLastTransforms(turns, 3, TOOL_UPDATE_CLIP);
         // Selector must target Ab1 (hats)
         const selector = selectorTargeting(
           transforms,
@@ -196,10 +201,12 @@ export const drumTransforms: EvalScenario = {
           );
         }
 
-        // Should not re-apply the ramp from turn 2
-        if (/ramp\(/i.test(transforms)) {
+        // Should not re-apply the ramp from turn 2, in any call this turn
+        const allTransforms = getTransforms(turns, 3, TOOL_UPDATE_CLIP);
+
+        if (/ramp\(/i.test(allTransforms)) {
           throw new Error(
-            `should not re-apply ramp from turn 2: ${transforms}`,
+            `should not re-apply ramp from turn 2: ${allTransforms}`,
           );
         }
 
@@ -215,7 +222,7 @@ export const drumTransforms: EvalScenario = {
       description:
         "snare randomization bakes a fixed rand() value into each snare",
       assert: (turns) => {
-        const transforms = getTransforms(turns, 4, TOOL_UPDATE_CLIP);
+        const transforms = getLastTransforms(turns, 4, TOOL_UPDATE_CLIP);
 
         // Must target snare pitch (E1 in this drum rack)
         selectorTargeting(transforms, SNARE, "E1 (snare)");
