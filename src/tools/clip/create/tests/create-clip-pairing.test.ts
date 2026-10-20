@@ -58,8 +58,8 @@ describe("createClip - per-position timing params", () => {
       firstStart: "1|1,3|1",
     });
 
-    expect(first.clip.set).toHaveBeenCalledWith("playing_position", 0);
-    expect(second.clip.set).toHaveBeenCalledWith("playing_position", 8);
+    expect(first.clip.set).toHaveBeenCalledWith("start_marker", 0);
+    expect(second.clip.set).toHaveBeenCalledWith("start_marker", 8);
   });
 
   it("refuses a list that names a different number of positions", async () => {

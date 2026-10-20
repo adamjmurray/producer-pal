@@ -21,7 +21,6 @@ export interface ClipPropertiesToSet {
   loop_start: number;
   loop_end: number;
   end_marker: number;
-  playing_position?: number;
   name?: string;
   color?: string;
   looping?: number;
@@ -56,22 +55,21 @@ export function buildClipProperties(
   const start = startBeats ?? 0;
   const end = endBeats ?? clipLength;
   const createdLength = createdClipLength(clipLength, startBeats);
+  // Live keeps firstStart in start_marker, which only a looping clip can
+  // separate from loop_start.
+  const startMarker =
+    looping && firstStartBeats != null ? firstStartBeats : start;
   const propsToSet: ClipPropertiesToSet = {
     ...clipRegionWrites(
       { loop_end: createdLength, end_marker: createdLength },
       {
         loop_start: start,
         loop_end: end,
-        start_marker: start,
+        start_marker: startMarker,
         end_marker: end,
       },
     ),
   };
-
-  // Set playing_position (firstStart) only for looping clips
-  if (looping && firstStartBeats != null) {
-    propsToSet.playing_position = firstStartBeats;
-  }
 
   // Optional properties
   if (clipName) {

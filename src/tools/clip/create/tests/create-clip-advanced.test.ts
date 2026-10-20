@@ -568,26 +568,25 @@ describe("createClip - advanced features", () => {
 });
 
 describe("buildClipProperties (unit)", () => {
-  it("sets playing_position only when the clip is looping AND firstStart is set", () => {
-    // Looping + firstStart → playing_position is set.
-    expect(
-      buildClipProperties(0, 4, 5, true, undefined, null, 4, 4, 4)
-        .playing_position,
-    ).toBe(5);
+  it("moves start_marker to firstStart only when the clip is looping AND firstStart is set", () => {
+    // Looping + firstStart → start_marker is firstStart, loop_start stays.
+    const props = buildClipProperties(1, 9, 0, true, undefined, null, 4, 4, 9);
 
-    // Not looping (with firstStart) → no playing_position. Kills the
-    // whole-condition → true and the && → || mutants (|| would set it).
-    expect(
-      buildClipProperties(0, 4, 5, false, undefined, null, 4, 4, 4)
-        .playing_position,
-    ).toBeUndefined();
+    expect(props.start_marker).toBe(0);
+    expect(props.loop_start).toBe(1);
+    expect(props.playing_position).toBeUndefined();
 
-    // Looping but firstStart null → no playing_position. Kills the
-    // `firstStartBeats != null` → true mutant.
+    // Not looping (with firstStart) → start_marker is the region start.
     expect(
-      buildClipProperties(0, 4, null, true, undefined, null, 4, 4, 4)
-        .playing_position,
-    ).toBeUndefined();
+      buildClipProperties(1, 9, 0, false, undefined, null, 4, 4, 9)
+        .start_marker,
+    ).toBe(1);
+
+    // Looping but firstStart null → start_marker is the region start.
+    expect(
+      buildClipProperties(1, 9, null, true, undefined, null, 4, 4, 9)
+        .start_marker,
+    ).toBe(1);
   });
 
   it("includes name only when clipName is truthy", () => {

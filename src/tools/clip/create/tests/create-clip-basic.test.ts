@@ -363,7 +363,7 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("sets playing_position when firstStart is used with looping clips", async () => {
+  it("sets start_marker from firstStart on a looping clip", async () => {
     const { clip } = setupSessionMocks({
       liveSet: { signature_numerator: 4, signature_denominator: 4 },
       clip: { signature_numerator: 4, signature_denominator: 4 },
@@ -376,8 +376,13 @@ describe("createClip - basic validation and time signatures", () => {
       looping: true,
     });
 
-    // 1|2 = 1 beat in 4/4 time
-    expect(clip.set).toHaveBeenCalledWith("playing_position", 1);
+    // 1|2 = 1 beat in 4/4 time. Live keeps firstStart in start_marker;
+    // playing_position is only where a playing clip is right now.
+    expect(clip.set).toHaveBeenCalledWith("start_marker", 1);
+    expect(clip.set).not.toHaveBeenCalledWith(
+      "playing_position",
+      expect.anything(),
+    );
   });
 });
 
