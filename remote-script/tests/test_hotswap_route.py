@@ -94,7 +94,10 @@ def hotswap(
     browser = FakeBrowser(FakeItem("Presets", [item]))
     bridge = types.SimpleNamespace(
         app=types.SimpleNamespace(browser=browser),
-        song=types.SimpleNamespace(**(song or {"tracks": [FakeTrack([device])]})),
+        song=types.SimpleNamespace(
+            end_undo_step=lambda: None,
+            **(song or {"tracks": [FakeTrack([device])]}),
+        ),
     )
     return routes.hotswap_device(
         bridge,

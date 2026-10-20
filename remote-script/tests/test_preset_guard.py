@@ -77,12 +77,23 @@ class FakeBrowser:
 
 
 class FakeSong:
-    def __init__(self, tracks):
+    def __init__(self, tracks, on_undo=None):
         self.tracks = list(tracks)
         self.return_tracks = []
         self.master_track = FakeHolder([], "Main")
         self.view = types.SimpleNamespace(selected_track=None)
         self.deleted_tracks = []
+        # What happened, in order: "end" for an undo step closed, "undo".
+        self.undo_log = []
+        self.on_undo = on_undo
+
+    def end_undo_step(self):
+        self.undo_log.append("end")
+
+    def undo(self):
+        self.undo_log.append("undo")
+        if self.on_undo is not None:
+            self.on_undo()
 
     def create_midi_track(self, index):
         track = FakeHolder([], "New")
@@ -293,6 +304,36 @@ class HotswapTest(unittest.TestCase):
             track.devices[track.devices.index(target)] = new_device
 
         return FakeBrowser(on_load)
+
+    def test_undoes_a_replacement_with_producer_pal(self):
+        old = FakeDevice("Reverb")
+        track = FakeHolder([old])
+        browser = self.swap_in(track, rack_with(pal()))
+        song = FakeSong([track], on_undo=lambda: track.devices.__setitem__(0, old))
+
+        with self.assertRaises(routes.RouteError) as caught:
+            hotswap(song, browser)
+
+        self.assertEqual(caught.exception.status, 409)
+        self.assertNotIn("changed", caught.exception.payload)
+        self.assertIn("so the swap was undone", caught.exception.payload["error"])
+        self.assertEqual(track.devices, [old])
+        self.assertEqual(track.deleted, [])
+        # Its own undo step, so the undo takes only the swap.
+        self.assertEqual(song.undo_log, ["end", "undo"])
+
+    def test_undoes_a_change_inside_a_rack_kept_in_place(self):
+        reverb = FakeDevice("Reverb")
+        track = FakeHolder([rack_with(reverb)])
+        chain = track.devices[0].chains[0]
+        browser = FakeBrowser(lambda target: chain.devices.append(pal()))
+        song = FakeSong([track], on_undo=lambda: chain.devices.pop())
+
+        with self.assertRaises(routes.RouteError) as caught:
+            hotswap(song, browser)
+
+        self.assertNotIn("changed", caught.exception.payload)
+        self.assertEqual(chain.devices, [reverb])
 
     def test_deletes_a_replacement_with_producer_pal_and_says_the_slot_is_empty(self):
         track = FakeHolder([FakeDevice("Reverb")])

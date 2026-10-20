@@ -216,6 +216,9 @@ def hotswap_device(bridge, params):
         )
 
     before_name = device.name
+    # The swap gets an undo step of its own, so a preset refused below can be
+    # undone without taking earlier changes from the same call with it.
+    song.end_undo_step()
     try:
         after = hotswap.hotswap(bridge.app.browser, item, device, device_path, song)
         refuse_hotswapped_producer_pal(song, device_path)

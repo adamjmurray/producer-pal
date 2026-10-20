@@ -221,14 +221,16 @@ with a tool, the tool wins.
   it.** The remote script looks through what `/load` or `/hotswap` loaded
   (chains, return chains, drum pads) and deletes what holds it, by device name
   (a renamed Producer Pal isn't caught). `/load`: 409 "nothing was loaded", so
-  create-device's entry is `{path, ok: false, detail}`. `/hotswap`: Live had
-  already replaced the device and can't give it back, so the slot is left empty,
-  and the 409 says so. update-device's entry names the target by `path` (the old
-  id is gone) with
-  `preset not loaded: <why>; already changed: the device was replaced and removed; its slot is empty`,
-  and nothing else is written to that target. Later targets still load at their
-  current path. If the delete fails, the 409 says where the device is. Only a
-  preset can hold it: Producer Pal loaded by name is judged on its own.
+  create-device's entry is `{path, ok: false, detail}`. `/hotswap`: the remote
+  script undoes the swap, so the device is back with its id and settings, and
+  update-device refuses that target like any other preset it can't load:
+  `preset not loaded: <why>, so the swap was undone`. Nothing else is written to
+  it. If the undo doesn't remove Producer Pal, the script deletes the device
+  instead and the entry names the target by `path` (the old id is gone) with
+  `preset not loaded: <why>; already changed: the device was replaced and removed; its slot is empty`.
+  Later targets still load at their current path. If the delete fails, the 409
+  says where the device is. Only a preset can hold it: Producer Pal loaded by
+  name is judged on its own.
 - **A `/hotswap` that timed out may still land.** update-device skips that
   target with
   `preset not loaded: <why>; Live may have loaded it anyway, so check the device before re-running`
