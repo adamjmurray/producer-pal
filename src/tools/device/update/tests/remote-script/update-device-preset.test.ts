@@ -528,7 +528,7 @@ describe("updateDevice - Live fails around a preset load", () => {
 
     expect(result).toStrictEqual({
       path: "t3/d0",
-      detail: `preset not loaded: ${error}; already changed: the device was replaced and removed; its slot is empty`,
+      detail: `preset not loaded: ${error}; already changed: the device was replaced`,
     });
     expect(drift.set).not.toHaveBeenCalled();
   });

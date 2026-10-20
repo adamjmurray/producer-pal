@@ -222,13 +222,15 @@ with a tool, the tool wins.
   (chains, return chains, drum pads) and deletes what holds it, by device name
   (a renamed Producer Pal isn't caught). `/load`: 409 "nothing was loaded", so
   create-device's entry is `{path, ok: false, detail}`. `/hotswap`: Live had
-  already replaced the device and can't give it back, so the slot is left empty,
-  and the 409 says so. update-device's entry names the target by `path` (the old
-  id is gone) with
-  `preset not loaded: <why>; already changed: the device was replaced and removed; its slot is empty`,
-  and nothing else is written to that target. Later targets still load at their
-  current path. If the delete fails, the 409 says where the device is. Only a
-  preset can hold it: Producer Pal loaded by name is judged on its own.
+  already replaced the device, so the script deletes the new one and the slot is
+  left empty. The swap and the delete share the call's undo step, so the 409
+  says one undo brings the old device back. update-device's entry names the
+  target by `path` (the old id is gone) with
+  `preset not loaded: <why>; already changed: the device was replaced`, and
+  nothing else is written to that target. Later targets still load at their
+  current path. If the delete fails, the 409 says where the device is instead
+  (no undo hint: that undo would remove a Producer Pal, so it is refused). Only
+  a preset can hold it: Producer Pal loaded by name is judged on its own.
 - **A `/hotswap` that timed out may still land.** update-device skips that
   target with
   `preset not loaded: <why>; Live may have loaded it anyway, so check the device before re-running`

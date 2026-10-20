@@ -70,9 +70,8 @@ export interface UpdateDeviceArgs extends UpdateTargetOptions {
   focus?: boolean;
 }
 
-/** What a refused preset left of the device it was loaded onto. */
-const CHANGED_BY_PRESET =
-  "the device was replaced and removed; its slot is empty";
+/** What a refused preset did to the device; the remote script says the rest. */
+const CHANGED_BY_PRESET = "the device was replaced";
 
 /** One target's entry. */
 type DeviceEntry = Record<string, unknown>;

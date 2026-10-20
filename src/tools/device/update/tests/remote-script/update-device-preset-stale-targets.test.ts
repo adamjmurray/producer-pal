@@ -343,7 +343,7 @@ describe("updateDevice - after a refused preset removed a device", () => {
     ).toStrictEqual([
       {
         path: "t3/d0",
-        detail: `preset not loaded: ${REFUSED}; already changed: the device was replaced and removed; its slot is empty`,
+        detail: `preset not loaded: ${REFUSED}; already changed: the device was replaced`,
       },
       { id: "second", path: "t3/d0" },
     ]);

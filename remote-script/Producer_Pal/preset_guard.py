@@ -69,9 +69,10 @@ def refuse_hotswapped_producer_pal(song, device_path):
             "delete the device at %s" % (_CONTAINS, err, device_path),
             changed=True,
         )
+    # The swap and the delete share an undo step, so undoing it is safe.
     raise RouteError(
         409,
-        "%s. Live had already loaded it onto the device, so the device was "
-        "deleted and its slot is now empty" % _CONTAINS,
+        "%s; Live had already swapped it in, so it was deleted and the slot is "
+        "now empty; one undo brings the old device back" % _CONTAINS,
         changed=True,
     )
