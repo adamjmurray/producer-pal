@@ -499,8 +499,12 @@ files as last loaded. `/reload` returns the same `hash`.
 
 - **First plugin listing is slow**: Live scans the plugin folders. That's why a
   running job gets 30s.
-- **Async load**: plugins and Max devices finish loading after `load_item()`
-  returns, so the `devices` list in the response can lag.
+- **Loads finish inside `load_item()`**, plug-ins and Max devices included, so
+  the response already shows the new device. Checked on Live 12.4; hotswap on
+  12.3 too.
+- **`device_name` can't tell two same-named devices apart** if one shifts into
+  the other's slot while the request queues. Python gives devices no stable
+  identity, and the window is only the queue wait, so this is left as is.
 - **Debugging**: `bridge.log()` writes to Live's `Log.txt`
   (`~/Library/Preferences/Ableton/Live x.x.x/` on macOS).
 - **Developing**: see [Hot reload](#hot-reload). To test against the dev build

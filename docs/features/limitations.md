@@ -158,6 +158,12 @@ are **clip** time signatures: each clip carries its own meter, which Producer
 Pal reads and sets normally. Arrangement clip positions, arrangement lengths,
 and locator positions are the parts that go wrong.
 
+## Tracks Can't Be Grouped or Ungrouped
+
+Live gives Producer Pal no way to put tracks into a group or take them out. The
+AI can read groups and work with the tracks inside them, but making or breaking
+a group is up to you in Live.
+
 ## One Drum Rack Pitch Map Per Track
 
 Reading a track gives the AI a map of which MIDI pitch triggers which drum pad,

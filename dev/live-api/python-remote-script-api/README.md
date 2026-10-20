@@ -26,7 +26,9 @@ reference use to copy. What they did add:
 
 - `Application.unavailable_features` lists what the edition lacks (Push checks
   for `note_velocity_ranges_and_probabilities`), and `get_variant()` names the
-  edition.
+  edition. Producer Pal doesn't check it: every edition that can run Max for
+  Live has both (per Ableton's edition rules, not tested). Revisit if Producer
+  Pal ever runs without the device.
 - After writing a clip envelope, Ableton's scripts call
   `param.re_enable_automation()`. A parameter the user moved stays overridden
   otherwise, and the new envelope doesn't play (probed).

@@ -58,7 +58,9 @@ a clip with no envelopes (`has_envelopes`) and for unwarped audio.
 
 Copying an **arrangement** clip (or moving one, which Producer Pal does by copy
 and delete) neither writes nor clears the lane: automation stays at the old
-position. A clip re-created on a take lane carries no envelopes at all.
+position. Live's own UI moves the lane with the clip; Producer Pal can't, since
+it can't read what to carry. A clip re-created on a take lane carries no
+envelopes at all.
 
 What carries: mixer volume, pan, sends, track activator, rack macros, and device
 parameters inside racks. Chain mixer volume doesn't (and `ppal-update-clip`

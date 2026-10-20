@@ -89,8 +89,8 @@ def hotswap(browser, item, device, device_path, song):
         # Left on, Live keeps filtering the browser to this device, and the
         # next load replaces it instead of adding a device.
         browser.hotswap_target = None
-    # Live 12.4.6 finishes a plug-in or Max device load inside load_item, so the
-    # device is already in place here.
+    # Live 12.3 and 12.4 finish a plug-in or Max device load inside load_item,
+    # so the device is already in place here.
     return device_at(song, device_path)
 
 

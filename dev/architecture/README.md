@@ -188,6 +188,12 @@ imports all tool definitions from `src/tools/**/*.def.ts`.
 - Uses StreamableHTTP transport (SSE is deprecated)
 - Bundles all dependencies (@modelcontextprotocol/sdk, express, zod)
 
+**The device patch** (`max-for-live-device/*.maxpat`): any change to a device
+setting is an undo step in Live ("Change in Producer_Pal"), and undoing it
+re-sends the setting's value. Anything in the patch that acts when a setting
+fires must ignore the same value re-sent: the Port box stops the server when it
+fires, so a `change` object lets only a real port change through.
+
 ### 3. Tool Implementations (`src/tools/**`)
 
 Core logic for each operation. Each tool is a pure function that transforms

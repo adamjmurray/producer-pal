@@ -194,7 +194,8 @@ A caller with no header (chat UI, direct HTTP clients) gets no block.
 ## What the portal carries
 
 The portal is plain Node with no repo beside it, so anything it installs has to
-ship with it:
+ship with it. It bundles rather than downloads, so installing works offline and
+always matches the portal's version:
 
 - **The remote script** is embedded in the bundle by `embedRemoteScript()`, the
   same plugin the device bundle uses. The portal never reads `remote-script/`

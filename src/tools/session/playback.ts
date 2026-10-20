@@ -400,6 +400,7 @@ function writeClip(
     }
 
     // A track stops all its clips at once, so two slots on it are one Live call.
+    // Not ClipSlot.stop or Clip.stop: they can't cancel a queued launch.
     track.call("stop_all_clips");
     // Only once it went through: after a throw, the next slot tries again.
     stopped.add(position.trackIndex);

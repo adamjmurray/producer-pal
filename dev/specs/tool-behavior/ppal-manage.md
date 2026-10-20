@@ -13,8 +13,13 @@ Pal (see [`undo` and `redo`](#undo-and-redo)), and an install changes nothing in
 the Set. The one exception is the `update-producer-pal` swap, which the remote
 script closes itself.
 
+Nothing installs on its own: every install or update is one of these calls,
+never a side effect of the portal starting.
+
 Small-model mode leaves it out entirely (not in MCP, not in REST), and users can
-switch it off like any tool. It sits in the `core` group.
+switch it off like any tool. It sits in the `core` group. Otherwise it is always
+listed, even without the remote script: clients cache the tool list, so a tool
+hidden until the script is installed would be missing when it's needed.
 
 ## Refusals before anything runs
 

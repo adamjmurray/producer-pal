@@ -108,6 +108,7 @@ appServer
     void getUpdate().then((update) => {
       if (update) {
         console.log(`Producer Pal update available: ${update.version}`);
+        // One value only: the patch builds its label from it.
         void Max.outlet("update_available", update.version);
       }
 

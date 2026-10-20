@@ -115,8 +115,6 @@ def load(bridge, params):
         return {
             "loaded": {"name": item.name, "path": path, "kind": kind},
             "track": {"index": list(song.tracks).index(track), "name": track.name},
-            # Plugins and Max devices finish loading asynchronously, so this
-            # list can lag a request behind.
             "devices": [device.name for device in track.devices],
         }
     except RouteError:

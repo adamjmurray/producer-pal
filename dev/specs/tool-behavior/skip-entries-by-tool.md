@@ -367,7 +367,10 @@ with a tool, the tool wins.
   `wrote its automation to the track's arrangement lane over this span`, once. A
   copy that stopped early says its own note above instead. A clip with no
   automation, an unwarped audio clip and an arrangement source write nothing, so
-  say nothing.
+  say nothing. An arrangement source gets no "automation left behind" note
+  either: the lane can't be read, so it can't tell whether anything was left,
+  and checking every parameter on the track costs too much. The tool
+  descriptions warn before the call instead.
 - **duplicate: a device copy that can't be placed.** With the remote script,
   Live copies a device right after the original. Nothing is moved or deleted
   until the device in that slot is checked to have the original's name and
