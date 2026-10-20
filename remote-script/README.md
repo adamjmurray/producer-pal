@@ -242,6 +242,10 @@ Returns the device's name afterwards and whether Live `replaced` it.
   unless it's already named after the preset: Live names a kept device after the
   preset it loads, so reloading the same one changes nothing visible. A
   mismatched preset with that same name then goes unnoticed.
+- **A plug-in's own preset** (`.vstpreset`, `.fxp`, `.fxb`, `.aupreset`) filed
+  under the device's plug-in counts as loaded: Live keeps the device and never
+  renames it, so there's nothing to check. Onto another plug-in or a native
+  device, Live replaces the device with the preset's plug-in.
 - **Hotswap mode is turned off afterwards.** Left on, Live keeps filtering the
   browser to that device, and the next `/load` would replace it.
 - **A preset holding Producer Pal is a 409** (see `/load`), and so is a target

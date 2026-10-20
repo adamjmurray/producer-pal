@@ -48,6 +48,10 @@ MFL_FOLDER_KINDS = {
 # The `type` that names a file on disk by its absolute `path`.
 FILE_TYPE = "file"
 
+# Preset files a plug-in saves for itself. Loaded onto that plug-in, Live keeps
+# the device and its name (measured with VST3), so nothing shows it loaded.
+PLUGIN_PRESET_SUFFIXES = (".vstpreset", ".fxp", ".fxb", ".aupreset")
+
 # Plugins often exist as AU, VST and VST3 under the same name, so ambiguity is
 # normal - report the candidates instead of guessing.
 MAX_CANDIDATES = 25
@@ -227,12 +231,14 @@ def hotswap_device(bridge, params):
     replaced = after != device
     # A preset for a different kind of device loads nothing. When the kind was
     # unknown up front, an untouched device is the only sign. A kept device is
-    # renamed after the preset, so one already named for it counts as loaded.
+    # renamed after the preset, so one already named for it counts as loaded,
+    # and so does a plug-in's own preset, which Live never renames it for.
     if (
         kind is None
         and not replaced
         and after.name == before_name
         and not browser.same_name(after.name, item.name)
+        and not _own_plugin_preset(after, path)
     ):
         raise RouteError(
             409,
@@ -283,6 +289,15 @@ def replace_producer_pal(bridge, params):
         "track": {"path": pal.track_path, "name": pal.track.name},
         "device": {"name": name},
     }
+
+
+def _own_plugin_preset(device, path):
+    """True when `path` is a plug-in preset filed under `device`'s plug-in."""
+    if not path.lower().endswith(PLUGIN_PRESET_SUFFIXES):
+        return False
+    # The plug-in's own name; the device's name can be changed by the user.
+    plugin = getattr(device, "class_display_name", None)
+    return plugin is not None and plugin in path.split("/")[:-1]
 
 
 def _kind_words(kind):

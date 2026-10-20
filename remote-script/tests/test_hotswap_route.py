@@ -36,9 +36,11 @@ class FakeItem:
 
 
 class FakeDevice:
-    def __init__(self, name, device_type):
+    def __init__(self, name, device_type, plugin=None):
         self.name = name
         self.type = device_type
+        # A plug-in device's class_display_name is the plug-in's own name.
+        self.class_display_name = plugin or name
 
 
 class FakeBrowser:
@@ -82,12 +84,14 @@ def hotswap(
 ):
     """POST /hotswap of a preset file under a Places folder onto `device`.
 
-    `song` holds the fake Song's attributes; the default is one track with
-    `device` on it.
+    `preset_file` may sit in subfolders ("Ruina/x.vstpreset"). `song` holds the
+    fake Song's attributes; the default is one track with `device` on it.
     """
-    browser = FakeBrowser(
-        FakeItem("Presets", [FakeItem(preset_file, device_type=device_type)])
-    )
+    *folders, file_name = preset_file.split("/")
+    item = FakeItem(file_name, device_type=device_type)
+    for folder in reversed(folders):
+        item = FakeItem(folder, [item])
+    browser = FakeBrowser(FakeItem("Presets", [item]))
     bridge = types.SimpleNamespace(
         app=types.SimpleNamespace(browser=browser),
         song=types.SimpleNamespace(**(song or {"tracks": [FakeTrack([device])]})),
@@ -128,6 +132,39 @@ class HotswapFileTest(unittest.TestCase):
         self.assertEqual(caught.exception.status, 409)
         self.assertIn("Live didn't load", caught.exception.payload["error"])
         self.assertEqual(device.name, "Drift")
+
+
+class HotswapPluginPresetTest(unittest.TestCase):
+    """A plug-in's own preset: Live keeps the device and never renames it."""
+
+    def test_loads_a_plugin_preset_onto_its_own_plugin(self):
+        device = FakeDevice("Ruina", AUDIO_EFFECT)
+        result = hotswap(device, "Ruina/_mccahil.vstpreset", None)
+
+        self.assertEqual(result["device"], {"name": "Ruina", "replaced": False})
+
+    def test_loads_onto_its_own_plugin_after_the_device_was_renamed(self):
+        device = FakeDevice("My Distortion", AUDIO_EFFECT, plugin="Ruina")
+        result = hotswap(device, "Ruina/_mccahil.vstpreset", None)
+
+        self.assertEqual(result["device"]["replaced"], False)
+
+    def test_refuses_a_plugin_preset_for_another_plugin(self):
+        device = FakeDevice("Sinc Vereor", INSTRUMENT)
+
+        with self.assertRaises(routes.RouteError) as caught:
+            hotswap(device, "Ruina/_mccahil.vstpreset", None)
+
+        self.assertEqual(caught.exception.status, 409)
+        self.assertIn("Live didn't load", caught.exception.payload["error"])
+
+    def test_refuses_a_live_preset_filed_under_a_plugin_folder(self):
+        device = FakeDevice("Ruina", AUDIO_EFFECT)
+
+        with self.assertRaises(routes.RouteError) as caught:
+            hotswap(device, "Ruina/Big Hall.adv", None)
+
+        self.assertEqual(caught.exception.status, 409)
 
 
 class HotswapDevicePathTest(unittest.TestCase):
