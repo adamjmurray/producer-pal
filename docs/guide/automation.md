@@ -45,7 +45,7 @@ and
 
 - "Read the automation on the clip in track 2, scene 1."
 - "Fade the volume of the pad clip in over the first four bars."
-- "Make the bass clip's filter cutoff sweep up across all eight bars."
+- "Sweep the Auto Filter's frequency on the bass clip up across all eight bars."
 - "Pan the hi-hat clip slowly from left to right."
 - "Add a send 1 swell on the last bar of the vocal clip."
 - "Clear the volume automation on that session clip."
@@ -72,7 +72,8 @@ bars, holds it until bar 4, jumps to 0.2, then curves up to 1 at bar 5.
 - **On an arrangement clip**, bar 1 is where the clip starts. The points run
   once across the clip, however it loops.
 - **Session audio clips must be warped.** An unwarped audio clip can't play
-  envelopes, so writing one is refused until warping is on.
+  envelopes, so writing one is refused until warping is on. Arrangement clips
+  don't need it, since their automation is on the track.
 
 The tool settings are `include: ["envelopes"]` on
 [Read Clip](/features/tools#ppal-read-clip) and `envelopes` on

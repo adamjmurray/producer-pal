@@ -12,8 +12,9 @@
  * track's pan on a later call (see arrangement-lane-test-helpers.ts).
  *
  * Uses: e2e-test-set — t3 "Lead" (MIDI, one clip at 9|1 spanning 8 bars), t4
- * "Audio 1" (audio, a "kick" clip at 17|1), t8 for an anchor clip that keeps
- * the song long enough to read past the clips.
+ * "Audio 1" (audio, a "kick" clip at 17|1), t5 "Audio 2" (audio, no
+ * arrangement clips), t8 for an anchor clip that keeps the song long enough to
+ * read past the clips.
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp:remote-script -- clip/remote-script/ppal-update-clip-arrangement-automation
@@ -42,12 +43,17 @@ import {
   clipAt,
   readArrangementClips,
 } from "../helpers/arrangement-clip-query-test-helpers.ts";
+import {
+  createUnwarpedDrumLoop,
+  DRUM_LOOP_BEATS,
+} from "../helpers/audio-warp-test-helpers.ts";
 import { laneAt } from "../helpers/arrangement-lane-test-helpers.ts";
 import { settledTool } from "../helpers/envelope-route-test-helpers.ts";
 import { createClipInSlot } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const MIDI_TRACK = 3;
 const AUDIO_TRACK = 4;
+const EMPTY_AUDIO_TRACK = 5;
 /** Where t3's clip starts (bar 9) and t4's clip starts (bar 17), in beats. */
 const MIDI_CLIP_START = 32;
 const AUDIO_CLIP_START = 64;
@@ -242,6 +248,36 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
         [AUDIO_CLIP_START + spanBeats + 0.5, baseline],
       ]);
       expect(await readWithoutId(result.id)).toStrictEqual(before);
+    });
+
+    it("writes an unwarped audio clip's lane over its span and leaves it unwarped", async () => {
+      // Unwarped session clips refuse envelopes; the lane is on the track.
+      const id = await createUnwarpedDrumLoop(ctx.client!, "t5[3|1]");
+      const clip = await clipOn(EMPTY_AUDIO_TRACK, "3|1");
+      const start = 8;
+      const spanBeats = beats(clip.arrangementLength as string);
+      const baseline = await lane(EMPTY_AUDIO_TRACK, start - 4);
+
+      expect(spanBeats).toBe(DRUM_LOOP_BEATS);
+      expect((await readWithoutId(id)).warping).toBe(false);
+
+      const result = await update({
+        id,
+        envelopes: "pan: 1|1 -0.8 / 2|1 0.8",
+      });
+
+      expect(result).toStrictEqual(
+        expect.objectContaining({ envelopes: 1, path: "t5[3|1]" }),
+      );
+      expect(result.id).not.toBe(id);
+      await expectLane(EMPTY_AUDIO_TRACK, [
+        [start - 4, baseline],
+        [start + 0.5, -0.8 + (0.5 / spanBeats) * 1.6],
+        [start + spanBeats / 2, 0],
+        [start + spanBeats - 0.5, 0.8 - (0.5 / spanBeats) * 1.6],
+        [start + spanBeats + 2, baseline],
+      ]);
+      expect((await readWithoutId(result.id)).warping).toBe(false);
     });
   },
 );
