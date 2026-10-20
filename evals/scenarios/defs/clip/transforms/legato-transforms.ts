@@ -8,9 +8,11 @@
  * fuzzy legato to handle the humanized chord pairs.
  */
 
-import { argText } from "../../arg-text.ts";
 import { parseToolResult } from "#evals/chat/mcp.ts";
-import { requireSuccessfulToolCall } from "../../../assertions/index.ts";
+import {
+  requireSuccessfulToolCall,
+  successfulToolCallsWith,
+} from "../../../assertions/index.ts";
 import { type EvalScenario } from "../../../types.ts";
 import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 import { getTransforms } from "../helpers/clip-turn-readers.ts";
@@ -52,16 +54,18 @@ export const legatoTransforms: EvalScenario = {
           TOOL_UPDATE_CLIP,
         );
 
-        // Should have notes param (adding the octave copies) or use transforms
-        const notes = argText(updateCall.args.notes);
-        const transforms = argText(updateCall.args.transforms);
+        // Any call may carry them, not just the last (follow-up fixes).
+        const wrote =
+          successfulToolCallsWith(turns, 2, TOOL_UPDATE_CLIP, "notes").length +
+          successfulToolCallsWith(turns, 2, TOOL_UPDATE_CLIP, "transforms")
+            .length;
         const result = parseToolResult(updateCall.result ?? "{}") as {
           noteCount?: number;
         };
         const noteCount = result.noteCount;
 
         // Original has 12 notes, doubled should be 24
-        if (!notes && !transforms && (noteCount == null || noteCount <= 12)) {
+        if (wrote === 0 && (noteCount == null || noteCount <= 12)) {
           throw new Error(
             `notes should be doubled with octaves (noteCount: ${noteCount ?? "none"})`,
           );

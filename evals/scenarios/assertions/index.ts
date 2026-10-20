@@ -23,6 +23,7 @@ export {
   lastSuccessfulToolCall,
   parsedToolResult,
   requireSuccessfulToolCall,
+  successfulToolCallsWith,
   toolCallFailed,
 } from "./helpers/turn-tool-calls.ts";
 export {

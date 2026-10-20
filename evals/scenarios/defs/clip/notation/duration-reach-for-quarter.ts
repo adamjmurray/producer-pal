@@ -35,7 +35,7 @@ import {
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
 } from "../helpers/clip-tool-constants.ts";
-import { getTransforms } from "../helpers/clip-turn-readers.ts";
+import { getLastTransforms } from "../helpers/clip-turn-readers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 
@@ -57,7 +57,7 @@ function classifyDurationReach(
   turns: EvalTurnResult[],
   turn: number,
 ): { reach: DurationReach; evidence: string } {
-  const transforms = getTransforms(turns, turn, TOOL_UPDATE_CLIP);
+  const transforms = getLastTransforms(turns, turn, TOOL_UPDATE_CLIP);
 
   // Isolate the right-hand side of any `duration` / `duration +=` assignment.
   const assignMatch = /duration\s*(?:\+=|=)\s*([^\n]+)/i.exec(transforms);

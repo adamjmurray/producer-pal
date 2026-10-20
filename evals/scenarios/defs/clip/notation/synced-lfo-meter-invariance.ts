@@ -41,7 +41,7 @@ import {
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
 } from "../helpers/clip-tool-constants.ts";
-import { getTransforms } from "../helpers/clip-turn-readers.ts";
+import { getLastTransforms } from "../helpers/clip-turn-readers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 
@@ -64,7 +64,7 @@ function classifyLfoReach(
   turns: EvalTurnResult[],
   turn: number,
 ): { reach: LfoReach; evidence: string } {
-  const transforms = getTransforms(turns, turn, TOOL_UPDATE_CLIP);
+  const transforms = getLastTransforms(turns, turn, TOOL_UPDATE_CLIP);
 
   // The retired synced-period glyph: a number immediately followed by `t`
   // (e.g. `4t`, `1:0t`). A hard regression if it reappears.

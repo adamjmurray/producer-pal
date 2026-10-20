@@ -63,6 +63,7 @@ export const pathTrackSceneAddress: EvalScenario = {
       tool: TOOL_READ_TRACK,
       param: "path",
       expected: "rt1",
+      allowList: true,
     }),
 
     { type: "tool_called", tool: TOOL_UPDATE_TRACK, turn: 2 },

@@ -32,11 +32,9 @@ export function getTargetTurns(
 /**
  * The tool calls that SUCCEEDED, optionally filtered by turn.
  *
- * Grading reads outcomes, not attempts. A model that hits a tool error is told
- * to fix its arguments and call again, so a failed call is a discarded draft —
- * counting it, or reading its args, fails a model for recovering correctly.
- * Use `getAllToolCalls` when the attempt itself is what's being graded (e.g.
- * "did it reach for a tool it shouldn't have").
+ * Grading reads outcomes, not attempts: after a tool error the model retries,
+ * so a failed call is a discarded draft. Use `getAllToolCalls` when the attempt
+ * itself is graded (e.g. "did it reach for a tool it shouldn't have").
  *
  * @param turns - All conversation turns
  * @param turn - Optional turn filter (number index, "any"/undefined for all)
@@ -80,10 +78,9 @@ export function toolCallFailed(call: ToolCall): boolean {
  * A tool call's result parsed into an object, or null when it has none.
  *
  * The fallback for `toolCallFailed` when the transport reported no `isError`:
- * errors come back as prose ("Error: slot or arrangementStart is required",
- * "ERROR: user cancelled MCP tool call") and successes as a JSON/compact-literal
- * payload, so parsing to an object separates them. Structural on purpose:
- * matching error prose would break on a reword.
+ * errors come back as prose and successes as a JSON/compact-literal payload, so
+ * parsing to an object separates them. Structural on purpose: matching error
+ * prose would break on a reword.
  *
  * @param call - The tool call to read
  * @returns The parsed result object, or null when absent/unparseable
@@ -109,13 +106,9 @@ export function parsedToolResult(
 /**
  * The LAST call to `toolName` that actually succeeded, or undefined.
  *
- * Grading must not read the first call by name. A model that hits a tool error
- * is told to fix the arguments and call again, so the first call is often a
- * discarded failed attempt — reading it grades args that never took effect, or
- * an id that was never created, and fails a model for recovering correctly.
- *
- * Never falls back to a failed call: a grader reading its args would pass a
- * turn where nothing took effect.
+ * Don't grade the first call by name: after a tool error the model retries, so
+ * the first call is often a discarded attempt. Never falls back to a failed
+ * call, which would pass a turn where nothing took effect.
  *
  * @param turns - All turn results
  * @param turn - Turn filter (index, "any", or undefined for all)
@@ -161,4 +154,38 @@ export function requireSuccessfulToolCall(
   const error = (failed.result ?? "no result").slice(0, 160);
 
   throw new Error(`every ${toolName} call in turn ${turn} failed: ${error}`);
+}
+
+/**
+ * Every successful call to `toolName` in a turn that carries `param`, in call
+ * order. Throws when no call succeeded; empty when none carried the param.
+ *
+ * Prefer this to the last call: a result can report a problem, and the model
+ * then fixes it with a follow-up call that may leave the param out.
+ *
+ * @param turns - All turn results
+ * @param turn - Turn index to search
+ * @param toolName - Tool name to match
+ * @param param - Arg that must be present and non-empty
+ * @returns The matching successful calls
+ */
+export function successfulToolCallsWith(
+  turns: EvalTurnResult[],
+  turn: number,
+  toolName: string,
+  param: string,
+): ToolCall[] {
+  requireSuccessfulToolCall(turns, turn, toolName);
+
+  return getToolCalls(turns, turn).filter(
+    (c) => c.name === toolName && argPresent(c.args[param]),
+  );
+}
+
+function argPresent(value: unknown): boolean {
+  if (value == null || value === "") {
+    return false;
+  }
+
+  return !Array.isArray(value) || value.length > 0;
 }

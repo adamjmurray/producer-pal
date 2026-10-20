@@ -8,9 +8,8 @@
  * transposition using scale steps.
  */
 
-import { argText } from "../../arg-text.ts";
 import { parseToolResult } from "#evals/chat/mcp.ts";
-import { getToolCalls } from "../../../assertions/index.ts";
+import { successfulToolCallsWith } from "../../../assertions/index.ts";
 import { type EvalScenario } from "../../../types.ts";
 import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 import {
@@ -50,22 +49,21 @@ export const melodyTransforms: EvalScenario = {
       type: "custom",
       description: "melody extended with notes copied into 8 bars",
       assert: (turns) => {
-        const calls = getToolCalls(turns, 2);
-        const updateCall = calls.findLast((c) => c.name === TOOL_UPDATE_CLIP);
-
-        if (!updateCall) {
-          throw new Error("ppal-update-clip not found in turn 2");
-        }
-
-        // Must have notes param with bar-copy syntax, or noteCount showing
-        // more notes than the original 12
-        const notes = argText(updateCall.args.notes);
+        // Some call must carry notes (bar-copy syntax), or noteCount must show
+        // more than the original 12. Not necessarily the last call.
+        const notesCallCount = successfulToolCallsWith(
+          turns,
+          2,
+          TOOL_UPDATE_CLIP,
+          "notes",
+        ).length;
+        const updateCall = requireToolCall(turns, 2, TOOL_UPDATE_CLIP, "last");
         const result = parseToolResult(updateCall.result ?? "{}") as {
           noteCount?: number;
         };
         const noteCount = result.noteCount;
 
-        if (!notes && (noteCount == null || noteCount <= 12)) {
+        if (notesCallCount === 0 && (noteCount == null || noteCount <= 12)) {
           throw new Error(
             `notes should be duplicated into 8 bars (noteCount: ${noteCount ?? "none"})`,
           );
@@ -84,11 +82,7 @@ export const melodyTransforms: EvalScenario = {
       assert: (turns) => {
         const updateCall = requireToolCall(turns, 3, TOOL_UPDATE_CLIP, "last");
 
-        const transforms = argText(updateCall.args.transforms);
-
-        if (!transforms) {
-          throw new Error("transforms parameter missing in turn 3");
-        }
+        const transforms = getTransforms(turns, 3, TOOL_UPDATE_CLIP);
 
         if (!/step\(/i.test(transforms)) {
           throw new Error(

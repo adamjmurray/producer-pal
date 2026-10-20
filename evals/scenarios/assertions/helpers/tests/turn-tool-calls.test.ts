@@ -12,6 +12,7 @@ import {
   lastSuccessfulToolCall,
   parsedToolResult,
   requireSuccessfulToolCall,
+  successfulToolCallsWith,
   toolCallFailed,
 } from "../turn-tool-calls.ts";
 
@@ -167,17 +168,17 @@ describe("lastSuccessfulToolCall", () => {
   });
 });
 
-describe("requireSuccessfulToolCall", () => {
-  const turn = (...toolCalls: ToolCall[]): EvalTurnResult[] => [
-    {
-      turnIndex: 0,
-      userMessage: "u",
-      assistantResponse: "a",
-      toolCalls,
-      durationMs: 1,
-    },
-  ];
+const turn = (...toolCalls: ToolCall[]): EvalTurnResult[] => [
+  {
+    turnIndex: 0,
+    userMessage: "u",
+    assistantResponse: "a",
+    toolCalls,
+    durationMs: 1,
+  },
+];
 
+describe("requireSuccessfulToolCall", () => {
   const errored: ToolCall = {
     name: "ppal-update-clip",
     args: { transforms: "velocity = 90" },
@@ -204,6 +205,68 @@ describe("requireSuccessfulToolCall", () => {
     expect(() => requireSuccessfulToolCall(turn(), 0, errored.name)).toThrow(
       "ppal-update-clip not called in turn 0",
     );
+  });
+});
+
+describe("successfulToolCallsWith", () => {
+  const call = (
+    args: Record<string, unknown>,
+    result = '{id:"1"}',
+  ): ToolCall => ({ name: "ppal-update-clip", args, result });
+
+  it("returns every successful call carrying the param, in order", () => {
+    const first = call({ transforms: "a" });
+    const fixUp = call({ path: "t0/s0" });
+    const second = call({ transforms: "b" });
+
+    expect(
+      successfulToolCallsWith(
+        turn(first, fixUp, second),
+        0,
+        "ppal-update-clip",
+        "transforms",
+      ),
+    ).toStrictEqual([first, second]);
+  });
+
+  it("skips failed calls and blank or empty values", () => {
+    const ok = call({ transforms: "a" });
+
+    expect(
+      successfulToolCallsWith(
+        turn(
+          call({ transforms: "x" }, "Error: bad"),
+          call({ transforms: "" }),
+          call({ transforms: [] }),
+          ok,
+        ),
+        0,
+        "ppal-update-clip",
+        "transforms",
+      ),
+    ).toStrictEqual([ok]);
+  });
+
+  it("is empty when calls succeeded but none carried the param", () => {
+    expect(
+      successfulToolCallsWith(
+        turn(call({ path: "t0/s0" })),
+        0,
+        "ppal-update-clip",
+        "transforms",
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("throws when no call succeeded", () => {
+    expect(() =>
+      successfulToolCallsWith(
+        turn(call({ transforms: "x" }, "Error: bad")),
+        0,
+        "ppal-update-clip",
+        "transforms",
+      ),
+    ).toThrow("every ppal-update-clip call in turn 0 failed");
   });
 });
 

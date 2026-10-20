@@ -9,8 +9,8 @@ import {
   type EvalAssertion,
   type EvalTurnResult,
   type StateAssertion,
-} from "../../../types.ts";
-import { swingAndQuantize, usedQuant } from "./swing-and-quantize.ts";
+} from "../../../../types.ts";
+import { swingAndQuantize, usedQuant } from "../swing-and-quantize.ts";
 
 const state = swingAndQuantize.assertions.find(
   (a: EvalAssertion) => a.type === "state",
