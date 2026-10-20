@@ -5,6 +5,11 @@
 
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  beginWarningCapture,
+  changedNothing,
+  recordWriteRun,
+} from "#src/shared/max/v8-warning-capture.ts";
 import { createNoteTrackingMethods } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import {
   type RegisteredMockObject,
@@ -192,10 +197,15 @@ describe("createClip - a step fails after the clip is made", () => {
 
       failOnCall(scratch, "delete_clip");
 
+      const capture = beginWarningCapture();
+
       await expect(createClip({ path: "t0/s0" })).rejects.toThrow(
         "Live created no clip at t0/s0; the clip at t0/s0 was not touched; " +
           `couldn't clear the scratch clip at t0/s1: ${LIVE_FAILURE}`,
       );
+      // The scratch clip stays, so the call isn't one that changed nothing.
+      recordWriteRun(true);
+      expect(changedNothing(capture)).toBe(false);
     });
 
     it("keeps the replacement when the scratch scene can't be removed", async () => {

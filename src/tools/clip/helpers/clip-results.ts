@@ -19,6 +19,7 @@ import {
   withScratchSlot,
 } from "#src/tools/shared/clip/scratch-slot.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import {
   arrangementPath,
@@ -333,6 +334,8 @@ function clearScratchClip(scratch: ScratchSlot): string | undefined {
 
     return undefined;
   } catch (error) {
+    markSetChanged();
+
     return `couldn't clear the scratch clip at ${scratch.path}: ${errorMessage(error)}`;
   }
 }

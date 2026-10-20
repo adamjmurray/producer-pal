@@ -34,12 +34,11 @@ export function createMissingScenes(
     return null;
   }
 
+  // The scenes stay whatever the write then does, even when a later one fails.
   for (let index = sceneCount; index <= sceneIndex; index++) {
     liveSet.call("create_scene", -1);
+    markSetChanged();
   }
-
-  // The scenes stay whatever the write then does.
-  markSetChanged();
 
   return createdRange("s", sceneCount, sceneIndex);
 }
