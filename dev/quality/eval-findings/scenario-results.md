@@ -193,3 +193,41 @@ after its grader fix.
 Still red: `drum-transforms` and `note-ops-repeat` 1/4; `note-ops-merge`,
 `note-ops-split` and `transform-random-baked-or-replayed` 0/4. The note-ops
 fails are still "`transforms` parameter missing in turn 2".
+
+## What moved between runs 14, 15 and 18
+
+Same model (`gpt-6-luna`) throughout. Against run 15 (198 commits earlier) the
+scenarios both ran are flat: 314 to 316 of 355. Up by 2:
+`automation-write-mixer`, `rack-pad-ops` and `path-arrangement-covers` (grader
+fixes), `note-ops-merge`, `bar-beat-melodic-compound-stepping`. Down by 2:
+`legato-transforms` and `transform-random-baked-or-replayed`, both below. Run 14
+is ×2 and 496 commits back, so the cells below compare to it only where it was
+consistent.
+
+Green: the note-ops family recovered — `note-ops-merge` 0/4 and
+`note-ops-repeat` 1/4 to 3/3, `note-ops-split` 0/4 to 1/3.
+`create-and-edit-clip` 1/4 to 3/3. `melody-pitch-midi-json` 1/4 to 2/3, the one
+failure still an octave low. `synced-lfo-meter-invariance` is 3/3 only after its
+prompt changed: asked to "add a sine-wave LFO", luna searched the library for an
+LFO device or said note velocity can't be modulated over time, 0/13 before the
+fix.
+
+Still red: `context-memory-update-not-duplicate` 0/3 (agrees in prose, never
+updates the memory, as in run 14), `drum-transforms` and
+`transform-random-baked-or-replayed` 0/3, `middle-c-scale-stark` 0/3.
+`transform-random`'s one-call LFO check is red by design (see
+[wording-changes.md](wording-changes.md)); 2 of its 3 trials also swapped which
+drum got the baked and which the replayed velocities.
+
+Red: `legato-transforms` 2/2 to 1/3 — both failures wrote `legato()` with no
+tolerance arg after humanizing. `scene-copy-back-to-back` and
+`swing-and-quantize` 1/3, `context-memory-recall` 1/3.
+
+## Run 19: claude-haiku-5-5
+
+375 of 381. Only three scenarios miss: `bar-beat-zip-streams` 0/3 (hand-lists 16
+positions instead of a repeat), `locator-navigation` 1/3 (`toPath: "t2[25|1]"`
+instead of `loc:Bridge`), `melody-pitch-midi-json` 2/3 (one bar an octave low).
+All three are luna's weak spots too, so they read as the task, not the model.
+Wording fixes for the first two are already recorded as not working in
+[wording-changes.md](wording-changes.md).
