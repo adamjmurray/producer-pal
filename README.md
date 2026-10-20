@@ -56,6 +56,16 @@ Star ⭐️ the repo to help others discover Producer Pal!
 Want to contribute? See [CONTRIBUTING.md](./CONTRIBUTING.md). Building from
 source and other technical details are in [DEVELOPERS.md](./DEVELOPERS.md).
 
+### Contributors
+
+Thanks to everyone who has contributed to Producer Pal:
+
+- Eike Haß ([@eike-hass](https://github.com/eike-hass))
+- Taylor Haun ([@taylorhaun](https://github.com/taylorhaun))
+- Guido Macchi (outside contributor)
+- Dominik Zeman
+  ([@dominikzeman56-cloud](https://github.com/dominikzeman56-cloud))
+
 ## Open Source
 
 Producer Pal is open source software licensed under the
