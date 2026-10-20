@@ -218,3 +218,18 @@ export function liveSetLeftOpen(results: JsonEvalResult[]): boolean {
 
   return last != null && last.result !== "error";
 }
+
+/**
+ * Whether the next run may inherit this scenario's Live Set: only a
+ * `reuseLiveSet` scenario resets what it writes.
+ *
+ * @param reuseLiveSet - The scenario's `reuseLiveSet` flag
+ * @param results - The scenario's trial results, in order
+ * @returns True when the next run can skip the reopen
+ */
+export function liveSetLeftClean(
+  reuseLiveSet: boolean | undefined,
+  results: JsonEvalResult[],
+): boolean {
+  return reuseLiveSet === true && liveSetLeftOpen(results);
+}

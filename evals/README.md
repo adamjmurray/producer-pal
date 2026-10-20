@@ -438,7 +438,8 @@ tool errors are summed, efficiency is averaged, and judge shows a pass rate.
 
 Every trial reopens the Live Set, so trial 2 is never graded on trial 1's
 leftovers. Scenarios that declare `reuseLiveSet` — they reset whatever they
-write — skip the reopen and run faster.
+write — skip the reopen and run faster. Across scenarios, the reopen is skipped
+only right after another `reuseLiveSet` scenario on the same Set.
 
 ### Comparing models
 

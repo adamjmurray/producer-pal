@@ -33,7 +33,7 @@ import {
 } from "./helpers/trials/run-trials.ts";
 import { printSummary } from "./helpers/reporting/summary-printer.ts";
 import {
-  liveSetLeftOpen,
+  liveSetLeftClean,
   parseRepeatCount,
 } from "./helpers/trials/multi-trial-runs.ts";
 import {
@@ -380,8 +380,8 @@ async function runAllScenarios(
   ctx: RunContext,
 ): Promise<ResultsByScenario> {
   const resultsByScenario: ResultsByScenario = new Map();
-  // The Live Set left open by the previous scenario. A `reuseLiveSet` scenario
-  // that wants the same one runs against it instead of paying another open.
+  // The Set a `reuseLiveSet` scenario left clean; the next reuse scenario on
+  // the same Set skips the reopen.
   let lastOpenedLiveSet: string | null = null;
   // Consecutive scenarios where nothing ran at all. Either Live has already
   // retried and relaunched and still isn't back, or the provider is refusing
@@ -415,13 +415,12 @@ async function runAllScenarios(
           ctx,
           liveSetOpened,
         );
-        // The run just mutated the Set, so the next model only inherits it
-        // when the scenario resets what it writes. Same rule as trials 2+.
-        // A run that errored may have failed the open, so nothing is inherited.
-        const leftOpen = liveSetLeftOpen(results);
+        // Only a scenario that resets what it writes hands the Set on (same
+        // rule as trials 2+). A run that errored may have failed the open.
+        const leftClean = liveSetLeftClean(scenario.reuseLiveSet, results);
 
-        liveSetOpened = leftOpen && scenario.reuseLiveSet === true;
-        lastOpenedLiveSet = leftOpen ? scenario.liveSet : null;
+        liveSetOpened = leftClean;
+        lastOpenedLiveSet = leftClean ? scenario.liveSet : null;
       }
 
       modelResults.set(modelKey, new Map([[label, results]]));
