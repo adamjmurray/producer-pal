@@ -13,24 +13,22 @@ import {
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
 import {
-  isRedundantDeviceClassName,
   processDeviceChains,
   readABCompare,
-  readDeviceParameters,
   readMacroVariations,
 } from "./helpers/device-reading.ts";
+import { detectHostedPlugin } from "./helpers/params/hosted-plugin-reading.ts";
 import {
-  noteAutomationUnknown,
-  owningTrackFollowsArrangement,
-} from "#src/tools/shared/arrangement/tracks/follows-arrangement.ts";
+  appendHostedParameters,
+  appendParameters,
+} from "./helpers/params/param-listing.ts";
+import { describeDevice, deviceClassName } from "./helpers/device-identity.ts";
 import { extractDevicePath } from "./helpers/path/insertion-path.ts";
 import { probeSimplerSample } from "./simpler-sample.ts";
 import {
-  applySpecializedInactiveStates,
   readSpecializedActions,
   readSpecializedModulations,
   readSpecializedOptions,
-  readSpecializedParams,
 } from "./specialized/specialized-device-registry.ts";
 
 /** How deep readDevice walks a rack tree when the caller doesn't say. */
@@ -334,21 +332,16 @@ export function readDevice(
   }
 
   const deviceType = getDeviceType(device);
-  const className = device.getProperty("class_display_name") as string;
-  const userDisplayName = device.getName();
-  const isRedundant = isRedundantDeviceClassName(deviceType, className);
+  const hosted = detectHostedPlugin(device);
+  const className = deviceClassName(device, hosted);
   // Use parentPath if provided (for devices inside drum pads), otherwise extract from Live API path
   const path = parentPath ?? extractDevicePath(device.path);
-
-  const deviceInfo: Record<string, unknown> = {
-    id: device.id,
-    ...(path && { path }),
-    type: isRedundant ? deviceType : `${deviceType}: ${className}`,
-  };
-
-  if (userDisplayName !== className) {
-    deviceInfo.name = userDisplayName;
-  }
+  const deviceInfo = describeDevice(device, {
+    deviceType,
+    className,
+    path,
+    hosted,
+  });
 
   const isActive = (device.getProperty("is_active") as number) > 0;
 
@@ -381,6 +374,7 @@ export function readDevice(
 
   appendDeviceDetails(device, deviceInfo, {
     className,
+    hosted: hosted != null,
     includeParams,
     includeParamValues,
     includeSample,
@@ -394,6 +388,7 @@ export function readDevice(
 
 interface DeviceDetailOptions {
   className: string;
+  hosted: boolean;
   includeParams: boolean;
   includeParamValues: boolean;
   includeSample: boolean;
@@ -420,12 +415,9 @@ function appendDeviceDetails(
     // object when not applicable).
     Object.assign(deviceInfo, readMacroVariations(device));
     Object.assign(deviceInfo, readABCompare(device));
-    appendParameters(
-      device,
-      deviceInfo,
-      opts.includeParamValues,
-      opts.paramSearch,
-    );
+    const append = opts.hosted ? appendHostedParameters : appendParameters;
+
+    append(device, deviceInfo, opts.includeParamValues, opts.paramSearch);
   }
 
   if (opts.includeSample) {
@@ -456,46 +448,6 @@ function appendDeviceDetails(
       deviceInfo.actions = actions;
     }
   }
-}
-
-/**
- * Append DeviceParameters and specialized pseudo-params to a device info object.
- * @param device - LiveAPI device object
- * @param deviceInfo - Device info object to mutate
- * @param includeValues - Whether to include current param values
- * @param paramSearch - Optional case-insensitive name filter
- */
-function appendParameters(
-  device: LiveAPI,
-  deviceInfo: Record<string, unknown>,
-  includeValues: boolean,
-  paramSearch: string | undefined,
-): void {
-  // `automation` is only read with values, and the track is checked once here
-  // rather than once per param.
-  const showAutomation =
-    !includeValues || owningTrackFollowsArrangement(device);
-  const parameters = readDeviceParameters(device, {
-    includeValues,
-    search: paramSearch,
-    showAutomation,
-  });
-
-  if (!showAutomation) {
-    noteAutomationUnknown(deviceInfo);
-  }
-
-  const pseudoParams = readSpecializedParams(device, paramSearch);
-  const merged = [...pseudoParams, ...parameters];
-
-  // Mark mode-gated params inactive where Live leaves them active (e.g. a
-  // synced LFO's free-running Hz rate). Only meaningful with values, since
-  // `state` is value-level.
-  if (includeValues) {
-    applySpecializedInactiveStates(device, merged);
-  }
-
-  deviceInfo.parameters = merged;
 }
 
 /**

@@ -58,6 +58,25 @@ export function requestPluginHost(
 }
 
 /**
+ * Ask a device whether it is a plug-in host wrapper, and if so for one op, in
+ * one go. A wrapper answers inside the same call, so a device that isn't one
+ * costs nothing: no waiting out a timeout.
+ * @param deviceId - Live id of the device
+ * @param op - What to ask for
+ * @param args - The op's own fields
+ * @returns The wrapper's reply, or null when the device is not a wrapper
+ */
+export function probePluginHost(
+  deviceId: string,
+  op: PluginHostOp,
+  args: object = {},
+): PluginHostResponse | null {
+  return channel.probe(
+    JSON.stringify({ deviceId, op, ...args }),
+  ) as PluginHostResponse | null;
+}
+
+/**
  * Handle plugin_host_response message from a wrapper device.
  * @param requestId - Request identifier
  * @param responseJson - JSON string of the reply

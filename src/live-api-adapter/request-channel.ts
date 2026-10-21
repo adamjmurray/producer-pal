@@ -61,6 +61,7 @@ interface RequestChannel {
     refusal?: string | null,
     timeoutMs?: number,
   ) => Promise<T>;
+  probe: (payload: string) => ChannelResult | null;
   receive: (requestId: string, responseJson: string) => void;
 }
 
@@ -72,6 +73,14 @@ interface RequestChannel {
 export function requestChannel(spec: ChannelSpec): RequestChannel {
   const pending = new Map<string, Pending>();
   let nextRequestId = 1;
+
+  const transmitRequest = (requestId: string, payload: string): void => {
+    if (spec.transmit) {
+      spec.transmit(requestId, payload);
+    } else {
+      outlet(0, spec.requestMessage, requestId, payload);
+    }
+  };
 
   return {
     /**
@@ -121,11 +130,7 @@ export function requestChannel(spec: ChannelSpec): RequestChannel {
           });
 
           try {
-            if (spec.transmit) {
-              spec.transmit(requestId, payload);
-            } else {
-              outlet(0, spec.requestMessage, requestId, payload);
-            }
+            transmitRequest(requestId, payload);
           } catch (error) {
             pending.delete(requestId);
             task.schedule(-1);
@@ -138,6 +143,33 @@ export function requestChannel(spec: ChannelSpec): RequestChannel {
           }
         }),
       );
+    },
+
+    /**
+     * Send one request and take the answer only if it arrives before the
+     * transmit returns, as when the other end answers in the same call. Nothing
+     * waits: an absent or slow other end reads as no answer, at no cost.
+     * @param payload - The request body, already serialized
+     * @returns The answer, or null when none came during the transmit
+     */
+    probe(payload: string): ChannelResult | null {
+      const requestId = `${spec.idPrefix}${nextRequestId++}`;
+      let answer: ChannelResult | null = null;
+
+      pending.set(requestId, {
+        resolve: (result) => {
+          answer = result;
+        },
+        cancelTimeout: () => {},
+      });
+
+      try {
+        transmitRequest(requestId, payload);
+      } finally {
+        pending.delete(requestId);
+      }
+
+      return answer;
     },
 
     /**

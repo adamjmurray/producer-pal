@@ -5,7 +5,10 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { plugin_host_response } from "#src/live-api-adapter/live-api-adapter.ts";
-import { requestPluginHost } from "./plugin-host-v8-protocol.ts";
+import {
+  probePluginHost,
+  requestPluginHost,
+} from "./plugin-host-v8-protocol.ts";
 import {
   installCapturingTask,
   installTrackingTask,
@@ -98,5 +101,52 @@ describe("plugin-host-v8-protocol", () => {
     } finally {
       restore();
     }
+  });
+
+  describe("probePluginHost", () => {
+    it("returns the reply a wrapper sends during the call", () => {
+      vi.mocked(globalThis.messnamed).mockImplementationOnce(
+        (_bus: string, ...args: unknown[]) => {
+          plugin_host_response(
+            args[1] as string,
+            JSON.stringify({ success: true, plugin: "Serum 2" }),
+          );
+        },
+      );
+
+      expect(probePluginHost("42", "info")).toStrictEqual({
+        success: true,
+        plugin: "Serum 2",
+      });
+      expect(latestBusMessage().payload).toStrictEqual({
+        deviceId: "42",
+        op: "info",
+      });
+    });
+
+    it("returns null at once when nothing answers", () => {
+      const schedules: number[] = [];
+      const restore = installTrackingTask(schedules);
+
+      try {
+        expect(probePluginHost("42", "params", { limit: 5 })).toBeNull();
+        expect(schedules).toStrictEqual([]);
+        expect(latestBusMessage().payload).toStrictEqual({
+          deviceId: "42",
+          op: "params",
+          limit: 5,
+        });
+      } finally {
+        restore();
+      }
+    });
+
+    it("lets a send failure through and leaves nothing waiting", () => {
+      vi.mocked(globalThis.messnamed).mockImplementationOnce(() => {
+        throw new Error("bus down");
+      });
+
+      expect(() => probePluginHost("42", "info")).toThrow("bus down");
+    });
   });
 });

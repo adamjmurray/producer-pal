@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   looseLabelKey,
   resolveEnumIndex,
-} from "#src/tools/shared/device/helpers/param-label-parsing.ts";
+} from "#src/tools/shared/device/helpers/params/param-label-parsing.ts";
 import { normalizeDivisionLabel } from "#src/tools/shared/device/helpers/param-reading.ts";
 
 describe("looseLabelKey", () => {
