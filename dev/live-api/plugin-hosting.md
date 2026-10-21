@@ -58,10 +58,14 @@ The spike exposes this as the debug-only `ppal-plugin-host` tool, gated with
 - `vst~` answers `params` and `get <n>` synchronously, so one request can list
   and read every parameter. Listing all of Serum 2 is well under a second.
 - VST3 plug-ins expose a stand-in parameter for every MIDI CC, pitch bend and
-  aftertouch on every channel: Serum 2 has 2623 params, 543 real; Colour Copy
-  2111, 31 real. `params` hides them by name. The names vary by plug-in
-  (`CC 1, CH 4`, `CC107 Chan 16`, `Pitch Bend Chan 3`), so the pattern may need
-  extending as more plug-ins are tried.
+  aftertouch: one unbroken block of 2080 (16 channels × 130) or, for
+  FabFilter, 132. Names vary by vendor (`CC 1, CH 4`, `MIDI CC 0|0`,
+  `CC107 Chan 16`, a bare `MIDI CC`), and real params can say "Pitch Bend" too,
+  so `params` hides the longest run of MIDI-looking names, and only when it's at
+  least 128 long. Checked on 11 plug-ins. Real counts after hiding: Colour Copy
+  31, Pianoteq 9 217, Diva 282, Hive 341, Supermodal 384, Serum 2 543, Organteq
+  2 560, Pro-Q 4 605, VCV Rack 2 1025, Zebra3 2194.
+- `open` / `wclose` open and close the plug-in's own editor window.
 - `valuemode 2` makes `get` return the value and the display text together.
 
 ### Saving state
@@ -77,6 +81,10 @@ The spike exposes this as the debug-only `ppal-plugin-host` tool, gated with
 - Swapping a user's existing native plug-in for a wrapped one loses its
   settings: the Live API can't read a plug-in's state. The clean case is
   plug-ins Producer Pal inserts itself.
+- Live's undo covers changes made through the wrapper: it records a
+  `Change in "<device>"` step and restores the saved state. But one change takes
+  2–3 presses: a single `vst~` param change makes 2 steps, and the state refresh
+  adds one. Changes close together share the same steps, and reads make none.
 
 ### Audio, MIDI and latency
 
@@ -90,7 +98,9 @@ The spike exposes this as the debug-only `ppal-plugin-host` tool, gated with
   attribute, and `this.patcher.setattr("latency", n)` changes it at runtime. The
   attribute resets on reload and plug-ins can change latency, so the wrapper
   polls `get -10` each second and updates it. Verified through the Live API's
-  `latency_in_samples`, not by a null test.
+  `latency_in_samples`, not by a null test: Pro-Q 4 switching from zero latency
+  to natural and linear phase moved it 0 → 320 → 5120 samples within a second
+  each.
 
 ### Building the devices
 
@@ -103,14 +113,15 @@ fields Max expects (such as `searchpath`) crashes Live on load**, inside
 
 ## Not yet tested
 
-- Opening the plug-in's editor from Producer Pal (`open`/`wclose`).
-- Undo of parameter changes.
+- CC, pitch bend and aftertouch reaching the plug-in: the Live API can't write
+  MIDI CC or pitch bend clip envelopes, so this needs a keyboard.
 - CPU cost against the same plug-in loaded natively.
 - Multi-output instruments and sidechain inputs.
-- AU, VST2, Windows, and plug-ins whose latency changes while running.
+- AU, VST2 and Windows.
 - Sharing Sets: the wrapper must travel with the Set (Collect All and Save), and
   the other user needs Max for Live.
 - Automation lanes: wrapper parameters are not Live parameters, so they can't be
   automated. That needs a wrapper with real `live.*` parameters, mapped to
   plug-in parameters (generated per plug-in, or a fixed bank renamed at runtime
-  if Max allows it).
+  if Max allows it). A device with 2500 static `live.dial`s loads and Live
+  exposes all of them, so the parameter count isn't the limit.
