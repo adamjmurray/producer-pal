@@ -124,4 +124,6 @@ fields Max expects (such as `searchpath`) crashes Live on load**, inside
   automated. That needs a wrapper with real `live.*` parameters, mapped to
   plug-in parameters (generated per plug-in, or a fixed bank renamed at runtime
   if Max allows it). A device with 2500 static `live.dial`s loads and Live
-  exposes all of them, so the parameter count isn't the limit.
+  exposes all of them, so the count isn't capped. Size is the cost: each
+  parameter adds about 700 bytes to the `.amxd` (2500 make 1.7 MB), and each
+  hosted plug-in carries its own copy into the Set.
