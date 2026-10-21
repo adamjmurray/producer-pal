@@ -1,0 +1,70 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
+
+// V8 talks to a separate Max for Live "plug-in host" wrapper device (a patch
+// hosting `vst~`). The request goes to every wrapper over a named Max bus; only
+// the one whose own device id matches `deviceId` answers.
+
+import { requestChannel } from "#src/live-api-adapter/request-channel.ts";
+
+/** Named Max bus the wrapper devices listen on. */
+const REQUEST_BUS = "ppal-plugin-host-req";
+
+/** Ops that answer fast. A missing wrapper never answers at all. */
+const QUICK_TIMEOUT_MS = 3_000;
+
+/** A big synth can take a while to load. */
+const LOAD_TIMEOUT_MS = 20_000;
+
+export type PluginHostOp = "info" | "load" | "params" | "set";
+
+export interface PluginHostResponse {
+  success: boolean;
+  error?: string;
+  [key: string]: unknown;
+}
+
+const channel = requestChannel({
+  idPrefix: "plugin-host-",
+  transmit: (requestId, payload) => {
+    messnamed(REQUEST_BUS, "request", requestId, payload);
+  },
+  responseMessage: "plugin_host_response",
+  timeoutError: (subject, timeoutMs) =>
+    `No plug-in host answered for ${subject} within ${timeoutMs}ms. ` +
+    "Check the device id and that the wrapper device is loaded.",
+});
+
+/**
+ * Ask the plug-in host wrapper on one device and await its answer.
+ * @param deviceId - Live id of the wrapper device
+ * @param op - What to ask for
+ * @param args - The op's own fields
+ * @returns The wrapper's reply, or a failure when none came
+ */
+export function requestPluginHost(
+  deviceId: string,
+  op: PluginHostOp,
+  args: object = {},
+): Promise<PluginHostResponse> {
+  return channel.send<PluginHostResponse>(
+    JSON.stringify({ deviceId, op, ...args }),
+    `device id ${deviceId} (${op})`,
+    null,
+    op === "load" ? LOAD_TIMEOUT_MS : QUICK_TIMEOUT_MS,
+  );
+}
+
+/**
+ * Handle plugin_host_response message from a wrapper device.
+ * @param requestId - Request identifier
+ * @param responseJson - JSON string of the reply
+ */
+export function handlePluginHostResponse(
+  requestId: string,
+  responseJson: string,
+): void {
+  channel.receive(requestId, responseJson);
+}

@@ -54,6 +54,8 @@ const READ_ONLY: Record<string, string | null> = {
     "acts on Live's undo history and the remote script install, not on targets",
   "ppal-live-api":
     "a raw Live API escape hatch the model opts into; not a target-list write",
+  "ppal-plugin-host":
+    "spike: talks to a separate wrapper device, never touches the Live Set's targets",
 };
 
 /** Tools whose empty call is not a write at all, so they need a call that is. */
