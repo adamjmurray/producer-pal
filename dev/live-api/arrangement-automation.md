@@ -68,6 +68,9 @@ already refuses chain and drum-pad parameters).
 
 ## Writing a lane under an existing arrangement clip
 
+Code: `src/tools/clip/envelopes/arrangement/` (`apply-arrangement-envelopes.ts`,
+`parking-spot.ts`, `stamp-clip-lane.ts`).
+
 `ppal-update-clip` `envelopes` on an arrangement clip (MIDI or audio) writes the
 lane over exactly that clip's span, keeping the clip. The copy that writes a
 lane replaces the clips under it, and copying an arrangement clip writes

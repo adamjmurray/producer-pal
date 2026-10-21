@@ -16,6 +16,10 @@ include manifest. The **fragments** it names are the task sections, plus one
 - **Gates** (`fragment-tool-gates.ts`): a fragment ships when at least one of
   its tools is enabled. Disabling a tool drops its guidance. Enabling one does
   not force a fragment in.
+- **Gated by the remote script** (`remoteScriptGatedFragments`): `automation`,
+  `automation-write` and `plugins-and-max-devices` ship only while a current
+  remote script answers, on top of their tool gate. `ppal-connect` pings it
+  (small-model mode skips the ping). See [remote-script.md](remote-script.md).
 - **Requires** (`fragment-requires.ts`): fragments that are incomplete without
   another (the transforms tiers name functions whose grammar lives in
   `transforms-core`). A gate table entry must be a subset of the gate of what it

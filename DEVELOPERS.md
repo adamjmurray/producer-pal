@@ -70,7 +70,7 @@ npm run fix  # Runs format + lint:fix
 Code quality checks must always pass:
 
 ```
-npm run check  # Runs all checks: lint + typecheck + format check + TypeScript-only + duplication + tests with coverage + schema size
+npm run check  # Runs all checks: lint + typecheck + format check + TypeScript-only + duplication + tests with coverage + remote script tests + schema size
 ```
 
 **Recommended workflow**: Run `npm run fix` before `npm run check` to
@@ -226,6 +226,23 @@ cached tool definitions.
 
 See [Development-Tools](dev/quality/development-tools/README.md) for the CLI
 tool, Live API tool, MCP Inspector setup, debugging tips, and testing workflows.
+
+### Remote Script
+
+The Python remote script in `remote-script/` has its own tests (no Live needed)
+and installs with a dev switch:
+
+- `npm run remote-script:test` - Python unit tests (also part of
+  `npm run check`)
+- `npm run remote-script:install -- --probe --reload` - install, reload in the
+  running Live, and verify
+- `npm run e2e:mcp:remote-script -- <file>` - e2e suites that need the script
+  (ask before running; they open Live)
+
+See [remote-script/README.md](remote-script/README.md) and
+[the Python API notes](dev/live-api/python-remote-script-api/README.md). For how
+tools call it, see
+[dev/architecture/remote-script.md](dev/architecture/remote-script.md).
 
 ### Portal Script (Internal Testing)
 

@@ -14,6 +14,30 @@ The request and response contract (result format, errors, `?format`,
 `?timeoutMs`, per-request settings) is documented in
 [docs/guide/rest-api.md](../../docs/guide/rest-api.md).
 
+## POST /config
+
+`GET /config` returns the device-wide settings; `POST /config` changes them. It
+is for the device UI, evals and e2e tests, not for tool calls. It refuses
+cross-origin browser writes.
+
+Fields (all optional; unknown keys are ignored):
+
+- `projectContext`, `sampleFolder`: string or `null` (`null` clears it)
+- `smallModelMode`, `jsonOutput`, `liveApiEnabled`: boolean
+- `notation`: one of the notations in `src/shared/notation.ts`
+- `tools`: array of tool names; must be valid for the current `liveApiEnabled`
+- `remoteScriptEnabled`, `remoteScriptMinVersion`: **debug builds only** (a
+  release build ignores them). `false` makes the remote script look uninstalled;
+  a version string replaces the minimum version so a running script looks out of
+  date, `null` clears it
+
+A bad body is refused whole: every field is checked first, a `400` returns
+`{error, fields, validToolNames?}` naming each bad field, and nothing is
+applied. Booleans must be real booleans (`"false"` is a `400`, not true). On
+success it returns the new config. Code: `parseConfigBody()` in
+`src/mcp-server/helpers/http/config-body.ts`, `handleConfigUpdate()` in
+`src/mcp-server/create-express-app.ts`.
+
 ## Security
 
 The REST API has no authentication, consistent with the MCP endpoint. It is

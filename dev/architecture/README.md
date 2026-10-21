@@ -11,6 +11,8 @@ Detail lives in these parts:
   embedded remote script, per-request headers, and subagent briefings.
 - [user-content-overrides.md](user-content-overrides.md) — what
   `~/.producer-pal` holds, and the rules for override slots.
+- [remote-script.md](remote-script.md) — how a tool reaches the Python remote
+  script in Live: call path, contract files, adding a route, availability.
 - [skills.md](skills.md) — how the Skills text is cut into fragments, gated by
   tool, and split into read and write halves.
 - [build-system.md](build-system.md) — entry, output, and target for each of the

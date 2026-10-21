@@ -12,6 +12,10 @@ Four separate bundles built with rolldown (MCP server, V8, Portal) and Vite
 - **Output:** `max-for-live-device/mcp-server.mjs`
 - **Target:** Node.js (Node for Max)
 - **Dependencies:** Bundled for distribution
+- **Remote script:** the `embedRemoteScript()` rolldown plugin
+  (`config/rolldown-plugin-embed-remote-script.mjs`) inlines `remote-script/`'s
+  Python files, so the device can install them. See
+  [runtime-boundary.md](runtime-boundary.md#the-embedded-remote-script)
 
 ## V8 Bundle
 
@@ -27,6 +31,8 @@ Four separate bundles built with rolldown (MCP server, V8, Portal) and Vite
   `npm/producer-pal-portal.js`
 - **Target:** Node.js (standalone process)
 - **Dependencies:** Bundled for distribution (zero runtime dependencies)
+- **Remote script:** embedded the same way, so the portal can install it while
+  the device is offline
 - **Purpose:** stdio-to-HTTP adapter for Claude Desktop Extension
 - **Features:**
   - Converts MCP stdio transport to streamable HTTP

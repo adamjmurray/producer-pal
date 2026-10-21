@@ -221,6 +221,14 @@ were not read one by one — whatever stayed green was kept. Nothing broke, but
 green does not prove that a test still means what its author intended. Worth
 remembering if something surfaces later around mock identity.
 
+## Remote script (Python) tests
+
+`remote-script/tests/` holds `unittest` tests for the Python routes, run by
+`npm run remote-script:test` (part of `npm run check`). They need neither Live
+nor the Live API: the tests use fake Live objects. A new route gets a test
+there; a route that changes the Set also gets an entry in
+`remote-script-write-expiry.test.ts`.
+
 ## E2E
 
 `e2e/mcp/` drives a real Ableton Live; see `e2e/mcp/README.md`. Always ask

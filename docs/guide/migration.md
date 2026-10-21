@@ -603,6 +603,21 @@ as a number (`velocity = C3`), a function with the wrong number of arguments
 arguments, or a `curve()` exponent of 0 or less. 2.4 warned and skipped that
 line.
 
+**A lone take lane that can't be written to throws.** `ppal-update-track` sent a
+single lane with only params a lane can't use used to return `ok: false`. It now
+throws, like any lone target. In a list it is still a skip on that lane's entry.
+
+**`POST /config` refuses a bad body whole.** A wrong-type boolean (`"false"`, a
+string) or an unknown `notation` is now a `400` that names each bad field, and
+nothing is applied. In 2.4 some fields were applied before the `400`, a
+`"false"` string counted as true, and a bad `notation` was ignored.
+
+**MCP reads `null` as left out, and refuses a blank number, enum or array.**
+Over MCP `name: null` used to rename a track "null" and `tempo: ""` became 0.
+REST already worked this way.
+
+**REST no longer offers `ppal-live-api` in small model mode**, matching MCP.
+
 ## Every target gets its own entry in 2.5
 
 **`ppal-duplicate` skips a source that isn't there, and refuses what it used to
@@ -716,6 +731,15 @@ new.
   browser. Pass `source: "preset-folder"` to reach them. Plug-in presets there
   stay listed, as `source: "plugin"`. A search, `find-similar` or
   `find-duplicates` that left matches out says so in `note`.
+- **`ppal-read-device` rack `macros`** is `{count, mapped, hiddenMapped?}` with
+  the remote script (`mapped` and `hiddenMapped` are 1-based macro numbers, the
+  latter past the visible `count`). `hasMappings` is gone then; without the
+  remote script it stays.
+- **`transformed`** on `ppal-create-clip` and `ppal-update-clip` counts only the
+  notes a transform changed, and `deletedNotes` counts the ones it removed. In a
+  transform, `clip.duration` is the region's length on create-clip too, as it is
+  on update-clip: for `start:"5|1"` and `length:"1bar"` it was the region's end,
+  5 bars.
 
 ## Enum values are kebab-case in 2.5
 

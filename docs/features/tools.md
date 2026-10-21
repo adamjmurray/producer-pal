@@ -203,6 +203,7 @@ Live, or make sure your standalone Max is up to date. See
   Macro mappings can't be reproduced through the Live API, so a rack that has
   them says so
 - Route duplicated tracks to source instrument for MIDI layering
+- With the remote script, effects and effect racks are copied in place
 
 Note: Return tracks can't be duplicated. Devices on return and main tracks can
 be copied when the Producer Pal remote script is running.
@@ -222,6 +223,7 @@ be copied when the Producer Pal remote script is running.
 - See tempo, time signature, and scale settings
 - View arrangement locators with times and names
 - Check what's playing and track states
+- See whether the tempo has arrangement automation
 
 <!--@include: ../_generated/ppal-read-live-set-schema.md-->
 
@@ -231,6 +233,8 @@ be copied when the Producer Pal remote script is running.
 
 - Change tempo, time signature, scale
 - Create, rename, or delete arrangement locators, several per call
+- Says when a tempo write overrides arrangement automation: Live then ignores
+  that lane until you press **Re-Enable Automation**
 
 <!--@include: ../_generated/ppal-update-live-set-schema.md-->
 
@@ -260,6 +264,8 @@ be copied when the Producer Pal remote script is running.
   Rack: `Instrument Rack (Operator, Wavetable)`
 - Check track states (muted, soloed, armed)
 - View mixer properties: gain, pan, panning mode, and send levels
+- See which mixer fields have arrangement automation. Left out, with a reason,
+  while the track plays from Session
 
 <!--@include: ../_generated/ppal-read-track-schema.md-->
 
@@ -275,6 +281,8 @@ be copied when the Producer Pal remote script is running.
 - Add and name [take lanes](/features#take-lanes) from a lane path: `t2/l+`
   appends one, `t2/l2` names an existing lane (adding the lanes up to it), and
   `name` is the only param a lane takes
+- Says when a write overrides arrangement automation: Live then ignores that
+  lane until you press **Re-Enable Automation**
 - Update multiple tracks at once
 
 <!--@include: ../_generated/ppal-update-track-schema.md-->
@@ -349,6 +357,10 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Read MIDI notes in [custom notation](/features#custom-music-notation) (C3,
   D#4, etc.)
 - Get audio clip gain, pitch, warp settings, and sample info
+- Read a session clip's automation envelopes with `include: ["envelopes"]`
+  (needs the [remote script](/guide/remote-script)). A clip read shows
+  `envs: true` when it has some. An arrangement clip's automation is the track's
+  lane, which can't be read
 
 <!--@include: ../_generated/ppal-read-clip-schema.md-->
 
@@ -429,7 +441,10 @@ sounding.
 - Position devices at a specific index in the device chain
 - Create devices inside rack chains or drum pads using path notation
 - List the native Live devices
-- Create a device or rack from a preset (needs the remote script)
+- Create a device or rack from a preset (needs the remote script). The preset is
+  found by name anywhere in Live's library (pack drum kits, Sounds racks, custom
+  folders) on Live 12.4+. A name several files share is refused, listing their
+  paths
 - Load a sample into a Simpler instrument (Live 12.4+) via
   `params: [{name: "sample", value: "<path>"}]`, and set its level with
   `{name: "gainDb", value: <dB>}`
@@ -444,6 +459,11 @@ sounding.
   chains
 - List device parameter names and values (the state of knobs, dials, etc)
 - See a rack chain's own volume, pan, and sends when they're not at default
+- See which parameters have arrangement automation. Left out, with a reason,
+  while the track plays from Session
+- See which of a rack's macros are mapped (needs the remote script)
+- Read and write a Simpler's `pitchBendRange` and `notePitchBendRange` as
+  parameters (needs the remote script)
 
 <!--@include: ../_generated/ppal-read-device-schema.md-->
 
@@ -466,7 +486,10 @@ sounding.
   devices together
 - Load a sample into a Simpler instrument (see
   [Create Device](#ppal-create-device) above)
-- Swap a preset onto a device (needs the [remote script](/guide/remote-script))
+- Swap a preset onto a device (needs the [remote script](/guide/remote-script)),
+  found by name the same way as in Create Device
+- Says when a write overrides arrangement automation: Live then ignores that
+  lane until you press **Re-Enable Automation**
 
 <!--@include: ../_generated/ppal-update-device-schema.md-->
 
