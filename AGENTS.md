@@ -189,7 +189,8 @@ UI.
   with private ticket numbers. Never write `AJM-NNN` in a tracked file or a
   commit message; explain the reasoning instead. `npm run check` scans both
   tracked files and your commits on this branch, but only locally, so run it
-  before pushing. PR titles and bodies are fine.
+  before pushing. Keep them out of PR titles and bodies too: outside readers
+  can't open them, so describe follow-ups in words.
 
 - **GitHub issues go in the commit message, not the release PR body** — put
   `Resolves #NNNN` in the commit that fixes it. `dev -> main` merges onto the
