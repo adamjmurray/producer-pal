@@ -8,11 +8,11 @@ import { plugin_host_response } from "#src/live-api-adapter/live-api-adapter.ts"
 import {
   probePluginHost,
   requestPluginHost,
-} from "./plugin-host-v8-protocol.ts";
+} from "../plugin-host-v8-protocol.ts";
 import {
   installCapturingTask,
   installTrackingTask,
-} from "#src/live-api-adapter/tests/v8-protocol-test-helpers.ts";
+} from "#src/live-api-adapter/protocols/tests/v8-protocol-test-helpers.ts";
 
 /**
  * Read the most recent message sent on the plug-in host bus.
@@ -88,7 +88,7 @@ describe("plugin-host-v8-protocol", () => {
     }
   });
 
-  it("waits longer for load than for the quick ops", () => {
+  it("waits longer for load and write than for the quick ops", () => {
     const schedules: number[] = [];
     const restore = installTrackingTask(schedules);
 
@@ -96,8 +96,23 @@ describe("plugin-host-v8-protocol", () => {
       void requestPluginHost("1", "info");
       void requestPluginHost("1", "set", { params: [] });
       void requestPluginHost("1", "load", { plugin: "Big" });
+      void requestPluginHost("1", "write", { params: [] });
 
-      expect(schedules).toStrictEqual([3000, 3000, 20_000]);
+      expect(schedules).toStrictEqual([3000, 3000, 20_000, 20_000]);
+    } finally {
+      restore();
+    }
+  });
+
+  it("never waits longer than the caller allows", () => {
+    const schedules: number[] = [];
+    const restore = installTrackingTask(schedules);
+
+    try {
+      void requestPluginHost("1", "write", { params: [] }, 5000);
+      void requestPluginHost("1", "info", {}, 9000);
+
+      expect(schedules).toStrictEqual([5000, 3000]);
     } finally {
       restore();
     }

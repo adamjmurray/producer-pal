@@ -10,7 +10,7 @@
 import {
   type PluginHostResponse,
   probePluginHost,
-} from "#src/tools/advanced/plugin-host/plugin-host-v8-protocol.ts";
+} from "#src/live-api-adapter/protocols/plugin-host-v8-protocol.ts";
 import { MAX_READ_PARAMS } from "#src/tools/shared/device/helpers/params/param-read-cap.ts";
 
 /** The Max device classes a wrapper can have. Users can rename a device, so the class is the only fixed thing to go by. */
@@ -84,6 +84,16 @@ export function isDefaultWrapperName(name: string): boolean {
  */
 export function hostedParamId(index: number): string {
   return `h${index}`;
+}
+
+/**
+ * @param id - A param id a call sent
+ * @returns The plug-in's number for the param when the id is an `h` id, else null
+ */
+export function parseHostedParamId(id: string): number | null {
+  const match = /^h(\d+)$/i.exec(id.trim());
+
+  return match ? Number(match[1]) : null;
 }
 
 /**

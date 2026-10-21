@@ -49,6 +49,7 @@ import {
   targetIsGone,
   writtenContainer,
 } from "./helpers/call/resolve-device-target.ts";
+import { writeHostedParams } from "./helpers/call/hosted-params.ts";
 import {
   type SettledParams,
   writePitchBendParams,
@@ -381,16 +382,15 @@ function updateResolved(
     return update.entry;
   };
 
-  // A Simpler's pitch bend params go through the remote script, which the sync
-  // param write can't wait on, so they are settled first. Sync unless one is sent.
-  const pitchBend = writePitchBendParams(
-    target,
-    options.params,
-    step.checked.pitchBend,
-    { deadline: step.call.ctx.deadline, landed },
-  );
+  // A Simpler's pitch bend params go through the remote script, and a hosted
+  // plug-in's through its wrapper. The sync param write can't wait on either,
+  // so they are settled first. Sync unless one is sent.
+  const call = { deadline: step.call.ctx.deadline, landed };
+  const settling =
+    writeHostedParams(target, options.params, step.checked.hosted, call) ??
+    writePitchBendParams(target, options.params, step.checked.pitchBend, call);
 
-  return pitchBend == null ? finish() : pitchBend.then(finish);
+  return settling == null ? finish() : settling.then(finish);
 }
 
 /**

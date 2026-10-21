@@ -12,10 +12,13 @@ import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { answerEnvelopeRoutes } from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import { CLIP_ID, registerLaneWorld } from "./lane-world-test-helpers.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 describe("updateClip - envelopes on an arrangement clip", () => {
   beforeEach(() => {

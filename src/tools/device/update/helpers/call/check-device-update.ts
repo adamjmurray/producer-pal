@@ -42,6 +42,7 @@ import {
   racksHidingMappings,
 } from "./look-up-macro-mappings.ts";
 import { type MappedMacros } from "#src/tools/shared/device/rack-macro-mappings.ts";
+import { type HostedStall } from "./hosted-params.ts";
 import { type PitchBendStall } from "./simpler-pitch-bend.ts";
 import { type DeviceCall } from "./parse-device-call.ts";
 import { type ResolvedTarget } from "./resolve-device-target.ts";
@@ -86,6 +87,8 @@ export interface DeviceChecked {
   focus?: boolean;
   /** Whether a Simpler pitch bend write stalled, so later ones aren't tried */
   pitchBend: PitchBendStall;
+  /** Whether a hosted plug-in's write stalled, so later ones aren't tried */
+  hosted: HostedStall;
   /** The call's spelling of each written entry's container, where it is kept */
   written: Map<object, WrittenContainer | undefined>;
   /** Each target's move of drum chains to another pad, by position */
@@ -179,6 +182,7 @@ export function checkDeviceUpdate(
       named,
       focus,
       pitchBend: {},
+      hosted: {},
       written,
       padMoves: [],
     };
@@ -215,6 +219,7 @@ export function checkDeviceUpdate(
     named,
     focus,
     pitchBend: {},
+    hosted: {},
     written,
     padMoves: padMoves(targets, lists.destinations),
   };

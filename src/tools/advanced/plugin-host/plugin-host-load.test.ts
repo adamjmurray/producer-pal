@@ -5,17 +5,20 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { plugin_host_response } from "#src/live-api-adapter/live-api-adapter.ts";
-import { installCapturingTask } from "#src/live-api-adapter/tests/v8-protocol-test-helpers.ts";
+import { installCapturingTask } from "#src/live-api-adapter/protocols/tests/v8-protocol-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { pluginHost } from "./plugin-host.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const protocolMock =
-  await import("#src/live-api-adapter/node-request-v8-protocol.ts");
+  await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
 
 const INSTRUMENT = 1;
 const AUDIO_EFFECT = 2;

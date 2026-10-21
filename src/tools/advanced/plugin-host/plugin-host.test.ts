@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { plugin_host_response } from "#src/live-api-adapter/live-api-adapter.ts";
-import { installCapturingTask } from "#src/live-api-adapter/tests/v8-protocol-test-helpers.ts";
+import { installCapturingTask } from "#src/live-api-adapter/protocols/tests/v8-protocol-test-helpers.ts";
 import { pluginHost } from "./plugin-host.ts";
 import { toolDefPluginHost } from "./plugin-host.def.ts";
 

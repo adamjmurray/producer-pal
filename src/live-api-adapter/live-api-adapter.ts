@@ -39,7 +39,7 @@ import { deleteObject } from "#src/tools/actions/delete/delete.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { liveApi } from "#src/tools/advanced/live-api.ts";
 import { pluginHost } from "#src/tools/advanced/plugin-host/plugin-host.ts";
-import { handlePluginHostResponse } from "#src/tools/advanced/plugin-host/plugin-host-v8-protocol.ts";
+import { handlePluginHostResponse } from "#src/live-api-adapter/protocols/plugin-host-v8-protocol.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import { computeLoopDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
@@ -61,13 +61,16 @@ import { select } from "#src/tools/session/select.ts";
 import { createTrack } from "#src/tools/track/create/create-track.ts";
 import { readTrack } from "#src/tools/track/read/read-track.ts";
 import { updateTrack } from "#src/tools/track/update/update-track.ts";
-import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
+import { handleCodeExecResult } from "./protocols/code-exec-v8-protocol.ts";
 import {
   beginLiveApiBuildStats,
   reportLiveApiBuildStats,
 } from "./live-api-build-stats.ts";
 import { beginLiveApiScope, endLiveApiScope } from "./live-api-release.ts";
-import { handleNodeResponse, requestNode } from "./node-request-v8-protocol.ts";
+import {
+  handleNodeResponse,
+  requestNode,
+} from "./protocols/node-request-v8-protocol.ts";
 import {
   backupProjectContextOnEdit,
   noteProjectContextLoaded,

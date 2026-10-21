@@ -7,7 +7,7 @@
 // script is running, and reads as it always did when it isn't.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
@@ -27,10 +27,13 @@ import { addSimplerSettings } from "../helpers/read-simpler-settings.ts";
 import { findInReadResult } from "../helpers/find-in-read-result.ts";
 import { readDevice } from "../read-device.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const FIRST = String(livePath.track(0).device(0));
 const SECOND = String(livePath.track(0).device(1));

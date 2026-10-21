@@ -42,9 +42,15 @@ No sockets or ports: named Max `send`/`receive` inside Live's one Max instance.
 
 Ops: `info`, `load {file, sub?, name, synth}` (see Loading),
 `params {names | search, offset, limit}`,
-`set {params: [{index | name, value}]}`, and debug-only `raw {message}` (send
-`vst~` anything). Values are `vst~`'s normalized 0–1, with the plug-in's own
-display text read back (e.g. `" 30% [-17.9 dB]"`, `"1/16 dot"`).
+`set {params: [{index | name, value}]}`,
+`write {params: [{index | name, text?, number?}]}` (see Setting by display
+text), and debug-only `raw {message}` (send `vst~` anything). Values are
+`vst~`'s normalized 0–1, with the plug-in's own display text read back (e.g.
+`" 30% [-17.9 dB]"`, `"1/16 dot"`).
+
+A wrapper answers inside the `messnamed` call that sent the request, so Producer
+Pal can ask any Max audio effect or instrument "are you a wrapper?"
+synchronously and get no answer, at no cost, from one that isn't.
 
 The spike exposes this as the debug-only `ppal-plugin-host` tool, gated with
 `ppal-live-api`.
@@ -84,6 +90,32 @@ The spike exposes this as the debug-only `ppal-plugin-host` tool, gated with
   2 560, Pro-Q 4 605, VCV Rack 2 1025, Zebra3 2194.
 - `open` / `wclose` open and close the plug-in's own editor window.
 - `valuemode 2` makes `get` return the value and the display text together.
+
+### Setting by display text
+
+`vst~` has no way to turn a 0–1 value into text without setting the param. So
+`write` searches: it sets 129 evenly spaced values and reads the text each
+shows. A sample whose text matches (ignoring case and spaces; or the text in
+brackets, as in `[-17.9 dB]`) wins. Otherwise, given a number, it bisects
+between the two samples that bracket it, comparing the leading number of the
+text (`kHz` and `s` scaled to Hz and ms), and keeps the closest. If nothing
+matches, it puts the param back and says what the param does show. One request
+covers a whole `params` list, and the state refresh runs once, for the last
+param written. It resolves names exactly, then ignoring case and padding; a name
+that matches more than one param is refused; two entries reaching one param
+write the last.
+
+### Naming the plug-in
+
+After a Set reload or duplicate, `vst~` restores the plug-in but the wrapper has
+only its file, as `C74_VST3:/Serum2 -125317540` (the number, when there is one,
+is a hash of the class UID, not stored in Live's plug-in database as such). The
+name must come from somewhere the Set keeps. Tried and dropped: a Max `dict`
+with `@embed 1` (the contents don't reach a duplicated device). Used: on load
+the wrapper renames its own Live device to the plug-in's name, which is plain
+Set data. After a reload it trusts that name only while it still fits the loaded
+file (so a name the user typed over it doesn't pass for the plug-in), else it
+falls back to the bundle name.
 
 ### Saving state
 

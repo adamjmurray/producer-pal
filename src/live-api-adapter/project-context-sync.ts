@@ -13,7 +13,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { requestNode } from "./node-request-v8-protocol.ts";
+import { requestNode } from "./protocols/node-request-v8-protocol.ts";
 
 /** Subset of the Node route's result this side acts on. */
 interface ProjectContextSyncResult {

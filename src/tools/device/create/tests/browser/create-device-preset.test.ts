@@ -7,7 +7,7 @@
 // when there is one, and loads the way a plug-in does.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -26,10 +26,13 @@ import { createDevice } from "../../create-device.ts";
 const OUTDATED =
   "the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0 or later)";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 vi.mock(import("../../helpers/browser-devices.ts"), async (importOriginal) => ({
   ...(await importOriginal()),

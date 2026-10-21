@@ -7,7 +7,7 @@
 // hosting `vst~`). The request goes to every wrapper over a named Max bus; only
 // the one whose own device id matches `deviceId` answers.
 
-import { requestChannel } from "#src/live-api-adapter/request-channel.ts";
+import { requestChannel } from "#src/live-api-adapter/protocols/request-channel.ts";
 
 /** Named Max bus the wrapper devices listen on. */
 const REQUEST_BUS = "ppal-plugin-host-req";
@@ -15,10 +15,13 @@ const REQUEST_BUS = "ppal-plugin-host-req";
 /** Ops that answer fast. A missing wrapper never answers at all. */
 const QUICK_TIMEOUT_MS = 3_000;
 
-/** A big synth can take a while to load. */
-const LOAD_TIMEOUT_MS = 20_000;
+/** A big synth can take a while to load, and a display search samples a param many times. */
+const SLOW_TIMEOUT_MS = 20_000;
 
-export type PluginHostOp = "info" | "load" | "params" | "set" | "raw";
+/** How a timeout's error begins. A wrapper's own error never does. */
+export const NO_ANSWER = "No plug-in host answered";
+
+export type PluginHostOp = "info" | "load" | "params" | "set" | "write" | "raw";
 
 export interface PluginHostResponse {
   success: boolean;
@@ -33,7 +36,7 @@ const channel = requestChannel({
   },
   responseMessage: "plugin_host_response",
   timeoutError: (subject, timeoutMs) =>
-    `No plug-in host answered for ${subject} within ${timeoutMs}ms. ` +
+    `${NO_ANSWER} for ${subject} within ${timeoutMs}ms. ` +
     "Check the device id and that the wrapper device is loaded.",
 });
 
@@ -42,18 +45,23 @@ const channel = requestChannel({
  * @param deviceId - Live id of the wrapper device
  * @param op - What to ask for
  * @param args - The op's own fields
+ * @param maxWaitMs - Wait at most this long, when that is less than the op's usual wait
  * @returns The wrapper's reply, or a failure when none came
  */
 export function requestPluginHost(
   deviceId: string,
   op: PluginHostOp,
   args: object = {},
+  maxWaitMs = Infinity,
 ): Promise<PluginHostResponse> {
+  const usual =
+    op === "load" || op === "write" ? SLOW_TIMEOUT_MS : QUICK_TIMEOUT_MS;
+
   return channel.send<PluginHostResponse>(
     JSON.stringify({ deviceId, op, ...args }),
     `device id ${deviceId} (${op})`,
     null,
-    op === "load" ? LOAD_TIMEOUT_MS : QUICK_TIMEOUT_MS,
+    Math.min(usual, maxWaitMs),
   );
 }
 

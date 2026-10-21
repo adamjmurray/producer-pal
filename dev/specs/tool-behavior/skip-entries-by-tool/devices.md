@@ -33,6 +33,23 @@ Part of [Skip entries, tool by tool](README.md).
   to re-run. Where the sync param write is all there is (create-device, a rack's
   `pC1/d0/` shortcut) the entry says to use update-device on the Simpler's own
   path.
+- **update-device's `params` on a hosted plug-in go to the plug-in.** A wrapper
+  (a Max device that answers as a Producer Pal plug-in host) takes the plug-in's
+  own params by name or `h<number>` id, in the units the plug-in displays; the
+  whole list is one request to the wrapper, ahead of the target's other writes.
+  The wrapper finds the value that displays as asked, so a number or the
+  plug-in's text works. Entries answer as any param's do: `{ id, name }` for a
+  bare number that displays as asked, otherwise the display text as `value`
+  (with a `detail` when a bare number landed elsewhere, such as a clamp), and
+  always the text when text was sent. `ok: false` says why: a Live param id (not
+  an `h` id) is refused unsent; no such param (`not found on <target>`); a name
+  more than one param has lists the ids and asks for an `id`; no value displays
+  as asked (`not set:` plus what it does show), and the param is left as it was.
+  Two entries reaching one param, by name and by id, write the last. A wrapper
+  that doesn't answer may have written: the entries say `may have changed` and
+  the hosted devices after it say they weren't tried. A wrapper from before this
+  write existed says to create the hosted plug-in again. A Max device that isn't
+  a wrapper takes `params` as any device does.
 - **A take lane reports the params it has no use for.** `ppal-update-track`
   writes a lane's name and nothing else, so everything else the call sent is a
   `detail` on the lane's own entry, which otherwise reads like any other hit.

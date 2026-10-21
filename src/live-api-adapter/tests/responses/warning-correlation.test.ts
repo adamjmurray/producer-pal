@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { END_OF_CHUNKS, reassembleChunks } from "#src/shared/mcp-responses.ts";
 import { warn } from "#src/shared/max/v8-max-console.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
-import { installCapturingTask } from "../v8-protocol-test-helpers.ts";
+import { installCapturingTask } from "../../protocols/tests/v8-protocol-test-helpers.ts";
 
 vi.mock(import("#src/live-api-adapter/project-context-sync.ts"), () => ({
   backupProjectContextOnEdit: vi.fn(),
@@ -42,7 +42,7 @@ const { readTrack } = await import("#src/tools/track/read/read-track.ts");
 const { reportLiveApiBuildStats } =
   await import("#src/live-api-adapter/live-api-build-stats.ts");
 const { requestNode } =
-  await import("#src/live-api-adapter/node-request-v8-protocol.ts");
+  await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
 const { mcp_request, node_response } =
   await import("#src/live-api-adapter/live-api-adapter.ts");
 

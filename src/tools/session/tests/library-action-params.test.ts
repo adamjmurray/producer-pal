@@ -6,15 +6,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { library } from "../library.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 type LibraryArgs = NonNullable<Parameters<typeof library>[0]>;
 
 const protocolMock =
-  await import("#src/live-api-adapter/node-request-v8-protocol.ts");
+  await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
 
 describe("library - params the action doesn't read", () => {
   beforeEach(() => {

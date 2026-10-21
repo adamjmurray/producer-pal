@@ -4,43 +4,17 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { plugin_host_response } from "#src/live-api-adapter/live-api-adapter.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
 import {
-  clearMockRegistry,
-  registerMockObject,
-} from "#src/test/mocks/mock-registry.ts";
+  type WrapperMessage,
+  infoReply,
+  installWrapper,
+  registerWrapperDevice,
+} from "#src/tools/device/tests/helpers/plugin-host-wrapper-fixtures.ts";
 import { readOneDevice } from "../../read-device.ts";
 
-type Reply = Record<string, unknown>;
-
-/**
- * Make the plug-in host bus answer in the same call, as a wrapper does.
- * @param replies - What the wrapper says to each op; an op left out is unanswered
- * @returns The requests the bus heard
- */
-function installWrapper(
-  replies: Partial<Record<string, (request: Reply) => Reply>>,
-): Reply[] {
-  const heard: Reply[] = [];
-
-  vi.mocked(globalThis.messnamed).mockImplementation(
-    (_bus: string, ...args: unknown[]) => {
-      const [, requestId, json] = args as [string, string, string];
-      const request = JSON.parse(json) as Reply;
-
-      heard.push(request);
-
-      const reply = replies[request.op as string]?.(request);
-
-      if (reply != null) {
-        plugin_host_response(requestId, JSON.stringify(reply));
-      }
-    },
-  );
-
-  return heard;
-}
+type Reply = WrapperMessage;
 
 /**
  * Register a Max audio effect at t0/d0.
@@ -51,27 +25,14 @@ function registerMaxDevice(
   name = "PPal Plug-in Effect",
   className = "MxDeviceAudioEffect",
 ): void {
-  registerMockObject("device-123", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: {
-      name,
-      class_name: className,
-      class_display_name: "Max Audio Effect",
-      type: 2,
-      can_have_chains: 0,
-      can_have_drum_pads: 0,
-      is_active: 1,
-      parameters: [],
-    },
+  registerWrapperDevice({
+    path: String(livePath.track(0).device(0)),
+    name,
+    className,
   });
 }
 
-const info = (plugin: string | null): Reply => ({
-  success: true,
-  plugin,
-  loaded: plugin,
-});
+const info = infoReply;
 
 const paramsOf = (count: number, total = count): Reply => ({
   success: true,

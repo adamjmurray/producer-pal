@@ -396,6 +396,11 @@ export interface WrittenParam {
   requested?: number;
   /** Set when the write overrode the param's arrangement lane */
   overrode?: true;
+  /**
+   * The entry as the call reports it, for a param Live's API can't read (a
+   * hosted plug-in's). It skips the read-back by id.
+   */
+  reported?: LandedParam | ParamValueResult;
 }
 
 /**

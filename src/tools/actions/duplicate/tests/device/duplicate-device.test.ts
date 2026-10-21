@@ -23,10 +23,13 @@ import {
 } from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
 
 // Mock moveDeviceToPath to track calls
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
   // Reports a completed move; tests that need a failed one override it.

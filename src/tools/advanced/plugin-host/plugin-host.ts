@@ -3,8 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { planPluginLoad } from "./plugin-host-load.ts";
-import { requestPluginHost } from "./plugin-host-v8-protocol.ts";
+import { planPluginLoad } from "#src/tools/device/create/helpers/plugin-host-load.ts";
+import { requestPluginHost } from "#src/live-api-adapter/protocols/plugin-host-v8-protocol.ts";
 
 interface PluginHostArgs {
   deviceId: string;
