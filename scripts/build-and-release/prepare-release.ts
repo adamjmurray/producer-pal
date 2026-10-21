@@ -37,7 +37,7 @@ if (flagRefusal != null) {
 }
 
 // Deliberately does NOT expect a tag yet. Building comes first, tagging comes
-// after the artifacts have been looked at (`npm run tag`) — see dev/process/releasing.md.
+// after the artifacts have been looked at (`npm run tag`) — see dev/process/releasing/build-and-pre-release.md.
 
 // Get version from package.json
 const pkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));

@@ -158,10 +158,10 @@ Widening the rule later is cheap; carrying an exception from the start is not.
 **A missing locator is reported where the spelling puts it.** Inside a `[...]`
 coordinate it is that entry's own miss: the clip the entry was written for says
 `not moved: ...` on its own entry, the rest of the batch still moves, and a lone
-clip throws ([skips](../README.md#skips-no-ops-and-replaced-targets)).
-`arrangementStart` and `arrangementSplit` are read as one list before anything
-moves — the same as a malformed bar|beat in them — so a missing name there
-refuses the call, on every tool that takes them.
+clip throws ([skips](../skips-and-replaced-targets.md)). `arrangementStart` and
+`arrangementSplit` are read as one list before anything moves — the same as a
+malformed bar|beat in them — so a missing name there refuses the call, on every
+tool that takes them.
 
 Managing locators is separate and unchanged: `update-live-set`'s
 `locatorOperation` / `locatorId` / `locatorTime` / `locatorName` treat a locator
@@ -212,7 +212,7 @@ addressing a specific clip refuses it. Both partials work as destinations.
 `t0[5|1]` resolves to the clip **covering** `5|1`, even if it started earlier —
 a clip running from 3|1 through bar 6 is at `[5|1]`. When no clip covers the
 position, the path resolves to nothing and the target is reported like any other
-that isn't there ([skips](../README.md#skips-no-ops-and-replaced-targets)).
+that isn't there ([skips](../skips-and-replaced-targets.md)).
 
 ### Which lists pair and which broadcast
 

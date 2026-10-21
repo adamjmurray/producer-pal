@@ -1,7 +1,7 @@
 # Interface conventions
 
 These cross-cutting decisions apply to multiple specialized devices. Per-device
-sections in [instruments.md](instruments.md) and
+sections in [instruments/](instruments/README.md) and
 [audio-effects.md](audio-effects.md) reference these patterns rather than
 redocumenting them.
 

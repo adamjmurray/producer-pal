@@ -285,6 +285,6 @@ skips it.
 
 ## Releasing
 
-See [Releasing](dev/process/releasing.md) for the complete release process,
-including version bumping, building, creating GitHub releases, testing
+See [Releasing](dev/process/releasing/README.md) for the complete release
+process, including version bumping, building, creating GitHub releases, testing
 checklists, and publishing to npm.

@@ -105,7 +105,7 @@ Ask for it by name: `"*"` leaves it out. It needs the remote script and costs a
 round trip per parameter, and small-model mode drops it. When the clip has
 envelopes the routes can't see (modulation, clip-level ones like Gain, MIDI CC),
 or the remote script isn't answering, `envelopes` is a string saying so. See
-[clips-playback-and-sends.md](../../specs/tool-behavior/clips-playback-and-sends.md#clip-envelopes).
+[clip-envelopes.md](../../specs/tool-behavior/clips-playback-and-sends/clip-envelopes.md).
 
 ## Include: `"color"`
 

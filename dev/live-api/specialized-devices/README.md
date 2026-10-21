@@ -126,7 +126,7 @@ Everything below documents **deltas** from this baseline.
 | Doc                                                  | Contents                                                                                                                    |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | [interface-conventions.md](interface-conventions.md) | Wire format, the `options` include, documentation strategy — cross-cutting decisions the per-device sections assume         |
-| [instruments.md](instruments.md)                     | Per-device catalog: Drift, Meld, Simpler, Wavetable, plus the generic-Device instruments                                    |
+| [instruments/](instruments/README.md)                | Per-device catalog: Drift, Meld, Simpler, Wavetable, plus the generic-Device instruments                                    |
 | [drum-racks.md](drum-racks.md)                       | How a Drum Rack is modeled: pads are slots, chains are layers, and what each tool does with them                            |
 | [audio-effects.md](audio-effects.md)                 | Per-device catalog: Compressor, EQ Eight, Hybrid Reverb, Roar, Shifter, Spectral Resonator, plus the generic-Device effects |
 
@@ -221,7 +221,7 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
 
 # Implementation status
 
-All specialized devices catalogued in [instruments.md](instruments.md) and
+All specialized devices catalogued in [instruments/](instruments/README.md) and
 [audio-effects.md](audio-effects.md) are implemented in
 `src/tools/shared/device/specialized/` (one file per device under `devices/`,
 registered in `specialized-device-registry.ts`) and e2e-validated against Live

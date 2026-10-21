@@ -8,7 +8,7 @@ holds it: update this file when the syntax changes.
 Code: [src/notation/barbeat/envelope/](../../src/notation/barbeat/envelope/)
 (`envelope-notation.ts`, `envelope-curves.ts`). How the tools answer a call
 (refusals, partial writes, arrangement clips) is in
-[tool-behavior](tool-behavior/clips-playback-and-sends.md#clip-envelopes); what
+[tool-behavior](tool-behavior/clips-playback-and-sends/clip-envelopes.md); what
 Live allows is in [clip-envelopes.md](../live-api/clip-envelopes.md).
 
 ```

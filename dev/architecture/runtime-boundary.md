@@ -210,7 +210,7 @@ always matches the portal's version:
 
 Only `npm run release:mcpb` puts the device there, because it exists only after
 the freeze. Every other build (dev, CI, e2e) removes any copy and runs in "no
-device bundled" mode. See `dev/process/releasing.md`.
+device bundled" mode. See `dev/process/releasing/build-and-pre-release.md`.
 
 Notation is the one axis that crosses the runtime boundary. The other two are
 settled entirely Node-side, but notation also decides how V8 parses and formats

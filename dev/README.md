@@ -38,8 +38,8 @@ part is a file beside it.
   can and can't be reused.
 - [live-api/performance.md](live-api/performance.md) — what object lifetime
   costs, and how to measure it.
-- [live-api/arrangement-operations.md](live-api/arrangement-operations.md) —
-  lengthening, splitting and moving arrangement clips.
+- [live-api/arrangement-operations/](live-api/arrangement-operations/README.md)
+  — lengthening, splitting and moving arrangement clips.
 - [live-api/device-param-labels.md](live-api/device-param-labels.md) — reading
   units and ranges off device parameters.
 - [live-api/specialized-devices/](live-api/specialized-devices/README.md) —
@@ -76,7 +76,7 @@ part is a file beside it.
 
 ## Process
 
-- [process/releasing.md](process/releasing.md) — the release steps.
+- [process/releasing/](process/releasing/README.md) — the release steps.
 - [process/documentation-site.md](process/documentation-site.md) — the VitePress
   docs site.
 

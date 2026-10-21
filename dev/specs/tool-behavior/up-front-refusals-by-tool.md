@@ -1,7 +1,7 @@
 # Up-front refusals, tool by tool
 
-Where each tool applies the [refusal rules](README.md#refusals). This list
-follows the code; when it disagrees with a tool, the tool wins.
+Where each tool applies the [refusal rules](refusals.md). This list follows the
+code; when it disagrees with a tool, the tool wins.
 
 - **Whole-call params are checked before any target is touched.** The send pair
   and `monitoringState` in `updateTrack`, the send pair in `updateDevice`, the
@@ -138,8 +138,8 @@ follows the code; when it disagrees with a tool, the tool wins.
 
 ## A param the action doesn't read
 
-The rule is in [Tool Behavior](README.md#a-param-only-another-action-reads). The
-tables sit next to each tool's code and feed one helper,
+The rule is in [Tool Behavior](refusals.md#a-param-only-another-action-reads).
+The tables sit next to each tool's code and feed one helper,
 `refuseParamsOutsideAction`.
 
 - **`ppal-library`** (`library-action-params.ts`): `similarTo` is for

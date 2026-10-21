@@ -59,7 +59,7 @@ Flipping the flag does **not** carry the region across — it reveals whatever t
 other pair was last left with, which on a fresh clip is the whole thing.
 `calculateBeatPositions` restates the playing region into the newly selected
 pair, so `looping` changes the loop flag and nothing else
-([why](../specs/tool-behavior/clips-playback-and-sends.md#looping)).
+([why](../specs/tool-behavior/clips-playback-and-sends/looping.md#looping)).
 
 Writing them is not symmetric, and these two are the ones that bite:
 

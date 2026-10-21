@@ -8,7 +8,7 @@ import { trimmedParamName } from "../../helpers/param-reading.ts";
 import { coerceInt } from "../specialized-param-access.ts";
 import { type ActionOutcome } from "../specialized-device-types.ts";
 
-// Wavetable mod-matrix helpers. See dev/live-api/specialized-devices/instruments.md.
+// Wavetable mod-matrix helpers. See dev/live-api/specialized-devices/instruments/wavetable.md.
 //
 // The matrix is imperative: targets are registered by DeviceParameter
 // reference, indexed by position, and cells go through

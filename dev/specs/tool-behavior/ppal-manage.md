@@ -27,7 +27,7 @@ hidden until the script is installed would be missing when it's needed.
   `action must be one of: install-remote-script, add-producer-pal, update-producer-pal, undo, redo`.
 - `userLibrary` is only for `install-remote-script`, `add-producer-pal` and
   `update-producer-pal`. On `undo` or `redo` it is refused as any
-  [param only another action reads](README.md#a-param-only-another-action-reads).
+  [param only another action reads](refusals.md#a-param-only-another-action-reads).
 
 ## `install-remote-script`
 

@@ -6,7 +6,7 @@
 
 // Run after `npm run release:amxd`, which builds and freezes the device. Builds the
 // portal and the .mcpb with the frozen device beside them, and leaves the same
-// files in npm/ ready to pack. See dev/process/releasing.md.
+// files in npm/ ready to pack. See dev/process/releasing/testing-and-shipping.md.
 //
 // `--verify-npm` only checks that npm/ holds this version's device. It is what
 // `npm run guard:device` and npm/package.json's prepack run, so a tarball can't
@@ -177,7 +177,7 @@ function printNextSteps(version: string, commit: string): void {
   console.log("1. Test the files work correctly");
   console.log("2. Tag the release: npm run tag");
   console.log(
-    "3. Create the GitHub release, test, and proceed per dev/process/releasing.md",
+    "3. Create the GitHub release, test, and proceed per dev/process/releasing/README.md",
   );
   console.log(
     `\n🔖 These files call themselves ${version} (build ${commit}). If step 1 turns up\n` +

@@ -72,7 +72,7 @@ script is missing, it says it is out of date when that is the case
   `remoteScriptEnabled: false`, or a `remoteScriptMinVersion`.
 
 How each tool words this to the model: the
-[tool-behavior spec](../specs/tool-behavior/README.md#a-remote-script-that-is-out-of-date).
+[tool-behavior spec](../specs/tool-behavior/refusals.md#a-remote-script-that-is-out-of-date).
 
 ## Port
 

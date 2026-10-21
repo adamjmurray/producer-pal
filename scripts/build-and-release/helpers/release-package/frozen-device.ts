@@ -99,7 +99,7 @@ export function checkFrozenDevice(options: {
   if (!existsSync(devicePath)) {
     return [
       `release/${FROZEN_DEVICE_FILENAME} not found.`,
-      "Run `npm run release:amxd`, which freezes it (dev/process/releasing.md, Step 1).",
+      "Run `npm run release:amxd`, which freezes it (dev/process/releasing/build-and-pre-release.md, Step 1).",
     ].join("\n");
   }
 

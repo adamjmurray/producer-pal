@@ -100,4 +100,4 @@ place the bare rack path names.
 
 `sendReturn` and `sends[].return` take an id, name, path (`rt0`) or letter
 prefix. The order and clash rules are in
-[Sends](../clips-playback-and-sends.md#sends).
+[Sends](../clips-playback-and-sends/playback-and-sends.md#sends).

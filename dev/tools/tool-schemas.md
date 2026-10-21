@@ -96,7 +96,7 @@ Build the refusal with `refuseParamsOutsideAction` so every tool words it the
 same way: it names the params, the actions that read them, and what the call
 has. A defaulted action counts like an explicit one; a null or blank counts as
 not sent. Rule:
-[Tool Behavior](../specs/tool-behavior/README.md#a-param-only-another-action-reads).
+[Tool Behavior](../specs/tool-behavior/refusals.md#a-param-only-another-action-reads).
 
 ## Length caps
 
