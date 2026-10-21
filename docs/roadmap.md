@@ -25,7 +25,9 @@ for more detailed information.
   everything it did since you last clicked in Live was a single undo step. The
   AI can also undo and redo for you
 - Performance improvements: big arrangement edits are much faster (10-30 s down
-  to under 2 s), and calls through the remote script answer about 10x faster
+  to under 2 s), and calls through the remote script answer faster
+- Turn an audio clip's drums, melody or harmony into a new MIDI track, using
+  Live's own audio-to-MIDI conversion
 - Every write tool now answers the same way when a target is named twice or
   fails partway
 - Set up and update Producer Pal by asking the AI (coding agents / npx and

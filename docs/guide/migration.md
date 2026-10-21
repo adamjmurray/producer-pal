@@ -19,6 +19,9 @@ head:
         deprecated, and how to rewrite the old arguments.
 ---
 
+<!-- Over the ~20 KB doc limit on purpose: splitting it would break the
+URLs people bookmark and link to. -->
+
 # Migration Guide
 
 This page is for **scripts**: anything calling Producer Pal through

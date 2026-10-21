@@ -75,3 +75,5 @@ Producer Pal is open source software licensed under the
 - Source code is public and development happens on GitHub
 - You can fork, modify, and redistribute it, including in commercial projects,
   as long as you keep the license notice
+- The Producer Pal name is a trademark, so a fork needs its own name (see
+  [TRADEMARK.md](./TRADEMARK.md))

@@ -29,8 +29,13 @@ standard setup. It adds:
   including drum kits from your Packs, or swap a preset onto a device with
   [Update Device](/features/tools#ppal-update-device). A preset for a different
   device, or a rack, replaces the device, and its automation is lost.
-- **Audio to MIDI**: turn an audio clip's drums, melody or harmony into a new
-  MIDI track with an instrument loaded and a clip of the notes Live detects.
+- **Audio to MIDI**: Live's
+  [Convert to New MIDI Track](https://www.ableton.com/en/manual/converting-audio-to-midi/)
+  commands. Each makes a new MIDI track with an instrument and a clip of the
+  notes Live detects: **drums** takes the rhythm of unpitched, percussive audio
+  (kick, snare and hi-hat go to a Drum Rack), **melody** the pitches of
+  monophonic audio such as a voice or solo instrument, and **harmony** the
+  pitches of polyphonic audio such as chords or a full mix.
 - **More device settings**: Simpler's pitch-bend ranges, and which rack macros
   are mapped.
 - **Adding Producer Pal to a new Set** from a coding agent or the Claude Desktop

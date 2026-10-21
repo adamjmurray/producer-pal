@@ -389,8 +389,9 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
   automation if you had moved the parameter by hand; the result notes when it
   did
 - Convert an audio clip into a new MIDI track with an instrument and a clip of
-  the detected notes (drums, melody or harmony); needs the
-  [remote script](/guide/remote-script)
+  the detected notes (drums, melody or harmony, as Live's
+  [Convert to New MIDI Track](https://www.ableton.com/en/manual/converting-audio-to-midi/));
+  needs the [remote script](/guide/remote-script)
 - Split arrangement clips at specified positions
 - Update multiple clips at once
 

@@ -192,6 +192,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       default:
         "audio clips only: make a new MIDI track from each clip, after the other edits (adds a track, shifting the ones after it), " +
         "with an instrument loaded and a clip of the notes Live detects in the source's place, ready to play; the result names the track, instrument and clip. " +
+        "drums = rhythm of unpitched percussion (Drum Rack); melody = pitches of monophonic audio (voice, solo instrument); harmony = pitches of polyphonic audio (chords, full mix). " +
         "Needs the remote script. Cannot be combined with arrangementSplit or a move (toPath)",
       smallModel: null,
     }),

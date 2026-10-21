@@ -81,8 +81,9 @@ clip length, arrange clips in the Arrangement, and load and manage samples on
 Simpler instruments, Drum Rack pads included), but it cannot listen to or
 analyze the audio itself. No detecting key or tempo from a waveform, no
 synthesizing audio from scratch. The one audio-to-MIDI route is Live's own
-conversion of an audio clip to a new MIDI track (drums, melody or harmony),
-which needs the [remote script](/guide/remote-script).
+[conversion of an audio clip to a new MIDI track](https://www.ableton.com/en/manual/converting-audio-to-midi/)
+(drums, melody or harmony), which needs the
+[remote script](/guide/remote-script).
 
 ::: tip Workaround: drive it from a coding agent
 
