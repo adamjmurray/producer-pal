@@ -10,6 +10,9 @@ interface PluginHostArgs {
   action: "info" | "load" | "params" | "set" | "raw";
   plugin?: string;
   names?: string[];
+  search?: string;
+  offset?: number;
+  limit?: number;
   params?: Array<{ index?: number; name?: string; value: number }>;
   message?: string[];
 }
@@ -21,6 +24,9 @@ interface PluginHostArgs {
  * @param args.action - info, load, params or set
  * @param args.plugin - Plug-in to load (load)
  * @param args.names - Parameter names to read (params)
+ * @param args.search - Name filter (params)
+ * @param args.offset - Matches to skip (params)
+ * @param args.limit - Most matches to return (params)
  * @param args.params - Parameters to set (set)
  * @param args.message - Message for vst~ (raw)
  * @returns The wrapper's reply, minus `success`
@@ -30,10 +36,18 @@ export async function pluginHost({
   action,
   plugin,
   names,
+  search,
+  offset,
+  limit,
   params,
   message,
 }: PluginHostArgs): Promise<Record<string, unknown>> {
-  const request = buildRequest(action, plugin, names, params, message);
+  const request = buildRequest(action, plugin, params, message, {
+    names,
+    search,
+    offset,
+    limit,
+  });
   const { success, error, ...reply } = await requestPluginHost(
     deviceId,
     action,
@@ -51,17 +65,17 @@ export async function pluginHost({
  * The op's own fields, refusing a call that lacks the one the op needs.
  * @param action - The op
  * @param plugin - Plug-in to load
- * @param names - Parameter names to read
  * @param params - Parameters to set
  * @param message - Message for vst~
+ * @param query - Which params to read
  * @returns The fields to send with the op
  */
 function buildRequest(
   action: PluginHostArgs["action"],
   plugin: string | undefined,
-  names: string[] | undefined,
   params: PluginHostArgs["params"],
-  message?: string[],
+  message: string[] | undefined,
+  query: Pick<PluginHostArgs, "names" | "search" | "offset" | "limit">,
 ): object {
   switch (action) {
     case "load":
@@ -72,7 +86,8 @@ function buildRequest(
       return { plugin };
 
     case "params":
-      return names == null ? {} : { names };
+      // Unset fields drop out when the request is serialized.
+      return query;
 
     case "set":
       if (params == null || params.length === 0) {

@@ -31,7 +31,18 @@ export const toolDefPluginHost = defineTool("ppal-plugin-host", {
     names: z
       .array(z.string())
       .optional()
-      .describe("Parameter names to read, for params (default: all)"),
+      .describe("Exact parameter names to read, for params"),
+    search: z
+      .string()
+      .optional()
+      .describe("For params: case-insensitive name match"),
+    offset: z.coerce.number().int().min(0).optional().describe("For params"),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .describe("For params: default 100. The reply has `total` matches"),
     params: z
       .array(
         z.object({

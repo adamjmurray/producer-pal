@@ -73,6 +73,22 @@ describe("ppal-plugin-host", () => {
     await all;
   });
 
+  it("sends search and paging for params", async () => {
+    const pending = pluginHost({
+      deviceId: "9",
+      action: "params",
+      search: "osc",
+      offset: 20,
+      limit: 10,
+    });
+
+    expect(sent().payload).toStrictEqual(
+      expect.objectContaining({ search: "osc", offset: 20, limit: 10 }),
+    );
+    plugin_host_response(sent().requestId, '{"success":true,"params":[]}');
+    await pending;
+  });
+
   it("sends the params for set and returns the read-back", async () => {
     const params = [
       { name: "Cutoff", value: 0.5 },
