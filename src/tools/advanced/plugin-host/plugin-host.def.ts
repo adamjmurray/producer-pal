@@ -10,7 +10,7 @@ export const toolDefPluginHost = defineTool("ppal-plugin-host", {
   title: "Plug-in Host",
   description:
     "Spike: read and set VST3 plug-in parameters through a plug-in host wrapper device. " +
-    "`info` shows the loaded plug-in, `load` loads one by name, " +
+    "`info` shows the loaded plug-in, `load` loads one by the name Live's browser shows, " +
     "`params` lists parameters (value 0..1 plus the plug-in's own display text), " +
     "`set` sets some and reads them back, `raw` sends vst~ a message.",
 
@@ -27,7 +27,10 @@ export const toolDefPluginHost = defineTool("ppal-plugin-host", {
       .string()
       .describe("Live device id of the plug-in host wrapper device"),
     action: z.enum(["info", "load", "params", "set", "raw"]),
-    plugin: z.string().optional().describe("Plug-in name, for load"),
+    plugin: z
+      .string()
+      .optional()
+      .describe("Plug-in name as in Live's browser, for load"),
     names: z
       .array(z.string())
       .optional()

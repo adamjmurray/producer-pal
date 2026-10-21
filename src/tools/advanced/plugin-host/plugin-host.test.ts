@@ -39,22 +39,6 @@ describe("ppal-plugin-host", () => {
     });
   });
 
-  it("sends the plug-in name for load", async () => {
-    const pending = pluginHost({
-      deviceId: "9",
-      action: "load",
-      plugin: "ColourCopy",
-    });
-
-    expect(sent().payload).toStrictEqual({
-      deviceId: "9",
-      op: "load",
-      plugin: "ColourCopy",
-    });
-    plugin_host_response(sent().requestId, '{"success":true}');
-    await pending;
-  });
-
   it("sends the name filter for params, and none when omitted", async () => {
     const filtered = pluginHost({
       deviceId: "9",

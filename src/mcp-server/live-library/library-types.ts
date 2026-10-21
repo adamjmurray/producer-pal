@@ -357,6 +357,17 @@ export interface PluginItem {
   subcategories: string[];
 }
 
+/** A plug-in found by name, for hosting (library.resolvePlugin). */
+export interface ResolvedPlugin {
+  name: string;
+  vendor: string | null;
+  category: PluginCategory;
+  /** Path of the plug-in's bundle (one bundle can hold several plug-ins). */
+  file: string;
+  /** Whether other plug-ins live in the same bundle. */
+  shared: boolean;
+}
+
 export interface ListPluginsResult {
   plugins: PluginItem[];
   /** Present when a plugin source DB was consulted; false if none was found. */

@@ -40,7 +40,8 @@ No sockets or ports: named Max `send`/`receive` inside Live's one Max instance.
 - An absent wrapper just never answers: the request times out (3 s, or 20 s for
   `load`).
 
-Ops: `info`, `load {plugin}`, `params {names | search, offset, limit}`,
+Ops: `info`, `load {file, sub?, name, synth}` (see Loading),
+`params {names | search, offset, limit}`,
 `set {params: [{index | name, value}]}`, and debug-only `raw {message}` (send
 `vst~` anything). Values are `vst~`'s normalized 0–1, with the plug-in's own
 display text read back (e.g. `" 30% [-17.9 dB]"`, `"1/16 dot"`).
@@ -52,9 +53,25 @@ The spike exposes this as the debug-only `ppal-plugin-host` tool, gated with
 
 ### Loading and parameters
 
-- `plug_vst3 <name>` finds plug-ins in the system VST3 folder by name (`Serum2`,
-  `ColourCopy`). After a restore, `vst~`'s `currentplug` attribute names the
-  loaded plug-in (`C74_VST3:/Serum2`).
+- **Names.** Models use Live's browser name ("Serum 2 FX"), but `vst~` loads a
+  VST3 file (`Serum2`), and one file can hold several plug-ins (Serum 2 and
+  Serum 2 FX; Repro-1 and Repro-5). Live's plug-in database maps one to the
+  other (`plugins` joined to `plugin_modules`), so Producer Pal looks the name
+  up there first. Unverified on Live 11 and 12.0–12.1, which keep these tables
+  in the files database; a failure there is an error.
+- **Loading.** The wrapper sends `unplug`, `plug_vst3 <file>`, then
+  `subname <name>` when the file holds several plug-ins. `subname` only matches
+  in files that list their plug-ins in `Contents/Resources/moduleinfo.json`
+  (Pro-Q 4 and Pianoteq 9 don't), so it's skipped for single-plug-in files. The
+  choice survives duplicate. Plug-ins in `~/Library/Audio/Plug-Ins/VST3` load
+  too.
+- **Verify every load.** Loading by name goes wrong silently:
+  `plug_vst3 "Serum 2 FX"` loads the AU, a failed load keeps the old plug-in,
+  and a wrong `subname` keeps the file's first one. So `currentplug` must start
+  `C74_VST3:/<file>`, must end in a numeric id after a `subname` (no id means
+  the first plug-in stayed), and `isSynth` (`get -7`) must match the kind. If
+  not, the wrapper unplugs and errors. `load` refuses an instrument in the
+  Effect wrapper, and the reverse, before sending anything.
 - `vst~` answers `params` and `get <n>` synchronously, so one request can list
   and read every parameter. Listing all of Serum 2 is well under a second.
 - VST3 plug-ins expose a stand-in parameter for every MIDI CC, pitch bend and
@@ -82,9 +99,11 @@ The spike exposes this as the debug-only `ppal-plugin-host` tool, gated with
   settings: the Live API can't read a plug-in's state. The clean case is
   plug-ins Producer Pal inserts itself.
 - Live's undo covers changes made through the wrapper: it records a
-  `Change in "<device>"` step and restores the saved state. But one change takes
-  2–3 presses: a single `vst~` param change makes 2 steps, and the state refresh
-  adds one. Changes close together share the same steps, and reads make none.
+  `Change in "<device>"` step and restores the saved state. One change through
+  Producer Pal takes 2 undo steps: the change itself, and the state refresh
+  re-send (a change without the refresh is 1 step). Accepted: dropping the
+  refresh loses plug-in state. Changes close together share steps, and reads
+  make none.
 
 ### Audio, MIDI and latency
 

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { planPluginLoad } from "./plugin-host-load.ts";
 import { requestPluginHost } from "./plugin-host-v8-protocol.ts";
 
 interface PluginHostArgs {
@@ -22,7 +23,7 @@ interface PluginHostArgs {
  * @param args - The parameters
  * @param args.deviceId - Live id of the wrapper device
  * @param args.action - info, load, params or set
- * @param args.plugin - Plug-in to load (load)
+ * @param args.plugin - Plug-in to load, by the name Live's browser shows (load)
  * @param args.names - Parameter names to read (params)
  * @param args.search - Name filter (params)
  * @param args.offset - Matches to skip (params)
@@ -42,12 +43,53 @@ export async function pluginHost({
   params,
   message,
 }: PluginHostArgs): Promise<Record<string, unknown>> {
-  const request = buildRequest(action, plugin, params, message, {
+  if (action === "load") {
+    return await loadPlugin(deviceId, plugin);
+  }
+
+  const request = buildRequest(action, params, message, {
     names,
     search,
     offset,
     limit,
   });
+
+  return await send(deviceId, action, request);
+}
+
+/**
+ * Load a plug-in into a wrapper: resolve the name and check the kind first, so
+ * a refused call leaves the wrapper alone.
+ * @param deviceId - Live id of the wrapper device
+ * @param plugin - Plug-in name
+ * @returns The wrapper's reply, naming the plug-in and vendor
+ */
+async function loadPlugin(
+  deviceId: string,
+  plugin: string | undefined,
+): Promise<Record<string, unknown>> {
+  if (plugin == null) {
+    throw new Error("action 'load' needs `plugin`");
+  }
+
+  const plan = await planPluginLoad(deviceId, plugin);
+  const reply = await send(deviceId, "load", plan.request);
+
+  return { ...reply, plugin: plan.plugin.name, vendor: plan.plugin.vendor };
+}
+
+/**
+ * Send one op to the wrapper and unwrap its reply.
+ * @param deviceId - Live id of the wrapper device
+ * @param action - The op
+ * @param request - The op's own fields
+ * @returns The wrapper's reply, minus `success`
+ */
+async function send(
+  deviceId: string,
+  action: PluginHostArgs["action"],
+  request: object,
+): Promise<Record<string, unknown>> {
   const { success, error, ...reply } = await requestPluginHost(
     deviceId,
     action,
@@ -64,7 +106,6 @@ export async function pluginHost({
 /**
  * The op's own fields, refusing a call that lacks the one the op needs.
  * @param action - The op
- * @param plugin - Plug-in to load
  * @param params - Parameters to set
  * @param message - Message for vst~
  * @param query - Which params to read
@@ -72,19 +113,11 @@ export async function pluginHost({
  */
 function buildRequest(
   action: PluginHostArgs["action"],
-  plugin: string | undefined,
   params: PluginHostArgs["params"],
   message: string[] | undefined,
   query: Pick<PluginHostArgs, "names" | "search" | "offset" | "limit">,
 ): object {
   switch (action) {
-    case "load":
-      if (plugin == null) {
-        throw new Error("action 'load' needs `plugin`");
-      }
-
-      return { plugin };
-
     case "params":
       // Unset fields drop out when the request is serialized.
       return query;
