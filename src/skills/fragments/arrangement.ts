@@ -54,7 +54,7 @@ ppal-create-clip's \`path\` takes a comma-separated list and may mix the two kin
 | one \`t0[5|1]\`, \`t0/l0[5|1]\`, or \`t0/s1\` | N > 1 | refused: a lane or slot names one place, so it can't cover several clips |
 | N destinations (\`t0[1|1],t0[5|1]\`, \`[1|1],[5|1]\`, \`t0,t1\`, ...) | N | each clip gets the destination at its own position |
 
-A clip moved into a slot or onto a take lane is re-created there, so it loses its automation envelopes. Moving clips changes their IDs - re-read to get new IDs.
+Moving clips changes their IDs - re-read to get new IDs.
 \`arrangementLength\` sets arrangement playback region.
 \`arrangementSplit\` cuts clips at song positions — the same timeline a \`[...]\` coordinate names, not offsets into the clip. One list covers every clip, not one per clip: each is cut where a position falls inside it, so one call can cut several clips at the same bar. A cut makes new clips with new ids, so it can't be combined with \`toPath\` or \`arrangementLength\`: cut in one call, then move or resize the pieces in the next, using the ids the cut returned.
 A clip a later one in the same call is moved onto is left unwritten and says so: \`overwritten later in this call by <where>\`, with no \`ok\`. A clip cut short by a later one says \`shortened by <where>\`. Nothing is reported \`deleted\` unless the call asked to delete it.

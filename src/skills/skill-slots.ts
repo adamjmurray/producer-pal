@@ -252,7 +252,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   "transforms-editing": {
     title: "Transforms: editing an existing clip",
     description:
-      "How notes MERGE into a clip that already has some, plus preTransforms and quantizeGrid for deleting, clearing, moving, and quantizing them. Only update-clip does any of this, so anything that can't update clips never gets it. Needs the core transforms guide.",
+      "How notes MERGE into a clip that already has some, plus preTransforms for deleting, clearing and moving them. Only update-clip does any of this, so anything that can't update clips never gets it. Needs the core transforms guide.",
     builtIn: transformsEditing,
   },
 
