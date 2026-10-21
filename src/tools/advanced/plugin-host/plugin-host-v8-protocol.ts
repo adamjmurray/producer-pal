@@ -18,7 +18,7 @@ const QUICK_TIMEOUT_MS = 3_000;
 /** A big synth can take a while to load. */
 const LOAD_TIMEOUT_MS = 20_000;
 
-export type PluginHostOp = "info" | "load" | "params" | "set";
+export type PluginHostOp = "info" | "load" | "params" | "set" | "raw";
 
 export interface PluginHostResponse {
   success: boolean;
