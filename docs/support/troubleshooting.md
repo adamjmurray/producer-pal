@@ -126,6 +126,8 @@ If Producer Pal stops working after installing a new version:
   installing the new one
 - **All users:** Verify you replaced the `.amxd` device (and the `.mcpb`
   extension if applicable for your installation)
+- **Remote script users:** Update it in **Settings → Installation**, then
+  restart Live (see [Remote Script](/guide/remote-script#updating))
 - Try deleting and re-adding the Producer Pal device in Ableton Live
 - Restart your AI app completely
 - Start a fresh conversation

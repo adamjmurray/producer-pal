@@ -86,6 +86,27 @@ Adds warp/time-stretch properties for audio clips. No effect on MIDI clips.
 build flag: it appears in `npm run build:debug` builds (and in tests) only, not
 in release builds. The examples below show it as it appears in a debug build.
 
+## Include: `"envelopes"`
+
+Adds the clip's automation, one entry per automated parameter. Session clips
+only; an arrangement clip's lane can't be read.
+
+| Field        | Type     | Description                                                        |
+| ------------ | -------- | ------------------------------------------------------------------ |
+| `parameter`  | `string` | The parameter's name, as Live shows it                             |
+| `id`         | `string` | The Live parameter's id (pass it to `ppal-update-clip`)            |
+| `device`     | `string` | e.g., `"t3/d0"`; absent for a mixer parameter                      |
+| `eventCount` | `number` | Events in the envelope                                             |
+| `truncated`  | `true`   | Set when the clip holds more events than the read returned         |
+| `events`     | `string` | The points in envelope notation; absent when they couldn't be read |
+| `detail`     | `string` | Why `events` is absent, or why the envelope doesn't play           |
+
+Ask for it by name: `"*"` leaves it out. It needs the remote script and costs a
+round trip per parameter, and small-model mode drops it. When the clip has
+envelopes the routes can't see (modulation, clip-level ones like Gain, MIDI CC),
+or the remote script isn't answering, `envelopes` is a string saying so. See
+[clips-playback-and-sends.md](../../specs/tool-behavior/clips-playback-and-sends.md#clip-envelopes).
+
 ## Include: `"color"`
 
 | Field   | Type     | Description                       |

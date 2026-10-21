@@ -5,3 +5,7 @@ the Producer Pal Max for Live device.
 <!--@include: ./save-device.md-->
 
 <!--@include: ./add-device.md-->
+
+Then finish the installation: click **Finish installation…** on the device to
+add the remote script (clip automation, undo, plug-ins). See
+[Finish the Installation](/installation#finish-the-installation).

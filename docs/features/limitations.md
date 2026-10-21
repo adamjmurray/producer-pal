@@ -68,9 +68,9 @@ the [remote script](/guide/remote-script), Producer Pal writes automation onto
 an arrangement clip by writing the track's automation lane over exactly that
 clip's span. That comes with limits:
 
-- Producer Pal can't see the lane afterwards, or clear it. Writing again
-  overwrites it over the clip's span, and the lane returns to its old value
-  after.
+- Producer Pal can't read the lane's points back (it can tell which parameters
+  have a lane), or clear it. Writing again overwrites it over the clip's span,
+  and the lane returns to its old value after.
 - The clip is re-created to do it, so it comes back with a new ID.
 - Moving an arrangement clip leaves its automation where it was.
 

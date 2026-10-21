@@ -49,7 +49,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     // Needs the remote script, which small-model mode never uses.
     preset: param(z.string().optional(), {
       default:
-        "preset to load onto the device before the rest of the update (needs the Producer Pal remote script): a preset name, or a path from ppal-library; comma-separated one per target. A preset for another device, or a rack, replaces the device: its id changes and its automation is lost",
+        "preset to load onto the device before the rest of the update (needs the Producer Pal remote script): a preset name (searched among that device's presets, then Live's whole library on Live 12.4+), or a path from ppal-library; comma-separated one per target. A preset for another device, or a rack, replaces the device: its id changes and its automation is lost",
       smallModel: null,
     }),
     // Kept for potential future use

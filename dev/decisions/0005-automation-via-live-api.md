@@ -5,10 +5,12 @@
 
 ## Decision
 
-Automation goes through the Live API at runtime, like everything else. Editing
+Automation goes through Live's own API at runtime, like everything else. Editing
 the saved project file (`.als`, gzipped XML) is out of scope, even though it
-holds automation data the Live API doesn't expose. Some envelope work may be
-impossible until Ableton extends the API. That is accepted.
+holds automation data the Live API doesn't expose. Clip envelopes use the Python
+API through the remote script, which Max's LOM can't reach. Arrangement lanes
+can't be read or cleared, only written by copying a session clip. That is
+accepted.
 
 ## Rejected
 
@@ -24,5 +26,5 @@ impossible until Ableton extends the API. That is accepted.
 
 ## Revisit if
 
-Ableton ships automation write access. Don't reach for the file format as a
-workaround.
+Ableton exposes arrangement lanes (read or clear). Don't reach for the file
+format as a workaround.

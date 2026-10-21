@@ -48,7 +48,7 @@ source models.
 
 Like OpenRouter: hundreds of models through one API.
 
-- **Cost:** Pay-as-you-go (free monthly credits for some models)
+- **Cost:** Pay-as-you-go (free monthly credits, card required)
 - **Setup:** Create a Vercel account and add a credit card
 - **[Setup instructions →](./chat-ui-other-providers#vercel-ai-gateway)**
 

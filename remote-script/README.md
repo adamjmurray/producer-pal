@@ -1,16 +1,15 @@
 # Producer Pal Remote Script
 
 An Ableton Live remote script that listens on **http://127.0.0.1:3349** (or the
-next free port, see [Port](#port)) and can list and load Live devices, Max for
-Live devices, VST/VST3/AU plugins and presets, load a preset in place of a
-device already in the Set, and copy a device. Prototype.
+next free port, see [Port](#port)). It does what Max for Live's LiveAPI can't:
+list and load devices, plug-ins and presets, hotswap and copy devices, read and
+write clip automation envelopes, convert audio clips to MIDI, read rack macro
+mappings, set Simpler pitch bend ranges, and step Live's undo history.
 
-Producer Pal's `ppal-create-device` uses it to load plug-ins, Max for Live
-devices and presets, `ppal-update-device` to swap a preset onto a device, and
-`ppal-duplicate` to copy a device. Without it, only native Live devices load,
-and device copies are slower (they go through a temp track). The model finds
-plug-ins with `ppal-library`'s `list-plugins` action, and Max devices by
-searching with `kind: m4l-device`.
+Producer Pal installs it with the rest of the setup and uses it from
+`ppal-create-device`, `ppal-update-device`, `ppal-duplicate`, `ppal-read-clip`,
+`ppal-update-clip` and `ppal-manage`. Without it, those calls fall back or say
+what is missing (see [Routes](#routes)).
 
 To open or create a Set with Producer Pal in it, use the
 [`ableton-open-live-set`](../examples/skills/ableton-open-live-set/) skill's
@@ -312,6 +311,11 @@ only**: Live refuses envelope writes on Arrangement clips and reads them as
 empty, so write in Session and duplicate to the Arrangement. That copies the
 envelope into the track's automation lane, which stays after the clip is deleted
 but can't be read back.
+
+The routes themselves only touch Session clips. `ppal-update-clip` writes an
+arrangement clip's lane by parking the clip and stamping a scratch Session clip,
+using only `/clip` copies and these routes; see
+[arrangement-automation.md](../dev/live-api/arrangement-automation.md).
 
 Only automation on track and device parameters is reachable. Modulation,
 clip-level (Gain...) and MIDI CC envelopes are invisible to every route and

@@ -32,7 +32,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
     // Needs the remote script, which small-model mode never uses.
     preset: param(z.string().optional(), {
       default:
-        "create from a preset (needs the Producer Pal remote script): a preset name, looked up among device's presets when device is given, else among all; or a path from ppal-library. Comma-separated one per path",
+        "create from a preset (needs the Producer Pal remote script): a preset name, looked up among the device's presets when device is given, else among all; a name not found there is searched across Live's library (Live 12.4+), and a name shared by several files is refused with their paths; or a path from ppal-library. Comma-separated one per path",
       smallModel: null,
     }),
 

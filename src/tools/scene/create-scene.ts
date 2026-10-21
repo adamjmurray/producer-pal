@@ -36,7 +36,7 @@ import {
  * @param args.name - Name for all, or one per scene, in order
  * @param args.color - Color for all, or one per scene, in order (CSS format: hex)
  * @param args.tempo - Tempo in BPM for the scenes. Pass -1 to disable.
- * @param args.timeSignature - Time signature for all, or one per scene, in order ("4/4", or "disabled" when capturing)
+ * @param args.timeSignature - Time signature for all, or one per scene, in order ("4/4", or "disabled")
  * @param args.focus - Switch to session view and select the scene
  * @param context - Internal context object, for the request deadline
  * @returns One entry per scene, unwrapped when the call named one

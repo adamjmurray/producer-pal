@@ -35,8 +35,8 @@ export const toolDefManage = defineTool("ppal-manage", {
           "in the open Live Set, while Producer Pal isn't running yet; needs " +
           "the remote script. Ask the user first: it changes their Set. " +
           "update-producer-pal: replace the running Producer Pal device with " +
-          "the newer one this connector ships, in place; needs the remote " +
-          "script. Ask the user first. " +
+          "the newer one this connector ships, in place; only works through that " +
+          "connector (npx or Claude Desktop); needs the remote script. Ask the user first. " +
           "undo, redo: step back or forward; needs the remote script",
       ),
 

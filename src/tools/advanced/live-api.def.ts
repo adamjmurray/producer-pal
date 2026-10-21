@@ -19,8 +19,9 @@ export const toolDefLiveApi = defineTool("ppal-live-api", {
     "Direct access to the Ableton Live Object Model. " +
     "Execute multiple operations sequentially on a LiveAPI instance. " +
     "Can read or modify any Live Set property — use with care. " +
-    "Returns `results`, one value per operation. If one throws, earlier ones " +
-    "stay applied, later ones don't run, and `failed` gives its index and detail.",
+    "Returns `results`, one value per operation. If one after the first throws, earlier ones " +
+    "stay applied, later ones don't run, and `failed` gives its index and detail. " +
+    "If the first throws, the call fails with nothing changed.",
 
   annotations: {
     readOnlyHint: false,

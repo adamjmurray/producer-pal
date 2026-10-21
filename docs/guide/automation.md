@@ -20,21 +20,32 @@ needs Live 12.4 or later. On Live 12.3, reading and clearing still work.
 A session clip holds its own automation (clip envelopes). Producer Pal can read
 it, write it, and clear it, and it travels with the clip when you duplicate it.
 
+A read tells you when an unwarped audio clip's envelopes won't play, and when a
+clip has envelopes Producer Pal can't see (modulation, Gain, or MIDI CC).
+
 ## Arrangement Clips
 
 You can write automation on arrangement clips too. In the Arrangement,
 automation belongs to the _track_, not the clip, so Producer Pal writes the
 track's automation lane over exactly the span of the clip. A few things follow:
 
-- **It can't read it back or clear it.** Live's API doesn't show a track's
-  arrangement automation. To change it, write it again: that overwrites the lane
-  over the clip's span. After the clip ends, the lane returns to its old value.
+- **It can't read the points back or clear it.** Live's API doesn't show a
+  track's arrangement automation (Producer Pal can tell which parameters have a
+  lane). To change it, write it again: that overwrites the lane over the clip's
+  span. After the clip ends, the lane returns to its old value.
 - **The automation stays on the track.** If you move the clip, the automation
   stays where it was. Automate the arrangement last, once the clips stop moving.
 - **The clip gets a new ID.** The clip itself (notes, audio, settings) is kept.
 
 Copying an automated session clip into the Arrangement also writes its
 automation onto the track.
+
+### Overridden automation
+
+If you move a parameter by hand, or ask for a new value on a parameter that has
+arrangement automation, Live ignores the whole lane until you press **Re-Enable
+Automation**. Producer Pal says so when its write does this. Writing a new
+envelope re-enables the parameter's automation for you.
 
 More detail:
 [Arrangement Automation Replaces the Lane Over the Clip](/features/limitations#arrangement-automation-replaces-the-lane-over-the-clip)

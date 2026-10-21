@@ -22,7 +22,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
   title: "Update Clip",
   description: {
     default:
-      "Update clip(s), MIDI notes, and warp settings (audio clips). " +
+      "Update clip(s), MIDI notes, warp settings (audio clips), clip automation, and audio-to-MIDI conversion. " +
       "Params with no list form apply to every clip.",
     smallModel:
       "Update clip(s) and MIDI notes. Params with no list form apply to every clip",
@@ -115,7 +115,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "where to move the clip(s): a clip slot 't<track>/s<scene>' " +
           "(scenes are created up to that index), " +
           "a spot on the arrangement 't<track>[<position>]' (a position is bar|beat or " +
-          "loc:<locator name or id>), a take lane 't<track>/l<lane>' (lanes are created up to that " +
+          "loc:<locator name or id>), a take lane 't<track>/l<lane>[<position>]' (lanes are created up to that " +
           "index), or " +
           "'[<position>]' alone to keep the clip's own lane (e.g., 't2/s3' or 't2[5|1],[loc:Chorus]'). " +
           "A lane with no position keeps the clip's own start. A clip re-created in a slot or on a " +
@@ -184,7 +184,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "target: a device parameter id (from ppal-read-device, or a ppal-read-clip envelopes entry) or a mixer name - volume, pan, send0, send1... " +
         "notation: bar|beat points in the clip meter, joined by '/' (straight ramp), '_' (hold, then jump) or '~N' (curved ramp, N from -1 to 1, no space; positive bends above the straight line, negative below), e.g. '1|1 0 / 3|1 0.8 _ 4|1 0.2 ~0.5 5|1 1'. " +
         "Values are raw, usually 0..1 - not the display units of ppal-read-device min/max; an out-of-range value is refused with the real range. Mixer volume: 0.85 = 0 dB; pan: -1 = hard left, 1 = hard right. " +
-        "Each line REPLACES that parameter's whole envelope; on a session clip a line with nothing after the colon ('472:') clears it (a lane can't be cleared: write a flat line)",
+        "Each line REPLACES that parameter's whole envelope; on a session clip a line with nothing after the colon ('472:') clears it (a lane can't be cleared: write a flat line). Needs the remote script (Live 12.4+ to write points). Not on an unwarped session audio clip or a take-lane clip",
       smallModel: null,
     }),
 
@@ -203,7 +203,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .max(1)
       .optional()
       .describe(
-        "quantize strength 0-1; default 1 (full snap) when quantizeGrid is set. Snaps note starts to quantizeGrid. MIDI clips only",
+        "quantize strength 0-1, default 1 (full snap). Snaps note starts to quantizeGrid. MIDI clips only",
       ),
 
     // NOTE: Live's native quantize-grid vocabulary (incl. "T" triplet forms),

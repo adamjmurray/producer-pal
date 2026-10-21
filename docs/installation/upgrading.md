@@ -4,16 +4,17 @@ outline: [2, 3]
 
 # Upgrading Producer Pal
 
-Upgrading takes two steps for most people. The latest version is
+Upgrading takes three steps for most people. The latest version is
 v{{ $frontmatter.version }} ([what's new?](https://github.com/adamjmurray/producer-pal/releases/latest)).
 
 ::: tip Let your AI do it
 
 If you use `npx producer-pal` or the Claude Desktop extension and have the
-[remote script](/guide/remote-script), update your AI app first (step 2 and
+[remote script](/guide/remote-script), update your AI app first (step 3 and
 [Claude Desktop](#only-if-you-use-claude-desktop) below), then ask your AI to
 update Producer Pal. It installs the new device in your User Library and swaps
-it into the open Live Set.
+it into the open Live Set. The remote script is updated from the Installation
+tab (step 2).
 
 :::
 
@@ -34,7 +35,14 @@ Live asks whether to overwrite the old one. Click **OK**:
 Reopen your Live Set to load the new version, then check the version number in
 the device to confirm it worked.
 
-## 2. Restart your AI app
+## 2. Update the remote script
+
+If you use the [remote script](/guide/remote-script), update it too. On the
+device, click **Finish installation…** (or open the Chat UI and go to **Settings
+→ Installation**), click **Update** next to Remote script, then restart Live.
+Your Control Surface setting is kept.
+
+## 3. Restart your AI app
 
 Quit and reopen your AI app, then start a fresh conversation. That's it.
 
@@ -98,6 +106,8 @@ See the [Migration Guide](/guide/migration).
 - Try deleting the Producer Pal device from your Set and adding it again from
   the Max MIDI Effect folder
 - Claude Desktop: make sure you uninstalled the old extension first
+- Remote script says it's out of date: **Settings → Installation → Update**,
+  then restart Live
 - Restart your AI app completely and start a fresh conversation
 
 See the [Troubleshooting Guide](/support/troubleshooting) for more help.

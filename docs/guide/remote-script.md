@@ -29,8 +29,8 @@ standard setup. It adds:
   including drum kits from your Packs, or swap a preset onto a device with
   [Update Device](/features/tools#ppal-update-device). A preset for a different
   device, or a rack, replaces the device, and its automation is lost.
-- **Audio to MIDI**: turn an audio clip's drums, melody or harmony into a MIDI
-  clip, or into a track with Simpler or a Drum Rack playing its sample.
+- **Audio to MIDI**: turn an audio clip's drums, melody or harmony into a new
+  MIDI track with an instrument loaded and a clip of the notes Live detects.
 - **More device settings**: Simpler's pitch-bend ranges, and which rack macros
   are mapped.
 - **Adding Producer Pal to a new Set** from a coding agent or the Claude Desktop

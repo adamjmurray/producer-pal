@@ -39,6 +39,9 @@ comma-separated list, ending with `"*" for all`. Example:
 Expands to all available include options for that tool type. Useful for
 debugging, but should be avoided in production for large Live Sets.
 
+Not always all: read-clip's `"*"` leaves out `envelopes`, which costs a remote
+script call per parameter.
+
 ### Small-model trims
 
 Every read tool drops some include options in small-model mode, via

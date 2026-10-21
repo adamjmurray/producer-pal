@@ -14,7 +14,7 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 export const toolDefReadClip = defineTool("ppal-read-clip", {
   title: "Read Clip",
   description:
-    "Read clip settings, MIDI notes, and audio properties. Returns overview by default. Use include to add detail. An arrangement clip reports its path as where it starts - 't0[5|1]', or 't0/l0[5|1]' on a take lane; read one by id or by any path covering it.",
+    "Read clip settings, MIDI notes, audio properties, and automation. Returns overview by default. Use include to add detail. An arrangement clip reports its path as where it starts - 't0[5|1]', or 't0/l0[5|1]' on a take lane; read one by id or by any path covering it.",
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,

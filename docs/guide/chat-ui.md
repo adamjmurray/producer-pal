@@ -579,6 +579,11 @@ Two checkboxes at the bottom of the tab control the notices on the device:
   `(update)` link next to the version number when there is one. Turn this off
   and it never contacts GitHub.
 
+Both checkboxes apply immediately (no Save) and are machine-wide: they are
+stored in `~/.producer-pal/settings.json` and also govern the device's own
+notices. The `×` beside the `(update)` link dismisses that version's notice in
+both places; a later release brings it back.
+
 ### Preferences
 
 The Preferences tab controls visual preferences and conversation management:
@@ -601,12 +606,6 @@ The Preferences tab controls visual preferences and conversation management:
   - **Delete all** - Remove every conversation
 
 Both delete actions ask for confirmation and cannot be undone.
-
-Unlike the other settings on this tab, the update-check setting applies
-immediately (no Save) and is machine-wide: it is stored in
-`~/.producer-pal/settings.json` and also governs the Max for Live device's own
-update notification. The `×` beside the `(update)` link dismisses that version's
-notification in both places; a later release brings it back.
 
 ## Token Usage
 
