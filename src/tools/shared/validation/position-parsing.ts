@@ -5,6 +5,9 @@
 
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 
+/** A plain integer: digits only, with an optional minus sign. */
+const INTEGER = /^-?\d+$/;
+
 export interface ClipSlotPosition {
   trackIndex: number;
   sceneIndex: number;
@@ -79,8 +82,9 @@ function parseSlotParts(
   label: string,
   input: string,
 ): ClipSlotPosition {
-  const trackIndex = Number.parseInt(trackPart);
-  const sceneIndex = Number.parseInt(scenePart);
+  // parseInt would read "1.5" or "1abc" as 1: a typo targeting another slot.
+  const trackIndex = parseInteger(trackPart);
+  const sceneIndex = parseInteger(scenePart);
 
   if (Number.isNaN(trackIndex) || Number.isNaN(sceneIndex)) {
     throw new Error(
@@ -95,4 +99,15 @@ function parseSlotParts(
   }
 
   return { trackIndex, sceneIndex };
+}
+
+/**
+ * Parse a whole number, ignoring surrounding whitespace.
+ * @param part - Text to parse
+ * @returns The number, or NaN when it is not a plain integer
+ */
+function parseInteger(part: string): number {
+  const trimmed = part.trim();
+
+  return INTEGER.test(trimmed) ? Number(trimmed) : Number.NaN;
 }
