@@ -91,7 +91,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
   // preset over the edit they just made. See usePresetSelection.
   const presetSelection = usePresetSelection();
   // Owned here too, so the tab button's dot and the tab share one read.
-  const installation = useInstallation();
+  const installation = useInstallation(activeTab === "installation");
   const shakeClass = shake ? " settings-dialog-shake" : "";
 
   return (

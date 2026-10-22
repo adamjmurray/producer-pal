@@ -178,6 +178,33 @@ test.describe("Settings — installation: remote script (stubbed backend)", () =
     );
   });
 
+  test("re-reads the status each time the tab opens", async ({ page }) => {
+    await installStubs(page);
+    let current = status({ installed: true, installedVersion: "1.2.0" });
+
+    await page.route("**/remote-script", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(current),
+      }),
+    );
+    await loadSettings(page);
+    await openInstallationTab(page);
+    await expect(page.getByTestId("remote-script-status")).toHaveText(
+      "Installed v1.2.0 (not running)",
+    );
+
+    // Live restarts with the script while another tab is showing.
+    await page.getByRole("button", { name: "Connection" }).click();
+    current = { ...current, running: true, runningVersion: "1.2.0" };
+    await openInstallationTab(page);
+
+    await expect(page.getByTestId("remote-script-status")).toHaveText(
+      "Installed v1.2.0 (running v1.2.0 in Live 12.1)",
+    );
+  });
+
   test("takes a pasted path when no User Library was detected", async ({
     page,
   }) => {

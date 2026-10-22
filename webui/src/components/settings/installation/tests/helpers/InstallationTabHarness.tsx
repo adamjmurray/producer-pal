@@ -12,5 +12,5 @@ import { useInstallation } from "#webui/hooks/settings/installation/use-installa
  * @returns {JSX.Element} The Installation tab with its state
  */
 export function InstallationTabHarness() {
-  return <InstallationTab installation={useInstallation()} />;
+  return <InstallationTab installation={useInstallation(true)} />;
 }

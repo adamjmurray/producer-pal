@@ -54,7 +54,7 @@ describe("useInstallation", () => {
     routes.device(jsonResponse(deviceStatusBody(device)));
     routes.remote(jsonResponse(statusBody(remote)));
 
-    const rendered = renderHook(() => useInstallation());
+    const rendered = renderHook(() => useInstallation(true));
 
     await waitForHookState(() => {
       expect(rendered.result.current.device.status).not.toBeNull();
@@ -75,11 +75,33 @@ describe("useInstallation", () => {
     expect(result.current.swap.phase).toBe("idle");
   });
 
+  it("re-reads both statuses each time the tab opens", async () => {
+    routes.device(jsonResponse(deviceStatusBody(CURRENT_DEVICE)));
+    routes.remote(jsonResponse(statusBody(CURRENT_SCRIPT)));
+
+    const reads = (path: string) =>
+      fetchMock.mock.calls.filter(([url]) => String(url).endsWith(path));
+    const { rerender } = renderHook(
+      ({ open }: { open: boolean }) => useInstallation(open),
+      { initialProps: { open: false } },
+    );
+
+    rerender({ open: true });
+    rerender({ open: true });
+    rerender({ open: false });
+    rerender({ open: true });
+
+    await waitForHookState(() => {
+      expect(reads("/device-install")).toHaveLength(3);
+      expect(reads("/remote-script")).toHaveLength(3);
+    });
+  });
+
   it("is not incomplete before either status is read", () => {
     routes.device(new Promise(() => {}));
     routes.remote(new Promise(() => {}));
 
-    const { result } = renderHook(() => useInstallation());
+    const { result } = renderHook(() => useInstallation(true));
 
     expect(result.current.incomplete).toBe(false);
   });

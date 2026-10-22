@@ -129,6 +129,22 @@ describe("InstallationTab device card", () => {
     expect(
       (within(card).getByTestId("device-swap") as HTMLButtonElement).disabled,
     ).toBe(false);
+    expect(within(card).getByTestId("device-swap-warning").textContent).toBe(
+      "The AI connection drops for a moment. Save the Set afterwards.",
+    );
+  });
+
+  it("drops the connection warning when the swap is off", async () => {
+    const card = await renderCard({
+      state: "same",
+      installedVersion: "1.2.0",
+      swap: { allowed: false, reason: "The remote script isn't running." },
+    });
+
+    expect(within(card).getByTestId("device-swap-note").textContent).toBe(
+      "The remote script isn't running.",
+    );
+    expect(within(card).queryByTestId("device-swap-warning")).toBeNull();
   });
 
   it("keeps the warning icon, with no button, when the device can't be read", async () => {

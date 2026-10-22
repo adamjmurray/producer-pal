@@ -28,19 +28,27 @@ export function DeviceSwapLine({
   onSwap: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-      <span className={mutedClass} data-testid="device-swap-note">
-        {action.text}
-      </span>
-      <button
-        type="button"
-        data-testid="device-swap"
-        disabled={!action.enabled}
-        onClick={onSwap}
-        className={buttonClass}
-      >
-        Swap
-      </button>
+    <div className="flex flex-col gap-1">
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        <span className={mutedClass} data-testid="device-swap-note">
+          {action.text}
+        </span>
+        <button
+          type="button"
+          data-testid="device-swap"
+          disabled={!action.enabled}
+          onClick={onSwap}
+          className={buttonClass}
+        >
+          Swap
+        </button>
+      </div>
+      {/* Say it before the click: the chat loses its connection mid-swap. */}
+      {action.enabled && (
+        <p className={mutedClass} data-testid="device-swap-warning">
+          The AI connection drops for a moment. Save the Set afterwards.
+        </p>
+      )}
     </div>
   );
 }

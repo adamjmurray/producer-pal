@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { useEffect, useRef } from "preact/hooks";
 import { isInstallIncomplete } from "#src/shared/version-check";
 import {
   useDeviceInstall,
@@ -25,13 +26,29 @@ export interface UseInstallationReturn {
 
 /**
  * The state behind the Installation tab, owned by the settings screen so the
- * tab button's attention dot and the tab itself read the server once.
+ * tab button's attention dot and the tab itself share one read. Re-read each
+ * time the tab opens, since a Live restart can change both statuses.
+ * @param tabOpen - Whether the Installation tab is showing
  * @returns The remote script and device state, and whether the install is incomplete
  */
-export function useInstallation(): UseInstallationReturn {
+export function useInstallation(tabOpen: boolean): UseInstallationReturn {
   const remote = useRemoteScript();
   const device = useDeviceInstall();
   const swap = useDeviceSwap(device.refresh);
+  const { refresh: refreshRemote } = remote;
+  const { refresh: refreshDevice } = device;
+  // Starts as tabOpen so opening Settings on this tab doesn't read twice.
+  const wasOpenRef = useRef(tabOpen);
+
+  useEffect(() => {
+    if (tabOpen && !wasOpenRef.current) {
+      refreshRemote();
+      refreshDevice();
+    }
+
+    wasOpenRef.current = tabOpen;
+  }, [tabOpen, refreshRemote, refreshDevice]);
+
   const incomplete = isInstallIncomplete({
     problem: device.status?.problem ?? null,
     state: device.status?.state ?? null,
