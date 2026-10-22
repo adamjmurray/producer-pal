@@ -150,7 +150,52 @@ export function createMcpServer(
     toolDefLiveApi(server, callLiveApi, { smallModelMode, notation });
   }
 
+  omitSchemaDialect(server);
+
   return server;
+}
+
+type ListToolsHandler = (
+  request: unknown,
+  extra: unknown,
+) => Promise<{ tools: Array<{ inputSchema?: Record<string, unknown> }> }>;
+
+/**
+ * Drop the `$schema` the SDK stamps on every tool's `inputSchema` in
+ * `tools/list`: it is identical on all tools, the SDK has no switch for it, and
+ * Anthropic bills about 20 tokens per tool for it. Clients then read the
+ * schemas as JSON Schema 2020-12, and every keyword we emit means the same
+ * there.
+ *
+ * Call after the tools are registered: the SDK installs its `tools/list`
+ * handler on the first registration, and the only way to wrap it is its private
+ * handler table. An SDK change that moves the table fails the test that checks
+ * `tools/list`.
+ *
+ * @param server - The MCP server whose tools are registered
+ */
+function omitSchemaDialect(server: McpServer): void {
+  const handlers = (
+    server.server as unknown as {
+      _requestHandlers: Map<string, ListToolsHandler>;
+    }
+  )._requestHandlers;
+  const original = handlers.get("tools/list");
+
+  // No tool registered, so the SDK never installed a handler.
+  if (original == null) {
+    return;
+  }
+
+  handlers.set("tools/list", async (request, extra) => {
+    const result = await original(request, extra);
+
+    for (const tool of result.tools) {
+      delete tool.inputSchema?.$schema;
+    }
+
+    return result;
+  });
 }
 
 /**

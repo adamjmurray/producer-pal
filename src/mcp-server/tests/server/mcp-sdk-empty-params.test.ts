@@ -166,14 +166,17 @@ describe("published JSON Schema", () => {
           isOfferedInMode(def, profile.smallModelMode === true),
         ).length,
       );
-      // The SDK's own converter, with the options it uses for tools/list.
+      // The SDK's own converter, with the options it uses for tools/list,
+      // minus the $schema we drop (see omit-schema-dialect.ts).
       expect(schemaTexts(tools)).toStrictEqual(
-        schemaTexts(tools, (name) =>
-          toJsonSchemaCompat(authoredSchema(name, profile), {
-            strictUnions: true,
-            pipeStrategy: "input",
-          }),
-        ),
+        schemaTexts(tools, (name) => {
+          const { $schema: _dialect, ...schema } = toJsonSchemaCompat(
+            authoredSchema(name, profile),
+            { strictUnions: true, pipeStrategy: "input" },
+          );
+
+          return schema;
+        }),
       );
     },
   );
