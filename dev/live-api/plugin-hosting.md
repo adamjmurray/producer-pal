@@ -104,10 +104,9 @@ brackets, as in `[-17.9 dB]`) wins. Otherwise, given a number, it bisects
 between the two samples that bracket it, comparing the leading number of the
 text (`kHz` and `s` scaled to Hz and ms), and keeps the closest. If nothing
 matches, it puts the param back and says what the param does show. One request
-covers a whole `params` list, and the state refresh runs once, for the last
-param written. It resolves names exactly, then ignoring case and padding; a name
-that matches more than one param is refused; two entries reaching one param
-write the last.
+covers a whole `params` list. It resolves names exactly, then ignoring case and
+padding; a name that matches more than one param is refused; two entries
+reaching one param write the last.
 
 ### Naming the plug-in
 
@@ -123,23 +122,51 @@ falls back to the bundle name.
 
 ### Saving state
 
-- `@autosave 1` on `vst~` stores the plug-in's state in the Live Set (as a
-  `C74Snapshot` in the device's blob). Plug-in and settings survive save,
-  reload, duplicate and a Live restart.
-- **Gotcha:** `vst~` caches the plug-in's state when a parameter changes, and
-  that cache is what Live saves. Serum 2 applies a change after the cache is
-  taken, so saves came back exactly one change behind. Fix: the wrapper re-sends
-  the last changed parameter's current value one tick after a `set`, and 250 ms
-  after edits made in the plug-in's own window. Verified by hand for both.
+Live saves the plug-in's state in a hidden blob parameter, not through `vst~`.
+
+- `vst~` has `parameter_enable 0` and `autosave 0`. With `parameter_enable 1`,
+  every value sent to `vst~` is a Live undo step and `vst~` saves its own state
+  in the Set, so Live's saved state lags: Serum 2 came back one change behind,
+  and edits made outside the wrapper stayed out.
+- `vstmirror` is a `pattr` bound to `vst~`. Its `getvalueof()` returns the
+  plug-in's current state as a dict (a `C74Snapshot`: plug-in id plus the
+  plug-in's own state chunk, 5 KB for ColourCopy and Serum 2's factory
+  programs), fresh on every read.
+- `vststate` is a `pattr` with `parameter_enable 1`, type blob, "stored only"
+  (`parameter_invisible 1`). It is not in `device.parameters` and can't be
+  automated. Live saves it in the device's blob (a 2 MB value was saved), and at
+  load restores it through `vstmirror` into `vst~`. Its `thru` is 2, so writing
+  it doesn't send the state back to the plug-in.
+- Writing `vststate` is one undo step, whatever the size. The wrapper writes it
+  only when the state changed, by comparing state strings:
+  - at the end of each request, before it replies, so the tool call's own undo
+    step covers it (one `ppal-update-device` call is 1 step)
+  - (`load` first waits until two reads of the state, 250 ms apart, agree, for
+    at most 3 s: a fresh u-he plug-in's state changes once just after loading,
+    which would leave a second write outside the call's undo step. That adds
+    about 0.3 s to loading Diva, Hive and ColourCopy, and nothing for Serum 2 or
+    Pro-Q 4.)
+  - 300 ms after the last edit in the plug-in's own window, so a drag is one
+    step and a quick save still catches it
+  - when playback stops, if edits are still pending
+  - every 2 s (while playing too) when the state differs, which catches changes
+    that send no parameter change, such as a program change
+- **Gotcha:** Live saves only what was last written to `vststate`, never the
+  live plug-in state, and a duplicate or a same-file hotswap restores from it
+  too. A state change not written yet is lost.
+- Undoing a write restores the old value into the plug-in (redo does too). The
+  wrapper must not write that restored state back, which would drop the redo: it
+  skips a state that equals what `vststate` already holds.
+- A write that fails doesn't fail the request: the reply carries `stateError`
+  and the poll retries.
+- A new wrapper has an empty `vststate`, so nothing is restored over a plug-in
+  loaded right after it. It writes nothing until a plug-in is loaded. The first
+  poll after a load adopts what's stored instead of writing it back.
 - Swapping a user's existing native plug-in for a wrapped one loses its
   settings: the Live API can't read a plug-in's state. The clean case is
   plug-ins Producer Pal inserts itself.
-- Live's undo covers changes made through the wrapper: it records a
-  `Change in "<device>"` step and restores the saved state. One change through
-  Producer Pal takes 2 undo steps: the change itself, and the state refresh
-  re-send (a change without the refresh is 1 step). Accepted: dropping the
-  refresh loses plug-in state. Changes close together share steps, and reads
-  make none.
+- Changes made through the wrapper are no longer undone one parameter at a time:
+  Live's undo covers the blob, so one undo puts back the whole previous state.
 
 ### Audio, MIDI and latency
 
