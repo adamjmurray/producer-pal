@@ -36,26 +36,14 @@ because its input is already ascending). Triage before acting.
 
 Clean (100%): `apply-v0-deletions.ts`.
 
-## Gaps closed
+## What changed
 
-**2026-07-14** — `chords/chord-symbols.ts` jumped **73.3% → 96.7%**. A
-golden-spec table test now asserts every one of the ~44 chord qualities resolves
-to the correct intervals — 24 qualities (`min6`, `m7b5`'s cousins, all the
-9/11/13 extensions, …) were reachable but unasserted, so blanking their interval
-rows survived. Targeted tests also cover the slash-bass-equals-root octave drop
-and invalid-root rejection. `stark/stark-serializer.ts` gained an unsorted-input
-test: `walkLine` sorts notes by start time, but every prior test already fed
-sorted input, so the sort was untested.
-
-| Gap (now killed)                                           | Test added in              |
-| ---------------------------------------------------------- | -------------------------- |
-| 24 unasserted chord qualities → interval spec              | `chord-symbols.test.ts`    |
-| Slash bass equal to the root drops an octave (`>=` vs `>`) | `chord-symbols.test.ts`    |
-| Invalid root letter with an accidental is rejected         | `chord-symbols.test.ts`    |
-| Serializer sorts unsorted input by start time              | `stark-serializer.test.ts` |
-
-**2026-06-28** — first triage closed three bucket-1 survivors:
-`resolveSplitPoints` de-dupe + ascending sort of cut points, the
-`MAX_NOTE_PIECES` clamp boundary, and the `validateBufferedState` `buffered > 0`
-guard (in `transform-split-note-op.test.ts` and
-`interpreter-buffer-state.test.ts`).
+- **2026-07-14**: `chords/chord-symbols.ts` went **73.3% → 96.7%**. A
+  golden-spec table test now asserts all ~44 chord qualities resolve to the
+  right intervals (24 were reachable but unasserted, so blanking their rows
+  survived), plus the slash-bass-equals-root octave drop and invalid-root
+  rejection. `stark/stark-serializer.ts` gained an unsorted-input test: its sort
+  by start time was untested because every earlier test fed sorted input.
+- **2026-06-28**: the first triage closed three bucket-1 survivors:
+  `resolveSplitPoints` de-dupe and ascending sort, the `MAX_NOTE_PIECES` clamp
+  boundary, and the `validateBufferedState` `buffered > 0` guard.

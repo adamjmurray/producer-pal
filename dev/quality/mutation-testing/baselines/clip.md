@@ -1,9 +1,8 @@
 # Mutation baseline — 2026-07-15, `src/tools/clip/`
 
-Fifth and largest write-op domain triaged (`create` / `read` / `update` clip
-tools plus arrangement operations, in-clip code execution, and the shared clip
-helpers) — this completes the write-op tier. Full pass — Stryker 9.6.1, Node 24,
-`coverageAnalysis: "perTest"`:
+`create` / `read` / `update` clip tools plus arrangement operations, in-clip
+code execution, and the shared clip helpers (28 mutated files, the biggest
+domain). Full pass — Stryker 9.6.1, Node 24, `coverageAnalysis: "perTest"`:
 
 | Metric                     | Value      |
 | -------------------------- | ---------- |
@@ -17,21 +16,17 @@ helpers) — this completes the write-op tier. Full pass — Stryker 9.6.1, Node
 
 Gate: `break: 96` (`TOOL_DOMAIN_BREAKS.clip`), ~1.5 points below the score for
 timeout-classification variance. Triage lifted the score from an **80.23%**
-baseline (338 survivors), killing ~297 mutants with test-only changes — no
-product code touched. This was by far the biggest domain (28 mutated files, 1787
-mutants — more than `track` + `session` + `actions` combined) yet finished with
-the **highest** final score of the five write-op domains, because the clip
-helpers are mostly pure functions with tight, directly-unit-testable contracts.
+baseline (338 survivors) by killing ~297 mutants with test-only changes. It
+finished with the highest score of the write-op domains because the clip helpers
+are mostly pure functions with tight, directly testable contracts.
 
-One scope-config change accompanied the tests: `toolDomain()` in
-`config/mutation-scopes.mjs` now excludes `*-disabled.ts`, the build-time
-substitution stubs rolldown swaps in when a feature flag is off (e.g.
-`ENABLE_CODE_EXEC`). Tests run with the feature enabled, so the stubs are never
-imported — 14 all-`NoCoverage` mutants that can never be killed.
-`vitest.config.ts` already coverage-excludes them; this mirrors that exclusion.
+Scope change: `toolDomain()` in `config/mutation-scopes.mjs` excludes
+`*-disabled.ts`, the build-time stubs rolldown swaps in when a feature flag is
+off (e.g. `ENABLE_CODE_EXEC`). Tests run with the feature on, so the stubs are
+never imported: 14 all-`NoCoverage` mutants that can never be killed.
+`vitest.config.ts` already coverage-excludes them.
 
-Per-file scores after triage (files with remaining survivors; 12 more files hit
-100%):
+Per-file scores after triage (files with remaining survivors; 12 more hit 100%):
 
 | File                                     | Score  | Survived | Notes                                   |
 | ---------------------------------------- | ------ | -------- | --------------------------------------- |
@@ -46,43 +41,37 @@ Per-file scores after triage (files with remaining survivors; 12 more files hit
 | `read-clip.ts`                           | 98.31% | 3        | `?? "barbeat"` fallthrough (bkt 2)      |
 | 7 more (`create-clip.ts`, timing, …)     | 98–99% | 1 each   | isolated equivalents (bkt 2)            |
 
-The remaining 45 survivors are overwhelmingly **bucket 2 (equivalent)**. The
-recurring shapes:
+(`update-clip-arrangement-overwrite-plan` was removed when update-clip moved to
+the shared write pipeline.)
 
-- **Redundant fast-path guards** (`note-updates` L201/L309/L353): an early
-  `existingNotes.length === 0` / `preTransformString == null` short- circuit
-  duplicating a guard `applyTransforms` already performs internally, so forcing
-  it changes nothing observable.
-- **Merge-group length boundaries** (`update-clip-arrangement-overwrite-plan`):
-  `>= 1` / `< 1` on group lengths the merge loop can only ever enter with ≥1
-  element.
-- **Dual null-returns** (`update-clip.ts` `parseToSlotParam`, since moved to
-  `resolveMoveDestination` in `move-destinations.ts`): the `toSlot == null`
-  early return and the `slots.length === 0` return converge on the same `null`.
-- **Never-nullish fallbacks / never-equal bounds** across create/read helpers:
-  `?? "barbeat"` (both branches fall through `resolveNotation`), the
-  `"arrangement" → ""` view string never surfaced in a result, `color` /
-  `arrangementStart` null-guards behind a `setAll` that already skips null.
+The remaining survivors are overwhelmingly bucket 2 (equivalent):
 
-The only weak-not-equivalent leftovers are the arrangement-splitting branch in
-`update-clip.ts` (L353) and the `buildCodeLocationContext` view guards
-(`code-execution-context`) — reachable but low-value defensive paths left for a
-future integration pass.
+- **Redundant fast-path guards** in `note-updates`: an early
+  `existingNotes.length === 0` / `preTransformString == null` short-circuit
+  duplicating a guard `applyTransforms` already performs.
+- **Merge-group length boundaries**: `>= 1` / `< 1` on group lengths the merge
+  loop can only enter with at least one element.
+- **Dual null-returns** (the `toSlot` parser, now `resolveMoveDestination` in
+  `move-destinations.ts`): the `toSlot == null` return and the
+  `slots.length === 0` return converge on the same `null`.
+- **Never-nullish fallbacks / never-equal bounds**: `?? "barbeat"` (both
+  branches fall through `resolveNotation`), the `"arrangement" → ""` view string
+  never surfaced in a result, and `color` / `arrangementStart` null-guards
+  behind a `setAll` that already skips null.
 
-## Gaps closed (clip)
+The only weak-but-not-equivalent leftovers are the arrangement-splitting branch
+in `update-clip.ts` and the `code-execution-context` view guards: reachable, low
+value, left for an integration pass.
 
-Same `undefined`-valued-property gotcha as the device pass (see above): a
-`buildClipProperties` `if (clipName)` guard forced to `true` writes
-`name: undefined`, which a `.name` → `toBeUndefined()` assertion cannot
-distinguish from an absent property. Fixed with `not.toHaveProperty("name")`.
+What changed (test-only): loop/unlooped arrangement property math
+(`unlooped-lengthening.test.ts`, 43 mutants, 0 → 100%); the
+`buildClipPropertiesToSet` boundary/loop-flag matrix; loop-region defaults and
+transform normalization on create; note transform, timing and audio helper
+conditionals and warnings; read-clip warp-marker and notation branches; in-clip
+code-exec guards, deadline and scale-mask; create-clip name/color distribution
+and take-lane resolution.
 
-| Gap (now killed)                                                    | Test strengthened / added                               |
-| ------------------------------------------------------------------- | ------------------------------------------------------- |
-| Loop/unlooped arrangement clip property math (43 mutants, 0 → 100%) | `unlooped-lengthening.test.ts`                          |
-| `buildClipPropertiesToSet` boundary/loop-flag matrix                | `update-clip-properties.test.ts`                        |
-| Loop-region defaults + transform normalization (create)             | `clip-data-preparation.test.ts`, `-transform`           |
-| Note transform / timing / audio helper conditionals + warns         | `note-updates.test.ts`, `clip-beat-positions`           |
-| read-clip warp-marker + notation-resolution branches                | `read-clip-coverage.test.ts`, `clip-region-and-warp`    |
-| In-clip code-exec helper guards + deadline / scale-mask             | `code-execution-context-coverage.test.ts`, `scale-mask` |
-| create-clip name/color distribution + take-lane resolution          | `create-clip-*.test.ts` (basic/advanced/…)              |
-| Empty `clipName` must not write a `name` property                   | `create-clip-advanced.test.ts`                          |
+Lesson: the `undefined`-valued-property gotcha from `device.md` applies here
+too. A `buildClipProperties` `if (clipName)` guard forced to `true` writes
+`name: undefined`, which a `.name` → `toBeUndefined()` assertion can't tell from
+an absent property. Use `not.toHaveProperty("name")`.

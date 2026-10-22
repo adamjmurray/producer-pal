@@ -1,12 +1,12 @@
 # Mutation baseline — 2026-07-16, `shared` — `src/tools/shared/`
 
-The largest tool domain and the last one triaged: 50 mutated files / ~9,400
-source LOC of cross-cutting infrastructure — the tool framework, validation,
-arrangement helpers, the device reader, and the specialized-device specs. Too
-big for one PR, so it was triaged in four independent test-only PRs by subarea,
-each iterating against a temporarily-narrowed `mutate` glob (uncommitted — a
-~2-minute inner loop vs ~5 for the whole domain). The gate comes from a final
-whole-domain pass — Stryker 9.6.1, Node 24, `coverageAnalysis: "perTest"`:
+The largest tool domain: 50 mutated files / ~9,400 source LOC of cross-cutting
+infrastructure (the tool framework, validation, arrangement helpers, the device
+reader, and the specialized-device specs). It was triaged in four independent
+test-only PRs by subarea, each iterating against a temporarily narrowed
+(uncommitted) `mutate` glob: a ~2-minute inner loop vs ~5 for the whole domain.
+The gate comes from a final whole-domain pass — Stryker 9.6.1, Node 24,
+`coverageAnalysis: "perTest"`:
 
 | Metric   | Triaged (whole domain) | Gate (`break`) |
 | -------- | ---------------------- | -------------- |
@@ -22,12 +22,11 @@ single pre-triage whole-domain number — each subarea was baselined separately)
 | Device reader & helpers (12) | 87.10%   | **95.14%** | 80 (from 213)    |
 | Specialized devices (16)     | 90.19%   | **97.08%** | 33 (from 111)    |
 
-All test-only — no product code was touched in any of the four. The
-specialized-device subarea scored highest of the four (97.08%), as predicted:
-every device spec already had a colocated test, so the survivors were
-concentrated in declarative tables rather than untested logic.
+The specialized-device subarea scored highest (97.08%): every device spec
+already had a colocated test, so survivors sat in declarative tables rather than
+untested logic.
 
-Three levers did most of the work in the specialized subarea:
+Three levers did most of the work there:
 
 - **The discovery catalogs are data, and data needs a table test.** `actions`
   (name / signature / description) and `paramOptions` are pure LLM-facing tables
@@ -35,7 +34,8 @@ Three levers did most of the work in the specialized subarea:
   behavior and at most `actions.map((a) => a.name)`, so every `signature` and
   `description` string was unasserted. One `toStrictEqual` per catalog plus an
   `it.each` over the display-name routing table killed ~25 string/array mutants
-  in one new file (`specialized-device-catalog.test.ts`).
+  in one new file (`specialized-device-catalog.test.ts`). The same file pins
+  `class_display_name` → spec routing for all 12 devices.
 - **Warn text is the model's only error channel.** The `Options: …` /
   `Available: …` / `must be one of …` lists are built with `join(", ")`, and
   several tests asserted only a fragment (`stringContaining("Pre FX")`) — which
@@ -51,8 +51,8 @@ Three levers did most of the work in the specialized subarea:
 
 Remaining survivors are bucket 2/3. Each of the 111 original specialized
 survivors was verified individually by applying the mutant and running the
-covering suite (see **Verifying a survivor** below); the 20 that survive that
-check are:
+covering suite (see "Verifying a survivor" in the
+[mutation-testing README](../README.md)); the 20 that survive that check are:
 
 - **Guards subsumed by a downstream check.** The action parser's
   `if (quote) return null` (unterminated quote) is unreachable-by-effect: a
@@ -75,10 +75,9 @@ check are:
   a point where the sentinel was already handled; `typeof v === "number"` on a
   value Live always returns as a number. Killing these would mean forging LOM
   responses Live cannot produce.
-- **A vestigial parameter.** `readParamEntries`'s `predicate` has exactly one
-  caller, which passes `() => true` — so its `if (!predicate(param)) continue`
-  is dead (and the domain's only `NoCoverage` mutant). Worth deleting, but that
-  is product code, out of scope for a test-only pass.
+- **A vestigial parameter.** A param-entry reader's `predicate` had one caller,
+  passing `() => true`, so its `if (!predicate(param)) continue` was dead (and
+  the domain's only `NoCoverage` mutant). That function has since been removed.
 - **Ambiguity we deliberately resolve one way.** Compressor's
   `routingType.display_name === NO_INPUT_LABEL` only differs if a user names a
   track literally `"No Input"`; the sentinel wins by design, and asserting that
@@ -92,22 +91,10 @@ short-circuits the mutated guard during the coverage dry-run. Almost all are
 is far higher than the arrangement and device subareas (0 and 2), which is why
 the whole-domain score lands below what the triage alone would suggest.
 
-## Gaps closed (`shared`, specialized subarea)
-
-| Gap (now killed)                                                                    | Test strengthened / added                   |
-| ----------------------------------------------------------------------------------- | ------------------------------------------- |
-| Simpler + Wavetable action catalogs (every `signature` / `description`)             | `specialized-device-catalog.test.ts` (new)  |
-| `class_display_name` → spec routing for all 12 specialized devices                  | `specialized-device-catalog.test.ts` (new)  |
-| Modulation-rate effects expose no params and no `paramOptions` key                  | `specialized-device-catalog.test.ts` (new)  |
-| Action grammar: `$` anchor, `""` arg, whitespace-only args, double-quoted commas    | `specialized-device-action-parser.test.ts`  |
-| Numeric args: multi-digit floats (`12.5`, `.25`) and digit-led words (`4x`)         | `specialized-device-action-parser.test.ts`  |
-| Mod matrix: source `"Amp"` (index 0), slot-0 target no re-add, ±1 amount boundary   | `wavetable-modulation.test.ts` (new)        |
-| Mod matrix: name trimming, zero-cell exclusion, exactly-13-source scan              | `wavetable-modulation.test.ts` (new)        |
-| Wavetable/Drift `inactiveWhen` rules (LFO sync, Cyc Env time mode)                  | `specialized-device-registry.test.ts`       |
-| First category / wavetable selectable (index 0) + `Available:` lists                | `wavetable.test.ts`                         |
-| Hybrid Reverb single-file category settable; first IR selectable; `Available:` list | `hybrid-reverb.test.ts`                     |
-| Compressor whitespace-only sidechain id clears; channel `Available:` list           | `compressor.test.ts`                        |
-| Simpler multi-sample / gain-less / non-number `voices` reads omit their params      | `simpler.test.ts`                           |
-| `coerceBool` trims; enum + int-set warnings name the param and list valid values    | `specialized-param-access.test.ts`          |
-| Boolean pseudo-param warnings name their param (`oversample`, `envListen`, …)       | `eq-eight` / `roar` / `hybrid-reverb` tests |
-| `readSpecializedParams` search term is trimmed                                      | `specialized-device-registry.test.ts`       |
+Also pinned (specialized subarea): the action grammar (`$` anchor, `""` arg,
+whitespace-only args, double-quoted commas, multi-digit floats, digit-led
+words); mod-matrix source `"Amp"` at index 0, slot-0 target, ±1 amount boundary,
+name trimming and the exactly-13-source scan; `inactiveWhen` rules; first-entry
+selection (index 0) in Wavetable and Hybrid Reverb; Compressor whitespace-only
+sidechain id; `coerceBool` trimming; and enum/int-set/boolean warnings naming
+their param.

@@ -84,8 +84,10 @@ up by name.
 ## Baselines
 
 Per-scope results live in [baselines/](baselines/) — one file each, with the
-score table, the lowest-scoring files, documented equivalents, and a "Gaps
-closed" log. Read only the one you're working on.
+score table, the lowest-scoring files, documented equivalents, what the triage
+changed, and the lessons that still apply. They are dated records: file and
+function names are as of the baseline, and code has moved since. Read only the
+one you're working on.
 
 | Scope                                      | Break             | Baseline                                         |
 | ------------------------------------------ | ----------------- | ------------------------------------------------ |
