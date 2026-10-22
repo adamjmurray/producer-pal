@@ -10,10 +10,9 @@ browser.
 
 **Why not embed in Max for Live?**
 
-Initially, the UI was designed to be embedded using Max's jweb (webview) object.
-However, a longstanding macOS issue makes this impractical: keypresses in jweb
-are passed through to Ableton Live. For example, typing space in a text input
-would also trigger Live's play/pause. This is a
+Max's jweb (webview) object is impractical because of a longstanding macOS
+issue: keypresses in jweb are passed through to Ableton Live. For example,
+typing space in a text input would also trigger Live's play/pause. This is a
 [known issue](https://cycling74.com/forums/any-way-to-prevent-max-jweb-object-from-passing-all-keyboard-input-through-to-live)
 with no timeline for a fix. The browser-based approach provides a better user
 experience.
