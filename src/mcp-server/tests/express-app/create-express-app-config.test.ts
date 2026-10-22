@@ -25,7 +25,7 @@ describe("MCP Express App - Config", () => {
     let configUrl: string;
 
     beforeAll(() => {
-      configUrl = appState.serverUrl.replace("/mcp", "/config");
+      configUrl = appState.configUrl;
     });
 
     it("should return current config on GET /config", async () => {
@@ -330,7 +330,7 @@ describe("MCP Express App - Config", () => {
     let configUrl: string;
 
     beforeAll(() => {
-      configUrl = appState.serverUrl.replace("/mcp", "/config");
+      configUrl = appState.configUrl;
     });
 
     it("should only include specified tools in listTools", async () => {

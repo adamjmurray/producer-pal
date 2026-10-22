@@ -17,9 +17,11 @@ import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { CONFIG_URL, setupMcpTestContext, sleep } from "../mcp-test-helpers.ts";
+import { siblingUrl } from "#evals/shared/config.ts";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
+import { setupMcpTestContext, sleep } from "../mcp-test-helpers.ts";
 
-const DEVICE_URL = CONFIG_URL.replace("/config", "/device-install");
+const DEVICE_URL = siblingUrl(MCP_URL, "device-install");
 const REPORT_TIMEOUT_MS = 30_000;
 
 interface DeviceInstallStatus {

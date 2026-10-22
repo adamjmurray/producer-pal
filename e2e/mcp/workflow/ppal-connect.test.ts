@@ -11,11 +11,11 @@
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { connectMcp } from "#evals/chat/mcp.ts";
+import { REST_BASE_URL } from "#evals/shared/config.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { PORTAL_VERSION_HEADER, VERSION } from "#src/shared/config.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import {
-  CONFIG_URL,
   fetchSkillOverrides,
   parseToolResult,
   setConfig,
@@ -204,7 +204,7 @@ describe("ppal-connect", () => {
     // at those actions would dead-end (see memory-inject.ts).
     const MEMORY_INDEX_PREFIX = "Memory index";
     const MEMORY_NAME = "e2e-memory-index-probe";
-    const MEMORY_URL = `${CONFIG_URL.replace("/config", "")}/memory/${MEMORY_NAME}`;
+    const MEMORY_URL = `${REST_BASE_URL}/memory/${MEMORY_NAME}`;
 
     it("injects the index in standard mode but omits it in small-model mode", async () => {
       // Seed a transient memory so the standard-mode presence is real, not
@@ -307,7 +307,7 @@ describe("ppal-connect", () => {
     const PROJECT_PREFIX = "Project context (this Live Set):";
     const GLOBAL_PREFIX = "Global context (all projects):";
     const MEMORY_PREFIX = "Memory index";
-    const ROOT_URL = CONFIG_URL.replace("/config", "");
+    const ROOT_URL = REST_BASE_URL;
     const GLOBAL_CONTEXT_URL = `${ROOT_URL}/global-context`;
     const ORDER_MEMORY_NAME = "e2e-connect-order-probe";
     const ORDER_MEMORY_URL = `${ROOT_URL}/memory/${ORDER_MEMORY_NAME}`;

@@ -12,6 +12,7 @@ import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
 
 export const CONFIG_URL = siblingUrl(MCP_URL, "config");
+export const REST_BASE_URL = siblingUrl(MCP_URL, "").replace(/\/$/, "");
 
 /**
  * Configuration options that can be set via the /config endpoint

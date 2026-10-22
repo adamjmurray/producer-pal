@@ -444,9 +444,9 @@ describe("MCP Express App", () => {
     let rootUrl: string;
 
     beforeAll(() => {
-      chatUrl = appState.serverUrl.replace("/mcp", "/chat");
-      contextUrl = appState.serverUrl.replace("/mcp", "/context");
-      rootUrl = appState.serverUrl.replace("/mcp", "/");
+      chatUrl = `${appState.baseUrl}/chat`;
+      contextUrl = `${appState.baseUrl}/context`;
+      rootUrl = `${appState.baseUrl}/`;
     });
 
     it("should serve chat UI when enabled", async () => {
@@ -469,7 +469,7 @@ describe("MCP Express App", () => {
     });
 
     it("should serve the same HTML at /voice", async () => {
-      const voiceUrl = appState.serverUrl.replace("/mcp", "/voice");
+      const voiceUrl = `${appState.baseUrl}/voice`;
 
       await expectHtmlNoStoreResponse(voiceUrl);
     });
