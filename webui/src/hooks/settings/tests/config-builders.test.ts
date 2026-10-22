@@ -6,6 +6,7 @@
 import { describe, it, expect } from "vitest";
 import {
   extractGptVersion,
+  getThinkingOffType,
   isAlwaysOnThinkingModel,
   isOpenAIReasoningModel,
   isLegacyNonThinkingModel,
@@ -22,7 +23,29 @@ import {
 } from "#webui/hooks/settings/helpers/turn-detection-settings";
 
 describe("config-builders", () => {
+  describe("getThinkingOffType", () => {
+    it.each([
+      ["claude-sonnet-5-5", "between_tools"],
+      ["claude-sonnet-5.5", "between_tools"],
+      ["claude-haiku-5-5", "disabled"],
+      ["claude-sonnet-4-6", "disabled"],
+      ["claude-opus-5-5", undefined],
+      ["claude-opus-5.5", undefined],
+      ["claude-fable-5-1", undefined],
+      ["claude-mythos-5", undefined],
+      ["claude-haiku-4-5", undefined],
+      ["claude-3-5-sonnet-20241022", undefined],
+    ])("for %s is %s", (model, expected) => {
+      expect(getThinkingOffType(model)).toBe(expected);
+    });
+  });
+
   describe("isAlwaysOnThinkingModel", () => {
+    it("is true for Opus 5.5 under either id spelling", () => {
+      expect(isAlwaysOnThinkingModel("claude-opus-5-5")).toBe(true);
+      expect(isAlwaysOnThinkingModel("claude-opus-5.5")).toBe(true);
+    });
+
     it("is true for Fable and Mythos models", () => {
       expect(isAlwaysOnThinkingModel("claude-fable-5-1")).toBe(true);
       expect(isAlwaysOnThinkingModel("claude-mythos-5")).toBe(true);

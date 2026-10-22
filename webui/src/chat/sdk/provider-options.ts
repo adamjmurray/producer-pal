@@ -5,7 +5,7 @@
 
 import { type ProviderOptions } from "@ai-sdk/provider-utils";
 import {
-  isAdaptiveByDefaultModel,
+  getThinkingOffType,
   isLegacyNonThinkingModel,
   isLegacyThinkingModel,
   isOpenAIReasoningModel,
@@ -228,7 +228,7 @@ function buildGatewayUpstreamOptions(
  * Anthropic options through the gateway. The direct provider gets these two
  * from its request rewrite, which can't reach the gateway's wire format:
  * summarized thinking (adaptive thinking shows nothing without it), and an
- * explicit `disabled` for "Off" (omitting `thinking` runs adaptive thinking on
+ * explicit off type for "Off" (omitting `thinking` runs adaptive thinking on
  * Sonnet 5+).
  * @param thinking - Thinking level from UI settings
  * @param model - Anthropic model id
@@ -252,8 +252,10 @@ function buildGatewayAnthropicOptions(
     };
   }
 
-  if (options == null && isAdaptiveByDefaultModel(model)) {
-    return { anthropic: { thinking: { type: "disabled" } } };
+  const offType = options == null ? getThinkingOffType(model) : undefined;
+
+  if (offType != null) {
+    return { anthropic: { thinking: { type: offType } } };
   }
 
   return options;

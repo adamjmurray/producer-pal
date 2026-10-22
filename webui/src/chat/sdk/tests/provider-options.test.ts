@@ -21,15 +21,24 @@ describe("buildProviderOptions for the Vercel gateway", () => {
     });
   });
 
-  it("disables thinking for Off on adaptive-by-default models only", () => {
+  it("turns thinking off with the type each model accepts", () => {
     expect(
       buildProviderOptions("vercel", "Off", "anthropic/claude-sonnet-5.5"),
+    ).toStrictEqual({
+      ...caching,
+      anthropic: { thinking: { type: "between_tools" } },
+    });
+    expect(
+      buildProviderOptions("vercel", "Off", "anthropic/claude-haiku-5.5"),
     ).toStrictEqual({
       ...caching,
       anthropic: { thinking: { type: "disabled" } },
     });
     expect(
       buildProviderOptions("vercel", "Off", "anthropic/claude-fable-5"),
+    ).toStrictEqual(caching);
+    expect(
+      buildProviderOptions("vercel", "Off", "anthropic/claude-opus-5.5"),
     ).toStrictEqual(caching);
   });
 

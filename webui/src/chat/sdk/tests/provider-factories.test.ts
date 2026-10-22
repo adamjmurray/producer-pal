@@ -324,10 +324,10 @@ describe("transformAnthropicRequest", () => {
   });
 
   describe("forced disabled thinking", () => {
-    it("injects disabled thinking when omitted on adaptive-by-default models", async () => {
+    it("injects between_tools when omitted on Sonnet 5.5, which 400s on disabled", async () => {
       const parsed = await transform({ model: "claude-sonnet-5-5" });
 
-      expect(parsed.thinking).toStrictEqual({ type: "disabled" });
+      expect(parsed.thinking).toStrictEqual({ type: "between_tools" });
     });
 
     it("injects disabled thinking when omitted on Haiku 5.5", async () => {
@@ -338,6 +338,12 @@ describe("transformAnthropicRequest", () => {
 
     it("leaves omitted thinking alone for legacy (Haiku 4.5) models", async () => {
       const parsed = await transform({ model: "claude-haiku-4-5" });
+
+      expect(parsed.thinking).toBeUndefined();
+    });
+
+    it("leaves omitted thinking alone for Opus 5.5, which rejects a disable", async () => {
+      const parsed = await transform({ model: "claude-opus-5-5" });
 
       expect(parsed.thinking).toBeUndefined();
     });

@@ -10,7 +10,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createGateway, type LanguageModel } from "ai";
-import { isAdaptiveByDefaultModel } from "#webui/hooks/settings/config-builders";
+import { getThinkingOffType } from "#webui/hooks/settings/config-builders";
 import { type Provider } from "#webui/types/settings";
 import { withDefaultUrl } from "#webui/utils/provider-url";
 
@@ -155,14 +155,15 @@ function applyAnthropicRewrites(body: AnthropicRequestBody): boolean {
     modified = true;
   }
 
-  if (shouldForceThinkingDisabled(body)) {
+  const offType = omittedThinkingOffType(body);
+
+  if (offType != null) {
     // On adaptive-by-default models (Sonnet 5+), an omitted `thinking` field
     // runs adaptive thinking. The app omits `thinking` only for the "Off"
-    // level. The @ai-sdk/anthropic provider rewrites a providerOptions
-    // `{type:"disabled"}` on Sonnet 5.5 (to `between_tools`) and drops it on
-    // Opus 5.5 / Fable, so inject the disable here to honor "Off". Legacy
-    // (Haiku 4.5) and always-on models keep the omitted-thinking body.
-    body.thinking = { type: "disabled" };
+    // level, so inject what the model accepts for off: `between_tools` on
+    // Sonnet 5.5 (400s on `disabled`), `disabled` elsewhere. Legacy (Haiku
+    // 4.5) and always-on models keep the omitted-thinking body.
+    body.thinking = { type: offType };
     modified = true;
   }
 
@@ -174,21 +175,19 @@ function applyAnthropicRewrites(body: AnthropicRequestBody): boolean {
 }
 
 /**
- * Whether an omitted `thinking` field should be forced to `{type: "disabled"}`.
- * True for adaptive-by-default Anthropic models where omitting `thinking` would
- * otherwise run adaptive thinking (Sonnet 5+); false for legacy enabled-thinking
- * models (Haiku 4.5), always-on models (Fable / Mythos) that reject `disabled`, and
- * pre-3.7 models (via the free-text "Other..." input) that reject the `thinking`
- * field entirely — injecting `disabled` on those 400s every send.
+ * The `thinking` type to inject for a request that omits it (the app's "Off"),
+ * or undefined to leave it omitted: legacy enabled-thinking models (Haiku 4.5),
+ * always-on models (Opus 5.5 / Fable / Mythos) and pre-3.7 models (via the
+ * free-text "Other..." input) all 400 on an injected field.
  * @param body - Parsed Anthropic request body
- * @returns True when `{type: "disabled"}` should be injected
+ * @returns The thinking type to inject, or undefined
  */
-function shouldForceThinkingDisabled(body: AnthropicRequestBody): boolean {
-  return (
-    body.thinking == null &&
-    typeof body.model === "string" &&
-    isAdaptiveByDefaultModel(body.model)
-  );
+function omittedThinkingOffType(
+  body: AnthropicRequestBody,
+): "disabled" | "between_tools" | undefined {
+  return body.thinking == null && typeof body.model === "string"
+    ? getThinkingOffType(body.model)
+    : undefined;
 }
 
 /** Minimal shape of one OpenAI/OpenRouter chat message we mutate. */

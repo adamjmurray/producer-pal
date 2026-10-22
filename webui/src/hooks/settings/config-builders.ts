@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { getModelCapabilities } from "@ai-sdk/anthropic/internal";
 import {
   type SemanticEagerness,
   type TurnDetectionSettings,
@@ -93,16 +94,38 @@ export function isLegacyThinkingModel(model: string): boolean {
   return model.includes("haiku-4");
 }
 
+// Fable and Mythos stay listed by name so a newer id the SDK table doesn't know
+// yet still omits `thinking` rather than 400ing.
+const ALWAYS_ON_THINKING_MODEL = /fable|mythos/;
+
+/**
+ * Asks the AI SDK's own model table about an Anthropic id. Its ids use dashes
+ * (`claude-opus-5-5`); the gateway spells them `claude-opus-5.5`.
+ * @param {string} model - Model identifier
+ * @returns {ReturnType<typeof getModelCapabilities>} - The SDK's capabilities
+ */
+function sdkCapabilities(
+  model: string,
+): ReturnType<typeof getModelCapabilities> {
+  return getModelCapabilities(model.replaceAll(".", "-"));
+}
+
 /**
  * Checks if an Anthropic model has always-on thinking that cannot be disabled.
- * Fable 5 / Mythos 5 run thinking unconditionally and reject
- * `thinking: {type: "disabled"}` with a 400 — thinking must be omitted for
- * these, so "Off" cannot fully turn thinking off.
+ * Opus 5.5, Fable and Mythos run thinking unconditionally and reject any
+ * `thinking: {type: "disabled"}` with a 400 — `thinking` must be omitted for
+ * these, so "Off" cannot fully turn thinking off. The SDK table is the source
+ * for which models these are.
  * @param {string} model - Model identifier
  * @returns {boolean} - True if the model's thinking cannot be disabled
  */
 export function isAlwaysOnThinkingModel(model: string): boolean {
-  return model.includes("fable") || model.includes("mythos");
+  const caps = sdkCapabilities(model);
+
+  return (
+    ALWAYS_ON_THINKING_MODEL.test(model) ||
+    (caps.rejectsThinkingDisabled && !caps.supportsBetweenToolsThinking)
+  );
 }
 
 // Claude 3.0/3.5 tiers (extended thinking arrived with 3.7), plus Claude 2.x /
@@ -125,17 +148,27 @@ export function isLegacyNonThinkingModel(model: string): boolean {
 }
 
 /**
- * Checks if an Anthropic model runs adaptive thinking when `thinking` is
- * omitted (Sonnet 5+), so "Off" must send `{type: "disabled"}` explicitly.
+ * What "Off" must send as `thinking` for a model, since omitting it runs
+ * adaptive thinking on Sonnet 5+. Sonnet 5.5 400s on `disabled` and takes
+ * `between_tools` instead (its lowest setting); always-on, legacy and pre-3.7
+ * models take no `thinking` field at all.
  * @param {string} model - Model identifier
- * @returns {boolean} - True if omitting `thinking` would still think
+ * @returns {"disabled" | "between_tools" | undefined} - The type, or undefined to omit
  */
-export function isAdaptiveByDefaultModel(model: string): boolean {
-  return (
-    !isLegacyThinkingModel(model) &&
-    !isAlwaysOnThinkingModel(model) &&
-    !isLegacyNonThinkingModel(model)
-  );
+export function getThinkingOffType(
+  model: string,
+): "disabled" | "between_tools" | undefined {
+  if (
+    isLegacyThinkingModel(model) ||
+    isLegacyNonThinkingModel(model) ||
+    isAlwaysOnThinkingModel(model)
+  ) {
+    return undefined;
+  }
+
+  return sdkCapabilities(model).supportsBetweenToolsThinking
+    ? "between_tools"
+    : "disabled";
 }
 
 /**
