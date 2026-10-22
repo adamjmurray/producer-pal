@@ -12,6 +12,8 @@ subscription or API credits is recommended for regular use.
 | [Codex CLI](./codex-cli)     | Developers             | Terminal-based, good for scripting.         |
 | [Built-in Chat UI](./openai) | Direct API access      | Requires API key, pay-per-use pricing.      |
 
+Codex CLI can also use the portable [Agent Skill](/guide/skills) instead of MCP.
+
 ## Recommendation
 
 **[ChatGPT App](./chatgpt-app)** (formerly the Codex app) for the easiest setup.
