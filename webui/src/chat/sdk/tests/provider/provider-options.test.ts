@@ -87,6 +87,12 @@ describe("buildProviderOptions for the Vercel gateway", () => {
     ).toStrictEqual(caching);
   });
 
+  it("keeps OpenAI reasoning low rather than none for 6.1 Sol, which rejects none", () => {
+    expect(
+      buildProviderOptions("vercel", "Off", "openai/gpt-6.1-sol"),
+    ).toStrictEqual({ ...caching, openai: { reasoningEffort: "low" } });
+  });
+
   it("sends only caching for a legacy non-thinking Anthropic model", () => {
     expect(
       buildProviderOptions("vercel", "Off", "anthropic/claude-3-haiku"),

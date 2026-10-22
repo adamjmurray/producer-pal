@@ -313,6 +313,13 @@ export function mapThinkingToReasoningEffort(
   }
 }
 
+// GPT-6 ids that accept `reasoning_effort: "none"`. Every other GPT-6 model
+// (6.1 Sol, Astra, ...) 400s on it; the AI SDK drops the field with a warning,
+// so the model would reason at its default instead of staying off. The evals
+// CLI keeps a copy (evals/chat/thinking-provider-options.ts); a parity test
+// holds the two in step.
+const GPT6_ACCEPTS_NONE = /^gpt-6-(sol|luna)(-\d{4}-\d{2}-\d{2})?$/;
+
 /**
  * Maps a thinking UI value to a GPT-6 reasoning effort. Off must send an
  * explicit effort: omitting it reasons at the default (medium).
@@ -328,8 +335,7 @@ function mapThinkingToGpt6Effort(
     case "Max":
       return "max";
     case "Off":
-      // Astra rejects "none" with a 400, so low is its floor
-      return model.includes("-astra") ? "low" : "none";
+      return GPT6_ACCEPTS_NONE.test(model) ? "none" : "low";
     default:
       return "medium";
   }

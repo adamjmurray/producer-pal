@@ -208,8 +208,16 @@ describe("config-builders", () => {
         expect(mapThinkingToReasoningEffort("Off", "gpt-6-luna")).toBe("none");
       });
 
-      it("should map Off to low for Astra, which rejects none", () => {
+      it("should map Off to low for GPT-6 models that reject none", () => {
         expect(mapThinkingToReasoningEffort("Off", "gpt-6-astra")).toBe("low");
+        expect(mapThinkingToReasoningEffort("Off", "gpt-6.1-sol")).toBe("low");
+      });
+
+      it("should keep none for dated ids of the models that accept it", () => {
+        expect(
+          mapThinkingToReasoningEffort("Off", "gpt-6-luna-2026-09-01"),
+        ).toBe("none");
+        expect(mapThinkingToReasoningEffort("Off", "gpt-6-sol")).toBe("none");
       });
 
       it("should map Default to medium", () => {

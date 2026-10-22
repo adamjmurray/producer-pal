@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildProviderOptions } from "#evals/chat/thinking-provider-options.ts";
 
@@ -84,5 +85,47 @@ describe("buildProviderOptions for Anthropic", () => {
     expect(
       buildProviderOptions("anthropic", "4096", "claude-sonnet-5-5"),
     ).toBeUndefined();
+  });
+});
+
+describe("buildProviderOptions for OpenAI", () => {
+  it("sends the lowest effort a GPT-6 model accepts for off", () => {
+    expect(buildProviderOptions("openai", "off", "gpt-6-luna")).toStrictEqual({
+      openai: { reasoningEffort: "none" },
+    });
+    expect(buildProviderOptions("openai", "off", "gpt-6.1-sol")).toStrictEqual({
+      openai: { reasoningEffort: "low" },
+    });
+    expect(
+      buildProviderOptions("vercel", "off", "openai/gpt-6-astra"),
+    ).toStrictEqual({ openai: { reasoningEffort: "low" } });
+  });
+
+  it("sends max for ultra on GPT-6", () => {
+    expect(
+      buildProviderOptions("openai", "ultra", "gpt-6.1-sol"),
+    ).toStrictEqual({ openai: { reasoningEffort: "max" } });
+  });
+
+  it("sends nothing for off or ultra on other models", () => {
+    expect(buildProviderOptions("openai", "off", "gpt-5.4")).toBeUndefined();
+    expect(buildProviderOptions("openai", "ultra", "gpt-5.4")).toBeUndefined();
+  });
+});
+
+describe("GPT-6 none rule", () => {
+  // evals can't import webui at runtime, so the rule is copied; keep it in step.
+  const read = (path: string): string =>
+    readFileSync(new URL(path, import.meta.url), "utf8");
+  const rule = /const GPT6_ACCEPTS_NONE = (\/.*\/);/;
+
+  it("is the same pattern as the chat UI's", () => {
+    const webui = rule.exec(
+      read("../../../webui/src/hooks/settings/config-builders.ts"),
+    );
+    const evals = rule.exec(read("../thinking-provider-options.ts"));
+
+    expect(webui?.[1]).toBeDefined();
+    expect(evals?.[1]).toBe(webui?.[1]);
   });
 });

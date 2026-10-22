@@ -29,13 +29,15 @@ const GEMINI_THINKING_MAP: Record<string, number> = {
   ultra: 16384,
 };
 
-/** OpenAI reasoning effort levels */
+/** OpenAI reasoning effort levels (off and ultra depend on the model) */
 const OPENAI_EFFORT_MAP: Record<string, string> = {
-  off: "none",
   low: "low",
   medium: "medium",
   high: "high",
 };
+
+// GPT-6 ids that take effort "none"; the others 400. Same as webui (parity test).
+const GPT6_ACCEPTS_NONE = /^gpt-6-(sol|luna)(-\d{4}-\d{2}-\d{2})?$/;
 
 /** OpenRouter reasoning effort levels */
 const OPENROUTER_EFFORT_MAP: Record<string, string> = {
@@ -71,7 +73,7 @@ export function buildProviderOptions(
     case "google":
       return buildGeminiThinking(level);
     case "openai":
-      return buildOpenAIThinking(level);
+      return buildOpenAIThinking(level, model);
     case "openrouter":
       return buildOpenRouterThinking(level);
     case "vercel":
@@ -148,19 +150,28 @@ function buildGeminiThinking(level: string): ProviderOptions | undefined {
 }
 
 /**
- * Build OpenAI thinking provider options
+ * Build OpenAI thinking provider options. GPT-6 reasons at medium when no
+ * effort is sent, so off sends its lowest accepted effort; ultra sends max.
  *
  * @param level - Thinking level string
+ * @param model - OpenAI model id (with or without a `provider/` prefix)
  * @returns Provider options with openai reasoningEffort
  */
-function buildOpenAIThinking(level: string): ProviderOptions | undefined {
-  const effort = OPENAI_EFFORT_MAP[level];
+function buildOpenAIThinking(
+  level: string,
+  model: string,
+): ProviderOptions | undefined {
+  const id = model.split("/").at(-1) as string;
+  const isGpt6 = id.startsWith("gpt-6");
+  let effort: string | undefined = OPENAI_EFFORT_MAP[level];
 
-  if (!effort || effort === "none") {
-    return undefined;
+  if (level === "off" && isGpt6) {
+    effort = GPT6_ACCEPTS_NONE.test(id) ? "none" : "low";
+  } else if (level === "ultra" && isGpt6) {
+    effort = "max";
   }
 
-  return { openai: { reasoningEffort: effort } };
+  return effort ? { openai: { reasoningEffort: effort } } : undefined;
 }
 
 /**
@@ -198,7 +209,7 @@ function buildGatewayThinking(
     case "google":
       return buildGeminiThinking(level);
     case "openai":
-      return buildOpenAIThinking(level);
+      return buildOpenAIThinking(level, model);
     default:
       return undefined;
   }
