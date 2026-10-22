@@ -87,7 +87,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     kind: param(z.enum(LIBRARY_KIND_VALUES).optional().default("audio"), {
       default:
-        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler).audio=samples | midi=.mid files plus MIDI .alc clips, so it covers all MIDI content | live-clip=all .alc clips (MIDI+audio; each result reports subtype) | preset=instrument/effect presets | device-group=.adg racks | m4l-device=.amxd | live-set=.als | plugin=VST/AU | image/video=media | folder=directory entries (distinct from source:sample-folder)",
+        "content kind filter (search only; audio is the only kind loadable into clips/Simpler). audio=samples | midi=.mid files plus MIDI .alc clips, so it covers all MIDI content | live-clip=all .alc clips (MIDI+audio; each result reports subtype) | preset=instrument/effect presets | device-group=.adg racks | m4l-device=.amxd | live-set=.als | plugin=VST/AU | image/video=media | folder=directory entries (distinct from source:sample-folder)",
       smallModel: {
         description:
           "content kind (default: audio). audio | midi (melody/chord ideas) | preset | device-group",
@@ -120,7 +120,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     similarTo: param(z.coerce.string().optional(), {
       default:
-        "find-similar only: absolute path of a seed sample (e.g. a path from a prior search) to rank other samples by audio similarity. Combine with the search filters to constrain candidates — e.g. similarTo a kick + tags=Kick for 'more kicks like this one'. Like Live's Show Similar Files, identical audio is listed once. Each result carries a `distance` (lower = more similar; no fixed scale).",
+        "find-similar only: absolute path of a seed sample (e.g. a path from a prior search) to rank other samples by audio similarity. Identical audio is listed once. Each result carries a `distance` (lower = more similar; no fixed scale).",
       smallModel: null,
     }),
 
@@ -159,7 +159,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     inFolder: param(z.coerce.string().optional(), {
       default:
-        "absolute folder path; returns only immediate children of that folder (search only). Composes with other filters. Case-insensitive (ASCII). Unresolvable paths return no results with a `detail` explaining the path wasn't found.",
+        "absolute folder path; returns only immediate children of that folder (search only). Composes with other filters. Case-insensitive (ASCII).",
       smallModel: "absolute folder path; returns immediate children only",
     }),
 
@@ -173,7 +173,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     verifyPaths: param(z.boolean().optional(), {
       default:
-        "search only: stat each result's path and add pathExists (true/false) so you can skip files moved/deleted since Live last indexed. Off by default (one filesystem check per result).",
+        "search only: stat each result's path and add pathExists (true/false) so you can skip files moved/deleted since Live last indexed. Off by default.",
       smallModel: null,
     }),
 
