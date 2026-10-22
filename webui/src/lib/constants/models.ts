@@ -157,8 +157,7 @@ export const OPENAI_MODELS: ModelPresetItem[] = [
 
 export const MISTRAL_MODELS = [
   { value: "mistral-medium-latest", label: "Mistral Medium" },
-  { value: "magistral-medium-2509", label: "Magistral Medium" },
-  { value: "mistral-large-latest", label: "Mistral Large" },
+  { value: "mistral-large-4", label: "Mistral Large 4" },
   { value: "devstral-latest", label: "Devstral" },
   OTHER_MODEL_OPTION,
 ];
@@ -188,7 +187,7 @@ export const OPENROUTER_MODELS = [
     value: "deepseek/deepseek-v4.1-flash",
     label: "[Paid] DeepSeek V4.1 Flash",
   },
-  { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
+  { value: "mistralai/mistral-large-4-0", label: "[Paid] Mistral Large 4" },
   { value: "moonshotai/kimi-k3", label: "[Paid] Moonshot AI Kimi K3" },
   { value: "z-ai/glm-5.3", label: "[Paid] Z.ai GLM 5.3" },
   // Free models
@@ -224,7 +223,7 @@ export const VERCEL_MODELS = [
   { value: "google/gemini-4-argon", label: "Google Gemini 4 Argon" },
   { value: "alibaba/qwen3.8-max", label: "Qwen 3.8 Max" },
   { value: "deepseek/deepseek-v4.1-flash", label: "DeepSeek V4.1 Flash" },
-  { value: "mistral/mistral-large-3", label: "Mistral Large" },
+  { value: "mistral/mistral-large-4", label: "Mistral Large 4" },
   { value: "moonshotai/kimi-k3", label: "Moonshot AI Kimi K3" },
   { value: "zai/glm-5.3", label: "Z.ai GLM 5.3" },
   OTHER_MODEL_OPTION,

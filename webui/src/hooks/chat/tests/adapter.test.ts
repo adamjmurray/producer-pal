@@ -89,7 +89,7 @@ describe("chatAdapter", () => {
     });
 
     it.each([
-      ["openrouter", "mistralai/mistral-large-2512"],
+      ["openrouter", "mistralai/mistral-large-4-0"],
       ["vercel", "mistral/pixtral-large-latest"],
     ])("caps Mistral models on %s at Mistral's limit", (provider, model) => {
       expect(

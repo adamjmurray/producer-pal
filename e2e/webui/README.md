@@ -47,8 +47,8 @@ Edit `quick-connect.spec.ts` and add a new entry to `TEST_CONFIGS`:
 {
   provider: "mistral",           // Value for provider select
   providerLabel: "Mistral",      // Display name for test output
-  model: "mistral-large-latest", // Value for model select
-  modelLabel: "Mistral Large",   // Display name for test output
+  model: "mistral-large-4", // Value for model select
+  modelLabel: "Mistral Large 4",   // Display name for test output
   envKey: "MISTRAL_KEY",         // Env var for API key
 },
 ```
