@@ -152,7 +152,7 @@ The thinking toggle next to the text area controls how much reasoning effort the
 AI uses for the next message. Click it to cycle through three levels:
 
 - <img src="/img/thinking-off.png" alt="Off" width="40" class="no-zoom" style="display:inline;vertical-align:middle;margin:0"/>
-  **Off** - No thinking
+  **Off** - The least thinking the model allows
 - <img src="/img/thinking-default.png" alt="Default" width="40" class="no-zoom" style="display:inline;vertical-align:middle;margin:0"/>
   **Default** - Let the AI decide
 - <img src="/img/thinking-max.png" alt="Max" width="40" class="no-zoom" style="display:inline;vertical-align:middle;margin:0"/>
@@ -545,30 +545,30 @@ notation and then handed notes in another.
 ### Installation
 
 The Installation tab puts Producer Pal's files in your Live User Library. Both
-sections use the one User Library path at the top of the tab.
+cards use the one User Library path near the top of the tab.
 
-- **Device:** copies the Producer Pal device you loaded into your User Library,
-  so every Live Set can find it. The device shows a **Finish installation…**
-  button until it's there (and the remote script is current); the button opens
-  this tab. A development (unfrozen) device can't be copied. A Live Set
-  remembers the file a device was loaded from, so a device loaded from Downloads
-  stays tied to that file. Once the [remote script](/guide/remote-script) is
-  running and your User Library has a copy that is the same version or newer,
-  **Swap this device for the User Library copy** replaces the device in your Set
-  with it. The AI connection drops for a moment while the new device starts.
-  Save your Live Set afterwards so it keeps using the User Library copy.
 - **Remote script:** installs the Producer Pal
   [remote script](/guide/remote-script), which adds clip automation, undo and
   redo, and loading plug-ins, Max for Live devices and presets. It shows whether
   the script is installed and whether Live is running it, and offers an update
   when your Producer Pal build has a newer one. The header also flags this, so
   you can spot it without opening Settings.
+- **Max for Live device:** copies the Producer Pal device you loaded into your
+  User Library, so every Live Set can find it. The device shows a **Finish
+  installation…** button until it's there (and the remote script is current);
+  the button opens this tab. A development (unfrozen) device can't be copied. A
+  Live Set remembers the file a device was loaded from, so a device loaded from
+  Downloads stays tied to that file. Once the remote script is running and your
+  User Library has a copy that is the same version or newer, **Swap** replaces
+  the device in your Set with it. The AI connection drops for a moment while the
+  new device starts. Save your Live Set afterwards so it keeps using the User
+  Library copy.
 
 <img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="Installation tab" width="500"/>
 
 See the [remote script guide](/guide/remote-script) to install and enable it.
 
-Two checkboxes at the bottom of the tab control the notices on the device:
+Two checkboxes at the top of the tab control the notices on the device:
 
 - **Warn when installation is incomplete** - On by default. The device shows
   **Finish installation…** while its User Library copy or the remote script is

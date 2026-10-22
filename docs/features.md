@@ -167,12 +167,11 @@ Adapts Producer Pal for less capable AI models by returning simplified
 (for example [Manage](/features/tools#ppal-manage)). This is an ongoing R&D
 effort aimed at making [local models](/installation/choose-local) viable for
 completely offline, free, and private usage. Enable it on the
-[device's Setup tab](/guide/device#behavior), in the [Chat UI](/guide/chat-ui)
-settings, or via the [`--small-model-mode` flag](/guide/npx-cli#flags). Like
-[notation](/features/midi-notation), that's a global default MCP clients pick up
-too, and a single client can
-[override it per request](/guide/rest-api#per-request-small-model-mode). It's
-also the biggest reduction in what a conversation costs; see
+[device's Setup tab](/guide/device#behavior) (the default MCP clients pick up),
+in the [Chat UI](/guide/chat-ui) settings, or for one MCP client with the
+[`--small-model-mode` flag](/guide/npx-cli#flags). A single request can also
+[override it](/guide/rest-api#per-request-small-model-mode). It's also the
+biggest reduction in what a conversation costs; see
 [Optimizing](/guide/optimizing#small-model-mode) for the trade-off.
 
 ## Choosing a Toolset {#toolset}

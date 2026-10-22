@@ -41,9 +41,10 @@ After installation:
 2. Load the Producer Pal Max for Live device onto a MIDI track
    ([download latest version](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd))
 3. Install the [remote script](/guide/remote-script): click **Finish
-   installation…** on the device, restart Live, then set a **Control Surface**
-   to **Producer Pal** in **Settings → Tempo & MIDI**. This is recommended for
-   everyone. It adds clip automation, undo and redo, and plug-in loading.
+   installation…** on the device to open the Chat UI's Installation tab, click
+   **Install** there, restart Live, then set a **Control Surface** to **Producer
+   Pal** in **Settings → Tempo & MIDI**. This is recommended for everyone. It
+   adds clip automation, undo and redo, and plug-in loading.
 4. Connect to Producer Pal in your AI interface
 5. Say "connect to ableton"
 6. Try a simple command:

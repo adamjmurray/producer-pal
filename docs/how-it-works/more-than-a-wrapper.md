@@ -71,7 +71,7 @@ like?"_, never _"what raw value shows `2.3 dB`?"_
 So Producer Pal asks the first question over and over until it has answered the
 second. A binary search walks the raw range, calling Live's own renderer at each
 step, until it brackets the display value that was asked for
-([`param-display-search.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/device/update/helpers/param-display-search.ts)).
+([`param-display-search.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/device/update/helpers/params/param-display-search.ts)).
 
 That gets you close. Landing exactly takes three more details, each of which was
 a real bug first:
