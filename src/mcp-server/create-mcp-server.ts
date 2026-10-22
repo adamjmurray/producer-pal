@@ -150,7 +150,7 @@ export function createMcpServer(
     toolDefLiveApi(server, callLiveApi, { smallModelMode, notation });
   }
 
-  omitSchemaDialect(server);
+  trimListedSchemas(server);
 
   return server;
 }
@@ -161,11 +161,16 @@ type ListToolsHandler = (
 ) => Promise<{ tools: Array<{ inputSchema?: Record<string, unknown> }> }>;
 
 /**
- * Drop the `$schema` the SDK stamps on every tool's `inputSchema` in
- * `tools/list`: it is identical on all tools, the SDK has no switch for it, and
- * Anthropic bills about 20 tokens per tool for it. Clients then read the
- * schemas as JSON Schema 2020-12, and every keyword we emit means the same
- * there.
+ * Drop two things from every tool's `inputSchema` in `tools/list`, as Anthropic
+ * and OpenAI bill for them and they say nothing:
+ *
+ * - `$schema`, which the SDK stamps on each tool with no switch to stop it.
+ *   Clients then read the schemas as JSON Schema 2020-12, and every keyword we
+ *   emit means the same there.
+ * - the top-level `additionalProperties: {}` that `.loose()` adds. Absent means
+ *   the same, and nested objects already omit it. Only the listing changes:
+ *   validation still uses the loose zod schema, so unknown args keep reaching
+ *   the handler.
  *
  * Call after the tools are registered: the SDK installs its `tools/list`
  * handler on the first registration, and the only way to wrap it is its private
@@ -174,7 +179,7 @@ type ListToolsHandler = (
  *
  * @param server - The MCP server whose tools are registered
  */
-function omitSchemaDialect(server: McpServer): void {
+function trimListedSchemas(server: McpServer): void {
   const handlers = (
     server.server as unknown as {
       _requestHandlers: Map<string, ListToolsHandler>;
@@ -192,6 +197,10 @@ function omitSchemaDialect(server: McpServer): void {
 
     for (const tool of result.tools) {
       delete tool.inputSchema?.$schema;
+
+      if (isEmptyObject(tool.inputSchema?.additionalProperties)) {
+        delete tool.inputSchema?.additionalProperties;
+      }
     }
 
     return result;
@@ -272,4 +281,17 @@ function getValidToolNames(liveApiEnabled: boolean): string[] {
   }
 
   return [...TOOL_NAMES, toolDefLiveApi.toolName];
+}
+
+/**
+ * @param value - Any value
+ * @returns True for a plain `{}`
+ */
+function isEmptyObject(value: unknown): boolean {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 0
+  );
 }
