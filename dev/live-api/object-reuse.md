@@ -1,9 +1,41 @@
 # Reusing LiveAPI Objects
 
-Building a LiveAPI object is expensive (ADR-0023, and
-`dev/live-api/performance.md` for what it costs), so it is tempting to resolve
-one once and pass it around. That is safe in some places and unsafe in others,
-and the line between them is not where most people would guess.
+Building a LiveAPI object is expensive (`dev/live-api/performance.md` has what
+it costs), so it is tempting to resolve one once and pass it around. That is
+safe in some places and unsafe in others, and the line between them is not where
+most people would guess.
+
+## Release and pooling
+
+Live arms a listener on every collection along a path-based object's path and
+never takes it down, so held objects slow the whole Live Set. Constructing an
+object is also costly and can't be undone short of a device reload. So objects
+are tracked as built and **released when the request ends**: mode reset to 0,
+path cleared, onto a free list the next request retargets. Nothing holds a
+`LiveAPI` across requests (`live-api-adapter/live-api-release.ts`). A stale
+reference fails quietly: just after release it reads as nonexistent, and once
+recycled it points at a different Live object, with no error. Hence "build them
+where you use them".
+
+- Both path and id targets retarget a pooled object (`retargetToId`,
+  `buildOrReuse` in `live-api-adapter/live-api-build.ts`).
+- The free-list cap (`MAX_POOLED_OBJECTS`) is sized above the largest single
+  request: too small hands memory back only to rebuild it on the next call.
+- Silent failures are read back, not trusted: the cleared path, and the id after
+  a retarget. A bad id is dropped without an error and leaves the object on the
+  last request's target.
+- Concurrent requests don't pool: the free list refills only when no request is
+  open. Correctness holds, since release fires only at zero and the free list
+  hands out each object once. One slow request holds everyone's objects, and
+  their listeners, until it finishes.
+- Nothing here stops one request from shifting Set structure under another. Node
+  runs write calls one at a time for that
+  ([write-queue.md](../architecture/write-queue.md)), but a user editing Live
+  while a write waits on the remote script still can.
+
+Rejected alternatives (caching by id, building children by path, `freepeer()`,
+`goto` for ids) are in
+[ADR-0023](../decisions/0023-live-api-objects-are-pooled-per-request.md).
 
 ## The hazard
 
