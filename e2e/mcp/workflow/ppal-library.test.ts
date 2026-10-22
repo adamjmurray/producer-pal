@@ -358,6 +358,26 @@ describe("ppal-library", () => {
       }
     });
 
+    // A drum kit is an .adg, so a preset search for one finds nothing.
+    it("points an empty preset search at the racks that match", async () => {
+      const racks = await search({ kind: "device-group", limit: 1 });
+      const rack = racks.items[0];
+
+      // Only machines with a rack in the library have one to point at.
+      if (rack == null) {
+        return;
+      }
+
+      const query = rack.name.replace(/\.adg$/i, "");
+      const result = await search({ kind: "preset", query });
+
+      if (result.items.length === 0) {
+        expect(result.note).toMatch(
+          /^\d+ matching racks? \(\.adg\) (is|are) kind device-group$/,
+        );
+      }
+    });
+
     it("tags filter returns items containing the requested tag (case-insensitive)", async () => {
       const tagsResult = await listTags({ limit: 10 });
 
