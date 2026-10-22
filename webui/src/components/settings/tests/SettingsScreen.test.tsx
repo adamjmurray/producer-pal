@@ -689,5 +689,43 @@ describe("SettingsScreen", () => {
 
       expect(await screen.findByTestId("installation-tab")).toBeDefined();
     });
+
+    it("marks the Installation tab when the install is incomplete, on any tab, with one read each", async () => {
+      // No copy in the User Library: the install is unfinished.
+      (fetchMock as unknown as Mock<FetchStub>).mockImplementation((url) =>
+        Promise.resolve(
+          jsonResponse(
+            url.includes("/device-install") ? deviceStatusBody() : statusBody(),
+          ),
+        ),
+      );
+      render(<SettingsScreen {...defaultProps} />);
+
+      expect(await screen.findByLabelText("needs attention")).toBeDefined();
+      expect(screen.queryByTestId("installation-tab")).toBeNull();
+
+      const reads = (path: string) =>
+        fetchMock.mock.calls.filter(([url]) => String(url).endsWith(path));
+
+      // The tab and its button share the screen's one read of each status.
+      expect(reads("/device-install")).toHaveLength(1);
+      expect(reads("/remote-script")).toHaveLength(1);
+    });
+
+    it("shows no dot once the device and remote script are current", async () => {
+      (fetchMock as unknown as Mock<FetchStub>).mockImplementation((url) =>
+        Promise.resolve(
+          jsonResponse(
+            url.includes("/device-install")
+              ? deviceStatusBody({ state: "same", installedVersion: "1.2.0" })
+              : statusBody({ installed: true, installedVersion: "1.2.0" }),
+          ),
+        ),
+      );
+      render(<SettingsScreen {...defaultProps} activeTab="installation" />);
+      await screen.findByTestId("device-status");
+
+      expect(screen.queryByLabelText("needs attention")).toBeNull();
+    });
   });
 });

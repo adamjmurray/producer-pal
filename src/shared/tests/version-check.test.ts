@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   checkForUpdate,
   isBehindBuild,
+  isInstallIncomplete,
   isNewerVersion,
   remoteScriptAttention,
   type RemoteScriptAttentionInput,
@@ -433,5 +434,63 @@ describe("isBehindBuild", () => {
 
   it("is behind when the installed version is unreadable", () => {
     expect(isBehindBuild(null, "2.5.0")).toBe(true);
+  });
+});
+
+describe("isInstallIncomplete", () => {
+  it.each(["not-installed", "installed-older"])(
+    "is incomplete when the copy is %s",
+    (state) => {
+      expect(
+        isInstallIncomplete({
+          problem: null,
+          state,
+          remoteScriptCurrent: true,
+        }),
+      ).toBe(true);
+    },
+  );
+
+  it.each(["same", "installed-newer", "different"])(
+    "leaves a %s copy alone",
+    (state) => {
+      expect(
+        isInstallIncomplete({
+          problem: null,
+          state,
+          remoteScriptCurrent: true,
+        }),
+      ).toBe(false);
+    },
+  );
+
+  it("ignores the copy of a device that can't be copied", () => {
+    expect(
+      isInstallIncomplete({
+        problem: "not-frozen",
+        state: "not-installed",
+        remoteScriptCurrent: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("is incomplete when the remote script is behind or missing", () => {
+    expect(
+      isInstallIncomplete({
+        problem: null,
+        state: "same",
+        remoteScriptCurrent: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("has nothing to compare without a remote script reading", () => {
+    expect(
+      isInstallIncomplete({
+        problem: null,
+        state: "same",
+        remoteScriptCurrent: null,
+      }),
+    ).toBe(false);
   });
 });

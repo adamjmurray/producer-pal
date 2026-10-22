@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { inputClass, noteClass } from "./installation-classes";
+import { inputClass, noteClass } from "./helpers/installation-classes";
 
 interface UserLibraryFieldProps {
   /** The User Library the server detected, or null. */
@@ -29,11 +29,9 @@ export function UserLibraryField({
   onInput,
 }: UserLibraryFieldProps) {
   return (
-    <div className="space-y-2">
-      <label htmlFor="user-library-path" className="block">
-        {detected == null
-          ? "Where is your User Library?"
-          : "Is this your User Library?"}
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor="user-library-path" className="text-[13px] font-semibold">
+        User Library folder
       </label>
       <input
         id="user-library-path"
@@ -41,10 +39,11 @@ export function UserLibraryField({
         type="text"
         value={value}
         onInput={(e) => onInput((e.target as HTMLInputElement).value)}
+        aria-describedby={detected == null ? "user-library-hint" : undefined}
         className={inputClass}
       />
       {detected == null && (
-        <p className={noteClass}>
+        <p id="user-library-hint" className={noteClass}>
           Live shows it under Settings → Library → Location of User Library.
         </p>
       )}
