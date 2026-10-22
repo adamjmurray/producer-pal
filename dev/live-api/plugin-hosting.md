@@ -157,6 +157,30 @@ falls back to the bundle name.
   to natural and linear phase moved it 0 → 320 → 5120 samples within a second
   each.
 
+### Automation (not supported)
+
+Wrapper parameters are not Live parameters, so they can't be automated. Making
+them automatable needs `live.*` dials mapped to plug-in parameters, and every
+way of naming those dials needs a wrapper file per plug-in or per instance, so
+it was dropped. What the spike found:
+
+- Live reads a device's parameter list once, within about 90 ms of the device
+  loading. Dials created later, or renamed or re-ranged later, never reach Live.
+  The v8 script's load-time code can set names, ranges and units, and hide
+  unused dials (`_parameter_invisible 2`).
+- The restored plug-in and stored values arrive after that, so a generic wrapper
+  can't name its dials for the plug-in it holds. Real names need the dial
+  attributes baked into a wrapper file. A static 2500-dial device loads and Live
+  lists them all; each dial adds about 700 bytes to the `.amxd`.
+- Deleting the device and undoing re-reads it from its file, and crashed Live
+  twice. Hotswapping the same `.amxd` over itself reloads it more safely,
+  keeping the device id and plug-in state.
+- Live matches automation to parameters by name across reloads.
+- With `vst~` saving the plug-in's state (`parameter_enable 1`), every value
+  written to the plug-in is an undo step, automation included: 10–20 a second
+  while automation moves. `begin_undo_step`/`end_undo_step` don't merge them,
+  from the wrapper or the remote script.
+
 ### Building the devices
 
 An `.amxd` is a 32-byte header (`ampf`, a type code — `aaaa` audio effect,
@@ -175,10 +199,3 @@ fields Max expects (such as `searchpath`) crashes Live on load**, inside
 - AU, VST2 and Windows.
 - Sharing Sets: the wrapper must travel with the Set (Collect All and Save), and
   the other user needs Max for Live.
-- Automation lanes: wrapper parameters are not Live parameters, so they can't be
-  automated. That needs a wrapper with real `live.*` parameters, mapped to
-  plug-in parameters (generated per plug-in, or a fixed bank renamed at runtime
-  if Max allows it). A device with 2500 static `live.dial`s loads and Live
-  exposes all of them, so the count isn't capped. Size is the cost: each
-  parameter adds about 700 bytes to the `.amxd` (2500 make 1.7 MB), and each
-  hosted plug-in carries its own copy into the Set.
