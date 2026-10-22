@@ -8,9 +8,9 @@
  *
  * A 4-bar clip at bar 1 runs through bar 4, so "the clip playing at bar 3" is
  * `t3[3|1]` — no need to find where the clip starts. This grades that the model
- * trusts that: one `ppal-update-clip` renames the clip, by a bar-3 path or by
- * the id a `ppal-read-clip` at bar 3 returned. Reads before the write are
- * harmless and not graded. Writing to another bar (`t3[1|1]`), or by an id read
+ * trusts that: one `ppal-update-clip` renames the clip, by a bar-3 path, by
+ * the id a `ppal-read-clip` at bar 3 returned, or by the id its own create
+ * returned a turn earlier. Reads before the write are harmless and not graded. Writing to another bar (`t3[1|1]`), or by an id read
  * from the clip's start, means it went looking for the start.
  *
  * `kind: "capability"` — an improvement target, not a regression guard.
@@ -27,6 +27,7 @@ import {
 } from "../../../types.ts";
 import { argText } from "../../arg-text.ts";
 import {
+  TOOL_CREATE_CLIP,
   TOOL_READ_CLIP,
   TOOL_UPDATE_CLIP,
 } from "../../clip/helpers/clip-tool-constants.ts";
@@ -41,7 +42,7 @@ const COVERED_PATH = /^t3\[3\|[\d.]+\]$/;
 /**
  * The model trusts the covering coordinate instead of hunting for the start.
  * Graded on the write: reads are free, but an id only counts if a bar-3 read
- * returned it.
+ * or the earlier create returned it.
  * @param turn - Turn index to grade
  * @returns A custom assertion over every call the turn made
  */
@@ -61,7 +62,15 @@ function assertTrustsCoveringBar(turn: number): EvalAssertion {
         );
       }
 
-      assertWriteNamesCoveredClip(writes[0], reads);
+      const created = getAllToolCalls(turns, turn - 1)
+        .filter(
+          (call) =>
+            call.name === TOOL_CREATE_CLIP &&
+            listEntries(call.args.path).every((path) => path.startsWith("t3[")),
+        )
+        .map((call) => argText(parsedToolResult(call)?.id));
+
+      assertWriteNamesCoveredClip(writes[0], reads, created);
 
       return true;
     },
@@ -69,13 +78,16 @@ function assertTrustsCoveringBar(turn: number): EvalAssertion {
 }
 
 /**
- * The write names the clip by a bar-3 path, or by the id a bar-3 read returned.
+ * The write names the clip by a bar-3 path, or by the id a bar-3 read or the
+ * earlier create returned.
  * @param write - The single update-clip call
  * @param reads - Every read-clip call in the turn
+ * @param created - Ids the previous turn's create-clip calls on track 3 returned
  */
 function assertWriteNamesCoveredClip(
   write: ToolCall | undefined,
   reads: ToolCall[],
+  created: string[],
 ): void {
   if (write == null) {
     return;
@@ -103,11 +115,14 @@ function assertWriteNamesCoveredClip(
     )
     .map((call) => argText(parsedToolResult(call)?.id));
 
-  if (ids.length === 0 || !ids.every((id) => readIds.includes(id))) {
+  const known = new Set([...readIds, ...created]);
+
+  if (ids.length === 0 || !ids.every((id) => known.has(id))) {
     throw new Error(
       `${TOOL_UPDATE_CLIP} named the clip by ${describeTarget(write)}, ` +
         `which is neither a bar-3 path nor the id of a ${TOOL_READ_CLIP} at ` +
-        `bar 3 (ids read: ${readIds.join(", ") || "none"})`,
+        `bar 3 or of the clip created (ids read: ${readIds.join(", ") || "none"}; ` +
+        `created: ${created.join(", ") || "none"})`,
     );
   }
 }
