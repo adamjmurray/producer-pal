@@ -158,10 +158,10 @@ function applyAnthropicRewrites(body: AnthropicRequestBody): boolean {
   if (shouldForceThinkingDisabled(body)) {
     // On adaptive-by-default models (Sonnet 5+), an omitted `thinking` field
     // runs adaptive thinking. The app omits `thinking` only for the "Off"
-    // level, and the @ai-sdk/anthropic provider drops a providerOptions
-    // `{type:"disabled"}` before it reaches the wire, so make the choice
-    // explicit here to honor "Off". Legacy (Haiku 4.5) and always-on (Fable /
-    // Mythos, which 400 on disabled) models keep the omitted-thinking body.
+    // level. The @ai-sdk/anthropic provider rewrites a providerOptions
+    // `{type:"disabled"}` on Sonnet 5.5 (to `between_tools`) and drops it on
+    // Opus 5.5 / Fable, so inject the disable here to honor "Off". Legacy
+    // (Haiku 4.5) and always-on models keep the omitted-thinking body.
     body.thinking = { type: "disabled" };
     modified = true;
   }
