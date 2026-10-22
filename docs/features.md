@@ -209,9 +209,9 @@ also the biggest reduction in what a conversation costs; see
 
 You don't have to run every tool. Withholding one drops its schema _and_ the
 part of the [skills](#skills) that teaches it, so a narrower toolset makes every
-conversation cheaper: `read-only` alone cuts the schemas and skills by 62%.
-Worth doing if you only ever use part of Producer Pal, or if you're running a
-[small/local model](/installation/choose-local) that does better with a short
+conversation cheaper: `read-only` alone cuts the schemas and skills by about
+69%. Worth doing if you only ever use part of Producer Pal, or if you're running
+a [small/local model](/installation/choose-local) that does better with a short
 tool list. See [Optimizing](/guide/optimizing) for the numbers and the other
 levers.
 

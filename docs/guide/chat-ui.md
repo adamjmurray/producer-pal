@@ -527,9 +527,9 @@ also turns the tool on at the device level (MCP clients and the
 the conversation like the rest of the toolset, so flipping the device flag
 doesn't add or remove the tool mid-chat.
 
-The **Notation** dropdown under **Advanced** chooses how the AI reads and writes
-clip notes: **[bar|beat](/features/midi-notation#bar-beat)** (the default),
-**[MIDI JSON](/features/midi-notation#midi-json)**, or
+The **Notation** dropdown, at the bottom of the **Clip** group, chooses how the
+AI reads and writes clip notes: **[bar|beat](/features/midi-notation#bar-beat)**
+(the default), **[MIDI JSON](/features/midi-notation#midi-json)**, or
 **[Stark](/features/midi-notation#stark)** (a literal, round-trippable notation
 with chord symbols, friendly to small/local models). See
 [MIDI Notation](/features/midi-notation) for the tradeoffs. Like the Live API

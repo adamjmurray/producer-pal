@@ -56,8 +56,9 @@ A coding agent can write and run code against the API, iterate on a generative
 script while you listen, and change device settings mid-session:
 [notation](/features/midi-notation),
 [small model mode](/features#small-model-mode),
-[Direct Live API](/features/tools#ppal-live-api). MCP clients can only change
-those by changing settings on the device and starting a new conversation.
+[Direct Live API](/features/tools#ppal-live-api). MCP clients set them per
+client with [`npx` flags](/guide/npx-cli) or headers, but the tool descriptions
+are fixed for the conversation, so a change needs a new one.
 
 [Companion skills](/guide/skills#companion-skills) build on that connection.
 **`ableton-audio-generator`** synthesizes audio from scratch with plain Node.js
@@ -66,7 +67,7 @@ and places it in Live. **`ableton-export-audio`** goes the other way: it renders
 the mix, a single track, or one Session clip to a file (**macOS only**, because
 Live exposes no render API, so this drives the Export dialog with AppleScript).
 **`ableton-analyze-audio`** hands that file to Google's Gemini for feedback on
-how it actually sounds (any platform, needs a `GEMINI_KEY`; it's one small
+how it actually sounds (any platform, needs a `GEMINI_API_KEY`; it's one small
 script, so pointing it at a different audio-capable API is a short edit).
 
 None of these belong in Producer Pal. Driving another app's UI and calling an

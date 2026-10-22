@@ -678,7 +678,6 @@ asked of that target:
   two-device track), as `ppal-update-device` does, instead of appending.
 - A `sends` entry a later one replaced.
 - An `arrangementLength` ignored for a re-created `ppal-duplicate` copy.
-- A failed `code` on `ppal-update-clip`.
 - Transforms for the other kind of clip (`gain` on MIDI, `velocity` on audio).
   `ppal-create-clip` says the same, and which params the new clip can't use, on
   the created clip, never as `ok: false`.
@@ -757,8 +756,8 @@ views, quantize grids, device names) keep Live's spelling.
 
 ## Deprecated params
 
-Every param below still works in 2.4 and emits a deprecation warning saying what
-to use instead. They will be removed in a later release.
+Every param below still works and emits a deprecation warning saying what to use
+instead. They will be removed in a later release.
 
 A param that warns is not always one of these. `ppal-read-clip` and
 `ppal-create-clip` take `trackIndex` and `sceneIndex` as **aliases**: names a
@@ -983,5 +982,5 @@ lane.
 ```
 
 Over the REST API these arrive in a `warnings` array beside the result; over MCP
-they're appended to the tool result. Run your existing scripts against 2.4, log
+they're appended to the tool result. Run your existing scripts against 2.5, log
 every warning, and you have the list of calls to fix, with no auditing by hand.
