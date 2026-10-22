@@ -46,7 +46,7 @@ ppal-create-clip's \`path\` takes a comma-separated list and may mix the two kin
 
 ### Moving Clips
 
-\`toPath\` says where a clip goes: a session slot (\`t2/s3\`), a spot on a track's arrangement (\`t2[5|1]\`), a take lane (\`t2/l0[5|1]\`), or \`[5|1]\` on its own to move it in time and keep its lane. A lane with no position keeps the clip's own start. In ppal-update-clip, \`toPath\` and \`arrangementLength\` each take a list paired in order with the ids: \`id: "c1,c2,c3"\` with \`toPath: "[1|1],[5|1],[9|1]"\` sends each clip to its own bar. A single \`toPath\` fans out only when it doesn't fully name a place:
+\`toPath\` takes the same destinations, plus \`[5|1]\` on its own to move a clip in time and keep its lane. A lane with no position keeps the clip's own start. In ppal-update-clip, \`toPath\` and \`arrangementLength\` each take a list paired in order with the ids: \`id: "c1,c2,c3"\` with \`toPath: "[1|1],[5|1],[9|1]"\` sends each clip to its own bar. A single \`toPath\` fans out only when it doesn't fully name a place:
 
 | toPath | with N ids | result |
 |---|---|---|
@@ -56,19 +56,19 @@ ppal-create-clip's \`path\` takes a comma-separated list and may mix the two kin
 
 Moving clips changes their IDs - re-read to get new IDs.
 \`arrangementLength\` sets arrangement playback region.
-\`arrangementSplit\` cuts clips at song positions — the same timeline a \`[...]\` coordinate names, not offsets into the clip. One list covers every clip, not one per clip: each is cut where a position falls inside it, so one call can cut several clips at the same bar. A cut makes new clips with new ids, so it can't be combined with \`toPath\` or \`arrangementLength\`: cut in one call, then move or resize the pieces in the next, using the ids the cut returned.
+\`arrangementSplit\` cuts at song positions, the same timeline a \`[...]\` coordinate names, not offsets into the clip. Move or resize the pieces in the next call, using the ids the cut returned.
 A clip a later one in the same call is moved onto is left unwritten and says so: \`overwritten later in this call by <where>\`, with no \`ok\`. A clip cut short by a later one says \`shortened by <where>\`. Nothing is reported \`deleted\` unless the call asked to delete it.
 Writing into an occupied range overwrites what is there — that's normal, and the written clip's \`detail\` says what it cost: \`overwrote\`, \`shortened\` or \`split the clip at <path>\`. Not an error; pass it on if the user might care.
 A duplicate without \`toPath\` lands on the source's own track, which overwrites the source when the position matches.
 Duplicating a *scene* to the arrangement uses \`toPath: "[5|1]"\` — a scene copy lands a clip on every track, so it has no lane of its own to name.
 
-duplicate's \`id\` takes a list, copying each source in turn: for scenes and tracks, \`count\` applies to every one; clips take no \`count\`. Several sources take one destination each, in order, and nothing cycles — \`toPath: "t0[1|1],t0[17|1],t0[33|1]"\` gives each source its own bar. Only a bare position covers them all: \`id: "c1,c2,c3"\` with \`toPath: "[5|1]"\` drops each clip at bar 5 on its own track. One \`t0[5|1]\`, one clip slot, or one position for several scenes is refused: the copies would bury each other. A copy landing on a later source of the same call is refused too: list that source first, or copy it in its own call. \`name\`, \`color\`, \`arrangementLength\` and \`clip.index\` count across every copy, not per source: one clip to \`[1|1],[3|1],[5|1]\` with \`arrangementLength: "2bar,2bar,4bar"\` lays it out A-A-AB.
+In ppal-duplicate, several sources take one destination each, in order, and nothing cycles — \`toPath: "t0[1|1],t0[17|1],t0[33|1]"\` gives each source its own bar. Only a bare position covers them all: \`id: "c1,c2,c3"\` with \`toPath: "[5|1]"\` drops each clip at bar 5 on its own track. One \`t0[5|1]\`, one clip slot, or one position for several scenes is refused: the copies would bury each other. A copy landing on a later source of the same call is refused too: list that source first, or copy it in its own call. \`name\`, \`color\`, \`arrangementLength\` and \`clip.index\` count across every copy, not per source: one clip to \`[1|1],[3|1],[5|1]\` with \`arrangementLength: "2bar,2bar,4bar"\` lays it out A-A-AB.
 
 ### Take Lanes (Arrangement Variations)
 
 Stack alternate takes of an arrangement clip at the same position; only the active take plays (the user auditions/comps in Live's UI).
 
-- A lane is a path segment: \`t2/l0\` is the track's first take lane. Arrangement only, and lanes up to the index are created as needed. Read \`takeLanes\` from ppal-read-track first so you know which lanes exist — none can be deleted. A stack of takes on one lane is \`toPath: "t2/l0[9|1],t2/l0[13|1]"\`.
+- A lane is a path segment: \`t2/l0\` is the track's first take lane. Arrangement only, and lanes up to the index are created as needed. Read \`takeLanes\` from ppal-read-track first so you know which lanes exist. A stack of takes on one lane is \`toPath: "t2/l0[9|1],t2/l0[13|1]"\`.
 - A clip write only fills in the lanes up to the index it names. Adding or naming a lane on its own is the track update tool's job, through the same lane path: \`t2/l+\` appends one, \`t2/l0\` with a name renames it.
 - Promote a take back to the main lane with a \`toPath\` that has no \`l\` segment (\`t2\`). \`ppal-duplicate\` copies it and leaves the take alone; \`ppal-update-clip\` empties the take behind it.
 - A whole lane's clips go onto another lane in one call: \`duplicate\` with \`type: "track"\` and a lane \`toPath\` (\`t2/l0\`, \`t2/l+\`) copies every clip at the position it already has. The source is a track (\`path: "t2"\`, its main lane) or a lane (\`path: "t2/l0"\`, or the lane's \`id\`), and a lane can't copy onto itself. A lane source with a bare track \`toPath\` (\`t2\`, its own track or another) promotes its clips onto that track's main lane instead, over the clips already there. Clips only — devices, routing, mixer settings and session clips stay behind — and the two tracks must match MIDI/audio type. \`name\`/\`color\` label the copied clips.

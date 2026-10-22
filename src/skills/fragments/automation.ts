@@ -27,4 +27,4 @@ export const automationWrite = `**Write** with ppal-update-clip \`envelopes\` (i
 
 ## Converting Audio Clips
 
-ppal-update-clip \`convert\` makes a new track from an audio clip: \`drums\`, \`melody\` or \`harmony\` give a new MIDI track with an instrument already loaded and a clip of the notes Live detects (it can find none) in the source's place, ready to play. The track is added, so later track paths shift; the result names the track, instrument and clip.`;
+ppal-update-clip \`convert\` (see its schema) makes a new MIDI track from an audio clip; Live's detection may find no notes.`;

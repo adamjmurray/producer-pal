@@ -35,7 +35,7 @@ Operations that change how many notes exist, or modulate a value across the clip
 **Waveforms** (-1.0 to 1.0, per note position; once for audio). The argument is the cycle LENGTH as a note value (\`n/4\`, \`1bar\`) — never radians, never a note property:
 - \`cos(period)\`, \`square(period)\` - start at peak (1.0); \`sin(period)\`, \`tri(period)\`, \`saw(period)\` - start at zero, rise to peak
   - All accept optional phase offset — a 0..1 cycle fraction, not a time value: \`cos(n/4, 0.25)\` (quarter-cycle shift). square adds pulse width (3rd arg, also a 0..1 fraction): \`square(n/4, 0, 0.75)\` (phase=0, 75% duty cycle)
-- \`rand([min], [max])\` - random value, drawn once per note and written into the clip, so every playback repeats it (no args: -1 to 1, one arg: 0 to max, two: min to max). The \`vA-B\` velocity shorthand is the other one — it re-rolls each playback
+- \`rand([min], [max])\` - random value, drawn once per note and written into the clip, so every playback repeats it (no args: -1 to 1, one arg: 0 to max, two: min to max)
 - \`seq(a, b, ...)\` - cycle by the property's natural axis: \`note.index\` for per-note params, or \`clip.index\` for clip-granular params (gain, pitchShift) that have no note axis (same result as \`clipseq()\` there)
 - \`clipseq(a, b, ...)\` - cycle by \`clip.index\` across the batch of clips — forces the clip axis even on per-note params (enumerated per-clip variation, e.g. \`pitch += clipseq(0, 5, 7)\`)
 - \`choose(a, b, ...)\` - random selection from arguments
