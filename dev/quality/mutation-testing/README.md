@@ -7,10 +7,9 @@ nothing. Mutation testing closes that gap: it introduces small faults
 ("mutants") into the source and checks whether the suite fails. A **surviving
 mutant** is a behavior change no test caught — a concrete test-quality gap.
 
-Tool: [Stryker Mutator](https://stryker-mutator.io/) with the Vitest runner. The
-full CI-rollout plan (scheduled matrix, incremental PR checks, priority areas)
-is tracked as project work; the matrix sketch is inlined under "Status & next
-steps" below.
+Tool: [Stryker Mutator](https://stryker-mutator.io/) with the Vitest runner. CI
+runs it only on manual dispatch (`.github/workflows/mutation-testing.yml`); a
+scheduled matrix is sketched under "Status & next steps" below.
 
 ## Running
 
@@ -54,9 +53,11 @@ Scopes are defined in `config/mutation-scopes.mjs`:
   (`MCP_SERVER_GLOBS`) and the camelCase key `mcpServer`. The bundle entry point
   `mcp-server.ts` is excluded (it runs module-load side effects wired to
   `max-api` and is already coverage-excluded). Triaged: `break: 87`.
+- **`v8Adapter`** — `src/live-api-adapter/` (the V8 side of the Max device).
+  Triaged: `break: 97`.
 - **Groups** — `tools` (all ten tool domains) and `all` (notation +
-  `sharedRuntime` + `mcpServer` + tools), expanded by the runner into their
-  member scopes.
+  `sharedRuntime` + `mcpServer` + `v8Adapter` + tools), expanded by the runner
+  into their member scopes.
 
 Mechanics:
 

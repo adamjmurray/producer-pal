@@ -209,7 +209,8 @@ guidance.
 ### Note Values
 
 The note-value notation (durations like `n/4`, `±n` beat offsets, the off-grid
-`n<beats>/4` escape, and `<count>bar` forms) is parsed at six independent sites:
+`n<beats>/4` escape, and `<count>bar` forms) is parsed at several independent
+sites (the parity test's header lists them):
 
 - the `barbeat-grammar.peggy` rules (authoring),
 - the `transform-grammar.peggy` rules (transform expressions and time-range
@@ -237,8 +238,8 @@ The fraction arithmetic is already shared (`noteValueFractionToBeats()` in
 enforcement mechanism — they turn silent divergence (the dangerous failure) into
 a loud test failure:
 
-- `note-value-grammar-parity.test.ts` feeds one corpus through all six parse
-  sites across multiple meters and asserts identical accept/reject and matching
+- `note-value-grammar-parity.test.ts` feeds one corpus through every parse site
+  across multiple meters and asserts identical accept/reject and matching
   values.
 - `note-value-denominator-parity.test.ts` locks the serializer's
   denominator-candidate lists as subsets of the canonical
@@ -251,9 +252,9 @@ to the parity test's site list.
 
 The same situation, smaller. Stark's `DrumPitchName`
 (`$([A-Ga-g] [#b]? "-"? [0-9]+)`) is respelled as `/^([A-Ga-g])([#b]?)(-?\d+)$/`
-inside `stark-interpreter.ts`'s `drumHeaderPitch`, which resolves the header
-arithmetically so enharmonic spellings (Cb/E#/Fb/B#) work — `pitch.ts`'s exact
-table omits them and would drop the whole drum line.
+inside `drumHeaderPitch` (`stark/helpers/stark-interpreter-pitch.ts`), which
+resolves the header arithmetically so enharmonic spellings (Cb/E#/Fb/B#) work —
+`pitch.ts`'s exact table omits them and would drop the whole drum line.
 
 `drumHeaderPitch` `assertDefined`s the match rather than null-checking it,
 because the grammar is what guarantees the shape. So widening one pattern alone

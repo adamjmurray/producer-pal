@@ -48,7 +48,7 @@ has to be stated.
 - **Skipped entirely** in small-model mode, or when there are no memories.
 
 This is the `withMemory` producer in `helpers/memory/memory-inject.ts`, composed
-onto `callLiveApiEnriched` via the shared append seam
+onto `enrichConnect` via the shared append seam
 (`helpers/connect/connect-append.ts`'s `withConnectAppend` — the same mechanism
 `withProjectContext`, `withGlobalContext`, and the `WARNING:` relay use).
 Because it runs Node-side on the `ppal-connect` response, every MCP client sees

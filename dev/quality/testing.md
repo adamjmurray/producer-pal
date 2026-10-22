@@ -227,7 +227,7 @@ remembering if something surfaces later around mock identity.
 `npm run remote-script:test` (part of `npm run check`). They need neither Live
 nor the Live API: the tests use fake Live objects. A new route gets a test
 there; a route that changes the Set also gets an entry in
-`remote-script-write-expiry.test.ts`.
+`src/mcp-server/rpc/remote-script/tests/forwarded/remote-script-write-expiry.test.ts`.
 
 ## E2E
 

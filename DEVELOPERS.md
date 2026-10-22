@@ -51,7 +51,10 @@ non-localhost browser origin (a remote inspector, or over the LAN), build with
 `ALLOW_DEV_BUILD_FLAGS=true ENABLE_REMOTE_CORS=true npm run build`. A plain
 `npm run build` refuses to run with any of the debug flags set, so an ambient
 one can't be baked into something that ships — `build:debug` and that override
-are the ways past it.
+are the ways past it. The guarded flags are listed in `GUARDED_BUILD_FLAGS`
+(`scripts/build-and-release/helpers/build-flag-guard.ts`): the ones above plus
+the measurement flags `ENABLE_BUILD_STATS` and `ENABLE_OBJECT_PROBE` (see
+`dev/quality/development-tools/live-api-measurement.md`).
 
 ## Core Development Scripts
 

@@ -193,6 +193,9 @@ waits 30s for the reply, and 30s more if the job started in that time.
 - `conversions.py`: converting an audio clip to a new track
 - `clip_address.py`: finding the clip a route names
 - `simpler_settings.py`: a Simpler's pitch bend ranges
+- `undo.py`: Live's undo history: closing the pending step, undo and redo
+- `preset_guard.py`: refusing a loaded preset that holds the Producer Pal device
+- `version.py`: the release the script was built from
 
 ## Hot reload
 

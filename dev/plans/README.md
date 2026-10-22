@@ -5,8 +5,6 @@ Miscellaneous improvement plans not directly tied to the
 
 - [codebase-extraction.md](codebase-extraction.md) — splitting the Live API
   layer and the chat UI into standalone projects.
-- [ecosystem.md](ecosystem.md) — a stable core, with new features built as
-  extensions.
 - [live-api-snapshot-verification.md](live-api-snapshot-verification.md) —
   checking our Live API mocks against a real Live.
 - [live-api-through-python.md](live-api-through-python.md) — the Python remote

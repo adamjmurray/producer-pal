@@ -4,9 +4,8 @@
 `.oxlintrc.json` (JSONC — it carries comments). Formatting is oxfmt
 (`.oxfmtrc.json`).
 
-oxlint replaced eslint for speed: 5.8s wall / 13s CPU versus 31s / 183s on the
-same rule set. `npm run check` runs before every push, so this was the single
-biggest cost in the loop.
+oxlint replaced eslint for speed (roughly 5x faster on the same rules), which
+matters because `npm run check` runs before every push.
 
 ## How the config is organized
 
@@ -37,7 +36,7 @@ the line, and the rule stays on.
 
 Every entry is marked **PERMANENT** (the rule is wrong for this codebase — don't
 re-litigate it) or **DEFERRED** (worth doing, too big for one sitting). The
-deferred ones are the backlog and have tickets.
+deferred ones are the backlog.
 
 Two structural rules keep that section working, and both are easy to get wrong:
 
@@ -60,9 +59,8 @@ there.
 
 Nothing is hoisted: the top-level `rules` is empty, so a tree that appears in no
 `files` list is linted with **zero rules** and reports clean — indistinguishable
-from passing. Fourteen files were in that blind spot (`e2e/ui/**`,
-`docs/.vitepress/**`, `evals/**/*.mjs`), each a tree created without being added
-to the old eslint config.
+from passing. This happened to `e2e/ui/**`, `docs/.vitepress/**` and
+`evals/**/*.mjs`: each was a tree nobody added to the config.
 
 When you add a tree, check it:
 
@@ -81,7 +79,7 @@ default.
 
 ## The JS-plugin bridge
 
-All 26 type-aware `@typescript-eslint` rules are native, via `oxlint-tsgolint`.
+The type-aware `@typescript-eslint` rules are native, via `oxlint-tsgolint`.
 Four plugins run through oxlint's ESLint-compatible bridge, so their packages
 stay devDependencies: `eslint-plugin-sonarjs`, `@stylistic/eslint-plugin`,
 `@eslint-community/eslint-plugin-eslint-comments`, and `eslint-plugin-unicorn`.
@@ -98,9 +96,10 @@ its rules carry a distinct prefix:
 "rules": { "unicorn-js/no-duplicate-logical-operands": "error" }
 ```
 
-oxlint's native unicorn covers 23 of the 36 rules we use; 13 run through the
-bridge as `unicorn-js/*`, every one a bug detector rather than a style
-preference. Drop each as oxlint implements it natively — the native name wins.
+oxlint's native unicorn covers most of the unicorn rules we use; the rest run
+through the bridge as `unicorn-js/*`, every one a bug detector rather than a
+style preference. Drop each as oxlint implements it natively — the native name
+wins.
 
 **Gotchas:**
 
@@ -123,8 +122,8 @@ preference. Drop each as oxlint implements it natively — the native name wins.
 ## Where oxlint's defaults differ from eslint's
 
 A bare rule name adopts oxlint's defaults, which don't always match eslint's.
-Reviewing all 56 such entries found four divergences; three were weakenings and
-are now spelled out explicitly in `.oxlintrc.json`:
+Some bare entries diverge from eslint's defaults. Three were weakenings and are
+now spelled out explicitly in `.oxlintrc.json`:
 
 - `no-eval` — oxlint defaults `allowIndirect` to true, permitting
   `(0, eval)(x)`, which is the bypass the rule exists to catch.
@@ -163,13 +162,13 @@ replace:
 One isn't a straight port. The eslint config carried a src-wide ban on every
 `..` specifier that never actually ran, because a later block replaced the whole
 `no-restricted-syntax` entry. Reviving it as written would have been a new rule:
-`src/` holds 475 parent-relative specifiers, nearly all of them files the
-file-organization rules pushed into `helpers/` or `tests/` reaching back up to
-their own module root. What's enforced instead is the boundary the code already
-respects — **a relative import must stay inside its own top-level `src/`
-module**. 473 of the 475 comply; the 2 that don't reach the repo-root
-`package.json`, which leaves `src/` entirely and is exempt. webui's identical
-total ban was never shadowed and is enforced as written.
+`src/` holds hundreds of parent-relative specifiers, nearly all of them files
+the file-organization rules pushed into `helpers/` or `tests/` reaching back up
+to their own module root. What's enforced instead is the boundary the code
+already respects — **a relative import must stay inside its own top-level `src/`
+module**. The only exceptions reach the repo-root `package.json`, which leaves
+`src/` entirely and is exempt. webui's identical total ban was never shadowed
+and is enforced as written.
 
 `eslint-comments/no-unlimited-disable` couldn't survive the bridge for a
 circular reason: a file-wide disable turns off every rule including the one that
@@ -181,12 +180,10 @@ Every check in those tests is verified by injecting a known violation, not just
 by passing on a clean tree.
 
 Splitting the meta tests into their own vitest project or CI job was considered
-and rejected: all 12 of them run in 1.7s, about 5% of the test step. Test volume
-is what makes that step slow, not the meta scans.
+and rejected: they are a small share of the test step. Test volume is what makes
+that step slow, not the meta scans.
 
 ## Rules with no replacement
-
-Every rule here reported zero at migration time, so nothing broke.
 
 **Settled, don't re-open:**
 

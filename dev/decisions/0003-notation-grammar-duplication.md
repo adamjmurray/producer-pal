@@ -15,7 +15,8 @@ them.
 The sites are intentionally not byte-identical: the grammars reject leading-zero
 denominators, while the regexes accept a lone `0` so it reaches a per-site
 divide-by-zero message. Stark's `DrumPitchName` is duplicated the same way
-(`stark-interpreter.ts`, `drum-pitch-name-grammar-parity.test.ts`).
+(`stark/helpers/stark-interpreter-pitch.ts`,
+`drum-pitch-name-grammar-parity.test.ts`).
 
 ## Rejected
 

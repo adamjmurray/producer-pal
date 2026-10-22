@@ -222,10 +222,10 @@ UI.
 
 ## Type Checking
 
-`src/`, `scripts/`, `evals/`, and `webui/` are all type-checked. Prefer explicit
-return types on exported functions. Every exported function declaration needs a
-JSDoc block with `@param`/`@returns` descriptions — no types, since TypeScript
-already has them.
+Every TypeScript tree (`src/`, `scripts/`, `evals/`, `webui/`, `config/`,
+`e2e/`) is type-checked. Prefer explicit return types on exported functions.
+Every exported function declaration needs a JSDoc block with `@param`/`@returns`
+descriptions — no types, since TypeScript already has them.
 
 **TypeScript 6 and 7 are installed side-by-side.** TypeScript 7 ships no
 programmatic API (it's the Go port; a new API is expected in 7.1), but oxlint's

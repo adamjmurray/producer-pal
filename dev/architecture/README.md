@@ -139,7 +139,8 @@ The webui hook graph that drives all of this is documented in
 
 ## Language Choices
 
-The entire codebase uses TypeScript (`src/`, `scripts/`, and `webui/`).
+The entire codebase uses TypeScript (`src/`, `scripts/`, `evals/`, `webui/`,
+`config/`, and `e2e/`), except the Python remote script.
 
 **Benefits of TypeScript:**
 
@@ -333,9 +334,9 @@ write landed on the wrong track.
 ## Live API Interface
 
 The Live API has idiosyncrasies that are abstracted by
-`src/live-api-adapter/live-api-extensions.ts`:
+`src/live-api-adapter/live-api-extensions.ts`. Use it; never read properties
+with raw `.get("propertyName")?.[0]`. Examples of what it hides:
 
-- Properties accessed via `.get("propertyName")?.[0]`
 - Color values need special conversion
 - Some properties require different access patterns
 

@@ -215,7 +215,7 @@ device bundled" mode. See `dev/process/releasing/build-and-pre-release.md`.
 Notation is the one axis that crosses the runtime boundary. The other two are
 settled entirely Node-side, but notation also decides how V8 parses and formats
 clip notes (`ToolContext.notation`), and V8 holds it as a session global with no
-per-request setter. So `withNotationOverride`
+per-request setter. So `withDefaultOverrides`
 (`src/mcp-server/helpers/request-overrides/`) wraps `callLiveApi` and puts the
 resolved value in the same `RequestOverrides` blob as
 `timeoutMs`/`compactOutput` — V8's `buildRequestContext` spreads it onto the
