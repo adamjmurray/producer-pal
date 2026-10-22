@@ -49,12 +49,15 @@ const EVAL_ROUTES: Record<string, string> = { gemini: "google" };
 const REAL_MAX_TOKENS = 16;
 const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
 // Stand-in for OpenRouter's public model list, so Off resolves in stub mode.
-// Models not listed here (e.g. qwen/qwen3.8-max) behave as unknown ones.
+// Models not listed here (e.g. z-ai/glm-5.3) behave as unknown ones.
 const STUB_OPENROUTER_MODELS = {
   data: [
     { id: "anthropic/claude-sonnet-5.5", reasoning: { mandatory: true } },
     { id: "google/gemini-3.8-flash", reasoning: { mandatory: true } },
-    { id: "deepseek/deepseek-v4.1-flash", reasoning: { mandatory: false } },
+    {
+      id: "deepseek/deepseek-v4.1-flash-1017",
+      reasoning: { mandatory: false },
+    },
     { id: "moonshotai/kimi-k3", reasoning: { mandatory: false } },
     { id: "poolside/laguna-xs-2.1:free", reasoning: { mandatory: false } },
   ],

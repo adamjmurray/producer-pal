@@ -33,8 +33,12 @@ const OPENROUTER_LIST = {
   data: [
     { id: "anthropic/claude-sonnet-5.5", reasoning: { mandatory: true } },
     { id: "google/gemini-3.8-flash", reasoning: { mandatory: true } },
-    { id: "deepseek/deepseek-v4.1-flash", reasoning: { mandatory: false } },
+    {
+      id: "deepseek/deepseek-v4.1-flash-1017",
+      reasoning: { mandatory: false },
+    },
     { id: "moonshotai/kimi-k3", reasoning: { mandatory: false } },
+    { id: "qwen/qwen3.8-max-prime", reasoning: { mandatory: true } },
   ],
 };
 
@@ -246,10 +250,11 @@ describe("provider wire conformance", () => {
   });
 
   describe.each([
-    ["deepseek/deepseek-v4.1-flash", "none"],
+    ["deepseek/deepseek-v4.1-flash-1017", "none"],
     ["moonshotai/kimi-k3", "none"],
     ["anthropic/claude-sonnet-5.5", "low"],
     ["google/gemini-3.8-flash", "low"],
+    ["qwen/qwen3.8-max-prime", "low"],
     ["qwen/qwen3.8-max", undefined],
   ])("openrouter Off for %s", (model, effort) => {
     it("sends the effort the model accepts, or none for an unlisted model", async () => {
