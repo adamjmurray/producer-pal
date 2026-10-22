@@ -6,6 +6,7 @@
 import { type ProviderOptions } from "@ai-sdk/provider-utils";
 import {
   getThinkingOffType,
+  isAlwaysOnThinkingModel,
   isLegacyNonThinkingModel,
   isLegacyThinkingModel,
   isOpenAIReasoningModel,
@@ -117,7 +118,11 @@ function buildAnthropicOptions(
   const effort = mapThinkingToAnthropicEffort(thinking);
 
   if (effort == null) {
-    return undefined;
+    // Always-on models can't turn thinking off (and 400 on a `thinking` field),
+    // so Off asks for the least of it instead.
+    return isAlwaysOnThinkingModel(model)
+      ? { anthropic: { effort: "low" } }
+      : undefined;
   }
 
   return {
@@ -240,10 +245,10 @@ function buildGatewayAnthropicOptions(
 ): ProviderOptions | undefined {
   const options = buildAnthropicOptions(thinking, model);
   const anthropic = options?.anthropic as
-    | { thinking: { type: string } }
+    | { thinking?: { type: string } }
     | undefined;
 
-  if (anthropic?.thinking.type === "adaptive") {
+  if (anthropic?.thinking?.type === "adaptive") {
     return {
       anthropic: {
         ...anthropic,

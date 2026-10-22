@@ -8,6 +8,7 @@ import { streamText } from "ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createProviderModel } from "#webui/chat/sdk/provider-factories";
 import { buildProviderOptions } from "#webui/chat/sdk/provider-options";
+import { isAlwaysOnThinkingModel } from "#webui/hooks/settings/config-builders";
 import { PROVIDER_MODELS } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
 
@@ -108,6 +109,32 @@ describe("provider wire conformance", () => {
       },
     );
 
+    it("asks for the lowest effort, with no thinking field, when Off on an always-on model", async () => {
+      const body = await wireBody(
+        "anthropic",
+        model,
+        buildProviderOptions("anthropic", "Off", model),
+      );
+
+      if (isAlwaysOnThinkingModel(model)) {
+        expect(body.thinking).toBeUndefined();
+        expect(body.output_config?.effort).toBe("low");
+      } else {
+        expect(body.output_config?.effort).toBeUndefined();
+      }
+    });
+
+    it("sends adaptive thinking at the Default effort", async () => {
+      const body = await wireBody(
+        "anthropic",
+        model,
+        buildProviderOptions("anthropic", "Default", model),
+      );
+
+      expect(body.thinking?.type).toBe("adaptive");
+      expect(body.output_config?.effort).toBe("high");
+    });
+
     it("sends adaptive thinking at the Max effort", async () => {
       const body = await wireBody(
         "anthropic",
@@ -154,6 +181,24 @@ describe("provider wire conformance", () => {
       );
     },
   );
+
+  describe.each(
+    presetModels("vercel").filter((m) => m.startsWith("anthropic/")),
+  )("vercel %s", (model) => {
+    it("matches the direct route's effort when Off", async () => {
+      const options = buildProviderOptions("vercel", "Off", model);
+      const id = model.slice("anthropic/".length);
+      const direct = await wireBody(
+        "anthropic",
+        id,
+        buildProviderOptions("anthropic", "Off", id),
+      );
+      const effort = (options?.anthropic as { effort?: string } | undefined)
+        ?.effort;
+
+      expect(effort).toBe(direct.output_config?.effort);
+    });
+  });
 
   describe.each(presetModels("openrouter"))("openrouter %s", (model) => {
     it.each(LEVELS)(

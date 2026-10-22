@@ -69,13 +69,21 @@ describe("buildProviderOptions for Anthropic", () => {
     ).toStrictEqual({ anthropic: { thinking: { type: "disabled" } } });
   });
 
-  it("sends nothing for off on models that reject a disable", () => {
+  it("sends the lowest effort for off on always-on models", () => {
+    const low = { anthropic: { effort: "low" } };
+
     expect(
       buildProviderOptions("anthropic", "off", "claude-fable-5-1"),
-    ).toBeUndefined();
+    ).toStrictEqual(low);
+    expect(
+      buildProviderOptions("anthropic", "off", "claude-opus-5-5"),
+    ).toStrictEqual(low);
     expect(
       buildProviderOptions("vercel", "off", "anthropic/claude-mythos-5"),
-    ).toBeUndefined();
+    ).toStrictEqual(low);
+    expect(
+      buildProviderOptions("vercel", "off", "anthropic/claude-opus-5.5"),
+    ).toStrictEqual(low);
   });
 
   it("sends nothing when thinking is unset or not a named level", () => {
@@ -113,19 +121,28 @@ describe("buildProviderOptions for OpenAI", () => {
   });
 });
 
-describe("GPT-6 none rule", () => {
-  // evals can't import webui at runtime, so the rule is copied; keep it in step.
+describe("rules copied from the chat UI", () => {
+  // Copied from webui (evals can't import it at runtime); keep in step.
   const read = (path: string): string =>
     readFileSync(new URL(path, import.meta.url), "utf8");
-  const rule = /const GPT6_ACCEPTS_NONE = (\/.*\/);/;
+  const webui = read("../../../webui/src/hooks/settings/config-builders.ts");
+  const evals = read("../thinking-provider-options.ts");
 
-  it("is the same pattern as the chat UI's", () => {
-    const webui = rule.exec(
-      read("../../../webui/src/hooks/settings/config-builders.ts"),
-    );
-    const evals = rule.exec(read("../thinking-provider-options.ts"));
+  it.each(["GPT6_ACCEPTS_NONE", "ALWAYS_ON_THINKING_MODEL"])(
+    "%s is the same pattern",
+    (name) => {
+      const rule = new RegExp(`const ${name} = (/.*/);`);
 
-    expect(webui?.[1]).toBeDefined();
-    expect(evals?.[1]).toBe(webui?.[1]);
+      expect(rule.exec(webui)?.[1]).toBeDefined();
+      expect(rule.exec(evals)?.[1]).toBe(rule.exec(webui)?.[1]);
+    },
+  );
+
+  it("treats a model as always-on on the same capability test", () => {
+    const test =
+      "caps.rejectsThinkingDisabled && !caps.supportsBetweenToolsThinking";
+
+    expect(webui).toContain(test);
+    expect(evals).toContain(test);
   });
 });

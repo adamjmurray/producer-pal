@@ -34,12 +34,23 @@ describe("buildProviderOptions for the Vercel gateway", () => {
       ...caching,
       anthropic: { thinking: { type: "disabled" } },
     });
+  });
+
+  it("asks always-on Claude models for the lowest effort when Off", () => {
+    const low = { ...caching, anthropic: { effort: "low" } };
+
     expect(
       buildProviderOptions("vercel", "Off", "anthropic/claude-fable-5"),
-    ).toStrictEqual(caching);
+    ).toStrictEqual(low);
     expect(
       buildProviderOptions("vercel", "Off", "anthropic/claude-opus-5.5"),
-    ).toStrictEqual(caching);
+    ).toStrictEqual(low);
+    expect(
+      buildProviderOptions("anthropic", "Off", "claude-opus-5-5"),
+    ).toStrictEqual({ anthropic: { effort: "low" } });
+    expect(
+      buildProviderOptions("anthropic", "Off", "claude-fable-5-1"),
+    ).toStrictEqual({ anthropic: { effort: "low" } });
   });
 
   it("uses adaptive thinking for Haiku 5.5", () => {

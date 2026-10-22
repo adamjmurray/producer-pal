@@ -7,6 +7,7 @@
  * Maps CLI --thinking levels to AI SDK providerOptions per provider.
  */
 
+import { getModelCapabilities } from "@ai-sdk/anthropic/internal";
 import { type ProviderOptions } from "@ai-sdk/provider-utils";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
 import { type ThinkingLevel } from "./shared/types.ts";
@@ -38,6 +39,9 @@ const OPENAI_EFFORT_MAP: Record<string, string> = {
 
 // GPT-6 ids that take effort "none"; the others 400. Same as webui (parity test).
 const GPT6_ACCEPTS_NONE = /^gpt-6-(sol|luna)(-\d{4}-\d{2}-\d{2})?$/;
+
+// Always-on Claude models; same rule as webui (parity test).
+const ALWAYS_ON_THINKING_MODEL = /fable|mythos/;
 
 /** OpenRouter reasoning effort levels */
 const OPENROUTER_EFFORT_MAP: Record<string, string> = {
@@ -98,8 +102,8 @@ export function buildProviderOptions(
 /**
  * Build Anthropic thinking provider options using adaptive thinking with effort.
  * Off sends an explicit disable: omitting `thinking` still thinks on
- * adaptive-by-default models (Sonnet 5+). Fable and Mythos reject a disable,
- * so they get nothing.
+ * adaptive-by-default models (Sonnet 5+). Always-on models reject it, so they
+ * get effort low.
  *
  * @param level - Thinking level string
  * @param model - Anthropic model id (with or without a `provider/` prefix)
@@ -116,8 +120,8 @@ function buildAnthropicThinking(
   }
 
   if (effort === "none") {
-    return /fable|mythos/.test(model)
-      ? undefined
+    return isAlwaysOnThinking(model)
+      ? { anthropic: { effort: "low" } }
       : { anthropic: { thinking: { type: "disabled" } } };
   }
 
@@ -127,6 +131,19 @@ function buildAnthropicThinking(
       effort,
     },
   };
+}
+
+/**
+ * @param model - Anthropic model id (with or without a `provider/` prefix)
+ * @returns True when the model's thinking can't be turned off
+ */
+function isAlwaysOnThinking(model: string): boolean {
+  const caps = getModelCapabilities(model.replaceAll(".", "-"));
+
+  return (
+    ALWAYS_ON_THINKING_MODEL.test(model) ||
+    (caps.rejectsThinkingDisabled && !caps.supportsBetweenToolsThinking)
+  );
 }
 
 /**
