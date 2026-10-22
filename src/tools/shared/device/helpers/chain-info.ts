@@ -184,6 +184,17 @@ export function computeState(
 }
 
 /**
+ * Whether a device fills a chain's one instrument slot. Unlike
+ * deviceHasInstrument, an empty rack counts: Live still refuses a second
+ * instrument beside it.
+ * @param device - Device LiveAPI object
+ * @returns True if Live types the device as an instrument
+ */
+export function isInstrumentTyped(device: LiveAPI): boolean {
+  return device.getProperty("type") === LIVE_API_DEVICE_TYPE_INSTRUMENT;
+}
+
+/**
  * Whether a device makes sound — an instrument, or a rack with one inside.
  * Live types a rack as an instrument whether or not it holds anything, so an
  * empty one has to be looked into: otherwise a silent pad is listed in the drum

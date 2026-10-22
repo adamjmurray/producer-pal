@@ -18,7 +18,7 @@ import {
 } from "#src/tools/shared/device/helpers/path/device-fit.ts";
 import {
   ONE_INSTRUMENT_PER_CHAIN,
-  deviceHasInstrument,
+  isInstrumentTyped,
 } from "#src/tools/shared/device/helpers/chain-info.ts";
 import {
   pastTheEndReason,
@@ -240,8 +240,8 @@ function refusalReason(
 
   return (
     misfitReason(name, loadedDeviceKind(device), container) ??
-    (deviceHasInstrument(device) &&
-    container.someChild("devices", deviceHasInstrument)
+    (isInstrumentTyped(device) &&
+    container.someChild("devices", isInstrumentTyped)
       ? ONE_INSTRUMENT_PER_CHAIN
       : undefined)
   );

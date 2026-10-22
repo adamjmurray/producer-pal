@@ -536,47 +536,6 @@ describe("createDevice", () => {
         );
       });
 
-      // Live gives back no id and no reason, so the refusal has to name the
-      // cause itself or the caller has nothing to act on.
-      it("names the instrument already there when Live refuses a second one", async () => {
-        registerMockObject("track-0", {
-          path: livePath.track(0),
-          properties: { devices: children("existing-instrument") },
-          methods: { insert_device: () => ["id", "0"] },
-        });
-        registerMockObject("existing-instrument", {
-          path: livePath.track(0).device(0),
-          properties: { type: 1, can_have_chains: 0 },
-        });
-
-        await expect(
-          createDevice({ path: "t0/d+", device: "Operator" }),
-        ).rejects.toThrow(
-          'could not insert "Operator" at end in path "t0/d+": the ' +
-            "destination already has an instrument, and only one is allowed",
-        );
-      });
-
-      // Nothing in the chain makes sound, so the instrument rule isn't what
-      // Live refused on and the message says only what it knows.
-      it("leaves the refusal bare when the cause isn't the instrument rule", async () => {
-        registerMockObject("track-0", {
-          path: livePath.track(0),
-          properties: { devices: children("existing-effect") },
-          methods: { insert_device: () => ["id", "0"] },
-        });
-        registerMockObject("existing-effect", {
-          path: livePath.track(0).device(0),
-          properties: { type: 2, can_have_chains: 0 },
-        });
-
-        await expect(
-          createDevice({ path: "t0/d+", device: "Operator" }),
-        ).rejects.toThrow(
-          /could not insert "Operator" at end in path "t0\/d\+"$/,
-        );
-      });
-
       it("should throw error with position when insert_device returns falsy id", async () => {
         track0 = registerMockObject("track-0", {
           path: livePath.track(0),

@@ -291,6 +291,22 @@ describe("ppal-create-device", () => {
     expect(text).toContain("already has an instrument");
   });
 
+  // An empty Drum Rack makes no sound, but Live still counts it.
+  it("names an empty Drum Rack as the instrument already there", async () => {
+    const trackIndex = await createTrack("midi");
+
+    await createDevice("Drum Rack", `t${trackIndex}`);
+
+    const text = extractToolResultText(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: { device: "Operator", path: `t${trackIndex}/d+` },
+      }),
+    );
+
+    expect(text).toContain("already has an instrument");
+  });
+
   // Aiming two devices at d1 and d2 used to land both at d1 and d2 and push
   // the two originals past them, so the second entry never went where it was
   // named. Refused up front now, before either one is created.
