@@ -12,8 +12,8 @@ part is a file beside it.
 - [PRINCIPLES.md](PRINCIPLES.md) — first principles for tool design. Read before
   changing a tool's inputs, outputs, or failure behavior.
 - [architecture/](architecture/README.md) — how the pieces fit together, the
-  Skills fragments, how tools reach the remote script, and the `~/.producer-pal`
-  override layer.
+  Skills fragments, how tools reach the remote script, the write queue, and the
+  `~/.producer-pal` override layer.
 - [coding-standards/](coding-standards/README.md) — style guide and Live API
   reference.
 

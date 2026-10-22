@@ -93,6 +93,5 @@ mode skips the ping. See [skills.md](skills.md).
 ## Undo and write order
 
 Write calls run one at a time through a Node queue
-([ADR-0059](../decisions/0059-write-calls-run-one-at-a-time.md)), and Node ends
-Live's undo step after each one. See
-[write-pipeline.md](../tools/write-pipeline.md#one-undo-step-per-call).
+([write-queue.md](write-queue.md)), and Node ends Live's undo step after each
+one. See [write-pipeline.md](../tools/write-pipeline.md#one-undo-step-per-call).

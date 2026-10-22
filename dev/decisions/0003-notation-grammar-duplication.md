@@ -5,25 +5,20 @@
 
 ## Decision
 
-The note-value lexer (durations, `±n` offsets, the `n<beats>/4` escape,
-`<count>bar`) is written out three times: in both Peggy grammars and as regexes
-in `src/notation/barbeat/time/barbeat-time.ts`. Keep it that way. Parity tests
-hold the sites in step (`note-value-grammar-parity.test.ts`,
-`note-value-denominator-parity.test.ts`). A new parse site must be added to
-them.
-
-The sites are intentionally not byte-identical: the grammars reject leading-zero
-denominators, while the regexes accept a lone `0` so it reaches a per-site
-divide-by-zero message. Stark's `DrumPitchName` is duplicated the same way
-(`stark/helpers/stark-interpreter-pitch.ts`,
-`drum-pitch-name-grammar-parity.test.ts`).
+Keep the note-value lexer (and Stark's `DrumPitchName`) written out at every
+parse site instead of sharing it. The sites and the parity tests that hold them
+in step are in `dev/coding-standards/README.md`.
 
 ## Rejected
 
-- **A shared Peggy fragment.** Peggy can't share rules, so this means inventing
-  a build-time codegen step.
-- **Routing the per-note path through the parser.** Too slow. The regexes exist
-  to keep the hot path off the parser.
+- **A shared Peggy fragment.** Peggy has no grammar `import` and can't share
+  rules between grammars. Sharing would need a build-time text-concatenation
+  step, a new failure mode to consolidate stable lexer rules that rarely change.
+  The rules that change in a reform (`beatValue`, `duration`/`nDuration`) differ
+  per grammar and can't be shared anyway.
+- **Routing the per-note path through the parser.** Too slow: the TS regexes run
+  in per-note hot paths (e.g. transform time-range membership), so a full parser
+  call would be a performance regression.
 
 ## Revisit if
 

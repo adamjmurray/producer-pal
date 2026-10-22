@@ -8,8 +8,7 @@ nothing. Mutation testing closes that gap: it introduces small faults
 mutant** is a behavior change no test caught — a concrete test-quality gap.
 
 Tool: [Stryker Mutator](https://stryker-mutator.io/) with the Vitest runner. CI
-runs it only on manual dispatch (`.github/workflows/mutation-testing.yml`); a
-scheduled matrix is sketched under "Status & next steps" below.
+runs it only on manual dispatch (`.github/workflows/mutation-testing.yml`).
 
 ## Running
 
@@ -20,44 +19,40 @@ npm run mutation -- sharedRuntime # src/shared (cross-cutting utilities)
 npm run mutation -- mcpServer    # src/mcp-server (Node-for-Max server)
 npm run mutation -- tools        # every tool domain (group)
 npm run mutation -- notation clip
-npm run mutation -- all          # notation + sharedRuntime + mcpServer + every tool domain
+npm run mutation -- all          # every scope
 ```
 
 Mutation testing is **scoped** and deliberately **not** part of `npm run check`
 — a full pass takes minutes, too slow for the per-PR hot path. Whole-tree runs
 are hours, so we mutate one area ("scope") at a time.
 
-Scopes are defined in `config/mutation-scopes.mjs`:
+Scopes are defined in `config/mutation-scopes.mjs`, which also holds each
+scope's `break` floor (the table under "Baselines" mirrors them):
 
-- **`notation`** — `src/notation/` (the default). Ratcheted: `break: 86`.
+- **`notation`** — `src/notation/` (the default).
 - **One scope per `src/tools/` domain** — `actions`, `advanced`, `clip`, `core`,
   `device`, `live-set`, `scene`, `session`, `shared`, `track`. Each excludes
   tests, test helpers, `.def.ts` tool-definition files, `*-disabled.ts`
   build-time substitution stubs, and type-only modules (see `toolDomain()`). A
   domain starts in **baseline mode** (`break: null`, measure-only) until its
   survivors are triaged in its own PR and it earns a floor in
-  `TOOL_DOMAIN_BREAKS`. All ten are now triaged: `track` (`break: 85`),
-  `session` (`break: 89`), `actions` (`break: 90`), `device` (`break: 90`),
-  `clip` (`break: 96`), `advanced` (`break: 97`), `core` (`break: 99`), `scene`
-  (`break: 96`), `live-set` (`break: 98`), `shared` (`break: 94`).
+  `TOOL_DOMAIN_BREAKS`.
 - **`sharedRuntime`** — `src/shared/` (cross-cutting utilities shared by the
   Node MCP server and the V8 Max runtime: pitch, notation identity, compact
   serializer/parser, path builders, config, error/response utils, v8 console /
   sleep, silent-wav, version-check). It is **not** under `src/tools/`, so it
   uses its own glob const (`SHARED_RUNTIME_GLOBS`), and its scope key can't be
-  `shared` — that already means `src/tools/shared`. Triaged: `break: 94`.
+  `shared` — that already means `src/tools/shared`.
 - **`mcpServer`** — `src/mcp-server/` (the Node-for-Max side: the Express app,
   MCP server wiring, REST routes, the live-library SQLite reader, the
   markdown/memory/skill override stores, and the RPC protocol to the V8
   runtime). Also **not** under `src/tools/`, so it uses its own glob const
   (`MCP_SERVER_GLOBS`) and the camelCase key `mcpServer`. The bundle entry point
   `mcp-server.ts` is excluded (it runs module-load side effects wired to
-  `max-api` and is already coverage-excluded). Triaged: `break: 87`.
+  `max-api` and is already coverage-excluded).
 - **`v8Adapter`** — `src/live-api-adapter/` (the V8 side of the Max device).
-  Triaged: `break: 97`.
-- **Groups** — `tools` (all ten tool domains) and `all` (notation +
-  `sharedRuntime` + `mcpServer` + `v8Adapter` + tools), expanded by the runner
-  into their member scopes.
+- **Groups** — `tools` (all ten tool domains) and `all` (every scope above),
+  expanded by the runner into their member scopes.
 
 Mechanics:
 
@@ -152,61 +147,18 @@ the verdict is binary (an uncaught equivalent still reads "uncaught"), and a
 test can kill a mutant for the wrong reason — so read the surviving code, don't
 just chase green.
 
-## Status & next steps
+## Status
 
-**The whole source tree is now triaged and ratcheted — no scope is left in
-baseline mode, and none remains unmutated.** The ten tool domains: the write-op
-tier `track` (`break: 85`), `session` (`break: 89`), `actions` (`break: 90`),
-`device` (`break: 90`), `clip` (`break: 96`); the read-op / small tier
-`advanced` (`break: 97`), `core` (`break: 99`), `scene` (`break: 96`),
-`live-set` (`break: 98`); and `shared` (`break: 94`). Plus the four
-non-`src/tools/` scopes: `notation` (`break: 86`), `sharedRuntime`
-(`src/shared/`, `break: 94`), `mcpServer` (`src/mcp-server/`, `break: 87`) and
-`v8Adapter` (`src/live-api-adapter/`, `break: 97`). The per-domain scope
-mechanism (`config/mutation-scopes.mjs` + the runner) is in place, so each area
-can be mutated on its own. Mutation testing stays off the per-PR hot path (a
-full pass is minutes). Remaining work (later releases):
+Every scope is triaged and ratcheted; none is in baseline mode. Mutation testing
+stays off the per-PR hot path (a run is minutes per scope).
 
-- Keep triaging the ~588 notation survivors, but expect diminishing returns: the
-  dense clusters left are epsilon-boundary / warning-string / equivalent mutants
-  (bucket 2/3), so genuine bucket-1 gaps are now sparse.
-- Raise each scope's `break` as its score climbs.
-- Optionally wire a scheduled (nightly/weekly) non-blocking CI job once several
-  domains have floors — full-tree runtime is hours, not minutes.
+- Notation's remaining survivors are mostly epsilon-boundary, warning-string and
+  equivalent mutants (buckets 2 and 3), so real gaps are sparse.
+- Raise a scope's `break` as its score climbs.
 
-### CI-rollout sketch
-
-A full-tree run is ~8–20 hours, so it can't be per-commit — but GitHub Actions
-is free for public repos with a 6-hour hard cap per job. Split the tree into
-module groups running as parallel matrix jobs, each in its own 6-hour window
-(the slowest module is likely 2–3 hours, well under the cap):
-
-```yaml
-on:
-  schedule:
-    - cron: "0 3 * * 1" # Weekly Monday 3am UTC
-jobs:
-  mutation-test:
-    strategy:
-      fail-fast: false
-      matrix:
-        scope: [notation, clip, device, track, actions, session, shared]
-    steps:
-      - run: npm run mutation -- ${{ matrix.scope }}
-      # Upload reports/mutation/<scope>.html as an artifact
-```
-
-Each matrix job runs one scope from `config/mutation-scopes.mjs`, so the matrix
-is just a list of scope names — no duplicated glob strings to keep in sync.
-
-After the first full run, `--incremental` mode only re-tests mutants in changed
-files, bringing per-PR runs down to minutes — viable as a non-blocking check.
-
-**Priority areas when widening** (high-risk first):
-
-1. **Write operations** (`update-*`, `create-*`, `delete`) — weak assertions
-   here could mask bugs that modify Live Sets.
-2. **Recently migrated test files** — the 83 files touched in the mock registry
-   migration are most likely to have weakened assertions.
-3. **Arrangement operations** — complex edge cases around clip splitting,
-   tiling, and boundary detection.
+A scheduled CI run is not wired. A full-tree run is ~8–20 hours, and a GitHub
+Actions job is capped at 6, so it would be a matrix with one job per scope (each
+running `npm run mutation -- <scope>` and uploading
+`reports/mutation/<scope>.html`). After a first full run, Stryker's
+`--incremental` mode re-tests only mutants in changed files, which would make a
+non-blocking per-PR run feasible.

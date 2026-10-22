@@ -13,6 +13,8 @@ Detail lives in these parts:
   `~/.producer-pal` holds, and the rules for override slots.
 - [remote-script.md](remote-script.md) — how a tool reaches the Python remote
   script in Live: call path, contract files, adding a route, availability.
+- [write-queue.md](write-queue.md) — why write calls run one at a time, and how
+  the queue treats timeouts and disconnects.
 - [skills.md](skills.md) — how the Skills text is cut into fragments, gated by
   tool, and split into read and write halves.
 - [build-system.md](build-system.md) — entry, output, and target for each of the
@@ -107,53 +109,17 @@ UI from the MCP server's Express app and connects directly to the LLM API.
 
 ### Voice Mode
 
-The chat UI also has a realtime **voice mode**: speech-to-speech conversation
-with the model, with the same MCP tools and conversation store as text chat. The
-browser selects voice mode by choosing a realtime model; the provider is derived
-from the model id (`gpt-realtime-2.1` → OpenAI, `gemini-3.8-live` → Gemini). Two
-backends are supported behind one interface:
-
-- **OpenAI** uses the `@openai/agents` Realtime SDK over **WebRTC**. The SDK
-  owns mic capture, voice-activity detection, and audio playback.
-- **Gemini** uses the Gemini Live **WebSocket** with manual audio handling: 16
-  kHz PCM captured via an AudioWorklet on the way up, 24 kHz PCM scheduled
-  gaplessly on the way down.
-
-The browser never holds the long-lived API key for the realtime connection. Two
-Express routes on the MCP server mint/relay credentials server-side, both gated
-to local origins:
-
-- `POST /voice-token`
-  ([routes/voice/voice-token-route.ts](../../src/mcp-server/routes/voice/voice-token-route.ts))
-  forwards the user's OpenAI key to OpenAI's `client_secrets` endpoint
-  server-to-server and returns only the short-lived `ek_...` ephemeral token.
-- `POST /gemini-voice-token`
-  ([routes/voice/gemini-voice-token-route.ts](../../src/mcp-server/routes/voice/gemini-voice-token-route.ts))
-  currently returns the Gemini key as-is (`ephemeral: false`) — Gemini Live
-  accepts the API key directly from the browser — with a server-only upgrade
-  path to v1alpha ephemeral tokens (the client already honors the `ephemeral`
-  flag).
-
-The webui hook graph that drives all of this is documented in
-[the Chat UI doc](../clients/chat-ui/voice-mode.md).
+The chat UI also has a realtime voice mode (OpenAI over WebRTC, Gemini Live over
+WebSocket). Two Express routes on the MCP server mint credentials so the browser
+never holds the long-lived key. See
+[voice-mode.md](../clients/chat-ui/voice-mode.md).
 
 ## Language Choices
 
-The entire codebase uses TypeScript (`src/`, `scripts/`, `evals/`, `webui/`,
-`config/`, and `e2e/`), except the Python remote script.
-
-**Benefits of TypeScript:**
-
-- Static typing catches errors at compile time
-- Complex React component state and props benefit from type safety
-- Integrates the Vercel AI SDK with multiple provider packages
-- Complex response mapping to normalized UI format requires type safety
-- Streaming protocols and message parsing have many edge cases
-
-**Runtime validation:**
-
-- Zod schemas validate tool inputs to avoid unexpected runtime values
-- Live API has no type definitions (uses type assertions where needed)
+TypeScript everywhere (`src/`, `scripts/`, `evals/`, `webui/`, `config/`,
+`e2e/`) except the Python remote script. Zod validates tool inputs. The Live API
+has no type definitions, so code uses type assertions where needed. The chat UI
+is Preact.
 
 ## Component Details
 
@@ -298,38 +264,8 @@ short.
 
 ### Write calls run one at a time
 
-Every tool call reaches V8 through `callLiveApi` in
-`src/mcp-server/max-api-adapter.ts`, whether it came over MCP (portal, chat UI,
-any MCP client) or REST. There, `withWriteQueue`
-(`src/mcp-server/rpc/write-queue/`) sends write calls one at a time, in arrival
-order, across all clients. Reads skip the queue.
-
-V8 runs other requests while one waits on the remote script, and models send
-parallel tool calls. Without the queue, one write could insert a track while
-another held track and slot numbers across a wait, and the rest of the second
-write landed on the wrong track.
-
-- **What counts as a write:** a call to a tool that isn't `readOnlyHint`, unless
-  its def's `changesSet` says these args leave the Set alone (a read action, a
-  read-only `ppal-live-api` batch, firing clips). `ppal-manage` counts: undo and
-  redo change the Set. The undo-step wrapper uses the same check, minus
-  `ppal-manage`.
-- **The timeout counts from arrival.** A queued write is sent with what is left
-  of its timeout, so its V8 deadline shrinks too, and the caller always hears
-  back within its timeout, under the MCP client's own. A write that gets down to
-  5 s (or half its timeout, if shorter) before its turn leaves the queue and
-  answers "Not run ... Nothing changed".
-- **A caller that disconnects** leaves the queue without running: the HTTP
-  request closing aborts the MCP handler's signal (and a REST response's), which
-  rides down as `RequestOverrides.signal`. MCP `notifications/cancelled` aborts
-  nothing: POST /mcp builds a new server per request, and the portal doesn't
-  forward it. Once a write is in V8 it can't be stopped.
-- **Limits.** The turn passes on when a call answers, a timeout included, so the
-  next write can overlap a timed-out write V8 is still finishing. A user editing
-  Live during a wait can still shift things under a write. Reads still run in
-  parallel, so a read that waits on the remote script (read-clip envelopes,
-  read-device macros or Simpler) can report another object's data if a write
-  shifts positions meanwhile; it changes nothing.
+Node sends write calls to V8 one at a time, across all clients; reads skip the
+queue. See [write-queue.md](write-queue.md).
 
 ## Live API Interface
 
@@ -349,12 +285,6 @@ enables drum programming workflows. Any changes to device structure must
 preserve drumMap functionality by ensuring extraction logic can locate drum rack
 devices across all device categories.
 
-### Playback State Handling
-
-Due to Live API timing, playback-related operations return optimistic results
-assuming success rather than immediately reading state which may not reflect
-changes yet.
-
 ## Versioning
 
 Semantic versioning (major.minor.patch) maintained in `src/shared/config.ts`:
@@ -365,10 +295,6 @@ Semantic versioning (major.minor.patch) maintained in `src/shared/config.ts`:
 
 ## Testing Infrastructure
 
-- **Framework:** Vitest
-- **Mock Live API:** `src/test/mocks/mock-live-api.ts` (mock `LiveAPI` class)
-- **Mock registry:** `src/test/mocks/mock-registry.ts` (instance-level mocks per
-  Live API object)
-- **Test location:** Colocated with source (`*.test.ts`)
-- **Assertions:** Use instance-level `RegisteredMockObject` mocks for per-object
-  assertions (e.g., `expect(device.set).toHaveBeenCalledWith(...)`)
+Vitest, with tests colocated with source (`*.test.ts`). The mock LiveAPI is
+`src/test/mocks/mock-live-api.ts`; see [testing.md](../quality/testing.md) for
+the mock registry and the rest.
