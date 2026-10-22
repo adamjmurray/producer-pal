@@ -46,6 +46,9 @@ describe("buildProviderOptions for the Vercel gateway", () => {
 
     expect(
       buildProviderOptions("vercel", "off", "anthropic/claude-sonnet-5.5"),
+    ).toStrictEqual({ anthropic: { thinking: { type: "between_tools" } } });
+    expect(
+      buildProviderOptions("vercel", "off", "anthropic/claude-haiku-5.5"),
     ).toStrictEqual({ anthropic: { thinking: { type: "disabled" } } });
     expect(
       buildProviderOptions("vercel", "off", "spacexai/grok-5"),
@@ -65,8 +68,14 @@ describe("buildProviderOptions for Anthropic", () => {
 
   it("sends an explicit disable for off", () => {
     expect(
-      buildProviderOptions("anthropic", "off", "claude-sonnet-5-5"),
+      buildProviderOptions("anthropic", "off", "claude-haiku-5-5"),
     ).toStrictEqual({ anthropic: { thinking: { type: "disabled" } } });
+  });
+
+  it("sends between_tools for off on models that reject disabled", () => {
+    expect(
+      buildProviderOptions("anthropic", "off", "claude-sonnet-5-5"),
+    ).toStrictEqual({ anthropic: { thinking: { type: "between_tools" } } });
   });
 
   it("sends the lowest effort for off on always-on models", () => {

@@ -120,9 +120,17 @@ function buildAnthropicThinking(
   }
 
   if (effort === "none") {
-    return isAlwaysOnThinking(model)
-      ? { anthropic: { effort: "low" } }
-      : { anthropic: { thinking: { type: "disabled" } } };
+    if (isAlwaysOnThinking(model)) {
+      return { anthropic: { effort: "low" } };
+    }
+
+    // Sonnet 5.5 rejects `disabled`, and the gateway forwards it raw
+    const type = getModelCapabilities(model.replaceAll(".", "-"))
+      .supportsBetweenToolsThinking
+      ? "between_tools"
+      : "disabled";
+
+    return { anthropic: { thinking: { type } } };
   }
 
   return {
