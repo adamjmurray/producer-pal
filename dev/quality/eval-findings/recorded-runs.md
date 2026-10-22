@@ -31,6 +31,8 @@ fails, gemma passes" until run 2 turned out to predate the refusal of
 | 17  | gemma-4-31b      | `--small-model` | `144eead60`  | 1      | 75  | 63 (84%)  | 4.4M   | 2h08m |
 | 18  | gpt-6-luna       | default         | `4852e3680`+ | 3      | 381 | 341 (90%) | 174.2M | 3h24m |
 | 19  | claude-haiku-5-5 | default         | `4852e3680`+ | 3      | 381 | 375 (98%) | 102.2M | 1h14m |
+| 20  | gpt-6-luna       | default         | `6f48b19be`  | 3      | 381 | 343 (90%) | 174.0M | 2h49m |
+| 21  | claude-haiku-5-5 | default         | `6f48b19be`  | 3      | 381 | 369 (97%) | 99.3M  | 1h45m |
 
 **Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
 70% is over the scenarios it reached, which are the expensive front of the list.
@@ -54,7 +56,14 @@ what a successful clip or transform write returns. As run, before the stitch:
 luna 331 (87%), haiku 370 (97%). Wall is scenario time. Run 19 is the first
 recorded Anthropic API run.
 
-Runs 1-9, 14 and 18-19 are `--skip-judge`, so they are deterministic checks
+**Runs 20 and 21 are the 2.5.0 pre-release check**, on a fresh remote script and
+after the Skill and tool-description trims. Two regressions they found were
+fixed after the run and are not in their totals: the automation Write section
+had lost its line format (luna `automation-write-curve` 0/3, 36 envelope target
+errors), and an empty Drum Rack hid the one-instrument refusal reason (luna
+`device-preset-swap-by-name` 1/3). Wall is first to last trial.
+
+Runs 1-9, 14 and 18-21 are `--skip-judge`, so they are deterministic checks
 only. Runs 10-13 and 15-17 ran the judge, but no trial failed on the judge
 alone, so their numbers compare. Gemma and qwen run local (LM Studio,
 `-b http://localhost:1234/v1`) and cost nothing, but their token totals measure

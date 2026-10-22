@@ -231,3 +231,35 @@ instead of `loc:Bridge`), `melody-pitch-midi-json` 2/3 (one bar an octave low).
 All three are luna's weak spots too, so they read as the task, not the model.
 Wording fixes for the first two are already recorded as not working in
 [wording-changes.md](wording-changes.md).
+
+## What moved between runs 18-19 and 20-21
+
+Flat overall: luna 341 to 343, haiku 375 to 369. Every failing transcript was
+read; three drops traced to the Skill and description trims or to a weak
+refusal, and were fixed after the run (A/B at ×3 on luna and haiku):
+
+- `automation-write-curve` luna 3/3 to 0/3, and 36 envelope target errors
+  (`Track Volume:`, `Pan:`, `pan: clear`) where runs 18-19 had none. Moving the
+  envelope notation out of the Write section took the line format and target
+  names with it, and luna read "positive bends above the line" backwards for a
+  slow start. The Write section names them again and the schema says which sign
+  starts slow: 3/3, no target errors.
+- `device-preset-swap-by-name` luna 3/3 to 1/3. Luna tried create-device at the
+  empty Drum Rack's path and got a bare `could not insert`: an empty rack makes
+  no sound, so the one-instrument reason never fired, but Live still counts it.
+  With the reason, luna switches to update-device `preset`: 3/3.
+- `synced-lfo-meter-invariance` haiku 3/3 to 1/3. `sin(n/4, sync)` puts every
+  note on a zero crossing, so the result says `transformed: 0`, and haiku
+  retried until it wrote `velocity += 0`. Runs 18-19 retried too, but the trim
+  removed the line saying what `transformed` counts. A shorter one is back:
+  haiku and luna 3/3, and haiku adds a phase offset in 2-3 calls instead of
+  5-12.
+
+Not traced to a change: `note-ops-ratchet-roll` luna 3/3 to 1/3 (2/3 on a
+recheck; `repeat()` docs unchanged), `path-arrangement-covers` 2/3 on both (the
+model renamed the clip it had just made by id; the grader wants a bar-3
+coordinate), `locator-lifecycle` haiku 2/3 (a 30s timeout on a locator delete),
+and single misses elsewhere. Every model's first search for a drum kit is
+`kind: "preset"`, which never finds an .adg; an empty preset search now says how
+many racks match. Up: luna `middle-c-scale-stark` 0/3 to 3/3 (the Stark
+lowercase-flat fix), `legato-transforms` 1/3 to 3/3.
