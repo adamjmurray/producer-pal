@@ -67,7 +67,7 @@ export function buildProviderOptions(
 
   switch (provider) {
     case "anthropic":
-      return buildAnthropicThinking(level);
+      return buildAnthropicThinking(level, model);
     case "google":
       return buildGeminiThinking(level);
     case "openai":
@@ -95,15 +95,28 @@ export function buildProviderOptions(
 
 /**
  * Build Anthropic thinking provider options using adaptive thinking with effort.
+ * Off sends an explicit disable: omitting `thinking` still thinks on
+ * adaptive-by-default models (Sonnet 5+). Fable and Mythos reject a disable,
+ * so they get nothing.
  *
  * @param level - Thinking level string
+ * @param model - Anthropic model id (with or without a `provider/` prefix)
  * @returns Provider options with anthropic thinking and effort config
  */
-function buildAnthropicThinking(level: string): ProviderOptions | undefined {
+function buildAnthropicThinking(
+  level: string,
+  model: string,
+): ProviderOptions | undefined {
   const effort = ANTHROPIC_EFFORT_MAP[level];
 
-  if (!effort || effort === "none") {
+  if (!effort) {
     return undefined;
+  }
+
+  if (effort === "none") {
+    return /fable|mythos/.test(model)
+      ? undefined
+      : { anthropic: { thinking: { type: "disabled" } } };
   }
 
   return {
@@ -181,7 +194,7 @@ function buildGatewayThinking(
 ): ProviderOptions | undefined {
   switch (model.split("/")[0]) {
     case "anthropic":
-      return buildAnthropicThinking(level);
+      return buildAnthropicThinking(level, model);
     case "google":
       return buildGeminiThinking(level);
     case "openai":

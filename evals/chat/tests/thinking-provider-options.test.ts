@@ -45,7 +45,44 @@ describe("buildProviderOptions for the Vercel gateway", () => {
 
     expect(
       buildProviderOptions("vercel", "off", "anthropic/claude-sonnet-5.5"),
+    ).toStrictEqual({ anthropic: { thinking: { type: "disabled" } } });
+    expect(
+      buildProviderOptions("vercel", "off", "spacexai/grok-5"),
     ).toBeUndefined();
     expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+describe("buildProviderOptions for Anthropic", () => {
+  it("sends adaptive thinking with an effort level", () => {
+    expect(
+      buildProviderOptions("anthropic", "ultra", "claude-sonnet-5-5"),
+    ).toStrictEqual({
+      anthropic: { thinking: { type: "adaptive" }, effort: "max" },
+    });
+  });
+
+  it("sends an explicit disable for off", () => {
+    expect(
+      buildProviderOptions("anthropic", "off", "claude-sonnet-5-5"),
+    ).toStrictEqual({ anthropic: { thinking: { type: "disabled" } } });
+  });
+
+  it("sends nothing for off on models that reject a disable", () => {
+    expect(
+      buildProviderOptions("anthropic", "off", "claude-fable-5-1"),
+    ).toBeUndefined();
+    expect(
+      buildProviderOptions("vercel", "off", "anthropic/claude-mythos-5"),
+    ).toBeUndefined();
+  });
+
+  it("sends nothing when thinking is unset or not a named level", () => {
+    expect(
+      buildProviderOptions("anthropic", undefined, "claude-sonnet-5-5"),
+    ).toBeUndefined();
+    expect(
+      buildProviderOptions("anthropic", "4096", "claude-sonnet-5-5"),
+    ).toBeUndefined();
   });
 });
