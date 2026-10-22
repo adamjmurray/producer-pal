@@ -15,11 +15,11 @@ import { SYSTEM_INSTRUCTION } from "#webui/lib/config";
 // Mock provider-factories to avoid real OpenAI client creation
 const mockModel = { modelId: "test-model" } as unknown as LanguageModel;
 
-vi.mock(import("#webui/chat/sdk/provider-factories"), () => ({
+vi.mock(import("#webui/chat/sdk/provider/provider-factories"), () => ({
   createProviderModel: vi.fn(() => mockModel),
 }));
 
-import { createProviderModel } from "#webui/chat/sdk/provider-factories";
+import { createProviderModel } from "#webui/chat/sdk/provider/provider-factories";
 import { chatAdapter } from "#webui/hooks/chat/adapter";
 
 describe("chatAdapter", () => {
@@ -295,7 +295,7 @@ describe("chatAdapter", () => {
       const config = buildForProvider("openai", "Off", "gpt-6-luna");
 
       expect(config.providerOptions).toStrictEqual({
-        openai: { reasoningEffort: "none" },
+        openai: { reasoningEffort: "none", reasoningSummary: null },
       });
     });
 
@@ -303,7 +303,7 @@ describe("chatAdapter", () => {
       const config = buildForProvider("openai", "Off", "gpt-6.1-sol");
 
       expect(config.providerOptions).toStrictEqual({
-        openai: { reasoningEffort: "low" },
+        openai: { reasoningEffort: "low", reasoningSummary: null },
       });
     });
 
@@ -369,19 +369,17 @@ describe("chatAdapter", () => {
       expect(config.providerOptions).toBeUndefined();
     });
 
-    it("sets ollama think option for supported model", () => {
+    it("sends no ollama reasoningEffort for Max thinking", () => {
       const config = buildForProvider("ollama", "Max", "qwq");
 
-      expect(config.providerOptions).toStrictEqual({
-        openai: { think: true },
-      });
+      expect(config.providerOptions).toBeUndefined();
     });
 
-    it("sets ollama think:false for Off thinking", () => {
+    it("sets ollama reasoningEffort none for Off thinking", () => {
       const config = buildForProvider("ollama", "Off", "qwq");
 
       expect(config.providerOptions).toStrictEqual({
-        openai: { think: false },
+        openai: { reasoningEffort: "none" },
       });
     });
 
@@ -403,10 +401,12 @@ describe("chatAdapter", () => {
       });
     });
 
-    it("returns undefined providerOptions for openrouter with Off thinking", () => {
+    it("sets reasoning effort none for openrouter with Off thinking", () => {
       const config = buildForProvider("openrouter", "Off", "some-model");
 
-      expect(config.providerOptions).toBeUndefined();
+      expect(config.providerOptions).toStrictEqual({
+        openrouter: { reasoning: { effort: "none" } },
+      });
     });
 
     it("sets anthropic adaptive thinking with max effort for Max thinking", () => {

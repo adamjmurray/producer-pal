@@ -5,13 +5,14 @@
 
 import { type ProviderOptions } from "@ai-sdk/provider-utils";
 import {
+  getGeminiOffThinkingConfig,
   getThinkingOffType,
   isAlwaysOnThinkingModel,
   isLegacyNonThinkingModel,
   isLegacyThinkingModel,
   isOpenAIReasoningModel,
   mapThinkingToAnthropicEffort,
-  mapThinkingToOllamaThink,
+  mapThinkingToOllamaEffort,
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
 } from "#webui/hooks/settings/config-builders";
@@ -36,13 +37,9 @@ export function buildProviderOptions(
   }
 
   if (provider === "ollama") {
-    const ollamaThink = mapThinkingToOllamaThink(thinking, model);
+    const reasoningEffort = mapThinkingToOllamaEffort(thinking);
 
-    if (ollamaThink != null) {
-      return { openai: { think: ollamaThink } };
-    }
-
-    return undefined;
+    return reasoningEffort ? { openai: { reasoningEffort } } : undefined;
   }
 
   if (provider === "openrouter") {
@@ -62,7 +59,7 @@ export function buildProviderOptions(
   }
 
   if (provider === "openai") {
-    return buildOpenAIOptions(thinking, model);
+    return buildOpenAIOptions(thinking, model, true);
   }
 
   if (provider === "vercel") {
@@ -70,7 +67,7 @@ export function buildProviderOptions(
   }
 
   if (provider === "gemini") {
-    return buildGeminiOptions(thinking);
+    return buildGeminiOptions(thinking, model);
   }
 
   return undefined;
@@ -137,24 +134,30 @@ function buildAnthropicOptions(
  * Build OpenAI-specific provider options for reasoning.
  * @param thinking - Thinking level from UI settings
  * @param model - Model identifier
+ * @param direct - True on the direct OpenAI route (not via the gateway)
  * @returns OpenAI provider options or undefined
  */
 function buildOpenAIOptions(
   thinking: string,
   model: string,
+  direct = false,
 ): ProviderOptions | undefined {
   const effort = mapThinkingToReasoningEffort(thinking, model);
-  // Off thinking suppresses reasoning summaries even for reasoning models that
-  // generate reasoning internally — matching the openrouter/gemini paths, which
-  // return no reasoning options when thinking is Off.
+  // Off asks for no reasoning summaries, even on models that still reason.
   const reasoningSummary =
     thinking !== "Off" && isOpenAIReasoningModel(model) ? "auto" : undefined;
+
+  // The SDK adds `summary: "detailed"` whenever an effort is set; null stops
+  // it. Not sent via the gateway, which forwards the options untested.
+  const noSummary =
+    direct && thinking === "Off" && effort && isOpenAIReasoningModel(model);
 
   if (effort || reasoningSummary) {
     return {
       openai: {
         ...(effort ? { reasoningEffort: effort } : {}),
         ...(reasoningSummary ? { reasoningSummary } : {}),
+        ...(noSummary ? { reasoningSummary: null } : {}),
       },
     };
   }
@@ -165,13 +168,19 @@ function buildOpenAIOptions(
 /**
  * Build Gemini-specific provider options for thinking.
  * @param thinking - Thinking level from UI settings
+ * @param model - Gemini model id, without any gateway prefix
  * @returns Google provider options or undefined
  */
-function buildGeminiOptions(thinking: string): ProviderOptions | undefined {
+function buildGeminiOptions(
+  thinking: string,
+  model: string,
+): ProviderOptions | undefined {
   const thinkingBudget = getThinkingBudget(thinking);
 
   if (thinkingBudget === 0) {
-    return undefined;
+    const thinkingConfig = getGeminiOffThinkingConfig(model);
+
+    return thinkingConfig ? { google: { thinkingConfig } } : undefined;
   }
 
   return {
@@ -223,7 +232,7 @@ function buildGatewayUpstreamOptions(
     case "openai":
       return buildOpenAIOptions(thinking, model);
     case "google":
-      return buildGeminiOptions(thinking);
+      return buildGeminiOptions(thinking, model);
     default:
       return undefined;
   }

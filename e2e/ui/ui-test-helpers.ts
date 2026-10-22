@@ -166,6 +166,16 @@ export async function installStubs(page: Page): Promise<void> {
     }),
   );
 
+  // OpenRouter's public model list, which an OpenRouter chat with thinking Off
+  // reads. An empty list keeps the suite off the network.
+  await page.route("https://openrouter.ai/api/v1/models", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ data: [] }),
+    }),
+  );
+
   // Remote script status (the header badge reads it on load) — not installed,
   // so no badge. A spec that wants one registers its own route after this.
   await page.route("**/remote-script", (route) =>

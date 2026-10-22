@@ -10,7 +10,7 @@ import {
 } from "#webui/chat/sdk/build-model-messages";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
 import { formatChatMessages } from "#webui/chat/sdk/formatter";
-import { createProviderModel } from "#webui/chat/sdk/provider-factories";
+import { createProviderModel } from "#webui/chat/sdk/provider/provider-factories";
 import {
   type ChatClientConfig,
   type ChatImage,
@@ -22,7 +22,7 @@ import {
   resolveLockedSmallModelMode,
   resolveMaxToolSteps,
 } from "#webui/hooks/chat/helpers/streaming/locked-settings";
-import { buildProviderOptions } from "#webui/chat/sdk/provider-options";
+import { buildProviderOptions } from "#webui/chat/sdk/provider/provider-options";
 import {
   type ResolvedSubagentPreset,
   SUBAGENT_PRESET_PARAM,

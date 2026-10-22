@@ -196,8 +196,8 @@ export const OPENROUTER_MODELS = [
     label: "[Free] Google Gemma 4 31B",
   },
   {
-    value: "nvidia/nemotron-3-super-120b-a12b:free",
-    label: "[Free] Nvidia Nemotron 3 Super 120B",
+    value: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    label: "[Free] Nvidia Nemotron 3 Ultra 550B",
   },
   {
     value: "poolside/laguna-xs-2.1:free",

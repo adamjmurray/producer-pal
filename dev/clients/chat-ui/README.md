@@ -83,7 +83,7 @@ webui/
     │   │   ├── client.ts         # Wraps streamText(), processes events
     │   │   ├── formatter.ts      # Formats stream data for UI
     │   │   ├── mcp-tools.ts      # Converts MCP tools to AI SDK format
-    │   │   ├── provider-factories.ts # Creates provider model instances
+    │   │   ├── provider/         # Provider model factories, thinking options
     │   │   ├── streaming/        # Stream part handlers, error signal
     │   │   └── subagent/         # spawn tool, briefing, session, rate limit
     │   └── helpers/              # Shared chat utilities

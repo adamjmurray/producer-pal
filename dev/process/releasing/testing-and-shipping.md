@@ -53,8 +53,8 @@ in CI — see `e2e/ui/README.md`.
       Completions** API), which is distinct from using Bionic as an MCP client
       (Step 4). Regression-prone: the OpenAI-compatible providers must use the
       Chat Completions API, not the Responses API (`.chat()` in
-      `provider-factories.ts`), or the server returns a 400 "Invalid type for
-      'input'".
+      `provider/provider-factories.ts`), or the server returns a 400 "Invalid
+      type for 'input'".
 
 ## Step 4: Test the npm portal locally
 

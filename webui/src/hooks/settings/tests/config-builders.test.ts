@@ -8,10 +8,11 @@ import {
   extractGptVersion,
   getThinkingOffType,
   isAlwaysOnThinkingModel,
+  getGeminiOffThinkingConfig,
   isOpenAIReasoningModel,
   isLegacyNonThinkingModel,
   isLegacyThinkingModel,
-  mapThinkingToOllamaThink,
+  mapThinkingToOllamaEffort,
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
   mapThinkingToRealtimeEffort,
@@ -265,34 +266,54 @@ describe("config-builders", () => {
       expect(mapThinkingToOpenRouterEffort("Default")).toBe("medium");
     });
 
-    it("should return undefined for Off", () => {
-      expect(mapThinkingToOpenRouterEffort("Off")).toBeUndefined();
+    it("should map Off to none", () => {
+      expect(mapThinkingToOpenRouterEffort("Off")).toBe("none");
     });
   });
 
-  describe("mapThinkingToOllamaThink", () => {
+  describe("mapThinkingToOllamaEffort", () => {
     it("should return undefined for Default", () => {
-      expect(mapThinkingToOllamaThink("Default", "qwen3.6")).toBeUndefined();
+      expect(mapThinkingToOllamaEffort("Default")).toBeUndefined();
     });
 
-    it("should return false for Off", () => {
-      expect(mapThinkingToOllamaThink("Off", "qwen3.6")).toBe(false);
-      expect(mapThinkingToOllamaThink("Off", "gpt-oss")).toBe(false);
+    it("should map Off to none", () => {
+      expect(mapThinkingToOllamaEffort("Off")).toBe("none");
     });
 
-    it("should return true for Max on non-GPT-OSS", () => {
-      expect(mapThinkingToOllamaThink("Max", "qwen3.6")).toBe(true);
-    });
-
-    it("should return high string for Max on GPT-OSS", () => {
-      expect(mapThinkingToOllamaThink("Max", "gpt-oss")).toBe("high");
+    it("should send nothing for Max", () => {
+      expect(mapThinkingToOllamaEffort("Max")).toBeUndefined();
     });
 
     it("should return undefined for unknown thinking level", () => {
-      expect(
-        mapThinkingToOllamaThink("UnknownLevel", "qwen3.6"),
-      ).toBeUndefined();
+      expect(mapThinkingToOllamaEffort("UnknownLevel")).toBeUndefined();
     });
+  });
+
+  describe("getGeminiOffThinkingConfig", () => {
+    it.each(["gemini-3.8-flash", "gemini-4-argon", "gemini-3.5-flash-lite"])(
+      "uses the low thinking level for Gemini 3+ (%s)",
+      (model) => {
+        expect(getGeminiOffThinkingConfig(model)).toStrictEqual({
+          thinkingLevel: "low",
+        });
+      },
+    );
+
+    it.each(["gemini-2.5-flash", "gemini-2.5-flash-lite"])(
+      "uses a zero budget for Gemini 2.5 (%s)",
+      (model) => {
+        expect(getGeminiOffThinkingConfig(model)).toStrictEqual({
+          thinkingBudget: 0,
+        });
+      },
+    );
+
+    it.each(["gemini-2.5-pro", "gemini-2.0-flash", "gemini-pro", "gemma-4"])(
+      "sends nothing for models that can't turn thinking off (%s)",
+      (model) => {
+        expect(getGeminiOffThinkingConfig(model)).toBeUndefined();
+      },
+    );
   });
 
   describe("mapThinkingToRealtimeEffort", () => {

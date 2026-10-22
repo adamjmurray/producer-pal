@@ -47,6 +47,18 @@ const LEVELS = ["Default", "Max", "Off"];
 const EVAL_LEVELS = ["off", "low", "medium", "high", "ultra"];
 const EVAL_ROUTES: Record<string, string> = { gemini: "google" };
 const REAL_MAX_TOKENS = 16;
+const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
+// Stand-in for OpenRouter's public model list, so Off resolves in stub mode.
+// Models not listed here (e.g. qwen/qwen3.8-max) behave as unknown ones.
+const STUB_OPENROUTER_MODELS = {
+  data: [
+    { id: "anthropic/claude-sonnet-5.5", reasoning: { mandatory: true } },
+    { id: "google/gemini-3.8-flash", reasoning: { mandatory: true } },
+    { id: "deepseek/deepseek-v4.1-flash", reasoning: { mandatory: false } },
+    { id: "moonshotai/kimi-k3", reasoning: { mandatory: false } },
+    { id: "poolside/laguna-xs-2.1:free", reasoning: { mandatory: false } },
+  ],
+};
 
 interface Args {
   routes: string[] | null;
@@ -284,10 +296,10 @@ async function loadBuilders(
   }
 
   const { buildProviderOptions } = (await load(
-    "/webui/src/chat/sdk/provider-options.ts",
+    "/webui/src/chat/sdk/provider/provider-options.ts",
   )) as { buildProviderOptions: (...a: string[]) => unknown };
   const { createProviderModel } = (await load(
-    "/webui/src/chat/sdk/provider-factories.ts",
+    "/webui/src/chat/sdk/provider/provider-factories.ts",
   )) as { createProviderModel: (...a: string[]) => LanguageModel };
 
   return {
@@ -317,12 +329,19 @@ interface Run {
  */
 function installFetchStub(run: Run, realFetch: typeof fetch): void {
   /**
-   * Record the request, then answer it as described above.
+   * Record the request, then answer it as described above. The OpenRouter
+   * model-list lookup isn't recorded: the fixture answers it unless `--real`.
    * @param input - Request URL
    * @param init - Request options
    * @returns A fake error, or the real response while live
    */
   globalThis.fetch = (input, init) => {
+    if (input === OPENROUTER_MODELS_URL) {
+      return run.args.real
+        ? realFetch(input, init)
+        : Promise.resolve(Response.json(STUB_OPENROUTER_MODELS));
+    }
+
     run.captured = {
       url: typeof input === "string" ? input : "(request)",
       body: parseBody(init?.body),

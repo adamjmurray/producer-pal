@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { buildProviderOptions } from "#webui/chat/sdk/provider-options";
+import { buildProviderOptions } from "#webui/chat/sdk/provider/provider-options";
 
 const caching = { gateway: { caching: "auto" } };
 
@@ -89,12 +89,24 @@ describe("buildProviderOptions for the Vercel gateway", () => {
     });
   });
 
-  it("turns reasoning off for OpenAI and sends nothing for Google when Off", () => {
+  it("turns reasoning off for OpenAI and down for Google when Off", () => {
     expect(
       buildProviderOptions("vercel", "Off", "openai/gpt-6-luna"),
     ).toStrictEqual({ ...caching, openai: { reasoningEffort: "none" } });
     expect(
       buildProviderOptions("vercel", "Off", "google/gemini-3.8-flash"),
+    ).toStrictEqual({
+      ...caching,
+      google: { thinkingConfig: { thinkingLevel: "low" } },
+    });
+    expect(
+      buildProviderOptions("vercel", "Off", "google/gemini-2.5-flash"),
+    ).toStrictEqual({
+      ...caching,
+      google: { thinkingConfig: { thinkingBudget: 0 } },
+    });
+    expect(
+      buildProviderOptions("vercel", "Off", "google/gemini-2.5-pro"),
     ).toStrictEqual(caching);
   });
 
@@ -120,5 +132,57 @@ describe("buildProviderOptions for the Vercel gateway", () => {
     expect(buildProviderOptions("vercel", "Max", "zai/glm-5.3")).toStrictEqual(
       caching,
     );
+  });
+});
+
+describe("buildProviderOptions for Ollama", () => {
+  it("sends nothing at Default", () => {
+    expect(
+      buildProviderOptions("ollama", "Default", "qwen3.8"),
+    ).toBeUndefined();
+  });
+
+  it("sends nothing at Max and none at Off", () => {
+    expect(buildProviderOptions("ollama", "Max", "qwen3.8")).toBeUndefined();
+    expect(buildProviderOptions("ollama", "Off", "qwen3.8")).toStrictEqual({
+      openai: { reasoningEffort: "none" },
+    });
+  });
+});
+
+describe("buildProviderOptions for Gemini", () => {
+  it("turns thinking down by model version when Off", () => {
+    expect(
+      buildProviderOptions("gemini", "Off", "gemini-3.8-flash"),
+    ).toStrictEqual({ google: { thinkingConfig: { thinkingLevel: "low" } } });
+    expect(
+      buildProviderOptions("gemini", "Off", "gemini-2.5-flash"),
+    ).toStrictEqual({ google: { thinkingConfig: { thinkingBudget: 0 } } });
+  });
+
+  it("sends nothing when Off for models that can't turn thinking off or unknown ids", () => {
+    expect(
+      buildProviderOptions("gemini", "Off", "gemini-2.5-pro"),
+    ).toBeUndefined();
+    expect(buildProviderOptions("gemini", "Off", "my-model")).toBeUndefined();
+  });
+});
+
+describe("buildProviderOptions for OpenAI summaries", () => {
+  it("drops the reasoning summary when Off, on the direct route only", () => {
+    expect(buildProviderOptions("openai", "Off", "gpt-6-astra")).toStrictEqual({
+      openai: { reasoningEffort: "low", reasoningSummary: null },
+    });
+    expect(
+      buildProviderOptions("vercel", "Off", "openai/gpt-6-astra"),
+    ).toStrictEqual({ ...caching, openai: { reasoningEffort: "low" } });
+  });
+});
+
+describe("buildProviderOptions for OpenRouter", () => {
+  it("asks for no reasoning when Off; the request rewrite settles it per model", () => {
+    expect(
+      buildProviderOptions("openrouter", "Off", "deepseek/deepseek-v4.1-flash"),
+    ).toStrictEqual({ openrouter: { reasoning: { effort: "none" } } });
   });
 });

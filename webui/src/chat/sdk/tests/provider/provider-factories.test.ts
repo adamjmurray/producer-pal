@@ -8,7 +8,7 @@ import {
   createProviderModel,
   transformAnthropicRequest,
   transformOpenRouterRequest,
-} from "#webui/chat/sdk/provider-factories";
+} from "#webui/chat/sdk/provider/provider-factories";
 
 // The LanguageModel type is a union — cast to access runtime modelId property
 const getModelId = (model: unknown): string =>
@@ -21,7 +21,7 @@ const getModelId = (model: unknown): string =>
 // only implement Chat Completions and reject the Responses API's `input` field
 // with "Invalid type for 'input'". LM Studio and custom endpoints route through
 // @ai-sdk/openai-compatible so their `reasoning_content` shows as thinking;
-// Ollama stays on @ai-sdk/openai (its `think` option needs that namespace).
+// Ollama stays on @ai-sdk/openai (its `reasoning_effort` option needs that namespace).
 const getApiProvider = (model: unknown): string =>
   (model as Record<string, unknown>).provider as string;
 

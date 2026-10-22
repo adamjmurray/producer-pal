@@ -5,9 +5,10 @@
 
 import { getModelCapabilities } from "@ai-sdk/anthropic/internal";
 import { streamText } from "ai";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { createProviderModel } from "#webui/chat/sdk/provider-factories";
-import { buildProviderOptions } from "#webui/chat/sdk/provider-options";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resetOpenRouterReasoningCache } from "#webui/chat/sdk/provider/openrouter-reasoning";
+import { createProviderModel } from "#webui/chat/sdk/provider/provider-factories";
+import { buildProviderOptions } from "#webui/chat/sdk/provider/provider-options";
 import { isAlwaysOnThinkingModel } from "#webui/hooks/settings/config-builders";
 import { PROVIDER_MODELS } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
@@ -22,8 +23,19 @@ const LEVELS = ["Default", "Max", "Off"];
 type Body = Record<string, unknown> & {
   thinking?: { type?: string };
   output_config?: { effort?: string };
-  reasoning?: { effort?: string };
+  reasoning?: { effort?: string; summary?: string };
+  reasoning_effort?: string;
   generationConfig?: { thinkingConfig?: unknown };
+};
+
+// Stand-in for OpenRouter's public model list (the Off lookup fetches it).
+const OPENROUTER_LIST = {
+  data: [
+    { id: "anthropic/claude-sonnet-5.5", reasoning: { mandatory: true } },
+    { id: "google/gemini-3.8-flash", reasoning: { mandatory: true } },
+    { id: "deepseek/deepseek-v4.1-flash", reasoning: { mandatory: false } },
+    { id: "moonshotai/kimi-k3", reasoning: { mandatory: false } },
+  ],
 };
 
 /**
@@ -53,7 +65,11 @@ async function wireBody(
 
   vi.stubGlobal(
     "fetch",
-    vi.fn((_url: unknown, init?: RequestInit) => {
+    vi.fn((url: unknown, init?: RequestInit) => {
+      if (url === "https://openrouter.ai/api/v1/models") {
+        return Promise.resolve(Response.json(OPENROUTER_LIST));
+      }
+
       body = JSON.parse(init?.body as string) as Body;
 
       return Promise.resolve(new Response("{}", { status: 500 }));
@@ -76,6 +92,10 @@ async function wireBody(
 }
 
 describe("provider wire conformance", () => {
+  beforeEach(() => {
+    resetOpenRouterReasoningCache();
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -160,6 +180,16 @@ describe("provider wire conformance", () => {
         expect(body.reasoning?.effort).toBe(wanted);
       },
     );
+
+    it("asks for no reasoning summary when Off", async () => {
+      const body = await wireBody(
+        "openai",
+        model,
+        buildProviderOptions("openai", "Off", model),
+      );
+
+      expect(body.reasoning?.summary).toBeUndefined();
+    });
   });
 
   describe.each(presetModels("vercel").filter((m) => m.startsWith("openai/")))(
@@ -201,19 +231,52 @@ describe("provider wire conformance", () => {
   });
 
   describe.each(presetModels("openrouter"))("openrouter %s", (model) => {
-    it.each(LEVELS)(
+    it.each(["Default", "Max"])(
       "keeps the reasoning effort we chose (%s)",
       async (level) => {
         const options = buildProviderOptions("openrouter", level, model);
         const reasoning = options?.openrouter?.reasoning as
           | { effort?: string }
           | undefined;
-        const wanted = reasoning?.effort;
         const body = await wireBody("openrouter", model, options);
 
-        expect(body.reasoning?.effort).toBe(wanted);
+        expect(body.reasoning?.effort).toBe(reasoning?.effort);
       },
     );
+  });
+
+  describe.each([
+    ["deepseek/deepseek-v4.1-flash", "none"],
+    ["moonshotai/kimi-k3", "none"],
+    ["anthropic/claude-sonnet-5.5", "low"],
+    ["google/gemini-3.8-flash", "low"],
+    ["qwen/qwen3.8-max", undefined],
+  ])("openrouter Off for %s", (model, effort) => {
+    it("sends the effort the model accepts, or none for an unlisted model", async () => {
+      const body = await wireBody(
+        "openrouter",
+        model,
+        buildProviderOptions("openrouter", "Off", model),
+      );
+
+      expect(body.reasoning?.effort).toBe(effort);
+    });
+  });
+
+  describe.each(presetModels("ollama"))("ollama %s", (model) => {
+    it.each([
+      ["Default", undefined],
+      ["Max", undefined],
+      ["Off", "none"],
+    ])("sends reasoning_effort for %s", async (level, effort) => {
+      const body = await wireBody(
+        "ollama",
+        model,
+        buildProviderOptions("ollama", level, model),
+      );
+
+      expect(body.reasoning_effort).toBe(effort);
+    });
   });
 
   describe.each(presetModels("gemini"))("gemini %s", (model) => {
@@ -228,5 +291,26 @@ describe("provider wire conformance", () => {
         );
       },
     );
+  });
+
+  describe.each([
+    ["gemini-3.8-flash", { thinkingLevel: "low" }],
+    ["gemini-4-argon", { thinkingLevel: "low" }],
+    ["gemini-3.5-flash-lite", { thinkingLevel: "low" }],
+    ["gemini-2.5-flash", { thinkingBudget: 0 }],
+    ["gemini-2.5-flash-lite", { thinkingBudget: 0 }],
+    ["gemini-2.5-pro", undefined],
+  ])("gemini Off for %s", (model, thinkingConfig) => {
+    it("sends the config the model accepts", async () => {
+      const body = await wireBody(
+        "gemini",
+        model,
+        buildProviderOptions("gemini", "Off", model),
+      );
+
+      expect(body.generationConfig?.thinkingConfig).toStrictEqual(
+        thinkingConfig,
+      );
+    });
   });
 });
