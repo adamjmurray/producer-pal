@@ -183,16 +183,19 @@ Live, or make sure your standalone Max is up to date. See
   - Auto-tile clips to fill longer arrangement durations
 - Apply [transforms](/features#transforms) to each duplicated clip (e.g.
   transpose copies, vary velocities) without a separate update step
-- Stack variations on [take lanes](/features#take-lanes): naming one lane twice
-  in `toPath`, `toPath: "t2/l0[9|1],t2/l0[13|1]"`, stacks both takes on it. A
-  lane per copy is a lane index per copy, `toPath: "t2/l0,t2/l1,t2/l2"`
-- Copy a whole lane onto another lane with `type: "track"` and a lane `toPath`:
-  every clip at the position it already has, clips only (no devices, routing,
-  mixer settings, or session clips). The source is a track (its main lane) or a
-  take lane, by path (`t2/l0`) or by the lane's id
-- Promote a whole take lane with a bare track `toPath` (`t2`): a take-lane
-  source's clips land on that track's main lane, over the clips already there
+- Stack variations on [take lanes](#take-lanes), or copy or promote a whole lane
+  (see [Take Lanes](#take-lanes) below)
 - Copy devices to any track, return track, or rack chain
+- Copy a drum pad or a rack chain with its settings and devices (see
+  [Drum pads and rack chains](#duplicate-pads-chains) below)
+- Route duplicated tracks to source instrument for MIDI layering
+- With the remote script, effects and effect racks are copied in place
+
+Note: Return tracks can't be duplicated. Devices on return and main tracks can
+be copied when the Producer Pal remote script is running.
+
+#### Drum pads and rack chains {#duplicate-pads-chains}
+
 - Copy a whole drum pad to another pad in the same rack, bringing its chain
   trim, pan, sends, choke group, and devices. A device-only copy leaves the
   chain (and its trim) behind
@@ -202,11 +205,6 @@ Live, or make sure your standalone Max is up to date. See
   Sends carry when the destination rack has a return chain of the same name.
   Macro mappings can't be reproduced through the Live API, so a rack that has
   them says so
-- Route duplicated tracks to source instrument for MIDI layering
-- With the remote script, effects and effect racks are copied in place
-
-Note: Return tracks can't be duplicated. Devices on return and main tracks can
-be copied when the Producer Pal remote script is running.
 
 <!--@include: ../_generated/ppal-duplicate-schema.md-->
 
@@ -256,9 +254,8 @@ be copied when the Producer Pal remote script is running.
 
 - Get detailed track information
 - View all clips in Session and Arrangement
-- List [take lanes](/features#take-lanes) and their clips (with the
-  `arrangement-clips` include), or read one lane on its own from a lane path
-  (`t2/l0`)
+- List [take lanes](#take-lanes) and their clips (with the `arrangement-clips`
+  include), or read one lane on its own from a lane path (`t2/l0`)
 - See devices, routing options, and drum pad mappings
 - See which instrument plays the track, including what's inside an Instrument
   Rack: `Instrument Rack (Operator, Wavetable)`
@@ -278,9 +275,9 @@ be copied when the Producer Pal remote script is running.
   letter)
 - Change mute, solo, arm, I/O routings, and monitoring state
 - Change track name and color
-- Add and name [take lanes](/features#take-lanes) from a lane path: `t2/l+`
-  appends one, `t2/l2` names an existing lane (adding the lanes up to it), and
-  `name` is the only param a lane takes
+- Add and name [take lanes](#take-lanes) from a lane path: `t2/l+` appends one,
+  `t2/l2` names an existing lane (adding the lanes up to it), and `name` is the
+  only param a lane takes
 - Says when a write overrides arrangement automation: Live then ignores that
   lane until you press **Re-Enable Automation**
 - Update multiple tracks at once
@@ -338,8 +335,7 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Generate MIDI clips with notes, velocities, and timing using
   [custom notation](/features#custom-music-notation)
 - Place clips in clip slots or the Arrangement timeline
-- Place arrangement clips on [take lanes](/features#take-lanes) with a
-  `t0/l1[5|1]` path
+- Place arrangement clips on [take lanes](#take-lanes) with a `t0/l1[5|1]` path
 - Support for probability, velocity ranges, and complex rhythms
 - Apply [transforms](/features#transforms) to shape notes with math expressions
 - Create audio clips from a sample file with `sampleFile`, and choose whether
@@ -495,6 +491,50 @@ sounding.
 <!--@include: ../_generated/ppal-update-device-schema.md-->
 
 <!--@include: ../_generated/ppal-update-device-output.md-->
+
+## Take Lanes {#take-lanes}
+
+How the tools work with take lanes, which stack alternate versions of an
+arrangement clip at the same position. Only the active take plays.
+
+- A lane is part of the path: `t2/l0` is track 2's first take lane (0-based, and
+  lanes are created up to the index). Plain `t2` is the main lane. Use it as
+  `path` on [Create Clip](#ppal-create-clip) or `toPath` on
+  [Duplicate](#ppal-duplicate).
+- Naming one lane twice stacks both copies on it, so
+  `toPath: "t2/l0[9|1],t2/l0[13|1]"` puts two takes on one lane. A lane per copy
+  is a lane index per copy, `toPath: "t2/l0,t2/l1,t2/l2"`. On a track that
+  already has lanes, start after the last one a prior
+  [Read Track](#ppal-read-track) reported. Add
+  [transforms](/features#transforms) to vary each one.
+- A whole lane goes onto another lane in a single [Duplicate](#ppal-duplicate):
+  `type: "track"` with `toPath: "t2/l0"` copies every clip at the position it
+  already has. It copies clips only (no devices, routing, mixer settings, or
+  session clips), and the two tracks must match MIDI/audio type. The source is a
+  track (`path: "t2"`, its main lane) or a take lane (`path: "t2/l0"`, or the
+  lane's id).
+- A take lane goes the other way too: give a take-lane source a bare track
+  `toPath` (`t2`, its own track or another) and its clips are promoted onto that
+  track's main lane, replacing whatever sits at those positions.
+- [Update Track](#ppal-update-track) owns the lanes themselves: `path: "t2/l+"`
+  adds one, `path: "t2/l0"` with a `name` names an existing one, and a lane
+  takes no other track setting.
+- [Read Track](#ppal-read-track) lists take lanes (with the `arrangement-clips`
+  include), and reads one on its own from a lane path.
+- A take-lane clip can leave its lane, for another lane, another track, or a
+  session slot: `toPath` on [Update Clip](#ppal-update-clip) moves it, and
+  [Duplicate](#ppal-duplicate) copies it. Live's API can't remove a take-lane
+  clip, so a move leaves a muted `(moved) ...` clip behind for you to delete in
+  Live.
+- Putting a clip on a lane, or taking one off, re-creates it: a MIDI clip from
+  its notes, an audio clip from its sample. Envelope automation isn't preserved,
+  and a warped audio clip comes back with the sample's default warp markers. The
+  response says which applied.
+- Limits: Producer Pal creates up to 10 take lanes per track; lanes added in
+  Live past that still work. A take-lane clip can't be split, resized, or
+  deleted through tools, and Producer Pal can't pick the active take or comp
+  lanes. All of that stays in Live's UI. Expand the take-lane arrow on a track
+  header to see them.
 
 ## Advanced Tools
 

@@ -224,10 +224,10 @@ costs much less.
 
 :::
 
-Pressing **Stop** while a subagent is working no longer throws its work away.
-The card reads **stopped** and keeps the work log it got through, and the AI can
-resume that subagent to finish the job. You may have to say which one, since a
-run stopped before it reported back doesn't hand the AI its number.
+Pressing **Stop** while a subagent is working keeps its work. The card reads
+**stopped** and keeps the work log it got through, and the AI can resume that
+subagent to finish the job. You may have to say which one, since a run stopped
+before it reported back doesn't hand the AI its number.
 
 If a provider rate-limits a subagent, its card shows a **rate limited**
 countdown and the subagent retries on its own instead of failing. Subagents

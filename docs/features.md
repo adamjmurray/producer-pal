@@ -145,44 +145,14 @@ Live's take lanes stack alternate versions of an arrangement clip at the same
 position, and only the active take plays, so you can audition variations without
 cluttering the timeline.
 
-- A lane is part of the path: `t2/l0` is track 2's first take lane (0-based, and
-  lanes are created up to the index). Plain `t2` is the main lane. Use it as
-  `path` on [Create Clip](/features/tools#ppal-create-clip) or `toPath` on
-  [Duplicate](/features/tools#ppal-duplicate).
-- Naming one lane twice stacks both copies on it, so
-  `toPath: "t2/l0[9|1],t2/l0[13|1]"` puts two takes on one lane. A lane per copy
-  is a lane index per copy, `toPath: "t2/l0,t2/l1,t2/l2"`. On a track that
-  already has lanes, start after the last one a prior
-  [Read Track](/features/tools#ppal-read-track) reported. Add
-  [transforms](#transforms) to vary each one.
-- A whole lane goes onto another lane in a single
-  [Duplicate](/features/tools#ppal-duplicate): `type: "track"` with
-  `toPath: "t2/l0"` copies every clip at the position it already has, clips
-  only, and the two tracks must match MIDI/audio type. The source is a track
-  (`path: "t2"`, its main lane) or a take lane (`path: "t2/l0"`, or the lane's
-  id).
-- A take lane goes the other way too: give a take-lane source a bare track
-  `toPath` (`t2`, its own track or another) and its clips are promoted onto that
-  track's main lane, replacing whatever sits at those positions.
-- [Update Track](/features/tools#ppal-update-track) owns the lanes themselves:
-  `path: "t2/l+"` adds one, `path: "t2/l0"` with a `name` names an existing one,
-  and a lane takes no other track setting.
-- [Read Track](/features/tools#ppal-read-track) lists take lanes (with the
-  `arrangement-clips` include), and reads one on its own from a lane path.
-- A take-lane clip can leave its lane, for another lane, another track, or a
-  session slot: `toPath` on [Update Clip](/features/tools#ppal-update-clip)
-  moves it, and [Duplicate](/features/tools#ppal-duplicate) copies it. Live's
-  API can't remove a take-lane clip, so a move leaves a muted `(moved) ...` clip
-  behind for you to delete in Live.
-- Putting a clip on a lane, or taking one off, re-creates it: a MIDI clip from
-  its notes, an audio clip from its sample. Envelope automation isn't preserved,
-  and a warped audio clip comes back with the sample's default warp markers. The
-  response says which applied.
-- Limits: Producer Pal creates up to 10 take lanes per track; lanes added in
-  Live past that still work. A take-lane clip can't be split, resized, or
-  deleted through tools, and Producer Pal can't pick the active take or comp
-  lanes. All of that stays in Live's UI. Expand the take-lane arrow on a track
-  header to see them.
+- A lane is part of the path: `t2/l0` is track 2's first take lane. Plain `t2`
+  is the main lane. The AI can create clips on lanes, stack copies, and move
+  clips between lanes and tracks.
+- Limits: up to 10 take lanes per track from Producer Pal, and Live's API can't
+  remove take-lane clips. Expand the take-lane arrow on a track header in Live
+  to see them.
+
+Full details are in the [tool reference](/features/tools#take-lanes).
 
 ## Network Control
 
@@ -217,11 +187,11 @@ levers.
 
 ::: info Counting the tools
 
-There are **22 tools on by default**. Two more are experimental and opt-in:
-[Direct Live API](/features/tools#ppal-live-api) and [Subagent](#subagents). The
-Chat UI counts all 24, so it reads `22/24` out of the box. An MCP client sees 22
-because Subagent is client-side and never appears in `listTools`, and Direct
-Live API is only registered when the device flag is on (which makes it 23).
+Producer Pal has **22 tools** on by default. Two more are experimental and off
+by default: [Direct Live API](/features/tools#ppal-live-api) and
+[Subagent](#subagents). The Chat UI counts all 24, so it shows `22/24`. Other AI
+apps only see the tools that are switched on: 22, or 23 with Direct Live API on.
+Subagent is only in the Chat UI.
 
 :::
 
