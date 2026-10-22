@@ -25,7 +25,10 @@ import {
   presetScopeForDevice,
   resolveBrowserPreset,
 } from "../browser-presets.ts";
+import { type PluginPlan } from "../plugin-host-load.ts";
 import { type BrowserItem } from "../remote-script-contract.ts";
+import { type HostedStall } from "#src/tools/device/update/helpers/call/hosted-params.ts";
+import { type HostedPlan, planHostedPlugins } from "./hosted-plans.ts";
 import { type CreateCall, type CreatePayload } from "./parse-create-call.ts";
 
 /** What one path creates, and where that device comes from. */
@@ -35,6 +38,8 @@ export interface DevicePlan {
   device: string;
   /** The item to load from Live's browser, or null for a native insert */
   item: BrowserItem | null;
+  /** The plug-in to load into the wrapper `item` is, for a hosted call */
+  hosted?: PluginPlan;
 }
 
 /** A device a target created, to name it again once the call is done. */
@@ -52,6 +57,8 @@ export interface CreateChecked {
   names: ListEntries | null;
   params: ParamEntry[] | undefined;
   focus: boolean | undefined;
+  /** Whether a hosted plug-in's write stalled, so later ones aren't tried */
+  hostedStall: HostedStall;
   /** The devices created so far, by id */
   placed: Map<string, PlacedDevice>;
 }
@@ -106,13 +113,20 @@ export function checkCreateCall(
       }).parsedNames,
       params: call.params,
       focus: call.focus,
+      hostedStall: {},
       placed: new Map(),
     };
   };
 
-  return call.native
-    ? checked(nativePlans(call, paths))
-    : devicePlans(call, paths, deadline).then(checked);
+  if (call.native) {
+    return checked(nativePlans(call, paths));
+  }
+
+  return (
+    call.hosted
+      ? hostedDevicePlans(call, paths, deadline)
+      : devicePlans(call, paths, deadline)
+  ).then(checked);
 }
 
 // --- Helpers below main export ---
@@ -128,7 +142,7 @@ async function refuseMissingPath(
   call: CreateCall,
   deadline: number | null | undefined,
 ): Promise<never> {
-  if (call.device != null && call.preset == null) {
+  if (call.device != null && call.preset == null && !call.hosted) {
     await findBrowserItem(call.device, deadline);
   }
 
@@ -195,6 +209,24 @@ async function devicePlans(
   }
 
   return plans;
+}
+
+// What each path creates when the devices are plug-ins to host: the wrapper to
+// load, and the plug-in to load into it.
+async function hostedDevicePlans(
+  call: CreateCall,
+  paths: string[],
+  deadline: number | null | undefined,
+): Promise<DevicePlan[]> {
+  const devices = perPath(call.device, paths, "device") as string[];
+  const hosted = await planHostedPlugins(devices, deadline);
+
+  return paths.map((path, i) => ({
+    path,
+    device: devices[i] as string,
+    item: (hosted[i] as HostedPlan).item,
+    hosted: (hosted[i] as HostedPlan).plugin,
+  }));
 }
 
 /**

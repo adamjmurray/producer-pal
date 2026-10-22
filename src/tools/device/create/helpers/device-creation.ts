@@ -11,6 +11,7 @@ import { refreshParamValues } from "#src/tools/device/update/helpers/params/para
 import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { type BrowserItem } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
+import { type SettledParams } from "#src/tools/device/update/helpers/call/simpler-pitch-bend.ts";
 import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
 import {
   errorWithChainsLeft,
@@ -333,6 +334,7 @@ export function createdDeviceEntry(
  * @param displayName - The name for this device, if any
  * @param params - {name, value} entries applied to each created device
  * @param landed - Told what has changed in Live, once it has
+ * @param settled - Params already written by the caller, by entry
  * @returns The entry
  */
 export function labelCreatedDevice(
@@ -341,6 +343,7 @@ export function labelCreatedDevice(
   displayName: string | undefined,
   params: ParamEntry[] | undefined,
   landed: (phrase: string) => void,
+  settled?: SettledParams,
 ): CreateDeviceResult {
   if (displayName != null) {
     device.set("name", displayName);
@@ -349,7 +352,7 @@ export function labelCreatedDevice(
 
   if (params != null) {
     // Every param the call named comes back, written or not.
-    const outcomes = setParamValues(device, params);
+    const outcomes = setParamValues(device, params, false, undefined, settled);
 
     if (outcomes.length > 0) {
       entry.params = refreshParamValues(outcomes);

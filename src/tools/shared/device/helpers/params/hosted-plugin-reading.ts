@@ -16,11 +16,15 @@ import { MAX_READ_PARAMS } from "#src/tools/shared/device/helpers/params/param-r
 /** The Max device classes a wrapper can have. Users can rename a device, so the class is the only fixed thing to go by. */
 const WRAPPER_CLASSES = new Set(["MxDeviceAudioEffect", "MxDeviceInstrument"]);
 
-/** What a wrapper is called when nobody renamed it. */
-const DEFAULT_WRAPPER_NAMES = new Set([
-  "PPal Plug-in Effect",
-  "PPal Plug-in Instrument",
-]);
+/** What the two wrappers are called, in Live's browser and until renamed. */
+export const WRAPPER_NAMES = {
+  effect: "PPal Plug-in Effect",
+  instrument: "PPal Plug-in Instrument",
+} as const;
+
+const DEFAULT_WRAPPER_NAMES: ReadonlySet<string> = new Set(
+  Object.values(WRAPPER_NAMES),
+);
 
 /** A device that hosts a plug-in. */
 export interface HostedPlugin {

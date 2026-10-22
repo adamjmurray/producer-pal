@@ -52,8 +52,12 @@ A wrapper answers inside the `messnamed` call that sent the request, so Producer
 Pal can ask any Max audio effect or instrument "are you a wrapper?"
 synchronously and get no answer, at no cost, from one that isn't.
 
-The spike exposes this as the debug-only `ppal-plugin-host` tool, gated with
-`ppal-live-api`.
+Producer Pal's device tools use it: `ppal-create-device` with `hosted: true`
+resolves the name, loads the right wrapper through the remote script's browser
+load, tells it to load the plug-in (deleting the wrapper again if that fails),
+and `ppal-read-device` and `ppal-update-device` read and set its params. The
+debug-only `ppal-plugin-host` tool, gated with `ppal-live-api`, reaches the raw
+ops.
 
 ## Findings
 
