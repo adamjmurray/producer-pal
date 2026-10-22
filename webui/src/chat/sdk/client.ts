@@ -615,7 +615,10 @@ function isAbortError(error: unknown): boolean {
  * namespace). Reasoning re-emission therefore does not run for OpenRouter; its
  * cache prefix is stabilized separately by transformOpenRouterRequest. This is an
  * intended asymmetry, not a missed case — don't "fix" it by widening the check.
- * The Vercel gateway forwards `anthropic` options as-is, so it does re-emit.
+ * The Vercel gateway forwards `anthropic` options as-is, but its stream carries
+ * no signature, so nothing signed is ever captured or re-sent there. That also
+ * makes it harmless that `between_tools` (Sonnet 5.5 "Off") counts as thinking
+ * on over the gateway but not on the direct route.
  * @param providerOptions - Provider options passed to streamText
  * @returns True when Anthropic thinking is enabled for this request
  */
