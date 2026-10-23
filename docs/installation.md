@@ -24,59 +24,46 @@ date.
 Upgrading from a previous version? See the
 [upgrading guide](./installation/upgrading).
 
-<div class="download-band download-band-compact">
-  <h2 class="download-title">Step 1: Get the Max for Live Device</h2>
-  <p class="download-subtitle">Desktop apps and command-line tools can install it for you (see their guides). Everything else needs it.</p>
-  <div class="download-actions">
-    <a class="download-btn download-btn-primary" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd">
-      <span class="download-btn-label">Download Max for Live Device</span>
-      <span class="download-btn-sub">Producer_Pal.amxd · v{{ $frontmatter.version }}</span>
-    </a>
+## Step 1: Pick Your App {#choose-how-you-want-to-use-it}
+
+Producer Pal works the same with any provider. The main choice is _how_ you want
+to interact with it, and that decides your setup path:
+
+<div class="install-paths" role="group" aria-label="The two setup paths">
+  <div class="install-paths-pick">Pick your app</div>
+  <div class="install-paths-split" aria-hidden="true"></div>
+  <div class="install-paths-grid">
+    <div class="install-path install-path-ai">
+      <h3 class="install-path-title">Path A: The AI sets it up</h3>
+      <p class="install-path-apps">Claude Desktop, Claude Code, Codex CLI, Gemini CLI, Mistral Vibe, ChatGPT app, Antigravity, LM Studio Bionic, other MCP clients</p>
+      <ol class="install-path-steps">
+        <li>Add Producer Pal to your app</li>
+        <li>Open Live and say "connect to ableton"</li>
+        <li>Restart Live, choose the Control Surface</li>
+        <li>Tell the AI you're done; it asks before adding the device</li>
+      </ol>
+    </div>
+    <div class="install-path install-path-device">
+      <h3 class="install-path-title">Path B: Device first</h3>
+      <p class="install-path-apps">Built-in Chat UI, web apps (claude.ai, ChatGPT, Le Chat), the Agent Skill, the REST API, other HTTP clients</p>
+      <ol class="install-path-steps">
+        <li>Download the device</li>
+        <li>Save it to your User Library</li>
+        <li>Drag it onto a MIDI track</li>
+        <li>Click "Finish installation…" and install the remote script</li>
+        <li>Restart Live, choose the Control Surface</li>
+        <li>Follow your app's guide to connect it, then say "connect to ableton"</li>
+      </ol>
+    </div>
   </div>
 </div>
 
-### Install the Device {#install-the-device}
-
-<!--@include: ./_partials/save-device.md-->
-
-### Add It to Your Live Set
-
-<!--@include: ./_partials/add-device.md-->
-
-### Finish the Installation {#finish-the-installation}
-
-Also install Producer Pal's other two pieces. This is recommended for everyone:
-
-- **The remote script** adds clip automation, undo and redo, and loading
-  plug-ins and Max for Live devices into your project.
-- **The device in your User Library** keeps it up to date across all your
-  projects, and lets a coding agent or the Claude Desktop extension add Producer
-  Pal to a new project.
-
-The simple way:
-
-1. On the device, click **Finish installation…** (or click **Open Chat UI** and
-   go to **Settings → Installation**).
-2. Install the device and the remote script.
-3. Restart Live, then in **Settings → Tempo & MIDI** set a **Control Surface**
-   to **Producer Pal**.
-
-<!-- TODO screenshot: Installation tab -->
-
-Details, updating and troubleshooting: [Remote Script](/guide/remote-script).
-
-If you use `npx producer-pal` or the
-[Claude Desktop](./installation/claude-desktop) extension, you can skip this:
-ask the AI to connect to Ableton and it sets up both for you.
-
-## Step 2: Choose How You Want to Use It {#choose-how-you-want-to-use-it}
-
-Producer Pal works the same with any provider — the main choice is _how_ you
-want to interact with it. Most groups below support multiple AI providers, so
-pick the experience you like best. Or skip the AI and drive Live from your own
-code.
+Most groups below support several AI providers, so pick the experience you like
+best. Or skip the AI and drive Live from your own code.
 
 ### Desktop Apps
+
+<span class="path-badge path-badge-ai">Path A: the AI sets it up</span>
 
 Dedicated AI apps — the easiest setup for most people:
 
@@ -91,6 +78,8 @@ Dedicated AI apps — the easiest setup for most people:
 
 ### Built-in Chat UI
 
+<span class="path-badge path-badge-device">Path B: device first</span>
+
 Producer Pal's own browser-based chat — bring an API key for any supported
 provider:
 
@@ -100,6 +89,8 @@ provider:
   **[Anthropic, OpenRouter, Vercel AI Gateway, Mistral & more](./installation/chat-ui-other-providers)**
 
 ### Command Line
+
+<span class="path-badge path-badge-ai">Path A: the AI sets it up</span>
 
 For users comfortable with the terminal:
 
@@ -112,9 +103,11 @@ For users comfortable with the terminal:
 
 Claude Code, Codex CLI, and Gemini CLI can also use the portable
 **[Agent Skill](/guide/skills)** instead of MCP — one folder dropped into the
-agent's skills directory, no MCP config.
+agent's skills directory, no MCP config. (Agent Skill users: follow Path B.)
 
 ### Web Apps
+
+<span class="path-badge path-badge-device">Path B: device first</span>
 
 Use a provider's website in your browser — each requires a
 [web tunnel](./installation/web-tunnels):
@@ -125,17 +118,22 @@ Use a provider's website in your browser — each requires a
 
 ### Any MCP Client
 
+<span class="path-badge path-badge-ai">Path A: the AI sets it up</span>
+
 Already have an MCP-compatible app? Connect directly with
 [`npx producer-pal`](https://www.npmjs.com/package/producer-pal) — see
 [Other MCP LLMs](./installation/other-mcp).
 
 ### Scripts and Automation
 
+<span class="path-badge path-badge-device">Path B: device first</span>
+
 Skip the AI entirely. The [REST API](/guide/rest-api) is plain HTTP on the same
 port the device already serves, so any script, language, or tool that can make a
-request can read and edit your Live Set. Nothing to install beyond the device.
+request can read and edit your Live Set. You only need the device; the remote
+script adds undo and more.
 
-## Prefer to Pick by AI Provider?
+### Prefer to Pick by AI Provider?
 
 If you already know which AI you use, jump straight to its provider guide:
 [Claude / Anthropic](./installation/choose-claude) ·
@@ -144,6 +142,55 @@ If you already know which AI you use, jump straight to its provider guide:
 [Mistral](./installation/choose-mistral) ·
 [Local / Offline](./installation/choose-local) ·
 [Multiple Providers](./installation/choose-multi)
+
+## Step 2: Follow Your Path {#set-it-up}
+
+Both paths end with one setting in Live. The remote script takes one free
+Control Surface slot and no MIDI, so your other controllers keep working.
+
+### Path A: The AI Sets It Up {#the-ai-sets-it-up}
+
+For apps marked **Path A** above. This works when the app connects through
+`npx producer-pal` or the Claude Desktop extension. Over HTTP, or in
+[small model mode](/features#small-model-mode), use Path B.
+
+1. Open your app's guide from Step 1 and add Producer Pal to the app.
+2. Open Live, start a chat, and say **"connect to ableton"**. The AI installs
+   the [remote script](/guide/remote-script).
+3. <!--@include: ./_partials/control-surface.md-->
+4. Then tell the AI you're done. It asks before adding the Producer Pal device
+   to your Live Set.
+
+### Path B: Device First {#path-b-device-first}
+
+For everything else: the Chat UI, web apps, the Agent Skill, the REST API and
+other HTTP clients.
+
+#### Install the Device {#install-the-device}
+
+1. Download the Max for Live device:
+
+<!--@include: ./_partials/download-device.md-->
+
+2. <!--@include: ./_partials/save-device.md-->
+
+3. <!--@include: ./_partials/add-device.md-->
+
+#### Finish the Installation {#finish-the-installation}
+
+4. On the device, click **Finish installation…** (or **Open Chat UI**, then
+   **Settings → Installation**).
+5. Click **Install** next to Remote script.
+6. <!--@include: ./_partials/control-surface.md-->
+7. Follow your app's guide from Step 1 to connect it, then say **"connect to
+   ableton"**.
+
+<!-- TODO screenshot: Installation tab -->
+
+The remote script adds clip automation, undo and redo, and loading plug-ins and
+Max for Live devices. The User Library copy keeps the device up to date across
+all your projects. Details, updating and troubleshooting:
+[Remote Script](/guide/remote-script).
 
 ## Additional Resources
 

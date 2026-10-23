@@ -11,6 +11,8 @@ Detail lives in these parts:
   embedded remote script, per-request headers, and subagent briefings.
 - [user-content-overrides.md](user-content-overrides.md) — what
   `~/.producer-pal` holds, and the rules for override slots.
+- [install-paths.md](install-paths.md) — the two ways a new user is set up (the
+  AI does it, or device first) and which code answers each step.
 - [remote-script.md](remote-script.md) — how a tool reaches the Python remote
   script in Live: call path, contract files, adding a route, availability.
 - [write-queue.md](write-queue.md) — why write calls run one at a time, and how

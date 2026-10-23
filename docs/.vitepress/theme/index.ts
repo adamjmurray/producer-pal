@@ -5,6 +5,7 @@ import DownloadMarkdown from "./DownloadMarkdown.vue";
 import "./demo.css";
 import "./footer.css";
 import "./get-started.css";
+import "./install-paths.css";
 import "./screenshots.css";
 import "./sidebar.css";
 import "./tool-schemas.css";

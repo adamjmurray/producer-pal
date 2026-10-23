@@ -19,9 +19,11 @@ usage.
    [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
    and [install it](/installation#install-the-device) to your User Library, then
    drag it from there onto a MIDI track
-2. In the Producer Pal device, click "Open Chat UI"
-3. Configure your provider as described below
-4. Click "Quick Connect" and say "connect to ableton"
+2. Finish the installation: install the remote script and choose the Control
+   Surface. See [Finish the Installation](/installation#finish-the-installation)
+3. In the Producer Pal device, click "Open Chat UI"
+4. Configure your provider as described below
+5. Click "Quick Connect" and say "connect to ableton"
 
 ## Available Providers
 

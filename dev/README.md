@@ -14,6 +14,9 @@ part is a file beside it.
 - [architecture/](architecture/README.md) — how the pieces fit together, the
   Skills fragments, how tools reach the remote script, the write queue, and the
   `~/.producer-pal` override layer.
+- [architecture/install-paths.md](architecture/install-paths.md) — the two ways
+  a new user is set up (the AI does it, or device first), and which code answers
+  each step.
 - [coding-standards/](coding-standards/README.md) — style guide and Live API
   reference.
 

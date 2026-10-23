@@ -2,9 +2,11 @@
 
 No need to install the device yourself. Finish the steps below, open Live, and
 start a conversation with "connect to ableton". The AI installs the
-[Producer Pal remote script](/guide/remote-script): restart Live once and choose
-**Producer Pal** as a Control Surface in Settings → Tempo & MIDI. Then it asks
-before adding the Producer Pal device to your Live Set.
+[Producer Pal remote script](/guide/remote-script).
+<!--@include: ./control-surface.md-->
+
+Then tell the AI you're done. It asks before adding the Producer Pal device to
+your Live Set.
 
 This works when your AI connects through `npx producer-pal` or the Claude
 Desktop extension, not over HTTP, and not in
