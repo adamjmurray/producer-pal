@@ -142,10 +142,10 @@
     "@openrouter/ai-sdk-provider": "3.1.0",
     "@tailwindcss/typography": "0.5.20",
     "ai": "7.0.142",
-    "dompurify": "3.4.16",
+    "dompurify": "3.4.17",
     "express": "5.3.0",
     "idb": "8.0.4",
-    "marked": "18.1.0",
+    "marked": "18.1.1",
     "preact": "10.29.8",
     "zod": "4.6.6"
   },
