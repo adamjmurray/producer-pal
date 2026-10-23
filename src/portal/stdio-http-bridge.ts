@@ -22,6 +22,7 @@ import { answerOfflineCall, MANAGE_TOOL } from "./offline/offline-call.ts";
 import { type OfflineDeps, realOfflineDeps } from "./offline/offline-deps.ts";
 import { SETUP_URL } from "./offline/offline-setup-hints.ts";
 import { type RunningDevice } from "./update/running-device.ts";
+import { answerInstallWhenDeviceOlder } from "./update/answer-install-when-device-older.ts";
 import { answerUpdateCall, isUpdateCall } from "./update/update-call.ts";
 import { withUpdateHint } from "./update/update-connect-hint.ts";
 import {
@@ -86,6 +87,32 @@ export class StdioHttpBridge {
         manageOffered: this._manageOffered(),
         connect: () => this._ensureHttpConnection(),
       },
+      this.offlineDeps,
+    );
+  }
+
+  /**
+   * The answer to a ppal-manage call the portal gives itself, device up or not.
+   * @param request - The tool call
+   * @returns The response, or null when the device should answer
+   */
+  private async _answerInPortal(request: CallToolRequest) {
+    const args = request.params.arguments ?? {};
+    const manageOffered = this._manageOffered();
+
+    // The device being updated can't answer its own replacement.
+    if (isUpdateCall(request.params.name, args, manageOffered)) {
+      return await answerUpdateCall(
+        args,
+        this._runningDevice(),
+        this.offlineDeps,
+      );
+    }
+
+    // An older device would install its own older script.
+    return await answerInstallWhenDeviceOlder(
+      { name: request.params.name, args, manageOffered },
+      this._runningDevice(),
       this.offlineDeps,
     );
   }
@@ -305,15 +332,10 @@ Tell the user to check ${SETUP_URL} for configuration help.
           `[Bridge] Tool call: ${request.params.name} ${JSON.stringify(request.params.arguments)}`,
         );
 
-        const args = request.params.arguments ?? {};
+        const own = await this._answerInPortal(request);
 
-        // The device being updated can't answer its own replacement.
-        if (isUpdateCall(request.params.name, args, this._manageOffered())) {
-          return await answerUpdateCall(
-            args,
-            this._runningDevice(),
-            this.offlineDeps,
-          );
+        if (own != null) {
+          return own;
         }
 
         // The client this call is on, if it got that far

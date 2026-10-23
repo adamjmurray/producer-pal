@@ -91,6 +91,7 @@ vi.mock(import("../file-logger.ts"), () => ({
 // Import the class after mocking
 import { responseText } from "../offline/tests/offline-add-producer-pal-test-helpers.ts";
 import { StdioHttpBridge } from "../stdio-http-bridge.ts";
+import { type OfflineDeps } from "../offline/offline-deps.ts";
 import { OLD, updateDeps } from "../update/tests/update-test-helpers.ts";
 
 const MANAGE = { name: "ppal-manage", description: "", inputSchema: {} };
@@ -100,13 +101,17 @@ const UPDATE = callToolRequest("ppal-manage", {
 
 /**
  * @param offersManage - Whether the portal lists ppal-manage
+ * @param deps - What the portal's own answers reach out to
  * @returns A bridge over the update dependencies
  */
-function bridgeOver(offersManage: boolean): TestBridge {
+function bridgeOver(
+  offersManage: boolean,
+  deps: OfflineDeps = updateDeps(),
+): TestBridge {
   const bridge = new StdioHttpBridge(
     "http://localhost:3350/mcp",
     {},
-    updateDeps(),
+    deps,
   ) as unknown as TestBridge;
 
   if (offersManage) {
@@ -180,6 +185,94 @@ describe("StdioHttpBridge update-producer-pal", () => {
 
     expect(await handler(UPDATE)).toBe(forwarded);
     expect(mockClient.callTool).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("StdioHttpBridge install-remote-script", () => {
+  const INSTALL = callToolRequest("ppal-manage", {
+    action: "install-remote-script",
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockServer.connect.mockResolvedValue(undefined);
+    mockClient.connect.mockResolvedValue(undefined);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * Make one call so the bridge is connected and knows the device's version.
+   * @param handler - The call handler
+   */
+  async function connect(
+    handler: Awaited<ReturnType<typeof startAndGetCallHandler>>,
+  ): Promise<void> {
+    mockClient.callTool.mockResolvedValueOnce({ content: [] });
+    await handler(callToolRequest("ppal-connect"));
+    mockClient.callTool.mockClear();
+  }
+
+  it("installs the portal's script itself when the device is older", async () => {
+    serverReports(OLD);
+
+    const installRemoteScript = vi.fn(() =>
+      Promise.resolve({
+        installed: true as const,
+        version: VERSION,
+        path: "/lib/Remote Scripts/Producer_Pal",
+      }),
+    );
+    const handler = await startAndGetCallHandler(
+      bridgeOver(true, updateDeps({ installRemoteScript })),
+    );
+
+    await connect(handler);
+
+    const result = await handler(INSTALL);
+
+    expect(responseText(result as never)).toContain(`version:"${VERSION}"`);
+    expect(installRemoteScript).toHaveBeenCalledTimes(1);
+    expect(mockClient.callTool).not.toHaveBeenCalled();
+  });
+
+  it("forwards to the device when it is the same version", async () => {
+    serverReports(VERSION);
+
+    const forwarded = { content: [{ type: "text", text: "from the device" }] };
+    const handler = await startAndGetCallHandler(bridgeOver(true));
+
+    await connect(handler);
+    mockClient.callTool.mockResolvedValue(forwarded);
+
+    expect(await handler(INSTALL)).toBe(forwarded);
+  });
+
+  it("forwards to the device when its version is unknown", async () => {
+    mockClient.getServerVersion.mockReturnValue(undefined);
+
+    const forwarded = { content: [{ type: "text", text: "from the device" }] };
+    const handler = await startAndGetCallHandler(bridgeOver(true));
+
+    await connect(handler);
+    mockClient.callTool.mockResolvedValue(forwarded);
+
+    expect(await handler(INSTALL)).toBe(forwarded);
+  });
+
+  it("forwards to the device when the portal doesn't offer ppal-manage", async () => {
+    serverReports(OLD);
+
+    const forwarded = { content: [{ type: "text", text: "from the device" }] };
+    const handler = await startAndGetCallHandler(bridgeOver(false));
+
+    await connect(handler);
+    mockClient.callTool.mockResolvedValue(forwarded);
+
+    expect(await handler(INSTALL)).toBe(forwarded);
   });
 });
 

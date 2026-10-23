@@ -47,11 +47,12 @@ export async function offlineManage(
 }
 
 /**
+ * Install the remote script bundled with this portal.
  * @param userLibrary - Absolute path to the User Library, if the call gave one
  * @param deps - The install
  * @returns The same result or error the device's install gives
  */
-async function installRemoteScript(
+export async function installRemoteScript(
   userLibrary: string | undefined,
   deps: Pick<OfflineDeps, "installRemoteScript">,
 ): Promise<McpResponse> {

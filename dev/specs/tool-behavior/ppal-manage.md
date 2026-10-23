@@ -194,7 +194,8 @@ it (small-model mode and `--disable-tools` drop it).
   `Error: <why>`, as on the device.
 - **`install-remote-script`** runs in the portal through the same code as the
   device's route and gives the same `{ version, path, nextSteps }` and the same
-  errors.
+  errors. The portal also answers it while the device is up, when the running
+  device is older than the portal, so the newer script gets installed.
 - **`add-producer-pal`** runs the steps below.
 - **`update-producer-pal`** is answered by the portal whether the device is up
   or not; see [above](#update-producer-pal). When the device is down it gets the
