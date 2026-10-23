@@ -5,6 +5,7 @@
 
 import {
   type ExpectedItem,
+  firstWord,
   fixParses,
   formatSyntaxError,
   invisibleCharHint,
@@ -85,7 +86,31 @@ function describeLiterals(
 
   const spaced = `${line.slice(0, column)} ${line.slice(column)}`;
 
-  return fixParses(parse, spaced)
+  return fixParses(parse, spaced) || failsOnlyOnGluedSharp(spaced, column + 1)
     ? `unexpected ${next}: items are separated by spaces.`
     : `unexpected ${next}.`;
+}
+
+/**
+ * Whether the line fails at `offset` only because the pitch there has a `#`
+ * glued after its octave (`C3#`), which the grammar refuses: spacing was still
+ * the right repair.
+ * @param line - The line with the fix applied
+ * @param offset - Where the item the fix separated starts
+ * @returns True when it does
+ */
+function failsOnlyOnGluedSharp(line: string, offset: number): boolean {
+  try {
+    parse(line);
+
+    return false;
+  } catch (error) {
+    // Errors a grammar action throws have no location.
+    const at = (error as Partial<PeggySyntaxError>).location?.start.offset;
+
+    return (
+      at === offset &&
+      /^[A-Ga-g][#bB♯♭]?-?\d+#/u.test(firstWord(line.slice(offset)))
+    );
+  }
 }

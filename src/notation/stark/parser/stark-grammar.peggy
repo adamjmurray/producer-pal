@@ -53,9 +53,10 @@ DrumHeader
 // octave number, e.g. C1, F#2, Gb-1. Ableton convention (C3 = MIDI 60) is
 // applied by the interpreter/serializer, NOT here. Unambiguous against pitched
 // lines (melody/bass/chords are keyword-led) and against drum aliases (those
-// are two letters with no trailing digit).
+// are two letters with no trailing digit). An accidental glued after the octave
+// (`A3b`) is refused: the parse fails and the error names the fix.
 DrumPitchName "drum pitch name"
-  = letter:[A-Ga-g] acc:Accidental? neg:"-"? digits:$([0-9]+) {
+  = letter:[A-Ga-g] acc:Accidental? neg:"-"? digits:$([0-9]+) !Accidental {
       return letter + (acc || "") + (neg || "") + digits;
     }
 
@@ -144,7 +145,7 @@ PitchedItem
 // a bare `b` = note B — this is the load-bearing rule that makes accidentals
 // unambiguous in a whitespace-tokenized stream.
 NoteToken
-  = letter:[A-Ga-g] acc:Accidental? oct:AbsoluteOctave? suffixes:NoteTokenSuffix* rep:Repeat? {
+  = letter:[A-Ga-g] acc:Accidental? oct:AbsoluteOctave? suffixes:NoteSuffix* rep:Repeat? {
       var octaveShift = 0;
       var duration = null;
       var dynamic = "normal";
@@ -170,18 +171,33 @@ NoteToken
 // the pitch instead of placing it relative to the line register. Unambiguous
 // because a digit can otherwise only follow `/` (duration) or `*` (repeat), so
 // the slot right after letter+accidental is free. NOT available on a chords line
-// — there the digits are chord qualities (`C7`, `C9`), which win.
+// — there the digits are chord qualities (`C7`, `C9`), which win. An accidental
+// glued after the number (`A3b`) fails the parse instead of reading as A3 then
+// the note B; the error names the fix.
 AbsoluteOctave
-  = digits:$("-"? [0-9]+) { return parseInt(digits, 10); }
+  = digits:$("-"? [0-9]+) !Accidental { return parseInt(digits, 10); }
 
 // Suffix modifiers: glyph classes are disjoint (' , vs /N vs ! ?),
 // so any ordering is unambiguous — Eb''/8!, Eb/8''!, Eb!/8'' all parse identically.
 NoteTokenSuffix
+  = OctaveMark
+  / OtherSuffix
+
+OctaveMark
   = "'"  { return { type: "octave",    value:  1 }; }
   / ","  { return { type: "octave",    value: -1 }; }
-  / "/" d:Duration { return { type: "duration", value: d }; }
+
+OtherSuffix
+  = "/" d:Duration { return { type: "duration", value: d }; }
   / "!"  { return { type: "dynamic",   value: "accent" }; }
   / "?"  { return { type: "dynamic",   value: "soft" }; }
+
+// The suffixes of a literal note. Unlike a chord symbol's, an octave mark can't
+// be followed by an accidental (`E'b`): that fails the parse instead of reading
+// as E' then the note B.
+NoteSuffix
+  = mark:OctaveMark !Accidental { return mark; }
+  / OtherSuffix
 
 // Rest token: z (case-insensitive) with optional /N duration.
 RestToken
@@ -211,9 +227,10 @@ ChordToken
 
 // Individual note inside a bracket chord: letter + optional accidental +
 // optional absolute octave + optional octave marks. Trailing _h consumes
-// inter-note whitespace inside the bracket.
+// inter-note whitespace inside the bracket. Marks can't be followed by an
+// accidental, as on NoteToken.
 ChordNote
-  = letter:[A-Ga-g] acc:Accidental? oct:AbsoluteOctave? octaves:[',]* _h {
+  = letter:[A-Ga-g] acc:Accidental? oct:AbsoluteOctave? octaves:ChordNoteMarks _h {
       var shift = 0;
       for (var i = 0; i < octaves.length; i++) {
         shift += octaves[i] === "'" ? 1 : -1;
@@ -225,6 +242,10 @@ ChordNote
         octaveShift: shift
       };
     }
+
+ChordNoteMarks
+  = marks:[',]+ !Accidental { return marks; }
+  / "" { return []; }
 
 ChordSuffix
   = "/" d:Duration { return { type: "duration", value: d }; }

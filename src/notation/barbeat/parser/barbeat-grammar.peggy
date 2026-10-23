@@ -288,11 +288,18 @@ badBarDuration
     }
 
 pitch "note pitch"
-  = pitchClass:pitchClass octave:signedInt {
+  = pitchClass:pitchClass octave:pitchOctave {
     // Range is enforced in the interpreter (out-of-range pitch is skipped +
     // warned), so emit whatever the note name computes to.
     return { pitch: (octave + 2) * 12 + pitchClass.value };
   }
+
+// The octave number. An accidental glued after it (`A3b`, `A3#`) fails the
+// parse (`#` would otherwise start a comment and drop the rest of the line),
+// and the error names the fix. Uppercase `B` is not listed: it is only
+// a flat right after the letter.
+pitchOctave
+  = octave:signedInt ![#b♯♭] { return octave; }
 
 pitchClass
   = letter:[A-Ga-g] accidental:pitchAccidental? {

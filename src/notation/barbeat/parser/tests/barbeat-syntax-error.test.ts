@@ -231,7 +231,7 @@ describe("bar|beat syntax errors", () => {
 
     // `#` starts a comment right after an item too, but not in a sharp.
     for (const notes of [
-      "E3#(\nC3 1|1 x",
+      "1|1#(\nC3 1|1 x",
       "C3 1|1#[\nE3 x",
       "[#(\nC3] 1|1 x",
     ]) {

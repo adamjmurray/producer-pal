@@ -456,7 +456,7 @@ pitchRange "pitch range"
   }
 
 pitch
-  = pitchClass:pitchClass octave:signedInt {
+  = pitchClass:pitchClass octave:pitchOctave {
     const pitch = (octave + 2) * 12 + pitchClass.value;
     if (pitch >= 0 && pitch <= 127) {
       return pitch;
@@ -465,13 +465,20 @@ pitch
   }
 
 pitchLiteral
-  = pitchClass:pitchClass octave:signedInt {
+  = pitchClass:pitchClass octave:pitchOctave {
     const pitch = (octave + 2) * 12 + pitchClass.value;
     if (pitch >= 0 && pitch <= 127) {
       return { type: "pitchLiteral", value: pitch, name: `${pitchClass.name}${octave}` };
     }
     throw new Error(`MIDI pitch ${pitch} (${pitchClass.name}${octave}) outside valid range 0-127`);
   }
+
+// The octave number. An accidental glued after it (`A3b`, `A3#`) fails the
+// parse (`#` would otherwise start a comment and drop the rest of the line),
+// and the error names the fix. Uppercase `B` is not listed: it is only
+// a flat right after the letter.
+pitchOctave
+  = octave:signedInt ![#b♯♭] { return octave; }
 
 pitchClass
   = letter:[A-Ga-g] accidental:pitchAccidental? {
