@@ -6,27 +6,17 @@
 /**
  * Does the model navigate by SECTION NAME, or compute a bar number?
  *
- * "Play from the chorus" and "copy the verse into the bridge" are how people
- * actually talk about an arrangement, and both have a spelling built for them:
- * `loc:<name>` on ppal-playback's `startTime` / `loopStart` / `loopEnd`, and
- * `locator` on ppal-duplicate.
+ * ppal-playback takes `loc:<name>` for `startTime` / `loopStart` / `loopEnd`.
+ * A computed bar lands in the same place, so an outcome-only check passes a
+ * model that never found the feature: the playback turns grade the argument,
+ * and a play-arrangement read checks where the loop landed. The copy is graded
+ * only on where it landed, since a placed clip does not follow its locator.
  *
- * The trap is that computing the bar WORKS. A model that reads the locator list,
- * works out that Chorus is bar 17, and passes `startTime: "17|1"` lands the
- * playhead in exactly the right place — so an outcome-only check passes a model
- * that never found the feature. That is why each turn grades the ARGUMENT, and
- * the outcome: a call that sets the loop reports none of it back, so a
- * play-arrangement read after the run checks where the loop landed. The e2e
- * suite already proves the values resolve names and ids against a real Set
- * (`control/ppal-playback`, `operations/ppal-duplicate`); what is unmeasured is
- * whether a model reaches for them.
+ * `kind: "capability"` — an improvement target, not a regression guard.
  *
- * `kind: "capability"` — this is an improvement target, not a regression guard.
- *
- * Uses the arrangement-sections Set, the only one with named locators. It lives
- * under `e2e/live-sets/` and is named by path: `resolveLiveSetPath` returns any
- * value containing `/` unchanged, and only bare names default to
- * `evals/live-sets/`.
+ * Uses the arrangement-sections Set, the only one with named locators. It is
+ * named by path because it lives under `e2e/live-sets/`; only bare names
+ * default to `evals/live-sets/`.
  */
 
 import { getToolCalls, parsedToolResult } from "../../../assertions/index.ts";
@@ -39,7 +29,6 @@ import { argText } from "../../arg-text.ts";
 import { asArrangementTrack, clipStarts } from "../../arrangement-readback.ts";
 
 const TOOL_PLAYBACK = "ppal-playback";
-const TOOL_DUPLICATE = "ppal-duplicate";
 
 /** The arrangement Set, named by path — it lives under e2e/live-sets/. */
 const LIVE_SET =
@@ -156,50 +145,6 @@ function assertNavigatedByLocator(
   };
 }
 
-/**
- * Assert the duplicate placed the copy by locator name, not a computed bar.
- *
- * The published spelling is a `toPath` coordinate (`t2[loc:Bridge]`); the two
- * retired params still count, since a caller that sends one gets the same
- * placement.
- *
- * @param turn - Turn index to grade
- * @returns A custom assertion
- */
-function assertDuplicatedToLocator(turn: number): EvalAssertion {
-  return {
-    type: "custom",
-    description: "placed the copy by naming the Bridge locator",
-    assert: (turns) => {
-      const call = getToolCalls(turns, turn).findLast(
-        (c) => c.name === TOOL_DUPLICATE,
-      );
-
-      if (call == null) {
-        throw new Error(`no ${TOOL_DUPLICATE} call in turn ${turn}`);
-      }
-
-      const named = [
-        argText(call.args.toPath),
-        argText(call.args.arrangementStart),
-        argText(call.args.locator),
-      ]
-        .filter(Boolean)
-        .join(" ");
-
-      if (!/bridge|loc:\d+/i.test(named)) {
-        throw new Error(
-          named
-            ? `did not name the Bridge locator: ${named}`
-            : "nothing placed the copy",
-        );
-      }
-
-      return true;
-    },
-  };
-}
-
 export const locatorNavigation: EvalScenario = {
   id: "locator-navigation",
   tags: ["workflow"],
@@ -247,8 +192,6 @@ export const locatorNavigation: EvalScenario = {
       explain: (result) =>
         `loop ${JSON.stringify(result)}, expected ${BRIDGE} to ${OUTRO}`,
     },
-
-    assertDuplicatedToLocator(3),
 
     {
       type: "state",
