@@ -64,7 +64,7 @@ export interface ManageInstallResult {
  * then a first install isn't in the Control Surface list to choose.
  */
 export const INSTALL_NEXT_STEPS =
-  'Tell the user to finish in Live: restart Live, then, on first install, choose "Producer Pal" as a Control Surface in Settings → Tempo & MIDI.';
+  'Tell the user to finish in Live: restart Live, then, on first install, choose "Producer Pal" as a Control Surface in Settings → Tempo & MIDI, with Input and Output left as None. It takes one free slot and no MIDI, so their other controllers keep working.';
 
 /**
  * The result of an install the route answered.

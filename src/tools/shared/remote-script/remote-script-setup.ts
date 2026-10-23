@@ -17,5 +17,12 @@ export const REMOTE_SCRIPT_ADDS =
 export const INSTALL_IN_CHAT_UI =
   "the Producer Pal chat UI's Settings → Installation";
 
+/**
+ * What the user does in Live after an install. Live only scans Remote Scripts
+ * at startup, so the restart comes first: neither step works alone.
+ */
+export const ENABLE_IN_LIVE =
+  "restart Live, then choose Producer Pal as a Control Surface in Settings → Tempo & MIDI, with Input and Output left as None";
+
 /** What to tell the user when a load needs the remote script. */
-export const REMOTE_SCRIPT_SETUP = `set it up with ${INSTALL_WITH_TOOL}, then ask the user to restart Live (or have them use ${INSTALL_IN_CHAT_UI}; guide: https://producer-pal.org/guide/remote-script)`;
+export const REMOTE_SCRIPT_SETUP = `set it up with ${INSTALL_WITH_TOOL} if it isn't installed, then ask the user to ${ENABLE_IN_LIVE} (or have them use ${INSTALL_IN_CHAT_UI}; guide: https://producer-pal.org/guide/remote-script)`;

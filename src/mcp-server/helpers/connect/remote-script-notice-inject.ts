@@ -9,6 +9,7 @@ import {
   remoteScriptAttention,
 } from "#src/shared/version-check.ts";
 import {
+  ENABLE_IN_LIVE,
   INSTALL_WITH_TOOL,
   REMOTE_SCRIPT_ADDS,
 } from "#src/tools/shared/remote-script/remote-script-setup.ts";
@@ -71,8 +72,8 @@ function remoteScriptLine(status: RemoteScriptStatus, manage: boolean): string {
     }
 
     return manage
-      ? `remoteScript: not installed. ${REMOTE_SCRIPT_ADDS} To install it, call ${INSTALL_WITH_TOOL}, then tell the user to restart Live.`
-      : `remoteScript: not installed. ${REMOTE_SCRIPT_ADDS} Tell the user to install it (Chat UI > Settings > Installation > Install), then restart Live.`;
+      ? `remoteScript: not installed. ${REMOTE_SCRIPT_ADDS} To install it, call ${INSTALL_WITH_TOOL}, then tell the user to ${ENABLE_IN_LIVE}.`
+      : `remoteScript: not installed. ${REMOTE_SCRIPT_ADDS} Tell the user to install it (Chat UI > Settings > Installation > Install), then ${ENABLE_IN_LIVE}.`;
   }
 
   if (remoteScriptAttention(status) === "update") {
@@ -87,7 +88,7 @@ function remoteScriptLine(status: RemoteScriptStatus, manage: boolean): string {
   }
 
   if (!status.running) {
-    return `remoteScript: ${versionText(status.installedVersion)} is installed but not running. ${REMOTE_SCRIPT_ADDS} Tell the user to choose Producer Pal as a Control Surface in Live's Settings → Tempo & MIDI, or restart Live. Reinstalling won't help.`;
+    return `remoteScript: ${versionText(status.installedVersion)} is installed but not running. ${REMOTE_SCRIPT_ADDS} Tell the user to ${ENABLE_IN_LIVE}. Don't call ${INSTALL_WITH_TOOL} again: it can't start the script.`;
   }
 
   if (liveRunsOtherCopy(status)) {

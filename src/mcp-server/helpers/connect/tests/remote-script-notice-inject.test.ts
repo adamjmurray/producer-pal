@@ -75,6 +75,8 @@ afterEach(() => {
 });
 
 const INSTALL = 'ppal-manage action "install-remote-script"';
+const ENABLE_IN_LIVE =
+  "restart Live, then choose Producer Pal as a Control Surface in Settings → Tempo & MIDI, with Input and Output left as None";
 
 describe("withRemoteScriptNotice", () => {
   it("tells the model to reinstall an installed script older than this build", async () => {
@@ -151,7 +153,7 @@ describe("withRemoteScriptNotice", () => {
     const content = await connectThrough();
 
     expect(content[1]?.text).toBe(
-      `remoteScript: not installed. ${ADDS} To install it, call ${INSTALL}, then tell the user to restart Live.`,
+      `remoteScript: not installed. ${ADDS} To install it, call ${INSTALL}, then tell the user to ${ENABLE_IN_LIVE}.`,
     );
   });
 
@@ -168,7 +170,7 @@ describe("withRemoteScriptNotice", () => {
     const content = await connectThrough(undefined, false);
 
     expect(content[1]?.text).toBe(
-      `remoteScript: not installed. ${ADDS} Tell the user to install it (Chat UI > Settings > Installation > Install), then restart Live.`,
+      `remoteScript: not installed. ${ADDS} Tell the user to install it (Chat UI > Settings > Installation > Install), then ${ENABLE_IN_LIVE}.`,
     );
   });
 
@@ -191,7 +193,7 @@ describe("withRemoteScriptNotice", () => {
       const content = await connectThrough(undefined, manage);
 
       expect(content[1]?.text).toBe(
-        `remoteScript: v${VERSION} is installed but not running. ${ADDS} Tell the user to choose Producer Pal as a Control Surface in Live's Settings → Tempo & MIDI, or restart Live. Reinstalling won't help.`,
+        `remoteScript: v${VERSION} is installed but not running. ${ADDS} Tell the user to ${ENABLE_IN_LIVE}. Don't call ${INSTALL} again: it can't start the script.`,
       );
     }
   });
