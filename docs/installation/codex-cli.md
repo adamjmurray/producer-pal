@@ -52,7 +52,14 @@ the args:
 ```toml
 [mcp_servers.producer-pal]
 command = "npx"
-args = ["-y", "producer-pal@latest", "--format", "json", "--notation", "midi-json"]
+args = [
+  "-y",
+  "producer-pal@latest",
+  "--format",
+  "json",
+  "--notation",
+  "midi-json",
+]
 ```
 
 <!--@include: ../_partials/scripting-tip.md-->
