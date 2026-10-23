@@ -40,14 +40,19 @@ After installation:
 1. Open Ableton Live with your project
 2. Load the Producer Pal Max for Live device onto a MIDI track
    ([download latest version](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd))
-3. Connect to Producer Pal in your AI interface
-4. Say "connect to ableton"
-5. Try a simple command:
+3. Install the [remote script](/guide/remote-script): click **Finish
+   installation…** on the device to open the Chat UI's Installation tab, click
+   **Install** there, restart Live, then set a **Control Surface** to **Producer
+   Pal** in **Settings → Tempo & MIDI**. This is recommended for everyone. It
+   adds clip automation, undo and redo, and plug-in loading.
+4. Connect to Producer Pal in your AI interface
+5. Say "connect to ableton"
+6. Try a simple command:
    - "What's in my project?"
    - "Create a new MIDI track called Bass"
    - "Change the tempo to 108 BPM"
 
-Using the [Agent Skill](/guide/skills) instead? Steps 3 and 4 are handled by its
+Using the [Agent Skill](/guide/skills) instead? Steps 4 and 5 are handled by its
 bootstrap. Using the [REST API](/guide/rest-api) directly? Nothing connects for
 you, so call `ppal-connect` first when a model is in the loop, since that's what
 returns the skills and [context](/guide/context). A plain script can call the

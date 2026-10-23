@@ -16,9 +16,9 @@ Each fact has exactly one authority.
 | Global          | `~/.producer-pal/` files | cross-project facts, prompt/skills forks |
 
 The device already persists its settings and per-project context and re-sends
-them on load, so there is no `config.json` mirror to keep in step. (What
-survives from the idea: atomic temp-and-rename writes, and a missing file reads
-as empty — see `config-markdown-store.ts`.)
+them on load, so there is no `config.json` mirror to keep in step. Writes are
+atomic (temp and rename), and a missing file reads as empty — see
+`config-markdown-store.ts`.
 
 The file layer is machine-global, shared by every client and every Live Set. The
 browser can't touch the filesystem, so the chat UI gets the content over HTTP

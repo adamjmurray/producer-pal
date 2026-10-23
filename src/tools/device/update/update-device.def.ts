@@ -37,7 +37,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
 
     toPath: param(z.coerce.string().optional(), {
       default:
-        "move to path ('t2/d+' appends, 't2/d1' inserts at 1, 't0/d0/c1/d+'; 't0/d0/c+' appends a new chain to that rack and moves the device into it). Comma-separated, one per target. To move a whole drum pad (trim, choke group, devices), target the pad path (path 't0/d0/pC1', toPath 't0/d0/pD1'); it stays in its rack and layers onto an occupied pad. A device moved alone keeps its chain's trim only into an empty, untouched chain",
+        "move to path ('t2/d+' appends, 't2/d1' inserts at 1, 't0/d0/c1/d+'; 't0/d0/c+' appends a new chain to that rack and moves the device into it). Comma-separated, one per target. To move a whole drum pad, target the pad path (path 't0/d0/pC1', toPath 't0/d0/pD1'); it stays in its rack and layers onto an occupied pad. A device moved alone keeps its chain's trim only into an empty, untouched chain",
       smallModel: "destination path to move device to",
     }),
     name: param(z.string().optional(), {

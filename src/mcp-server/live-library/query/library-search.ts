@@ -41,6 +41,7 @@ import {
   type SearchRow,
 } from "./candidate-query.ts";
 import { presetFolderNote } from "./preset-folder-note.ts";
+import { rackKindNote } from "./rack-kind-note.ts";
 
 /**
  * Run a structured library search.
@@ -115,7 +116,11 @@ export async function librarySearch(
         await verifyItemPaths(items);
       }
 
-      const note = presetFolderNote(db, args, parentId);
+      const notes = [
+        presetFolderNote(db, args, parentId),
+        rackKindNote(db, args, parentId, items.length),
+      ].filter((n) => n != null);
+      const note = notes.length > 0 ? notes.join("; ") : undefined;
 
       return {
         dbAvailable: true,

@@ -13,6 +13,9 @@ is recommended for regular use.
 | [Claude Code](./claude-code)                            | Developers             | Terminal-based, great for coding workflows.           |
 | [Built-in Chat UI](./chat-ui-other-providers#anthropic) | Direct API access      | Requires API key, pay-per-use pricing.                |
 
+Claude Code can also use the portable [Agent Skill](/guide/skills) instead of
+MCP.
+
 ## Recommendation
 
 **Claude Desktop** is the easiest and most reliable option. It's what Producer

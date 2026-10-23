@@ -10,7 +10,8 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createGateway, type LanguageModel } from "ai";
-import { isAdaptiveByDefaultModel } from "#webui/hooks/settings/config-builders";
+import { settleOpenRouterReasoningOff } from "#webui/chat/sdk/provider/openrouter-reasoning";
+import { getThinkingOffType } from "#webui/hooks/settings/config-builders";
 import { type Provider } from "#webui/types/settings";
 import { withDefaultUrl } from "#webui/utils/provider-url";
 
@@ -20,7 +21,8 @@ import { withDefaultUrl } from "#webui/utils/provider-url";
  * `@ai-sdk/openai-compatible` (which surfaces the `reasoning_content` field
  * local reasoning models emit as thinking; `@ai-sdk/openai`'s chat model
  * silently drops it). Ollama stays on `@ai-sdk/openai` because its thinking
- * control rides on the `openai` providerOptions namespace. OpenRouter uses its
+ * control (`reasoning_effort`) rides on the `openai` providerOptions
+ * namespace. OpenRouter uses its
  * own SDK; Gemini uses `@ai-sdk/google`; Vercel AI Gateway uses `ai`'s own.
  *
  * @param provider - Producer Pal provider identifier
@@ -155,14 +157,15 @@ function applyAnthropicRewrites(body: AnthropicRequestBody): boolean {
     modified = true;
   }
 
-  if (shouldForceThinkingDisabled(body)) {
+  const offType = omittedThinkingOffType(body);
+
+  if (offType != null) {
     // On adaptive-by-default models (Sonnet 5+), an omitted `thinking` field
     // runs adaptive thinking. The app omits `thinking` only for the "Off"
-    // level, and the @ai-sdk/anthropic provider drops a providerOptions
-    // `{type:"disabled"}` before it reaches the wire, so make the choice
-    // explicit here to honor "Off". Legacy (Haiku 4.5) and always-on (Fable /
-    // Mythos, which 400 on disabled) models keep the omitted-thinking body.
-    body.thinking = { type: "disabled" };
+    // level, so inject what the model accepts for off: `between_tools` on
+    // Sonnet 5.5 (400s on `disabled`), `disabled` elsewhere. Legacy (Haiku
+    // 4.5) and always-on models keep the omitted-thinking body.
+    body.thinking = { type: offType };
     modified = true;
   }
 
@@ -174,21 +177,19 @@ function applyAnthropicRewrites(body: AnthropicRequestBody): boolean {
 }
 
 /**
- * Whether an omitted `thinking` field should be forced to `{type: "disabled"}`.
- * True for adaptive-by-default Anthropic models where omitting `thinking` would
- * otherwise run adaptive thinking (Sonnet 5+); false for legacy enabled-thinking
- * models (Haiku 4.5), always-on models (Fable / Mythos) that reject `disabled`, and
- * pre-3.7 models (via the free-text "Other..." input) that reject the `thinking`
- * field entirely — injecting `disabled` on those 400s every send.
+ * The `thinking` type to inject for a request that omits it (the app's "Off"),
+ * or undefined to leave it omitted: legacy enabled-thinking models (Haiku 4.5),
+ * always-on models (Opus 5.5 / Fable / Mythos) and pre-3.7 models (via the
+ * free-text "Other..." input) all 400 on an injected field.
  * @param body - Parsed Anthropic request body
- * @returns True when `{type: "disabled"}` should be injected
+ * @returns The thinking type to inject, or undefined
  */
-function shouldForceThinkingDisabled(body: AnthropicRequestBody): boolean {
-  return (
-    body.thinking == null &&
-    typeof body.model === "string" &&
-    isAdaptiveByDefaultModel(body.model)
-  );
+function omittedThinkingOffType(
+  body: AnthropicRequestBody,
+): "disabled" | "between_tools" | undefined {
+  return body.thinking == null && typeof body.model === "string"
+    ? getThinkingOffType(body.model)
+    : undefined;
 }
 
 /** Minimal shape of one OpenAI/OpenRouter chat message we mutate. */
@@ -200,17 +201,27 @@ interface OpenRouterMessage {
 /** Minimal shape of the OpenAI/OpenRouter chat-completions body we mutate. */
 interface OpenRouterRequestBody {
   model?: string;
+  reasoning?: { effort?: string };
   messages?: OpenRouterMessage[];
 }
 
 /**
- * Rewrites the outgoing OpenRouter request with `cache_control` breakpoints for
- * Anthropic and Gemini models, which don't cache without them. The body is
- * OpenAI-chat-shaped, so breakpoints land inside message content blocks rather
- * than on separate system/tools fields.
+ * Rewrites the outgoing OpenRouter request: settles the "Off" reasoning effort
+ * for the model, and adds `cache_control` breakpoints for Anthropic and Gemini
+ * models, which don't cache without them. The body is OpenAI-chat-shaped, so
+ * breakpoints land inside message content blocks rather than on separate
+ * system/tools fields.
  */
 export const transformOpenRouterRequest: RewritingFetch = rewritingFetch(
-  (body) => addOpenRouterCacheControl(body as OpenRouterRequestBody),
+  async (body) => {
+    // Both steps run: `||` would skip the cache breakpoints once Off changed.
+    const settled = await settleOpenRouterReasoningOff(
+      body as OpenRouterRequestBody,
+    );
+    const cached = addOpenRouterCacheControl(body as OpenRouterRequestBody);
+
+    return settled || cached;
+  },
 );
 
 /** A fetch a provider can be handed in place of the global one. */
@@ -225,13 +236,15 @@ type RewritingFetch = (
  * @param transform - Mutates the parsed body; returns true when it changed it
  * @returns The fetch to hand the provider
  */
-function rewritingFetch(transform: (body: unknown) => boolean): RewritingFetch {
+function rewritingFetch(
+  transform: (body: unknown) => boolean | Promise<boolean>,
+): RewritingFetch {
   return async (input, init) => {
     if (init?.body && typeof init.body === "string") {
       try {
         const body: unknown = JSON.parse(init.body);
 
-        if (transform(body)) {
+        if (await transform(body)) {
           init = { ...init, body: JSON.stringify(body) };
         }
       } catch {

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import {
+  gluedAccidentalHint,
   isUnclosed,
   type SyntaxFailure,
   unclosedCommentHint,
@@ -55,6 +56,12 @@ export function diagnoseTransformMistake(
 
   if (comment != null) {
     return comment;
+  }
+
+  const glued = gluedAccidentalHint(failure.line, failure.column, false);
+
+  if (glued != null) {
+    return glued;
   }
 
   const failed = readFailedLine(failure);

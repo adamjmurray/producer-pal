@@ -5,7 +5,7 @@
 
 /**
  * bar|beat's sharp rule. The grammar starts a comment at any `#`, even right
- * after an item (`E3#`), unless a pitch is being read: a note letter at the
+ * after an item (`1|1#`), unless a pitch is being read: a note letter at the
  * start of an item (the start, after whitespace, `[`, `(` or a block comment)
  * takes the `#` as its sharp (`C#3`, `[F#2`).
  * @param text - bar|beat text

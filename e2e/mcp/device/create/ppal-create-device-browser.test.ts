@@ -21,6 +21,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { siblingUrl } from "#evals/shared/config.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import {
@@ -222,7 +223,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       const before = await trackCount();
       const devicesBefore = await deviceCount(trackIndex);
       const response = await fetch(
-        `${MCP_URL.replace("/mcp", "/api/tools/ppal-create-device")}?format=json&timeoutMs=1000`,
+        `${siblingUrl(MCP_URL, "api/tools/ppal-create-device")}?format=json&timeoutMs=1000`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

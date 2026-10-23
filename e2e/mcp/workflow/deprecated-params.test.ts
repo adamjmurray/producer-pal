@@ -21,6 +21,7 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { connectMcp, type McpConnection } from "#evals/chat/mcp.ts";
+import { siblingUrl } from "#evals/shared/config.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 
 interface ToolInfo {
@@ -132,7 +133,7 @@ describe("hidden params", () => {
   // GET /api/tools builds its own catalog, and it is how a REST agent discovers
   // the tool surface — so it has to hide the same names MCP does.
   it("hides them from the REST catalog too", async () => {
-    const response = await fetch(MCP_URL.replace("/mcp", "/api/tools"));
+    const response = await fetch(siblingUrl(MCP_URL, "api/tools"));
 
     expect(response.ok).toBe(true);
 

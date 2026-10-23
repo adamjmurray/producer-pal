@@ -168,6 +168,35 @@ describe("moveDeviceToPath", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
+  it("counts an empty rack as the destination's instrument", () => {
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("device-0", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
+    });
+    registerMockObject("resident", {
+      path: livePath.track(1).device(0),
+      type: "RackDevice",
+      properties: {
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        can_have_chains: 1,
+        chains: [],
+      },
+    });
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { devices: children("resident") },
+    });
+
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toStrictEqual({
+      outcome: "refused",
+      reason:
+        "the destination already has an instrument, and only one is allowed",
+    });
+  });
+
   // Live drops these with no reason, so the refusal names it.
   describe("a move to a place that takes only some kinds of device", () => {
     beforeEach(() => {

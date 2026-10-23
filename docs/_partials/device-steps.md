@@ -7,5 +7,6 @@ the Producer Pal Max for Live device.
 <!--@include: ./add-device.md-->
 
 Then finish the installation: click **Finish installation…** on the device to
-add the remote script (clip automation, undo, plug-ins). See
+open the Chat UI's Installation tab, and click **Install** there to add the
+remote script (clip automation, undo, plug-ins). See
 [Finish the Installation](/installation#finish-the-installation).

@@ -134,4 +134,4 @@ This enables three-way logic for unlooped warped audio lengthening:
 - **Cap**: some hidden content, but not enough for the full target
 - **Proceed**: sufficient content for the full target
 
-Files: `unlooped-lengthening.ts` (`tileWarpedAudioContent`)
+Files: `unlooped-lengthening.ts` (`handleUnloopedLengthening`)

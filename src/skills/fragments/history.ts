@@ -12,4 +12,4 @@
  */
 export const history = `## Undo & Redo
 
-\`ppal-manage\` \`undo\`/\`redo\` step Live's own history: one step is one of your write calls, or one edit the user made in Live. \`steps\` takes several: count your write calls for "undo all that". Say what you're undoing, and ask first if they may have edited since. They need the remote script: if it isn't installed, \`install-remote-script\` installs it, then the user restarts Live.`;
+\`ppal-manage\` \`undo\`/\`redo\` step Live's own history: one step is one of your write calls (calls made in parallel share one), or one edit the user made in Live. \`steps\` takes several: count your write calls for "undo all that". Say what you're undoing, and ask first if they may have edited since. They need the remote script: if it isn't installed, \`install-remote-script\` installs it, then the user restarts Live.`;

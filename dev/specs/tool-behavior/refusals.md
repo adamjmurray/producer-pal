@@ -100,9 +100,8 @@ only for a current script.
 
 ## A write that waits for another
 
-Write calls run one at a time, across every client; reads don't wait. A queued
-write counts the wait against its own timeout and runs with what is left. If it
-gets down to 5 s (or half its timeout, if shorter) before its turn, it doesn't
-run and answers
+A queued write that runs short of time before its turn doesn't run and answers
 `Not run: waited <N>s for other Producer Pal writes to finish and ran out of time. Nothing changed; retry it.`
-A write whose caller disconnects while it waits doesn't run either.
+A write whose caller disconnects while it waits doesn't run either. The queue's
+rules (what counts as a write, the timeout budget) are in
+[write-queue.md](../../architecture/write-queue.md).

@@ -69,7 +69,7 @@ available with fairly aggressive quotas.
 2. In the chat UI settings:
    - Provider: **Mistral**
    - API Key: Your key
-   - Model: e.g., `mistral-large-latest`
+   - Model: e.g., `mistral-large-4`
 
 ### OpenAI API
 

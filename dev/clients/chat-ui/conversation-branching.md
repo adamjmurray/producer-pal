@@ -92,9 +92,10 @@ this one save branches:
 - `buildConversationSaveRecord` loads the source, computes the trunk via
   `deriveForkParentId`, and writes a record carrying `forkParentId = trunk` and
   `forkedAtIndex = fork.anchorIndex` (`buildForkedRecord`).
-- `forkProtectedIds` shields the trunk and the source-sibling from the
-  conversation-cap LRU, so trimming to make room for the new branch can't evict
-  the records it points back to.
+- `selectLimitTrim` (`webui/src/lib/conversation-db.ts`) never evicts the saved
+  record's branch family (trunk and siblings) from the conversation-cap LRU, so
+  trimming to make room for the new branch can't evict the records it points
+  back to.
 
 ### `deriveForkParentId`: joining vs. starting a set
 
@@ -176,7 +177,7 @@ the collapse; the branch arrows read `listAllConversationSummaries`
 | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `webui/src/lib/conversation-branches.ts`                                 | Pure helpers — exported: `computeBranchPoints`, `collapseBranchFamilies`, `deriveForkParentId`; internal: `siblingsOfSet`, `branchRootId` |
 | `webui/src/hooks/chat/use-conversation-actions.ts`                       | `forkConversation` / `handleEdit` / `handleRetry`; sets `pendingForkRef`                                                                  |
-| `webui/src/hooks/chat/use-conversations.ts`                              | `saveCurrentConversation` (consumes the signal), `switchConversation`, `forkProtectedIds`                                                 |
+| `webui/src/hooks/chat/use-conversations.ts`                              | `saveCurrentConversation` (consumes the signal), `switchConversation`                                                                     |
 | `webui/src/hooks/chat/helpers/conversations/conversation-save-record.ts` | `buildConversationSaveRecord`, `buildForkedRecord`                                                                                        |
 | `webui/src/hooks/chat/use-chat-mode-state.ts`                            | `useBranchNav`, assembles `BranchNavState`                                                                                                |
 | `webui/src/hooks/chat/use-chat-types.ts`                                 | `PendingFork`, `PendingForkRef`                                                                                                           |

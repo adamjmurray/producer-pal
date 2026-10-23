@@ -21,8 +21,6 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   description: {
     default:
       "Duplicate an object, or several — id or path takes a comma-separated list. Supports tracks, scenes, clips, devices, drum pads, and rack chains. " +
-      "Use count for multiple track/scene copies, and toPath for the destination: a clip slot, a spot on " +
-      "the arrangement, a track, a device chain, or a drum pad. " +
       "A destination list names the copies, so it takes no count. " +
       "Params with no list form apply to every copy. " +
       "A copy inserted shifts later siblings, so each entry names its copy where it is after the call.",

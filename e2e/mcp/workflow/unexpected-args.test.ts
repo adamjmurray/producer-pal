@@ -21,16 +21,14 @@
  * Run with: npm run e2e:mcp -- workflow/unexpected-args
  */
 import { describe, expect, it } from "vitest";
+import { REST_BASE_URL } from "#evals/shared/config.ts";
 import {
-  CONFIG_URL,
   parseToolResultWithWarnings,
   setupMcpTestContext,
 } from "../mcp-test-helpers.ts";
 import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
-
-const REST_BASE_URL = CONFIG_URL.replace("/config", "");
 
 /**
  * Call a tool over REST and hand back the warnings it reported.

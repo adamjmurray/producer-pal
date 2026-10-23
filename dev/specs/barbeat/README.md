@@ -192,6 +192,9 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
       previous octave (the `(octave+2)*12+value` formula carries the wrap:
       `B#3` = `C4`, `Cb4` = `B3`).
     - A double accidental (`Cbb`, `C##`) or a non-letter (`H`) is rejected.
+    - The accidental goes right after the letter. One glued after the octave
+      (`A3b`, `A3#`) is refused with a "write Ab3" error. (`#` would otherwise
+      start a comment and silently drop the rest of the line.)
   - Octave is a signed integer (e.g., `C3`, `A#-1`)
   - MIDI pitch is computed as `(octave + 2) * 12 + pitchClassValue`
   - Valid MIDI range is 0–127. Range is **not** enforced by the parser — an

@@ -110,7 +110,7 @@ describe("ModelSelector", () => {
     it("renders Mistral models", () => {
       renderModelSelector({
         provider: "mistral",
-        model: "mistral-large-latest",
+        model: "mistral-large-4",
       });
       expect(
         screen.getByRole("option", { name: /Mistral Large/ }),
@@ -123,7 +123,7 @@ describe("ModelSelector", () => {
     it("calls setModel when Mistral model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "mistral",
-        model: "mistral-large-latest",
+        model: "mistral-large-4",
       });
 
       expectModelSelected("devstral-latest", setModel);

@@ -376,6 +376,16 @@ describe("ppal-read-clip over a list of targets", () => {
     );
   });
 
+  it("refuses a deprecated slot whose parts are not whole numbers", async () => {
+    for (const slot of ["1.5/2", "1abc/2"]) {
+      const refused = await readClips({ slot });
+
+      expect(getToolErrorMessage(refused)).toContain(
+        `invalid slot "${slot}" - trackIndex and sceneIndex must be integers`,
+      );
+    }
+  });
+
   // A group track's slot fires the tracks inside it and holds no clip, so a
   // path into one says that rather than "no clip".
   it("says a group track holds no clips", async () => {

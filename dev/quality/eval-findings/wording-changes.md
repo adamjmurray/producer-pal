@@ -73,6 +73,13 @@ the specific case is closed. The general shape is not: **a param that competes
 with a value the model just read will lose, and no amount of schema prose fixes
 it.**
 
+**Neither a named-key clause nor a new Stark example fixed a wrong Ab.** Asked
+for C natural minor in an A minor Set, luna often wrote A for Ab. The system
+prompt's "unless the user gives specific notes" became "unless the user names a
+key, scale or specific notes": `middle-c-scale-stark` 2/4. The Stark run example
+`G A B C'`, which ends like the wrong answer, became `G B D'`: 4/8. Baseline was
+3/5; neither kept. Raising Codex's reasoning effort fixed it (6/6).
+
 ## Wording changes that did work
 
 Both null results above tried to change a **preference**. These two taught a

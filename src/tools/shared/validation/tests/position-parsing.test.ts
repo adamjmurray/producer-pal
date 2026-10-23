@@ -139,6 +139,37 @@ describe("parseSlot", () => {
     );
   });
 
+  it.each(["1.5/2", "1/2.5", "1abc/2", "1/2abc", "1e1/2", "0x1/2", "+1/2"])(
+    "should refuse the non-integer slot %s",
+    (slot) => {
+      expect(() => parseSlot(slot, "slot")).toThrow(
+        `invalid slot "${slot}" - trackIndex and sceneIndex must be integers`,
+      );
+    },
+  );
+
+  it.each(["/2", "1/", " / "])("should refuse the blank part in %j", (slot) => {
+    expect(() => parseSlot(slot, "slot")).toThrow(
+      `invalid slot "${slot}" - trackIndex and sceneIndex must be integers`,
+    );
+  });
+
+  it.each([" 1/2", "1 /2", "1/ 2", "1 / 2", "1/2 "])(
+    "should accept whitespace around the parts in %j",
+    (slot) => {
+      expect(parseSlot(slot, "slot")).toStrictEqual({
+        trackIndex: 1,
+        sceneIndex: 2,
+      });
+    },
+  );
+
+  it("should refuse a non-integer slot in a list", () => {
+    expect(() => parseSlotList("0/1, 1.5/2", "slots")).toThrow(
+      'invalid slots "1.5/2" - trackIndex and sceneIndex must be integers',
+    );
+  });
+
   it("should throw for negative values", () => {
     expect(() => parseSlot("-1/0", "slot")).toThrow(
       'invalid slot "-1/0" - trackIndex and sceneIndex must be non-negative',

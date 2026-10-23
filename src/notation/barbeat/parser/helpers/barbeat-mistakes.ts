@@ -6,6 +6,7 @@
 import {
   commentFreeLine,
   firstWord,
+  gluedAccidentalHint,
   fixParses,
   type SyntaxFailure,
   unclosedCommentHint,
@@ -33,6 +34,8 @@ interface FailedLine {
   head: string;
   /** The token before it on the same line, or "" */
   previous: string;
+  /** The whole word the parse stopped in, as written (`#` comments kept) */
+  rawWord: string;
 }
 
 // Runs only after a parse has already failed, so a hint can never change what
@@ -81,6 +84,13 @@ export function diagnoseBarbeatMistake(
   }
 
   const failed = readFailedLine(failure);
+
+  const glued = gluedAccidentalHint(failure.line, failure.column, false);
+
+  if (glued != null) {
+    return glued;
+  }
+
   const checks = atItemStart ? [...CHECKS, ...ITEM_CHECKS] : CHECKS;
 
   for (const check of checks) {
@@ -115,7 +125,19 @@ function readFailedLine(failure: SyntaxFailure): FailedLine {
     rest,
     head,
     previous: line.slice(previousStart, tokenStart).trim(),
+    rawWord: readRawWord(failure),
   };
+}
+
+/**
+ * @param failure - Where the parse stopped
+ * @returns The whole space-separated word it stopped in, comments kept
+ */
+function readRawWord(failure: SyntaxFailure): string {
+  const { line, column } = failure;
+  const start = wordStart(line.slice(0, column));
+
+  return line.slice(start, column) + firstWord(line.slice(column));
 }
 
 /**
@@ -306,11 +328,12 @@ function missingOctave(line: FailedLine): string | null {
  * @returns Hint for a chord name (`Cmaj7`, `Am`, `G7/B`)
  */
 function chordName(line: FailedLine): string | null {
-  const { token } = line;
+  // The line has its `#` comments removed, so also read `G7#9` as written.
+  const name = [line.token, line.rawWord].find((word) => CHORD_NAME.test(word));
 
-  return CHORD_NAME.test(token)
-    ? `bar|beat has no chord names like ${token} — list the notes before a position, e.g. C3 E3 G3 1|1.`
-    : null;
+  return name == null
+    ? null
+    : `bar|beat has no chord names like ${name} — list the notes before a position, e.g. C3 E3 G3 1|1.`;
 }
 
 /**

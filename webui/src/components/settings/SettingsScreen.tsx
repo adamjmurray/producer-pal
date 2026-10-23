@@ -12,6 +12,10 @@ import {
   type PresetSelection,
   usePresetSelection,
 } from "#webui/hooks/settings/presets/use-preset-selection";
+import {
+  useInstallation,
+  type UseInstallationReturn,
+} from "#webui/hooks/settings/installation/use-installation";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { CHAT_UI_DOCS_URL } from "#webui/lib/config";
 import { type UseSettingsReturn } from "#webui/types/settings";
@@ -86,6 +90,8 @@ export function SettingsScreen(props: SettingsScreenProps) {
   // selection is what sends the user back through Select — which re-applies the
   // preset over the edit they just made. See usePresetSelection.
   const presetSelection = usePresetSelection();
+  // Owned here too, so the tab button's dot and the tab share one read.
+  const installation = useInstallation(activeTab === "installation");
   const shakeClass = shake ? " settings-dialog-shake" : "";
 
   return (
@@ -121,9 +127,17 @@ export function SettingsScreen(props: SettingsScreenProps) {
           maxToolSteps={settings.maxToolSteps}
         />
 
-        <SettingsTabs activeTab={activeTab} onTabChange={onTabChange}>
+        <SettingsTabs
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+          attention={installation.incomplete ? ["installation"] : []}
+        >
           {() => (
-            <SettingsTabContent {...props} presetSelection={presetSelection} />
+            <SettingsTabContent
+              {...props}
+              presetSelection={presetSelection}
+              installation={installation}
+            />
           )}
         </SettingsTabs>
 
@@ -151,7 +165,10 @@ export function SettingsScreen(props: SettingsScreenProps) {
  * @returns Tab content element
  */
 function SettingsTabContent(
-  props: SettingsScreenProps & { presetSelection: PresetSelection },
+  props: SettingsScreenProps & {
+    presetSelection: PresetSelection;
+    installation: UseInstallationReturn;
+  },
 ) {
   const { settings, display, activeTab } = props;
   const providerLabel = getProviderName(settings.provider, "product");
@@ -211,7 +228,9 @@ function SettingsTabContent(
         />
       )}
 
-      {activeTab === "installation" && <InstallationTab />}
+      {activeTab === "installation" && (
+        <InstallationTab installation={props.installation} />
+      )}
 
       {activeTab === "preferences" && (
         <PreferencesTab

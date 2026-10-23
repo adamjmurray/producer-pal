@@ -3,36 +3,64 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { type DeviceInstallStatus } from "#webui/hooks/settings/installation/use-device-install";
 import { type UseDeviceSwapReturn } from "#webui/hooks/settings/installation/use-device-swap";
-import { buttonClass, noteClass } from "./installation-classes";
+import { type SwapAction } from "./helpers/device-actions";
+import {
+  buttonClass,
+  errorTextClass,
+  goodTextClass,
+  mutedClass,
+} from "./helpers/installation-classes";
 
-interface DeviceSwapProps {
-  status: DeviceInstallStatus;
-  swap: UseDeviceSwapReturn;
-  /** The trimmed User Library path in the shared field. */
-  path: string;
-  /** Whether that path is the one the status describes. */
-  isDetected: boolean;
+/**
+ * The line offering to swap the running device for the User Library copy, or
+ * saying why it can't.
+ * @param {object} props - Component props
+ * @param {SwapAction} props.action - What the line says and whether Swap works
+ * @param {() => void} props.onSwap - Runs the swap
+ * @returns {JSX.Element} The swap line
+ */
+export function DeviceSwapLine({
+  action,
+  onSwap,
+}: {
+  action: SwapAction;
+  onSwap: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        <span className={mutedClass} data-testid="device-swap-note">
+          {action.text}
+        </span>
+        <button
+          type="button"
+          data-testid="device-swap"
+          disabled={!action.enabled}
+          onClick={onSwap}
+          className={buttonClass}
+        >
+          Swap
+        </button>
+      </div>
+      {/* Say it before the click: the chat loses its connection mid-swap. */}
+      {action.enabled && (
+        <p className={mutedClass} data-testid="device-swap-warning">
+          The AI connection drops for a moment. Save the Set afterwards.
+        </p>
+      )}
+    </div>
+  );
 }
 
 /**
- * Swap this device for the User Library copy. A Live Set points at the device
- * file it was loaded from, so a device from Downloads stays pinned there even
- * after the User Library copy is updated. The swap replaces it in the Set.
- * @param {DeviceSwapProps} props - Component props
- * @param {DeviceInstallStatus} props.status - The server's device-install status
- * @param {object} props.swap - The useDeviceSwap state and action
- * @param {string} props.path - The trimmed User Library path in the shared field
- * @param {boolean} props.isDetected - Whether the path is the one the status describes
- * @returns {JSX.Element | null} The swap controls, or nothing when there is nothing to swap
+ * What a swap is doing or came to, shown under the status: waiting for the new
+ * device, done, or why it failed. Nothing before a swap starts.
+ * @param {object} props - Component props
+ * @param {UseDeviceSwapReturn} props.swap - The useDeviceSwap state
+ * @returns {JSX.Element | null} The message, or nothing
  */
-export function DeviceSwap({
-  status,
-  swap,
-  path,
-  isDetected,
-}: DeviceSwapProps) {
+export function DeviceSwapMessage({ swap }: { swap: UseDeviceSwapReturn }) {
   if (swap.phase === "waiting") {
     return (
       <p data-testid="device-swap-waiting">
@@ -44,67 +72,20 @@ export function DeviceSwap({
 
   if (swap.phase === "done") {
     return (
-      <p
-        className="text-green-600 dark:text-green-400"
-        data-testid="device-swap-done"
-      >
+      <p className={goodTextClass} data-testid="device-swap-done">
         Swapped. Save your Live Set so it keeps using the copy in your User
         Library.
       </p>
     );
   }
 
-  // Nothing to swap before the device says where it is, or once it is the copy.
-  if (status.source == null || status.inUserLibrary) {
-    return null;
-  }
-
-  const { allowed, reason } = status.swap;
-
-  return (
-    <div className="space-y-2" data-testid="device-swap-section">
-      <button
-        type="button"
-        data-testid="device-swap"
-        disabled={!allowed || !isDetected}
-        onClick={() => swap.swap(path)}
-        className={buttonClass}
-      >
-        Swap this device for the User Library copy
-      </button>
-      <p className={noteClass} data-testid="device-swap-note">
-        {noteText(allowed, reason, isDetected)}
+  if (swap.error != null) {
+    return (
+      <p className={errorTextClass} data-testid="device-swap-error">
+        {swap.error}
       </p>
-      {swap.error != null && (
-        <p
-          className="text-red-600 dark:text-red-400"
-          data-testid="device-swap-error"
-        >
-          {swap.error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// --- Helpers below main export ---
-
-/**
- * @param allowed - Whether the server allows the swap
- * @param reason - Why not, when it doesn't
- * @param isDetected - Whether the path field holds the detected User Library
- * @returns What to tell the user under the button
- */
-function noteText(
-  allowed: boolean,
-  reason: string | null,
-  isDetected: boolean,
-): string {
-  if (!allowed) {
-    return reason ?? "The swap isn't available.";
+    );
   }
 
-  return isDetected
-    ? "Replaces this device in your Live Set with the copy in your User Library. The AI connection drops for a moment. Save the Set afterwards."
-    : "The swap uses the detected User Library. Put it back in the field above to swap.";
+  return null;
 }

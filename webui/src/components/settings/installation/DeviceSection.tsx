@@ -8,8 +8,26 @@ import {
   type UseDeviceInstallReturn,
 } from "#webui/hooks/settings/installation/use-device-install";
 import { type UseDeviceSwapReturn } from "#webui/hooks/settings/installation/use-device-swap";
-import { DeviceSwap } from "./DeviceSwap";
-import { buttonClass, noteClass } from "./installation-classes";
+import { DeviceSwapLine, DeviceSwapMessage } from "./DeviceSwap";
+import {
+  deviceActions,
+  installReplaces,
+  type DeviceActions,
+} from "./helpers/device-actions";
+import {
+  deviceStatusLine,
+  type StatusTone,
+} from "./helpers/device-status-line";
+import {
+  buttonClass,
+  errorTextClass,
+  goodTextClass,
+  noteClass,
+  primaryButtonClass,
+  warnTextClass,
+} from "./helpers/installation-classes";
+import { SectionCard } from "./SectionCard";
+import { type StatusKind } from "./StatusIcon";
 
 interface DeviceSectionProps {
   device: UseDeviceInstallReturn;
@@ -21,14 +39,15 @@ interface DeviceSectionProps {
 }
 
 /**
- * Device section of the Installation tab: copies this device into the User
- * Library, where Live Sets and the remote script can find it.
+ * Device card of the Installation tab: says whether this device is in the User
+ * Library, where Live Sets and the remote script can find it, and copies it
+ * there.
  * @param {DeviceSectionProps} props - Component props
  * @param {object} props.device - The useDeviceInstall state and actions
  * @param {object} props.swap - The useDeviceSwap state and action
  * @param {string} props.path - The User Library path in the shared field
  * @param {string | null} props.detected - The detected User Library, or null
- * @returns {JSX.Element} The device section
+ * @returns {JSX.Element} The device card
  */
 export function DeviceSection({
   device,
@@ -36,55 +55,156 @@ export function DeviceSection({
   path,
   detected,
 }: DeviceSectionProps) {
-  const { status } = device;
+  const trimmed = path.trim();
+  const isDetected = trimmed === detected;
+  const view =
+    device.status == null
+      ? null
+      : {
+          status: device.status,
+          actions: deviceActions(device.status, {
+            path: trimmed,
+            isDetected,
+            installing: device.installing,
+            swapStarted: swap.phase === "waiting" || swap.phase === "done",
+          }),
+        };
 
   return (
-    <div className="space-y-2 text-sm" data-testid="device-section">
-      <h3 className="font-semibold">Device</h3>
+    <SectionCard
+      id="device"
+      testId="device-section"
+      kind={cardKind(view)}
+      title="Max for Live device"
+      aside={
+        view?.actions.install != null && (
+          <button
+            type="button"
+            data-testid="device-install"
+            disabled={view.actions.install.disabled}
+            onClick={() =>
+              device.install(trimmed, installReplaces(view.status, isDetected))
+            }
+            className={`flex-none ${primaryButtonClass}`}
+          >
+            {view.actions.install.label}
+          </button>
+        )
+      }
+    >
       <p className={noteClass}>
-        Live Sets find Producer Pal by its file. Keeping a copy in your User
-        Library lets any Set load it.
+        Add Producer Pal to your User Library so the remote script can load it.
       </p>
-
-      {status == null ? (
+      {view == null ? (
         <StatusFallback device={device} />
       ) : (
-        <>
-          <p data-testid="device-status">{summarize(status)}</p>
-          <InstallControls
-            device={device}
-            status={status}
-            path={path.trim()}
-            isDetected={path.trim() === detected}
-          />
-          {status.otherCopies.length > 0 && (
-            <p className={noteClass} data-testid="device-other-copies">
-              Other Producer Pal devices in your User Library:{" "}
-              {status.otherCopies.join(", ")}. Live can't tell them apart when
-              you add the device to a Set.
-            </p>
-          )}
-          {status.problem === "unknown-source" && (
-            <RefreshButton onRefresh={device.refresh} />
-          )}
-          {/* A failed Refresh keeps the last status on screen. */}
-          {device.loadError != null && <LoadError message={device.loadError} />}
-        </>
-      )}
-
-      {status != null && (
-        <DeviceSwap
-          status={status}
+        <DeviceLines
+          device={device}
           swap={swap}
-          path={path.trim()}
-          isDetected={path.trim() === detected}
+          status={view.status}
+          actions={view.actions}
+          onSwap={() => swap.swap(trimmed)}
         />
       )}
-    </div>
+    </SectionCard>
   );
 }
 
 // --- Helpers below main export ---
+
+/**
+ * @param view - The status and what the card offers, or null before it lands
+ * @param view.status - The server's device-install status
+ * @param view.actions - What the card offers
+ * @returns Which status icon the card wears
+ */
+function cardKind(
+  view: { status: DeviceInstallStatus; actions: DeviceActions } | null,
+): StatusKind {
+  if (view == null) {
+    return "unknown";
+  }
+
+  // A problem with no action (an unreadable device, no User Library) is still
+  // not done.
+  const { status, actions } = view;
+
+  return actions.install == null &&
+    actions.swap == null &&
+    status.problem == null
+    ? "done"
+    : "warning";
+}
+
+const toneClass: Record<StatusTone, string> = {
+  good: goodTextClass,
+  warn: warnTextClass,
+  plain: "",
+};
+
+/**
+ * The status line, the swap line, and what the last install and swap came to,
+ * the other copies in the User Library, and how to re-read the status.
+ * @param {object} props - Component props
+ * @param {UseDeviceInstallReturn} props.device - The useDeviceInstall state
+ * @param {UseDeviceSwapReturn} props.swap - The useDeviceSwap state
+ * @param {DeviceInstallStatus} props.status - The server's device-install status
+ * @param {DeviceActions} props.actions - What the card offers
+ * @param {() => void} props.onSwap - Runs the swap
+ * @returns {JSX.Element} The lines
+ */
+function DeviceLines({
+  device,
+  swap,
+  status,
+  actions,
+  onSwap,
+}: {
+  device: UseDeviceInstallReturn;
+  swap: UseDeviceSwapReturn;
+  status: DeviceInstallStatus;
+  actions: DeviceActions;
+  onSwap: () => void;
+}) {
+  const line = deviceStatusLine(status);
+
+  return (
+    <>
+      <p
+        className={`font-medium ${toneClass[line.tone]}`}
+        data-testid="device-status"
+      >
+        {line.text}
+      </p>
+      {actions.swap != null && (
+        <DeviceSwapLine action={actions.swap} onSwap={onSwap} />
+      )}
+      {device.installError != null && (
+        <p className={errorTextClass} data-testid="device-error">
+          {device.installError}
+        </p>
+      )}
+      {device.installResult != null && device.installError == null && (
+        <p className={goodTextClass} data-testid="device-installed-path">
+          {device.installResult.detail} ({device.installResult.path})
+        </p>
+      )}
+      <DeviceSwapMessage swap={swap} />
+      {status.otherCopies.length > 0 && (
+        <p className={noteClass} data-testid="device-other-copies">
+          Other Producer Pal devices in your User Library:{" "}
+          {status.otherCopies.join(", ")}. Live can't tell them apart when you
+          add the device to a Set.
+        </p>
+      )}
+      {status.problem === "unknown-source" && (
+        <RefreshButton onRefresh={device.refresh} />
+      )}
+      {/* A failed Refresh keeps the last status on screen. */}
+      {device.loadError != null && <LoadError message={device.loadError} />}
+    </>
+  );
+}
 
 /**
  * What to show before there is a status: a spinner line, or why the read failed.
@@ -119,7 +239,7 @@ function RefreshButton({ onRefresh }: { onRefresh: () => void }) {
       type="button"
       data-testid="device-refresh"
       onClick={onRefresh}
-      className={buttonClass}
+      className={`self-start ${buttonClass}`}
     >
       Refresh
     </button>
@@ -133,163 +253,8 @@ function RefreshButton({ onRefresh }: { onRefresh: () => void }) {
  */
 function LoadError({ message }: { message: string }) {
   return (
-    <p
-      className="text-red-600 dark:text-red-400"
-      data-testid="device-load-error"
-    >
+    <p className={errorTextClass} data-testid="device-load-error">
       {message}
     </p>
   );
-}
-
-/**
- * One-line summary of this device and the User Library copy.
- * @param status - The server's device-install status
- * @returns The summary text
- */
-function summarize(status: DeviceInstallStatus): string {
-  switch (status.problem) {
-    case "unknown-source":
-      return "This device hasn't said where its file is yet. Try Refresh in a moment.";
-    case "unreadable-source":
-      return "This device's file can't be read.";
-    case "not-frozen":
-      return "This is a development device, which needs the files beside it, so it can't be copied. Freeze it first.";
-    case "no-user-library":
-      return "Enter your User Library above to check for a copy.";
-    default:
-      return copySummary(status);
-  }
-}
-
-/**
- * @param status - A status with no problem
- * @returns How the User Library copy compares with this device
- */
-function copySummary(status: DeviceInstallStatus): string {
-  const copy = versionText(status.installedVersion);
-  const device = versionText(status.version);
-  const theCopy = `The copy in your User Library (${copy})`;
-  const thisDevice = `this device (${device})`;
-
-  switch (status.state) {
-    case "not-installed":
-      return "Not in your User Library";
-    case "same":
-      return `The copy in your User Library is ${thisDevice}`;
-    case "installed-older":
-      return `Update available: your User Library has ${copy}, this device is ${device}`;
-    case "installed-newer":
-      return `${theCopy} is newer than ${thisDevice}`;
-    default:
-      return `${theCopy} differs from ${thisDevice}`;
-  }
-}
-
-/**
- * @param version - A version the server reported, or null
- * @returns The version to show, never "vnull"
- */
-function versionText(version: string | null): string {
-  return version == null ? "an unknown version" : `v${version}`;
-}
-
-interface InstallControlsProps {
-  device: UseDeviceInstallReturn;
-  status: DeviceInstallStatus;
-  /** The trimmed User Library path in the shared field. */
-  path: string;
-  /** Whether that path is the one the status describes. */
-  isDetected: boolean;
-}
-
-/**
- * The Install / Update button and what came of the last install. No button
- * when the device can't be copied, or the copy is already this device.
- * @param {InstallControlsProps} props - Component props
- * @param {object} props.device - The useDeviceInstall state and actions
- * @param {DeviceInstallStatus} props.status - The server's device-install status
- * @param {string} props.path - The trimmed User Library path in the shared field
- * @param {boolean} props.isDetected - Whether the path is the one the status describes
- * @returns {JSX.Element} The install controls
- */
-function InstallControls({
-  device,
-  status,
-  path,
-  isDetected,
-}: InstallControlsProps) {
-  // The status describes only the detected User Library, so any other path
-  // is a plain install that never replaces a newer copy.
-  const replaces = isDetected && needsForce(status.state);
-  const canInstall =
-    status.problem == null || status.problem === "no-user-library";
-  const upToDate = isDetected && status.state === "same";
-
-  return (
-    <div className="space-y-2">
-      {canInstall && !upToDate && (
-        <button
-          type="button"
-          data-testid="device-install"
-          disabled={device.installing || path === ""}
-          onClick={() => device.install(path, replaces)}
-          className={buttonClass}
-        >
-          {installLabel(status, device.installing, isDetected)}
-        </button>
-      )}
-      {device.installError != null && (
-        <p
-          className="text-red-600 dark:text-red-400"
-          data-testid="device-error"
-        >
-          {device.installError}
-        </p>
-      )}
-      {device.installResult != null && device.installError == null && (
-        <p
-          className="text-green-600 dark:text-green-400"
-          data-testid="device-installed-path"
-        >
-          {device.installResult.detail} ({device.installResult.path})
-        </p>
-      )}
-    </div>
-  );
-}
-
-/**
- * @param status - The server's device-install status
- * @param installing - Whether an install is in flight
- * @param isDetected - Whether the field holds the detected User Library
- * @returns The button label
- */
-function installLabel(
-  status: DeviceInstallStatus,
-  installing: boolean,
-  isDetected: boolean,
-): string {
-  if (installing) {
-    return "Installing…";
-  }
-
-  if (!isDetected) {
-    return "Install";
-  }
-
-  if (needsForce(status.state)) {
-    return "Replace with this device";
-  }
-
-  return status.state === "installed-older" ? "Update" : "Install";
-}
-
-/**
- * @param state - How the User Library copy compares with this device
- * @returns Whether installing means replacing a copy that's newer or can't be
- *   told apart, which the server only does when asked to
- */
-function needsForce(state: DeviceInstallStatus["state"]): boolean {
-  return state === "installed-newer" || state === "different";
 }

@@ -11,7 +11,8 @@ import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
 
-export const CONFIG_URL = MCP_URL.replace("/mcp", "/config");
+export const CONFIG_URL = siblingUrl(MCP_URL, "config");
+export const REST_BASE_URL = siblingUrl(MCP_URL, "").replace(/\/$/, "");
 
 /**
  * Configuration options that can be set via the /config endpoint
@@ -122,4 +123,20 @@ export async function resetConfig(): Promise<void> {
     tools: [...TOOL_NAMES],
     notation: DEFAULT_NOTATION,
   });
+}
+
+/**
+ * The URL of a sibling endpoint of the MCP server. Only the trailing `/mcp`
+ * path segment changes, never a `mcp` in the host or an earlier path part.
+ *
+ * @param mcpUrl - The MCP endpoint URL
+ * @param endpoint - Endpoint name without a slash (e.g., "config")
+ * @returns The sibling endpoint URL
+ */
+export function siblingUrl(mcpUrl: string, endpoint: string): string {
+  const url = new URL(mcpUrl);
+
+  url.pathname = url.pathname.replace(/\/mcp$/, `/${endpoint}`);
+
+  return url.toString();
 }

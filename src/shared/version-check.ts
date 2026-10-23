@@ -246,3 +246,36 @@ export function liveRunsOtherCopy(
       status.runningBuild !== status.installedBuild)
   );
 }
+
+/** What decides whether the installation is unfinished. */
+export interface InstallIncompleteInput {
+  /** Why the device can't be copied, or null when it can. */
+  problem: string | null;
+  /** The User Library copy compared with the device; null with a problem. */
+  state: string | null;
+  /**
+   * Whether the remote script in the User Library is in place and not behind
+   * this build. Null when there is no User Library to look in, or it hasn't
+   * been read yet.
+   */
+  remoteScriptCurrent: boolean | null;
+}
+
+/**
+ * Whether the installation is unfinished: the User Library has no copy of this
+ * device or an older one (only a frozen device can be copied; a newer or
+ * different copy is the user's call), or its remote script is missing or behind
+ * this build. The one definition the device's notice and the chat UI's
+ * Installation tab dot both go by.
+ *
+ * @param input - The device copy and remote script facts
+ * @returns Whether something in the User Library is missing or out of date
+ */
+export function isInstallIncomplete(input: InstallIncompleteInput): boolean {
+  const copyBehind =
+    input.problem == null &&
+    (input.state === "not-installed" || input.state === "installed-older");
+
+  // With no User Library there is nothing to compare, so nothing to nag about.
+  return copyBehind || input.remoteScriptCurrent === false;
+}

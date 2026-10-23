@@ -14,6 +14,8 @@ interface Tab {
 interface SettingsTabsProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
+  /** Tabs that get an attention dot. */
+  attention?: readonly TabId[];
   children: (activeTab: TabId) => VNode;
 }
 
@@ -30,12 +32,14 @@ const tabs: Tab[] = [
  * @param {SettingsTabsProps} props - Component props
  * @param {TabId} props.activeTab - Currently active tab
  * @param {(tab: TabId) => void} props.onTabChange - Callback when tab changes
+ * @param {readonly TabId[]} [props.attention] - Tabs that get an attention dot
  * @param {(activeTab: TabId) => VNode} props.children - Render function for tab content
  * @returns {JSX.Element} - React component
  */
 export function SettingsTabs({
   activeTab,
   onTabChange,
+  attention = [],
   children,
 }: SettingsTabsProps) {
   return (
@@ -46,13 +50,20 @@ export function SettingsTabs({
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`shrink-0 px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === tab.id
                 ? "border-b-2 border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
                 : "text-zinc-600 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
             }`}
           >
             {tab.label}
+            {attention.includes(tab.id) && (
+              <span
+                role="img"
+                aria-label="needs attention"
+                className="size-[7px] rounded-full bg-amber-500 dark:bg-amber-400"
+              />
+            )}
           </button>
         ))}
       </div>

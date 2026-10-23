@@ -572,7 +572,7 @@ export async function readLocators(client: Client): Promise<LocatorInfo[]> {
  * @returns Override bodies and disabled names, keyed by fragment include name
  */
 export async function fetchSkillOverrides(): Promise<SkillOverrides> {
-  const response = await fetch(MCP_URL.replace("/mcp", "/skill-overrides"));
+  const response = await fetch(new URL("skill-overrides", MCP_URL));
 
   expect(response.ok).toBe(true);
 

@@ -107,9 +107,9 @@ one field each — a flag and its value are two separate arguments:
 
 <!--@include: ../_partials/toolset-tip.md-->
 
-Small model mode and notation apply to the device itself, so they also change
-what the built-in chat UI and any other connected client see. You can set them
-by hand instead on Producer Pal's "Setup" tab:
+These flags apply to Bionic only. To set them for the whole device instead
+(including the built-in chat UI and other connected clients), use Producer Pal's
+"Setup" tab:
 
 <img src="/img/small-model-mode.png" alt="Small model mode setting" width="375"/>
 

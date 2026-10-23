@@ -82,7 +82,7 @@ production habits, conventions you want AI to respect, and things you never want
 it to do.
 
 Global context is stored on your computer, so it follows you from project to
-project, so a new Live Set starts with your preferences already in place.
+project and a new Live Set starts with your preferences already in place.
 
 ::: tip AI can't replace either layer with just its own edit
 

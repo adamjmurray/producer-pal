@@ -1,8 +1,7 @@
 # Mutation baseline — 2026-07-15, `sharedRuntime` — `src/shared/`
 
-The cross-cutting utility layer (12 mutated files) shared by both runtimes: the
-last non-`src/tools/` code triaged this pass. Full pass — Stryker 9.6.1, Node
-24, `coverageAnalysis: "perTest"`:
+The cross-cutting utility layer (12 mutated files) shared by both runtimes. Full
+pass — Stryker 9.6.1, Node 24, `coverageAnalysis: "perTest"`:
 
 | Metric        | Baseline | Triaged    | Gate (`break`) |
 | ------------- | -------- | ---------- | -------------- |
@@ -15,32 +14,30 @@ All test-only. Per-file movement (survivors from → to): `silent-wav-generator`
 `compact-serializer`, `error-message`, `live-api-path-builders`, `mcp-responses`
 were already 100%.
 
-Two dominant levers here (different from the write/read tiers' warn-and-skip
-gap):
+Two levers (different from the write/read tiers' warn-and-skip gap):
 
 - **A module-level cache defeating per-test coverage.** `silent-wav-generator`'s
-  `ensureSilenceWav` caches via a module flag + on-disk file, so
-  `createSilentWav` ran at most once across the whole test file — every
-  byte-layout assertion hit the cache and Stryker attributed none of them to the
-  code that produced the bytes. Rewriting the tests to `vi.resetModules()` +
-  re-import per case (cold flag) and deleting the file first made the generator
-  actually run under each WAV-header assertion, killing 15 arithmetic/string
-  mutants.
+  `ensureSilenceWav` caches via a module flag plus an on-disk file, so
+  `createSilentWav` ran at most once per test file and Stryker attributed no
+  byte-layout assertion to the code that produced the bytes. Tests that
+  `vi.resetModules()` and re-import per case (cold flag), deleting the file
+  first, made the generator run under each WAV-header assertion and killed 15
+  arithmetic/string mutants.
 - **A too-broad `toThrow` regex.** `compact-parser`'s malformed-input cases
   asserted `toThrow(/invalid compact literal|.../)`, which matches the shared
-  `Invalid compact literal:` wrapper — so every blanked `fail(...)` message and
-  every guard that fell through to a _different_ error still "threw" and
-  survived. Asserting the **specific** reason per case
-  (`/expected ':' after object key/`, `/unexpected trailing content/`, …) killed
-  all 8 message mutants plus the missing-colon and object-key branch guards.
+  wrapper, so every blanked `fail(...)` message and every guard that fell
+  through to a _different_ error still "threw". Asserting the **specific**
+  reason per case (`/expected ':' after object key/`,
+  `/unexpected trailing content/`, …) killed all 8 message mutants plus the
+  missing-colon and object-key guards.
 
 Remaining survivors are all bucket 2/3 (verified equivalent / defensive /
 Stryker-limited), no real gaps:
 
-- **`pitch` (19)** — `PITCH_CLASS_VALUES_LOWERCASE`'s builder arrow is a
-  **static module-init mutant with 0 coverage** (Stryker can't cover static
-  initializers under `perTest`); guard clauses in `numberToPitchClass` are
-  redundant with the trailing `PITCH_CLASS_NAMES[num] ?? null` (out-of-range
+- **`pitch` (19)** — the lowercase pitch-class table builder (since reworked)
+  was a **static module-init mutant with 0 coverage** (Stryker can't cover
+  static initializers under `perTest`); guard clauses in `numberToPitchClass`
+  are redundant with the trailing `PITCH_CLASS_NAMES[num] ?? null` (out-of-range
   indices are `undefined` anyway); `quantizePitchToScale` / `clampToScaleBounds`
   boundary and modulo mutants are masked by the double normalization
   (`((x%12)+12)%12`) plus residue periodicity (the outward search always finds a
@@ -57,8 +54,8 @@ Stryker-limited), no real gaps:
   guard mutant when that test _early-returns at the guard_ (confirmed via
   `coveredBy`: the "returns null for non-strings" test is absent from
   `noteNameToMidi`'s guard mutant, and `numberToPitchClass("0")` from its
-  guard). Those guards (`pitch` L151/L186) are therefore unkillable via
-  coverage, though the behavior _is_ tested.
+  guard). Those `pitch` guards are therefore unkillable via coverage, though the
+  behavior _is_ tested.
 - **`silent-wav-generator` (2)** — `÷numChannels` ≡ `×numChannels` because
   `numChannels === 1`. **`compact-parser` (2)** — `defineProperty` ≡ `obj[key]=`
   for a normal key; the `parseString` `< length` → `<= length` boundary reads
@@ -66,17 +63,10 @@ Stryker-limited), no real gaps:
   `typeof value === "string"` guard is redundant with `NOTATIONS.includes`
   (always `false` for a non-string).
 
-## Gaps closed (`sharedRuntime`)
-
-| Gap (now killed)                                                                    | Test strengthened / added      |
-| ----------------------------------------------------------------------------------- | ------------------------------ |
-| WAV byte layout (sizes, byte/sample rates, chunk labels) + two-level cache behavior | `silent-wav-generator.test.ts` |
-| 8 blanked parser error messages + missing-colon / object-key branch guards          | `compact-parser.test.ts`       |
-| `__proto__` descriptor flags (writable/enumerable/configurable)                     | `compact-parser.test.ts`       |
-| `MIN_LIVE_VERSION` shape (empty-string mutant)                                      | `config.test.ts` (new)         |
-| `checkForUpdate` non-ok guard (payload that would otherwise succeed)                | `version-check.test.ts`        |
-| `isNewerVersion` 4th-part loop bound + leading-space-`v` trim                       | `version-check.test.ts`        |
-| `isValidNoteName` / `noteNameToMidi` regex anchors + multi-digit octave             | `pitch.test.ts`                |
-| `stepInScale` strict `< 0` / `> 127` MIDI-boundary clamps (sparse-scale cases)      | `pitch.test.ts`                |
-| `warn` multi-arg outlet join + Dict-without-`stringify` optional chaining           | `v8-max-console.test.ts`       |
-| `waitUntil` schedules a Task delay between polls (not a busy loop)                  | `v8-wait-until.test.ts`        |
+What changed (test-only): WAV byte layout and two-level cache behavior; 8
+blanked parser error messages and missing-colon / object-key guards; `__proto__`
+descriptor flags; `MIN_LIVE_VERSION` shape; `checkForUpdate` non-ok guard,
+`isNewerVersion` 4th-part loop bound and leading-space-`v` trim; note-name regex
+anchors and multi-digit octave; `stepInScale` strict `< 0` / `> 127` clamps
+(sparse-scale cases); `warn` multi-arg outlet join; `waitUntil` schedules a Task
+delay between polls instead of busy-looping.

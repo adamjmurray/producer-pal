@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { parseModelArg } from "./parse-model-arg.ts";
+import { parseModelArg } from "#evals/shared/parse-model-arg.ts";
 
 describe("parseModelArg", () => {
   it("splits an explicit provider/model on the first slash only", () => {
