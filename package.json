@@ -147,7 +147,7 @@
     "idb": "8.0.4",
     "marked": "18.1.1",
     "preact": "10.29.8",
-    "zod": "4.6.6"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "2.1.2",
