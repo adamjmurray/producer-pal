@@ -7,6 +7,7 @@ import {
   commentFreeLine,
   firstWord,
   gluedAccidentalHint,
+  gluedCheckLine,
   fixParses,
   type SyntaxFailure,
   unclosedCommentHint,
@@ -84,8 +85,9 @@ export function diagnoseBarbeatMistake(
   }
 
   const failed = readFailedLine(failure);
-
-  const glued = gluedAccidentalHint(failure.line, failure.column, false);
+  // Comment-free, so a pitch written in a comment can't take over the hint.
+  const code = gluedCheckLine(failure, isBarbeatSharp);
+  const glued = gluedAccidentalHint(code.line, code.column, false);
 
   if (glued != null) {
     return glued;

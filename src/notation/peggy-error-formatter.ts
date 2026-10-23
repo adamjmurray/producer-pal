@@ -18,6 +18,9 @@ const AFTER_OCTAVE =
 const AFTER_OCTAVE_OR_MARK =
   /(?:(?<![\w#♯♭',(])|(?<=[',])(?=[A-Gacdefg]))(?<letter>[A-Ga-g])(?<accidental>[#b♯♭]?)(?<octave>-?\d+)?(?<marks>(?:[',!?]|\/(?:16|8|4|2|1)[.t]?)*[',])?(?<glued>[#b♯♭])(?!\d)/gu;
 
+// A pitch with its octave, ending where a `#` would be glued on (`A3`).
+const PITCH_BEFORE_SHARP = /(?<![\w#♯♭'])[A-Ga-g][#b♯♭]?-?\d+$/u;
+
 /** One of Peggy's "expected" items. */
 export type ExpectedItem = NonNullable<PeggySyntaxError["expected"]>[number];
 
@@ -203,6 +206,27 @@ export function commentFreeLine(
     .replace(/\r$/, "");
 
   return { line, column: position - lineStart };
+}
+
+/**
+ * The failing line with comments removed, except a `#` glued right after a
+ * pitch's octave (`A3#`): both grammars read that as a comment, but it is the
+ * mistake the glued-accidental hint names.
+ * @param failure - Where the parse stopped
+ * @param isSharp - The grammar's sharp rule
+ * @returns The line and the failure's column in it
+ */
+export function gluedCheckLine(
+  failure: SyntaxFailure,
+  isSharp: IsSharp,
+): { line: string; column: number } {
+  return commentFreeLine(
+    failure,
+    // 8 characters always reach past the longest pitch (`Bb-12`).
+    (text, index) =>
+      isSharp(text, index) ||
+      PITCH_BEFORE_SHARP.test(text.slice(Math.max(0, index - 8), index)),
+  );
 }
 
 /**

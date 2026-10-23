@@ -6,7 +6,8 @@
 /**
  * E2E for an accidental written after the octave (`A3b`, meant as Ab3): Stark,
  * bar|beat and transforms must refuse it with the fix named and write nothing,
- * and the refusal must reach the model in the tool result.
+ * and the refusal must reach the model in the tool result. The same pitch in a
+ * comment must not take over another error's hint.
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track; slot /0 stays empty.
  * See: e2e/live-sets/e2e-test-set-spec.md
@@ -47,6 +48,12 @@ describe("ppal-create-clip: accidental after the octave", () => {
       "barbeat",
       "A3# 1|1",
       "the accidental goes right after the letter — write A#3",
+    ],
+    [
+      "bar|beat, a glued pitch only in a comment",
+      "barbeat",
+      "C3 [D3 // A3b",
+      'unclosed "[" — add the missing "]"',
     ],
     [
       "Stark",

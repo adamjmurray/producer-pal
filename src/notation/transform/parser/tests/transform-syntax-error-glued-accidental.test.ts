@@ -37,6 +37,13 @@ describe("transform: an accidental glued after the octave", () => {
     );
   });
 
+  it("ignores a glued pitch in a comment", () => {
+    expect(errorFor("velocity = [1 // A3b")).not.toContain("write Ab3");
+    expect(errorFor("C3 // A3b\nA3#: velocity = 1")).toContain(
+      '"A3#": the accidental goes right after the letter — write A#3',
+    );
+  });
+
   it.each([
     ["a duration", "A3b/8: velocity = 1"],
     ["a repeat", "A3b*2: velocity = 1"],

@@ -56,6 +56,18 @@ describe("bar|beat: an accidental glued after the octave", () => {
     );
   });
 
+  it.each([
+    ["a line comment", "C3 [D3 // A3b", '"[" — add the missing "]"'],
+    ["a block comment", "(D3 /* A3b */", '"(" — add the missing ")"'],
+    ["a # comment", "[C3 E3 # A3b", '"[" — add the missing "]"'],
+  ])("ignores a glued pitch in %s", (_name, notes, hint) => {
+    expect(errorFor(notes)).toContain(`unclosed ${hint}`);
+  });
+
+  it("still sees a glued sharp before a comment", () => {
+    expect(errorFor("C3# // x\n1|1")).toContain("write C#3");
+  });
+
   // Altered chord names (`C7b9`) are not a glued accidental: they keep the
   // chord-name hint.
   it.each([

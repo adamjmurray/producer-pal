@@ -5,6 +5,7 @@
 
 import {
   gluedAccidentalHint,
+  gluedCheckLine,
   isUnclosed,
   type SyntaxFailure,
   unclosedCommentHint,
@@ -58,7 +59,9 @@ export function diagnoseTransformMistake(
     return comment;
   }
 
-  const glued = gluedAccidentalHint(failure.line, failure.column, false);
+  // Comment-free, so a pitch written in a comment can't take over the hint.
+  const code = gluedCheckLine(failure, isTransformSharp);
+  const glued = gluedAccidentalHint(code.line, code.column, false);
 
   if (glued != null) {
     return glued;
