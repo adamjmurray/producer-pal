@@ -15,6 +15,9 @@ export default defineConfig({
     // Spawning a Node process per test is slower than a unit test, and CI
     // machines are slower still.
     testTimeout: 20000,
+    // An offline stub device releases its port, so a stub in a parallel file
+    // can claim it and get another test's portal traffic.
+    fileParallelism: false,
     // The JSON report feeds the CI e2e stats summary (scripts/stats/e2e-stats.ts).
     reporters: ["default", "json"],
     outputFile: { json: "test-reports/vitest-portal.json" },
