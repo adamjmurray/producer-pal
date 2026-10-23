@@ -73,7 +73,9 @@ Managing memory:
  *    mirrored here, so small models wrote the user's own document unasked. It is
  *    a consent bug rather than data loss (they do carry existing content
  *    forward — see the context-write-preserves-* evals), and the tool-side
- *    clobber guard covers the destructive case regardless of tier.
+ *    clobber guard covers the destructive case regardless of tier. Mention vs
+ *    ask is spelled out because qwen read "for everything I make" as a yes, and
+ *    asked again after "save that"; naming both cases moved it 5/10 to 8/10.
  *
  * Both are stated WITH their release condition (write on agreement; fill an
  * empty document freely) — a bare prohibition here makes the model refuse to
@@ -83,6 +85,6 @@ export const contextBasic = `## Context
 
 Put a fact in exactly ONE \`ppal-context\` scope, never both.
 
-Writing replaces the whole document — read the same scope first. Already has content? Propose what you'd add and wait for a yes. Empty? Just write it. Either way, say what you saved.
+Writing replaces the whole document — read the same scope first. Already has content? If they only mentioned the fact, propose what you'd add and wait for a yes ("always" or "for everything" picks the scope; it isn't a yes). If they asked you to save it, or said yes, write it now. Empty? Just write it. Either way, say what you saved.
 
 Write for a future assistant who can't see this chat: the whole structure, not one detail.`;

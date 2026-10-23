@@ -123,6 +123,16 @@ spelling goes with which ask did not.
 **So: teaching a spelling is worth trying; arguing a model out of a preference
 is not.**
 
+**Basic-tier context consent: 5/10 to 8/10.** On a document with content,
+qwen3.8-27b (`--small-model`) saved "this goes for everything I make" without
+asking, and once asked again after "save that". The basic Skill said only
+"propose and wait for a yes". It now splits the two cases: a mention gets a
+proposal ("always" or "for everything" picks the scope; it isn't a yes), and an
+ask gets written now. Over two ×5 rounds per arm, `context-write-layer-global`
+went 5/10 to 8/10 and `context-write-preserves` 9/10 to 10/10. The other four
+context scenarios stayed at 39 of 40 trials. Like a spelling, it names the case
+the model is in rather than arguing against a habit.
+
 ### The predictor's first real test measured nothing
 
 `s0`/`s1` looked exactly like a spelling problem, and it was called one. Models
