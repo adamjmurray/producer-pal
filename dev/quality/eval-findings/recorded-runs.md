@@ -33,6 +33,8 @@ fails, gemma passes" until run 2 turned out to predate the refusal of
 | 19  | claude-haiku-5-5 | default         | `4852e3680`+ | 3      | 381 | 375 (98%) | 102.2M | 1h14m |
 | 20  | gpt-6-luna       | default         | `6f48b19be`  | 3      | 381 | 343 (90%) | 174.0M | 2h49m |
 | 21  | claude-haiku-5-5 | default         | `6f48b19be`  | 3      | 381 | 369 (97%) | 99.3M  | 1h45m |
+| 22  | gpt-6-luna       | default         | `37c11203b`  | 3      | 381 | 340 (89%) | 175.0M | 2h34m |
+| 23  | claude-haiku-5-5 | default         | `37c11203b`  | 3      | 381 | 370 (97%) | 100.4M | 1h19m |
 
 **Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
 70% is over the scenarios it reached, which are the expensive front of the list.
@@ -63,7 +65,12 @@ had lost its line format (luna `automation-write-curve` 0/3, 36 envelope target
 errors), and an empty Drum Rack hid the one-instrument refusal reason (luna
 `device-preset-swap-by-name` 1/3). Wall is first to last trial.
 
-Runs 1-9, 14 and 18-21 are `--skip-judge`, so they are deterministic checks
+**Runs 22 and 23 are the 2.5.0 final check**, run as one invocation with both
+models interleaved, so wall is scenario time. They are graded with the old
+`locator-navigation` check, which failed a copy placed by bar number; the grader
+now checks only where the copy landed.
+
+Runs 1-9, 14 and 18-23 are `--skip-judge`, so they are deterministic checks
 only. Runs 10-13 and 15-17 ran the judge, but no trial failed on the judge
 alone, so their numbers compare. Gemma and qwen run local (LM Studio,
 `-b http://localhost:1234/v1`) and cost nothing, but their token totals measure

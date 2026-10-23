@@ -263,3 +263,24 @@ and single misses elsewhere. Every model's first search for a drum kit is
 `kind: "preset"`, which never finds an .adg; an empty preset search now says how
 many racks match. Up: luna `middle-c-scale-stark` 0/3 to 3/3 (the Stark
 lowercase-flat fix), `legato-transforms` 1/3 to 3/3.
+
+## What moved between runs 20-21 and 22-23
+
+Flat overall: luna 343 to 340, haiku 369 to 370. Four short Skill lines changed
+in between (envelope line format, `transformed: 0`, the note-count pointer, and
+undo steps); none touches pitch spelling or locators.
+
+- `middle-c-scale-stark` luna 3/3 to 0/3, and 9/20 on rechecks at Codex's
+  default effort; run 18 was 0/3, so run 20's 3/3 was luck. Luna spends about 10
+  reasoning tokens here. Most misses wrote A for Ab, in both absolute (`A3`) and
+  Stark's relative spelling; others put middle C at C4, or wrote `A3b`, which
+  Stark read as A3 plus a note B. midi-json, the control arm, stayed 3/3. Two
+  text changes did not move it (see [wording-changes.md](wording-changes.md)).
+  At `model_reasoning_effort="high"`: 6/6.
+- `locator-navigation` luna 2/3 to 0/3, haiku 0/3 again. Every miss put the copy
+  at the Bridge by bar (`t2[25|1]`). A placed clip does not follow its locator,
+  so both spellings are equal, and the grader now checks only where it landed.
+- `note-ops-split` luna 1/3 to 0/3: split the arrangement clip, or deleted and
+  rewrote the note, instead of `split()` — the same misses as before.
+
+Everything else moved by one trial either way.
