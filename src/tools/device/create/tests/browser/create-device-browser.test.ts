@@ -7,7 +7,7 @@
 // the remote script: onto a temp track, then moved to the path.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
@@ -33,10 +33,13 @@ import { registerTempTrack, TEMP_TRACK } from "./temp-track-test-helpers.ts";
 const OUTDATED =
   "the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0 or later)";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const ITEM = {
   type: "plugin",

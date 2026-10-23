@@ -7,10 +7,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
 import { library } from "../library.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 vi.mock(import("../read-samples.ts"), async (importOriginal) => {
   const actual = await importOriginal();
@@ -19,7 +22,7 @@ vi.mock(import("../read-samples.ts"), async (importOriginal) => {
 });
 
 const protocolMock =
-  await import("#src/live-api-adapter/node-request-v8-protocol.ts");
+  await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
 
 /**
  * Stub the "/samples/" folder with the given top-level .wav file names.

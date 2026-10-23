@@ -6,7 +6,7 @@
 // The test file must `vi.mock` node-request-v8-protocol.ts for these to work.
 
 import { vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 
 /**
  * Reset the remote script mock so every envelope route call succeeds.

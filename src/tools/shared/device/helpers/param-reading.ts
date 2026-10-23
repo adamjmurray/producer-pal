@@ -15,9 +15,9 @@ import {
   parseLabel,
   strForValue,
   unitForLabels,
-} from "./param-label-parsing.ts";
+} from "./params/param-label-parsing.ts";
 import { recordedUnitFor } from "../known-param-units.ts";
-import { readNumericRange } from "./param-numeric-range.ts";
+import { readNumericRange } from "./params/param-numeric-range.ts";
 
 // Parameter state mapping (0=active, 1=inactive, 2=disabled)
 export const PARAM_STATE_MAP: Record<number, string> = {
@@ -396,6 +396,11 @@ export interface WrittenParam {
   requested?: number;
   /** Set when the write overrode the param's arrangement lane */
   overrode?: true;
+  /**
+   * The entry as the call reports it, for a param Live's API can't read (a
+   * hosted plug-in's). It skips the read-back by id.
+   */
+  reported?: LandedParam | ParamValueResult;
 }
 
 /**

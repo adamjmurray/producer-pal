@@ -38,6 +38,8 @@ import { isNewerVersion } from "#src/shared/version-check.ts";
 import { deleteObject } from "#src/tools/actions/delete/delete.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { liveApi } from "#src/tools/advanced/live-api.ts";
+import { pluginHost } from "#src/tools/advanced/plugin-host/plugin-host.ts";
+import { handlePluginHostResponse } from "#src/live-api-adapter/protocols/plugin-host-v8-protocol.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import { computeLoopDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
@@ -59,13 +61,16 @@ import { select } from "#src/tools/session/select.ts";
 import { createTrack } from "#src/tools/track/create/create-track.ts";
 import { readTrack } from "#src/tools/track/read/read-track.ts";
 import { updateTrack } from "#src/tools/track/update/update-track.ts";
-import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
+import { handleCodeExecResult } from "./protocols/code-exec-v8-protocol.ts";
 import {
   beginLiveApiBuildStats,
   reportLiveApiBuildStats,
 } from "./live-api-build-stats.ts";
 import { beginLiveApiScope, endLiveApiScope } from "./live-api-release.ts";
-import { handleNodeResponse, requestNode } from "./node-request-v8-protocol.ts";
+import {
+  handleNodeResponse,
+  requestNode,
+} from "./protocols/node-request-v8-protocol.ts";
 import {
   backupProjectContextOnEdit,
   noteProjectContextLoaded,
@@ -163,13 +168,14 @@ const toolDispatch: Record<
   "ppal-manage": (args, ctx) => manage(args as any, ctx),
   "ppal-library": (args, ctx) => library(args as any, ctx),
   "ppal-live-api": (args, ctx) => liveApi(args as any, ctx),
+  "ppal-plugin-host": (args) => pluginHost(args as any),
 };
 /* eslint-enable @typescript-eslint/no-explicit-any -- end of tools dispatch section */
 
 /**
  * Names of every tool the V8 adapter can dispatch. Exported so a parity test can
  * assert this hand-maintained map stays in sync with the registered tool defs
- * (STANDARD_TOOL_DEFS + the opt-in ppal-live-api) — a missing entry would make a
+ * (STANDARD_TOOL_DEFS + the opt-in OPT_IN_TOOL_DEFS) — a missing entry would make a
  * shipped tool fail at runtime with "Unknown tool".
  */
 export const DISPATCH_TOOL_NAMES: readonly string[] = Object.keys(toolDispatch);
@@ -517,6 +523,19 @@ export function node_response(requestId: string, ...rest: unknown[]): void {
   }
 
   handleNodeResponse(requestId, json);
+}
+
+/**
+ * Handle plugin_host_response message from a plug-in host wrapper device.
+ *
+ * @param requestId - Request identifier
+ * @param chunks - The reply's JSON, split to fit Max's 32 KB symbol limit
+ */
+export function plugin_host_response(
+  requestId: string,
+  ...chunks: string[]
+): void {
+  handlePluginHostResponse(requestId, chunks.join(""));
 }
 
 // Handle messages from Node for Max

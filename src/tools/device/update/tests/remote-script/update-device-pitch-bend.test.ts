@@ -8,7 +8,7 @@
 // pseudo-param: its value when it landed, `ok: false` and why when it didn't.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
 import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-script-contract.ts";
@@ -36,10 +36,13 @@ import {
 const OUTDATED =
   "the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0 or later)";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const FIRST = String(livePath.track(0).device(0));
 const SECOND = String(livePath.track(0).device(1));

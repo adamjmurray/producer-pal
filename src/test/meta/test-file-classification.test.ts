@@ -76,7 +76,7 @@ const NARROW_OXLINT_TEST_GLOBS = new Set([
   // The typed decode helpers, one file each, one rule
   // (typescript/no-unnecessary-type-parameters).
   "e2e/mcp/mcp-test-helpers.ts",
-  "src/live-api-adapter/tests/v8-protocol-test-helpers.ts",
+  "src/live-api-adapter/protocols/tests/v8-protocol-test-helpers.ts",
   "src/test/meta/test-file-classification.test.ts",
   "src/tools/clip/update/tests/notes/notes-mock-test-helpers.ts",
 ]);

@@ -9,10 +9,13 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { type LibrarySearchResult } from "#src/mcp-server/live-library/library-types.ts";
 import { library } from "../library.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 // Wrap the real readSamples in a spy so existing tests keep their
 // mockFolderStructure-driven behavior, while letting new tests assert
@@ -24,7 +27,7 @@ vi.mock(import("../read-samples.ts"), async (importOriginal) => {
 });
 
 const protocolMock =
-  await import("#src/live-api-adapter/node-request-v8-protocol.ts");
+  await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
 const readSamplesMock = await import("../read-samples.ts");
 
 /**

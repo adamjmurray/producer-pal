@@ -379,7 +379,7 @@ describe("coverage exclusion honesty", () => {
 
   it("keeps this module in the vitest coverage exclude list", () => {
     expect(configText).toContain(
-      '"src/live-api-adapter/code-exec-v8-protocol.ts"',
+      '"src/live-api-adapter/protocols/code-exec-v8-protocol.ts"',
     );
   });
 

@@ -75,6 +75,13 @@ declare function error(...args: unknown[]): void;
 declare function outlet(outletNumber: number, ...args: unknown[]): void;
 
 /**
+ * Max V8 global function to send a message to every `[receive]` with this name.
+ * @param name - The receive name
+ * @param args - The message to send
+ */
+declare function messnamed(name: string, ...args: unknown[]): void;
+
+/**
  * Max V8 global variable to declare the number of outlets.
  * Set at module load to configure outlet count before any outlet() calls.
  */

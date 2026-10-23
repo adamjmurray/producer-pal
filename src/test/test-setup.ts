@@ -25,6 +25,7 @@ process.env.PPAL_REMOTE_SCRIPT_PORT = "0";
 
 g.Task = Task;
 g.outlet = vi.fn();
+g.messnamed = vi.fn();
 // Max V8 outlet-configuration globals used at module load by live-api-adapter.ts
 // (`outlets = 1; setoutletassist(...)`). Mocked so that module is importable.
 g.outlets = 0;

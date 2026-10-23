@@ -12,9 +12,12 @@ import {
   syncProjectContextBackup,
 } from "../project-context-sync.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+  }),
+);
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   log: vi.fn(),
@@ -24,7 +27,7 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 const { requestNode } =
-  await import("#src/live-api-adapter/node-request-v8-protocol.ts");
+  await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
 const mockRequestNode = vi.mocked(requestNode);
 
 const { warn } = await import("#src/shared/max/v8-max-console.ts");

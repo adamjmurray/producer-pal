@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 // The V8 side of a request/response pair with Node: one message out the outlet,
-// one answer back, with a timeout in case none comes. Both the node_request and
-// code_exec protocols run on one of these.
+// one answer back, with a timeout in case none comes. The node_request,
+// code_exec and plug-in host protocols run on one of these.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { suspendWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
@@ -24,13 +24,27 @@ interface ChannelResult {
 }
 
 /** How one protocol spells its messages. */
-interface ChannelSpec {
+type ChannelSpec = ChannelSpecBase &
+  (
+    | {
+        /** Message name sent out outlet 0 (the default way to transmit). */
+        requestMessage: string;
+        transmit?: undefined;
+      }
+    | {
+        requestMessage?: undefined;
+        /** Send a request some other way than out outlet 0. */
+        transmit: (requestId: string, payload: string) => void;
+      }
+  );
+
+interface ChannelSpecBase {
   /** Prefix for this channel's request ids. */
   idPrefix: string;
-  /** Message name sent out outlet 0. */
-  requestMessage: string;
-  /** Message name Node answers with, used in error text. */
+  /** Message name the answer comes back as, used in error text. */
   responseMessage: string;
+  /** Text for a timed-out call, in place of the default. */
+  timeoutError?: (subject: string, timeoutMs: number) => string;
   /**
    * Report a throw from `outlet` as a failed result instead of letting it
    * reject. Without it a Max IPC failure leaves the caller waiting out the
@@ -47,6 +61,7 @@ interface RequestChannel {
     refusal?: string | null,
     timeoutMs?: number,
   ) => Promise<T>;
+  probe: (payload: string) => ChannelResult | null;
   receive: (requestId: string, responseJson: string) => void;
 }
 
@@ -58,6 +73,14 @@ interface RequestChannel {
 export function requestChannel(spec: ChannelSpec): RequestChannel {
   const pending = new Map<string, Pending>();
   let nextRequestId = 1;
+
+  const transmitRequest = (requestId: string, payload: string): void => {
+    if (spec.transmit) {
+      spec.transmit(requestId, payload);
+    } else {
+      outlet(0, spec.requestMessage, requestId, payload);
+    }
+  };
 
   return {
     /**
@@ -93,7 +116,10 @@ export function requestChannel(spec: ChannelSpec): RequestChannel {
 
           const task = new Task(() => {
             if (pending.delete(requestId)) {
-              fail(`${subject} timed out after ${timeoutMs}ms`);
+              fail(
+                spec.timeoutError?.(subject, timeoutMs) ??
+                  `${subject} timed out after ${timeoutMs}ms`,
+              );
             }
           });
 
@@ -104,7 +130,7 @@ export function requestChannel(spec: ChannelSpec): RequestChannel {
           });
 
           try {
-            outlet(0, spec.requestMessage, requestId, payload);
+            transmitRequest(requestId, payload);
           } catch (error) {
             pending.delete(requestId);
             task.schedule(-1);
@@ -117,6 +143,33 @@ export function requestChannel(spec: ChannelSpec): RequestChannel {
           }
         }),
       );
+    },
+
+    /**
+     * Send one request and take the answer only if it arrives before the
+     * transmit returns, as when the other end answers in the same call. Nothing
+     * waits: an absent or slow other end reads as no answer, at no cost.
+     * @param payload - The request body, already serialized
+     * @returns The answer, or null when none came during the transmit
+     */
+    probe(payload: string): ChannelResult | null {
+      const requestId = `${spec.idPrefix}${nextRequestId++}`;
+      let answer: ChannelResult | null = null;
+
+      pending.set(requestId, {
+        resolve: (result) => {
+          answer = result;
+        },
+        cancelTimeout: () => {},
+      });
+
+      try {
+        transmitRequest(requestId, payload);
+      } finally {
+        pending.delete(requestId);
+      }
+
+      return answer;
     },
 
     /**

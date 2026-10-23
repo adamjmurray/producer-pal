@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { parseLabel } from "./helpers/param-label-parsing.ts";
+import { parseLabel } from "./helpers/params/param-label-parsing.ts";
 
 /**
  * A unit Live knows but never reports. `DeviceParameter` exposes no unit at

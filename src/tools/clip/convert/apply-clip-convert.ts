@@ -8,7 +8,7 @@
 // the edited clip. Only the remote script can do it, and it answers before Live
 // has made anything, so the new track is found by comparing track lists.
 
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import {
   CONVERT_ROUTE,
   type ConvertReply,

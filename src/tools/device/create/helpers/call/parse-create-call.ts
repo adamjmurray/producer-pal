@@ -21,6 +21,7 @@ export interface CreateDeviceArgs {
   name?: string;
   params?: ParamEntry[];
   focus?: boolean;
+  hosted?: boolean;
 }
 
 /** The args as the write pipeline gets them. */
@@ -38,6 +39,8 @@ export interface CreateCall {
   name: string | undefined;
   params: ParamEntry[] | undefined;
   focus: boolean | undefined;
+  /** Whether `device` names plug-ins to host, not devices to load */
+  hosted: boolean;
   native: boolean;
 }
 
@@ -56,6 +59,12 @@ export interface CreatePayload {
 export function parseCreateCall(args: CreateCallArgs): CreateCall {
   const { preset, name, focus, native } = args;
   const sent = args.path != null && args.path.trim() !== "";
+  const hosted = args.hosted === true;
+
+  // A preset names a device Live loads whole, so there is no plug-in to host.
+  if (hosted && preset != null) {
+    throw new Error("hosted can't be combined with preset");
+  }
 
   return {
     device: args.device ?? args.deviceName,
@@ -64,6 +73,7 @@ export function parseCreateCall(args: CreateCallArgs): CreateCall {
     name,
     params: sent ? validateParamEntries(args.params) : undefined,
     focus,
+    hosted,
     native,
   };
 }
@@ -106,8 +116,8 @@ export function createListArgs(call: CreateCall): ListArg[] {
 }
 
 /**
- * Whether a call only inserts native devices: no preset, and every device it
- * names is one Live inserts itself. Such a call has nothing to await, so it
+ * Whether a call only inserts native devices: no preset, nothing hosted, and
+ * every device it names is one Live inserts itself. Such a call has nothing to await, so it
  * runs under one device path cache. A call that can't be read this way is
  * answered `false`; the pipeline refuses it with the proper error.
  * @param args - The tool's args
@@ -119,6 +129,7 @@ export function namesOnlyNativeDevices(args: CreateDeviceArgs): boolean {
 
   if (
     args.preset != null ||
+    args.hosted === true ||
     device == null ||
     path == null ||
     path.trim() === ""

@@ -8,7 +8,7 @@
 // back from a parked copy.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { applyClipEnvelopes } from "#src/tools/clip/envelopes/apply-clip-envelopes.ts";
@@ -23,10 +23,13 @@ import {
   registerLaneWorld,
 } from "./lane-world-test-helpers.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 /** A ramp across the clip's two bars. */
 const RAMP = "volume: 1|1 0 / 3|1 1";

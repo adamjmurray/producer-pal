@@ -18,10 +18,13 @@ import { LIVE_API_DEVICE_TYPE_AUDIO_EFFECT } from "#src/tools/constants.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
 import { updateDevice } from "#src/tools/device/update/update-device.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({ select: vi.fn() }));
 

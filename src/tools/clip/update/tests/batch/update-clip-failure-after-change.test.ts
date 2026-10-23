@@ -32,14 +32,17 @@ import { setUpArrangementPair } from "../move-order/arrangement-pair-test-helper
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { registerMoveToEmptySlot } from "../session/slot-move-fixtures.ts";
 
-vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
-  executeNoteCode: vi.fn(),
-  executeNoteCodeWithData: vi.fn(),
-  requestCodeExecution: vi.fn(),
-  handleCodeExecResult: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/code-exec-v8-protocol.ts"),
+  () => ({
+    executeNoteCode: vi.fn(),
+    executeNoteCodeWithData: vi.fn(),
+    requestCodeExecution: vi.fn(),
+    handleCodeExecResult: vi.fn(),
+  }),
+);
 
-import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
+import { executeNoteCode } from "#src/live-api-adapter/protocols/code-exec-v8-protocol.ts";
 import { codeExecSuccess } from "#src/tools/clip/code-exec/tests/code-exec-test-helpers.ts";
 
 const REFUSED = "Live refused";

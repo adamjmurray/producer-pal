@@ -11,16 +11,15 @@ import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-to
 // tool defs load — so stub it before importing them. Importing this module is
 // what loads them, which is why the defs live here rather than in each suite.
 vi.stubEnv("ENABLE_CODE_EXEC", "true");
-const { STANDARD_TOOL_DEFS } =
+const { STANDARD_TOOL_DEFS, OPT_IN_TOOL_DEFS } =
   await import("#src/mcp-server/create-mcp-server.ts");
-const { toolDefLiveApi } = await import("#src/tools/advanced/live-api.def.ts");
 
 vi.unstubAllEnvs();
 
 /** Every published tool def, including the opt-in ones. */
 export const TOOL_DEFS: ToolDefFunction[] = [
   ...STANDARD_TOOL_DEFS,
-  toolDefLiveApi,
+  ...OPT_IN_TOOL_DEFS,
 ];
 
 /** One published tool, resolved in one (notation, small-model) cell. */
