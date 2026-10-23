@@ -198,8 +198,8 @@ describe("StdioHttpBridge ppal-connect update hint", () => {
     vi.restoreAllMocks();
   });
 
-  it("tells the model to ask, then update, when the device is older", async () => {
-    serverReports(OLD);
+  it("tells the model to ask, then update, when the device has ppal-manage", async () => {
+    serverReports("2.5.0-rc1");
 
     const handler = await startAndGetCallHandler(bridgeOver(true));
     const result = (await handler(callToolRequest("ppal-connect"))) as {
@@ -208,7 +208,20 @@ describe("StdioHttpBridge ppal-connect update hint", () => {
 
     expect(result.content).toHaveLength(2);
     expect(result.content[1]?.text).toContain(
-      `The Producer Pal device (${OLD}) is older than this connector (${VERSION}). Ask the user, then call ppal-manage action "update-producer-pal"`,
+      `The Producer Pal device (2.5.0-rc1) is older than this connector (${VERSION}). Ask the user, then call ppal-manage action "update-producer-pal"`,
+    );
+  });
+
+  it("tells the user to update by hand when the device predates ppal-manage", async () => {
+    serverReports(OLD);
+
+    const handler = await startAndGetCallHandler(bridgeOver(true));
+    const result = (await handler(callToolRequest("ppal-connect"))) as {
+      content: Array<{ text: string }>;
+    };
+
+    expect(result.content[1]?.text).toContain(
+      `The Producer Pal device (${OLD}) is older than this connector (${VERSION}). Tell the user to update the Producer Pal device by hand: https://producer-pal.org/installation/upgrading#update-by-hand`,
     );
   });
 

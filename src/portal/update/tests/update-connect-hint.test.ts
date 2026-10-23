@@ -9,6 +9,10 @@ import { withUpdateHint } from "../update-connect-hint.ts";
 import { DOWN, fakeDevice, OLD } from "./update-test-helpers.ts";
 
 const CONNECT = { name: "ppal-connect", manageOffered: true };
+const BY_HAND =
+  "Tell the user to update the Producer Pal device by hand: https://producer-pal.org/installation/upgrading#update-by-hand";
+const IN_PLACE =
+  'Ask the user, then call ppal-manage action "update-producer-pal" to update it in place.';
 
 /** @returns A successful ppal-connect result */
 function connected(): { content: Array<{ type: string; text: string }> } {
@@ -32,28 +36,40 @@ async function connectedDevice(
 }
 
 describe("withUpdateHint", () => {
-  it("adds how to update when the device is older than the portal", async () => {
-    const device = await connectedDevice(OLD);
+  it("adds how to update in place when the device has ppal-manage", async () => {
+    const device = await connectedDevice("2.5.0-rc1");
     const result = await withUpdateHint(connected(), CONNECT, device);
 
     expect(result.content).toStrictEqual([
       { type: "text", text: "connected" },
       {
         type: "text",
-        text: `The Producer Pal device (${OLD}) is older than this connector (${VERSION}). Ask the user, then call ppal-manage action "update-producer-pal" to update it in place.`,
+        text: `The Producer Pal device (2.5.0-rc1) is older than this connector (${VERSION}). ${IN_PLACE}`,
       },
     ]);
   });
 
-  it("tells the user to update the device when ppal-manage isn't offered", async () => {
+  it("sends the user to the by-hand guide for a device older than ppal-manage", async () => {
     const result = await withUpdateHint(
       connected(),
-      { name: "ppal-connect", manageOffered: false },
-      await connectedDevice(OLD),
+      CONNECT,
+      await connectedDevice(OLD, OLD),
     );
 
     expect(result.content[1]?.text).toBe(
-      `The Producer Pal device (${OLD}) is older than this connector (${VERSION}). Tell the user to update the Producer Pal device.`,
+      `The Producer Pal device (${OLD}) is older than this connector (${VERSION}). ${BY_HAND}`,
+    );
+  });
+
+  it("sends the user to the by-hand guide when ppal-manage isn't offered", async () => {
+    const result = await withUpdateHint(
+      connected(),
+      { name: "ppal-connect", manageOffered: false },
+      await connectedDevice("2.5.0-rc1"),
+    );
+
+    expect(result.content[1]?.text).toBe(
+      `The Producer Pal device (2.5.0-rc1) is older than this connector (${VERSION}). ${BY_HAND}`,
     );
   });
 
