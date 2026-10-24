@@ -88,7 +88,11 @@ function remoteScriptLine(status: RemoteScriptStatus, manage: boolean): string {
   }
 
   if (!status.running) {
-    return `remoteScript: ${versionText(status.installedVersion)} is installed but not running. ${REMOTE_SCRIPT_ADDS} Tell the user to ${ENABLE_IN_LIVE}. Don't call ${INSTALL_WITH_TOOL} again: it can't start the script.`;
+    const stopped = `remoteScript: ${versionText(status.installedVersion)} is installed but not running. ${REMOTE_SCRIPT_ADDS} Tell the user to ${ENABLE_IN_LIVE}.`;
+
+    return manage
+      ? `${stopped} Don't call ${INSTALL_WITH_TOOL} again: it can't start the script.`
+      : stopped;
   }
 
   if (liveRunsOtherCopy(status)) {

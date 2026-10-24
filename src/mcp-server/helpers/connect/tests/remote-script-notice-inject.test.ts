@@ -189,13 +189,25 @@ describe("withRemoteScriptNotice", () => {
       currentRemoteScriptStatus({ running: false, runningVersion: null }),
     );
 
-    for (const manage of [true, false]) {
-      const content = await connectThrough(undefined, manage);
+    const stopped = `remoteScript: v${VERSION} is installed but not running. ${ADDS} Tell the user to ${ENABLE_IN_LIVE}.`;
 
-      expect(content[1]?.text).toBe(
-        `remoteScript: v${VERSION} is installed but not running. ${ADDS} Tell the user to ${ENABLE_IN_LIVE}. Don't call ${INSTALL} again: it can't start the script.`,
-      );
-    }
+    const content = await connectThrough(undefined, true);
+
+    expect(content[1]?.text).toBe(
+      `${stopped} Don't call ${INSTALL} again: it can't start the script.`,
+    );
+  });
+
+  it("doesn't name ppal-manage for a script that isn't running when the caller lacks it", async () => {
+    remoteScriptStatus.mockResolvedValue(
+      currentRemoteScriptStatus({ running: false, runningVersion: null }),
+    );
+
+    const content = await connectThrough(undefined, false);
+
+    expect(content[1]?.text).toBe(
+      `remoteScript: v${VERSION} is installed but not running. ${ADDS} Tell the user to ${ENABLE_IN_LIVE}.`,
+    );
   });
 
   it("tells the user to restart Live when it runs an older copy than the installed one", async () => {
