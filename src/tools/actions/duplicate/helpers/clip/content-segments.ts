@@ -31,26 +31,28 @@ export interface ContentSegment {
  * reads as one long looped clip.
  * @param markers - The clip's markers
  * @param lengthBeats - How long the copy plays
- * @returns The stretches in playing order, each cut so none passes the length
+ * @yields The stretches in playing order, each cut so none passes the length.
+ *   Made one at a time, so a very long length costs no memory up front.
  */
-export function contentSegments(
+export function* contentSegments(
   markers: ClipMarkers,
   lengthBeats: number,
-): ContentSegment[] {
+): Generator<ContentSegment, void> {
   const { looping, loopStart, loopEnd, startMarker } = markers;
 
   if (!looping) {
-    return [{ from: startMarker, to: startMarker + lengthBeats, at: 0 }];
+    yield { from: startMarker, to: startMarker + lengthBeats, at: 0 };
+
+    return;
   }
 
   const loopLength = loopEnd - loopStart;
 
   // No loop to wrap around: there is nothing playback could repeat.
   if (loopLength <= EPSILON) {
-    return [];
+    return;
   }
 
-  const segments: ContentSegment[] = [];
   let at = 0;
 
   // The first pass starts at the start marker; every later one at the loop
@@ -60,14 +62,14 @@ export function contentSegments(
     const length = Math.min(loopEnd - from, lengthBeats - at);
 
     if (length > EPSILON) {
-      segments.push({
+      const segment = {
         from,
         to: length === loopEnd - from ? loopEnd : from + length,
         at,
-      });
+      };
+
       at += length;
+      yield segment;
     }
   }
-
-  return segments;
 }

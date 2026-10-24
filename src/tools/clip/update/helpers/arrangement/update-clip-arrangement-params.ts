@@ -9,7 +9,10 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { refuseArrangementPositionPastCap } from "#src/tools/shared/validation/helpers/arrangement-position-cap.ts";
+import {
+  refuseArrangementLengthTooLong,
+  refuseArrangementPositionPastCap,
+} from "#src/tools/shared/validation/helpers/arrangement-position-cap.ts";
 import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import {
@@ -132,6 +135,8 @@ export function parseArrangementParams(
         if (beats <= 0) {
           throw new Error("arrangementLength must be greater than 0");
         }
+
+        refuseArrangementLengthTooLong(beats, numerator, denominator);
 
         return beats;
       }),

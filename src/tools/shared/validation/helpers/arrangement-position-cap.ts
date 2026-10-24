@@ -3,8 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
+import {
+  abletonBeatsToBarBeat,
+  abletonBeatsToDuration,
+} from "#src/notation/barbeat/time/barbeat-time.ts";
+import {
+  MAX_ARRANGEMENT_LENGTH_BEATS,
+  MAX_ARRANGEMENT_POSITION_BEATS,
+} from "#src/tools/constants.ts";
 
 /**
  * Refuses an arrangement position Live won't take, saying the last one it will
@@ -37,4 +43,31 @@ export function refuseArrangementPositionPastCap(
   );
 
   throw new Error(`${param} is past the last position Live allows (${last})`);
+}
+
+/**
+ * Refuses an `arrangementLength` longer than Producer Pal takes, saying the
+ * longest in the song's meter. The limit is ours, not Live's, and only stops
+ * absurd lengths: one under it can still run to the deadline.
+ * @param lengthBeats - The length, in Ableton beats
+ * @param timeSigNumerator - Song time signature numerator
+ * @param timeSigDenominator - Song time signature denominator
+ * @throws When the length is over the limit
+ */
+export function refuseArrangementLengthTooLong(
+  lengthBeats: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): void {
+  if (lengthBeats <= MAX_ARRANGEMENT_LENGTH_BEATS) {
+    return;
+  }
+
+  const max = abletonBeatsToDuration(
+    MAX_ARRANGEMENT_LENGTH_BEATS,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+
+  throw new Error(`arrangementLength can be at most ${max}`);
 }

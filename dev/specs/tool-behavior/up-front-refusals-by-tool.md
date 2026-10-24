@@ -120,6 +120,12 @@ code; when it disagrees with a tool, the tool wins.
   anything is written to the clip, in the meter the call sets — except an
   unwarped audio clip sent `looping: true` with a `start` and no `length`, whose
   loop end is known only once warping is on.
+- **`duplicate` and `updateClip` refuse an `arrangementLength` entry longer than
+  1,576,800 beats** (`arrangementLength can be at most 394200bar`, written in
+  the song's meter) before anything is changed. The limit is Producer Pal's, not
+  Live's: no real song is that long, and a longer length only runs to the
+  deadline. One entry over refuses the whole call. Start and length are not
+  weighed together.
 - **`createClip` refuses a `path` entry it can't parse** before anything is
   made, as well as an arrangement position that won't parse or is past Live's
   last, a list that doesn't pair, and an unknown `auto`. A destination that

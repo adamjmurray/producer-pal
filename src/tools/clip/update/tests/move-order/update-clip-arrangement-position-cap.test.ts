@@ -9,7 +9,11 @@ import {
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
+import {
+  MAX_ARRANGEMENT_LENGTH_BEATS,
+  MAX_ARRANGEMENT_POSITION_BEATS,
+} from "#src/tools/constants.ts";
+import { parseArrangementParams } from "#src/tools/clip/update/helpers/arrangement/update-clip-arrangement-params.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { setupClipOnTrack } from "./clip-per-track-fixtures.ts";
 
@@ -59,6 +63,58 @@ describe("updateClip - arrangement positions past the last Live allows", () => {
       "duplicate_clip_to_arrangement",
       expect.anything(),
       MAX_ARRANGEMENT_POSITION_BEATS,
+    );
+  });
+});
+
+describe("updateClip - arrangementLength over Producer Pal's limit", () => {
+  const TOO_LONG = "arrangementLength can be at most 394200bar";
+  let tracks: RegisteredMockObject[];
+
+  beforeEach(() => {
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      type: "Song",
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+    tracks = [0, 1].map(setupClipOnTrack);
+  });
+
+  it("refuses a length that is too long", async () => {
+    await expect(
+      updateClip({ id: "100", arrangementLength: "394201bar" }),
+    ).rejects.toThrow(TOO_LONG);
+
+    expect(tracks.some(touched)).toBe(false);
+  });
+
+  it("refuses the whole call when only one entry is too long", async () => {
+    await expect(
+      updateClip({ id: "100,101", arrangementLength: "1bar,394201bar" }),
+    ).rejects.toThrow(TOO_LONG);
+
+    expect(tracks.some(touched)).toBe(false);
+  });
+
+  it("takes a length exactly at the limit", () => {
+    const { lengthBeats } = parseArrangementParams(undefined, "394200bar", 1);
+
+    expect(lengthBeats.broadcast).toBe(MAX_ARRANGEMENT_LENGTH_BEATS);
+  });
+
+  it("takes a long length that starts late", () => {
+    expect(() => parseArrangementParams("394200|1", "2bar", 1)).not.toThrow();
+  });
+
+  it("names the limit in the song's meter", () => {
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      type: "Song",
+      properties: { signature_numerator: 3, signature_denominator: 4 },
+    });
+
+    expect(() => parseArrangementParams(undefined, "525601bar", 1)).toThrow(
+      "arrangementLength can be at most 525600bar",
     );
   });
 });
