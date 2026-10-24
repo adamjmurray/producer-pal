@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
 import { ALL_TOOL_IDS, CONNECT_TOOL_ID } from "#src/shared/tool-groups.ts";
@@ -123,6 +123,7 @@ describe("--tools", () => {
   it("keeps ppal-connect even when --disable-tools names it", () => {
     expect(disabledFor(["--disable-tools", "connect,core"])).toStrictEqual([
       "ppal-context",
+      "ppal-manage",
     ]);
   });
 

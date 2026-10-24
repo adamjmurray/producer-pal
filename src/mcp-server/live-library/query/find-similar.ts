@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Rank library samples by audio similarity to a seed sample, using Live's
@@ -37,6 +37,7 @@ import {
 } from "./candidate-query.ts";
 import { decodeFeatureVector, euclideanDistance } from "./feature-vectors.ts";
 import { withLiveDb } from "./live-db-query.ts";
+import { presetFolderNote } from "./preset-folder-note.ts";
 
 /** Default top-K for findSimilar — a focused shortlist, not search's broad 50. */
 const DEFAULT_FIND_SIMILAR_LIMIT = 20;
@@ -115,10 +116,10 @@ function runFindSimilar(
   // sampleFolder files aren't in Live's fe_values index, so the candidate query
   // can only ever match nothing (buildCandidateWhere emits an impossible
   // predicate). Explain it rather than returning a silent empty set.
-  if (args.source === "sampleFolder") {
+  if (args.source === "sample-folder") {
     return miss(
       false,
-      "audio similarity uses Live's analyzed library; sampleFolder samples aren't indexed there — remove source:sampleFolder",
+      "audio similarity uses Live's analyzed library; sample-folder samples aren't indexed there — remove source:sample-folder",
     );
   }
 
@@ -141,8 +142,17 @@ function runFindSimilar(
   }
 
   const ranked = rankCandidates(db, args, seed, resolved.parentId);
+  const note = presetFolderNote(db, args, resolved.parentId, {
+    sourceShowsHidden: false,
+    analyzedOnly: true,
+  });
 
-  return { ...base, seed: { path: seedPath, found: true }, items: ranked };
+  return {
+    ...base,
+    seed: { path: seedPath, found: true },
+    items: ranked,
+    ...(note != null && { note }),
+  };
 }
 
 /**

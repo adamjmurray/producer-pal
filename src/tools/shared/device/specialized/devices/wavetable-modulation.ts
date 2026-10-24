@@ -1,14 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { trimmedParamName } from "../../helpers/param-reading.ts";
 import { coerceInt } from "../specialized-param-access.ts";
 import { type ActionOutcome } from "../specialized-device-types.ts";
 
-// Wavetable mod-matrix helpers. See dev/live-api/specialized-devices/instruments.md.
+// Wavetable mod-matrix helpers. See dev/live-api/specialized-devices/instruments/wavetable.md.
 //
 // The matrix is imperative: targets are registered by DeviceParameter
 // reference, indexed by position, and cells go through
@@ -100,17 +100,13 @@ export function setModulationAction(
   device: LiveAPI,
   args: Array<string | number>,
 ): ActionOutcome {
-  if (args.length < 3) {
-    return "requires 3 arguments (target, source, amount)";
+  const cell = readCell(args, ["target", "source", "amount"]);
+
+  if (typeof cell === "string") {
+    return cell;
   }
 
-  const target = String(args[0]);
-  const s = resolveSourceIndex(args[1] as string | number);
-
-  if (s < 0) {
-    return invalidSource(args[1] as string | number);
-  }
-
+  const { target, source: s } = cell;
   const a = Number(args[2]);
 
   if (!Number.isFinite(a)) {
@@ -147,17 +143,13 @@ export function clearModulationAction(
   device: LiveAPI,
   args: Array<string | number>,
 ): ActionOutcome {
-  if (args.length < 2) {
-    return "requires 2 arguments (target, source)";
+  const cell = readCell(args, ["target", "source"]);
+
+  if (typeof cell === "string") {
+    return cell;
   }
 
-  const target = String(args[0]);
-  const s = resolveSourceIndex(args[1] as string | number);
-
-  if (s < 0) {
-    return invalidSource(args[1] as string | number);
-  }
-
+  const { target, source: s } = cell;
   const targetIndex = resolveTargetIndex(device, target);
 
   // Not a refusal: an unrouted target is already the state asked for.
@@ -236,6 +228,29 @@ export function readModulations(device: LiveAPI): unknown[] {
 }
 
 // --- internal ---
+
+/**
+ * Read the target and source a matrix-cell action starts with.
+ * @param args - Parsed action arguments
+ * @param argNames - Every argument the action takes, for the count check
+ * @returns The target and source index, or why they were refused
+ */
+function readCell(
+  args: Array<string | number>,
+  argNames: string[],
+): { target: string; source: number } | string {
+  if (args.length < argNames.length) {
+    return `requires ${argNames.length} arguments (${argNames.join(", ")})`;
+  }
+
+  const source = resolveSourceIndex(args[1] as string | number);
+
+  if (source < 0) {
+    return invalidSource(args[1] as string | number);
+  }
+
+  return { target: String(args[0]), source };
+}
 
 /**
  * Resolve a modulation source to its column index. Accepts a source name

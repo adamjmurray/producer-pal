@@ -1,0 +1,423 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
+// SPDX-License-Identifier: MIT
+
+import { describe, expect, it, vi } from "vitest";
+import * as console from "#src/shared/max/v8-max-console.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  setupReturnTrackNames,
+  setupTrackMixerMocks,
+} from "../helpers/read-track-registry-test-helpers.ts";
+import { readOneTrack } from "../../read-track.ts";
+
+const RETURN_TRACKS = [
+  { name: "Reverb", id: "return1" },
+  { name: "Delay", id: "return2" },
+];
+
+function expectSendsWithReverbAndSecond(
+  result: Record<string, unknown>,
+  second: Record<string, unknown>,
+): void {
+  const sends = result.sends as Record<string, unknown>[];
+
+  expect(sends).toHaveLength(2);
+  expect(sends[0]).toStrictEqual({
+    gainDb: -12.5,
+    return: "Reverb",
+    returnId: "return1",
+  });
+  expect(sends[1]).toStrictEqual({ gainDb: -6.0, ...second });
+}
+
+describe("readOneTrack - mixer properties", () => {
+  it("excludes mixer properties by default", () => {
+    setupTrackMixerMocks();
+
+    const result = readOneTrack({ trackIndex: 0 });
+
+    expect(result).not.toHaveProperty("gainDb");
+    expect(result).not.toHaveProperty("pan");
+  });
+
+  it("includes mixer properties when requested", () => {
+    setupTrackMixerMocks({
+      volumeProperties: {
+        display_value: 0,
+      },
+      panningProperties: {
+        value: 0,
+      },
+    });
+
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("gainDb", 0);
+    // panningMode "stereo" is the default, omitted to save tokens
+    expect(result).not.toHaveProperty("panningMode");
+    expect(result).toHaveProperty("pan", 0);
+    expect(result).not.toHaveProperty("leftPan");
+    expect(result).not.toHaveProperty("rightPan");
+  });
+
+  it("includes non-zero gain and panning values, rounding pan to Live's 1% steps", () => {
+    setupTrackMixerMocks({
+      volumeProperties: {
+        display_value: -6.5,
+      },
+      panningProperties: {
+        value: -0.30000001192092896,
+      },
+    });
+
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("gainDb", -6.5);
+    // panningMode "stereo" is the default, omitted to save tokens
+    expect(result).not.toHaveProperty("panningMode");
+    expect(result).toHaveProperty("pan", -0.3);
+  });
+
+  it("rounds pan and gain when Max serializes a tiny float32 as an exponent string", () => {
+    setupTrackMixerMocks({
+      volumeProperties: {
+        // Max serializes some float32 values as exponent-notation strings,
+        // not numbers — this must still round, not pass through as text.
+        display_value: "9.999999747378752e-05",
+      },
+      panningProperties: {
+        value: "9.999999747378752e-05",
+      },
+    });
+
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("gainDb", 0);
+    expect(result).toHaveProperty("pan", 0);
+  });
+
+  it("includes mixer properties for return tracks", () => {
+    setupTrackMixerMocks({
+      trackPath: String(livePath.returnTrack(0)),
+      trackId: "return1",
+      trackProperties: {
+        has_midi_input: 0,
+        name: "Return Track",
+      },
+      volumeProperties: {
+        display_value: -3,
+      },
+      panningProperties: {
+        value: -0.5,
+      },
+    });
+
+    const result = readOneTrack({
+      trackIndex: 0,
+      trackType: "return",
+      include: ["mixer"],
+    });
+
+    expect(result).toHaveProperty("gainDb", -3);
+    expect(result).toHaveProperty("pan", -0.5);
+  });
+
+  it("includes mixer properties for master track", () => {
+    setupTrackMixerMocks({
+      trackPath: String(livePath.masterTrack()),
+      trackId: "master",
+      trackProperties: {
+        has_midi_input: 0,
+        name: "Master",
+      },
+      volumeProperties: {
+        display_value: 0,
+      },
+      panningProperties: {
+        value: 0,
+      },
+    });
+
+    const result = readOneTrack({ trackType: "master", include: ["mixer"] });
+
+    expect(result).toHaveProperty("gainDb", 0);
+    expect(result).toHaveProperty("pan", 0);
+  });
+
+  it("handles missing mixer device gracefully", () => {
+    setupTrackMixerMocks({
+      mixerExists: false,
+    });
+
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).not.toHaveProperty("gainDb");
+    expect(result).not.toHaveProperty("pan");
+  });
+
+  it("handles missing volume parameter gracefully", () => {
+    setupTrackMixerMocks({
+      volumeExists: false,
+      panningProperties: {
+        value: 0.25,
+      },
+    });
+
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).not.toHaveProperty("gainDb");
+    expect(result).toHaveProperty("pan", 0.25);
+  });
+
+  it("handles missing panning parameter gracefully", () => {
+    setupTrackMixerMocks({
+      panningExists: false,
+      volumeProperties: {
+        display_value: -12,
+      },
+    });
+
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("gainDb", -12);
+    expect(result).not.toHaveProperty("pan");
+  });
+
+  it("passes a non-numeric pan through instead of rounding it", () => {
+    // Rounding assumes a number; anything else Live hands back is reported as
+    // it came rather than turned into NaN.
+    setupTrackMixerMocks({
+      volumeProperties: {
+        display_value: 0,
+      },
+      panningProperties: {
+        value: "unavailable",
+      },
+    });
+
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("pan", "unavailable");
+  });
+
+  it("includes mixer with wildcard include", () => {
+    setupTrackMixerMocks({
+      volumeProperties: {
+        display_value: 2,
+      },
+      panningProperties: {
+        value: -0.25,
+      },
+    });
+
+    const result = readOneTrack({ trackIndex: 0, include: ["*"] });
+
+    expect(result).toHaveProperty("gainDb", 2);
+    expect(result).toHaveProperty("pan", -0.25);
+  });
+
+  it("returns split panning mode with leftPan and rightPan", () => {
+    setupTrackMixerMocks({
+      panningMode: 1,
+      volumeProperties: {
+        display_value: -3,
+      },
+      leftSplitProperties: {
+        value: -1,
+      },
+      rightSplitProperties: {
+        value: 1,
+      },
+    });
+
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("gainDb", -3);
+    expect(result).toHaveProperty("panningMode", "split");
+    expect(result).toHaveProperty("leftPan", -1);
+    expect(result).toHaveProperty("rightPan", 1);
+    expect(result).not.toHaveProperty("pan");
+  });
+
+  it("returns split panning mode with non-default values, rounded", () => {
+    setupTrackMixerMocks({
+      panningMode: 1,
+      volumeProperties: {
+        display_value: 0,
+      },
+      leftSplitProperties: {
+        value: 0.25000001,
+      },
+      rightSplitProperties: {
+        value: -0.49999999,
+      },
+    });
+
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("gainDb", 0);
+    expect(result).toHaveProperty("panningMode", "split");
+    expect(result).toHaveProperty("leftPan", 0.25);
+    expect(result).toHaveProperty("rightPan", -0.5);
+    expect(result).not.toHaveProperty("pan");
+  });
+
+  it("omits the split pans Live doesn't expose", () => {
+    setupTrackMixerMocks({
+      panningMode: 1,
+      leftSplitExists: false,
+      rightSplitExists: false,
+    });
+
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("panningMode", "split");
+    expect(result).not.toHaveProperty("leftPan");
+    expect(result).not.toHaveProperty("rightPan");
+  });
+
+  it("includes sends with return track names and ids when requested", () => {
+    setupTrackMixerMocks({
+      sendIds: ["send_1", "send_2"],
+      sendValues: [-12.5, -6.0],
+    });
+
+    const result = readOneTrack({
+      trackIndex: 0,
+      include: ["mixer"],
+      returnTracks: RETURN_TRACKS,
+    });
+
+    expect(result).toHaveProperty("sends");
+    expectSendsWithReverbAndSecond(result, {
+      return: "Delay",
+      returnId: "return2",
+    });
+  });
+
+  it("includes sends on a return track", () => {
+    setupTrackMixerMocks({
+      trackPath: String(livePath.returnTrack(1)),
+      trackId: "return2",
+      trackProperties: { has_midi_input: 0, name: "Delay" },
+      sendIds: ["send_1", "send_2"],
+      sendValues: [-12.5, -6.0],
+    });
+
+    const result = readOneTrack({
+      trackIndex: 1,
+      trackType: "return",
+      include: ["mixer"],
+      returnTracks: RETURN_TRACKS,
+    });
+
+    expectSendsWithReverbAndSecond(result, {
+      return: "Delay",
+      returnId: "return2",
+    });
+  });
+
+  // Live's main track has no sends, so this only proves the return track list
+  // reaches the master read path.
+  it("includes sends on the main track", () => {
+    setupTrackMixerMocks({
+      trackPath: String(livePath.masterTrack()),
+      trackId: "master",
+      trackProperties: { has_midi_input: 0, name: "Master" },
+      sendIds: ["send_1", "send_2"],
+      sendValues: [-12.5, -6.0],
+    });
+
+    const result = readOneTrack({
+      trackType: "master",
+      include: ["mixer"],
+      returnTracks: RETURN_TRACKS,
+    });
+
+    expectSendsWithReverbAndSecond(result, {
+      return: "Delay",
+      returnId: "return2",
+    });
+  });
+
+  it("does not include sends property when track has no sends", () => {
+    setupTrackMixerMocks({
+      sendIds: [],
+      sendValues: [],
+    });
+
+    const result = readOneTrack({
+      trackIndex: 0,
+      include: ["mixer"],
+      returnTracks: RETURN_TRACKS.slice(0, 1),
+    });
+
+    expect(result).not.toHaveProperty("sends");
+  });
+
+  it("fetches return tracks if not provided", () => {
+    setupTrackMixerMocks({
+      sendIds: ["send_1"],
+      sendValues: [-10.0],
+    });
+    setupReturnTrackNames(["FetchedReverb"]);
+
+    const result = readOneTrack({
+      trackIndex: 0,
+      include: ["mixer"],
+    });
+
+    expect(result).toHaveProperty("sends");
+    const sends = result.sends as Record<string, unknown>[];
+
+    expect(sends).toHaveLength(1);
+    expect(sends[0]).toStrictEqual({
+      gainDb: -10.0,
+      return: "FetchedReverb",
+      returnId: "return1",
+    });
+  });
+
+  it("rounds track and send gain to Live's 0.01 dB steps", () => {
+    // Live's raw float32 reads back as -6.333000183105469.
+    setupTrackMixerMocks({
+      volumeProperties: { display_value: -6.333000183105469 },
+      sendIds: ["send_1"],
+      sendValues: [-6.333000183105469],
+    });
+    setupReturnTrackNames(["Reverb"]);
+
+    const result = readOneTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("gainDb", -6.33);
+    const sends = result.sends as Record<string, unknown>[];
+
+    expect(sends[0]).toHaveProperty("gainDb", -6.33);
+  });
+
+  it("says on the track's own entry when the send count doesn't match", () => {
+    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    setupTrackMixerMocks({
+      sendIds: ["send_1", "send_2"],
+      sendValues: [-12.5, -6.0],
+    });
+
+    const result = readOneTrack({
+      trackIndex: 0,
+      include: ["mixer"],
+      returnTracks: RETURN_TRACKS.slice(0, 1),
+    });
+
+    expect(result.detail).toBe(
+      "send count (2) doesn't match return track count (1)",
+    );
+    expect(consoleSpy).not.toHaveBeenCalled();
+    // No return track lines up with the second send, so it carries no returnId
+    expectSendsWithReverbAndSecond(result, { return: "Return 2" });
+
+    consoleSpy.mockRestore();
+  });
+});

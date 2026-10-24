@@ -1,11 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
+import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 
 /**
  * Creates the scenes a clip destination past the last one needs. A slot path
@@ -33,8 +34,10 @@ export function createMissingScenes(
     return null;
   }
 
+  // The scenes stay whatever the write then does, even when a later one fails.
   for (let index = sceneCount; index <= sceneIndex; index++) {
     liveSet.call("create_scene", -1);
+    markSetChanged();
   }
 
   return createdRange("s", sceneCount, sceneIndex);

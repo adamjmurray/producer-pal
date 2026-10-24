@@ -2,7 +2,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Print unit test statistics per code tree: test counts, coverage, density, and
@@ -13,6 +13,9 @@
  *   test-reports/vitest.json        — vitest json reporter
  *   coverage/coverage-summary.json  — vitest json-summary coverage reporter
  *
+ * Adds a remote-script row when CI has saved the Python test output (see
+ * remote-script-test-stats.ts).
+ *
  * Usage:
  *   node scripts/stats/test-stats.ts              # CLI tables (default)
  *   node scripts/stats/test-stats.ts --markdown   # Markdown tables (for CI)
@@ -21,6 +24,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getCoverageThresholds } from "../build-and-release/helpers/thresholds.ts";
+import { readRemoteScriptStats } from "./remote-script-test-stats.ts";
 import {
   printCliCoverageTable,
   printCliSlowestTable,
@@ -74,7 +78,7 @@ interface CoverageCounts {
 type CoverageFileEntry = Record<CoverageMetric, CoverageCounts>;
 
 export interface TreeStats {
-  tree: Tree;
+  tree: Tree | "remote-script";
   testFiles: number;
   tests: number;
   skipped: number;
@@ -92,6 +96,8 @@ export interface SlowestFile {
 
 export interface TestStatsReport {
   trees: TreeStats[];
+  /** The Python suite: in the test table, but has no coverage. */
+  remoteScript: TreeStats | null;
   slowest: SlowestFile[];
   overall: Record<CoverageMetric, number>;
   thresholds: Record<CoverageMetric, number>;
@@ -113,6 +119,7 @@ async function main(): Promise<void> {
 
   const report: TestStatsReport = {
     trees: aggregateByTree(results, coverage),
+    remoteScript: readRemoteScriptStats(),
     slowest: findSlowestFiles(results),
     overall: overallCoverage(coverage),
     thresholds: await getCoverageThresholds(),

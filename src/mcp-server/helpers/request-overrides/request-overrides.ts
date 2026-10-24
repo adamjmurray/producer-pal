@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Per-call overrides exposed to callers of `callLiveApi`. These are caller-
@@ -32,4 +32,9 @@ export interface RequestOverrides {
    * see resolveRequestProfile, which is what keeps them from drifting.
    */
   notation?: Notation;
+  /**
+   * Aborts when the caller goes away, so a queued write leaves without
+   * running. Node-only: the write queue strips it before the call reaches V8.
+   */
+  signal?: AbortSignal;
 }

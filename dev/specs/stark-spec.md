@@ -116,7 +116,17 @@ chords: Cm7 [Eb G C']      # a symbol, then an explicit voicing (chord register)
 A **note token** (melody/bass) is, in order: `letter` (`A`–`G`,
 case-insensitive) + **accidental** (`#`/`b`, _immediately after the letter_, so
 `Cb` = C-flat while a lone `b` = note B) + an optional **absolute octave** +
-suffix modifiers in **any order**:
+suffix modifiers in **any order**. The accidentals are `#`, lowercase `b`, and
+the `♯`/`♭` glyphs (normalized to `#`/`b` by the grammar, so nothing downstream
+sees them; the Skills teach `#`/`b` only). Unlike bar|beat, an uppercase `B` is
+never a flat (it's the note B). An accidental glued right after the octave
+number or an octave mark — even one that follows a duration or accent (`A3b`,
+`E'b`, `E/8'b`) — is refused, not read as a note plus a stray B. The error gives
+the flat reading (`Ab3`), and for a lowercase `b` after marks alone also the
+two-note reading (`E' b`). An accidental after a duration, accent or repeat with
+no mark before it (`C/4b`) still starts a new note. The same accidentals work
+everywhere Stark reads one: bracket-chord notes, drum-header pitch names, chord
+roots, slash bass, and chord qualities (`7♯9` = `7#9`):
 
 - **absolute octave** — a number bound right after the accidental (`C3`, `F#1`,
   `Gb-1`), Ableton convention (C3 = 60). It pins the pitch instead of placing it
@@ -147,9 +157,9 @@ On a `chords` line a **bare** token is a chord symbol (never a single note):
 
 - **root** — `letter` (`A`–`G`, case-insensitive) + optional **accidental**
   `#`/`b` bound immediately, exactly like a note root (`Ebm7`, `Bb7`). No
-  absolute octave here: the digits are qualities (`C7` = dominant seventh, `C9`
-  = ninth), so a symbol places itself with octave marks only. Inside a `[..]`
-  voicing on the same line, absolute octaves work as usual.
+  absolute octave here: the digits are qualities (`C7` = dominant seventh,
+  `C9` = ninth), so a symbol places itself with octave marks only. Inside a
+  `[..]` voicing on the same line, absolute octaves work as usual.
 - **quality** — the suffix that names the chord. **Bare root = major triad**
   (`C` = C major); `m`/`min` = minor. The vocabulary (`chord-symbols.ts`'s
   `CHORD_QUALITY_INTERVALS`) covers triads (`maj`/`M`, `m`/`min`, `dim`,
@@ -165,9 +175,9 @@ On a `chords` line a **bare** token is a chord symbol (never a single note):
   repeat as a note, applied to the whole chord. (Known collision: a `6/9` chord
   clashes with slash/duration — spell it `69`.)
 
-**Voicing (v1):** closed, root position, stacked up from the chords register (C2
-= 48); a slash bass is placed at the highest octave strictly below the root (a
-chord tone → inversion, else an added bottom). Octave marks shift the whole
+**Voicing (v1):** closed, root position, stacked up from the chords register
+(C2 = 48); a slash bass is placed at the highest octave strictly below the root
+(a chord tone → inversion, else an added bottom). Octave marks shift the whole
 chord. No drop/open/spread voicings. An **unknown quality is an error** — the
 interpreter rejects the token by name (like any other invalid syntax) rather
 than guessing. This is what catches a missing space: `CG` lexes as one token
@@ -236,9 +246,9 @@ quarter-note beats.
 ## Repeat (`*N`)
 
 A trailing `*N` expands the fully-formed token into **N** consecutive copies at
-interpret time: `X*16` = sixteen `X` hits, `C/8*4` = four eighth-note Cs, `z*3`
-= three rests, `[C E G]*2` = the chord twice. It is pure syntactic sugar — each
-copy is an independent note (a hit re-rolls its velocity within the bucket,
+interpret time: `X*16` = sixteen `X` hits, `C/8*4` = four eighth-note Cs,
+`z*3` = three rests, `[C E G]*2` = the chord twice. It is pure syntactic sugar —
+each copy is an independent note (a hit re-rolls its velocity within the bucket,
 exactly as separate tokens do) and time advances by the copies' summed duration.
 
 `N` is an integer **≥ 1** with no leading zero (`*0` is a parse error; `*1` is a

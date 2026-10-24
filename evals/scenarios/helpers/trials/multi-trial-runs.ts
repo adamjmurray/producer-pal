@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Repeat/trials runs for the eval CLI: repeat count, per-trial Live Set opens,
@@ -203,4 +203,33 @@ export function planTrialLiveSetOpens(
   return Array.from({ length: repeatCount }, (_unused, index) =>
     index === 0 ? liveSetAlreadyOpened : reuseLiveSet === true,
   );
+}
+
+/**
+ * Whether a Live Set is known to be open after a scenario's trials. A run that
+ * errored may have died partway through the open, so it counts as not opened
+ * and the next run opens the Set again.
+ *
+ * @param results - The scenario's trial results, in order
+ * @returns True when the last trial ran far enough to have opened the Set
+ */
+export function liveSetLeftOpen(results: JsonEvalResult[]): boolean {
+  const last = results.at(-1);
+
+  return last != null && last.result !== "error";
+}
+
+/**
+ * Whether the next run may inherit this scenario's Live Set: only a
+ * `reuseLiveSet` scenario resets what it writes.
+ *
+ * @param reuseLiveSet - The scenario's `reuseLiveSet` flag
+ * @param results - The scenario's trial results, in order
+ * @returns True when the next run can skip the reopen
+ */
+export function liveSetLeftClean(
+  reuseLiveSet: boolean | undefined,
+  results: JsonEvalResult[],
+): boolean {
+  return reuseLiveSet === true && liveSetLeftOpen(results);
 }

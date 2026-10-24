@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Scenario: the Direct Live API tool as an escape hatch — reached for when
@@ -28,12 +28,12 @@ const SEARCH_TEMPO_TURN = 1;
 /** Read the metronome back the only way there is to read it. */
 const READ_METRONOME = {
   path: "live_set",
-  operations: [{ type: "getProperty", property: "metronome" }],
+  operations: [{ type: "get-property", property: "metronome" }],
 };
 
-/** One entry of a ppal-live-api result. */
+/** A ppal-live-api result. */
 interface LiveApiResult {
-  results?: Array<{ result?: unknown }>;
+  results?: unknown[];
 }
 
 /**
@@ -119,10 +119,9 @@ export const liveApiEscapeHatch: EvalScenario = {
       type: "state",
       tool: TOOL_LIVE_API,
       args: READ_METRONOME,
-      expect: (result) =>
-        Number((result as LiveApiResult).results?.[0]?.result) === 1,
+      expect: (result) => Number((result as LiveApiResult).results?.[0]) === 1,
       explain: (result) =>
-        `expected metronome on, got ${String((result as LiveApiResult).results?.[0]?.result)}`,
+        `expected metronome on, got ${String((result as LiveApiResult).results?.[0])}`,
     },
 
     { type: "token_usage", maxTokens: 2_000 },

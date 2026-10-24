@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The V8 side of a request/response pair with Node: one message out the outlet,
 // one answer back, with a timeout in case none comes. Both the node_request and
@@ -106,12 +106,13 @@ export function requestChannel(spec: ChannelSpec): RequestChannel {
           try {
             outlet(0, spec.requestMessage, requestId, payload);
           } catch (error) {
+            pending.delete(requestId);
+            task.schedule(-1);
+
             if (!spec.reportSendFailure) {
               throw error;
             }
 
-            pending.delete(requestId);
-            task.schedule(-1);
             fail(`Failed to send ${subject}: ${asMessage(error)}`);
           }
         }),

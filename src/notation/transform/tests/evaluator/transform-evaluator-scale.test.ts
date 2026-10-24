@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { scaleIntervalsToPitchClassMask } from "#src/shared/pitch.ts";
@@ -98,25 +98,6 @@ describe("Transform Evaluator - snap()", () => {
 
       // -3 → nearest in-scale >= 0 is C (0)
       expect(result.pitch!.value).toBe(0);
-    });
-  });
-
-  describe("error handling", () => {
-    it("throws for zero arguments", () => {
-      const result = evaluateTransform("pitch = snap()", CTX, {
-        "scale:mask": C_MAJOR_MASK,
-      });
-
-      // Should fail to evaluate, returning empty result
-      expect(result.pitch).toBeUndefined();
-    });
-
-    it("throws for two arguments", () => {
-      const result = evaluateTransform("pitch = snap(60, 62)", CTX, {
-        "scale:mask": C_MAJOR_MASK,
-      });
-
-      expect(result.pitch).toBeUndefined();
     });
   });
 
@@ -239,32 +220,6 @@ describe("Transform Evaluator - step()", () => {
 
       // Should clamp to lowest in-scale pitch >= 0 (C-2 = 0)
       expect(result.pitch!.value).toBe(0);
-    });
-  });
-
-  describe("error handling", () => {
-    it("returns undefined for zero arguments", () => {
-      const result = evaluateTransform("pitch = step()", CTX, {
-        "scale:mask": C_MAJOR_MASK,
-      });
-
-      expect(result.pitch).toBeUndefined();
-    });
-
-    it("returns undefined for one argument", () => {
-      const result = evaluateTransform("pitch = step(60)", CTX, {
-        "scale:mask": C_MAJOR_MASK,
-      });
-
-      expect(result.pitch).toBeUndefined();
-    });
-
-    it("returns undefined for three arguments", () => {
-      const result = evaluateTransform("pitch = step(60, 2, 3)", CTX, {
-        "scale:mask": C_MAJOR_MASK,
-      });
-
-      expect(result.pitch).toBeUndefined();
     });
   });
 

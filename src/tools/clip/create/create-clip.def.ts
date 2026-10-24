@@ -1,17 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z } from "zod";
 import { MAX_CODE_LENGTH, TAKE_LANE_NOTE } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
+import { clipSlotAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { audioClipParams } from "#src/tools/shared/schema/audio-clip-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import {
-  aliasParam,
-  deprecatedParam,
-} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
@@ -20,7 +18,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   // own — `firstStart` is not one of them there.
   description: {
     default:
-      "Create MIDI or audio clip(s). Requires path — 't0/s0' for the session, 't0[5|1]' for the arrangement. " +
+      "Create MIDI or audio clip(s). Requires path. " +
       "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
       "The sample defines an audio clip's region, so start/length/firstStart/looping are MIDI-only. " +
       "Params with no list form apply to every clip.",
@@ -50,22 +48,10 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         "where the clip goes, 0-based: 't0/s0' = first track, first scene (session); 't0[5|1]' = bar 5 on the first track's arrangement. A number the user says is 1-based - their \"scene 3\" is s2",
     }),
 
-    slot: deprecatedParam(z.coerce.string().optional(), {
-      replacedBy: "path",
-    }),
-
-    // Models reach for these on their own, well-foundedly: they name a track
-    // and a scene everywhere else in the toolset. Catching the guess costs a
-    // warning; refusing it costs a round trip.
-    trackIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
-      canonical: "path",
-      example: "t0/s0",
-    }),
-
-    sceneIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
-      canonical: "path",
-      example: "t0/s0",
-    }),
+    // Models reach for the index aliases on their own, well-foundedly: they
+    // name a track and a scene everywhere else in the toolset. Catching the
+    // guess costs a warning; refusing it costs a round trip.
+    ...clipSlotAliases("t0/s0"),
 
     arrangementStart: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",
@@ -96,12 +82,12 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         "bar|beat position where loop/clip region begins (clip meter); or comma-separated one per path",
       ),
 
-    length: z
-      .string()
-      .optional()
-      .describe(
+    length: param(z.string().optional(), {
+      default:
+        "duration, e.g. '4bar' (see Skills). Clip meter. MIDI only, default: next full bar after latest note. Audio clip length comes from the sample. Or comma-separated one per path",
+      smallModel:
         "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'). Clip meter. MIDI only, default: next full bar after latest note. Audio clip length comes from the sample. Or comma-separated one per path",
-      ),
+    }),
 
     looping: z.boolean().optional().describe("enable looping for the clip"),
 

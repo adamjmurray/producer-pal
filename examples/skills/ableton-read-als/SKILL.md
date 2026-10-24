@@ -62,6 +62,8 @@ becomes `{ file, error }` so one bad Set doesn't stop the batch.
   or `au` and `name` is the plug-in's name; their `parameters` are only the ones
   configured in Live's device panel, as 0–1 normalized values.
 - A `preset` is present only when a `.adv`, `.adg`, or `.amxd` was loaded.
+- When two macros or plug-in parameters share a name, the later ones get a
+  numbered key: `Filter`, `Filter (2)`.
 
 ## Batch analysis pattern
 

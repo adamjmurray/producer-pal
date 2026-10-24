@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   type MixerApplied,
@@ -9,6 +9,7 @@ import {
 } from "#src/tools/shared/device/helpers/param-writing.ts";
 import {
   type TargetNotes,
+  noteLanded,
   refuseTargetWork,
 } from "#src/tools/shared/helpers/target-notes.ts";
 import {
@@ -110,6 +111,7 @@ export function applyMixerProperties(
 
   if (panningMode != null) {
     mixer.set("panning_mode", panningMode === "split" ? 1 : 0);
+    noteLanded(notes, "panningMode");
   }
 
   // The mode the pan params are written under: the one just set, else the

@@ -1,14 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Where a clip lands. An arrangement address has two halves, the lane and the
 // time, and a destination may name either or both: `t0[5|1]` is both, `t0`
 // keeps the clip's position, and `[5|1]` keeps its lane. Sources take neither
-// partial; see dev/tools/object-paths/README.md, "Complete and partial".
+// partial; see dev/specs/tool-behavior/object-paths/README.md, "Complete and partial".
 
-import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
+import { refuseNamedTwice } from "#src/tools/shared/helpers/param-presence.ts";
 import { parseObjectPath, type ObjectPath } from "../object-path.ts";
 import {
   parseObjectPathList,
@@ -77,6 +77,32 @@ export function destinationLane(
 }
 
 /**
+ * What a toPath of one entry names: a bare `[5|1]` (or an entry that doesn't
+ * parse, which is reported where it's resolved), or a track or take lane with
+ * no position. A slot is neither — arrangementStart doesn't move it.
+ * @param paths - toPath's entries, in call order
+ * @returns Whether the lone entry is bare, or a track or lane alone
+ */
+export function loneToPath(paths: string[]): {
+  bare: boolean;
+  trackOrLane: boolean;
+} {
+  const only = paths.length === 1 ? (paths[0] as string) : null;
+
+  if (only == null) {
+    return { bare: false, trackOrLane: false };
+  }
+
+  const lane = destinationLane(only, "toPath");
+
+  return {
+    bare: lane == null,
+    trackOrLane:
+      lane != null && lane.kind !== "slot" && !pathCarriesPosition(only),
+  };
+}
+
+/**
  * Whether a path param carries a `[song position]`. A "[" is only ever the
  * start of one — anything else the parser reports itself.
  * @param value - Raw path param value
@@ -100,12 +126,10 @@ export function refuseDoubledPosition(
   arrangementStart: string | null | undefined,
   label: string,
 ): void {
-  if (!pathCarriesPosition(rawPath) || !paramNamesSomething(arrangementStart)) {
-    return;
-  }
-
-  throw new Error(
-    `${label} "${rawPath?.trim()}" and arrangementStart both name a song ` +
-      `position; use one`,
-  );
+  refuseNamedTwice({
+    param: label,
+    value: pathCarriesPosition(rawPath) ? rawPath : undefined,
+    noun: "song position",
+    also: { arrangementStart },
+  });
 }

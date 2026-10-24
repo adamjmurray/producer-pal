@@ -1,11 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // @vitest-environment happy-dom
 
 import "fake-indexeddb/auto";
+import { openDB } from "idb";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   decryptApiKey,
@@ -129,6 +130,59 @@ describe("api-key-crypto", () => {
 
       resetKeyCache();
       expect(await decryptApiKey(encrypted)).toBe(plain);
+    });
+  });
+
+  describe("two tabs creating the first key", () => {
+    it("keeps the key another tab stored first, so its envelopes still decrypt", async () => {
+      const generate = crypto.subtle.generateKey.bind(crypto.subtle);
+      const otherTabKey = (await generate(
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"],
+      )) as CryptoKey;
+      const iv = new Uint8Array(12);
+      const otherTabCipher = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv },
+        otherTabKey,
+        new TextEncoder().encode("other-tab-secret"),
+      );
+
+      // The other tab stores its key while this tab is still generating.
+      vi.spyOn(crypto.subtle, "generateKey").mockImplementationOnce(
+        async (...args: Parameters<typeof generate>) => {
+          const db = await openDB(DB_NAME, 1, {
+            upgrade: (d) => d.createObjectStore("keys"),
+          });
+
+          await db.put("keys", otherTabKey, "api-key-encryption-key");
+          db.close();
+
+          return await generate(...args);
+        },
+      );
+
+      const mine = await encryptApiKey("my-secret");
+
+      resetKeyCache();
+
+      expect(await decryptApiKey(mine)).toBe("my-secret");
+
+      const db = await openDB(DB_NAME, 1);
+      const stored = (await db.get(
+        "keys",
+        "api-key-encryption-key",
+      )) as CryptoKey;
+
+      db.close();
+
+      const roundTrip = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv },
+        stored,
+        otherTabCipher,
+      );
+
+      expect(new TextDecoder().decode(roundTrip)).toBe("other-tab-secret");
     });
   });
 });

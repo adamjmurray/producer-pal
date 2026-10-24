@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -61,5 +61,15 @@ describe("useSyncActiveMeta", () => {
       notation: "stark",
       enabledTools: { "ppal-read-clip": false },
     });
+  });
+
+  it("mirrors the imported flag into the ref", () => {
+    const ref: { current: ActiveMeta | null } = { current: null };
+
+    renderHook(() =>
+      useSyncActiveMeta(ref, { ...ALL_NULL, activeImported: true }),
+    );
+
+    expect(ref.current?.imported).toBe(true);
   });
 });

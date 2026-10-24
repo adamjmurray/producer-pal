@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { children, expectedTrack } from "#src/test/mocks/mock-live-api.ts";
@@ -189,8 +189,6 @@ describe("readLiveSet - basic reading", () => {
           isGroup: true,
           playingSlotIndex: 2,
           firedSlotIndex: 3,
-          sessionClipCount: 2,
-          arrangementClipCount: 0,
           deviceCount: 0,
         },
         {

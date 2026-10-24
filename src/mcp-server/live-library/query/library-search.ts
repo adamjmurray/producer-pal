@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Structured search against Live's browser DB.
@@ -40,6 +40,8 @@ import {
   resolveFileIdForPath,
   type SearchRow,
 } from "./candidate-query.ts";
+import { presetFolderNote } from "./preset-folder-note.ts";
+import { rackKindNote } from "./rack-kind-note.ts";
 
 /**
  * Run a structured library search.
@@ -114,10 +116,17 @@ export async function librarySearch(
         await verifyItemPaths(items);
       }
 
+      const notes = [
+        presetFolderNote(db, args, parentId),
+        rackKindNote(db, args, parentId, items.length),
+      ].filter((n) => n != null);
+      const note = notes.length > 0 ? notes.join("; ") : undefined;
+
       return {
         dbAvailable: true,
         ...(stalenessRisk && { stalenessRisk }),
         items,
+        ...(note != null && { note }),
       };
     } finally {
       db.close();
@@ -218,10 +227,10 @@ function buildSearchQuery(
  *
  * Sort variants:
  *   - "name":      f.name ASC                                ↔ a.name.localeCompare(b.name)
- *   - "mod_date":  f.mod_date DESC, f.name ASC               ↔ (DB items trust upstream order)
- *   - "use_count": f.use_count DESC, f.mod_date DESC, name   ↔ b.useCount - a.useCount || name
+ *   - "mod-date":  f.mod_date DESC, f.name ASC               ↔ (DB items trust upstream order)
+ *   - "use-count": f.use_count DESC, f.mod_date DESC, name   ↔ b.useCount - a.useCount || name
  *
- * @param sort - Sort enum (defaults to use_count)
+ * @param sort - Sort enum (defaults to use-count)
  * @returns SQL fragment safe to inline (no params)
  */
 function orderByClause(sort: LibrarySearchArgs["sort"]): string {
@@ -229,11 +238,11 @@ function orderByClause(sort: LibrarySearchArgs["sort"]): string {
     return "f.name ASC";
   }
 
-  if (sort === "mod_date") {
+  if (sort === "mod-date") {
     return "f.mod_date DESC, f.name ASC";
   }
 
-  // Default use_count sort: stable tiebreakers so a fresh user (where most
+  // Default use-count sort: stable tiebreakers so a fresh user (where most
   // rows have use_count=0) doesn't fall back to whatever the index returns.
   return "f.use_count DESC, f.mod_date DESC, f.name ASC";
 }

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Track and scene addressing. The clip half of the grammar is taught in
 // `arrangement-write`, gated on the clip writers; this is the half every
@@ -28,9 +28,9 @@ A track's \`type\` says \`midi\` or \`audio\`, nothing else. It's absent on a re
 
 The \`+\` spellings name a place that doesn't exist yet, for creating: \`t+\` appends a track, \`rt+\` adds a return track, \`s+\` appends a scene. On create, \`t2\` inserts at 2 instead. Return tracks always go on the end, so \`rt2\` reads an existing one but is not a place you can create at.
 
-Make several with a comma-separated path list, one entry per object, in order: \`t+,t+,t+\` appends three tracks, \`s+,s+\` appends two scenes, \`t2,t2\` inserts two tracks at 2 with the second after the first. Text params (\`name\`, \`color\`, a scene's \`timeSignature\`) also take a list that pairs with it 1:1; numbers, true/false and fixed choices apply to every object. With one target a comma is part of the value; with several, write it as \`\\,\` (\`Verse\\, take 2\`).
+Make several with a comma-separated path list, one entry per object, in order: \`t+,t+,t+\` appends three tracks, \`s+,s+\` appends two scenes, \`t2,t2\` inserts two tracks at 2 with the second after the first. Text params (\`name\`, \`color\`, a scene's \`timeSignature\`) also take a list that pairs with it 1:1; numbers, true/false and fixed choices apply to every object. With one target a comma is part of the value; with several, write it as \`\\,\` (\`Verse\\, take 2\`). Leave backslashes out of names: Live keeps them, but they read back dropped (macOS) or as a slash (Windows).
 
-A clip slot past the last scene makes the scenes up to it — writing a clip there, moving one there, copying one there — and the entry's \`created\` says which (\`created: "s8-s9"\`). A path past the last rack chain (\`t0/d0/c2\`) or take lane (\`t0/l2\`) fills the gap the same way, and \`created\` names those too (\`c1-c2\`, \`l1-l2\`). Updating a scene never makes one: only a destination says what a new scene would hold.
+A clip slot past the last scene makes the scenes up to it — writing a clip there, moving one there, copying one there — and the entry's \`created\` says which (\`created: "s8-s9"\`). A path past the last rack chain (\`t0/d0/c2\`) or take lane (\`t0/l2\`) fills the gap the same way, and \`created\` names those too (\`c1-c2\`, \`l1-l2\`). If the device is then refused, the error names the empty chains left behind (\`left 2 empty chains: c1-c2\`). Updating a scene never makes one: only a destination says what a new scene would hold.
 
 A track's take lanes are \`ppal-update-track\`'s: \`t2/l+\` appends one (each \`l+\` in the list its own), and \`t2/l<n>\` names an existing lane, creating the lanes up to it. \`name\` is the only param a lane takes, and \`ppal-read-track\` reads a lane path too.`;
 

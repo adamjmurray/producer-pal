@@ -16,7 +16,7 @@ environment variables are listed in the
 
 ## Installation Steps
 
-<!--@include: ../_partials/install-device.md-->
+<!--@include: ../_partials/setup-by-ai.md-->
 
 ### 2. Configure Your AI
 
@@ -39,8 +39,8 @@ This option requires [Node.js 20+](https://nodejs.org/en/download).
 
 Add the `--small-model-mode` flag to enable
 [Small Model Mode](./bionic#_4-tune-it-for-your-model-recommended), which
-simplifies the tool interface for smaller LLMs and automatically enables it on
-the device when connected:
+simplifies the tool interface for smaller LLMs. It applies to this client only
+and doesn't change the device:
 
 ```json
 {
@@ -70,9 +70,8 @@ ones you don't:
 ::: details Advanced: enabling the Direct Live API
 
 Add the `--live-api` flag to turn on the opt-in
-[Direct Live API](/features/tools#ppal-live-api) tool (`ppal-live-api`) when the
-server connects — the same setting as the device's **Setup** tab, so it's global
-to the device:
+[Direct Live API](/features/tools#ppal-live-api) tool (`ppal-live-api`) for this
+client only. It doesn't change the device's **Setup** tab or other clients:
 
 ```json
 {

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   type PathLike,
@@ -14,18 +14,24 @@ import {
   readdirSync,
   rmSync,
   symlinkSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EMBEDDED_REMOTE_SCRIPT_FILES } from "../embedded-remote-script.ts";
+import { EMBEDDED_REMOTE_SCRIPT_FILES } from "../bundle/embedded-remote-script.ts";
 import {
-  RemoteScriptInstallError,
   installRemoteScript,
   remoteScriptPath,
-} from "../remote-script-install.ts";
-import { readRemoteScriptSource } from "../remote-script-source.ts";
+} from "../install/remote-script-install.ts";
+import { BUILD_COMMIT_FILE } from "../bundle/remote-script-build.ts";
+import { readRemoteScriptSource } from "../bundle/remote-script-source.ts";
+import { UserLibraryFolderError } from "../user-library/user-library-folder.ts";
+import {
+  PY_ONLY_SOURCE,
+  writeScriptTreeWithJunk,
+} from "./remote-script-test-helpers.ts";
 
 const { homedir } = vi.hoisted(() => ({ homedir: vi.fn<() => string>() }));
 // Path prefixes whose fs calls should fail.
@@ -33,6 +39,8 @@ const fault = vi.hoisted(() => ({
   renameFrom: [] as string[],
   rm: [] as string[],
   readdir: false,
+  // Throw a bare string instead of an Error.
+  renameBare: false,
 }));
 
 // The install expands "~", and a test can't write to the real home folder.
@@ -50,7 +58,11 @@ vi.mock(import("node:fs"), async (importOriginal) => {
     ...actual,
     renameSync: (from: PathLike, to: PathLike) => {
       if (fault.renameFrom.some((prefix) => String(from).startsWith(prefix))) {
-        throw new Error(`EPERM: rename ${String(from)}`);
+        const message = `EPERM: rename ${String(from)}`;
+
+        const thrown: unknown = fault.renameBare ? message : new Error(message);
+
+        throw thrown;
       }
 
       actual.renameSync(from, to);
@@ -82,6 +94,7 @@ beforeEach(() => {
   fault.renameFrom = [];
   fault.rm = [];
   fault.readdir = false;
+  fault.renameBare = false;
   scratchDir = mkdtempSync(join(tmpdir(), "ppal-remote-script-"));
   homedir.mockReturnValue(scratchDir);
 });
@@ -92,19 +105,9 @@ afterEach(() => {
 
 describe("readRemoteScriptSource", () => {
   it("reads .py files at any depth and leaves everything else out", () => {
-    mkdirSync(join(scratchDir, "__pycache__"));
-    mkdirSync(join(scratchDir, "nested"));
-    writeFileSync(join(scratchDir, "__init__.py"), "top", "utf8");
-    writeFileSync(join(scratchDir, ".DS_Store"), "finder", "utf8");
-    writeFileSync(join(scratchDir, "nested/notes.txt"), "scratch", "utf8");
-    writeFileSync(join(scratchDir, "stale.pyc"), "bytecode", "utf8");
-    writeFileSync(join(scratchDir, "__pycache__/a.pyc"), "bytecode", "utf8");
-    writeFileSync(join(scratchDir, "nested/deep.py"), "deep", "utf8");
+    writeScriptTreeWithJunk(scratchDir);
 
-    expect(readRemoteScriptSource(scratchDir)).toStrictEqual({
-      "__init__.py": "top",
-      "nested/deep.py": "deep",
-    });
+    expect(readRemoteScriptSource(scratchDir)).toStrictEqual(PY_ONLY_SOURCE);
   });
 });
 
@@ -134,6 +137,25 @@ describe("installRemoteScript", () => {
     }
   });
 
+  it("writes the installing commit beside the script, for /ping", async () => {
+    vi.stubEnv("BUILD_SHA", "1a2b3c4");
+    vi.resetModules();
+    const fresh = await import("../install/remote-script-install.ts");
+
+    const { path } = fresh.installRemoteScript(scratchDir);
+
+    expect(readFileSync(join(path, BUILD_COMMIT_FILE), "utf8")).toBe(
+      "1a2b3c4\n",
+    );
+    vi.unstubAllEnvs();
+  });
+
+  it("writes no commit file when the build doesn't know its commit", () => {
+    const { path } = installRemoteScript(scratchDir);
+
+    expect(existsSync(join(path, BUILD_COMMIT_FILE))).toBe(false);
+  });
+
   it("replaces the folder, so a removed module doesn't linger", () => {
     const { path } = installRemoteScript(scratchDir);
 
@@ -149,7 +171,7 @@ describe("installRemoteScript", () => {
 
   it("refuses a folder that isn't there", () => {
     expect(() => installRemoteScript(join(scratchDir, "nope"))).toThrow(
-      RemoteScriptInstallError,
+      UserLibraryFolderError,
     );
   });
 
@@ -230,6 +252,32 @@ describe("installRemoteScript", () => {
     ).toBe("old install");
   });
 
+  it("leaves nothing behind when a first install can't be moved in", () => {
+    const path = remoteScriptPath(scratchDir);
+
+    fault.renameFrom = [`${path}.tmp-`];
+
+    expect(() => installRemoteScript(scratchDir)).toThrow("EPERM");
+    expect(readdirSync(join(scratchDir, "Remote Scripts"))).toStrictEqual([]);
+  });
+
+  it("rethrows a non-Error swap failure as is when the old install can't be put back", () => {
+    const { path } = installRemoteScript(scratchDir);
+
+    fault.renameFrom = [`${path}.tmp-`, `${path}.old-`];
+    fault.renameBare = true;
+
+    let thrown: unknown;
+
+    try {
+      installRemoteScript(scratchDir);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toMatch(/^EPERM: rename .*Producer_Pal\.tmp-[^ ]*$/);
+  });
+
   it("keeps installing when old installs can't be cleaned up", () => {
     const { path } = installRemoteScript(scratchDir);
 
@@ -245,11 +293,13 @@ describe("installRemoteScript", () => {
   it("clears only its own leftovers, whatever process made them", () => {
     const scripts = join(scratchDir, "Remote Scripts");
     const ours = [`tmp-${UUID}`, `old-${UUID}`].map((s) => `Producer_Pal.${s}`);
+    const longAgo = new Date(Date.now() - 120_000);
 
     installRemoteScript(scratchDir);
 
     for (const name of [...ours, "Producer_Pal.old-mybackup", "Other"]) {
       mkdirSync(join(scripts, name));
+      utimesSync(join(scripts, name), longAgo, longAgo);
     }
 
     installRemoteScript(scratchDir);
@@ -259,6 +309,61 @@ describe("installRemoteScript", () => {
       "Producer_Pal",
       "Producer_Pal.old-mybackup",
     ]);
+  });
+
+  it("leaves a young temp folder alone, since another install may be writing it", () => {
+    const young = join(
+      scratchDir,
+      "Remote Scripts",
+      `Producer_Pal.tmp-${UUID}`,
+    );
+
+    installRemoteScript(scratchDir);
+    mkdirSync(young);
+    installRemoteScript(scratchDir);
+
+    expect(existsSync(young)).toBe(true);
+  });
+
+  it("clears a temp leftover it can't read the age of, like a looped link", () => {
+    const looped = join(
+      scratchDir,
+      "Remote Scripts",
+      `Producer_Pal.tmp-${UUID}`,
+    );
+
+    installRemoteScript(scratchDir);
+    symlinkSync(looped, looped);
+
+    expect(installRemoteScript(scratchDir).path).toBe(
+      remoteScriptPath(scratchDir),
+    );
+    expect(readdirSync(join(scratchDir, "Remote Scripts"))).toStrictEqual([
+      "Producer_Pal",
+    ]);
+  });
+
+  it("reports the swap failure, not the cleanup's, when the new copy can't be removed", () => {
+    const { path } = installRemoteScript(scratchDir);
+
+    fault.renameFrom = [`${path}.tmp-`];
+    fault.rm = [`${path}.tmp-`];
+
+    expect(() => installRemoteScript(scratchDir)).toThrow(
+      /^EPERM: rename .*Producer_Pal\.tmp-.*new copy left at .*Producer_Pal\.tmp-/,
+    );
+    expect(existsSync(join(path, "__init__.py"))).toBe(true);
+  });
+
+  it("keeps the old install's whereabouts when the new copy can't be removed either", () => {
+    const { path } = installRemoteScript(scratchDir);
+
+    fault.renameFrom = [`${path}.tmp-`, `${path}.old-`];
+    fault.rm = [`${path}.tmp-`];
+
+    expect(() => installRemoteScript(scratchDir)).toThrow(
+      /old install left at .*Producer_Pal\.old-.*new copy left at/,
+    );
   });
 
   it("keeps a backup when there's no install, since it may be the only copy", () => {

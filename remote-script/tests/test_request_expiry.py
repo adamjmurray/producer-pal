@@ -1,7 +1,7 @@
 # Producer Pal
 # Copyright (C) 2026 Adam Murray
 # AI assistance: Claude (Anthropic)
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 """A request's `expires_in_ms`: Live skips a job it gets to too late.
 
@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Only Live's own Python has this module; the package imports it on load.
 sys.modules.setdefault("Live", types.ModuleType("Live"))
 
-from Producer_Pal import bridge  # noqa: E402
+from Producer_Pal import bridge, routes  # noqa: E402
 
 
 class Handler:
@@ -51,6 +51,20 @@ class BlockingHandler(Handler):
 
 
 class TimeoutRecorder:
+    """Stands in for a job's started flag: records the wait, then times out."""
+
+    def __init__(self):
+        self.timeouts = []
+
+    def wait(self, timeout=None):
+        self.timeouts.append(timeout)
+        return False
+
+    def is_set(self):
+        return False
+
+
+class ReplyRecorder:
     """Stands in for a job's reply queue: records the wait, then times out."""
 
     def __init__(self):
@@ -59,6 +73,17 @@ class TimeoutRecorder:
     def get(self, timeout=None):
         self.timeouts.append(timeout)
         raise queue.Empty
+
+
+def short_timeout(seconds):
+    """Make REQUEST_TIMEOUT short for a test; returns what undoes it."""
+    original = bridge.REQUEST_TIMEOUT
+    bridge.REQUEST_TIMEOUT = seconds
+
+    def restore():
+        bridge.REQUEST_TIMEOUT = original
+
+    return restore
 
 
 def job(handler, expires_in):
@@ -71,12 +96,12 @@ def dispatch(handler, params):
     """POST /load through the bridge, with Live running each job as it's queued."""
     surface = object.__new__(bridge.ProducerPalBridge)
     surface._jobs = types.SimpleNamespace(put=lambda queued: queued.run())
-    original = bridge.ROUTES["/load"]
-    bridge.ROUTES["/load"] = handler
+    original = routes.ROUTES["/load"]
+    routes.ROUTES["/load"] = handler
     try:
         return surface._dispatch("POST", "/load", params)
     finally:
-        bridge.ROUTES["/load"] = original
+        routes.ROUTES["/load"] = original
 
 
 class ExpiryTest(unittest.TestCase):
@@ -109,7 +134,7 @@ class ExpiryTest(unittest.TestCase):
 
     def test_waits_30s_with_no_expiry(self):
         pending = job(Handler(), None)
-        pending._reply = TimeoutRecorder()
+        pending._reply = ReplyRecorder()
 
         status, payload = pending.wait()
 
@@ -122,19 +147,23 @@ class ExpiryTest(unittest.TestCase):
 
     def test_waits_until_an_expiry_sooner_than_30s(self):
         pending = job(Handler(), 5)
-        pending._reply = TimeoutRecorder()
+        pending._started = TimeoutRecorder()
 
         pending.wait()
 
-        self.assertAlmostEqual(pending._reply.timeouts[0], 5, delta=0.5)
+        self.assertAlmostEqual(pending._started.timeouts[0], 5, delta=0.5)
 
-    def test_waits_30s_when_the_expiry_is_later(self):
+    def test_waits_until_an_expiry_later_than_30s(self):
+        # The client set the limit, so the 30s default doesn't cut it short.
         pending = job(Handler(), 100)
-        pending._reply = TimeoutRecorder()
+        pending._started = TimeoutRecorder()
 
-        pending.wait()
+        status, payload = pending.wait()
 
-        self.assertEqual(pending._reply.timeouts, [30.0])
+        self.assertAlmostEqual(pending._started.timeouts[0], 100, delta=0.5)
+        self.assertEqual(status, 504)
+        self.assertIn("expired before Live ran it", payload["error"])
+        self.assertNotIn("started", payload)
 
     def test_skips_a_job_the_http_side_gave_up_on(self):
         handler = Handler()
@@ -175,6 +204,83 @@ class ExpiryTest(unittest.TestCase):
 
         self.assertEqual(status, 504)
         self.assertIn("didn't finish", payload["error"])
+        # Live may have made the change, so the client must not call it a no-op.
+        self.assertIs(payload["started"], True)
+
+    def test_a_started_job_with_an_expiry_that_never_finishes_gets_a_504(self):
+        handler = BlockingHandler()
+        pending = job(handler, 60)
+        runner = threading.Thread(target=pending.run)
+        runner.start()
+        handler.started.wait(5)
+        restore = short_timeout(0.2)
+        try:
+            status, payload = pending.wait()
+        finally:
+            restore()
+            handler.release.set()
+        runner.join()
+
+        self.assertEqual(status, 504)
+        self.assertIn("didn't finish", payload["error"])
+        self.assertIs(payload["started"], True)
+
+    def test_a_queued_job_is_not_charged_for_its_wait(self):
+        # Queued for 1s, twice REQUEST_TIMEOUT: the old timer, counted from
+        # queueing, gave up on it at 0.5s.
+        restore = short_timeout(0.5)
+        handler = Handler()
+        pending = job(handler, 60)
+        threading.Timer(1.0, pending.run).start()
+        try:
+            self.assertEqual(pending.wait(), (200, {"ok": True}))
+        finally:
+            restore()
+
+        self.assertEqual(handler.calls, 1)
+
+    def test_the_run_timer_starts_when_the_job_does(self):
+        # Starts at 1.5s, past REQUEST_TIMEOUT, and runs 0.4s of its 0.8s. A
+        # timer counted from queueing would have given up before it started.
+        restore = short_timeout(0.8)
+        handler = BlockingHandler()
+        pending = job(handler, 60)
+        threading.Timer(1.5, pending.run).start()
+        threading.Timer(1.9, handler.release.set).start()
+        try:
+            self.assertEqual(pending.wait(), (200, {"ok": True}))
+        finally:
+            restore()
+            handler.release.set()
+
+    def test_a_job_with_no_expiry_gets_the_old_two_waits(self):
+        # Started at 0.1s and done at 0.8s: past REQUEST_TIMEOUT (0.5s) from
+        # queueing, within the second wait that follows it.
+        restore = short_timeout(0.5)
+        handler = BlockingHandler()
+        pending = job(handler, None)
+        threading.Timer(0.1, pending.run).start()
+        threading.Timer(0.8, handler.release.set).start()
+        try:
+            self.assertEqual(pending.wait(), (200, {"ok": True}))
+        finally:
+            restore()
+            handler.release.set()
+
+    def test_a_job_with_no_expiry_still_gives_up_waiting_to_start(self):
+        restore = short_timeout(0.05)
+        handler = Handler()
+        pending = job(handler, None)
+        try:
+            status, payload = pending.wait()
+        finally:
+            restore()
+        pending.run()
+
+        self.assertEqual(status, 504)
+        self.assertIn("did not run the request", payload["error"])
+        self.assertNotIn("started", payload)
+        self.assertEqual(handler.calls, 0)
 
 
 class DispatchTest(unittest.TestCase):
@@ -199,7 +305,7 @@ class DispatchTest(unittest.TestCase):
         self.assertEqual(handler.calls, 0)
 
     def test_refuses_a_bad_expires_in_ms(self):
-        for value in (-1, "soon", True, float("nan"), [5]):
+        for value in (-1, "soon", True, float("nan"), [5], float("inf")):
             with self.subTest(value=value):
                 handler = Handler()
 
@@ -208,6 +314,29 @@ class DispatchTest(unittest.TestCase):
                 self.assertEqual(status, 400)
                 self.assertIn("expires_in_ms must be a number", payload["error"])
                 self.assertEqual(handler.calls, 0)
+
+    def test_refuses_an_expires_in_ms_too_big_to_wait_for(self):
+        # 1e13 ms overflows the wait after the job is queued, so the change
+        # would run with nobody waiting.
+        for value in (1e13, bridge.MAX_EXPIRES_IN_MS + 1, "1e13"):
+            with self.subTest(value=value):
+                handler = Handler()
+
+                status, payload = dispatch(handler, {"expires_in_ms": value})
+
+                self.assertEqual(status, 400)
+                self.assertIn("expires_in_ms must be at most", payload["error"])
+                self.assertEqual(handler.calls, 0)
+
+    def test_takes_the_biggest_expires_in_ms(self):
+        handler = Handler()
+
+        status, _payload = dispatch(
+            handler, {"expires_in_ms": bridge.MAX_EXPIRES_IN_MS}
+        )
+
+        self.assertEqual(status, 200)
+        self.assertEqual(handler.calls, 1)
 
 
 if __name__ == "__main__":

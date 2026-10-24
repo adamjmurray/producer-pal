@@ -1,11 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   formatObjectPath,
@@ -40,6 +39,8 @@ interface EmptySlotResponse {
  * @param trackIndex - Track index (required if clipId not provided)
  * @param sceneIndex - Scene index (required if clipId not provided)
  * @param slotValidated - The caller already knows the slot is real (see ReadClipArgs)
+ * @param onEmptySlot - Told the track of a slot that is really empty, for a
+ *   caller that refuses some (see ReadClipArgs)
  * @returns Object with either found clip or empty slot response
  */
 export function resolveClip(
@@ -47,6 +48,7 @@ export function resolveClip(
   trackIndex: number | null,
   sceneIndex: number | null,
   slotValidated = false,
+  onEmptySlot?: (track: LiveAPI) => void,
 ): ResolveClipResult {
   if (clipId != null) {
     return { found: true, clip: validateIdType(clipId, "clip") };
@@ -68,7 +70,9 @@ export function resolveClip(
   // Nothing there: either the slot is empty or the address names something
   // that doesn't exist, and only telling those apart needs the track and scene.
   if (!slotValidated) {
-    assertSlotExists(trackIndex as number, sceneIndex as number);
+    const track = assertSlotExists(trackIndex as number, sceneIndex as number);
+
+    onEmptySlot?.(track);
   }
 
   return {
@@ -86,15 +90,20 @@ export function resolveClip(
  * Throw if a clip slot's track or scene isn't there, naming which one.
  * @param trackIndex - Track index
  * @param sceneIndex - Scene index
+ * @returns The track
  */
-function assertSlotExists(trackIndex: number, sceneIndex: number): void {
-  if (!LiveAPI.from(livePath.track(trackIndex)).exists()) {
+function assertSlotExists(trackIndex: number, sceneIndex: number): LiveAPI {
+  const track = LiveAPI.from(livePath.track(trackIndex));
+
+  if (!track.exists()) {
     throw new Error(`no track at "t${String(trackIndex)}"`);
   }
 
   if (!LiveAPI.from(livePath.scene(sceneIndex)).exists()) {
     throw new Error(`no scene at "s${String(sceneIndex)}"`);
   }
+
+  return track;
 }
 
 /**
@@ -178,9 +187,10 @@ interface ClipLocation {
 }
 
 /**
- * Resolve clip location from args. `path` wins, then the deprecated `slot`,
- * then the trackIndex/sceneIndex pair — which doubles as the hidden alias and
- * as how batch readers pass indices they already parsed.
+ * Resolve clip location from args: `path`, then the deprecated `slot`, then the
+ * trackIndex/sceneIndex pair — which doubles as the hidden alias and as how
+ * batch readers pass indices they already parsed. A path sent beside the pair
+ * is refused before this runs (read-clip's fan-out).
  * @param args - The location params as read-clip received them
  * @returns Resolved clipId, trackIndex, and sceneIndex
  */
@@ -191,17 +201,10 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
     value: args.path,
     alias: "slot",
     aliasValue: args.slot,
-    noun: "a clip",
+    noun: "clip",
   });
 
   if (path != null) {
-    // The aliases are a fallback for a caller that did not use path.
-    if (args.trackIndex != null || args.sceneIndex != null) {
-      console.warn(
-        'trackIndex/sceneIndex ignored — "path" already names the clip',
-      );
-    }
-
     const parsed = parseObjectPath(path, "path");
 
     // An arrangement clip has no slot to report — the path names it outright,
@@ -222,7 +225,7 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
   }
 
   if (slot != null) {
-    const position = parseSlot(slot);
+    const position = parseSlot(slot, "slot");
 
     assertClipIdAtSlot(clipId, position, "slot");
 

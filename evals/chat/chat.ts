@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Unified chat function using Vercel AI SDK streamText().
@@ -43,6 +43,7 @@ export async function runChat(
   const providerOptions = buildProviderOptions(
     options.provider,
     options.thinking,
+    options.model,
   );
 
   const rl = createReadline();

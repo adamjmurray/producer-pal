@@ -11,17 +11,25 @@ part is a file beside it.
 
 - [PRINCIPLES.md](PRINCIPLES.md) — first principles for tool design. Read before
   changing a tool's inputs, outputs, or failure behavior.
-- [architecture/](architecture/README.md) — how the pieces fit together.
+- [architecture/](architecture/README.md) — how the pieces fit together, the
+  Skills fragments, how tools reach the remote script, the write queue, and the
+  `~/.producer-pal` override layer.
+- [architecture/install-paths.md](architecture/install-paths.md) — the two ways
+  a new user is set up (the AI does it, or device first), and which code answers
+  each step.
 - [coding-standards/](coding-standards/README.md) — style guide and Live API
   reference.
 
 ## Tools
 
 - [tools/adding-a-tool.md](tools/adding-a-tool.md) — checklist for a new tool.
+- [tools/write-pipeline.md](tools/write-pipeline.md) — the shared pipeline every
+  write tool runs through, and how to add one.
 - [tools/tool-schemas.md](tools/tool-schemas.md) — shaping input schemas and
   per-mode param text.
-- [tools/object-paths/](tools/object-paths/README.md) — the path grammar every
-  tool uses to say where.
+- [specs/tool-behavior/](specs/tool-behavior/README.md) — how every tool answers
+  a call: the path grammar, lists, refusals, skips, result entries, and the
+  per-tool catalogs.
 - [tools/read-tool-includes/](tools/read-tool-includes/README.md) — what the
   read tools return, and their `include` param.
 - [tools/memory-system/](tools/memory-system/README.md) — the LLM-managed memory
@@ -33,12 +41,22 @@ part is a file beside it.
   can and can't be reused.
 - [live-api/performance.md](live-api/performance.md) — what object lifetime
   costs, and how to measure it.
-- [live-api/arrangement-operations.md](live-api/arrangement-operations.md) —
-  lengthening, splitting and moving arrangement clips.
+- [live-api/arrangement-operations/](live-api/arrangement-operations/README.md)
+  — lengthening, splitting and moving arrangement clips.
 - [live-api/device-param-labels.md](live-api/device-param-labels.md) — reading
   units and ranges off device parameters.
 - [live-api/specialized-devices/](live-api/specialized-devices/README.md) —
-  native devices with their own LOM class.
+  native devices with their own LOM class, and how Drum Racks are modeled.
+- [live-api/python-remote-script-api/](live-api/python-remote-script-api/README.md)
+  — what only the Python API can do, and how to probe it.
+- [live-api/clip-envelopes.md](live-api/clip-envelopes.md) — which clip
+  envelopes the Python API reaches, their units, curves and undo.
+- [live-api/arrangement-automation.md](live-api/arrangement-automation.md) —
+  what can read and write a track's arrangement automation lanes.
+- [live-api/conversions.md](live-api/conversions.md) — `Live.Conversions`: audio
+  clip to MIDI, Simpler or Drum Rack, and why the result is found by diff.
+- [live-api/rack-macro-mappings.md](live-api/rack-macro-mappings.md) — what can
+  be learned about rack macro mappings.
 
 ## Clients
 
@@ -61,13 +79,14 @@ part is a file beside it.
 
 ## Process
 
-- [process/releasing.md](process/releasing.md) — the release steps.
+- [process/releasing/](process/releasing/README.md) — the release steps.
 - [process/documentation-site.md](process/documentation-site.md) — the VitePress
   docs site.
 
 ## Reference
 
-- [specs/](specs/README.md) — grammar specs for bar|beat, transforms and Stark.
-- [decisions/](decisions/README.md) — ADRs: why settled choices went the way
-  they did.
+- [specs/](specs/README.md) — grammar specs for bar|beat, transforms and Stark,
+  and how every tool answers a call (`specs/tool-behavior/`).
+- [decisions/](decisions/README.md) — ADRs for rejected alternatives and choices
+  expensive to reconstruct. Current rules live in specs and docs.
 - [plans/](plans/README.md) — improvement plans not on the roadmap.

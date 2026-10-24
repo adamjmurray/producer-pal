@@ -1,14 +1,18 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A wrap says what a container holds when `inst`/`mfx<n>`/`afx<n>` names no
 // device in it — the only thing a wrap can say, since it answers with one rack
 // for the whole call rather than an entry per device.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  beginWarningCapture,
+  capturedWarnings,
+  changedNothing,
+} from "#src/shared/max/v8-warning-capture.ts";
 import {
   type RegisteredMockObject,
   livePath,
@@ -174,9 +178,14 @@ describe("updateDevice - wrapInRack with an instrument and its effects", () => {
       return null;
     };
 
+    const capture = beginWarningCapture();
+
     expect(() =>
       updateDevice({ path: "t0/d0,t0/d1", wrapInRack: true }),
-    ).toThrow(moveFailure);
+    ).toThrow(
+      `${moveFailure}; the new rack t0/d9 (id new-rack) was left in place, holding what moved in`,
+    );
+    expect(changedNothing(capture)).toBe(false);
 
     // The instrument was already in the rack, so nothing is left to restore.
     expectInChain("device-0", 0);
@@ -323,9 +332,13 @@ describe("updateDevice - wrapInRack with an instrument and its effects", () => {
     });
 
     it("deletes the empty rack, then moves the instrument back", () => {
+      const capture = beginWarningCapture();
+
       expect(() => updateDevice({ path: "t0/d0", wrapInRack: true })).toThrow(
         "wrapInRack: Live made no chain in the new rack",
       );
+      // Everything was put back.
+      expect(changedNothing(capture)).toBe(true);
 
       /**
        * When a mock first got a call matching a predicate.
@@ -353,9 +366,37 @@ describe("updateDevice - wrapInRack with an instrument and its effects", () => {
         throw new Error("delete_device failed");
       };
 
+      const capture = beginWarningCapture();
+
       expect(() => updateDevice({ path: "t0/d0", wrapInRack: true })).toThrow(
         "wrapInRack: Live made no chain in the new rack; the empty new rack t0/d9",
       );
+      // The rack stays, so the call changed the Set.
+      expect(changedNothing(capture)).toBe(false);
+    });
+
+    it("keeps the temp track when the instrument can't move back", () => {
+      const moveBack = (_id: string, to: string): boolean =>
+        to === "id track-0";
+
+      liveSet = registerTempTrackMocks(moveBack);
+      registerTrackingChain(liveSet);
+
+      liveSet.methods.move_device = (_id: unknown, to: unknown) => {
+        if (to === "id track-0") {
+          throw new Error("move back failed");
+        }
+
+        return null;
+      };
+
+      const capture = beginWarningCapture();
+
+      expect(() => updateDevice({ path: "t0/d0", wrapInRack: true })).toThrow(
+        "wrapInRack: Live made no chain in the new rack; the instrument was left on new track t1",
+      );
+      expect(changedNothing(capture)).toBe(false);
+      expect(liveSet.call).not.toHaveBeenCalledWith("delete_track", 1);
     });
   });
 

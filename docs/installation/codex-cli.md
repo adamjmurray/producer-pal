@@ -27,7 +27,7 @@ this is a good option.
 
 ## Installation Steps
 
-<!--@include: ../_partials/install-device.md-->
+<!--@include: ../_partials/setup-by-ai.md-->
 
 ### 2. Configure Codex
 
@@ -52,7 +52,14 @@ the args:
 ```toml
 [mcp_servers.producer-pal]
 command = "npx"
-args = ["-y", "producer-pal@latest", "--format", "json", "--notation", "midi-json"]
+args = [
+  "-y",
+  "producer-pal@latest",
+  "--format",
+  "json",
+  "--notation",
+  "midi-json",
+]
 ```
 
 <!--@include: ../_partials/scripting-tip.md-->

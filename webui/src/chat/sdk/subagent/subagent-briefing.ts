@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A spawned worker's system-prompt briefing: the skills its toolset needs, the
 // Live Set it works in, and the user's context layers — fetched once at spawn

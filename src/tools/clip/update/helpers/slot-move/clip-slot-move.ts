@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -37,6 +37,7 @@ import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   noteClipOverwrite,
   noteClipReason,
+  noteLanded,
   refuseClipWork,
   type ClipReasons,
 } from "../entries/clip-reasons.ts";
@@ -68,20 +69,14 @@ interface SlotMoveArgs {
  * @param args.noteResult - Note update result for result
  * @param args.reasons - What each clip has to say beyond its result
  */
-export function handleClipSlotMove({
-  clip,
-  toSlot,
-  destinationTracks,
-  updatedClips,
-  noteResult,
-  reasons,
-}: SlotMoveArgs): void {
+export function handleClipSlotMove(args: SlotMoveArgs): void {
+  const { clip, toSlot, destinationTracks, updatedClips, noteResult, reasons } =
+    args;
   const srcTrackIndex = clip.trackIndex;
   const srcSceneIndex = clip.sceneIndex;
 
   if (srcTrackIndex == null || srcSceneIndex == null) {
-    refuseClipWork(reasons, clip.id, "not moved: could not determine its slot");
-    keepClip(clip, updatedClips, noteResult);
+    refuseSlotMove(args, "could not determine its slot");
 
     return;
   }
@@ -108,19 +103,12 @@ export function handleClipSlotMove({
   );
 
   if (blocker != null) {
-    refuseClipWork(reasons, clip.id, `not moved: ${blocker}`);
-    keepClip(clip, updatedClips, noteResult);
+    refuseSlotMove(args, blocker);
 
     return;
   }
 
-  const destination = destinationSlot({
-    clip,
-    toSlot,
-    updatedClips,
-    noteResult,
-    reasons,
-  });
+  const destination = destinationSlot(args);
 
   if (destination == null) {
     return;
@@ -143,25 +131,27 @@ export function handleClipSlotMove({
   const newClip = copyClipToSlot(sourceClipSlot, destClipSlot);
 
   if (newClip == null) {
-    refuseClipWork(
-      reasons,
-      clip.id,
+    refuseSlotMove(
+      args,
       withCreatedScenes(
-        `not moved: no clip landed at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}, so the original was kept`,
+        `no clip landed at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}, so the original was kept`,
         created,
       ),
     );
-    keepClip(clip, updatedClips, noteResult);
 
     return;
   }
 
+  // The copy is in the slot from here: a throw below still has it to report.
+  const destPath = slotPath(toSlot.trackIndex, toSlot.sceneIndex);
+
+  noteLanded(reasons, `copy at ${destPath}`, {
+    id: newClip.id,
+    path: destPath,
+  });
+
   if (destinationWasOccupied) {
-    noteClipOverwrite(
-      reasons,
-      clip.id,
-      slotPath(toSlot.trackIndex, toSlot.sceneIndex),
-    );
+    noteClipOverwrite(reasons, clip.id, destPath);
   }
 
   deleteMovedSource({
@@ -189,29 +179,17 @@ export function handleClipSlotMove({
  * @param args.noteResult - Note update result for result
  * @param args.reasons - What each clip has to say beyond its result
  */
-export function handleArrangementToSlotMove({
-  clip,
-  toSlot,
-  updatedClips,
-  noteResult,
-  reasons,
-}: SlotMoveArgs): void {
+export function handleArrangementToSlotMove(args: SlotMoveArgs): void {
+  const { clip, toSlot, updatedClips, noteResult, reasons } = args;
   const blocker = arrangementToSlotBlocker(clip, toSlot);
 
   if (blocker != null) {
-    refuseClipWork(reasons, clip.id, `not moved: ${blocker}`);
-    keepClip(clip, updatedClips, noteResult);
+    refuseSlotMove(args, blocker);
 
     return;
   }
 
-  const destination = destinationSlot({
-    clip,
-    toSlot,
-    updatedClips,
-    noteResult,
-    reasons,
-  });
+  const destination = destinationSlot(args);
 
   if (destination == null) {
     return;
@@ -226,20 +204,23 @@ export function handleArrangementToSlotMove({
   const recreated = recreateIntoSlot(clip, toSlot, destClipSlot, {}, losses);
 
   if (!recreated.ok) {
-    refuseClipWork(
-      reasons,
-      clip.id,
+    refuseSlotMove(
+      args,
       withCreatedScenes(
-        `not moved: ${recreated.reason} The source clip in the arrangement is untouched.`,
+        `${recreated.reason} The source clip in the arrangement is untouched.`,
         created,
       ),
     );
-    keepClip(clip, updatedClips, noteResult);
 
     return;
   }
 
   const newClip = recreated.clip;
+
+  noteLanded(reasons, `copy at ${destPath}`, {
+    id: newClip.id,
+    path: destPath,
+  });
 
   if (recreated.overwrote) {
     noteClipOverwrite(reasons, clip.id, destPath);
@@ -337,7 +318,7 @@ function deleteMovedSource({
  * @param toSlot - Destination slot position
  * @returns The reason, worded for a warning, or null
  */
-function arrangementToSlotBlocker(
+export function arrangementToSlotBlocker(
   clip: LiveAPI,
   toSlot: ClipSlotPosition,
 ): string | null {
@@ -371,7 +352,7 @@ function arrangementToSlotBlocker(
  * @param tracks - Tracks the batch has already resolved, added to
  * @returns The destination track
  */
-function destinationTrack(
+export function destinationTrack(
   trackIndex: number,
   tracks: Map<number, LiveAPI> | undefined,
 ): LiveAPI {
@@ -443,7 +424,7 @@ function destinationSlot(
  * @param args.updatedClips - Array to collect results
  * @param args.noteResult - Note update result for result
  * @param args.reasons - What each clip has to say beyond its result
- * @param reason - Why the destination couldn't be reached
+ * @param reason - Why it didn't move
  * @returns Null, for the caller to return
  */
 function refuseSlotMove(

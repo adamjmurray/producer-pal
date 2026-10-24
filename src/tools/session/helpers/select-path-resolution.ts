@@ -1,14 +1,18 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Reading select's `path` param. One grammar covers every shape select can act
 // on, so the kind the path parses to picks the target.
 
 import { assertDefined } from "#src/shared/error-message.ts";
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
-import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
+import {
+  namedParam,
+  paramNamesSomething,
+  refuseNamedTwice,
+} from "#src/tools/shared/helpers/param-presence.ts";
 import {
   formatObjectPath,
   isNewObjectPath,
@@ -41,10 +45,10 @@ export interface PathTarget {
   category?: TrackCategory;
   sceneIndex?: number;
   /** The track a slot or device path sits on. Live moves the track selection
-   * there on its own, so this is only checked against an explicit param —
+   * there on its own, so this is only checked against an explicit trackType —
    * disagreeing would leave the call touching two different tracks. */
   impliedTrack?: ImpliedTrack;
-  /** The scene a slot path sits on, checked the same way. */
+  /** The scene a slot path sits on, checked against an id. */
   impliedScene?: number;
   /** A spot on the arrangement timeline: the start marker goes there, and the
    * clip covering it, if any, is selected with it. */
@@ -58,11 +62,9 @@ interface ImpliedTrack {
   category: TrackCategory;
 }
 
-/** The params a path can name a second time. */
+/** The track type a path can name a second time. */
 interface PathAgreementArgs {
-  trackIndex?: number;
   trackType?: TrackCategory;
-  sceneIndex?: number;
 }
 
 /** The ids `id` resolved to, each of which a path can name a second time. */
@@ -74,14 +76,17 @@ interface IdAgreementArgs {
 }
 
 interface PathParams extends PathAgreementArgs {
+  trackIndex?: number;
+  sceneIndex?: number;
   path?: string;
   slot?: string;
   devicePath?: string;
 }
 
 /**
- * Resolve `path` against every param that can name the same thing, refusing to
- * pick when two of them disagree.
+ * Resolve `path` against every param that can name the same thing: a path with
+ * an index param is refused, and one that disagrees with trackType or an id is
+ * refused rather than picked from.
  * @param args - The path and selection params as the tool received them
  * @param ids - What the `id` param resolved to, checked the same way
  * @returns The clip slot, device, track, or scene the caller named
@@ -90,6 +95,16 @@ export function resolvePath(
   args: PathParams,
   ids: IdAgreementArgs = {},
 ): PathTarget {
+  // Each of these names the target on its own, `path` and its two spellings.
+  for (const param of ["path", "slot", "devicePath"] as const) {
+    refuseNamedTwice({
+      param,
+      value: args[param],
+      noun: "target",
+      also: { trackIndex: args.trackIndex, sceneIndex: args.sceneIndex },
+    });
+  }
+
   const fromPath = targetFromParams(args);
 
   assertPathAgrees(fromPath, args);
@@ -97,9 +112,9 @@ export function resolvePath(
 
   return {
     ...fromPath,
-    trackIndex: merge("trackIndex", args.trackIndex, fromPath.trackIndex),
+    trackIndex: args.trackIndex ?? fromPath.trackIndex,
     category: merge("trackType", args.trackType, fromPath.category),
-    sceneIndex: merge("sceneIndex", args.sceneIndex, fromPath.sceneIndex),
+    sceneIndex: args.sceneIndex ?? fromPath.sceneIndex,
   };
 }
 
@@ -126,6 +141,8 @@ function targetFromParams({
   const slot = namedHiddenPath(rawSlot, "slot");
   const devicePath = namedHiddenPath(rawDevicePath, "devicePath");
 
+  // Without a path the two deprecated params name different things, a clip
+  // slot and a device, and select takes both.
   if (path == null) {
     return {
       parsedClipSlot: slot == null ? undefined : parseClipSlot(slot),
@@ -136,13 +153,28 @@ function targetFromParams({
 
   // Honoring one and dropping the other is the silent-wrong-target bug path
   // replaces, so refuse instead of picking.
-  if (slot != null || devicePath != null) {
-    throw new Error(
-      "path and slot/devicePath both name a target; use path alone (the others are deprecated)",
-    );
-  }
+  refuseNamedTwice({
+    param: "path",
+    value: path,
+    noun: "target",
+    also: { slot, devicePath },
+    hint: deprecatedHint({ slot, devicePath }),
+  });
 
   return targetFromPath(parseObjectPath(path, "path"));
+}
+
+/**
+ * The note on a refusal that names only the deprecated params actually sent.
+ * @param params - The deprecated params, by name, as received
+ * @returns "slot is deprecated", or "slot and devicePath are deprecated"
+ */
+function deprecatedHint(params: Record<string, unknown>): string {
+  const sent = Object.keys(params).filter((name) =>
+    paramNamesSomething(params[name]),
+  );
+
+  return `${sent.join(" and ")} ${sent.length > 1 ? "are" : "is"} deprecated`;
 }
 
 /**
@@ -170,45 +202,22 @@ function merge<T>(
 }
 
 /**
- * Refuse a param naming a different track or scene than the path does. A track
- * a slot or device path only sits on can't be merged like the others — the path
- * doesn't select it, Live moves there on its own — so honoring both would
- * quietly leave two different things selected. A track a path names outright
- * comes here too, for the category rule `merge` can't see.
+ * Refuse a trackType naming a different kind of track than the path does. A
+ * track a slot or device path only sits on can't be merged like the others —
+ * the path doesn't select it, Live moves there on its own — so honoring both
+ * would quietly leave two different things selected.
  * @param target - What the path named
  * @param args - The params the caller passed alongside it
- * @param args.trackIndex - The explicit track index
  * @param args.trackType - The explicit track type
- * @param args.sceneIndex - The explicit scene index
  */
 function assertPathAgrees(
   target: PathTarget,
-  { trackIndex, trackType, sceneIndex }: PathAgreementArgs,
+  { trackType }: PathAgreementArgs,
 ): void {
   const track = target.impliedTrack ?? trackNamedDirectly(target);
 
-  if (track != null) {
-    if (trackIndex != null && trackIndex !== track.trackIndex) {
-      throw pathConflict("trackIndex");
-    }
-
-    // trackIndex on its own names a regular track, so it disagrees with a
-    // return or master path even though neither param mentions a category.
-    // merge() can't catch this: it compares the two categories, and a bare
-    // trackIndex leaves trackType unset.
-    const named = trackType ?? (trackIndex == null ? null : "regular");
-
-    if (named != null && named !== track.category) {
-      throw pathConflict(trackType == null ? "trackIndex" : "trackType");
-    }
-  }
-
-  if (
-    target.impliedScene != null &&
-    sceneIndex != null &&
-    sceneIndex !== target.impliedScene
-  ) {
-    throw pathConflict("sceneIndex");
+  if (track != null && trackType != null && trackType !== track.category) {
+    throw pathConflict("trackType");
   }
 }
 

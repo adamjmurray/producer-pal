@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import "../duplicate-mocks-test-helpers.ts";
@@ -31,6 +31,8 @@ interface DuplicateSceneResult {
   arrangementStart?: string;
   clips: DuplicateClipResult[];
 }
+
+const OUT_OF_TIME = "the request ran out of time; re-run for this destination";
 
 const SCENE_CLIP_ID = "id live_set/tracks/0/clip_slots/0/clip";
 
@@ -252,7 +254,9 @@ describe("duplicate - scene to the arrangement", () => {
         toPath: "[5|1]",
         arrangementStart: "9|1",
       }),
-    ).rejects.toThrow("both name a song position; use one");
+    ).rejects.toThrow(
+      "toPath names the song position on its own - don't send arrangementStart with it",
+    );
   });
 
   it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {
@@ -374,27 +378,24 @@ describe("duplicate - scene to the arrangement", () => {
     ]);
   });
 
-  it("warns and ignores count when several arrangementStart positions are named", async () => {
+  // Two positions already say two copies, so count says it twice over.
+  it("refuses count beside several arrangementStart positions", async () => {
     const track0 = setupSceneCopiedToBeats16And32();
 
-    // Two positions named, count says 2 as well — one copy per position,
-    // same as the clip path's "count ignored for clips" warning.
-    const result = (await duplicate({
-      type: "scene",
-      id: "scene1",
-      arrangementStart: "5|1, 9|1",
-      count: 2,
-    })) as DuplicateSceneResult[];
-
-    expect(result).toHaveLength(2);
-    expectSceneDupAtBeat(track0, 16);
-    expectSceneDupAtBeat(track0, 32);
-    expect(capturedWarnings()).toContain(
-      "count ignored for scenes: one copy per position — list more in toPath",
+    await expect(
+      duplicate({
+        type: "scene",
+        id: "scene1",
+        arrangementStart: "5|1, 9|1",
+        count: 2,
+      }),
+    ).rejects.toThrow(
+      'count repeats one path, but arrangementStart names 2. Drop count and let arrangementStart name each scene (e.g. arrangementStart: "5|1,9|1").',
     );
+    expect(track0.call).not.toHaveBeenCalled();
   });
 
-  it("should handle empty scenes gracefully", async () => {
+  it("answers a scene with no clips with a detail, not a skip", async () => {
     setupArrangementSceneMocks(2);
 
     registerClipSlot(0, 0, false);
@@ -407,7 +408,11 @@ describe("duplicate - scene to the arrangement", () => {
       arrangementStart: "5|1",
     })) as DuplicateSceneResult;
 
-    expect(result).toStrictEqual({ clips: [] });
+    // Nothing to copy is done, not failed: a lone one doesn't throw.
+    expect(result).toStrictEqual({
+      clips: [],
+      detail: "the scene has no clips",
+    });
   });
 
   it("should duplicate a scene to arrangement without clips when withoutClips is true", async () => {
@@ -456,7 +461,7 @@ describe("duplicate - scene to the arrangement", () => {
     expect(result).toStrictEqual({ clips: [] });
   });
 
-  it("names the positions a cut-short arrangement duplicate did not reach", async () => {
+  it("gives every position a cut-short arrangement duplicate did not reach its own entry", async () => {
     // A scene copy places a clip per track, so a few can eat the whole budget.
     setupArrangementSceneMocks(1);
 
@@ -467,12 +472,47 @@ describe("duplicate - scene to the arrangement", () => {
       { deadline: Date.now() - 1 },
     );
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual([
+      { path: "[5|1]", ok: false, detail: OUT_OF_TIME },
+      { path: "[9|1]", ok: false, detail: OUT_OF_TIME },
+    ]);
     expect(track0.call).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContain(
-      "Ran out of time after duplicating 0 of 2. " +
-        "Not duplicated: 5|1, 9|1. Re-run for those positions.",
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("Ran out of time"),
     );
+  });
+
+  it("keeps the positions it copied and skips the ones after, in order", async () => {
+    const context = { deadline: Date.now() + 60_000 };
+
+    setupArrangementSceneMocks(1);
+    registerClipSlot(0, 0, true, createStandardMidiClipMock({ length: 4 }));
+
+    const track0 = registerTrackWithArrangementDup(0);
+    const makeCopy = track0.methods
+      .duplicate_clip_to_arrangement as () => unknown;
+
+    // The first copy spends the budget.
+    track0.methods.duplicate_clip_to_arrangement = () => {
+      context.deadline = Date.now() - 1;
+
+      return makeCopy();
+    };
+
+    registerArrangementClip(0, 0, 16);
+
+    const result = await duplicate(
+      { type: "scene", id: "scene1", arrangementStart: "5|1,9|1,13|1" },
+      context,
+    );
+
+    expect(result).toStrictEqual([
+      {
+        clips: [{ id: livePath.track(0).arrangementClip(0), path: "t0[5|1]" }],
+      },
+      { path: "[9|1]", ok: false, detail: OUT_OF_TIME },
+      { path: "[13|1]", ok: false, detail: OUT_OF_TIME },
+    ]);
   });
 });
 
@@ -540,8 +580,8 @@ describe("duplicate - several scenes to the arrangement", () => {
   });
 
   // Scenes sharing a track can still land on each other when the caller names
-  // one spot twice. The buried copy says so instead of reporting a dead id.
-  it("marks a scene copy a later one in the call landed on", async () => {
+  // one spot twice. The copy a later one covers whole is never written.
+  it("leaves a scene copy a later one in the call covers unwritten", async () => {
     setupTwoScenesOnOneTrack();
 
     const result = await duplicate({
@@ -552,16 +592,11 @@ describe("duplicate - several scenes to the arrangement", () => {
 
     expect(result).toStrictEqual([
       {
-        clips: [
-          {
-            path: "t0[5|1]",
-            deleted: true,
-            detail: "a later copy in this call landed on it",
-          },
-        ],
+        path: "[5|1]",
+        detail: "overwritten later in this call by t0[5|1]",
       },
       {
-        clips: [{ id: livePath.track(0).arrangementClip(1), path: "t0[5|1]" }],
+        clips: [{ id: livePath.track(0).arrangementClip(0), path: "t0[5|1]" }],
       },
     ]);
   });
@@ -601,22 +636,21 @@ describe("duplicate - several scenes to the arrangement", () => {
   });
 
   // A position list names one copy per position, however it pairs out, so
-  // count is ignored as it is for one scene — each scene laying count copies
-  // from its own position would bury the next scene's.
-  it("ignores count when the call names a position list", async () => {
+  // count is refused: each scene laying count copies from its own position
+  // would bury the next scene's.
+  it("refuses count beside a position list", async () => {
     const track0 = setupTwoScenesOnOneTrack();
 
-    const result = await duplicate({
-      type: "scene",
-      id: "scene1,scene2",
-      toPath: "[1|1],[9|1]",
-      count: 2,
-    });
-
-    expect(result).toHaveLength(2);
-    expect(track0.call).toHaveBeenCalledTimes(2);
-    expect(capturedWarnings()).toContain(
-      "count ignored for scenes: one copy per position — list more in toPath",
+    await expect(
+      duplicate({
+        type: "scene",
+        id: "scene1,scene2",
+        toPath: "[1|1],[9|1]",
+        count: 2,
+      }),
+    ).rejects.toThrow(
+      'count repeats one path, but toPath names 2. Drop count and let toPath name each scene (e.g. toPath: "[5|1],[9|1]").',
     );
+    expect(track0.call).not.toHaveBeenCalled();
   });
 });

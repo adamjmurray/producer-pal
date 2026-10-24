@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Assertions for the object-path scenarios.
@@ -73,6 +73,8 @@ function hiddenSpellings(call: ToolCall): string {
  * @param options.tool - Tool name
  * @param options.param - Which location param to read
  * @param options.expected - Accepted path(s); the first is the canonical one
+ * @param options.allowList - Also accept a comma-separated list containing an
+ *   accepted path
  * @returns A custom assertion
  */
 export function assertPathArg(options: {
@@ -80,9 +82,11 @@ export function assertPathArg(options: {
   tool: string;
   param: "path" | "toPath";
   expected: string | string[] | RegExp;
+  allowList?: boolean;
 }): EvalAssertion {
-  const { turn, tool, param, expected } = options;
-  const wanted = describeExpected(expected);
+  const { turn, tool, param, expected, allowList = false } = options;
+  const wanted =
+    describeExpected(expected) + (allowList ? " (alone or in a list)" : "");
 
   return {
     type: "custom",
@@ -99,7 +103,9 @@ export function assertPathArg(options: {
 
       const actual = argText(raw).replaceAll(" ", "");
 
-      if (!pathAccepted(actual, expected)) {
+      const candidates = allowList ? actual.split(",") : [actual];
+
+      if (!candidates.some((path) => pathAccepted(path, expected))) {
         throw new Error(`expected ${param} ${wanted}, got '${actual}'`);
       }
 

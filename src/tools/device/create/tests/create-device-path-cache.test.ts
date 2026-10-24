@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The path cache shares one container walk across a batch, which is only safe
 // while nothing in the batch renumbers devices. See with-device-path-cache.ts.

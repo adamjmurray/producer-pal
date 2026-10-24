@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
@@ -14,6 +14,11 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  registerMainLaneClip,
+  registerTakeLaneClip,
+} from "#src/tools/shared/arrangement/tests/helpers/arrangement-lane-clips.ts";
+import { resolvePath } from "#src/tools/session/helpers/select-path-resolution.ts";
 import { toolDefSelect } from "#src/tools/session/select.def.ts";
 import { select } from "#src/tools/session/select.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
@@ -280,19 +285,21 @@ describe("select path param", () => {
     );
   });
 
-  // Only a disagreement is worth refusing. A model that says the same thing
-  // twice — path plus the param it replaced, in agreement — gets the selection,
-  // not an error about how it phrased the request.
-  it("accepts a path that agrees with the param it duplicates", () => {
-    registerMockObject("track_2", { path: livePath.track(2), type: "Track" });
-    registerMockObject("scene_3", { path: livePath.scene(3), type: "Scene" });
-    const songView = setupSongViewMock();
-
-    select({ path: "t2", trackIndex: 2 });
-    expect(songView.set).toHaveBeenCalledWith("selected_track", "id track_2");
-
-    select({ path: "s3", sceneIndex: 3 });
-    expect(songView.set).toHaveBeenCalledWith("selected_scene", "id scene_3");
+  // Even a path and an index that agree are refused: a path names its target on
+  // its own, so an index beside it is a second spelling that can only be wrong.
+  it.each([
+    ["t2", { trackIndex: 2 }, "trackIndex"],
+    ["s3", { sceneIndex: 3 }, "sceneIndex"],
+    ["t0/s3", { trackIndex: 0, sceneIndex: 3 }, "trackIndex or sceneIndex"],
+    ["t2", { trackIndex: 3 }, "trackIndex"],
+    ["s3", { sceneIndex: 4 }, "sceneIndex"],
+    ["t0/d1", { trackIndex: 5 }, "trackIndex"],
+    ["rt0", { trackIndex: 0 }, "trackIndex"],
+    ["mt/d0", { trackIndex: 5 }, "trackIndex"],
+  ])("refuses path %j sent with %j", (path, indices, named) => {
+    expect(() => select({ path, ...indices })).toThrow(
+      `path names the target on its own - don't send ${named} with it`,
+    );
   });
 
   // A caller that sends every param, filling the ones it has no value for with
@@ -326,98 +333,36 @@ describe("select path param", () => {
     ).toThrow("trackIndex: a blank string is not a value for this param.");
   });
 
-  it("refuses a path that disagrees with the param it duplicates", () => {
-    expect(() => select({ path: "t2", trackIndex: 3 })).toThrow(
-      "path and trackIndex name different targets",
-    );
+  it("refuses a path that disagrees with trackType", () => {
     expect(() => select({ path: "rt0", trackType: "master" })).toThrow(
       "path and trackType name different targets",
     );
     expect(() => select({ path: "rt0", trackType: "regular" })).toThrow(
       "path and trackType name different targets",
     );
-    expect(() => select({ path: "s3", sceneIndex: 4 })).toThrow(
-      "path and sceneIndex name different targets",
-    );
   });
 
   // A slot or device path names a track without selecting it — Live moves there
-  // with the slot or device. Honoring a conflicting param anyway would select
-  // one track and highlight something on another.
-  it("refuses a slot or device path that disagrees with a track or scene param", () => {
-    expect(() => select({ path: "t0/s3", trackIndex: 5 })).toThrow(
-      "path and trackIndex name different targets",
-    );
-    expect(() => select({ path: "t0/s3", sceneIndex: 7 })).toThrow(
-      "path and sceneIndex name different targets",
-    );
+  // with the slot or device. Honoring a conflicting trackType anyway would
+  // select one track and highlight something on another.
+  it("refuses a slot or device path that disagrees with trackType", () => {
     expect(() => select({ path: "t0/s3", trackType: "return" })).toThrow(
       "path and trackType name different targets",
-    );
-    expect(() => select({ path: "t0/d1", trackIndex: 5 })).toThrow(
-      "path and trackIndex name different targets",
     );
     expect(() => select({ path: "rt0/d1", trackType: "master" })).toThrow(
       "path and trackType name different targets",
     );
-    expect(() => select({ path: "t0/d0/pC1", trackIndex: 5 })).toThrow(
-      "path and trackIndex name different targets",
-    );
-    // The master track has no index, so any explicit one names another track.
-    expect(() => select({ path: "mt/d0", trackIndex: 5 })).toThrow(
-      "path and trackIndex name different targets",
-    );
   });
 
-  it("accepts a slot or device path that agrees with a track or scene param", () => {
-    registerMockObject("clipslot_0_3", {
-      path: livePath.track(0).clipSlot(3),
-      type: "ClipSlot",
-      properties: { has_clip: 0 },
-    });
+  it("accepts a device path that agrees with trackType", () => {
     registerMockObject("device_at_path", {
       path: String(livePath.returnTrack(0)) + " devices 1",
       type: "Device",
     });
-    const songView = setupSongViewMock();
-
+    setupSongViewMock();
     setupAppViewMock();
 
-    select({ path: "t0/s3", trackIndex: 0, sceneIndex: 3 });
-    expect(songView.set).toHaveBeenCalledWith(
-      "highlighted_clip_slot",
-      "id clipslot_0_3",
-    );
-
-    expect(() =>
-      select({ path: "rt0/d1", trackIndex: 0, trackType: "return" }),
-    ).not.toThrow();
-  });
-
-  // Regression: trackIndex was compared, trackType was compared, but a
-  // trackIndex sent without a trackType defaults to a regular track — so a
-  // return path "agreed" with it, then selected regular track 0 while the
-  // device went on return track 0.
-  it("refuses a return path against a bare trackIndex", () => {
-    expect(() => select({ path: "rt0/d1", trackIndex: 0 })).toThrow(
-      "path and trackIndex name different targets",
-    );
-    expect(() => select({ path: "rt0/d0/pC1", trackIndex: 0 })).toThrow(
-      "path and trackIndex name different targets",
-    );
-  });
-
-  // The same rule for a path that selects its track outright. That shape went
-  // through merge(), which compares the two categories and so can't see a
-  // category the caller never spelled — "rt0" plus trackIndex 0 merged cleanly
-  // and selected return track 0.
-  it("refuses a bare return or master path against a bare trackIndex", () => {
-    expect(() => select({ path: "rt0", trackIndex: 0 })).toThrow(
-      "path and trackIndex name different targets",
-    );
-    expect(() => select({ path: "mt", trackIndex: 0 })).toThrow(
-      "path and trackIndex name different targets",
-    );
+    expect(() => select({ path: "rt0/d1", trackType: "return" })).not.toThrow();
   });
 
   // Regression: `id` was never checked against `path` at all. Both are written
@@ -503,11 +448,36 @@ describe("select path param", () => {
 
   it("refuses path alongside a param it replaced", () => {
     expect(() => select({ path: "t0/s1", slot: "0/1" })).toThrow(
-      "path and slot/devicePath both name a target",
+      "path names the target on its own - don't send slot with it (slot is deprecated)",
     );
     expect(() => select({ path: "t0/d1", devicePath: "t0/d1" })).toThrow(
-      "path and slot/devicePath both name a target",
+      "path names the target on its own - don't send devicePath with it (devicePath is deprecated)",
     );
+  });
+
+  // Without a path, slot and devicePath name different things — a clip slot
+  // and a device — so select takes both.
+  it("selects the clip slot and the device when slot and devicePath come together", () => {
+    registerMockObject("clipslot_0_3", {
+      path: livePath.track(0).clipSlot(3),
+      type: "ClipSlot",
+      properties: { has_clip: 0 },
+    });
+    registerMockObject("device_at_path", {
+      path: String(livePath.track(0)) + " devices 1",
+      type: "Device",
+    });
+    const songView = setupSongViewMock();
+
+    setupAppViewMock();
+
+    const result = select({ slot: "0/3", devicePath: "t0/d1" });
+
+    expect(songView.set).toHaveBeenCalledWith(
+      "highlighted_clip_slot",
+      "id clipslot_0_3",
+    );
+    expect(result.selectedDevice?.path).toBe("t0/d1");
   });
 
   // The same check, on a deprecated param that named nothing. A comma is not a
@@ -648,7 +618,7 @@ describe("select by arrangement position", () => {
   // Nothing disagrees: the id names the very clip sitting on that spot.
   it("takes a clipId naming the clip the position covers", () => {
     setupTrackMock("clip_arr");
-    setupMainLaneClip("clip_arr", BAR_5);
+    registerMainLaneClip("clip_arr", BAR_5);
     setupSongViewMock();
     setupAppViewMock();
     setupLiveSetMock();
@@ -661,7 +631,7 @@ describe("select by arrangement position", () => {
   // A comma inside the brackets is part of the name, not a second target.
   it("takes a locator whose name holds a comma", () => {
     setupTrackMock("clip_arr");
-    setupMainLaneClip("clip_arr", BAR_5);
+    registerMainLaneClip("clip_arr", BAR_5);
     setupSongViewMock();
     setupAppViewMock();
 
@@ -678,7 +648,7 @@ describe("select by arrangement position", () => {
 
   it("takes a position on a take lane", () => {
     setupTrackMock();
-    setupTakeLaneClip("clip_take", BAR_5);
+    registerTakeLaneClip("clip_take", BAR_5);
 
     const songView = setupSongViewMock();
     const liveSet = setupLiveSetMock();
@@ -730,7 +700,7 @@ describe("select by arrangement position", () => {
   // select one clip and move the marker to another one's spot.
   it("refuses an id naming a clip off the spot the path names", () => {
     setupTrackMock("clip_arr");
-    setupMainLaneClip("clip_arr", BAR_5);
+    registerMainLaneClip("clip_arr", BAR_5);
     setupLiveSetMock();
     registerMockObject("clip_other", {
       path: livePath.track(0).clipSlot(0).clip(),
@@ -764,36 +734,6 @@ function setupTrackMock(...clipIds: string[]): void {
     path: livePath.track(0),
     type: "Track",
     properties: { arrangement_clips: children(...clipIds), has_midi_input: 1 },
-  });
-}
-
-/**
- * A one-bar clip on track 0's main arrangement lane.
- * @param id - The clip's id
- * @param startTime - Where it starts, in Ableton beats
- */
-function setupMainLaneClip(id: string, startTime: number): void {
-  registerMockObject(id, {
-    path: livePath.track(0).arrangementClip(0),
-    type: "Clip",
-    properties: { start_time: startTime, end_time: startTime + 4 },
-  });
-}
-
-/**
- * A one-bar clip on take lane 1 of track 0.
- * @param id - The clip's id
- * @param startTime - Where it starts, in Ableton beats
- */
-function setupTakeLaneClip(id: string, startTime: number): void {
-  registerMockObject(id, {
-    path: livePath.track(0).takeLane(1).arrangementClip(0),
-    type: "Clip",
-    properties: { start_time: startTime, end_time: startTime + 4 },
-  });
-  registerMockObject("lane_1", {
-    path: livePath.track(0).takeLane(1),
-    properties: { arrangement_clips: children(id) },
   });
 }
 
@@ -845,7 +785,7 @@ function setupArrangementMocks(clipStart: number): {
   liveSet: RegisteredMockObject;
 } {
   setupTrackMock("clip_arr");
-  setupMainLaneClip("clip_arr", clipStart);
+  registerMainLaneClip("clip_arr", clipStart);
 
   return {
     songView: setupSongViewMock(),
@@ -853,3 +793,19 @@ function setupArrangementMocks(clipStart: number): {
     liveSet: setupLiveSetMock(),
   };
 }
+
+describe("resolvePath", () => {
+  it("names both deprecated params when both come with path", () => {
+    expect(() =>
+      resolvePath({ path: "t0/s1", slot: "0/1", devicePath: "t0/d1" }),
+    ).toThrow("(slot and devicePath are deprecated)");
+  });
+
+  it("keeps a trackType that agrees with the track path", () => {
+    expect(resolvePath({ path: "rt1", trackType: "return" })).toStrictEqual({
+      category: "return",
+      trackIndex: 1,
+      sceneIndex: undefined,
+    });
+  });
+});

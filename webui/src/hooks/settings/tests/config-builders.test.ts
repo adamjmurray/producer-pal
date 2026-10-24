@@ -1,15 +1,18 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, it, expect } from "vitest";
 import {
   extractGptVersion,
+  getThinkingOffType,
   isAlwaysOnThinkingModel,
+  getGeminiOffThinkingConfig,
   isOpenAIReasoningModel,
   isLegacyNonThinkingModel,
-  mapThinkingToOllamaThink,
+  isLegacyThinkingModel,
+  mapThinkingToOllamaEffort,
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
   mapThinkingToRealtimeEffort,
@@ -21,7 +24,29 @@ import {
 } from "#webui/hooks/settings/helpers/turn-detection-settings";
 
 describe("config-builders", () => {
+  describe("getThinkingOffType", () => {
+    it.each([
+      ["claude-sonnet-5-5", "between_tools"],
+      ["claude-sonnet-5.5", "between_tools"],
+      ["claude-haiku-5-5", "disabled"],
+      ["claude-sonnet-4-6", "disabled"],
+      ["claude-opus-5-5", undefined],
+      ["claude-opus-5.5", undefined],
+      ["claude-fable-5-1", undefined],
+      ["claude-mythos-5", undefined],
+      ["claude-haiku-4-5", undefined],
+      ["claude-3-5-sonnet-20241022", undefined],
+    ])("for %s is %s", (model, expected) => {
+      expect(getThinkingOffType(model)).toBe(expected);
+    });
+  });
+
   describe("isAlwaysOnThinkingModel", () => {
+    it("is true for Opus 5.5 under either id spelling", () => {
+      expect(isAlwaysOnThinkingModel("claude-opus-5-5")).toBe(true);
+      expect(isAlwaysOnThinkingModel("claude-opus-5.5")).toBe(true);
+    });
+
     it("is true for Fable and Mythos models", () => {
       expect(isAlwaysOnThinkingModel("claude-fable-5-1")).toBe(true);
       expect(isAlwaysOnThinkingModel("claude-mythos-5")).toBe(true);
@@ -30,6 +55,19 @@ describe("config-builders", () => {
     it("is false for other models", () => {
       expect(isAlwaysOnThinkingModel("claude-sonnet-5-5")).toBe(false);
       expect(isAlwaysOnThinkingModel("claude-haiku-4-5")).toBe(false);
+    });
+  });
+
+  describe("isLegacyThinkingModel", () => {
+    it("is true for Haiku 4.5 ids", () => {
+      expect(isLegacyThinkingModel("claude-haiku-4-5")).toBe(true);
+      expect(isLegacyThinkingModel("claude-haiku-4-5-20251001")).toBe(true);
+      expect(isLegacyThinkingModel("anthropic/claude-haiku-4.5")).toBe(true);
+    });
+
+    it("is false for Haiku 5.5, which rejects budget thinking", () => {
+      expect(isLegacyThinkingModel("claude-haiku-5-5")).toBe(false);
+      expect(isLegacyThinkingModel("anthropic/claude-haiku-5.5")).toBe(false);
     });
   });
 
@@ -171,8 +209,16 @@ describe("config-builders", () => {
         expect(mapThinkingToReasoningEffort("Off", "gpt-6-luna")).toBe("none");
       });
 
-      it("should map Off to low for Astra, which rejects none", () => {
+      it("should map Off to low for GPT-6 models that reject none", () => {
         expect(mapThinkingToReasoningEffort("Off", "gpt-6-astra")).toBe("low");
+        expect(mapThinkingToReasoningEffort("Off", "gpt-6.1-sol")).toBe("low");
+      });
+
+      it("should keep none for dated ids of the models that accept it", () => {
+        expect(
+          mapThinkingToReasoningEffort("Off", "gpt-6-luna-2026-09-01"),
+        ).toBe("none");
+        expect(mapThinkingToReasoningEffort("Off", "gpt-6-sol")).toBe("none");
       });
 
       it("should map Default to medium", () => {
@@ -220,34 +266,54 @@ describe("config-builders", () => {
       expect(mapThinkingToOpenRouterEffort("Default")).toBe("medium");
     });
 
-    it("should return undefined for Off", () => {
-      expect(mapThinkingToOpenRouterEffort("Off")).toBeUndefined();
+    it("should map Off to none", () => {
+      expect(mapThinkingToOpenRouterEffort("Off")).toBe("none");
     });
   });
 
-  describe("mapThinkingToOllamaThink", () => {
+  describe("mapThinkingToOllamaEffort", () => {
     it("should return undefined for Default", () => {
-      expect(mapThinkingToOllamaThink("Default", "qwen3.6")).toBeUndefined();
+      expect(mapThinkingToOllamaEffort("Default")).toBeUndefined();
     });
 
-    it("should return false for Off", () => {
-      expect(mapThinkingToOllamaThink("Off", "qwen3.6")).toBe(false);
-      expect(mapThinkingToOllamaThink("Off", "gpt-oss")).toBe(false);
+    it("should map Off to none", () => {
+      expect(mapThinkingToOllamaEffort("Off")).toBe("none");
     });
 
-    it("should return true for Max on non-GPT-OSS", () => {
-      expect(mapThinkingToOllamaThink("Max", "qwen3.6")).toBe(true);
-    });
-
-    it("should return high string for Max on GPT-OSS", () => {
-      expect(mapThinkingToOllamaThink("Max", "gpt-oss")).toBe("high");
+    it("should send nothing for Max", () => {
+      expect(mapThinkingToOllamaEffort("Max")).toBeUndefined();
     });
 
     it("should return undefined for unknown thinking level", () => {
-      expect(
-        mapThinkingToOllamaThink("UnknownLevel", "qwen3.6"),
-      ).toBeUndefined();
+      expect(mapThinkingToOllamaEffort("UnknownLevel")).toBeUndefined();
     });
+  });
+
+  describe("getGeminiOffThinkingConfig", () => {
+    it.each(["gemini-3.8-flash", "gemini-4-argon", "gemini-3.5-flash-lite"])(
+      "uses the low thinking level for Gemini 3+ (%s)",
+      (model) => {
+        expect(getGeminiOffThinkingConfig(model)).toStrictEqual({
+          thinkingLevel: "low",
+        });
+      },
+    );
+
+    it.each(["gemini-2.5-flash", "gemini-2.5-flash-lite"])(
+      "uses a zero budget for Gemini 2.5 (%s)",
+      (model) => {
+        expect(getGeminiOffThinkingConfig(model)).toStrictEqual({
+          thinkingBudget: 0,
+        });
+      },
+    );
+
+    it.each(["gemini-2.5-pro", "gemini-2.0-flash", "gemini-pro", "gemma-4"])(
+      "sends nothing for models that can't turn thinking off (%s)",
+      (model) => {
+        expect(getGeminiOffThinkingConfig(model)).toBeUndefined();
+      },
+    );
   });
 
   describe("mapThinkingToRealtimeEffort", () => {

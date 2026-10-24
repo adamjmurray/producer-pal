@@ -1,9 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z } from "zod";
+import { sceneNameColorParams } from "#src/tools/shared/schema/scene-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
@@ -19,8 +20,9 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
   // it) rather than conditionally.
   description: {
     default:
-      "Create empty scene(s) or capture playing session clips. Params with no " +
-      "list form apply to every scene.",
+      "Create empty scene(s) or capture playing session clips. Inserting shifts " +
+      "later scenes down, so a result path is where the scene sits after the " +
+      "call. Params with no list form apply to every scene.",
     smallModel: "Create an empty scene.",
   },
   annotations: {
@@ -30,7 +32,7 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
   inputSchema: {
     path: param(z.coerce.string().optional(), {
       default:
-        "where they go: 's+' appends, 's<index>' inserts there and shifts the rest down (s0 is the first scene, so a user's \"scene 3\" is s2). Comma-separated for several, one entry per scene, in order (e.g. 's+,s+' appends two, 's2,s2' inserts two at 2). Required when capture=false, optional when capture=true",
+        "where they go: 's+' appends, 's<index>' inserts there (s0 is the first scene, so a user's \"scene 3\" is s2). Comma-separated for several, one entry per scene, in order (e.g. 's+,s+' appends two, 's2,s2' inserts two at 2). Required when capture=false. With capture=true it takes one entry, and with none the new scene goes after the selected scene",
       smallModel:
         "required: 's+' to append, or 's<index>' to insert there and shift the rest down (s0 is the first scene, so a user's \"scene 3\" is s2)",
     }),
@@ -43,28 +45,20 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
     count: deprecatedParam(z.coerce.number().int().min(1).optional(), {
       replacedBy: "path",
       example: newScenePathFromCount,
-      note: "path names every scene, so repeat it once per scene instead of counting",
+      note: "path names every scene, so repeat it once per scene instead of counting. Not with capture, which makes one scene",
     }),
 
     capture: param(z.boolean().default(false), {
       default: "copy playing session clips instead of creating empty?",
       smallModel: null,
     }),
-    name: param(z.string().optional(), {
-      default: "name, or comma-separated one per scene",
-      smallModel: "scene name",
-    }),
-    color: param(z.string().optional(), {
-      default: "#RRGGBB, or comma-separated one per scene",
-      smallModel: "#RRGGBB",
-    }),
+    ...sceneNameColorParams(),
     tempo: param(z.coerce.number().optional(), {
-      default: "BPM (-1 disables when capturing)",
+      default: "BPM (-1 disables)",
       smallModel: null,
     }),
     timeSignature: param(z.string().optional(), {
-      default:
-        'N/D (4/4) or "disabled" when capturing, or comma-separated one per scene',
+      default: 'N/D (4/4) or "disabled", or comma-separated one per scene',
       smallModel: null,
     }),
   },

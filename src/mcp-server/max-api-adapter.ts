@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Adapter for communication between Node.js MCP server and Max v8 environment
 
@@ -16,8 +16,10 @@ import {
 } from "#src/shared/mcp-responses.ts";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
+import { markChangedNothing } from "./rpc/remote-script/forwarded/changed-nothing.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
+import { withWriteQueue } from "./rpc/write-queue/write-queue.ts";
 import * as console from "./node-for-max-logger.ts";
 import { handleNodeRequest } from "./rpc/node-request-protocol.ts";
 
@@ -44,6 +46,12 @@ export interface McpResponse {
    * reaches the SDK.
    */
   warnings?: string[];
+}
+
+/** What V8 sends: a response, plus sidecars Node consumes. */
+interface WireResponse extends McpResponse {
+  /** V8 proved the call changed nothing in the Set; see changed-nothing.ts */
+  changedNothing?: boolean;
 }
 
 interface PendingRequest {
@@ -88,20 +96,28 @@ Max.addHandler("timeoutMs", (input: unknown) => {
  * @param args - Arguments for the tool
  * @param overrides - Optional per-request context overrides (e.g. used by the
  *   REST `?format=` and `?timeoutMs=` query params)
+ * @param queuedMs - Time the call already spent in the write queue, out of its
+ *   timeout
  * @returns Tool execution result
  */
-function callLiveApi(
+function sendToolCall(
   tool: string,
   args: object,
   overrides?: RequestOverrides,
+  queuedMs = 0,
 ): Promise<McpResponse> {
   const argsJSON = JSON.stringify(args);
   const effectiveTimeoutMs = overrides?.timeoutMs ?? timeoutMs;
+  const remainingMs = effectiveTimeoutMs - queuedMs;
   const contextJSON = JSON.stringify({
     timeoutMs,
     ...overrides,
+    // V8 sets its deadline from this, so it gets only what is left.
+    ...(queuedMs > 0 && { timeoutMs: remainingMs }),
     silenceWavPath,
   });
+  const queuedText =
+    queuedMs > 0 ? ` (${queuedMs}ms of it waiting for other writes)` : "";
   const requestId = crypto.randomUUID();
 
   console.info(
@@ -144,15 +160,21 @@ function callLiveApi(
         // is likely still being mutated as this resolves.
         resolve(
           formatErrorResponse(
-            `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms. ` +
+            `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms${queuedText}. ` +
               `Live may still be applying it — wait, then re-read before acting.`,
             "timeout",
           ),
         );
-      }, effectiveTimeoutMs),
+      }, remainingMs),
     });
   });
 }
+
+/**
+ * Every tool call into V8 goes through here, MCP and REST alike. Write calls
+ * run one at a time (see write-queue.ts).
+ */
+const callLiveApi = withWriteQueue(sendToolCall, () => timeoutMs);
 
 /**
  * Handle Live API result from Max
@@ -174,10 +196,16 @@ function handleLiveApiResult(...args: unknown[]): void {
 
   if (resolve) {
     try {
-      const result = JSON.parse(reassembleChunks(params)) as McpResponse;
+      const result = JSON.parse(reassembleChunks(params)) as WireResponse;
       const warnings = result.warnings ?? [];
 
       delete result.warnings;
+
+      if (result.changedNothing === true) {
+        markChangedNothing(result);
+      }
+
+      delete result.changedNothing;
 
       const resultLength = result.content.reduce(
         (sum: number, { text }: { text: string }) => sum + text.length,

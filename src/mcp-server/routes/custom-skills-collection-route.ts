@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // REST endpoints for the user-authored custom-skills collection
 // (~/.producer-pal/skills-custom/<slug>.md) — a thin binding of the generic
@@ -17,7 +17,10 @@ import {
   rememberCustomSkill,
   slugifyCustomSkillName,
 } from "../helpers/skills-custom/custom-skills-store.ts";
-import { registerCollectionRoutes } from "./collection-route.ts";
+import {
+  markdownEntryInput,
+  registerCollectionRoutes,
+} from "./collection-route.ts";
 
 /**
  * Register the /custom-skills collection REST endpoints on the Express app.
@@ -33,17 +36,16 @@ export function registerCustomSkillsCollectionRoutes(app: Express): void {
     forget: forgetCustomSkill,
     remember: rememberCustomSkill,
     buildInput: (name, reqBody) => {
-      if (typeof reqBody.content !== "string") {
-        return { error: "content must be a string" };
+      const input = markdownEntryInput(name, reqBody);
+
+      if ("error" in input) {
+        return input;
       }
 
+      // Omitting `enabled` preserves the stored flag (or defaults to enabled
+      // on create); only a real boolean from the toggle overrides it.
       return {
-        name,
-        description:
-          typeof reqBody.description === "string" ? reqBody.description : "",
-        body: reqBody.content,
-        // Omitting `enabled` preserves the stored flag (or defaults to enabled
-        // on create); only a real boolean from the toggle overrides it.
+        ...input,
         enabled:
           typeof reqBody.enabled === "boolean" ? reqBody.enabled : undefined,
       };

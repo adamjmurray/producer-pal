@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   useCallback,
@@ -37,7 +37,7 @@ import {
   type ConversationStore,
   DEFAULT_META,
   createConversationStore,
-  type ConversationLockedSettings,
+  type RestoredSettings,
 } from "#webui/lib/conversations/conversation-store";
 import { type PendingForkRef } from "#webui/hooks/chat/use-chat-types";
 import {
@@ -51,37 +51,26 @@ interface UseConversationsProps {
   getChatHistory: () => unknown[];
   restoreChatHistory: (
     chatHistory: unknown[],
-    lockedSettings?: ConversationLockedSettings,
+    lockedSettings?: RestoredSettings,
   ) => void;
   clearConversation: () => void;
-  /**
-   * The active conversation's locked metadata (model/provider/thinking/etc. plus
-   * the resolved system instruction), mirrored into the store and snapshotted
-   * onto saved records.
-   */
+  /** The active conversation's locked settings, mirrored into the store and
+   * snapshotted onto saved records. */
   activeMeta: SyncActiveMetaParams;
-  /** Invoked when a voice record is encountered. The parent should switch
-   * modes so the voice hook can pick the conversation up from the URL hash.
-   * When omitted, the hook falls back to clearing the active id. */
+  /** Invoked on a voice record, so the parent switches modes and the voice hook
+   * picks it up from the URL hash. Omitted: the active id is cleared. */
   onForeignRecord?: (record: ConversationRecord) => void;
   /** Shared signal set by an edit/retry fork; consumed on the next save to
    * branch the conversation into a new record instead of overwriting it. */
   pendingForkRef?: PendingForkRef;
   /** App-owned undo stack, so a delete made here survives a switch to voice. */
   undoDelete: UndoDeleteReturn;
-  /** Whether a response is streaming, so browser back/forward can ask before
-   * tearing the conversation down and cutting it off. */
+  /** Whether a response is streaming, so browser back/forward asks first. */
   isAssistantResponding?: boolean;
 }
 
-export interface UseConversationsReturn {
-  conversations: ConversationSummary[];
-  activeConversationId: string | null;
-  /** Active panel notification: an undo-delete banner when one is pending,
-   * otherwise the conversation-limit/save-error banner. */
-  notification: TransferNotificationData | null;
-  dismissNotification: () => void;
-  saveCurrentConversation: (updatedAt?: number) => Promise<void>;
+/** What the conversation list offers, in chat and voice alike. */
+export interface ConversationListActions {
   switchConversation: (id: string) => Promise<void>;
   startNewConversation: () => void;
   deleteConversation: (id: string) => Promise<void>;
@@ -92,16 +81,23 @@ export interface UseConversationsReturn {
   refreshList: () => Promise<void>;
 }
 
+export interface UseConversationsReturn extends ConversationListActions {
+  conversations: ConversationSummary[];
+  activeConversationId: string | null;
+  /** Active panel notification: an undo-delete banner when one is pending,
+   * otherwise the conversation-limit/save-error banner. */
+  notification: TransferNotificationData | null;
+  dismissNotification: () => void;
+  saveCurrentConversation: (updatedAt?: number) => Promise<void>;
+}
+
 /**
  * Manages conversation persistence: save, load, switch, and list.
  *
- * The conversation being edited, its id, and the queue of writes for it all
- * live in a {@link ConversationStore}; this hook is the React surface over it
- * plus the DB calls. Which writes are allowed to land is the store's business —
- * see there for the two questions that decide it.
- *
- * The active conversation ID is mirrored into the URL hash for browser
- * back/forward support.
+ * The conversation, its id, and its write queue live in a
+ * {@link ConversationStore}, which decides which writes land; this hook is the
+ * React surface over it plus the DB calls. The active id is mirrored into the
+ * URL hash for browser back/forward.
  * @param props - Chat hook methods for reading/writing conversation state
  * @param props.getChatHistory - Returns current chat history for saving
  * @param props.restoreChatHistory - Loads a saved chat history into the chat hook

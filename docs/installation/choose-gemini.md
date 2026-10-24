@@ -11,6 +11,9 @@ options. A free tier is available with rate limits for trying out Producer Pal.
 | [Antigravity](./antigravity) | Desktop app fans | Google's agent app. MCP servers are added by editing a JSON file. |
 | [Gemini CLI](./gemini-cli)   | Developers       | Terminal-based. Google AI subscription increases CLI limits.      |
 
+Gemini CLI can also use the portable [Agent Skill](/guide/skills) instead of
+MCP.
+
 ## Recommendation
 
 **Built-in Chat UI with Gemini** is the simplest path to a first try. Get a
@@ -21,7 +24,7 @@ provider.
 
 ## Model Notes
 
-- Gemini 3.8 Flash or Gemini 3.1 Pro recommended
+- Gemini 3.8 Flash or Gemini 4 Argon recommended
 - Free tier: expect to hit rate limits quickly, even in short sessions
 - When you outgrow the free tier:
   - [OpenRouter](./chat-ui-other-providers#openrouter) with Gemini - simplest

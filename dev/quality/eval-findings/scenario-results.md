@@ -62,8 +62,8 @@ in that run.
 | `transform-random-baked-or-replayed`    | —         | —          | —          | —            | 0/3       | 0/3       | 0/3       |
 | `drum-backbeat-midi-json`               | 3/3       | 1/1        | 1/1        | 1/1          | 3/3       | 3/3       | 2/3       |
 
-Three rows are not findings: `duplicate-loop` is run 2 predating ADR-0040,
-`drum-backbeat-stark` is
+Three rows are not findings: `duplicate-loop` is run 2 predating the
+`duplicateLoop` refusal, `drum-backbeat-stark` is
 [red on purpose](README.md#scenarios-that-are-red-on-purpose), and
 `legato-transforms` graded a spelling the parser accepts — two of its three
 trials failed only on writing `random()` where the check wanted `rand()`, and
@@ -193,3 +193,94 @@ after its grader fix.
 Still red: `drum-transforms` and `note-ops-repeat` 1/4; `note-ops-merge`,
 `note-ops-split` and `transform-random-baked-or-replayed` 0/4. The note-ops
 fails are still "`transforms` parameter missing in turn 2".
+
+## What moved between runs 14, 15 and 18
+
+Same model (`gpt-6-luna`) throughout. Against run 15 (198 commits earlier) the
+scenarios both ran are flat: 314 to 316 of 355. Up by 2:
+`automation-write-mixer`, `rack-pad-ops` and `path-arrangement-covers` (grader
+fixes), `note-ops-merge`, `bar-beat-melodic-compound-stepping`. Down by 2:
+`legato-transforms` and `transform-random-baked-or-replayed`, both below. Run 14
+is ×2 and 496 commits back, so the cells below compare to it only where it was
+consistent.
+
+Green: the note-ops family recovered — `note-ops-merge` 0/4 and
+`note-ops-repeat` 1/4 to 3/3, `note-ops-split` 0/4 to 1/3.
+`create-and-edit-clip` 1/4 to 3/3. `melody-pitch-midi-json` 1/4 to 2/3, the one
+failure still an octave low. `synced-lfo-meter-invariance` is 3/3 only after its
+prompt changed: asked to "add a sine-wave LFO", luna searched the library for an
+LFO device or said note velocity can't be modulated over time, 0/13 before the
+fix.
+
+Still red: `context-memory-update-not-duplicate` 0/3 (agrees in prose, never
+updates the memory, as in run 14), `drum-transforms` and
+`transform-random-baked-or-replayed` 0/3, `middle-c-scale-stark` 0/3.
+`transform-random`'s one-call LFO check is red by design (see
+[wording-changes.md](wording-changes.md)); 2 of its 3 trials also swapped which
+drum got the baked and which the replayed velocities.
+
+Red: `legato-transforms` 2/2 to 1/3 — both failures wrote `legato()` with no
+tolerance arg after humanizing. `scene-copy-back-to-back` and
+`swing-and-quantize` 1/3, `context-memory-recall` 1/3.
+
+## Run 19: claude-haiku-5-5
+
+375 of 381. Only three scenarios miss: `bar-beat-zip-streams` 0/3 (hand-lists 16
+positions instead of a repeat), `locator-navigation` 1/3 (`toPath: "t2[25|1]"`
+instead of `loc:Bridge`), `melody-pitch-midi-json` 2/3 (one bar an octave low).
+All three are luna's weak spots too, so they read as the task, not the model.
+Wording fixes for the first two are already recorded as not working in
+[wording-changes.md](wording-changes.md).
+
+## What moved between runs 18-19 and 20-21
+
+Flat overall: luna 341 to 343, haiku 375 to 369. Every failing transcript was
+read; three drops traced to the Skill and description trims or to a weak
+refusal, and were fixed after the run (A/B at ×3 on luna and haiku):
+
+- `automation-write-curve` luna 3/3 to 0/3, and 36 envelope target errors
+  (`Track Volume:`, `Pan:`, `pan: clear`) where runs 18-19 had none. Moving the
+  envelope notation out of the Write section took the line format and target
+  names with it, and luna read "positive bends above the line" backwards for a
+  slow start. The Write section names them again and the schema says which sign
+  starts slow: 3/3, no target errors.
+- `device-preset-swap-by-name` luna 3/3 to 1/3. Luna tried create-device at the
+  empty Drum Rack's path and got a bare `could not insert`: an empty rack makes
+  no sound, so the one-instrument reason never fired, but Live still counts it.
+  With the reason, luna switches to update-device `preset`: 3/3.
+- `synced-lfo-meter-invariance` haiku 3/3 to 1/3. `sin(n/4, sync)` puts every
+  note on a zero crossing, so the result says `transformed: 0`, and haiku
+  retried until it wrote `velocity += 0`. Runs 18-19 retried too, but the trim
+  removed the line saying what `transformed` counts. A shorter one is back:
+  haiku and luna 3/3, and haiku adds a phase offset in 2-3 calls instead of
+  5-12.
+
+Not traced to a change: `note-ops-ratchet-roll` luna 3/3 to 1/3 (2/3 on a
+recheck; `repeat()` docs unchanged), `path-arrangement-covers` 2/3 on both (the
+model renamed the clip it had just made by id; the grader wants a bar-3
+coordinate), `locator-lifecycle` haiku 2/3 (a 30s timeout on a locator delete),
+and single misses elsewhere. Every model's first search for a drum kit is
+`kind: "preset"`, which never finds an .adg; an empty preset search now says how
+many racks match. Up: luna `middle-c-scale-stark` 0/3 to 3/3 (the Stark
+lowercase-flat fix), `legato-transforms` 1/3 to 3/3.
+
+## What moved between runs 20-21 and 22-23
+
+Flat overall: luna 343 to 340, haiku 369 to 370. Four short Skill lines changed
+in between (envelope line format, `transformed: 0`, the note-count pointer, and
+undo steps); none touches pitch spelling or locators.
+
+- `middle-c-scale-stark` luna 3/3 to 0/3, and 9/20 on rechecks at Codex's
+  default effort; run 18 was 0/3, so run 20's 3/3 was luck. Luna spends about 10
+  reasoning tokens here. Most misses wrote A for Ab, in both absolute (`A3`) and
+  Stark's relative spelling; others put middle C at C4, or wrote `A3b`, which
+  Stark read as A3 plus a note B. midi-json, the control arm, stayed 3/3. Two
+  text changes did not move it (see [wording-changes.md](wording-changes.md)).
+  At `model_reasoning_effort="high"`: 6/6.
+- `locator-navigation` luna 2/3 to 0/3, haiku 0/3 again. Every miss put the copy
+  at the Bridge by bar (`t2[25|1]`). A placed clip does not follow its locator,
+  so both spellings are equal, and the grader now checks only where it landed.
+- `note-ops-split` luna 1/3 to 0/3: split the arrangement clip, or deleted and
+  rewrote the note, instead of `split()` — the same misses as before.
+
+Everything else moved by one trial either way.

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -9,12 +9,12 @@ import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/tracks/get-host-track-index.ts";
 import { connect } from "../connect.ts";
 
 // Mock the getHostTrackIndex function
 vi.mock(
-  import("#src/tools/shared/arrangement/get-host-track-index.ts"),
+  import("#src/tools/shared/arrangement/tracks/get-host-track-index.ts"),
   () => ({
     getHostTrackIndex: vi.fn(() => 1), // Default to track index 1
   }),

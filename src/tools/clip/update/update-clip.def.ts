@@ -1,14 +1,20 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z } from "zod";
+import { CONVERT_TYPES } from "#src/tools/clip/convert/remote-script-convert-contract.ts";
 import { MAX_CODE_LENGTH, MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
+import {
+  QUANTIZE_GRID_ALIASES,
+  QUANTIZE_GRID_VALUES,
+} from "#src/tools/clip/update/helpers/notes/quantize-grid.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { audioClipParams } from "#src/tools/shared/schema/audio-clip-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { aliasedEnum } from "#src/tools/shared/tool-framework/enum-aliases.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
@@ -16,7 +22,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
   title: "Update Clip",
   description: {
     default:
-      "Update clip(s), MIDI notes, and warp settings (audio clips). " +
+      "Update clip(s), MIDI notes, warp settings (audio clips), clip automation, and audio-to-MIDI conversion. " +
       "Params with no list form apply to every clip.",
     smallModel:
       "Update clip(s) and MIDI notes. Params with no list form apply to every clip",
@@ -29,16 +35,13 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
 
   inputSchema: {
     // Basic clip properties
-    id: z.coerce
-      .string()
-      .optional()
-      .describe("clip ID(s) to update, comma-separated for multiple"),
+    id: z.coerce.string().optional().describe("clip id(s), comma-separated"),
 
     ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
       default:
         "clip(s) to update instead of id, comma-separated: a clip slot 't<track>/s<scene>', " +
-        "or an arrangement clip by where it starts 't<track>[<position>]' (e.g., 't0/s1' or 't0[5|1],t2/s3')",
+        "or an arrangement clip covering a position 't<track>[<position>]' (e.g., 't0/s1' or 't0[5|1],t2/s3')",
       smallModel:
         "clip to update instead of id: 't0/s1', or 't0[5|1]' in the arrangement",
     }),
@@ -63,12 +66,13 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         "bar|beat position where loop/clip region begins (clip meter); or comma-separated one per clip",
       ),
-    length: z
-      .string()
-      .optional()
-      .describe(
-        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or <count>bar+n<fraction> (e.g., '1bar+n/4'); clip meter; or comma-separated one per clip",
-      ),
+    length: param(z.string().optional(), {
+      default:
+        "duration, e.g. '4bar' (see Skills); clip meter; or comma-separated one per clip. Without start, a non-looping clip keeps its end and moves its start to fit",
+      // Small mode ships no time-and-values fragment, so the grammar stays here.
+      smallModel:
+        "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or <count>bar+n<fraction> (e.g., '1bar+n/4'); clip meter; or comma-separated one per clip. Without start, a non-looping clip keeps its end and moves its start to fit",
+    }),
     looping: z.boolean().optional().describe("enable looping for the clip"),
     duplicateLoop: param(z.boolean().optional(), {
       default:
@@ -85,19 +89,20 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       replacedBy: "toPath",
       example: "[5|1]",
     }),
-    arrangementLength: z
-      .string()
-      .optional()
-      .describe(
+    arrangementLength: param(z.string().optional(), {
+      default:
+        "duration, e.g. '4bar' (see Skills), or comma-separated one per clip. Arrangement clips only; song meter. " +
+        "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
+      smallModel:
         "duration: <count>bar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or <count>bar+n<fraction> (e.g., '1bar+n/4'), or comma-separated one per clip. Arrangement clips only; song meter. " +
-          "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
-      ),
+        "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
+    }),
     arrangementSplit: param(z.string().optional(), {
       default:
         `comma-separated song positions to cut clips at: bar|beat in song meter, or loc:<locator name or id> (e.g., '9|1, loc:Chorus') - max ${MAX_SPLIT_POINTS} points. ` +
         "Cuts the clip into separate clips; to cut a held note into separate notes use split() in transforms. " +
         "One list for every clip, not one per clip: each clip is cut wherever a position falls inside it, and a position outside it is ignored. Arrangement clips only; song meter. " +
-        "Cannot be combined with toPath or arrangementLength: the cut makes new clips, so those would either miss the new pieces or apply to every one of them - cut in one call, then move/resize the pieces in the next",
+        "Cannot be combined with toPath or arrangementLength - cut in one call, then move/resize the pieces in the next",
       smallModel: null,
     }),
     toSlot: deprecatedParam(z.coerce.string().optional(), {
@@ -110,11 +115,12 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "where to move the clip(s): a clip slot 't<track>/s<scene>' " +
           "(scenes are created up to that index), " +
           "a spot on the arrangement 't<track>[<position>]' (a position is bar|beat or " +
-          "loc:<locator name or id>), a take lane 't<track>/l<lane>' (lanes are created up to that " +
+          "loc:<locator name or id>), a take lane 't<track>/l<lane>[<position>]' (lanes are created up to that " +
           "index), or " +
           "'[<position>]' alone to keep the clip's own lane (e.g., 't2/s3' or 't2[5|1],[loc:Chorus]'). " +
           "A lane with no position keeps the clip's own start. A clip re-created in a slot or on a " +
-          "take lane drops its automation envelopes. Comma-separated, one per clip; a lone " +
+          "take lane drops its automation; one moved on the arrangement leaves the track's automation " +
+          "where it was. Comma-separated, one per clip; a lone " +
           "'[<position>]' moves every clip, each on its own lane",
       ),
     // Deprecated because its positions are clip-relative: models reason in song
@@ -172,6 +178,25 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         }
       : {}),
 
+    envelopes: param(z.string().optional(), {
+      default:
+        "clip automation, one '<target>: <notation>' line per parameter, broadcast across the clips. On an arrangement clip it writes the track's automation lane over the clip's span: times run from the clip start, once through, and the clip comes back under a new id. " +
+        "target: a device parameter id (from ppal-read-device, or a ppal-read-clip envelopes entry) or a mixer name - volume, pan, send0, send1... " +
+        "notation: bar|beat points in the clip meter, joined by '/' (straight ramp), '_' (hold, then jump) or '~N' (curved ramp, N from -1 to 1, no space; positive bends above the straight line (fast start), negative below (slow start)), e.g. '1|1 0 / 3|1 0.8 _ 4|1 0.2 ~0.5 5|1 1'. " +
+        "Values are raw, usually 0..1 - not the display units of ppal-read-device min/max. Mixer volume: 0.85 = 0 dB; pan: -1 = hard left, 1 = hard right. " +
+        "Each line REPLACES that parameter's whole envelope; on a session clip a line with nothing after the colon ('472:') clears it (a lane can't be cleared: write a flat line). Needs the remote script (Live 12.4+ to write points). Not on an unwarped session audio clip or a take-lane clip",
+      smallModel: null,
+    }),
+
+    convert: param(z.enum(CONVERT_TYPES).optional(), {
+      default:
+        "audio clips only: make a new MIDI track from each clip, after the other edits (adds a track, shifting the ones after it), " +
+        "with an instrument loaded and a clip of the notes Live detects in the source's place. " +
+        "drums = rhythm of unpitched percussion (Drum Rack); melody = pitches of monophonic audio (voice, solo instrument); harmony = pitches of polyphonic audio (chords, full mix). " +
+        "Needs the remote script. Cannot be combined with arrangementSplit or a move (toPath)",
+      smallModel: null,
+    }),
+
     // Quantization parameters
     quantize: z.coerce
       .number()
@@ -179,35 +204,19 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .max(1)
       .optional()
       .describe(
-        "quantize strength 0-1; default 1 (full snap) when quantizeGrid is set. Snaps note starts to quantizeGrid. MIDI clips only",
+        "quantize strength 0-1, default 1 (full snap). Snaps note starts to quantizeGrid. MIDI clips only",
       ),
 
     // NOTE: Live's native quantize-grid vocabulary (incl. "T" triplet forms),
     // mapping directly to Live's quantize API constants — do not migrate to n/N.
-    // The mixed grids (1/8+1/8T, 1/16+1/16T) have no note-value spelling, so they
-    // stay enum-only. The single-grid values ALSO accept the n/N note-value alias
-    // used elsewhere (n/4=1/4, n/8=1/8, n/12=1/8T, n/16=1/16, n/24=1/16T,
-    // n/32=1/32), normalized to the native form in handleQuantization.
-    quantizeGrid: z
-      .enum([
-        "1/4",
-        "1/8",
-        "1/8T",
-        "1/8+1/8T",
-        "1/16",
-        "1/16T",
-        "1/16+1/16T",
-        "1/32",
-        "n/4",
-        "n/8",
-        "n/12",
-        "n/16",
-        "n/24",
-        "n/32",
-      ])
+    // Only these are published. The n/N note-value aliases of the single grids
+    // (n/16 = 1/16, n/12 = 1/8T, ...) are accepted but unpublished: the call
+    // validates and reaches the handler as the native form. The mixed grids have
+    // no note-value spelling.
+    quantizeGrid: aliasedEnum(QUANTIZE_GRID_VALUES, QUANTIZE_GRID_ALIASES)
       .optional()
       .describe(
-        "grid that note starts snap to: 1/16 (default), 1/8, 1/4, 1/8T, 1/16T, 1/32; n/N note values also accepted (n/12=1/8T, n/24=1/16T); mixed grids 1/8+1/8T and 1/16+1/16T are enum-only",
+        "grid that note starts snap to: 1/16 (default), 1/8, 1/4, 1/8T, 1/16T, 1/32, 1/8+1/8T, 1/16+1/16T",
       ),
 
     quantizePitch: param(z.string().optional(), {

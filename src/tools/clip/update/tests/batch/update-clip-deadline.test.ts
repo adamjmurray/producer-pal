@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -16,13 +16,17 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 vi.mock(import("#src/tools/clip/helpers/loop-deadline.ts"), () => ({
   LOOP_DEADLINE_BUFFER_MS: 10000,
   computeLoopDeadline: vi.fn(() => 0),
+}));
+vi.mock(import("#src/shared/max/v8-request-deadline.ts"), () => ({
   isDeadlineExceeded: vi.fn(() => false),
 }));
 
 // Dynamic import after mock is set up
 const { updateClip } = await import("#src/tools/clip/update/update-clip.ts");
-const { computeLoopDeadline, isDeadlineExceeded } =
+const { computeLoopDeadline } =
   await import("#src/tools/clip/helpers/loop-deadline.ts");
+const { isDeadlineExceeded } =
+  await import("#src/shared/max/v8-request-deadline.ts");
 
 /**
  * Setup two MIDI clip mocks for deadline tests.
@@ -51,7 +55,7 @@ function outOfTime(id: string): Record<string, unknown> {
   return {
     id,
     ok: false,
-    detail: "not updated: the request ran out of time; re-run for this clip",
+    detail: "the request ran out of time; re-run for this clip",
   };
 }
 
@@ -114,8 +118,8 @@ describe("updateClip - deadline exceeded", () => {
 
     // No clips were updated, and each one says so in its own entry.
     expect(result).toStrictEqual([outOfTime("123"), outOfTime("456")]);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Ran out of time after updating 0 of 2 clips"),
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("Ran out of time"),
     );
   });
 
@@ -138,8 +142,8 @@ describe("updateClip - deadline exceeded", () => {
       { id: "123", path: "t0/s0" },
       outOfTime("456"),
     ]);
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Ran out of time after updating 1 of 2 clips"),
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("Ran out of time"),
     );
   });
 });

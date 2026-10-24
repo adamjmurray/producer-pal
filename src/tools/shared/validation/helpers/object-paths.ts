@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Reading path params, and narrowing a parsed path to what a caller can act on.
 // A path parses the same everywhere; what a tool accepts differs by what can
@@ -14,11 +14,13 @@ import {
   type TrackPath,
 } from "#src/shared/live-api-path-builders.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
-import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
+import {
+  type SongMeter,
+  songMeter,
+} from "#src/tools/shared/validation/helpers/song-meter.ts";
 import {
   namedParam,
   paramNamesSomething,
-  parseCommaSeparatedIds,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { entriesFrom } from "#src/tools/shared/helpers/target-entries.ts";
 import {
@@ -87,6 +89,28 @@ export function parseObjectPathList(
 }
 
 /**
+ * Refuses a destination list holding an entry that can't be parsed. The call
+ * was written wrong, so it is refused before anything is written; an entry that
+ * parses but can't be applied is a skip, decided later against Live. Quiet:
+ * the tool parses each entry again when it uses it, and warns there.
+ * @param input - Comma-separated destinations, if sent
+ * @param label - Param name for error messages
+ * @throws Error naming the first entry that doesn't parse
+ */
+export function refuseUnparsableEntries(
+  input: string | null | undefined,
+  label: string,
+): void {
+  if (!pathNamesSomething(input)) {
+    return;
+  }
+
+  for (const entry of pathEntries(input, label)) {
+    parseObjectPath(entry, label, true);
+  }
+}
+
+/**
  * Splits a path param into its entries without parsing them. A blank value
  * reads as omitted; everything else follows the target-list rule.
  * @param input - Comma-separated paths (e.g., "t1/d0" or "t1/d0,t2/d0")
@@ -106,7 +130,10 @@ export function pathEntries(input?: string | null, label = "path"): string[] {
  * @returns True when the value names something
  */
 export function pathNamesSomething(value: string | null | undefined): boolean {
-  return paramNamesSomething(value) && parseCommaSeparatedIds(value).length > 0;
+  return (
+    paramNamesSomething(value) &&
+    splitPathEntries(String(value)).some((entry) => entry.trim() !== "")
+  );
 }
 
 /**
@@ -176,13 +203,16 @@ export function arrangementPath(
  * The path a spot on the arrangement spells: its lane, plus where it is.
  * @param lane - The lane the spot sits on
  * @param startBeats - The position in Ableton beats
+ * @param meter - The song's time signature, for a caller naming many spots
+ *   that has read it already
  * @returns The path (e.g. "t0[5|1]" or "t0/l1[5|1]")
  */
 export function arrangementPositionPath(
   lane: ArrangementLane,
   startBeats: number,
+  meter?: SongMeter,
 ): string {
-  const { numerator, denominator } = songMeter();
+  const { numerator, denominator } = meter ?? songMeter();
 
   return formatObjectPath({
     kind: ARRANGEMENT_POSITION,
@@ -266,21 +296,6 @@ export function requireClipSlotPath(
   }
 
   return { trackIndex: clip.trackIndex, sceneIndex: clip.sceneIndex };
-}
-
-/**
- * Parses a comma-separated list of clip slots.
- * @param input - Comma-separated paths (e.g., "t0/s1" or "t0/s1,t2/s3")
- * @param label - Param name for error messages
- * @returns One track/scene pair per path, in order
- */
-export function parseClipSlotPathList(
-  input: string | null | undefined,
-  label = "path",
-): Array<{ trackIndex: number; sceneIndex: number }> {
-  return parseObjectPathList(input, label).map((path) =>
-    requireClipSlotPath(path, label),
-  );
 }
 
 /**

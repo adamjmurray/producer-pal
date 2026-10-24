@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Minimal YAML-frontmatter parse/serialize for a config markdown file. Only a
 // flat block of `key: value` string scalars is supported — enough for the
@@ -84,7 +84,7 @@ export function parseFrontmatter(
   // An all-blank fenced block (`---` immediately followed by `---`, or only
   // blank lines between the fences) is a thematic break too — no pairs, so keep
   // the whole document as body rather than swallowing it into empty metadata
-  // (ADR-0010 supports hand-edited files with no frontmatter).
+  // (hand-edited files with no frontmatter are supported).
   if (Object.keys(data).length === 0) {
     return { data: {}, body: raw };
   }

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Mock layouts shared by the chain-copy tests. Copying a chain makes the chain,
 // then carries the source's devices across from a temp track copy, so every one

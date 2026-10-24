@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -488,25 +488,31 @@ describe("updateDevice with path parameter", () => {
       expect(capturedWarnings()).toStrictEqual([]);
     });
 
-    it("reports a malformed entry of a list in its own slot", () => {
+    it("refuses a list with a malformed entry, writing nothing", () => {
       const device = registerMockObject("device-456", {
         path: livePath.track(1).device(0),
         type: "Device",
       });
 
-      const result = updateDevice({ path: "zzz,t1/d0", name: "A,B" });
-
-      expect(device.set).toHaveBeenCalledWith("name", "B");
-      expect(result).toStrictEqual([
-        {
-          path: "zzz",
-          ok: false,
-          detail: expect.stringContaining('invalid path "zzz"'),
-        },
-        { id: "device-456", path: "t1/d0" },
-      ]);
+      expect(() => updateDevice({ path: "zzz,t1/d0", name: "A,B" })).toThrow(
+        /invalid path "zzz"/,
+      );
+      expect(device.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toStrictEqual([]);
     });
+  });
+
+  it("warns once about a legacy-spelled path in a list", () => {
+    registerMockObject("device-456", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+    });
+
+    updateDevice({ path: "0/1,t0/d0", name: "A,B" });
+
+    expect(capturedWarnings()).toStrictEqual([
+      'path "0/1" is the old slot spelling; use "t0/s1"',
+    ]);
   });
 
   describe("multiple comma-separated paths", () => {

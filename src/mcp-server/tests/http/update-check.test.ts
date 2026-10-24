@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
@@ -23,6 +23,7 @@ vi.mock(import("../../helpers/config-store/global-settings-store.ts"), () => ({
   DEFAULT_GLOBAL_SETTINGS: {
     autoUpdateCheck: true,
     dismissedUpdateVersion: null,
+    warnIfInstallIncomplete: true,
   },
 }));
 
@@ -44,6 +45,7 @@ describe("getUpdate", () => {
     mockReadGlobalSettings.mockReturnValue({
       autoUpdateCheck: true,
       dismissedUpdateVersion: null,
+      warnIfInstallIncomplete: true,
     });
   });
 
@@ -120,6 +122,7 @@ describe("getUpdate", () => {
     mockReadGlobalSettings.mockReturnValue({
       autoUpdateCheck: false,
       dismissedUpdateVersion: null,
+      warnIfInstallIncomplete: true,
     });
     mockCheckForUpdate.mockResolvedValue({ version: "9.9.9" });
     const getUpdate = await freshGetUpdate();

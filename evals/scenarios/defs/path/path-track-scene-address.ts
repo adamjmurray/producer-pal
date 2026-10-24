@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Scenario: naming a track or scene by where it is.
@@ -63,6 +63,7 @@ export const pathTrackSceneAddress: EvalScenario = {
       tool: TOOL_READ_TRACK,
       param: "path",
       expected: "rt1",
+      allowList: true,
     }),
 
     { type: "tool_called", tool: TOOL_UPDATE_TRACK, turn: 2 },

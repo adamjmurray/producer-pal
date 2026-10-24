@@ -1,9 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type RegisteredMockObject,
   children,
@@ -172,6 +172,178 @@ describe("updateDevice - moving a drum chain", () => {
     expect(chain2.set).toHaveBeenCalledExactlyOnceWith("in_note", 40);
   });
 
+  // D1's chain moves on in the same call, so nothing ends up layered.
+  it.each([
+    ["a pad", "t0/d0/pC1,t0/d0/pD1"],
+    ["a chain", "t0/d0/pC1/c0,t0/d0/pD1/c0"],
+  ])(
+    "says nothing layers when %s moves onto a pad that moves on",
+    (_case, path) => {
+      const result = updateDevice({ path, toPath: "t0/d0/pD1,t0/d0/pE1" });
+
+      expect(chain0.set).toHaveBeenCalledWith("in_note", 38);
+      expect(chain2.set).toHaveBeenCalledExactlyOnceWith("in_note", 40);
+      expect(JSON.stringify(result)).not.toContain("layers");
+    },
+  );
+
+  // D1's chain was to move on, but didn't, so the first move did layer.
+  it.each<[string, string, { deadline?: number }]>([
+    ["is refused", "t0/d0/pD1,t0/d0/p*", {}],
+    ["names another rack", "t0/d0/pD1,t9/d0/pE1", {}],
+    ["runs out of time", "t0/d0/pD1,t0/d0/pE1", { deadline: 1 }],
+  ])("says the move layers when the move on %s", (_case, toPath, ctx) => {
+    if (ctx.deadline != null) {
+      const now = vi.spyOn(Date, "now").mockReturnValue(0);
+
+      // The deadline passes once the first move lands.
+      chain0.set.mockImplementation((property: string, value: unknown) => {
+        chain0.properties[property] = value;
+        now.mockReturnValue(2);
+      });
+    }
+
+    const result = updateDevice(
+      { path: "t0/d0/pC1/c0,t0/d0/pD1/c0", toPath },
+      ctx,
+    );
+
+    expect(chain2.properties.in_note).toBe(38);
+    expect((result as unknown[])[0]).toStrictEqual(
+      expect.objectContaining({
+        detail: expect.stringContaining(
+          "drum pad t0/d0/pD1 (id pad-38) already had 1 chain(s), so the move layers",
+        ),
+      }),
+    );
+  });
+
+  // A pad is named by its note, so an earlier pad move leaves a bare pad
+  // destination meaning the same pad.
+  it("swaps two pads", () => {
+    const result = updateDevice({
+      path: "t0/d0/pC1,t0/d0/pD1",
+      toPath: "t0/d0/pD1,t0/d0/pC1",
+    });
+
+    expect(chain0.set).toHaveBeenCalledExactlyOnceWith("in_note", 38);
+    expect(chain1.set).toHaveBeenCalledExactlyOnceWith("in_note", 38);
+    expect(chain2.set).toHaveBeenCalledExactlyOnceWith("in_note", 36);
+    expect(JSON.stringify(result)).not.toContain("layers");
+  });
+
+  it("rotates three pads", () => {
+    const chain3 = registerMockObject("chain-3", {
+      path: livePath.track(0).device(0).chain(3),
+      type: "DrumChain",
+      properties: { in_note: 40 },
+    });
+
+    writesThroughSets(chain3);
+    registerMockObject("drumrack-id", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: {
+        can_have_drum_pads: 1,
+        chains: children("chain-0", "chain-1", "chain-2", "chain-3"),
+        drum_pads: children("pad-36", "pad-38"),
+      },
+    });
+
+    const result = updateDevice({
+      path: "t0/d0/pC1,t0/d0/pD1,t0/d0/pE1",
+      toPath: "t0/d0/pD1,t0/d0/pE1,t0/d0/pC1",
+    });
+
+    expect(chain0.set).toHaveBeenCalledExactlyOnceWith("in_note", 38);
+    expect(chain2.set).toHaveBeenCalledExactlyOnceWith("in_note", 40);
+    expect(chain3.set).toHaveBeenCalledExactlyOnceWith("in_note", 36);
+    expect(JSON.stringify(result)).not.toContain("layers");
+  });
+
+  it("still refuses a pad move spelled through a pad an earlier move changed", () => {
+    expect(() =>
+      updateDevice({
+        path: "t0/d0/pC1,t0/d0/pD1",
+        toPath: "t0/d0/pD1,t0/d0/pC1/c0",
+      }),
+    ).toThrow('toPath entry "t0/d0/pC1/c0" is spelled through "t0/d0/pC1"');
+    expect(chain0.set).not.toHaveBeenCalled();
+  });
+
+  it("still refuses a pad move to a bare pad when an earlier move renumbers the rack's track", () => {
+    registerMockObject("track-1", { path: livePath.track(1), type: "Track" });
+    registerMockObject("fx", {
+      path: livePath.track(0).device(1),
+      type: "Device",
+    });
+
+    expect(() =>
+      updateDevice({ path: "t0/d1,t0/d0/pC1", toPath: "t1,t0/d0/pD1" }),
+    ).toThrow('toPath entry "t0/d0/pD1" is spelled through "t0"');
+    expect(chain0.set).not.toHaveBeenCalled();
+  });
+
+  it("still refuses a pad move to a nested rack's pad under a pad an earlier move changed", () => {
+    registerMockObject("nested-kit", {
+      path: livePath.track(0).device(0).chain(0).device(0),
+      type: "RackDevice",
+      properties: { can_have_drum_pads: 1, chains: children() },
+    });
+    chain0.properties.devices = children("nested-kit");
+
+    expect(() =>
+      updateDevice({
+        path: "t0/d0/pC1,t0/d0/pD1",
+        toPath: "t0/d0/pD1,t0/d0/pC1/d0/pB1",
+      }),
+    ).toThrow('toPath entry "t0/d0/pC1/d0/pB1" is spelled through "t0/d0/pC1"');
+    expect(chain0.set).not.toHaveBeenCalled();
+  });
+
+  // A drum chain moved to another pad renumbers both pads' layers.
+  it.each([
+    [
+      "the pad it lands on",
+      "t0/d0/pD1/c0/d+",
+      "t0/d0/pD1",
+      'the move to "t0/d0/pD1"',
+    ],
+    [
+      "the pad it leaves",
+      "t0/d0/pC1/c0/d+",
+      "t0/d0/pC1",
+      "the move of id chain-0",
+    ],
+    // A bare pad means its first layer.
+    ["the pad, bare", "t0/d0/pD1/d+", "t0/d0/pD1", 'the move to "t0/d0/pD1"'],
+    [
+      "the pad it leaves, bare",
+      "t0/d0/pC1/d+",
+      "t0/d0/pC1",
+      "the move of id chain-0",
+    ],
+  ])("refuses a later toPath spelled through %s", (_case, later, pad, by) => {
+    registerMockObject("dev", { path: livePath.track(1).device(0) });
+
+    expect(() =>
+      updateDevice({ id: "chain-0,dev", toPath: `t0/d0/pD1,${later}` }),
+    ).toThrow(
+      `toPath entry "${later}" is spelled through "${pad}", which ${by} renumbers.`,
+    );
+    expect(chain0.set).not.toHaveBeenCalled();
+  });
+
+  it("lets a later layer move to another pad through", () => {
+    updateDevice({
+      path: "t0/d0/pC1/c0,t0/d0/pC1/c1",
+      toPath: "t0/d0/pD1,t0/d0/pE1",
+    });
+
+    expect(chain0.set).toHaveBeenCalledWith("in_note", 38);
+    expect(chain1.set).toHaveBeenCalledWith("in_note", 40);
+  });
+
   // Live layers rather than replaces, so the destination ends up playing both
   // the sound that was there and the one that arrived.
   it("says on the pad's entry that a move onto an occupied pad layers", () => {
@@ -193,6 +365,30 @@ describe("updateDevice - moving a drum chain", () => {
 
     expect(result).toStrictEqual(unmovedPadC1);
   });
+
+  // A chain another move in the call brought wasn't there before it.
+  it.each([
+    ["empty", "t0/d0/pC1,t0/d0/pD1", "t0/d0/pE1", null],
+    ["occupied", "t0/d0/pC1/c0,t0/d0/pC1/c1", "t0/d0/pD1", 1],
+  ])(
+    "counts only earlier chains when two moves land on an %s pad",
+    (_case, path, to, had) => {
+      const result = updateDevice({ path, toPath: `${to},${to}` }) as unknown[];
+      const layered =
+        had == null
+          ? []
+          : [`already had ${had} chain(s)`, `already had ${had} chain(s)`];
+
+      expect(
+        result
+          .map(
+            (entry) =>
+              JSON.stringify(entry).match(/already had \d+ chain\(s\)/)?.[0],
+          )
+          .filter(Boolean),
+      ).toStrictEqual(layered);
+    },
+  );
 
   // A pad that is already where it is asked to go has nothing to layer onto.
   it("stays quiet moving a pad onto itself", () => {
@@ -394,9 +590,9 @@ describe("updateDevice - moving a drum chain", () => {
   });
 });
 
-// A toPath that names no place a device can go must warn and skip the move, so
-// the rest of the batch still gets its other updates. The bare-track shape
-// always did; the nested ones used to throw and take the whole call with them.
+// A toPath that parses but names no place a device can go skips only that
+// move, so the rest of the batch still gets its other updates. One that doesn't
+// parse was written wrong, and refuses the whole call.
 describe("updateDevice - a toPath that does not resolve", () => {
   let first: RegisteredMockObject;
   let second: RegisteredMockObject;
@@ -433,7 +629,6 @@ describe("updateDevice - a toPath that does not resolve", () => {
     ["t99/d0", 'not moved: nothing at toPath "t99/d0"'],
     ["t99/d0/c0", 'not moved: Track in path "t99/d0/c0" does not exist'],
     ["t0/d5/c0", 'not moved: Device in path "t0/d5/c0" does not exist'],
-    ["garbage", "not moved: invalid toPath"],
     ["t0/d0/c0", "not moved: Auto-creating chains in Drum Racks"],
     [
       "t0/d1/c0",
@@ -454,5 +649,17 @@ describe("updateDevice - a toPath that does not resolve", () => {
       { id: "456", detail: expect.stringContaining(reason) },
     ]);
     expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  it("refuses the call, renaming nothing, for a toPath that doesn't parse", () => {
+    expect(() =>
+      updateDevice({
+        id: "123,456",
+        toPath: "t0/d1/c0,garbage",
+        name: "X",
+      }),
+    ).toThrow('invalid toPath "garbage"');
+    expect(first.set).not.toHaveBeenCalled();
+    expect(second.set).not.toHaveBeenCalled();
   });
 });

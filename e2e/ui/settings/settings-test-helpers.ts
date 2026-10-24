@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Harness for the stubbed settings-modal specs. The chat UI's own stubs already
 // bypass the first-run screen, so this only has to open the modal and read back
@@ -33,6 +33,16 @@ export interface StoredPreset {
  */
 export async function setupSettingsTest(page: Page): Promise<void> {
   await installStubs(page);
+  await loadSettings(page);
+}
+
+/**
+ * Load the chat UI and open the settings modal, for a test that stubs an
+ * endpoint first: the Installation tab reads its statuses as the settings
+ * open, so a stub registered after that is too late.
+ * @param page - Playwright page
+ */
+export async function loadSettings(page: Page): Promise<void> {
   await page.goto("/chat-ui.html");
   await openSettings(page);
 }
@@ -65,12 +75,62 @@ export async function openPreferencesTab(page: Page): Promise<void> {
 }
 
 /**
- * Switch to the Remote Script tab and wait for its status line.
+ * Switch to the Installation tab and wait for the remote script's status line.
  * @param page - Playwright page
  */
-export async function openRemoteScriptTab(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Remote Script" }).click();
+export async function openInstallationTab(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Installation" }).click();
   await expect(page.getByTestId("remote-script-status")).toBeVisible();
+}
+
+/** How a stubbed install POST answers, and what it does to the status after. */
+export interface InstallStub<Status> {
+  status: number;
+  body: unknown;
+  /** Status fields the install changes, applied on a 200. */
+  after?: Partial<Status>;
+}
+
+/**
+ * Stub a status endpoint and its `/install` POST. A successful install rewrites
+ * the status the next read answers with, as the real server would.
+ * @param page - Playwright page
+ * @param endpoint - The status route, e.g. "remote-script"
+ * @param initial - What the first status read returns
+ * @param install - How the install POST answers
+ * @returns The bodies the install POST received
+ */
+export async function stubStatusAndInstall<Status extends object>(
+  page: Page,
+  endpoint: string,
+  initial: Status,
+  install: InstallStub<Status>,
+): Promise<unknown[]> {
+  let current = initial;
+  const posted: unknown[] = [];
+
+  await page.route(`**/${endpoint}`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(current),
+    }),
+  );
+  await page.route(`**/${endpoint}/install`, (route) => {
+    posted.push(route.request().postDataJSON());
+
+    if (install.status === 200) {
+      current = { ...current, ...install.after };
+    }
+
+    return route.fulfill({
+      status: install.status,
+      contentType: "application/json",
+      body: JSON.stringify(install.body),
+    });
+  });
+
+  return posted;
 }
 
 /**

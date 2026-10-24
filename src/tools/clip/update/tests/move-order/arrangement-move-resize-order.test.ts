@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -16,6 +16,7 @@ import {
   newClipReasons,
 } from "../../helpers/entries/clip-reasons.ts";
 import { joinedClipReason } from "../../helpers/update-clip-test-helpers.ts";
+import { newLandingLog } from "#src/tools/shared/clip/landings/landing-log.ts";
 
 const SOURCE = "789";
 const MOVED = "999";
@@ -89,7 +90,7 @@ function moveAndResize(
     arrangementStartBeats: 32,
     arrangementLengthBeats: lengthBeats,
     destination,
-    movedClipGroups: new Map(),
+    landings: newLandingLog(),
     context: { silenceWavPath: "/tmp/silence.wav" },
     updatedClips,
     noteResult: null,
@@ -173,7 +174,9 @@ describe("handleArrangementOperations - move and resize order", () => {
     expect(resizedFirst(steps)).toBe(false);
   });
 
-  it("keeps a shortened clip's entry at its old spot when the move throws", () => {
+  // The entry is the pipeline's to build: what landed before the throw is in
+  // the journal, and a throw can't be turned into an entry for a dead id here.
+  it("lets the move's throw through once the clip is shortened", () => {
     registerClip(SOURCE);
     const steps = spyOnSteps();
 
@@ -181,11 +184,50 @@ describe("handleArrangementOperations - move and resize order", () => {
       throw new Error("boom");
     });
 
-    moveAndResize(8);
+    expect(() => moveAndResize(8)).toThrow("boom");
+    expect(updatedClips).toStrictEqual([]);
+    expect(reasons.landed.has(SOURCE)).toBe(true);
+  });
 
+  it("checks the move before it shortens, and leaves the clip as it was when the move would be refused", () => {
+    registerClip(SOURCE);
+    registerMockObject("audio-track", {
+      path: livePath.track(5),
+      type: "Track",
+      properties: { has_midi_input: 0 },
+    });
+
+    const steps = spyOnSteps();
+
+    moveAndResize(8, { trackIndex: 5, takeLane: null });
+
+    expect(steps.resize).not.toHaveBeenCalled();
+    expect(steps.place).not.toHaveBeenCalled();
     expect(updatedClips.map(({ id }) => id)).toStrictEqual([SOURCE]);
-    expect(joinedClipReason(reasons, SOURCE)).toBe(
-      "shortened, but the move didn't finish: boom",
+    expect(reasons.refused.has(SOURCE)).toBe(true);
+    expect(joinedClipReason(reasons, SOURCE)).toContain(
+      "not moved or resized: track",
+    );
+  });
+
+  it("checks the move before it lengthens, and leaves the clip as it was when the move would be refused", () => {
+    registerClip(SOURCE);
+    registerMockObject("audio-track", {
+      path: livePath.track(5),
+      type: "Track",
+      properties: { has_midi_input: 0 },
+    });
+
+    const steps = spyOnSteps();
+
+    moveAndResize(32, { trackIndex: 5, takeLane: null });
+
+    expect(steps.resize).not.toHaveBeenCalled();
+    expect(steps.place).not.toHaveBeenCalled();
+    expect(updatedClips.map(({ id }) => id)).toStrictEqual([SOURCE]);
+    expect(reasons.refused.has(SOURCE)).toBe(true);
+    expect(joinedClipReason(reasons, SOURCE)).toContain(
+      "not moved or resized: track",
     );
   });
 
@@ -218,17 +260,17 @@ describe("handleArrangementOperations - move and resize order", () => {
     );
   });
 
-  it("lets a resize failure through when nothing moved", () => {
+  it("skips the resize when the move doesn't land", () => {
     registerClip(SOURCE);
     const steps = spyOnSteps();
 
     steps.place.mockReturnValue(null);
-    steps.resize.mockImplementation(() => {
-      throw new Error("boom");
-    });
 
-    // Lengthening moves first, so the refused move leaves the clip in place.
-    expect(() => moveAndResize(32)).toThrow("boom");
-    expect(updatedClips).toStrictEqual([]);
+    // Lengthening in place would clear neighbors the call never named.
+    moveAndResize(32);
+
+    expect(steps.resize).not.toHaveBeenCalled();
+    expect(updatedClips.map(({ id }) => id)).toStrictEqual([SOURCE]);
+    expect(joinedClipReason(reasons, SOURCE)).toBe("not resized");
   });
 });

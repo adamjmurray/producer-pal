@@ -126,7 +126,8 @@ Everything below documents **deltas** from this baseline.
 | Doc                                                  | Contents                                                                                                                    |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | [interface-conventions.md](interface-conventions.md) | Wire format, the `options` include, documentation strategy — cross-cutting decisions the per-device sections assume         |
-| [instruments.md](instruments.md)                     | Per-device catalog: Drift, Meld, Simpler, Wavetable, plus the generic-Device instruments                                    |
+| [instruments/](instruments/README.md)                | Per-device catalog: Drift, Meld, Simpler, Wavetable, plus the generic-Device instruments                                    |
+| [drum-racks.md](drum-racks.md)                       | How a Drum Rack is modeled: pads are slots, chains are layers, and what each tool does with them                            |
 | [audio-effects.md](audio-effects.md)                 | Per-device catalog: Compressor, EQ Eight, Hybrid Reverb, Roar, Shifter, Spectral Resonator, plus the generic-Device effects |
 
 Read only the one you need — each catalog is long.
@@ -203,7 +204,8 @@ node scripts/live-api/scan-live-api/scan-all-devices.ts
 ```
 
 (For core LOM object types rather than devices — Song, Track, Scene, Clip, etc.
-— use the sibling `scan-live-api.ts`.)
+— use the sibling `scan-live-api.ts`. To compare with the Python API, see
+[python-remote-script-api/](../python-remote-script-api/README.md).)
 
 **Ad-hoc single-device inspection** — `scripts/ppal-client.ts` drives any tool
 directly. To inspect one device:
@@ -219,12 +221,11 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
 
 # Implementation status
 
-All specialized devices catalogued in [instruments.md](instruments.md) and
+All specialized devices catalogued in [instruments/](instruments/README.md) and
 [audio-effects.md](audio-effects.md) are implemented in
 `src/tools/shared/device/specialized/` (one file per device under `devices/`,
 registered in `specialized-device-registry.ts`) and e2e-validated against Live
-12.4 — **except Shifter**. The original value-ranked backlog that lived here (a
-guide for what to build first) has been retired now that the work is done.
+12.4 — **except Shifter**.
 
 What each device exposes:
 

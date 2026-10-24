@@ -1,33 +1,44 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
+import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   landedColor,
   type LandedColor,
 } from "#src/tools/shared/helpers/landed-color.ts";
-import { validateTempo } from "#src/tools/shared/helpers/tempo-validation.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-parsing.ts";
-import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { valueForIndex } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { blankTargetIgnores } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
-import { resolveLabeledTargets } from "#src/tools/shared/validation/lists/labeled-targets.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
 import {
-  splitList,
-  valueForIndex,
-} from "#src/tools/shared/validation/lists/list-pairing.ts";
+  type AppliedTarget,
+  type Done,
+  type PipelineResult,
+  type Step,
+  type WriteSpec,
+  type Call,
+} from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import {
-  targetObject,
-  writeFanOut,
-  type WriteResult,
-} from "#src/tools/shared/validation/lists/write-fan-out.ts";
-import { type IdLookup } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
-import { sceneIdAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
+  type SceneCall,
+  type SceneChecked,
+  type UpdateSceneArgs,
+  checkSceneCall,
+  parseSceneCall,
+  sceneListArgs,
+} from "./helpers/call/parse-scene-call.ts";
+import {
+  type ScenePayload,
+  sceneTargets,
+} from "./helpers/call/resolve-scene-targets.ts";
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
-  validateTimeSignatures,
+  readBackSceneTimeSignature,
 } from "./helpers/scene-tempo-signature.ts";
 
 interface UpdateSceneResult {
@@ -35,22 +46,13 @@ interface UpdateSceneResult {
   path?: string;
   /** The palette color Live settled on, when it isn't the one asked for */
   color?: string;
+  /** The time signature Live kept, when it isn't the one asked for */
+  timeSignature?: string;
   detail?: string;
 }
 
-interface UpdateSceneArgs {
-  id?: string;
-  /** Hidden alias for id */
-  ids?: string;
-  path?: string;
-  /** Hidden alias for path */
-  paths?: string;
-  name?: string;
-  color?: string;
-  tempo?: number | null;
-  timeSignature?: string | null;
-  focus?: boolean;
-}
+/** What update-scene answers: the lone entry, or one entry per target. */
+export type UpdateSceneAnswer = PipelineResult<UpdateSceneResult>;
 
 /**
  * Updates properties of existing scenes
@@ -64,98 +66,118 @@ interface UpdateSceneArgs {
  * @param args.tempo - Tempo in BPM. Pass -1 to disable.
  * @param args.timeSignature - Time signature for all, or one per scene, in order ("4/4", or "disabled")
  * @param args.focus - Switch to session view and select the scene
- * @param _context - Internal context object (unused)
+ * @param context - Internal context object, for the request deadline
  * @returns The scene when one was named, otherwise one entry per target
  */
 export function updateScene(
-  {
-    id,
-    ids,
-    path,
-    paths,
-    name,
-    color,
-    tempo,
-    timeSignature,
-    focus,
-  }: UpdateSceneArgs = {},
-  _context: Partial<ToolContext> = {},
-): WriteResult<UpdateSceneResult> {
-  const { targets, parsedNames, parsedColors } = resolveLabeledTargets({
-    noun: "scene",
-    targets: { id, ids, path, paths },
-    name,
-    color,
-    extraLists: [{ param: "timeSignature", value: timeSignature }],
-  });
-
-  validateTempo(tempo, -1);
-
-  const parsedTimeSignatures = splitList(
-    timeSignature ?? undefined,
-    targets.length,
-    "timeSignature",
-  );
-
-  validateTimeSignatures(timeSignature, parsedTimeSignatures);
-
-  // The scenes written, for focus — which follows the call, not a target.
-  const written: string[] = [];
-
-  const result = writeFanOut(targets, (target, i) => {
-    const scene = targetObject(target, "scene", sceneToUpdateAtPath);
-    const sceneName = getNameForIndex(name, i, parsedNames);
-    const sceneColor = getColorForIndex(color, i, parsedColors);
-
-    if (sceneName != null) {
-      scene.set("name", sceneName);
-    }
-
-    let landed: LandedColor = {};
-
-    if (sceneColor != null) {
-      scene.setColor(sceneColor);
-      landed = landedColor(scene, sceneColor);
-    }
-
-    applyTempoProperty(scene, tempo);
-    applyTimeSignatureProperty(
-      scene,
-      valueForIndex(timeSignature ?? undefined, i, parsedTimeSignatures),
-    );
-    written.push(scene.id);
-
-    return {
-      id: scene.id,
-      ...pathField(scene),
-      ...landed,
-    };
-  });
-
-  const lastScene = written.at(-1);
-
-  if (focus && lastScene != null) {
-    focusSelect({ view: "session", id: lastScene });
-  }
-
-  return result;
+  args: UpdateSceneArgs = {},
+  context: Partial<ToolContext> = {},
+): UpdateSceneAnswer {
+  // No hook awaits, so the answer is never a promise.
+  return runWrite(SCENE_WRITE, args, context) as UpdateSceneAnswer;
 }
 
-// --- Helpers below main exports ---
+const SCENE_WRITE: WriteSpec<
+  UpdateSceneArgs,
+  SceneCall,
+  ScenePayload,
+  SceneChecked,
+  UpdateSceneResult
+> = {
+  tool: "ppal-update-scene",
+  words: { rerun: "scene" },
+  parse: (args) => parseSceneCall(args),
+  lists: sceneListArgs,
+  targets: sceneTargets,
+  check: (call, targets) => checkSceneCall(call, targets.length),
+  write: writeScene,
+  settle: settleSceneUpdate,
+};
+
+// --- Helpers below main export ---
 
 /**
- * The scene a path names. A path past the last scene is a target, not a
- * destination — nothing here says what a new scene would be — so it is refused
- * with the tool that does make scenes.
- * @param entry - One scene path, as the caller wrote it
- * @returns The scene's id, or why there isn't one
+ * Write one scene. Each piece is reported as it lands, so a throw later in the
+ * write keeps the scene's entry and says what already changed.
+ * @param target - The target
+ * @param step - The call's state for this target
+ * @returns The scene's entry
  */
-function sceneToUpdateAtPath(entry: string): IdLookup {
-  const lookup = sceneIdAtPath(entry);
+function writeScene(
+  target: AppliedTarget<ScenePayload>,
+  step: Step<SceneChecked>,
+): UpdateSceneResult {
+  const { scene } = target.data;
+  const { checked, index } = step;
+  const address = { id: scene.id, ...pathField(scene) };
+  const landed = (phrase: string): void => step.landed(phrase, address);
+  const name = getNameForIndex(checked.name, index, checked.parsedNames);
+  const color = getColorForIndex(checked.color, index, checked.parsedColors);
 
-  if (lookup.id != null || !lookup.empty) {
-    return lookup;
+  if (name != null) {
+    scene.set("name", name);
+    landed("name");
   }
 
-  return { ...lookup, reason: `${lookup.reason}; ppal-create-scene makes one` };
+  let colorLanded: LandedColor = {};
+
+  if (color != null) {
+    scene.setColor(color);
+    landed("color");
+    colorLanded = landedColor(scene, color);
+  }
+
+  applyTempoProperty(scene, checked.tempo, landed);
+
+  const timeSignature = valueForIndex(
+    checked.timeSignature,
+    index,
+    checked.timeSignatures,
+  );
+
+  applyTimeSignatureProperty(scene, timeSignature, landed);
+
+  const kept =
+    timeSignature == null
+      ? {}
+      : readBackSceneTimeSignature(scene, timeSignature);
+  const detail = joinDetails([colorLanded.detail, kept.detail]);
+
+  return {
+    ...address,
+    ...colorLanded,
+    ...kept,
+    ...(detail == null ? {} : { detail }),
+  };
+}
+
+/**
+ * Once every target has had its turn: say what the call dropped, and focus the
+ * last scene written.
+ * @param done - What the call did
+ * @param call - The call's shared state
+ */
+function settleSceneUpdate(
+  done: Done<ScenePayload, SceneChecked, UpdateSceneResult>,
+  call: Call,
+): void {
+  const { checked, entries, outcomes } = done;
+
+  // Said once the writes are done: it claims what the call did.
+  for (const { param, why } of blankTargetIgnores(
+    checked.sent,
+    "scenes",
+    checked.named,
+  )) {
+    call.ignored(param, why);
+  }
+
+  const last = entries.findLast(
+    (entry, index) =>
+      outcomes[index] === "written" && "id" in entry && entry.id != null,
+  ) as UpdateSceneResult | undefined;
+
+  if (checked.focus === true && last != null) {
+    focusSelect({ view: "session", id: last.id });
+  }
 }

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -374,6 +374,31 @@ describe("SkillsScreen", () => {
 
     // Switching slots remounts the screen and re-seeds from the new slot.
     expect(editorValues()).toContain("STARK");
+  });
+
+  it("shows an unreadable slot as an error with no editor, and keeps the dropdown", () => {
+    renderSlots([
+      slot({ name: "barbeat-standard", title: "Core", builtIn: "CORE" }),
+      slot({ name: "stark", readError: "EACCES: permission denied" }),
+    ]);
+
+    fireEvent.change(screen.getByLabelText("Skill fragment"), {
+      target: { value: "stark" },
+    });
+
+    expect(screen.getAllByText(/Can't read stark\.md/).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getAllByText(/EACCES/).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId("editor")).toBeNull();
+    expect(screen.getAllByRole("option")[1]?.textContent).toContain("⚠");
+
+    // The other slots stay editable.
+    fireEvent.change(screen.getByLabelText("Skill fragment"), {
+      target: { value: "barbeat-standard" },
+    });
+
+    expect(editorValues()).toContain("CORE");
   });
 
   it("resets the save indicator when the edited slot changes", () => {

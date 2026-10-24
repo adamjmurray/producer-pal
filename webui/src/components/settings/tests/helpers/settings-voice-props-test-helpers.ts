@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { vi } from "vitest";
 import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/helpers/turn-detection-settings";

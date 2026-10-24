@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A copy sent to a drum chain comes back spelled through its pad.
 
@@ -9,7 +9,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  registerMockObject,
+  registerPendingMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { registerLayeredDrumRack } from "#src/tools/device/tests/helpers/device-rack-fixtures.ts";
 
 vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
@@ -82,17 +85,17 @@ describe("duplicate — drum chain path spelling", () => {
 
   it("spells every copy in one response the same way", async () => {
     registerSourceDevice();
-    mockMovesInto(0, 2);
+    mockMovesInto(0, 2, "append");
 
     expect(
       await duplicate({
         type: "device",
         id: "source-device",
-        toPath: "t0/d0/pC1/d0,t0/d0/pC1/d0",
+        toPath: "t0/d0/pC1/d+,t0/d0/pC1/d+",
       }),
     ).toStrictEqual([
-      { id: "copy-0", path: "t0/d0/pC1/c0/d1" },
-      { id: "copy-1", path: "t0/d0/pC1/c0/d0" },
+      { id: "copy-0", path: "t0/d0/pC1/c0/d0" },
+      { id: "copy-1", path: "t0/d0/pC1/c0/d1" },
     ]);
   });
 
@@ -147,25 +150,31 @@ function registerSourceDevice(): void {
 }
 
 /**
- * Stand in for Live's moves: each copy is found on the temp track, lands at the
- * front of the rack's chain `chain`, and pushes the earlier copies along.
+ * Stand in for Live's moves: each copy is found on the temp track and lands in
+ * the rack's chain `chain` — at the front, pushing the earlier copies along, or
+ * after them.
  * @param chain - The rack chain index every copy lands in
  * @param copies - How many moves to mock
+ * @param lands - Where in the chain each copy lands
  */
-function mockMovesInto(chain: number, copies: number): void {
+function mockMovesInto(
+  chain: number,
+  copies: number,
+  lands: "front" | "append" = "front",
+): void {
   const landed = livePath.track(0).device(0).chain(chain);
 
-  registerMockObject("copy-0", { path: livePath.track(1).device(1) });
+  registerPendingMockObject("copy-0", { path: livePath.track(1).device(1) });
 
   for (let move = 0; move < copies; move++) {
     vi.mocked(moveDeviceToPathMock).mockImplementationOnce(() => {
       for (let copy = 0; copy <= move; copy++) {
         registerMockObject(`copy-${String(copy)}`, {
-          path: landed.device(move - copy),
+          path: landed.device(lands === "front" ? move - copy : copy),
         });
       }
 
-      registerMockObject(`copy-${String(move + 1)}`, {
+      registerPendingMockObject(`copy-${String(move + 1)}`, {
         path: livePath.track(1).device(1),
       });
 

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
@@ -35,7 +35,7 @@ export const toolDefReadLiveSet = defineTool("ppal-read-live-set", {
         default:
           'tracks, scenes = lists. routings, mixer, color = detail (use with tracks/scenes). locators = arrangement markers. "*" = all',
         // `routings` propagates to the nested track reads, so it goes for the
-        // same reason it goes on read-track. See ADR-0026.
+        // same reason it goes on read-track.
         smallModel: {
           description:
             "tracks, scenes = lists. mixer, color = detail (use with tracks/scenes)",

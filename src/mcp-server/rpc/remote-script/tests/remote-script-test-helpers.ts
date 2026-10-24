@@ -1,13 +1,23 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { type AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, expect, vi } from "vitest";
+import { VERSION } from "#src/shared/config.ts";
+import { outdatedReason } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
+import { clearNodeRoutes } from "../../node-request-protocol.ts";
+import { MIN_REMOTE_SCRIPT_VERSION } from "../port/remote-script-version.ts";
+import {
+  CONNECTION_LOST,
+  RemoteScriptTimeout,
+} from "../remote-script-errors.ts";
+import { type RemoteScriptStatus } from "../remote-script-status.ts";
 
 /**
  * Make a throwaway directory to stand in for the User Library.
@@ -16,6 +26,76 @@ import { join } from "node:path";
  */
 export function makeScratchUserLibrary(label: string): string {
   return mkdtempSync(join(tmpdir(), `ppal-remote-script-${label}-`));
+}
+
+/**
+ * What the remote script's bridge answers for a route it doesn't have: 404 with
+ * the routes it does.
+ * @param route - The route asked for
+ * @returns The answer
+ */
+export function unknownRouteAnswer(route: string): FakeAnswer {
+  return {
+    status: 404,
+    body: { error: `unknown route: ${route}`, routes: ["/ping"] },
+  };
+}
+
+/**
+ * A status for an installed, current script that Live is running.
+ * @param overrides - Fields to change
+ * @returns The status
+ */
+export function currentRemoteScriptStatus(
+  overrides: Partial<RemoteScriptStatus> = {},
+): RemoteScriptStatus {
+  return {
+    userLibrary: "/lib",
+    installed: true,
+    installedVersion: VERSION,
+    installedBuild: "build-1",
+    bundledVersion: VERSION,
+    running: true,
+    runningVersion: VERSION,
+    runningBuild: "build-1",
+    liveVersion: "12.4.0",
+    otherOnPort: null,
+    updateAvailable: false,
+    installedNewer: false,
+    ...overrides,
+  };
+}
+
+/** What a route answers when a script of unknown version lacks the route. */
+export const OUTDATED_ANSWER = {
+  available: false,
+  outdated: outdatedReason(null, MIN_REMOTE_SCRIPT_VERSION),
+};
+
+/** What a write answers when the connection drops: it may have landed. */
+export const CONNECTION_LOST_ANSWER = {
+  available: true,
+  error: CONNECTION_LOST,
+  unfinished: true,
+};
+
+/** What a route answers when its expiry ran out before anything was sent. */
+export const EXPIRED_UNSENT_ANSWER = {
+  available: true,
+  error: "ran out of time before the request left",
+};
+
+/**
+ * Expect a request to time out before anything was sent.
+ * @param request - The request
+ */
+export async function expectUnsentTimeout(
+  request: Promise<unknown>,
+): Promise<void> {
+  const error = await request.catch((caught: unknown) => caught);
+
+  expect(error).toBeInstanceOf(RemoteScriptTimeout);
+  expect(error).toHaveProperty("sent", false);
 }
 
 /** One request the stand-in remote script received. */
@@ -38,8 +118,25 @@ export type FakeAnswer =
   | null;
 
 export interface FakeRemoteScript {
+  /** The port it listens on. */
+  port: number;
   requests: ReceivedRequest[];
   close: () => Promise<void>;
+}
+
+/**
+ * What a stand-in was asked, without the expiry each request carries.
+ * @param fake - The stand-in, if one was started
+ * @returns Each request's query
+ */
+export function queriesAsked(
+  fake: FakeRemoteScript | undefined,
+): Array<Record<string, string>> {
+  return (fake?.requests ?? []).map(({ query }) =>
+    Object.fromEntries(
+      Object.entries(query).filter(([key]) => key !== "expires_in_ms"),
+    ),
+  );
 }
 
 /**
@@ -74,11 +171,12 @@ export async function startFakeRemoteScript(
   await new Promise<void>((resolve) => {
     server.listen(0, "127.0.0.1", resolve);
   });
-  process.env.PPAL_REMOTE_SCRIPT_PORT = String(
-    (server.address() as AddressInfo).port,
-  );
+  const { port } = server.address() as AddressInfo;
+
+  process.env.PPAL_REMOTE_SCRIPT_PORT = String(port);
 
   return {
+    port,
     requests,
     close: async () => {
       // Back to the port nothing answers on, as test-setup.ts leaves it.
@@ -88,6 +186,65 @@ export async function startFakeRemoteScript(
         server.close(() => resolve());
       });
     },
+  };
+}
+
+/**
+ * Run a call against a stand-in that never answers, and let its wait run out
+ * only once the stand-in has the request. A wait timed on the real clock could
+ * end before the socket connects, which the client counts as not sent.
+ * @param remote - The stand-in, which must never answer
+ * @param waitMs - The wait to let run out: the call's reply wait
+ * @param call - Makes the call
+ * @returns What the call came to
+ */
+export async function callUntilItTimesOut<T>(
+  remote: FakeRemoteScript,
+  waitMs: number,
+  call: () => Promise<T>,
+): Promise<T> {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+  try {
+    const pending = call();
+
+    // A stand-in with the request means the client had connected.
+    while (remote.requests.length === 0) {
+      await new Promise((resolve) => {
+        setImmediate(resolve);
+      });
+    }
+
+    vi.advanceTimersByTime(waitMs);
+
+    return await pending;
+  } finally {
+    vi.useRealTimers();
+  }
+}
+
+/**
+ * Register the routes under test before each test; after it, clear them and
+ * close the stand-in remote script.
+ * @param register - Registers the routes under test
+ * @returns Starts a stand-in that gives every request the same answer
+ */
+export function useFakeRemoteScriptRoutes(
+  register: () => void,
+): (answer: FakeAnswer) => Promise<FakeRemoteScript> {
+  let fake: FakeRemoteScript | undefined;
+
+  beforeEach(register);
+  afterEach(async () => {
+    clearNodeRoutes();
+    await fake?.close();
+    fake = undefined;
+  });
+
+  return async (answer) => {
+    fake = await startFakeRemoteScript(() => answer);
+
+    return fake;
   };
 }
 
@@ -122,4 +279,25 @@ function respond(res: http.ServerResponse, answer: FakeAnswer): void {
 
   res.writeHead(answer.status ?? 200, { "Content-Type": "application/json" });
   res.end(JSON.stringify(answer.body));
+}
+
+/** What a reader that takes only .py files should return for the tree below. */
+export const PY_ONLY_SOURCE = {
+  "__init__.py": "top",
+  "nested/deep.py": "deep",
+};
+
+/**
+ * Write a remote-script tree: two .py files among local junk a reader must skip.
+ * @param dir - Existing directory to fill
+ */
+export function writeScriptTreeWithJunk(dir: string): void {
+  mkdirSync(join(dir, "__pycache__"));
+  mkdirSync(join(dir, "nested"));
+  writeFileSync(join(dir, "__init__.py"), "top", "utf8");
+  writeFileSync(join(dir, ".DS_Store"), "finder", "utf8");
+  writeFileSync(join(dir, "nested/notes.txt"), "scratch", "utf8");
+  writeFileSync(join(dir, "stale.pyc"), "bytecode", "utf8");
+  writeFileSync(join(dir, "__pycache__/a.pyc"), "bytecode", "utf8");
+  writeFileSync(join(dir, "nested/deep.py"), "deep", "utf8");
 }

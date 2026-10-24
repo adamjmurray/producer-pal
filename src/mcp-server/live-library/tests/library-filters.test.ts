@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import {
@@ -174,7 +174,8 @@ describe("folderKindsForSource", () => {
   //   1  → "User Library"
   //   2  → User Library subfolders (e.g. "Samples", "MIDI Mod")
   //   4  → "Current Project" (intentionally unmapped — not a browse category)
-  //   5  → "Presets" (intentionally unmapped — internal)
+  //   5  → "Presets" (plug-ins' preset folders: plug-in presets there are
+  //        "plugin", everything else is hidden by Live's browser)
   //   8  → "Built-in"
   //   9  → "Cloud"
   //   10 → "Plugins"
@@ -187,14 +188,15 @@ describe("folderKindsForSource", () => {
     expect(folderKindsForSource("pack")).toStrictEqual([0]);
   });
 
-  it("maps builtin/cloud/plugin to single integers", () => {
+  it("maps builtin/cloud/plugin/preset-folder to single integers", () => {
     expect(folderKindsForSource("builtin")).toStrictEqual([8]);
     expect(folderKindsForSource("cloud")).toStrictEqual([9]);
     expect(folderKindsForSource("plugin")).toStrictEqual([10]);
+    expect(folderKindsForSource("preset-folder")).toStrictEqual([5]);
   });
 
-  it("returns [] for the synthetic 'sampleFolder' source (no DB encoding)", () => {
-    expect(folderKindsForSource("sampleFolder")).toStrictEqual([]);
+  it("returns [] for the synthetic 'sample-folder' source (no DB encoding)", () => {
+    expect(folderKindsForSource("sample-folder")).toStrictEqual([]);
   });
 });
 
@@ -204,9 +206,18 @@ describe("resolveSource", () => {
   });
 
   it("returns null for folder_kinds Live uses but we don't expose", () => {
-    // 4 = "Current Project", 5 = "Presets" — both intentionally unmapped
+    // 4 = "Current Project", intentionally unmapped
     expect(resolveSource(4)).toBeNull();
-    expect(resolveSource(5)).toBeNull();
+  });
+
+  it("resolves a preset folder file as preset-folder, or plugin when Live linked it to a plug-in", () => {
+    expect(resolveSource(5)).toBe("preset-folder");
+    expect(resolveSource(5, false)).toBe("preset-folder");
+    expect(resolveSource(5, true)).toBe("plugin");
+  });
+
+  it("ignores the plug-in link outside preset folders", () => {
+    expect(resolveSource(1, true)).toBe("user");
   });
 
   it("resolves user, pack, builtin, cloud, plugin", () => {

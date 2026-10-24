@@ -3,36 +3,23 @@
 - **Status:** Accepted
 - **Date logged:** 2026-06-28
 
-## Context
-
-The note-value lexer — durations (`n/4`), `±n` beat offsets, the off-grid
-`n<beats>/4` escape, and `<count>bar` forms — is written out three times: in
-both Peggy grammars (`barbeat-grammar.peggy`, `transform-grammar.peggy`) and as
-regexes in `src/notation/barbeat/time/barbeat-time.ts`. It looks like an obvious
-target for "extract a shared fragment."
-
 ## Decision
 
-Keep the duplication. Parity tests hold the sites in agreement instead:
-`note-value-grammar-parity.test.ts` runs one corpus through all six parse sites
-across several meters, and `note-value-denominator-parity.test.ts` locks the
-serializer's denominator lists.
+Keep the note-value lexer (and Stark's `DrumPitchName`) written out at every
+parse site instead of sharing it. The sites and the parity tests that hold them
+in step are in `dev/coding-standards/README.md`.
 
-## Alternatives rejected
+## Rejected
 
-- **Share a Peggy fragment** — Peggy has no import or rule-sharing mechanism, so
-  this would mean inventing and maintaining a build-time codegen step.
-- **Route the per-note path through the parser** — measured as too slow. The
-  regexes exist precisely to stay off the parser in hot paths.
+- **A shared Peggy fragment.** Peggy has no grammar `import` and can't share
+  rules between grammars. Sharing would need a build-time text-concatenation
+  step, a new failure mode to consolidate stable lexer rules that rarely change.
+  The rules that change in a reform (`beatValue`, `duration`/`nDuration`) differ
+  per grammar and can't be shared anyway.
+- **Routing the per-note path through the parser.** Too slow: the TS regexes run
+  in per-note hot paths (e.g. transform time-range membership), so a full parser
+  call would be a performance regression.
 
-## Consequences
+## Revisit if
 
-- DRY is enforced by test, not by structure. Changing one parse site without the
-  others is a red build, and a new parse site has to be added to the parity
-  tests.
-- The sites are intentionally not byte-identical: the grammars reject
-  leading-zero denominators, while the regexes accept a lone `0` so it reaches a
-  per-site divide-by-zero message.
-- Stark's `DrumPitchName` is duplicated the same way as a regex in
-  `stark-interpreter.ts`, locked by `drum-pitch-name-grammar-parity.test.ts`.
-- Revisit if Peggy gains rule sharing, or if the hot path stops being hot.
+Peggy gains rule sharing, or the hot path stops being hot.

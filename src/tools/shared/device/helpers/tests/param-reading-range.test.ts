@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // How readParameter reports a range whose end is a word (Glue Compressor's
 // Release reads "A" for Auto). Split from param-reading.test.ts to

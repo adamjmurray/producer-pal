@@ -4,9 +4,8 @@
 `.oxlintrc.json` (JSONC — it carries comments). Formatting is oxfmt
 (`.oxfmtrc.json`).
 
-oxlint replaced eslint for speed: 5.8s wall / 13s CPU versus 31s / 183s on the
-same rule set. `npm run check` runs before every push, so this was the single
-biggest cost in the loop.
+oxlint is used for speed (roughly 5x faster than eslint on the same rules),
+which matters because `npm run check` runs before every push.
 
 ## How the config is organized
 
@@ -19,9 +18,8 @@ tree.** Never edit a shared block's `files` — that silently changes every othe
 tree in it.
 
 This works because oxlint's overrides **merge** (top-level first, then each
-matching override in array order, later winning per rule). eslint's `rules`
-entries replaced rather than merged, which is why the migrated config repeated
-every rule in every block.
+matching override in array order, later winning per rule), so a block lists only
+its own rules.
 
 Two more kinds of block follow the groups: keys-only blocks carrying `env` per
 tree, then narrow per-path exceptions, each with its reason.
@@ -29,16 +27,15 @@ tree, then narrow per-path exceptions, each with its reason.
 ### The category opt-out section
 
 `correctness` and `suspicious` are enabled as whole categories at the top level;
-`pedantic` and `style` are not (see
-[ADR-0017](../decisions/0017-oxlint-category-baseline.md)). The last section of
-the overrides array turns back off the category rules this codebase doesn't
-satisfy yet, one commented entry per rule with its violation count. Deleting an
-entry is the unit of work: fix the violations, drop the line, and the rule stays
-on.
+`pedantic` and `style` are not (they encode preferences this codebase doesn't
+share). The last section of the overrides array turns back off the category
+rules this codebase doesn't satisfy yet, one commented entry per rule with its
+violation count. Deleting an entry is the unit of work: fix the violations, drop
+the line, and the rule stays on.
 
 Every entry is marked **PERMANENT** (the rule is wrong for this codebase — don't
 re-litigate it) or **DEFERRED** (worth doing, too big for one sitting). The
-deferred ones are the backlog and have tickets.
+deferred ones are the backlog.
 
 Two structural rules keep that section working, and both are easy to get wrong:
 
@@ -61,9 +58,8 @@ there.
 
 Nothing is hoisted: the top-level `rules` is empty, so a tree that appears in no
 `files` list is linted with **zero rules** and reports clean — indistinguishable
-from passing. Fourteen files were in that blind spot (`e2e/ui/**`,
-`docs/.vitepress/**`, `evals/**/*.mjs`), each a tree created without being added
-to the old eslint config.
+from passing. Trees nobody added to the config (`e2e/ui/**`,
+`docs/.vitepress/**`, `evals/**/*.mjs`) went unlinted this way.
 
 When you add a tree, check it:
 
@@ -82,7 +78,7 @@ default.
 
 ## The JS-plugin bridge
 
-All 26 type-aware `@typescript-eslint` rules are native, via `oxlint-tsgolint`.
+The type-aware `@typescript-eslint` rules are native, via `oxlint-tsgolint`.
 Four plugins run through oxlint's ESLint-compatible bridge, so their packages
 stay devDependencies: `eslint-plugin-sonarjs`, `@stylistic/eslint-plugin`,
 `@eslint-community/eslint-plugin-eslint-comments`, and `eslint-plugin-unicorn`.
@@ -99,9 +95,10 @@ its rules carry a distinct prefix:
 "rules": { "unicorn-js/no-duplicate-logical-operands": "error" }
 ```
 
-oxlint's native unicorn covers 23 of the 36 rules we use; 13 run through the
-bridge as `unicorn-js/*`, every one a bug detector rather than a style
-preference. Drop each as oxlint implements it natively — the native name wins.
+oxlint's native unicorn covers most of the unicorn rules we use; the rest run
+through the bridge as `unicorn-js/*`, every one a bug detector rather than a
+style preference. Drop each as oxlint implements it natively — the native name
+wins.
 
 **Gotchas:**
 
@@ -124,8 +121,8 @@ preference. Drop each as oxlint implements it natively — the native name wins.
 ## Where oxlint's defaults differ from eslint's
 
 A bare rule name adopts oxlint's defaults, which don't always match eslint's.
-Reviewing all 56 such entries found four divergences; three were weakenings and
-are now spelled out explicitly in `.oxlintrc.json`:
+These are spelled out explicitly in `.oxlintrc.json` because the default is
+weaker:
 
 - `no-eval` — oxlint defaults `allowIndirect` to true, permitting
   `(0, eval)(x)`, which is the bypass the rule exists to catch.
@@ -134,60 +131,51 @@ are now spelled out explicitly in `.oxlintrc.json`:
 - `jsdoc/require-param` — oxlint skips constructors and checks getters/setters;
   eslint-plugin-jsdoc does the reverse.
 
-The fourth is oxlint being stricter and is left alone
-(`unicorn/prefer-number-properties` reports a bare `NaN`).
+`unicorn/prefer-number-properties` is stricter in oxlint (it reports a bare
+`NaN`) and is left alone.
 
-This class of error is mostly self-limiting: oxlint hard-fails on an unknown
-option key, and the bridge validates against the real plugin's schema. The
-exception is `import/extensions`, whose options are a free-form map, so unknown
-keys are dropped silently.
+An unknown option key is mostly caught: oxlint hard-fails on one, and the bridge
+validates against the real plugin's schema. The exception is
+`import/extensions`, whose options are a free-form map, so unknown keys are
+dropped silently.
 
 One trap: `restrict-template-expressions`' `{ from: "file" }` entry resolves its
 path against the **TypeScript project root**, which is `src/` here — not the
 repo root.
 
-## Rules that moved to meta tests
+## Rules enforced by meta tests
 
 oxlint has no equivalent for arbitrary AST selectors (`no-restricted-syntax`),
 the import zone graph (`import-x/no-restricted-paths`), or
-`no-restricted-imports`' regex form. Those are now vitest meta tests, which
-honor `eslint-disable` directives so they're no stricter than the rules they
-replace:
+`no-restricted-imports`' regex form, so vitest meta tests enforce them. They
+honor `eslint-disable` directives, so they're no stricter than the rules they
+stand in for:
 
-| was                                     | now                                         |
+| Rule                                    | Enforced by                                 |
 | --------------------------------------- | ------------------------------------------- |
 | `no-restricted-syntax` (webui, LiveAPI) | `src/test/meta/import-restrictions.test.ts` |
 | `import-x/no-restricted-paths`          | `src/test/meta/import-restrictions.test.ts` |
 | `no-restricted-imports` regex form      | `src/test/meta/import-restrictions.test.ts` |
 | `jsdoc/require-jsdoc`                   | `src/test/meta/jsdoc-requirements.test.ts`  |
 
-One isn't a straight port. The eslint config carried a src-wide ban on every
-`..` specifier that never actually ran, because a later block replaced the whole
-`no-restricted-syntax` entry. Reviving it as written would have been a new rule:
-`src/` holds 475 parent-relative specifiers, nearly all of them files the
-file-organization rules pushed into `helpers/` or `tests/` reaching back up to
-their own module root. What's enforced instead is the boundary the code already
-respects — **a relative import must stay inside its own top-level `src/`
-module**. 473 of the 475 comply; the 2 that don't reach the repo-root
-`package.json`, which leaves `src/` entirely and is exempt. webui's identical
-total ban was never shadowed and is enforced as written.
+**Relative imports.** A relative import must stay inside its own top-level
+`src/` module. `src/` holds hundreds of parent-relative specifiers, nearly all
+of them files in `helpers/` or `tests/` reaching back up to their own module
+root, so a src-wide `..` ban would be a different rule. The only exceptions
+reach the repo-root `package.json`, which leaves `src/` entirely. webui bans
+every `..` specifier outright.
 
-`eslint-comments/no-unlimited-disable` couldn't survive the bridge for a
-circular reason: a file-wide disable turns off every rule including the one that
-would report it. `src/test/lint-suppression-limits.test.ts` is the sole backstop
-now, and it also matches oxlint's bare `// oxlint-disable` line comment, which
-oxlint (unlike eslint) treats as file-wide.
+**Suppression directives.** `eslint-comments/no-unlimited-disable` can't work
+through the bridge: a file-wide disable turns off every rule including the one
+that would report it. `src/test/lint-suppression-limits.test.ts` is the sole
+backstop, and it also matches oxlint's bare `// oxlint-disable` line comment,
+which oxlint (unlike eslint) treats as file-wide.
 
-Every check in those tests is verified by injecting a known violation, not just
-by passing on a clean tree.
+Test every new meta check by injecting a known violation, not just by passing on
+a clean tree. They stay in the main vitest run: they are a small share of the
+test step, and test volume is what makes it slow.
 
-Splitting the meta tests into their own vitest project or CI job was considered
-and rejected: all 12 of them run in 1.7s, about 5% of the test step. Test volume
-is what makes that step slow, not the meta scans.
-
-## Rules with no replacement
-
-Every rule here reported zero at migration time, so nothing broke.
+## Rules not enforced
 
 **Settled, don't re-open:**
 
@@ -198,15 +186,14 @@ Every rule here reported zero at migration time, so nothing broke.
 - `unicorn/no-array-push-push` — a no-op deprecated alias. No enforcement to
   lose.
 - `eslint-comments/no-unused-disable` — inert through the bridge. oxlint's
-  native `--report-unused-disable-directives` does the same job, but everything
-  it currently reports is a migration artifact carrying meaning, so it's left
-  off.
+  native `--report-unused-disable-directives` does the same job, but what it
+  reports today are directives that carry meaning, so it's left off.
 
 **Accepted losses, deliberately not rebuilt:**
 
 - `require-atomic-updates` — needs dataflow analysis, so there's no honest meta
   test. Tolerable because the rule's shape is baked into how the code is
-  written; nine sites name it or explain the arrangement that avoids it.
+  written; a few sites name it or explain the arrangement that avoids it.
 - `import-x/no-extraneous-dependencies` — a package missing from `package.json`
   already fails the build, since node-resolve can't find it. What's genuinely
   unguarded is a _phantom_ dependency: something installed as a transitive,
@@ -241,12 +228,10 @@ SonarSource then capped `eslint-plugin-sonarjs` to `typescript >=5 <6.1.0` to
 stay inside that window. Dropping sonarjs would cost 27 configured rules,
 including `sonarjs/no-identical-functions`, this repo's DRY enforcement.
 
-So `package.json` uses the upstream-recommended side-by-side aliasing: the
-`typescript` name resolves to `@typescript/typescript6` (full 6.0.2 API, for the
-bridge), and TypeScript 7 is installed as `@typescript/native`, whose `tsc` is
-what `npm run typecheck` runs. Nothing needs the two to agree —
-`oxlint-tsgolint` carries its own typescript-go checker, so type-aware linting
-is already on a TS-7-era engine regardless.
+So `package.json` installs both side by side (see "Type Checking" in
+`AGENTS.md`): `typescript` is the 6.0.2 API for the bridge, and `tsc` is
+TypeScript 7. Nothing needs the two to agree — `oxlint-tsgolint` carries its own
+typescript-go checker, so type-aware linting is already on a TS-7-era engine.
 
 Revisit when `typescript-eslint` supports the 7.1 API and sonarjs lifts its cap;
 at that point both aliases collapse back to a plain `typescript` pin.

@@ -1,17 +1,20 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// SPDX-License-Identifier: MIT
 
 // V8 asks Node to run a named route and awaits the answer. Same channel as
 // code-exec, dispatching by route name instead of eval.
 
+import { oversizedSingleMessageError } from "#src/shared/mcp-responses.ts";
 import { REQUEST_TIMEOUT_MS, requestChannel } from "./request-channel.ts";
 
 export interface NodeResponse<T = unknown> {
   success: boolean;
   result?: T;
   error?: string;
+  /** The request was too large for one Max message, so nothing was sent. */
+  tooLarge?: true;
 }
 
 const channel = requestChannel({
@@ -36,12 +39,24 @@ export function requestNode<T = unknown>(
   args: object = {},
   timeoutMs: number = REQUEST_TIMEOUT_MS,
 ): Promise<NodeResponse<T>> {
-  return channel.send<NodeResponse<T>>(
-    JSON.stringify({ route, args }),
-    `node_request '${route}'`,
-    null,
+  const payload = JSON.stringify({ route, args });
+  const subject = `node_request '${route}'`;
+  // node_request isn't chunked, and Max would cut a long one short.
+  const tooLarge = oversizedSingleMessageError(
+    payload,
+    subject,
+    "Send less in one call.",
+  );
+  const sent = channel.send<NodeResponse<T>>(
+    payload,
+    subject,
+    tooLarge,
     timeoutMs,
   );
+
+  return tooLarge == null
+    ? sent
+    : sent.then((response) => ({ ...response, tooLarge: true }));
 }
 
 /**

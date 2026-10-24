@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for the params ppal-update-clip can do nothing with on a given
@@ -17,6 +17,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateTrackResult,
   getToolErrorMessage,
+  getToolWarnings,
   isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
@@ -67,7 +68,7 @@ describe("ppal-update-clip ignored params", () => {
     });
 
     expect(entry.detail).toContain(
-      "gainDb/pitchShift ignored: the clip is MIDI",
+      "gainDb, pitchShift ignored: the clip is MIDI",
     );
     expect(entry).not.toHaveProperty("ok");
     expect(clip.name).toBe("Renamed Anyway");
@@ -90,20 +91,24 @@ describe("ppal-update-clip ignored params", () => {
     );
   });
 
+  it("refuses a call that names a clip and asks nothing of it", async () => {
+    const clipId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s27`, {
+      notes: "C3 1|1",
+    });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, focus: false },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain("nothing to update");
+  });
+
   // Nothing else was asked of the one clip named, so the reason comes back as
   // the error rather than an entry nobody can pair against a list.
   it("refuses a lone clip whose only param it can do nothing with", async () => {
-    const trackResult = await ctx.client!.callTool({
-      name: "ppal-create-track",
-      arguments: { type: "audio", name: "Lone Refusal Track" },
-    });
-    const track = parseToolResult<CreateTrackResult>(trackResult);
-
-    await sleep(100);
-
-    const clipId = await createClipInSlot(ctx, `${track.path}/s0`, {
-      sampleFile: SAMPLE_FILE,
-    });
+    const clipId = await audioClipOnNewTrack("Lone Refusal Track");
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
@@ -121,13 +126,7 @@ describe("ppal-update-clip ignored params", () => {
   // pieces collapse onto the one target they share, and the call throws after
   // the clip has already been cut.
   it("keeps every piece of a split whose other param the clip ignored", async () => {
-    const trackResult = await ctx.client!.callTool({
-      name: "ppal-create-track",
-      arguments: { type: "audio", name: "Split Reason Track" },
-    });
-    const track = parseToolResult<CreateTrackResult>(trackResult);
-
-    await sleep(100);
+    const track = await createAudioTrack("Split Reason Track");
 
     const created = await ctx.client!.callTool({
       name: "ppal-create-clip",
@@ -154,4 +153,107 @@ describe("ppal-update-clip ignored params", () => {
 
     expect(warnings.join(" ")).not.toContain("quantize");
   });
+
+  // A transform for the other kind of clip does nothing there. It answers the
+  // way the matching param does: on the entry, never as a warning.
+  it("refuses a lone MIDI clip sent only a gain transform", async () => {
+    const clipId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s7`, {
+      notes: "C3 1|1",
+    });
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, transforms: "gain = -3" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "gain ignored: the clip is MIDI",
+    );
+    expect(getToolWarnings(result)).toStrictEqual([]);
+  });
+
+  it("puts a wrong-type transform on each clip's own entry in a batch", async () => {
+    const midiId = await createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s8`, {
+      notes: "C3 1|1",
+    });
+    const audioId = await audioClipOnNewTrack("Wrong Type Transform Track");
+
+    // gain applies to the audio clip and is refused on the MIDI one
+    const gain = parseToolResultWithWarnings<ReadClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { id: `${midiId},${audioId}`, transforms: "gain = -3" },
+      }),
+    );
+
+    expect(gain.data[0]).toStrictEqual(
+      expect.objectContaining({
+        ok: false,
+        detail: "gain ignored: the clip is MIDI",
+      }),
+    );
+    expect(gain.data[1]).not.toHaveProperty("ok");
+    expect(gain.warnings).toStrictEqual([]);
+
+    // velocity applies to the MIDI clip and is refused on the audio one
+    const velocity = parseToolResultWithWarnings<ReadClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { id: `${midiId},${audioId}`, transforms: "velocity = 50" },
+      }),
+    );
+
+    expect(velocity.data[0]).not.toHaveProperty("ok");
+    expect(velocity.data[1]).toStrictEqual(
+      expect.objectContaining({
+        ok: false,
+        detail: "velocity ignored: the clip is audio",
+      }),
+    );
+    expect(velocity.warnings).toStrictEqual([]);
+  });
+
+  it("refuses an audio clip's unparseable transform like a MIDI clip's", async () => {
+    const clipId = await audioClipOnNewTrack("Audio Parse Track");
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, transforms: "gain = =" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolWarnings(result)).toStrictEqual([]);
+  });
 });
+
+/**
+ * Create an audio track and let Live settle.
+ * @param name - Track name
+ * @returns The new track's metadata
+ */
+async function createAudioTrack(name: string): Promise<CreateTrackResult> {
+  const track = parseToolResult<CreateTrackResult>(
+    await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { type: "audio", name },
+    }),
+  );
+
+  await sleep(100);
+
+  return track;
+}
+
+/**
+ * Put a sample clip in slot 0 of a new audio track.
+ * @param trackName - Name for the new track
+ * @returns The clip's id
+ */
+async function audioClipOnNewTrack(trackName: string): Promise<string> {
+  const track = await createAudioTrack(trackName);
+
+  return createClipInSlot(ctx, `${track.path}/s0`, {
+    sampleFile: SAMPLE_FILE,
+  });
+}

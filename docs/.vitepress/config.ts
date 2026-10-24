@@ -134,6 +134,7 @@ export default defineConfig({
           { text: "Device Interface", link: "/guide/device" },
           { text: "Chat UI", link: "/guide/chat-ui" },
           { text: "Remote Script", link: "/guide/remote-script" },
+          { text: "Clip Automation", link: "/guide/automation" },
           { text: "Context & Memory", link: "/guide/context" },
           { text: "Customizing Skills", link: "/guide/customizing-skills" },
           { text: "Optimizing Cost & Context", link: "/guide/optimizing" },
@@ -298,7 +299,7 @@ export default defineConfig({
     },
 
     footer: {
-      message: "Released under the GPL-3.0 License.",
+      message: "Released under the MIT License.",
       copyright: `Copyright © ${new Date().getFullYear()} <a href="https://adammurray.link">Adam Murray</a>`,
     },
   },

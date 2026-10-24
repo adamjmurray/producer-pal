@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type NoteEvent } from "#src/notation/types.ts";
 import * as console from "../../transform-warning-label.ts";
@@ -9,7 +9,11 @@ import {
   type BarBeatPointNode,
   type NoteOp,
 } from "../../parser/transform-parser.ts";
-import { type NoteOpResult, skippedNoteOp } from "./note-op-result.ts";
+import {
+  madeFrom,
+  type NoteOpResult,
+  type NoteParents,
+} from "./note-op-result.ts";
 
 // Per-note ceiling on pieces a note-count op may produce — bounds note
 // explosion. Shared by ratchet (a roll) and split (explicit cuts). A note cut
@@ -53,7 +57,7 @@ export function splitNoteAtCuts(note: NoteEvent, cuts: number[]): NoteEvent[] {
  * ratchet grid form (regularly spaced cut lines), the cut lines here are the
  * arbitrary, possibly unequal positions the user named. Each position only cuts
  * a note when it falls strictly inside that note's span; a note containing none
- * of the positions is left unchanged (with a warning). Positions are shared
+ * of the positions is left unchanged (with a detail). Positions are shared
  * across all matched notes (absolute clip coordinates), so a single position
  * subdivides every note it lands inside.
  *
@@ -75,21 +79,15 @@ export function splitNotes(
   denominator: number,
   arrangementOrigin?: number,
 ): NoteOpResult {
-  if (op.args.length === 0) {
-    console.warn(
-      "split() needs one or more bar|beat positions, e.g. split(2|1, 2|3); skipping",
-    );
-
-    return skippedNoteOp(matched);
-  }
-
   // In sync mode the positions are arrangement-absolute; subtract the clip's
   // origin to bring them into the clip-relative space the notes live in.
   let originMusicalBeats = 0;
 
   if (op.sync) {
     if (arrangementOrigin == null) {
-      console.warn("sync ignored on session clip — split is clip-relative");
+      console.clipDetail(
+        "sync ignored: session clip, so split is clip-relative",
+      );
     } else {
       originMusicalBeats = arrangementOrigin;
     }
@@ -101,6 +99,7 @@ export function splitNotes(
   const points = resolveSplitPoints(op.args, originMusicalBeats, abletonScale);
 
   const out: NoteEvent[] = [];
+  const parents: NoteParents = new Map();
   let uncut = 0;
   let clamped = 0;
 
@@ -126,22 +125,22 @@ export function splitNotes(
       clamped++;
     }
 
-    out.push(...splitNoteAtCuts(note, cuts));
+    out.push(...madeFrom(parents, note, splitNoteAtCuts(note, cuts)));
   }
 
   if (uncut > 0) {
-    console.warn(
-      `split: ${uncut} note(s) contained none of the given positions and were left unchanged`,
+    console.clipDetail(
+      `split: ${uncut} note(s) contained none of the given positions, left unchanged`,
     );
   }
 
   if (clamped > 0) {
-    console.warn(
+    console.clipDetail(
       `split: ${clamped} note(s) clamped to the max of ${MAX_NOTE_PIECES} pieces`,
     );
   }
 
-  return { notes: out, skipped: false };
+  return { notes: out, skipped: false, parents };
 }
 
 /**

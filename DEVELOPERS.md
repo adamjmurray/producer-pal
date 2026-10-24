@@ -51,7 +51,10 @@ non-localhost browser origin (a remote inspector, or over the LAN), build with
 `ALLOW_DEV_BUILD_FLAGS=true ENABLE_REMOTE_CORS=true npm run build`. A plain
 `npm run build` refuses to run with any of the debug flags set, so an ambient
 one can't be baked into something that ships — `build:debug` and that override
-are the ways past it.
+are the ways past it. The guarded flags are listed in `GUARDED_BUILD_FLAGS`
+(`scripts/build-and-release/helpers/build-flag-guard.ts`): the ones above plus
+the measurement flags `ENABLE_BUILD_STATS` and `ENABLE_OBJECT_PROBE` (see
+`dev/quality/development-tools/live-api-measurement.md`).
 
 ## Core Development Scripts
 
@@ -70,7 +73,7 @@ npm run fix  # Runs format + lint:fix
 Code quality checks must always pass:
 
 ```
-npm run check  # Runs all checks: lint + typecheck + format check + duplication + tests
+npm run check  # Runs all checks: lint + typecheck + format check + TypeScript-only + duplication + tests with coverage + remote script tests + schema size
 ```
 
 **Recommended workflow**: Run `npm run fix` before `npm run check` to
@@ -80,7 +83,7 @@ Or run checks individually:
 
 ```
 npm run lint
-npm run typecheck  # UI code only
+npm run typecheck  # All source trees
 npm test
 npm run format:check
 npm run duplication
@@ -113,6 +116,7 @@ All checks run via `npm run check` and must pass before merging:
 | **TypeScript-only** | Custom script | No `.js` files in `src/`, `webui/`, or `scripts/` (with narrow exceptions for generated parsers)                                        |
 | **Duplication**     | JSCPD         | Low duplication thresholds per source tree (see `config/.jscpd*.json`)                                                                  |
 | **Test coverage**   | Vitest        | High thresholds for statements, branches, and lines; 100% function coverage (see `vitest.config.ts`)                                    |
+| **Remote script**   | unittest      | The Python remote script's tests, against fake Live objects                                                                             |
 
 Additional checks enforced within tests:
 
@@ -127,6 +131,7 @@ And `npm run check:build` additionally validates:
 | ----------------------- | ---------------------------------------------------------------------------------- |
 | **Production build**    | Rolldown bundles (MCP server, V8, portal) and Vite UI build compile without errors |
 | **Documentation build** | VitePress site compiles successfully                                               |
+| **Portal e2e**          | The built portal binary against a stub device (`e2e/portal/`), no Live needed      |
 
 ### Key oxlint limits
 
@@ -141,11 +146,9 @@ And `npm run check:build` additionally validates:
 ### Why so strict?
 
 - **100% function coverage** means every function has at least one test. This
-  caught regressions that slipped through with lower thresholds. A handful of
-  genuinely untestable functions are excluded with `v8 ignore` comments (which
-  require a reason and count against the suppression limits). Adding a new
-  exception requires discussion — the AI agent is guided to raise it rather than
-  silently excluding coverage.
+  caught regressions that slipped through with lower thresholds. A new
+  `v8 ignore` exception needs discussion; the AI agent is guided to raise it
+  rather than silently excluding coverage (see `dev/quality/testing.md`).
 - **Lint suppression limits** are ratcheted to current counts. Adding a new
   `eslint-disable` or `@ts-expect-error` requires fixing an existing one first
   (or getting approval to raise the limit). Write directives with the `eslint-`
@@ -172,7 +175,7 @@ ranges) to mitigate supply chain attacks. This is enforced at multiple levels:
 Dependabot cooldowns add a waiting period before PRs are created for newly
 released versions:
 
-- **14-day cooldown** for minor and patch updates
+- **7-day cooldown** for minor and patch updates
 - **30-day cooldown** for major version bumps
 - Security updates bypass cooldowns
 
@@ -218,12 +221,29 @@ Quick commands:
   Ableton Live)
 - `npx @modelcontextprotocol/inspector` - MCP protocol debugging
 
-**Important**: After changing tool descriptions in `src/tools/**/*.def.js`, you
+**Important**: After changing tool descriptions in `src/tools/**/*.def.ts`, you
 must toggle the Producer Pal extension off/on in Claude Desktop to refresh the
 cached tool definitions.
 
 See [Development-Tools](dev/quality/development-tools/README.md) for the CLI
 tool, Live API tool, MCP Inspector setup, debugging tips, and testing workflows.
+
+### Remote Script
+
+The Python remote script in `remote-script/` has its own tests (no Live needed)
+and installs with a dev switch:
+
+- `npm run remote-script:test` - Python unit tests (also part of
+  `npm run check`)
+- `npm run remote-script:install -- --probe --reload` - install, reload in the
+  running Live, and verify
+- `npm run e2e:mcp:remote-script -- <file>` - e2e suites that need the script
+  (ask before running; they open Live)
+
+See [remote-script/README.md](remote-script/README.md) and
+[the Python API notes](dev/live-api/python-remote-script-api/README.md). For how
+tools call it, see
+[dev/architecture/remote-script.md](dev/architecture/remote-script.md).
 
 ### Portal Script (Internal Testing)
 
@@ -260,9 +280,12 @@ The same switch turns on `.githooks/pre-commit`, which refuses a commit made
 with signing turned off, and a check in `pre-push` that refuses to send an
 unsigned commit on any branch. `SKIP_DEV_PUSH_GUARD` does not lift that one —
 it's about CI sequencing, and an unsigned commit is never what anyone meant.
+`pre-push` also runs `npm run format:check` and `npm run lint` on the pushed
+commit, on any branch, and refuses the push if either fails. Only `--no-verify`
+skips it.
 
 ## Releasing
 
-See [Releasing](dev/process/releasing.md) for the complete release process,
-including version bumping, building, creating GitHub releases, testing
+See [Releasing](dev/process/releasing/README.md) for the complete release
+process, including version bumping, building, creating GitHub releases, testing
 checklists, and publishing to npm.

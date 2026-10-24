@@ -1,8 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
+import { getModelCapabilities } from "@ai-sdk/anthropic/internal";
 import {
   type SemanticEagerness,
   type TurnDetectionSettings,
@@ -85,24 +86,46 @@ export function mapTurnDetectionToConfig(
 
 /**
  * Checks if a model requires legacy enabled thinking (budgetTokens) instead of adaptive.
- * Haiku 4.5 does not support adaptive thinking yet.
+ * Only Haiku 4.5: it lacks adaptive thinking, and Haiku 5.5+ rejects budgetTokens.
  * @param {string} model - Model identifier
  * @returns {boolean} - True if model needs legacy thinking config
  */
 export function isLegacyThinkingModel(model: string): boolean {
-  return model.includes("haiku");
+  return model.includes("haiku-4");
+}
+
+// Fable and Mythos stay listed by name so a newer id the SDK table doesn't know
+// yet still omits `thinking` rather than 400ing.
+const ALWAYS_ON_THINKING_MODEL = /fable|mythos/;
+
+/**
+ * Asks the AI SDK's own model table about an Anthropic id. Its ids use dashes
+ * (`claude-opus-5-5`); the gateway spells them `claude-opus-5.5`.
+ * @param {string} model - Model identifier
+ * @returns {ReturnType<typeof getModelCapabilities>} - The SDK's capabilities
+ */
+function sdkCapabilities(
+  model: string,
+): ReturnType<typeof getModelCapabilities> {
+  return getModelCapabilities(model.replaceAll(".", "-"));
 }
 
 /**
  * Checks if an Anthropic model has always-on thinking that cannot be disabled.
- * Fable 5 / Mythos 5 run thinking unconditionally and reject
- * `thinking: {type: "disabled"}` with a 400 — thinking must be omitted for
- * these, so "Off" cannot fully turn thinking off.
+ * Opus 5.5, Fable and Mythos run thinking unconditionally and reject any
+ * `thinking: {type: "disabled"}` with a 400 — `thinking` must be omitted for
+ * these, so "Off" cannot fully turn thinking off. The SDK table is the source
+ * for which models these are.
  * @param {string} model - Model identifier
  * @returns {boolean} - True if the model's thinking cannot be disabled
  */
 export function isAlwaysOnThinkingModel(model: string): boolean {
-  return model.includes("fable") || model.includes("mythos");
+  const caps = sdkCapabilities(model);
+
+  return (
+    ALWAYS_ON_THINKING_MODEL.test(model) ||
+    (caps.rejectsThinkingDisabled && !caps.supportsBetweenToolsThinking)
+  );
 }
 
 // Claude 3.0/3.5 tiers (extended thinking arrived with 3.7), plus Claude 2.x /
@@ -125,6 +148,30 @@ export function isLegacyNonThinkingModel(model: string): boolean {
 }
 
 /**
+ * What "Off" must send as `thinking` for a model, since omitting it runs
+ * adaptive thinking on Sonnet 5+. Sonnet 5.5 400s on `disabled` and takes
+ * `between_tools` instead (its lowest setting); always-on, legacy and pre-3.7
+ * models take no `thinking` field at all.
+ * @param {string} model - Model identifier
+ * @returns {"disabled" | "between_tools" | undefined} - The type, or undefined to omit
+ */
+export function getThinkingOffType(
+  model: string,
+): "disabled" | "between_tools" | undefined {
+  if (
+    isLegacyThinkingModel(model) ||
+    isLegacyNonThinkingModel(model) ||
+    isAlwaysOnThinkingModel(model)
+  ) {
+    return undefined;
+  }
+
+  return sdkCapabilities(model).supportsBetweenToolsThinking
+    ? "between_tools"
+    : "disabled";
+}
+
+/**
  * Maps thinking UI setting to Anthropic effort level for adaptive thinking.
  * @param {string} thinking - Thinking mode setting from UI
  * @returns {AnthropicEffort | undefined} - effort level or undefined for Off
@@ -143,8 +190,9 @@ export function mapThinkingToAnthropicEffort(
 }
 
 /**
- * Maps thinking UI setting to reasoning effort for OpenRouter.
- * Simple direct mapping without model-specific logic.
+ * Maps thinking UI setting to reasoning effort for OpenRouter. Off is "none";
+ * the request rewrite (openrouter-reasoning.ts) raises it to "low" for models
+ * that can't turn reasoning off, and drops it when the model is unknown.
  * @param {string} thinking - Thinking mode setting from UI
  * @returns {ReasoningEffort | undefined} - reasoning effort value or undefined
  */
@@ -155,7 +203,7 @@ export function mapThinkingToOpenRouterEffort(
     case "Max":
       return "xhigh";
     case "Off":
-      return undefined;
+      return "none";
     default:
       return "medium";
   }
@@ -266,6 +314,13 @@ export function mapThinkingToReasoningEffort(
   }
 }
 
+// GPT-6 ids that accept `reasoning_effort: "none"`. Every other GPT-6 model
+// (6.1 Sol, Astra, ...) 400s on it; the AI SDK drops the field with a warning,
+// so the model would reason at its default instead of staying off. The evals
+// CLI keeps a copy (evals/chat/thinking-provider-options.ts); a parity test
+// holds the two in step.
+const GPT6_ACCEPTS_NONE = /^gpt-6-(sol|luna)(-\d{4}-\d{2}-\d{2})?$/;
+
 /**
  * Maps a thinking UI value to a GPT-6 reasoning effort. Off must send an
  * explicit effort: omitting it reasons at the default (medium).
@@ -281,33 +336,53 @@ function mapThinkingToGpt6Effort(
     case "Max":
       return "max";
     case "Off":
-      // Astra rejects "none" with a 400, so low is its floor
-      return model.includes("-astra") ? "low" : "none";
+      return GPT6_ACCEPTS_NONE.test(model) ? "none" : "low";
     default:
       return "medium";
   }
 }
 
 /**
- * Maps a thinking UI value to Ollama's think parameter.
- * GPT-OSS models expect "low"/"medium"/"high" level strings for trace length.
- * Other models accept boolean true/false.
+ * Maps a thinking UI value to Ollama's `reasoning_effort`. Ollama's OpenAI
+ * endpoint ignores `think`; `none` turns reasoning off. Max sends nothing:
+ * models that can't think refuse any other effort with a 400.
  * @param {string} thinking - Thinking mode setting from UI
- * @param {string} model - Model name for GPT-OSS detection
- * @returns {boolean | string | undefined} - true/level = enable, undefined = adaptive/default
+ * @returns {ReasoningEffort | undefined} - effort, or undefined to let the model decide
  */
-export function mapThinkingToOllamaThink(
+export function mapThinkingToOllamaEffort(
   thinking: string,
-  model: string,
-): boolean | string | undefined {
-  const gptOss = model.includes("gpt-oss");
+): ReasoningEffort | undefined {
+  return thinking === "Off" ? "none" : undefined;
+}
 
-  switch (thinking) {
-    case "Off":
-      return false;
-    case "Max":
-      return gptOss ? "high" : true;
-    default:
-      return undefined; // Default - let API decide
+/**
+ * The `thinkingConfig` that turns Gemini thinking down for "Off", by model
+ * version. Gemini 3+ can't fully switch off and some models refuse a zero
+ * budget, so it gets its lowest level (3.8 Flash still thinks a little). Gemini 2.5 takes a zero
+ * budget, except the Pro models, which can't disable thinking. Unknown or
+ * older ids get nothing, as before.
+ * @param {string} model - Gemini model id (`gemini-3.8-flash`)
+ * @returns {object | undefined} - thinkingConfig, or undefined to omit it
+ */
+export function getGeminiOffThinkingConfig(
+  model: string,
+): { thinkingLevel: "low" } | { thinkingBudget: 0 } | undefined {
+  const match = model.match(/^gemini-(\d+)(?:\.(\d+))?/);
+
+  if (!match?.[1]) {
+    return undefined;
   }
+
+  const major = Number(match[1]);
+  const minor = Number(match[2] ?? 0);
+
+  if (major >= 3) {
+    return { thinkingLevel: "low" };
+  }
+
+  if (major === 2 && minor >= 5 && !model.includes("-pro")) {
+    return { thinkingBudget: 0 };
+  }
+
+  return undefined;
 }

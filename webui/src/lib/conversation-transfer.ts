@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { isNotation } from "#src/shared/notation";
 import {
@@ -299,6 +299,9 @@ function normalizeRecord(
     ...(isEnabledToolsMap(record.enabledTools) && {
       enabledTools: record.enabledTools,
     }),
+    // Always set here, whatever the file says: the imported system prompt is
+    // untrusted, so the chat warns when it differs from the user's own.
+    imported: true,
     // Round-trip the branching pointers so exported fork families re-import as a
     // linked set. Both are optional; only carry them when present and well-typed
     // so a plain (non-forked) record keeps its shape. Dropped entirely when the

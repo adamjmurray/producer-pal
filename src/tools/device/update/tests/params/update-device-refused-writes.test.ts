@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import {
@@ -161,7 +161,7 @@ describe("updateDevice - every param failed", () => {
 
     expect(() =>
       updateDevice({ id: "chain-0", params: [{ name: "Volume", value: "1" }] }),
-    ).toThrow(/^no param landed — "Volume": 'params' not applicable/);
+    ).toThrow(/^no param landed — "Volume": params ignored: can't be set on/);
   });
 });
 
@@ -173,6 +173,16 @@ describe("updateDevice - every action failed", () => {
       updateDevice({ id: "simpler-1", actions: ["nope", "warpAs(x)"] }),
     ).toThrow(
       'no action landed — "nope": unknown action for this device; "warpAs(x)": requires a numeric beats argument',
+    );
+  });
+
+  it("counts an action named again as not landed", () => {
+    registerSimplerDevice();
+
+    expect(() =>
+      updateDevice({ id: "simpler-1", actions: ["nope", "nope"] }),
+    ).toThrow(
+      'no action landed — "nope": not written: "nope" was meant to replace it, but failed; "nope": unknown action for this device',
     );
   });
 

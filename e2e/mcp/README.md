@@ -55,6 +55,14 @@ That script is `e2e:mcp` with `E2E_REMOTE_SCRIPT=true`. Without the variable a
 suite skips itself. With it, a remote script that doesn't answer `/ping` fails
 the suite instead of skipping it.
 
+`POST /config { "remoteScriptEnabled": false }` makes a running script look
+uninstalled (a dev switch, debug builds only; `resetConfig()` turns it back on).
+`control/ppal-remote-script-switch` covers it.
+
+`POST /config { "remoteScriptMinVersion": "99.0.0" }` makes a running script
+look out of date (`null` clears it; debug builds only, and `resetConfig()`
+clears it). `control/ppal-remote-script-min-version` covers it.
+
 ### The direct Live API tool is off during e2e
 
 `ppal-live-api` is **not** available to an e2e test unless the test asks for it.
@@ -97,8 +105,10 @@ on its own — a test would run against the Set it was replacing.
 
 ## Test Live Sets
 
-Three Sets live in `e2e/live-sets/`, each with a `-spec.md` beside it listing
-everything in it. Those specs are the reference for writing assertions.
+The Sets live in `e2e/live-sets/`, each with a `-spec.md` beside it listing
+everything in it. Those specs are the reference for writing assertions. The
+table lists the ones the MCP suites open; `arrangement-sections` is used by the
+evals.
 
 | Set                      | Covers                                                |
 | ------------------------ | ----------------------------------------------------- |
@@ -160,7 +170,7 @@ e2e/mcp/
 ├── operations/            # delete, duplicate, and the result shape every write tool shares
 ├── scene/                 # Scene tools (create, read, update)
 ├── track/                 # Track tools (create, read, update)
-└── workflow/              # Workflow tools (connect, memory)
+└── workflow/              # Workflow tools (connect, context, library, request handling)
 ```
 
 ## Adding New Tests

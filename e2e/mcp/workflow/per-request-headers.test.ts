@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for the per-request headers the tool surfaces read: withheld tools
@@ -23,24 +23,27 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { connectMcp, type McpConnection } from "#evals/chat/mcp.ts";
+import { REST_BASE_URL } from "#evals/shared/config.ts";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { DISABLED_TOOLS_HEADER } from "#src/shared/config.ts";
 import { NOTATION_HEADER } from "#src/shared/notation.ts";
 import { buildSkills, type SkillOverrides } from "#src/skills/build-skills.ts";
 import { builtinFragments } from "#src/skills/builtin-fragments.ts";
 import {
-  CONFIG_URL,
   type CreateClipResult,
   fetchSkillOverrides,
   getToolErrorMessage,
   isToolError,
-  MCP_URL,
   parseToolResult,
   type ReadClipResult,
-  remoteScriptAnswers,
   setConfig,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
+import {
+  readConnectSkills,
+  remoteScriptAnswers,
+} from "./helpers/server-capability-test-helpers.ts";
 import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
@@ -102,34 +105,6 @@ async function toolNames(client: Client): Promise<string[]> {
   const { tools } = await client.listTools();
 
   return tools.map((tool) => tool.name);
-}
-
-/**
- * The "# Producer Pal Skills" block from a ppal-connect result. Skills are
- * appended Node-side as their own content block, not carried in the JSON body.
- * @param result - Raw ppal-connect tool result
- * @returns The skills text, or "" when absent
- */
-function extractSkills(result: unknown): string {
-  const typed = result as {
-    content?: Array<{ text?: string }>;
-  } | null;
-
-  return (
-    typed?.content?.find((c) => c.text?.startsWith("# Producer Pal Skills"))
-      ?.text ?? ""
-  );
-}
-
-/**
- * Call ppal-connect and return the skills it injected.
- * @param client - The MCP client
- * @returns The assembled skills blob
- */
-async function connectSkills(client: Client): Promise<string> {
-  return extractSkills(
-    await client.callTool({ name: "ppal-connect", arguments: {} }),
-  );
 }
 
 /**
@@ -211,7 +186,7 @@ describe("x-producer-pal-disabled-tools", () => {
     });
     const result = await subset.callTool({
       name: "ppal-library",
-      arguments: { action: "listTags" },
+      arguments: { action: "list-tags" },
     });
 
     expect(isToolError(result)).toBe(true);
@@ -222,7 +197,7 @@ describe("x-producer-pal-disabled-tools", () => {
       isToolError(
         await ctx.client!.callTool({
           name: "ppal-library",
-          arguments: { action: "listTags" },
+          arguments: { action: "list-tags" },
         }),
       ),
     ).toBe(false);
@@ -240,8 +215,8 @@ describe("x-producer-pal-disabled-tools", () => {
     // from config.tools by ppal-live-api, which no fragment gates on, so the
     // assembled blob is the same either way.
     const tools = await toolNames(subset);
-    const skills = await connectSkills(subset);
-    const ungated = await connectSkills(ctx.client!);
+    const skills = await readConnectSkills(subset);
+    const ungated = await readConnectSkills(ctx.client!);
     const removed = removedLines(ungated, skills);
     // e2e runs against a live ~/.producer-pal, so the dev machine's own skills
     // overrides are part of both blobs the server just served.
@@ -275,8 +250,6 @@ describe("x-producer-pal-disabled-tools", () => {
     }
   });
 });
-
-const REST_BASE_URL = CONFIG_URL.replace("/config", "");
 
 /**
  * Call a tool over the REST API with the given per-request headers.

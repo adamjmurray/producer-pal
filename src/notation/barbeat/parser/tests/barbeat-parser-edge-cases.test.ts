@@ -1,6 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import * as parser from "../barbeat-parser.ts";
@@ -92,6 +93,50 @@ describe("BarBeatScript Parser - edge cases", () => {
 
       expect(message).not.toContain("not 1|0");
       expect(message).toContain("1|1-n/4");
+    });
+
+    it("rejects a 0-indexed bar in every position spot", () => {
+      const steer = /bars are 1-indexed.*first bar is bar 1.*Got bar 0\./;
+
+      expect(() => parser.parse("0|1 C3")).toThrow(steer);
+      expect(() => parser.parse("C3 0|1")).toThrow(steer);
+      expect(() => parser.parse("C3 1|1 0|1")).toThrow(steer);
+      expect(() => parser.parse("[C3 D3] 0|1")).toThrow(steer);
+      expect(() => parser.parse("C3 1|1x4@n/4 0|1")).toThrow(steer);
+      // A bar restated inside a comma beat-list.
+      expect(() => parser.parse("C3 1|1,0|2")).toThrow(steer);
+    });
+
+    it("names a leading-zero bar as written", () => {
+      expect(() => parser.parse("C3 01|1")).toThrow(/Got bar 01\./);
+      expect(() => parser.parse("C3 00|1")).toThrow(/Got bar 00\./);
+    });
+
+    it("keeps bar 0 and beat 0 steers apart", () => {
+      expect(() => parser.parse("C3 0|0")).toThrow(/Got bar 0\./);
+      expect(() => parser.parse("C3 1|0")).toThrow(/Got beat 0\./);
+    });
+
+    it("only steers a bar that really starts with 0", () => {
+      expect(parser.parse("C3 10|1")).toStrictEqual([
+        { pitch: 60 },
+        { bar: 10, beat: 1 },
+      ]);
+      expect(parser.parse("C3 100|1")).toStrictEqual([
+        { pitch: 60 },
+        { bar: 100, beat: 1 },
+      ]);
+      expect(parser.parse("C3 1|1,10|2")).toHaveLength(3);
+      expect(() => parser.parse("v0 C3 1|1")).not.toThrow();
+      expect(() => parser.parse("C3 n0.5/4 1|1")).not.toThrow();
+      expect(() => parser.parse("C3 p0.5 1|1")).not.toThrow();
+      // Bare 0s that aren't a bar keep their own messages.
+      expect(() => parser.parse("0 1|1")).toThrow(/not MIDI numbers/);
+      expect(() => parser.parse("0.5")).toThrow(/positions use a pipe/);
+    });
+
+    it("suggests a position that parses", () => {
+      expect(() => parser.parse("1|1 C3")).not.toThrow();
     });
 
     it("rejects a range used as a position with a transform-time-filter hint", () => {

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for the specialized-device interface layer (pseudo-params, actions,
@@ -207,22 +207,22 @@ describe("specialized devices: Drift", () => {
     // Raw indices (SOURCES[2]="LFO", TARGETS[6]="LP Frequency") — the
     // authoritative check that our hardcoded enum order matches Live.
     const raw = parseToolResult<{
-      results: Array<{ result: number }>;
+      results: number[];
     }>(
       await ctx.client!.callTool({
         name: "ppal-live-api",
         arguments: {
           path: `id ${id}`,
           operations: [
-            { type: "getProperty", property: "mod_matrix_source_1_index" },
-            { type: "getProperty", property: "mod_matrix_target_1_index" },
+            { type: "get-property", property: "mod_matrix_source_1_index" },
+            { type: "get-property", property: "mod_matrix_target_1_index" },
           ],
         },
       }),
     );
 
-    expect(raw.results[0]!.result).toBe(2);
-    expect(raw.results[1]!.result).toBe(6);
+    expect(raw.results[0]).toBe(2);
+    expect(raw.results[1]).toBe(6);
   });
 
   it("validates pitchBendRange (Live reverts out-of-range, does not clamp)", async () => {
@@ -297,21 +297,21 @@ describe("specialized devices: Drift", () => {
     // catalog order, but NOT Live silently reordering its own enum — write and
     // read both use this same catalog, so that drift stays invisible to CI and
     // is only caught by re-running the manual probe-vs-Live.
-    const raw = parseToolResult<{ results: Array<{ result: number }> }>(
+    const raw = parseToolResult<{ results: number[] }>(
       await ctx.client!.callTool({
         name: "ppal-live-api",
         arguments: {
           path: `id ${id}`,
           operations: [
-            { type: "getProperty", property: "voice_mode_index" },
-            { type: "getProperty", property: "voice_count_index" },
+            { type: "get-property", property: "voice_mode_index" },
+            { type: "get-property", property: "voice_count_index" },
           ],
         },
       }),
     );
 
-    expect(raw.results[0]!.result).toBe(2);
-    expect(raw.results[1]!.result).toBe(2);
+    expect(raw.results[0]).toBe(2);
+    expect(raw.results[1]).toBe(2);
   });
 });
 
@@ -766,22 +766,22 @@ describe("specialized devices: Roar", () => {
     // (lowercased/hyphenated), so a future Live reorder is caught. Read the list
     // with the raw `get` op — `getProperty` returns only its first element.
     // Verified vs Live 12.4 2026-05-25.
-    const raw = parseToolResult<{ results: Array<{ result: unknown }> }>(
+    const raw = parseToolResult<{ results: unknown[] }>(
       await ctx.client!.callTool({
         name: "ppal-live-api",
         arguments: {
           path: `id ${id}`,
           operations: [
-            { type: "getProperty", property: "routing_mode_index" },
+            { type: "get-property", property: "routing_mode_index" },
             { type: "get", property: "routing_mode_list" },
           ],
         },
       }),
     );
 
-    expect(raw.results[0]!.result).toBe(2);
+    expect(raw.results[0]).toBe(2);
 
-    const catalog = (raw.results[1]!.result as string[]).map((label) =>
+    const catalog = (raw.results[1] as string[]).map((label) =>
       label.toLowerCase().replace(/ /g, "-"),
     );
 

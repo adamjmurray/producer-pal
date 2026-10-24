@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for the `merge` note-count transform, verified through the Live
@@ -16,8 +16,9 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
-  parseToolResultWithWarnings,
   type UpdateClipResult,
 } from "../../mcp-test-helpers.ts";
 import { setupClipTransformTest } from "../helpers/ppal-clip-transforms-test-helpers.ts";
@@ -85,13 +86,12 @@ describe("ppal-clip-transforms (merge round-trip)", () => {
     expect(result.noteCount).toBe(2);
   });
 
-  it("warns and skips on a gap that isn't a note value", async () => {
+  it("refuses a gap that isn't a note value, leaving the notes alone", async () => {
     const clipId = await createMidiClip(75, "v100 n/4 C3 1|1 C3 1|3");
     const raw = await applyTransform(clipId, "merge(2)");
-    const { data, warnings } =
-      parseToolResultWithWarnings<UpdateClipResult>(raw);
 
-    expect(warnings.join("\n")).toContain("merge() gap tolerance");
-    expect(data.noteCount).toBe(2);
+    expect(isToolError(raw)).toBe(true);
+    expect(getToolErrorMessage(raw)).toContain("merge() gap tolerance");
+    expect(await readClipNotes(clipId)).toBe("v100 n/4 C3 1|1,3");
   });
 });

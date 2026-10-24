@@ -1,11 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { contextStandard } from "#src/skills/fragments/context.ts";
 import { rememberMemory } from "#src/mcp-server/helpers/memory/memory-store.ts";
 import {
   connectResponse,
@@ -16,7 +17,7 @@ import { withNextStep, type NextStepConfig } from "../next-step-inject.ts";
 
 const getDir = useTempConfigDir();
 
-const ASKS = "whether they'd like to tell you about";
+const MARKER = "nothing is saved about them yet";
 
 /**
  * Run withNextStep over a ppal-connect call and return the appended block.
@@ -153,53 +154,41 @@ describe("withNextStep", () => {
   });
 
   describe("onboarding variant", () => {
-    it("asks about the user when there is no global context and no memory", async () => {
+    it("marks a user with no global context and no memory as new", async () => {
       const block = await nextStep();
 
-      expect(block).toContain("Nothing is stored about this user yet");
-      expect(block).toContain(ASKS);
+      expect(block).toContain(MARKER);
+      expect(block).toContain("wait for their instructions");
     });
 
-    // A statement ("tell me anytime") gives the user nothing to decline, so a
-    // brush-off never reads as an answer and the decline never gets recorded.
-    it("asks a real yes/no question rather than making an offer", async () => {
-      const block = await nextStep();
+    // The connect result only states the fact; the Skill holds the procedure.
+    // Both must key on the same phrase or the Skill never fires.
+    it("keys the context Skill's New user paragraph on the same marker", () => {
+      const paragraph = contextStandard
+        .split("\n\n")
+        .find((part) => part.startsWith("**New user**"));
 
-      expect(block).toContain("ASK them");
-      expect(block).toContain("answer yes or no");
+      expect(paragraph).toContain(`connect says ${MARKER}`);
+      expect(paragraph).toContain("yes-or-no question");
+      expect(paragraph).toContain("write what they said to global context");
+      expect(paragraph).toContain("write a one-line memory");
     });
 
-    it("routes what they share to global context, not memory", async () => {
-      const block = await nextStep();
-
-      expect(block).toContain('scope:"global"');
-      expect(block).toContain("write it without asking");
-    });
-
-    it("treats getting on with the music as a decline, and records it", async () => {
-      const block = await nextStep();
-
-      expect(block).toContain(
-        "just get on with making music without answering",
-      );
-      expect(block).toContain("write a memory recording that");
-    });
-
-    it("stays quiet once the user has any memory", async () => {
+    it("is not marked new once the user has any memory", async () => {
       seedMemory();
 
       const block = await nextStep();
 
-      expect(block).not.toContain(ASKS);
+      expect(block).not.toContain(MARKER);
       expect(block).toContain("wait for their instructions");
     });
 
-    it("stays quiet once the user has global context", async () => {
+    it("is not marked new once the user has global context", async () => {
       writeFileSync(join(getDir(), "context.md"), "I make ambient techno.");
 
       const block = await nextStep();
 
-      expect(block).not.toContain(ASKS);
+      expect(block).not.toContain(MARKER);
     });
 
     it("treats whitespace-only global context as no context", async () => {
@@ -207,37 +196,36 @@ describe("withNextStep", () => {
 
       const block = await nextStep();
 
-      expect(block).toContain(ASKS);
+      expect(block).toContain(MARKER);
     });
 
     // Small-model mode drops scope:memory from ppal-context, so a small model
     // could neither save what it learned nor record a decline — it would re-ask
     // on every single connect.
-    it("never asks in small-model mode, even with nothing stored", async () => {
+    it("never marks new in small-model mode, even with nothing stored", async () => {
       const block = await nextStep({ smallModelMode: true });
 
-      expect(block).not.toContain(ASKS);
+      expect(block).not.toContain(MARKER);
       expect(block).toContain("wait for their instructions");
     });
 
     // Same reasoning, harder: with no ppal-context at all there is nowhere to
     // put the answer OR the decline, so the ask would repeat forever.
-    it("never asks when the caller has no ppal-context", async () => {
+    it("never marks new when the caller has no ppal-context", async () => {
       const block = await nextStep({
         tools: ["ppal-connect", "ppal-read-track"],
       });
 
-      expect(block).not.toContain(ASKS);
-      expect(block).not.toContain("ppal-context");
+      expect(block).not.toContain(MARKER);
       expect(block).toContain("wait for their instructions");
     });
 
-    it("asks when the toolset keeps ppal-context", async () => {
+    it("marks a new user when the toolset keeps ppal-context", async () => {
       const block = await nextStep({
         tools: ["ppal-connect", "ppal-context"],
       });
 
-      expect(block).toContain(ASKS);
+      expect(block).toContain(MARKER);
     });
   });
 });

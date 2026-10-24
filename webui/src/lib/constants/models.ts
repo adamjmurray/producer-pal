@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type Provider } from "#webui/types/settings";
 
@@ -30,13 +30,13 @@ export const OPENAI_REALTIME_MODEL = "gpt-realtime-2.1";
  * the realtime fallback when the saved Gemini selection isn't itself a realtime
  * model, mirroring OPENAI_REALTIME_MODEL for the OpenAI side.
  */
-export const GEMINI_REALTIME_MODEL = "gemini-3.1-flash-live-preview";
+export const GEMINI_REALTIME_MODEL = "gemini-3.8-live";
 
 /**
  * Prebuilt voices for the Gemini Live API (distinct from OpenAI's
  * REALTIME_VOICES). The voice is set in the session config at connect time.
  * Labels include Google's tonal descriptor. All 30 are empirically verified to
- * produce audio on gemini-3.1-flash-live-preview; Puck is listed first as the
+ * produce audio on gemini-3.8-live; Puck is listed first as the
  * default. Source: Gemini TTS voice catalog (ai.google.dev).
  */
 export const GEMINI_REALTIME_VOICES = [
@@ -127,17 +127,17 @@ export const ANTHROPIC_MODELS = [
   { value: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" },
   { value: "claude-opus-5-5", label: "Claude Opus 5.5" },
   { value: "claude-fable-5-1", label: "Claude Fable 5.1" },
-  { value: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
+  { value: "claude-haiku-5-5", label: "Claude Haiku 5.5" },
   OTHER_MODEL_OPTION,
 ];
 
 export const GEMINI_MODELS: ModelPresetItem[] = [
   { value: "gemini-3.8-flash", label: "Gemini 3.8 Flash" },
-  { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
+  { value: "gemini-4-argon", label: "Gemini 4 Argon" },
   { value: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite" },
   {
     value: GEMINI_REALTIME_MODEL,
-    label: "Gemini 3.1 Flash Live (Voice)",
+    label: "Gemini 3.8 Live (Voice)",
     kind: "realtime",
   },
   OTHER_MODEL_OPTION,
@@ -157,8 +157,7 @@ export const OPENAI_MODELS: ModelPresetItem[] = [
 
 export const MISTRAL_MODELS = [
   { value: "mistral-medium-latest", label: "Mistral Medium" },
-  { value: "magistral-medium-2509", label: "Magistral Medium" },
-  { value: "mistral-large-latest", label: "Mistral Large" },
+  { value: "mistral-large-4", label: "Mistral Large 4" },
   { value: "devstral-latest", label: "Devstral" },
   OTHER_MODEL_OPTION,
 ];
@@ -173,6 +172,10 @@ export const OPENROUTER_MODELS = [
     value: "anthropic/claude-opus-5.5",
     label: "[Paid] Anthropic Claude Opus 5.5",
   },
+  {
+    value: "anthropic/claude-haiku-5.5",
+    label: "[Paid] Anthropic Claude Haiku 5.5",
+  },
   { value: "openai/gpt-6.1-sol", label: "[Paid] OpenAI GPT-6.1 Sol" },
   { value: "openai/gpt-6-luna", label: "[Paid] OpenAI GPT-6 Luna" },
   {
@@ -180,15 +183,15 @@ export const OPENROUTER_MODELS = [
     label: "[Paid] Google Gemini 3.8 Flash",
   },
   {
-    value: "google/gemini-3.1-pro-preview",
-    label: "[Paid] Google Gemini 3.1 Pro",
+    value: "google/gemini-4-argon",
+    label: "[Paid] Google Gemini 4 Argon",
   },
-  { value: "qwen/qwen3.8-max", label: "[Paid] Qwen 3.8 Max" },
+  { value: "qwen/qwen3.8-max-prime", label: "[Paid] Qwen 3.8 Max Prime" },
   {
-    value: "deepseek/deepseek-v4.1-flash",
-    label: "[Paid] DeepSeek V4.1 Flash",
+    value: "deepseek/deepseek-v4.1-flash-1017",
+    label: "[Paid] DeepSeek V4.1 Flash (1017)",
   },
-  { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
+  { value: "mistralai/mistral-large-4-0", label: "[Paid] Mistral Large 4" },
   { value: "moonshotai/kimi-k3", label: "[Paid] Moonshot AI Kimi K3" },
   { value: "z-ai/glm-5.3", label: "[Paid] Z.ai GLM 5.3" },
   // Free models
@@ -197,8 +200,8 @@ export const OPENROUTER_MODELS = [
     label: "[Free] Google Gemma 4 31B",
   },
   {
-    value: "nvidia/nemotron-3-super-120b-a12b:free",
-    label: "[Free] Nvidia Nemotron 3 Super 120B",
+    value: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    label: "[Free] Nvidia Nemotron 3 Ultra 550B",
   },
   {
     value: "poolside/laguna-xs-2.1:free",
@@ -208,6 +211,29 @@ export const OPENROUTER_MODELS = [
     value: "cohere/north-mini-code:free",
     label: "[Free] Cohere North Mini Code",
   },
+  OTHER_MODEL_OPTION,
+];
+
+// Mirrors OPENROUTER_MODELS. The gateway has no free models.
+export const VERCEL_MODELS = [
+  {
+    value: "anthropic/claude-sonnet-5.5",
+    label: "Anthropic Claude Sonnet 5.5",
+  },
+  { value: "anthropic/claude-opus-5.5", label: "Anthropic Claude Opus 5.5" },
+  { value: "anthropic/claude-haiku-5.5", label: "Anthropic Claude Haiku 5.5" },
+  { value: "openai/gpt-6.1-sol", label: "OpenAI GPT-6.1 Sol" },
+  { value: "openai/gpt-6-luna", label: "OpenAI GPT-6 Luna" },
+  { value: "google/gemini-3.8-flash", label: "Google Gemini 3.8 Flash" },
+  { value: "google/gemini-4-argon", label: "Google Gemini 4 Argon" },
+  { value: "alibaba/qwen3.8-max-prime", label: "Qwen 3.8 Max Prime" },
+  {
+    value: "deepseek/deepseek-v4.1-flash-1017",
+    label: "DeepSeek V4.1 Flash (1017)",
+  },
+  { value: "mistral/mistral-large-4", label: "Mistral Large 4" },
+  { value: "moonshotai/kimi-k3", label: "Moonshot AI Kimi K3" },
+  { value: "zai/glm-5.3", label: "Z.ai GLM 5.3" },
   OTHER_MODEL_OPTION,
 ];
 
@@ -234,6 +260,7 @@ export const DEFAULT_MODELS = {
   openai: (OPENAI_MODELS[0] as (typeof OPENAI_MODELS)[0]).value,
   mistral: (MISTRAL_MODELS[0] as (typeof MISTRAL_MODELS)[0]).value,
   openrouter: (OPENROUTER_MODELS[0] as (typeof OPENROUTER_MODELS)[0]).value,
+  vercel: (VERCEL_MODELS[0] as (typeof VERCEL_MODELS)[0]).value,
   ollama: (OLLAMA_MODELS[0] as (typeof OLLAMA_MODELS)[0]).value,
   lmstudio: "",
   custom: "",
@@ -252,17 +279,17 @@ export const PROVIDER_MODELS: Partial<
   openai: OPENAI_MODELS,
   mistral: MISTRAL_MODELS,
   openrouter: OPENROUTER_MODELS,
+  vercel: VERCEL_MODELS,
   ollama: OLLAMA_MODELS,
 };
 
 const REALTIME_MODEL_ID = /realtime/i;
-// Gemini's realtime/voice models don't carry "realtime" — they're named with
-// "-live-" (gemini-3.1-flash-live-preview, gemini-2.0-flash-live-001) or
-// "native-audio" (gemini-2.5-flash-native-audio-*). Deliberately excludes
-// "realtime" so a foreign OpenAI id (gpt-realtime-2) under the gemini provider
-// does NOT route to Gemini voice. Lets a free-text "Other..." Gemini live model
-// enable voice without a preset for every id.
-const GEMINI_REALTIME_MODEL_ID = /(-live-|native-audio)/i;
+// Gemini's voice models don't carry "realtime" — they're named with "-live"
+// as a word (gemini-3.8-live, gemini-3.1-flash-live-preview) or "native-audio".
+// Deliberately excludes "realtime" so a foreign OpenAI id (gpt-realtime-2)
+// under the gemini provider does NOT route to Gemini voice. Lets a free-text
+// "Other..." Gemini live model enable voice without a preset for every id.
+const GEMINI_REALTIME_MODEL_ID = /(-live(-|$)|native-audio)/i;
 
 /**
  * Heuristic: does a model id name a realtime (voice) model? OpenAI's realtime

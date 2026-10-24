@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Canned answers for the Node-side routes the tools reach over node_request:
 // Live's browser database and the user-content files under ~/.producer-pal.
@@ -33,6 +33,12 @@ const ROUTE_RESULTS: Record<string, unknown> = {
         parentFolder: "Instruments",
       },
     ],
+  },
+
+  "manage.installRemoteScript": {
+    installed: true,
+    version: "2.5.0",
+    path: "/Users/example/Music/Ableton/User Library/Remote Scripts/Producer_Pal",
   },
 
   "globalContext.read": {

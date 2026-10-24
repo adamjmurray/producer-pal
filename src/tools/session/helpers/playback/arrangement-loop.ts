@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -18,58 +18,90 @@ interface LoopPlan {
 /** A plan, or the reason there isn't one. */
 type PlannedLoop = { plan: LoopPlan } | { refusal: string };
 
+/** The loop write a call asks for, resolved and checked, not yet written. */
+export interface LoopWrite {
+  /** Whether the loop ends up on */
+  loop: boolean;
+  /** Where the bounds go, or null when the call names none */
+  plan: LoopPlan | null;
+  /** Why the plan can't be had: the loop is then left alone whole */
+  refusal?: string;
+}
+
 /**
- * Write the arrangement loop, or leave every part of it alone.
+ * Resolve the loop params, writing nothing: a bound that can't be read throws
+ * here, before the call has changed anything.
  *
  * The three writes — on/off, start, length — go together: a plan that can't be
  * had is refused whole, or the caller gets a loop they never asked for.
  * @param liveSet - The live_set LiveAPI object
  * @param timeline - The timeline params, with locators already folded in
- * @returns Whether the loop was written — a refused plan writes nothing
+ * @returns The write to make, or null when the call names no loop param
  */
-export function applyArrangementLoop(
+export function planArrangementLoop(
   liveSet: LiveAPI,
   timeline: ArrangementParams,
-): boolean {
+): LoopWrite | null {
   const { loop, loopStart, loopEnd } = timeline;
 
   if (loop == null && loopStart == null && loopEnd == null) {
-    return false;
+    return null;
+  }
+
+  // Bounds with the loop off do nothing audible, so naming either turns it on.
+  // An explicit loop still wins, so `loop: false` can set bounds for later.
+  // Naming none of the three returned above, so there is always a value here.
+  const enabled = loop ?? true;
+
+  if (loopStart == null && loopEnd == null) {
+    return { loop: enabled, plan: null };
   }
 
   const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
     songMeter();
-  const namesABound = loopStart != null || loopEnd != null;
   const toBeats = (value: string, paramName: string): number =>
     songPositionToBeats(liveSet, value, {
       paramName,
       timeSigNumerator,
       timeSigDenominator,
     });
-  const planned = namesABound
-    ? planLoop({
-        startBeats: loopStart == null ? null : toBeats(loopStart, "loopStart"),
-        endBeats: loopEnd == null ? null : toBeats(loopEnd, "loopEnd"),
-        currentLengthBeats: liveSet.getProperty("loop_length") as number,
-        timeSigNumerator,
-        timeSigDenominator,
-      })
-    : null;
+  const planned = planLoop({
+    startBeats: loopStart == null ? null : toBeats(loopStart, "loopStart"),
+    endBeats: loopEnd == null ? null : toBeats(loopEnd, "loopEnd"),
+    currentLengthBeats: liveSet.getProperty("loop_length") as number,
+    timeSigNumerator,
+    timeSigDenominator,
+  });
 
-  if (planned != null && "refusal" in planned) {
-    console.warn(planned.refusal);
+  return "refusal" in planned
+    ? { loop: enabled, plan: null, refusal: planned.refusal }
+    : { loop: enabled, plan: planned.plan };
+}
+
+/**
+ * Write the loop planned, or leave every part of it alone.
+ * @param liveSet - The live_set LiveAPI object
+ * @param write - What {@link planArrangementLoop} planned
+ * @param landed - Records what has changed Live, for an error later in the call
+ * @returns Whether the loop was written — a refused plan writes nothing
+ */
+export function writeArrangementLoop(
+  liveSet: LiveAPI,
+  write: LoopWrite,
+  landed: (phrase: string) => void,
+): boolean {
+  if (write.refusal != null) {
+    console.warn(write.refusal);
 
     return false;
   }
 
-  // Bounds with the loop off do nothing audible, so naming either turns it on.
-  // An explicit loop still wins, so `loop: false` can set bounds for later.
-  // Naming none of the three returned above, so there is always a value here.
-  liveSet.set("loop", loop ?? true);
+  liveSet.set("loop", write.loop);
+  landed("loop");
 
-  if (planned != null) {
-    liveSet.set("loop_start", planned.plan.startBeats);
-    liveSet.set("loop_length", planned.plan.lengthBeats);
+  if (write.plan != null) {
+    liveSet.set("loop_start", write.plan.startBeats);
+    liveSet.set("loop_length", write.plan.lengthBeats);
   }
 
   return true;

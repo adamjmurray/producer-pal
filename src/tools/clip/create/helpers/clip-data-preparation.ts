@@ -1,23 +1,24 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { interpretNotation } from "#src/notation/notation.ts";
 import { dedupeAndSortNotes, sortNotes } from "#src/notation/note-sort.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import { calculateClipLength } from "./create-clip-validation.ts";
 
 interface PreparedClipData {
   notes: MidiNote[];
   clipLength: number;
+  /** Duplicates dropped from the notes; 0 when a transform will run first */
+  droppedDuplicates: number;
 }
 
 /**
  * Prepares clip data (notes and initial length) based on clip type.
- * Notation is interpreted once here; transforms run per clip in createClips so
+ * Notation is interpreted once here; transforms run per clip, once its target is named, so
  * clip.index/clip.count/clipseq() vary across a multi-clip create.
  * @param sampleFile - Audio file path (if audio clip)
  * @param notationString - MIDI notation string (if MIDI clip)
@@ -26,7 +27,7 @@ interface PreparedClipData {
  * @param timeSigDenominator - Time signature denominator
  * @param notation - Global notation setting the notes string is written in (default barbeat)
  * @param transformString - Transform expressions (if any), or null
- * @returns Object with notes array and clipLength
+ * @returns Object with notes array, clipLength and the duplicates dropped
  */
 export function prepareClipData(
   sampleFile: string | null,
@@ -48,16 +49,15 @@ export function prepareClipData(
       : [];
 
   // Order the shared notes ascending by start_time for the eventual
-  // add_new_notes write. Same-pitch+start collisions are dropped (keep-last) and
-  // warned ONLY when no transform will run: a timing transform can pull two
-  // colliding onsets apart, so dropping them up front would lose notes
-  // update-clip keeps. With a transform, keep the duplicates here and let the
-  // per-clip transform re-dedupe AFTER transforming (resolveClipTransform),
-  // matching update-clip's transform-then-dedupe order.
-  const notes =
+  // add_new_notes write. Same-pitch+start collisions are dropped (keep-last)
+  // only when no transform will run: a timing transform can pull two colliding
+  // onsets apart, so dropping them up front would lose notes update-clip keeps.
+  // With a transform, the per-clip transform re-dedupes AFTER transforming
+  // (resolveClipTransform), matching update-clip's transform-then-dedupe order.
+  const { notes, collisions } =
     transformString != null
-      ? sortNotes(interpretedNotes)
-      : dropDuplicateNotes(interpretedNotes);
+      ? { notes: sortNotes(interpretedNotes), collisions: 0 }
+      : dedupeAndSortNotes(interpretedNotes);
 
   // Determine clip length
   let clipLength: number;
@@ -75,24 +75,5 @@ export function prepareClipData(
     );
   }
 
-  return { notes, clipLength };
-}
-
-/**
- * Drop same-pitch+start collisions (keep-last), sort ascending by start_time,
- * and warn how many were dropped so the LLM sees it. Used on the no-transform
- * create path; the transform path defers deduping until after transforming.
- * @param interpretedNotes - Notes as interpreted from the notation
- * @returns The deduped, sorted notes
- */
-function dropDuplicateNotes(interpretedNotes: MidiNote[]): MidiNote[] {
-  const { notes, collisions } = dedupeAndSortNotes(interpretedNotes);
-
-  if (collisions > 0) {
-    console.warn(
-      `Dropped ${collisions} duplicate note${collisions === 1 ? "" : "s"} at the same pitch and start`,
-    );
-  }
-
-  return notes;
+  return { notes, clipLength, droppedDuplicates: collisions };
 }

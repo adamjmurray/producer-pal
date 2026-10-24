@@ -241,7 +241,7 @@ Source code and development:
 
 ## License
 
-GNU General Public License v3.0 or later (`GPL-3.0-or-later`) - see
+MIT - see
 [LICENSE](https://github.com/adamjmurray/producer-pal/blob/main/LICENSE).
 
 Upstream notices for the third-party code bundled into this package ship in its

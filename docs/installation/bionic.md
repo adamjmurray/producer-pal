@@ -37,7 +37,7 @@ which Producer Pal requires.
 
 ## Installation Steps
 
-<!--@include: ../_partials/install-device.md-->
+<!--@include: ../_partials/setup-by-ai.md-->
 
 ### 2. Install a Compatible Model
 
@@ -89,6 +89,9 @@ the app.
 
 ### 4. Tune It for Your Model (Recommended)
 
+**Skip this step until step 1 is finished** and the device is in your Live Set.
+Small model mode hides the tool that sets Producer Pal up.
+
 Bionic has no tool picker, so the MCP server's arguments are the only place to
 narrow what Producer Pal offers — and small models do much better with a short
 tool list. The same arguments also switch on the settings that make Producer Pal
@@ -98,7 +101,7 @@ easier for a local model to drive:
 - `--notation stark` — a literal `type: content` format with event-based drum
   hits, which small models handle better than the default bar|beat text
 - `--tools core,clip,track` — a focused toolset, which also shrinks the
-  [skills](/features#skills) the model reads on connect
+  [skills](/features#skills) the model reads on connect.
 
 Edit the server under Settings &rarr; Connected Apps and add them as arguments,
 one field each — a flag and its value are two separate arguments:
@@ -107,9 +110,9 @@ one field each — a flag and its value are two separate arguments:
 
 <!--@include: ../_partials/toolset-tip.md-->
 
-Small model mode and notation apply to the device itself, so they also change
-what the built-in chat UI and any other connected client see. You can set them
-by hand instead on Producer Pal's "Setup" tab:
+These flags apply to Bionic only. To set them for the whole device instead
+(including the built-in chat UI and other connected clients), use Producer Pal's
+"Setup" tab:
 
 <img src="/img/small-model-mode.png" alt="Small model mode setting" width="375"/>
 

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -54,6 +54,20 @@ describe("useSettings crypto error handling", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     renderHook(() => useSettings());
+
+    await waitForHookState(() => {
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Failed to load provider settings",
+        expect.any(Error),
+      );
+    });
+  });
+
+  it("still logs a failed decrypt-load that settles after unmount", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { unmount } = renderHook(() => useSettings());
+
+    unmount();
 
     await waitForHookState(() => {
       expect(errorSpy).toHaveBeenCalledWith(

@@ -42,6 +42,17 @@ Nothing is generated here. This is just Producer Pal reading:
 
 > which clips are in scene 3?
 
+### Let the AI set up Producer Pal
+
+If you connect with `npx producer-pal` or the Claude Desktop extension, the AI
+can install the [remote script](/guide/remote-script) for you:
+
+> connect to ableton and set up Producer Pal for me
+
+It asks before adding the device to your Live Set, and you'll need to restart
+Live and pick **Producer Pal** as a Control Surface. See
+[Remote Script](/guide/remote-script#install-by-asking-the-ai).
+
 ## Set up project context
 
 This is the highest-leverage thing you can do, and the easiest to skip. Producer
@@ -143,6 +154,41 @@ operate on existing MIDI, using
 
 These work on any MIDI clip (drums, melodies, chords) and can target notes by
 pitch or time range.
+
+## Automate
+
+Needs the [remote script](/guide/remote-script). Writing automation needs Live
+12.4 or later. More in [Clip Automation](/guide/automation).
+
+> fade the volume of the pad clip in over the first four bars
+
+> sweep the Auto Filter's frequency on the bass clip up across all eight bars
+
+> read the automation on the clip in track 2, scene 1
+
+## Undo and redo
+
+Needs the [remote script](/guide/remote-script). Each request is one undo step
+in Live:
+
+> undo that
+
+> undo the last three things you did
+
+> actually, redo it
+
+Live's history includes your own edits, so an undo can revert something you did.
+
+## Turn audio into MIDI
+
+Needs the [remote script](/guide/remote-script). Live detects the notes and puts
+them on a new MIDI track:
+
+> convert the drum loop to MIDI
+
+> turn the vocal clip into a melody on a new MIDI track
+
+> convert the chord sample on track 3 to harmony
 
 ## Arrange
 

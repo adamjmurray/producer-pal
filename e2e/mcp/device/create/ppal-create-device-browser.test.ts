@@ -1,15 +1,16 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-create-device loading a device from Live's browser through
  * the Producer Pal remote script. Opt-in: skipped unless E2E_REMOTE_SCRIPT=true,
  * and failed, not skipped, when that's set but the remote script isn't
- * answering. Loads the LFO (a Max for Live device) by its bare name: Live 12.4
- * lists it under Audio Effects, older Live under Max for Live > Max Audio
- * Effect, so a browser path would only work on one. Never a machine-specific
+ * answering. Loads the LFO (a Max for Live device) by a browser path picked by
+ * Live version: 12.4 lists it under Audio Effects, older Live under Max for Live
+ * > Max Audio Effect. Not by bare name: a Live 12.4 with an older Max for Live
+ * pack lists it in both, so the name is ambiguous. Never a machine-specific
  * plug-in.
  *
  * Uses: e2e-test-set (rt0 is a return track)
@@ -17,11 +18,17 @@
  *
  * Run with: npm run e2e:mcp:remote-script -- device/create/ppal-create-device-browser
  */
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { siblingUrl } from "#evals/shared/config.ts";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
+import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import {
   getToolErrorMessage,
   isToolError,
   parseToolResult,
+  readIdAtPath,
   setupMcpTestContext,
   sleep,
   trackIndexFromPath,
@@ -30,6 +37,8 @@ import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../helpers/remote-script-test-helpers";
+import { readTrackCount } from "../helpers/track-count-test-helpers";
+import { liveVersionAtLeast } from "../../workflow/helpers/server-capability-test-helpers";
 
 describe.skipIf(!REMOTE_SCRIPT_E2E)(
   "ppal-create-device — devices from Live's browser",
@@ -37,6 +46,20 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
     requireRemoteScript();
 
     const ctx = setupMcpTestContext();
+
+    let lfoPath: string | undefined;
+
+    /**
+     * The LFO's browser path on the running Live, read once.
+     * @returns Its path under Audio Effects or Max for Live
+     */
+    async function lfoBrowserPath(): Promise<string> {
+      lfoPath ??= (await liveVersionAtLeast(ctx.client!, "12.4"))
+        ? "Audio Effects/LFO"
+        : "Max for Live/Max Audio Effect/LFO";
+
+      return lfoPath;
+    }
 
     /**
      * Create a device and parse the result.
@@ -78,39 +101,20 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       return trackIndexFromPath(track.path);
     }
 
-    /**
-     * How many regular tracks the Set has, to prove the temp track is gone.
-     * @returns The track count
-     */
-    async function trackCount(): Promise<number> {
-      const liveSet = parseToolResult<{ tracks?: unknown[] }>(
-        await ctx.client!.callTool({
-          name: "ppal-read-live-set",
-          arguments: { include: ["tracks"] },
-        }),
-      );
+    // How many regular tracks the Set has, to prove the temp track is gone.
+    const trackCount = (): Promise<number> => readTrackCount(ctx.client!);
 
-      return liveSet.tracks?.length ?? 0;
-    }
-
-    /**
-     * The id of the device at a path, to check a result's path names it.
-     * @param path - Producer Pal path to the device
-     * @returns The device's id
-     */
-    async function idAt(path: string): Promise<string> {
-      return parseToolResult<{ id: string }>(
-        await ctx.client!.callTool({
-          name: "ppal-read-device",
-          arguments: { path },
-        }),
-      ).id;
-    }
+    // The id of the device at a path, to check a result's path names it.
+    const idAt = (path: string): Promise<string> =>
+      readIdAtPath(ctx.client!, "ppal-read-device", path);
 
     it("appends LFO to a track and leaves no temp track behind", async () => {
       const trackIndex = await createTrack("audio");
       const before = await trackCount();
-      const lfo = await createDevice("LFO", `t${trackIndex}/d+`);
+      const lfo = await createDevice(
+        await lfoBrowserPath(),
+        `t${trackIndex}/d+`,
+      );
 
       expect(lfo.path).toMatch(new RegExp(`^t${trackIndex}/d\\d+$`));
       expect(await idAt(lfo.path)).toBe(lfo.id);
@@ -122,7 +126,10 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
 
       await createDevice("Compressor", `t${trackIndex}/d+`);
 
-      const lfo = await createDevice("LFO", `t${trackIndex}/d0`);
+      const lfo = await createDevice(
+        await lfoBrowserPath(),
+        `t${trackIndex}/d0`,
+      );
 
       expect(lfo.path).toBe(`t${trackIndex}/d0`);
       expect(await idAt(lfo.path)).toBe(lfo.id);
@@ -131,7 +138,10 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
     it("loads LFO into a rack chain", async () => {
       const trackIndex = await createTrack("audio");
       const rack = await createDevice("Audio Effect Rack", `t${trackIndex}`);
-      const lfo = await createDevice("LFO", `${rack.path}/c0/d+`);
+      const lfo = await createDevice(
+        await lfoBrowserPath(),
+        `${rack.path}/c0/d+`,
+      );
 
       expect(lfo.path.startsWith(`${rack.path}/c0/d`)).toBe(true);
       expect(await idAt(lfo.path)).toBe(lfo.id);
@@ -139,7 +149,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
 
     it("loads LFO onto a return track", async () => {
       const before = await trackCount();
-      const lfo = await createDevice("LFO", "rt0/d+");
+      const lfo = await createDevice(await lfoBrowserPath(), "rt0/d+");
 
       expect(lfo.path).toMatch(/^rt0\/d\d+$/);
       expect(await idAt(lfo.path)).toBe(lfo.id);
@@ -177,18 +187,153 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       expect(await trackCount()).toBe(before);
     });
 
+    // The lookup and the load share one deadline, and Live skips any job it
+    // hasn't started by it.
+    it("remote script skips a /list that expired before Live ran it", async () => {
+      const response = await fetch(
+        `http://127.0.0.1:${await resolveRemoteScriptPort()}/list?type=plugin&expires_in_ms=0`,
+      );
+      const body = (await response.json()) as { error?: string };
+
+      expect(response.status).toBe(504);
+      expect(body.error).toContain("expired before Live ran it");
+    });
+
+    /**
+     * How many devices a track holds.
+     * @param trackIndex - The track's index
+     * @returns Its device count
+     */
+    async function deviceCount(trackIndex: number): Promise<number> {
+      const track = parseToolResult<{ devices?: unknown[] }>(
+        await ctx.client!.callTool({
+          name: "ppal-read-track",
+          arguments: { path: `t${trackIndex}`, include: ["devices"] },
+        }),
+      );
+
+      return track.devices?.length ?? 0;
+    }
+
+    // Too short a Timeout can't finish a load: the call must say so, and leave
+    // no temp track or device behind. A new track may already hold devices from
+    // the user's default track preset, so compare counts.
+    it("under a short Timeout says it ran out of time, leaving nothing behind", async () => {
+      const trackIndex = await createTrack("audio");
+      const before = await trackCount();
+      const devicesBefore = await deviceCount(trackIndex);
+      const response = await fetch(
+        `${siblingUrl(MCP_URL, "api/tools/ppal-create-device")}?format=json&timeoutMs=1000`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            device: await lfoBrowserPath(),
+            path: `t${trackIndex}/d+`,
+          }),
+        },
+      );
+
+      expect(response.status).toBe(200);
+
+      const body = (await response.json()) as {
+        isError?: boolean;
+        result: unknown;
+      };
+
+      expect(body.isError).toBe(true);
+      expect(String(body.result)).toMatch(/ran out of time|Timeout setting/);
+
+      await sleep(100);
+
+      expect(await deviceCount(trackIndex)).toBe(devicesBefore);
+      expect(await trackCount()).toBe(before);
+    });
+
     it("remote script refuses a second Producer Pal device", async () => {
       const before = await trackCount();
-      const port = process.env.PPAL_REMOTE_SCRIPT_PORT ?? "3349";
-      const response = await fetch(`http://127.0.0.1:${port}/load`, {
-        method: "POST",
-        body: JSON.stringify({ type: "mfl-device", name: "Producer_Pal" }),
-      });
+      const response = await fetch(
+        `http://127.0.0.1:${await resolveRemoteScriptPort()}/load`,
+        {
+          method: "POST",
+          body: JSON.stringify({ type: "mfl-device", name: "Producer_Pal" }),
+        },
+      );
       const body = (await response.json()) as { error?: string };
 
       expect(response.status).toBe(409);
       expect(body.error).toContain("Producer Pal is already in this Live Set");
       expect(await trackCount()).toBe(before);
+    });
+
+    describe("loading Producer_Pal.amxd by file path", () => {
+      /**
+       * POST /load with a file path.
+       * @param path - The file's absolute path
+       * @returns The HTTP status and error text
+       */
+      async function loadFile(
+        path: string,
+      ): Promise<{ status: number; error?: string }> {
+        const response = await fetch(
+          `http://127.0.0.1:${await resolveRemoteScriptPort()}/load`,
+          { method: "POST", body: JSON.stringify({ type: "file", path }) },
+        );
+        const body = (await response.json()) as { error?: string };
+
+        return { status: response.status, error: body.error };
+      }
+
+      /**
+       * The installed Producer_Pal.amxd, or skip when this machine has none in
+       * its User Library.
+       * @param skip - The test's `skip`
+       * @returns The file's absolute path
+       */
+      async function installedDevice(skip: () => never): Promise<string> {
+        const ping = await fetch(
+          `http://127.0.0.1:${await resolveRemoteScriptPort()}/ping`,
+        );
+        const { user_library: library } = (await ping.json()) as {
+          user_library: string | null;
+        };
+        const file =
+          library == null
+            ? null
+            : join(
+                library,
+                "Presets",
+                "MIDI Effects",
+                "Max MIDI Effect",
+                "Producer_Pal.amxd",
+              );
+
+        return file != null && existsSync(file) ? file : skip();
+      }
+
+      it("finds the device by its .amxd path", async ({ skip }) => {
+        const before = await trackCount();
+        const { status, error } = await loadFile(await installedDevice(skip));
+
+        // Found, then refused because the Set already has one
+        expect(status).toBe(409);
+        expect(error).toContain("Producer Pal is already in this Live Set");
+        expect(await trackCount()).toBe(before);
+      });
+
+      it("does not match the device through another extension", async ({
+        skip,
+      }) => {
+        const before = await trackCount();
+        const file = await installedDevice(skip);
+        const { status, error } = await loadFile(
+          file.replace(/\.amxd$/, ".adv"),
+        );
+
+        expect(status).toBe(404);
+        expect(error).toContain("holds");
+        expect(await trackCount()).toBe(before);
+      });
     });
   },
 );

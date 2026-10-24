@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   enumParam,
@@ -12,7 +12,7 @@ import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Meld (MeldDevice, class_name "InstrumentMeld"). Exposes its polyphony mode
 // and voice-count controls at the class level — none are reachable as
-// DeviceParameters. See dev/live-api/specialized-devices/instruments.md.
+// DeviceParameters. See dev/live-api/specialized-devices/instruments/meld.md.
 //
 // selected_engine is deliberately NOT exposed — it is a UI-only display
 // selector. Both A and B engine parameters are always addressable via A * / B *

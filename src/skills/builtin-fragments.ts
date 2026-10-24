@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The release built-in fragments, keyed by include name. `resolveIncludes`
 // expands a driver root's includes against these (with any ~/.producer-pal/skills

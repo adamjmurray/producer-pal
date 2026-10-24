@@ -7,9 +7,6 @@ projects:
    developers
 2. **Chat UI** — standalone general-purpose MCP-native chat app in its own repo
 
-Related: [Ecosystem plan](ecosystem.md) — the Live API package is one of the
-"shared libraries" referenced there.
-
 ---
 
 ## 1. Live API npm Package
@@ -52,8 +49,6 @@ Pal's test registry to ship as-is. Could be revisited later as a separate
 
 ### Open questions
 
-- **License**: Producer Pal is GPL-3.0. A reusable utility package would benefit
-  from MIT/Apache-2.0. Worth relicensing the extracted subset?
 - **Package name**: Something like `live-api-tools`, `max-live-api`,
   `ableton-live-api`?
 - **Mock/testing story**: Consumers can't test against real LiveAPI outside Max.

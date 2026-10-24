@@ -1,20 +1,20 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Codex (OpenAI), Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   type TrackPath,
   livePath,
 } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
-import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
+  liveVersionAtLeast,
   toLiveApiId,
   toLiveApiView,
 } from "#src/tools/shared/helpers/live-api-values.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { type Call } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 
 export type TrackCategory = "regular" | "return" | "master";
 
@@ -42,10 +42,7 @@ interface UpdateSceneSelectionOptions {
 interface UpdateDeviceSelectionOptions {
   songView: LiveAPI;
   deviceId?: string;
-  devicePath?: string;
-  devicePathParam: "path" | "devicePath";
-  /** The device already resolved for `devicePath` by the existence check, so
-   * this doesn't re-resolve it from the path string. */
+  /** The device a path named, resolved while checking the call */
   resolvedDevice?: LiveAPI;
 }
 
@@ -164,16 +161,12 @@ export function updateSceneSelection({
  * @param options - Selection parameters
  * @param options.songView - LiveAPI instance for live_set view
  * @param options.deviceId - Device ID to select
- * @param options.devicePath - Device path (e.g. "t0/d1")
- * @param options.devicePathParam - The param the device path came from
- * @param options.resolvedDevice - The device already resolved for `devicePath`
- * @returns The resolved device, or undefined if none was targeted/found
+ * @param options.resolvedDevice - The device a path named, already resolved
+ * @returns The selected device, or undefined if none was targeted
  */
 export function updateDeviceSelection({
   songView,
   deviceId,
-  devicePath,
-  devicePathParam,
   resolvedDevice,
 }: UpdateDeviceSelectionOptions): LiveAPI | undefined {
   if (deviceId != null) {
@@ -182,39 +175,17 @@ export function updateDeviceSelection({
     songView.call("select_device", toLiveApiId(deviceId));
 
     return deviceAPI;
-  } else if (devicePath != null) {
-    const deviceAPI =
-      resolvedDevice ?? resolveDeviceFromPath(devicePath, devicePathParam);
+  } else if (resolvedDevice != null) {
+    songView.call("select_device", toLiveApiId(resolvedDevice.id));
 
-    songView.call("select_device", toLiveApiId(deviceAPI.id));
-
-    return deviceAPI;
+    return resolvedDevice;
   }
 
   return undefined;
 }
 
-/**
- * Resolve a device path when the existence check didn't already resolve it
- * (a path naming a chain or other non-device target).
- * @param devicePath - Device path (e.g. "t0/d1")
- * @param devicePathParam - The param the device path came from
- * @returns The resolved device
- */
-function resolveDeviceFromPath(
-  devicePath: string,
-  devicePathParam: "path" | "devicePath",
-): LiveAPI {
-  const resolved = resolvePathToLiveApi(devicePath);
-
-  if (resolved.targetType !== "device") {
-    throw new Error(
-      `${devicePathParam} "${devicePath}" does not resolve to a device`,
-    );
-  }
-
-  return LiveAPI.from(resolved.liveApiPath);
-}
+/** Live before 12.4 has no `is_editor_open`, and setting it does nothing. */
+const PLUGIN_WINDOW_MIN_VERSION = "12.4";
 
 /**
  * Open or close a plug-in's (VST/AU) floating editor window. The `is_editor_open`
@@ -222,16 +193,19 @@ function resolveDeviceFromPath(
  * other device this skips rather than throwing.
  * @param device - The resolved target device, or undefined if none was targeted
  * @param open - true to open the editor window, false to close it
+ * @param call - The call, to warn through when there is no device
  * @returns Whether the property was written, and what the device's entry should
  *   say when it wasn't; with no device there is no entry, so that warns
  */
 export function applyPluginEditorWindow(
   device: LiveAPI | undefined,
   open: boolean,
+  call: Call,
 ): { applied: boolean; detail?: string } {
   if (device == null) {
-    console.warn(
-      "openPluginWindow requires a plug-in device — specify id or path",
+    call.ignored(
+      "openPluginWindow",
+      "it needs a plug-in device; specify id or path",
     );
 
     return { applied: false };
@@ -241,6 +215,13 @@ export function applyPluginEditorWindow(
     return {
       applied: false,
       detail: "openPluginWindow ignored: not a plug-in (VST/AU)",
+    };
+  }
+
+  if (!liveVersionAtLeast(PLUGIN_WINDOW_MIN_VERSION)) {
+    return {
+      applied: false,
+      detail: `openPluginWindow ignored: requires Live ${PLUGIN_WINDOW_MIN_VERSION} or later`,
     };
   }
 
@@ -302,7 +283,7 @@ export function updateClipSlotSelection({
     return false;
   }
 
-  const clipInSlot = LiveAPI.from(`${clipSlotAPI.path} clip`);
+  const clipInSlot = clipSlotAPI.child("clip");
 
   if (clipInSlot.exists()) {
     songView.setProperty("detail_clip", toLiveApiId(clipInSlot.id));

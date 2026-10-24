@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
@@ -13,6 +13,8 @@ import {
   moveClipReasons,
   newClipReasons,
   noteClipColor,
+  noteClipReadBack,
+  noteTakeLanesMade,
   reportClipReasons,
 } from "./clip-reasons.ts";
 
@@ -50,7 +52,7 @@ describe("clip-reasons", () => {
 
     const entry: ClipResult = { id: "named_id" };
 
-    reportClipReasons(reasons, "named_id", [entry]);
+    reportClipReasons(reasons, "named_id", entry);
 
     expect(entry).toStrictEqual({
       id: "named_id",
@@ -60,6 +62,51 @@ describe("clip-reasons", () => {
     expect(reasons.colors.has("new_id")).toBe(false);
   });
 
+  it("hands made lanes and read-backs over to the id the call knows", () => {
+    const reasons = newClipReasons();
+
+    noteTakeLanesMade(reasons, "new_id", "l1-l2", 3);
+    noteClipReadBack(reasons, "new_id", { length: "1bar" });
+    moveClipReasons(reasons, "new_id", "named_id");
+
+    // No path: the move didn't say where the clip is, so the lanes are named.
+    const entry: ClipResult = { id: "named_id" };
+
+    reportClipReasons(reasons, "named_id", entry);
+
+    expect(entry).toStrictEqual({
+      id: "named_id",
+      length: "1bar",
+      created: "l1-l2",
+      detail:
+        "take lanes l1-l2 made on t3; length read back as shown, not as sent",
+    });
+    expect(reasons.created.has("new_id")).toBe(false);
+    expect(reasons.readBacks.has("new_id")).toBe(false);
+  });
+
+  it("names a made lane only when the entry's path doesn't already", () => {
+    const reasons = newClipReasons();
+
+    noteTakeLanesMade(reasons, "1", "l2", 3);
+
+    const onLane: ClipResult = { id: "1", path: "t3/l2[1|1]" };
+
+    reportClipReasons(reasons, "1", onLane);
+
+    expect(onLane).toStrictEqual({
+      id: "1",
+      path: "t3/l2[1|1]",
+      created: "l2",
+    });
+
+    const elsewhere: ClipResult = { id: "1", path: "t0[1|1]" };
+
+    reportClipReasons(reasons, "1", elsewhere);
+
+    expect(elsewhere.detail).toBe("take lane l2 made on t3");
+  });
+
   it("puts a color it could not read back on the entry as a reason only", () => {
     const reasons = newClipReasons();
 
@@ -67,7 +114,7 @@ describe("clip-reasons", () => {
 
     const entry: ClipResult = { id: "1" };
 
-    reportClipReasons(reasons, "1", [entry]);
+    reportClipReasons(reasons, "1", entry);
 
     expect(entry).toStrictEqual({ id: "1", detail: "could not be read back" });
   });
@@ -81,7 +128,7 @@ describe("clip-reasons", () => {
 
     const tiled: ClipResult = { id: "1" };
 
-    reportClipReasons(reasons, "1", [tiled]);
+    reportClipReasons(reasons, "1", tiled);
 
     expect(tiled).toStrictEqual({ id: "1", detail: "placed 2 of 8 tiles" });
     // A note leaves the clip a real entry; a refusal with nothing else landing

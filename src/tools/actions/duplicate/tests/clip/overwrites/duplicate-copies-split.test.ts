@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Copies of different lengths, where a later copy lands inside an earlier one
 // and splits it. The tail it leaves belongs to the copy it split, never to a
@@ -28,12 +28,16 @@ interface LaneClip {
 /**
  * Session sources on track 0, one per scene, with these lengths in beats.
  * @param lengths - Each source's length, by id
+ * @param extra - More properties for a source, by id
  */
-function registerSources(lengths: Record<string, number>): void {
+function registerSources(
+  lengths: Record<string, number>,
+  extra: Record<string, Record<string, unknown>> = {},
+): void {
   for (const [scene, [id, length]] of Object.entries(lengths).entries()) {
     registerMockObject(id, {
       path: livePath.track(0).clipSlot(scene).clip(),
-      properties: { is_midi_clip: 1, length },
+      properties: { is_midi_clip: 1, length, ...extra[id] },
     });
   }
 }
@@ -110,8 +114,9 @@ describe("a copy another copy split", () => {
     registerSources(lengths);
     registerSplittingTrack(lengths);
 
-    // The 16 lands, the 4 takes its front, the 12 buries the rest, and the 2
-    // splits the 12: the tail at 3|3 is the 12's, and the 16 has nothing left.
+    // The 4 and the 12 between them cover the 16 whole, so it is never
+    // written. The 2 splits the 12: the tail at 3|3 is the 12's, and its head
+    // stays, so its entry says it was shortened.
     const result = await duplicate({
       type: "clip",
       id: "s16,s4,s12,s2",
@@ -121,12 +126,73 @@ describe("a copy another copy split", () => {
     expect(result).toStrictEqual([
       {
         path: "t1[1|1]",
-        deleted: true,
-        detail: "a later copy in this call landed on it",
+        detail: "overwritten later in this call by t1[3|1]",
+      },
+      { id: "copy-0", path: "t1[1|1]" },
+      {
+        id: "copy-1",
+        path: "t1[2|1]",
+        detail: "shortened by t1[3|1] later in this call",
+      },
+      { id: "copy-2", path: "t1[3|1]" },
+    ]);
+  });
+
+  // A looped session clip plays its pre-roll once before the loop, so its copy
+  // is longer than its loop. A shorter copy over it leaves its tail.
+  it("measures a looped session clip's copy with its pre-roll", async () => {
+    const loop = { looped: 4, short: 4 };
+
+    registerLiveSet();
+    registerSources(loop, {
+      looped: { looping: 1, start_marker: 0, loop_start: 4, loop_end: 8 },
+    });
+    // The looped copy lands 8 beats long: 4 of pre-roll, then the loop.
+    registerSplittingTrack({ looped: 8, short: 4 });
+
+    const result = await duplicate({
+      type: "clip",
+      id: "looped,short",
+      toPath: "t1[1|1],t1[1|1]",
+    });
+
+    expect(result).toStrictEqual([
+      {
+        id: "rest-of-copy-0",
+        path: "t1[2|1]",
+        detail: "shortened by t1[1|1] later in this call",
       },
       { id: "copy-1", path: "t1[1|1]" },
-      { id: "copy-2", path: "t1[2|1]" },
-      { id: "copy-3", path: "t1[3|1]" },
     ]);
+  });
+
+  // An arrangement clip copies its whole span, not its loop, so a shorter copy
+  // of it clears only the length asked for, and an earlier copy keeps its tail.
+  it("measures an arrangement clip's copy by its span, not its loop", async () => {
+    registerLiveSet();
+    registerSources({ long: 16 });
+    registerMockObject("span", {
+      path: livePath.track(0).arrangementClip(0),
+      properties: {
+        is_midi_clip: 1,
+        is_arrangement_clip: 1,
+        start_time: 100,
+        end_time: 116,
+        length: 4,
+        looping: 1,
+        loop_start: 0,
+        loop_end: 4,
+      },
+    });
+    registerSplittingTrack({ long: 16, span: 8 });
+
+    const result = (await duplicate({
+      type: "clip",
+      id: "long,span",
+      toPath: "t1[1|1],t1[1|1]",
+      arrangementLength: "4bar,2bar",
+    })) as Array<{ detail?: string }>;
+
+    expect(result[0]?.detail).toBe("shortened by t1[1|1] later in this call");
   });
 });

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The left pane of the collection managers (memory, custom skills): a fixed
 // "New …" toolbar above a flat, name-sorted, scrolling list, mirroring the

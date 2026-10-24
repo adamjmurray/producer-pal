@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
 import { createConversationStore } from "#webui/lib/conversations/conversation-store";
@@ -225,6 +225,29 @@ describe("createConversationStore", () => {
     expect(followUp.stillLive()).toBe(false);
     expect(store.activeId()).toBe(trunk.id);
     expect(store.liveId()).toBe(trunk.id);
+  });
+
+  it("stays on the conversation the user switched to when a fork rolls back", () => {
+    const { store } = storeWithPersistedTrunk();
+    const fork = store.beginSave(true)!;
+    const other = createTestRecord({ id: "other" });
+
+    store.adopt(other);
+    fork.rollback();
+
+    expect(fork.stillLive()).toBe(false);
+    expect(store.activeId()).toBe("other");
+  });
+
+  it("does not revive a fork being deleted when it rolls back", () => {
+    const { store } = storeWithPersistedTrunk();
+    const fork = store.beginSave(true)!;
+
+    store.markDeleted();
+    fork.rollback();
+
+    expect(store.liveId()).toBe(fork.id);
+    expect(store.beginSave(false)).toBeNull();
   });
 
   it("leaves an unrelated save's id alone when a fork rolls back", () => {

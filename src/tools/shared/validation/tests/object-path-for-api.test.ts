@@ -1,14 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
-import {
-  beginLiveApiScope,
-  endLiveApiScope,
-} from "#src/live-api-adapter/live-api-release.ts";
+import { inRequestScope } from "#src/live-api-adapter/tests/objects/in-request-scope.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -46,17 +43,13 @@ describe("objectPathForApi", () => {
       properties: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    beginLiveApiScope();
-
-    try {
+    inRequestScope(() => {
       for (let i = 0; i < 3; i++) {
         expect(
           objectPathForApi(api(livePath.track(2).arrangementClip(i))),
         ).toBe("t2[5|1]");
       }
-    } finally {
-      endLiveApiScope();
-    }
+    });
 
     const meterReads = liveSet.get.mock.calls.filter(
       ([prop]: unknown[]) => prop === "signature_numerator",

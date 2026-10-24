@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { vi, type Mock } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -261,6 +261,18 @@ export function setupClipSplittingMocks(
 }
 
 export const SPLIT_CLIP_ID = "clip_1";
+
+/**
+ * A session clip, which an arrangement split refuses.
+ * @returns The clip mock
+ */
+export function registerSessionClip(): RegisteredMockObject {
+  return registerMockObject("session_clip", {
+    path: livePath.track(0).clipSlot(0).clip(),
+    type: "Clip",
+    properties: { is_arrangement_clip: 0, is_midi_clip: 1 },
+  });
+}
 
 interface SplitTestFixture {
   clipId: string;

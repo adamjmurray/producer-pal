@@ -1,10 +1,17 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import { checkForUpdate, isNewerVersion } from "../version-check.ts";
+import {
+  checkForUpdate,
+  isBehindBuild,
+  isInstallIncomplete,
+  isNewerVersion,
+  remoteScriptAttention,
+  type RemoteScriptAttentionInput,
+} from "../version-check.ts";
 
 describe("isNewerVersion", () => {
   it("returns true when latest has a newer patch", () => {
@@ -117,10 +124,12 @@ describe("isNewerVersion", () => {
     expect(isNewerVersion("2.1.0-rc1", "2.0.0")).toBe(false);
   });
 
-  it("does not announce a mid-cycle re-cut to a tester on an earlier rc", () => {
-    // Accepted: `/releases/latest` would never surface rc2 anyway (it's marked
-    // pre-release), so the comparison is moot. Testers are told directly.
-    expect(isNewerVersion("2.1.0-rc1", "2.1.0-rc2")).toBe(false);
+  it("orders release candidates of one version by number", () => {
+    expect(isNewerVersion("2.1.0-rc1", "2.1.0-rc2")).toBe(true);
+    expect(isNewerVersion("2.1.0-rc2", "2.1.0-rc1")).toBe(false);
+    expect(isNewerVersion("2.1.0-rc2", "2.1.0-rc10")).toBe(true);
+    expect(isNewerVersion("v2.1.0-rc1", "2.1.0-rc2")).toBe(true);
+    expect(isNewerVersion("2.1.0-rc2", "2.1.0-rc2")).toBe(false);
   });
 
   it("does not treat pre-release latest as newer than same stable", () => {
@@ -128,9 +137,11 @@ describe("isNewerVersion", () => {
     expect(isNewerVersion("1.2.3", "1.2.3-beta")).toBe(false);
   });
 
-  it("treats both pre-release versions as equal", () => {
+  it("can't order other pre-release tags of one version", () => {
     expect(isNewerVersion("1.2.3-beta", "1.2.3-rc1")).toBe(false);
     expect(isNewerVersion("1.2.3-rc1", "1.2.3-beta")).toBe(false);
+    expect(isNewerVersion("1.2.3-beta1", "1.2.3-beta2")).toBe(false);
+    expect(isNewerVersion("1.2.3-rc1", "1.2.3-rc2-hotfix")).toBe(false);
   });
 
   it("numeric difference takes priority over pre-release suffix", () => {
@@ -244,5 +255,242 @@ describe("checkForUpdate", () => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       fetchSpy.mockRestore();
     }
+  });
+});
+
+/**
+ * A status for an installed, current script that Live is running.
+ * @param overrides - Fields to change
+ * @returns The status
+ */
+function status(
+  overrides: Partial<RemoteScriptAttentionInput> = {},
+): RemoteScriptAttentionInput {
+  return {
+    installed: true,
+    installedVersion: "2.4.0",
+    installedBuild: "build-1",
+    running: true,
+    runningVersion: "2.4.0",
+    runningBuild: "build-1",
+    otherOnPort: null,
+    updateAvailable: false,
+    ...overrides,
+  };
+}
+
+describe("remoteScriptAttention", () => {
+  it("asks for an update when the installed script is older than this build", () => {
+    expect(
+      remoteScriptAttention(
+        status({ installedVersion: "2.3.0", updateAvailable: true }),
+      ),
+    ).toBe("update");
+  });
+
+  it("asks for an update even when Live is not running the script", () => {
+    expect(
+      remoteScriptAttention(
+        status({
+          installedVersion: "2.3.0",
+          updateAvailable: true,
+          running: false,
+          runningVersion: null,
+        }),
+      ),
+    ).toBe("update");
+  });
+
+  it("asks for a restart when Live runs an older copy than the installed one", () => {
+    expect(remoteScriptAttention(status({ runningVersion: "2.3.0" }))).toBe(
+      "restart",
+    );
+  });
+
+  it("prefers the update when both apply", () => {
+    expect(
+      remoteScriptAttention(
+        status({
+          installedVersion: "2.3.0",
+          runningVersion: "2.2.0",
+          updateAvailable: true,
+        }),
+      ),
+    ).toBe("update");
+  });
+
+  it("says nothing when installed and running match", () => {
+    expect(remoteScriptAttention(status())).toBeNull();
+  });
+
+  it("asks for a restart when Live runs a newer copy than the installed one", () => {
+    expect(remoteScriptAttention(status({ runningVersion: "2.5.0" }))).toBe(
+      "restart",
+    );
+  });
+
+  it("asks for a restart when Live runs another build of the installed version", () => {
+    expect(remoteScriptAttention(status({ runningBuild: "build-2" }))).toBe(
+      "restart",
+    );
+  });
+
+  it("can't compare builds with a script too old to report one", () => {
+    expect(remoteScriptAttention(status({ runningBuild: null }))).toBeNull();
+  });
+
+  it("asks for a restart between two pre-releases of one version", () => {
+    // A restart is due in either direction, so this compares with !==.
+    const rc = { installedVersion: "2.5.0-rc2", runningVersion: "2.5.0-rc1" };
+
+    expect(remoteScriptAttention(status(rc))).toBe("restart");
+    expect(
+      remoteScriptAttention(
+        status({ installedVersion: "2.5.0-rc1", runningVersion: "2.5.0-rc2" }),
+      ),
+    ).toBe("restart");
+  });
+
+  it("asks for an update between two pre-releases of one version", () => {
+    expect(
+      remoteScriptAttention(
+        status({
+          installedVersion: "2.5.0-rc1",
+          runningVersion: "2.5.0-rc1",
+          updateAvailable: true,
+        }),
+      ),
+    ).toBe("update");
+  });
+
+  it("says nothing when the script is not running and nothing is out of date", () => {
+    expect(
+      remoteScriptAttention(status({ running: false, runningVersion: null })),
+    ).toBeNull();
+  });
+
+  it("says nothing when a running version is unknown", () => {
+    expect(remoteScriptAttention(status({ runningVersion: null }))).toBeNull();
+  });
+
+  it("says nothing when the installed version is unreadable and not flagged", () => {
+    expect(
+      remoteScriptAttention(status({ installedVersion: null })),
+    ).toBeNull();
+  });
+
+  it("says nothing when the script is not installed", () => {
+    expect(
+      remoteScriptAttention(
+        status({ installed: false, installedVersion: null }),
+      ),
+    ).toBeNull();
+  });
+
+  it("says nothing when another program answers on the port", () => {
+    expect(
+      remoteScriptAttention(
+        status({
+          otherOnPort: 3349,
+          running: false,
+          runningVersion: null,
+          installedVersion: "2.3.0",
+          updateAvailable: true,
+        }),
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("isBehindBuild", () => {
+  it("is behind when the installed release is older", () => {
+    expect(isBehindBuild("2.4.0", "2.5.0")).toBe(true);
+  });
+
+  it("is not behind when the versions are equal", () => {
+    expect(isBehindBuild("2.5.0-rc1", "2.5.0-rc1")).toBe(false);
+  });
+
+  it("is not behind when the installed version is newer", () => {
+    expect(isBehindBuild("2.6.0", "2.5.0")).toBe(false);
+    expect(isBehindBuild("2.5.0", "2.5.0-rc2")).toBe(false);
+  });
+
+  it("is behind between two pre-releases of one version", () => {
+    expect(isBehindBuild("2.5.0-rc1", "2.5.0-rc2")).toBe(true);
+  });
+
+  it("is not behind when the installed release candidate is a later one", () => {
+    expect(isBehindBuild("2.5.0-rc2", "2.5.0-rc1")).toBe(false);
+  });
+
+  it("is behind when two pre-release tags can't be ordered", () => {
+    expect(isBehindBuild("2.5.0-beta", "2.5.0-rc1")).toBe(true);
+  });
+
+  it("is behind when a pre-release is installed and the release ships", () => {
+    expect(isBehindBuild("2.5.0-rc2", "2.5.0")).toBe(true);
+  });
+
+  it("is behind when the installed version is unreadable", () => {
+    expect(isBehindBuild(null, "2.5.0")).toBe(true);
+  });
+});
+
+describe("isInstallIncomplete", () => {
+  it.each(["not-installed", "installed-older"])(
+    "is incomplete when the copy is %s",
+    (state) => {
+      expect(
+        isInstallIncomplete({
+          problem: null,
+          state,
+          remoteScriptCurrent: true,
+        }),
+      ).toBe(true);
+    },
+  );
+
+  it.each(["same", "installed-newer", "different"])(
+    "leaves a %s copy alone",
+    (state) => {
+      expect(
+        isInstallIncomplete({
+          problem: null,
+          state,
+          remoteScriptCurrent: true,
+        }),
+      ).toBe(false);
+    },
+  );
+
+  it("ignores the copy of a device that can't be copied", () => {
+    expect(
+      isInstallIncomplete({
+        problem: "not-frozen",
+        state: "not-installed",
+        remoteScriptCurrent: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("is incomplete when the remote script is behind or missing", () => {
+    expect(
+      isInstallIncomplete({
+        problem: null,
+        state: "same",
+        remoteScriptCurrent: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("has nothing to compare without a remote script reading", () => {
+    expect(
+      isInstallIncomplete({
+        problem: null,
+        state: "same",
+        remoteScriptCurrent: null,
+      }),
+    ).toBe(false);
   });
 });

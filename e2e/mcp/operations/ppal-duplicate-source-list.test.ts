@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-duplicate's lists: a list of sources in `id`, and values
@@ -29,14 +29,18 @@ interface DuplicateClipResult {
   detail?: string;
 }
 
-/** The entry for a copy a later copy in the same call deleted. */
-interface DeletedClipResult {
+/** The entry for a copy that couldn't be made. */
+interface SkippedResult {
   path: string;
-  deleted: true;
+  ok: false;
   detail: string;
 }
 
-const LANDED_ON = "a later copy in this call landed on it";
+/** The entry for a copy a later copy in the same call covered whole. */
+interface UnwrittenClipResult {
+  path: string;
+  detail: string;
+}
 
 describe("ppal-duplicate with a source list", () => {
   /**
@@ -182,15 +186,17 @@ describe("ppal-duplicate with a source list", () => {
   });
 
   // Two sources on ONE track default to that track, so a single position piles
-  // them: the second copy lands on the first. Every id the result hands back
-  // still has to name a clip that is there.
-  it("hands back no id for a copy a later source landed on", async () => {
+  // them: the second copy covers the first whole, which is never written. Every
+  // id the result hands back still has to name a clip that is there.
+  it("leaves a copy a later source covers unwritten", async () => {
     const first = await createSource(`t${EMPTY_MIDI_TRACK}/s5`, "C3 1|1");
     const second = await createSource(`t${EMPTY_MIDI_TRACK}/s6`, "D3 1|1");
 
     await sleep(100);
 
-    const copies = parseToolResult<(DuplicateClipResult | DeletedClipResult)[]>(
+    const copies = parseToolResult<
+      (DuplicateClipResult | UnwrittenClipResult)[]
+    >(
       await duplicateClips({
         id: [first, second].join(","),
         toPath: "[97|1]",
@@ -198,11 +204,11 @@ describe("ppal-duplicate with a source list", () => {
     );
 
     expect(copies).toHaveLength(2);
-    // The first copy is gone, so its entry says where it went and stops there.
+    // The first copy was never written, so its entry says where it was headed
+    // and what covered it.
     expect(copies[0]).toStrictEqual({
       path: `t${EMPTY_MIDI_TRACK}[97|1]`,
-      deleted: true,
-      detail: LANDED_ON,
+      detail: `overwritten later in this call by t${EMPTY_MIDI_TRACK}[97|1]`,
     });
     expect(copies[1]!.path).toBe(`t${EMPTY_MIDI_TRACK}[97|1]`);
 
@@ -328,7 +334,7 @@ describe("ppal-duplicate with a source list", () => {
     expect(copies[0]).toStrictEqual({
       id: expect.any(String),
       path: `t${EMPTY_MIDI_TRACK}[105|1]`,
-      detail: "trimmed: a later copy in this call landed on part of it",
+      detail: `shortened by t${EMPTY_MIDI_TRACK}[101|1] later in this call`,
     });
     expect(copies[1]!.path).toBe(`t${EMPTY_MIDI_TRACK}[101|1]`);
 
@@ -374,10 +380,11 @@ describe("ppal-duplicate with a source list", () => {
       }),
     );
 
+    // The n/2 copy came last, so it is the one named as cutting the 4bar.
     expect(copies[0]).toStrictEqual({
       id: expect.any(String),
       path: `t${EMPTY_MIDI_TRACK}[213|3]`,
-      detail: "trimmed: a later copy in this call landed on part of it",
+      detail: `shortened by t${EMPTY_MIDI_TRACK}[213|1] later in this call`,
     });
 
     await sleep(100);
@@ -387,11 +394,14 @@ describe("ppal-duplicate with a source list", () => {
     }
   });
 
-  // The 3bar buries what the 1bar left of the 4bar, and the n/2 splits the
-  // 3bar. The tail is the 3bar's, not a piece of the 4bar.
+  // The 1bar and the 3bar between them cover the 4bar, which is never written,
+  // and the n/2 splits the 3bar. The tail is the 3bar's, not a piece of the 4bar.
+  // The n/2 is the last copy over that ground, so it is the one named.
   it("keeps a split tail from a copy that landed before the one it split", async () => {
     const id = await createSessionSources(["4bar", "1bar", "3bar", "n/2"]);
-    const copies = parseToolResult<(DuplicateClipResult | DeletedClipResult)[]>(
+    const copies = parseToolResult<
+      (DuplicateClipResult | UnwrittenClipResult)[]
+    >(
       await duplicateClips({
         id,
         toPath: [221, 221, 222, 223]
@@ -402,14 +412,75 @@ describe("ppal-duplicate with a source list", () => {
 
     expect(copies[0]).toStrictEqual({
       path: `t${EMPTY_MIDI_TRACK}[221|1]`,
-      deleted: true,
-      detail: LANDED_ON,
+      detail: `overwritten later in this call by t${EMPTY_MIDI_TRACK}[223|1]`,
     });
     expect(copies.slice(1).map((copy) => copy.path)).toStrictEqual([
       `t${EMPTY_MIDI_TRACK}[221|1]`,
       `t${EMPTY_MIDI_TRACK}[222|1]`,
       `t${EMPTY_MIDI_TRACK}[223|1]`,
     ]);
+  });
+
+  // A-B-A song layout: A is named twice, apart. Copies are made in the order
+  // named, so each later copy cuts the one before it, B's across A's and then
+  // the second A's across B's, whichever source it came from.
+  it("makes the copies of a source named twice in the order named", async () => {
+    const a = await createSource(`t${EMPTY_MIDI_TRACK}/s5`, "C3 1|1", "2bar");
+    const b = await createSource(`t${EMPTY_MIDI_TRACK}/s6`, "D3 1|1", "2bar");
+
+    await sleep(100);
+
+    const copies = parseToolResult<DuplicateClipResult[]>(
+      await duplicateClips({
+        id: [a, b, a].join(","),
+        toPath: [231, 232, 233]
+          .map((bar) => `t${EMPTY_MIDI_TRACK}[${bar}|1]`)
+          .join(","),
+      }),
+    );
+
+    expect(copies.map((copy) => copy.detail)).toStrictEqual([
+      `shortened by t${EMPTY_MIDI_TRACK}[232|1] later in this call`,
+      `shortened by t${EMPTY_MIDI_TRACK}[233|1] later in this call`,
+      undefined,
+    ]);
+
+    await sleep(100);
+
+    // Each copy is still where its entry says, with its own source's notes.
+    const clips = await Promise.all(copies.map((copy) => readClip(copy.id)));
+
+    expect(clips.map((clip) => clip.path)).toStrictEqual(
+      copies.map((copy) => copy.path),
+    );
+    expect(clips[0]!.notes).toContain("C3");
+    expect(clips[1]!.notes).toContain("D3");
+    expect(clips[2]!.notes).toContain("C3");
+  });
+
+  // The second turn of A doesn't hide the first one's copy landing on B, which
+  // would clear it before its turn.
+  it("refuses a copy onto a later source even when its own source comes again", async () => {
+    const a = await createSource(`t${EMPTY_MIDI_TRACK}/s5`, "C3 1|1", "2bar");
+    const b = await createSource(`t${EMPTY_MIDI_TRACK}/s6`, "D3 1|1", "2bar");
+
+    await sleep(100);
+
+    const arranged = parseToolResult<DuplicateClipResult>(
+      await duplicateClips({ id: b, toPath: `t${EMPTY_MIDI_TRACK}[241|1]` }),
+    );
+
+    await sleep(100);
+
+    const result = await duplicateClips({
+      id: [a, arranged.id, a].join(","),
+      toPath: [241, 250, 260]
+        .map((bar) => `t${EMPTY_MIDI_TRACK}[${bar}|1]`)
+        .join(","),
+    });
+
+    expect(JSON.stringify(result)).toContain("would overwrite id");
+    expect(JSON.stringify(result)).toContain(arranged.id);
   });
 
   // duplicate used to take a path only for a drum pad, so a path a model just
@@ -445,23 +516,47 @@ describe("ppal-duplicate with a source list", () => {
     expect(mixed[1]!.path).toBe(`t${CHILD_TRACK}/s7`);
   });
 
-  // A duplicate leaves copies behind, so an unresolvable source refuses the
-  // whole call rather than making the copies it can.
-  it("refuses the call when a source path names nothing", async () => {
+  // A source that names nothing keeps its slot as a skip, and the others still
+  // copy.
+  it("skips a source path that names nothing and copies the other", async () => {
     const [firstId] = await createSources();
 
-    const result = await duplicateClips({
-      id: firstId,
-      path: `t${EMPTY_MIDI_TRACK}/s7`,
-      toPath: `t${EMPTY_MIDI_TRACK}/s6,t${CHILD_TRACK}/s6`,
-    });
+    const copies = parseToolResult<(DuplicateClipResult | SkippedResult)[]>(
+      await duplicateClips({
+        id: firstId,
+        path: `t${EMPTY_MIDI_TRACK}/s7`,
+        toPath: `t${EMPTY_MIDI_TRACK}/s6,t${CHILD_TRACK}/s6`,
+      }),
+    );
 
-    expect(JSON.stringify(result)).toContain("nothing to duplicate at path");
+    expect(copies).toHaveLength(2);
+    expect(copies[0]).toStrictEqual({
+      id: expect.any(String),
+      path: `t${EMPTY_MIDI_TRACK}/s6`,
+    });
+    expect(copies[1]).toStrictEqual({
+      path: `t${CHILD_TRACK}/s6`,
+      ok: false,
+      detail: expect.stringContaining(`t${EMPTY_MIDI_TRACK}/s7`),
+    });
 
     await sleep(100);
 
-    // Nothing ran: the id source did not get copied either.
-    await expectNoClipAt(`t${EMPTY_MIDI_TRACK}/s6`);
+    expect(
+      (await readClip((copies[0] as DuplicateClipResult).id)).notes,
+    ).toContain("C3");
+    await expectNoClipAt(`t${CHILD_TRACK}/s6`);
+  });
+
+  // A lone source that names nothing has no list to hold its place in, so the
+  // reason comes back as the call's error.
+  it("throws why a lone source id names nothing", async () => {
+    const result = await duplicateClips({
+      id: "999999",
+      toPath: `t${EMPTY_MIDI_TRACK}/s6`,
+    });
+
+    expect(JSON.stringify(result)).toContain('id \\"999999\\" does not exist');
   });
 
   // A clip slot holds one clip, so the second source can't be broadcast onto

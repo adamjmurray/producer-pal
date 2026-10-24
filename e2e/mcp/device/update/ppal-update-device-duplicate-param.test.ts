@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E test for naming the same device param twice in one call.
@@ -11,6 +11,8 @@
 import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
+  getToolErrorMessage,
+  isToolError,
   parseToolResult,
   setupMcpTestContext,
 } from "../../mcp-test-helpers";
@@ -100,11 +102,39 @@ describe("ppal-update-device with the same param named twice", () => {
 
     expect(params[0]).toStrictEqual(
       expect.objectContaining({
-        ok: false,
-        detail: 'set again by "Threshold" later in the list',
+        detail: 'named again as "Threshold" later in this call',
       }),
     );
+    expect(params[0]).not.toHaveProperty("ok");
     expect(params[1]).not.toHaveProperty("ok");
     expect((await readThreshold(deviceId)).value).toBeCloseTo(-12, 0);
+  });
+
+  // The later value can't be read, so nothing was written through it: the
+  // earlier entry fails with it instead of claiming the later one did its work.
+  it("fails the earlier entry when the last one can't be written", async () => {
+    const deviceId = await createTestDevice(
+      ctx.client!,
+      "Glue Compressor",
+      "t0",
+    );
+    const before = (await readThreshold(deviceId)).value;
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: {
+        id: deviceId,
+        params: [
+          { name: "Threshold", value: "-6 dB" },
+          { name: "threshold", value: "loud" },
+        ],
+      },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'no param landed — "Threshold": not written: "threshold" was meant to replace it, but failed; ' +
+        '"threshold": could not interpret "loud" as a value',
+    );
+    expect((await readThreshold(deviceId)).value).toBe(before);
   });
 });

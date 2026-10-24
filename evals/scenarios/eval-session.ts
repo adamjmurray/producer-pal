@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic), Codex (OpenAI)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Evaluation session adapter — uses AI SDK for all providers.
@@ -21,6 +21,7 @@ import {
   GEMINI_CONFIG,
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
+  VERCEL_CONFIG,
 } from "#evals/shared/provider-configs.ts";
 import { MAX_TOOL_STEPS } from "#evals/shared/step-budget.ts";
 import {
@@ -58,6 +59,8 @@ export function getDefaultModel(provider: EvalProvider): string {
       return OPENAI_CONFIG.defaultModel;
     case "openrouter":
       return OPENROUTER_CONFIG.defaultModel;
+    case "vercel":
+      return VERCEL_CONFIG.defaultModel;
     case "local":
       throw new Error(
         "No default model for local provider. Specify with -m local/model-name",

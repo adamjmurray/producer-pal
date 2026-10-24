@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -12,7 +12,11 @@ import {
 } from "#webui/lib/conversation-branches";
 import { type UIMessage } from "#webui/types/messages";
 import { CompactionDivider } from "./assistant/CompactionDivider";
-import { MessageRow, type MessageRowProps } from "./assistant/MessageRow";
+import {
+  type MessageActions,
+  MessageRow,
+  type MessageRowProps,
+} from "./assistant/MessageRow";
 import { SystemPromptNotice } from "./assistant/SystemPromptNotice";
 import { ActivityIndicator } from "./controls/ActivityIndicator";
 import { BranchNav } from "./controls/BranchNav";
@@ -20,21 +24,13 @@ import { QueuedMessages } from "./controls/QueuedMessages";
 
 const STILL_THINKING_DELAY_MS = 4000;
 
-interface MessageListProps {
+interface MessageListProps extends MessageActions {
   messages: UIMessage[];
   queuedMessages: QueuedMessage[];
   onRemoveQueued: (id: number) => void;
   isAssistantResponding: boolean;
   /** Whether a manual compaction is in progress (footer shows "Compacting…") */
   isCompacting?: boolean;
-  handleRetry: (messageIndex: number) => Promise<void>;
-  handleEdit: (
-    messageIndex: number,
-    newMessage: string,
-    removedImages?: number[],
-  ) => Promise<void>;
-  /** Compact-up-to-here; omitted in surfaces that don't support compaction (voice/demo) */
-  handleCompact?: (messageIndex: number) => Promise<void>;
   onUndoCompaction?: () => void;
   canUndoCompaction?: boolean;
   showTimestamps: boolean;
@@ -44,6 +40,7 @@ interface MessageListProps {
   branchNav?: BranchNavState;
   /** System instruction shown as a collapsible notice atop the transcript. */
   systemInstruction?: string;
+  importedPromptDiffers?: boolean;
   /** Opens the Instructions tab from that notice; omitted in voice/demo. */
   onOpenInstructions?: () => void;
 }
@@ -82,6 +79,7 @@ export function MessageList({
   requestedModel,
   branchNav,
   systemInstruction,
+  importedPromptDiffers,
   onOpenInstructions,
 }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -144,6 +142,7 @@ export function MessageList({
       {systemInstruction != null && (
         <SystemPromptNotice
           systemInstruction={systemInstruction}
+          importedPromptDiffers={importedPromptDiffers}
           onOpenInstructions={onOpenInstructions}
         />
       )}

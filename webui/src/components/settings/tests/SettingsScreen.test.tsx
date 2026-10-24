@@ -1,15 +1,23 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
-import { describe, expect, it, vi } from "vitest";
+import { type Mock, describe, expect, it, vi } from "vitest";
 import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
-import { installJsonFetchMock } from "#webui/hooks/context/tests/doc-transport-test-helpers";
+import {
+  installJsonFetchMock,
+  jsonResponse,
+} from "#webui/hooks/context/tests/doc-transport-test-helpers";
+import {
+  deviceStatusBody,
+  type FetchStub,
+} from "#webui/components/settings/installation/tests/helpers/installation-fetch-test-helpers";
+import { statusBody } from "#webui/components/settings/installation/tests/helpers/remote-script-status-test-helpers";
 import { type UseSettingsReturn } from "#webui/types/settings";
 import { SettingsScreen } from "#webui/components/settings/SettingsScreen";
 import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/helpers/turn-detection-settings";
@@ -115,7 +123,7 @@ vi.mock(import("#webui/components/settings/controls/ToolToggles"), () => ({
 
 describe("SettingsScreen", () => {
   // useGlobalSettings GETs /settings on mount; nothing here asserts on it.
-  installJsonFetchMock({ autoUpdateCheck: true });
+  const fetchMock = installJsonFetchMock({ autoUpdateCheck: true });
 
   const defaultSettings = {
     provider: "gemini" as const,
@@ -668,10 +676,56 @@ describe("SettingsScreen", () => {
       expect(screen.getByText("Presets")).toBeDefined();
     });
 
-    it("renders the remote script tab", async () => {
-      render(<SettingsScreen {...defaultProps} activeTab="remote-script" />);
+    it("renders the installation tab", async () => {
+      // The tab's two status reads need bodies of their own shape.
+      (fetchMock as unknown as Mock<FetchStub>).mockImplementation((url) =>
+        Promise.resolve(
+          jsonResponse(
+            url.includes("/device-install") ? deviceStatusBody() : statusBody(),
+          ),
+        ),
+      );
+      render(<SettingsScreen {...defaultProps} activeTab="installation" />);
 
-      expect(await screen.findByTestId("remote-script-tab")).toBeDefined();
+      expect(await screen.findByTestId("installation-tab")).toBeDefined();
+    });
+
+    it("marks the Installation tab when the install is incomplete, on any tab, with one read each", async () => {
+      // No copy in the User Library: the install is unfinished.
+      (fetchMock as unknown as Mock<FetchStub>).mockImplementation((url) =>
+        Promise.resolve(
+          jsonResponse(
+            url.includes("/device-install") ? deviceStatusBody() : statusBody(),
+          ),
+        ),
+      );
+      render(<SettingsScreen {...defaultProps} />);
+
+      expect(await screen.findByLabelText("needs attention")).toBeDefined();
+      expect(screen.queryByTestId("installation-tab")).toBeNull();
+
+      const reads = (path: string) =>
+        fetchMock.mock.calls.filter(([url]) => String(url).endsWith(path));
+
+      // The tab and its button share the screen's one read of each status.
+      expect(reads("/device-install")).toHaveLength(1);
+      expect(reads("/remote-script")).toHaveLength(1);
+    });
+
+    it("shows no dot once the device and remote script are current", async () => {
+      (fetchMock as unknown as Mock<FetchStub>).mockImplementation((url) =>
+        Promise.resolve(
+          jsonResponse(
+            url.includes("/device-install")
+              ? deviceStatusBody({ state: "same", installedVersion: "1.2.0" })
+              : statusBody({ installed: true, installedVersion: "1.2.0" }),
+          ),
+        ),
+      );
+      render(<SettingsScreen {...defaultProps} activeTab="installation" />);
+      await screen.findByTestId("device-status");
+
+      expect(screen.queryByLabelText("needs attention")).toBeNull();
     });
   });
 });

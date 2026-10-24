@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import logoSvg from "#webui/assets/producer-pal-logo.svg";
 import { type DocStatus, type SaveStatus } from "#webui/hooks/context/use-doc";

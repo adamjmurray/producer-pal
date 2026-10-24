@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { THINKING_LEVELS } from "#webui/components/settings/controls/helpers/thinking-levels";
 import { decryptApiKey, encryptApiKey } from "#webui/lib/api-key-crypto";
@@ -53,6 +53,11 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   openrouter: {
     apiKey: "",
     model: DEFAULT_MODELS.openrouter,
+    thinking: "Default",
+  },
+  vercel: {
+    apiKey: "",
+    model: DEFAULT_MODELS.vercel,
     thinking: "Default",
   },
   lmstudio: {
@@ -245,6 +250,7 @@ export interface AllProviderSettings {
   openai: ProviderSettings;
   mistral: ProviderSettings;
   openrouter: ProviderSettings;
+  vercel: ProviderSettings;
   lmstudio: ProviderSettings;
   ollama: ProviderSettings;
   custom: ProviderSettings;
@@ -307,6 +313,7 @@ export function isValidProvider(value: unknown): value is Provider {
  * @param {ProviderSettings} openai - OpenAI settings
  * @param {ProviderSettings} mistral - Mistral settings
  * @param {ProviderSettings} openrouter - OpenRouter settings
+ * @param {ProviderSettings} vercel - Vercel AI Gateway settings
  * @param {ProviderSettings} lmstudio - LM Studio settings
  * @param {ProviderSettings} ollama - Ollama settings
  * @param {ProviderSettings} custom - Custom provider settings
@@ -318,6 +325,7 @@ export function buildAllProviderSettings(
   openai: ProviderSettings,
   mistral: ProviderSettings,
   openrouter: ProviderSettings,
+  vercel: ProviderSettings,
   lmstudio: ProviderSettings,
   ollama: ProviderSettings,
   custom: ProviderSettings,
@@ -328,6 +336,7 @@ export function buildAllProviderSettings(
     openai,
     mistral,
     openrouter,
+    vercel,
     lmstudio,
     ollama,
     custom,

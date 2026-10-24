@@ -1,10 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z } from "zod";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
+import { sceneNameColorParams } from "#src/tools/shared/schema/scene-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
@@ -17,10 +18,7 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
     destructiveHint: true,
   },
   inputSchema: {
-    id: z.coerce
-      .string()
-      .optional()
-      .describe("scene ID(s) to update, comma-separated for multiple"),
+    id: z.coerce.string().optional().describe("scene id(s), comma-separated"),
 
     ...addressingAliases(),
     path: param(z.coerce.string().optional(), {
@@ -30,14 +28,7 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
         "scene path to update instead of id: 's<index>', where s0 is the first scene (a user's \"scene 3\" is s2)",
     }),
 
-    name: param(z.string().optional(), {
-      default: "name, or comma-separated one per scene",
-      smallModel: "scene name",
-    }),
-    color: param(z.string().optional(), {
-      default: "#RRGGBB, or comma-separated one per scene",
-      smallModel: "#RRGGBB",
-    }),
+    ...sceneNameColorParams(),
     tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),
     timeSignature: z
       .string()

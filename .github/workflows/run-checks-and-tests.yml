@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -70,12 +70,6 @@ jobs:
 
       - name: Build documentation site
         run: npm run docs:build
-
-      # Lives here because it drives the portal bundle the build step just
-      # produced. It needs no Ableton and no browser, so it costs this job a
-      # second rather than an `npm ci` of its own.
-      - name: Test the portal binary end to end
-        run: npm run e2e:portal
 
       - name: Verify all build artifacts exist
         id: summary
@@ -122,7 +116,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -134,11 +128,20 @@ jobs:
 
       # The remote script's Python, against fake Live objects. ubuntu-latest
       # ships python3, and the tests use only the standard library.
+      # Its output is saved for the summary: unittest has no JSON reporter.
       - name: Test the remote script
-        run: npm run remote-script:test
+        id: remote-script
+        run: |
+          set -o pipefail
+          mkdir -p test-reports
+          npm run remote-script:test 2>&1 | tee test-reports/remote-script.log
 
+      # Runs even when the Python tests fail, so one run reports both suites.
       - name: Run tests with coverage
         id: tests
+        if:
+          ${{ !cancelled() && (steps.remote-script.outcome == 'success' ||
+          steps.remote-script.outcome == 'failure') }}
         run: FORCE_COLOR=3 npm run test:coverage:verbose
 
       - name: Report test stats and coverage
@@ -170,7 +173,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -205,6 +208,7 @@ jobs:
           MAX_SCRIPTS=$(node scripts/build-and-release/get-thresholds.ts duplication scripts)
           MAX_EVALS=$(node scripts/build-and-release/get-thresholds.ts duplication evals)
           MAX_E2E=$(node scripts/build-and-release/get-thresholds.ts duplication e2e)
+          MAX_DOCS=$(node scripts/build-and-release/get-thresholds.ts duplication docs)
 
           # Format duplication report as markdown table
           cat > /tmp/summary.md << EOF
@@ -225,6 +229,7 @@ jobs:
           dup_row Scripts "${MAX_SCRIPTS}" >> /tmp/summary.md
           dup_row Evals "${MAX_EVALS}" >> /tmp/summary.md
           dup_row E2E "${MAX_E2E}" >> /tmp/summary.md
+          dup_row Docs "${MAX_DOCS}" >> /tmp/summary.md
 
           # Write to step summary and output (base64 encoded for multiline)
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
@@ -242,7 +247,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -280,6 +285,14 @@ jobs:
         id: docs-tests
         run: npm run docs:test
 
+      # Drives the built portal against a stub device: no Ableton, no browser.
+      # It sits here so its results share the end-to-end summary table.
+      - name: Build bundles for the portal test
+        run: npm run build:bundles
+
+      - name: Test the portal binary end to end
+        run: npm run e2e:portal
+
       - name: Report end-to-end test stats
         id: summary
         # Runs even when a suite fails: each suite's JSON report is still
@@ -299,7 +312,7 @@ jobs:
           echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
       - name: Upload test results
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure()
         with:
           name: playwright-report
@@ -321,7 +334,7 @@ jobs:
       - name: Install cloc
         run: sudo apt-get install -y cloc
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version: ${{ env.NODE_VERSION }}
 

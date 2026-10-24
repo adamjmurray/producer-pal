@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyAudioTransform } from "#src/notation/transform/transform-audio-evaluator.ts";
@@ -15,7 +15,12 @@ import {
   dbToLiveGain,
   liveGainToDb,
 } from "#src/tools/shared/helpers/gain-conversion.ts";
-import { type ClipReasons, ignoreClipParams } from "./entries/clip-reasons.ts";
+import {
+  type ClipReasons,
+  ignoreClipParams,
+  noteLanded,
+} from "./entries/clip-reasons.ts";
+import { ignoredText } from "#src/shared/max/ignored-wording.ts";
 
 interface AudioParams extends AudioClipProperties {
   /** Audio clip warping on/off */
@@ -207,6 +212,8 @@ export function handleWarpMarkerOperation(
       break;
     }
   }
+
+  noteLanded(reasons, "warp markers", { id: clip.id });
 }
 
 /**
@@ -226,6 +233,6 @@ function ignoreWarpParams(
     reasons,
     clip.id,
     ["warpOp", "warpBeatTime", "warpSampleTime", "warpDistance"],
-    `warpOp ignored: ${why}`,
+    ignoredText("warpOp", why),
   );
 }

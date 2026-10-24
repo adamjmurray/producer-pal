@@ -1,0 +1,33 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
+
+import { type RemoteScriptStatus } from "#webui/hooks/settings/installation/use-remote-script";
+
+export const USER_LIBRARY = "/Users/me/Music/Ableton/User Library";
+
+/**
+ * A `GET /remote-script` body: not installed, with a User Library detected.
+ * @param overrides - Fields to change
+ * @returns The status body
+ */
+export function statusBody(
+  overrides: Partial<RemoteScriptStatus> = {},
+): RemoteScriptStatus {
+  return {
+    userLibrary: USER_LIBRARY,
+    installed: false,
+    installedVersion: null,
+    installedBuild: null,
+    bundledVersion: "1.2.0",
+    running: false,
+    runningVersion: null,
+    runningBuild: null,
+    liveVersion: "12.1",
+    otherOnPort: null,
+    updateAvailable: false,
+    installedNewer: false,
+    ...overrides,
+  };
+}

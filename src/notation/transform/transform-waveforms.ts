@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Waveform generator functions for transform system.
@@ -9,8 +9,6 @@
  * sin, tri, saw: start at zero (0.0) at phase 0, rising to peak.
  * Phase is normalized (0.0-1.0 represents one complete cycle).
  */
-
-import * as console from "./transform-warning-label.ts";
 
 /**
  * Cosine wave generator
@@ -134,7 +132,7 @@ export function choose(options: number[]): number {
  * @param phase - Phase in cycles (0.0-1.0)
  * @param start - Starting value
  * @param end - Ending value
- * @param exponent - Curve exponent (must be > 0; >1: slow start, <1: fast start, 1: linear)
+ * @param exponent - Curve exponent (must be > 0, which evaluateCurve enforces; >1: slow start, <1: fast start, 1: linear)
  * @returns Interpolated value between start and end
  */
 export function curve(
@@ -143,20 +141,13 @@ export function curve(
   end: number,
   exponent: number,
 ): number {
-  if (exponent <= 0) {
-    console.warn(
-      `curve() exponent must be > 0, got ${exponent}, clamping to 0.001`,
-    );
-    exponent = 0.001;
-  }
-
   const clampedPhase = Math.min(phase, 1.0);
   const curvedPhase = Math.pow(clampedPhase, exponent);
 
   return start + (end - start) * curvedPhase;
 }
 
-// --- Private helpers ---
+// --- Helpers ---
 
 /**
  * Map any real phase into [0, 1). Plain `phase % 1.0` keeps the sign in JS, so a
@@ -165,10 +156,10 @@ export function curve(
  * and return a value outside [-1, 1] (e.g. tri(-0.5) = -2.0). That out-of-range
  * value can drive a velocity negative, after which the note is silently dropped
  * by the survivor filter. cos/sin are immune (Math.cos/sin are periodic) and
- * keep the bare modulo.
+ * keep the bare modulo. swing() uses it too, so pickup notes get the right half.
  * @param phase - Phase in cycles (any real number)
  * @returns Phase wrapped into [0, 1)
  */
-function normalizePhase(phase: number): number {
+export function normalizePhase(phase: number): number {
   return ((phase % 1.0) + 1.0) % 1.0;
 }

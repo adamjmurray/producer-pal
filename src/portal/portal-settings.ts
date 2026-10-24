@@ -1,13 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   DISABLED_TOOLS_HEADER,
   FORMAT_HEADER,
   LIVE_API_HEADER,
+  PORTAL_VERSION_HEADER,
   SMALL_MODEL_MODE_HEADER,
+  VERSION,
 } from "#src/shared/config.ts";
 import { NOTATION_HEADER, type Notation } from "#src/shared/notation.ts";
 
@@ -30,17 +32,20 @@ export interface BridgeOptions {
 /**
  * Turn the portal's settings into the headers every request carries.
  *
+ * The portal's own version always rides along, so the device can flag a
+ * portal/device version mismatch in the ppal-connect result.
+ *
  * Each is tri-state: a header is sent only when the option was set (true OR
  * false), so an unset option leaves the device's own setting alone while an
  * explicit false can turn a setting off for this client.
  *
  * @param options - The portal's resolved options
- * @returns The headers, empty when nothing was set
+ * @returns The headers
  */
 export function buildRequestHeaders(
   options: BridgeOptions,
 ): Record<string, string> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { [PORTAL_VERSION_HEADER]: VERSION };
 
   if (options.smallModelMode != null) {
     headers[SMALL_MODEL_MODE_HEADER] = String(options.smallModelMode);
@@ -66,18 +71,13 @@ export function buildRequestHeaders(
 }
 
 /**
- * The `requestInit` a StreamableHTTPClientTransport wants for these settings,
- * or undefined when there is nothing to send.
+ * The `requestInit` a StreamableHTTPClientTransport wants for these settings.
  *
  * @param options - The portal's resolved options
- * @returns Transport options carrying the headers, or undefined
+ * @returns Transport options carrying the headers
  */
-export function requestHeaderTransportOptions(
-  options: BridgeOptions,
-): { requestInit: { headers: Record<string, string> } } | undefined {
-  const headers = buildRequestHeaders(options);
-
-  return Object.keys(headers).length > 0
-    ? { requestInit: { headers } }
-    : undefined;
+export function requestHeaderTransportOptions(options: BridgeOptions): {
+  requestInit: { headers: Record<string, string> };
+} {
+  return { requestInit: { headers: buildRequestHeaders(options) } };
 }

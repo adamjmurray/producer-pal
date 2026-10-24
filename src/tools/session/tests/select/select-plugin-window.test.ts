@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -68,23 +68,47 @@ describe("select - plugin editor window", () => {
     expect(device.set).toHaveBeenCalledWith("is_editor_open", 1);
   });
 
-  it("says so on the device's entry when it is not a plug-in", () => {
-    const device = registerDeviceAtT0D0("device_0", "Eq8Device");
-
-    const result = select({ devicePath: "t0/d0", openPluginWindow: true });
-
-    expect(device.set).not.toHaveBeenCalledWith(
-      "is_editor_open",
-      expect.anything(),
-    );
-    // The entry already names the device, so the reason says only what happened.
-    expect(result.selectedDevice).toStrictEqual({
+  // The entry already names the device, so the reason says only what happened.
+  it.each([
+    {
+      when: "it is not a plug-in",
       id: "device_0",
-      path: "t0/d0",
-      detail: "openPluginWindow ignored: not a plug-in (VST/AU)",
-    });
-    expect(capturedWarnings()).toStrictEqual([]);
-  });
+      type: "Eq8Device" as const,
+      liveVersion: undefined,
+      reason: "not a plug-in (VST/AU)",
+    },
+    {
+      when: "on Live before 12.4",
+      id: "plugin_0",
+      type: "PluginDevice" as const,
+      liveVersion: "12.3.8",
+      reason: "requires Live 12.4 or later",
+    },
+  ])(
+    "says so on the device's entry $when",
+    ({ id, type, liveVersion, reason }) => {
+      if (liveVersion != null) {
+        registerMockObject("live_app", {
+          path: "live_app",
+          methods: { get_version_string: () => liveVersion },
+        });
+      }
+
+      const device = registerDeviceAtT0D0(id, type);
+      const result = select({ devicePath: "t0/d0", openPluginWindow: true });
+
+      expect(device.set).not.toHaveBeenCalledWith(
+        "is_editor_open",
+        expect.anything(),
+      );
+      expect(result.selectedDevice).toStrictEqual({
+        id,
+        path: "t0/d0",
+        detail: `openPluginWindow ignored: ${reason}`,
+      });
+      expect(capturedWarnings()).toStrictEqual([]);
+    },
+  );
 
   it("warns and skips when no device target is provided", () => {
     setupSongViewMock();
@@ -93,7 +117,7 @@ describe("select - plugin editor window", () => {
 
     expect(result.selectedDevice).toBeUndefined();
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("requires a plug-in device"),
+      "openPluginWindow ignored: it needs a plug-in device; specify id or path",
     );
   });
 });

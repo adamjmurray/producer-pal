@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, type Mock, vi } from "vitest";
@@ -18,6 +18,9 @@ import { getParamModes, param } from "../modal-config.ts";
 import { resolveToolSchema } from "../resolve-tool-schema.ts";
 import { toolDefReadScene } from "#src/tools/scene/read-scene.def.ts";
 import { trackPathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
+
+/** The client abort signal define-tool forwards on every call. */
+const WITH_SIGNAL = { signal: expect.any(AbortSignal) };
 
 type MockServer = McpServer & { registerTool: Mock };
 
@@ -358,11 +361,15 @@ describe("defineTool with hidden params", () => {
     const { mockServer, mockCallLiveApi } = register();
 
     return handler(mockServer)({ id: "1", toSlot: 3 }).then(() => {
-      expect(mockCallLiveApi).toHaveBeenCalledWith("test-tool", {
-        id: "1",
-        // z.coerce.string() ran, so the hidden param is coerced like any other
-        toSlot: "3",
-      });
+      expect(mockCallLiveApi).toHaveBeenCalledWith(
+        "test-tool",
+        {
+          id: "1",
+          // z.coerce.string() ran, so the hidden param is coerced like any other
+          toSlot: "3",
+        },
+        WITH_SIGNAL,
+      );
     });
   });
 
@@ -493,7 +500,10 @@ function handler(mockServer: MockServer): (
 ) => Promise<{
   content: Array<{ type: string; text: string }>;
 }> {
-  return mockServer.registerTool.mock.calls[0]![2] as (
+  const registered = mockServer.registerTool.mock.calls[0]![2] as (
     args: Record<string, unknown>,
+    extra: { signal: AbortSignal },
   ) => Promise<{ content: Array<{ type: string; text: string }> }>;
+
+  return (args) => registered(args, { signal: new AbortController().signal });
 }

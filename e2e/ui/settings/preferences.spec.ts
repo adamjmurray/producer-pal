@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The Preferences tab's tool-step budget. Unlike the presets next door, this
 // one is buffered and written by the footer Save, so the round-trip through the

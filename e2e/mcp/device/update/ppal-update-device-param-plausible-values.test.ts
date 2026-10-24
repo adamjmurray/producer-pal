@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for device param writes that used to refuse a value a model
@@ -142,21 +142,7 @@ describe("ppal-update-device param writes a model plausibly sends", () => {
         ["12 dB", "12 dB"],
         ["24", "24 dB"],
       ] as const) {
-        const { data, warnings } = await writeParam(
-          ctx.client!,
-          deviceId,
-          "Filter Slope",
-          sent,
-        );
-
-        expect(warnings).toStrictEqual([]);
-        expect(data.params).toStrictEqual([
-          { id: expect.any(String), name: "Filter Slope", value: label },
-        ]);
-
-        const param = await readParam(ctx.client!, deviceId, "Filter Slope");
-
-        expect(param.value).toBe(label);
+        await expectParamWritten(deviceId, "Filter Slope", sent, label);
       }
     });
 
@@ -164,21 +150,12 @@ describe("ppal-update-device param writes a model plausibly sends", () => {
       const deviceId = await createTestDevice(ctx.client!, "Auto Filter", "t8");
 
       for (const label of ["12dB", "24dB"]) {
-        const { data, warnings } = await writeParam(
-          ctx.client!,
+        await expectParamWritten(
           deviceId,
           "Filter Slope",
           `${label.slice(0, 2)} dB`,
+          label,
         );
-
-        expect(warnings).toStrictEqual([]);
-        expect(data.params).toStrictEqual([
-          { id: expect.any(String), name: "Filter Slope", value: label },
-        ]);
-
-        const param = await readParam(ctx.client!, deviceId, "Filter Slope");
-
-        expect(param.value).toBe(label);
       }
     });
   });
@@ -210,22 +187,40 @@ describe("ppal-update-device param writes a model plausibly sends", () => {
       "%s %s: writes %s as %s",
       async (device, param, sent, label) => {
         const deviceId = await createTestDevice(ctx.client!, device, "t8");
-        const { data, warnings } = await writeParam(
-          ctx.client!,
-          deviceId,
-          param,
-          sent,
-        );
 
-        expect(warnings).toStrictEqual([]);
-        expect(data.params).toStrictEqual([
-          { id: expect.any(String), name: param, value: label },
-        ]);
-
-        const read = await readParam(ctx.client!, deviceId, param);
-
-        expect(read.value).toBe(label);
+        await expectParamWritten(deviceId, param, sent, label);
       },
     );
   });
 });
+
+/**
+ * Write a param, then assert it landed on `label` with no warnings, both in
+ * the result and when read back.
+ * @param deviceId - Device to write to
+ * @param param - Param name
+ * @param sent - Value to send
+ * @param label - Label Live reports back
+ */
+async function expectParamWritten(
+  deviceId: string,
+  param: string,
+  sent: string,
+  label: string,
+): Promise<void> {
+  const { data, warnings } = await writeParam(
+    ctx.client!,
+    deviceId,
+    param,
+    sent,
+  );
+
+  expect(warnings).toStrictEqual([]);
+  expect(data.params).toStrictEqual([
+    { id: expect.any(String), name: param, value: label },
+  ]);
+
+  const read = await readParam(ctx.client!, deviceId, param);
+
+  expect(read.value).toBe(label);
+}

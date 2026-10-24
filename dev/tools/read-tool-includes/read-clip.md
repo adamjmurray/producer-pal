@@ -7,22 +7,22 @@ General conventions are in [README.md](README.md).
 
 Always returned for any clip:
 
-| Field               | Type                         | Description                                                                                     |
-| ------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------- |
-| `id`                | `string`                     | Clip ID                                                                                         |
-| `type`              | `"midi" \| "audio"`          | Clip type                                                                                       |
-| `name`              | `string`                     | Clip name (omitted if empty)                                                                    |
-| `view`              | `"session" \| "arrangement"` | Which view the clip is in                                                                       |
-| `path`              | `string`                     | Where the clip is: `"t0/s3"` in the session, `"t0[5\|1]"` or `"t0/l1[5\|1]"` in the arrangement |
-| `arrangementLength` | `string`                     | Arrangement clips only: how far the clip runs (`4bar`, `n/4`, `1bar+n/4`), in song meter        |
-| `playing`           | `true`                       | Only present when true                                                                          |
-| `triggered`         | `true`                       | Only present when true                                                                          |
-| `recording`         | `true`                       | Only present when true                                                                          |
-| `overdubbing`       | `true`                       | Only present when true                                                                          |
-| `muted`             | `true`                       | Only present when true                                                                          |
+| Field               | Type                | Description                                                                                     |
+| ------------------- | ------------------- | ----------------------------------------------------------------------------------------------- |
+| `id`                | `string`            | Clip ID                                                                                         |
+| `type`              | `"midi" \| "audio"` | Clip type                                                                                       |
+| `name`              | `string`            | Clip name (omitted if empty)                                                                    |
+| `path`              | `string`            | Where the clip is: `"t0/s3"` in the session, `"t0[5\|1]"` or `"t0/l1[5\|1]"` in the arrangement |
+| `arrangementLength` | `string`            | Arrangement clips only: how far the clip runs (`4bar`, `n/4`, `1bar+n/4`), in song meter        |
+| `playing`           | `true`              | Only present when true                                                                          |
+| `triggered`         | `true`              | Only present when true                                                                          |
+| `recording`         | `true`              | Only present when true                                                                          |
+| `overdubbing`       | `true`              | Only present when true                                                                          |
+| `muted`             | `true`              | Only present when true                                                                          |
+| `envs`              | `true`              | Session clips only, when Live reports automation. Omitted otherwise                             |
 
 Boolean state fields (`playing`, `triggered`, `recording`, `overdubbing`,
-`muted`) are omitted when `false` to reduce response size.
+`muted`, `envs`) are omitted when `false` to reduce response size.
 
 ## Include: `"timing"`
 
@@ -86,6 +86,27 @@ Adds warp/time-stretch properties for audio clips. No effect on MIDI clips.
 build flag: it appears in `npm run build:debug` builds (and in tests) only, not
 in release builds. The examples below show it as it appears in a debug build.
 
+## Include: `"envelopes"`
+
+Adds the clip's automation, one entry per automated parameter. Session clips
+only; an arrangement clip's lane can't be read.
+
+| Field        | Type     | Description                                                        |
+| ------------ | -------- | ------------------------------------------------------------------ |
+| `parameter`  | `string` | The parameter's name, as Live shows it                             |
+| `id`         | `string` | The Live parameter's id (pass it to `ppal-update-clip`)            |
+| `device`     | `string` | e.g., `"t3/d0"`; absent for a mixer parameter                      |
+| `eventCount` | `number` | Events in the envelope                                             |
+| `truncated`  | `true`   | Set when the clip holds more events than the read returned         |
+| `events`     | `string` | The points in envelope notation; absent when they couldn't be read |
+| `detail`     | `string` | Why `events` is absent, or why the envelope doesn't play           |
+
+Ask for it by name: `"*"` leaves it out. It needs the remote script and costs a
+round trip per parameter, and small-model mode drops it. When the clip has
+envelopes the routes can't see (modulation, clip-level ones like Gain, MIDI CC),
+or the remote script isn't answering, `envelopes` is a string saying so. See
+[clip-envelopes.md](../../specs/tool-behavior/clips-playback-and-sends/clip-envelopes.md).
+
 ## Include: `"color"`
 
 | Field   | Type     | Description                       |
@@ -107,7 +128,6 @@ Result:
   "id": "2",
   "type": "midi",
   "name": "Drums",
-  "view": "session",
   "path": "t0/s0",
   "playing": true
 }
@@ -126,7 +146,6 @@ Result:
   "id": "2",
   "type": "midi",
   "name": "Drums",
-  "view": "session",
   "path": "t0/s0",
   "timeSignature": "4/4",
   "looping": true,
@@ -150,7 +169,6 @@ Result (gainDb/pitchShift omitted when 0):
   "id": "5",
   "type": "audio",
   "name": "Guitar Loop",
-  "view": "session",
   "path": "t1/s0",
   "sampleFile": "/Users/user/Samples/guitar-loop.wav",
   "sampleLength": 441000,
@@ -177,7 +195,6 @@ MIDI clip result:
   "id": "2",
   "type": "midi",
   "name": "Drums",
-  "view": "session",
   "path": "t0/s0",
   "color": "#3DC300",
   "timeSignature": "4/4",
@@ -196,7 +213,6 @@ Audio clip result:
   "id": "5",
   "type": "audio",
   "name": "Guitar Loop",
-  "view": "session",
   "path": "t1/s0",
   "color": "#FF6B00",
   "sampleFile": "/Users/user/Samples/guitar-loop.wav",

@@ -1,23 +1,44 @@
 # Roadmap
 
-## Next
+## Next (2.6 - Plug-in Control)
 
-- Automation: read and draw automation envelopes, so the AI can shape filter
-  sweeps, volume fades, and other changes over time.
-- Copy all parameters from one device to another (e.g. apply the EQ curve from
-  track A to tracks B and C)
-- Improved undo/redo support
+- Plug-in control: read and set any VST/AU parameter
+- Improved automation: read and write automation envelopes in the units of the
+  underlying parameter
+- Slicing a sample to a drum rack
 
 In consideration:
 
-- Directly support Vercel's AI Gateway in the built-in chat UI
-- Fetch available models from Ollama and LM Studio/Bionic servers instead of
-  manually configuring in the built-in chat
+- Easier, one-click update process
+- Fetch available local models instead of configuring manually in the built-in
+  chat
 
 ## Changelog
 
 See [the list of releases](https://github.com/adamjmurray/producer-pal/releases)
 for more detailed information.
+
+### 2.5 - Automation (October 2026)
+
+- Session clip automation and, to a limited degree, arrangement automation
+- With the remote script, one Cmd+Z undoes one Producer Pal request. Before,
+  everything it did since you last clicked in Live was a single undo step. The
+  AI can also undo and redo for you
+- Performance improvements: big arrangement edits are much faster (10-30 s down
+  to under 2 s), and calls through the remote script answer faster
+- Turn an audio clip's drums, melody or harmony into a new MIDI track, using
+  Live's own audio-to-MIDI conversion
+- Every write tool now answers the same way when a target is named twice or
+  fails partway
+- Set up and update Producer Pal by asking the AI (coding agents / npx and
+  Claude Desktop): it installs the remote script, adds the device to your Set,
+  and swaps in a newer version
+- Version checks between the portal (for Claude Desktop and some coding agent
+  setups), the device, and the remote script, with a prompt when one needs
+  updating
+- Built-in chat: Support for Vercel AI Gateway
+
+Producer Pal is now MIT licensed.
 
 ### 2.4 - Fewer dead ends (September 2026)
 
@@ -34,8 +55,7 @@ and keeps going with the rest.
   clips
 - Library searches, including similar samples, show what Live's browser shows
 
-The new Producer Pal remote script (experimental) does what the Live API alone
-can't:
+The new Producer Pal remote script does what the Live API alone can't:
 
 - Put Producer Pal into a freshly opened Live Set
 - Add plug-ins and Max for Live devices
@@ -56,7 +76,7 @@ them.
   `1/16`, `-1.68 st`. A value in the wrong unit or out of range is refused
   instead of quietly written wrong. Dozens of parameters across Live's devices
   were being read in the wrong units, or not at all
-- An arrangement clip is named by where it starts: `t0[5|1]`, or
+- An arrangement clip is named by a position it covers: `t0[5|1]`, or
   `t0[loc:Chorus]`. A locator name works anywhere a bar|beat position does
 - Arrangement clips move and copy across tracks and onto take lanes, audio
   included, even where Live's API has no way to do it directly

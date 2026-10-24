@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
@@ -344,8 +344,8 @@ describe("readTrack on a take lane target", () => {
   it("refuses a lane path sent with a track index", () => {
     registerTrackWithTakeLanes();
 
-    expect(() => readOneTrack({ path: "t2/l0", trackIndex: 1 })).toThrow(
-      "path names the track on its own",
+    expect(() => readTrack({ path: "t2/l0", trackIndex: 1 })).toThrow(
+      "path names the track on its own - don't send trackIndex with it",
     );
   });
 

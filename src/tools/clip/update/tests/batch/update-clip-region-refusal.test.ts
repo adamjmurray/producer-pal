@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -64,6 +64,137 @@ describe("updateClip - unreadable region refused before any clip is touched", ()
   });
 });
 
+// Live ignores a length that spans nothing, and a start at or past a looping
+// clip's end, and keeps the region it had. Both came back as plain entries.
+describe("updateClip - a region Live would not hold", () => {
+  let mocks: UpdateClipMocks;
+
+  beforeEach(() => {
+    mocks = setupUpdateClipMocks();
+    // A looping clip at 5|1 to 6|1
+    setupMidiClipMock(mocks.clip123, {
+      looping: 1,
+      loop_start: 16,
+      loop_end: 20,
+    });
+    setupMidiClipMock(mocks.clip456, {
+      looping: 1,
+      loop_start: 0,
+      loop_end: 40,
+    });
+  });
+
+  it.each(["0bar", "n0/4"])(
+    "refuses a length of %s before anything is written",
+    async (length) => {
+      await expect(updateClip({ id: "123,456", length })).rejects.toThrow(
+        `length "${length}" must be longer than zero`,
+      );
+      expect(mocks.clip123.set).not.toHaveBeenCalled();
+      expect(mocks.clip456.set).not.toHaveBeenCalled();
+    },
+  );
+
+  it("refuses one empty length in a list, writing nothing", async () => {
+    await expect(
+      updateClip({ id: "123,456", length: "1bar,0bar" }),
+    ).rejects.toThrow('length "0bar" must be longer than zero');
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+  });
+
+  // Whether it spans anything depends on the clip's meter: a bar of 4/4 minus
+  // a whole note is nothing, a bar of 5/4 minus one is a beat.
+  it("skips a clip whose meter makes the length empty, and writes the rest", async () => {
+    setupMidiClipMock(mocks.clip456, {
+      looping: 1,
+      signature_numerator: 5,
+      loop_start: 0,
+      loop_end: 8,
+    });
+
+    const result = await updateClip({ id: "123,456", length: "1bar-n/1" });
+
+    expect(result).toStrictEqual([
+      {
+        id: "123",
+        ok: false,
+        detail: 'length "1bar-n/1" must be longer than zero',
+      },
+      { id: "456", path: "t1/s1" },
+    ]);
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+    expect(mocks.clip456.set).toHaveBeenCalledWith("loop_end", 1);
+  });
+
+  it("skips a looping clip whose start is not before its loop end", async () => {
+    const result = await updateClip({ id: "123,456", start: "9|1" });
+
+    expect(result).toStrictEqual([
+      {
+        id: "123",
+        ok: false,
+        detail:
+          'start "9|1" is not before the loop end at 6|1: send a length too, or an earlier start',
+      },
+      { id: "456", path: "t1/s1" },
+    ]);
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+  });
+
+  // Turning looping on restates the region that was playing, so the unlooped
+  // clip's end_marker is the loop end the start is held against.
+  it("holds a start against the end of the region a looping toggle carries over", async () => {
+    setupMidiClipMock(mocks.clip123, {
+      looping: 0,
+      loop_start: 0,
+      loop_end: 4,
+      start_marker: 0,
+      end_marker: 16,
+    });
+
+    expect(
+      await updateClip({ id: "123", looping: true, start: "2|1" }),
+    ).toStrictEqual({ id: "123", path: "t0/s0" });
+    expect(mocks.clip123.set).toHaveBeenCalledWith("loop_start", 4);
+
+    await expect(
+      updateClip({ id: "123", looping: true, start: "5|1" }),
+    ).rejects.toThrow('start "5|1" is not before the loop end at 5|1');
+  });
+
+  it("does not hold a start against a loop end once looping goes off", async () => {
+    setupMidiClipMock(mocks.clip123, {
+      looping: 1,
+      loop_start: 0,
+      loop_end: 4,
+      start_marker: 0,
+      end_marker: 16,
+    });
+
+    // 4 beats is the loop end, but the unlooped region reads the markers: the
+    // start isn't refused. It can't land either (the region that carries over
+    // ends there), and the read-back says so.
+    expect(
+      await updateClip({ id: "123", looping: false, start: "2|1" }),
+    ).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      start: "1|1",
+      detail: "start read back as shown, not as sent",
+    });
+  });
+
+  it("takes that start when a length moves the end with it", async () => {
+    expect(
+      await updateClip({ id: "123", start: "9|1", length: "1bar" }),
+    ).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+    });
+    expect(mocks.clip123.set).toHaveBeenCalledWith("loop_start", 32);
+  });
+});
+
 describe("updateClip - region in odd meters", () => {
   let mocks: UpdateClipMocks;
 
@@ -103,3 +234,177 @@ describe("updateClip - region in odd meters", () => {
     expect(capturedWarnings()).toHaveLength(0);
   });
 });
+
+const PAST_LOOP_END =
+  "is not before the loop end at {end}: send a length too, or an earlier start";
+
+/**
+ * What a skipped start says.
+ * @param start - The start sent
+ * @param end - The loop end, as bar|beat
+ * @returns The skip's detail
+ */
+function pastLoopEnd(start: string, end: string): string {
+  return `start "${start}" ${PAST_LOOP_END.replace("{end}", end)}`;
+}
+
+// The region checks used to run inside the clip's own update, after its meter
+// and audio params were written, so the skipped clip came back half changed.
+describe("updateClip - a region Live would not hold skips the clip before any write", () => {
+  let mocks: UpdateClipMocks;
+
+  beforeEach(() => {
+    mocks = setupUpdateClipMocks();
+    // A looping audio clip at 5|1 to 6|1
+    setupAudioClipMock(mocks.clip123, {
+      looping: 1,
+      loop_start: 16,
+      loop_end: 20,
+      start_marker: 16,
+      end_marker: 20,
+    });
+    setupMidiClipMock(mocks.clip456, {
+      looping: 1,
+      loop_start: 0,
+      loop_end: 40,
+    });
+  });
+
+  const expectUntouched = (clip: UpdateClipMocks["clip123"]): void => {
+    expect(clip.set).not.toHaveBeenCalled();
+    expect(clip.call).not.toHaveBeenCalled();
+  };
+
+  it("skips an audio clip with its gain unwritten when the start is past its loop end", async () => {
+    const result = await updateClip({
+      id: "123,456",
+      gainDb: -6,
+      start: "9|1",
+    });
+
+    expect(result).toStrictEqual([
+      { id: "123", ok: false, detail: pastLoopEnd("9|1", "6|1") },
+      {
+        id: "456",
+        path: "t1/s1",
+        detail: "gainDb ignored: the clip is MIDI",
+      },
+    ]);
+    expectUntouched(mocks.clip123);
+    expect(mocks.clip456.set).toHaveBeenCalledWith("loop_start", 32);
+  });
+
+  it("skips a MIDI clip with its meter unwritten when the start is past its loop end", async () => {
+    // A lone clip's skip is the call's error.
+    await expect(
+      updateClip({ id: "456", timeSignature: "3/4", start: "99|1" }),
+    ).rejects.toThrow(pastLoopEnd("99|1", "14|2"));
+    expectUntouched(mocks.clip456);
+  });
+
+  // 3|1 is beat 8 in 4/4 and beat 6 in 3/4: the loop end it is held against
+  // reads in the meter the call sets.
+  it("holds the start in the meter the call sets, not the one the clip has", async () => {
+    setupMidiClipMock(mocks.clip456, {
+      looping: 1,
+      loop_start: 0,
+      loop_end: 7,
+    });
+
+    expect(
+      await updateClip({ id: "456", timeSignature: "3/4", start: "3|1" }),
+    ).toStrictEqual({ id: "456", path: "t1/s1" });
+    expect(mocks.clip456.set).toHaveBeenCalledWith("loop_start", 6);
+
+    setupMidiClipMock(mocks.clip123, {
+      looping: 1,
+      signature_numerator: 3,
+      loop_start: 0,
+      loop_end: 7,
+    });
+    mocks.clip123.set.mockClear();
+
+    await expect(
+      updateClip({ id: "123", timeSignature: "4/4", start: "3|1" }),
+    ).rejects.toThrow(pastLoopEnd("3|1", "2|4"));
+    expectUntouched(mocks.clip123);
+  });
+
+  it("skips a clip whose requested meter makes the length empty, leaving its meter alone", async () => {
+    setupMidiClipMock(mocks.clip456, {
+      looping: 1,
+      signature_numerator: 5,
+      loop_start: 0,
+      loop_end: 8,
+    });
+
+    const result = await updateClip({
+      id: "123,456",
+      timeSignature: "4/4",
+      name: "X",
+      length: "1bar-n/1",
+    });
+
+    expect(result).toStrictEqual(bothSkippedForEmptyLength());
+    expectUntouched(mocks.clip123);
+    expectUntouched(mocks.clip456);
+  });
+
+  it("skips a warped audio clip before it is unwarped when the length is empty in its meter", async () => {
+    await expect(
+      updateClip({ id: "123", warping: false, gainDb: -6, length: "1bar-n/1" }),
+    ).rejects.toThrow('length "1bar-n/1" must be longer than zero');
+    expectUntouched(mocks.clip123);
+  });
+
+  it("skips an unwarped audio clip before looping warps it on, when the length is empty in its meter", async () => {
+    setupAudioClipMock(mocks.clip123, {
+      warping: 0,
+      looping: 0,
+      signature_numerator: 5,
+    });
+
+    const result = await updateClip({
+      id: "123,456",
+      looping: true,
+      timeSignature: "4/4",
+      length: "1bar-n/1",
+    });
+
+    expect(result).toStrictEqual(bothSkippedForEmptyLength());
+    expectUntouched(mocks.clip123);
+  });
+
+  // Unwarping forces looping off, so the loop end no longer holds the start.
+  it("does not hold the start against a loop end the clip is leaving by unwarping", async () => {
+    const result = await updateClip({
+      id: "123",
+      warping: false,
+      start: "9|1",
+    });
+
+    expect(result).not.toMatchObject({ ok: false });
+  });
+
+  it("does not hold a start against a loop end that looping: false drops", async () => {
+    const result = await updateClip({
+      id: "123",
+      looping: false,
+      start: "9|1",
+    });
+
+    expect(result).not.toMatchObject({ ok: false });
+  });
+});
+
+/**
+ * The entries of a two-clip call where both clips are skipped for an empty length.
+ * @returns One skip entry per clip, 123 then 456
+ */
+function bothSkippedForEmptyLength(): object[] {
+  return ["123", "456"].map((id) => ({
+    id,
+    ok: false,
+    detail: 'length "1bar-n/1" must be longer than zero',
+  }));
+}

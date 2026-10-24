@@ -1,17 +1,50 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // What the E2E suites that need the Producer Pal remote script share.
 
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { presetFileIsFor } from "#src/mcp-server/rpc/remote-script/browser/preset-file-device.ts";
+import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { beforeAll } from "vitest";
-import { remoteScriptAnswers } from "../../mcp-test-helpers";
-
-const PORT = process.env.PPAL_REMOTE_SCRIPT_PORT ?? "3349";
+import {
+  callToolAndSettle,
+  parseToolResult,
+  sleep,
+} from "../../mcp-test-helpers";
+import {
+  LIBRARY_NEEDS,
+  remoteScriptAnswers,
+  skipTestBeforeLive,
+} from "../../workflow/helpers/server-capability-test-helpers";
 
 /** Whether the suites that need the remote script run at all. */
 export const REMOTE_SCRIPT_E2E = process.env.E2E_REMOTE_SCRIPT === "true";
+
+/**
+ * Long enough for the end-undo-step request, which a write call doesn't wait
+ * for, to reach Live.
+ */
+export const END_LANDS_MS = 300;
+
+/**
+ * One ppal-create-track call that appends `count` tracks, then a wait for its
+ * undo step to close.
+ * @param client - Connected MCP client
+ * @param count - How many tracks the one call makes
+ */
+export async function appendTracksInOneCall(
+  client: Client,
+  count: number,
+): Promise<void> {
+  await client.callTool({
+    name: "ppal-create-track",
+    arguments: { path: Array(count).fill("t+").join(",") },
+  });
+  await sleep(END_LANDS_MS);
+}
 
 /**
  * Fail the suite, rather than skip it, when E2E_REMOTE_SCRIPT is set but the
@@ -22,7 +55,7 @@ export function requireRemoteScript(): void {
   beforeAll(async () => {
     if (!(await remoteScriptAnswers())) {
       throw new Error(
-        `E2E_REMOTE_SCRIPT=true, but the Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${PORT}. Install it and select it as a control surface (see remote-script/README.md).`,
+        `E2E_REMOTE_SCRIPT=true, but the Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${String(await resolveRemoteScriptPort())}. Install it and select it as a control surface (see remote-script/README.md).`,
       );
     }
   });
@@ -48,7 +81,7 @@ export async function listPresets(
 ): Promise<Preset[]> {
   const query = new URLSearchParams({ type, path: device, presets: "true" });
   const response = await fetch(
-    `http://127.0.0.1:${PORT}/list?${query.toString()}`,
+    `http://127.0.0.1:${String(await resolveRemoteScriptPort())}/list?${query.toString()}`,
   );
   const body = (await response.json()) as { items?: Preset[] };
 
@@ -79,4 +112,76 @@ export function presetEndingIn(presets: Preset[], suffix: string): Preset {
  */
 export function presetName(name: string): string {
   return name.replace(/\.(?:adv|adg)$/, "");
+}
+
+/** What `ppal-read-device` returns for a device, as far as the tests look. */
+export interface DeviceRead {
+  id: string;
+  type: string;
+  name?: string;
+}
+
+/**
+ * Read a device.
+ * @param client - Connected MCP client
+ * @param path - The device's path
+ * @returns Its id, type and name
+ */
+export async function readDevice(
+  client: Client,
+  path: string,
+): Promise<DeviceRead> {
+  return parseToolResult<DeviceRead>(
+    await callToolAndSettle(client, "ppal-read-device", { path }),
+  );
+}
+
+/**
+ * A pack's drum kit whose name nothing else in the library shares, found with
+ * ppal-library. Installed packs differ per machine, so a test picks one at run
+ * time and skips when there is none. Live's browser files these under Drums,
+ * not under any device, so only the library has them. Some kits are an
+ * Instrument Rack holding a Drum Rack, so only a kit that is a Drum Rack counts.
+ * @param client - Connected MCP client
+ * @param skip - The test's `skip`, called when no pack has such a kit or Live
+ *   has no library
+ * @returns The kit's file name and absolute path
+ */
+export async function packDrumKitOrSkip(
+  client: Client,
+  skip: (note?: string) => never,
+): Promise<Preset> {
+  await skipTestBeforeLive(client, skip, "12.4", LIBRARY_NEEDS);
+
+  const search = async (kind: string, query: string): Promise<Preset[]> =>
+    parseToolResult<{ items?: Preset[] }>(
+      await callToolAndSettle(client, "ppal-library", {
+        kind,
+        query,
+        source: "pack",
+        limit: 200,
+      }),
+    ).items ?? [];
+
+  const kits = (await search("device-group", "Kit")).filter(
+    ({ name, path }) => name.endsWith(".adg") && path.includes("/Drums/"),
+  );
+
+  for (const kit of kits) {
+    if (!(await presetFileIsFor(kit.path, "Drum Rack"))) {
+      continue;
+    }
+
+    const name = presetName(kit.name).toLowerCase();
+    const same = [
+      ...(await search("device-group", presetName(kit.name))),
+      ...(await search("preset", presetName(kit.name))),
+    ].filter((item) => presetName(item.name).toLowerCase() === name);
+
+    if (same.length === 1) {
+      return kit;
+    }
+  }
+
+  return skip();
 }

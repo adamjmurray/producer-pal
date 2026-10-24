@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests that clip envelopes survive both arrangementLength routes.
@@ -62,6 +62,14 @@ describe("arrangementLength preserves clip envelopes", () => {
     // returned true unconditionally would make every test below pass.
     expect(await hasEnvelopes(await fixtureClipId())).toBe(true);
     expect(await hasEnvelopes(await audioClipId())).toBe(false);
+  });
+
+  it("leaves envs off an arrangement clip, even one with an envelope", async () => {
+    const result = await callTool(ctx.client!, "ppal-read-clip", {
+      id: await fixtureClipId(),
+    });
+
+    expect(parseToolResult<object>(result)).not.toHaveProperty("envs");
   });
 
   it("keeps the envelope on every tile when lengthening a looping clip", async () => {
@@ -150,7 +158,7 @@ async function audioClipId(): Promise<string> {
 }
 
 interface LiveApiResult {
-  results: Array<{ result: unknown }>;
+  results: unknown[];
 }
 
 /**
@@ -165,8 +173,7 @@ async function hasEnvelopes(clipId: string): Promise<boolean> {
     operations: [{ type: "get", property: "has_envelopes" }],
   });
 
-  const [value] = parseToolResult<LiveApiResult>(result).results[0]!
-    .result as number[];
+  const [value] = parseToolResult<LiveApiResult>(result).results[0] as number[];
 
   return value === 1;
 }

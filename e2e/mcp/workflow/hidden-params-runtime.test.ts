@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Every hidden param, called for real.
@@ -137,9 +137,22 @@ describe("hidden params at runtime", () => {
     await verify?.(data, call);
   });
 
-  // searchBatch is a retired action *value*, not a hidden param — it's kept out
-  // of the action enum, not tagged via deprecatedParam/aliasParam — so it has
-  // no entry in CASES and isn't covered by "has a case for every hidden param".
+  // Old action spellings are hidden enum values, not hidden params, so they have
+  // no entry in CASES and aren't covered by "has a case for every hidden param".
+  it("accepts an old camelCase action spelling, without a warning", async () => {
+    const { data, warnings } = parseToolResultWithWarnings<{
+      tags?: unknown;
+    }>(
+      await ctx.client!.callTool({
+        name: "ppal-library",
+        arguments: { action: "listTags", limit: 1 },
+      }),
+    );
+
+    expect(data.tags).toBeDefined();
+    expect(warnings).toStrictEqual([]);
+  });
+
   it("still runs the fan-out for a caller on the retired searchBatch action", async () => {
     // One search answers ungrouped, the way a plain search does.
     const { data, warnings } = parseToolResultWithWarnings<{
@@ -156,7 +169,7 @@ describe("hidden params at runtime", () => {
 
     expect(data.items).toBeDefined();
     expect(warnings).toStrictEqual([
-      'WARNING: action "searchBatch" is deprecated and will be removed; use action "search" with searches instead',
+      'WARNING: action "search-batch" is deprecated and will be removed; use action "search" with searches instead',
     ]);
   });
 

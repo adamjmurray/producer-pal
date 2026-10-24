@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { useEffect, useState } from "preact/hooks";
 import {
@@ -22,12 +22,13 @@ import { ChatInput } from "./controls/composer/ChatInput";
 import { type HeaderInfo } from "./controls/header/HeaderActions";
 import { RateLimitIndicator } from "./controls/RateLimitIndicator";
 import { ToolLimitNotice } from "./controls/ToolLimitNotice";
+import { type MessageActions } from "./assistant/MessageRow";
 import { MessageList } from "./MessageList";
 
 /**
  * Props for the main chat screen layout
  */
-interface ChatScreenProps {
+interface ChatScreenProps extends MessageActions {
   messages: UIMessage[];
   isAssistantResponding: boolean;
   /** Whether a manual compaction is in progress (drives the "Compacting…" footer) */
@@ -38,13 +39,6 @@ interface ChatScreenProps {
   enqueueMessage: EnqueueMessageHandler;
   queuedMessages: QueuedMessage[];
   onRemoveQueued: (id: number) => void;
-  handleRetry: (messageIndex: number) => Promise<void>;
-  handleEdit: (
-    messageIndex: number,
-    newMessage: string,
-    removedImages?: number[],
-  ) => Promise<void>;
-  handleCompact?: (messageIndex: number) => Promise<void>;
   onUndoCompaction?: () => void;
   canUndoCompaction?: boolean;
   headerInfo: HeaderInfo;
@@ -56,6 +50,7 @@ interface ChatScreenProps {
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
+  onOpenInstallationSettings: () => void;
   onOpenContext: () => void;
   /** Open the context editor's Instructions tab (the system prompt). */
   onOpenInstructions: () => void;
@@ -66,6 +61,8 @@ interface ChatScreenProps {
   branchNav?: BranchNavState;
   /** System instruction shown as a collapsible notice atop the transcript. */
   systemInstruction?: string;
+  /** The conversation was imported with a system prompt unlike the user's own. */
+  importedPromptDiffers?: boolean;
 }
 
 /**
@@ -131,6 +128,7 @@ export function ChatScreen(props: ChatScreenProps) {
     conversationPanel,
     branchNav,
     systemInstruction,
+    importedPromptDiffers,
   } = props;
   const [thinking, setThinking] = useThinkingOverride(props);
 
@@ -146,6 +144,7 @@ export function ChatScreen(props: ChatScreenProps) {
       onOpenSettings={onOpenSettings}
       onOpenToolsSettings={onOpenToolsSettings}
       onOpenConnectionSettings={onOpenConnectionSettings}
+      onOpenInstallationSettings={props.onOpenInstallationSettings}
       onOpenContext={onOpenContext}
     >
       {/* The composer is first in the DOM so Tab reaches the input, Send and
@@ -212,6 +211,7 @@ export function ChatScreen(props: ChatScreenProps) {
             requestedModel={headerInfo.activeModel}
             branchNav={branchNav}
             systemInstruction={systemInstruction}
+            importedPromptDiffers={importedPromptDiffers}
             onOpenInstructions={onOpenInstructions}
           />
         )}

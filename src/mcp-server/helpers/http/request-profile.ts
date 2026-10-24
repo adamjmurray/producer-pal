@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type Request } from "express";
 import {
@@ -9,10 +9,12 @@ import {
   FORMAT_HEADER,
   isBooleanHeaderSet,
   LIVE_API_HEADER,
+  PORTAL_VERSION_HEADER,
   SMALL_MODEL_MODE_HEADER,
   resolveCompactOutput,
   resolveEnabledTools,
   resolveLiveApiEnabled,
+  resolvePortalVersion,
   resolveSmallModelMode,
 } from "#src/shared/config.ts";
 import {
@@ -38,6 +40,8 @@ export interface RequestProfile {
   liveApiEnabled: boolean;
   /** undefined ⇒ no header sent; leave the device's own format alone. */
   compactOutput: boolean | undefined;
+  /** The portal's version when the request came through one, else undefined. */
+  portalVersion: string | undefined;
 }
 
 /**
@@ -88,5 +92,6 @@ export function resolveRequestProfile(
     ),
     liveApiEnabled,
     compactOutput: resolveCompactOutput(req.get(FORMAT_HEADER)),
+    portalVersion: resolvePortalVersion(req.get(PORTAL_VERSION_HEADER)),
   };
 }

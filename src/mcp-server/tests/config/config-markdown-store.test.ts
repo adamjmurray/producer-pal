@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -10,9 +10,13 @@ import {
   deleteConfigMarkdown,
   listConfigMarkdownFiles,
   listConfigMarkdownFilesRecursive,
+  skipIfUnreadable,
 } from "#src/mcp-server/helpers/config-store/config-markdown-store.ts";
 import { warn } from "#src/mcp-server/node-for-max-logger.ts";
-import { useTempConfigDir } from "../config-dir-test-helpers.ts";
+import {
+  unreadableWays,
+  useTempConfigDir,
+} from "../config-dir-test-helpers.ts";
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
   log: vi.fn(),
@@ -20,6 +24,12 @@ vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
   warn: vi.fn(),
   error: vi.fn(),
 }));
+
+vi.mock(import("node:fs"), async (importOriginal) => {
+  const { withFsFaults } = await import("../config-dir-test-helpers.ts");
+
+  return withFsFaults(await importOriginal());
+});
 
 const getDir = useTempConfigDir();
 
@@ -92,6 +102,27 @@ describe("listConfigMarkdownFilesRecursive", () => {
   });
 });
 
+describe.each(unreadableWays)(
+  "listConfigMarkdownFilesRecursive with an unreadable subfolder ($way)",
+  (blocker) => {
+    it.skipIf(!blocker.supported)(
+      "skips it with a warning, keeping the other files",
+      () => {
+        writeInSubdir("skills", "core.md");
+        writeInSubdir("skills/locked", "hidden.md");
+        writeInSubdir("skills/ok", "fine.md");
+        blocker.block(join(getDir(), "skills", "locked"));
+
+        expect(listConfigMarkdownFilesRecursive("skills")).toStrictEqual([
+          "core.md",
+          "ok/fine.md",
+        ]);
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining("locked"));
+      },
+    );
+  },
+);
+
 describe("deleteConfigMarkdown", () => {
   it("removes an existing file without warning", () => {
     writeFileSync(join(getDir(), "context.md"), "x");
@@ -129,5 +160,23 @@ describe("deleteConfigMarkdown", () => {
     deleteConfigMarkdown("context.md");
 
     expect(existsSync(path)).toBe(true);
+  });
+});
+
+describe("skipIfUnreadable", () => {
+  it("returns the read result without warning", () => {
+    expect(skipIfUnreadable("a.md", () => "ok")).toBe("ok");
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("warns with the file path and returns null when the read throws", () => {
+    const result = skipIfUnreadable("skills/a.md", () => {
+      throw new Error("EACCES: permission denied");
+    });
+
+    expect(result).toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(join(getDir(), "skills", "a.md")),
+    );
   });
 });

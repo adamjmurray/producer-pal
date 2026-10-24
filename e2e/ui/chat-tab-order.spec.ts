@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Keyboard reach of the composer: Tab must get to the message box, Send and the
 // rest of the composer without walking the transcript's buttons and links, and

@@ -1,8 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
+import { NEW_USER_MARKER } from "#src/skills/fragments/context.ts";
 import { CONTEXT_TOOL_ID } from "#src/shared/tool-groups.ts";
 import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
 import { readGlobalContext } from "../global-context/global-context-store.ts";
@@ -12,43 +13,24 @@ import {
   type WrappedCallLiveApi,
 } from "./connect-append.ts";
 
-// The ppal-connect "what to do now" instruction. It used to be a static
-// `nextStep` field inside V8's connect() result, which put it BEFORE the four
-// enrichment blocks the Node side appends (skills, project, global, memory) —
-// so the model read "wait for their instructions" and then kept reading. Moving
-// it here makes it the LAST thing in the response (compose withNextStep
-// outermost) and lets it vary with what those blocks contained, which V8 can't
-// do: it has no filesystem, so it cannot see whether the user has any global
-// context or memories.
+// The ppal-connect "what to do now" instruction. It is appended Node-side so it
+// is the LAST thing in the response (compose withNextStep outermost): as a
+// field inside V8's connect() result it came BEFORE the enrichment blocks, so
+// the model read "wait for their instructions" and then kept reading. It also
+// varies with what those blocks contained, which V8 can't see (no filesystem).
 //
-// It also STATES which layers are empty. The other injectors skip their block
-// when they have nothing, so an empty layer used to be signalled by the absence
-// of a block — and models reason badly about absence. Observed in the wild: a
-// Claude Desktop session was told global context was empty, didn't believe it,
-// never called ppal-context to check, and admitted afterwards it was "just
-// speculating". Absence is not a message; say it out loud.
+// It STATES which layers are empty. The injectors skip their block when they
+// have nothing, and models reason badly about absence: a Claude Desktop session
+// told global context was empty didn't believe it and never called ppal-context
+// to check. Say it out loud.
 //
-// The variance buys onboarding. A user with no global context and no memories
-// is one we know nothing about, and these layers are invisible unless the
-// assistant raises them — so for exactly that case the next step also asks them
-// about themselves. It ASKS, as a yes/no question, rather than saying "tell me
-// anytime": a statement gives the user nothing to decline, so a brush-off like
-// "let's just make some music" doesn't read as an answer and the decline never
-// gets recorded — which means asking again every session, forever.
+// A user with no global context and no memories is a new user. The result only
+// states that fact; the context Skill says what to do about it. Models such as
+// Haiku ignore imperative instructions in a tool result as untrusted.
 //
-// What they say lands in GLOBAL context, not memory: style, preferences, and
-// high-level goals should always apply, and always-on is what context is for
-// (the skills teach the same split). It needs no confirmation because an empty
-// document has nothing to destroy — the write-REPLACES-everything hazard that
-// makes context the user's call simply isn't there yet. That license covers
-// what the USER says here and nothing else; the skills separately forbid
-// importing facts the assistant knows from its own memory without asking.
-//
-// Either way the offer is one-shot, with no dedicated "already asked" flag:
-// sharing fills global context and declining writes a memory, and EITHER one
-// flips the check below, so the next connect gets the plain instruction.
-// Clearing both in the context editor brings the offer back, which is the right
-// semantics and costs no code.
+// The offer is one-shot with no "already asked" flag: sharing fills global
+// context and declining writes a memory, and EITHER flips isNewUser, so the next
+// connect gets the plain next step. Clearing both brings the offer back.
 
 /** Device settings the next-step block varies on. */
 export interface NextStepConfig {
@@ -65,17 +47,7 @@ export interface NextStepConfig {
 const BASE_NEXT_STEP =
   "Report the connection status and Live Set overview to the user, then wait for their instructions.";
 
-const ONBOARDING_NEXT_STEP =
-  "Report the connection status and Live Set overview to the user. Nothing is " +
-  "stored about this user yet, so in that same reply ASK them — as a real " +
-  "question they can answer yes or no — whether they'd like to tell you about " +
-  "their musical style, preferences, and goals so you can remember it across " +
-  "sessions. One or two sentences; don't interrogate them. If they answer, save " +
-  'it to GLOBAL context (ppal-context action:"write", scope:"global") — that ' +
-  "document is empty, so write it without asking. If they say no, or just get " +
-  "on with making music without answering, write a memory recording that they " +
-  "don't want to be asked, so you never raise it again. Then wait for their " +
-  "instructions.";
+const ONBOARDING_NEXT_STEP = `${BASE_NEXT_STEP} New user: ${NEW_USER_MARKER}.`;
 
 /**
  * Wrap a callLiveApi so a successful ppal-connect response ends with what is

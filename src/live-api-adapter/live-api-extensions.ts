@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /* eslint-disable @stylistic/padding-line-between-statements -- switch fallthrough patterns */
 /* eslint-disable @typescript-eslint/no-explicit-any -- dynamic property handling requires any */
@@ -292,7 +292,8 @@ if (typeof LiveAPI !== "undefined") {
    * Get the object's name as a string. Live hands back an all-digit name
    * (e.g. a locator, chain, or track named "5678") as a number, not a
    * string — this normalizes that, and reports "" instead of "undefined"
-   * for an object with no name property.
+   * for an object with no name property. A backslash doesn't survive Max's
+   * read: macOS drops it and Windows turns it into a slash.
    * @returns The name, always a string
    */
   LiveAPI.prototype.getName = function (this: LiveAPI): string {
@@ -304,10 +305,13 @@ if (typeof LiveAPI !== "undefined") {
   /**
    * Set multiple properties at once
    * @param properties - Properties to set
+   * @param landed - Told after each property is written, so a caller whose
+   *   later write throws knows which ones stuck
    */
   LiveAPI.prototype.setAll = function (
     this: LiveAPI,
     properties: Record<string, unknown>,
+    landed?: (property: string) => void,
   ): void {
     for (const [property, value] of Object.entries(properties)) {
       if (value != null) {
@@ -316,6 +320,8 @@ if (typeof LiveAPI !== "undefined") {
         } else {
           this.set(property, value);
         }
+
+        landed?.(property);
       }
     }
   };

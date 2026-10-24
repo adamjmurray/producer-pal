@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for where a device move lands, or doesn't.
@@ -11,6 +11,10 @@
  * move returned the device's id as if it had gone somewhere, and the duplicate
  * returned the id of a copy still sitting on its temp track, which the cleanup
  * then deleted. Both now refuse the lone destination they were given.
+ *
+ * The `toPath` suite after them checks the other kind of refusal: an entry that
+ * can't be read at all refuses the whole call, in both tools, before anything
+ * moves, copies or is renamed.
  *
  * The `d+` suite below is the other half: only real Live says where an append
  * lands, since a default track preset may already have put devices there. The
@@ -31,6 +35,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
+import { PARENT_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -136,6 +141,38 @@ describe("a device move Live refuses", () => {
     expect(entry.detail).toContain("already has an instrument");
     expect(entry).not.toHaveProperty("ok");
     expect(getToolWarnings(result)).toStrictEqual([]);
+  });
+
+  // Live drops an instrument aimed at a group track with no reason, so the
+  // refusal names it.
+  it("says a group track takes only audio effects", async () => {
+    const track = await createMidiTrack(ctx.client!);
+    const deviceId = await createTestDevice(
+      ctx.client!,
+      "Operator",
+      `t${track}`,
+    );
+    const group = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { path: `t${PARENT_TRACK}` },
+      }),
+    );
+    const before = await readDeviceCount(ctx.client!, track);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: deviceId, toPath: `t${PARENT_TRACK}/d+` },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      `group track t${PARENT_TRACK} (id ${group.id}) takes only audio effects; "Operator" is an instrument`,
+    );
+
+    await sleep(200);
+
+    expect(await readDeviceCount(ctx.client!, track)).toBe(before);
   });
 
   it("refuses a toPath naming an index past the end of the container", async () => {
@@ -421,6 +458,34 @@ describe("a rack chain a call asks to move", () => {
   });
 });
 
+describe("a toPath entry that doesn't parse", () => {
+  // Written wrong, so the whole call is refused: the good entry beside it
+  // doesn't move or copy its device, and a rename doesn't land.
+  it.each([
+    ["ppal-update-device", { name: "Not Renamed,Not Renamed" }],
+    ["ppal-duplicate", { type: "device" }],
+  ])("refuses a %s call, changing nothing", async (name, extra) => {
+    const { from, to, deviceId, before } = await twoInstrumentTracks();
+
+    const result = await ctx.client!.callTool({
+      name,
+      arguments: {
+        id: `${deviceId},${deviceId}`,
+        toPath: `t${to}/d+,not-a-real-path`,
+        ...extra,
+      },
+    });
+
+    await sleep(200);
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'invalid toPath "not-a-real-path"',
+    );
+    expect(await deviceCounts(from, to)).toStrictEqual(before);
+  });
+});
+
 describe('"d+" as the device to update', () => {
   // A move needs a device that exists, so the append marker names nothing to
   // move — and the refusal has to say which tools do take it.
@@ -434,7 +499,7 @@ describe('"d+" as the device to update', () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      '"d+" appends a device, which only ppal-create-device, ppal-duplicate and ppal-update-device do',
+      '"d+" appends a device, so it only works as a destination: path in ppal-create-device, toPath in ppal-duplicate and ppal-update-device',
     );
   });
 });

@@ -1,11 +1,20 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  beginWarningCapture,
+  changedNothing,
+  recordWriteRun,
+} from "#src/shared/max/v8-warning-capture.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
+import {
+  LIVE_FAILURE,
+  failCall,
+} from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMissingScenes } from "../create-missing-scenes.ts";
 
@@ -54,6 +63,19 @@ describe("createMissingScenes", () => {
       "s3-s5",
     );
     expect(liveSet.call).toHaveBeenCalledTimes(3);
+  });
+
+  it("counts the scenes made before Live refuses one as a change", () => {
+    const liveSet = registerLiveSet(1);
+
+    failCall(liveSet, /^create_scene$/, 2);
+
+    const capture = beginWarningCapture();
+
+    expect(() => createMissingScenes(3)).toThrow(LIVE_FAILURE);
+    // The pipeline's verdict for a target that ended as a skip.
+    recordWriteRun(true);
+    expect(changedNothing(capture)).toBe(false);
   });
 
   it("finds the Live Set itself when the caller has none", () => {

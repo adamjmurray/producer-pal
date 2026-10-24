@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
@@ -9,7 +9,6 @@ import {
   requireCreatedArrangementClip,
   type SlotWork,
 } from "#src/tools/clip/helpers/clip-results.ts";
-import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
 
 export interface AudioSessionClipResult extends SlotWork {
   clip: LiveAPI;
@@ -22,7 +21,7 @@ export interface AudioSessionClipResult extends SlotWork {
  * @param sceneIndex - Target scene index (0-based)
  * @param sampleFile - Absolute path to audio file
  * @param liveSet - LiveAPI liveSet object
- * @returns Object with clip, sceneIndex, the scenes created, and what it replaced
+ * @returns The clip, its scene, the scenes created, and what it replaced
  */
 export function createAudioSessionClip(
   trackIndex: number,
@@ -30,15 +29,16 @@ export function createAudioSessionClip(
   sampleFile: string,
   liveSet: LiveAPI,
 ): AudioSessionClipResult {
-  const { clip, created, overwrote } = createInSessionSlot(
-    trackIndex,
+  return {
+    ...createInSessionSlot(
+      trackIndex,
+      sceneIndex,
+      liveSet,
+      (clipSlot) => clipSlot.call("create_audio_clip", sampleFile),
+      sampleFile,
+    ),
     sceneIndex,
-    liveSet,
-    (clipSlot) => clipSlot.call("create_audio_clip", sampleFile),
-    sampleFile,
-  );
-
-  return { clip, sceneIndex, created, overwrote };
+  };
 }
 
 export interface AudioArrangementClipResult {
@@ -62,16 +62,6 @@ export function createAudioArrangementClip(
   takeLane: LiveAPI | null = null,
   track: LiveAPI | null = null,
 ): AudioArrangementClipResult {
-  // Live API limit check
-  if (
-    arrangementStartBeats != null &&
-    arrangementStartBeats > MAX_ARRANGEMENT_POSITION_BEATS
-  ) {
-    throw new Error(
-      `arrangement position ${arrangementStartBeats} exceeds maximum allowed value of ${MAX_ARRANGEMENT_POSITION_BEATS}`,
-    );
-  }
-
   const target = takeLane ?? track ?? LiveAPI.from(livePath.track(trackIndex));
 
   // Create audio clip at position

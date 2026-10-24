@@ -64,6 +64,28 @@ gives you this shape.
 
 <!--@include: ../_generated/ppal-context-output.md-->
 
+### Manage (`ppal-manage`) {#ppal-manage}
+
+- Install the [Producer Pal remote script](/guide/remote-script) into your User
+  Library, without opening the Chat UI. Restart Live afterwards.
+- Add the Producer Pal device to the open Live Set, on a new MIDI track, and
+  install it in your User Library first if needed. Works while Producer Pal
+  isn't running yet, through `npx producer-pal` or the Claude Desktop extension.
+  Needs the remote script.
+- Update the Producer Pal device in the open Live Set to the version your
+  `npx producer-pal` or Claude Desktop extension ships. It replaces the device
+  in place and keeps your project context. Your AI offers this when the device
+  is older. Needs the remote script.
+- Undo and redo in Live's own history, one step or several at a time. One
+  Producer Pal tool call that changed the Live Set is one step. It never removes
+  Producer Pal itself. The history also holds your own edits in Live, so an undo
+  can revert something you did. Needs the remote script.
+- Not available in [small model mode](/features#small-model-mode).
+
+<!--@include: ../_generated/ppal-manage-schema.md-->
+
+<!--@include: ../_generated/ppal-manage-output.md-->
+
 ## Session Tools
 
 ### Playback (`ppal-playback`) {#ppal-playback}
@@ -92,24 +114,28 @@ Live, or make sure your standalone Max is up to date. See
 :::
 
 - Search Live's browser library by name, tags, content kind, device kind, or
-  source category (User Library, Pack, Built-in, Cloud, Plugin, or your sample
-  folder)
+  source category (User Library, Pack, Built-in, Cloud, Plugin, plug-in preset
+  folders, or your sample folder). The other files in plug-in preset folders
+  (`Audio/Presets`), such as sample libraries, are hidden by Live's browser and
+  left out unless you ask for them; plug-in presets there stay listed under
+  Plugin
 - Also includes the user-configured sample folder when set, with results merged
   and de-duplicated against Live's library
-- Sort by `use_count` (Live's persistent usage counter, which surfaces what you
-  actually use most), `mod_date`, or `name`
-- Enumerate available tags with `action: "listTags"` so the AI can discover the
+- Sort by `use-count` (Live's persistent usage counter, which surfaces what you
+  actually use most), `mod-date`, or `name`
+- Enumerate available tags with `action: "list-tags"` so the AI can discover the
   tag vocabulary on your machine, or browse Live's category taxonomy (Sounds,
-  Drums, Genres, …) with `action: "listCategories"`
+  Drums, Genres, …) with `action: "list-categories"`
 - Run many filtered searches in one call by passing `searches` (an array of
   query objects, each with its own filters); results grouped per query, so the
   AI can assemble a whole drum kit in one round trip
-- List the VST/VST3/AU plug-ins Live knows about with `action: "listPlugins"`
+- List the VST/VST3/AU plug-ins Live knows about with `action: "list-plugins"`
   (filter by query, vendor, format, device kind, or subcategory)
-- Rank samples by audio similarity to a seed sample with `action: "findSimilar"`
-  (Live's own similarity index, not Producer Pal listening), or group library
-  samples with identical audio (re-shipped duplicates) with
-  `action: "findDuplicates"`. Both can be narrowed with the search filters
+- Rank samples by audio similarity to a seed sample with
+  `action: "find-similar"` (Live's own similarity index, not Producer Pal
+  listening), or group library samples with identical audio (re-shipped
+  duplicates) with `action: "find-duplicates"`. Both can be narrowed with the
+  search filters
 
 <!--@include: ../_generated/ppal-library-schema.md-->
 
@@ -157,16 +183,19 @@ Live, or make sure your standalone Max is up to date. See
   - Auto-tile clips to fill longer arrangement durations
 - Apply [transforms](/features#transforms) to each duplicated clip (e.g.
   transpose copies, vary velocities) without a separate update step
-- Stack variations on [take lanes](/features#take-lanes): naming one lane twice
-  in `toPath`, `toPath: "t2/l0[9|1],t2/l0[13|1]"`, stacks both takes on it. A
-  lane per copy is a lane index per copy, `toPath: "t2/l0,t2/l1,t2/l2"`
-- Copy a whole lane onto another lane with `type: "track"` and a lane `toPath`:
-  every clip at the position it already has, clips only (no devices, routing,
-  mixer settings, or session clips). The source is a track (its main lane) or a
-  take lane, by path (`t2/l0`) or by the lane's id
-- Promote a whole take lane with a bare track `toPath` (`t2`): a take-lane
-  source's clips land on that track's main lane, over the clips already there
+- Stack variations on [take lanes](#take-lanes), or copy or promote a whole lane
+  (see [Take Lanes](#take-lanes) below)
 - Copy devices to any track, return track, or rack chain
+- Copy a drum pad or a rack chain with its settings and devices (see
+  [Drum pads and rack chains](#duplicate-pads-chains) below)
+- Route duplicated tracks to source instrument for MIDI layering
+- With the remote script, effects and effect racks are copied in place
+
+Note: Return tracks can't be duplicated. Devices on return and main tracks can
+be copied when the Producer Pal remote script is running.
+
+#### Drum pads and rack chains {#duplicate-pads-chains}
+
 - Copy a whole drum pad to another pad in the same rack, bringing its chain
   trim, pan, sends, choke group, and devices. A device-only copy leaves the
   chain (and its trim) behind
@@ -176,10 +205,6 @@ Live, or make sure your standalone Max is up to date. See
   Sends carry when the destination rack has a return chain of the same name.
   Macro mappings can't be reproduced through the Live API, so a rack that has
   them says so
-- Route duplicated tracks to source instrument for MIDI layering
-
-Note: Return tracks and devices on return tracks cannot be duplicated (Live API
-limitation).
 
 <!--@include: ../_generated/ppal-duplicate-schema.md-->
 
@@ -196,6 +221,7 @@ limitation).
 - See tempo, time signature, and scale settings
 - View arrangement locators with times and names
 - Check what's playing and track states
+- See whether the tempo has arrangement automation
 
 <!--@include: ../_generated/ppal-read-live-set-schema.md-->
 
@@ -205,6 +231,8 @@ limitation).
 
 - Change tempo, time signature, scale
 - Create, rename, or delete arrangement locators, several per call
+- Says when a tempo write overrides arrangement automation: Live then ignores
+  that lane until you press **Re-Enable Automation**
 
 <!--@include: ../_generated/ppal-update-live-set-schema.md-->
 
@@ -226,14 +254,15 @@ limitation).
 
 - Get detailed track information
 - View all clips in Session and Arrangement
-- List [take lanes](/features#take-lanes) and their clips (with the
-  `arrangement-clips` include), or read one lane on its own from a lane path
-  (`t2/l0`)
+- List [take lanes](#take-lanes) and their clips (with the `arrangement-clips`
+  include), or read one lane on its own from a lane path (`t2/l0`)
 - See devices, routing options, and drum pad mappings
 - See which instrument plays the track, including what's inside an Instrument
   Rack: `Instrument Rack (Operator, Wavetable)`
 - Check track states (muted, soloed, armed)
 - View mixer properties: gain, pan, panning mode, and send levels
+- See which mixer fields have arrangement automation. Left out, with a reason,
+  while the track plays from Session
 
 <!--@include: ../_generated/ppal-read-track-schema.md-->
 
@@ -246,9 +275,11 @@ limitation).
   letter)
 - Change mute, solo, arm, I/O routings, and monitoring state
 - Change track name and color
-- Add and name [take lanes](/features#take-lanes) from a lane path: `t2/l+`
-  appends one, `t2/l2` names an existing lane (adding the lanes up to it), and
-  `name` is the only param a lane takes
+- Add and name [take lanes](#take-lanes) from a lane path: `t2/l+` appends one,
+  `t2/l2` names an existing lane (adding the lanes up to it), and `name` is the
+  only param a lane takes
+- Says when a write overrides arrangement automation: Live then ignores that
+  lane until you press **Re-Enable Automation**
 - Update multiple tracks at once
 
 <!--@include: ../_generated/ppal-update-track-schema.md-->
@@ -304,8 +335,7 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Generate MIDI clips with notes, velocities, and timing using
   [custom notation](/features#custom-music-notation)
 - Place clips in clip slots or the Arrangement timeline
-- Place arrangement clips on [take lanes](/features#take-lanes) with a
-  `t0/l1[5|1]` path
+- Place arrangement clips on [take lanes](#take-lanes) with a `t0/l1[5|1]` path
 - Support for probability, velocity ranges, and complex rhythms
 - Apply [transforms](/features#transforms) to shape notes with math expressions
 - Create audio clips from a sample file with `sampleFile`, and choose whether
@@ -323,6 +353,10 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Read MIDI notes in [custom notation](/features#custom-music-notation) (C3,
   D#4, etc.)
 - Get audio clip gain, pitch, warp settings, and sample info
+- Read a session clip's automation envelopes with `include: ["envelopes"]`
+  (needs the [remote script](/guide/remote-script)). A clip read shows
+  `envs: true` when it has some. An arrangement clip's automation is the track's
+  lane, which can't be read
 
 <!--@include: ../_generated/ppal-read-clip-schema.md-->
 
@@ -344,6 +378,16 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
   has no API for re-creates the clip, which costs its automation envelopes; the
   result says when that applied. A slot past the last scene creates the scenes
   up to it, reported as `created`
+- Write clip automation envelopes (needs the
+  [remote script](/guide/remote-script) and Live 12.4 or later). On an
+  arrangement clip it writes the track's automation over the clip; see
+  [Clip Automation](/guide/automation). Writing one re-enables the parameter's
+  automation if you had moved the parameter by hand; the result notes when it
+  did
+- Convert an audio clip into a new MIDI track with an instrument and a clip of
+  the detected notes (drums, melody or harmony, as Live's
+  [Convert to New MIDI Track](https://www.ableton.com/en/manual/converting-audio-to-midi/));
+  needs the [remote script](/guide/remote-script)
 - Split arrangement clips at specified positions
 - Update multiple clips at once
 
@@ -394,10 +438,13 @@ sounding.
 - Position devices at a specific index in the device chain
 - Create devices inside rack chains or drum pads using path notation
 - List the native Live devices
-- Create a device or rack from a preset (needs the remote script)
-- Load a sample into a Simpler instrument via
+- Create a device or rack from a preset (needs the remote script). The preset is
+  found by name anywhere in Live's library (pack drum kits, Sounds racks, custom
+  folders) on Live 12.4+. A name several files share is refused, listing their
+  paths
+- Load a sample into a Simpler instrument (Live 12.4+) via
   `params: [{name: "sample", value: "<path>"}]`, and set its level with
-  `{name: "gainDb", value: <dB>}` (new in Live 12.4)
+  `{name: "gainDb", value: <dB>}`
 
 <!--@include: ../_generated/ppal-create-device-schema.md-->
 
@@ -409,6 +456,11 @@ sounding.
   chains
 - List device parameter names and values (the state of knobs, dials, etc)
 - See a rack chain's own volume, pan, and sends when they're not at default
+- See which parameters have arrangement automation. Left out, with a reason,
+  while the track plays from Session
+- See which of a rack's macros are mapped (needs the remote script)
+- Read and write a Simpler's `pitchBendRange` and `notePitchBendRange` as
+  parameters (needs the remote script)
 
 <!--@include: ../_generated/ppal-read-device-schema.md-->
 
@@ -431,11 +483,58 @@ sounding.
   devices together
 - Load a sample into a Simpler instrument (see
   [Create Device](#ppal-create-device) above)
-- Swap a preset onto a device (needs the [remote script](/guide/remote-script))
+- Swap a preset onto a device (needs the [remote script](/guide/remote-script)),
+  found by name the same way as in Create Device
+- Says when a write overrides arrangement automation: Live then ignores that
+  lane until you press **Re-Enable Automation**
 
 <!--@include: ../_generated/ppal-update-device-schema.md-->
 
 <!--@include: ../_generated/ppal-update-device-output.md-->
+
+## Take Lanes {#take-lanes}
+
+How the tools work with take lanes, which stack alternate versions of an
+arrangement clip at the same position. Only the active take plays.
+
+- A lane is part of the path: `t2/l0` is track 2's first take lane (0-based, and
+  lanes are created up to the index). Plain `t2` is the main lane. Use it as
+  `path` on [Create Clip](#ppal-create-clip) or `toPath` on
+  [Duplicate](#ppal-duplicate).
+- Naming one lane twice stacks both copies on it, so
+  `toPath: "t2/l0[9|1],t2/l0[13|1]"` puts two takes on one lane. A lane per copy
+  is a lane index per copy, `toPath: "t2/l0,t2/l1,t2/l2"`. On a track that
+  already has lanes, start after the last one a prior
+  [Read Track](#ppal-read-track) reported. Add
+  [transforms](/features#transforms) to vary each one.
+- A whole lane goes onto another lane in a single [Duplicate](#ppal-duplicate):
+  `type: "track"` with `toPath: "t2/l0"` copies every clip at the position it
+  already has. It copies clips only (no devices, routing, mixer settings, or
+  session clips), and the two tracks must match MIDI/audio type. The source is a
+  track (`path: "t2"`, its main lane) or a take lane (`path: "t2/l0"`, or the
+  lane's id).
+- A take lane goes the other way too: give a take-lane source a bare track
+  `toPath` (`t2`, its own track or another) and its clips are promoted onto that
+  track's main lane, replacing whatever sits at those positions.
+- [Update Track](#ppal-update-track) owns the lanes themselves: `path: "t2/l+"`
+  adds one, `path: "t2/l0"` with a `name` names an existing one, and a lane
+  takes no other track setting.
+- [Read Track](#ppal-read-track) lists take lanes (with the `arrangement-clips`
+  include), and reads one on its own from a lane path.
+- A take-lane clip can leave its lane, for another lane, another track, or a
+  session slot: `toPath` on [Update Clip](#ppal-update-clip) moves it, and
+  [Duplicate](#ppal-duplicate) copies it. Live's API can't remove a take-lane
+  clip, so a move leaves a muted `(moved) ...` clip behind for you to delete in
+  Live.
+- Putting a clip on a lane, or taking one off, re-creates it: a MIDI clip from
+  its notes, an audio clip from its sample. Envelope automation isn't preserved,
+  and a warped audio clip comes back with the sample's default warp markers. The
+  response says which applied.
+- Limits: Producer Pal creates up to 10 take lanes per track; lanes added in
+  Live past that still work. A take-lane clip can't be split, resized, or
+  deleted through tools, and Producer Pal can't pick the active take or comp
+  lanes. All of that stays in Live's UI. Expand the take-lane arrow on a track
+  header to see them.
 
 ## Advanced Tools
 

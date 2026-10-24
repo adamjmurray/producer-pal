@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Running one (scenario, model) combination — every trial of it — and emitting
@@ -21,6 +21,7 @@ import { type JsonEvalResult } from "../json-results/types.ts";
 import { writeJsonResult } from "../json-results/writer.ts";
 import { printResultBlock } from "../reporting/result-printer.ts";
 import {
+  liveSetLeftOpen,
   planTrialLiveSetOpens,
   printTrialSummary,
 } from "./multi-trial-runs.ts";
@@ -76,7 +77,10 @@ export async function runTrials(
     const scenarioResult = await runScenario(scenario, {
       provider: spec.provider,
       model: spec.model,
-      skipLiveSetOpen: options.skipSetup ?? skipOpen,
+      // A previous trial that errored may not have opened the Set at all.
+      skipLiveSetOpen:
+        options.skipSetup ??
+        (skipOpen && (index === 0 || liveSetLeftOpen(results))),
       judgeOverride,
       runEnv,
       envLabel: label,

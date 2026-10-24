@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
@@ -63,10 +63,10 @@ const KNOWN_BLEED: Record<string, readonly string[]> = {
   // Pad operations named beside the chain trim they preserve: clearing a pad
   // before replacing its sample, and copying a whole pad rather than the device
   // inside it.
-  "devices-write": ["ppal-delete", "ppal-duplicate"],
+  "devices-write": ["ppal-delete", "ppal-duplicate", "ppal-read-device"],
   // Take-lane clips refuse a delete the same way they refuse an update, so the
   // warning belongs beside the update-clip one it shares a sentence with.
-  "arrangement-write": ["ppal-delete"],
+  "arrangement-write": ["ppal-delete", "ppal-read-track"],
 };
 
 // Tools no fragment gates on, and why. Most are here because their schema is
@@ -223,6 +223,24 @@ describe("fragment prose", () => {
     }
   });
 
+  it("writes every tool with its ppal- prefix", () => {
+    // The model only knows the published name. Single-word tools (`delete`,
+    // `select`, ...) are skipped: they are also ordinary words and keywords.
+    const bare = ALL_TOOLS.map((tool) => tool.replace(/^ppal-/, "")).filter(
+      (name) => name.includes("-"),
+    );
+    const pattern = new RegExp(`(?<![\\w-])(${bare.join("|")})(?![\\w-])`, "g");
+
+    for (const [name, body] of fragments) {
+      const found = [...body.matchAll(pattern)].map((m) => m[1]);
+
+      expect(
+        found,
+        `${name} names tools without the ppal- prefix`,
+      ).toStrictEqual([]);
+    }
+  });
+
   it("keeps deliberate cross-references rare", () => {
     // A gate is ANY-OF, so a cross-reference can never be gated exactly — it
     // wants "library AND a writer". A few are worth that; a pile of them means
@@ -358,6 +376,19 @@ describe("gatedOutFragments", () => {
       "arrangement-write",
     );
     expect(gatedOutFragments(["ppal-playback"])).toContain("arrangement");
+  });
+
+  it("drops the automation write half for a clip caller that can't write", () => {
+    // read-clip reports envelopes but has no way to write one or convert audio.
+    const readOnly = gatedOutFragments(["ppal-read-clip"]);
+
+    expect(readOnly).not.toContain("automation");
+    expect(readOnly).toContain("automation-write");
+
+    const writer = gatedOutFragments(["ppal-update-clip"]);
+
+    expect(writer).not.toContain("automation");
+    expect(writer).not.toContain("automation-write");
   });
 
   it("keeps arrangement for read-track but not read-scene", () => {

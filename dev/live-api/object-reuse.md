@@ -1,9 +1,41 @@
 # Reusing LiveAPI Objects
 
-Building a LiveAPI object is expensive (ADR-0023, and
-`dev/live-api/performance.md` for what it costs), so it is tempting to resolve
-one once and pass it around. That is safe in some places and unsafe in others,
-and the line between them is not where most people would guess.
+Building a LiveAPI object is expensive (`dev/live-api/performance.md` has what
+it costs), so it is tempting to resolve one once and pass it around. That is
+safe in some places and unsafe in others, and the line between them is not where
+most people would guess.
+
+## Release and pooling
+
+Live arms a listener on every collection along a path-based object's path and
+never takes it down, so held objects slow the whole Live Set. Constructing an
+object is also costly and can't be undone short of a device reload. So objects
+are tracked as built and **released when the request ends**: mode reset to 0,
+path cleared, onto a free list the next request retargets. Nothing holds a
+`LiveAPI` across requests (`live-api-adapter/live-api-release.ts`). A stale
+reference fails quietly: just after release it reads as nonexistent, and once
+recycled it points at a different Live object, with no error. Hence "build them
+where you use them".
+
+- Both path and id targets retarget a pooled object (`retargetToId`,
+  `buildOrReuse` in `live-api-adapter/live-api-build.ts`).
+- The free-list cap (`MAX_POOLED_OBJECTS`) is sized above the largest single
+  request: too small hands memory back only to rebuild it on the next call.
+- Silent failures are read back, not trusted: the cleared path, and the id after
+  a retarget. A bad id is dropped without an error and leaves the object on the
+  last request's target.
+- Concurrent requests don't pool: the free list refills only when no request is
+  open. Correctness holds, since release fires only at zero and the free list
+  hands out each object once. One slow request holds everyone's objects, and
+  their listeners, until it finishes.
+- Nothing here stops one request from shifting Set structure under another. Node
+  runs write calls one at a time for that
+  ([write-queue.md](../architecture/write-queue.md)), but a user editing Live
+  while a write waits on the remote script still can.
+
+Rejected alternatives (caching by id, building children by path, `freepeer()`,
+`goto` for ids) are in
+[ADR-0023](../decisions/0023-live-api-objects-are-pooled-per-request.md).
 
 ## The hazard
 
@@ -45,7 +77,8 @@ for objects it holds.
 
 **A dead target disagrees with itself.** `path` tells the truth and `id` lies,
 so `exists()` — which is derived from the id — reports `true` for a clip that is
-gone. `confirmDeleted` in `tools/actions/delete/delete.ts` depends on a fresh
+gone. `confirmDeleted` in
+`tools/actions/delete/helpers/delete-object-by-type.ts` depends on a fresh
 lookup of the dead id reading `"0"`, which still holds. Do not substitute
 `exists()` on a held object for it.
 
@@ -77,20 +110,50 @@ suggests it differs, but it is inference.
 
 ### What the mock models
 
-`src/test/mocks/mock-registry.ts` models two of the three rows. A held mock
-object binds to the registration rather than to a snapshot of it, so
-re-registering the same id changes what the holder reads; a deleted target
-clears its holders' paths while their ids go on lying; and an object built at an
-unregistered path never picks up a registration made later.
-`describe("mock staleness")` in `mock-registry.test.ts` pins them.
+`src/test/mocks/mock-registry.ts` models all three rows. A held mock object
+binds to the registration rather than to a snapshot of it, so re-registering the
+same id changes what the holder reads; a deleted target clears its holders'
+paths while their ids go on lying; and an object built at an unregistered path
+never picks up a registration made later. `describe("mock staleness")` in
+`mock-registry.test.ts` pins them.
 
-**Index shift is deliberately not modeled.** A `delete_*` removes its target and
-leaves every later sibling's path where it was. Modeling the renumbering was
-tried and taken back out: nothing in the suite needed it, and nothing plausibly
-would. Shifting can only reach a test that calls `simulateMockDeletes()`, which
-is ppal-delete's tests alone — and `delete` sorts highest-index-first precisely
-so it never holds an object across a shift. If a tool ever does hold one, model
-it then, with that tool's tests as the consumer.
+**Index shift is modeled, so tests can catch index-shift bugs.** A shift bug
+hides in a mock that leaves later siblings where they were: the tool reads a
+stale index, the mock answers anyway, and the suite is green. The edits live in
+`registry/mock-live-set-edits.ts`:
+
+- **Inserts** (`create_midi_track`, `create_audio_track`, `create_return_track`,
+  `create_scene`, `duplicate_track`, `duplicate_scene`, `insert_device`,
+  `insert_chain`, and an arrangement clip from `create_midi_clip`,
+  `create_audio_clip` or `duplicate_clip_to_arrangement`) put a new object at
+  its index. Every later registered sibling's path moves one along, with
+  everything under it. A held object follows its object, as in Live.
+- **Deletes** do the reverse: the target and everything under it die, and later
+  siblings move down. Only with `simulateMockDeletes()`, as before, and a clip
+  deleted with `deleteMockObject()` shifts its arrangement siblings too.
+- **A scene is also a clip slot on every track**, so scene inserts and deletes
+  shift `clip_slots` paths, and a scene insert makes a slot per track.
+- **Each created object gets its own id**, from 90001 up, and is registered at
+  its path. A registered child list (`tracks`, `scenes`, `devices`, `chains`,
+  `clip_slots`, `arrangement_clips`) gains or loses the id. Arrangement clips go
+  in start-time order when every sibling registers a `start_time`, else last.
+- **`registerPendingMockObject()`** is for an object the test wants to be what a
+  creating call makes. It isn't there until something is created at its path,
+  and then it is used instead of a fresh one. Registering it up front with
+  `registerMockObject()` would be the old object at that path, so the insert
+  moves it, which is correct.
+- **A delete leaves the last place empty**, and a session clip made in a slot
+  sets its `has_clip` (deleting it clears it). A new track gets a clip slot for
+  every scene, as a new scene gets one per track.
+- **`simulateMockMoves()`** makes `move_device` move the device, and what is
+  under it, to its container: the devices after it close up, and the ones at its
+  new place shift down one. A test that copies a device through the temp track
+  also calls `simulateMockDeletes()`, so deleting the temp track closes the
+  tracks up again and the next copy lands where the last one did.
+
+Not modeled: what a duplicate copies along (a copied track's devices and clips),
+`move_device` unless a test asks, and an arrangement clip overwriting what it
+lands on.
 
 Three more gaps, so a green suite is still not proof:
 
@@ -178,7 +241,7 @@ ENABLE_OBJECT_PROBE=true npm run build:debug
       "args": [4],
     }, // mutate elsewhere
     { "type": "exists" }, // read it again
-    { "type": "get_property", "property": "id" },
+    { "type": "get-field", "property": "id" },
   ],
 }
 ```

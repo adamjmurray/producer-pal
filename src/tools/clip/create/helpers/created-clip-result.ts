@@ -1,9 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { type TransformCounts } from "#src/notation/transform/transformed-count.ts";
 import { audioClipTiming } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
 import { clipRegionWrites } from "#src/tools/shared/clip/clip-region-writes.ts";
@@ -20,7 +21,6 @@ export interface ClipPropertiesToSet {
   loop_start: number;
   loop_end: number;
   end_marker: number;
-  playing_position?: number;
   name?: string;
   color?: string;
   looping?: number;
@@ -55,22 +55,24 @@ export function buildClipProperties(
   const start = startBeats ?? 0;
   const end = endBeats ?? clipLength;
   const createdLength = createdClipLength(clipLength, startBeats);
+  // Live keeps firstStart in start_marker, which only a looping clip can
+  // separate from loop_start.
+  const startMarker =
+    firstStartBeats != null &&
+    firstStartProblem(firstStartBeats, looping, end) == null
+      ? firstStartBeats
+      : start;
   const propsToSet: ClipPropertiesToSet = {
     ...clipRegionWrites(
       { loop_end: createdLength, end_marker: createdLength },
       {
         loop_start: start,
         loop_end: end,
-        start_marker: start,
+        start_marker: startMarker,
         end_marker: end,
       },
     ),
   };
-
-  // Set playing_position (firstStart) only for looping clips
-  if (looping && firstStartBeats != null) {
-    propsToSet.playing_position = firstStartBeats;
-  }
 
   // Optional properties
   if (clipName) {
@@ -89,6 +91,30 @@ export function buildClipProperties(
   propsToSet.signature_denominator = timeSigDenominator;
 
   return propsToSet;
+}
+
+/**
+ * Why a clip can't use the firstStart sent, or null when it can or none was
+ * sent. Live drops a start_marker at or past the end_marker.
+ * @param firstStartBeats - The firstStart sent, in beats, or null
+ * @param looping - Whether the clip loops
+ * @param end - Where the clip's region ends, in beats
+ * @returns The reason, or null
+ */
+export function firstStartProblem(
+  firstStartBeats: number | null,
+  looping: boolean | null,
+  end: number,
+): string | null {
+  if (firstStartBeats == null) {
+    return null;
+  }
+
+  if (!looping) {
+    return "set looping: true to use it";
+  }
+
+  return firstStartBeats < end ? null : "past the clip's content end";
 }
 
 /**
@@ -116,14 +142,25 @@ export interface ClipResultObject {
    * the arrangement. Pastes straight back into any path/toPath param. */
   path?: string;
   noteCount?: number;
+  /** Notes the transform changed; 0 when it changed none */
   transformed?: number;
+  /** Notes the transform removed; not sent when 0 */
+  deletedNotes?: number;
   length?: string;
   /** Audio clips only: the warp state Live settled on, when it isn't the one asked for */
   warping?: boolean;
+  /** The time signature Live kept, when it isn't the one asked for */
+  timeSignature?: string;
+  /** Audio clips only: the values Live kept in place of the ones asked for */
+  gainDb?: number;
+  pitchShift?: number;
+  warpMode?: string;
   /** The palette color Live settled on, when it isn't the one asked for */
   color?: string;
   /** The scenes the destination had to make ("s8-s9"), when it made any. */
   created?: string;
+  /** The span left on the arrangement, when a later clip of the call cut it short */
+  arrangementLength?: string;
   /** What the call asked for that the clip didn't get, or what it replaced */
   detail?: string;
 }
@@ -139,7 +176,7 @@ export interface ClipResultObject {
  * @param timeSigNumerator - Clip time signature numerator
  * @param timeSigDenominator - Clip time signature denominator
  * @param sampleFile - Audio file path (for audio clips)
- * @param transformedCount - Number of notes matched by transform selectors
+ * @param transformCounts - What the transform changed and deleted
  * @param color - The color the call asked for, or null when it asked for none
  * @param warping - The warp state the call asked for, or null when it asked for none
  * @returns Clip result object
@@ -154,7 +191,7 @@ export function buildClipResult(
   timeSigNumerator: number,
   timeSigDenominator: number,
   sampleFile: string | null,
-  transformedCount: number | undefined,
+  transformCounts: TransformCounts,
   color: string | null,
   warping: boolean | null = null,
 ): ClipResultObject {
@@ -176,8 +213,12 @@ export function buildClipResult(
   if (notationString != null) {
     clipResult.noteCount = getClipNoteCount(clip);
 
-    if (transformedCount != null) {
-      clipResult.transformed = transformedCount;
+    if (transformCounts.transformed != null) {
+      clipResult.transformed = transformCounts.transformed;
+    }
+
+    if (transformCounts.deletedNotes != null) {
+      clipResult.deletedNotes = transformCounts.deletedNotes;
     }
 
     // Include calculated length if it wasn't provided as input parameter

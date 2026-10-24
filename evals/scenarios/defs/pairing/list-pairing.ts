@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Reach-for probes: does a model lean on a SHORT comma-separated list and
@@ -9,7 +9,7 @@
  *
  * `color`, create-clip's `path` against `arrangementStart`, and duplicate's
  * `toPath` against it all used to cycle. These probes are what settled folding
- * them into the one rule (ADR-0031): asked to alternate colors, two of three
+ * them into the one rule: asked to alternate colors, two of three
  * models wrote the short form, and one said outright it did so because the
  * schema advertised cycling. Rewording that line stopped it. The two
  * destination sites were never leaned on at all.

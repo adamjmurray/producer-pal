@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-connect tool
@@ -10,16 +10,21 @@
  * Run with: npm run e2e:mcp
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { connectMcp } from "#evals/chat/mcp.ts";
+import { REST_BASE_URL } from "#evals/shared/config.ts";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
+import { PORTAL_VERSION_HEADER, VERSION } from "#src/shared/config.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import {
-  CONFIG_URL,
   fetchSkillOverrides,
   parseToolResult,
-  remoteScriptAnswers,
-  serverHasCodeExec,
   setConfig,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
+import {
+  remoteScriptAnswers,
+  serverHasCodeExec,
+} from "./helpers/server-capability-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -199,7 +204,7 @@ describe("ppal-connect", () => {
     // at those actions would dead-end (see memory-inject.ts).
     const MEMORY_INDEX_PREFIX = "Memory index";
     const MEMORY_NAME = "e2e-memory-index-probe";
-    const MEMORY_URL = `${CONFIG_URL.replace("/config", "")}/memory/${MEMORY_NAME}`;
+    const MEMORY_URL = `${REST_BASE_URL}/memory/${MEMORY_NAME}`;
 
     it("injects the index in standard mode but omits it in small-model mode", async () => {
       // Seed a transient memory so the standard-mode presence is real, not
@@ -237,6 +242,59 @@ describe("ppal-connect", () => {
     });
   });
 
+  describe("portal version", () => {
+    // The portal sends its version as a header on every request; the device
+    // names it in the connect result and flags a mismatch. A call with no header
+    // (the shared client) says nothing.
+    const PORTAL_PREFIX = "portalVersion:";
+
+    /**
+     * Call ppal-connect on a fresh connection that sends the given portal
+     * version, or none, and return the portal block.
+     * @param portalVersion - Header value, or undefined to send no header
+     * @returns The portal block text, or "" when absent
+     */
+    async function portalBlock(portalVersion?: string): Promise<string> {
+      const { client } = await connectMcp(MCP_URL, {
+        headers:
+          portalVersion == null
+            ? undefined
+            : { [PORTAL_VERSION_HEADER]: portalVersion },
+      });
+
+      try {
+        const result = await client.callTool({
+          name: "ppal-connect",
+          arguments: {},
+        });
+
+        return extractBlock(result, PORTAL_PREFIX);
+      } finally {
+        await client.close();
+      }
+    }
+
+    it("reports a matching portal version without a note", async () => {
+      expect(await portalBlock(VERSION)).toBe(`${PORTAL_PREFIX} ${VERSION}`);
+    });
+
+    it("tells the user to update an older portal", async () => {
+      expect(await portalBlock("1.0.0")).toContain(
+        "The portal is older than the device",
+      );
+    });
+
+    // The portal flags an older device itself, since an old device can't learn
+    // new wording.
+    it("leaves an older device for the portal to flag", async () => {
+      expect(await portalBlock("99.0.0")).toBe(`${PORTAL_PREFIX} 99.0.0`);
+    });
+
+    it("says nothing for a caller that is not a portal", async () => {
+      expect(await portalBlock()).toBe("");
+    });
+  });
+
   describe("injected block order", () => {
     // The per-block tests above use extractBlock, which finds a block by prefix
     // regardless of its position — so none of them catch a reordered
@@ -249,7 +307,7 @@ describe("ppal-connect", () => {
     const PROJECT_PREFIX = "Project context (this Live Set):";
     const GLOBAL_PREFIX = "Global context (all projects):";
     const MEMORY_PREFIX = "Memory index";
-    const ROOT_URL = CONFIG_URL.replace("/config", "");
+    const ROOT_URL = REST_BASE_URL;
     const GLOBAL_CONTEXT_URL = `${ROOT_URL}/global-context`;
     const ORDER_MEMORY_NAME = "e2e-connect-order-probe";
     const ORDER_MEMORY_URL = `${ROOT_URL}/memory/${ORDER_MEMORY_NAME}`;

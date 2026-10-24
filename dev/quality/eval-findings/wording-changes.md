@@ -73,6 +73,13 @@ the specific case is closed. The general shape is not: **a param that competes
 with a value the model just read will lose, and no amount of schema prose fixes
 it.**
 
+**Neither a named-key clause nor a new Stark example fixed a wrong Ab.** Asked
+for C natural minor in an A minor Set, luna often wrote A for Ab. The system
+prompt's "unless the user gives specific notes" became "unless the user names a
+key, scale or specific notes": `middle-c-scale-stark` 2/4. The Stark run example
+`G A B C'`, which ends like the wrong answer, became `G B D'`: 4/8. Baseline was
+3/5; neither kept. Raising Codex's reasoning effort fixed it (6/6).
+
 ## Wording changes that did work
 
 Both null results above tried to change a **preference**. These two taught a
@@ -115,6 +122,16 @@ spelling goes with which ask did not.
 
 **So: teaching a spelling is worth trying; arguing a model out of a preference
 is not.**
+
+**Basic-tier context consent: 5/10 to 8/10.** On a document with content,
+qwen3.8-27b (`--small-model`) saved "this goes for everything I make" without
+asking, and once asked again after "save that". The basic Skill said only
+"propose and wait for a yes". It now splits the two cases: a mention gets a
+proposal ("always" or "for everything" picks the scope; it isn't a yes), and an
+ask gets written now. Over two ×5 rounds per arm, `context-write-layer-global`
+went 5/10 to 8/10 and `context-write-preserves` 9/10 to 10/10. The other four
+context scenarios stayed at 39 of 40 trials. Like a spelling, it names the case
+the model is in rather than arguing against a habit.
 
 ### The predictor's first real test measured nothing
 

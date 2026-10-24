@@ -91,19 +91,21 @@ config instead.
 
 - Toggle the Producer Pal device off and on in Live
 - Restart your AI interface
-- Check the Max console for error messages (right-click the device's title bar
-  and choose "Open Max Window")
+- Check the Max console for error messages (click the three-dot menu in the
+  upper right of the device and choose "Open Max Window")
 
-## Library Features Require Live 12.4+
+## Some Features Require Live 12.4+
 
-Producer Pal's library and plugin browsing (the `ppal-library` tool) requires
-**Ableton Live 12.4 or later**. It relies on capabilities in the version of Max
-that ships with Live 12.4 and up.
+Producer Pal runs on Live 12.3, but some features need **Live 12.4 or later**.
+They rely on capabilities in the version of Max that ships with Live 12.4 and
+up.
+
+<!--@include: ../_partials/live-version.md-->
 
 Symptoms on older Live versions:
 
-- The AI reports it can't read your Live library and says you need Live 12.4 or
-  later.
+- The AI reports it can't read your Live library, or can't do one of the things
+  listed above, and says you need Live 12.4 or later.
 - On older Producer Pal versions the device may fail to start, with an error
   mentioning `node:sqlite` in the Max console.
 
@@ -115,8 +117,7 @@ What to do:
   can also turn off the "Use Max Application" option in Live's preferences so
   Live uses its own bundled Max.
 
-On current versions of Producer Pal, only library/plugin browsing is affected.
-Connecting to Ableton and the other tools keep working.
+Connecting to Ableton and the other tools keep working on 12.3.
 
 ## After Upgrading
 
@@ -126,6 +127,8 @@ If Producer Pal stops working after installing a new version:
   installing the new one
 - **All users:** Verify you replaced the `.amxd` device (and the `.mcpb`
   extension if applicable for your installation)
+- **Remote script users:** Update it in **Settings → Installation**, then
+  restart Live (see [Remote Script](/guide/remote-script#updating))
 - Try deleting and re-adding the Producer Pal device in Ableton Live
 - Restart your AI app completely
 - Start a fresh conversation

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // REST endpoints for the machine-global settings file (~/.producer-pal/
 // settings.json). Distinct from /config, which is the device's own live state:
@@ -16,6 +16,8 @@ import {
   updateGlobalSettings,
 } from "../../helpers/config-store/global-settings-store.ts";
 import { rejectForeignOriginWrite } from "../../helpers/http/request-origin.ts";
+import { syncDeviceUpdateNotice } from "../../helpers/http/update-dismissal.ts";
+import { syncDeviceInstallNotice } from "../../rpc/device-install/device-install-notice.ts";
 
 /**
  * Register the /settings REST endpoints on the Express app. GET returns the
@@ -64,7 +66,31 @@ export function registerGlobalSettingsRoutes(app: Express): void {
       return;
     }
 
-    res.json(updateGlobalSettings(patch));
+    const settings = updateGlobalSettings(patch);
+
+    // A dismissal, or turning checks off, should clear the device's notice now,
+    // not at its next load. Turning checks on pushes nothing: it must not
+    // trigger a GitHub request.
+    if (
+      typeof patch.dismissedUpdateVersion === "string" ||
+      patch.autoUpdateCheck === false
+    ) {
+      void syncDeviceUpdateNotice();
+    }
+
+    // The install notice gives way to the update notice and obeys its own
+    // setting, so each of these can change whether it shows. Turning update
+    // checks on pushes nothing, as above: the device's update notice doesn't
+    // reappear until its next load either.
+    if (
+      typeof patch.dismissedUpdateVersion === "string" ||
+      patch.autoUpdateCheck === false ||
+      patch.warnIfInstallIncomplete !== undefined
+    ) {
+      void syncDeviceInstallNotice();
+    }
+
+    res.json(settings);
   });
 }
 
@@ -89,6 +115,12 @@ function parsePatch(
       }
 
       patch.autoUpdateCheck = value;
+    } else if (key === "warnIfInstallIncomplete") {
+      if (typeof value !== "boolean") {
+        return "warnIfInstallIncomplete must be a boolean";
+      }
+
+      patch.warnIfInstallIncomplete = value;
     } else if (key === "dismissedUpdateVersion") {
       if (value !== null && typeof value !== "string") {
         return "dismissedUpdateVersion must be a string or null";

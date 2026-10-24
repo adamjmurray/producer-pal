@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   useCallback,
@@ -28,6 +28,7 @@ import { useHasUnsavedChanges } from "#webui/hooks/settings/use-has-unsaved-chan
 import { useSaveSettingsHandler } from "#webui/hooks/settings/use-save-settings-handler";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useSettingsClose } from "#webui/hooks/settings/use-settings-close";
+import { useSettingsDeepLink } from "#webui/hooks/view-state/use-settings-deep-link";
 import { useSettingsDismiss } from "#webui/hooks/settings/use-settings-dismiss";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
@@ -43,7 +44,7 @@ import { fullToolCatalog } from "#webui/lib/utils/tool-catalog";
 import { useContextOverlay } from "#webui/hooks/use-context-overlay";
 import { ContextTabs } from "./context/ContextTabs";
 import { SettingsScreen } from "./settings/SettingsScreen";
-import { type TabId } from "./settings/SettingsTabs";
+import { type TabId } from "./settings/helpers/settings-tab-ids";
 
 /**
  * Root component. Owns shared chrome (settings hook, theme, view state, MCP
@@ -68,6 +69,8 @@ export function App() {
       ),
     [setViewState],
   );
+
+  useSettingsDeepLink(openSettings);
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
   // Over the full catalog: a tool the server isn't listing right now can still
@@ -224,6 +227,7 @@ export function App() {
     /* v8 ignore start -- inline settings tab navigation */
     onOpenToolsSettings: () => openSettings("tools"),
     onOpenConnectionSettings: () => openSettings("connection"),
+    onOpenInstallationSettings: () => openSettings("installation"),
     /* v8 ignore stop */
     // Wrapped like onOpenSettings: a bare handler would hand openContext the
     // click event as its tab argument.

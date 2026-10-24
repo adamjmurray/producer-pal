@@ -1,20 +1,23 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
  */
 import { EditorView } from "@codemirror/view";
 import { fireEvent, render } from "@testing-library/preact";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MarkdownEditor } from "#webui/components/markdown-editor/MarkdownEditor";
+import { deferSelectionChange } from "#webui/test-utils/dom-test-helpers";
 
 // CodeMirror reads the platform once at import, so stub before it loads.
 vi.hoisted(() => {
   Object.defineProperty(navigator, "platform", { value: "MacIntel" });
 });
+
+beforeEach(deferSelectionChange);
 
 describe("MarkdownEditor on macOS", () => {
   it("Ctrl-m enters Tab-focus mode (defaultKeymap's Alt-Shift-m never matches)", () => {

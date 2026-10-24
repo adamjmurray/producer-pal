@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // A trailing `inst`/`mfx<n>`/`afx<n>` is an insert position like `d<n>`, so it
 // has to resolve to one before create-device reads the position off it.

@@ -3,6 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Narrow on purpose: the build inlines its scripts and the UI calls any
+         LLM endpoint, so no default/script/style/connect-src. This only closes
+         remote images (data leaks), plugins, <base> and form posts. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
     <title>Producer Pal Chat</title>
     <link
       rel="icon"

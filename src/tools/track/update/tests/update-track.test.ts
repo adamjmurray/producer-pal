@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -117,7 +117,7 @@ describe("updateTrack", () => {
   it("throws when the one track ID it was given doesn't exist", () => {
     mockNonExistentObjects();
 
-    expect(() => updateTrack({ id: "nonexistent" })).toThrow(
+    expect(() => updateTrack({ id: "nonexistent", name: "Test" })).toThrow(
       'id "nonexistent" does not exist',
     );
   });
@@ -313,22 +313,14 @@ describe("updateTrack", () => {
       expect(track456.set).toHaveBeenCalledWith("current_monitoring_state", 2);
     });
 
-    it("should warn and skip for invalid monitoring state", () => {
-      // Should not throw, just warn and skip the monitoring state update — and
-      // crucially NOT write an undefined monitoring value onto the track.
-      const result = updateTrack({
-        id: "123",
-        monitoringState: "invalid",
-      });
-
-      expect(track123.set).not.toHaveBeenCalledWith(
-        "current_monitoring_state",
-        expect.anything(),
+    it("refuses an invalid monitoring state before writing anything", () => {
+      expect(() =>
+        updateTrack({ id: "123,456", name: "A,B", monitoringState: "invalid" }),
+      ).toThrow(
+        'invalid monitoring state "invalid". Must be one of: in, auto, off',
       );
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("invalid monitoring state"),
-      );
-      expect(result).toStrictEqual({ id: "123", path: "t0" });
+      expect(track123.set).not.toHaveBeenCalled();
+      expect(track456.set).not.toHaveBeenCalled();
     });
 
     it("should handle mixed routing and basic properties", () => {

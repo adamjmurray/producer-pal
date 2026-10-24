@@ -6,15 +6,15 @@ use Producer Pal.
 ## Requirements
 
 <div class="download-band download-band-compact download-band-dual">
-  <p class="download-subtitle">Grab both downloads, then follow the steps below:</p>
+  <p class="download-subtitle">Get the extension, then follow the steps below. Claude can install the device for you.</p>
   <div class="download-actions">
-    <a class="download-btn download-btn-primary" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd">
-      <span class="download-btn-label">1. Max for Live Device</span>
-      <span class="download-btn-sub">Producer_Pal.amxd — for Ableton Live</span>
-    </a>
     <a class="download-btn download-btn-primary" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb">
-      <span class="download-btn-label">2. Claude Desktop Extension</span>
+      <span class="download-btn-label">Claude Desktop Extension</span>
       <span class="download-btn-sub">Producer_Pal.mcpb — for Claude Desktop</span>
+    </a>
+    <a class="download-btn" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd">
+      <span class="download-btn-label">Max for Live Device (optional)</span>
+      <span class="download-btn-sub">Producer_Pal.amxd — to install it yourself</span>
     </a>
   </div>
 </div>
@@ -25,7 +25,7 @@ use Producer Pal.
 
 ## Installation Steps
 
-<!--@include: ../_partials/install-device.md-->
+<!--@include: ../_partials/setup-by-ai.md-->
 
 ### 2. Download the Claude Desktop Extension
 

@@ -1,12 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Inlines the Python remote script into the MCP server bundle, so the device
 // can install it into Live's User Library with no repo to read from.
 //
-// It replaces src/mcp-server/rpc/remote-script/embedded-remote-script.ts, whose
+// It replaces src/mcp-server/rpc/remote-script/bundle/embedded-remote-script.ts, whose
 // checked-in body reads the same files off disk for tests and the dev
 // installer. version.py's version is rewritten to package.json's, so an
 // installed script reports the release that installed it.
@@ -19,7 +19,7 @@ const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const sourceDir = join(rootDir, "remote-script/Producer_Pal");
 const embeddedModule = join(
   rootDir,
-  "src/mcp-server/rpc/remote-script/embedded-remote-script.ts",
+  "src/mcp-server/rpc/remote-script/bundle/embedded-remote-script.ts",
 );
 const packageJson = join(rootDir, "package.json");
 
