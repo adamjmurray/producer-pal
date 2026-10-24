@@ -184,7 +184,7 @@ describe("deviceSwapCheck", () => {
     expect(result).toStrictEqual({
       allowed: false,
       reason:
-        "The remote script is too old to do the swap. Update it above, then restart Live.",
+        "The remote script running in Live is too old to do the swap. Follow its steps above, then try again.",
     });
   });
 });
