@@ -49,11 +49,9 @@ in small model mode), with the [remote script](/guide/remote-script) running.
    [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb).
    `npx -y producer-pal@latest`: nothing to do. Then restart your AI app and
    start a fresh conversation.
-2. Ask the AI to **update Producer Pal, then its remote script**, in that order.
-3. Restart Live. Your Control Surface setting is kept.
-
-If the AI says the remote script is too old to update the device, use
-[Update by hand](#update-by-hand).
+2. Ask the AI to **update Producer Pal and its remote script**.
+3. Restart Live. Your Control Surface setting is kept. The AI may ask you to
+   restart partway through; do that, then let it carry on.
 
 ## Less common situations
 
