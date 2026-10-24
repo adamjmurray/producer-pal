@@ -44,8 +44,10 @@ other end-to-end suites in the CI summary.
   on `/replace-producer-pal` it makes the stub device report the portal's
   version. Covers the swap, already current, a device newer than the portal, a
   refused swap, a remote script without the route, and a device that isn't
-  running. The stub device has no `ppal-connect`, so the connect hint is only
-  unit tested.
+  running. A second group covers a device older than the portal: the pre-2.5
+  connect hint, `install-remote-script` answered by the portal (and forwarded
+  for a same-version device). Those give the stub device `ppal-connect` and
+  `ppal-manage`.
 
 Unit tests in `src/portal/tests/` already cover how tool names and group aliases
 resolve. These cover what only a real process can show: argv parsed by the

@@ -350,7 +350,7 @@ ppal-manage can't add the device from this install; tell the user to install it 
 
     expect(text).toMatch(
       new RegExp(
-        `^❌ Producer Pal isn't in this Live Set\\.\\n\\nThe Producer Pal remote script is out of date \\(running 1\\.0\\.0, needs \\S+ or later\\); update it with ${INSTALL} .*then restart Live\\. After that, ${ADD} installs the Producer Pal device to`,
+        `^❌ Producer Pal isn't in this Live Set\\.\\n\\nThe Producer Pal remote script is out of date \\(running 1\\.0\\.0, needs \\S+ or later\\); update it with ${INSTALL}, then restart Live\\. After that, ${ADD} installs the Producer Pal device to`,
       ),
     );
   });

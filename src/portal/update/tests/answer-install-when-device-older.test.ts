@@ -71,6 +71,48 @@ describe("answerInstallWhenDeviceOlder", () => {
     expect(installRemoteScript).not.toHaveBeenCalled();
   });
 
+  it("connects first when the version isn't known yet, and answers for an older device", async () => {
+    const installRemoteScript = installs();
+    const device = fakeDevice(OLD);
+    const response = await answerInstallWhenDeviceOlder(
+      {
+        name: "ppal-manage",
+        args: { ...INSTALL, userLibrary: "/lib" },
+        manageOffered: true,
+      },
+      device,
+      updateDeps({ installRemoteScript }),
+    );
+
+    expect(device.connect).toHaveBeenCalled();
+    expect(response?.isError).toBeUndefined();
+    expect(installRemoteScript).toHaveBeenCalledWith("/lib");
+  });
+
+  it("connects first when the version isn't known yet, and forwards for the same version", async () => {
+    const installRemoteScript = installs();
+    const device = fakeDevice(VERSION);
+    const response = await answerInstallWhenDeviceOlder(
+      { name: "ppal-manage", args: INSTALL, manageOffered: true },
+      device,
+      updateDeps({ installRemoteScript }),
+    );
+
+    expect(device.connect).toHaveBeenCalledTimes(1);
+    expect(response).toBeNull();
+    expect(installRemoteScript).not.toHaveBeenCalled();
+  });
+
+  it("leaves the call to the offline path when the first connect fails", async () => {
+    const response = await answerInstallWhenDeviceOlder(
+      { name: "ppal-manage", args: INSTALL, manageOffered: true },
+      fakeDevice(DOWN),
+      updateDeps(),
+    );
+
+    expect(response).toBeNull();
+  });
+
   it.each([
     ["the same version", VERSION],
     ["a newer version", "99.0.0"],

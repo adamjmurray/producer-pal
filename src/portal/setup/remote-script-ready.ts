@@ -28,7 +28,7 @@ export async function remoteScriptReady(
     );
   }
 
-  const outdated = outdatedScript(ping.scriptVersion);
+  const outdated = outdatedScript(ping.scriptVersion, false);
 
   if (outdated != null) {
     throw new SetupFailed(

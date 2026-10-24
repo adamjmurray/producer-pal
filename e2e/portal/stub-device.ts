@@ -27,6 +27,9 @@ export const DEVICE_TOOL = "ppal-device-marker";
 /** What that tool answers with. */
 export const DEVICE_TOOL_REPLY = "the device answered";
 
+/** What the stub device's ppal-manage answers with. */
+export const MANAGE_TOOL_REPLY = "the device ran ppal-manage";
+
 /** A tool that answers after SLOW_TOOL_MS, offered only with `slowTool`. */
 export const SLOW_TOOL = "ppal-device-slow";
 
@@ -57,6 +60,8 @@ export type DeviceSettings = Partial<
 export interface DeviceRequest {
   /** The JSON-RPC method, e.g. "tools/list". */
   method: string;
+  /** The tool a tools/call asked for. */
+  tool?: string;
   /** The disabled-tools header, or undefined when the portal sent none. */
   disabledTools: string | undefined;
   /** The setting headers that rode along, if any. */
@@ -83,15 +88,24 @@ export interface StubDevice {
  * @param options.online - False to reserve the port but stay unreachable
  * @param options.version - The server version it reports
  * @param options.slowTool - Also offer ppal-connect and SLOW_TOOL
+ * @param options.connectTool - Also offer ppal-connect
+ * @param options.manageTool - Also offer ppal-manage, which answers
+ *   MANAGE_TOOL_REPLY
  * @returns The device
  */
 export async function createStubDevice(
-  options: { online?: boolean; version?: string; slowTool?: boolean } = {},
+  options: {
+    online?: boolean;
+    version?: string;
+    slowTool?: boolean;
+    connectTool?: boolean;
+    manageTool?: boolean;
+  } = {},
 ): Promise<StubDevice> {
   const port = await reservePort();
   const requests: DeviceRequest[] = [];
   const server = createHttpServer((req, res) => {
-    void handleRequest(req, res, requests, device.version, options.slowTool);
+    void handleRequest(req, res, requests, device.version, options);
   });
   const device: StubDevice = {
     origin: `http://127.0.0.1:${port}`,
@@ -115,15 +129,23 @@ export async function createStubDevice(
  * @param res - The response to write
  * @param requests - The recorder to append to
  * @param version - The server version to report
- * @param slowTool - Also offer ppal-connect and SLOW_TOOL
+ * @param options - Which extra tools to offer
+ * @param options.slowTool - Also offer ppal-connect and SLOW_TOOL
+ * @param options.connectTool - Also offer ppal-connect
+ * @param options.manageTool - Also offer ppal-manage
  */
 async function handleRequest(
   req: IncomingMessage,
   res: ServerResponse,
   requests: DeviceRequest[],
   version: string,
-  slowTool = false,
+  options: {
+    slowTool?: boolean;
+    connectTool?: boolean;
+    manageTool?: boolean;
+  },
 ): Promise<void> {
+  const { slowTool = false, connectTool = false, manageTool = false } = options;
   const isMcp = req.url?.startsWith("/mcp") ?? false;
 
   if (!isMcp || req.method !== "POST") {
@@ -138,6 +160,7 @@ async function handleRequest(
 
   requests.push({
     method: methodOf(body),
+    tool: toolOf(body),
     disabledTools: headerValue(req, DISABLED_TOOLS_HEADER),
     settings: settingsOf(req),
   });
@@ -150,7 +173,7 @@ async function handleRequest(
     () => ({ content: [{ type: "text" as const, text: DEVICE_TOOL_REPLY }] }),
   );
 
-  if (slowTool) {
+  if (connectTool || slowTool) {
     server.registerTool(
       "ppal-connect",
       { description: "Stub connect." },
@@ -158,6 +181,15 @@ async function handleRequest(
         content: [{ type: "text" as const, text: "connected" }],
       }),
     );
+  }
+
+  if (manageTool) {
+    server.registerTool("ppal-manage", { description: "Stub manage." }, () => ({
+      content: [{ type: "text" as const, text: MANAGE_TOOL_REPLY }],
+    }));
+  }
+
+  if (slowTool) {
     server.registerTool(
       SLOW_TOOL,
       { description: "Answers late." },
@@ -217,6 +249,21 @@ function methodOf(body: unknown): string {
   const method = (body as { method?: unknown } | null)?.method;
 
   return typeof method === "string" ? method : "unknown";
+}
+
+/**
+ * The tool a tools/call body asks for.
+ * @param body - The parsed body
+ * @returns The tool name, or undefined for any other request
+ */
+function toolOf(body: unknown): string | undefined {
+  const { method, params } = (body ?? {}) as {
+    method?: unknown;
+    params?: { name?: unknown };
+  };
+  const name = params?.name;
+
+  return method === "tools/call" && typeof name === "string" ? name : undefined;
 }
 
 /**

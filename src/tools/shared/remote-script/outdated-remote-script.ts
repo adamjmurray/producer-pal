@@ -15,12 +15,22 @@ import {
  * What a call is told when the remote script answered but is too old for it.
  * @param running - The script's version, when known
  * @param needs - The least version that has what the call needs
+ * @param offerChatUi - Whether to offer the chat UI's Installation tab. The
+ *   connector says false: the device serving that tab may be older than the
+ *   script it would install, so only the install tool is sure to help.
  * @returns The reason, worded for the model
  */
-export function outdatedReason(running: string | null, needs: string): string {
+export function outdatedReason(
+  running: string | null,
+  needs: string,
+  offerChatUi = true,
+): string {
   const version = running == null ? "" : `running ${running}, `;
+  const how = offerChatUi
+    ? `${INSTALL_WITH_TOOL} or in ${INSTALL_IN_CHAT_UI}`
+    : INSTALL_WITH_TOOL;
 
-  return `the Producer Pal remote script is out of date (${version}needs ${needs} or later); update it with ${INSTALL_WITH_TOOL} or in ${INSTALL_IN_CHAT_UI}, then restart Live`;
+  return `the Producer Pal remote script is out of date (${version}needs ${needs} or later); update it with ${how}, then restart Live`;
 }
 
 /**

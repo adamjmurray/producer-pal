@@ -91,6 +91,7 @@ describe("add-producer-pal before anything changes", () => {
     expect(response.isError).toBe(true);
     expect(text).toContain("out of date (running 1.0.0");
     expect(text).toContain('ppal-manage action "install-remote-script"');
+    expect(text).not.toContain("chat UI");
     expect(text).toContain(
       "Nothing was added. Call add-producer-pal again after the user restarts Live.",
     );

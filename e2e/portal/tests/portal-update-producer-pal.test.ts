@@ -12,12 +12,13 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   callToolText,
+  callToolTexts,
   copyPortal,
   startPortal,
   stopAfterEach,
   tempFolders,
 } from "../portal-test-helpers";
-import { createStubDevice } from "../stub-device";
+import { createStubDevice, MANAGE_TOOL_REPLY } from "../stub-device";
 import {
   createStubRemoteScript,
   type RouteHandler,
@@ -50,17 +51,23 @@ const UPDATE = { action: "update-producer-pal" };
  *   null for a script without the route
  * @param options - What else differs between tests
  * @param options.deviceOnline - False for a device that isn't running
+ * @param options.deviceTools - Give the device ppal-connect and ppal-manage
  * @returns The pieces a test looks at
  */
 async function setup(
   running: string,
   swap?: RouteHandler | null,
-  options: { deviceOnline?: boolean } = {},
+  options: { deviceOnline?: boolean; deviceTools?: boolean } = {},
 ) {
   const library = newLibrary();
 
   const device = track(
-    await createStubDevice({ online: options.deviceOnline, version: running }),
+    await createStubDevice({
+      online: options.deviceOnline,
+      version: running,
+      connectTool: options.deviceTools,
+      manageTool: options.deviceTools,
+    }),
   );
   const script = track(
     await createStubRemoteScript({
@@ -185,5 +192,63 @@ describe("ppal-manage update-producer-pal", () => {
     expect(
       script.requests.filter((r) => r.route === "/replace-producer-pal"),
     ).toHaveLength(0);
+  });
+});
+
+describe("a device older than the portal", () => {
+  const INSTALL = { action: "install-remote-script" };
+
+  it("sends a device from before ppal-manage to the by-hand upgrade, not update-producer-pal", async () => {
+    const { portal } = await setup("2.4.0", undefined, { deviceTools: true });
+
+    const [result, hint] = await callToolTexts(portal, "ppal-connect");
+
+    expect(result).toBe("connected");
+    expect(hint).toContain("older than this connector");
+    expect(hint).toContain(
+      "https://producer-pal.org/installation/upgrading#update-by-hand",
+    );
+    expect(hint).not.toContain("update-producer-pal");
+  });
+
+  it("answers install-remote-script itself, installing the portal's script", async () => {
+    const { library, device, portal } = await setup("2.5.0-rc1", undefined, {
+      deviceTools: true,
+    });
+
+    const { text, isError } = await callToolText(portal, "ppal-manage", {
+      ...INSTALL,
+      userLibrary: library,
+    });
+    const folder = join(library, "Remote Scripts", "Producer_Pal");
+
+    expect(isError).toBeFalsy();
+    expect(text).not.toContain(MANAGE_TOOL_REPLY);
+    expect(text).toContain(`version:"${PORTAL_VERSION}"`);
+    expect(readFileSync(join(folder, "version.py"), "utf8")).toContain(
+      PORTAL_VERSION,
+    );
+    expect(
+      device.requests.filter((r) => r.method === "tools/call"),
+    ).toStrictEqual([]);
+  });
+
+  it("forwards install-remote-script to a device with the portal's version", async () => {
+    const { library, device, portal } = await setup(PORTAL_VERSION, undefined, {
+      deviceTools: true,
+    });
+
+    const { text } = await callToolText(portal, "ppal-manage", {
+      ...INSTALL,
+      userLibrary: library,
+    });
+
+    expect(text).toBe(MANAGE_TOOL_REPLY);
+    expect(
+      device.requests
+        .filter((r) => r.method === "tools/call")
+        .map((r) => r.tool),
+    ).toStrictEqual(["ppal-manage"]);
+    expect(existsSync(join(library, "Remote Scripts"))).toBe(false);
   });
 });

@@ -35,14 +35,19 @@ export function setRemoteScriptMinVersion(version: string | null): void {
 /**
  * Whether a remote script is too old, and why.
  * @param running - The version the script reported, or null when not known
+ * @param offerChatUi - False from the connector, which doesn't send the model
+ *   to a chat UI served by a device that may be older
  * @returns The reason worded for the model, or null when it is new enough or
  *   its version isn't known
  */
-export function outdatedScript(running: string | null): string | null {
+export function outdatedScript(
+  running: string | null,
+  offerChatUi = true,
+): string | null {
   const needs = minRemoteScriptVersion();
 
   return running != null && isNewerVersion(running, needs)
-    ? outdatedReason(running, needs)
+    ? outdatedReason(running, needs, offerChatUi)
     : null;
 }
 

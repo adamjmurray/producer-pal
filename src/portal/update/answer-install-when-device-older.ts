@@ -40,6 +40,13 @@ export async function answerInstallWhenDeviceOlder(
   }
 
   try {
+    // Not connected yet (the tool list may have come from the portal's own
+    // catalog): the version is unknown until we ask, and a forward could reach
+    // an older device.
+    if (device.version() == null) {
+      await device.connect();
+    }
+
     if ((await olderDevice(device)) == null) {
       return null;
     }

@@ -23,6 +23,12 @@ describe("outdatedScript", () => {
     );
   });
 
+  it("leaves out the chat UI when the connector words it", () => {
+    expect(outdatedScript("2.4.0", false)).toBe(
+      `the Producer Pal remote script is out of date (running 2.4.0, needs ${MIN_REMOTE_SCRIPT_VERSION} or later); update it with ppal-manage action "install-remote-script", then restart Live`,
+    );
+  });
+
   it.each(["2.4.9", "2.4.1-rc1", "2.4.0"])("refuses %s", (version) => {
     expect(outdatedScript(version)).not.toBeNull();
   });

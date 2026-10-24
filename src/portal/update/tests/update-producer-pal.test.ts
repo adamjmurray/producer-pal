@@ -183,6 +183,7 @@ describe("update-producer-pal before anything changes", () => {
     const text = responseText(await updateCall(oldDevice(), deps));
 
     expect(text).toContain("out of date (running 1.0.0");
+    expect(text).not.toContain("chat UI");
     expect(text).toContain(
       "Nothing was changed. Call update-producer-pal again after the user restarts Live.",
     );
