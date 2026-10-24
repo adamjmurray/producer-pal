@@ -70,15 +70,16 @@ export async function deviceSwapCheck(
 
   if (!script.running) {
     return refuse(
-      "The remote script isn't running, and it does the swap. Install and enable it below first.",
+      "The remote script isn't running, and it does the swap. Install and enable it above first.",
     );
   }
 
-  const outdated = outdatedScript(script.scriptVersion);
-
-  return outdated == null
+  // Worded for the person in the Installation tab, not the model.
+  return outdatedScript(script.scriptVersion) == null
     ? { allowed: true, copy, reason: null }
-    : refuse(`${outdated}. Restart Live after updating it.`);
+    : refuse(
+        "The remote script is too old to do the swap. Update it above, then restart Live.",
+      );
 }
 
 /**

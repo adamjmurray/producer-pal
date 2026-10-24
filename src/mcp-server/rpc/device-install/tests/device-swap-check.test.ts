@@ -171,7 +171,7 @@ describe("deviceSwapCheck", () => {
     expect(await check(frozenDevice(VERSION), NOT_RUNNING_PING)).toStrictEqual({
       allowed: false,
       reason:
-        "The remote script isn't running, and it does the swap. Install and enable it below first.",
+        "The remote script isn't running, and it does the swap. Install and enable it above first.",
     });
   });
 
@@ -181,7 +181,10 @@ describe("deviceSwapCheck", () => {
       scriptVersion: "0.0.1",
     });
 
-    expect(result.allowed).toBe(false);
-    expect(result.reason).toContain("Restart Live after updating it.");
+    expect(result).toStrictEqual({
+      allowed: false,
+      reason:
+        "The remote script is too old to do the swap. Update it above, then restart Live.",
+    });
   });
 });
