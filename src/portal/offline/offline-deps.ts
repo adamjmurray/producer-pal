@@ -56,7 +56,8 @@ export interface OfflineDeps {
 
 export const realOfflineDeps: OfflineDeps = {
   ping: remoteScriptPing,
-  request: remoteScriptRequest,
+  // Every portal request is the portal's own, so its reasons are worded for it.
+  request: (request) => remoteScriptRequest({ ...request, asker: "portal" }),
   installRemoteScript: installRemoteScriptReply,
   findUserLibrary: findUserLibraryPath,
   findBundledDevice,

@@ -173,7 +173,9 @@ describe("ppal-manage update-producer-pal", () => {
     const { text, isError } = await callToolText(portal, "ppal-manage", UPDATE);
 
     expect(isError).toBe(true);
-    expect(text).toContain("is a different build than this device's");
+    expect(text).toContain("is a different build than this connector's");
+    // The chat UI is the older device's, which would reinstall its older script.
+    expect(text).not.toContain("chat UI");
     expect(text).toContain(
       "The Live Set wasn't changed, but the Producer Pal device in the User Library was updated.",
     );

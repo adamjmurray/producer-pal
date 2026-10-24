@@ -23,8 +23,8 @@ describe("outdatedScript", () => {
     );
   });
 
-  it("leaves out the chat UI when the connector words it", () => {
-    expect(outdatedScript("2.4.0", false)).toBe(
+  it("leaves out the chat UI when the portal asks", () => {
+    expect(outdatedScript("2.4.0", "portal")).toBe(
       `the Producer Pal remote script is out of date (running 2.4.0, needs ${MIN_REMOTE_SCRIPT_VERSION} or later); update it with ppal-manage action "install-remote-script", then restart Live`,
     );
   });
@@ -79,6 +79,17 @@ describe("unknownRouteReason", () => {
     expect(
       unknownRouteReason(404, UNKNOWN, MIN_REMOTE_SCRIPT_VERSION),
     ).toContain("is a different build than this device's");
+  });
+
+  it("words both reasons for the portal without the chat UI", () => {
+    expect(unknownRouteReason(404, UNKNOWN, "2.4.0", "portal")).toBe(
+      `the Producer Pal remote script is out of date (running 2.4.0, needs ${MIN_REMOTE_SCRIPT_VERSION} or later); update it with ppal-manage action "install-remote-script", then restart Live`,
+    );
+    expect(
+      unknownRouteReason(404, UNKNOWN, MIN_REMOTE_SCRIPT_VERSION, "portal"),
+    ).toBe(
+      `the Producer Pal remote script in Live (v${MIN_REMOTE_SCRIPT_VERSION}) is a different build than this connector's and can't do this; update it with ppal-manage action "install-remote-script", then restart Live`,
+    );
   });
 
   it.each([

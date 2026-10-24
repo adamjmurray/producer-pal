@@ -10,7 +10,10 @@
 import http from "node:http";
 import { REMOTE_SCRIPT_HTTP_TIMEOUT_MS } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { remoteScriptReplyWait } from "#src/tools/shared/remote-script/remote-script-wait.ts";
-import { type RemoteScriptUnavailable } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
+import {
+  type RemoteScriptAsker,
+  type RemoteScriptUnavailable,
+} from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import {
   RemoteScriptConnectionLost,
   RemoteScriptTimeout,
@@ -85,6 +88,8 @@ export interface RemoteScriptRequest {
   expiresInMs?: number;
   /** Skip finding the port and use this one. For probing a port. */
   port?: number;
+  /** Who is asking, which words an out-of-date reason. Defaults to the device. */
+  asker?: RemoteScriptAsker;
 }
 
 /**
@@ -103,6 +108,7 @@ export interface RemoteScriptRequest {
  * @param request.expiresInMs - How long Live may leave the job queued; sets the
  *   wait instead of `timeoutMs`
  * @param request.port - Send to this port instead of the resolved one
+ * @param request.asker - Who is asking, which words an out-of-date reason
  * @returns The reply, or `available: false`
  * @throws RemoteScriptTimeout when the remote script took the connection but
  *   didn't answer in time, or `expiresInMs` was used up before the request left
@@ -116,6 +122,7 @@ export async function remoteScriptRequest({
   timeoutMs = REMOTE_SCRIPT_HTTP_TIMEOUT_MS,
   expiresInMs,
   port,
+  asker,
 }: RemoteScriptRequest): Promise<RemoteScriptReply> {
   if (!remoteScriptEnabled) {
     return { available: false };
@@ -187,7 +194,7 @@ export async function remoteScriptRequest({
   }
 
   const outdated =
-    port == null ? outdatedScript(cachedScriptVersion(target)) : null;
+    port == null ? outdatedScript(cachedScriptVersion(target), asker) : null;
 
   if (outdated != null) {
     return { available: false, outdated };
@@ -213,6 +220,7 @@ export async function remoteScriptRequest({
     reply.status,
     reply.body,
     cachedScriptVersion(target),
+    asker,
   );
 
   return unknown == null ? reply : { available: false, outdated: unknown };

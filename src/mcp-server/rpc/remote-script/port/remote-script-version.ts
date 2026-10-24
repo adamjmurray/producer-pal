@@ -6,6 +6,7 @@
 import {
   differentBuildReason,
   outdatedReason,
+  type RemoteScriptAsker,
 } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 
@@ -35,19 +36,18 @@ export function setRemoteScriptMinVersion(version: string | null): void {
 /**
  * Whether a remote script is too old, and why.
  * @param running - The version the script reported, or null when not known
- * @param offerChatUi - False from the connector, which doesn't send the model
- *   to a chat UI served by a device that may be older
+ * @param asker - Who is asking: the portal words it for its own model
  * @returns The reason worded for the model, or null when it is new enough or
  *   its version isn't known
  */
 export function outdatedScript(
   running: string | null,
-  offerChatUi = true,
+  asker: RemoteScriptAsker = "device",
 ): string | null {
   const needs = minRemoteScriptVersion();
 
   return running != null && isNewerVersion(running, needs)
-    ? outdatedReason(running, needs, offerChatUi)
+    ? outdatedReason(running, needs, asker)
     : null;
 }
 
@@ -58,12 +58,14 @@ export function outdatedScript(
  * @param status - The reply's status
  * @param body - The reply's JSON body
  * @param running - The version the script reported, when known
+ * @param asker - Who is asking
  * @returns The out-of-date reason, or null for any other reply
  */
 export function unknownRouteReason(
   status: number,
   body: Record<string, unknown>,
   running: string | null,
+  asker: RemoteScriptAsker = "device",
 ): string | null {
   const unknown =
     status === 404 &&
@@ -79,8 +81,8 @@ export function unknownRouteReason(
 
   // New enough by version, so it's another build of it.
   return running != null && !isNewerVersion(running, needs)
-    ? differentBuildReason(running)
-    : outdatedReason(running, needs);
+    ? differentBuildReason(running, asker)
+    : outdatedReason(running, needs, asker);
 }
 
 /** @returns The minimum in force: the dev override, else the built-in one */

@@ -116,6 +116,21 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
     expect(routesAsked(remote)).toStrictEqual(["/ping"]);
   });
 
+  it("words it without the chat UI when the portal asks", async () => {
+    await standIn();
+
+    const reply = await remoteScriptRequest({
+      route: "/list",
+      asker: "portal",
+    });
+
+    expect(reply).toStrictEqual({
+      available: false,
+      outdated: expect.stringContaining("is out of date (running 2.4.0"),
+    });
+    expect(JSON.stringify(reply)).not.toContain("chat UI");
+  });
+
   it("asks again on each call while the version reads too old", async () => {
     const remote = await standIn();
 
@@ -311,6 +326,19 @@ describe("remoteScriptRequest against a current remote script", () => {
       available: false,
       outdated:
         "the Producer Pal remote script in Live (v2.5.0) is a different build than this device's and can't do this; update it with ppal-manage action \"install-remote-script\" or in the Producer Pal chat UI's Settings → Installation, then restart Live",
+    });
+  });
+
+  it("words an unknown route for the portal as its own, without the chat UI", async () => {
+    version = "2.5.0";
+    await standIn(() => unknownRouteAnswer("/envelope/read"));
+
+    expect(
+      await remoteScriptRequest({ route: "/envelope/read", asker: "portal" }),
+    ).toStrictEqual({
+      available: false,
+      outdated:
+        "the Producer Pal remote script in Live (v2.5.0) is a different build than this connector's and can't do this; update it with ppal-manage action \"install-remote-script\", then restart Live",
     });
   });
 

@@ -75,7 +75,7 @@ function runningAdvice(
 ): string {
   return manageOffered
     ? runningHint(
-        outdatedScript(ping.scriptVersion, false),
+        outdatedScript(ping.scriptVersion, "portal"),
         status,
         ping.scriptVersion,
       )
