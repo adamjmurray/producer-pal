@@ -34,7 +34,7 @@ config file — one extra step, but everything else is the same.
 
 [Get started with Antigravity →](./antigravity)
 
-## Bionic (Advanced)
+## Bionic / LM Studio (Advanced)
 
 LM Studio's agent app for open models, running entirely on your machine.
 

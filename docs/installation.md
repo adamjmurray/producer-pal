@@ -35,7 +35,7 @@ to interact with it, and that decides your setup path:
   <div class="install-paths-grid">
     <div class="install-path install-path-ai">
       <h3 class="install-path-title">Path A: The AI sets it up</h3>
-      <p class="install-path-apps">Claude Desktop, Claude Code, Codex CLI, Gemini CLI, Mistral Vibe, ChatGPT app, Antigravity, LM Studio Bionic, other MCP clients</p>
+      <p class="install-path-apps">Claude Desktop, Claude Code, Codex CLI, Gemini CLI, Mistral Vibe, ChatGPT app, Antigravity, Bionic / LM Studio, other MCP clients</p>
       <ol class="install-path-steps">
         <li>Add Producer Pal to your app</li>
         <li>Open Live and say "connect to ableton"</li>
@@ -73,8 +73,8 @@ Dedicated AI apps — the easiest setup for most people:
   Codex built in
 - **[Antigravity](./installation/antigravity)** — Google's agent app for Gemini
   (a Google AI subscription recommended)
-- **[LM Studio Bionic](./installation/bionic)** — runs models fully offline, no
-  account needed
+- **[Bionic / LM Studio](./installation/bionic)** — runs models fully offline,
+  no account needed
 
 ### Built-in Chat UI
 
@@ -86,11 +86,10 @@ Producer Pal's own chat window, in your browser. Pick where the AI comes from:
   private and offline, but less smart. **Needs a powerful computer:** an Apple
   Silicon Mac with lots of memory, or a PC with a strong Nvidia graphics card.
 - **AI router** (recommended) — one account, models from every big AI company.
-  Pay for what you use.
-  [OpenRouter](./installation/chat-ui-other-providers#openrouter) or
-  [Vercel AI Gateway](./installation/chat-ui-other-providers#vercel-ai-gateway).
-- **[Your own API key](./installation/chat-ui)** — already have a key from
-  Google, OpenAI, Anthropic or Mistral? Use it here.
+  Pay for what you use. [OpenRouter](./installation/chat-ui#openrouter) or
+  [Vercel AI Gateway](./installation/chat-ui#vercel-ai-gateway).
+- **[Your own API key](./installation/chat-ui#your-own-api-key)** — already have
+  a key from Google, OpenAI, Anthropic or Mistral? Use it here.
 
 ### Command Line
 

@@ -10,16 +10,17 @@ The catch: it's less smart than online AI, and you need a powerful computer.
 - **Windows PC:** a strong Nvidia graphics card. 8 GB of video memory is the
   minimum and only runs small models. 16 GB or more is better, and 24 GB or more
   runs the biggest local models.
-- **Not sure, or on a regular laptop?** Use an
-  [AI router](./chat-ui-other-providers#openrouter) instead.
+- **Not sure, or on a regular laptop?** Use an [AI router](./chat-ui#openrouter)
+  instead.
 
 ## Pick an App
 
 **Start with [Ollama](./ollama).** It's the simplest, and you chat in Producer
 Pal's built-in chat window.
 
-[LM Studio Bionic](./bionic) is the other option: a point-and-click app for
-finding and running models, with its own chat window.
+[Bionic / LM Studio](./bionic) is the other option: a point-and-click app for
+finding and running models. Use it with its own chat window or with
+[Producer Pal's](./bionic-chat-ui).
 
 ## What to Expect
 

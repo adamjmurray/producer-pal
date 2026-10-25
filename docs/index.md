@@ -101,7 +101,7 @@ features:
           <li><a href="/installation/claude-desktop">Claude Desktop</a> <span class="tag">easiest</span></li>
           <li><a href="/installation/chatgpt-app">ChatGPT App (OpenAI)</a></li>
           <li><a href="/installation/antigravity">Antigravity (Google)</a></li>
-          <li><a href="/installation/bionic">LM Studio Bionic</a> <span class="tag">offline</span></li>
+          <li><a href="/installation/bionic">Bionic / LM Studio</a> <span class="tag">offline</span></li>
         </ul>
       </div>
       <div class="get-started-card card-secondary">
@@ -116,8 +116,8 @@ features:
         <p class="card-description">Browser-based chat</p>
         <ul class="card-links">
           <li><a href="/installation/choose-local">Local AI</a> <span class="tag">offline</span></li>
-          <li><a href="/installation/chat-ui-other-providers#openrouter">OpenRouter</a></li>
-          <li><a href="/installation/chat-ui-other-providers#vercel-ai-gateway">Vercel AI Gateway</a></li>
+          <li><a href="/installation/chat-ui#openrouter">OpenRouter</a></li>
+          <li><a href="/installation/chat-ui#vercel-ai-gateway">Vercel AI Gateway</a></li>
           <li><a href="/installation/chat-ui">Your own API key</a></li>
         </ul>
       </div>
@@ -203,8 +203,8 @@ features:
 **More helpful videos:**
 
 - [How to setup Producer Pal with Gemini](https://www.youtube.com/watch?v=A_NXOtnR57M&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-  ([written guide](/installation/gemini)). _Note: the free use shown here is now
-  very limited._
+  ([written guide](/installation/chat-ui#gemini)). _Note: the free use shown
+  here is now very limited._
 - [How to setup Producer Pal with Gemini CLI](https://www.youtube.com/watch?v=jd3wTdDqd4Y&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
   (for command line users). _Note: the free use shown here is now very limited._
 
@@ -217,7 +217,7 @@ real edits in your Live Set: creating tracks, writing MIDI and audio clips,
 tweaking instruments and effects, building arrangements.
 
 It works with any MCP-compatible AI: Claude, Gemini, ChatGPT, Mistral, and local
-models via Ollama or LM Studio Bionic. The AI is optional. The same device
+models via Ollama or Bionic / LM Studio. The AI is optional. The same device
 exposes an open [REST API](/guide/rest-api), so anything that can make an HTTP
 request (scripts, coding agents, your own tools) can read and edit a Live Set
 with no AI involved. There's also a portable [Agent Skill](/guide/skills) for

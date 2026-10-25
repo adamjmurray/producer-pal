@@ -25,7 +25,10 @@ export default defineConfig({
         (item) =>
           !item.url.startsWith("guide/examples") &&
           item.url !== "installation/codex-app" &&
-          item.url !== "installation/lm-studio",
+          item.url !== "installation/lm-studio" &&
+          item.url !== "installation/gemini" &&
+          item.url !== "installation/openai" &&
+          item.url !== "installation/chat-ui-other-providers",
       ),
   },
 
@@ -207,15 +210,23 @@ export default defineConfig({
           {
             text: "Built-in Chat UI",
             link: "/installation/chat-ui",
-            collapsed: true,
             items: [
-              { text: "Ollama", link: "/installation/ollama" },
               {
-                text: "AI Routers and API Keys",
-                link: "/installation/chat-ui-other-providers",
+                text: "Local AI",
+                link: "/installation/chat-ui#local-ai",
+                items: [
+                  { text: "Ollama", link: "/installation/ollama" },
+                  {
+                    text: "Bionic / LM Studio",
+                    link: "/installation/bionic-chat-ui",
+                  },
+                ],
               },
-              { text: "Gemini", link: "/installation/gemini" },
-              { text: "OpenAI", link: "/installation/openai" },
+              { text: "AI Routers", link: "/installation/chat-ui#ai-router" },
+              {
+                text: "API Keys",
+                link: "/installation/chat-ui#your-own-api-key",
+              },
             ],
           },
           {
@@ -228,7 +239,7 @@ export default defineConfig({
               },
               { text: "ChatGPT App", link: "/installation/chatgpt-app" },
               { text: "Antigravity", link: "/installation/antigravity" },
-              { text: "LM Studio Bionic", link: "/installation/bionic" },
+              { text: "Bionic / LM Studio", link: "/installation/bionic" },
             ],
           },
           {
