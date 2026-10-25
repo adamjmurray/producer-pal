@@ -15,6 +15,9 @@ const __dirname = path.dirname(__filename);
 /** Project root directory */
 export const projectRoot: string = path.resolve(__dirname, "../../..");
 
+/** Where the test Live Sets and presets live, relative to the project root */
+export const TEST_LIVE_SET_DIRS = ["e2e/live-sets", "evals/live-sets"];
+
 interface OversizedFolder {
   path: string;
   count: number;

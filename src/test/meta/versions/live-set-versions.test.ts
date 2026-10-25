@@ -8,14 +8,16 @@ import path from "node:path";
 import { constants, gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { MIN_LIVE_VERSION } from "#src/shared/config.ts";
-import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
+import {
+  projectRoot,
+  TEST_LIVE_SET_DIRS,
+} from "#src/test/helpers/meta-test-helpers.ts";
 
 // Live cannot open a Set saved by a newer Live, and presets carry the same
 // stamp. A test file authored above MIN_LIVE_VERSION is therefore unusable on
 // the oldest version we claim to support, and nothing notices until someone
 // tries. This reads the version stamp out of the file, so it needs no Ableton
 // and runs in CI.
-const LIVE_SET_DIRS = ["e2e/live-sets", "evals/live-sets"];
 
 // Live Sets, rack presets and device presets.
 const LIVE_FILE_EXTENSIONS = [".als", ".adg", ".adv"];
@@ -39,7 +41,7 @@ const MINOR_VERSION_ATTR = /\bMinorVersion="([^"]*)"/;
 const MINOR_VERSION_FORMAT = /^(\d+)\.\d+_(\d{5})$/;
 
 describe("test Live Set and preset versions", () => {
-  const liveFiles = LIVE_SET_DIRS.flatMap(findLiveFiles);
+  const liveFiles = TEST_LIVE_SET_DIRS.flatMap(findLiveFiles);
   const minSchema = parseMinLiveVersion(MIN_LIVE_VERSION);
 
   it("finds the test Live Sets and presets", () => {
