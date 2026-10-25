@@ -66,6 +66,11 @@ The MIDI clips' notes don't matter. A few quarter notes are enough.
 Freezing writes audio into `Samples/Processed/Freeze/`. It's committed with the
 `.als`, or the tracks wouldn't be frozen in a fresh clone.
 
+The Set finds that audio relative to the project folder, and Live only treats a
+folder as a project when it holds `Ableton Project Info/`. Git drops empty
+folders, so a `.gitkeep` keeps it. Without it, Live can't find the freeze audio
+and asks whether to unfreeze the tracks, which blocks the tests.
+
 ---
 
 ## tracks-test-twin.als
