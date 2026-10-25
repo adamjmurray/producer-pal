@@ -9,13 +9,14 @@
 
 import { randomUUID } from "node:crypto";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { type GenUiEvent } from "#src/shared/gen-ui-types.ts";
+import { type GenUiEvent, type SyncStatus } from "#src/shared/gen-ui-types.ts";
 import * as console from "../../node-for-max-logger.ts";
 
 /** An event before the hub stamps its version on it. */
 export type UnversionedEvent =
   | Omit<Extract<GenUiEvent, { type: "widget" }>, "version">
-  | Omit<Extract<GenUiEvent, { type: "live" }>, "version">;
+  | Omit<Extract<GenUiEvent, { type: "live" }>, "version">
+  | Omit<Extract<GenUiEvent, { type: "status" }>, "version">;
 
 type Listener = (event: GenUiEvent) => void;
 
@@ -27,6 +28,31 @@ export const EPOCH = randomUUID();
 
 const listeners = new Set<Listener>();
 let version = 0;
+
+const DEFAULT_SYNC: SyncStatus = {
+  mode: "writes-only",
+  detail: "Live listeners are not connected; clips refresh after AI changes.",
+};
+
+let sync: SyncStatus = DEFAULT_SYNC;
+
+/** @returns How clip widgets are being kept current */
+export function getSync(): SyncStatus {
+  return sync;
+}
+
+/**
+ * Record how clips are being kept current and tell viewers if it changed.
+ * @param next - The new status
+ */
+export function setSync(next: SyncStatus): void {
+  if (next.mode === sync.mode && next.detail === sync.detail) {
+    return;
+  }
+
+  sync = next;
+  publish({ type: "status", sync: next });
+}
 
 /** @returns The version of the last event */
 export function currentVersion(): number {
@@ -82,4 +108,5 @@ export function publish(event: UnversionedEvent): GenUiEvent {
 export function resetHubForTesting(): void {
   listeners.clear();
   version = 0;
+  sync = DEFAULT_SYNC;
 }

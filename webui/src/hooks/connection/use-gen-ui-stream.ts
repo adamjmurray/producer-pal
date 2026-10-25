@@ -22,6 +22,7 @@ export interface LiveTick {
 
 export interface GenUiStream {
   widgets: StreamState["widgets"];
+  sync: StreamState["sync"];
   status: StreamStatus;
   live: LiveTick | null;
 }
@@ -123,7 +124,7 @@ export function useGenUiStream(
     };
   }, [createSource]);
 
-  return { widgets: state.widgets, status, live };
+  return { widgets: state.widgets, sync: state.sync, status, live };
 }
 
 /**

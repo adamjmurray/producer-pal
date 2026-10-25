@@ -192,6 +192,10 @@ def reload_implementation(package=__package__):
 
 def reload_route(bridge, params):
     """`POST /reload`: the route that calls reload_implementation."""
+    # The watches' listeners call into code about to be replaced.
+    release = getattr(bridge, "release_watches", None)
+    if release is not None:
+        release()
     try:
         reloaded, digest = reload_implementation()
     except ReloadError as err:

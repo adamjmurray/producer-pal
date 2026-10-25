@@ -3,11 +3,21 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { mcpRequests, setMcpResponse } from "#src/test/mocks/mock-max.ts";
 import { resetHubForTesting } from "../gen-ui-hub.ts";
 import { resetWidgetStoreForTesting } from "../widget-store.ts";
 import { setupExpressAppServer } from "../../../tests/express-app-test-helpers.ts";
+import { setRemoteScriptEnabled } from "../../remote-script/remote-script-client.ts";
+import { startLiveWatcher, stopLiveWatcher } from "../live-watcher.ts";
 import { openEventStream } from "./event-stream-test-helpers.ts";
 
 // The flag is read when the app module loads, so set it before the app starts.
@@ -21,6 +31,12 @@ const app = setupExpressAppServer({
 beforeEach(() => {
   resetHubForTesting();
   resetWidgetStoreForTesting();
+});
+
+afterEach(() => {
+  // Never reach for a real remote script from a test.
+  setRemoteScriptEnabled(true);
+  stopLiveWatcher();
 });
 
 afterAll(() => {
@@ -124,6 +140,53 @@ describe("generative UI in a build with ENABLE_GEN_UI", () => {
         paths: ["t0/s0"],
         all: false,
       });
+    } finally {
+      await stream.close();
+    }
+  });
+
+  it("says so, and keeps refreshing after writes, when there is no remote script", async () => {
+    setRemoteScriptEnabled(false);
+    // The app started its own watcher; afterEach stopped it. Start one again.
+    startLiveWatcher();
+    setMcpResponse({
+      content: [
+        { type: "text", text: JSON.stringify({ id: "12", path: "t0/s0" }) },
+      ],
+    });
+
+    const created = await callTool("ppal-ui", {
+      action: "create",
+      kind: "clip",
+      ref: "12",
+    });
+
+    expect(created.isError).toBe(false);
+
+    await vi.waitFor(async () => {
+      const snapshot = await getJson<{
+        sync: { mode: string; detail: string };
+      }>("/api/ui/widgets");
+
+      expect(snapshot.sync.mode).toBe("writes-only");
+      expect(snapshot.sync.detail).toContain("not reachable");
+    });
+
+    // The watcher looked the clip up by id, as the AI would.
+    expect(mcpRequests.map((r) => r.tool)).toContain("ppal-read-clip");
+
+    // A write still goes through and still announces itself.
+    const stream = await openEventStream(`${app.baseUrl}/api/ui/events`);
+
+    try {
+      await stream.next();
+
+      const reply = await callTool("ppal-update-clip", { id: "12", name: "x" });
+
+      expect(reply.isError).toBe(false);
+      const announced = await stream.next();
+
+      expect(announced.type).toBe("live");
     } finally {
       await stream.close();
     }

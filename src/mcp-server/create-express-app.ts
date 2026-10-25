@@ -22,6 +22,7 @@ import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { type WrappedCallLiveApi } from "./helpers/connect/connect-append.ts";
 import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
 import { isGenUiEnabled } from "./rpc/gen-ui/gen-ui-enabled.ts";
+import { startLiveWatcher } from "./rpc/gen-ui/live-watcher.ts";
 import { withGenUi } from "./rpc/gen-ui/with-gen-ui.ts";
 import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
 import { errorHandlerMiddleware } from "./helpers/http/error-handler-middleware.ts";
@@ -429,6 +430,7 @@ export function createExpressApp(): Express {
 
   if (isGenUiEnabled()) {
     registerGenUiRoutes(app);
+    startLiveWatcher();
   }
 
   registerGlobalContextRoutes(app);

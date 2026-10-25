@@ -43,6 +43,16 @@ export interface LiveChange {
   all: boolean;
 }
 
+/**
+ * How clip widgets stay current. "listening": the remote script watches the
+ * clips in Live, so hand edits show up. "writes-only": they refresh after AI
+ * tool calls only.
+ */
+export interface SyncStatus {
+  mode: "listening" | "writes-only";
+  detail: string;
+}
+
 export type WidgetChange =
   | { op: "upsert"; widget: Widget }
   | { op: "remove"; id: string };
@@ -52,7 +62,14 @@ export type WidgetChange =
  * sees a jump knows it missed something and reloads the snapshot.
  */
 export type GenUiEvent =
-  | { type: "snapshot"; epoch: string; version: number; widgets: Widget[] }
+  | {
+      type: "snapshot";
+      epoch: string;
+      version: number;
+      widgets: Widget[];
+      sync: SyncStatus;
+    }
+  | { type: "status"; version: number; sync: SyncStatus }
   | { type: "widget"; version: number; change: WidgetChange }
   | ({ type: "live"; version: number } & LiveChange);
 

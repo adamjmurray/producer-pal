@@ -18,7 +18,7 @@ import { TextWidgetCard } from "./TextWidgetCard";
  * @returns Panel element
  */
 export function GenPanel(): preact.JSX.Element {
-  const { widgets, status, live } = useGenUiStream();
+  const { widgets, sync, status, live } = useGenUiStream();
 
   return (
     <aside className="flex h-screen w-96 shrink-0 flex-col border-l border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
@@ -30,6 +30,14 @@ export function GenPanel(): preact.JSX.Element {
           {status}
         </span>
       </header>
+      {status !== "unavailable" && sync.detail !== "" && (
+        <p
+          className={`border-b border-zinc-300 px-3 py-1 text-xs dark:border-zinc-700 ${sync.mode === "listening" ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}
+          data-testid="gen-sync"
+        >
+          {sync.detail}
+        </p>
+      )}
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         {status === "unavailable" ? (
           <p className="text-sm text-zinc-500">

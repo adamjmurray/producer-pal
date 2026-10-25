@@ -162,6 +162,30 @@ Set, which gets a new bridge, starts clear): the next step in the same direction
 is a 409 that touches nothing, until `/undo/end` (Producer Pal wrote again) or a
 step the other way clears it.
 
+### `POST /watch`, `POST /unwatch`, `GET /events`
+
+Live listeners on Session clips, for the experimental generative UI panel
+(`ENABLE_GEN_UI`). `/watch` takes `owner` (a widget id), `path` (`t0/s3`) and
+`follow` (default true). A following watch tracks the slot at that position: it
+re-binds when another clip lands there or tracks shift. `follow: false` pins the
+clip that is there now (409/404 if the slot is empty) and reports `gone` once
+when it is replaced or dies. At most 32 watches (409 past that); `/unwatch`
+takes `owner`.
+
+`/events?since=N` answers `{epoch, seq, resync, events, watching}`. Without
+`since` it only gives the position. Events are `{seq, owner, kind, fields}` with
+`kind` `changed`, `rebound` or `gone`. Live's callbacks only mark a watch; each
+read checks every watch against the Set and turns marks into one event per
+owner. The last 256 events are kept: a reader further behind gets `resync: true`
+and no events, and must re-read everything. A new `epoch` means the registry was
+reset (Set change, hot reload, script restart): watches are gone, register
+again.
+
+Every listener is removed when its watch ends, its object dies, the Set changes,
+Live disconnects the script, or a hot reload starts. Poll rather than hold the
+request open: a request in flight keeps the update loop sleeping, and the HTTP
+threads only run while it does.
+
 ## How it works
 
 Live's Python is single-threaded and the Live API breaks if touched from any

@@ -33,6 +33,7 @@ const snapshot = (version: number, widgets: Widget[] = []): GenUiEvent => ({
   epoch: "e1",
   version,
   widgets,
+  sync: { mode: "listening", detail: "watching" },
 });
 
 /**
@@ -119,6 +120,27 @@ describe("useGenUiStream", () => {
     expect(result.current.status).toBe("live");
     expect(result.current.widgets.map((w) => w.id)).toStrictEqual(["w1", "w2"]);
     // Nothing was missed, so the clips have nothing to re-read.
+    expect(result.current.live).toBeNull();
+  });
+
+  it("follows the sync status without ticking the clips", async () => {
+    stubSnapshot(snapshot(0));
+
+    const { result, sources } = mountStream();
+
+    await waitFor(() => expect(sources).toHaveLength(1));
+    await act(() => {
+      (sources[0] as FakeSource).send({
+        type: "status",
+        version: 1,
+        sync: { mode: "writes-only", detail: "no script" },
+      });
+    });
+
+    expect(result.current.sync).toStrictEqual({
+      mode: "writes-only",
+      detail: "no script",
+    });
     expect(result.current.live).toBeNull();
   });
 
@@ -256,6 +278,26 @@ const gap = (version: number): GenUiEvent => ({
   change: { op: "remove", id: "w1" },
 });
 
+/**
+ * Mount against the stubbed fetch, then send gaps: events whose versions skip.
+ * @param versions - The versions of the events to send
+ * @returns The hook result and the sources it opened
+ */
+async function mountThenMiss(
+  ...versions: number[]
+): Promise<ReturnType<typeof mountStream>> {
+  const mounted = mountStream();
+
+  await waitFor(() => expect(mounted.sources).toHaveLength(1));
+  await act(() => {
+    for (const version of versions) {
+      (mounted.sources[0] as FakeSource).send(gap(version));
+    }
+  });
+
+  return mounted;
+}
+
 describe("useGenUiStream when the server misbehaves", () => {
   it("reports an unreachable server as unavailable", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
@@ -299,13 +341,7 @@ describe("useGenUiStream when the server misbehaves", () => {
       snapshot(0, [text("w1")]),
       () => reload.promise,
     );
-    const { result, sources } = mountStream();
-
-    await waitFor(() => expect(sources).toHaveLength(1));
-    await act(() => {
-      (sources[0] as FakeSource).send(gap(5));
-      (sources[0] as FakeSource).send(gap(6));
-    });
+    const { result } = await mountThenMiss(5, 6);
 
     // The first fetch, plus one reload.
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -325,12 +361,8 @@ describe("useGenUiStream when the server misbehaves", () => {
       Promise.resolve({ ok: false, status: 500 }),
     );
 
-    const { result, sources } = mountStream();
+    const { result } = await mountThenMiss(5);
 
-    await waitFor(() => expect(sources).toHaveLength(1));
-    await act(() => {
-      (sources[0] as FakeSource).send(gap(5));
-    });
     await act(() => Promise.resolve());
 
     expect(result.current.widgets.map((w) => w.id)).toStrictEqual(["w1"]);

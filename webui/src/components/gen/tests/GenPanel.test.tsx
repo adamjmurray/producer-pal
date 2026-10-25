@@ -40,13 +40,25 @@ describe("GenPanel", () => {
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ epoch: "e", version: 0, widgets: [] }),
+        json: () =>
+          Promise.resolve({
+            epoch: "e",
+            version: 0,
+            widgets: [],
+            sync: {
+              mode: "writes-only",
+              detail: "Clips refresh after AI changes only (no script).",
+            },
+          }),
       }),
     );
 
     render(<GenPanel />);
 
     expect(await screen.findByText(/No widgets yet/)).toBeTruthy();
+    expect(screen.getByTestId("gen-sync").textContent).toBe(
+      "Clips refresh after AI changes only (no script).",
+    );
   });
 
   it("draws a text widget and a clip widget", async () => {
@@ -63,6 +75,7 @@ describe("GenPanel", () => {
                 ? {
                     epoch: "e",
                     version: 2,
+                    sync: { mode: "listening", detail: "Watching clips." },
                     widgets: [
                       { id: "w1", kind: "text", text: "Try a fill" },
                       { id: "w2", kind: "clip", ref: "t0/s0" },

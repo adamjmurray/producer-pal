@@ -6,6 +6,7 @@
 import {
   type GenUiEvent,
   type LiveChange,
+  type SyncStatus,
   type Widget,
 } from "#src/shared/gen-ui-types";
 
@@ -15,6 +16,8 @@ export interface StreamState {
   /** The version of the last event applied. */
   version: number;
   widgets: Widget[];
+  /** How clip widgets are kept current. */
+  sync: SyncStatus;
 }
 
 export interface StreamStep {
@@ -29,6 +32,7 @@ export const EMPTY_STREAM: StreamState = {
   epoch: null,
   version: 0,
   widgets: [],
+  sync: { mode: "writes-only", detail: "" },
 };
 
 /** Tells every clip widget to re-read. */
@@ -64,6 +68,7 @@ export function applyGenUiEvent(
         epoch: event.epoch,
         version: event.version,
         widgets: event.widgets,
+        sync: event.sync,
       },
       needsSnapshot: false,
       live: state.epoch == null || continued ? null : REFRESH_ALL,
@@ -75,6 +80,14 @@ export function applyGenUiEvent(
   }
 
   const next = { ...state, version: event.version };
+
+  if (event.type === "status") {
+    return {
+      state: { ...next, sync: event.sync },
+      needsSnapshot: false,
+      live: null,
+    };
+  }
 
   if (event.type === "live") {
     return { state: next, needsSnapshot: false, live: event };

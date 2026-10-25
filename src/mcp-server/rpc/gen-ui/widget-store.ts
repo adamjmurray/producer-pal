@@ -9,7 +9,11 @@
 
 import { readFileSync } from "node:fs";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { type Widget, type WidgetChange } from "#src/shared/gen-ui-types.ts";
+import {
+  type SyncStatus,
+  type Widget,
+  type WidgetChange,
+} from "#src/shared/gen-ui-types.ts";
 import * as console from "../../node-for-max-logger.ts";
 import {
   isConfigDirInert,
@@ -19,6 +23,7 @@ import {
 import {
   currentVersion,
   EPOCH,
+  getSync,
   publish,
   restoreVersion,
 } from "./gen-ui-hub.ts";
@@ -47,8 +52,14 @@ export function getSnapshot(): {
   epoch: string;
   version: number;
   widgets: Widget[];
+  sync: SyncStatus;
 } {
-  return { epoch: EPOCH, version: currentVersion(), widgets: listWidgets() };
+  return {
+    epoch: EPOCH,
+    version: currentVersion(),
+    widgets: listWidgets(),
+    sync: getSync(),
+  };
 }
 
 /**

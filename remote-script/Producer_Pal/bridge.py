@@ -55,6 +55,8 @@ class ProducerPalBridge:
     def __init__(self, c_instance):
         self._c_instance = c_instance
         self._jobs = queue.Queue()
+        # The clip watches (see watches.py), made on first use.
+        self.watches = None
         self._server = BridgeHTTPServer(PORTS, self._dispatch, self.log)
         self._server.start()
 
@@ -128,7 +130,24 @@ class ProducerPalBridge:
                 return
             job.run()
 
+    def release_watches(self):
+        """Remove every Live listener the watches hold. Main thread only.
+
+        Called when Live disconnects the script and before a hot reload, so
+        no listener outlives the code that handles it.
+        """
+        # getattr: the registry is made on first use, and a test (or a bridge
+        # from before this existed) may never have set it.
+        registry = getattr(self, "watches", None)
+        self.watches = None
+        if registry is not None:
+            try:
+                registry.close()
+            except Exception:
+                self.log("closing the watches failed:\n" + traceback.format_exc())
+
     def disconnect(self):
+        self.release_watches()
         self._server.stop()
 
     # --- the rest of what Live expects a control surface to have ---------

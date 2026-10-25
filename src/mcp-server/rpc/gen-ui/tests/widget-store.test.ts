@@ -132,6 +132,7 @@ describe("widget store", () => {
     expect(getSnapshot()).toStrictEqual({
       version: 1,
       widgets: [{ id: "w1", kind: "text", text: "a" }],
+      sync: expect.objectContaining({ mode: "writes-only" }),
       epoch: expect.any(String),
     });
   });

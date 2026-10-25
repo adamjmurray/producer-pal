@@ -12,18 +12,21 @@ import {
   type StreamState,
 } from "#webui/lib/utils/gen-ui/apply-gen-ui-event";
 
+const SYNC = { mode: "listening", detail: "watching" } as const;
+
 const text = (id: string): Widget => ({ id, kind: "text", text: id });
 
 const snapshot = (
   version: number,
   widgets: Widget[] = [],
   epoch = "e1",
-): GenUiEvent => ({ type: "snapshot", epoch, version, widgets });
+): GenUiEvent => ({ type: "snapshot", epoch, version, widgets, sync: SYNC });
 
 const connected: StreamState = {
   epoch: "e1",
   version: 3,
   widgets: [text("w1")],
+  sync: SYNC,
 };
 
 describe("applyGenUiEvent", () => {
@@ -31,7 +34,7 @@ describe("applyGenUiEvent", () => {
     const step = applyGenUiEvent(EMPTY_STREAM, snapshot(5, [text("w1")]));
 
     expect(step).toStrictEqual({
-      state: { epoch: "e1", version: 5, widgets: [text("w1")] },
+      state: { epoch: "e1", version: 5, widgets: [text("w1")], sync: SYNC },
       needsSnapshot: false,
       live: null,
     });
@@ -64,7 +67,31 @@ describe("applyGenUiEvent", () => {
       epoch: "e1",
       version: 6,
       widgets: [{ id: "w1", kind: "text", text: "new" }],
+      sync: SYNC,
     });
+  });
+
+  it("takes a sync status change in order, and leaves the clips alone", () => {
+    const sync = { mode: "writes-only", detail: "no script" } as const;
+    const step = applyGenUiEvent(connected, {
+      type: "status",
+      version: 4,
+      sync,
+    });
+
+    expect(step.state).toStrictEqual({ ...connected, version: 4, sync });
+    expect(step.live).toBeNull();
+    expect(step.needsSnapshot).toBe(false);
+  });
+
+  it("asks for a snapshot when a status change skips a version", () => {
+    const step = applyGenUiEvent(connected, {
+      type: "status",
+      version: 6,
+      sync: SYNC,
+    });
+
+    expect(step.needsSnapshot).toBe(true);
   });
 
   it("passes a Live change on for the clips to act on", () => {
