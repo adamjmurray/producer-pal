@@ -1,29 +1,18 @@
 # LM Studio Bionic
 
-Use Producer Pal completely offline without an Internet connection.
+Run Producer Pal fully offline with LM Studio Bionic, a free app that downloads
+and runs AI models on your own computer and has its own chat window.
 
-Bionic is LM Studio's agent app for open models. It bundles the LM Studio
-runtime, so it downloads and runs local models on its own — you don't need the
-classic LM Studio app installed alongside it.
+::: warning Needs a powerful computer and some patience
 
-::: info Bionic vs. classic LM Studio
-
-These are two separate apps from the same team, and LM Studio still ships both.
-Producer Pal's offline setup guide targets **Bionic**, which is where new work
-is going. The classic LM Studio app still works with Producer Pal — it just
-doesn't have exact install steps here anymore, so follow LM Studio's own MCP
-server documentation and use the same settings this guide describes.
+Local AI needs an Apple Silicon Mac with lots of memory, or a PC with a strong
+Nvidia graphics card (see [Running Locally](./choose-local)). It takes more
+setup than the online options, and it's slower and less smart.
 
 :::
 
-::: warning Experimental
-
-This needs a recent machine with decent specs (Apple Silicon with lots of RAM,
-or a PC with an Nvidia 4080+), and more technical know-how to set up and debug.
-The online options work significantly better and faster right now. Completely
-offline and private usage is still compelling.
-
-:::
+This guide is for Bionic. The older LM Studio app also works: follow LM Studio's
+own MCP setup and use the same settings.
 
 ## Requirements
 
@@ -31,9 +20,8 @@ offline and private usage is still compelling.
 
 - [Bionic](https://lmstudio.ai/bionic)
 
-Bionic is free to download, and running models locally is free. An LM Studio
-account and billing are only needed for cloud models and web search, neither of
-which Producer Pal requires.
+Bionic is free, and so is running models on your computer. You don't need an LM
+Studio account.
 
 ## Installation Steps
 
@@ -57,8 +45,7 @@ MCP server setup**:
 
 <img src="/img/bionic-connected-apps.png" alt="Bionic's Connected Apps settings" width="650"/>
 
-**Option A: With npx (recommended)** — Allows flexible startup order and
-auto-reconnection:
+Fill in:
 
 - **Name:** `Producer Pal`
 - **Connection:** **On this computer**
@@ -68,13 +55,8 @@ auto-reconnection:
 
 <img src="/img/bionic-mcp-server-setup.png" alt="Adding Producer Pal as a custom MCP server in Bionic" width="650"/>
 
-The producer-pal package is a proxy that responds to requests even when Ableton
-Live or the Producer Pal device are not running, to let you know there's a
-problem.
-
-**Option B: Direct HTTP** — Requires Ableton running first, no
-auto-reconnection. Set **Connection** to **Web address** and use the URL
-`http://localhost:3350/mcp`.
+This way Bionic can start before Live, and it tells you when Live or the device
+isn't running.
 
 Click **Add MCP**. Producer Pal should show as connected, with its tools ready:
 
@@ -130,59 +112,31 @@ Start a conversation and say "connect to ableton":
 
 ## Local Model Tips
 
-- A **context length of about 8k (8000)** is needed to start a conversation with
-  Producer Pal and send a few messages.
-- A **context length of 16k (16000) or higher is recommended** for achieving
-  useful results, but higher context lengths can make the model run
-  significantly slower, especially as the conversation grows. Experiment to find
-  the right balance.
-- **Follow-up turns are often faster.** The LM Studio runtime automatically
-  reuses its cached prompt prefix between turns, so later messages in a
-  conversation can be much quicker than the first. There's nothing to configure,
-  and the size of the benefit varies by model.
-- Add tools back to `--tools` when you miss features. Every tool you add costs
-  context on every conversation.
-- Experiment with empty or extremely simple Live projects
-- Only work with very simple material (e.g. basic MIDI patterns in clips 4 bars
-  or shorter)
-- Note that small models are guided to delete and start over rather make edits
-  (other than simple additions)
-- If the AI struggles and makes mistakes, don't hesitate to delete recent
-  messages from the chat, edit your last message, and try again. Don't waste
-  tokens correcting the LLM. Back up and avoid the issue or try something else.
-- Shut down every other app you don't need to be running
-- Consider running Ableton Live on a different machine on the local network
-- When using a model with the GGUF engine, try enabling the
-  advanced/experimental settings for Flash Attention and setting the K/V caches'
-  quantization to Q8 or Q4.
-- Research how to optimize for your specific machine / GPU hardware
+- **Set the context length to 16k (16000) or higher** in the model's settings.
+  This is how much the AI can keep in mind at once. About 8k is enough to
+  connect and send a few messages. Higher is slower, so find the balance.
+- **Keep it simple:** start from an empty Live Set and short material, like MIDI
+  clips of 4 bars or less. Small models are told to delete and start over rather
+  than make edits (other than simple additions).
+- **When it goes wrong, back up.** Delete the last messages or edit your last
+  message and try again, instead of trying to correct the AI.
+- **Close apps you don't need** so the model gets more of your computer.
 
-## Advanced: Customizing Skills
+### Advanced Tips
 
-Local models vary widely in capabilities. **First, try small model mode** (see
-installation step 4 above) — it uses a simplified instruction set designed for
-smaller models.
-
-If Small Model Mode isn't working well for you, or you want to experiment
-further, you can customize Producer Pal's behavior for your specific model:
-
-1. Download this repository and follow the dev setup and build instructions in
-   [DEVELOPERS.md](https://github.com/adamjmurray/producer-pal/blob/main/DEVELOPERS.md)
-2. Edit the skills files in `src/skills/` - Small Model Mode uses the basic
-   driver (`src/skills/drivers.ts`) with the basic notation head for the active
-   notation (e.g. `src/skills/notation/barbeat-basic.ts`), while regular mode
-   assembles the standard driver's fragments (`src/skills/fragments/`) with a
-   standard notation head (e.g. `src/skills/notation/barbeat-standard.ts`). See
-   `src/skills/build-skills.ts` for how they are selected
-3. Experiment with instruction wording, remove features your model struggles
-   with, or adjust the guidance
-4. Rebuild with `npm run build`
-5. Use the development version of `Producer_Pal.amxd` in Ableton Live
-6. Reload your Producer Pal MCP server in Bionic and start a new conversation
-
-**Share your findings:** If you find a configuration that works well for a
-specific model, post it in
-[GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions).
+- Skip `npx` by setting **Connection** to **Web address** with the URL
+  `http://localhost:3350/mcp`. Live and the device must then be running before
+  Bionic connects, and it won't reconnect on its own.
+- Add tools back to `--tools` when you miss features. Every tool you add takes
+  up room on every conversation.
+- Follow-up messages are often faster than the first: the model reuses work from
+  earlier turns.
+- Run Ableton Live on a different computer on your local network.
+- With a GGUF model, try the experimental Flash Attention setting and set the
+  K/V caches' quantization to Q8 or Q4.
+- To go further, [customize Producer Pal's Skills](/guide/customizing-skills)
+  for your model. If you find a setup that works well, share it in
+  [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions).
 
 ## Use It with the Built-in Chat UI {#chat-ui}
 
@@ -196,7 +150,7 @@ Instead of Bionic's own chat, you can run the model in Bionic and chat in
    [step 2](#_2-install-a-compatible-model) above)
 3. Go to Settings &rarr; Local Model API and turn on:
    - **Local API server** - It should then read "Running"
-   - **CORS** - Required for browser access
+   - **CORS** - lets your browser talk to Bionic
 
    Copy the **Base URL** while you're here (`http://localhost:1234/v1` by
    default — use "Edit port" to change it):
