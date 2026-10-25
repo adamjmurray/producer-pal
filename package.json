@@ -178,7 +178,7 @@
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "undici": "8.12.2",
     "vite": "8.3.4",
-    "vite-plugin-singlefile": "2.3.3",
+    "vite-plugin-singlefile": "2.3.4",
     "vitepress": "1.6.4",
     "vitest": "5.0.5",
     "yaml": "2.9.1"
