@@ -1,34 +1,27 @@
 # Running Producer Pal Locally / Offline
 
-Run AI models entirely on your machine with no cloud dependency or subscription.
-Needs a powerful computer: an Apple Silicon Mac with lots of memory, or a PC
-with a strong Nvidia graphics card (8 GB of video memory at least, 16 GB or more
-is better).
+Run the AI on your own computer. It's free, private and works without internet.
+The catch: it's less smart than online AI, and you need a powerful computer.
 
-## Options
+## Is Your Computer Powerful Enough?
 
-| Option             | Best For             | Trade-offs                                   |
-| ------------------ | -------------------- | -------------------------------------------- |
-| [Ollama](./ollama) | Easiest local setup  | Uses Built-in Chat UI. Model quality varies. |
-| [Bionic](./bionic) | GUI model management | Standalone app, more configuration options.  |
+- **Mac:** an Apple Silicon Mac (M1 or newer) with lots of memory. More memory
+  runs bigger, smarter models.
+- **Windows PC:** a strong Nvidia graphics card. 8 GB of video memory is the
+  minimum and only runs small models. 16 GB or more is better, and 24 GB or more
+  runs the biggest local models.
+- **Not sure, or on a regular laptop?** Use an
+  [AI router](./chat-ui-other-providers#openrouter) instead.
 
-## Recommendation
+## Pick an App
 
-**Ollama with the Built-in Chat UI** is the simplest local setup.
+**Start with [Ollama](./ollama).** It's the simplest, and you chat in Producer
+Pal's built-in chat window.
 
-## Model Notes
+[LM Studio Bionic](./bionic) is the other option: a point-and-click app for
+finding and running models, with its own chat window.
 
-- Local models are significantly less capable than cloud models for complex
-  musical tasks
-- Best for: simple clip creation, basic playback control, experimentation
-- Challenging for: multi-step arrangements, complex notation, nuanced musical
-  decisions
-- Recommended models: Qwen, Gemma, Mistral, Nemotron
+## What to Expect
 
-## Hardware Requirements
-
-- **Apple Silicon:** Lots of unified memory helps run larger models
-- **Nvidia:** 4080+ recommended
-  - Minimum: 8GB VRAM, runs 7B-13B models
-  - Recommended: 16GB+ VRAM for 30B+ models
-  - Optimal: 24GB+ VRAM for 70B models
+Local AI handles simple jobs well: making a clip, playing and stopping, basic
+edits. It struggles with long arrangements and subtle musical choices.
