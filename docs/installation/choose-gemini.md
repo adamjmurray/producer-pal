@@ -7,7 +7,7 @@ options. A free tier is available with rate limits for trying out Producer Pal.
 
 | Option                       | Best For         | Trade-offs                                                        |
 | ---------------------------- | ---------------- | ----------------------------------------------------------------- |
-| [Built-in Chat UI](./gemini) | Most users       | Native integration, easy setup. Free tier has strict rate limits. |
+| [Built-in Chat UI](./gemini) | A free first try | Native integration, easy setup. Free tier has strict rate limits. |
 | [Antigravity](./antigravity) | Desktop app fans | Google's agent app. MCP servers are added by editing a JSON file. |
 | [Gemini CLI](./gemini-cli)   | Developers       | Terminal-based. Google AI subscription increases CLI limits.      |
 
@@ -16,11 +16,11 @@ MCP.
 
 ## Recommendation
 
-**Built-in Chat UI with Gemini** is the simplest path to a first try. Get a
+**Built-in Chat UI with Gemini** works for a free first try. Get a
 [free API key](https://aistudio.google.com/apikey) to get started — but expect
 to hit the free tier's strict rate limits within moments during an active
-session. For sustained use, add pay-as-you-go billing or switch to another
-provider.
+session. For regular use, reach Gemini through an
+[AI router](./chat-ui-other-providers#openrouter) instead.
 
 ## Model Notes
 

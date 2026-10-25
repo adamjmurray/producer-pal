@@ -45,12 +45,12 @@ Click "Save".
 
 ## 5. Connect
 
-Click "Quick Connect" and say "connect to ableton".
+Click "Quick Connect". It says "Connect to Ableton." for you.
 
 ## Privacy Note
 
-Your API key is stored in browser local storage. Use a private browser session
-if that concerns you, or delete the key from settings after use.
+Your API key is stored encrypted in your browser. If you share this computer,
+delete the key from settings when you're done.
 
 ## Troubleshooting
 

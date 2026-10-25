@@ -1,8 +1,9 @@
 # Running Producer Pal Locally / Offline
 
 Run AI models entirely on your machine with no cloud dependency or subscription.
-Requires a relatively capable machine: Apple Silicon with lots of RAM, or a PC
-with a capable Nvidia GPU (8GB VRAM minimum, 4080+ recommended).
+Needs a powerful computer: an Apple Silicon Mac with lots of memory, or a PC
+with a strong Nvidia graphics card (8 GB of video memory at least, 16 GB or more
+is better).
 
 ## Options
 

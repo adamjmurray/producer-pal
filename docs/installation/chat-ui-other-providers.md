@@ -1,15 +1,15 @@
-# Other Providers
+# AI Routers and API Keys
 
-The built-in chat UI supports the Anthropic API, OpenAI API, Mistral,
-OpenRouter, Vercel AI Gateway, and custom OpenAI-compatible providers.
+Set up the built-in chat UI with an AI router (OpenRouter or Vercel AI Gateway)
+or with your own key from Anthropic, Mistral, OpenAI or another service. Not
+sure? Use OpenRouter.
 
 <!--@include: ../_partials/download-device.md-->
 
-::: warning Pay-as-you-go Pricing
+::: warning You pay for what you use
 
-Most of these options (besides Bionic) use pay-as-you-go pricing which can incur
-cost quickly with advanced models and long conversations. Monitor your API key
-usage.
+Most of these services charge per message. Long chats with the smartest models
+cost the most, so check your balance on the service's website now and then.
 
 :::
 
@@ -23,9 +23,34 @@ usage.
    Surface. See [Finish the Installation](/installation#finish-the-installation)
 3. In the Producer Pal device, click "Open Chat UI"
 4. Configure your provider as described below
-5. Click "Quick Connect" and say "connect to ableton"
+5. Click "Quick Connect". It says "Connect to Ableton." for you.
 
-## Available Providers
+## AI Router (Recommended)
+
+### OpenRouter
+
+[OpenRouter](https://openrouter.ai) is an AI router: hundreds of AI models in
+one place. Includes free and pay-as-you-go options.
+
+1. [Get an OpenRouter API key](https://openrouter.ai/settings/keys)
+2. In the chat UI settings:
+   - Provider: **OpenRouter**
+   - API Key: Your key
+   - Model: e.g., `anthropic/claude-sonnet-5.5`, `google/gemini-3.8-flash`
+
+### Vercel AI Gateway
+
+[Vercel AI Gateway](https://vercel.com/ai-gateway) is another AI router with
+hundreds of models in one place, at the providers' own prices. It needs a credit
+card on file before it answers any request, even on its free monthly credits.
+
+1. [Get a Vercel AI Gateway API key](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai-gateway%2Fapi-keys)
+2. In the chat UI settings:
+   - Provider: **Vercel AI Gateway**
+   - API Key: Your key
+   - Model: e.g., `anthropic/claude-sonnet-5.5`, `google/gemini-3.8-flash`
+
+## Your Own API Key
 
 ### Anthropic
 
@@ -38,29 +63,6 @@ ways to run Claude.
    - Provider: **Anthropic**
    - API Key: Your key
    - Model: e.g., `claude-sonnet-5-5`
-
-### OpenRouter
-
-[OpenRouter](https://openrouter.ai) is an "AI gateway" with hundreds of LLMs in
-one place. Includes free and pay-as-you-go options.
-
-1. [Get an OpenRouter API key](https://openrouter.ai/settings/keys)
-2. In the chat UI settings:
-   - Provider: **OpenRouter**
-   - API Key: Your key
-   - Model: e.g., `anthropic/claude-sonnet-5.5`, `google/gemini-3.8-flash`
-
-### Vercel AI Gateway
-
-[Vercel AI Gateway](https://vercel.com/ai-gateway) is another AI gateway with
-hundreds of models in one place, at the providers' own prices. It needs a credit
-card on file before it answers any request, even on its free monthly credits.
-
-1. [Get a Vercel AI Gateway API key](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai-gateway%2Fapi-keys)
-2. In the chat UI settings:
-   - Provider: **Vercel AI Gateway**
-   - API Key: Your key
-   - Model: e.g., `anthropic/claude-sonnet-5.5`, `google/gemini-3.8-flash`
 
 ### Mistral
 
@@ -109,8 +111,8 @@ For other OpenAI-compatible providers:
 
 ## Privacy Note
 
-Your API key is stored in browser local storage. Use a private browser session
-if that concerns you, or delete the key from settings after use.
+Your API key is stored encrypted in your browser. If you share this computer,
+delete the key from settings when you're done.
 
 ## LM Studio Bionic API {#lm-studio-api}
 

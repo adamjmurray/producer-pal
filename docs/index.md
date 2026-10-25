@@ -115,10 +115,10 @@ features:
         </div>
         <p class="card-description">Browser-based chat</p>
         <ul class="card-links">
-          <li><a href="/installation/ollama">Ollama</a> <span class="tag">offline</span></li>
+          <li><a href="/installation/choose-local">Local AI</a> <span class="tag">offline</span></li>
           <li><a href="/installation/chat-ui-other-providers#openrouter">OpenRouter</a></li>
-          <li><a href="/installation/gemini">Gemini</a></li>
-          <li><a href="/installation/chat-ui-other-providers">Mistral, etc.</a></li>
+          <li><a href="/installation/chat-ui-other-providers#vercel-ai-gateway">Vercel AI Gateway</a></li>
+          <li><a href="/installation/chat-ui">Your own API key</a></li>
         </ul>
       </div>
       <div class="get-started-card card-tertiary">

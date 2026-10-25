@@ -18,8 +18,8 @@ For detailed installation instructions for your preferred AI platform, see the
 
 Quick options:
 
-- **[Built-in Chat UI](/installation/chat-ui)** - Works with Gemini, Ollama, and
-  more
+- **[Built-in Chat UI](/installation/chat-ui)** - Works with local AI, an AI
+  router like OpenRouter, or your own API key
 - **[Claude Desktop](/installation/claude-desktop)** - Recommended for Anthropic
   users
 - **[Command Line Tools](/installation#command-line)** - Gemini CLI, Codex CLI,

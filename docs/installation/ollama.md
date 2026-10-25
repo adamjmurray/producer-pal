@@ -75,7 +75,7 @@ exact names.
 
 ## 7. Connect
 
-Click "Quick Connect" and say "connect to ableton":
+Click "Quick Connect". It says "Connect to Ableton." for you:
 
 ![Producer Pal Chat UI conversation](/img/producer-pal-chat-conversation.png)
 

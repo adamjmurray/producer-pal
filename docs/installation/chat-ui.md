@@ -22,8 +22,8 @@ smart than the online options.
 ::: warning Needs a powerful computer
 
 An Apple Silicon Mac with lots of memory, or a PC with a strong Nvidia graphics
-card (8 GB of video memory at least). On a regular laptop, pick one of the
-online options below.
+card (8 GB of video memory at least, 16 GB or more is better). On a regular
+laptop, pick one of the online options below.
 
 :::
 
@@ -48,8 +48,8 @@ what you use.
 An API key is a code from an AI company that lets apps like Producer Pal use its
 AI. Already have one, or want to go straight to one company? Use it here.
 
-- **[Gemini](./gemini)** (Google) — the free key works but hits limits fast; add
-  billing for regular use
+- **[Gemini](./gemini)** (Google) — the free key hits limits fast; for regular
+  use, an AI router is a better fit
 - **[OpenAI](./openai)** — pay for what you use
 - **[Anthropic](./chat-ui-other-providers#anthropic)** (Claude) — trial credit,
   then pay for what you use
