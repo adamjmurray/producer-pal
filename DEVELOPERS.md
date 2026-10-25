@@ -38,7 +38,11 @@ ships:
 ```bash
 ENABLE_CODE_EXEC=true npm run build:debug      # the `code` param
 ENABLE_WARP_MARKERS=true npm run build:debug   # warp markers (work in progress)
+ENABLE_GEN_UI=true npm run build:debug         # experimental generative UI
 ```
+
+`ENABLE_GEN_UI=true` adds the `ppal-ui` tool, the `/api/ui` routes and the
+widget panel at `/chat?view=gen` (hidden; no menu links to it).
 
 `ENABLE_CODE_EXEC=true` adds the `code` param (JS note editing).
 `ENABLE_WARP_MARKERS=true` exposes the work-in-progress warp-marker surface —
