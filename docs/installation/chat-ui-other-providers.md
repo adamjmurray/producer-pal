@@ -4,14 +4,14 @@ search: false
 head:
   - - meta
     - http-equiv: refresh
-      content: 0; url=/installation/chat-ui#ai-router
+      content: 0; url=/installation/ai-routers
   - - link
     - rel: canonical
-      href: https://producer-pal.org/installation/chat-ui
+      href: https://producer-pal.org/installation/ai-routers
 ---
 
 # AI router and API key setup moved
 
-Setup for every online AI is now on one page.
+Setup for the built-in chat UI is now split into AI Routers and API Keys.
 
-**[Continue to the Built-in Chat UI setup guide &rarr;](/installation/chat-ui#ai-router)**
+**[Continue to the AI Routers page &rarr;](/installation/ai-routers)**

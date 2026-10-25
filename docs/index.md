@@ -116,8 +116,8 @@ features:
         <p class="card-description">Browser-based chat</p>
         <ul class="card-links">
           <li><a href="/installation/choose-local">Local AI</a> <span class="tag">offline</span></li>
-          <li><a href="/installation/chat-ui#openrouter">OpenRouter</a></li>
-          <li><a href="/installation/chat-ui#vercel-ai-gateway">Vercel AI Gateway</a></li>
+          <li><a href="/installation/ai-routers#openrouter">OpenRouter</a></li>
+          <li><a href="/installation/ai-routers#vercel-ai-gateway">Vercel AI Gateway</a></li>
           <li><a href="/installation/chat-ui">Your own API key</a></li>
         </ul>
       </div>
@@ -203,7 +203,7 @@ features:
 **More helpful videos:**
 
 - [How to setup Producer Pal with Gemini](https://www.youtube.com/watch?v=A_NXOtnR57M&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-  ([written guide](/installation/chat-ui#gemini)). _Note: the free use shown
+  ([written guide](/installation/api-keys#gemini)). _Note: the free use shown
   here is now very limited._
 - [How to setup Producer Pal with Gemini CLI](https://www.youtube.com/watch?v=jd3wTdDqd4Y&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
   (for command line users). _Note: the free use shown here is now very limited._

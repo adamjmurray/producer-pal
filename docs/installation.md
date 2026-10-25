@@ -82,14 +82,13 @@ Dedicated AI apps — the easiest setup for most people:
 
 Producer Pal's own chat window, in your browser. Pick where the AI comes from:
 
-- **[Local AI](./installation/choose-local)** — runs on your own computer. Free,
+- **[Local AI](./installation/local-ai)** — runs on your own computer. Free,
   private and offline, but less smart. **Needs a powerful computer:** an Apple
   Silicon Mac with lots of memory, or a PC with a strong Nvidia graphics card.
-- **AI router** (recommended) — one account, models from every big AI company.
-  Pay for what you use. [OpenRouter](./installation/chat-ui#openrouter) or
-  [Vercel AI Gateway](./installation/chat-ui#vercel-ai-gateway).
-- **[Your own API key](./installation/chat-ui#your-own-api-key)** — already have
-  a key from Google, OpenAI, Anthropic or Mistral? Use it here.
+- **[AI Routers](./installation/ai-routers)** (recommended) — one account,
+  models from every big AI company. Pay for what you use.
+- **[API Keys](./installation/api-keys)** — already have a key from Google,
+  OpenAI, Anthropic or Mistral? Use it here.
 
 ### Command Line
 

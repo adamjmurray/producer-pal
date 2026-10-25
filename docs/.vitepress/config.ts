@@ -28,7 +28,8 @@ export default defineConfig({
           item.url !== "installation/lm-studio" &&
           item.url !== "installation/gemini" &&
           item.url !== "installation/openai" &&
-          item.url !== "installation/chat-ui-other-providers",
+          item.url !== "installation/chat-ui-other-providers" &&
+          item.url !== "installation/ollama",
       ),
   },
 
@@ -211,22 +212,9 @@ export default defineConfig({
             text: "Built-in Chat UI",
             link: "/installation/chat-ui",
             items: [
-              {
-                text: "Local AI",
-                link: "/installation/chat-ui#local-ai",
-                items: [
-                  { text: "Ollama", link: "/installation/ollama" },
-                  {
-                    text: "Bionic / LM Studio",
-                    link: "/installation/bionic-chat-ui",
-                  },
-                ],
-              },
-              { text: "AI Routers", link: "/installation/chat-ui#ai-router" },
-              {
-                text: "API Keys",
-                link: "/installation/chat-ui#your-own-api-key",
-              },
+              { text: "Local AI", link: "/installation/local-ai" },
+              { text: "AI Routers", link: "/installation/ai-routers" },
+              { text: "API Keys", link: "/installation/api-keys" },
             ],
           },
           {

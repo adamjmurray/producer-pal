@@ -5,11 +5,11 @@ Mistral AI models work with Producer Pal through Le Chat (web), Mistral Vibe
 
 ## Options
 
-| Option                                | Best For          | Trade-offs                                                 |
-| ------------------------------------- | ----------------- | ---------------------------------------------------------- |
-| [Le Chat](./mistral-le-chat)          | Most users        | Browser-based. Requires [web tunnel](./web-tunnels) setup. |
-| [Mistral Vibe](./mistral-vibe)        | Developers        | Terminal-based, open-source CLI agent.                     |
-| [Built-in Chat UI](./chat-ui#mistral) | Direct API access | Requires API key, native integration.                      |
+| Option                                 | Best For          | Trade-offs                                                 |
+| -------------------------------------- | ----------------- | ---------------------------------------------------------- |
+| [Le Chat](./mistral-le-chat)           | Most users        | Browser-based. Requires [web tunnel](./web-tunnels) setup. |
+| [Mistral Vibe](./mistral-vibe)         | Developers        | Terminal-based, open-source CLI agent.                     |
+| [Built-in Chat UI](./api-keys#mistral) | Direct API access | Requires API key, native integration.                      |
 
 ## Recommendation
 

@@ -13,7 +13,7 @@ Without one, you'll hit Google's usage limits quickly. Consider
 
 If you feel comfortable with the command line, this is an option for using
 Producer Pal. Also consider [Antigravity](./antigravity), Google's desktop agent
-app, or using Gemini with Producer Pal's [built-in chat UI](./chat-ui#gemini)
+app, or using Gemini with Producer Pal's [built-in chat UI](./api-keys#gemini)
 (but probably via OpenRouter as noted on that page).
 
 <!--@include: ../_partials/agent-skill-callout.md-->

@@ -4,14 +4,14 @@ search: false
 head:
   - - meta
     - http-equiv: refresh
-      content: 0; url=/installation/chat-ui#gemini
+      content: 0; url=/installation/api-keys#gemini
   - - link
     - rel: canonical
-      href: https://producer-pal.org/installation/chat-ui
+      href: https://producer-pal.org/installation/api-keys
 ---
 
 # Gemini setup moved
 
-Setup for every online AI, Gemini included, is now on one page.
+Gemini setup for the built-in chat UI is now on the API Keys page.
 
-**[Continue to the Built-in Chat UI setup guide &rarr;](/installation/chat-ui#gemini)**
+**[Continue to the API Keys page &rarr;](/installation/api-keys#gemini)**

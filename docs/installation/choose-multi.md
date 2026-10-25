@@ -6,7 +6,7 @@ Want flexibility to switch between providers or access many models?
 
 [OpenRouter](https://openrouter.ai) provides access to 100+ models through a
 single API key with pay-per-use pricing. Access it via the
-[Built-in Chat UI](./chat-ui#openrouter).
+[Built-in Chat UI](./ai-routers#openrouter).
 
 ### Why OpenRouter?
 
@@ -27,4 +27,4 @@ single API key with pay-per-use pricing. Access it via the
 
 The Chat UI also supports direct connections to other providers like Groq,
 Together AI, or any OpenAI-compatible endpoint. See the
-[Custom Providers setup](./chat-ui#custom-providers) for details.
+[Custom Providers setup](./api-keys#custom-providers) for details.

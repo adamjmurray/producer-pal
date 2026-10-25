@@ -6,12 +6,12 @@ is recommended for regular use.
 
 ## Options
 
-| Option                                  | Best For               | Trade-offs                                            |
-| --------------------------------------- | ---------------------- | ----------------------------------------------------- |
-| [Claude Desktop](./claude-desktop)      | Most users             | Easiest setup, best experience. Desktop app required. |
-| [claude.ai](./claude-web)               | Browser-only workflows | Requires [web tunnel](./web-tunnels) setup.           |
-| [Claude Code](./claude-code)            | Developers             | Terminal-based, great for coding workflows.           |
-| [Built-in Chat UI](./chat-ui#anthropic) | Direct API access      | Requires API key, pay-per-use pricing.                |
+| Option                                   | Best For               | Trade-offs                                            |
+| ---------------------------------------- | ---------------------- | ----------------------------------------------------- |
+| [Claude Desktop](./claude-desktop)       | Most users             | Easiest setup, best experience. Desktop app required. |
+| [claude.ai](./claude-web)                | Browser-only workflows | Requires [web tunnel](./web-tunnels) setup.           |
+| [Claude Code](./claude-code)             | Developers             | Terminal-based, great for coding workflows.           |
+| [Built-in Chat UI](./api-keys#anthropic) | Direct API access      | Requires API key, pay-per-use pricing.                |
 
 Claude Code can also use the portable [Agent Skill](/guide/skills) instead of
 MCP.
