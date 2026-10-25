@@ -37,6 +37,6 @@ Pal, which must be refused because a Set can only have one.
 Live only loads presets from the User Library or a Places folder. Saving it
 there also made Live copy the device and sample into the User Library, and the
 preset points at those copies, which no other machine has. So the test doesn't
-load this file directly: it writes a copy into the User Library with the device
-path pointed at the repo's `max-for-live-device/Producer_Pal.amxd`, and deletes
-the copy afterwards. The Simpler's sample stays missing, which doesn't matter.
+load this file directly: it writes a copy into the User Library with the paths
+pointed at the repo's `max-for-live-device/Producer_Pal.amxd` and
+`e2e/live-sets/samples/drums/synth-snare.wav`, and deletes the copy afterwards.
