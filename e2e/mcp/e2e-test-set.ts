@@ -18,6 +18,10 @@ export const LIVE_SET_PATH =
 export const RACKS_TEST_PATH =
   "e2e/live-sets/racks-test Project/racks-test.als";
 
+/** Frozen tracks and nested group tracks. */
+export const TRACKS_TEST_PATH =
+  "e2e/live-sets/tracks-test Project/tracks-test.als";
+
 /** t8 "9-MIDI": no clips, no devices, No Output. The scratch track. */
 export const EMPTY_MIDI_TRACK = 8;
 
