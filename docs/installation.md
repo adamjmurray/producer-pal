@@ -80,13 +80,17 @@ Dedicated AI apps — the easiest setup for most people:
 
 <span class="path-badge path-badge-device">Path B: device first</span>
 
-Producer Pal's own browser-based chat — bring an API key for any supported
-provider:
+Producer Pal's own chat window, in your browser. Pick where the AI comes from:
 
-- **[Chat UI overview](./installation/chat-ui)** — supported providers and setup
-- **[Gemini](./installation/gemini)**, **[OpenAI](./installation/openai)**,
-  **[Ollama](./installation/ollama)** (offline), or
-  **[Anthropic, OpenRouter, Vercel AI Gateway, Mistral & more](./installation/chat-ui-other-providers)**
+- **[Local AI](./installation/choose-local)** — runs on your own computer. Free,
+  private and offline, but less smart. **Needs a powerful computer:** an Apple
+  Silicon Mac with lots of memory, or a PC with a strong Nvidia graphics card.
+- **AI router** (recommended) — one account, models from every big AI company.
+  Pay for what you use.
+  [OpenRouter](./installation/chat-ui-other-providers#openrouter) or
+  [Vercel AI Gateway](./installation/chat-ui-other-providers#vercel-ai-gateway).
+- **[Your own API key](./installation/chat-ui)** — already have a key from
+  Google, OpenAI, Anthropic or Mistral? Use it here.
 
 ### Command Line
 

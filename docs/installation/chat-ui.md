@@ -1,7 +1,7 @@
 # Built-in Chat UI
 
-Producer Pal includes a [built-in chat interface](/guide/chat-ui) that runs in
-your browser. Click "Open Chat UI" in the Max for Live device to launch it.
+Producer Pal includes a [built-in chat window](/guide/chat-ui) that runs in your
+browser. Click "Open Chat UI" in the Max for Live device to launch it.
 
 <div class="download-band download-band-compact">
   <div class="download-actions">
@@ -12,94 +12,50 @@ your browser. Click "Open Chat UI" in the Max for Live device to launch it.
   </div>
 </div>
 
-The chat UI supports multiple AI providers. Choose based on your needs:
+The chat window needs an AI to talk to. Pick one of three ways to get one:
 
-## Cloud Providers
+## Local AI
 
-### Anthropic
+The AI runs on your own computer. Free, private and works offline, but less
+smart than the online options.
 
-Claude models, direct via API key.
+::: warning Needs a powerful computer
 
-- **Cost:** Trial credit to start, then pay-as-you-go
-- **Setup:** Create an Anthropic account and API key
-- **[Setup instructions →](./chat-ui-other-providers#anthropic)**
+An Apple Silicon Mac with lots of memory, or a PC with a strong Nvidia graphics
+card (8 GB of video memory at least). On a regular laptop, pick one of the
+online options below.
 
-### Gemini
+:::
 
-Google's AI.
+- **[Ollama](./ollama)** — the easiest way to start
+- **[LM Studio Bionic](./chat-ui-other-providers#lm-studio-api)** — an app for
+  downloading and managing models
 
-- **Cost:** Free tier has strict rate limits; paid tier recommended for regular
-  use
-- **Setup:** Just need a Google account — the free API key works but is heavily
-  rate-limited. For sustained use, add pay-as-you-go billing to your Google
-  Cloud account, or use Gemini via [OpenRouter](#openrouter) instead.
-- **[Get started with Gemini →](./gemini)**
+[More about running locally →](./choose-local)
 
-### OpenRouter
+## AI Router (Recommended)
 
-Access hundreds of models through one API, including Claude, Gemini, and open
-source models.
+One account gets you AI models from every big company: Claude, Gemini, GPT and
+more. Add some credit, then switch models whenever you like. You pay only for
+what you use.
 
-- **Cost:** Pay-as-you-go (some free models available)
-- **Setup:** Create account and add credits
-- **[Setup instructions →](./chat-ui-other-providers#openrouter)**
+- **[OpenRouter](./chat-ui-other-providers#openrouter)** — some models are free
+- **[Vercel AI Gateway](./chat-ui-other-providers#vercel-ai-gateway)** — free
+  credit each month, card required
 
-### Vercel AI Gateway
+## Your Own API Key
 
-Like OpenRouter: hundreds of models through one API.
+An API key is a code from an AI company that lets apps like Producer Pal use its
+AI. Already have one, or want to go straight to one company? Use it here.
 
-- **Cost:** Pay-as-you-go (free monthly credits, card required)
-- **Setup:** Create a Vercel account and add a credit card
-- **[Setup instructions →](./chat-ui-other-providers#vercel-ai-gateway)**
-
-### Mistral
-
-AI models from a French company with competitive pricing.
-
-- **Cost:** Free tier with rate limits
-- **Setup:** Create account for API key
-- **[Setup instructions →](./chat-ui-other-providers#mistral)**
-
-### OpenAI
-
-GPT models with pay-as-you-go pricing.
-
-- **Cost:** Pay-as-you-go only
-- **Setup:** Create account and add credits
-- **[Get started with OpenAI →](./openai)**
-
-## Local / Offline
-
-Run models on your own computer with no internet required.
-
-### Ollama (Recommended)
-
-Simple local model server with many model options.
-
-- **Cost:** Free (uses your hardware)
-- **Setup:** Install Ollama, download a model
-- **[Get started with Ollama →](./ollama)**
-
-### LM Studio Bionic
-
-Desktop app for running local models with a visual interface.
-
-- **Cost:** Free (uses your hardware)
-- **Setup:** Install Bionic, download a model, enable CORS
-- **[Setup instructions →](./chat-ui-other-providers#lm-studio-api)**
-
-## Quick Comparison
-
-| Provider          | Cost               | Internet Required | Best For               |
-| ----------------- | ------------------ | ----------------- | ---------------------- |
-| Ollama            | Free               | No                | Privacy, offline use   |
-| Anthropic         | Trial, then paid   | Yes               | Claude models directly |
-| Gemini            | Free tier (limits) | Yes               | Quick testing          |
-| OpenRouter        | Pay-as-you-go      | Yes               | Access to many models  |
-| Vercel AI Gateway | Pay-as-you-go      | Yes               | Access to many models  |
-| Mistral           | Free tier          | Yes               | Alternative to Gemini  |
-| OpenAI            | Pay-as-you-go      | Yes               | GPT models             |
-| Bionic            | Free               | No                | Visual local model UI  |
+- **[Gemini](./gemini)** (Google) — the free key works but hits limits fast; add
+  billing for regular use
+- **[OpenAI](./openai)** — pay for what you use
+- **[Anthropic](./chat-ui-other-providers#anthropic)** (Claude) — trial credit,
+  then pay for what you use
+- **[Mistral](./chat-ui-other-providers#mistral)** — free, with limits
+- **[Other companies](./chat-ui-other-providers#custom-providers)** — any
+  service that works like OpenAI's
 
 ## Troubleshooting
 

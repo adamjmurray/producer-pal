@@ -204,19 +204,7 @@ export default defineConfig({
         link: "/installation",
         items: [
           { text: "Upgrading", link: "/installation/upgrading" },
-          {
-            text: "Built-in Chat UI",
-            link: "/installation/chat-ui",
-            items: [
-              { text: "Gemini", link: "/installation/gemini" },
-              { text: "OpenAI", link: "/installation/openai" },
-              { text: "Ollama", link: "/installation/ollama" },
-              {
-                text: "Other Providers",
-                link: "/installation/chat-ui-other-providers",
-              },
-            ],
-          },
+          { text: "Built-in Chat UI", link: "/installation/chat-ui" },
           {
             text: "Desktop Apps",
             link: "/installation/desktop-apps",
