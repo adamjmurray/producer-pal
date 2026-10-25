@@ -6,7 +6,7 @@
 /**
  * E2E tests for reading nested racks.
  * Uses: racks-test — a Drum Rack inside an Instrument Rack chain, with another
- * Drum Rack on one of its pads. See e2e/live-sets/racks-test-spec.md.
+ * Drum Rack on one of its pads. See e2e/live-sets/specs/racks-test-spec.md.
  *
  * Run with: npm run e2e:mcp -- ppal-read-device-nested-racks
  */

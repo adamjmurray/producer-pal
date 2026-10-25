@@ -10,7 +10,7 @@
  * comment must not take over another error's hint.
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track; slot /0 stays empty.
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-clip-glued-accidental-refusal
  */

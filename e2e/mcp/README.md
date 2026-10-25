@@ -105,16 +105,22 @@ on its own — a test would run against the Set it was replacing.
 
 ## Test Live Sets
 
-The Sets live in `e2e/live-sets/`, each with a `-spec.md` beside it listing
-everything in it. Those specs are the reference for writing assertions. The
-table lists the ones the MCP suites open; `arrangement-sections` is used by the
-evals.
+The Sets live in `e2e/live-sets/`, each with a spec in `e2e/live-sets/specs/`
+listing everything in it. Those specs are the reference for writing assertions.
+The table lists the ones the MCP suites open; `arrangement-sections` is used by
+the evals.
 
 | Set                      | Covers                                                |
 | ------------------------ | ----------------------------------------------------- |
 | `e2e-test-set`           | everything else; the default                          |
 | `racks-test`             | nested racks, macro-mapped params, rack return chains |
 | `arrangement-clip-tests` | arrangement clip edits                                |
+| `tracks-test`            | frozen tracks, nested groups                          |
+| `tracks-test-twin`       | a second Set sharing `tracks-test`'s project folder   |
+| `ppal-drum-pad`          | the Producer Pal device inside a drum pad             |
+
+`e2e/live-sets/presets/` holds a rack preset with the Producer Pal device in it.
+See `specs/ppal-drum-pad-spec.md` for how a test loads it.
 
 `e2e-test-set` has 12 tracks (t0-t11) and 2 return tracks: 4 MIDI music tracks,
 2 audio, an FX bus, a Racks track, an empty track, a group parent and its child,

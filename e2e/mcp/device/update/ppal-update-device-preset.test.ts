@@ -9,7 +9,7 @@
  * are picked from Drift's and Reverb's own lists at run time.
  *
  * Uses: e2e-test-set
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp:remote-script -- device/update/ppal-update-device-preset
  */

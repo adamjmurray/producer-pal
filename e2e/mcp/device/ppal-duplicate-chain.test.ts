@@ -12,7 +12,7 @@
  * temp track is gone afterwards.
  *
  * Uses: racks-test — "Outer" is an Instrument Rack whose chain 0 holds the
- * "Kit" Drum Rack. See e2e/live-sets/racks-test-spec.md.
+ * "Kit" Drum Rack. See e2e/live-sets/specs/racks-test-spec.md.
  *
  * Run with: npm run e2e:mcp -- ppal-duplicate-chain
  */

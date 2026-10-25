@@ -6,7 +6,7 @@
 /**
  * E2E tests for arrangement clip splitting operations.
  * Uses: arrangement-clip-tests - comprehensive arrangement clip edge cases
- * See: e2e/live-sets/arrangement-clip-tests-spec.md
+ * See: e2e/live-sets/specs/arrangement-clip-tests-spec.md
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import {

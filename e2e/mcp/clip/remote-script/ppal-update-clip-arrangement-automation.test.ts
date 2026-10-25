@@ -15,7 +15,7 @@
  * "Audio 1" (audio, a "kick" clip at 17|1), t5 "Audio 2" (audio, no
  * arrangement clips), t8 for an anchor clip that keeps the song long enough to
  * read past the clips.
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp:remote-script -- clip/remote-script/ppal-update-clip-arrangement-automation
  */

@@ -18,7 +18,7 @@
  * Live Set between tests to reset state (no `once`).
  *
  * Uses: e2e-test-set. t8 "9-MIDI" is an empty MIDI track; t1/t9/return/master
- * exercise the omission rules. See: e2e/live-sets/e2e-test-set-spec.md
+ * exercise the omission rules. See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp
  */

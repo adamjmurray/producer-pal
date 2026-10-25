@@ -7,7 +7,7 @@
  * E2E tests for code execution via ppal-create-clip and ppal-update-clip.
  * Tests the `code` parameter which runs sandboxed JavaScript to generate/transform MIDI notes.
  * Uses: e2e-test-set - t8 is empty MIDI track
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Prerequisite: Build with `npm run build:debug` (sets ENABLE_CODE_EXEC=true).
  * These tests are skipped unless ENABLE_CODE_EXEC=true is also set when running

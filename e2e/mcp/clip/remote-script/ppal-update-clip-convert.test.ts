@@ -10,7 +10,7 @@
  *
  * Uses: e2e-test-set — audio clips at t4/s0 and t5/s0, an arrangement audio clip
  * at t4@17|1, and a MIDI clip at t0/s0.
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp:remote-script -- clip/remote-script/ppal-update-clip-convert
  */

@@ -18,7 +18,7 @@
  * surface a `.` in the read-back string.
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track. Slots /0 and /1 are both 4/4,
- * where musical beats == Ableton beats. See: e2e/live-sets/e2e-test-set-spec.md
+ * where musical beats == Ableton beats. See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-clip-midi-json-ratio-roundtrip
  */

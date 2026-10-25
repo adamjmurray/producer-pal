@@ -17,7 +17,7 @@
  * reopen (which runs before the test body could write anything).
  *
  * Uses: e2e-test-set - any track (no clips are touched)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- project-context-sidecar
  */

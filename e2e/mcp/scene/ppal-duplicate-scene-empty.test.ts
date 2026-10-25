@@ -6,7 +6,7 @@
 /**
  * E2E tests for ppal-duplicate copying a scene with no clips to the arrangement.
  * Uses: e2e-test-set (any scene works; the empty one is made by the test)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- e2e/mcp/scene/ppal-duplicate-scene-empty.test.ts
  */

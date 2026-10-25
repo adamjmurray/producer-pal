@@ -9,7 +9,7 @@
  * Live renders for the value we asked for against the label for the value it
  * stored, so those two have to agree even on a display boundary.
  * Uses: e2e-test-set
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- device/update/ppal-update-device-param-storage
  */

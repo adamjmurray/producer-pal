@@ -21,7 +21,7 @@
  * Uses: e2e-test-set — t3 "Lead" (MIDI) and t5 "Audio 2" (audio) with s2, s3,
  * s4, s6 and s7 free in both; t8 holds an anchor clip so the song is long
  * enough to read anywhere in the test range.
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp:remote-script -- clip/remote-script/ppal-duplicate-arrangement-automation
  */

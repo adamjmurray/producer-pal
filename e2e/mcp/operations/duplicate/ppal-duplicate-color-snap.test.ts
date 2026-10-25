@@ -9,7 +9,7 @@
  * however the copy was made: a clip that grows to fill the scene goes through
  * update-clip, and one that already fits is colored directly.
  * Uses: e2e-test-set (t8 and t10 are empty MIDI tracks; s5-s7 are empty scenes)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- e2e/mcp/operations/duplicate/ppal-duplicate-color-snap.test.ts
  */

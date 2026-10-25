@@ -8,7 +8,7 @@
  * Routing identifiers are assigned by Live per Set and per machine, so every
  * test reads the available options first and never hardcodes an id.
  * Uses: e2e-test-set (t8, the empty MIDI track with no instrument, and t10)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- track/ppal-update-track-routing
  */

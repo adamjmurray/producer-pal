@@ -16,7 +16,7 @@
  * ships, so it must NOT be reported here. That is the regression this guards.
  *
  * Uses: e2e-test-set - t8 "9-MIDI" (empty MIDI track)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- workflow/unexpected-args
  */

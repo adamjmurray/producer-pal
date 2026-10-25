@@ -14,7 +14,7 @@
  * only works in real time, hence the sleeps.
  *
  * Uses: e2e-test-set — t1 "Bass" with the Instrument Rack at d0; t10 is armed.
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- live-set/ppal-read-arrangement-automation
  */

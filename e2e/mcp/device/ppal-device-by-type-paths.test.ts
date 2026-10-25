@@ -6,7 +6,7 @@
 /**
  * E2E tests for `inst`, `mfx<n>` and `afx<n>` path segments.
  * Uses: e2e-test-set, track t2 (MIDI Effect Rack → Analog → EQ Eight →
- * Compressor). See e2e/live-sets/e2e-test-set-spec.md.
+ * Compressor). See e2e/live-sets/specs/e2e-test-set-spec.md.
  *
  * Run with: npm run e2e:mcp -- ppal-device-by-type-paths
  */

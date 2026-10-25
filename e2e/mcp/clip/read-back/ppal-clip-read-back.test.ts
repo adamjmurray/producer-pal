@@ -11,7 +11,7 @@
  * must not read back as a change when it is the value that was written.
  *
  * Uses: e2e-test-set - t8 (empty MIDI track) plus an audio track it creates
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-clip-read-back
  */

@@ -14,7 +14,7 @@
  * for. A param the clip itself can do nothing with is a reason on its entry.
  *
  * Uses: e2e-test-set - t5 "Audio 2" (free slots), t8 "9-MIDI" (empty)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-create-clip-ignored-params
  */

@@ -7,7 +7,7 @@
  * E2E tests for ppal-delete tool
  * Deletes tracks, scenes, clips, devices, and drum pads in the Live Set.
  * Uses: e2e-test-set (Producer Pal is on t11)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- operations/ppal-delete
  */

@@ -8,7 +8,7 @@
  * accepts, and what the model is told when it can't parse it.
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track.
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-update-clip-notation-input
  */

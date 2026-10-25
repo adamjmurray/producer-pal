@@ -5,7 +5,7 @@
 
 // Fixtures the MCP e2e suites share: the Live Sets they open, the default Set's
 // track indexes, and the sample files tests load. Import these instead of
-// writing the value again; each Set's layout is in e2e/live-sets/*-spec.md.
+// writing the value again; each Set's layout is in e2e/live-sets/specs/.
 
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

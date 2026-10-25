@@ -12,7 +12,7 @@
  * The scene count is read before each case: earlier cases add scenes, so a
  * literal index here would name a different place on the second run.
  *
- * Uses: e2e-test-set. See: e2e/live-sets/e2e-test-set-spec.md
+ * Uses: e2e-test-set. See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-clip-past-the-end-scenes
  */

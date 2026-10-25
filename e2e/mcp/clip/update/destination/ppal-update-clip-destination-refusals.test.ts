@@ -14,7 +14,7 @@
  * differ from a name that is there.
  *
  * Uses: e2e-test-set - t8 (empty MIDI track); locators Intro/Verse/Chorus/Bridge
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-update-clip-destination-refusals
  */

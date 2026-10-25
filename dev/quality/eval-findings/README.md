@@ -133,10 +133,10 @@ than a confident red.
 ## Rack chain sends can't be covered by an eval yet
 
 `evals/live-sets/` holds no rack with a return chain, and rack return chains
-cannot be created through the Live API (see `e2e/live-sets/racks-test-spec.md`),
-so a scenario needs a Set saved by hand first. The e2e side is covered —
-`racks-test` bakes in `rc0`/`rc1`, and three files drive chain sends against
-real Live.
+cannot be created through the Live API (see
+`e2e/live-sets/specs/racks-test-spec.md`), so a scenario needs a Set saved by
+hand first. The e2e side is covered — `racks-test` bakes in `rc0`/`rc1`, and
+three files drive chain sends against real Live.
 
 ## Machine state can decide a scenario
 

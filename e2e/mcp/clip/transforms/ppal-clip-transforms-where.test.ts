@@ -16,7 +16,7 @@
  *    ppal-clip-transforms-ratchet.test.ts).
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track.
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-clip-transforms-where
  */

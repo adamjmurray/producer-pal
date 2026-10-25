@@ -7,7 +7,7 @@
  * E2E tests for ppal-create-clip tool
  * Creates MIDI and audio clips in session and arrangement views.
  * Uses: e2e-test-set - tests create clips in empty slots (t8 is empty MIDI track)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp
  */

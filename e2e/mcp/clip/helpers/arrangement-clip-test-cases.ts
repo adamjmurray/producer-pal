@@ -6,7 +6,7 @@
 /**
  * Shared test case definitions for arrangement clip e2e tests.
  * Used by both lengthening and splitting test files.
- * See: e2e/live-sets/arrangement-clip-tests-spec.md
+ * See: e2e/live-sets/specs/arrangement-clip-tests-spec.md
  */
 
 export interface ArrangementClipTestCase {

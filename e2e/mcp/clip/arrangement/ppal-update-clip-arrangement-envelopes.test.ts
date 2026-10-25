@@ -20,7 +20,7 @@
  * on at runtime — no debug build needed.
  *
  * Uses: arrangement-clip-tests (t0 = 1-bar looped MIDI with an envelope)
- * See: e2e/live-sets/arrangement-clip-tests-spec.md
+ * See: e2e/live-sets/specs/arrangement-clip-tests-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-update-clip-arrangement-envelopes
  */

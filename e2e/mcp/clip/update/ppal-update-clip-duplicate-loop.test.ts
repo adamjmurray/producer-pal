@@ -18,7 +18,7 @@
  * call ordering; these confirm the resulting notes land in the right bars.
  *
  * Uses: e2e-test-set - t8 is the empty MIDI track.
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-update-clip-duplicate-loop
  */

@@ -17,7 +17,7 @@
  * reproduces it.
  *
  * Uses: e2e-test-set - t8 "9-MIDI" (empty) and t5 "Audio 2" (free slots)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-update-clip-loop-toggle
  */

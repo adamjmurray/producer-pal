@@ -6,7 +6,7 @@
 /**
  * E2E tests for ppal-read-scene tool
  * Uses: e2e-test-set (8 scenes with various tempo/time sig overrides)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- scene/ppal-read-scene
  */

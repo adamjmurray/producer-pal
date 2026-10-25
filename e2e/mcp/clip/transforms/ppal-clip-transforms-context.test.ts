@@ -7,7 +7,7 @@
  * E2E tests for transform context variables (note.*, clip.*, bar.*),
  * function arity validation, and scale-dependent functions (snap, step).
  * Uses: e2e-test-set - t8 is empty MIDI track
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- --testPathPattern ppal-clip-transforms-context
  */

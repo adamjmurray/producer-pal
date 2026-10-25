@@ -12,7 +12,7 @@
  * change — which is what the scene test sets up.
  *
  * Uses: e2e-test-set - t5 "Audio 2" and t8 "9-MIDI" (free slots), s7 (empty)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-duplicate-audio-unwarped
  */
