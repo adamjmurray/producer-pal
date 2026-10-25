@@ -47,6 +47,9 @@ export const PARENT_TRACK = 9;
 /** t10 "Child": a MIDI track, the only one inside the t9 "Parent" group. */
 export const CHILD_TRACK = 10;
 
+/** t11 "PPAL": the Producer Pal device, and nothing else. */
+export const PPAL_TRACK = 11;
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export const SAMPLE_FILE = resolve(

@@ -6,14 +6,16 @@
 /**
  * E2E tests for ppal-update-device's `preset`, swapped onto a device through
  * the Producer Pal remote script. Opt-in like the other browser tests. Presets
- * are picked from Drift's and Reverb's own lists at run time.
+ * are picked from Drift's and Reverb's own lists at run time. The preset holding
+ * Producer Pal is a repo file, copied into the User Library for the suite.
  *
  * Uses: e2e-test-set
- * See: e2e/live-sets/specs/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md,
+ * e2e/live-sets/specs/ppal-drum-pad-spec.md
  *
  * Run with: npm run e2e:mcp:remote-script -- device/update/ppal-update-device-preset
  */
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   callToolAndSettle,
   createTestDeviceAt,
@@ -24,6 +26,7 @@ import {
   trackIndexFromPath,
 } from "../../mcp-test-helpers";
 import {
+  type DeviceRead,
   type Preset,
   REMOTE_SCRIPT_E2E,
   packDrumKitOrSkip,
@@ -32,7 +35,10 @@ import {
   presetName,
   readDevice,
   requireRemoteScript,
+  type StagedPreset,
+  stagePpalPreset,
 } from "../helpers/remote-script-test-helpers";
+import { PPAL_TRACK } from "../../e2e-test-set.ts";
 import {
   LIBRARY_NEEDS,
   skipTestBeforeLive,
@@ -45,8 +51,11 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
   let adv: Preset;
   let adg: Preset;
   let reverb: Preset;
+  let holdingPal: StagedPreset | undefined;
 
   beforeAll(async () => {
+    holdingPal = await stagePpalPreset();
+
     const drift = await listPresets("instrument", "Drift");
 
     adv = presetEndingIn(drift, ".adv");
@@ -55,6 +64,10 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
       await listPresets("audio-effect", "Reverb"),
       ".adv",
     );
+  });
+
+  afterAll(() => {
+    holdingPal?.remove();
   });
 
   /**
@@ -260,6 +273,55 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     expect((await readDevice(ctx.client!, drift.path)).name).toBe(
       presetName(adv.name),
     );
+  });
+
+  it("refuses a preset holding Producer Pal, and one undo brings the old device back", async () => {
+    const drift = await createDrift();
+    const track = drift.path.split("/")[0]!;
+    const deviceIds = async (path: string): Promise<string[]> =>
+      (
+        parseToolResult<{ devices?: DeviceRead[] }>(
+          await call("ppal-read-track", { path, include: ["devices"] }),
+        ).devices ?? []
+      ).map((device) => device.id);
+    // A new track can come with this machine's default devices, so compare
+    // against what it holds rather than assuming it's empty.
+    const before = await deviceIds(track);
+    const palIds = await deviceIds(`t${PPAL_TRACK}`);
+
+    const updated = parseToolResult<UpdateResult>(
+      await call("ppal-update-device", {
+        path: drift.path,
+        preset: holdingPal!.path,
+      }),
+    );
+
+    // Live swaps the preset in before anything can look inside it, so the
+    // device is already gone: a normal entry, saying what landed.
+    expect(updated).toStrictEqual({
+      path: drift.path,
+      detail:
+        "preset not loaded: the preset contains the Producer Pal device, " +
+        "which a Set can only have once; Live had already swapped it in, so " +
+        "it was deleted and the slot is now empty; undoing this call brings " +
+        "the old device back, and reverts the rest of the call too; already " +
+        "changed: the device was replaced",
+    });
+
+    // Only the Drift is gone. The original Producer Pal is still there, and
+    // still answering.
+    expect(await deviceIds(track)).toStrictEqual(
+      before.filter((id) => id !== drift.id),
+    );
+    expect(await deviceIds(`t${PPAL_TRACK}`)).toStrictEqual(palIds);
+
+    await call("ppal-manage", { action: "undo" });
+
+    expect(await readDevice(ctx.client!, drift.path)).toStrictEqual({
+      id: drift.id,
+      path: drift.path,
+      type: "instrument: Drift",
+    });
   });
 });
 

@@ -5,6 +5,10 @@
 
 // What the E2E suites that need the Producer Pal remote script share.
 
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { presetFileIsFor } from "#src/mcp-server/rpc/remote-script/browser/preset-file-device.ts";
 import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
@@ -184,4 +188,75 @@ export async function packDrumKitOrSkip(
   }
 
   return skip();
+}
+
+// Puts the rack preset holding Producer Pal where Live can load it. Live only
+// loads presets from the User Library or a Places folder, and the committed
+// file points at a User Library copy of the device that no other machine has.
+// So the staged copy points at the repo's device instead, by a path relative
+// to the copy, with Live's size and checksum checks off, as the test Sets do.
+const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
+const PRESET = join(
+  REPO,
+  "e2e/live-sets/presets/ppal-drum-pad-test-rack-preset.adg",
+);
+const DEVICE = join(REPO, "max-for-live-device/Producer_Pal.amxd");
+/** Our own folder in the User Library, removed whole afterwards. */
+const STAGING_FOLDER = "Producer Pal e2e";
+
+// The device's FileRef, from RelativePathType through OriginalCrc.
+const DEVICE_FILE_REF =
+  /<RelativePathType Value="\d+" \/>(\s*)<RelativePath Value="[^"]*Producer_Pal\.amxd" \/>(\s*)<Path Value="[^"]*Producer_Pal\.amxd" \/>([\s\S]*?)<OriginalFileSize Value="\d+" \/>(\s*)<OriginalCrc Value="\d+" \/>/;
+
+/** A staged copy of the preset. */
+export interface StagedPreset {
+  /** Its absolute path, which a tool's `preset` takes */
+  path: string;
+  /** Delete the copy and its folder */
+  remove: () => void;
+}
+
+/**
+ * Write the preset into the User Library, pointed at the repo's device.
+ * @returns Where it is, and how to remove it
+ */
+export async function stagePpalPreset(): Promise<StagedPreset> {
+  const folder = join(await userLibrary(), STAGING_FOLDER);
+  const path = join(folder, basename(PRESET));
+  const xml = gunzipSync(readFileSync(PRESET)).toString("utf8");
+
+  if (!DEVICE_FILE_REF.test(xml)) {
+    throw new Error(`${PRESET} has no Producer_Pal.amxd file reference`);
+  }
+
+  const staged = xml.replace(
+    DEVICE_FILE_REF,
+    (_match, a: string, b: string, middle: string, c: string) =>
+      `<RelativePathType Value="1" />${a}` +
+      `<RelativePath Value="${relative(folder, DEVICE)}" />${b}` +
+      `<Path Value="${DEVICE}" />${middle}` +
+      `<OriginalFileSize Value="0" />${c}<OriginalCrc Value="0" />`,
+  );
+
+  mkdirSync(folder, { recursive: true });
+  writeFileSync(path, gzipSync(staged));
+
+  return {
+    path,
+    remove: () => rmSync(folder, { recursive: true, force: true }),
+  };
+}
+
+/** The User Library the running Live uses, as the remote script reports it. */
+async function userLibrary(): Promise<string> {
+  const port = await resolveRemoteScriptPort();
+  const ping = (await (
+    await fetch(`http://127.0.0.1:${String(port)}/ping`)
+  ).json()) as { user_library?: string };
+
+  if (ping.user_library == null) {
+    throw new Error("the remote script reported no User Library");
+  }
+
+  return ping.user_library;
 }
