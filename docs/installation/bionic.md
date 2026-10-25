@@ -184,11 +184,65 @@ further, you can customize Producer Pal's behavior for your specific model:
 specific model, post it in
 [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions).
 
-## Alternative: Built-in Chat UI
+## Use It with the Built-in Chat UI {#chat-ui}
 
-You can also point
-[Producer Pal's built-in chat UI](./chat-ui-other-providers#lm-studio-api) at
-Bionic's local server and use that interface instead of Bionic's own.
+Instead of Bionic's own chat, you can run the model in Bionic and chat in
+[Producer Pal's built-in chat UI](./chat-ui).
+
+1. Add the Producer Pal device to a MIDI track
+   ([steps](/installation#install-the-device)) and
+   [finish the installation](/installation#finish-the-installation)
+2. Install Bionic and download a model that supports tools (see
+   [step 2](#_2-install-a-compatible-model) above)
+3. Go to Settings &rarr; Local Model API and turn on:
+   - **Local API server** - It should then read "Running"
+   - **CORS** - Required for browser access
+
+   Copy the **Base URL** while you're here (`http://localhost:1234/v1` by
+   default — use "Edit port" to change it):
+
+   ![Bionic's Local Model API settings](/img/bionic-server-settings.png)
+
+4. Make sure a model is available to the API. Either turn on **Just-in-time
+   model loading** so requests load one on demand, or preload a model by having
+   a quick chat with it in Bionic first — which is also a good way to confirm it
+   works before pointing Producer Pal at it. Loaded models are listed under
+   Settings &rarr; Loaded Instances:
+
+   ![A loaded model instance in Bionic](/img/bionic-loaded-instances.png)
+
+5. In the device, click "Open Chat UI". In its settings:
+   - Provider: **Bionic / LM Studio (local)**
+   - URL: The Base URL you copied
+   - Model: A model that supports tools, such as `qwen/qwen3.8-27b`,
+     `google/gemma-4-e4b`, `mistralai/devstral-small-2-2512`, or
+     `zai-org/glm-4.7-flash`
+6. Save and click "Quick Connect"
+
+::: tip Server not behaving?
+
+Turn on **Verbose logs** under Settings &rarr; Local Model API for debug-level
+detail, then read **Server logs** on the same page.
+
+:::
+
+::: warning Model Tool Support
+
+If the model responds with garbled text like `<|tool_call_start|>...` or says it
+can't connect to Ableton, the model doesn't support tools. Under Settings &rarr;
+Library, a hammer icon marks the models that do:
+
+![A model that supports tools](/img/bionic-tool-icon.png)
+
+:::
+
+::: tip Small Model Mode
+
+Enable "Small Model Mode" in the Producer Pal Setup tab for better compatibility
+with local models. See [Local Model Tips](#local-model-tips) for more
+optimization advice.
+
+:::
 
 ## Troubleshooting
 

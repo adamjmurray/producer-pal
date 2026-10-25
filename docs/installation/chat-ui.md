@@ -28,8 +28,8 @@ laptop, pick one of the online options below.
 :::
 
 - **[Ollama](./ollama)** — the easiest way to start
-- **[LM Studio Bionic](./chat-ui-other-providers#lm-studio-api)** — an app for
-  downloading and managing models
+- **[LM Studio Bionic](./bionic#chat-ui)** — an app for downloading and managing
+  models
 
 [More about running locally →](./choose-local)
 
