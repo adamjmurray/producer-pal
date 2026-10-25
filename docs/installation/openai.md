@@ -2,23 +2,26 @@
 
 Use Producer Pal with OpenAI's GPT models through the built-in chat interface.
 
-::: warning Pay-as-you-go Pricing
+::: warning You pay per message
 
-The OpenAI API uses pay-as-you-go pricing which can add up with long
-conversations. Monitor your usage at
-[platform.openai.com](https://platform.openai.com/usage). For flat-rate pricing,
-use the [ChatGPT App](./chatgpt-app) or [ChatGPT web app](./chatgpt-web) with an
-OpenAI subscription instead.
+This is billed separately from any ChatGPT subscription, and long chats add up.
+Check [your usage](https://platform.openai.com/usage) now and then. For a flat
+monthly price, use the [ChatGPT App](./chatgpt-app) or
+[ChatGPT web app](./chatgpt-web) with your subscription instead.
 
 :::
 
 ## What You Need
 
-- An [OpenAI account](https://platform.openai.com) with API credits
+- An [OpenAI developer account](https://platform.openai.com) with credit added.
+  A ChatGPT subscription doesn't cover this.
 
 <!--@include: ../_partials/live-requirement.md-->
 
 ## 1. Get an OpenAI API Key
+
+An API key is a password-like code that lets Producer Pal use OpenAI's models
+with your account.
 
 1. Go to [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
 2. Sign in with your OpenAI account

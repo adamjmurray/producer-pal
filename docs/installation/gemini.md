@@ -2,16 +2,13 @@
 
 Use Producer Pal with Google's Gemini AI through the built-in chat interface.
 
-::: warning Free Tier Limitations
+::: warning The free key runs out fast
 
-Google's free tier has strict rate limits. You'll likely hit quotas within
-moments. To stay on Gemini, [Antigravity](./antigravity) is Google's own desktop
-app, where a Google AI subscription raises the limits. Otherwise consider
-[Claude Desktop](./claude-desktop) for a more reliable experience, or using
-Gemini through a LLM aggregator like
-[OpenRouter](/installation/chat-ui-other-providers#openrouter). You can also add
-billing to your Google Cloud account and setup a pay-as-you go API key, but this
-is not recommended for personal use.
+Google's free key only allows a few messages at a time, so you'll likely hit the
+limit quickly. For regular use, reach Gemini through an
+[AI router](./chat-ui-other-providers#openrouter) and pay only for what you use.
+Or use [Antigravity](./antigravity), Google's own app, where a Google AI
+subscription lets you send more.
 
 :::
 
@@ -22,6 +19,9 @@ is not recommended for personal use.
 <!--@include: ../_partials/live-requirement.md-->
 
 ## 1. Get a Gemini API Key
+
+An API key is a password-like code that lets Producer Pal use Gemini with your
+Google account.
 
 1. Go to [Google AI Studio](https://aistudio.google.com/apikey)
 2. Sign in with your Google account

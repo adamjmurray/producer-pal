@@ -1,7 +1,9 @@
 # Built-in Chat UI
 
 Producer Pal includes a [built-in chat window](/guide/chat-ui) that runs in your
-browser. Click "Open Chat UI" in the Max for Live device to launch it.
+browser. To use it, add the Producer Pal device to a MIDI track in Live
+([steps](/installation#install-the-device)), then click "Open Chat UI" on the
+device.
 
 <div class="download-band download-band-compact">
   <div class="download-actions">
