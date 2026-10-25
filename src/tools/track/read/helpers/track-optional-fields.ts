@@ -58,17 +58,27 @@ interface MixerResult {
  * @param track - Track object
  * @param canBeArmed - Whether the track can be armed
  * @param isGroup - Whether the track is a group
+ * @param category - Track category (regular, return, or master)
  */
 export function addOptionalBooleanProperties(
   result: Record<string, unknown>,
   track: LiveAPI,
   canBeArmed: boolean,
   isGroup: boolean,
+  category: string,
 ): void {
   const isArmed = canBeArmed ? (track.getProperty("arm") as number) > 0 : false;
 
   if (isArmed) {
     result.isArmed = isArmed;
+  }
+
+  // Only regular tracks can be frozen
+  if (
+    category === "regular" &&
+    (track.getProperty("is_frozen") as number) > 0
+  ) {
+    result.isFrozen = true;
   }
 
   if (isGroup) {

@@ -7,7 +7,8 @@
  * E2E tests for clip writes aimed at a frozen track: create-clip, duplicate
  * and update-clip moves are refused with a reason that names the freeze, the
  * source stays put, and the other targets in the same call still land and are
- * reported. Freezing has no Live API, so the frozen tracks come from the Set.
+ * reported. ppal-read-track flags the frozen tracks. Freezing has no Live API,
+ * so the frozen tracks come from the Set.
  * Uses: tracks-test (t0 "Source MIDI" and t1 "Source Audio" hold a clip in s0
  * and at 1|1; t2 "Frozen MIDI" and t3 "Frozen Audio" are frozen, each with a
  * clip in s0 only)
@@ -94,6 +95,22 @@ async function expectFrozenUntouched(index: number): Promise<void> {
 
 const clipId = (path: string): Promise<string> =>
   readIdAtPath(ctx.client!, "ppal-read-clip", path);
+
+describe("ppal-read-track on a frozen track", () => {
+  it("flags only the frozen tracks", async () => {
+    const tracks = [SOURCE_MIDI, SOURCE_AUDIO, FROZEN_MIDI, FROZEN_AUDIO];
+    const flags = await Promise.all(
+      tracks.map(
+        async (index) =>
+          parseToolResult<{ isFrozen?: true }>(
+            await call("ppal-read-track", { path: `t${index}` }),
+          ).isFrozen,
+      ),
+    );
+
+    expect(flags).toStrictEqual([undefined, undefined, true, true]);
+  });
+});
 
 describe("ppal-create-clip on a frozen track", () => {
   it("refuses a MIDI clip, naming the freeze rather than the track type", async () => {
