@@ -7,12 +7,12 @@ Claude Code, Codex CLI, and Gemini CLI can use the portable
 [Agent Skill](/guide/skills) instead — it drives the
 [REST API](/guide/rest-api), so there's no MCP config at all.
 
-| CLI                            | Provider  | Cost                      | Notes            |
-| ------------------------------ | --------- | ------------------------- | ---------------- |
-| [Gemini CLI](./gemini-cli)     | Google    | Free tier (strict limits) | Best free option |
-| [Codex CLI](./codex-cli)       | OpenAI    | Subscription              | GPT models       |
-| [Claude Code](./claude-code)   | Anthropic | Subscription              | Claude models    |
-| [Mistral Vibe](./mistral-vibe) | Mistral   | API key                   | Mistral models   |
+| CLI                            | Provider  | Cost                     | Notes          |
+| ------------------------------ | --------- | ------------------------ | -------------- |
+| [Gemini CLI](./gemini-cli)     | Google    | Subscription recommended | Gemini models  |
+| [Codex CLI](./codex-cli)       | OpenAI    | Subscription             | GPT models     |
+| [Claude Code](./claude-code)   | Anthropic | Subscription             | Claude models  |
+| [Mistral Vibe](./mistral-vibe) | Mistral   | API key                  | Mistral models |
 
 ## Quick Start
 

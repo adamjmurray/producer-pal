@@ -203,10 +203,10 @@ features:
 **More helpful videos:**
 
 - [How to setup Producer Pal with Gemini](https://www.youtube.com/watch?v=A_NXOtnR57M&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-  ([written guide](/installation/gemini)). _Note: free tier now has strict
-  limits._
+  ([written guide](/installation/gemini)). _Note: the free use shown here is now
+  very limited._
 - [How to setup Producer Pal with Gemini CLI](https://www.youtube.com/watch?v=jd3wTdDqd4Y&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-  (for command line users). _Note: free tier now has strict limits._
+  (for command line users). _Note: the free use shown here is now very limited._
 
 ## About Producer Pal
 

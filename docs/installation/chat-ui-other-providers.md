@@ -8,8 +8,8 @@ sure? Use OpenRouter.
 
 ::: warning You pay for what you use
 
-Most of these services charge per message. Long chats with the smartest models
-cost the most, so check your balance on the service's website now and then.
+These services charge for what you use. Long chats with the smartest models cost
+the most, so check your balance on the service's website now and then.
 
 :::
 
@@ -30,7 +30,7 @@ cost the most, so check your balance on the service's website now and then.
 ### OpenRouter
 
 [OpenRouter](https://openrouter.ai) is an AI router: hundreds of AI models in
-one place. Includes free and pay-as-you-go options.
+one place.
 
 1. [Get an OpenRouter API key](https://openrouter.ai/settings/keys)
 2. In the chat UI settings:
@@ -42,7 +42,7 @@ one place. Includes free and pay-as-you-go options.
 
 [Vercel AI Gateway](https://vercel.com/ai-gateway) is another AI router with
 hundreds of models in one place, at the providers' own prices. It needs a credit
-card on file before it answers any request, even on its free monthly credits.
+card on file before it answers any request.
 
 1. [Get a Vercel AI Gateway API key](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai-gateway%2Fapi-keys)
 2. In the chat UI settings:
@@ -66,8 +66,7 @@ ways to run Claude.
 
 ### Mistral
 
-[Mistral](https://mistral.ai/) offers AI models developed in France. Free tier
-available with fairly aggressive quotas.
+[Mistral](https://mistral.ai/) offers AI models developed in France.
 
 1. [Get a Mistral API key](https://console.mistral.ai/home?workspace_dialog=apiKeys)
 2. In the chat UI settings:

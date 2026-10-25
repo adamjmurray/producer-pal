@@ -41,21 +41,20 @@ One account gets you AI models from every big company: Claude, Gemini, GPT and
 more. Add some credit, then switch models whenever you like. You pay only for
 what you use.
 
-- **[OpenRouter](./chat-ui-other-providers#openrouter)** — some models are free
-- **[Vercel AI Gateway](./chat-ui-other-providers#vercel-ai-gateway)** — free
-  credit each month, card required
+- **[OpenRouter](./chat-ui-other-providers#openrouter)**
+- **[Vercel AI Gateway](./chat-ui-other-providers#vercel-ai-gateway)** — needs a
+  credit card on file
 
 ## Your Own API Key
 
 An API key is a code from an AI company that lets apps like Producer Pal use its
-AI. Already have one, or want to go straight to one company? Use it here.
+AI. Already have one, or want to go straight to one company? Use it here. Each
+company charges for what you use.
 
-- **[Gemini](./gemini)** (Google) — the free key hits limits fast; for regular
-  use, an AI router is a better fit
-- **[OpenAI](./openai)** — pay for what you use
-- **[Anthropic](./chat-ui-other-providers#anthropic)** (Claude) — trial credit,
-  then pay for what you use
-- **[Mistral](./chat-ui-other-providers#mistral)** — free, with limits
+- **[Gemini](./gemini)** (Google)
+- **[OpenAI](./openai)**
+- **[Anthropic](./chat-ui-other-providers#anthropic)** (Claude)
+- **[Mistral](./chat-ui-other-providers#mistral)**
 - **[Other companies](./chat-ui-other-providers#custom-providers)** — any
   service that works like OpenAI's
 

@@ -15,7 +15,7 @@ the built-in chat UI — and recommends the easiest path.
 | ---------------------------------------- | -------------------------------------- |
 | [Claude / Anthropic](./choose-claude)    | The original, most-tested experience   |
 | [ChatGPT / OpenAI](./choose-openai)      | OpenAI subscribers                     |
-| [Gemini / Google](./choose-gemini)       | Google users and free-tier experiments |
+| [Gemini / Google](./choose-gemini)       | Google users                           |
 | [Mistral / Mistral AI](./choose-mistral) | Mistral users                          |
 | [Local / Offline](./choose-local)        | Running fully offline on your hardware |
 | [Multiple Providers](./choose-multi)     | Mixing and matching as you go          |

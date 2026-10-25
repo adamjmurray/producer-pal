@@ -28,7 +28,8 @@ Google's agent app for Gemini models. Adding Producer Pal means editing a JSON
 config file — one extra step, but everything else is the same.
 
 - **Difficulty:** Easy — one config file to edit
-- **Cost:** Free; a Google AI subscription raises the rate limits
+- **Cost:** a Google AI subscription is recommended; without one you hit limits
+  quickly
 - **Best for:** Gemini users who want a desktop app instead of the CLI
 
 [Get started with Antigravity →](./antigravity)

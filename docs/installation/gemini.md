@@ -2,13 +2,12 @@
 
 Use Producer Pal with Google's Gemini AI through the built-in chat interface.
 
-::: warning The free key runs out fast
+::: warning Expect to pay for regular use
 
-Google's free key only allows a few messages at a time, so you'll likely hit the
-limit quickly. For regular use, reach Gemini through an
-[AI router](./chat-ui-other-providers#openrouter) and pay only for what you use.
-Or use [Antigravity](./antigravity), Google's own app, where a Google AI
-subscription lets you send more.
+Any free use Google offers won't last long in a real session. For regular use,
+reach Gemini through an [AI router](./chat-ui-other-providers#openrouter) and
+pay only for what you use. Or use [Antigravity](./antigravity), Google's own
+app, where a Google AI subscription lets you send more.
 
 :::
 

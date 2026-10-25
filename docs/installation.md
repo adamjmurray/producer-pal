@@ -72,7 +72,7 @@ Dedicated AI apps — the easiest setup for most people:
 - **[ChatGPT App](./installation/chatgpt-app)** — OpenAI's desktop app, with
   Codex built in
 - **[Antigravity](./installation/antigravity)** — Google's agent app for Gemini
-  (free; a subscription raises rate limits)
+  (a Google AI subscription recommended)
 - **[LM Studio Bionic](./installation/bionic)** — runs models fully offline, no
   account needed
 
@@ -101,8 +101,8 @@ For users comfortable with the terminal:
 - **[Claude Code](./installation/claude-code)** — Anthropic (subscription
   required)
 - **[Codex CLI](./installation/codex-cli)** — OpenAI (subscription required)
-- **[Gemini CLI](./installation/gemini-cli)** — Google (free tier has strict
-  rate limits)
+- **[Gemini CLI](./installation/gemini-cli)** — Google (subscription
+  recommended)
 - **[Mistral Vibe](./installation/mistral-vibe)** — Mistral (API key required)
 
 Claude Code, Codex CLI, and Gemini CLI can also use the portable
