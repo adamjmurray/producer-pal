@@ -239,7 +239,7 @@ describe("duplicate - drum pad", () => {
     });
 
     await expect(copyC1ToD1()).rejects.toThrow(
-      "cannot duplicate drum pad C1: it holds the Producer Pal device",
+      "cannot duplicate drum pad t0/d0/pC1 (id pad36): it holds the Producer Pal device",
     );
     expectNoCopy(rack);
   });
@@ -250,7 +250,9 @@ describe("duplicate - drum pad", () => {
       { note: 38, chainIds: [] },
     ]);
 
-    await expect(copyC1ToD1()).rejects.toThrow("drum pad C1 is empty");
+    await expect(copyC1ToD1()).rejects.toThrow(
+      "drum pad t0/d0/pC1 (id pad36) is empty",
+    );
     expectNoCopy(rack);
   });
 
@@ -344,7 +346,7 @@ describe("duplicate - drum pad", () => {
       {
         path: "t0/d0/pC1",
         ok: false,
-        detail: expect.stringContaining("can't be copied onto itself"),
+        detail: "drum pad t0/d0/pC1 (id pad36) can't be copied onto itself",
       },
       { id: "pad38", path: "t0/d0/pD1" },
     ]);
@@ -429,12 +431,16 @@ describe("duplicate - drum pad", () => {
       {
         path: "t0/d0/pD1",
         ok: false,
-        detail: expect.stringContaining("drum pad C1 is empty"),
+        detail: expect.stringContaining(
+          "drum pad t0/d0/pC1 (id pad36) is empty",
+        ),
       },
       {
         path: "t0/d0/pE1",
         ok: false,
-        detail: expect.stringContaining("drum pad C1 is empty"),
+        detail: expect.stringContaining(
+          "drum pad t0/d0/pC1 (id pad36) is empty",
+        ),
       },
     ]);
   });

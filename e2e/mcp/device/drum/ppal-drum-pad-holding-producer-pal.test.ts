@@ -43,14 +43,14 @@ interface Pad {
 }
 
 let hostPadId: string;
-let deleteRefusal: string;
-const DUPLICATE_REFUSAL =
-  "cannot duplicate drum pad C1: it holds the Producer Pal device";
 
 beforeEach(async () => {
   hostPadId = (await readPad(HOST_PAD)).id;
-  deleteRefusal = `cannot delete drum pad ${HOST_PAD} (id ${hostPadId}): it holds the Producer Pal device`;
 });
+
+/** Why the pad holding Producer Pal can't be deleted or duplicated. */
+const refusal = (verb: "delete" | "duplicate"): string =>
+  `cannot ${verb} drum pad ${HOST_PAD} (id ${hostPadId}): it holds the Producer Pal device`;
 
 async function call(
   name: string,
@@ -92,7 +92,7 @@ describe("ppal-delete on a drum pad holding Producer Pal", () => {
     });
 
     expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toBe(`Error: ${deleteRefusal}`);
+    expect(getToolErrorMessage(result)).toBe(`Error: ${refusal("delete")}`);
     await expectHostSurvived();
     expect(await padPaths()).toStrictEqual([HOST_PAD, OTHER_PAD]);
   });
@@ -107,7 +107,7 @@ describe("ppal-delete on a drum pad holding Producer Pal", () => {
     );
 
     expect(data).toStrictEqual([
-      { id: hostPadId, ok: false, detail: deleteRefusal },
+      { id: hostPadId, ok: false, detail: refusal("delete") },
       { id: otherId, path: OTHER_PAD },
     ]);
     await expectHostSurvived();
@@ -124,7 +124,7 @@ describe("ppal-duplicate on a drum pad holding Producer Pal", () => {
     });
 
     expect(isToolError(alone)).toBe(true);
-    expect(getToolErrorMessage(alone)).toBe(`Error: ${DUPLICATE_REFUSAL}`);
+    expect(getToolErrorMessage(alone)).toBe(`Error: ${refusal("duplicate")}`);
 
     const data = parseToolResult<Entry[]>(
       await call("ppal-duplicate", {
@@ -135,7 +135,7 @@ describe("ppal-duplicate on a drum pad holding Producer Pal", () => {
     );
 
     expect(data).toStrictEqual([
-      { path: `${RACK}/pE1`, ok: false, detail: DUPLICATE_REFUSAL },
+      { path: `${RACK}/pE1`, ok: false, detail: refusal("duplicate") },
       { id: (await readPad(`${RACK}/pF1`)).id, path: `${RACK}/pF1` },
     ]);
     await expectHostSurvived();

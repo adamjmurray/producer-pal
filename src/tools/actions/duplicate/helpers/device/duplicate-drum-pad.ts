@@ -92,32 +92,30 @@ export function duplicateDrumPad(
     );
   }
 
-  // What Live does for copy_pad(n, n) isn't documented, and both answers are
-  // bad: layering a pad onto itself doubles its chains, and a no-op reports a
-  // copy that never happened. A repeated toPath entry is all it takes.
-  if (source.midi === destination.midi) {
-    throw new Error(
-      `drum pad ${midiToNoteName(source.midi)} can't be copied onto itself`,
-    );
-  }
-
   const rack = LiveAPI.from(source.rackPath);
 
   refuseRackWithoutPads(rack);
 
   const sourcePad = findDrumPadByNote(rack, source.midi);
+  const sourceLabel =
+    sourcePad == null ? midiToNoteName(source.midi) : targetLabel(sourcePad);
+
+  // What Live does for copy_pad(n, n) isn't documented, and both answers are
+  // bad: layering a pad onto itself doubles its chains, and a no-op reports a
+  // copy that never happened. A repeated toPath entry is all it takes.
+  if (source.midi === destination.midi) {
+    throw new Error(`drum pad ${sourceLabel} can't be copied onto itself`);
+  }
 
   if (sourcePad == null || sourcePad.getChildCount("chains") === 0) {
-    throw new Error(
-      `drum pad ${midiToNoteName(source.midi)} is empty, nothing to copy`,
-    );
+    throw new Error(`drum pad ${sourceLabel} is empty, nothing to copy`);
   }
 
   // copy_pad copies the pad's devices too. A pad's path isn't a prefix of its
   // devices' paths, so its chains are checked instead.
   if (sourcePad.someChild("chains", isProducerPalDevice)) {
     throw new Error(
-      `cannot duplicate drum pad ${midiToNoteName(source.midi)}: it holds the Producer Pal device`,
+      `cannot duplicate drum pad ${sourceLabel}: it holds the Producer Pal device`,
     );
   }
 
