@@ -22,6 +22,10 @@ export const RACKS_TEST_PATH =
 export const TRACKS_TEST_PATH =
   "e2e/live-sets/tracks-test Project/tracks-test.als";
 
+/** A second Set in tracks-test's folder, saved with stale project context. */
+export const TRACKS_TEST_TWIN_PATH =
+  "e2e/live-sets/tracks-test Project/tracks-test-twin.als";
+
 /** t8 "9-MIDI": no clips, no devices, No Output. The scratch track. */
 export const EMPTY_MIDI_TRACK = 8;
 
