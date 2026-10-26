@@ -24,7 +24,7 @@ your computer, so each one needs a [web tunnel](#web-tunnels) first.
 | ---------------------------- | --------- | ------------------------------------ |
 | [claude.ai](./claude-web)    | Anthropic | Free with a Claude account           |
 | [ChatGPT](./chatgpt-web)     | OpenAI    | Subscription (for advanced settings) |
-| [Le Chat](./mistral-le-chat) | Mistral   | Free with a Mistral account (admin)  |
+| [Le Chat](./mistral-le-chat) | Mistral   | Free with a Mistral account          |
 
 The AI is the same as in the desktop apps. The tradeoff is the tunnel: more
 setup, and Live is reachable by anyone with the link.
