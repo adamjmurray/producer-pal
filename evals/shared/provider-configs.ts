@@ -55,7 +55,7 @@ export const GEMINI_CONFIG: ProviderConfig = {
 export const OPENAI_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "OPENAI_KEY",
   providerName: "OpenAI",
-  defaultModel: "gpt-6.1-sol",
+  defaultModel: "gpt-6.1-terra",
 };
 
 /** OpenRouter provider configuration */
