@@ -13,6 +13,23 @@ Pal device settings (default: 3350), which reduces the chance of accidental
 discovery but is not real access control. Update the `:3350` in your AI
 connection settings if you change it in the Producer Pal Max for Live device.
 
+### Chat From a Phone or Another Computer
+
+1. Connect the phone or other computer to the same Wi-Fi network as Live's
+   computer.
+2. Find the IP address of Live's computer. On a Mac: System Settings → Wi-Fi →
+   Details → TCP/IP. On Windows: Settings → Network & internet → Wi-Fi → your
+   network.
+3. In the phone's browser, open `http://<that address>:3350`, for example
+   `http://192.168.1.20:3350`.
+4. Set up the AI in the chat's settings. Each browser keeps its own settings, so
+   paste your API key again.
+
+Some things only work on Live's computer: voice mode, and device settings like
+small model mode. For local AI, `localhost` means the phone itself, so use the
+address of the computer running the AI (see
+[the user guide](/guide/chat-ui#local-ai-settings-ollama-bionic)).
+
 ## Web Chat
 
 Use Producer Pal from a provider's chat website. Websites can't reach Live on
@@ -20,11 +37,11 @@ your computer, so each one needs a [web tunnel](#web-tunnels) first.
 
 <!--@include: ../_partials/web-chat-warning.md-->
 
-| Web App                      | Provider  | Cost                                 |
-| ---------------------------- | --------- | ------------------------------------ |
-| [claude.ai](./claude-web)    | Anthropic | Free with a Claude account           |
-| [ChatGPT](./chatgpt-web)     | OpenAI    | Subscription (for advanced settings) |
-| [Le Chat](./mistral-le-chat) | Mistral   | Free with a Mistral account          |
+| Web App                      | Provider  | Cost                                      |
+| ---------------------------- | --------- | ----------------------------------------- |
+| [claude.ai](./claude-web)    | Anthropic | Claude account (subscription recommended) |
+| [ChatGPT](./chatgpt-web)     | OpenAI    | Subscription (for advanced settings)      |
+| [Le Chat](./mistral-le-chat) | Mistral   | Mistral account                           |
 
 The AI is the same as in the desktop apps. The tradeoff is the tunnel: more
 setup, and Live is reachable by anyone with the link.
