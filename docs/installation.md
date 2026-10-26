@@ -57,7 +57,8 @@ For users comfortable with the terminal:
 
 Claude Code, Codex CLI, and Gemini CLI can also use the portable
 **[Agent Skill](/guide/skills)** instead of MCP — one folder dropped into the
-agent's skills directory, no MCP config. (Agent Skill users: follow Path B.)
+agent's skills directory, no MCP config. (Agent Skill users: follow
+[Path B](#path-b-device-first) below.)
 
 ### Built-in Chat UI
 
@@ -146,8 +147,11 @@ Over HTTP, or in [small model mode](/features#small-model-mode), use Path B.
 
 ### Path B: Device First {#path-b-device-first}
 
-For everything else: the Chat UI, web apps, the Agent Skill, the REST API and
-other HTTP clients.
+For the Agent Skill, web apps, the REST API and other HTTP clients.
+
+Using the built-in Chat UI? Skip this section: the
+[Local AI](./installation/local-ai), [AI Routers](./installation/ai-routers) and
+[API Keys](./installation/api-keys) guides include these steps.
 
 #### Install the Device {#install-the-device}
 

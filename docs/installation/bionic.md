@@ -21,6 +21,7 @@ own MCP setup and use the same settings.
 <!--@include: ../_partials/live-requirement.md-->
 
 - [Bionic](https://lmstudio.ai/bionic)
+- [Node.js 20+](https://nodejs.org/en/download)
 
 Bionic is free, and so is running models on your computer. You don't need an LM
 Studio account.
