@@ -119,6 +119,21 @@ What to do:
 
 Connecting to Ableton and the other tools keep working on 12.3.
 
+## Remote Script Features Not Working
+
+If the AI says automation, undo, or loading plug-ins needs the remote script, or
+says to update it, open **Settings → Installation** in the Chat UI (or click
+**Finish installation…** on the device) and check the remote script:
+
+- **Not installed:** click **Install**, restart Live, and choose Producer Pal as
+  a Control Surface.
+- **Installed but not running:** restart Live, and check the Control Surface
+  slot is set to Producer Pal.
+- **Update offered:** an out-of-date script is ignored until you update it.
+  Click **Update**, then restart Live.
+
+See [Remote Script](/guide/remote-script#check-it-s-working) for details.
+
 ## After Upgrading
 
 If Producer Pal stops working after installing a new version:

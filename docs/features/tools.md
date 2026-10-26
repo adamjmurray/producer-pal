@@ -181,6 +181,9 @@ Live, or make sure your standalone Max is up to date. See
     `created`
   - Position in the Arrangement by bar|beat or locator
   - Auto-tile clips to fill longer arrangement durations
+  - A session clip's automation is written onto the track's lane over the copy's
+    span, replacing what that parameter's lane held there (see
+    [Clip Automation](/guide/automation#arrangement-clips))
 - Apply [transforms](/features#transforms) to each duplicated clip (e.g.
   transpose copies, vary velocities) without a separate update step
 - Stack variations on [take lanes](#take-lanes), or copy or promote a whole lane
