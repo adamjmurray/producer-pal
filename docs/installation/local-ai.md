@@ -20,6 +20,9 @@ Pick one.
 
 ### Ollama
 
+Haven't installed the device yet? Do
+[step 1](#_1-install-the-max-for-live-device) first.
+
 1. Download and install [Ollama](https://ollama.com/download).
 2. Download a model that can control other apps (Ollama calls this "tools"),
    such as `qwen3.8`, `gemma4`, `muse-glimmer` or `mistral-small3.2`. Open
@@ -47,6 +50,9 @@ Pick one.
 <img src="/img/producer-pal-chat-settings-connection-ollama.png" alt="Ollama settings" width="500"/>
 
 ### Bionic / LM Studio
+
+Haven't installed the device yet? Do
+[step 1](#_1-install-the-max-for-live-device) first.
 
 This is for Bionic. The older LM Studio app also works: its menus differ, but
 the settings are the same. Prefer Bionic's own chat window? See

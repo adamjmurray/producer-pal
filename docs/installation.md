@@ -42,7 +42,7 @@ Dedicated AI apps — the easiest setup for most people:
 - **[Google Antigravity](./installation/antigravity)** — agent app for Gemini (a
   Google AI subscription recommended)
 - **[Bionic / LM Studio](./installation/bionic)** — runs models fully offline,
-  no account needed
+  no account needed, but needs a powerful computer
 
 ### Command Line
 
