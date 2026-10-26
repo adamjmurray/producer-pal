@@ -162,26 +162,38 @@ Set, which gets a new bridge, starts clear): the next step in the same direction
 is a 409 that touches nothing, until `/undo/end` (Producer Pal wrote again) or a
 step the other way clears it.
 
-### `POST /watch`, `POST /unwatch`, `GET /events`
+### `POST /watch`, `POST /unwatch`, `GET /events`, `GET /watches`
 
 Live listeners on Session clips, for the experimental generative UI panel
 (`ENABLE_GEN_UI`). `/watch` takes `owner` (a widget id), `path` (`t0/s3`) and
-`follow` (default true). A following watch tracks the slot at that position: it
-re-binds when another clip lands there or tracks shift. `follow: false` pins the
-clip that is there now (409/404 if the slot is empty) and reports `gone` once
-when it is replaced or dies. At most 32 watches (409 past that); `/unwatch`
-takes `owner`.
+optionally `fingerprint` (`{name, length}`, from an earlier session). It binds
+to the clip object in that slot and follows the object, not the slot: when the
+clip moves (tracks or scenes inserted, deleted or reordered, or Live moves it)
+the watch reports `moved` with the new path; when it is deleted or replaced it
+reports `gone` once, with a `reason`, and stays gone. It never re-binds to
+whatever lands in the slot later. Where a clip is comes from its parents (clip,
+slot, track) and their indices.
+
+Refused (`reason` in the body): `empty` (404, no clip there), `no_slot` (404),
+`mismatch` (409, a `fingerprint` was sent and the clip there differs: this is
+how a watch is picked up again after a restart without binding a wrong clip),
+`limit` (409, at most 32 watches, gone ones included until unwatched).
+`/unwatch` takes `owner`.
 
 `/events?since=N` answers `{epoch, seq, resync, events, watching}`. Without
-`since` it only gives the position. Events are `{seq, owner, kind, fields}` with
-`kind` `changed`, `rebound` or `gone`. Live's callbacks only mark a watch; each
-read checks every watch against the Set and turns marks into one event per
-owner. The last 256 events are kept: a reader further behind gets `resync: true`
-and no events, and must re-read everything. A new `epoch` means the registry was
-reset (Set change, hot reload, script restart): watches are gone, register
-again.
+`since` it only gives the position. Events are
+`{seq, owner, kind, fields, path?, reason?}` with `kind` `changed`, `moved` or
+`gone`. Live's callbacks only mark a watch; each read checks every watch against
+the Set and turns marks into one event per owner. The last 256 events are kept:
+a reader further behind gets `resync: true` and no events, and must re-read
+everything. A new `epoch` means the registry was reset (Set change, hot reload,
+script restart): watches are gone, register again.
 
-Every listener is removed when its watch ends, its object dies, the Set changes,
+`/watches` lists every watch with its state, path, listener count and, for a
+gone one, whether its old clip object has become valid again (observed only; it
+is never re-bound). The Live log gets a line for each gone and each revival.
+
+Every listener is removed when its watch ends or goes gone, the Set changes,
 Live disconnects the script, or a hot reload starts. Poll rather than hold the
 request open: a request in flight keeps the update loop sleeping, and the HTTP
 threads only run while it does.

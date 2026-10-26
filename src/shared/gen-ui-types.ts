@@ -18,10 +18,18 @@ interface WidgetBase {
   title?: string;
 }
 
-/** Shows one Session clip. `ref` is a clip id ("12") or a path ("t0/s3"). */
+/**
+ * Shows one Session clip, and follows that clip when it moves. `ref` is where
+ * the clip is now, as a path ("t0/s3"); the server keeps it current. A widget
+ * made from an id is given the clip's path.
+ */
 export interface ClipWidget extends WidgetBase {
   kind: "clip";
   ref: string;
+  /** Name and length (beats) of the clip, to tell it from another after a restart. */
+  fingerprint?: { name: string; length: number };
+  /** The clip was deleted or replaced, or isn't the one it was. It stays so. */
+  gone?: true;
 }
 
 /** A plain note from the AI. */

@@ -110,6 +110,51 @@ export function updateWidget(id: string, patch: WidgetFields): StoreResult {
 }
 
 /**
+ * Record what the remote script learned about a clip widget: where the clip is
+ * now, what it looks like, or that it is gone. Not for callers' input.
+ * @param id - The widget
+ * @param state - The fields to set; `gone: false` clears it
+ * @param state.ref - The clip's current path
+ * @param state.fingerprint - The clip's name and length
+ * @param state.gone - True once the clip is deleted or replaced
+ * @returns The changed widget, or why not
+ */
+export function updateClipState(
+  id: string,
+  state: {
+    ref?: string;
+    fingerprint?: { name: string; length: number };
+    gone?: boolean;
+  },
+): StoreResult {
+  const list = load();
+  const index = list.findIndex((widget) => widget.id === id);
+  const current = list[index];
+
+  if (current?.kind !== "clip") {
+    return notFound(id);
+  }
+
+  const { gone: _gone, ...rest } = current;
+  const next = {
+    ...rest,
+    ...(state.ref == null ? {} : { ref: state.ref }),
+    ...(state.fingerprint == null ? {} : { fingerprint: state.fingerprint }),
+    ...((state.gone ?? current.gone === true) ? { gone: true as const } : {}),
+  };
+
+  // Nothing new: don't spend a version on it.
+  if (JSON.stringify(next) === JSON.stringify(current)) {
+    return { ok: true, widget: current };
+  }
+
+  list[index] = next;
+  commit({ op: "upsert", widget: next });
+
+  return { ok: true, widget: next };
+}
+
+/**
  * Take a widget off the view.
  * @param id - The widget to remove
  * @returns The removed widget, or why not

@@ -83,6 +83,23 @@ function mountStream(): {
   return { result, sources };
 }
 
+/**
+ * Mount the hook against an empty server at version 0, once it is listening.
+ * @returns The hook result and the event source it opened
+ */
+async function mountAtVersionZero(): Promise<{
+  result: ReturnType<typeof mountStream>["result"];
+  source: FakeSource;
+}> {
+  stubSnapshot(snapshot(0));
+
+  const { result, sources } = mountStream();
+
+  await waitFor(() => expect(sources).toHaveLength(1));
+
+  return { result, source: sources[0] as FakeSource };
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -124,13 +141,10 @@ describe("useGenUiStream", () => {
   });
 
   it("follows the sync status without ticking the clips", async () => {
-    stubSnapshot(snapshot(0));
+    const { result, source } = await mountAtVersionZero();
 
-    const { result, sources } = mountStream();
-
-    await waitFor(() => expect(sources).toHaveLength(1));
     await act(() => {
-      (sources[0] as FakeSource).send({
+      source.send({
         type: "status",
         version: 1,
         sync: { mode: "writes-only", detail: "no script" },
@@ -145,13 +159,10 @@ describe("useGenUiStream", () => {
   });
 
   it("ticks the clips on a Live change", async () => {
-    stubSnapshot(snapshot(0));
+    const { result, source } = await mountAtVersionZero();
 
-    const { result, sources } = mountStream();
-
-    await waitFor(() => expect(sources).toHaveLength(1));
     await act(() => {
-      (sources[0] as FakeSource).send({
+      source.send({
         type: "live",
         version: 1,
         tool: "ppal-create-clip",

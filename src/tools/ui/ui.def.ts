@@ -14,7 +14,7 @@ export const toolDefUi = defineTool(GEN_UI_TOOL_ID, {
   title: "UI",
   description:
     "Put widgets on the user's side panel (open at /chat?view=gen). " +
-    "kind=clip shows a Session clip (ref = clip id or path like t0/s3) and follows it as it changes; " +
+    "kind=clip shows an existing Session clip (ref = clip id or path like t0/s3), follows it as it changes or moves, and shows it missing once it is deleted; " +
     "kind=text shows a note. " +
     "Actions: create (kind + ref or text), update (id + fields to change), remove (id), list. " +
     "Create a clip widget after you create or change a clip so the user sees it.",

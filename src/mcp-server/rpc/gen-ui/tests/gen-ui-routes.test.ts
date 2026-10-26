@@ -5,6 +5,7 @@
 
 import {
   afterAll,
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -13,6 +14,7 @@ import {
   vi,
 } from "vitest";
 import { type GenUiEvent, type Widget } from "#src/shared/gen-ui-types.ts";
+import { setClipResolverForTesting } from "../clip-ref.ts";
 import { resetHubForTesting } from "../gen-ui-hub.ts";
 import { resetWidgetStoreForTesting } from "../widget-store.ts";
 import { registerGenUiRoutes } from "../gen-ui-routes.ts";
@@ -24,7 +26,7 @@ import {
   useTempConfigDir,
   type MarkdownRouteServer,
 } from "../../../tests/config-dir-test-helpers.ts";
-import { openEventStream } from "./event-stream-test-helpers.ts";
+import { openEventStream } from "./gen-ui-test-helpers.ts";
 
 useTempConfigDir();
 
@@ -41,6 +43,18 @@ beforeAll(async () => {
 beforeEach(() => {
   resetHubForTesting();
   resetWidgetStoreForTesting();
+  // Live has clips in t0/s0 and t1/s1 only.
+  setClipResolverForTesting((ref) =>
+    Promise.resolve(
+      ["t0/s0", "t1/s1"].includes(ref)
+        ? { ok: true, path: ref }
+        : { ok: false, error: `No clip at ${ref}` },
+    ),
+  );
+});
+
+afterEach(() => {
+  setClipResolverForTesting(null);
 });
 
 afterAll(async () => {
@@ -109,6 +123,23 @@ describe("/api/ui/widgets", () => {
     expect(notAnObject.status).toBe(400);
     expect(unknownPut.status).toBe(404);
     expect(await statusOf(`${widgets}/w9`, { method: "DELETE" })).toBe(404);
+  });
+
+  it("refuses a clip widget for a slot with no clip, and says why", async () => {
+    const empty = await postJson(widgets, { kind: "clip", ref: "t9/s9" });
+    const created = await postJson(widgets, { kind: "clip", ref: "t0/s0" });
+    const moved = await putJson(`${widgets}/w1`, { ref: "t9/s9" });
+
+    expect(empty.status).toBe(400);
+    expect(await errorOf(empty)).toBe("No clip at t9/s9");
+    expect(created.status).toBe(201);
+    expect(moved.status).toBe(400);
+
+    const after = await getSnapshot();
+
+    expect(after.widgets).toStrictEqual([
+      { id: "w1", kind: "clip", ref: "t0/s0" },
+    ]);
   });
 
   it("refuses writes from another site, but not reads", async () => {

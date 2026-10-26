@@ -132,7 +132,14 @@ function patchClip(
 
   const ref = readRef(patch.ref);
 
-  return ref.ok ? ok({ ...widget, ref: ref.value }) : ref;
+  if (!ref.ok) {
+    return ref;
+  }
+
+  // A new ref is a different clip: what was known about the old one is void.
+  const { fingerprint: _fingerprint, gone: _gone, ...rest } = widget;
+
+  return ok(ref.value === widget.ref ? widget : { ...rest, ref: ref.value });
 }
 
 /**

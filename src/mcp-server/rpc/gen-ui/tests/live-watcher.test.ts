@@ -4,14 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type GenUiEvent } from "#src/shared/gen-ui-types.ts";
+import { type ClipWidget, type GenUiEvent } from "#src/shared/gen-ui-types.ts";
+import { type RemoteScriptRequest } from "../../remote-script/remote-script-client.ts";
+import { FakeScript } from "./gen-ui-test-helpers.ts";
 import { RemoteScriptTimeout } from "../../remote-script/remote-script-errors.ts";
-import {
-  type RemoteScriptReply,
-  type RemoteScriptRequest,
-  setRemoteScriptEnabled,
-} from "../../remote-script/remote-script-client.ts";
-import { mcpRequests, setMcpResponse } from "#src/test/mocks/mock-max.ts";
 import {
   getSync,
   resetHubForTesting,
@@ -23,9 +19,6 @@ import {
   POLL_MS,
   REFUSED_RETRY_MS,
   RETRY_MS,
-  resolveClipPath,
-  startLiveWatcher,
-  stopLiveWatcher,
   type WatcherDeps,
 } from "../live-watcher.ts";
 import {
@@ -33,110 +26,22 @@ import {
   listWidgets,
   removeWidget,
   resetWidgetStoreForTesting,
+  updateClipState,
   updateWidget,
 } from "../widget-store.ts";
-
-/** Stands in for the remote script's /watch, /unwatch and /events. */
-class FakeScript {
-  epoch = "e1";
-  seq = 0;
-  watching = new Set<string>();
-  events: Array<Record<string, unknown>> = [];
-  down: false | { outdated?: string } = false;
-  refuse: number | null = null;
-  resync = false;
-  requests: RemoteScriptRequest[] = [];
-
-  request = (request: RemoteScriptRequest): Promise<RemoteScriptReply> => {
-    this.requests.push(request);
-
-    if (this.down) {
-      return Promise.resolve({
-        available: false,
-        ...(this.down.outdated == null ? {} : { outdated: this.down.outdated }),
-      });
-    }
-
-    return Promise.resolve({
-      available: true,
-      ...this.answer(request),
-    });
-  };
-
-  restart(): void {
-    this.epoch = "e2";
-    this.seq = 0;
-    this.watching.clear();
-    this.events = [];
-  }
-
-  emit(owner: string, kind = "changed"): void {
-    this.seq += 1;
-    this.events.push({ seq: this.seq, owner, kind, fields: ["notes"] });
-  }
-
-  routes(route: string): RemoteScriptRequest[] {
-    return this.requests.filter((r) => r.route === route);
-  }
-
-  private answer(request: RemoteScriptRequest): {
-    status: number;
-    body: Record<string, unknown>;
-  } {
-    const body = (request.body ?? {}) as { owner?: string };
-
-    if (request.route === "/watch") {
-      if (this.refuse != null) {
-        return { status: this.refuse, body: { error: "refused" } };
-      }
-
-      this.watching.add(String(body.owner));
-
-      return {
-        status: 200,
-        body: { ok: true, epoch: this.epoch, seq: this.seq },
-      };
-    }
-
-    if (request.route === "/unwatch") {
-      this.watching.delete(String(body.owner));
-
-      return { status: 200, body: { existed: true } };
-    }
-
-    const since = Number(request.query?.since ?? 0);
-    const resync = this.resync;
-
-    this.resync = false;
-
-    return {
-      status: 200,
-      body: {
-        epoch: this.epoch,
-        seq: this.seq,
-        resync,
-        events: resync ? [] : this.events.filter((e) => Number(e.seq) > since),
-        watching: [...this.watching],
-      },
-    };
-  }
-}
 
 let script: FakeScript;
 let published: GenUiEvent[];
 let syncs: Array<{ mode: string; detail: string }>;
-let paths: Record<string, string | null>;
 let now: number;
 let watcher: LiveWatcher;
 
-/**
- * @returns Deps wired to the fake script, with the real widget store
- */
+/** @returns Deps wired to the fake script, with the real widget store */
 function deps(): WatcherDeps {
   return {
     request: script.request,
-    resolvePath: (id) => Promise.resolve(paths[id] ?? null),
     listWidgets,
+    updateClipState,
     publish: ((event: GenUiEvent) => {
       published.push(event);
 
@@ -152,9 +57,12 @@ beforeEach(() => {
   resetHubForTesting();
   resetWidgetStoreForTesting();
   script = new FakeScript();
+  script.slots = {
+    "t0/s0": { name: "Bass", length: 8 },
+    "t1/s1": { name: "Lead", length: 4 },
+  };
   published = [];
   syncs = [];
-  paths = {};
   now = 0;
   watcher = new LiveWatcher(deps());
 });
@@ -168,30 +76,28 @@ const clip = (ref: string): Record<string, unknown> => ({ kind: "clip", ref });
 
 const lives = (): GenUiEvent[] => published.filter((e) => e.type === "live");
 
+const widget = (id: string): ClipWidget => {
+  const found = listWidgets().find((w) => w.id === id);
+
+  return found as ClipWidget;
+};
+
+const allRefreshes = (): number =>
+  lives().filter((e) => e.type === "live" && e.all).length;
+
 describe("registering", () => {
-  it("watches path widgets by slot, and ignores text widgets", async () => {
-    createWidget(clip("t0/s3"));
+  it("watches a path widget and keeps the fingerprint the script reports", async () => {
+    createWidget(clip("t0/s0"));
     createWidget({ kind: "text", text: "hi" });
     await watcher.tick();
 
     expect(script.routes("/watch").map((r) => r.body)).toStrictEqual([
-      { owner: "w1", path: "t0/s3", follow: true },
+      { owner: "w1", path: "t0/s0" },
     ]);
+    expect(widget("w1").fingerprint).toStrictEqual({ name: "Bass", length: 8 });
   });
 
-  it("pins an id widget to the clip, by the slot it is in now", async () => {
-    paths["12"] = "t2/s1";
-    createWidget(clip("12"));
-    await watcher.tick();
-
-    expect(script.routes("/watch")[0]?.body).toStrictEqual({
-      owner: "w1",
-      path: "t2/s1",
-      follow: false,
-    });
-  });
-
-  it("leaves a clip it can't place to the write-triggered refresh", async () => {
+  it("leaves an id ref from before widgets were kept by path alone", async () => {
     createWidget(clip("12"));
     await watcher.tick();
     await watcher.tick();
@@ -205,19 +111,21 @@ describe("registering", () => {
     await watcher.tick();
     await watcher.tick();
 
+    // The first contact asks once to learn the script's epoch.
     expect(script.routes("/watch")).toHaveLength(1);
-    expect(script.routes("/events")).toHaveLength(2);
+    expect(script.routes("/events")).toHaveLength(3);
   });
 
-  it("tries a refused watch again later, and not before", async () => {
-    script.refuse = 409;
+  it("tries a full script again later, and not before", async () => {
+    script.limit = true;
     createWidget(clip("t0/s0"));
     await watcher.tick();
     await watcher.tick();
 
     expect(script.routes("/watch")).toHaveLength(1);
+    expect(widget("w1").gone).toBeUndefined();
 
-    script.refuse = null;
+    script.limit = false;
     now += REFUSED_RETRY_MS;
     await watcher.tick();
 
@@ -233,11 +141,205 @@ describe("registering", () => {
   });
 });
 
+describe("a widget follows its clip", () => {
+  beforeEach(() => {
+    watcher.start();
+  });
+
+  it("takes the new path when the clip moves, without watching again", async () => {
+    createWidget(clip("t0/s0"));
+    await vi.advanceTimersByTimeAsync(0);
+    script.emit("w1", "moved", { path: "t1/s0" });
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+
+    expect(widget("w1").ref).toBe("t1/s0");
+    expect(widget("w1").gone).toBeUndefined();
+    expect(script.routes("/watch")).toHaveLength(1);
+    expect(script.routes("/unwatch")).toHaveLength(0);
+    expect(lives()).toStrictEqual([
+      {
+        type: "live",
+        tool: "remote-script",
+        ids: [],
+        paths: ["t1/s0", "t0/s0"],
+        all: false,
+      },
+    ]);
+  });
+
+  it("keeps hearing about the clip after it moved", async () => {
+    createWidget(clip("t0/s0"));
+    await vi.advanceTimersByTimeAsync(0);
+    script.emit("w1", "moved", { path: "t1/s0" });
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+    script.emit("w1");
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+
+    expect(lives().at(-1)).toStrictEqual({
+      type: "live",
+      tool: "remote-script",
+      ids: [],
+      paths: ["t1/s0"],
+      all: false,
+    });
+  });
+
+  it("ignores a move to something that isn't a Session path", async () => {
+    createWidget(clip("t0/s0"));
+    await vi.advanceTimersByTimeAsync(0);
+    script.emit("w1", "moved", { path: "t0[5|1]" });
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+
+    expect(widget("w1").ref).toBe("t0/s0");
+  });
+
+  it("marks the widget gone when the clip is deleted, and it stays gone", async () => {
+    createWidget(clip("t0/s0"));
+    await vi.advanceTimersByTimeAsync(0);
+    script.slots["t0/s0"] = undefined;
+    script.emit("w1", "gone", { reason: "dead" });
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+
+    expect(widget("w1").gone).toBe(true);
+
+    // Something else lands in the slot. The widget does not take it.
+    script.slots["t0/s0"] = { name: "Bass", length: 8 };
+    await vi.advanceTimersByTimeAsync(POLL_MS * 10);
+
+    expect(widget("w1").gone).toBe(true);
+    expect(script.routes("/watch")).toHaveLength(1);
+  });
+
+  it("stops polling once every clip is gone", async () => {
+    createWidget(clip("t0/s0"));
+    await vi.advanceTimersByTimeAsync(0);
+    script.emit("w1", "gone");
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+    const settled = script.requests.length;
+
+    await vi.advanceTimersByTimeAsync(POLL_MS * 5);
+
+    expect(script.requests).toHaveLength(settled);
+  });
+
+  it("shows an empty slot at creation as gone, since there is no clip to follow", async () => {
+    createWidget(clip("t5/s5"));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(widget("w1").gone).toBe(true);
+  });
+
+  it("follows a new ref the AI gives it, and forgets what it knew", async () => {
+    createWidget(clip("t0/s0"));
+    await vi.advanceTimersByTimeAsync(0);
+    updateWidget("w1", { ref: "t1/s1" });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(script.routes("/unwatch")).toHaveLength(1);
+    expect(script.routes("/watch").at(-1)?.body).toStrictEqual({
+      owner: "w1",
+      path: "t1/s1",
+    });
+    expect(widget("w1").fingerprint).toStrictEqual({ name: "Lead", length: 4 });
+  });
+
+  it("follows again a gone widget the AI points at another clip", async () => {
+    createWidget(clip("t0/s0"));
+    await vi.advanceTimersByTimeAsync(0);
+    script.emit("w1", "gone");
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+    updateWidget("w1", { ref: "t1/s1" });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(widget("w1").gone).toBeUndefined();
+    expect(script.watching.has("w1")).toBe(true);
+  });
+});
+
+describe("after a restart or a Set change", () => {
+  const widgetsAt = async (): Promise<void> => {
+    createWidget(clip("t0/s0"));
+    createWidget(clip("t1/s1"));
+    await watcher.tick();
+  };
+
+  it("binds again from the last path when the clip there still matches", async () => {
+    await widgetsAt();
+    script.restart();
+    script.requests.length = 0;
+    await watcher.tick();
+
+    expect(script.routes("/watch").map((r) => r.body)).toStrictEqual([
+      { owner: "w1", path: "t0/s0", fingerprint: { name: "Bass", length: 8 } },
+      { owner: "w2", path: "t1/s1", fingerprint: { name: "Lead", length: 4 } },
+    ]);
+    expect(widget("w1").gone).toBeUndefined();
+    expect(widget("w2").gone).toBeUndefined();
+  });
+
+  it("shows a different clip at the path as gone, not as a wrong clip", async () => {
+    await widgetsAt();
+    script.restart();
+    script.slots["t0/s0"] = { name: "Drums", length: 8 };
+    script.slots["t1/s1"] = { name: "Lead", length: 16 };
+    await watcher.tick();
+
+    expect(widget("w1").gone).toBe(true);
+    expect(widget("w2").gone).toBe(true);
+    expect(script.watching.size).toBe(0);
+  });
+
+  it("shows an empty slot as gone", async () => {
+    await widgetsAt();
+    script.restart();
+    script.slots["t0/s0"] = undefined;
+    await watcher.tick();
+
+    expect(widget("w1").gone).toBe(true);
+    expect(widget("w2").gone).toBeUndefined();
+  });
+
+  it("judges a gone widget again, so a verdict from another Set doesn't stick", async () => {
+    await widgetsAt();
+    updateClipState("w2", { gone: true });
+    script.restart();
+    await watcher.tick();
+
+    expect(widget("w2").gone).toBeUndefined();
+    expect(script.watching.has("w2")).toBe(true);
+  });
+
+  it("judges a deleted clip's widget gone again", async () => {
+    await widgetsAt();
+    script.slots["t1/s1"] = undefined;
+    script.emit("w2", "gone");
+    await watcher.tick();
+    script.restart();
+    script.slots["t1/s1"] = undefined;
+    await watcher.tick();
+
+    expect(widget("w2").gone).toBe(true);
+  });
+
+  it("refreshes every clip once it has bound again", async () => {
+    await widgetsAt();
+    script.restart();
+    published.length = 0;
+    script.requests.length = 0;
+    await watcher.tick();
+
+    expect(allRefreshes()).toBe(1);
+
+    const order = script.requests.map((r) => r.route);
+
+    expect(order.lastIndexOf("/events")).toBeLessThan(order.indexOf("/watch"));
+  });
+});
+
 describe("events", () => {
   it("passes each change on as a live event naming the widget's clip", async () => {
-    paths["12"] = "t0/s0";
+    createWidget(clip("t0/s0"));
     createWidget(clip("t1/s1"));
-    createWidget(clip("12"));
     await watcher.tick();
     script.emit("w1");
     script.emit("w2");
@@ -248,14 +350,14 @@ describe("events", () => {
         type: "live",
         tool: "remote-script",
         ids: [],
-        paths: ["t1/s1"],
+        paths: ["t0/s0"],
         all: false,
       },
       {
         type: "live",
         tool: "remote-script",
-        ids: ["12"],
-        paths: [],
+        ids: [],
+        paths: ["t1/s1"],
         all: false,
       },
     ]);
@@ -269,6 +371,7 @@ describe("events", () => {
     await watcher.tick();
 
     expect(script.routes("/events").map((r) => r.query?.since)).toStrictEqual([
+      undefined,
       "0",
       "0",
       "1",
@@ -291,31 +394,9 @@ describe("events", () => {
 
     expect(syncs.at(-1)?.mode).toBe("listening");
   });
-
-  it("does not watch again a clip the script says is gone, until its widget changes", async () => {
-    watcher.start();
-    paths["12"] = "t0/s0";
-    createWidget(clip("12"));
-    await watcher.tick();
-    script.watching.clear();
-    script.emit("w1", "gone");
-    await watcher.tick();
-    await watcher.tick();
-
-    expect(script.routes("/watch")).toHaveLength(1);
-    expect(lives()).toHaveLength(1);
-
-    updateWidget("w1", { title: "x" });
-    await watcher.tick();
-
-    expect(script.routes("/watch")).toHaveLength(2);
-  });
 });
 
 describe("falling back to refreshing everything", () => {
-  const allRefreshes = (): number =>
-    lives().filter((e) => e.type === "live" && e.all).length;
-
   it("after a queue overflow", async () => {
     createWidget(clip("t0/s0"));
     await watcher.tick();
@@ -336,22 +417,6 @@ describe("falling back to refreshing everything", () => {
     await watcher.tick();
 
     expect(allRefreshes()).toBe(1);
-  });
-
-  it("after the script restarts, once it has registered again", async () => {
-    createWidget(clip("t0/s0"));
-    await watcher.tick();
-    script.restart();
-    published.length = 0;
-    script.requests.length = 0;
-    await watcher.tick();
-
-    expect(script.watching.has("w1")).toBe(true);
-    expect(allRefreshes()).toBe(1);
-    const order = script.requests.map((r) => r.route);
-
-    expect(order.indexOf("/watch")).toBeGreaterThan(-1);
-    expect(order.lastIndexOf("/events")).toBeLessThan(order.indexOf("/watch"));
   });
 
   it("registers again a watch the script lost on its own", async () => {
@@ -377,13 +442,15 @@ describe("when the remote script is not there", () => {
       detail:
         "Clips refresh after AI changes only (the remote script is out of date).",
     });
+    expect(widget("w1").gone).toBeUndefined();
   });
 
   it("treats a timeout or a dropped connection the same way", async () => {
     createWidget(clip("t0/s0"));
-    script.request = () =>
-      Promise.reject(new RemoteScriptTimeout("slow", true));
-    watcher = new LiveWatcher({ ...deps(), request: script.request });
+    watcher = new LiveWatcher({
+      ...deps(),
+      request: () => Promise.reject(new RemoteScriptTimeout("slow", true)),
+    });
 
     await expect(watcher.tick()).resolves.toBeUndefined();
     expect(syncs.at(-1)?.mode).toBe("writes-only");
@@ -415,7 +482,7 @@ describe("when the remote script is not there", () => {
     await vi.advanceTimersByTimeAsync(1);
 
     expect(syncs.at(-1)?.mode).toBe("listening");
-    expect(lives().filter((e) => e.type === "live" && e.all)).toHaveLength(1);
+    expect(allRefreshes()).toBe(1);
   });
 
   it("polls at the normal pace while it answers", async () => {
@@ -456,18 +523,15 @@ describe("following the widgets", () => {
     expect(script.requests).toHaveLength(settled);
   });
 
-  it("moves the watch when the widget's ref changes", async () => {
+  it("unwatches a gone widget's record when the widget is removed", async () => {
     createWidget(clip("t0/s0"));
     await vi.advanceTimersByTimeAsync(0);
-    updateWidget("w1", { ref: "t3/s3" });
+    script.emit("w1", "gone");
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+    removeWidget("w1");
     await vi.advanceTimersByTimeAsync(0);
 
     expect(script.routes("/unwatch")).toHaveLength(1);
-    expect(script.routes("/watch").at(-1)?.body).toStrictEqual({
-      owner: "w1",
-      path: "t3/s3",
-      follow: true,
-    });
   });
 
   it("leaves the watch alone when only the title changes", async () => {
@@ -501,10 +565,7 @@ describe("following the widgets", () => {
     );
   });
 
-  it("ignores status and live events, and stops following after stop()", async () => {
-    const seen: string[] = [];
-
-    subscribe((event) => seen.push(event.type));
+  it("stops following after stop()", async () => {
     watcher.stop();
     createWidget(clip("t0/s0"));
     await vi.advanceTimersByTimeAsync(POLL_MS * 2);
@@ -523,7 +584,7 @@ describe("following the widgets", () => {
 });
 
 /**
- * A script that answers every /watch and /events, with whatever `body` says.
+ * A script that answers every /watch and /events with fixed bodies.
  * @param watch - The /watch body
  * @param events - The /events body
  * @returns A request function for WatcherDeps
@@ -540,59 +601,37 @@ function oddScript(
     });
 }
 
-/**
- * Replace the watcher with a started one whose requests pass `see` first, which
- * may do things to the world or throw before the fake script answers.
- * @param see - Called with each request
- */
-function startWatcherSeeing(see: (request: RemoteScriptRequest) => void): void {
-  watcher.stop();
-  watcher = new LiveWatcher({
-    ...deps(),
-    request: (r) => {
-      see(r);
-
-      return script.request(r);
-    },
-  });
-  watcher.start();
-}
-
 describe("rounds that overlap or are overtaken", () => {
   it("ignores a round asked for while one is running", async () => {
     createWidget(clip("t0/s0"));
 
     await Promise.all([watcher.tick(), watcher.tick()]);
 
-    expect(script.routes("/events")).toHaveLength(1);
+    // One round: the first-contact probe, and the poll.
+    expect(script.routes("/events")).toHaveLength(2);
   });
 
   it("goes again at once when a widget arrives mid-round", async () => {
+    watcher.stop();
+
     let added = false;
 
-    startWatcherSeeing((r) => {
+    const request: WatcherDeps["request"] = (r) => {
       if (r.route === "/watch" && !added) {
         added = true;
         createWidget(clip("t1/s1"));
       }
-    });
+
+      return script.request(r);
+    };
+
+    watcher = new LiveWatcher({ ...deps(), request });
+    watcher.start();
     createWidget(clip("t0/s0"));
     await vi.advanceTimersByTimeAsync(0);
     await vi.advanceTimersByTimeAsync(1);
 
     expect([...script.watching].toSorted()).toStrictEqual(["w1", "w2"]);
-  });
-
-  it("says nothing when the last clip widget goes during the round", async () => {
-    createWidget(clip("t0/s0"));
-    startWatcherSeeing((r) => {
-      if (r.route === "/events") {
-        removeWidget("w1");
-      }
-    });
-    await watcher.tick();
-
-    expect(syncs).toStrictEqual([]);
   });
 
   it("refreshes once, not twice, when the script is back and restarted", async () => {
@@ -630,11 +669,18 @@ describe("widgets that are not clips, and removals that fail", () => {
   });
 
   it("survives a request function that throws instead of rejecting", async () => {
-    startWatcherSeeing((r) => {
+    watcher.stop();
+
+    const request: WatcherDeps["request"] = (r) => {
       if (r.route === "/unwatch") {
         throw new Error("broken");
       }
-    });
+
+      return script.request(r);
+    };
+
+    watcher = new LiveWatcher({ ...deps(), request });
+    watcher.start();
     createWidget(clip("t0/s0"));
     await vi.advanceTimersByTimeAsync(0);
     removeWidget("w1");
@@ -671,46 +717,5 @@ describe("status changes", () => {
 
     expect(seen).toStrictEqual(["status"]);
     expect(getSync().detail).toBe("on");
-  });
-});
-
-describe("the real lookup of a clip's slot by id", () => {
-  // The Live mock answers on a real timer.
-  beforeEach(() => {
-    vi.useRealTimers();
-  });
-
-  const reply = (text: string): unknown => ({
-    content: [{ type: "text", text }],
-  });
-
-  it("asks Live for the clip and returns its Session path", async () => {
-    setMcpResponse(reply('{"id":"12","path":"t2/s1"}'));
-
-    expect(await resolveClipPath("12")).toBe("t2/s1");
-    expect(mcpRequests.map((r) => r.tool)).toContain("ppal-read-clip");
-  });
-
-  it.each([
-    ["no answer text", { content: [] }],
-    ["an arrangement clip", reply('{"id":"12","path":"t0[5|1]"}')],
-    ["an answer that isn't JSON", reply("Error: no such clip")],
-  ])("finds no path for %s", async (_name, answer) => {
-    setMcpResponse(answer);
-
-    expect(await resolveClipPath("12")).toBeNull();
-  });
-
-  it("is the lookup the shared watcher uses", async () => {
-    vi.useFakeTimers();
-    setRemoteScriptEnabled(false);
-    setMcpResponse(reply('{"id":"12","path":"t2/s1"}'));
-    createWidget(clip("12"));
-    startLiveWatcher();
-    await vi.advanceTimersByTimeAsync(10);
-    stopLiveWatcher();
-    setRemoteScriptEnabled(true);
-
-    expect(mcpRequests.map((r) => r.tool)).toContain("ppal-read-clip");
   });
 });

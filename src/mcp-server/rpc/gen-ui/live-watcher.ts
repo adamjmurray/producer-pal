@@ -5,24 +5,34 @@
 
 // Keeps clip widgets current when Live changes by any route, hand edits
 // included. The remote script (remote-script/Producer_Pal/watches.py) holds the
-// Live listeners; this polls it and turns what it reports into `live` events on
-// the gen-ui hub, which stays the only hub the view hears from.
+// Live listeners and follows each clip object; this polls it and turns what it
+// reports into `live` events on the gen-ui hub, which stays the only hub the
+// view hears from.
+//
+// A widget follows its clip: when the clip moves, the widget's stored path is
+// updated; when the clip is deleted or replaced, the widget is marked gone and
+// stays so. After a restart the script has lost object identity, so each widget
+// is bound again from its last path, and only if the clip there still matches
+// its fingerprint (name and length). Otherwise it is gone, not a wrong clip.
 //
 // Best effort throughout. If the remote script is missing, old or silent the
 // panel falls back to refreshing after AI writes, and says so. Nothing here
 // may throw into a tool call or a request.
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import { type GenUiEvent, type Widget } from "#src/shared/gen-ui-types.ts";
+import {
+  type ClipWidget,
+  type GenUiEvent,
+  type Widget,
+} from "#src/shared/gen-ui-types.ts";
 import * as console from "../../node-for-max-logger.ts";
-import { callLiveApi } from "../../max-api-adapter.ts";
 import {
   remoteScriptRequest,
   type RemoteScriptReply,
   type RemoteScriptRequest,
 } from "../remote-script/remote-script-client.ts";
 import { publish, setSync, subscribe } from "./gen-ui-hub.ts";
-import { listWidgets } from "./widget-store.ts";
+import { listWidgets, updateClipState } from "./widget-store.ts";
 
 /** How often to ask the script for events while it answers. */
 export const POLL_MS = 300;
@@ -36,21 +46,28 @@ export const REFUSED_RETRY_MS = 5000;
 const POLL_TIMEOUT_MS = 2000;
 const SESSION_PATH = /^t\d+\/s\d+$/;
 
+/** Why the script refused a watch because the clip isn't there to follow. */
+const NO_CLIP_REASONS = new Set(["empty", "mismatch", "no_slot"]);
+
 export interface WatcherDeps {
   request: (request: RemoteScriptRequest) => Promise<RemoteScriptReply>;
-  /** The Session path of the clip with this id, or null. */
-  resolvePath: (id: string) => Promise<string | null>;
   listWidgets: () => Widget[];
+  updateClipState: typeof updateClipState;
   publish: typeof publish;
   setSync: typeof setSync;
   now: () => number;
 }
 
+type Answer = Extract<RemoteScriptReply, { available: true }>;
+
 /** The remote script did not answer, or is too old to. */
 class ScriptUnavailable extends Error {}
 
+/** What we asked the script to watch for a widget. */
 interface Registered {
   ref: string;
+  /** The script keeps a record of a gone clip until it is unwatched. */
+  gone?: true;
 }
 
 /** Follows the clip widgets in Live through the remote script. */
@@ -61,7 +78,6 @@ export class LiveWatcher {
   private ticking = false;
   private epoch: string | null = null;
   private since = 0;
-  /** Owners the script is watching for us, by what they were registered with. */
   private readonly registered = new Map<string, Registered>();
   /** Owners not to register again until their widget changes. */
   private readonly settled = new Set<string>();
@@ -117,26 +133,34 @@ export class LiveWatcher {
   }
 
   private async round(): Promise<void> {
-    const clips = this.clipWidgets();
-
-    if (clips.length === 0) {
+    if (this.clipWidgets().length === 0) {
       return;
     }
 
-    await this.registerMissing(clips);
+    if (this.epoch == null) {
+      // First contact. Learn the script's epoch before judging anything, so
+      // the verdicts below aren't undone by it.
+      const hello = await this.ask({ route: "/events" });
+
+      if (hello.status === 200) {
+        this.adoptEpoch(hello.body);
+      }
+    }
+
+    await this.registerMissing();
 
     const reply = await this.ask({
       route: "/events",
       query: { since: String(this.since) },
     });
 
-    this.handleEvents(reply, clips);
+    this.handleEvents(reply);
 
     if (this.needsRefresh) {
       // The script lost its watches. Watch again before the clips re-read, so
       // nothing slips between the two.
       this.needsRefresh = false;
-      await this.registerMissing(clips);
+      await this.registerMissing();
       this.refreshAll("the remote script restarted");
     }
   }
@@ -152,20 +176,30 @@ export class LiveWatcher {
       if (event.change.op === "remove") {
         this.forget(event.change.id);
       } else if (event.change.widget.kind === "clip") {
-        const known = this.registered.get(event.change.widget.id);
-
-        // A new ref is a new watch.
-        if (known != null && known.ref !== event.change.widget.ref) {
-          this.forget(event.change.widget.id);
-        }
-
-        this.settled.delete(event.change.widget.id);
-        this.retryAt.delete(event.change.widget.id);
+        this.onClipWidget(event.change.widget);
       }
 
       this.wake();
     } catch (error) {
       console.warn(`Live watcher: ${errorMessage(error)}`);
+    }
+  }
+
+  private onClipWidget(widget: ClipWidget): void {
+    const known = this.registered.get(widget.id);
+
+    // A new ref is a different clip, and a widget that is no longer gone is to
+    // be bound again. Our own move updates register the new ref first.
+    if (
+      known != null &&
+      (known.ref !== widget.ref || (known.gone && !widget.gone))
+    ) {
+      this.forget(widget.id);
+    }
+
+    if (!widget.gone) {
+      this.settled.delete(widget.id);
+      this.retryAt.delete(widget.id);
     }
   }
 
@@ -187,18 +221,23 @@ export class LiveWatcher {
     }
   }
 
-  private clipWidgets(): Array<Extract<Widget, { kind: "clip" }>> {
+  /** @returns The clip widgets that still have a clip to follow */
+  private clipWidgets(): ClipWidget[] {
     return this.deps
       .listWidgets()
-      .filter((w): w is Extract<Widget, { kind: "clip" }> => w.kind === "clip");
+      .filter((w): w is ClipWidget => w.kind === "clip" && w.gone !== true);
+  }
+
+  private markGone(widget: ClipWidget): void {
+    this.registered.set(widget.id, { ref: widget.ref, gone: true });
+    this.settled.add(widget.id);
+    this.deps.updateClipState(widget.id, { gone: true });
   }
 
   // --- the script -------------------------------------------------------
 
-  private async registerMissing(
-    clips: Array<Extract<Widget, { kind: "clip" }>>,
-  ): Promise<void> {
-    for (const clip of clips) {
+  private async registerMissing(): Promise<void> {
+    for (const clip of this.clipWidgets()) {
       const due = this.retryAt.get(clip.id) ?? 0;
 
       if (
@@ -213,14 +252,9 @@ export class LiveWatcher {
     }
   }
 
-  private async register(
-    clip: Extract<Widget, { kind: "clip" }>,
-  ): Promise<void> {
-    // A path follows its slot; an id stays with that one clip.
-    const byPath = SESSION_PATH.test(clip.ref);
-    const path = byPath ? clip.ref : await this.deps.resolvePath(clip.ref);
-
-    if (path == null) {
+  private async register(clip: ClipWidget): Promise<void> {
+    if (!SESSION_PATH.test(clip.ref)) {
+      // An id from before widgets were kept by path. Nothing to watch.
       this.settled.add(clip.id);
 
       return;
@@ -229,23 +263,44 @@ export class LiveWatcher {
     const reply = await this.ask({
       method: "POST",
       route: "/watch",
-      body: { owner: clip.id, path, follow: byPath },
+      body: {
+        owner: clip.id,
+        path: clip.ref,
+        ...(clip.fingerprint == null ? {} : { fingerprint: clip.fingerprint }),
+      },
     });
 
     if (reply.status !== 200) {
-      // The slot isn't there yet, or the script is full. Try again later.
-      this.retryAt.set(clip.id, this.deps.now() + REFUSED_RETRY_MS);
+      this.refused(clip, reply);
 
       return;
     }
 
     this.adoptEpoch(reply.body);
     this.registered.set(clip.id, { ref: clip.ref });
+
+    const fingerprint = reply.body.fingerprint;
+
+    if (clip.fingerprint == null && isFingerprint(fingerprint)) {
+      this.deps.updateClipState(clip.id, { fingerprint });
+    }
   }
 
-  private async ask(
-    request: RemoteScriptRequest,
-  ): Promise<Extract<RemoteScriptReply, { available: true }>> {
+  /**
+   * The script said no. If the clip isn't there to follow, the widget is gone;
+   * a full script or a hiccup is tried again later.
+   * @param clip - The widget
+   * @param reply - The refusal
+   */
+  private refused(clip: ClipWidget, reply: Answer): void {
+    if (NO_CLIP_REASONS.has(String(reply.body.reason))) {
+      this.markGone(clip);
+    } else {
+      this.retryAt.set(clip.id, this.deps.now() + REFUSED_RETRY_MS);
+    }
+  }
+
+  private async ask(request: RemoteScriptRequest): Promise<Answer> {
     const reply = await this.deps.request({
       timeoutMs: POLL_TIMEOUT_MS,
       ...request,
@@ -260,10 +315,7 @@ export class LiveWatcher {
     return reply;
   }
 
-  private handleEvents(
-    reply: Extract<RemoteScriptReply, { available: true }>,
-    clips: Array<Extract<Widget, { kind: "clip" }>>,
-  ): void {
+  private handleEvents(reply: Answer): void {
     const { body } = reply;
 
     if (reply.status !== 200 || typeof body.seq !== "number") {
@@ -285,15 +337,16 @@ export class LiveWatcher {
       return;
     }
 
-    this.passOn(body.events, clips);
+    this.passOn(body.events);
     this.reregisterDropped(body.watching);
   }
 
   /**
    * Note the script's epoch. A different one means it restarted or the Set
-   * changed: every watch is gone, so register again and refresh every clip.
+   * changed: its watches are gone, and so is any "gone" verdict reached under
+   * the old one. Every widget binds again from its last path and fingerprint.
    * @param body - A reply carrying `epoch` and `seq`
-   * @returns True when the epoch changed
+   * @returns True when the epoch changed after the first contact
    */
   private adoptEpoch(body: Record<string, unknown>): boolean {
     if (typeof body.epoch !== "string" || body.epoch === this.epoch) {
@@ -304,27 +357,31 @@ export class LiveWatcher {
 
     this.epoch = body.epoch;
     this.since = typeof body.seq === "number" ? body.seq : 0;
+    this.registered.clear();
+    this.settled.clear();
+
+    // Widgets marked gone under an old Set or session get judged again.
+    for (const widget of this.deps.listWidgets()) {
+      if (widget.kind === "clip" && widget.gone === true) {
+        this.deps.updateClipState(widget.id, { gone: false });
+      }
+    }
 
     if (first) {
       return false;
     }
 
-    // Restarted: what we registered is gone.
-    this.registered.clear();
     this.needsRefresh = true;
 
     return true;
   }
 
-  private passOn(
-    events: unknown,
-    clips: Array<Extract<Widget, { kind: "clip" }>>,
-  ): void {
+  private passOn(events: unknown): void {
     if (!Array.isArray(events)) {
       return;
     }
 
-    const byId = new Map(clips.map((clip) => [clip.id, clip]));
+    const byId = new Map(this.clipWidgets().map((clip) => [clip.id, clip]));
 
     for (const item of events as Array<Record<string, unknown>>) {
       const clip = byId.get(String(item.owner));
@@ -333,19 +390,28 @@ export class LiveWatcher {
         continue;
       }
 
-      if (item.kind === "gone") {
-        // A pinned clip is replaced or deleted. Its widget re-reads and says so.
-        this.registered.delete(clip.id);
-        this.settled.add(clip.id);
-      }
+      const paths = [clip.ref];
 
-      const isPath = SESSION_PATH.test(clip.ref);
+      if (item.kind === "gone") {
+        this.markGone(clip);
+      } else if (
+        item.kind === "moved" &&
+        SESSION_PATH.test(String(item.path))
+      ) {
+        // Note the new path first: the widget update that follows must not
+        // look like a different clip to onEvent.
+        const path = String(item.path);
+
+        this.registered.set(clip.id, { ref: path });
+        this.deps.updateClipState(clip.id, { ref: path });
+        paths.unshift(path);
+      }
 
       this.deps.publish({
         type: "live",
         tool: "remote-script",
-        ids: isPath ? [] : [clip.ref],
-        paths: isPath ? [clip.ref] : [],
+        ids: [],
+        paths,
         all: false,
       });
     }
@@ -354,8 +420,8 @@ export class LiveWatcher {
   private reregisterDropped(watching: unknown): void {
     const present = new Set(Array.isArray(watching) ? watching : []);
 
-    for (const owner of this.registered.keys()) {
-      if (!present.has(owner)) {
+    for (const [owner, entry] of this.registered) {
+      if (entry.gone !== true && !present.has(owner)) {
         this.registered.delete(owner);
       }
     }
@@ -376,7 +442,9 @@ export class LiveWatcher {
   // --- status and timing ---------------------------------------------------
 
   private markAvailable(): void {
-    if (this.clipWidgets().length === 0) {
+    const total = this.clipWidgets().length;
+
+    if (total === 0) {
       return;
     }
 
@@ -389,8 +457,9 @@ export class LiveWatcher {
       }
     }
 
-    const total = this.clipWidgets().length;
-    const watched = this.registered.size;
+    const watched = this.clipWidgets().filter((w) =>
+      this.registered.has(w.id),
+    ).length;
 
     this.deps.setSync({
       mode: "listening",
@@ -449,8 +518,8 @@ let shared: LiveWatcher | undefined;
 export function startLiveWatcher(): void {
   shared ??= new LiveWatcher({
     request: remoteScriptRequest,
-    resolvePath: resolveClipPath,
     listWidgets,
+    updateClipState,
     publish,
     setSync,
     now: Date.now,
@@ -465,24 +534,15 @@ export function stopLiveWatcher(): void {
 }
 
 /**
- * Find a clip's Session path, so an id can be watched by slot.
- * @param id - A clip id
- * @returns The path like "t0/s3", or null for an arrangement clip or a miss
+ * @param value - Anything a reply field may hold
+ * @returns True for `{name, length}`
  */
-export async function resolveClipPath(id: string): Promise<string | null> {
-  try {
-    const response = await callLiveApi(
-      "ppal-read-clip",
-      { id, include: [] },
-      { compactOutput: false },
-    );
-    const text = (response as { content: Array<{ text: string }> }).content[0]
-      ?.text;
-    const path = (JSON.parse(text ?? "null") as { path?: unknown } | null)
-      ?.path;
+function isFingerprint(
+  value: unknown,
+): value is { name: string; length: number } {
+  const candidate = value as { name?: unknown; length?: unknown } | null;
 
-    return typeof path === "string" && SESSION_PATH.test(path) ? path : null;
-  } catch {
-    return null;
-  }
+  return (
+    typeof candidate?.name === "string" && typeof candidate.length === "number"
+  );
 }

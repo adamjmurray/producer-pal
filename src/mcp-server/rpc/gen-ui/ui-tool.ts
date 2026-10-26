@@ -8,6 +8,7 @@ import {
   formatSuccessResponse,
 } from "#src/shared/mcp-responses.ts";
 import { type McpResponse } from "../../max-api-adapter.ts";
+import { prepareWidgetFields } from "./clip-ref.ts";
 import {
   createWidget,
   listWidgets,
@@ -21,7 +22,9 @@ import {
  * @param args - The validated tool arguments
  * @returns The tool result
  */
-export function handleUiTool(args: Record<string, unknown>): McpResponse {
+export async function handleUiTool(
+  args: Record<string, unknown>,
+): Promise<McpResponse> {
   const { action, id, ...fields } = args;
 
   if (action === "list") {
@@ -29,7 +32,11 @@ export function handleUiTool(args: Record<string, unknown>): McpResponse {
   }
 
   if (action === "create") {
-    return answer(createWidget(fields), "created");
+    const prepared = await prepareWidgetFields(fields);
+
+    return prepared.ok
+      ? answer(createWidget(prepared.fields), "created")
+      : formatErrorResponse(prepared.error);
   }
 
   if (action !== "update" && action !== "remove") {
@@ -42,9 +49,15 @@ export function handleUiTool(args: Record<string, unknown>): McpResponse {
     return formatErrorResponse(`${action} needs the widget's id`);
   }
 
-  return action === "update"
-    ? answer(updateWidget(id, fields), "updated")
-    : answer(removeWidget(id), "removed");
+  if (action === "remove") {
+    return answer(removeWidget(id), "removed");
+  }
+
+  const prepared = await prepareWidgetFields(fields);
+
+  return prepared.ok
+    ? answer(updateWidget(id, prepared.fields), "updated")
+    : formatErrorResponse(prepared.error);
 }
 
 /**

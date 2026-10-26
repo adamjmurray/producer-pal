@@ -17,6 +17,7 @@ import {
   GEN_UI_WIDGETS_PATH,
   type GenUiEvent,
 } from "#src/shared/gen-ui-types.ts";
+import { prepareWidgetFields } from "./clip-ref.ts";
 import { subscribe } from "./gen-ui-hub.ts";
 import {
   createWidget,
@@ -40,21 +41,39 @@ export function registerGenUiRoutes(app: Express): void {
     res.json(getSnapshot());
   });
 
-  app.post(GEN_UI_WIDGETS_PATH, (req: Request, res: Response): void => {
-    if (rejectWrite(req, res)) {
-      return;
-    }
+  app.post(
+    GEN_UI_WIDGETS_PATH,
+    async (req: Request, res: Response): Promise<void> => {
+      if (rejectWrite(req, res)) {
+        return;
+      }
 
-    reply(res, createWidget(requestBody(req)), 201);
-  });
+      const prepared = await prepareWidgetFields(requestBody(req));
 
-  app.put(`${GEN_UI_WIDGETS_PATH}/:id`, (req: Request, res: Response): void => {
-    if (rejectWrite(req, res)) {
-      return;
-    }
+      if (prepared.ok) {
+        reply(res, createWidget(prepared.fields), 201);
+      } else {
+        res.status(400).json({ error: prepared.error });
+      }
+    },
+  );
 
-    reply(res, updateWidget(String(req.params.id), requestBody(req)), 200);
-  });
+  app.put(
+    `${GEN_UI_WIDGETS_PATH}/:id`,
+    async (req: Request, res: Response): Promise<void> => {
+      if (rejectWrite(req, res)) {
+        return;
+      }
+
+      const prepared = await prepareWidgetFields(requestBody(req));
+
+      if (prepared.ok) {
+        reply(res, updateWidget(String(req.params.id), prepared.fields), 200);
+      } else {
+        res.status(400).json({ error: prepared.error });
+      }
+    },
+  );
 
   app.delete(
     `${GEN_UI_WIDGETS_PATH}/:id`,

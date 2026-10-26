@@ -5,21 +5,25 @@
 
 """Live listeners on Session clips, for the generative UI panel. Main thread only.
 
-A watch is one owner (a widget id) following one clip slot. Live's own change
-callbacks only mark the watch as changed. The events route (`read`) turns marks
-into events, and also checks each watch against the Set, so a clip that was
-replaced, moved or deleted is noticed even if no callback fired.
+A watch is one owner (a widget id) bound to one clip OBJECT, taken from the slot
+the path names when the watch starts. It follows that object, not the slot:
 
-Two kinds of watch:
-- follow (default): the slot at a position. If another clip lands there, or
-  tracks shift so another slot sits there, the watch re-binds and reports it.
-- pinned (follow=False): one clip object. If it is replaced or dies, the watch
-  reports "gone" once and removes itself.
+- If the clip moves (tracks or scenes inserted, deleted or reordered, or Live
+  moves the clip), the watch reports "moved" with the new path.
+- If the clip is deleted, replaced or its object dies, the watch reports "gone"
+  once and stays gone. It never re-binds to whatever lands in the slot later.
 
-Every listener is removed when: the watch is removed, its object dies, the Set
-changes (a new song object), the registry is closed (script disconnect), or a
-hot reload begins (see `hot_reload.reload_route`). A late callback from a
-removed watch is ignored.
+Where a clip is comes from its parents (clip -> slot -> track) and their
+indices. Live's change callbacks only mark a watch; each read checks every
+watch against the Set, so a move or delete is noticed even if no callback fired.
+
+A watch on an empty slot is refused. A watch may carry a fingerprint (clip name
+and length) from an earlier session: if the clip at the path doesn't match, it
+is refused too, since the old object is gone and this is some other clip.
+
+Every listener is removed when the watch ends or goes gone, the Set changes,
+the registry is closed (script disconnect), or a hot reload begins (see
+`hot_reload.reload_route`). A late callback from a removed watch is ignored.
 
 Events are coalesced (many callbacks between two reads become one event per
 watch) and kept in a ring of MAX_EVENTS. A reader that falls further behind than
@@ -34,7 +38,8 @@ from collections import deque
 from .errors import RouteError
 from .params import parse_index
 
-# Most watches at once. Each holds about ten listeners.
+# Most watches at once, gone ones included until they are unwatched. Each live
+# one holds about ten listeners.
 MAX_WATCHES = 32
 
 # Events kept for readers. Past this, the oldest are dropped.
@@ -55,11 +60,11 @@ CLIP_PROPERTIES = (
     "signature_denominator",
 )
 
-# What changes about a slot.
-SLOT_PROPERTIES = ("has_clip",)
-
 # When one owner has several marks before a read, the strongest decides.
-_KIND_RANK = {"changed": 0, "rebound": 1, "gone": 2}
+_KIND_RANK = {"changed": 0, "moved": 1, "gone": 2}
+
+# How far two lengths (in beats) may differ and still be the same clip.
+_LENGTH_TOLERANCE = 1e-4
 
 _SLOT_PATH = re.compile(r"t(\d+)/s(\d+)")
 
@@ -85,33 +90,48 @@ class WatchRegistry:
 
     # --- the API the routes use ----------------------------------------
 
-    def watch(self, song, owner, track_index, slot_index, follow=True):
-        """Start (or replace) `owner`'s watch on a slot. Returns whether it has a clip."""
+    def watch(self, song, owner, track_index, slot_index, fingerprint=None):
+        """Start (or replace) `owner`'s watch on the clip at a slot."""
         with self._lock:
             self._check_song(song)
             slot = _slot_at(song, track_index, slot_index)
             if slot is None:
                 raise RouteError(
-                    404, "no slot t%s/s%s" % (track_index, slot_index)
+                    404, "no slot t%s/s%s" % (track_index, slot_index), reason="no_slot"
                 )
-            if not follow and _clip_of(slot) is None:
+            clip = _clip_of(slot)
+            if clip is None:
                 raise RouteError(
-                    404, "slot t%s/s%s is empty" % (track_index, slot_index)
+                    404,
+                    "slot t%s/s%s is empty" % (track_index, slot_index),
+                    reason="empty",
                 )
-            self._remove(owner)
-            if len(self._watches) >= self._max_watches:
+            found = _fingerprint(clip)
+            if fingerprint is not None and not _matches(fingerprint, found):
+                raise RouteError(
+                    409,
+                    "the clip at t%s/s%s isn't the one this watched before"
+                    % (track_index, slot_index),
+                    reason="mismatch",
+                    found=found,
+                )
+            taken = len(self._watches) - (1 if owner in self._watches else 0)
+            if taken >= self._max_watches:
                 raise RouteError(
                     409,
                     "watch limit of %d reached; unwatch one first" % self._max_watches,
+                    reason="limit",
                     limit=self._max_watches,
                 )
-            entry = _Watch(owner, track_index, slot_index, follow)
+            self._remove(owner)
+            entry = _Watch(owner, clip, track_index, slot_index)
             self._watches[owner] = entry
-            self._bind_slot(entry, slot)
+            entry.bindings = self._attach_all(entry, clip)
             return {
                 "ok": True,
                 "owner": owner,
-                "has_clip": entry.clip is not None,
+                "path": entry.path(),
+                "fingerprint": found,
                 "epoch": self.epoch,
                 "seq": self._seq,
             }
@@ -136,17 +156,23 @@ class WatchRegistry:
             self._reset()
 
     def owners(self):
-        """The owners being watched, sorted."""
+        """The owners being watched (not the gone ones), sorted."""
         with self._lock:
-            return sorted(self._watches)
+            return sorted(o for o, w in self._watches.items() if w.state == "watching")
 
     def listener_count(self):
         """How many Live listeners are attached. For tests and diagnostics."""
         with self._lock:
-            return sum(
-                len(w.slot_bindings) + len(w.clip_bindings)
-                for w in self._watches.values()
-            )
+            return sum(len(w.bindings) for w in self._watches.values())
+
+    def describe(self):
+        """Every watch and what became of it, for working out how Live behaves."""
+        with self._lock:
+            return {
+                "epoch": self.epoch,
+                "seq": self._seq,
+                "watches": [w.describe() for w in self._watches.values()],
+            }
 
     # --- reading ---------------------------------------------------------
 
@@ -166,7 +192,7 @@ class WatchRegistry:
             "seq": self._seq,
             "resync": resync,
             "events": events,
-            "watching": sorted(self._watches),
+            "watching": self.owners(),
         }
 
     def _flush(self, song):
@@ -175,77 +201,83 @@ class WatchRegistry:
             if self._watches.get(entry.owner) is not entry:
                 continue
             try:
-                self._verify(song, entry)
-            except Exception as err:
-                # Something we can't read is something that isn't there.
-                self._log("watch %s: %s: %s" % (entry.owner, type(err).__name__, err))
-                if entry.follow:
-                    self._mark(entry, "rebound", "error")
+                if entry.state == "watching":
+                    self._verify(song, entry)
                 else:
-                    self._remove(entry.owner)
-                    self._pending[entry.owner] = ["gone", {"error"}]
+                    self._probe(entry)
+            except Exception as err:
+                self._log("watch %s: %s: %s" % (entry.owner, type(err).__name__, err))
         pending, self._pending = self._pending, {}
-        for owner, (kind, fields) in pending.items():
+        for owner, mark in pending.items():
             self._seq += 1
-            self._events.append(
-                {
-                    "seq": self._seq,
-                    "owner": owner,
-                    "kind": kind,
-                    "fields": sorted(fields),
-                }
-            )
+            event = {
+                "seq": self._seq,
+                "owner": owner,
+                "kind": mark["kind"],
+                "fields": sorted(mark["fields"]),
+            }
+            if mark.get("path"):
+                event["path"] = mark["path"]
+            if mark.get("reason"):
+                event["reason"] = mark["reason"]
+            self._events.append(event)
         while len(self._events) > self._max_events:
             self._events.popleft()
 
     def _verify(self, song, entry):
-        if entry.follow:
-            self._verify_following(song, entry)
-        else:
-            self._verify_pinned(entry)
-
-    def _verify_following(self, song, entry):
-        slot = _slot_at(song, entry.track_index, entry.slot_index)
-        if not _same(slot, entry.slot):
-            self._bind_slot(entry, slot)
-            self._mark(entry, "rebound", "slot")
+        """Is the clip still in a slot, and which one? Reading a dead object raises."""
+        try:
+            slot = entry.clip.canonical_parent
+            track = slot.canonical_parent
+            has_clip = slot.has_clip
+            same_clip = has_clip and _same(slot.clip, entry.clip)
+        except Exception:
+            self._gone(entry, "dead")
             return
-        clip = _clip_of(slot)
-        if not _same(clip, entry.clip):
-            self._bind_clip(entry, clip)
-            self._mark(entry, "rebound", "has_clip")
+        if not has_clip:
+            self._gone(entry, "emptied")
+            return
+        if not same_clip:
+            self._gone(entry, "replaced")
+            return
+        located = _locate(song, track, slot, entry.track_index, entry.slot_index)
+        if located is None:
+            self._gone(entry, "unlocated")
+            return
+        if located != (entry.track_index, entry.slot_index):
+            entry.track_index, entry.slot_index = located
+            self._mark(entry, "moved", "path")
 
-    def _verify_pinned(self, entry):
-        # Reading a dead object raises, which `_flush` treats as gone.
-        clip = _clip_of(entry.slot)
-        if entry.clip is None or not _same(clip, entry.clip):
-            self._remove(entry.owner)
-            self._pending[entry.owner] = ["gone", {"has_clip"}]
+    def _gone(self, entry, reason):
+        """The clip is no more. Stop listening; the entry stays until unwatched."""
+        self._log("watch %s: %s is gone (%s)" % (entry.owner, entry.path(), reason))
+        _detach_all(entry.bindings)
+        entry.bindings = []
+        entry.state = "gone"
+        entry.reason = reason
+        entry.old_clip, entry.clip = entry.clip, None
+        self._mark(entry, "gone", "clip", reason=reason)
+
+    def _probe(self, entry):
+        """Note whether a gone clip's object has come back valid. Only observed:
+        the watch stays gone either way."""
+        try:
+            slot = entry.old_clip.canonical_parent
+            valid = bool(slot.has_clip and _same(slot.clip, entry.old_clip))
+        except Exception:
+            valid = False
+        if valid and not entry.revived:
+            self._log("watch %s: the old clip object is valid again" % entry.owner)
+        entry.revived = valid
 
     # --- listeners ---------------------------------------------------------
 
-    def _bind_slot(self, entry, slot):
-        """Point the watch at a slot (or at nothing) and its clip."""
-        _detach_all(entry.slot_bindings)
-        entry.slot = slot
-        entry.slot_bindings = []
-        if slot is not None:
-            entry.slot_bindings = self._attach_all(entry, slot, SLOT_PROPERTIES)
-        self._bind_clip(entry, _clip_of(slot))
-
-    def _bind_clip(self, entry, clip):
-        _detach_all(entry.clip_bindings)
-        entry.clip = clip
-        entry.clip_bindings = []
-        if clip is not None:
-            entry.clip_bindings = self._attach_all(entry, clip, CLIP_PROPERTIES)
-
-    def _attach_all(self, entry, obj, properties):
+    def _attach_all(self, entry, clip):
         bindings = []
-        for prop in properties:
+        for prop in CLIP_PROPERTIES:
             callback = self._callback(entry, prop)
             try:
-                binding = _attach(obj, prop, callback)
+                binding = _attach(clip, prop, callback)
             except Exception as err:
                 self._log("cannot listen to %s: %s" % (prop, err))
                 continue
@@ -258,25 +290,28 @@ class WatchRegistry:
             with self._lock:
                 # A callback that outlives its watch (or arrives while it is
                 # being removed) is not news.
-                if self._watches.get(entry.owner) is entry:
+                if self._watches.get(entry.owner) is entry and entry.state == "watching":
                     self._mark(entry, "changed", prop)
 
         return on_change
 
-    def _mark(self, entry, kind, field):
-        mark = self._pending.setdefault(entry.owner, [kind, set()])
-        if _KIND_RANK[kind] > _KIND_RANK[mark[0]]:
-            mark[0] = kind
-        mark[1].add(field)
+    def _mark(self, entry, kind, field, reason=None):
+        mark = self._pending.setdefault(
+            entry.owner, {"kind": kind, "fields": set(), "path": None, "reason": None}
+        )
+        if _KIND_RANK[kind] > _KIND_RANK[mark["kind"]]:
+            mark["kind"] = kind
+        mark["fields"].add(field)
+        mark["path"] = entry.path()
+        if reason:
+            mark["reason"] = reason
 
     def _remove(self, owner):
         entry = self._watches.pop(owner, None)
         self._pending.pop(owner, None)
         if entry is not None:
-            _detach_all(entry.slot_bindings)
-            _detach_all(entry.clip_bindings)
-            entry.slot_bindings = []
-            entry.clip_bindings = []
+            _detach_all(entry.bindings)
+            entry.bindings = []
 
     def _check_song(self, song):
         if self._song is not None and not _same(self._song, song):
@@ -295,15 +330,33 @@ class WatchRegistry:
 
 
 class _Watch:
-    def __init__(self, owner, track_index, slot_index, follow):
+    def __init__(self, owner, clip, track_index, slot_index):
         self.owner = owner
+        self.clip = clip
         self.track_index = track_index
         self.slot_index = slot_index
-        self.follow = follow
-        self.slot = None
-        self.clip = None
-        self.slot_bindings = []
-        self.clip_bindings = []
+        self.bindings = []
+        # "watching", or "gone" once the clip is deleted, replaced or dead.
+        self.state = "watching"
+        self.reason = None
+        # The gone clip's object, kept only to see whether it ever comes back.
+        self.old_clip = None
+        self.revived = False
+
+    def path(self):
+        return "t%s/s%s" % (self.track_index, self.slot_index)
+
+    def describe(self):
+        info = {
+            "owner": self.owner,
+            "state": self.state,
+            "path": self.path(),
+            "listeners": len(self.bindings),
+        }
+        if self.state == "gone":
+            info["reason"] = self.reason
+            info["old_object_valid_again"] = self.revived
+        return info
 
 
 # --- Live helpers ---------------------------------------------------------
@@ -321,10 +374,47 @@ def _slot_at(song, track_index, slot_index):
 
 
 def _clip_of(slot):
-    """The clip in a slot, or None when it is empty or there is no slot."""
-    if slot is None or not slot.has_clip:
+    """The clip in a slot, or None when it is empty."""
+    return slot.clip if slot.has_clip else None
+
+
+def _locate(song, track, slot, track_index, slot_index):
+    """(track index, slot index) of a slot, or None when it isn't in this Set.
+
+    Tries the last known position first, so a clip that hasn't moved costs two
+    lookups instead of a scan.
+    """
+    tracks = song.tracks
+    if track_index < len(tracks) and _same(tracks[track_index], track):
+        ti = track_index
+    else:
+        ti = _index_of(tracks, track)
+    if ti is None:
         return None
-    return slot.clip
+    slots = tracks[ti].clip_slots
+    if slot_index < len(slots) and _same(slots[slot_index], slot):
+        return ti, slot_index
+    si = _index_of(slots, slot)
+    return None if si is None else (ti, si)
+
+
+def _index_of(items, target):
+    for i, item in enumerate(items):
+        if _same(item, target):
+            return i
+    return None
+
+
+def _fingerprint(clip):
+    """What identifies a clip across sessions, when object identity is gone."""
+    return {"name": clip.name, "length": float(clip.length)}
+
+
+def _matches(expected, found):
+    return (
+        expected.get("name") == found["name"]
+        and abs(float(expected.get("length", -1)) - found["length"]) <= _LENGTH_TOLERANCE
+    )
 
 
 def _same(a, b):
@@ -380,19 +470,18 @@ def _registry(bridge):
 
 
 def watch_route(bridge, params):
-    """`POST /watch`: `owner`, `path` ("t0/s3") and optional `follow` (default true)."""
+    """`POST /watch`: `owner`, `path` ("t0/s3") and optional `fingerprint`
+    ({name, length}) from an earlier session."""
     owner = _owner(params)
     match = _SLOT_PATH.fullmatch(str(params.get("path") or ""))
     if not match:
         raise RouteError(400, "path must be a Session slot like t0/s3")
-    follow = str(params.get("follow", True)).strip().lower() not in (
-        "0",
-        "false",
-        "no",
-        "off",
-    )
     return _registry(bridge).watch(
-        bridge.song, owner, int(match[1]), int(match[2]), follow
+        bridge.song,
+        owner,
+        int(match[1]),
+        int(match[2]),
+        _fingerprint_param(params.get("fingerprint")),
     )
 
 
@@ -407,6 +496,24 @@ def events_route(bridge, params):
     return _registry(bridge).read(bridge.song, since)
 
 
+def watches_route(bridge, params):
+    """`GET /watches`: every watch and its state, for diagnosis."""
+    return _registry(bridge).describe()
+
+
+def _fingerprint_param(value):
+    if value is None:
+        return None
+    if (
+        not isinstance(value, dict)
+        or not isinstance(value.get("name"), str)
+        or isinstance(value.get("length"), bool)
+        or not isinstance(value.get("length"), (int, float))
+    ):
+        raise RouteError(400, "fingerprint must be {name: string, length: number}")
+    return value
+
+
 def _owner(params):
     owner = params.get("owner")
     if not isinstance(owner, str) or not owner.strip():
@@ -418,6 +525,7 @@ ROUTES = {
     "/watch": watch_route,
     "/unwatch": unwatch_route,
     "/events": events_route,
+    "/watches": watches_route,
 }
 
 # Routes that start or stop a watch refuse GET.

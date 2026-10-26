@@ -18,7 +18,7 @@ import { resetWidgetStoreForTesting } from "../widget-store.ts";
 import { setupExpressAppServer } from "../../../tests/express-app-test-helpers.ts";
 import { setRemoteScriptEnabled } from "../../remote-script/remote-script-client.ts";
 import { startLiveWatcher, stopLiveWatcher } from "../live-watcher.ts";
-import { openEventStream } from "./event-stream-test-helpers.ts";
+import { openEventStream } from "./gen-ui-test-helpers.ts";
 
 // The flag is read when the app module loads, so set it before the app starts.
 const previous = process.env.ENABLE_GEN_UI;
@@ -67,6 +67,15 @@ async function callTool(tool: string, body: object): Promise<ToolReply> {
   return (await response.json()) as ToolReply;
 }
 
+/** Live answers every read with clip 12 in t0/s0. */
+function liveHasClip12(): void {
+  setMcpResponse({
+    content: [
+      { type: "text", text: JSON.stringify({ id: "12", path: "t0/s0" }) },
+    ],
+  });
+}
+
 /**
  * @param path - A server path
  * @returns The parsed JSON the server answers
@@ -91,20 +100,53 @@ describe("generative UI in a build with ENABLE_GEN_UI", () => {
   it("runs ppal-ui in Node without calling V8", async () => {
     const reply = await callTool("ppal-ui", {
       action: "create",
-      kind: "clip",
-      ref: "t0/s0",
-      title: "Bass",
+      kind: "text",
+      text: "hi",
     });
     const listed = await getJson<{ widgets: unknown[] }>("/api/ui/widgets");
 
     expect(reply).toStrictEqual({
       isError: false,
+      result: { created: { id: "w1", kind: "text", text: "hi" } },
+    });
+    expect(listed.widgets).toHaveLength(1);
+    expect(mcpRequests).toHaveLength(0);
+  });
+
+  it("checks a clip widget against Live first, and refuses an empty slot", async () => {
+    setMcpResponse({
+      content: [{ type: "text", text: "no clip at t0/s0" }],
+      isError: true,
+    });
+
+    const refused = await callTool("ppal-ui", {
+      action: "create",
+      kind: "clip",
+      ref: "t0/s0",
+    });
+
+    expect(refused.isError).toBe(true);
+    expect(refused.result).toContain("No clip at t0/s0");
+
+    setMcpResponse({
+      content: [
+        { type: "text", text: JSON.stringify({ id: "12", path: "t0/s0" }) },
+      ],
+    });
+
+    const created = await callTool("ppal-ui", {
+      action: "create",
+      kind: "clip",
+      ref: "12",
+      title: "Bass",
+    });
+
+    expect(created).toStrictEqual({
+      isError: false,
       result: {
         created: { id: "w1", kind: "clip", ref: "t0/s0", title: "Bass" },
       },
     });
-    expect(listed.widgets).toHaveLength(1);
-    expect(mcpRequests).toHaveLength(0);
   });
 
   it("reports a bad ppal-ui call as a tool error", async () => {
@@ -115,11 +157,7 @@ describe("generative UI in a build with ENABLE_GEN_UI", () => {
   });
 
   it("tells viewers which clip a REST write touched, and leaves the result alone", async () => {
-    setMcpResponse({
-      content: [
-        { type: "text", text: JSON.stringify({ id: "12", path: "t0/s0" }) },
-      ],
-    });
+    liveHasClip12();
 
     const stream = await openEventStream(`${app.baseUrl}/api/ui/events`);
 
@@ -149,11 +187,7 @@ describe("generative UI in a build with ENABLE_GEN_UI", () => {
     setRemoteScriptEnabled(false);
     // The app started its own watcher; afterEach stopped it. Start one again.
     startLiveWatcher();
-    setMcpResponse({
-      content: [
-        { type: "text", text: JSON.stringify({ id: "12", path: "t0/s0" }) },
-      ],
-    });
+    liveHasClip12();
 
     const created = await callTool("ppal-ui", {
       action: "create",

@@ -14,6 +14,7 @@ import {
   listWidgets,
   removeWidget,
   resetWidgetStoreForTesting,
+  updateClipState,
   updateWidget,
 } from "../widget-store.ts";
 import { useTempConfigDir } from "../../../tests/config-dir-test-helpers.ts";
@@ -269,6 +270,108 @@ describe("widget store with ids it didn't number", () => {
       id: "w1",
       kind: "text",
       text: "hi",
+    });
+  });
+});
+
+describe("clip state kept by the server", () => {
+  const fingerprint = { name: "Bass", length: 8 };
+
+  it("records where the clip went, what it looks like, and that it is gone", () => {
+    createWidget({ kind: "clip", ref: "t0/s0" });
+
+    expect(updateClipState("w1", { fingerprint })).toStrictEqual({
+      ok: true,
+      widget: { id: "w1", kind: "clip", ref: "t0/s0", fingerprint },
+    });
+    expect(updateClipState("w1", { ref: "t1/s0" })).toStrictEqual({
+      ok: true,
+      widget: { id: "w1", kind: "clip", ref: "t1/s0", fingerprint },
+    });
+    expect(updateClipState("w1", { gone: true })).toStrictEqual({
+      ok: true,
+      widget: { id: "w1", kind: "clip", ref: "t1/s0", fingerprint, gone: true },
+    });
+    expect(updateClipState("w1", { gone: false })).toStrictEqual({
+      ok: true,
+      widget: { id: "w1", kind: "clip", ref: "t1/s0", fingerprint },
+    });
+  });
+
+  it("saves it, so a restart keeps the new path and the verdict", () => {
+    createWidget({ kind: "clip", ref: "t0/s0" });
+    updateClipState("w1", { ref: "t2/s2", fingerprint, gone: true });
+    resetHubForTesting();
+    resetWidgetStoreForTesting();
+
+    expect(listWidgets()).toStrictEqual([
+      { id: "w1", kind: "clip", ref: "t2/s2", fingerprint, gone: true },
+    ]);
+  });
+
+  it("spends no version when nothing changed", () => {
+    createWidget({ kind: "clip", ref: "t0/s0" });
+    updateClipState("w1", { fingerprint });
+
+    const version = getSnapshot().version;
+
+    updateClipState("w1", { fingerprint });
+    updateClipState("w1", { gone: false });
+
+    expect(getSnapshot().version).toBe(version);
+  });
+
+  it("tells viewers about a change as an ordinary widget update", () => {
+    createWidget({ kind: "clip", ref: "t0/s0" });
+
+    const events: GenUiEvent[] = [];
+
+    subscribe((event) => events.push(event));
+    updateClipState("w1", { gone: true });
+
+    expect(events).toStrictEqual([
+      {
+        type: "widget",
+        version: 2,
+        change: {
+          op: "upsert",
+          widget: { id: "w1", kind: "clip", ref: "t0/s0", gone: true },
+        },
+      },
+    ]);
+  });
+
+  it("refuses a widget that isn't a clip, or isn't there", () => {
+    createWidget({ kind: "text", text: "hi" });
+
+    expect(updateClipState("w1", { gone: true }).ok).toBe(false);
+    expect(updateClipState("w9", { gone: true }).ok).toBe(false);
+  });
+
+  it("forgets what it knew about a clip when the AI points the widget elsewhere", () => {
+    createWidget({ kind: "clip", ref: "t0/s0" });
+    updateClipState("w1", { fingerprint, gone: true });
+
+    expect(updateWidget("w1", { ref: "t3/s3" })).toStrictEqual({
+      ok: true,
+      widget: { id: "w1", kind: "clip", ref: "t3/s3" },
+    });
+  });
+
+  it("keeps what it knew when only the title changes", () => {
+    createWidget({ kind: "clip", ref: "t0/s0" });
+    updateClipState("w1", { fingerprint, gone: true });
+
+    expect(updateWidget("w1", { title: "Bass", ref: "t0/s0" })).toStrictEqual({
+      ok: true,
+      widget: {
+        id: "w1",
+        kind: "clip",
+        ref: "t0/s0",
+        fingerprint,
+        gone: true,
+        title: "Bass",
+      },
     });
   });
 });

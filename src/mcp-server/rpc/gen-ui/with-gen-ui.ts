@@ -30,7 +30,7 @@ import { handleUiTool } from "./ui-tool.ts";
 export function withGenUi(inner: WrappedCallLiveApi): WrappedCallLiveApi {
   return async (tool, args, overrides) => {
     if (tool === GEN_UI_TOOL_ID) {
-      return handleUiTool(args as Record<string, unknown>);
+      return await handleUiTool(args as Record<string, unknown>);
     }
 
     // A throw skips the announcement: no result says what changed.

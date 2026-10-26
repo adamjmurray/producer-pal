@@ -52,6 +52,23 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/**
+ * Mount a card whose reads come from `fetchMock`, once it has drawn the clip.
+ * @param fetchMock - The fake fetch
+ * @returns The render result
+ */
+async function renderShowing(
+  fetchMock: ReturnType<typeof vi.fn>,
+): Promise<ReturnType<typeof render>> {
+  vi.stubGlobal("fetch", fetchMock);
+
+  const rendered = render(<ClipWidgetCard widget={widget} live={null} />);
+
+  await screen.findByText("Bass");
+
+  return rendered;
+}
+
 describe("ClipWidgetCard", () => {
   it("shows the clip's name, length and notes", async () => {
     vi.stubGlobal(
@@ -78,13 +95,7 @@ describe("ClipWidgetCard", () => {
         clipReply("[{p:60,t:0,d:1},{p:62,t:1,d:1}]", "Bass v2"),
       );
 
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { rerender, container } = render(
-      <ClipWidgetCard widget={widget} live={null} />,
-    );
-
-    await screen.findByText("Bass");
+    const { rerender, container } = await renderShowing(fetchMock);
 
     rerender(
       <ClipWidgetCard widget={widget} live={tick(1, { ids: ["99"] })} />,
@@ -109,19 +120,58 @@ describe("ClipWidgetCard", () => {
       .mockResolvedValueOnce(clipReply("[{p:60,t:0,d:1}]"))
       .mockResolvedValueOnce(goneReply);
 
-    vi.stubGlobal("fetch", fetchMock);
+    const { rerender, container } = await renderShowing(fetchMock);
 
-    const { rerender, container } = render(
-      <ClipWidgetCard widget={widget} live={null} />,
-    );
-
-    await screen.findByText("Bass");
     rerender(<ClipWidgetCard widget={widget} live={tick(1, { all: true })} />);
 
     expect(
       await screen.findByText(/Clip missing: no clip at t0\/s0/),
     ).toBeTruthy();
     expect(screen.queryByText("Bass")).toBeNull();
+    expect(container.querySelector("svg")).toBeNull();
+  });
+
+  it("shows a gone clip as missing without reading the slot, which may hold another clip", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(clipReply("[{p:60,t:0,d:1}]"));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { container, rerender } = render(
+      <ClipWidgetCard widget={{ ...widget, gone: true }} live={null} />,
+    );
+
+    expect(
+      await screen.findByText(/Clip missing: deleted or replaced/),
+    ).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // A tick naming the slot changes nothing.
+    rerender(
+      <ClipWidgetCard
+        widget={{ ...widget, gone: true }}
+        live={tick(1, { paths: ["t0/s0"] })}
+      />,
+    );
+    await Promise.resolve();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(container.querySelector("svg")).toBeNull();
+  });
+
+  it("goes missing the moment the widget is marked gone", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(clipReply("[{p:60,t:0,d:1}]")),
+    );
+
+    const { rerender, container } = render(
+      <ClipWidgetCard widget={widget} live={null} />,
+    );
+
+    await screen.findByText("Bass");
+    rerender(<ClipWidgetCard widget={{ ...widget, gone: true }} live={null} />);
+
+    expect(await screen.findByText(/Clip missing/)).toBeTruthy();
     expect(container.querySelector("svg")).toBeNull();
   });
 

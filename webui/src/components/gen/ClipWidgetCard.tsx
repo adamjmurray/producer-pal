@@ -29,7 +29,11 @@ export function ClipWidgetCard({
   widget: ClipWidget;
   live: LiveTick | null;
 }): preact.JSX.Element {
-  const { read, refreshing } = useClipRead(widget.ref, live);
+  const { read, refreshing } = useClipRead(
+    widget.ref,
+    live,
+    widget.gone === true,
+  );
   const heading =
     widget.title ?? (read?.status === "ready" ? read.clip.name : undefined);
 
@@ -102,14 +106,16 @@ function ClipBody({ read }: { read: ClipRead | null }): preact.JSX.Element {
  * Read the clip on mount and again when a tick names it. A newer read wins: an
  * older answer arriving late is dropped.
  *
- * @param ref - The widget's clip id or path
+ * @param ref - The widget's clip path
  * @param live - The latest tick
+ * @param gone - The clip was deleted or replaced: show that, read nothing
  * @returns The latest read (null before the first), and whether a re-read is
  *   under way
  */
 function useClipRead(
   ref: string,
   live: LiveTick | null,
+  gone: boolean,
 ): { read: ClipRead | null; refreshing: boolean } {
   const [read, setRead] = useState<ClipRead | null>(null);
   const [reads, setReads] = useState(0);
@@ -120,6 +126,14 @@ function useClipRead(
   // A new `reads` count makes a fresh loader, and so a fresh read of the clip.
   const load = useCallback(
     async (signal: AbortSignal): Promise<void> => {
+      // The slot may hold some other clip now. Don't show that one.
+      if (gone) {
+        setRead({ status: "missing", message: "deleted or replaced" });
+        setRefreshing(false);
+
+        return;
+      }
+
       // The first read shows "Loading"; later ones dim the old picture.
       setRefreshing(reads > 0);
 
@@ -130,7 +144,7 @@ function useClipRead(
         // Aborted by a newer read.
       }
     },
-    [ref, reads],
+    [ref, reads, gone],
   );
 
   useAbortableLoad(load);

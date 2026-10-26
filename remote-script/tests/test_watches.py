@@ -3,8 +3,8 @@
 # AI assistance: Claude (Anthropic)
 # SPDX-License-Identifier: MIT
 
-"""Clip watches with fake Live objects: the cap, every way a listener is
-removed, re-binding, coalescing and overflow.
+"""Clip watches with fake Live objects: binding to a clip object, moves, deletes,
+the cap, every way a listener is removed, coalescing and overflow.
 
 Run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s remote-script/tests
 """
@@ -32,7 +32,7 @@ class FakeLiveObject:
     deleted Live object does.
     """
 
-    def __init__(self, properties):
+    def __init__(self, properties=()):
         self._callbacks = {prop: [] for prop in properties}
         self._dead = False
         for prop in properties:
@@ -77,14 +77,35 @@ class FakeLiveObject:
 
 
 class FakeClip(FakeLiveObject):
-    def __init__(self, properties=watches.CLIP_PROPERTIES):
+    def __init__(self, name="Clip", length=4.0, properties=watches.CLIP_PROPERTIES):
         super().__init__(properties)
+        self._name = name
+        self._length = length
+        self._slot = None
+
+    @property
+    def name(self):
+        self._check()
+        return self._name
+
+    @property
+    def length(self):
+        self._check()
+        return self._length
+
+    @property
+    def canonical_parent(self):
+        self._check()
+        return self._slot
 
 
 class FakeSlot(FakeLiveObject):
     def __init__(self, clip=None):
-        super().__init__(watches.SLOT_PROPERTIES)
-        self._clip = clip
+        super().__init__()
+        self._clip = None
+        self._track = None
+        if clip is not None:
+            self.put(clip)
 
     @property
     def has_clip(self):
@@ -96,14 +117,28 @@ class FakeSlot(FakeLiveObject):
         self._check()
         return self._clip
 
+    @property
+    def canonical_parent(self):
+        self._check()
+        return self._track
+
     def put(self, clip):
         self._clip = clip
-        self.fire("has_clip")
+        if clip is not None:
+            clip._slot = self
+
+    def delete_clip(self):
+        """What deleting does: the clip object dies, the slot is empty."""
+        if self._clip is not None:
+            self._clip.die()
+        self._clip = None
 
 
 class FakeTrack:
     def __init__(self, slots):
         self.clip_slots = slots
+        for slot in slots:
+            slot._track = self
 
 
 class FakeSong:
@@ -116,61 +151,81 @@ def song_with(*rows):
     return FakeSong([FakeTrack(list(row)) for row in rows])
 
 
+def move_clip(clip, to_slot):
+    """A move where Live keeps the clip object."""
+    clip._slot._clip = None
+    to_slot.put(clip)
+
+
 class RegistryCase(unittest.TestCase):
     def setUp(self):
         self.logged = []
         self.registry = watches.WatchRegistry(log=self.logged.append)
-        self.clip = FakeClip()
+        self.clip = FakeClip("Bass", 8.0)
         self.slot = FakeSlot(self.clip)
         self.song = song_with([self.slot])
 
-    def watch(self, owner="w1", follow=True, song=None):
-        return self.registry.watch(song or self.song, owner, 0, 0, follow)
+    def watch(self, owner="w1", song=None, track=0, slot=0, fingerprint=None):
+        return self.registry.watch(song or self.song, owner, track, slot, fingerprint)
 
     def read(self, since=None, song=None):
         return self.registry.read(song or self.song, since)
 
-    def events(self, since):
-        return self.read(since)["events"]
+    def events(self, since=0, song=None):
+        return self.read(since, song)["events"]
 
 
 class WatchTest(RegistryCase):
-    def test_it_listens_to_the_slot_and_the_clip(self):
+    def test_it_listens_to_the_clip_and_reports_its_fingerprint(self):
         reply = self.watch()
 
-        self.assertTrue(reply["has_clip"])
-        self.assertEqual(self.slot.listeners(), 1)
+        self.assertEqual(reply["path"], "t0/s0")
+        self.assertEqual(reply["fingerprint"], {"name": "Bass", "length": 8.0})
         self.assertEqual(self.clip.listeners(), len(watches.CLIP_PROPERTIES))
-        self.assertEqual(self.registry.listener_count(), 1 + len(watches.CLIP_PROPERTIES))
+        self.assertEqual(self.slot.listeners(), 0)
 
-    def test_an_empty_slot_is_watched_for_a_clip_to_arrive(self):
-        slot = FakeSlot()
-        reply = self.watch(song=song_with([slot]))
-
-        self.assertFalse(reply["has_clip"])
-        self.assertEqual(slot.listeners(), 1)
-
-    def test_a_slot_that_isnt_there_is_refused(self):
+    def test_an_empty_slot_is_refused_and_says_why(self):
         with self.assertRaises(RouteError) as caught:
-            self.registry.watch(self.song, "w1", 3, 0)
+            self.watch(song=song_with([FakeSlot()]))
+
         self.assertEqual(caught.exception.status, 404)
-        with self.assertRaises(RouteError):
-            self.registry.watch(self.song, "w1", 0, 5)
+        self.assertEqual(caught.exception.payload["reason"], "empty")
         self.assertEqual(self.registry.owners(), [])
 
-    def test_a_pinned_watch_needs_a_clip(self):
-        with self.assertRaises(RouteError) as caught:
-            self.registry.watch(song_with([FakeSlot()]), "w1", 0, 0, follow=False)
-        self.assertEqual(caught.exception.status, 404)
+    def test_a_slot_that_isnt_there_is_refused(self):
+        for track, slot in ((3, 0), (0, 5)):
+            with self.assertRaises(RouteError) as caught:
+                self.watch(track=track, slot=slot)
+            self.assertEqual(caught.exception.payload["reason"], "no_slot")
+
+    def test_a_matching_fingerprint_binds(self):
+        self.watch(fingerprint={"name": "Bass", "length": 8.0})
+
+        self.assertEqual(self.registry.owners(), ["w1"])
+
+    def test_a_different_clip_is_refused(self):
+        for fingerprint in (
+            {"name": "Lead", "length": 8.0},
+            {"name": "Bass", "length": 4.0},
+        ):
+            with self.assertRaises(RouteError) as caught:
+                self.watch(fingerprint=fingerprint)
+            self.assertEqual(caught.exception.status, 409)
+            self.assertEqual(caught.exception.payload["reason"], "mismatch")
+            self.assertEqual(
+                caught.exception.payload["found"], {"name": "Bass", "length": 8.0}
+            )
+
+        self.assertEqual(self.clip.listeners(), 0)
 
     def test_a_listener_the_clip_lacks_is_skipped(self):
-        clip = FakeClip(("notes", "name"))
+        clip = FakeClip(properties=("notes", "name"))
         self.watch(song=song_with([FakeSlot(clip)]))
 
         self.assertEqual(clip.listeners(), 2)
 
     def test_a_listener_that_cant_be_added_is_logged_and_the_rest_still_are(self):
-        clip = FakeClip(("notes", "name"))
+        clip = FakeClip(properties=("notes", "name"))
         clip.add_notes_listener = mock.Mock(side_effect=RuntimeError("no"))
         self.watch(song=song_with([FakeSlot(clip)]))
 
@@ -181,39 +236,49 @@ class WatchTest(RegistryCase):
 class CapTest(RegistryCase):
     def test_the_cap_refuses_a_new_owner_and_names_the_limit(self):
         registry = watches.WatchRegistry(max_watches=2)
-        registry.watch(self.song, "a", 0, 0)
-        registry.watch(self.song, "b", 0, 0)
+        song = song_with([FakeSlot(FakeClip()), FakeSlot(FakeClip()), FakeSlot(FakeClip())])
+        registry.watch(song, "a", 0, 0)
+        registry.watch(song, "b", 0, 1)
 
         with self.assertRaises(RouteError) as caught:
-            registry.watch(self.song, "c", 0, 0)
+            registry.watch(song, "c", 0, 2)
 
         self.assertEqual(caught.exception.status, 409)
         self.assertEqual(caught.exception.payload["limit"], 2)
+        self.assertEqual(caught.exception.payload["reason"], "limit")
         self.assertEqual(registry.owners(), ["a", "b"])
 
     def test_an_owner_at_the_cap_can_move_its_watch(self):
         registry = watches.WatchRegistry(max_watches=1)
-        registry.watch(self.song, "a", 0, 0)
         other = FakeSlot(FakeClip())
         song = song_with([self.slot, other])
+        registry.watch(song, "a", 0, 0)
         registry.watch(song, "a", 0, 1)
 
-        self.assertEqual(self.slot.listeners(), 0)
-        self.assertEqual(other.listeners(), 1)
+        self.assertEqual(self.clip.listeners(), 0)
+        self.assertEqual(other.clip.listeners(), len(watches.CLIP_PROPERTIES))
 
     def test_a_refused_move_keeps_the_old_watch(self):
         self.watch()
         with self.assertRaises(RouteError):
-            self.registry.watch(self.song, "w1", 9, 9)
+            self.watch(track=9)
 
         self.assertEqual(self.registry.owners(), ["w1"])
-        self.assertEqual(self.slot.listeners(), 1)
+        self.assertEqual(self.clip.listeners(), len(watches.CLIP_PROPERTIES))
 
-    def test_a_freed_place_can_be_used_again(self):
+    def test_a_gone_watch_still_counts_until_it_is_unwatched(self):
         registry = watches.WatchRegistry(max_watches=1)
-        registry.watch(self.song, "a", 0, 0)
+        other = FakeSlot(FakeClip())
+        song = song_with([self.slot, other])
+        registry.watch(song, "a", 0, 0)
+        self.slot.delete_clip()
+        registry.read(song)
+
+        with self.assertRaises(RouteError):
+            registry.watch(song, "b", 0, 1)
+
         registry.unwatch("a")
-        registry.watch(self.song, "b", 0, 0)
+        registry.watch(song, "b", 0, 1)
 
         self.assertEqual(registry.owners(), ["b"])
 
@@ -221,16 +286,12 @@ class CapTest(RegistryCase):
 class RemovalTest(RegistryCase):
     """Every path that ends a watch leaves no listener behind."""
 
-    def assert_clean(self, *objects):
-        for obj in objects:
-            self.assertEqual(obj.listeners(), 0)
-        self.assertEqual(self.registry.listener_count(), 0)
-
     def test_unwatch(self):
         self.watch()
-        self.assertTrue(self.registry.unwatch("w1"))
 
-        self.assert_clean(self.slot, self.clip)
+        self.assertTrue(self.registry.unwatch("w1"))
+        self.assertEqual(self.clip.listeners(), 0)
+        self.assertEqual(self.registry.listener_count(), 0)
         self.assertFalse(self.registry.unwatch("w1"))
 
     def test_replacing_an_owners_watch(self):
@@ -238,15 +299,15 @@ class RemovalTest(RegistryCase):
         other = FakeSlot(FakeClip())
         self.registry.watch(song_with([self.slot, other]), "w1", 0, 1)
 
-        self.assertEqual(self.slot.listeners() + self.clip.listeners(), 0)
-        self.assertEqual(other.listeners(), 1)
+        self.assertEqual(self.clip.listeners(), 0)
+        self.assertEqual(other.clip.listeners(), len(watches.CLIP_PROPERTIES))
 
     def test_close(self):
         self.watch("a")
         self.watch("b")
         self.registry.close()
 
-        self.assert_clean(self.slot, self.clip)
+        self.assertEqual(self.clip.listeners(), 0)
         self.assertEqual(self.registry.owners(), [])
 
     def test_a_new_song(self):
@@ -254,43 +315,24 @@ class RemovalTest(RegistryCase):
         old_epoch = self.registry.epoch
         reply = self.read(song=song_with([FakeSlot(FakeClip())]))
 
-        self.assert_clean(self.slot, self.clip)
+        self.assertEqual(self.clip.listeners(), 0)
         self.assertEqual(reply["watching"], [])
         self.assertNotEqual(reply["epoch"], old_epoch)
 
-    def test_a_pinned_clip_replaced(self):
-        self.watch(follow=False)
-        self.slot.put(FakeClip())
+    def test_a_deleted_clip(self):
+        self.watch()
+        self.slot.delete_clip()
         reply = self.read(0)
 
-        self.assertEqual(reply["watching"], [])
-        self.assertEqual(reply["events"][0]["kind"], "gone")
-        self.assert_clean(self.slot, self.clip)
-
-    def test_a_pinned_clip_deleted(self):
-        self.watch(follow=False)
-        self.slot.put(None)
-        reply = self.read(0)
-
-        self.assertEqual(reply["events"][0]["kind"], "gone")
-        self.assert_clean(self.slot, self.clip)
-
-    def test_a_pinned_object_that_died(self):
-        self.watch(follow=False)
-        self.slot.die()
-        self.clip.die()
-        reply = self.read(0)
-
-        self.assertEqual(reply["events"][0]["kind"], "gone")
         self.assertEqual(reply["watching"], [])
         self.assertEqual(self.registry.listener_count(), 0)
+        self.assertEqual(reply["events"][0]["kind"], "gone")
 
     def test_a_removed_clip_that_died_does_not_break_removal(self):
         self.watch()
         self.clip.die()
 
         self.assertTrue(self.registry.unwatch("w1"))
-        self.assertEqual(self.slot.listeners(), 0)
 
     def test_a_late_callback_after_removal_is_ignored(self):
         self.watch()
@@ -298,7 +340,7 @@ class RemovalTest(RegistryCase):
         self.registry.unwatch("w1")
         late()
 
-        self.assertEqual(self.read(0)["events"], [])
+        self.assertEqual(self.events(), [])
 
     def test_a_late_callback_after_close_is_ignored(self):
         self.watch()
@@ -306,99 +348,254 @@ class RemovalTest(RegistryCase):
         self.registry.close()
         late()
 
-        self.assertEqual(self.read(song=self.song)["events"], [])
+        self.assertEqual(self.events(), [])
 
-
-class FollowTest(RegistryCase):
-    def test_a_replacement_clip_rebinds_and_reports_it(self):
+    def test_a_late_callback_after_the_clip_went_gone_is_ignored(self):
         self.watch()
-        replacement = FakeClip()
-        self.slot.put(replacement)
+        late = self.clip._callbacks["notes"][0]
+        self.slot.delete_clip()
+        self.read(0)
+        late()
+
+        self.assertEqual(self.events(1), [])
+
+
+class GoneTest(RegistryCase):
+    """A deleted clip stays gone. Nothing re-binds into the slot."""
+
+    def test_deleting_reports_gone_once_with_the_last_path_and_a_reason(self):
+        self.watch()
+        self.slot.delete_clip()
+        first = self.read(0)
+        again = self.read(first["seq"])
+
+        self.assertEqual(
+            first["events"],
+            [
+                {
+                    "seq": 1,
+                    "owner": "w1",
+                    "kind": "gone",
+                    "fields": ["clip"],
+                    "path": "t0/s0",
+                    "reason": "dead",
+                }
+            ],
+        )
+        self.assertEqual(again["events"], [])
+
+    def test_a_clip_put_in_the_slot_afterwards_is_not_picked_up(self):
+        self.watch()
+        self.slot.delete_clip()
+        self.read(0)
+        newcomer = FakeClip("New")
+        self.slot.put(newcomer)
+        reply = self.read(1)
+
+        self.assertEqual(reply["events"], [])
+        self.assertEqual(reply["watching"], [])
+        self.assertEqual(newcomer.listeners(), 0)
+
+    def test_replacing_the_clip_while_the_old_object_survives(self):
+        self.watch()
+        newcomer = FakeClip("New")
+        self.slot.put(newcomer)  # the old object stays valid, now orphaned
         reply = self.read(0)
 
+        self.assertEqual(reply["events"][0]["kind"], "gone")
+        self.assertEqual(reply["events"][0]["reason"], "replaced")
+        self.assertEqual(newcomer.listeners(), 0)
         self.assertEqual(self.clip.listeners(), 0)
-        self.assertEqual(replacement.listeners(), len(watches.CLIP_PROPERTIES))
-        self.assertEqual(reply["watching"], ["w1"])
-        self.assertEqual(
-            [(e["owner"], e["kind"]) for e in reply["events"]], [("w1", "rebound")]
+
+    def test_a_slot_emptied_without_the_clip_dying(self):
+        self.watch()
+        self.slot._clip = None
+        reply = self.read(0)
+
+        self.assertEqual(reply["events"][0]["reason"], "emptied")
+
+    def test_a_watch_on_a_dead_object_is_gone(self):
+        self.watch()
+        self.clip.die()
+        reply = self.read(0)
+
+        self.assertEqual(reply["events"][0]["kind"], "gone")
+        self.assertEqual(reply["watching"], [])
+
+    def test_a_clip_with_no_slot_parent_is_gone(self):
+        self.watch()
+        self.clip._slot = types.SimpleNamespace(
+            canonical_parent=None, has_clip=False
         )
-        self.assertIn("has_clip", reply["events"][0]["fields"])
+        reply = self.read(0)
 
-    def test_the_new_clip_is_heard_after_the_rebind(self):
+        self.assertEqual(reply["events"][0]["kind"], "gone")
+
+    def test_a_slot_whose_clip_is_another_one_is_replaced(self):
         self.watch()
-        replacement = FakeClip()
-        self.slot.put(replacement)
-        seq = self.read(0)["seq"]
-        replacement.fire("notes")
+        self.slot._clip = FakeClip("Other")  # the bound clip still points here
+        reply = self.read(0)
 
-        events = self.events(seq)
-        self.assertEqual([e["kind"] for e in events], ["changed"])
-        self.assertEqual(events[0]["fields"], ["notes"])
+        self.assertEqual(reply["events"][0]["reason"], "replaced")
 
-    def test_a_deleted_clip_leaves_an_empty_slot_still_watched(self):
+    def test_a_track_that_left_the_set_is_unlocated(self):
         self.watch()
-        self.slot.put(None)
+        self.song.tracks.clear()
+        reply = self.read(0)
+
+        self.assertEqual(reply["events"][0]["reason"], "unlocated")
+
+
+class DescribeTest(RegistryCase):
+    def test_it_lists_every_watch_and_what_became_of_it(self):
+        self.watch()
+        self.slot.delete_clip()
         self.read(0)
 
-        self.assertEqual(self.clip.listeners(), 0)
-        self.assertEqual(self.slot.listeners(), 1)
+        info = self.registry.describe()["watches"]
+
+        self.assertEqual(
+            info,
+            [
+                {
+                    "owner": "w1",
+                    "state": "gone",
+                    "path": "t0/s0",
+                    "listeners": 0,
+                    "reason": "dead",
+                    "old_object_valid_again": False,
+                }
+            ],
+        )
+
+    def test_a_gone_clip_whose_object_comes_back_is_noted_and_not_acted_on(self):
+        self.watch()
+        self.clip._slot = types.SimpleNamespace(canonical_parent=None, has_clip=False)
+        self.read(0)
+        # Live gives the object back: valid, in a slot that holds it.
+        self.clip._slot = self.slot
+        reply = self.read(1)
+        info = self.registry.describe()["watches"][0]
+
+        self.assertTrue(info["old_object_valid_again"])
+        self.assertEqual(info["state"], "gone")
+        self.assertEqual(reply["watching"], [])
+        self.assertEqual(reply["events"], [])
+        self.assertTrue(any("valid again" in line for line in self.logged))
+
+    def test_a_live_watch_describes_itself(self):
+        self.watch()
+
+        self.assertEqual(
+            self.registry.describe()["watches"],
+            [
+                {
+                    "owner": "w1",
+                    "state": "watching",
+                    "path": "t0/s0",
+                    "listeners": len(watches.CLIP_PROPERTIES),
+                }
+            ],
+        )
+
+
+class MoveTest(RegistryCase):
+    def test_a_track_inserted_before_moves_the_path_and_keeps_the_clip(self):
+        self.watch()
+        self.song.tracks.insert(0, FakeTrack([FakeSlot()]))
+        reply = self.read(0)
+
+        self.assertEqual(
+            reply["events"],
+            [
+                {
+                    "seq": 1,
+                    "owner": "w1",
+                    "kind": "moved",
+                    "fields": ["path"],
+                    "path": "t1/s0",
+                }
+            ],
+        )
+        self.assertEqual(reply["watching"], ["w1"])
+        self.assertEqual(self.clip.listeners(), len(watches.CLIP_PROPERTIES))
+
+    def test_the_new_path_does_not_point_at_the_empty_slot_that_took_the_old_one(self):
+        self.watch()
+        fresh = FakeSlot()
+        self.song.tracks.insert(0, FakeTrack([fresh]))
+        self.read(0)
+
+        self.assertEqual(self.registry.describe()["watches"][0]["path"], "t1/s0")
         self.assertEqual(self.registry.owners(), ["w1"])
 
-    def test_a_clip_arriving_in_an_empty_slot(self):
-        slot = FakeSlot()
-        song = song_with([slot])
-        self.watch(song=song)
-        clip = FakeClip()
-        slot.put(clip)
-        events = self.registry.read(song, 0)["events"]
+    def test_a_deleted_track_before_it_moves_the_path_down(self):
+        second = FakeSlot(FakeClip("Second"))
+        song = song_with([FakeSlot()], [second])
+        self.registry.watch(song, "w1", 1, 0)
+        song.tracks.pop(0)
+        reply = self.read(0, song=song)
 
-        self.assertEqual(events[0]["kind"], "rebound")
-        self.assertEqual(clip.listeners(), len(watches.CLIP_PROPERTIES))
+        self.assertEqual(reply["events"][0]["path"], "t0/s0")
 
-    def test_a_replacement_nobody_fired_for_is_still_noticed(self):
+    def test_scenes_inserted_before_move_the_slot_index(self):
+        song = song_with([self.slot])
+        self.registry.watch(song, "w1", 0, 0)
+        new_slot = FakeSlot()
+        new_slot._track = song.tracks[0]
+        song.tracks[0].clip_slots.insert(0, new_slot)
+        reply = self.read(0, song=song)
+
+        self.assertEqual(reply["events"][0]["path"], "t0/s1")
+
+    def test_tracks_reordered(self):
+        other = FakeSlot(FakeClip("Other"))
+        song = song_with([self.slot], [other])
+        self.registry.watch(song, "w1", 0, 0)
+        song.tracks.reverse()
+        reply = self.read(0, song=song)
+
+        self.assertEqual(reply["events"][0]["path"], "t1/s0")
+
+    def test_a_clip_moved_to_another_slot_by_live_keeps_the_watch(self):
+        target = FakeSlot()
+        song = song_with([self.slot, target])
+        self.registry.watch(song, "w1", 0, 0)
+        move_clip(self.clip, target)
+        reply = self.read(0, song=song)
+
+        self.assertEqual(reply["events"][0]["kind"], "moved")
+        self.assertEqual(reply["events"][0]["path"], "t0/s1")
+        self.assertEqual(self.clip.listeners(), len(watches.CLIP_PROPERTIES))
+
+    def test_the_moved_clip_is_still_heard(self):
+        target = FakeSlot()
+        song = song_with([self.slot, target])
+        self.registry.watch(song, "w1", 0, 0)
+        move_clip(self.clip, target)
+        seq = self.read(0, song=song)["seq"]
+        self.clip.fire("notes")
+
+        events = self.events(seq, song=song)
+
+        self.assertEqual(events[0]["kind"], "changed")
+        self.assertEqual(events[0]["path"], "t0/s1")
+
+    def test_a_clip_that_did_not_move_costs_no_event(self):
         self.watch()
-        self.slot._clip = FakeClip()  # no callback
-        reply = self.read(0)
 
-        self.assertEqual(reply["events"][0]["kind"], "rebound")
+        self.assertEqual(self.events(), [])
+        self.assertEqual(self.events(), [])
 
-    def test_it_follows_the_position_when_tracks_shift(self):
+    def test_a_move_and_a_note_edit_in_one_tick_are_one_event(self):
         self.watch()
-        newcomer = FakeSlot(FakeClip())
-        shifted = song_with([newcomer], [self.slot])
-        self.registry._song = shifted  # the same Set, its tracks edited
-        reply = self.read(0, song=shifted)
+        self.clip.fire("notes")
+        self.song.tracks.insert(0, FakeTrack([FakeSlot()]))
+        events = self.events()
 
-        self.assertEqual(self.slot.listeners(), 0)
-        self.assertEqual(self.clip.listeners(), 0)
-        self.assertEqual(newcomer.listeners(), 1)
-        self.assertEqual(reply["events"][0]["kind"], "rebound")
-
-    def test_a_deleted_track_leaves_the_watch_waiting_for_one_to_return(self):
-        self.watch()
-        empty = FakeSong([])
-        self.registry._song = empty
-        gone = self.read(0, song=empty)
-
-        self.assertEqual(gone["watching"], ["w1"])
-        self.assertEqual(self.registry.listener_count(), 0)
-        self.assertEqual(gone["events"][0]["kind"], "rebound")
-
-        back = FakeSlot(FakeClip())
-        song = song_with([back])
-        self.registry._song = song
-        again = self.read(gone["seq"], song=song)
-
-        self.assertEqual(again["events"][0]["kind"], "rebound")
-        self.assertEqual(back.listeners(), 1)
-
-    def test_a_read_that_fails_is_logged_and_does_not_end_the_read(self):
-        self.watch()
-        self.slot.die()
-        reply = self.read(0)
-
-        self.assertEqual(reply["watching"], ["w1"])
-        self.assertTrue(any("RuntimeError" in line for line in self.logged))
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["kind"], "moved")
+        self.assertEqual(events[0]["fields"], ["notes", "path"])
 
 
 class EventTest(RegistryCase):
@@ -415,7 +612,7 @@ class EventTest(RegistryCase):
         self.watch()
         for prop in ("notes", "notes", "name", "notes", "loop_end"):
             self.clip.fire(prop)
-        events = self.events(0)
+        events = self.events()
 
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["fields"], ["loop_end", "name", "notes"])
@@ -428,7 +625,7 @@ class EventTest(RegistryCase):
         self.registry.watch(song, "a", 0, 0)
         self.registry.watch(song, "b", 0, 1)
         self.clip.fire("notes")
-        other._clip.fire("name")
+        other.clip.fire("name")
         events = self.registry.read(song, 0)["events"]
 
         self.assertEqual(
@@ -438,11 +635,11 @@ class EventTest(RegistryCase):
     def test_a_stronger_change_wins_within_one_event(self):
         self.watch()
         self.clip.fire("notes")
-        self.slot.put(FakeClip())
-        events = self.events(0)
+        self.slot.delete_clip()
+        events = self.events()
 
         self.assertEqual(len(events), 1)
-        self.assertEqual(events[0]["kind"], "rebound")
+        self.assertEqual(events[0]["kind"], "gone")
 
     def test_a_reader_gets_only_what_is_after_its_position(self):
         self.watch()
@@ -454,6 +651,13 @@ class EventTest(RegistryCase):
         self.assertEqual([e["seq"] for e in first["events"]], [1])
         self.assertEqual([e["seq"] for e in later["events"]], [2])
         self.assertEqual(self.read(later["seq"])["events"], [])
+
+    def test_a_read_that_fails_is_logged_and_does_not_end_the_read(self):
+        self.watch()
+        self.slot._track = None  # the clip's slot has no track
+        reply = self.read(0)
+
+        self.assertEqual(reply["events"][0]["kind"], "gone")
 
 
 class OverflowTest(unittest.TestCase):
@@ -501,7 +705,8 @@ class OverflowTest(unittest.TestCase):
 
 class RouteTest(unittest.TestCase):
     def setUp(self):
-        self.slot = FakeSlot(FakeClip())
+        self.clip = FakeClip("Bass", 8.0)
+        self.slot = FakeSlot(self.clip)
         self.bridge = types.SimpleNamespace(
             song=song_with([self.slot]), log=lambda message: None
         )
@@ -511,24 +716,33 @@ class RouteTest(unittest.TestCase):
 
     def test_watch_then_events_then_unwatch(self):
         reply = self.call("/watch", owner="w1", path="t0/s0")
-        self.assertTrue(reply["has_clip"])
-        self.slot.clip.fire("notes")
+        self.assertEqual(reply["fingerprint"], {"name": "Bass", "length": 8.0})
+        self.clip.fire("notes")
 
         events = self.call("/events", since="0")
         self.assertEqual(events["events"][0]["owner"], "w1")
         self.assertEqual(self.call("/unwatch", owner="w1"), {"existed": True})
-        self.assertEqual(self.slot.listeners() + self.slot.clip.listeners(), 0)
+        self.assertEqual(self.clip.listeners(), 0)
 
     def test_the_registry_lives_on_the_bridge(self):
         self.call("/watch", owner="w1", path="t0/s0")
 
         self.assertIs(self.bridge.watches, watches._registry(self.bridge))
 
-    def test_follow_can_be_turned_off(self):
-        self.call("/watch", owner="w1", path="t0/s0", follow="false")
-        self.slot.put(FakeClip())
+    def test_the_fingerprint_is_checked(self):
+        with self.assertRaises(RouteError) as caught:
+            self.call(
+                "/watch",
+                owner="w1",
+                path="t0/s0",
+                fingerprint={"name": "Other", "length": 8.0},
+            )
+        self.assertEqual(caught.exception.payload["reason"], "mismatch")
 
-        self.assertEqual(self.call("/events", since="0")["events"][0]["kind"], "gone")
+    def test_the_diagnostic_route_lists_watches(self):
+        self.call("/watch", owner="w1", path="t0/s0")
+
+        self.assertEqual(self.call("/watches")["watches"][0]["owner"], "w1")
 
     def test_bad_input_is_a_400(self):
         for params in (
@@ -536,6 +750,9 @@ class RouteTest(unittest.TestCase):
             {"owner": "", "path": "t0/s0"},
             {"owner": "w1", "path": "t0"},
             {"owner": "w1", "path": "t0/s0/x"},
+            {"owner": "w1", "path": "t0/s0", "fingerprint": "Bass"},
+            {"owner": "w1", "path": "t0/s0", "fingerprint": {"name": "B"}},
+            {"owner": "w1", "path": "t0/s0", "fingerprint": {"name": "B", "length": True}},
         ):
             with self.assertRaises(RouteError) as caught:
                 self.call("/watch", **params)
@@ -549,6 +766,7 @@ class RouteTest(unittest.TestCase):
         self.assertIn("/watch", routes.POST_ONLY)
         self.assertIn("/unwatch", routes.POST_ONLY)
         self.assertNotIn("/events", routes.POST_ONLY)
+        self.assertNotIn("/watches", routes.POST_ONLY)
 
 
 class SameObjectTest(unittest.TestCase):
@@ -590,17 +808,17 @@ class BridgeTest(unittest.TestCase):
         return surface
 
     def registry_with_a_watch(self):
-        slot = FakeSlot(FakeClip())
+        clip = FakeClip()
         registry = watches.WatchRegistry()
-        registry.watch(song_with([slot]), "w1", 0, 0)
-        return registry, slot
+        registry.watch(song_with([FakeSlot(clip)]), "w1", 0, 0)
+        return registry, clip
 
     def test_disconnecting_removes_every_listener(self):
         surface = self.make_bridge()
-        surface.watches, slot = self.registry_with_a_watch()
+        surface.watches, clip = self.registry_with_a_watch()
         surface.disconnect()
 
-        self.assertEqual(slot.listeners() + slot.clip.listeners(), 0)
+        self.assertEqual(clip.listeners(), 0)
         self.assertIsNone(surface.watches)
         surface._server.stop.assert_called_once()
 
@@ -616,11 +834,11 @@ class BridgeTest(unittest.TestCase):
 
     def test_a_hot_reload_removes_every_listener_first(self):
         surface = self.make_bridge()
-        surface.watches, slot = self.registry_with_a_watch()
+        surface.watches, clip = self.registry_with_a_watch()
         order = []
 
         def reload():
-            order.append(slot.listeners() + slot.clip.listeners())
+            order.append(clip.listeners())
             return ["watches"], "abc123abc123"
 
         with mock.patch.object(hot_reload, "reload_implementation", reload):
@@ -631,14 +849,14 @@ class BridgeTest(unittest.TestCase):
 
     def test_a_failed_reload_has_still_released_the_watches(self):
         surface = self.make_bridge()
-        surface.watches, slot = self.registry_with_a_watch()
+        surface.watches, clip = self.registry_with_a_watch()
         failure = hot_reload.ReloadError("watches", "trace")
 
         with mock.patch.object(hot_reload, "reload_implementation", side_effect=failure):
             with self.assertRaises(RouteError):
                 hot_reload.reload_route(surface, {})
 
-        self.assertEqual(slot.listeners(), 0)
+        self.assertEqual(clip.listeners(), 0)
 
 
 if __name__ == "__main__":
