@@ -174,6 +174,10 @@ export const OPENROUTER_MODELS = [
     label: "[Paid] Anthropic Claude Opus 5.5",
   },
   {
+    value: "anthropic/claude-fable-5.1",
+    label: "[Paid] Anthropic Claude Fable 5.1",
+  },
+  {
     value: "anthropic/claude-haiku-5.5",
     label: "[Paid] Anthropic Claude Haiku 5.5",
   },
@@ -224,6 +228,7 @@ export const VERCEL_MODELS = [
     label: "Anthropic Claude Sonnet 5.5",
   },
   { value: "anthropic/claude-opus-5.5", label: "Anthropic Claude Opus 5.5" },
+  { value: "anthropic/claude-fable-5.1", label: "Anthropic Claude Fable 5.1" },
   { value: "anthropic/claude-haiku-5.5", label: "Anthropic Claude Haiku 5.5" },
   { value: "openai/gpt-6.1-terra", label: "OpenAI GPT-6.1 Terra" },
   { value: "openai/gpt-6.1-sol", label: "OpenAI GPT-6.1 Sol" },
