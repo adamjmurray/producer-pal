@@ -134,78 +134,6 @@ export default defineConfig({
 
     sidebar: [
       {
-        text: "Guide",
-        link: "/guide",
-        items: [
-          { text: "Device Interface", link: "/guide/device" },
-          { text: "Chat UI", link: "/guide/chat-ui" },
-          { text: "Remote Script", link: "/guide/remote-script" },
-          { text: "Clip Automation", link: "/guide/automation" },
-          { text: "Context & Memory", link: "/guide/context" },
-          { text: "Customizing Skills", link: "/guide/customizing-skills" },
-          { text: "Optimizing Cost & Context", link: "/guide/optimizing" },
-        ],
-      },
-      {
-        // The three ways into the device. Keep them together and out of the
-        // Guide list, or MCP reads as the only real path.
-        text: "Integrations",
-        items: [
-          { text: "MCP (npx producer-pal)", link: "/guide/npx-cli" },
-          { text: "REST API", link: "/guide/rest-api" },
-          { text: "Agent Skills", link: "/guide/skills" },
-          { text: "Extending", link: "/extending" },
-          // Scripts only — a chat user reads the current schemas every session
-          // and never sees the old spellings.
-          { text: "Migration Guide", link: "/guide/migration" },
-        ],
-      },
-      {
-        text: "Features",
-        link: "/features",
-        items: [
-          { text: "Tool Reference", link: "/features/tools" },
-          { text: "Usage Examples", link: "/features/examples" },
-          { text: "MIDI Notation", link: "/features/midi-notation" },
-          { text: "Limitations", link: "/features/limitations" },
-          { text: "Roadmap", link: "/roadmap" },
-        ],
-      },
-      {
-        text: "How It Works",
-        link: "/how-it-works",
-        items: [
-          {
-            text: "Running Inside Live",
-            link: "/how-it-works/running-inside-live",
-          },
-          {
-            text: "JSON Over Patch Cables",
-            link: "/how-it-works/the-bridge",
-          },
-          {
-            text: "More Than a Wrapper",
-            link: "/how-it-works/more-than-a-wrapper",
-          },
-          {
-            text: "Why Not an Extension",
-            link: "/how-it-works/why-not-an-extension",
-          },
-        ],
-      },
-      {
-        text: "Vision",
-        link: "/vision",
-      },
-      {
-        text: "Support",
-        link: "/support",
-        items: [
-          { text: "Troubleshooting", link: "/support/troubleshooting" },
-          { text: "Known Issues", link: "/support/known-issues" },
-        ],
-      },
-      {
         text: "Installation",
         link: "/installation",
         items: [
@@ -288,6 +216,78 @@ export default defineConfig({
             ],
           },
           { text: "Upgrading", link: "/installation/upgrading" },
+        ],
+      },
+      {
+        text: "Guide",
+        link: "/guide",
+        items: [
+          { text: "Device Interface", link: "/guide/device" },
+          { text: "Chat UI", link: "/guide/chat-ui" },
+          { text: "Remote Script", link: "/guide/remote-script" },
+          { text: "Clip Automation", link: "/guide/automation" },
+          { text: "Context & Memory", link: "/guide/context" },
+          { text: "Customizing Skills", link: "/guide/customizing-skills" },
+          { text: "Optimizing Cost & Context", link: "/guide/optimizing" },
+        ],
+      },
+      {
+        // The three ways into the device. Keep them together and out of the
+        // Guide list, or MCP reads as the only real path.
+        text: "Integrations",
+        items: [
+          { text: "MCP (npx producer-pal)", link: "/guide/npx-cli" },
+          { text: "REST API", link: "/guide/rest-api" },
+          { text: "Agent Skills", link: "/guide/skills" },
+          { text: "Extending", link: "/extending" },
+          // Scripts only — a chat user reads the current schemas every session
+          // and never sees the old spellings.
+          { text: "Migration Guide", link: "/guide/migration" },
+        ],
+      },
+      {
+        text: "Features",
+        link: "/features",
+        items: [
+          { text: "Tool Reference", link: "/features/tools" },
+          { text: "Usage Examples", link: "/features/examples" },
+          { text: "MIDI Notation", link: "/features/midi-notation" },
+          { text: "Limitations", link: "/features/limitations" },
+          { text: "Roadmap", link: "/roadmap" },
+        ],
+      },
+      {
+        text: "How It Works",
+        link: "/how-it-works",
+        items: [
+          {
+            text: "Running Inside Live",
+            link: "/how-it-works/running-inside-live",
+          },
+          {
+            text: "JSON Over Patch Cables",
+            link: "/how-it-works/the-bridge",
+          },
+          {
+            text: "More Than a Wrapper",
+            link: "/how-it-works/more-than-a-wrapper",
+          },
+          {
+            text: "Why Not an Extension",
+            link: "/how-it-works/why-not-an-extension",
+          },
+        ],
+      },
+      {
+        text: "Vision",
+        link: "/vision",
+      },
+      {
+        text: "Support",
+        link: "/support",
+        items: [
+          { text: "Troubleshooting", link: "/support/troubleshooting" },
+          { text: "Known Issues", link: "/support/known-issues" },
         ],
       },
     ],
