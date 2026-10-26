@@ -593,6 +593,65 @@ Send one.
   refuses, whatever the values, including the update, delete and duplicate
   tools, before anything changes.
 
+**A param that only another action, mode or type reads is refused.** 2.4 ran the
+call and ignored it, usually without a word, or warned. A blank one, an empty
+list and a switch set to `false` count as not sent. The error names the param
+and where it applies.
+
+- `ppal-library`: `similarTo` without `action: "find-similar"` (it ran a plain
+  search), and the top-level filters (`query`, `tags`, `kind`, `type`, `source`,
+  `inFolder`, `sort`, `limit`...) beside `searches`. Put the filters in each
+  search.
+- `ppal-playback`: `startTime`, `loop`, `loopStart`, `loopEnd` and their locator
+  spellings on a session action (`play-scene`, `play-session-clips`,
+  `stop-session-clips`), and `id`, `path`, `slots` or `sceneIndex` on an
+  arrangement action. 2.4 warned and ran.
+- `ppal-context`: `name` and `description` outside `scope: "memory"`, `force`
+  outside a project or global write, and `action: "delete"` on the project or
+  global scope.
+- `ppal-duplicate`: `count` or `withoutClips` on anything but a track or scene,
+  `withoutDevices` or `routeToSource` on anything but a track, and `transforms`,
+  `toSlot` or `takeLane` on anything but a clip.
+- `ppal-update-live-set`: `locatorId` on a `locatorOperation` that creates, and
+  `locatorId`, `locatorTime` or `locatorName` with no `locatorOperation`.
+- `ppal-update-device`: `macroVariationIndex` unless `macroVariation` is `load`
+  or `delete`.
+- `ppal-live-api`: `property`, `method`, `args` or `value` on an operation type
+  that doesn't read it, named as `operations[N]`.
+
+**An update call that sends nothing to write is refused.** `ppal-update-clip`,
+`ppal-update-device`, `ppal-update-track`, `ppal-update-scene` and
+`ppal-update-live-set` used to answer with the targets as if something had been
+written. Now
+`nothing to update: id and path only name the scenes; also send a param to change`.
+`focus: true` and a take lane path that adds a lane (`t0/l+`) count as a write.
+`force`, a switch set to `false` and a blank `toPath`, `toSlot`,
+`arrangementStart`, `arrangementLength`, `arrangementSplit` or `split` do not.
+`ppal-update-live-set` has no targets, so it says
+`nothing to update: send a param to change`.
+
+**Values Live would quietly change are refused up front.**
+
+- A `length` of zero (`0bar`) on `ppal-update-clip`.
+- A `timeSignature` whose denominator isn't a power of two (`4/3`, which Live
+  would turn into 4/2), on `ppal-create-clip`, `ppal-update-clip`,
+  `ppal-create-scene`, `ppal-update-scene` and `ppal-update-live-set`.
+- An arrangement position past the last one Live allows, on `ppal-create-clip`,
+  `ppal-update-clip` and `ppal-duplicate`. The error names the last position.
+  2.4 failed MIDI clips with no reason, after earlier clips and take lanes had
+  been made.
+- A `ppal-duplicate` `count` over 25. 2.4 had no cap.
+
+**A comma list with an empty entry is refused.** `2|1,,3|1`, and a list with
+nothing in it (`,`), used to have the empty entry dropped. This covers
+`arrangementSplit`, the deprecated `split` and locator lists, and nothing is cut
+or moved first. A locator name can hold a comma written `\,`
+(`loc:Verse\, part 2`).
+
+**`ppal-playback` checks `startTime` and the loop bounds before it does
+anything.** In 2.4 `stop` with a bad `startTime` stopped the transport, then
+threw. The call now throws first and changes nothing.
+
 **A read of several targets can run out of time.** `ppal-read-track`,
 `ppal-read-scene`, `ppal-read-clip` and `ppal-read-device` now return
 `{id or path, ok: false, detail: "the request ran out of time; re-run for this clip"}`
@@ -725,6 +784,13 @@ new.
 - **Return, main and group tracks carry no clip counts.** `ppal-read-track` and
   `ppal-read-live-set` leave out `sessionClipCount` and `arrangementClipCount`
   for them; both were always 0.
+- **`ppal-live-api` `results` is one bare value per operation**, in order. In
+  2.4 each was `{operation, result}`. If an operation throws partway, the call
+  returns the results of the ones that ran, plus `failed: {index, detail}` for
+  the one that threw, and runs nothing after it. A throw on the first operation
+  is still an error, since nothing changed. A malformed operation refuses the
+  whole call, named `operations[N]` (from 0). See
+  [Results](/guide/rest-api#results).
 - **`ppal-read-clip` has no `view`.** `path` says it: `t0/s3` is a session slot,
   `t0[5|1]` an arrangement position.
 - **`ppal-library` leaves out what Live hides in plug-in preset folders.**
