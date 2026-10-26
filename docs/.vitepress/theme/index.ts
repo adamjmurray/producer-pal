@@ -1,6 +1,6 @@
-import { inBrowser } from "vitepress";
+import { inBrowser, useRoute } from "vitepress";
 import DefaultTheme from "vitepress/theme";
-import { h } from "vue";
+import { defineComponent, h, nextTick, onMounted, watch } from "vue";
 import DownloadMarkdown from "./DownloadMarkdown.vue";
 import "./demo.css";
 import "./footer.css";
@@ -12,17 +12,51 @@ import "./tool-schemas.css";
 
 export default {
   extends: DefaultTheme,
-  Layout() {
-    return h(DefaultTheme.Layout, null, {
-      "doc-before": () => h(DownloadMarkdown),
-    });
-  },
+  Layout: defineComponent({
+    setup() {
+      const route = useRoute();
+
+      onMounted(scrollSidebarToActive);
+      watch(
+        () => route.path,
+        () => void nextTick(scrollSidebarToActive),
+      );
+
+      return () =>
+        h(DefaultTheme.Layout, null, {
+          "doc-before": () => h(DownloadMarkdown),
+        });
+    },
+  }),
   enhanceApp() {
     if (inBrowser) {
       setupImageZoom();
     }
   },
 };
+
+/**
+ * Scrolls the sidebar so the current page's link is in view. Only scrolls when
+ * the link is out of view, so clicking a visible link doesn't make the sidebar
+ * jump.
+ */
+function scrollSidebarToActive() {
+  requestAnimationFrame(() => {
+    const sidebar = document.querySelector(".VPSidebar");
+    const active = sidebar?.querySelector(".VPSidebarItem.is-active > .item");
+
+    if (!(sidebar instanceof HTMLElement) || !(active instanceof HTMLElement)) {
+      return;
+    }
+
+    const box = sidebar.getBoundingClientRect();
+    const link = active.getBoundingClientRect();
+
+    if (link.top < box.top || link.bottom > box.bottom) {
+      sidebar.scrollTop += link.top - box.top - box.height / 3;
+    }
+  });
+}
 
 /**
  * Adds click-to-zoom to doc-content screenshots (`.vp-doc img`, excluding any
