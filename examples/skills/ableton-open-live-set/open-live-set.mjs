@@ -500,7 +500,7 @@ async function loadProducerPal() {
   }, Date.now() + REMOTE_SCRIPT_START_MS);
   if (!reachable) {
     throw new Error(
-      `${open} Producer Pal couldn't be added: the Producer Pal remote script isn't answering on port ${remoteScriptPorts().join(" or ")}. To install it, add the Producer Pal device to a track and click "Finish installation…" on it, then restart Live and select Producer Pal as a Control Surface (Live Settings → Tempo & MIDI): ${REMOTE_SCRIPT_GUIDE}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`,
+      `${open} Producer Pal couldn't be added: the Producer Pal remote script isn't answering on port ${remoteScriptPorts().join(" or ")}. To install it, add the Producer Pal device to a track and click "Finish installation…" on it, click "Install" next to the remote script, then restart Live and select Producer Pal as a Control Surface (Live Settings → Tempo & MIDI): ${REMOTE_SCRIPT_GUIDE}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`,
     );
   }
 

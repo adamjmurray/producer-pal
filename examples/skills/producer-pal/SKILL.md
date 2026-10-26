@@ -57,8 +57,9 @@ User Library's Max MIDI Effect folder
 ([install guide](https://producer-pal.org/installation#install-the-device)). If
 either is missing, the error says how to fix it. You can't install the remote
 script for the user: they add the device to a MIDI track by hand once, click
-"Finish installation…" on it, then restart Live and select Producer Pal as a
-Control Surface (Live Settings → Tempo & MIDI). Prints
+"Finish installation…" on it, click "Install" next to the remote script, then
+restart Live and select Producer Pal as a Control Surface (Live Settings → Tempo
+& MIDI). Prints
 `{"producerPal": true, "addedProducerPal": {"trackIndex": 4, "trackName": "5-MIDI"}}`
 once the device answers (up to 30 seconds).
 
