@@ -130,20 +130,8 @@ paths, depending on your app.
 </div>
 
 Both paths end with one setting in Live. The remote script takes one free
-Control Surface slot and no MIDI, so your other controllers keep working.
-
-### Path A: The AI Sets It Up {#the-ai-sets-it-up}
-
-For the desktop apps, command line tools and other MCP clients. This works when
-the app connects through `npx producer-pal` or the Claude Desktop extension.
-Over HTTP, or in [small model mode](/features#small-model-mode), use Path B.
-
-1. Open your app's guide from Step 1 and add Producer Pal to the app.
-2. Open Live, start a chat, and say **"connect to ableton"**. The AI installs
-   the [remote script](/guide/remote-script).
-3. <!--@include: ./_partials/control-surface.md-->
-4. Then tell the AI you're done. It asks before adding the Producer Pal device
-   to your Live Set.
+Control Surface slot and no MIDI, so your other controllers keep working. In
+[small model mode](/features#small-model-mode), use Path B.
 
 ### Path B: Device First {#path-b-device-first}
 
