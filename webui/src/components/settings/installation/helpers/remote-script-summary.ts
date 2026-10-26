@@ -40,6 +40,9 @@ export function summarize(status: RemoteScriptStatus): string {
   return `Installed ${versionText(status.installedVersion)} (${running})`;
 }
 
+// Live only loads the installed copy after a restart.
+const RESTART = "; restart Live to load it";
+
 /**
  * Whether Live has the script loaded, which version, and which Live.
  * @param status - The server's remote-script status
@@ -50,19 +53,19 @@ function runningText(status: RemoteScriptStatus): string {
     return `not running${portConflictText(status)}`;
   }
 
-  // Same version, other build: naming the version twice would hide why the
-  // line still asks for a restart.
+  // Same version, other build: naming the version twice adds nothing.
   if (
     status.runningVersion === status.installedVersion &&
     liveRunsOtherCopy(status)
   ) {
-    return `Live${liveSuffix(status)} is running a different build`;
+    return "restart Live to load it";
   }
 
   const live =
     status.liveVersion == null ? "" : ` in Live ${status.liveVersion}`;
+  const restart = liveRunsOtherCopy(status) ? RESTART : "";
 
-  return `running ${versionText(status.runningVersion)}${live}`;
+  return `running ${versionText(status.runningVersion)}${live}${restart}`;
 }
 
 /**
@@ -81,16 +84,6 @@ function portConflictText(status: RemoteScriptStatus): string {
  */
 function liveSuffix(status: RemoteScriptStatus): string {
   return status.liveVersion == null ? "" : ` ${status.liveVersion}`;
-}
-
-/**
- * The version Live would pick up on a restart: an install or update landed
- * while Live is still running a different copy.
- * @param status - The server's remote-script status
- * @returns The installed version, or null when Live is already running it
- */
-export function restartVersion(status: RemoteScriptStatus): string | null {
-  return liveRunsOtherCopy(status) ? status.installedVersion : null;
 }
 
 /**

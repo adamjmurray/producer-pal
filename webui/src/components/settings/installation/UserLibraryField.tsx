@@ -39,14 +39,14 @@ export function UserLibraryField({
         type="text"
         value={value}
         onInput={(e) => onInput((e.target as HTMLInputElement).value)}
-        aria-describedby={detected == null ? "user-library-hint" : undefined}
+        aria-describedby="user-library-hint"
         className={inputClass}
       />
-      {detected == null && (
-        <p id="user-library-hint" className={noteClass}>
-          Live shows it under Settings → Library → Location of User Library.
-        </p>
-      )}
+      <p id="user-library-hint" className={noteClass}>
+        The device and the remote script are both installed here.
+        {detected == null &&
+          " Live shows it under Settings → Library → Location of User Library."}
+      </p>
     </div>
   );
 }

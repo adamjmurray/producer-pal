@@ -148,12 +148,10 @@ test.describe("Settings — installation: remote script (stubbed backend)", () =
 
     await page.getByTestId("remote-script-install").click();
 
+    // Live is still running the old copy, so the status asks for a restart and
+    // the steps reopen.
     await expect(page.getByTestId("remote-script-status")).toHaveText(
-      "Installed v1.2.0 (running v1.1.0 in Live 12.1)",
-    );
-    // Live is still running the old copy, so the steps reopen with the restart.
-    await expect(page.getByTestId("remote-script-restart")).toHaveText(
-      "Restart Live to load v1.2.0.",
+      "Installed v1.2.0 (running v1.1.0 in Live 12.1; restart Live to load it)",
     );
     // Expanded as its own section, not the collapsed "Setup steps".
     await expect(page.getByTestId("remote-script-steps")).toContainText(

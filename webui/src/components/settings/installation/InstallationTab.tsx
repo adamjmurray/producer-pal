@@ -12,7 +12,8 @@ import { UserLibraryField } from "./UserLibraryField";
 
 /**
  * Installation tab: puts the Producer Pal device and its remote script in
- * Live's User Library. Both installs use the one User Library path above them.
+ * Live's User Library, in install order: the remote script loads the device
+ * from there. Both installs use the one User Library path above them.
  * The state is owned by the settings screen, which also reads it for the tab
  * button's attention dot.
  * @param {object} props - Component props
@@ -35,15 +36,15 @@ export function InstallationTab({
 
   return (
     <div className="space-y-3.5 text-sm" data-testid="installation-tab">
-      <InstallationOptions />
       <UserLibraryField detected={detected} value={path} onInput={setTyped} />
-      <RemoteScriptSection remote={remote} path={path} detected={detected} />
       <DeviceSection
         device={device}
         swap={swap}
         path={path}
         detected={detected}
       />
+      <RemoteScriptSection remote={remote} path={path} detected={detected} />
+      <InstallationOptions />
     </div>
   );
 }

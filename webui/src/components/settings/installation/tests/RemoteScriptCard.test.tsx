@@ -101,7 +101,6 @@ describe("InstallationTab remote script card", () => {
     expect(
       within(steps).getByText("Turns green once Live loads it."),
     ).toBeTruthy();
-    expect(within(steps).queryByTestId("remote-script-restart")).toBeNull();
   });
 
   it("checks again with the same refresh", async () => {

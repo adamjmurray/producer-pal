@@ -8,8 +8,6 @@ import { buttonClass, noteClass } from "./helpers/installation-classes";
 interface RemoteScriptStepsProps {
   /** True while Live still has to be pointed at the script. */
   expanded: boolean;
-  /** Version Live picks up on a restart, or null. */
-  restartFor: string | null;
   /** Re-reads the status, for after the steps are done. */
   onRefresh: () => void;
 }
@@ -20,13 +18,11 @@ interface RemoteScriptStepsProps {
  * steps are done.
  * @param {RemoteScriptStepsProps} props - Component props
  * @param {boolean} props.expanded - Whether Live still has to be pointed at the script
- * @param {string | null} props.restartFor - Version Live picks up on a restart, or null
  * @param {Function} props.onRefresh - Re-reads the status
  * @returns {JSX.Element} The enable steps
  */
 export function RemoteScriptSteps({
   expanded,
-  restartFor,
   onRefresh,
 }: RemoteScriptStepsProps) {
   const steps = (
@@ -57,11 +53,6 @@ export function RemoteScriptSteps({
       className="flex flex-col gap-1.5 border-t border-zinc-300 pt-2 dark:border-zinc-600"
     >
       <h4 className="font-semibold">Enable it in Live</h4>
-      {restartFor != null && (
-        <p className={noteClass} data-testid="remote-script-restart">
-          Restart Live to load v{restartFor}.
-        </p>
-      )}
       {steps}
       <div className="flex flex-wrap items-center gap-2.5">
         <button

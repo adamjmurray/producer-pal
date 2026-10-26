@@ -81,7 +81,7 @@ describe("InstallationTab device section", () => {
     return JSON.parse(init?.body as string);
   }
 
-  it("orders the notices, the path field, the remote script, then the device", async () => {
+  it("orders the path field, the device, the remote script, then the options", async () => {
     await renderDevice();
 
     const field = screen.getByTestId("user-library-path") as HTMLInputElement;
@@ -92,13 +92,13 @@ describe("InstallationTab device section", () => {
         child.getAttribute("data-testid"),
       ),
     ).toStrictEqual([
-      "installation-options",
       null,
-      "remote-script-section",
       "device-section",
+      "remote-script-section",
+      "installation-options",
     ]);
     expect(
-      screen.getByTestId("installation-tab").children[1]?.contains(field),
+      screen.getByTestId("installation-tab").children[0]?.contains(field),
     ).toBe(true);
   });
 

@@ -281,8 +281,8 @@ describe("InstallationTab remote script section", () => {
     });
 
     expect(screen.getByTestId("remote-script-steps").tagName).toBe("DIV");
-    expect(screen.getByTestId("remote-script-restart").textContent).toBe(
-      "Restart Live to load v1.2.0.",
+    expect(screen.getByTestId("remote-script-status").textContent).toBe(
+      "Installed v1.2.0 (running v1.1.0 in Live 12.1; restart Live to load it)",
     );
   });
 
@@ -294,8 +294,8 @@ describe("InstallationTab remote script section", () => {
       runningVersion: "1.3.0",
     });
 
-    expect(screen.getByTestId("remote-script-restart").textContent).toBe(
-      "Restart Live to load v1.2.0.",
+    expect(screen.getByTestId("remote-script-status").textContent).toBe(
+      "Installed v1.2.0 (running v1.3.0 in Live 12.1; restart Live to load it)",
     );
   });
 
@@ -307,12 +307,12 @@ describe("InstallationTab remote script section", () => {
       runningVersion: "1.2.0-rc1",
     });
 
-    expect(screen.getByTestId("remote-script-restart").textContent).toBe(
-      "Restart Live to load v1.2.0-rc2.",
+    expect(screen.getByTestId("remote-script-status").textContent).toBe(
+      "Installed v1.2.0-rc2 (running v1.2.0-rc1 in Live 12.1; restart Live to load it)",
     );
   });
 
-  it("says Live runs a different build when the versions match", async () => {
+  it("asks for a restart when Live runs another build of the same version", async () => {
     await renderTab({
       installed: true,
       installedVersion: "1.2.0",
@@ -323,10 +323,7 @@ describe("InstallationTab remote script section", () => {
     });
 
     expect(screen.getByTestId("remote-script-status").textContent).toBe(
-      "Installed v1.2.0 (Live 12.1 is running a different build)",
-    );
-    expect(screen.getByTestId("remote-script-restart").textContent).toBe(
-      "Restart Live to load v1.2.0.",
+      "Installed v1.2.0 (restart Live to load it)",
     );
   });
 

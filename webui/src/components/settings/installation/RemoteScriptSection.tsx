@@ -19,7 +19,6 @@ import {
   installLabel,
   needsEnabling,
   remoteScriptLook,
-  restartVersion,
   summarize,
 } from "./helpers/remote-script-summary";
 import { RemoteScriptSteps } from "./RemoteScriptSteps";
@@ -107,11 +106,7 @@ export function RemoteScriptSection({
       </div>
       <InstallMessages remote={remote} />
       {status.installed && (
-        <RemoteScriptSteps
-          expanded={expanded}
-          restartFor={restartVersion(status)}
-          onRefresh={remote.refresh}
-        />
+        <RemoteScriptSteps expanded={expanded} onRefresh={remote.refresh} />
       )}
       {/* A failed Refresh keeps the last status on screen. */}
       {remote.loadError != null && <LoadError message={remote.loadError} />}
