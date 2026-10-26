@@ -1,5 +1,6 @@
 import { defineConfig } from "vitepress";
 import { VERSION } from "../../src/shared/config.ts";
+import { movedAnchorsScript } from "./moved-anchors.ts";
 
 const SITE_URL = "https://producer-pal.org";
 const SITE_TITLE = "Producer Pal — Ableton MCP for AI music production";
@@ -47,6 +48,12 @@ export default defineConfig({
 
     pageData.frontmatter.head ??= [];
     const head = pageData.frontmatter.head;
+    const anchorsScript = movedAnchorsScript(path);
+
+    if (anchorsScript != null) {
+      head.unshift(["script", {}, anchorsScript]);
+    }
+
     const hasMeta = (property: string) =>
       head.some(
         ([tag, attrs]) => tag === "meta" && attrs?.property === property,
