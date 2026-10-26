@@ -18,8 +18,7 @@ Use Producer Pal with Mistral's open-source command line coding assistant.
 
 Add Producer Pal to your Vibe configuration file (`~/.vibe/config.toml`):
 
-**Option A: With npx (recommended)** — Allows flexible startup order and
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-npx.md-->
 
 ```toml
 [[mcp_servers]]
@@ -29,8 +28,7 @@ command = "npx"
 args = ["-y", "producer-pal@latest"]
 ```
 
-**Option B: Direct HTTP** — Requires Ableton running first, no
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-http.md-->
 
 ```toml
 [[mcp_servers]]

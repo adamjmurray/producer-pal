@@ -47,8 +47,7 @@ server":
 
 <img src="/img/chatgpt-app-mcp-server-settings.png" alt="ChatGPT app MCP Servers settings page" width="650"/><br>
 
-**Option A: With npx (recommended)** — Allows flexible startup order and
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-npx.md-->
 
 Set **Type** to **STDIO** and fill in:
 
@@ -59,8 +58,7 @@ Set **Type** to **STDIO** and fill in:
 
 <img src="/img/chatgpt-app-add-mcp-stdio.png" alt="STDIO MCP configuration for Producer Pal" width="650"/><br>
 
-**Option B: Direct HTTP** — Requires Ableton running first, no
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-http.md-->
 
 Set **Type** to **Streamable HTTP** and fill in:
 

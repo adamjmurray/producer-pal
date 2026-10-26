@@ -43,8 +43,7 @@ it to the other.
 
 :::
 
-**Option A: With npx** (recommended for MCP) - Allows flexible startup order and
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-npx.md-->
 
 ```json
 {
@@ -59,10 +58,7 @@ auto-reconnection:
 
 ::: tip Scripting or building against Producer Pal?
 
-If you're using MCP and will have the agent **write code that generates or
-parses** Producer Pal data — building MIDI programmatically, or piping tool
-output through JSON tooling — add `--format json` and `--notation midi-json` to
-the args:
+<!--@include: ../_partials/scripting-tip-intro.md-->
 
 ```json
 {
@@ -105,8 +101,7 @@ Narrow the toolset and every conversation gets smaller:
 
 :::
 
-**Option B: Direct HTTP** - Requires Ableton running first, no
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-http.md-->
 
 ```json
 {

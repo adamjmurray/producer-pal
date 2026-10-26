@@ -40,8 +40,7 @@ Producer Pal to one does not add it to the other.
 
 ### 2. Add Producer Pal
 
-**Option A: With npx (recommended)** — Allows flexible startup order and
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-npx.md-->
 
 ```json
 {
@@ -73,8 +72,7 @@ Narrow the toolset and every conversation gets smaller:
 
 :::
 
-**Option B: Direct HTTP** — Requires Ableton running first, no
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-http.md-->
 
 ```json
 {

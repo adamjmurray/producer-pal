@@ -18,8 +18,7 @@ Use Producer Pal with Anthropic's command line coding assistant.
 
 ### 1. Configure Claude Code
 
-**Option A: With npx** (recommended for MCP) - Allows flexible startup order and
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-npx.md-->
 
 ```bash
 claude mcp add producer-pal npx producer-pal@latest
@@ -27,14 +26,13 @@ claude mcp add producer-pal npx producer-pal@latest
 
 ::: tip Scripting or building against Producer Pal?
 
-If you're using MCP and will have the agent **write code that generates or
-parses** Producer Pal data — building MIDI programmatically, or piping tool
-output through JSON tooling — add `--format json --notation midi-json` (the `--`
-separates them from `claude mcp add`'s own options):
+<!--@include: ../_partials/scripting-tip-intro.md-->
 
 ```bash
 claude mcp add producer-pal -- npx producer-pal@latest --format json --notation midi-json
 ```
+
+The `--` separates them from `claude mcp add`'s own options.
 
 <!--@include: ../_partials/scripting-tip.md-->
 
@@ -52,8 +50,7 @@ claude mcp add producer-pal -- npx producer-pal@latest --tools core,clip,track
 
 :::
 
-**Option B: Direct HTTP** - Requires Ableton running first, no
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-http.md-->
 
 ```bash
 claude mcp add --transport http producer-pal http://localhost:3350/mcp

@@ -33,8 +33,7 @@ this is a good option.
 
 Add Producer Pal to Codex's settings in `~/.codex/config.toml`:
 
-**Option A: With npx** (recommended for MCP) - Allows flexible startup order and
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-npx.md-->
 
 ```toml
 [mcp_servers.producer-pal]
@@ -44,10 +43,7 @@ args = ["-y", "producer-pal@latest"]
 
 ::: tip Scripting or building against Producer Pal?
 
-If you're using MCP and will have the agent **write code that generates or
-parses** Producer Pal data — building MIDI programmatically, or piping tool
-output through JSON tooling — add `--format json` and `--notation midi-json` to
-the args:
+<!--@include: ../_partials/scripting-tip-intro.md-->
 
 ```toml
 [mcp_servers.producer-pal]
@@ -80,8 +76,7 @@ args = ["-y", "producer-pal@latest", "--tools", "core,clip,track"]
 
 :::
 
-**Option B: Direct HTTP** - Requires Ableton running first, no
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-http.md-->
 
 ```toml
 [mcp_servers.producer-pal]
