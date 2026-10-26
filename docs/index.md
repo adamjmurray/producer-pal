@@ -18,11 +18,11 @@ hero:
     alt: Producer Pal
   actions:
     - theme: brand
+      text: Get Started
+      link: /installation
+    - theme: alt
       text: Download for Ableton Live
       link: https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd
-    - theme: alt
-      text: Installation Guide
-      link: /installation
     - theme: alt
       text: User Guide
       link: /guide
