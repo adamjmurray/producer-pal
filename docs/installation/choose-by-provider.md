@@ -18,7 +18,7 @@ the built-in chat UI — and recommends the easiest path.
 | [Gemini / Google](./choose-gemini)       | Google users                           |
 | [Mistral / Mistral AI](./choose-mistral) | Mistral users                          |
 | [Local / Offline](./choose-local)        | Running fully offline on your hardware |
-| [Multiple Providers](./choose-multi)     | Mixing and matching as you go          |
+| [Multi / AI Routers](./choose-multi)     | Mixing and matching as you go          |
 
 Claude Code, Codex CLI, and Gemini CLI can also use the portable
 [Agent Skill](/guide/skills) instead of MCP.

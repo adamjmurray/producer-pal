@@ -132,7 +132,7 @@ If you already know which AI you use, jump straight to its provider guide:
 [Google / Gemini](./installation/choose-gemini) ·
 [Mistral](./installation/choose-mistral) ·
 [Local / Offline](./installation/choose-local) ·
-[Multiple Providers](./installation/choose-multi)
+[Multi / AI Routers](./installation/choose-multi)
 
 ## Step 2: Follow Your Path {#set-it-up}
 

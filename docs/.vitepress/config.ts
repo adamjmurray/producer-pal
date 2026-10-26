@@ -266,7 +266,7 @@ export default defineConfig({
               },
               { text: "Local / Offline", link: "/installation/choose-local" },
               {
-                text: "Multiple Providers",
+                text: "Multi / AI Routers",
                 link: "/installation/choose-multi",
               },
             ],

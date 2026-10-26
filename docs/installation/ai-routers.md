@@ -19,17 +19,28 @@ one router:
 
 ### OpenRouter
 
-1. [Get an OpenRouter API key](https://openrouter.ai/settings/keys)
-2. Settings to use in step 3:
+An AI router with hundreds of models from every big AI company.
+
+1. [Create an OpenRouter account](https://openrouter.ai) and
+   [add credits](https://openrouter.ai/settings/credits).
+2. [Get an OpenRouter API key](https://openrouter.ai/settings/keys)
+3. Settings to use in step 3:
    - Provider: **OpenRouter**
    - Model: e.g., `anthropic/claude-sonnet-5.5`, `google/gemini-3.8-flash`
 
 ### Vercel AI Gateway
 
-Needs a credit card on file before it answers any request.
+Vercel's AI router: hundreds of models from every big AI company, at each
+company's own prices.
 
-1. [Get a Vercel AI Gateway API key](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai-gateway%2Fapi-keys)
-2. Settings to use in step 3:
+1. [Create a Vercel account](https://vercel.com/signup).
+2. [Add a payment method](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%3Fmodal%3Dadd-credit-card).
+   The gateway won't answer any request until a card is on file.
+3. Open
+   [Create API Key](https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai-gateway%2Fapi-keys%3FshowCreateKeyModal%3Dtrue&title=AI+Gateway+API+Keys),
+   enter a name, and click **Create API Key**. Copy the key right away: Vercel
+   won't show it again.
+4. Settings to use in step 3:
    - Provider: **Vercel AI Gateway**
    - Model: e.g., `anthropic/claude-sonnet-5.5`, `google/gemini-3.8-flash`
 
