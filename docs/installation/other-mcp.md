@@ -1,4 +1,4 @@
-# Other MCP-compatible LLMs
+# Other MCP Clients
 
 Producer Pal works with any LLM that supports the Model Context Protocol (MCP).
 

@@ -2,6 +2,8 @@
 
 Use Producer Pal in your web browser with Mistral's Le Chat web app.
 
+<!--@include: ../_partials/web-chat-warning.md-->
+
 ## Requirements
 
 <!--@include: ../_partials/live-requirement.md-->

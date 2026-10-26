@@ -45,7 +45,7 @@ to interact with it, and that decides your setup path:
     </div>
     <div class="install-path install-path-device">
       <h3 class="install-path-title">Path B: Device first</h3>
-      <p class="install-path-apps">Built-in Chat UI, web apps (claude.ai, ChatGPT, Le Chat), the Agent Skill, the REST API, other HTTP clients</p>
+      <p class="install-path-apps">Built-in Chat UI, the Agent Skill, the REST API, other HTTP clients</p>
       <ol class="install-path-steps">
         <li>Download the device</li>
         <li>Save it to your User Library</li>
@@ -107,24 +107,13 @@ Claude Code, Codex CLI, and Gemini CLI can also use the portable
 **[Agent Skill](/guide/skills)** instead of MCP — one folder dropped into the
 agent's skills directory, no MCP config. (Agent Skill users: follow Path B.)
 
-### Web Apps
-
-<span class="path-badge path-badge-device">Path B: device first</span>
-
-Use a provider's website in your browser — each requires a
-[web tunnel](./installation/web-tunnels):
-
-- **[claude.ai](./installation/claude-web)** — Anthropic
-- **[ChatGPT](./installation/chatgpt-web)** — OpenAI
-- **[Le Chat](./installation/mistral-le-chat)** — Mistral
-
 ### Any MCP Client
 
 <span class="path-badge path-badge-ai">Path A: the AI sets it up</span>
 
 Already have an MCP-compatible app? Connect directly with
 [`npx producer-pal`](https://www.npmjs.com/package/producer-pal) — see
-[Other MCP LLMs](./installation/other-mcp).
+[Other MCP Clients](./installation/other-mcp).
 
 ### Scripts and Automation
 
@@ -197,6 +186,6 @@ all your projects. Details, updating and troubleshooting:
 ## Additional Resources
 
 - **[Upgrading](./installation/upgrading)** - How to update to a new version
-- **[Web Tunnels](./installation/web-tunnels)** - Setup remote access (for web
-  apps)
+- **[Other Options](./installation/advanced)** - Other MCP clients, and web chat
+  through a web tunnel (not recommended)
 - **[Troubleshooting](/support/troubleshooting)** - Common issues and solutions

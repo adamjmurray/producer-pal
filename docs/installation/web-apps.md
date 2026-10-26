@@ -1,14 +1,10 @@
-# Web Apps
+# Web Chat
 
-Use Producer Pal in your browser with claude.ai, ChatGPT, or Le Chat.
+Use Producer Pal from a provider's chat website: claude.ai, ChatGPT, or Le Chat.
+Websites can't reach Live on your computer, so each one needs a
+[web tunnel](./web-tunnels) first.
 
-::: warning Requires Web Tunnel
-
-Web apps cannot connect to localhost. You must set up a
-[web tunnel](./web-tunnels) (Cloudflare or Pinggy) to expose your local Producer
-Pal server.
-
-:::
+<!--@include: ../_partials/web-chat-warning.md-->
 
 ## Available Options
 
@@ -18,5 +14,5 @@ Pal server.
 | [ChatGPT](./chatgpt-web)     | OpenAI    | Subscription (for advanced settings) |
 | [Le Chat](./mistral-le-chat) | Mistral   | Free with a Mistral account (admin)  |
 
-Nothing to install, works on any device with a browser, and the AI is the same
-as the desktop versions. The tradeoff is setting up the tunnel.
+The AI is the same as in the desktop apps. The tradeoff is the tunnel: more
+setup, and Live is reachable by anyone with the link.

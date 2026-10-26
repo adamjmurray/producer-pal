@@ -241,15 +241,6 @@ export default defineConfig({
             ],
           },
           {
-            text: "Web Apps",
-            link: "/installation/web-apps",
-            items: [
-              { text: "claude.ai", link: "/installation/claude-web" },
-              { text: "ChatGPT Web", link: "/installation/chatgpt-web" },
-              { text: "Le Chat", link: "/installation/mistral-le-chat" },
-            ],
-          },
-          {
             text: "Choose by Provider",
             link: "/installation/choose-by-provider",
             items: [
@@ -277,11 +268,20 @@ export default defineConfig({
             ],
           },
           {
-            text: "Advanced",
+            text: "Other Options",
             link: "/installation/advanced",
             items: [
-              { text: "Other MCP LLMs", link: "/installation/other-mcp" },
-              { text: "Web Tunnels", link: "/installation/web-tunnels" },
+              { text: "Other MCP Clients", link: "/installation/other-mcp" },
+              {
+                text: "Web Chat",
+                link: "/installation/web-apps",
+                items: [
+                  { text: "Web Tunnels", link: "/installation/web-tunnels" },
+                  { text: "claude.ai", link: "/installation/claude-web" },
+                  { text: "ChatGPT Web", link: "/installation/chatgpt-web" },
+                  { text: "Le Chat", link: "/installation/mistral-le-chat" },
+                ],
+              },
             ],
           },
         ],
