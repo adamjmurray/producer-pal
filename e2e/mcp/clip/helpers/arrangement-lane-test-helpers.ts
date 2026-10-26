@@ -35,16 +35,18 @@ export async function liveApi(
 }
 
 /**
- * Read a track's pan at a song time: set the time, wait, then read.
+ * Read a track's mixer parameter at a song time: set the time, wait, then read.
  * @param client - Connected MCP client
  * @param trackIndex - The track
  * @param songBeats - The song time, in beats; not past the Set's length
- * @returns The pan the lane gives there
+ * @param parameter - The mixer parameter, pan by default
+ * @returns The value the lane gives there
  */
 export async function laneAt(
   client: Client,
   trackIndex: number,
   songBeats: number,
+  parameter: "panning" | "volume" = "panning",
 ): Promise<number> {
   await liveApi(client, "live_set", [
     { type: "set-property", property: "back_to_arranger", value: 0 },
@@ -54,7 +56,7 @@ export async function laneAt(
 
   const read = await liveApi(
     client,
-    `live_set tracks ${String(trackIndex)} mixer_device panning`,
+    `live_set tracks ${String(trackIndex)} mixer_device ${parameter}`,
     [{ type: "get-property", property: "value" }],
   );
 
