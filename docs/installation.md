@@ -162,13 +162,14 @@ other HTTP clients.
 #### Finish the Installation {#finish-the-installation}
 
 4. On the device, click **Finish installation…** (or **Open Chat UI**, then
-   **Settings → Installation**).
+   **Settings → Installation**). It opens this tab:
+
+   <img src="/img/producer-pal-chat-settings-installation.png" alt="The Installation tab with the device in the User Library and the remote script not installed yet" width="500"/>
+
 5. Click **Install** next to Remote script.
 6. <!--@include: ./_partials/control-surface.md-->
 7. Follow your app's guide from Step 1 to connect it, then say **"connect to
    ableton"**.
-
-<!-- TODO screenshot: Installation tab -->
 
 The remote script adds clip automation, undo and redo, and loading plug-ins and
 Max for Live devices. The User Library copy keeps the device up to date across

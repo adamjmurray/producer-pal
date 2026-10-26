@@ -545,14 +545,8 @@ notation and then handed notes in another.
 ### Installation
 
 The Installation tab puts Producer Pal's files in your Live User Library. Both
-cards use the one User Library path near the top of the tab.
+cards use the one User Library path at the top of the tab.
 
-- **Remote script:** installs the Producer Pal
-  [remote script](/guide/remote-script), which adds clip automation, undo and
-  redo, and loading plug-ins, Max for Live devices and presets. It shows whether
-  the script is installed and whether Live is running it, and offers an update
-  when your Producer Pal build has a newer one. The header also flags this, so
-  you can spot it without opening Settings.
 - **Max for Live device:** copies the Producer Pal device you loaded into your
   User Library, so every Live Set can find it. The device shows a **Finish
   installation…** button until it's there (and the remote script is current);
@@ -563,12 +557,19 @@ cards use the one User Library path near the top of the tab.
   the device in your Set with it. The AI connection drops for a moment while the
   new device starts. Save your Live Set afterwards so it keeps using the User
   Library copy.
+- **Remote script:** installs the Producer Pal
+  [remote script](/guide/remote-script), which adds clip automation, undo and
+  redo, and loading plug-ins, Max for Live devices and presets. It shows whether
+  the script is installed and whether Live is running it, and offers an update
+  when your Producer Pal build has a newer one. The header also flags this, so
+  you can spot it without opening Settings.
 
 <img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="Installation tab" width="500"/>
 
 See the [remote script guide](/guide/remote-script) to install and enable it.
 
-Two checkboxes at the top of the tab control the notices on the device:
+Two checkboxes under **Options**, at the bottom of the tab, control the notices
+on the device:
 
 - **Warn when installation is incomplete** - On by default. The device shows
   **Finish installation…** while its User Library copy or the remote script is

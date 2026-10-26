@@ -51,7 +51,7 @@ Click **Finish installation…** on the device's Main tab. Or open the
 [Chat UI](/guide/chat-ui) with **Open Chat UI** and go to **Settings →
 Installation**.
 
-<!-- TODO screenshot: Installation tab (Remote script and device cards) -->
+<img src="/img/producer-pal-chat-settings-remote-script-pre-install.png" alt="The Installation tab before installing: the User Library folder, the device not in the User Library yet, and the remote script not installed" width="500"/>
 
 1. **Confirm your User Library folder.** Producer Pal reads it from Live's
    browser database or settings, or finds it in the default location. If it is
@@ -59,15 +59,13 @@ Installation**.
    Library → Location of User Library**.
    - macOS: `~/Music/Ableton/User Library`
    - Windows: `C:\Users\you\Documents\Ableton\User Library`
-2. **Remote script:** click **Install** (or **Update**). The script is written
-   to `<User Library>/Remote Scripts/Producer_Pal`, replacing any older copy.
-3. **Max for Live device:** click **Copy** (or **Update copy**) to copy the
+2. **Max for Live device:** click **Copy** (or **Update copy**) to copy the
    Producer Pal device to
    `<User Library>/Presets/MIDI Effects/Max MIDI Effect/Producer_Pal.amxd`. One
    copy there serves all your projects, and lets a coding agent or the Claude
    Desktop extension add Producer Pal to a new project.
-
-<img src="/img/producer-pal-chat-settings-remote-script-pre-install.png" alt="The Installation tab before installing, showing Not installed, the User Library path, and the Install button" width="500"/>
+3. **Remote script:** click **Install** (or **Update**). The script is written
+   to `<User Library>/Remote Scripts/Producer_Pal`, replacing any older copy.
 
 ### Swap the running device for the User Library copy
 
@@ -113,7 +111,7 @@ After restarting Live, click **Check again** (or **Refresh**) in the
 Installation tab. It shows the installed version and whether Live is running it.
 "Running" means Live loaded it and it is answering on its port:
 
-<img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="The Installation tab showing Installed v2.4.0, running in Live" width="500"/>
+<img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="The Installation tab with the device in the User Library and the remote script installed and running in Live" width="500"/>
 
 If it says installed but not running, you either skipped the restart or the
 Control Surface slot isn't set.
