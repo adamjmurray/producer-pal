@@ -99,24 +99,6 @@
       padding-bottom: 0;
     }
   }
-
-  .path-badge {
-    display: inline-block;
-    padding: 2px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  .path-badge-ai {
-    color: var(--vp-c-brand-1);
-    background: var(--vp-c-brand-soft);
-  }
-
-  .path-badge-device {
-    color: var(--vp-c-green-1);
-    background: var(--vp-c-green-soft);
-  }
 }
 
 @media (max-width: 640px) {

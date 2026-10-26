@@ -26,8 +26,78 @@ Upgrading from a previous version? See the
 
 ## Step 1: Pick Your App {#choose-how-you-want-to-use-it}
 
-Producer Pal works the same with any provider. The main choice is _how_ you want
-to interact with it, and that decides your setup path:
+Pick how you want to use Producer Pal. Each guide walks you through setup.
+
+Most groups below support several AI providers, so pick the experience you like
+best. Or skip the AI and drive Live from your own code.
+
+### Desktop Apps
+
+Dedicated AI apps — the easiest setup for most people:
+
+- **[Claude Desktop](./installation/claude-desktop)** — Anthropic's desktop app
+  (subscription required)
+- **[ChatGPT App](./installation/chatgpt-app)** — OpenAI's desktop app, with
+  Codex built in
+- **[Google Antigravity](./installation/antigravity)** — agent app for Gemini (a
+  Google AI subscription recommended)
+- **[Bionic / LM Studio](./installation/bionic)** — runs models fully offline,
+  no account needed
+
+### Command Line
+
+For users comfortable with the terminal:
+
+- **[Claude Code](./installation/claude-code)** — Anthropic (subscription
+  required)
+- **[Codex CLI](./installation/codex-cli)** — OpenAI (subscription required)
+- **[Gemini CLI](./installation/gemini-cli)** — Google (subscription
+  recommended)
+- **[Mistral Vibe](./installation/mistral-vibe)** — Mistral (API key required)
+
+Claude Code, Codex CLI, and Gemini CLI can also use the portable
+**[Agent Skill](/guide/skills)** instead of MCP — one folder dropped into the
+agent's skills directory, no MCP config. (Agent Skill users: follow Path B.)
+
+### Built-in Chat UI
+
+Producer Pal's own chat window, in your browser. Pick where the AI comes from:
+
+- **[Local AI](./installation/local-ai)** — runs on your own computer. Free,
+  private and offline, but less smart. **Needs a powerful computer:** an Apple
+  Silicon Mac with lots of memory, or a PC with a strong Nvidia graphics card.
+- **[AI Routers](./installation/ai-routers)** (recommended) — one account,
+  models from every big AI company. Pay for what you use.
+- **[API Keys](./installation/api-keys)** — already have a key from Google,
+  OpenAI, Anthropic or Mistral? Use it here.
+
+### Any MCP Client
+
+Already have an MCP-compatible app? Connect directly with
+[`npx producer-pal`](https://www.npmjs.com/package/producer-pal) — see
+[Other MCP Clients](./installation/other-mcp).
+
+### Scripts and Automation
+
+Skip the AI entirely. The [REST API](/guide/rest-api) is plain HTTP on the same
+port the device already serves, so any script, language, or tool that can make a
+request can read and edit your Live Set. You only need the device; the remote
+script adds undo and more.
+
+### Prefer to Pick by AI Provider?
+
+If you already know which AI you use, jump straight to its provider guide:
+[Claude / Anthropic](./installation/choose-claude) ·
+[OpenAI / ChatGPT](./installation/choose-openai) ·
+[Google / Gemini](./installation/choose-gemini) ·
+[Mistral](./installation/choose-mistral) ·
+[Local / Offline](./installation/choose-local) ·
+[Multi / AI Routers](./installation/choose-multi)
+
+## Step 2: Follow Your Path {#set-it-up}
+
+Your app's guide has every step. Here's the overview: setup takes one of two
+paths, depending on your app.
 
 <div class="install-paths" role="group" aria-label="The two setup paths">
   <div class="install-paths-pick">Pick your app</div>
@@ -58,92 +128,14 @@ to interact with it, and that decides your setup path:
   </div>
 </div>
 
-Most groups below support several AI providers, so pick the experience you like
-best. Or skip the AI and drive Live from your own code.
-
-### Desktop Apps
-
-<span class="path-badge path-badge-ai">Path A: the AI sets it up</span>
-
-Dedicated AI apps — the easiest setup for most people:
-
-- **[Claude Desktop](./installation/claude-desktop)** — Anthropic's desktop app
-  (subscription required)
-- **[ChatGPT App](./installation/chatgpt-app)** — OpenAI's desktop app, with
-  Codex built in
-- **[Google Antigravity](./installation/antigravity)** — agent app for Gemini (a
-  Google AI subscription recommended)
-- **[Bionic / LM Studio](./installation/bionic)** — runs models fully offline,
-  no account needed
-
-### Command Line
-
-<span class="path-badge path-badge-ai">Path A: the AI sets it up</span>
-
-For users comfortable with the terminal:
-
-- **[Claude Code](./installation/claude-code)** — Anthropic (subscription
-  required)
-- **[Codex CLI](./installation/codex-cli)** — OpenAI (subscription required)
-- **[Gemini CLI](./installation/gemini-cli)** — Google (subscription
-  recommended)
-- **[Mistral Vibe](./installation/mistral-vibe)** — Mistral (API key required)
-
-Claude Code, Codex CLI, and Gemini CLI can also use the portable
-**[Agent Skill](/guide/skills)** instead of MCP — one folder dropped into the
-agent's skills directory, no MCP config. (Agent Skill users: follow Path B.)
-
-### Built-in Chat UI
-
-<span class="path-badge path-badge-device">Path B: device first</span>
-
-Producer Pal's own chat window, in your browser. Pick where the AI comes from:
-
-- **[Local AI](./installation/local-ai)** — runs on your own computer. Free,
-  private and offline, but less smart. **Needs a powerful computer:** an Apple
-  Silicon Mac with lots of memory, or a PC with a strong Nvidia graphics card.
-- **[AI Routers](./installation/ai-routers)** (recommended) — one account,
-  models from every big AI company. Pay for what you use.
-- **[API Keys](./installation/api-keys)** — already have a key from Google,
-  OpenAI, Anthropic or Mistral? Use it here.
-
-### Any MCP Client
-
-<span class="path-badge path-badge-ai">Path A: the AI sets it up</span>
-
-Already have an MCP-compatible app? Connect directly with
-[`npx producer-pal`](https://www.npmjs.com/package/producer-pal) — see
-[Other MCP Clients](./installation/other-mcp).
-
-### Scripts and Automation
-
-<span class="path-badge path-badge-device">Path B: device first</span>
-
-Skip the AI entirely. The [REST API](/guide/rest-api) is plain HTTP on the same
-port the device already serves, so any script, language, or tool that can make a
-request can read and edit your Live Set. You only need the device; the remote
-script adds undo and more.
-
-### Prefer to Pick by AI Provider?
-
-If you already know which AI you use, jump straight to its provider guide:
-[Claude / Anthropic](./installation/choose-claude) ·
-[OpenAI / ChatGPT](./installation/choose-openai) ·
-[Google / Gemini](./installation/choose-gemini) ·
-[Mistral](./installation/choose-mistral) ·
-[Local / Offline](./installation/choose-local) ·
-[Multi / AI Routers](./installation/choose-multi)
-
-## Step 2: Follow Your Path {#set-it-up}
-
 Both paths end with one setting in Live. The remote script takes one free
 Control Surface slot and no MIDI, so your other controllers keep working.
 
 ### Path A: The AI Sets It Up {#the-ai-sets-it-up}
 
-For apps marked **Path A** above. This works when the app connects through
-`npx producer-pal` or the Claude Desktop extension. Over HTTP, or in
-[small model mode](/features#small-model-mode), use Path B.
+For the desktop apps, command line tools and other MCP clients. This works when
+the app connects through `npx producer-pal` or the Claude Desktop extension.
+Over HTTP, or in [small model mode](/features#small-model-mode), use Path B.
 
 1. Open your app's guide from Step 1 and add Producer Pal to the app.
 2. Open Live, start a chat, and say **"connect to ableton"**. The AI installs
