@@ -26,9 +26,8 @@ connection settings if you change it in the Producer Pal Max for Live device.
    paste your API key again.
 
 Some things only work on Live's computer: voice mode, and device settings like
-small model mode. For local AI, `localhost` means the phone itself, so use the
-address of the computer running the AI (see
-[the user guide](/guide/chat-ui#local-ai-settings-ollama-bionic)).
+small model mode. From a phone, use an [AI router](./ai-routers) or an
+[API key](./api-keys). Local AI isn't set up for this.
 
 ## Web Chat
 
