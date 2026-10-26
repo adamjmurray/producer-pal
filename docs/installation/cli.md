@@ -9,9 +9,9 @@ Claude Code, Codex CLI, and Gemini CLI can use the portable
 
 | CLI                            | Provider  | Cost                     | Notes          |
 | ------------------------------ | --------- | ------------------------ | -------------- |
-| [Gemini CLI](./gemini-cli)     | Google    | Subscription recommended | Gemini models  |
-| [Codex CLI](./codex-cli)       | OpenAI    | Subscription             | GPT models     |
 | [Claude Code](./claude-code)   | Anthropic | Subscription             | Claude models  |
+| [Codex CLI](./codex-cli)       | OpenAI    | Subscription             | GPT models     |
+| [Gemini CLI](./gemini-cli)     | Google    | Subscription recommended | Gemini models  |
 | [Mistral Vibe](./mistral-vibe) | Mistral   | API key                  | Mistral models |
 
 ## Quick Start

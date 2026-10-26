@@ -21,7 +21,7 @@ Pick one company:
 
 Any free use Google offers won't last long in a real session. For regular use,
 reach Gemini through an [AI router](./ai-routers), or use
-[Antigravity](./antigravity), Google's own app, with a Google AI subscription.
+[Google Antigravity](./antigravity) with a Google AI subscription.
 
 1. [Get a Gemini API key](https://aistudio.google.com/apikey) (sign in with your
    Google account, then click "Create API Key")

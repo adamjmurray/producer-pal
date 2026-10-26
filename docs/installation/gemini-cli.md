@@ -12,9 +12,10 @@ Without one, you'll hit Google's usage limits quickly. Consider
 :::
 
 If you feel comfortable with the command line, this is an option for using
-Producer Pal. Also consider [Antigravity](./antigravity), Google's desktop agent
-app, or using Gemini with Producer Pal's [built-in chat UI](./api-keys#gemini)
-(but probably via OpenRouter as noted on that page).
+Producer Pal. Also consider [Google Antigravity](./antigravity), Google's
+desktop agent app, or using Gemini with Producer Pal's
+[built-in chat UI](./api-keys#gemini) (but probably via OpenRouter as noted on
+that page).
 
 <!--@include: ../_partials/agent-skill-callout.md-->
 
@@ -34,11 +35,11 @@ app, or using Gemini with Producer Pal's [built-in chat UI](./api-keys#gemini)
 
 Add Producer Pal to Gemini's settings in `~/.gemini/settings.json`:
 
-::: warning Not the same file as Antigravity
+::: warning Not the same file as Google Antigravity
 
-[Antigravity](./antigravity) reads `~/.gemini/config/mcp_config.json` instead.
-Same folder, separate configs — adding Producer Pal to one does not add it to
-the other.
+[Google Antigravity](./antigravity) reads `~/.gemini/config/mcp_config.json`
+instead. Same folder, separate configs — adding Producer Pal to one does not add
+it to the other.
 
 :::
 

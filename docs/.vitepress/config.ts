@@ -209,16 +209,6 @@ export default defineConfig({
         text: "Installation",
         link: "/installation",
         items: [
-          { text: "Upgrading", link: "/installation/upgrading" },
-          {
-            text: "Built-in Chat UI",
-            link: "/installation/chat-ui",
-            items: [
-              { text: "Local AI", link: "/installation/local-ai" },
-              { text: "AI Routers", link: "/installation/ai-routers" },
-              { text: "API Keys", link: "/installation/api-keys" },
-            ],
-          },
           {
             text: "Desktop Apps",
             link: "/installation/desktop-apps",
@@ -228,7 +218,10 @@ export default defineConfig({
                 link: "/installation/claude-desktop",
               },
               { text: "ChatGPT App", link: "/installation/chatgpt-app" },
-              { text: "Antigravity", link: "/installation/antigravity" },
+              {
+                text: "Google Antigravity",
+                link: "/installation/antigravity",
+              },
               { text: "Bionic / LM Studio", link: "/installation/bionic" },
             ],
           },
@@ -236,10 +229,19 @@ export default defineConfig({
             text: "Command Line",
             link: "/installation/cli",
             items: [
-              { text: "Gemini CLI", link: "/installation/gemini-cli" },
-              { text: "Codex CLI", link: "/installation/codex-cli" },
               { text: "Claude Code", link: "/installation/claude-code" },
+              { text: "Codex CLI", link: "/installation/codex-cli" },
+              { text: "Gemini CLI", link: "/installation/gemini-cli" },
               { text: "Mistral Vibe", link: "/installation/mistral-vibe" },
+            ],
+          },
+          {
+            text: "Built-in Chat UI",
+            link: "/installation/chat-ui",
+            items: [
+              { text: "Local AI", link: "/installation/local-ai" },
+              { text: "AI Routers", link: "/installation/ai-routers" },
+              { text: "API Keys", link: "/installation/api-keys" },
             ],
           },
           {
@@ -285,6 +287,7 @@ export default defineConfig({
               },
             ],
           },
+          { text: "Upgrading", link: "/installation/upgrading" },
         ],
       },
     ],

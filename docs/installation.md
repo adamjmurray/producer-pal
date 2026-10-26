@@ -35,7 +35,7 @@ to interact with it, and that decides your setup path:
   <div class="install-paths-grid">
     <div class="install-path install-path-ai">
       <h3 class="install-path-title">Path A: The AI sets it up</h3>
-      <p class="install-path-apps">Claude Desktop, Claude Code, Codex CLI, Gemini CLI, Mistral Vibe, ChatGPT app, Antigravity, Bionic / LM Studio, other MCP clients</p>
+      <p class="install-path-apps">Claude Desktop, Claude Code, Codex CLI, Gemini CLI, Mistral Vibe, ChatGPT app, Google Antigravity, Bionic / LM Studio, other MCP clients</p>
       <ol class="install-path-steps">
         <li>Add Producer Pal to your app</li>
         <li>Open Live and say "connect to ableton"</li>
@@ -71,24 +71,10 @@ Dedicated AI apps — the easiest setup for most people:
   (subscription required)
 - **[ChatGPT App](./installation/chatgpt-app)** — OpenAI's desktop app, with
   Codex built in
-- **[Antigravity](./installation/antigravity)** — Google's agent app for Gemini
-  (a Google AI subscription recommended)
+- **[Google Antigravity](./installation/antigravity)** — agent app for Gemini (a
+  Google AI subscription recommended)
 - **[Bionic / LM Studio](./installation/bionic)** — runs models fully offline,
   no account needed
-
-### Built-in Chat UI
-
-<span class="path-badge path-badge-device">Path B: device first</span>
-
-Producer Pal's own chat window, in your browser. Pick where the AI comes from:
-
-- **[Local AI](./installation/local-ai)** — runs on your own computer. Free,
-  private and offline, but less smart. **Needs a powerful computer:** an Apple
-  Silicon Mac with lots of memory, or a PC with a strong Nvidia graphics card.
-- **[AI Routers](./installation/ai-routers)** (recommended) — one account,
-  models from every big AI company. Pay for what you use.
-- **[API Keys](./installation/api-keys)** — already have a key from Google,
-  OpenAI, Anthropic or Mistral? Use it here.
 
 ### Command Line
 
@@ -106,6 +92,20 @@ For users comfortable with the terminal:
 Claude Code, Codex CLI, and Gemini CLI can also use the portable
 **[Agent Skill](/guide/skills)** instead of MCP — one folder dropped into the
 agent's skills directory, no MCP config. (Agent Skill users: follow Path B.)
+
+### Built-in Chat UI
+
+<span class="path-badge path-badge-device">Path B: device first</span>
+
+Producer Pal's own chat window, in your browser. Pick where the AI comes from:
+
+- **[Local AI](./installation/local-ai)** — runs on your own computer. Free,
+  private and offline, but less smart. **Needs a powerful computer:** an Apple
+  Silicon Mac with lots of memory, or a PC with a strong Nvidia graphics card.
+- **[AI Routers](./installation/ai-routers)** (recommended) — one account,
+  models from every big AI company. Pay for what you use.
+- **[API Keys](./installation/api-keys)** — already have a key from Google,
+  OpenAI, Anthropic or Mistral? Use it here.
 
 ### Any MCP Client
 

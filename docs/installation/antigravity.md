@@ -1,4 +1,4 @@
-# Antigravity
+# Google Antigravity
 
 Google's agent app for Gemini models. Setup takes one extra step compared to the
 other desktop apps, because custom MCP servers are added by editing a config
@@ -9,7 +9,7 @@ file instead of filling in a form.
 <!--@include: ../_partials/live-requirement.md-->
 
 - [Node.js 20+](https://nodejs.org/en/download)
-- [Antigravity](https://antigravity.google/) (requires a Google account)
+- [Google Antigravity](https://antigravity.google/) (requires a Google account)
 
 Producer Pal doesn't need the IDE version — the standard app is enough. The IDE
 works the same way if you'd rather use it (there's an "Install IDE" button in

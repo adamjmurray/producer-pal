@@ -22,7 +22,7 @@ with an OpenAI account.
 
 [Get started with the ChatGPT App →](./chatgpt-app)
 
-## Antigravity
+## Google Antigravity
 
 Google's agent app for Gemini models. Adding Producer Pal means editing a JSON
 config file — one extra step, but everything else is the same.
@@ -32,7 +32,7 @@ config file — one extra step, but everything else is the same.
   quickly
 - **Best for:** Gemini users who want a desktop app instead of the CLI
 
-[Get started with Antigravity →](./antigravity)
+[Get started with Google Antigravity →](./antigravity)
 
 ## Bionic / LM Studio (Advanced)
 
