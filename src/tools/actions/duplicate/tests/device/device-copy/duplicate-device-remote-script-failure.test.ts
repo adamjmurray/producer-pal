@@ -20,6 +20,7 @@ import {
   type RegisteredMockObject,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import {
+  deleteMockObject,
   mockNonExistentObjects,
   simulateMockDeletes,
 } from "#src/test/mocks/mock-registry.ts";
@@ -140,6 +141,37 @@ describe("duplicate device - a copy that can't be placed", () => {
       duplicate({ type: "device", id: "reverb", toPath: "t1/d0" }),
     ).rejects.toThrow(
       /not copied — no such track; the copy may be left at .*t0\/d2.*it wasn't deleted/,
+    );
+  });
+
+  it("says why the copy wasn't deleted when the delete throws", async () => {
+    track.methods.delete_device = () => {
+      throw new Error("Live can't delete it");
+    };
+
+    vi.mocked(moveDeviceToPath).mockReturnValue({
+      outcome: "unresolvable",
+      reason: "no such track",
+    });
+
+    await expect(
+      duplicate({ type: "device", id: "reverb", toPath: "t1/d0" }),
+    ).rejects.toThrow(
+      /not copied — no such track; the copy may be left at .*t0\/d2.*it wasn't deleted \(Live can't delete it\)/,
+    );
+  });
+
+  it("says the copy is somewhere unknown when it is gone before the clean-up", async () => {
+    // The move fails after the copy has gone from the Set.
+    vi.mocked(moveDeviceToPath).mockImplementation(() => {
+      deleteMockObject("reverb-copy");
+      throw new Error("Live said no");
+    });
+
+    await expect(
+      duplicate({ type: "device", id: "reverb", toPath: "t1/d0" }),
+    ).rejects.toThrow(
+      "Live said no; the copy may be left at an unknown place: it wasn't deleted (it no longer looks like the copy)",
     );
   });
 

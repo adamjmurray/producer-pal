@@ -30,14 +30,7 @@ export async function connectMcpClient(
     ...profile,
     liveApiEnabled: true,
   });
-  const [clientTransport, serverTransport] =
-    InMemoryTransport.createLinkedPair();
-  const client = new Client({ name: "test", version: "0" });
-
-  await Promise.all([
-    server.connect(serverTransport),
-    client.connect(clientTransport),
-  ]);
+  const { client, clientTransport } = await connectClient(server);
 
   // Keep each message as it came off the wire: the client's own parse
   // reorders a schema's keys.
@@ -50,4 +43,24 @@ export async function connectMcpClient(
   };
 
   return { client, callLiveApi, received };
+}
+
+/**
+ * Connect a client to the given server over an in-memory transport.
+ * @param server - The server to connect to
+ * @returns The connected client and its transport
+ */
+export async function connectClient(
+  server: ReturnType<typeof createMcpServer>,
+): Promise<{ client: Client; clientTransport: InMemoryTransport }> {
+  const [clientTransport, serverTransport] =
+    InMemoryTransport.createLinkedPair();
+  const client = new Client({ name: "test", version: "0" });
+
+  await Promise.all([
+    server.connect(serverTransport),
+    client.connect(clientTransport),
+  ]);
+
+  return { client, clientTransport };
 }

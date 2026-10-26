@@ -290,6 +290,39 @@ describe("a clip the call holds back for an overwrite", () => {
     expect(result[2]).not.toHaveProperty("ok");
   });
 
+  // Live cleared the clip, but no landing of the call reaches where it sat.
+  it("says a clip was overwritten without naming a write that landed elsewhere", async () => {
+    registerLiveSet();
+    registerArrangementClip("held", 0, 100, 108);
+    registerArrangementClip("mover", 1, 16, 32);
+    registerMockObject("clearing-track", {
+      path: livePath.track(0),
+      type: "Track",
+      properties: { arrangement_clips: children("held", "mover") },
+      methods: {
+        duplicate_clip_to_arrangement: () => {
+          deleteMockObject("held");
+          registerArrangementClip(LANDED, 1, 64, 80);
+          registerMockObject("clearing-track", {
+            properties: { arrangement_clips: children("mover", LANDED) },
+          });
+
+          return ["id", LANDED];
+        },
+        delete_clip: () => null,
+      },
+    });
+
+    const result = (await updateClip({
+      id: "held,mover",
+      arrangementStart: "17|1,17|1",
+    })) as ClipResult[];
+
+    expect(result[0]).toStrictEqual({
+      detail: "overwritten later in this call",
+    });
+  });
+
   // The read-back would find it gone too; the detail must not be said twice.
   it("says once that it was overwritten when the landing cleared it", async () => {
     registerLiveSet();

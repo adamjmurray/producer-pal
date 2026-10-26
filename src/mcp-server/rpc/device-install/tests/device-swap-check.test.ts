@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { symlinkSync } from "node:fs";
+import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
@@ -157,6 +157,23 @@ describe("deviceSwapCheck", () => {
     const result = await check(frozenDevice("2.5.0-rc3"));
 
     expect(result.allowed).toBe(true);
+  });
+
+  it("refuses a copy that can't be read", async () => {
+    const { library, installed, runFromDownloads } = scratch();
+
+    runFromDownloads(frozenDevice(VERSION));
+    mkdirSync(installed, { recursive: true });
+
+    expect(
+      await deviceSwapCheck(
+        await deviceInstallStatus(library),
+        async () => RUNNING_PING,
+      ),
+    ).toStrictEqual({
+      allowed: false,
+      reason: "The copy in your User Library can't be read.",
+    });
   });
 
   it("refuses a copy that names no version", async () => {

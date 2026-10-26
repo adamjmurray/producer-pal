@@ -165,16 +165,22 @@ describe("StdioHttpBridge update-producer-pal", () => {
     });
   });
 
-  it("answers with the setup guidance when the device isn't running", async () => {
-    mockClient.connect.mockRejectedValue(new Error("Connection failed"));
+  it.each([
+    ["an update", UPDATE],
+    ["a call with no arguments", { params: { name: "ppal-read-live-set" } }],
+  ])(
+    "answers %s with the setup guidance when the device isn't running",
+    async (_label, request) => {
+      mockClient.connect.mockRejectedValue(new Error("Connection failed"));
 
-    const handler = await startAndGetCallHandler(bridgeOver(true));
-    const result = (await handler(UPDATE)) as { isError: boolean };
+      const handler = await startAndGetCallHandler(bridgeOver(true));
+      const result = (await handler(request)) as { isError: boolean };
 
-    expect(result.isError).toBe(true);
-    expect(responseText(result as never)).toContain("Producer Pal");
-    expect(mockClient.callTool).not.toHaveBeenCalled();
-  });
+      expect(result.isError).toBe(true);
+      expect(responseText(result as never)).toContain("Producer Pal");
+      expect(mockClient.callTool).not.toHaveBeenCalled();
+    },
+  );
 
   it("leaves the call to the device when the portal doesn't offer ppal-manage", async () => {
     const forwarded = { content: [{ type: "text", text: "from the device" }] };

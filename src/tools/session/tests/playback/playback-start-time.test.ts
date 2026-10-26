@@ -4,8 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/session/playback.ts";
+import { readStartTime } from "#src/tools/session/helpers/playback/arrangement-playback.ts";
 import {
   expectLiveSetProperty,
   setupPlaybackLiveSet,
@@ -166,5 +168,24 @@ describe("playback - arrangement start position", () => {
     const result = playback({ action: "play-arrangement", startTime: "9|1" });
 
     expect(result.startTime).toBe("4|1");
+  });
+
+  it("reads a written beat as landed when no spelling of it is kept", () => {
+    liveSet = setupPlaybackLiveSet({ start_time: 32 });
+
+    const api = LiveAPI.from(livePath.liveSet);
+
+    expect(
+      readStartTime(api, "update-arrangement", {
+        startTimeBeats: 32,
+        wroteLoop: false,
+      }),
+    ).toBeUndefined();
+    expect(
+      readStartTime(api, "update-arrangement", {
+        startTimeBeats: 16,
+        wroteLoop: false,
+      }),
+    ).toBe("9|1");
   });
 });

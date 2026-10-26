@@ -106,6 +106,21 @@ describe("swapForLibraryCopy", () => {
     });
   });
 
+  it.each([
+    ["a path that isn't text", { path: 2, name: "Pal" }],
+    ["a name that isn't text", { path: "t2", name: null }],
+    ["no object", "t2"],
+  ])(
+    "reports a swap that names no track when the answer has %s",
+    async (_, track) => {
+      request.mockResolvedValue(answer(200, { track }));
+
+      expect(await swapForLibraryCopy(scratch().library, deps)).toStrictEqual({
+        status: "swapping",
+      });
+    },
+  );
+
   it("throws for a User Library that isn't a folder, before asking anything", async () => {
     await expect(
       swapForLibraryCopy(join(scratch().library, "nope"), deps),

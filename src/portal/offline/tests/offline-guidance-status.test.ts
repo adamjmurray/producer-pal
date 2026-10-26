@@ -243,6 +243,11 @@ describe("offline guidance for the device file", () => {
       `updates the Producer Pal device at ${DEVICE_PATH} (2.0.0 → 2.5.0) and adds it ${NEW_TRACK}.`,
     ],
     [
+      "an older installed device that names no version, and a bundle that names none",
+      device("installed-older"),
+      `updates the Producer Pal device at ${DEVICE_PATH} (unknown version → unknown version) and adds it ${NEW_TRACK}.`,
+    ],
+    [
       "the same device",
       device("same", { installedVersion: VERSION }),
       `adds the Producer Pal device already in the User Library (${VERSION}) ${NEW_TRACK}; nothing needs installing.`,

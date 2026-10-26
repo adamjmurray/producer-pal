@@ -256,6 +256,18 @@ describe("duplicate - drum pad", () => {
     expectNoCopy(rack);
   });
 
+  it("names a source pad the rack doesn't list by its note", async () => {
+    const rack = registerDrumRack([{ note: 38, chainIds: [] }]);
+
+    // The pad exists as an object, but the rack's pad list leaves it out.
+    registerPad(36, ["kick"]);
+
+    await expect(copyC1ToD1()).rejects.toThrow(
+      "drum pad C1 is empty, nothing to copy",
+    );
+    expectNoCopy(rack);
+  });
+
   it("reports on the copy's own entry that an occupied destination layers", async () => {
     const rack = registerCopyReadyRack(["snare", "kickCopy"]);
 

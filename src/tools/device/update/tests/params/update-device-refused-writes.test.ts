@@ -13,6 +13,8 @@ import {
   updateDevice,
 } from "../update-device-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { refuseIfNoParamLanded } from "#src/tools/device/update/helpers/update-device-properties.ts";
+import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 
 /**
  * Register a device with one continuous param, enabled or macro-mapped
@@ -199,5 +201,32 @@ describe("updateDevice - every action failed", () => {
         { action: "nope", ok: false, detail: "unknown action for this device" },
       ],
     });
+  });
+});
+
+describe("refuseIfNoParamLanded", () => {
+  it("names a failed param by its name", () => {
+    const notes = newTargetNotes();
+
+    refuseIfNoParamLanded(notes, [{ name: "Gain", ok: false, detail: "bad" }]);
+
+    expect(notes.refused).toStrictEqual(["params"]);
+    expect(notes.unlanded).toStrictEqual(['no param landed — "Gain": bad']);
+  });
+
+  it("names a failed param by its id when it has no name", () => {
+    const notes = newTargetNotes();
+
+    refuseIfNoParamLanded(notes, [{ id: "7", ok: false, detail: "bad" }]);
+
+    expect(notes.unlanded).toStrictEqual(['no param landed — "7": bad']);
+  });
+
+  it("falls back to an empty name when the param has neither", () => {
+    const notes = newTargetNotes();
+
+    refuseIfNoParamLanded(notes, [{ ok: false, detail: "bad" }]);
+
+    expect(notes.unlanded).toStrictEqual(['no param landed — "": bad']);
   });
 });

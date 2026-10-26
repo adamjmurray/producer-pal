@@ -216,6 +216,19 @@ describe("a failure after the lane changed", () => {
     expect(leftBehind(world)).toBe(false);
   });
 
+  it("places nothing, and says nothing, when a loopless clip's copy is declined", async () => {
+    const world = registerStampWorld({
+      source: { loop_start: 0, loop_end: 0 },
+    });
+
+    // No loop means nothing to stamp, so the clip's own copy is the only one.
+    world.declinesCopy = () => true;
+
+    expect(await copyAtLength(world, 10)).toStrictEqual([]);
+    expect(world.stamps()).toHaveLength(0);
+    expect(leftBehind(world)).toBe(false);
+  });
+
   it("includes a partial stamping in the failure", async () => {
     const world = registerStampWorld();
 

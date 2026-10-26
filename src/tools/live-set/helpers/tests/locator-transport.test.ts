@@ -12,6 +12,7 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { hookCalls } from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
 import { simulateLocators } from "#src/tools/live-set/tests/update-live-set-test-helpers.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
+import { restoreTransport } from "../locator-transport.ts";
 
 /** Bars 1 and 5 */
 const LOCATORS = [
@@ -423,4 +424,21 @@ describe("when the playhead can't be put back", () => {
   function refuseSendingTo(beats: number): void {
     failWrites(liveSet, "throw", (_, value) => value === beats);
   }
+});
+
+describe("restoreTransport", () => {
+  it("warns, and writes nothing, when the Set's play state can't be read", async () => {
+    const liveSet = registerMockObject("live_set_id", { path: "live_set" });
+
+    liveSet.get.mockImplementation(() => {
+      throw new Error("Live is busy");
+    });
+
+    await restoreTransport({ playhead: PLAYHEAD, startTime: START });
+
+    expect(capturedWarnings()).toStrictEqual([
+      "Playhead not put back: Live is busy",
+    ]);
+    expect(liveSet.set).not.toHaveBeenCalled();
+  });
 });

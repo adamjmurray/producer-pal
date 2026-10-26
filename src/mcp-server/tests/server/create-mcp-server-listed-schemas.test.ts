@@ -5,8 +5,12 @@
 
 import { type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { createMcpServer } from "#src/mcp-server/create-mcp-server.ts";
-import { connectMcpClient } from "#src/mcp-server/tests/server/mcp-client-test-helpers.ts";
+import {
+  connectClient,
+  connectMcpClient,
+} from "#src/mcp-server/tests/server/mcp-client-test-helpers.ts";
 
 type Profile = NonNullable<Parameters<typeof createMcpServer>[1]>;
 
@@ -55,5 +59,25 @@ describe("tools/list schemas", () => {
     expect(() =>
       createMcpServer(() => Promise.resolve({}), { tools: [] }),
     ).not.toThrow();
+  });
+
+  it("keeps an additionalProperties that is not an empty object", async () => {
+    const server = createMcpServer(() => Promise.resolve({}), {
+      tools: ["ppal-connect"],
+    });
+
+    server.registerTool(
+      "strict-tool",
+      { inputSchema: z.strictObject({ a: z.string() }) },
+      () => ({ content: [{ type: "text" as const, text: "ok" }] }),
+    );
+
+    const { client } = await connectClient(server);
+    const { tools } = await client.listTools();
+
+    const strict = tools.find((tool) => tool.name === "strict-tool");
+
+    expect(strict?.inputSchema.additionalProperties).toBe(false);
+    expect(strict?.inputSchema).not.toHaveProperty("$schema");
   });
 });

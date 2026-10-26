@@ -192,6 +192,19 @@ describe("combineOutcomes when the second pass rebuilds what the first made", ()
     },
   );
 
+  it("keeps a note when a later pass deletes only some of its pieces", () => {
+    // E3 ratchets into pieces at beats 2 and 2.5; the second pass deletes the
+    // later one, so E3 is changed (shortened), not deleted.
+    const { twoPasses, onePass } = bothWays(
+      cMajorTriad,
+      "E3: ratchet(2)",
+      "1|2.5: velocity = 0",
+    );
+
+    expect(twoPasses).toStrictEqual({ transformed: 1 });
+    expect(twoPasses).toStrictEqual(onePass);
+  });
+
   it.each([
     ["velocity = 50", "merge()", { transformed: 1, deletedNotes: 1 }],
     ["merge()", "velocity = 0", { transformed: 0, deletedNotes: 2 }],
@@ -210,6 +223,7 @@ describe("addCounts", () => {
     ).toStrictEqual({ transformed: 3, deletedNotes: 3 });
     expect(addCounts({ transformed: 0 }, {})).toStrictEqual({ transformed: 0 });
     expect(addCounts({}, {})).toStrictEqual({});
+    expect(addCounts({}, { transformed: 1 })).toStrictEqual({ transformed: 1 });
   });
 });
 

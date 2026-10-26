@@ -307,6 +307,18 @@ describe("update-producer-pal when the User Library holds another device", () =>
     expect(deps.request).toHaveBeenCalledTimes(1);
   });
 
+  it("compares with the portal's own version when the bundled device names none", async () => {
+    const deps = updateDeps({
+      installDevice: () => copied("skipped", { previousVersion: "9.0.0" }),
+    });
+    const response = await updateCall(fakeDevice(OLD, "9.0.0"), deps);
+
+    expect(response.isError).toBeUndefined();
+    expect(responseText(response)).toContain(
+      `which is newer than this portal's (${VERSION}).`,
+    );
+  });
+
   it.each([
     ["isn't newer than the running device", "2.3.0"],
     ["names no version", undefined],

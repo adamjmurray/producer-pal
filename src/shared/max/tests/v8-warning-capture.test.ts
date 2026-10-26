@@ -7,11 +7,14 @@ import { describe, expect, it, vi } from "vitest";
 import {
   alreadyWarnedOnce,
   beginWarningCapture,
+  capturedWarnings,
+  changedNothing,
   clearCapturedWarnings,
   detachWarningCapture,
   endWarningCapture,
   MAX_CAPTURED_WARNINGS,
   recordWarning,
+  recordWriteRun,
   resetWarningCapture,
   resumeWarningCapture,
   suspendWarningCapture,
@@ -294,6 +297,74 @@ describe("v8-warning-capture", () => {
 
       expect(endWarningCapture(interloper)).toStrictEqual(["theirs"]);
       expect(endWarningCapture(parked)).toStrictEqual(["mine"]);
+    });
+  });
+
+  describe("recordWriteRun and changedNothing", () => {
+    it("says nothing changed only when every write run was proven unchanged", () => {
+      const capture = beginWarningCapture();
+
+      recordWriteRun(true);
+      recordWriteRun(true);
+
+      expect(changedNothing(capture)).toBe(true);
+    });
+
+    it("lets one run that may have changed the Set outweigh any proven ones", () => {
+      const capture = beginWarningCapture();
+
+      recordWriteRun(true);
+      recordWriteRun(false);
+      recordWriteRun(true);
+
+      expect(changedNothing(capture)).toBe(false);
+    });
+
+    it("doesn't claim nothing changed when no write ran", () => {
+      expect(changedNothing(beginWarningCapture())).toBe(false);
+    });
+
+    it("keeps each request's runs apart", () => {
+      const first = beginWarningCapture();
+
+      recordWriteRun(false);
+
+      const second = beginWarningCapture();
+
+      recordWriteRun(true);
+
+      expect(changedNothing(first)).toBe(false);
+      expect(changedNothing(second)).toBe(true);
+    });
+
+    it("ignores a run with no request in flight", () => {
+      resetWarningCapture();
+
+      expect(() => recordWriteRun(false)).not.toThrow();
+      expect(changedNothing(beginWarningCapture())).toBe(false);
+    });
+
+    it("ignores a run after the request has responded", () => {
+      const capture = beginWarningCapture();
+
+      recordWriteRun(true);
+      endWarningCapture(capture);
+      recordWriteRun(false);
+
+      expect(changedNothing(capture)).toBe(true);
+    });
+  });
+
+  describe("capturedWarnings", () => {
+    it("lists what the active capture has collected, and nothing with none active", () => {
+      resetWarningCapture();
+
+      expect(capturedWarnings()).toStrictEqual([]);
+
+      beginWarningCapture();
+      recordWarning("one");
+
+      expect(capturedWarnings()).toStrictEqual(["one"]);
     });
   });
 });

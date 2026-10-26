@@ -293,6 +293,21 @@ describe("duplicate - locators as arrangement positions", () => {
       );
     });
 
+    // Commas alone name nothing, but the param was sent.
+    it("refuses a locator of only commas", async () => {
+      const track0 = setupClipWithLocators(standardCuePoints);
+
+      await expect(
+        duplicate({ type: "clip", id: "clip1", locator: " , " }),
+      ).rejects.toThrow('invalid locator " , " - it names nothing');
+
+      expect(track0.call).not.toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
     it("folds onto a scene's position too", async () => {
       const track0 = setupSceneWithLocators([
         { time: 0, name: "Intro" },

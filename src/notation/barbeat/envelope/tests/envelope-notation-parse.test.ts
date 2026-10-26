@@ -52,6 +52,15 @@ describe("parseEnvelopeNotation", () => {
     ]);
   });
 
+  it("reads through repeated, leading, trailing and line-break whitespace", () => {
+    expect(
+      parseEnvelopeNotation("  1|1   0.5 (a  b)\n/  2|1 1  \n", FOUR_FOUR),
+    ).toStrictEqual([
+      { time: 0, value: 0.5, jump: false },
+      { time: 4, value: 1, jump: false },
+    ]);
+  });
+
   it("reads a fractional beat and a bar|beat offset", () => {
     expect(
       parseEnvelopeNotation("1|1.5 0.5 / 2|1+n/12 1", FOUR_FOUR),

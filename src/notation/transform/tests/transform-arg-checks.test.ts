@@ -8,6 +8,7 @@ import {
   tryParseTransform,
   applyTransforms,
 } from "#src/notation/transform/transform-evaluator.ts";
+import { checkPositionFunctionAssignment } from "#src/notation/transform/helpers/functions/position-function-assignment.ts";
 import { createTestNote } from "./evaluator/transform-evaluator-test-helpers.ts";
 
 describe("a duplicate selector", () => {
@@ -238,5 +239,33 @@ describe("a compound assignment of a position function", () => {
     ]) {
       expect(() => tryParseTransform(transform, 4, 4)).not.toThrow();
     }
+  });
+
+  it("has nothing to refuse in a compound assignment the parser didn't desugar", () => {
+    // `*=` and `/=` always arrive as `current * x`; a bare call isn't that shape.
+    const swing = {
+      type: "function" as const,
+      name: "swing",
+      args: [0.05],
+      sync: false,
+      raw: false,
+    };
+
+    expect(() =>
+      checkPositionFunctionAssignment({
+        parameter: "timing",
+        operator: "set",
+        compound: "*=",
+        expression: swing,
+      }),
+    ).not.toThrow();
+    expect(() =>
+      checkPositionFunctionAssignment({
+        parameter: "timing",
+        operator: "set",
+        compound: "/=",
+        expression: 2,
+      }),
+    ).not.toThrow();
   });
 });

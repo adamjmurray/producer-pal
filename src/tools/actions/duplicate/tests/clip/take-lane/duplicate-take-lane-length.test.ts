@@ -8,6 +8,8 @@
 
 import { describe, expect, it, vi } from "vitest";
 import "../../duplicate-mocks-test-helpers.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -101,6 +103,50 @@ describe("a re-created copy sent an arrangementLength", () => {
 
     expect(detail).toContain(IGNORED);
     expect(detail).not.toContain("arrangement length");
+  });
+
+  // The pre-roll isn't part of a re-created copy, so a copy one loop later
+  // doesn't bury it.
+  it("copies a session clip onto a lane at its loop length", async () => {
+    registerLiveSet();
+    registerMockObject("src_clip", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+      properties: {
+        is_midi_clip: 1,
+        is_arrangement_clip: 0,
+        length: 4,
+        loop_start: 2,
+        loop_end: 6,
+        start_marker: 0,
+        end_marker: 6,
+        looping: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+      methods: { get_notes_extended: () => JSON.stringify({ notes: [] }) },
+    });
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    expect(
+      await duplicate({
+        type: "clip",
+        id: "src_clip",
+        toPath: "t0/l0[1|1],t0/l0[2|1]",
+      }),
+    ).toStrictEqual([
+      {
+        id: expect.any(String),
+        path: "t0/l0[1|1]",
+        created: "l0",
+        detail: "re-created on the take lane",
+      },
+      {
+        id: expect.any(String),
+        path: "t0/l0[2|1]",
+        detail: "re-created on the take lane",
+      },
+    ]);
   });
 
   it("makes no kept-length claim when the copy's span can't be read", async () => {

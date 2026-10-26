@@ -45,6 +45,9 @@ const INSTRUMENT_RACK = "device:ableton:instr:InstrumentGroupDevice";
 const REVERB = "device:ableton:audiofx:Reverb";
 const PLUGIN_DEVICE = "device:au:instr:1:2:3";
 
+// More folders than reconstruct-path.ts follows up from a file.
+const TOO_DEEP_FOLDERS = 40;
+
 let dir: string;
 let dbPath: string;
 
@@ -60,6 +63,30 @@ type Row = [
     deviceId?: string;
   },
 ];
+
+/**
+ * @returns A chain of folders under the User Library with one preset at the
+ *   bottom
+ */
+function tooDeepRows(): Row[] {
+  const rows: Row[] = [];
+  let parent = 10;
+
+  for (let i = 0; i < TOO_DEEP_FOLDERS; i++) {
+    rows.push([1000 + i, parent, `Level ${i}`, FLDR]);
+    parent = 1000 + i;
+  }
+
+  rows.push([
+    2000,
+    parent,
+    "Buried.adg",
+    ADG,
+    { place: 10, deviceType: 1, deviceId: DRUM_RACK },
+  ]);
+
+  return rows;
+}
 
 /**
  * Write a files DB. Place 10 is the User Library, 20 a pack and 70 a plug-in
@@ -222,6 +249,8 @@ function writeDb(): string {
       { place: 20, deviceType: 1, deviceId: DRUM_RACK },
     ],
     [91, 90, "505 Kit.adg", ADG, { deviceType: 1, deviceId: DRUM_RACK }],
+    // A file buried deeper than a path can be rebuilt (see TOO_DEEP_FOLDERS).
+    ...tooDeepRows(),
   ];
 
   const insert = db.prepare(
@@ -364,6 +393,10 @@ describe("findPresetFiles", () => {
     expect(files?.map(({ path }) => path)).toStrictEqual([
       "/Users/me/User Library/Presets/Meld/Pluck.adv",
     ]);
+  });
+
+  it("leaves out a file whose path is too deep to rebuild", async () => {
+    expect(await findPresetFiles({ name: "buried" })).toStrictEqual([]);
   });
 
   it("lists a file listed twice once", async () => {

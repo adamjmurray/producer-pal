@@ -177,6 +177,16 @@ describe("presetFileIsFor", () => {
     );
   });
 
+  it("is not for a device when the rack has no chains to build it around", async () => {
+    const bare = preset(
+      "Bare.adg",
+      '<GroupDevicePreset><Device><InstrumentGroupDevice Id="0"></InstrumentGroupDevice></Device></GroupDevicePreset>',
+    );
+
+    expect(await presetFileIsFor(bare, "Operator")).toBe(false);
+    expect(await presetFileIsFor(bare, "Instrument Rack")).toBe(true);
+  });
+
   it("can't tell for a rack with no device inside, so it allows the load", async () => {
     const odd = preset("Odd.adg", "<GroupDevicePreset></GroupDevicePreset>");
 

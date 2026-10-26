@@ -477,4 +477,22 @@ describe("add-producer-pal's wait for the server", () => {
 
     expect(responseText(slow)).toContain("added to a new MIDI track but");
   });
+
+  it.each([
+    ["an index that isn't a number", { index: "3", name: "3-MIDI" }],
+    ["a name that isn't text", { index: 3, name: 3 }],
+  ])("names no track when the answer has %s", async (_, track) => {
+    const deps = happyDeps({
+      request: requestAnswers({
+        available: true,
+        status: 200,
+        body: { track },
+      }),
+    });
+    const response = await addProducerPalCall(deps);
+
+    expect(responseText(response)).toBe(
+      '{device:"installed in the User Library",nextSteps:"Call ppal-connect next."}',
+    );
+  });
 });

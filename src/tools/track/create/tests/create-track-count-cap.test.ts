@@ -49,6 +49,17 @@ describe("createTrack count cap", () => {
     );
   });
 
+  it("refuses a path list longer than the cap", () => {
+    const path = Array.from(
+      { length: MAX_AUTO_CREATED_TRACKS + 1 },
+      () => "t+",
+    ).join(",");
+
+    expect(() => createTrack({ path })).toThrow(
+      TOO_MANY(MAX_AUTO_CREATED_TRACKS + 1),
+    );
+  });
+
   it("still creates exactly the cap", () => {
     registerMockObject("midi_track_-1", {});
 
