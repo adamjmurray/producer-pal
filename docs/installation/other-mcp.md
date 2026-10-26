@@ -18,9 +18,16 @@ environment variables are listed in the
 
 <!--@include: ../_partials/setup-by-ai.md-->
 
-### 2. Configure Your AI
+### 1. Configure Your AI
 
-Configure your AI to connect to Producer Pal using one of the following methods:
+Configure your AI to connect to Producer Pal using one of the
+[connection methods](#connection-methods) below.
+
+### 2. Start Using Producer Pal
+
+With Live open, start a conversation with "connect to ableton".
+
+<!--@include: ../_partials/setup-by-ai-finish.md-->
 
 ## Connection Methods
 

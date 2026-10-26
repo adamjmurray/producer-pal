@@ -16,7 +16,7 @@ Use Producer Pal with Anthropic's command line coding assistant.
 
 <!--@include: ../_partials/setup-by-ai.md-->
 
-### 2. Configure Claude Code
+### 1. Configure Claude Code
 
 **Option A: With npx** (recommended for MCP) - Allows flexible startup order and
 auto-reconnection:
@@ -59,12 +59,12 @@ auto-reconnection:
 claude mcp add --transport http producer-pal http://localhost:3350/mcp
 ```
 
-### 3. Start Claude Code
+### 2. Start Claude Code
 
 Run `claude` in an empty folder (so it can focus on Producer Pal instead of
 coding)
 
-### 4. Verify Tools
+### 3. Verify Tools
 
 Run `/mcp` in Claude Code to confirm the Producer Pal tools are available:
 
@@ -72,12 +72,14 @@ Run `/mcp` in Claude Code to confirm the Producer Pal tools are available:
 
 ![Producer Pal tools listed in Claude Code (continued)](/img/claude-code-tool-list2.png)
 
-### 5. Start Using Producer Pal
+### 4. Start Using Producer Pal
 
-1. Start a conversation with "connect to ableton"
-2. Allow Producer Pal tools to be used when Claude tries to use them:
+With Live open, start a conversation with "connect to ableton". Allow Producer
+Pal tools when Claude tries to use them:
 
 ![Claude Code tool permission prompt](/img/claude-code-permissions.png)
+
+<!--@include: ../_partials/setup-by-ai-finish.md-->
 
 ![Claude Code successfully connected to Producer Pal](/img/claude-code-success.png)
 

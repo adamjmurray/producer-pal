@@ -27,12 +27,12 @@ use Producer Pal.
 
 <!--@include: ../_partials/setup-by-ai.md-->
 
-### 2. Download the Claude Desktop Extension
+### 1. Download the Claude Desktop Extension
 
 Download the
 [Producer Pal Claude Desktop Extension (`Producer_Pal.mcpb`)](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
 
-### 3. Install the Extension in Claude Desktop
+### 2. Install the Extension in Claude Desktop
 
 Go to Claude Desktop → Settings → Extensions and:
 
@@ -49,7 +49,7 @@ file.
 
 ![Install first extension in Claude Desktop](/img/install-in-claude-first-extension.png)
 
-### 4. Complete the Installation
+### 3. Complete the Installation
 
 Don't forget to click "Install" and complete the Claude Desktop installation:
 
@@ -61,19 +61,21 @@ can review the entire codebase on
 [GitHub](https://github.com/adamjmurray/producer-pal) before installing. The
 extension only accesses Ableton Live through the Max for Live device.
 
-### 5. Verify Installation
+### 4. Verify Installation
 
 You should see Producer Pal tools in Claude's "Connectors" menu (make sure it's
 enabled when starting a conversation):
 
 ![Producer Pal tools in Claude](/img/tools-in-claude.png)
 
-### 6. Start Using Producer Pal
+### 5. Start Using Producer Pal
 
-1. Start a conversation with "connect to ableton"
-2. Allow Producer Pal tools to be used when Claude tries to use them:
+With Live open, start a conversation with "connect to ableton". Allow Producer
+Pal tools when Claude tries to use them:
 
 ![Producer Pal allow tools](/img/producer-pal-permission.png)
+
+<!--@include: ../_partials/setup-by-ai-finish.md-->
 
 ![Producer Pal start a conversation](/img/screenshot.png)
 

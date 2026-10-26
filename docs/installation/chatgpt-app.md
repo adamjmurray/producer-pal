@@ -40,7 +40,7 @@ similar, but it's no longer officially supported — the new app is recommended.
 
 <!--@include: ../_partials/setup-by-ai.md-->
 
-### 2. Add Producer Pal to ChatGPT
+### 1. Add Producer Pal to ChatGPT
 
 In the ChatGPT app, go to Settings &rarr; Plugins &rarr; MCPs and click "+ Add
 server":
@@ -79,7 +79,7 @@ place makes it available in the others.
 
 :::
 
-### 3. Start a Conversation
+### 2. Start a Conversation
 
 Check that the mode dropdown at the top of the sidebar says **Codex**.
 
@@ -89,11 +89,13 @@ in the screenshot). Feel free to put reference documents in it, such as common
 workflow instructions or details of your preferred musical style and production
 techniques.
 
-Start a conversation with "connect to ableton":
+With Live open, start a conversation with "connect to ableton":
 
 <img src="/img/chatgpt-app-conversation-start.png" alt="Starting a conversation in the ChatGPT app" width="600"/>
 
-### 4. Verify Connection
+<!--@include: ../_partials/setup-by-ai-finish.md-->
+
+### 3. Verify Connection
 
 You should see a successful connection to Ableton Live:
 

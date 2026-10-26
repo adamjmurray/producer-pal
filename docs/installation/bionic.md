@@ -29,7 +29,7 @@ Studio account.
 
 <!--@include: ../_partials/setup-by-ai.md-->
 
-### 2. Install a Compatible Model
+### 1. Install a Compatible Model
 
 Download a model in Bionic under Settings &rarr; Explore, such as a recent
 version of Qwen, Gemma, Mistral, or Nemotron. If your computer can handle it,
@@ -40,7 +40,7 @@ Library, where a hammer icon marks the ones that do:
 
 <img src="/img/bionic-tool-icon.png" alt="The hammer icon marks a model that supports tools" width="400"/>
 
-### 3. Add Producer Pal to Bionic
+### 2. Add Producer Pal to Bionic
 
 Go to Settings &rarr; Connected Apps and click "+ Add custom MCP" under **Manual
 MCP server setup**:
@@ -71,10 +71,24 @@ the app.
 
 :::
 
+### 3. Start Using Producer Pal
+
+Bionic works in a project tied to a local folder, so create one with **New
+Project** before starting a conversation. An empty folder is recommended for
+Producer Pal sessions. Feel free to put reference documents in it, such as
+common workflow instructions or details of your preferred musical style and
+production techniques.
+
+With Live open, start a conversation and say "connect to ableton".
+
+<!--@include: ../_partials/setup-by-ai-finish.md-->
+
+<img src="/img/bionic-success.png" alt="Bionic successfully connected to Producer Pal" width="700"/>
+
 ### 4. Tune It for Your Model (Recommended)
 
-**Skip this step until step 1 is finished** and the device is in your Live Set.
-Small model mode hides the tool that sets Producer Pal up.
+**Do this only after step 3,** once the device is in your Live Set. Small model
+mode hides the tool that sets Producer Pal up.
 
 Bionic has no tool picker, so the MCP server's arguments are the only place to
 narrow what Producer Pal offers — and small models do much better with a short
@@ -99,18 +113,6 @@ These flags apply to Bionic only. To set them for the whole device instead
 "Setup" tab:
 
 <img src="/img/small-model-mode.png" alt="Small model mode setting" width="375"/>
-
-### 5. Start Using Producer Pal
-
-Bionic works in a project tied to a local folder, so create one with **New
-Project** before starting a conversation. An empty folder is recommended for
-Producer Pal sessions. Feel free to put reference documents in it, such as
-common workflow instructions or details of your preferred musical style and
-production techniques.
-
-Start a conversation and say "connect to ableton":
-
-<img src="/img/bionic-success.png" alt="Bionic successfully connected to Producer Pal" width="700"/>
 
 ## Local Model Tips
 

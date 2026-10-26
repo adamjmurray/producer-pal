@@ -31,7 +31,7 @@ that page).
 
 <!--@include: ../_partials/setup-by-ai.md-->
 
-### 2. Configure Gemini CLI
+### 1. Configure Gemini CLI
 
 Add Producer Pal to Gemini's settings in `~/.gemini/settings.json`:
 
@@ -118,24 +118,26 @@ auto-reconnection:
 }
 ```
 
-### 3. Start Gemini CLI
+### 2. Start Gemini CLI
 
 Run `gemini` in an empty folder (so it can focus on Producer Pal instead of
 coding)
 
-### 4. Verify Tools
+### 3. Verify Tools
 
 Run `/mcp list` in the Gemini CLI to confirm the Producer Pal tools are
 available:
 
 ![Producer Pal tools listed in Gemini CLI](/img/gemini-tool-list.png)
 
-### 5. Start Using Producer Pal
+### 4. Start Using Producer Pal
 
-1. Start a conversation with "connect to ableton"
-2. Allow Producer Pal tools to be used when Gemini tries to use them:
+With Live open, start a conversation with "connect to ableton". Allow Producer
+Pal tools when Gemini tries to use them:
 
 ![Gemini CLI tool permission prompt](/img/gemini-tool-permissions.png)
+
+<!--@include: ../_partials/setup-by-ai-finish.md-->
 
 ![Gemini CLI successfully connected to Producer Pal](/img/gemini-success.png)
 

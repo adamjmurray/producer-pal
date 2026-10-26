@@ -19,7 +19,7 @@ the top right of the app).
 
 <!--@include: ../_partials/setup-by-ai.md-->
 
-### 2. Open the MCP Config
+### 1. Open the MCP Config
 
 Go to Settings &rarr; Customizations and find **Installed MCP Servers**. The
 Skills list above it is long, so collapse **Skills** or scroll past it. Click
@@ -38,7 +38,7 @@ Producer Pal to one does not add it to the other.
 
 :::
 
-### 3. Add Producer Pal
+### 2. Add Producer Pal
 
 **Option A: With npx (recommended)** — Allows flexible startup order and
 auto-reconnection:
@@ -91,12 +91,14 @@ should appear under Installed MCP Servers with its tools enabled:
 
 <img src="/img/antigravity-mcp-server-success.png" alt="Producer Pal listed as an installed MCP server in Antigravity" width="650"/>
 
-### 4. Start Using Producer Pal
+### 3. Start Using Producer Pal
 
-1. Start a conversation with "connect to ableton"
-2. Allow Producer Pal tools to be used when Antigravity asks:
+With Live open, start a conversation with "connect to ableton". Allow Producer
+Pal tools when Antigravity asks:
 
 <img src="/img/antigravity-permissions.png" alt="Antigravity asking permission to use a Producer Pal tool" width="650"/>
+
+<!--@include: ../_partials/setup-by-ai-finish.md-->
 
 <img src="/img/antigravity-success.png" alt="Antigravity successfully connected to Producer Pal" width="650"/>
 

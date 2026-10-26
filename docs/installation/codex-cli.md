@@ -29,7 +29,7 @@ this is a good option.
 
 <!--@include: ../_partials/setup-by-ai.md-->
 
-### 2. Configure Codex
+### 1. Configure Codex
 
 Add Producer Pal to Codex's settings in `~/.codex/config.toml`:
 
@@ -88,20 +88,22 @@ auto-reconnection:
 url = "http://localhost:3350/mcp"
 ```
 
-### 3. Start Codex
+### 2. Start Codex
 
 Run `codex` in an empty folder (so it can focus on Producer Pal instead of
 coding)
 
-### 4. Verify Tools
+### 3. Verify Tools
 
 Run `/mcp` in the Codex CLI to confirm the Producer Pal tools are available:
 
 ![Producer Pal tools listed in Codex CLI](/img/codex-tool-list.png)
 
-### 5. Start Using Producer Pal
+### 4. Start Using Producer Pal
 
-Start a conversation with "connect to ableton"
+With Live open, start a conversation with "connect to ableton".
+
+<!--@include: ../_partials/setup-by-ai-finish.md-->
 
 ![Codex CLI successfully connected to Producer Pal](/img/codex-success.png)
 
