@@ -3,11 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// The widgets the AI has put on the generative-UI view. Held in memory and
-// saved to ~/.producer-pal/ui/widgets.json after every change, so a page reload
-// or a server restart keeps them. Node-side only: the file is never read by V8.
+// The widgets the AI has put on the generative-UI view, held in memory. Each
+// change is handed to a sink that keeps it in the Live Set (see set-storage.ts),
+// and the Set's saved list is loaded back with loadWidgetsFromSet. With no sink
+// (tests, or before the device is wired up) the list lives for the session only.
 
-import { readFileSync } from "node:fs";
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
   type SyncStatus,
@@ -15,34 +15,35 @@ import {
   type WidgetChange,
 } from "#src/shared/gen-ui-types.ts";
 import * as console from "../../node-for-max-logger.ts";
-import {
-  isConfigDirInert,
-  resolveConfigPath,
-  writeConfigFileAtomic,
-} from "../../helpers/config-store/config-markdown-store.ts";
-import {
-  currentVersion,
-  EPOCH,
-  getSync,
-  publish,
-  restoreVersion,
-} from "./gen-ui-hub.ts";
+import { currentVersion, EPOCH, getSync, publish } from "./gen-ui-hub.ts";
 import { buildWidget, patchWidget, type WidgetFields } from "./widget-input.ts";
-
-const FILENAME = "ui/widgets.json";
+import { decodeWidgets, encodeWidgets } from "./widget-blob.ts";
 
 export type StoreResult =
   | { ok: true; widget: Widget }
   | { ok: false; error: string; notFound?: boolean };
 
-let widgets: Widget[] | undefined;
+const TOO_MANY =
+  "The Live Set can't hold more widgets; remove one first (the list is saved inside the Set)";
+
+let widgets: Widget[] = [];
 let nextNumber = 1;
+let sink: ((text: string) => void) | undefined;
+
+/**
+ * @param save - Called with the text to keep in the Set after every change
+ */
+export function setWidgetSink(
+  save: ((text: string) => void) | undefined,
+): void {
+  sink = save;
+}
 
 /**
  * @returns Every widget, oldest first
  */
 export function listWidgets(): Widget[] {
-  return [...load()];
+  return [...widgets];
 }
 
 /**
@@ -68,15 +69,18 @@ export function getSnapshot(): {
  * @returns The new widget, or what is wrong with the input
  */
 export function createWidget(input: WidgetFields): StoreResult {
-  const list = load();
   const built = buildWidget(input, `w${nextNumber}`);
 
   if (!built.ok) {
     return built;
   }
 
+  if (!fits([...widgets, built.value])) {
+    return { ok: false, error: TOO_MANY };
+  }
+
   nextNumber += 1;
-  list.push(built.value);
+  widgets.push(built.value);
   commit({ op: "upsert", widget: built.value });
 
   return { ok: true, widget: built.value };
@@ -89,9 +93,8 @@ export function createWidget(input: WidgetFields): StoreResult {
  * @returns The changed widget, or why not
  */
 export function updateWidget(id: string, patch: WidgetFields): StoreResult {
-  const list = load();
-  const index = list.findIndex((widget) => widget.id === id);
-  const current = list[index];
+  const index = widgets.findIndex((widget) => widget.id === id);
+  const current = widgets[index];
 
   if (current == null) {
     return notFound(id);
@@ -103,7 +106,11 @@ export function updateWidget(id: string, patch: WidgetFields): StoreResult {
     return next;
   }
 
-  list[index] = next.value;
+  if (!fits(widgets.map((w, i) => (i === index ? next.value : w)))) {
+    return { ok: false, error: TOO_MANY };
+  }
+
+  widgets[index] = next.value;
   commit({ op: "upsert", widget: next.value });
 
   return { ok: true, widget: next.value };
@@ -127,9 +134,8 @@ export function updateClipState(
     gone?: boolean;
   },
 ): StoreResult {
-  const list = load();
-  const index = list.findIndex((widget) => widget.id === id);
-  const current = list[index];
+  const index = widgets.findIndex((widget) => widget.id === id);
+  const current = widgets[index];
 
   if (current?.kind !== "clip") {
     return notFound(id);
@@ -148,7 +154,7 @@ export function updateClipState(
     return { ok: true, widget: current };
   }
 
-  list[index] = next;
+  widgets[index] = next;
   commit({ op: "upsert", widget: next });
 
   return { ok: true, widget: next };
@@ -160,9 +166,8 @@ export function updateClipState(
  * @returns The removed widget, or why not
  */
 export function removeWidget(id: string): StoreResult {
-  const list = load();
-  const index = list.findIndex((widget) => widget.id === id);
-  const [removed] = index < 0 ? [] : list.splice(index, 1);
+  const index = widgets.findIndex((widget) => widget.id === id);
+  const [removed] = index < 0 ? [] : widgets.splice(index, 1);
 
   if (removed == null) {
     return notFound(id);
@@ -173,10 +178,54 @@ export function removeWidget(id: string): StoreResult {
   return { ok: true, widget: removed };
 }
 
-/** Forget what is in memory, so the next call reads the file again. For tests. */
+/**
+ * Make the Set's saved list the list. Viewers hear it as ordinary changes: the
+ * old widgets removed, the Set's added. Not saved again, since it came from the
+ * Set. Text that isn't a widget list is ignored.
+ * @param text - What the device's parameter held
+ */
+export function loadWidgetsFromSet(text: string): void {
+  const loaded = decodeWidgets(text);
+
+  if (loaded == null) {
+    console.warn("Ignoring a saved UI widget list that can't be read");
+
+    return;
+  }
+
+  if (JSON.stringify(loaded) === JSON.stringify(widgets)) {
+    return;
+  }
+
+  const saved = sink;
+
+  sink = undefined;
+
+  try {
+    // removeWidget edits the list, so go by a copy of the ids.
+    for (const id of widgets.map((widget) => widget.id)) {
+      removeWidget(id);
+    }
+
+    widgets = [];
+    nextNumber =
+      Math.max(0, ...loaded.map((w) => Number(w.id.replace(/^w/, "")) || 0)) +
+      1;
+
+    for (const widget of loaded) {
+      widgets.push(widget);
+      publish({ type: "widget", change: { op: "upsert", widget } });
+    }
+  } finally {
+    sink = saved;
+  }
+}
+
+/** Empty the list and drop the sink. For tests. */
 export function resetWidgetStoreForTesting(): void {
-  widgets = undefined;
+  widgets = [];
   nextNumber = 1;
+  sink = undefined;
 }
 
 /**
@@ -188,107 +237,30 @@ function notFound(id: string): StoreResult {
 }
 
 /**
- * Save, then tell the viewers. A failed save is logged and does not undo the
- * change: the view still shows it, and the next change tries the file again.
+ * @param list - A list of widgets
+ * @returns True when the Set can hold it
+ */
+function fits(list: Widget[]): boolean {
+  return encodeWidgets(list) != null;
+}
+
+/**
+ * Keep the change in the Set, then tell the viewers. A failed save is logged and
+ * does not undo the change: the view still shows it, and the next change tries
+ * again.
  * @param change - What changed
  */
 function commit(change: WidgetChange): void {
-  const event = publish({ type: "widget", change });
-
-  save(event.version);
-}
-
-/**
- * @returns The widget list, read from the file the first time
- */
-function load(): Widget[] {
-  if (widgets != null) {
-    return widgets;
-  }
-
-  const stored = readStored();
-
-  widgets = stored.widgets;
-  restoreVersion(stored.version);
-  nextNumber =
-    Math.max(
-      0,
-      ...widgets.map((widget) => Number(widget.id.replace(/^w/, "")) || 0),
-    ) + 1;
-
-  return widgets;
-}
-
-/**
- * @returns The saved widgets and version; empty when the file is missing or unusable
- */
-function readStored(): { version: number; widgets: Widget[] } {
-  const empty = { version: 0, widgets: [] };
-
-  if (isConfigDirInert()) {
-    return empty;
-  }
-
-  const target = resolveConfigPath(FILENAME);
-  let text: string;
+  publish({ type: "widget", change });
 
   try {
-    text = readFileSync(target, "utf8");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      console.warn(`Failed to read ${target}: ${errorMessage(error)}`);
+    const text = encodeWidgets(widgets);
+
+    if (text == null) {
+      console.warn("The UI widget list is too big to save in the Live Set");
+    } else {
+      sink?.(text);
     }
-
-    return empty;
-  }
-
-  try {
-    const parsed = JSON.parse(text) as {
-      version?: unknown;
-      widgets?: unknown;
-    };
-    const list = Array.isArray(parsed.widgets) ? parsed.widgets : [];
-
-    return {
-      version: typeof parsed.version === "number" ? parsed.version : 0,
-      widgets: list.filter(isStoredWidget),
-    };
-  } catch (error) {
-    console.warn(`Ignoring malformed ${target}: ${errorMessage(error)}`);
-
-    return empty;
-  }
-}
-
-/**
- * Keep only entries a current build can draw, so one bad entry in the file
- * can't break the view.
- * @param value - One entry from the file
- * @returns True for a well-formed widget
- */
-function isStoredWidget(value: unknown): value is Widget {
-  const { id, kind } = (value ?? {}) as Record<string, unknown>;
-
-  return (
-    typeof id === "string" &&
-    buildWidget(value as WidgetFields, id).ok &&
-    (kind === "clip" || kind === "text")
-  );
-}
-
-/**
- * @param version - The version to store with the widgets
- */
-function save(version: number): void {
-  if (isConfigDirInert()) {
-    return;
-  }
-
-  try {
-    writeConfigFileAtomic(
-      resolveConfigPath(FILENAME),
-      `${JSON.stringify({ version, widgets }, null, 2)}\n`,
-    );
   } catch (error) {
     console.warn(`Could not save the UI widgets: ${errorMessage(error)}`);
   }

@@ -5,7 +5,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { VERSION } from "#src/shared/config.ts";
-import { GEN_UI_TOOL_ID } from "#src/shared/gen-ui-types.ts";
+import { GEN_UI_TOOL_ID, isGenUiEnabled } from "#src/shared/gen-ui-types.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { toolDefDelete } from "#src/tools/actions/delete/delete.def.ts";
 import { toolDefDuplicate } from "#src/tools/actions/duplicate/duplicate.def.ts";
@@ -36,7 +36,6 @@ import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool
 import { toolDefCreateTrack } from "#src/tools/track/create/create-track.def.ts";
 import { toolDefReadTrack } from "#src/tools/track/read/read-track.def.ts";
 import { toolDefUpdateTrack } from "#src/tools/track/update/update-track.def.ts";
-import { isGenUiEnabled } from "./rpc/gen-ui/gen-ui-enabled.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 
 export type CallLiveApiFunction = (

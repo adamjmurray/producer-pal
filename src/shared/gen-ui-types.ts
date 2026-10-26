@@ -81,6 +81,16 @@ export type GenUiEvent =
   | { type: "widget"; version: number; change: WidgetChange }
   | ({ type: "live"; version: number } & LiveChange);
 
+/**
+ * Whether this build has the experimental generative UI (`ENABLE_GEN_UI=true`).
+ * A release build never does: the tool, the routes and the stream are all off.
+ * Lives in shared, free of Max, so the tool registry can ask.
+ * @returns True when the flag is on
+ */
+export function isGenUiEnabled(): boolean {
+  return process.env.ENABLE_GEN_UI === "true";
+}
+
 export const GEN_UI_WIDGETS_PATH = "/api/ui/widgets";
 
 export const GEN_UI_EVENTS_PATH = "/api/ui/events";

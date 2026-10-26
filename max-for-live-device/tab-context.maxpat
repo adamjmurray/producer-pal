@@ -114,10 +114,10 @@
                     "id": "obj-21",
                     "maxclass": "newobj",
                     "numinlets": 2,
-                    "numoutlets": 2,
-                    "outlettype": [ "", "" ],
-                    "patching_rect": [ 502.0, 59.0, 117.0, 22.0 ],
-                    "text": "route projectContext"
+                    "numoutlets": 3,
+                    "outlettype": [ "", "", "" ],
+                    "patching_rect": [ 502.0, 59.0, 197.0, 22.0 ],
+                    "text": "route projectContext genUiWidgets"
                 }
             },
             {
@@ -251,6 +251,65 @@
             },
             {
                 "box": {
+                    "id": "obj-61",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 502.0, 100.0, 72.0, 22.0 ],
+                    "text": "prepend set"
+                }
+            },
+            {
+                "box": {
+                    "annotation": "Widgets the AI put on the Producer Pal side panel. Saved in the Live Set. Not for editing.",
+                    "annotation_name": "UI Widgets",
+                    "id": "obj-60",
+                    "maxclass": "textedit",
+                    "nosymquotes": 1,
+                    "numinlets": 1,
+                    "numoutlets": 4,
+                    "outlettype": [ "", "int", "", "" ],
+                    "outputmode": 1,
+                    "parameter_enable": 1,
+                    "parameter_mappable": 0,
+                    "patching_rect": [ 502.0, 140.0, 146.0, 50.0 ],
+                    "saved_attribute_attributes": {
+                        "valueof": {
+                            "parameter_invisible": 1,
+                            "parameter_longname": "genUiWidgets",
+                            "parameter_modmode": 0,
+                            "parameter_shortname": "genUiWidgets",
+                            "parameter_type": 3
+                        }
+                    },
+                    "varname": "genUiWidgets"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-62",
+                    "maxclass": "newobj",
+                    "numinlets": 2,
+                    "numoutlets": 2,
+                    "outlettype": [ "", "" ],
+                    "patching_rect": [ 502.0, 200.0, 59.0, 22.0 ],
+                    "text": "route text"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-63",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 502.0, 240.0, 120.0, 22.0 ],
+                    "text": "prepend genUiWidgets"
+                }
+            },
+            {
+                "box": {
                     "angle": 270.0,
                     "background": 1,
                     "bgcolor": [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
@@ -268,6 +327,42 @@
             }
         ],
         "lines": [
+            {
+                "patchline": {
+                    "destination": [ "obj-61", 0 ],
+                    "source": [ "obj-21", 1 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-60", 0 ],
+                    "source": [ "obj-61", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-60", 0 ],
+                    "source": [ "obj-17", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-62", 0 ],
+                    "source": [ "obj-60", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-63", 0 ],
+                    "source": [ "obj-62", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-13", 0 ],
+                    "source": [ "obj-63", 0 ]
+                }
+            },
             {
                 "patchline": {
                     "destination": [ "obj-13", 0 ],
@@ -357,6 +452,7 @@
         ],
         "parameters": {
             "obj-2": [ "projectContext", "projectContext", 0 ],
+            "obj-60": [ "genUiWidgets", "genUiWidgets", 0 ],
             "obj-32": [ "live.text[3]", "live.text[3]", 0 ],
             "parameterbanks": {
                 "0": {

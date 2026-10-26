@@ -14,6 +14,7 @@ import {
   setSync,
   subscribe,
 } from "../gen-ui-hub.ts";
+import { encodeWidgets } from "../widget-blob.ts";
 import {
   LiveWatcher,
   POLL_MS,
@@ -24,6 +25,7 @@ import {
 import {
   createWidget,
   listWidgets,
+  loadWidgetsFromSet,
   removeWidget,
   resetWidgetStoreForTesting,
   updateClipState,
@@ -532,6 +534,21 @@ describe("following the widgets", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(script.routes("/unwatch")).toHaveLength(1);
+  });
+
+  it("watches the new Set's clips and lets go of the old Set's when the list is swapped", async () => {
+    createWidget(clip("t0/s0"));
+    await vi.advanceTimersByTimeAsync(0);
+
+    loadWidgetsFromSet(
+      encodeWidgets([{ id: "w7", kind: "clip", ref: "t1/s1" }]) as string,
+    );
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(script.routes("/unwatch").map((r) => r.body)).toStrictEqual([
+      { owner: "w1" },
+    ]);
+    expect([...script.watching]).toStrictEqual(["w7"]);
   });
 
   it("leaves the watch alone when only the title changes", async () => {

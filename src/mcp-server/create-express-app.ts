@@ -9,7 +9,7 @@ import express, { type Request, type Response, type Express } from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { GEN_UI_TOOL_ID } from "#src/shared/gen-ui-types.ts";
+import { GEN_UI_TOOL_ID, isGenUiEnabled } from "#src/shared/gen-ui-types.ts";
 import { textEditParamToString } from "#src/shared/max/max-atoms.ts";
 import {
   DEFAULT_NOTATION,
@@ -21,8 +21,8 @@ import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { type WrappedCallLiveApi } from "./helpers/connect/connect-append.ts";
 import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
-import { isGenUiEnabled } from "./rpc/gen-ui/gen-ui-enabled.ts";
 import { startLiveWatcher } from "./rpc/gen-ui/live-watcher.ts";
+import { connectWidgetsToSet } from "./rpc/gen-ui/set-storage.ts";
 import { withGenUi } from "./rpc/gen-ui/with-gen-ui.ts";
 import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
 import { errorHandlerMiddleware } from "./helpers/http/error-handler-middleware.ts";
@@ -430,6 +430,7 @@ export function createExpressApp(): Express {
 
   if (isGenUiEnabled()) {
     registerGenUiRoutes(app);
+    connectWidgetsToSet();
     startLiveWatcher();
   }
 

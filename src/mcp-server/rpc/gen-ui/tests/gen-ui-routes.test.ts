@@ -23,12 +23,9 @@ import {
   postJson,
   putJson,
   startMarkdownRouteServer,
-  useTempConfigDir,
   type MarkdownRouteServer,
 } from "../../../tests/config-dir-test-helpers.ts";
 import { openEventStream } from "./gen-ui-test-helpers.ts";
-
-useTempConfigDir();
 
 let server: MarkdownRouteServer;
 let widgets = "";

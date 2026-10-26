@@ -60,14 +60,6 @@ export function currentVersion(): number {
 }
 
 /**
- * Continue numbering from a saved version, so versions only go up across restarts.
- * @param saved - The version stored with the widgets
- */
-export function restoreVersion(saved: number): void {
-  version = Math.max(version, saved);
-}
-
-/**
  * Watch the stream.
  * @param listener - Called with every event, in order
  * @returns A function that stops watching

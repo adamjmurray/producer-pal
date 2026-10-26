@@ -3,36 +3,26 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { type GenUiEvent } from "#src/shared/gen-ui-types.ts";
 import { resetHubForTesting, subscribe } from "../gen-ui-hub.ts";
+import { decodeWidgets, encodeWidgets } from "../widget-blob.ts";
 import {
   createWidget,
   getSnapshot,
   listWidgets,
+  loadWidgetsFromSet,
   removeWidget,
   resetWidgetStoreForTesting,
+  setWidgetSink,
   updateClipState,
   updateWidget,
 } from "../widget-store.ts";
-import { useTempConfigDir } from "../../../tests/config-dir-test-helpers.ts";
-
-const configDir = useTempConfigDir();
 
 beforeEach(() => {
   resetHubForTesting();
   resetWidgetStoreForTesting();
 });
-
-/**
- * Forget memory, as a server restart would.
- */
-function restart(): void {
-  resetHubForTesting();
-  resetWidgetStoreForTesting();
-}
 
 describe("widget store", () => {
   it("creates, lists, updates and removes widgets", () => {
@@ -139,81 +129,194 @@ describe("widget store", () => {
   });
 });
 
-describe("widget store persistence", () => {
-  it("keeps widgets, ids and versions across a restart", () => {
-    createWidget({ kind: "clip", ref: "t1/s0" });
+describe("widget store in the Live Set", () => {
+  let saved: string[];
+
+  beforeEach(() => {
+    saved = [];
+    setWidgetSink((text) => saved.push(text));
+  });
+
+  it("hands the Set the whole list after every change", () => {
     createWidget({ kind: "text", text: "a" });
+    createWidget({ kind: "clip", ref: "t0/s0" });
     removeWidget("w1");
 
-    restart();
-
-    expect(listWidgets()).toStrictEqual([
-      { id: "w2", kind: "text", text: "a" },
+    expect(saved.map((text) => decodeWidgets(text))).toStrictEqual([
+      [{ id: "w1", kind: "text", text: "a" }],
+      [
+        { id: "w1", kind: "text", text: "a" },
+        { id: "w2", kind: "clip", ref: "t0/s0" },
+      ],
+      [{ id: "w2", kind: "clip", ref: "t0/s0" }],
     ]);
-    // Numbering and versions continue, never reuse.
-    expect(getSnapshot().version).toBe(3);
-    expect(createWidget({ kind: "text", text: "b" })).toStrictEqual({
-      ok: true,
-      widget: { id: "w3", kind: "text", text: "b" },
+  });
+
+  it("saves nothing for a refused change", () => {
+    createWidget({ kind: "clip", ref: "nope" });
+    updateWidget("w9", { title: "x" });
+
+    expect(saved).toStrictEqual([]);
+  });
+
+  it("works for the session with nothing to save into, like an unsaved Set", () => {
+    setWidgetSink(undefined);
+
+    expect(createWidget({ kind: "text", text: "a" }).ok).toBe(true);
+    expect(listWidgets()).toHaveLength(1);
+  });
+
+  it("keeps the change and tells viewers when saving fails", () => {
+    setWidgetSink(() => {
+      throw new Error("no device");
     });
-    expect(getSnapshot().version).toBe(4);
-  });
-
-  it("writes under the user-data dir", () => {
-    createWidget({ kind: "text", text: "a" });
-
-    const saved = JSON.parse(
-      readFileSync(join(configDir(), "ui", "widgets.json"), "utf8"),
-    ) as { version: number; widgets: unknown[] };
-
-    expect(saved.version).toBe(1);
-    expect(saved.widgets).toHaveLength(1);
-  });
-
-  it("skips entries it can't draw, and a corrupt file", () => {
-    mkdirSync(join(configDir(), "ui"));
-    writeFileSync(
-      join(configDir(), "ui", "widgets.json"),
-      JSON.stringify({
-        version: 7,
-        widgets: [
-          { id: "w1", kind: "text", text: "ok" },
-          { id: "w2", kind: "chart" },
-          { id: "w3", kind: "clip", ref: "bad" },
-          "junk",
-        ],
-      }),
-    );
-
-    expect(listWidgets().map((w) => w.id)).toStrictEqual(["w1"]);
-    expect(getSnapshot().version).toBe(7);
-
-    restart();
-    writeFileSync(join(configDir(), "ui", "widgets.json"), "{not json");
-
-    expect(listWidgets()).toStrictEqual([]);
-  });
-
-  it("starts empty when the saved file has no widget list", () => {
-    mkdirSync(join(configDir(), "ui"));
-    writeFileSync(join(configDir(), "ui", "widgets.json"), "{}");
-
-    expect(listWidgets()).toStrictEqual([]);
-  });
-
-  it("keeps a change in memory and tells viewers when the save fails", () => {
-    // A file where the folder should be makes every save fail.
-    writeFileSync(join(configDir(), "ui"), "not a folder");
 
     const events: GenUiEvent[] = [];
 
     subscribe((event) => events.push(event));
 
-    const result = createWidget({ kind: "text", text: "a" });
-
-    expect(result.ok).toBe(true);
+    expect(createWidget({ kind: "text", text: "a" }).ok).toBe(true);
     expect(listWidgets()).toHaveLength(1);
     expect(events).toHaveLength(1);
+  });
+
+  it("refuses a widget the Set can't hold, and leaves the list as it was", () => {
+    createWidget({ kind: "text", text: "a" });
+
+    let refused = createWidget({ kind: "text", text: "x".repeat(4000) });
+
+    // Fill the Set with big notes until one doesn't fit.
+    for (let i = 0; i < 10 && refused.ok; i++) {
+      refused = createWidget({ kind: "text", text: `${i}`.repeat(4000) });
+    }
+
+    expect(refused.ok).toBe(false);
+    expect(!refused.ok && refused.error).toContain("can't hold more widgets");
+
+    const count = listWidgets().length;
+    const grown = updateWidget("w1", { text: "y".repeat(4000) });
+
+    expect(grown.ok).toBe(false);
+    expect(listWidgets()).toHaveLength(count);
+    expect(listWidgets()[0]).toStrictEqual({
+      id: "w1",
+      kind: "text",
+      text: "a",
+    });
+  });
+});
+
+describe("loading the Set's widgets", () => {
+  const listA = encodeWidgets([
+    { id: "w1", kind: "clip", ref: "t0/s0" },
+    { id: "w4", kind: "text", text: "A's note" },
+  ]) as string;
+  const listB = encodeWidgets([
+    { id: "w2", kind: "text", text: "B's note" },
+  ]) as string;
+
+  it("shows the Set's widgets, and carries on numbering after them", () => {
+    loadWidgetsFromSet(listA);
+
+    expect(listWidgets().map((w) => w.id)).toStrictEqual(["w1", "w4"]);
+    expect(createWidget({ kind: "text", text: "new" })).toStrictEqual({
+      ok: true,
+      widget: { id: "w5", kind: "text", text: "new" },
+    });
+  });
+
+  it("swaps one Set's widgets for another's, telling viewers as ordinary changes", () => {
+    loadWidgetsFromSet(listA);
+
+    const events: GenUiEvent[] = [];
+
+    subscribe((event) => events.push(event));
+    loadWidgetsFromSet(listB);
+
+    expect(listWidgets()).toStrictEqual([
+      { id: "w2", kind: "text", text: "B's note" },
+    ]);
+    expect(
+      events.map((e) => (e.type === "widget" ? e.change.op : e.type)),
+    ).toStrictEqual(["remove", "remove", "upsert"]);
+  });
+
+  it("shows no widgets for a Set that has none", () => {
+    loadWidgetsFromSet(listA);
+    loadWidgetsFromSet("");
+
+    expect(listWidgets()).toStrictEqual([]);
+  });
+
+  it("does not save back what it just loaded", () => {
+    const saved: string[] = [];
+
+    setWidgetSink((text) => saved.push(text));
+    loadWidgetsFromSet(listA);
+
+    expect(saved).toStrictEqual([]);
+
+    createWidget({ kind: "text", text: "a" });
+
+    expect(saved).toHaveLength(1);
+  });
+
+  it("says nothing when the Set holds what is already shown", () => {
+    loadWidgetsFromSet(listA);
+
+    const events: GenUiEvent[] = [];
+
+    subscribe((event) => events.push(event));
+    loadWidgetsFromSet(listA);
+
+    expect(events).toStrictEqual([]);
+  });
+
+  it("ignores text that isn't a widget list, and keeps what it has", () => {
+    loadWidgetsFromSet(listA);
+    loadWidgetsFromSet("not base64 json!");
+
+    expect(listWidgets()).toHaveLength(2);
+  });
+
+  it("leaves out saved entries it can't draw", () => {
+    const mixed = Buffer.from(
+      JSON.stringify({
+        v: 1,
+        widgets: [
+          { id: "w1", kind: "text", text: "ok" },
+          { id: "w2", kind: "chart" },
+          { id: "w3", kind: "clip", ref: "bad" },
+          null,
+        ],
+      }),
+    ).toString("base64");
+
+    loadWidgetsFromSet(mixed);
+
+    expect(listWidgets().map((w) => w.id)).toStrictEqual(["w1"]);
+  });
+
+  it("restores a clip widget's moved path and gone verdict", () => {
+    createWidget({ kind: "clip", ref: "t0/s0" });
+    updateClipState("w1", { ref: "t2/s2", gone: true });
+
+    const saved: string[] = [];
+
+    setWidgetSink((text) => saved.push(text));
+    updateClipState("w1", { fingerprint: { name: "Bass", length: 8 } });
+    resetWidgetStoreForTesting();
+    loadWidgetsFromSet(saved[0] ?? "");
+
+    expect(listWidgets()).toStrictEqual([
+      {
+        id: "w1",
+        kind: "clip",
+        ref: "t2/s2",
+        fingerprint: { name: "Bass", length: 8 },
+        gone: true,
+      },
+    ]);
   });
 });
 
@@ -228,32 +331,15 @@ describe("widget store edge cases", () => {
     expect(updateWidget("w1", { title: 5 }).ok).toBe(false);
     expect(updateWidget("w1", { title: "x".repeat(121) }).ok).toBe(false);
   });
-
-  it("ignores null entries in the saved file", () => {
-    mkdirSync(join(configDir(), "ui"));
-    writeFileSync(
-      join(configDir(), "ui", "widgets.json"),
-      JSON.stringify({
-        widgets: [null, { id: "w4", kind: "text", text: "a" }],
-      }),
-    );
-
-    expect(listWidgets().map((w) => w.id)).toStrictEqual(["w4"]);
-  });
 });
 
 describe("widget store with ids it didn't number", () => {
   it("numbers new widgets after the highest w<number> and ignores other ids", () => {
-    mkdirSync(join(configDir(), "ui"));
-    writeFileSync(
-      join(configDir(), "ui", "widgets.json"),
-      JSON.stringify({
-        version: 1,
-        widgets: [
-          { id: "custom", kind: "text", text: "a" },
-          { id: "w6", kind: "text", text: "b" },
-        ],
-      }),
+    loadWidgetsFromSet(
+      encodeWidgets([
+        { id: "custom", kind: "text", text: "a" },
+        { id: "w6", kind: "text", text: "b" },
+      ]) as string,
     );
 
     expect(createWidget({ kind: "text", text: "c" })).toStrictEqual({
@@ -296,17 +382,6 @@ describe("clip state kept by the server", () => {
       ok: true,
       widget: { id: "w1", kind: "clip", ref: "t1/s0", fingerprint },
     });
-  });
-
-  it("saves it, so a restart keeps the new path and the verdict", () => {
-    createWidget({ kind: "clip", ref: "t0/s0" });
-    updateClipState("w1", { ref: "t2/s2", fingerprint, gone: true });
-    resetHubForTesting();
-    resetWidgetStoreForTesting();
-
-    expect(listWidgets()).toStrictEqual([
-      { id: "w1", kind: "clip", ref: "t2/s2", fingerprint, gone: true },
-    ]);
   });
 
   it("spends no version when nothing changed", () => {
@@ -373,5 +448,30 @@ describe("clip state kept by the server", () => {
         title: "Bass",
       },
     });
+  });
+});
+
+describe("a list that grows past what the Set holds", () => {
+  it("keeps the change in memory, warns, and saves nothing", () => {
+    const saved: string[] = [];
+
+    createWidget({ kind: "clip", ref: "t0/s0" });
+
+    for (let i = 0; i < 4; i++) {
+      expect(createWidget({ kind: "text", text: `${i}`.repeat(4000) }).ok).toBe(
+        true,
+      );
+    }
+
+    setWidgetSink((text) => saved.push(text));
+
+    // The server's own note on a clip isn't checked against the limit.
+    const grown = updateClipState("w1", {
+      fingerprint: { name: "x".repeat(5000), length: 8 },
+    });
+
+    expect(grown.ok).toBe(true);
+    expect(listWidgets()[0]).toHaveProperty("fingerprint");
+    expect(saved).toStrictEqual([]);
   });
 });
