@@ -57,6 +57,8 @@ Start a conversation with "connect to ableton":
 
 ![Le Chat successfully connected to Producer Pal](/img/le-chat-success.png)
 
+<!--@include: ../_partials/check-it-works.md-->
+
 ## Troubleshooting
 
 If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).

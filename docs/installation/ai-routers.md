@@ -50,6 +50,8 @@ company's own prices.
 
 <!--@include: ../_partials/online-ai-notes.md-->
 
+<!--@include: ../_partials/check-it-works.md-->
+
 ## Troubleshooting
 
 If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).

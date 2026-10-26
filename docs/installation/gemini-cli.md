@@ -141,6 +141,8 @@ Pal tools when Gemini tries to use them:
 
 ![Gemini CLI successfully connected to Producer Pal](/img/gemini-success.png)
 
+<!--@include: ../_partials/check-it-works.md-->
+
 ## Troubleshooting
 
 If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).

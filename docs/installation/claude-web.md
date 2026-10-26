@@ -56,6 +56,8 @@ enabled when starting a conversation):
 
 ![Claude web successfully connected to Producer Pal](/img/claude-web-success.png)
 
+<!--@include: ../_partials/check-it-works.md-->
+
 ## Troubleshooting
 
 If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).

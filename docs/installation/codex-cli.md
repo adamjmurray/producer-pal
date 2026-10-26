@@ -107,6 +107,8 @@ With Live open, start a conversation with "connect to ableton".
 
 ![Codex CLI successfully connected to Producer Pal](/img/codex-success.png)
 
+<!--@include: ../_partials/check-it-works.md-->
+
 ## Troubleshooting
 
 If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).

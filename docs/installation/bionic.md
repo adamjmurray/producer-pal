@@ -114,6 +114,8 @@ These flags apply to Bionic only. To set them for the whole device instead
 
 <img src="/img/small-model-mode.png" alt="Small model mode setting" width="375"/>
 
+<!--@include: ../_partials/check-it-works.md-->
+
 ## Local Model Tips
 
 <!--@include: ../_partials/local-model-tips.md-->

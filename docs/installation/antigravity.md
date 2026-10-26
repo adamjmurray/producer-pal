@@ -102,6 +102,8 @@ Pal tools when Antigravity asks:
 
 <img src="/img/antigravity-success.png" alt="Antigravity successfully connected to Producer Pal" width="650"/>
 
+<!--@include: ../_partials/check-it-works.md-->
+
 ## Troubleshooting
 
 If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).

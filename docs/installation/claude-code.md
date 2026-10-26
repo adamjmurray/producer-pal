@@ -83,6 +83,8 @@ Pal tools when Claude tries to use them:
 
 ![Claude Code successfully connected to Producer Pal](/img/claude-code-success.png)
 
+<!--@include: ../_partials/check-it-works.md-->
+
 ## Troubleshooting
 
 If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).

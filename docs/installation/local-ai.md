@@ -87,6 +87,8 @@ the settings are the same. Prefer Bionic's own chat window? See
 
 <!--@include: ../_partials/chat-ui-connect.md-->
 
+<!--@include: ../_partials/check-it-works.md-->
+
 ## Tips
 
 <!--@include: ../_partials/local-model-tips.md-->

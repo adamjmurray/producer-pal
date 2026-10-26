@@ -29,6 +29,8 @@ With Live open, start a conversation with "connect to ableton".
 
 <!--@include: ../_partials/setup-by-ai-finish.md-->
 
+<!--@include: ../_partials/check-it-works.md-->
+
 ## Connection Methods
 
 ### Option A: Local MCP via stdio with npx (Recommended)

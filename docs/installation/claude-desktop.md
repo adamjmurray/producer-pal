@@ -79,6 +79,8 @@ Pal tools when Claude tries to use them:
 
 ![Producer Pal start a conversation](/img/screenshot.png)
 
+<!--@include: ../_partials/check-it-works.md-->
+
 ## Advanced settings
 
 The extension exposes a few optional settings under **Claude Desktop → Settings

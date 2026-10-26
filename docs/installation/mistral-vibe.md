@@ -48,6 +48,8 @@ url = "http://localhost:3350/mcp"
 
 <!--@include: ../_partials/setup-by-ai-finish.md-->
 
+<!--@include: ../_partials/check-it-works.md-->
+
 ## Troubleshooting
 
 If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).

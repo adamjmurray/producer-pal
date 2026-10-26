@@ -103,6 +103,8 @@ You should see a successful connection to Ableton Live:
 
 You can also type `/mcp` in the composer to see the connected MCP servers.
 
+<!--@include: ../_partials/check-it-works.md-->
+
 ## Troubleshooting
 
 If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).
