@@ -29,7 +29,9 @@ export default defineConfig({
           item.url !== "installation/gemini" &&
           item.url !== "installation/openai" &&
           item.url !== "installation/chat-ui-other-providers" &&
-          item.url !== "installation/ollama",
+          item.url !== "installation/ollama" &&
+          item.url !== "installation/web-apps" &&
+          item.url !== "installation/web-tunnels",
       ),
   },
 
@@ -273,10 +275,9 @@ export default defineConfig({
             items: [
               { text: "Other MCP Clients", link: "/installation/other-mcp" },
               {
-                text: "Web Chat",
-                link: "/installation/web-apps",
+                text: "Remote Access",
+                link: "/installation/remote-access",
                 items: [
-                  { text: "Web Tunnels", link: "/installation/web-tunnels" },
                   { text: "claude.ai", link: "/installation/claude-web" },
                   { text: "ChatGPT Web", link: "/installation/chatgpt-web" },
                   { text: "Le Chat", link: "/installation/mistral-le-chat" },

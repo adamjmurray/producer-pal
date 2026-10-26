@@ -186,6 +186,6 @@ all your projects. Details, updating and troubleshooting:
 ## Additional Resources
 
 - **[Upgrading](./installation/upgrading)** - How to update to a new version
-- **[Other Options](./installation/advanced)** - Other MCP clients, and web chat
-  through a web tunnel (not recommended)
+- **[Other Options](./installation/advanced)** - Other MCP clients, and remote
+  access (web chat through a web tunnel is not recommended)
 - **[Troubleshooting](/support/troubleshooting)** - Common issues and solutions

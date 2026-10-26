@@ -5,12 +5,12 @@ subscription or API credits is recommended for regular use.
 
 ## Options
 
-| Option                                | Best For          | Trade-offs                                                   |
-| ------------------------------------- | ----------------- | ------------------------------------------------------------ |
-| [ChatGPT App](./chatgpt-app)          | Most users        | Easy setup.                                                  |
-| [Codex CLI](./codex-cli)              | Developers        | Terminal-based, good for scripting.                          |
-| [Built-in Chat UI](./api-keys#openai) | Direct API access | Requires API key, pay-per-use pricing.                       |
-| [ChatGPT Web](./chatgpt-web)          | Browser only      | Not recommended: needs a public [web tunnel](./web-tunnels). |
+| Option                                | Best For          | Trade-offs                                                                 |
+| ------------------------------------- | ----------------- | -------------------------------------------------------------------------- |
+| [ChatGPT App](./chatgpt-app)          | Most users        | Easy setup.                                                                |
+| [Codex CLI](./codex-cli)              | Developers        | Terminal-based, good for scripting.                                        |
+| [Built-in Chat UI](./api-keys#openai) | Direct API access | Requires API key, pay-per-use pricing.                                     |
+| [ChatGPT Web](./chatgpt-web)          | Browser only      | Not recommended: needs a public [web tunnel](./remote-access#web-tunnels). |
 
 Codex CLI can also use the portable [Agent Skill](/guide/skills) instead of MCP.
 

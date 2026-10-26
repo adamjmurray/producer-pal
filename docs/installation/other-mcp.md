@@ -109,7 +109,8 @@ Ableton Live with Producer Pal Max first.
 Requires Ableton running first, no auto-reconnection. For cloud-hosted LLMs or
 remote access:
 
-1. Set up a [web tunnel](./web-tunnels) (e.g. Cloudflare or Pinggy)
+1. Set up a [web tunnel](./remote-access#web-tunnels) (e.g. Cloudflare or
+   Pinggy)
 2. Configure your LLM with the public URL + `/mcp`
 
 ## Example: Configuring Cline

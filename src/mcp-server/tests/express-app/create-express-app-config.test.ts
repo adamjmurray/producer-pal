@@ -309,7 +309,7 @@ describe("MCP Express App - Config", () => {
       // Unlike /config, /mcp is deliberately NOT localhost-gated: the chat UI's
       // getMcpUrl() points at the page's own origin, so over LAN/tunnel it POSTs
       // /mcp with a non-localhost Origin. A localhost gate here would 403 the
-      // LAN/tunnel chat's own tool calls and break the documented web-tunnels
+      // LAN/tunnel chat's own tool calls and break the documented remote access
       // feature. Locked so the gate isn't added by mistake. (403 is returned
       // only by the /config origin gate, so "not 403" == "not origin-blocked".)
       const response = await fetch(appState.serverUrl, {

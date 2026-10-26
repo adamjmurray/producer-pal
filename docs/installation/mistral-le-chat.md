@@ -10,7 +10,7 @@ Use Producer Pal in your web browser with Mistral's Le Chat web app.
 
 - [Mistral account](https://chat.mistral.ai) (admin privileges required to
   create connectors)
-- [Web tunnel](./web-tunnels) (e.g. Cloudflare or Pinggy)
+- [Web tunnel](./remote-access#web-tunnels) (e.g. Cloudflare or Pinggy)
 
 ## Installation Steps
 
@@ -18,7 +18,8 @@ Use Producer Pal in your web browser with Mistral's Le Chat web app.
 
 ### 2. Set Up a Web Tunnel
 
-Set up [a web tunnel](./web-tunnels) to expose your local Producer Pal server.
+Set up [a web tunnel](./remote-access#web-tunnels) to expose your local Producer
+Pal server.
 
 For example:
 

@@ -9,7 +9,7 @@ Use Producer Pal in your web browser with Anthropic's chat web app.
 <!--@include: ../_partials/live-requirement.md-->
 
 - [Claude account](https://claude.ai)
-- [Web tunnel](./web-tunnels) (e.g. Cloudflare or Pinggy)
+- [Web tunnel](./remote-access#web-tunnels) (e.g. Cloudflare or Pinggy)
 
 ## Installation Steps
 
@@ -17,7 +17,8 @@ Use Producer Pal in your web browser with Anthropic's chat web app.
 
 ### 2. Set Up a Web Tunnel
 
-Set up [a web tunnel](./web-tunnels) to expose your local Producer Pal server.
+Set up [a web tunnel](./remote-access#web-tunnels) to expose your local Producer
+Pal server.
 
 For example:
 

@@ -5,11 +5,11 @@ Vibe (CLI), or Le Chat (web).
 
 ## Options
 
-| Option                                 | Best For     | Trade-offs                                                   |
-| -------------------------------------- | ------------ | ------------------------------------------------------------ |
-| [Built-in Chat UI](./api-keys#mistral) | Most users   | Requires API key, native integration.                        |
-| [Mistral Vibe](./mistral-vibe)         | Developers   | Terminal-based, open-source CLI agent.                       |
-| [Le Chat](./mistral-le-chat)           | Browser only | Not recommended: needs a public [web tunnel](./web-tunnels). |
+| Option                                 | Best For     | Trade-offs                                                                 |
+| -------------------------------------- | ------------ | -------------------------------------------------------------------------- |
+| [Built-in Chat UI](./api-keys#mistral) | Most users   | Requires API key, native integration.                                      |
+| [Mistral Vibe](./mistral-vibe)         | Developers   | Terminal-based, open-source CLI agent.                                     |
+| [Le Chat](./mistral-le-chat)           | Browser only | Not recommended: needs a public [web tunnel](./remote-access#web-tunnels). |
 
 ## Recommendation
 

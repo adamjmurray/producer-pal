@@ -31,8 +31,8 @@ support tools.
 
 - Ensure Producer Pal device is loaded and running in Ableton Live
 - Check that port 3350 is not blocked by firewall
-- For remote connections, verify your [tunnel](/installation/web-tunnels) is
-  active
+- For remote connections, verify your
+  [tunnel](/installation/remote-access#web-tunnels) is active
 
 ## MCP Server Not Found
 

@@ -297,9 +297,9 @@ export function createExpressApp(): Express {
   // or https://*.trycloudflare.com). Gating by isLocalOrigin — or any
   // Origin/Host comparison, which reverse-proxy tunnels defeat by forwarding
   // Host=localhost while Origin stays the public domain — would 403 the
-  // LAN/tunnel chat's own tool calls and break the documented web-tunnels
+  // LAN/tunnel chat's own tool calls and break the documented remote access
   // feature, which is unauthenticated by design (docs/installation/
-  // web-tunnels.md). The localhost-CSRF surface (a web page POSTing to
+  // remote-access.md). The localhost-CSRF surface (a web page POSTing to
   // http://localhost:PORT/mcp) is accepted as part of that "no auth" model.
   app.post("/mcp", async (req: Request, res: Response): Promise<void> => {
     try {

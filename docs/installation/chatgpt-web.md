@@ -11,7 +11,7 @@ Use Producer Pal in your web browser with OpenAI's chat web app.
 - [ChatGPT account](https://chatgpt.com) (at the time of writing, a paid
   subscription is required to access the advanced settings needed for this to
   work)
-- [Web tunnel](./web-tunnels) (e.g. Cloudflare or Pinggy)
+- [Web tunnel](./remote-access#web-tunnels) (e.g. Cloudflare or Pinggy)
 
 ## Installation Steps
 
@@ -19,7 +19,8 @@ Use Producer Pal in your web browser with OpenAI's chat web app.
 
 ### 2. Set Up a Web Tunnel
 
-Set up [a web tunnel](./web-tunnels) to expose your local Producer Pal server.
+Set up [a web tunnel](./remote-access#web-tunnels) to expose your local Producer
+Pal server.
 
 For example:
 

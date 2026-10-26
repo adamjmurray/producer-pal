@@ -158,7 +158,7 @@ Full details are in the [tool reference](/features/tools#take-lanes).
 
 Control Ableton Live from another computer on your local network, no extra setup
 required. For fully remote control, use
-[web tunnels](/installation/web-tunnels).
+[web tunnels](/installation/remote-access#web-tunnels).
 
 ## Small Model Mode {#small-model-mode}
 
