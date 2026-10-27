@@ -100,7 +100,8 @@ setting you toggled on the device.
 
 ### Option B: Local MCP via HTTP
 
-Requires Ableton running first, no auto-reconnection. Use the URL:
+Requires the device running in Live first (install it yourself, see above), no
+auto-reconnection. Use the URL:
 
 ```
 http://localhost:3350/mcp
@@ -115,8 +116,8 @@ Ableton Live with Producer Pal Max first.
 
 ### Option C: Remote MCP via HTTP tunnel
 
-Requires Ableton running first, no auto-reconnection. For cloud-hosted LLMs or
-remote access:
+Requires the device running in Live first (install it yourself, see above), no
+auto-reconnection. For cloud-hosted LLMs or remote access:
 
 1. Set up a [web tunnel](./remote-access#web-tunnels) (e.g. Cloudflare or
    Pinggy)

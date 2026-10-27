@@ -97,7 +97,9 @@ defaults are recommended.
   setting (`barbeat` by default).
 - **Small model mode** — simplifies the tools and instructions for smaller
   models. May improve results with **Claude Haiku**; not recommended otherwise,
-  since Claude Sonnet, Opus, and Fable handle the full toolset.
+  since Claude Sonnet, Opus, and Fable handle the full toolset. Turn it on only
+  after the device is in your Live Set: it hides the tool that sets Producer Pal
+  up.
 - **Direct Live API** — enables the advanced
   [`ppal-live-api`](/features/tools#ppal-live-api) tool for direct access to the
   [Live Object Model](https://docs.cycling74.com/apiref/lom/). An escape hatch
