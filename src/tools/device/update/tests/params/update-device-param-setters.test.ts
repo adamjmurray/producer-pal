@@ -192,7 +192,7 @@ describe("updateDevice - param value conversion", () => {
           max: 1,
         },
         methods: {
-          str_for_value: () => "custom",
+          str_for_value: (v: unknown) => (v === 1 ? "other" : "custom"),
         },
       });
     });

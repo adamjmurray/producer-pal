@@ -17,6 +17,7 @@ import {
   type PublishedValue,
   publishedReadBack,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
+import { roundParamRaw } from "#src/tools/shared/helpers/rounding.ts";
 import { strForValue } from "./param-label-parsing.ts";
 
 /** What a mixer write landed, read back off the object it was written to. */
@@ -128,6 +129,27 @@ export function setParamValueAndVerify(
   return actual === expected
     ? null
     : `was not changed — it still reads "${actual}". Live ignores a value outside the parameter's range.`;
+}
+
+/**
+ * Write a raw value and check it landed by the raw value itself, for a param
+ * whose label is the same at every value (see isDisplayCollapsed), where
+ * comparing labels proves nothing.
+ * @param param - DeviceParameter LiveAPI object
+ * @param rawValue - Raw value to write
+ * @returns Why the value didn't land, or null when it did
+ */
+export function setRawParamValueAndVerify(
+  param: LiveAPI,
+  rawValue: number,
+): string | null {
+  param.set("value", rawValue);
+
+  const actual = roundParamRaw(param.getProperty("value") as number);
+
+  return actual === roundParamRaw(rawValue)
+    ? null
+    : `was not changed — it still reads ${actual}. Live ignores a value outside the parameter's range.`;
 }
 
 /** Why a write to a parameter something else owns lands nowhere. */

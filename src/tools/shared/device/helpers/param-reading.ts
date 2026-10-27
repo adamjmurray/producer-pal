@@ -11,13 +11,17 @@ import {
   markSuperseded,
 } from "#src/tools/shared/helpers/entry-details.ts";
 import {
+  roundDisplayValue,
+  roundParamRaw,
+} from "#src/tools/shared/helpers/rounding.ts";
+import {
   looseLabelKey,
   parseLabel,
   strForValue,
   unitForLabels,
 } from "./param-label-parsing.ts";
 import { recordedUnitFor } from "../known-param-units.ts";
-import { readNumericRange } from "./param-numeric-range.ts";
+import { isDisplayCollapsed, readNumericRange } from "./param-numeric-range.ts";
 
 // Parameter state mapping (0=active, 1=inactive, 2=disabled)
 export const PARAM_STATE_MAP: Record<number, string> = {
@@ -313,6 +317,21 @@ export function readParameter(
   const valueLabel = strForValue(paramApi, rawValue);
   const minLabel = strForValue(paramApi, rawMin);
   const maxLabel = strForValue(paramApi, rawMax);
+
+  // No display range to read, so report raw units — update-device takes them
+  if (isDisplayCollapsed(rawMin, rawMax, minLabel, maxLabel)) {
+    const result: Record<string, unknown> = {
+      id: paramApi.id,
+      name,
+      value: roundDisplayValue(rawValue, roundParamRaw),
+      min: rawMin,
+      max: rawMax,
+    };
+
+    addStateFlags(result, paramApi, state, automationState);
+
+    return result;
+  }
 
   // Check for division-type params (fraction format like "1/8")
   if (isDivisionParam(valueLabel, minLabel, maxLabel)) {

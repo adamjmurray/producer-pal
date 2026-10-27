@@ -395,10 +395,27 @@ describe("param-reading", () => {
       });
     });
 
+    it("reads raw units when every value prints the same label", () => {
+      // A plug-in whose str_for_value ignores its argument (ValhallaFreqEcho)
+      setupParamMock({ name: "wetDry", value: 0.30000001192092896 });
+
+      mockCall.mockImplementation(() => "50.0 %");
+
+      expect(readParameter(createMockParamApi("param_wet"))).toStrictEqual({
+        id: "param_wet",
+        name: "wetDry",
+        value: 0.3,
+        min: 0,
+        max: 1,
+      });
+    });
+
     it("reads parameter with unparseable labels using display_value", () => {
       setupParamMock({ name: "Mode", displayValue: "Repitch" });
 
-      mockCall.mockImplementation(() => "Repitch");
+      mockCall.mockImplementation((_method: string, value: number) =>
+        value === 1 ? "Complex" : "Repitch",
+      );
 
       const result = readParameter(createMockParamApi("param_mode"));
 
@@ -433,7 +450,10 @@ describe("param-reading", () => {
       mockGet.mockImplementation((prop: string) =>
         prop === "display_value" ? [] : base(prop),
       );
-      mockCall.mockImplementation(() => "Repitch"); // unparseable label
+      // unparseable labels
+      mockCall.mockImplementation((_method: string, value: number) =>
+        value === 1 ? "Complex" : "Repitch",
+      );
 
       const result = readParameter(createMockParamApi("param_raw_fallback"));
 
