@@ -72,6 +72,15 @@ load the device.
 before removing it, or open one of Live's automatic project backups (Live keeps
 several).
 
+## Library Search Misses New Plug-ins and Samples
+
+Live saves new library entries, like a plug-in you just installed or a sample
+you just added, in a place Producer Pal can't read until Live quits. Until then,
+`ppal-library` won't find them, even though Live's browser shows them. Asking
+for a plug-in by name still loads it.
+
+**Workaround:** quit and reopen Live. Reopening a Set is not enough.
+
 ## Live's Memory Grows Over Very Long Sessions
 
 Each request uses a tiny bit of Live's memory, which Live gives back only when
