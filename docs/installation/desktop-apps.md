@@ -1,12 +1,12 @@
 # Desktop Apps
 
-## Claude Desktop (Recommended)
+## Claude Desktop
 
-Anthropic's desktop app. The easiest way to use Producer Pal.
+Anthropic's desktop app. Producer Pal installs as an extension.
 
 - **Difficulty:** Easy — download, install, done
 - **Cost:** Subscription recommended
-- **Best for:** Most users wanting the simplest setup
+- **Best for:** Claude users
 
 [Get started with Claude Desktop →](./claude-desktop)
 
@@ -34,17 +34,16 @@ config file — one extra step, but everything else is the same.
 
 [Get started with Google Antigravity →](./antigravity)
 
-## Bionic / LM Studio (Advanced)
+## Bionic / LM Studio
 
 LM Studio's agent app for open models, running entirely on your machine.
 
 <!--@include: ../_partials/local-ai-warning.md-->
 
-It also takes more setup than the other apps, and online AI is faster and
-smarter.
+Online AI is faster and smarter.
 
-- **Difficulty:** Advanced
+- **Difficulty:** Easy — download a model, then add Producer Pal in settings
 - **Cost:** Free (uses your hardware)
-- **Best for:** Privacy-focused users with capable hardware
+- **Best for:** Free, private, offline use on a powerful computer
 
 [Bionic setup guide →](./bionic)

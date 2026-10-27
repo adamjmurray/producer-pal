@@ -1,7 +1,7 @@
 # Claude Desktop Installation
 
-Anthropic's Claude Desktop app is one of the easiest (and recommended) ways to
-use Producer Pal.
+Anthropic's Claude Desktop app is an easy way to use Producer Pal with a Claude
+account.
 
 ## Requirements
 

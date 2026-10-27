@@ -17,8 +17,7 @@ MCP.
 
 ## Recommendation
 
-**Claude Desktop** is the easiest and most reliable option. It's what Producer
-Pal was originally built for.
+**Claude Desktop** is the easiest and most reliable option.
 
 ## Model Notes
 

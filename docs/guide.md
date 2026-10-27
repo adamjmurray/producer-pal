@@ -20,8 +20,7 @@ Quick options:
 
 - **[Built-in Chat UI](/installation/chat-ui)** - Works with local AI, an AI
   router like OpenRouter, or your own API key
-- **[Claude Desktop](/installation/claude-desktop)** - Recommended for Anthropic
-  users
+- **[Claude Desktop](/installation/claude-desktop)** - Anthropic's desktop app
 - **[Command Line Tools](/installation#command-line)** - Gemini CLI, Codex CLI,
   Claude Code, and other MCP-compatible coding agents
 - **[Local Models](/installation/choose-local)** - Run completely offline with
