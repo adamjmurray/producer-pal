@@ -176,8 +176,10 @@ describe("ppal-manage add-producer-pal", () => {
     expect(text).toContain("Nothing was added to the Set");
   });
 
-  it("needs the remote script, and copies nothing without it", async () => {
-    const { library, portal } = await setup(ADDED, { scriptRunning: false });
+  it("without the remote script, installs the device file and adds nothing", async () => {
+    const { library, script, portal } = await setup(ADDED, {
+      scriptRunning: false,
+    });
 
     const { text, isError } = await callToolText(portal, "ppal-manage", {
       action: "add-producer-pal",
@@ -185,8 +187,14 @@ describe("ppal-manage add-producer-pal", () => {
     });
 
     expect(isError).toBe(true);
-    expect(text).toContain("remote script isn't running");
-    expect(existsSync(join(library, "Presets"))).toBe(false);
+    expect(text).toContain("nothing was added to the Live Set");
+    expect(text).toContain("remote script, and it isn't running");
+    expect(text).toContain(`The device file is at ${join(library, ...AMXD)}.`);
+    expect(text).toContain("open Live and drag the file");
+    expect(text).toContain('ppal-manage action "install-producer-pal"');
+    expect(text).toContain("call add-producer-pal again");
+    expect(existsSync(join(library, ...AMXD))).toBe(true);
+    expect(script.requests.filter((r) => r.route === "/load")).toHaveLength(0);
   });
 
   it("says a portal with no bundled device can't add one", async () => {

@@ -6,11 +6,13 @@
 // ppal-manage add-producer-pal while the device is offline: copy the bundled
 // device into the User Library, have the remote script load it onto a new MIDI
 // track, and wait for its server to answer. Each failure says what it left
-// behind, since the Set may have changed.
+// behind, since the Set may have changed. Without a running remote script it
+// stops after the copy: nothing is added, and the answer is an error.
 
 import {
   replyError,
   type RemoteScriptAnswer,
+  type RemoteScriptPing,
 } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { RemoteScriptTimeout } from "#src/mcp-server/rpc/remote-script/remote-script-errors.ts";
 import { UPDATE_PORTAL_ADVICE } from "#src/shared/config.ts";
@@ -25,11 +27,14 @@ import { requestWithBrowserRetry } from "../setup/browser-retry-request.ts";
 import { type DeviceInstallResult } from "../setup/device-install.ts";
 import { userLibraryFor } from "../setup/library-for-device.ts";
 import { pollUntil } from "../setup/poll-until.ts";
-import { remoteScriptReady } from "../setup/remote-script-ready.ts";
+import {
+  RemoteScriptNotRunning,
+  remoteScriptReady,
+} from "../setup/remote-script-ready.ts";
 import { SetupFailed, type SetupPurpose } from "../setup/setup-failure.ts";
 import { type OfflineDeps } from "./offline-deps.ts";
 import { offlineError, offlineResult } from "./offline-responses.ts";
-import { SETUP_URL } from "./offline-setup-hints.ts";
+import { SETUP_URL, scriptSetupSteps } from "./offline-setup-hints.ts";
 
 const ADD: SetupPurpose = {
   action: "add-producer-pal",
@@ -60,7 +65,18 @@ export async function addProducerPal(
 ): Promise<McpResponse> {
   try {
     const bundled = requireBundledDevice(deps, ADD);
-    const ping = await remoteScriptReady(deps, ADD);
+    let ping: RemoteScriptPing;
+
+    try {
+      ping = await remoteScriptReady(deps, ADD);
+    } catch (error) {
+      if (error instanceof RemoteScriptNotRunning) {
+        return await deviceFileOnly(userLibrary, error.ping, bundled, deps);
+      }
+
+      throw error;
+    }
+
     const library = await userLibraryFor(userLibrary, ping, deps, ADD);
     const device = copyDevice(library, bundled, deps);
     const track = await loadDevice(device.path, deps);
@@ -74,6 +90,48 @@ export async function addProducerPal(
     });
   } catch (error) {
     return offlineError(errorMessage(error));
+  }
+}
+
+/**
+ * Without a running remote script nothing can be added to the Set. Put the
+ * device file in the User Library anyway, so the user can drag it onto a track
+ * or finish the script setup. Still an error: what the call was for didn't
+ * happen.
+ * @param userLibrary - The User Library the call gave, if any
+ * @param ping - The remote script's answer, which found it not running
+ * @param bundled - The device file that shipped with the portal
+ * @param deps - What the steps reach out to
+ * @returns An error saying nothing was added, where the file is, and what next
+ * @throws SetupFailed when no library is known or the copy failed with no file there
+ */
+async function deviceFileOnly(
+  userLibrary: string | undefined,
+  ping: RemoteScriptPing,
+  bundled: string,
+  deps: OfflineDeps,
+): Promise<McpResponse> {
+  const library = await userLibraryFor(userLibrary, ping, deps, ADD);
+  const device = copyDevice(library, bundled, deps);
+
+  // The file is in place from here on: nothing below may fail the answer.
+  return offlineError(
+    `nothing was added to the Live Set: adding the device needs the Producer Pal remote script, and it isn't running. The device file is at ${device.path}. Device: ${device.note}. ` +
+      `Two ways forward. (1) Tell the user to open Live and drag the file from the browser (User Library) onto a MIDI track. (2) Finish the remote script setup. ${scriptSteps(library, deps)} Then call add-producer-pal again.`,
+  );
+}
+
+/**
+ * @param library - Absolute path to the User Library
+ * @param deps - The remote script lookup
+ * @returns The steps that get the remote script running
+ */
+function scriptSteps(library: string, deps: OfflineDeps): string {
+  try {
+    return scriptSetupSteps(deps.installedRemoteScript(library));
+  } catch {
+    // The steps for a script that isn't installed hold either way.
+    return scriptSetupSteps(undefined);
   }
 }
 

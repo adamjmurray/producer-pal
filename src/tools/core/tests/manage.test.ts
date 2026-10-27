@@ -161,7 +161,7 @@ describe("ppal-manage undo and redo", () => {
       `undo needs the Producer Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`,
     );
     expect(REMOTE_SCRIPT_SETUP).toContain(
-      'ppal-manage action "install-remote-script"',
+      'ppal-manage action "install-producer-pal"',
     );
   });
 
@@ -204,15 +204,22 @@ describe("ppal-manage undo and redo", () => {
   });
 });
 
-describe("ppal-manage install-remote-script", () => {
-  it("reports the version and path, and what the user does next", async () => {
-    answers({ installed: true, version: "2.5.0", path: "/lib/Producer_Pal" });
+const SCRIPT_OK = {
+  status: "installed",
+  version: "2.5.0",
+  path: "/lib/Producer_Pal",
+};
+const DEVICE_OK = { status: "installed", path: "/lib/Producer_Pal.amxd" };
 
-    const result = await manage({ action: "install-remote-script" });
+describe("ppal-manage install-producer-pal", () => {
+  it("reports the remote script and the device, and what the user does next", async () => {
+    answers({ ran: true, remoteScript: SCRIPT_OK, device: DEVICE_OK });
+
+    const result = await manage({ action: "install-producer-pal" });
 
     expect(result).toStrictEqual({
-      version: "2.5.0",
-      path: "/lib/Producer_Pal",
+      remoteScript: SCRIPT_OK,
+      device: DEVICE_OK,
       nextSteps: expect.stringMatching(
         /^Tell the user to finish in Live: restart Live, then, on first install, choose "Producer Pal" as a Control Surface/,
       ),
@@ -224,10 +231,27 @@ describe("ppal-manage install-remote-script", () => {
     ]);
   });
 
-  it("passes the User Library, trimmed", async () => {
-    answers({ installed: true, version: "2.5.0", path: "/p" });
+  it("doesn't send the user to add-producer-pal, since Producer Pal is running", async () => {
+    answers({ ran: true, remoteScript: SCRIPT_OK, device: DEVICE_OK });
 
-    await manage({ action: "install-remote-script", userLibrary: " /lib " });
+    const result = await manage({ action: "install-producer-pal" });
+
+    expect(JSON.stringify(result)).not.toContain("add-producer-pal");
+  });
+
+  it("treats the retired name exactly as the new one", async () => {
+    answers({ ran: true, remoteScript: SCRIPT_OK, device: DEVICE_OK });
+
+    const retired = await manage({ action: "install-remote-script" });
+    const current = await manage({ action: "install-producer-pal" });
+
+    expect(retired).toStrictEqual(current);
+  });
+
+  it("passes the User Library, trimmed", async () => {
+    answers({ ran: true, remoteScript: SCRIPT_OK, device: DEVICE_OK });
+
+    await manage({ action: "install-producer-pal", userLibrary: " /lib " });
 
     expect(vi.mocked(requestNode).mock.calls[0]?.[1]).toStrictEqual({
       userLibrary: "/lib",
@@ -235,21 +259,57 @@ describe("ppal-manage install-remote-script", () => {
   });
 
   it("sends no User Library for a blank one", async () => {
-    answers({ installed: true, version: "2.5.0", path: "/p" });
+    answers({ ran: true, remoteScript: SCRIPT_OK, device: DEVICE_OK });
 
-    await manage({ action: "install-remote-script", userLibrary: "  " });
+    await manage({ action: "install-producer-pal", userLibrary: "  " });
 
     expect(vi.mocked(requestNode).mock.calls[0]?.[1]).toStrictEqual({});
   });
 
-  it("refuses with Node's reason, which says what state the install left", async () => {
-    answers({
-      installed: false,
-      error: "the install failed (EACCES). any previous install is unchanged",
+  it("reports the file that installed when the other failed, not an error", async () => {
+    const failed = { ok: false, detail: "the device file is in use" };
+
+    answers({ ran: true, remoteScript: SCRIPT_OK, device: failed });
+
+    expect(await manage({ action: "install-producer-pal" })).toStrictEqual({
+      remoteScript: SCRIPT_OK,
+      device: failed,
+      nextSteps: expect.stringContaining(
+        "Only the remote script was installed; the device was not (see device).",
+      ),
     });
 
-    await expect(manage({ action: "install-remote-script" })).rejects.toThrow(
-      "the install failed (EACCES). any previous install is unchanged",
+    answers({ ran: true, remoteScript: failed, device: DEVICE_OK });
+
+    expect(await manage({ action: "install-producer-pal" })).toStrictEqual({
+      remoteScript: failed,
+      device: DEVICE_OK,
+      nextSteps: expect.stringContaining(
+        "Only the device was installed; the remote script was not (see remoteScript).",
+      ),
+    });
+  });
+
+  it("refuses naming both reasons when neither installed", async () => {
+    answers({
+      ran: true,
+      remoteScript: { ok: false, detail: "EACCES." },
+      device: { ok: false, detail: "EBUSY" },
+    });
+
+    await expect(manage({ action: "install-producer-pal" })).rejects.toThrow(
+      "nothing was installed. Remote script: EACCES. Device: EBUSY.",
+    );
+  });
+
+  it("refuses with Node's reason when nothing was tried", async () => {
+    answers({
+      ran: false,
+      error: "couldn't find Live's User Library, so nothing was installed.",
+    });
+
+    await expect(manage({ action: "install-producer-pal" })).rejects.toThrow(
+      "couldn't find Live's User Library, so nothing was installed.",
     );
   });
 
@@ -259,7 +319,7 @@ describe("ppal-manage install-remote-script", () => {
       error: "timed out",
     });
 
-    await expect(manage({ action: "install-remote-script" })).rejects.toThrow(
+    await expect(manage({ action: "install-producer-pal" })).rejects.toThrow(
       /may or may not have finished\. Run it again/,
     );
   });
@@ -268,20 +328,20 @@ describe("ppal-manage install-remote-script", () => {
 describe("ppal-manage refusals", () => {
   it("needs an action", async () => {
     await expect(manage({})).rejects.toThrow(
-      "action must be one of: install-remote-script, add-producer-pal, update-producer-pal, undo, redo",
+      "action must be one of: install-producer-pal, add-producer-pal, update-producer-pal, undo, redo",
     );
     await expect(manage()).rejects.toThrow("action must be one of");
   });
 
   it("refuses an unknown action, naming it", async () => {
     await expect(manage({ action: "reboot" })).rejects.toThrow(
-      'action must be one of: install-remote-script, add-producer-pal, update-producer-pal, undo, redo, not "reboot"',
+      'action must be one of: install-producer-pal, add-producer-pal, update-producer-pal, undo, redo, not "reboot"',
     );
   });
 
   it("refuses steps on an install, before asking anything", async () => {
     await expect(
-      manage({ action: "install-remote-script", steps: 2 }),
+      manage({ action: "install-producer-pal", steps: 2 }),
     ).rejects.toThrow(/steps is only for action "undo" or "redo"/);
     expect(requestNode).not.toHaveBeenCalled();
   });
@@ -290,7 +350,7 @@ describe("ppal-manage refusals", () => {
     "refuses userLibrary on %s, before asking anything",
     async (action) => {
       await expect(manage({ action, userLibrary: "/lib" })).rejects.toThrow(
-        /userLibrary is only for action "install-remote-script", "add-producer-pal" or "update-producer-pal"/,
+        /userLibrary is only for action "install-producer-pal", "add-producer-pal" or "update-producer-pal"/,
       );
       expect(requestNode).not.toHaveBeenCalled();
     },

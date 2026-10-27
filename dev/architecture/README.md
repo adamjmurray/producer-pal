@@ -136,7 +136,7 @@ the MCP server. Provides graceful fallback when Producer Pal is not running.
 - Graceful degradation when Live isn't running
 - Answers calls itself when the device is offline (`src/portal/offline/`): it
   pings the remote script to say whether Live is up without Producer Pal, and
-  runs `ppal-manage` `install-remote-script` and `add-producer-pal`. See
+  runs `ppal-manage` `install-producer-pal` and `add-producer-pal`. See
   [ppal-manage](../specs/tool-behavior/ppal-manage.md#while-producer-pal-isnt-running).
 - Updates the running device in place (`src/portal/update/`): the bridge answers
   `ppal-manage` `update-producer-pal` itself, online or off, since the device it

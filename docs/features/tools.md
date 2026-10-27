@@ -66,8 +66,9 @@ gives you this shape.
 
 ### Manage (`ppal-manage`) {#ppal-manage}
 
-- Install the [Producer Pal remote script](/guide/remote-script) into your User
-  Library, without opening the Chat UI. Restart Live afterwards.
+- Install the [Producer Pal remote script](/guide/remote-script) and the
+  Producer Pal device into your User Library, without opening the Chat UI.
+  Restart Live afterwards.
 - Add the Producer Pal device to the open Live Set, on a new MIDI track, and
   install it in your User Library first if needed. Works while Producer Pal
   isn't running yet, through `npx producer-pal` or the Claude Desktop extension.

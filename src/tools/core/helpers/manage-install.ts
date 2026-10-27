@@ -6,22 +6,22 @@
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import {
   INSTALL_WAIT_MS,
-  manageInstallResult,
   type InstallReply,
   type InstallRequest,
   MANAGE_ROUTES,
   type ManageInstallResult,
 } from "./manage-contract.ts";
+import { manageInstallResult } from "./manage-install-result.ts";
 
 /**
- * Install the bundled remote script into the User Library, in Node (V8 has no
- * filesystem).
+ * Install the remote script and this device into the User Library, in Node (V8
+ * has no filesystem). Producer Pal is running, since this is the device.
  *
  * No answer says nothing of whether the files were written. An install replaces
  * the old copy whole, so running it again is safe.
  * @param userLibrary - Absolute path to the User Library; absent means Node
  *   looks for it
- * @returns The version and path installed, and what the user does next
+ * @returns What became of each file, and what the user does next
  * @throws Error when the install was refused or failed, with the state it left
  */
 export async function installFromTool(
@@ -44,5 +44,5 @@ export async function installFromTool(
     );
   }
 
-  return manageInstallResult(reply);
+  return manageInstallResult(reply, { running: true });
 }
