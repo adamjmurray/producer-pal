@@ -10,7 +10,7 @@ Use Producer Pal with Anthropic's command line coding assistant.
 
 - [Node.js 20+](https://nodejs.org/en/download)
 - [Claude Code](https://www.anthropic.com/claude-code) (requires Anthropic
-  account, and a paid subscription at time of writing)
+  account; a paid subscription is recommended)
 
 ## Installation Steps
 

@@ -5,7 +5,7 @@
 Anthropic's desktop app. The easiest way to use Producer Pal.
 
 - **Difficulty:** Easy — download, install, done
-- **Cost:** Subscription required
+- **Cost:** Subscription recommended
 - **Best for:** Most users wanting the simplest setup
 
 [Get started with Claude Desktop →](./claude-desktop)
