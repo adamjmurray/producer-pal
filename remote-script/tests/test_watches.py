@@ -514,6 +514,7 @@ class MoveTest(RegistryCase):
                     "kind": "moved",
                     "fields": ["path"],
                     "path": "t1/s0",
+                    "fingerprint": {"name": "Bass", "length": 8.0},
                 }
             ],
         )
@@ -640,6 +641,32 @@ class EventTest(RegistryCase):
 
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["kind"], "gone")
+
+    def test_a_changed_event_carries_the_clips_current_fingerprint(self):
+        self.watch()
+        self.clip._name = "Bass2"
+        self.clip._length = 16.0
+        self.clip.fire("name")
+        events = self.events()
+
+        self.assertEqual(events[0]["fingerprint"], {"name": "Bass2", "length": 16.0})
+
+    def test_a_gone_event_has_no_fingerprint(self):
+        self.watch()
+        self.slot.delete_clip()
+        events = self.events()
+
+        self.assertEqual(events[0]["kind"], "gone")
+        self.assertNotIn("fingerprint", events[0])
+
+    def test_a_clip_that_dies_between_the_check_and_the_read_still_flushes(self):
+        self.watch()
+        self.clip.fire("notes")
+        with mock.patch.object(watches, "_fingerprint", side_effect=RuntimeError):
+            events = self.events()
+
+        self.assertEqual(events[0]["kind"], "changed")
+        self.assertNotIn("fingerprint", events[0])
 
     def test_a_reader_gets_only_what_is_after_its_position(self):
         self.watch()

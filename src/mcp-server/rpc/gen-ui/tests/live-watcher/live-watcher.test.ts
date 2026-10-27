@@ -5,23 +5,23 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type ClipWidget, type GenUiEvent } from "#src/shared/gen-ui-types.ts";
-import { type RemoteScriptRequest } from "../../remote-script/remote-script-client.ts";
-import { FakeScript } from "./gen-ui-test-helpers.ts";
-import { RemoteScriptTimeout } from "../../remote-script/remote-script-errors.ts";
+import { type RemoteScriptRequest } from "../../../remote-script/remote-script-client.ts";
+import { FakeScript } from "../gen-ui-test-helpers.ts";
+import { RemoteScriptTimeout } from "../../../remote-script/remote-script-errors.ts";
 import {
   getSync,
   resetHubForTesting,
   setSync,
   subscribe,
-} from "../gen-ui-hub.ts";
-import { encodeWidgets } from "../widget-blob.ts";
+} from "../../gen-ui-hub.ts";
+import { encodeWidgets } from "../../widget-blob.ts";
 import {
   LiveWatcher,
   POLL_MS,
   REFUSED_RETRY_MS,
   RETRY_MS,
   type WatcherDeps,
-} from "../live-watcher.ts";
+} from "../../live-watcher.ts";
 import {
   createWidget,
   listWidgets,
@@ -30,7 +30,7 @@ import {
   resetWidgetStoreForTesting,
   updateClipState,
   updateWidget,
-} from "../widget-store.ts";
+} from "../../widget-store.ts";
 
 let script: FakeScript;
 let published: GenUiEvent[];

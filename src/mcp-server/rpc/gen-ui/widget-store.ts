@@ -23,6 +23,8 @@ export type StoreResult =
   | { ok: true; widget: Widget }
   | { ok: false; error: string; notFound?: boolean };
 
+type Fingerprint = { name: string; length: number };
+
 const TOO_MANY =
   "The Live Set can't hold more widgets; remove one first (the list is saved inside the Set)";
 
@@ -130,7 +132,7 @@ export function updateClipState(
   id: string,
   state: {
     ref?: string;
-    fingerprint?: { name: string; length: number };
+    fingerprint?: Fingerprint;
     gone?: boolean;
   },
 ): StoreResult {
@@ -264,4 +266,36 @@ function commit(change: WidgetChange): void {
   } catch (error) {
     console.warn(`Could not save the UI widgets: ${errorMessage(error)}`);
   }
+}
+
+/** Beats two lengths may differ by and still match. Same as the script's. */
+const LENGTH_TOLERANCE = 1e-4;
+
+/**
+ * @param stored - The fingerprint a widget holds, if any
+ * @param reported - What the remote script says the clip is now
+ * @returns The new fingerprint when the clip's name or length has changed
+ */
+export function changedFingerprint(
+  stored: Fingerprint | undefined,
+  reported: unknown,
+): Fingerprint | undefined {
+  const differs =
+    isFingerprint(reported) &&
+    (stored?.name !== reported.name ||
+      Math.abs(stored.length - reported.length) > LENGTH_TOLERANCE);
+
+  return differs ? reported : undefined;
+}
+
+/**
+ * @param value - Anything a reply field may hold
+ * @returns True for `{name, length}`
+ */
+export function isFingerprint(value: unknown): value is Fingerprint {
+  const candidate = value as { name?: unknown; length?: unknown } | null;
+
+  return (
+    typeof candidate?.name === "string" && typeof candidate.length === "number"
+  );
 }

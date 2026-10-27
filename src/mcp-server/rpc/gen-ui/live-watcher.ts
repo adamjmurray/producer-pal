@@ -32,7 +32,12 @@ import {
   type RemoteScriptRequest,
 } from "../remote-script/remote-script-client.ts";
 import { publish, setSync, subscribe } from "./gen-ui-hub.ts";
-import { listWidgets, updateClipState } from "./widget-store.ts";
+import {
+  changedFingerprint,
+  isFingerprint,
+  listWidgets,
+  updateClipState,
+} from "./widget-store.ts";
 
 /** How often to ask the script for events while it answers. */
 export const POLL_MS = 300;
@@ -407,6 +412,18 @@ export class LiveWatcher {
         paths.unshift(path);
       }
 
+      // Keep the fingerprint current, so a rename or resize by hand doesn't
+      // make the clip look different after a reopen. The ref is unchanged, so
+      // onEvent still sees the same clip.
+      const fingerprint =
+        item.kind === "gone"
+          ? undefined
+          : changedFingerprint(clip.fingerprint, item.fingerprint);
+
+      if (fingerprint != null) {
+        this.deps.updateClipState(clip.id, { fingerprint });
+      }
+
       this.deps.publish({
         type: "live",
         tool: "remote-script",
@@ -531,18 +548,4 @@ export function startLiveWatcher(): void {
 export function stopLiveWatcher(): void {
   shared?.stop();
   shared = undefined;
-}
-
-/**
- * @param value - Anything a reply field may hold
- * @returns True for `{name, length}`
- */
-function isFingerprint(
-  value: unknown,
-): value is { name: string; length: number } {
-  const candidate = value as { name?: unknown; length?: unknown } | null;
-
-  return (
-    typeof candidate?.name === "string" && typeof candidate.length === "number"
-  );
 }

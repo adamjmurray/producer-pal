@@ -220,9 +220,20 @@ class WatchRegistry:
                 event["path"] = mark["path"]
             if mark.get("reason"):
                 event["reason"] = mark["reason"]
+            self._add_fingerprint(owner, event)
             self._events.append(event)
         while len(self._events) > self._max_events:
             self._events.popleft()
+
+    def _add_fingerprint(self, owner, event):
+        """Let the reader keep its stored fingerprint current. Not for gone clips."""
+        entry = self._watches.get(owner)
+        if event["kind"] == "gone" or entry is None or entry.state != "watching":
+            return
+        try:
+            event["fingerprint"] = _fingerprint(entry.clip)
+        except Exception:
+            pass  # the object died since the check; the next read says so
 
     def _verify(self, song, entry):
         """Is the clip still in a slot, and which one? Reading a dead object raises."""
