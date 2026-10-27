@@ -6,8 +6,8 @@
 // How a caller is told to get the Producer Pal remote script running. One
 // wording, so every feature that needs it sends the model the same way.
 
-/** The tool call that installs it. */
-export const INSTALL_WITH_TOOL = 'ppal-manage action "install-remote-script"';
+/** The tool call that installs it, along with the device. */
+export const INSTALL_WITH_TOOL = 'ppal-manage action "install-producer-pal"';
 
 /** What the remote script adds, for a model deciding whether to suggest it. */
 export const REMOTE_SCRIPT_ADDS =

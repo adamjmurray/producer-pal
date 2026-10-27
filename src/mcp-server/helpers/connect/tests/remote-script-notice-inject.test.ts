@@ -74,7 +74,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const INSTALL = 'ppal-manage action "install-remote-script"';
+const INSTALL = 'ppal-manage action "install-producer-pal"';
 const ENABLE_IN_LIVE =
   "restart Live, then choose Producer Pal as a Control Surface in Settings → Tempo & MIDI, with Input and Output left as None";
 

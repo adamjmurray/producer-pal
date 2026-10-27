@@ -1,10 +1,11 @@
 # ppal-manage
 
 Actions on Live itself, not on a track, clip or device: install the remote
-script, add Producer Pal to the open Set, update the running Producer Pal
-device, and undo and redo in Live's history. One call is one action, so there
-are no target lists, no entries and no skips: a call that can't do its action
-throws.
+script and the device, add Producer Pal to the open Set, update the running
+Producer Pal device, and undo and redo in Live's history. One call is one
+action, so there are no target lists, no entries and no skips: a call that can't
+do its action throws. The one call with two parts, `install-producer-pal`,
+reports each part for itself (see [below](#install-producer-pal)).
 
 It is not a target-list write, so it doesn't run through the
 [write pipeline](../../tools/write-pipeline.md), and the tool closes no undo
@@ -24,35 +25,73 @@ hidden until the script is installed would be missing when it's needed.
 ## Refusals before anything runs
 
 - A missing or unknown `action` throws, listing the five:
-  `action must be one of: install-remote-script, add-producer-pal, update-producer-pal, undo, redo`.
-- `userLibrary` is only for `install-remote-script`, `add-producer-pal` and
+  `action must be one of: install-producer-pal, add-producer-pal, update-producer-pal, undo, redo`.
+- **`install-remote-script` is the retired name of `install-producer-pal`.** It
+  is accepted everywhere the new name is, and read as it. The schema and
+  descriptions publish only the new name. The connector and the device can be
+  different versions, so an older device advertises the old name and an older
+  connector sends it. The mapping lives in one place (`MANAGE_ACTION_ALIASES` in
+  `manage-contract.ts`) and serves the device's schema, the argument checks the
+  portal shares, and the portal's own check for an older device.
+- `userLibrary` is only for `install-producer-pal`, `add-producer-pal` and
   `update-producer-pal`. On `undo` or `redo` it is refused as any
   [param only another action reads](refusals.md#a-param-only-another-action-reads).
 
-## `install-remote-script`
+## `install-producer-pal`
 
-Writes the bundled script into the User Library, replacing any copy, as Settings
-→ Installation does. It runs in Node and needs no running remote script.
+Writes the remote script and the Producer Pal device into the User Library, as
+Settings → Installation does. It runs in Node and needs no running remote
+script.
 
-- **Where:** `userLibrary` if given, else the User Library Producer Pal finds
-  (the same lookup the Chat UI uses).
-- **Result:** `{ version, path, nextSteps }`. `nextSteps` tells the user to
-  choose Producer Pal as a Control Surface in Settings → Tempo & MIDI on a first
-  install, then restart Live.
+- **Where:** `userLibrary` if given. Otherwise, on the device, the User Library
+  Producer Pal finds (the lookup the Chat UI uses); in the portal, the one the
+  running remote script reports, then the one Producer Pal finds, the order
+  `add-producer-pal` and `update-producer-pal` use, so the files land where
+  `add-producer-pal` later looks. Both files go to the same library.
+- **The script** is replaced whole, whatever is there.
+- **The device** is version-aware, as the Chat UI's install without `force`: an
+  older one is replaced; the same one is left (`current`); a newer one, or one
+  that can't be ordered against it, is left (`kept`, with a `detail`). The file
+  copied is the running device's own when the device answers, else the one that
+  shipped with the portal. A development device (not frozen) can't be copied.
+- **Result:** `{ remoteScript, device, nextSteps }`. Each of the two is one of
+  - `{ status, path, version?, detail? }`, where `status` is `installed`,
+    `updated`, `current` or `kept` (`detail` explains an update or a kept copy),
+    or
+  - `{ ok: false, path?, detail }`, for a file that couldn't be installed:
+    `detail` says why and what it left.
+
+  `nextSteps` tells the user to restart Live and choose Producer Pal as a
+  Control Surface in Settings → Tempo & MIDI (Input and Output None). When
+  Producer Pal isn't running yet it adds: call `add-producer-pal` (the model
+  asks first), and the device is already in the User Library, so the user can
+  also drag it onto a MIDI track in Live right away, without the restart.
+
+- **One part fails:** the call does what it can and reports both. It is a
+  result, not an error: the part that failed is `{ ok: false, path?, detail }`,
+  the other says what it did, and `nextSteps` says which half is missing and how
+  to retry. It never claims success for the failed half and never hides a
+  completed one.
+- **Both fail:** throws, naming both reasons
+  (`nothing was installed. Remote script: <detail>. Device: <detail>.`), or the
+  reason once when it is the same.
 - **No User Library found, none given:** throws, saying nothing was installed
   and to ask the user for the path (Live: Settings → Library → Location of User
-  Library) and pass it as `userLibrary`.
+  Library) and pass it as `userLibrary`. Neither part was tried.
 - **A path that isn't an absolute path to a folder:** throws, saying nothing was
   installed, with the same advice.
-- **A write that fails partway:** throws, saying what it left. The new copy is
+- **A script write that fails partway:** the script part is
+  `{ ok: false, detail }`, with `detail` saying what it left. The new copy is
   written beside the old and swapped in, so the old install is unchanged and no
-  half-written folder is kept (if it can't be removed, the error names where it
-  is). If the swap itself fails and the old copy can't be put back, it says the
-  previous copy was moved aside (the error names where) and the remote script is
-  missing until the install runs again.
+  half-written folder is kept (if it can't be removed, the `detail` names where
+  it is). If the swap itself fails and the old copy can't be put back, it says
+  the previous copy was moved aside (naming where) and the remote script is
+  missing until the install runs again. A device copy that fails (Windows can
+  lock a file Live has loaded) is `{ ok: false, path, detail }` the same way;
+  the old device file is unchanged.
 - **No answer from Node:** throws, saying the install may or may not have
-  finished and to run it again. An install replaces the old copy whole, so
-  repeating it is safe.
+  finished and to run it again. Repeating it is safe: the script is replaced
+  whole and the device is version-aware.
 
 ## `add-producer-pal`
 
@@ -74,6 +113,20 @@ description tells the model to ask the user first, since it changes their Set.
 - **A remote script that is too old:** refused before anything is copied. The
   error says to update it, that nothing was added, and to call
   `add-producer-pal` again after the user restarts Live.
+- **No running remote script:** an error, because the Set wasn't changed. The
+  device file is still put in the User Library (the same copy, with the same
+  `device` note, as above), so the error says what the call did leave: nothing
+  was added to the Live Set, the device file's path, and two ways forward. (1)
+  Open Live and drag the file from the browser (User Library) onto a MIDI track.
+  (2) Finish the remote script setup (`install-producer-pal` if the script isn't
+  installed, or just restart Live and choose the Control Surface if it is), then
+  call `add-producer-pal` again. A call that couldn't do the thing it was made
+  for is an error, even when it left a prepared file; the error, not a result,
+  is what stops the model reporting the device as added. With no device bundled,
+  no User Library found, or a copy that fails with no file already there, the
+  error says nothing was added and nothing was copied. If the lookup of the
+  script's state fails after the copy, the error still says where the file is
+  and gives the steps for a script that isn't installed.
 
 ## `update-producer-pal`
 
@@ -99,9 +152,11 @@ to ask the user first.
      told. No version reported: refused. `-rcN` versions of one x.y.z order by
      N; other pre-release tags can't be ordered against each other.
   3. No bundled device: refused, with the install guide.
-  4. Remote script not running or too old: refused, as for `add-producer-pal`
-     (and an old script that lacks the `/replace-producer-pal` route reads as
-     too old). `userLibrary` is settled as for `add-producer-pal`.
+  4. Remote script not running or too old: refused with nothing copied (unlike
+     `add-producer-pal`, which still installs the device file; an update has no
+     use for one without a swap), and an old script that lacks the
+     `/replace-producer-pal` route reads as too old. `userLibrary` is settled as
+     for `add-producer-pal`.
   5. The bundled device is copied into the User Library. A copy that fails
      (Windows can lock a file Live has loaded) refuses, saying the file may be
      in use. Whatever file would load, it must name a version newer than the
@@ -174,7 +229,7 @@ so. One step is one write call, since each is closed as one undo step.
     starts clear.
 - **No remote script, or one too old for the route:** throws, saying the remote
   script is needed and how to install it (`ppal-manage` with
-  `action: "install-remote-script"`, then restart Live, or Settings → Remote
+  `action: "install-producer-pal"`, then restart Live, or Settings → Remote
   Script). The wording is shared with every other remote-script-only feature.
 - **No time left before the request left:** throws, saying the step wasn't
   started and to re-run it.
@@ -192,10 +247,13 @@ it (small-model mode and `--disable-tools` drop it).
 - **`ppal-manage` args are checked first**, by the same code the device uses
   (`manage-args.ts`), so a bad call reads the same either way. Errors read
   `Error: <why>`, as on the device.
-- **`install-remote-script`** runs in the portal through the same code as the
-  device's route and gives the same `{ version, path, nextSteps }` and the same
-  errors. The portal also answers it while the device is up, when the running
-  device is older than the portal, so the newer script gets installed.
+- **`install-producer-pal`** runs in the portal through the same shared steps as
+  the device's route and gives the same `{ remoteScript, device, nextSteps }`
+  and the same errors, installing the device that shipped with the portal. The
+  portal also answers it, under either name, while the device is up, when the
+  running device is older than the portal, so the newer script and device get
+  installed; there `nextSteps` stops at the restart, since Producer Pal is
+  already in the Set.
 - **`add-producer-pal`** runs the steps below.
 - **`update-producer-pal`** is answered by the portal whether the device is up
   or not; see [above](#update-producer-pal). When the device is down it gets the
@@ -215,16 +273,21 @@ it (small-model mode and `--disable-tools` drop it).
       found, it tells the model to ask the user for the path and pass it as
       `userLibrary`.
     - **Remote script (not running):** not installed (offers
-      `install-remote-script` and says where it installs), installed and this
-      version or newer (just restart Live and choose the Control Surface), or
-      installed older or unreadable (offer the update).
+      `install-producer-pal`, which installs the script and the device, and says
+      where the script goes), installed and this version or newer (just restart
+      Live and choose the Control Surface), or installed older or unreadable
+      (offer the update, which is the same call).
     - **Remote script (running):** if it is older than the minimum, say to
       update it before adding the device.
     - **Newer than the portal:** when the remote script (installed or running)
       or the installed device is newer than this portal, it adds that the portal
       is older and the user should update it.
-    - **Device:** says what `add-producer-pal` will do: install to the path,
-      update it (installed version to bundled version), add the one already
-      there (nothing to install), or add a newer or different one as is. With no
-      device bundled, it sends the user to the install guide and doesn't point
-      at `add-producer-pal`.
+    - **Device:** one story per case. When the hint advises
+      `install-producer-pal` (script missing, out of date, unreadable, or no
+      library found), that call puts the device in place, so the hint says
+      `add-producer-pal` then just adds it. When it doesn't (script current, or
+      the script is already running), it says what `add-producer-pal` will do:
+      install to the path, update it (installed version to bundled version), add
+      the one already there (nothing to install), or add a newer or different
+      one as is. With no device bundled, it sends the user to the install guide
+      and doesn't point at `add-producer-pal`.

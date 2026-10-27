@@ -5,8 +5,7 @@
 
 import { VERSION } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { type InstallReply } from "#src/tools/core/helpers/manage-contract.ts";
-import { findUserLibraryPath } from "../../../live-library/query/user-library-path.ts";
+import { type InstallPart } from "#src/tools/core/helpers/manage-contract.ts";
 import { installRemoteScript } from "./remote-script-install.ts";
 import { UserLibraryFolderError } from "../user-library/user-library-folder.ts";
 
@@ -15,33 +14,21 @@ export const ASK_FOR_LIBRARY =
   "Ask the user for the path (Live: Settings → Library → Location of User Library) and pass it as userLibrary";
 
 /**
- * Install the bundled script into the given User Library, or the one found.
- * Failures come back worded for the model, with the state they left. Used by
- * the Node route the device calls and by the portal when the device is offline.
- * @param given - Absolute path to the User Library; blank or absent means find it
+ * Install the bundled script into a User Library. A failure comes back worded
+ * for the model, with the state it left. Used by the Node route the device
+ * calls and by the portal when the device is offline.
+ * @param userLibrary - Path to the User Library folder
  * @returns The version and path installed, or why it wasn't
  */
-export async function installRemoteScriptReply(
-  given?: string,
-): Promise<InstallReply> {
-  const trimmed = (given ?? "").trim();
-  const userLibrary = trimmed === "" ? await findUserLibraryPath() : trimmed;
-
-  if (userLibrary == null) {
-    return {
-      installed: false,
-      error: `couldn't find Live's User Library, so nothing was installed. ${ASK_FOR_LIBRARY}`,
-    };
-  }
-
+export function installRemoteScriptPart(userLibrary: string): InstallPart {
   try {
     return {
-      installed: true,
+      status: "installed",
       version: VERSION,
       path: installRemoteScript(userLibrary).path,
     };
   } catch (error) {
-    return { installed: false, error: failureText(error) };
+    return { ok: false, detail: failureText(error) };
   }
 }
 
@@ -74,5 +61,5 @@ function failureText(error: unknown): string {
     return `${message}; nothing was installed. ${ASK_FOR_LIBRARY}`;
   }
 
-  return `the install failed (${message}). ${installLeftText(message)}`;
+  return `install failed (${message}). ${installLeftText(message)}`;
 }

@@ -32,7 +32,7 @@ vi.mock(import("../port/remote-script-port-file.ts"), () => ({
 }));
 
 const OUTDATED_2_4 =
-  'the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0-rc2 or later); update it with ppal-manage action "install-remote-script" or in the Producer Pal chat UI\'s Settings → Installation, then restart Live';
+  'the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0-rc2 or later); update it with ppal-manage action "install-producer-pal" or in the Producer Pal chat UI\'s Settings → Installation, then restart Live';
 
 let fake: FakeRemoteScript | undefined;
 let version = "2.4.0";
@@ -325,7 +325,7 @@ describe("remoteScriptRequest against a current remote script", () => {
     ).toStrictEqual({
       available: false,
       outdated:
-        "the Producer Pal remote script in Live (v2.5.0) is a different build than this device's and can't do this; update it with ppal-manage action \"install-remote-script\" or in the Producer Pal chat UI's Settings → Installation, then restart Live",
+        "the Producer Pal remote script in Live (v2.5.0) is a different build than this device's and can't do this; update it with ppal-manage action \"install-producer-pal\" or in the Producer Pal chat UI's Settings → Installation, then restart Live",
     });
   });
 
@@ -338,7 +338,7 @@ describe("remoteScriptRequest against a current remote script", () => {
     ).toStrictEqual({
       available: false,
       outdated:
-        "the Producer Pal remote script in Live (v2.5.0) is a different build than this connector's and can't do this; update it with ppal-manage action \"install-remote-script\", then restart Live",
+        "the Producer Pal remote script in Live (v2.5.0) is a different build than this connector's and can't do this; update it with ppal-manage action \"install-producer-pal\", then restart Live",
     });
   });
 

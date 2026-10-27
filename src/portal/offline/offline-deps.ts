@@ -8,7 +8,7 @@
 
 import { setTimeout as delay } from "node:timers/promises";
 import { findUserLibraryPath } from "#src/mcp-server/live-library/query/user-library-path.ts";
-import { installRemoteScriptReply } from "#src/mcp-server/rpc/remote-script/install/remote-script-install-reply.ts";
+import { installRemoteScriptPart } from "#src/mcp-server/rpc/remote-script/install/remote-script-install-reply.ts";
 import {
   remoteScriptPing,
   remoteScriptRequest,
@@ -21,7 +21,7 @@ import {
   type InstalledRemoteScript,
 } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { libraryPathExists } from "#src/mcp-server/rpc/remote-script/user-library/user-library-fs.ts";
-import { type InstallReply } from "#src/tools/core/helpers/manage-contract.ts";
+import { type InstallPart } from "#src/tools/core/helpers/manage-contract.ts";
 import { findBundledDevice } from "../setup/bundled-device.ts";
 import {
   type DeviceFileStatus,
@@ -37,8 +37,8 @@ export interface OfflineDeps {
   ping: () => Promise<RemoteScriptPing>;
   /** One request to the remote script */
   request: (request: RemoteScriptRequest) => Promise<RemoteScriptReply>;
-  /** Install the remote script; `userLibrary` absent means find it */
-  installRemoteScript: (userLibrary?: string) => Promise<InstallReply>;
+  /** Install the remote script into a User Library; never throws */
+  installRemoteScript: (userLibrary: string) => InstallPart;
   /** Live's User Library, or null when it can't be found */
   findUserLibrary: () => Promise<string | null>;
   /** The device file that shipped with this portal, or null for none */
@@ -58,7 +58,7 @@ export const realOfflineDeps: OfflineDeps = {
   ping: remoteScriptPing,
   // Every portal request is the portal's own, so its reasons are worded for it.
   request: (request) => remoteScriptRequest({ ...request, asker: "portal" }),
-  installRemoteScript: installRemoteScriptReply,
+  installRemoteScript: installRemoteScriptPart,
   findUserLibrary: findUserLibraryPath,
   findBundledDevice,
   installDevice,

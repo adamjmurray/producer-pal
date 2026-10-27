@@ -6,6 +6,7 @@
 // The bridge's own answers for ppal-manage update-producer-pal, and the update
 // hint it adds to ppal-connect.
 
+import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
 import {
@@ -194,9 +195,10 @@ describe("StdioHttpBridge update-producer-pal", () => {
   });
 });
 
-describe("StdioHttpBridge install-remote-script", () => {
+describe("StdioHttpBridge install-producer-pal", () => {
   const INSTALL = callToolRequest("ppal-manage", {
-    action: "install-remote-script",
+    action: "install-producer-pal",
+    userLibrary: tmpdir(),
   });
 
   beforeEach(() => {
@@ -225,13 +227,11 @@ describe("StdioHttpBridge install-remote-script", () => {
   it("installs the portal's script itself when the device is older", async () => {
     serverReports(OLD);
 
-    const installRemoteScript = vi.fn(() =>
-      Promise.resolve({
-        installed: true as const,
-        version: VERSION,
-        path: "/lib/Remote Scripts/Producer_Pal",
-      }),
-    );
+    const installRemoteScript = vi.fn(() => ({
+      status: "installed" as const,
+      version: VERSION,
+      path: "/lib/Remote Scripts/Producer_Pal",
+    }));
     const handler = await startAndGetCallHandler(
       bridgeOver(true, updateDeps({ installRemoteScript })),
     );
