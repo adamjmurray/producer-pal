@@ -232,6 +232,14 @@ describe("toJsonResult", () => {
     expect(result.error).toBe("Connection failed");
   });
 
+  it.each([
+    ["errored before the first turn", [], "Live would not swap Sets", "error"],
+    ["was refused by the provider", [makeTurn()], "usage limit", "error"],
+    ["hit some other error mid-run", [makeTurn()], "timed out", "pass"],
+  ])("grades a run that %s", (_label, turns, error, outcome) => {
+    expect(convert({ turns, error }).result).toBe(outcome);
+  });
+
   it("handles zero checks gracefully", () => {
     const result = convert({ assertions: [] });
 

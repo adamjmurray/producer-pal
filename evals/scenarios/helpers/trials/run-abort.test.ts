@@ -5,31 +5,55 @@
 
 import { describe, expect, it } from "vitest";
 import { type JsonEvalResult } from "../json-results/types.ts";
-import { describeRunAbort, neverStartedRuns } from "./run-abort.ts";
+import {
+  describeRunAbort,
+  MAX_CONSECUTIVE_SCENARIO_ERRORS,
+  stalledModels,
+} from "./run-abort.ts";
 
 function run(result: JsonEvalResult["result"], error?: string): JsonEvalResult {
   return { result, error } as JsonEvalResult;
 }
 
-function byModel(runs: JsonEvalResult[]) {
-  return new Map([["codex-code/luna", new Map([["default", runs]])]]);
+function scenario(byModel: Record<string, JsonEvalResult[]>) {
+  return new Map(
+    Object.entries(byModel).map(([model, runs]) => [
+      model,
+      new Map([["default", runs]]),
+    ]),
+  );
 }
 
-describe("neverStartedRuns", () => {
-  it("returns every run when all of them errored", () => {
-    const runs = [run("error", "x"), run("error", "y")];
+describe("stalledModels", () => {
+  const errored = [run("error", "x"), run("error", "y")];
 
-    expect(neverStartedRuns(byModel(runs))).toStrictEqual(runs);
+  it("drops only the model that errored on every trial, scenario after scenario", () => {
+    const streaks = new Map<string, number>();
+    const both = scenario({ terra: errored, sonnet: [run("pass")] });
+
+    for (let i = 1; i < MAX_CONSECUTIVE_SCENARIO_ERRORS; i++) {
+      expect(stalledModels(streaks, both).size).toBe(0);
+    }
+
+    expect([...stalledModels(streaks, both)]).toStrictEqual([
+      ["terra", errored],
+    ]);
   });
 
-  it("returns nothing when any run reached the model", () => {
-    expect(
-      neverStartedRuns(byModel([run("error"), run("fail")])),
-    ).toStrictEqual([]);
+  it("resets a model's streak when any trial reaches the model", () => {
+    const streaks = new Map([["terra", MAX_CONSECUTIVE_SCENARIO_ERRORS - 1]]);
+
+    stalledModels(streaks, scenario({ terra: [run("error"), run("fail")] }));
+
+    expect(streaks.get("terra")).toBe(0);
   });
 
-  it("returns nothing for a scenario with no runs", () => {
-    expect(neverStartedRuns(byModel([]))).toStrictEqual([]);
+  it("does not count a scenario with no runs", () => {
+    const streaks = new Map<string, number>();
+
+    stalledModels(streaks, scenario({ terra: [] }));
+
+    expect(streaks.get("terra")).toBe(0);
   });
 });
 
@@ -43,7 +67,8 @@ describe("describeRunAbort", () => {
       run("error", capacity),
     ]);
 
-    expect(message).toContain("3 scenarios in a row never started");
+    expect(message).toContain("3 scenarios in a row errored");
+    expect(message).toContain("Results so far are saved");
     expect(message).toContain("the model provider is refusing requests");
     expect(message).not.toContain("Live is not recovering");
     expect(message).toContain(`Last error: ${capacity}`);
@@ -96,5 +121,17 @@ describe("describeRunAbort", () => {
 
     expect(message).toContain("Live is not recovering");
     expect(message).not.toContain("Last error");
+  });
+
+  it("names the dropped model instead of stopping the run", () => {
+    const message = describeRunAbort(
+      3,
+      [run("error", "usage limit")],
+      "codex-code/gpt-6.1-terra",
+    );
+
+    expect(message).toMatch(/^codex-code\/gpt-6.1-terra: 3 scenarios/);
+    expect(message).toContain("Dropping codex-code/gpt-6.1-terra");
+    expect(message).not.toContain("Results so far are saved");
   });
 });

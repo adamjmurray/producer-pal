@@ -304,12 +304,14 @@ environment can't satisfy a requirement — e.g. a transforms scenario under
 scenario is **skipped** (reported as `skipped`, not `fail`) so scores stay
 apples-to-apples.
 
-A run that never got started is reported as `error`, and is likewise kept out of
-pass/fail counts. That means Live would not open the Set or the config would not
-apply, so the model never took a turn — scoring it would turn an outage into a
-wall of convincing zeros. The harness retries a failed open three times, waiting
-once and then killing Live for a cold launch, and stops the whole run after
-three scenarios in a row fail to start.
+A run that tested nothing about the model is reported as `error`, and is
+likewise kept out of pass/fail counts and scores: Live would not open the Set,
+the config would not apply, or the provider refused the request (usage limit,
+credits, capacity, rate limit) at any turn. Scoring it would turn an outage into
+a wall of convincing zeros. The harness retries a failed open three times,
+waiting once and then killing Live for a cold launch. After three scenarios in a
+row where every trial of a model errored, that model is dropped from the rest of
+the run; the run stops when no model is left.
 
 ```bash
 # Default environment

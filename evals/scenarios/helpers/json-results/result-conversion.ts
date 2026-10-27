@@ -14,6 +14,7 @@ import {
   type EvalTurnResult,
 } from "../../types.ts";
 import { type SimpleJudgeResult } from "../judge/judge-response-parser.ts";
+import { isProviderRefusal } from "../trials/provider-refusal.ts";
 import { assertionLabel } from "./assertion-label.ts";
 import { aggregateStepTimings } from "./step-timing-aggregate.ts";
 import { collectToolErrors } from "./tool-errors.ts";
@@ -206,10 +207,10 @@ function buildJudge(
 }
 
 /**
- * Classify a run's outcome. A run that errored before the model took a single
- * turn never tested anything: the Live Set would not open, or the config would
- * not apply. That is infrastructure, not a model failure, and calling it one
- * turns an outage into a wall of convincing-looking zeros.
+ * Classify a run's outcome. A run that errored before the model's first turn
+ * (the Set would not open, the config would not apply), or that the provider
+ * cut off (usage limit, credits, capacity), tested nothing about the model.
+ * Calling it a fail turns an outage into a wall of convincing-looking zeros.
  *
  * @param result - Internal scenario result
  * @param checks - Checks result
@@ -221,7 +222,10 @@ function deriveOutcome(
   checks: JsonChecks,
   judge: JsonJudge | undefined,
 ): "pass" | "fail" | "error" {
-  if (result.error != null && result.turns.length === 0) {
+  if (
+    result.error != null &&
+    (result.turns.length === 0 || isProviderRefusal(result.error))
+  ) {
     return "error";
   }
 
