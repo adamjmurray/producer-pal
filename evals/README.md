@@ -463,6 +463,8 @@ scripts/eval -a -m gemini-3.8-flash -m claude-sonnet-5-5
 
 To compare environments (e.g. default vs `--small-model`), do a run per
 environment and diff them with `scripts/eval-report --compare <runId> <runId>`.
+`scripts/eval-report --failures <runId> [...]` prints every failure as the
+markdown table that `dev/quality/eval-findings/scenario-results/` records.
 
 Each cell tallies passing trials, so a `-r 3` run reads `3/3`, `~ 2/3`, or `0/3`
 rather than the verdict of one arbitrary trial. The tag on the right compares
