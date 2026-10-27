@@ -10,7 +10,7 @@
  *
  * Usage: node scripts/live-api/python-probe/run-probe.ts <file.py> [out.json]
  *
- * Needs `npm run remote-script:install -- --probe` and a Live restart. The
+ * Needs `npm run install:remote-script -- --probe` and a Live restart. The
  * file sees `song`, `app`, `Live` and `bridge`, and returns what it assigns to
  * `result`. See snippets/ for examples.
  */

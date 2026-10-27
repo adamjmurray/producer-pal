@@ -8,7 +8,7 @@
 The bootstrap files below are loaded once and never reloaded: Live holds the
 bridge, which owns the server thread and the job queue. Every other top-level
 .py file is implementation and reloads. The `/reload` route (added by
-`npm run remote-script:install -- --probe`) calls `reload_route`.
+`npm run install:remote-script -- --probe`) calls `reload_route`.
 
 Main thread only. Reloading from a job means no other job is mid-run.
 

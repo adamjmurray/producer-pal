@@ -235,8 +235,19 @@ and installs with a dev switch:
 
 - `npm run remote-script:test` - Python unit tests (also part of
   `npm run check`)
-- `npm run remote-script:install -- --probe --reload` - install, reload in the
+- `npm run install:remote-script -- --probe --reload` - install, reload in the
   running Live, and verify
+- `npm run install:device` - copy `release/Producer_Pal.amxd` (from
+  `npm run release:amxd`) into the User Library; `-- --force` replaces a newer
+  one
+- `npm run install:status` - show what's installed, plus other `.amxd` copies
+- `npm run uninstall` - remove the device and remote script (also
+  `uninstall:device`, `uninstall:remote-script`; `uninstall:device:all` and
+  `uninstall:all` also delete other `Producer_Pal*.amxd` copies)
+
+The install and uninstall scripts use `ABLETON_USER_LIBRARY` from `.env`, or
+find Live's User Library if it's unset.
+
 - `npm run e2e:mcp:remote-script -- <file>` - e2e suites that need the script
   (ask before running; they open Live)
 

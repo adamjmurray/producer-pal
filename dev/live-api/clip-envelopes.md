@@ -138,6 +138,6 @@ opened here would close the one holding the call's other changes.
 
 ## Probing
 
-Install the remote script with `npm run remote-script:install -- --probe` to run
+Install the remote script with `npm run install:remote-script -- --probe` to run
 Python in Live. See
 [python-remote-script-api/](python-remote-script-api/README.md).

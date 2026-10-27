@@ -8,7 +8,7 @@
 This is arbitrary code execution over local HTTP, so it must never ship. It
 lives outside remote-script/Producer_Pal so the device never bundles it;
 add-probe-route.ts copies it into an installed script. A plain
-`npm run remote-script:install` removes it.
+`npm run install:remote-script` removes it.
 
 The code sees `song`, `app`, `Live` and `bridge`, and returns whatever it
 assigns to `result`.

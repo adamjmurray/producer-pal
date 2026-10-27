@@ -20,18 +20,20 @@ To open or create a Set with Producer Pal in it, use the
 Users install from the Chat UI's **Settings → Installation** tab. See
 [the guide](https://producer-pal.org/guide/remote-script).
 
-From a checkout, set `ABLETON_USER_LIBRARY` in `.env` (see `.env.example`),
-then:
+From a checkout:
 
 ```sh
-npm run remote-script:install
+npm run install:remote-script
 ```
 
-Either way it replaces `<User Library>/Remote Scripts/Producer_Pal`. **Restart
-Live** (it only scans Remote Scripts at startup), then pick **Producer Pal**
-under Settings → Tempo & MIDI → Control Surface. Leave Input and Output as None.
+Either way it replaces `<User Library>/Remote Scripts/Producer_Pal`. It uses
+`ABLETON_USER_LIBRARY` from `.env` (see `.env.example`), or finds the User
+Library Live is using. `npm run uninstall:remote-script` removes it and
+`npm run install:status` shows what's installed. **Restart Live** (it only scans
+Remote Scripts at startup), then pick **Producer Pal** under Settings → Tempo &
+MIDI → Control Surface. Leave Input and Output as None.
 
-`npm run remote-script:install -- --probe` also adds two dev-only routes:
+`npm run install:remote-script -- --probe` also adds two dev-only routes:
 `/probe`, which runs posted Python (see
 [dev/live-api/python-remote-script-api/](../dev/live-api/python-remote-script-api/README.md)),
 and `/reload`. See [Hot reload](#hot-reload).
@@ -202,7 +204,7 @@ waits 30s for the reply, and 30s more if the job started in that time.
 Change the code and run it in Live without restarting:
 
 ```sh
-npm run remote-script:install -- --probe --reload
+npm run install:remote-script -- --probe --reload
 ```
 
 It reinstalls, reloads the code in Live, and checks Live loaded what was
