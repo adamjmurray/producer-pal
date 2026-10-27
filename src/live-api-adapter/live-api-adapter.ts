@@ -376,12 +376,6 @@ export function updateDismissed(): void {}
 export function installNotice(): void {}
 
 /**
- * Ignore the saved widget list. The device keeps it in the Live Set for Node;
- * the config route also reaches V8.
- */
-export function genUiWidgets(): void {}
-
-/**
  * Tell Node where this device's file is. Only the device's patcher knows, and
  * the Live Set references the device by that path. Node asks (as the
  * `reportDevice` config key) when it starts, since V8 is up long before it is.

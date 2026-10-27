@@ -3,17 +3,15 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// The widget list as the text kept in the Live Set. The device holds it in a
-// hidden textedit parameter, like the project context, so it is saved with the
-// Set and travels with it. Base64 keeps it one plain word: no spaces, quotes or
-// commas for Max to split or escape.
+// The widget list as the text the remote script keeps in the Live Set.
 
 import { type Widget } from "#src/shared/gen-ui-types.ts";
 import { buildWidget, type WidgetFields } from "./widget-input.ts";
 
 /**
- * The most the Set holds. Max truncates a symbol near 32,767 characters, so stay
- * well under; a list too big for this is refused rather than saved cut short.
+ * The most the Set holds, in characters. The same cap as the remote script's
+ * (ui_widgets.py), so a list that passes here is never refused there. A list too
+ * big for this is refused rather than saved cut short.
  */
 export const MAX_BLOB_CHARS = 24_000;
 
@@ -22,9 +20,7 @@ export const MAX_BLOB_CHARS = 24_000;
  * @returns The text to save, or null when it would be too big
  */
 export function encodeWidgets(widgets: Widget[]): string | null {
-  const text = Buffer.from(JSON.stringify({ v: 1, widgets })).toString(
-    "base64",
-  );
+  const text = JSON.stringify({ v: 1, widgets });
 
   return text.length <= MAX_BLOB_CHARS ? text : null;
 }
@@ -40,11 +36,9 @@ export function decodeWidgets(text: string): Widget[] | null {
   }
 
   try {
-    const parsed = JSON.parse(
-      Buffer.from(text.trim(), "base64").toString("utf8"),
-    ) as { widgets?: unknown };
+    const parsed = JSON.parse(text) as { widgets?: unknown } | null;
 
-    return Array.isArray(parsed.widgets)
+    return Array.isArray(parsed?.widgets)
       ? parsed.widgets.filter(isStoredWidget)
       : null;
   } catch {

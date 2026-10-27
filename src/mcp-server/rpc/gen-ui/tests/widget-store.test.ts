@@ -211,9 +211,7 @@ describe("loading the Set's widgets", () => {
     { id: "w1", kind: "clip", ref: "t0/s0" },
     { id: "w4", kind: "text", text: "A's note" },
   ]) as string;
-  const listB = encodeWidgets([
-    { id: "w2", kind: "text", text: "B's note" },
-  ]) as string;
+  const listEmpty = encodeWidgets([]) as string;
 
   it("shows the Set's widgets, and carries on numbering after them", () => {
     loadWidgetsFromSet(listA);
@@ -225,27 +223,31 @@ describe("loading the Set's widgets", () => {
     });
   });
 
-  it("swaps one Set's widgets for another's, telling viewers as ordinary changes", () => {
-    loadWidgetsFromSet(listA);
+  it("keeps widgets made before the list arrived, after the Set's, with new ids", () => {
+    createWidget({ kind: "text", text: "early" });
 
     const events: GenUiEvent[] = [];
 
     subscribe((event) => events.push(event));
-    loadWidgetsFromSet(listB);
+    loadWidgetsFromSet(listA);
 
     expect(listWidgets()).toStrictEqual([
-      { id: "w2", kind: "text", text: "B's note" },
+      { id: "w1", kind: "clip", ref: "t0/s0" },
+      { id: "w4", kind: "text", text: "A's note" },
+      { id: "w5", kind: "text", text: "early" },
     ]);
     expect(
       events.map((e) => (e.type === "widget" ? e.change.op : e.type)),
-    ).toStrictEqual(["remove", "remove", "upsert"]);
+    ).toStrictEqual(["remove", "upsert", "upsert", "upsert"]);
   });
 
-  it("shows no widgets for a Set that has none", () => {
-    loadWidgetsFromSet(listA);
-    loadWidgetsFromSet("");
+  it("keeps what is shown when the Set has no list", () => {
+    createWidget({ kind: "text", text: "early" });
+    loadWidgetsFromSet(listEmpty);
 
-    expect(listWidgets()).toStrictEqual([]);
+    expect(listWidgets()).toStrictEqual([
+      { id: "w1", kind: "text", text: "early" },
+    ]);
   });
 
   it("does not save back what it just loaded", () => {
@@ -261,36 +263,23 @@ describe("loading the Set's widgets", () => {
     expect(saved).toHaveLength(1);
   });
 
-  it("says nothing when the Set holds what is already shown", () => {
-    loadWidgetsFromSet(listA);
-
-    const events: GenUiEvent[] = [];
-
-    subscribe((event) => events.push(event));
-    loadWidgetsFromSet(listA);
-
-    expect(events).toStrictEqual([]);
-  });
-
   it("ignores text that isn't a widget list, and keeps what it has", () => {
-    loadWidgetsFromSet(listA);
-    loadWidgetsFromSet("not base64 json!");
+    createWidget({ kind: "text", text: "a" });
+    loadWidgetsFromSet("not json!");
 
-    expect(listWidgets()).toHaveLength(2);
+    expect(listWidgets()).toHaveLength(1);
   });
 
   it("leaves out saved entries it can't draw", () => {
-    const mixed = Buffer.from(
-      JSON.stringify({
-        v: 1,
-        widgets: [
-          { id: "w1", kind: "text", text: "ok" },
-          { id: "w2", kind: "chart" },
-          { id: "w3", kind: "clip", ref: "bad" },
-          null,
-        ],
-      }),
-    ).toString("base64");
+    const mixed = JSON.stringify({
+      v: 1,
+      widgets: [
+        { id: "w1", kind: "text", text: "ok" },
+        { id: "w2", kind: "chart" },
+        { id: "w3", kind: "clip", ref: "bad" },
+        null,
+      ],
+    });
 
     loadWidgetsFromSet(mixed);
 
@@ -457,7 +446,7 @@ describe("a list that grows past what the Set holds", () => {
 
     createWidget({ kind: "clip", ref: "t0/s0" });
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       expect(createWidget({ kind: "text", text: `${i}`.repeat(4000) }).ok).toBe(
         true,
       );

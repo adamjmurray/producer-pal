@@ -6,7 +6,7 @@
 // The widgets the AI has put on the generative-UI view, held in memory. Each
 // change is handed to a sink that keeps it in the Live Set (see set-storage.ts),
 // and the Set's saved list is loaded back with loadWidgetsFromSet. With no sink
-// (tests, or before the device is wired up) the list lives for the session only.
+// (tests, or the remote script missing) the list lives for the session only.
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
@@ -181,10 +181,12 @@ export function removeWidget(id: string): StoreResult {
 }
 
 /**
- * Make the Set's saved list the list. Viewers hear it as ordinary changes: the
- * old widgets removed, the Set's added. Not saved again, since it came from the
- * Set. Text that isn't a widget list is ignored.
- * @param text - What the device's parameter held
+ * Show the Set's saved list. Called once, when the list first arrives. Widgets
+ * already on the view (made before it arrived) are kept after the Set's, with
+ * new ids, so neither side is lost. Viewers hear it as ordinary changes. Nothing
+ * is saved from here: the caller decides what needs saving. Text that isn't a
+ * widget list is ignored.
+ * @param text - What the Set held
  */
 export function loadWidgetsFromSet(text: string): void {
   const loaded = decodeWidgets(text);
@@ -195,32 +197,36 @@ export function loadWidgetsFromSet(text: string): void {
     return;
   }
 
-  if (JSON.stringify(loaded) === JSON.stringify(widgets)) {
+  if (loaded.length === 0) {
     return;
   }
 
-  const saved = sink;
+  const early = widgets;
 
-  sink = undefined;
-
-  try {
-    // removeWidget edits the list, so go by a copy of the ids.
-    for (const id of widgets.map((widget) => widget.id)) {
-      removeWidget(id);
-    }
-
-    widgets = [];
-    nextNumber =
-      Math.max(0, ...loaded.map((w) => Number(w.id.replace(/^w/, "")) || 0)) +
-      1;
-
-    for (const widget of loaded) {
-      widgets.push(widget);
-      publish({ type: "widget", change: { op: "upsert", widget } });
-    }
-  } finally {
-    sink = saved;
+  for (const { id } of early) {
+    publish({ type: "widget", change: { op: "remove", id } });
   }
+
+  nextNumber =
+    Math.max(0, ...loaded.map((w) => Number(w.id.replace(/^w/, "")) || 0)) + 1;
+
+  widgets = [...loaded, ...early.map(renumber)];
+
+  for (const widget of widgets) {
+    publish({ type: "widget", change: { op: "upsert", widget } });
+  }
+}
+
+/**
+ * @param widget - A widget made before the Set's list arrived
+ * @returns The same widget under the next free id
+ */
+function renumber(widget: Widget): Widget {
+  const renumbered = { ...widget, id: `w${nextNumber}` };
+
+  nextNumber += 1;
+
+  return renumbered;
 }
 
 /** Empty the list and drop the sink. For tests. */
@@ -247,9 +253,8 @@ function fits(list: Widget[]): boolean {
 }
 
 /**
- * Keep the change in the Set, then tell the viewers. A failed save is logged and
- * does not undo the change: the view still shows it, and the next change tries
- * again.
+ * Tell the viewers, and hand the new list to the sink to keep in the Set. A sink
+ * that throws is logged and does not undo the change.
  * @param change - What changed
  */
 function commit(change: WidgetChange): void {

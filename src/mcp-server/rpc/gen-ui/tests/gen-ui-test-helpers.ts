@@ -84,7 +84,7 @@ export interface FakeClip {
   length: number;
 }
 
-/** Stands in for the remote script's /watch, /unwatch and /events. */
+/** Stands in for the remote script's /watch, /unwatch, /events and /ui-widgets. */
 export class FakeScript {
   epoch = "e1";
   seq = 0;
@@ -96,9 +96,25 @@ export class FakeScript {
   limit = false;
   resync = false;
   requests: RemoteScriptRequest[] = [];
+  /** The widget list the Set holds (/ui-widgets), null when none. */
+  widgetText: string | null = null;
+  /** Every list saved, oldest first. */
+  saves: string[] = [];
+  /** Answer saves with this status instead of keeping them. */
+  saveStatus = 200;
+  /** Fail the next request the way a timeout does. */
+  failNext: Error | undefined;
 
   request = (request: RemoteScriptRequest): Promise<RemoteScriptReply> => {
     this.requests.push(request);
+
+    if (this.failNext != null) {
+      const error = this.failNext;
+
+      this.failNext = undefined;
+
+      return Promise.reject(error);
+    }
 
     if (this.down) {
       return Promise.resolve({
@@ -142,6 +158,14 @@ export class FakeScript {
       fingerprint?: FakeClip;
     };
 
+    if (request.route === "/ui-widgets") {
+      return { status: 200, body: { text: this.widgetText } };
+    }
+
+    if (request.route === "/ui-widgets/save") {
+      return this.saveWidgets(String((request.body as { text?: string }).text));
+    }
+
     if (request.route === "/watch") {
       return this.watch(body);
     }
@@ -167,6 +191,20 @@ export class FakeScript {
         watching: [...this.watching],
       },
     };
+  }
+
+  private saveWidgets(text: string): {
+    status: number;
+    body: Record<string, unknown>;
+  } {
+    if (this.saveStatus !== 200) {
+      return { status: this.saveStatus, body: { error: "refused" } };
+    }
+
+    this.widgetText = text;
+    this.saves.push(text);
+
+    return { status: 200, body: { ok: true } };
   }
 
   private watch(body: {

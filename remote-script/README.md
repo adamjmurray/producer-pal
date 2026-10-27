@@ -198,6 +198,15 @@ Live disconnects the script, or a hot reload starts. Poll rather than hold the
 request open: a request in flight keeps the update loop sleeping, and the HTTP
 threads only run while it does.
 
+### `GET /ui-widgets`, `POST /ui-widgets/save`
+
+Keep the generative UI's widget list in the Live Set, with the song's own data
+store (`song.set_data` / `song.get_data`). `GET` answers `{text}`: the saved
+string, or `null` when none. `POST` takes `text` (a string, at most 24,000
+characters; longer is a 413) and answers `{ok: true}`. The list is saved in the
+.als, adds no undo step and survives reopening. It does not mark the Set as
+changed, so a widget-only change is lost if the user quits without saving.
+
 ## How it works
 
 Live's Python is single-threaded and the Live API breaks if touched from any
@@ -230,6 +239,7 @@ waits 30s for the reply, and 30s more if the job started in that time.
 - `clip_address.py`: finding the clip a route names
 - `simpler_settings.py`: a Simpler's pitch bend ranges
 - `undo.py`: Live's undo history: closing the pending step, undo and redo
+- `ui_widgets.py`: the generative UI's widget list, kept in the Set
 - `preset_guard.py`: refusing a loaded preset that holds the Producer Pal device
 - `version.py`: the release the script was built from
 

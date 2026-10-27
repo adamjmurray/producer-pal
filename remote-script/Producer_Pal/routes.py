@@ -22,6 +22,8 @@ from .producer_pal_device import (
 )
 from .rack_macros import ROUTES as _RACK_MACRO_ROUTES
 from .simpler_settings import ROUTES as _SIMPLER_ROUTES
+from .ui_widgets import POST_ONLY as _UI_WIDGET_POST_ONLY
+from .ui_widgets import ROUTES as _UI_WIDGET_ROUTES
 from .undo import ROUTES as _UNDO_ROUTES
 from .version import VERSION, build_commit
 from .watches import POST_ONLY as _WATCH_POST_ONLY
@@ -454,6 +456,7 @@ ROUTES = {
     **_CONVERSION_ROUTES,
     **_SIMPLER_ROUTES,
     **_UNDO_ROUTES,
+    **_UI_WIDGET_ROUTES,
     **_WATCH_ROUTES,
 }
 
@@ -471,5 +474,6 @@ POST_ONLY = (
     "/undo/end",
     "/undo/undo",
     "/undo/redo",
+    *_UI_WIDGET_POST_ONLY,
     *_WATCH_POST_ONLY,
 )

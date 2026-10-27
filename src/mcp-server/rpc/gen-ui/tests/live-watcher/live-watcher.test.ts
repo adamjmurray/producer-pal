@@ -536,7 +536,7 @@ describe("following the widgets", () => {
     expect(script.routes("/unwatch")).toHaveLength(1);
   });
 
-  it("watches the new Set's clips and lets go of the old Set's when the list is swapped", async () => {
+  it("watches the Set's clips, and the early ones again under their new ids, when the Set's list arrives", async () => {
     createWidget(clip("t0/s0"));
     await vi.advanceTimersByTimeAsync(0);
 
@@ -548,7 +548,7 @@ describe("following the widgets", () => {
     expect(script.routes("/unwatch").map((r) => r.body)).toStrictEqual([
       { owner: "w1" },
     ]);
-    expect([...script.watching]).toStrictEqual(["w7"]);
+    expect([...script.watching].toSorted()).toStrictEqual(["w7", "w8"]);
   });
 
   it("leaves the watch alone when only the title changes", async () => {
