@@ -15,6 +15,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createGateway, type LanguageModel } from "ai";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
+import { cacheAnthropicRequest } from "./anthropic-cache.ts";
 import {
   ANTHROPIC_CONFIG,
   GEMINI_CONFIG,
@@ -42,7 +43,7 @@ export function createProviderModel(
     case "anthropic": {
       const apiKey = validateApiKey(ANTHROPIC_CONFIG);
 
-      return createAnthropic({ apiKey })(model);
+      return createAnthropic({ apiKey, fetch: cacheAnthropicRequest })(model);
     }
 
     case "google": {

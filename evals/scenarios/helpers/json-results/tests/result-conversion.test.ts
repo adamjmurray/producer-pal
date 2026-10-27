@@ -327,6 +327,28 @@ describe("toJsonResult", () => {
     expect(result.turns[0]?.usage).not.toHaveProperty("reasoningTokens");
   });
 
+  it("sums cache reads and writes across steps, omitting them when zero", () => {
+    const result = convert({
+      turns: [
+        makeTurn({
+          stepUsages: [
+            { inputTokens: 9000, outputTokens: 10, cacheWriteTokens: 8000 },
+            { inputTokens: 9500, outputTokens: 10, cacheReadTokens: 8000 },
+            { inputTokens: 9900, outputTokens: 10, cacheReadTokens: 9400 },
+          ],
+        }),
+      ],
+    });
+
+    expect(result.turns[0]?.usage).toStrictEqual({
+      inputTokens: 28400,
+      outputTokens: 30,
+      cacheReadTokens: 17400,
+      cacheWriteTokens: 8000,
+    });
+    expect(convert().turns[0]?.usage).not.toHaveProperty("cacheReadTokens");
+  });
+
   it("includes reflection on failing check when present", () => {
     const result = convert({
       assertions: [

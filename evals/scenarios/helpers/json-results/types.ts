@@ -148,9 +148,14 @@ export interface JsonStepTiming {
 }
 
 export interface JsonTokenUsage {
+  /** All input, cached or not */
   inputTokens?: number;
   outputTokens?: number;
   reasoningTokens?: number;
+  /** The part of `inputTokens` read from a prompt cache */
+  cacheReadTokens?: number;
+  /** The part of `inputTokens` written to a prompt cache */
+  cacheWriteTokens?: number;
 }
 
 /** Individual deterministic check result */

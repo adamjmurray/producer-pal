@@ -13,6 +13,16 @@ import { createGateway, type LanguageModel } from "ai";
 import { settleOpenRouterReasoningOff } from "#webui/chat/sdk/provider/openrouter-reasoning";
 import { getThinkingOffType } from "#webui/hooks/settings/config-builders";
 import { type Provider } from "#webui/types/settings";
+import {
+  addCacheControl,
+  type AnthropicRequestBody,
+  ephemeral,
+  markLastBlock,
+} from "#webui/chat/sdk/provider/anthropic-cache-control";
+import {
+  rewritingFetch,
+  type RewritingFetch,
+} from "#webui/chat/sdk/provider/rewriting-fetch";
 import { withDefaultUrl } from "#webui/utils/provider-url";
 
 /**
@@ -115,18 +125,6 @@ export function createProviderModel(
   }
 }
 
-/** Minimal shape of the Anthropic Messages API request body we mutate. */
-interface AnthropicRequestBody {
-  model?: string;
-  thinking?: { type?: string; display?: string };
-  system?: string | Array<Record<string, unknown>>;
-  tools?: Array<Record<string, unknown>>;
-  messages?: Array<{
-    role?: string;
-    content?: string | Array<Record<string, unknown>>;
-  }>;
-}
-
 /**
  * Rewrites the outgoing Anthropic request: `display: "summarized"` for adaptive
  * thinking, and prompt-caching breakpoints over the static prefix. Both are
@@ -224,38 +222,6 @@ export const transformOpenRouterRequest: RewritingFetch = rewritingFetch(
   },
 );
 
-/** A fetch a provider can be handed in place of the global one. */
-type RewritingFetch = (
-  input: RequestInfo | URL,
-  init?: RequestInit,
-) => Promise<Response>;
-
-/**
- * Build a fetch that rewrites the outgoing JSON body on its way out. A body
- * that isn't JSON, or that `transform` leaves alone, goes out byte-for-byte.
- * @param transform - Mutates the parsed body; returns true when it changed it
- * @returns The fetch to hand the provider
- */
-function rewritingFetch(
-  transform: (body: unknown) => boolean | Promise<boolean>,
-): RewritingFetch {
-  return async (input, init) => {
-    if (init?.body && typeof init.body === "string") {
-      try {
-        const body: unknown = JSON.parse(init.body);
-
-        if (await transform(body)) {
-          init = { ...init, body: JSON.stringify(body) };
-        }
-      } catch {
-        // Not JSON — pass through unchanged
-      }
-    }
-
-    return await fetch(input, init);
-  };
-}
-
 /**
  * Add `cache_control` breakpoints to an OpenRouter (OpenAI-shaped) request body
  * for Anthropic/Gemini models only. OpenAI/Grok/DeepSeek auto-cache, and Gemma
@@ -330,81 +296,4 @@ function markMessageContent(message: OpenRouterMessage): boolean {
   }
 
   return false;
-}
-
-/**
- * Build a fresh ephemeral cache_control marker (5-minute TTL).
- * @returns A new `{ type: "ephemeral" }` object
- */
-function ephemeral(): Record<string, unknown> {
-  return { type: "ephemeral" };
-}
-
-/**
- * Add `cache_control` breakpoints to an Anthropic request body so the large
- * static prefix (tools + system prompt + the ppal-connect skills blob) isn't
- * re-billed every turn. Two breakpoints, within Anthropic's limit of four:
- *
- * 1. Static head — on the system block. Anthropic renders `tools → system`, so
- *    one breakpoint there covers both. Falls back to the last tool when there
- *    is no system prompt.
- * 2. Rolling tail — the last content block of the last message, which caches
- *    the whole conversation prefix and grows each turn.
- *
- * The rolling tail only holds if the prefix stays byte-stable across turns,
- * which is why build-model-messages re-emits the signed thinking block rather
- * than dropping it. The head caches on every request regardless.
- *
- * @param body - Parsed Anthropic request body (mutated in place)
- * @returns True if any breakpoint was added
- */
-function addCacheControl(body: AnthropicRequestBody): boolean {
-  let changed = false;
-
-  // 1. Static head: tools + system.
-  if (typeof body.system === "string" && body.system.length > 0) {
-    body.system = [
-      { type: "text", text: body.system, cache_control: ephemeral() },
-    ];
-    changed = true;
-  } else if (Array.isArray(body.system) && body.system.length > 0) {
-    markLastBlock(body.system);
-    changed = true;
-  } else if (Array.isArray(body.tools) && body.tools.length > 0) {
-    markLastBlock(body.tools);
-    changed = true;
-  }
-
-  // 2. Rolling tail: the full conversation prefix up to the latest turn.
-  // at(-1) of an empty/absent array is undefined, so no separate length guard.
-  const lastMessage = Array.isArray(body.messages)
-    ? body.messages.at(-1)
-    : undefined;
-
-  if (lastMessage) {
-    const content = lastMessage.content;
-
-    if (Array.isArray(content) && content.length > 0) {
-      markLastBlock(content);
-      changed = true;
-    } else if (typeof content === "string" && content.length > 0) {
-      lastMessage.content = [
-        { type: "text", text: content, cache_control: ephemeral() },
-      ];
-      changed = true;
-    }
-  }
-
-  return changed;
-}
-
-/**
- * Mark the last block of a non-empty array with an ephemeral cache_control.
- * Callers guarantee the array is non-empty, so the last element is defined.
- * @param blocks - Non-empty array of content/tool/system blocks
- */
-function markLastBlock(blocks: Array<Record<string, unknown>>): void {
-  const last = blocks.at(-1) as Record<string, unknown>;
-
-  last.cache_control = ephemeral();
 }

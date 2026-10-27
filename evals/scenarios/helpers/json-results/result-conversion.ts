@@ -314,17 +314,23 @@ function sumStepUsages(steps: JsonTokenUsage[]): JsonTokenUsage {
   let input = 0;
   let output = 0;
   let reasoning = 0;
+  let cacheRead = 0;
+  let cacheWrite = 0;
 
   for (const step of steps) {
     input += step.inputTokens ?? 0;
     output += step.outputTokens ?? 0;
     reasoning += step.reasoningTokens ?? 0;
+    cacheRead += step.cacheReadTokens ?? 0;
+    cacheWrite += step.cacheWriteTokens ?? 0;
   }
 
   return {
     inputTokens: input,
     outputTokens: output,
     ...(reasoning > 0 && { reasoningTokens: reasoning }),
+    ...(cacheRead > 0 && { cacheReadTokens: cacheRead }),
+    ...(cacheWrite > 0 && { cacheWriteTokens: cacheWrite }),
   };
 }
 

@@ -392,6 +392,13 @@ into and they fall back to a real connect turn. Worth remembering when comparing
 one of those runs against any other provider — only one of them paid for that
 turn.
 
+On the `anthropic` provider, requests are prompt-cached: tools + system, the
+conversation tail, and the connect result. The connect result is identical
+across scenarios on the same Live Set, so every scenario after the first reads
+it from cache. Results record `cacheReadTokens` / `cacheWriteTokens` per turn;
+both are part of `inputTokens`. Other providers get no cache markers (OpenAI
+caches automatically).
+
 ### Scoring
 
 These assertions decide pass/fail:
