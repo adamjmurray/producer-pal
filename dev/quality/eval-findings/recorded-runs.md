@@ -36,6 +36,7 @@ fails, gemma passes" until run 2 turned out to predate the refusal of
 | 22  | gpt-6-luna        | default         | `37c11203b`  | 3      | 381 | 340 (89%) | 175.0M | 2h34m |
 | 23  | claude-haiku-5-5  | default         | `37c11203b`  | 3      | 381 | 370 (97%) | 100.4M | 1h19m |
 | 24  | claude-sonnet-5-5 | default         | `e90a887ba`+ | 3      | 381 | 377 (99%) | 91.4M  | 1h26m |
+| 25  | gpt-6.1-terra     | default         | `e90a887ba`+ | 3      | 381 | 371 (97%) | 139.3M | 4h20m |
 
 **Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
 70% is over the scenarios it reached, which are the expensive front of the list.
@@ -100,8 +101,10 @@ descriptions. That is why a run records its totals and not only its failures.
 scenarios flipped between runs 3 and 4 — same model, same commit, same flags. A
 single red cell in a gemma column is noise, not a finding.
 
-**Run 24 is stitched and judge-free.** It ran with `--skip-judge`, alongside
-Terra. The Anthropic credits ran out on the last 7 scenarios; those were re-run
-the same day after commits that changed only the eval harness, and the re-runs
-were the first with prompt caching. Input counts cached tokens: 88.7M of the
-91.4M was uncached. Wall is scenario time.
+**Runs 24 and 25 are stitched and judge-free.** Both ran together with
+`--skip-judge`, then were finished by same-day re-runs: Sonnet's Anthropic
+credits ran out on its last 7 scenarios, and Terra hit the Codex usage limit
+twice. The commits in between touched only the eval harness, the chat UI and
+docs, so the device code is `e90a887ba`'s throughout. Sonnet's re-runs were the
+first with prompt caching; 88.7M of its 91.4M input was uncached. Wall is
+scenario time.
