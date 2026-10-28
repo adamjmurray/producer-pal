@@ -72,7 +72,8 @@ Conceptually simple. Two things make it harder than it looks.
 ## Problem 1: messages have a maximum length
 
 A single Max message atom can't be arbitrarily long. There's a hard ceiling
-around **32,767 characters**. Most responses stay well under it: the default
+around **32,767 bytes** of UTF-8 (a Japanese character takes 3, an emoji 4).
+Most responses stay well under it: the default
 [`compact` format](/guide/optimizing#keep-responses-compact) is token-optimized,
 and the read tools only return the `include` list they were asked for. But a big
 enough read still gets there, like a clip holding thousands of notes. Send that
@@ -82,17 +83,17 @@ So the V8 side **chunks** the JSON string before sending, into pieces small
 enough to survive the wire:
 
 ```
-MAX_CHUNK_SIZE = 30000   // ~30 KB per chunk, comfortably under the 32,767 limit
-MAX_CHUNKS     = 100     // up to ~3 MB per response
+MAX_CHUNK_SIZE = 10000   // UTF-16 units: at most 30,000 bytes, whatever the text
+MAX_CHUNKS     = 300     // up to ~3 MB per response
 ```
 
-`planChunks()` slices the JSON left-to-right into 30 KB chunks and sends them as
-**multiple atoms in one message**. The receiver glues them back together with a
-plain `join("")`. This relies on one guarantee Max gives us: the atoms of a
-single message arrive **in the order they were sent**, so no per-chunk sequence
-numbers are needed.
+`planChunks()` slices the JSON left-to-right into chunks (never cutting an emoji
+in half) and sends them as **multiple atoms in one message**. The receiver glues
+them back together with a plain `join("")`. This relies on one guarantee Max
+gives us: the atoms of a single message arrive **in the order they were sent**,
+so no per-chunk sequence numbers are needed.
 
-If a response somehow needs more than 100 chunks (~3 MB), Producer Pal refuses
+If a response somehow needs more than 300 chunks (~3 MB), Producer Pal refuses
 to send a corrupt blob. It replaces the payload with a clear "response too
 large" error instead. (You can find the chunking logic in
 [`mcp-responses.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/shared/mcp-responses.ts).)

@@ -5,7 +5,7 @@
 
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MAX_CHUNK_SIZE } from "#src/shared/mcp-responses.ts";
+import { MAX_SINGLE_MESSAGE_BYTES } from "#src/shared/mcp-responses.ts";
 import { handleCodeExecRequest } from "../../code-exec-protocol.ts";
 
 // max-api is already mocked globally in test-setup.ts
@@ -159,7 +159,7 @@ describe("code-exec-protocol", () => {
     // A result past the single-message IPC limit would be silently truncated by
     // Max (M6). The protocol must replace it with a small, loud error.
     const request = JSON.stringify({
-      code: `"x".repeat(${MAX_CHUNK_SIZE + 100})`,
+      code: `"x".repeat(${MAX_SINGLE_MESSAGE_BYTES + 100})`,
       globals: {},
     });
 
@@ -172,6 +172,17 @@ describe("code-exec-protocol", () => {
     // The oversized result itself was NOT sent — the payload stays small.
     const sentPayload = vi.mocked(Max.outlet).mock.calls[0]?.[2] as string;
 
-    expect(sentPayload.length).toBeLessThanOrEqual(MAX_CHUNK_SIZE);
+    expect(sentPayload.length).toBeLessThanOrEqual(MAX_SINGLE_MESSAGE_BYTES);
+  });
+
+  it("also refuses a result that is small in characters but large in bytes", async () => {
+    const request = JSON.stringify({
+      code: `"あ".repeat(${MAX_SINGLE_MESSAGE_BYTES / 3 + 100})`,
+      globals: {},
+    });
+
+    await handleCodeExecRequest("req-cjk", request);
+
+    expect(parseSentResult().error).toContain("too large");
   });
 });

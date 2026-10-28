@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
+  MAX_SINGLE_MESSAGE_BYTES,
   END_OF_CHUNKS,
 } from "#src/shared/mcp-responses.ts";
 import {
@@ -181,6 +182,33 @@ describe("node-request-protocol", () => {
 
     expect(response.success).toBe(true);
     expect(response.result).toBe(oversized);
+  });
+
+  it("chunks a CJK and emoji response under the byte limit and rejoins it intact", async () => {
+    // Emoji at every offset, so some pair straddles each chunk boundary.
+    const text = "あ😀".repeat(MAX_CHUNK_SIZE);
+
+    registerNodeRoute("cjk", () => text);
+
+    await handleNodeRequest(
+      "req-cjk",
+      JSON.stringify({ route: "cjk", args: {} }),
+    );
+
+    const args = vi.mocked(Max.outlet).mock.calls[0]!.slice(2);
+    const chunks = args.slice(0, args.indexOf(END_OF_CHUNKS)) as string[];
+
+    expect(chunks.length).toBeGreaterThan(2);
+
+    for (const chunk of chunks) {
+      expect(new TextEncoder().encode(chunk).length).toBeLessThanOrEqual(
+        MAX_SINGLE_MESSAGE_BYTES,
+      );
+      // Throws on a split surrogate pair.
+      expect(() => encodeURIComponent(chunk)).not.toThrow();
+    }
+
+    expect(parseSentResponse().result).toBe(text);
   });
 
   it("replaces too-large payloads with a single-chunk error response", async () => {

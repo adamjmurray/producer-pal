@@ -290,6 +290,57 @@ describe("syncProjectContextBackup — the filesystem refused", () => {
   });
 });
 
+describe("syncProjectContextBackup — too large for one message", () => {
+  function mockTooLarge(): void {
+    mockRequestNode.mockResolvedValueOnce({
+      success: false,
+      error: "node_request too large",
+      tooLarge: true,
+    });
+  }
+
+  it("warns once for the blob instead of on every tool call", async () => {
+    setFilePath(SAVED_PATH);
+    mockTooLarge();
+
+    await syncProjectContextBackup("x".repeat(40_000));
+    await syncProjectContextBackup("x".repeat(40_000));
+    await syncProjectContextBackup("x".repeat(40_000));
+
+    expect(mockRequestNode).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.stringContaining("too large to back up"),
+    );
+    expect(mockWarn).not.toHaveBeenCalledWith(
+      expect.stringContaining("sync failed"),
+    );
+  });
+
+  it("warns again when a changed blob is still too large", async () => {
+    setFilePath(SAVED_PATH);
+    mockTooLarge();
+    await syncProjectContextBackup("x".repeat(40_000));
+    mockTooLarge();
+
+    await syncProjectContextBackup("y".repeat(40_000));
+
+    expect(mockWarn).toHaveBeenCalledTimes(2);
+  });
+
+  it("warns once for an oversized manual edit too", async () => {
+    setFilePath(SAVED_PATH);
+    noteProjectContextLoaded("old notes");
+    mockTooLarge();
+
+    await backupProjectContextOnEdit("x".repeat(40_000));
+    await backupProjectContextOnEdit("x".repeat(40_000));
+
+    expect(mockRequestNode).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+  });
+});
+
 // The one refusal that is NOT memoized. A sidecar we couldn't read may still
 // hold the notes a device (re)load blanked, so the session's restore isn't spent
 // and the wipe question isn't settled — the read retries instead. The warning

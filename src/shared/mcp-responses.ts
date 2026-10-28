@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { isHighSurrogate, utf8ByteLength } from "./max/utf8-byte-length.ts";
+
 /**
  * Marks a content item as a warning rather than part of the result. The REST
  * route splits on it, so a producer that spells it differently has its warning
@@ -12,8 +14,14 @@ export const WARNING_PREFIX = "WARNING: ";
 
 // Message chunking constants
 export const END_OF_CHUNKS = "$$___END_OF_CHUNKS___$$";
-export const MAX_CHUNK_SIZE = 30000; // ~30KB per chunk, well below the 32,767 limit
-export const MAX_CHUNKS = 100; // Allows for ~3MB responses
+/**
+ * Max caps a message at ~32,767 UTF-8 bytes, but we count UTF-16 units. A unit
+ * is at most 3 bytes, so 10,000 units never pass 30,000 bytes whatever the text.
+ */
+export const MAX_CHUNK_SIZE = 10000;
+export const MAX_CHUNKS = 300; // Allows for ~3MB responses
+/** Largest single (unchunked) message, in UTF-8 bytes, kept under Max's limit. */
+export const MAX_SINGLE_MESSAGE_BYTES = 30000;
 
 export interface ChunkPlan {
   chunks: string[];
@@ -29,22 +37,46 @@ export interface ChunkPlan {
  * @returns Either the chunks or a tooLargeError describing the overflow
  */
 export function planChunks(jsonString: string): ChunkPlan {
-  const totalChunks = Math.ceil(jsonString.length / MAX_CHUNK_SIZE);
+  const estimate = Math.ceil(jsonString.length / MAX_CHUNK_SIZE);
 
-  if (totalChunks > MAX_CHUNKS) {
-    return {
-      chunks: [],
-      tooLargeError: `Response too large: ${jsonString.length} bytes would require ${totalChunks} chunks (max ${MAX_CHUNKS})`,
-    };
+  if (estimate > MAX_CHUNKS) {
+    return tooLarge(jsonString.length, estimate);
   }
 
   const chunks: string[] = [];
+  let start = 0;
 
-  for (let i = 0; i < jsonString.length; i += MAX_CHUNK_SIZE) {
-    chunks.push(jsonString.slice(i, i + MAX_CHUNK_SIZE));
+  while (start < jsonString.length) {
+    let end = Math.min(start + MAX_CHUNK_SIZE, jsonString.length);
+
+    // Don't cut a surrogate pair in two: each half would arrive as U+FFFD.
+    if (
+      end < jsonString.length &&
+      isHighSurrogate(jsonString.charCodeAt(end - 1))
+    ) {
+      end--;
+    }
+
+    chunks.push(jsonString.slice(start, end));
+    start = end;
   }
 
-  return { chunks, tooLargeError: null };
+  // Backing off can add a chunk beyond the estimate.
+  return chunks.length > MAX_CHUNKS
+    ? tooLarge(jsonString.length, chunks.length)
+    : { chunks, tooLargeError: null };
+}
+
+/**
+ * @param length - The payload's length in chars
+ * @param chunkCount - How many chunks it would take
+ * @returns A plan with no chunks and the overflow message
+ */
+function tooLarge(length: number, chunkCount: number): ChunkPlan {
+  return {
+    chunks: [],
+    tooLargeError: `Response too large: ${length} chars would require ${chunkCount} chunks (max ${MAX_CHUNKS})`,
+  };
 }
 
 /**
@@ -82,8 +114,8 @@ export const CODE_EXEC_TOO_LARGE_ADVICE =
 /**
  * Guard for a payload sent as a SINGLE unchunked Max IPC string (code-exec and
  * node_request, unlike responses, which split with planChunks). Max silently
- * truncates a string past ~32,767 chars, so reject at MAX_CHUNK_SIZE and fail
- * loudly instead.
+ * truncates a message past ~32,767 UTF-8 bytes, so reject past
+ * MAX_SINGLE_MESSAGE_BYTES and fail loudly instead.
  *
  * @param jsonString - The stringified payload about to be sent
  * @param label - Human label for the payload (e.g. "code-exec request")
@@ -95,11 +127,13 @@ export function oversizedSingleMessageError(
   label: string,
   advice: string,
 ): string | null {
-  if (jsonString.length <= MAX_CHUNK_SIZE) {
+  const bytes = utf8ByteLength(jsonString);
+
+  if (bytes <= MAX_SINGLE_MESSAGE_BYTES) {
     return null;
   }
 
-  return `${label} too large for a single Max IPC message: ${jsonString.length} chars exceeds ${MAX_CHUNK_SIZE}. ${advice}`;
+  return `${label} too large for a single Max IPC message: ${bytes} bytes exceeds ${MAX_SINGLE_MESSAGE_BYTES}. ${advice}`;
 }
 
 interface McpTextContent {

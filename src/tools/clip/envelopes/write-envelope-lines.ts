@@ -10,7 +10,7 @@
 import { parseEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { MAX_CHUNK_SIZE } from "#src/shared/mcp-responses.ts";
+import { MAX_SINGLE_MESSAGE_BYTES } from "#src/shared/mcp-responses.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   appendDetail,
@@ -321,7 +321,7 @@ function tooManyPoints(
 ): string {
   // Room left once the route, the clip and the longest expiry are in.
   const room =
-    MAX_CHUNK_SIZE -
+    MAX_SINGLE_MESSAGE_BYTES -
     JSON.stringify({
       route: ENVELOPE_ROUTES.write,
       args: { ...request, points: [], expiresInMs: Number.MAX_SAFE_INTEGER },

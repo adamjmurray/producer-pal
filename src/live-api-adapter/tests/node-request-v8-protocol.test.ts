@@ -8,6 +8,7 @@ import { DEVICE_REPORT_ROUTE } from "#src/shared/max/device-install-contract.ts"
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   MAX_CHUNK_SIZE,
+  MAX_SINGLE_MESSAGE_BYTES,
   END_OF_CHUNKS,
   reassembleChunks,
 } from "#src/shared/mcp-responses.ts";
@@ -175,7 +176,7 @@ describe("node-request-v8-protocol", () => {
     vi.mocked(globalThis.outlet).mockClear();
 
     const response = await requestNode("test.huge", {
-      blob: "x".repeat(MAX_CHUNK_SIZE),
+      blob: "x".repeat(MAX_SINGLE_MESSAGE_BYTES),
     });
 
     expect(globalThis.outlet).not.toHaveBeenCalled();
@@ -184,6 +185,19 @@ describe("node-request-v8-protocol", () => {
     expect(response.error).toContain(
       "node_request 'test.huge' too large for a single Max IPC message",
     );
+  });
+
+  it("refuses a request under the character limit but over the byte limit", async () => {
+    vi.mocked(globalThis.outlet).mockClear();
+
+    // 15,000 chars, 45,000 bytes.
+    const response = await requestNode("test.cjk", {
+      blob: "あ".repeat(15_000),
+    });
+
+    expect(globalThis.outlet).not.toHaveBeenCalled();
+    expect(response.tooLarge).toBe(true);
+    expect(response.error).toContain("bytes exceeds");
   });
 
   it("logs error and ignores response for unknown requestId", async () => {

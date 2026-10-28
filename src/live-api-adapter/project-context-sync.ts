@@ -319,6 +319,18 @@ async function requestSync(
     },
   );
 
+  // Too big for one Max message, and retrying can't change that. Reported as
+  // ok so the caller memoizes it: it warns once per blob, not on every tool call.
+  if (response.tooLarge === true) {
+    console.warn(
+      "The project context is too large to back up beside the Live Set " +
+        "(Max messages are capped at about 30 KB). It is safe in the device, " +
+        "but won't survive a device upgrade. Tell the user to shorten it.",
+    );
+
+    return { ok: true, restored: null };
+  }
+
   if (!response.success) {
     console.warn(`Project context backup sync failed: ${response.error}`);
 

@@ -10,6 +10,7 @@ import Max from "max-api";
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
   formatErrorResponse,
+  oversizedSingleMessageError,
   reassembleChunks,
   WARNING_PREFIX,
   type McpErrorCode,
@@ -119,6 +120,24 @@ function sendToolCall(
   const queuedText =
     queuedMs > 0 ? ` (${queuedMs}ms of it waiting for other writes)` : "";
   const requestId = crypto.randomUUID();
+
+  // mcp_request isn't chunked, and Max would cut a long atom short.
+  const advice = "Not run. Send less in one call. Nothing changed.";
+  const tooLarge =
+    oversizedSingleMessageError(argsJSON, `Tool call '${tool}' args`, advice) ??
+    oversizedSingleMessageError(
+      contextJSON,
+      `Tool call '${tool}' context`,
+      advice,
+    );
+
+  if (tooLarge != null) {
+    const response = formatErrorResponse(tooLarge);
+
+    markChangedNothing(response);
+
+    return Promise.resolve(response);
+  }
 
   console.info(
     `Handling tool call: ${tool}(${argsJSON}) [requestId=${requestId}]`,
