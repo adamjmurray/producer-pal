@@ -9,7 +9,7 @@
 
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type LaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
-import { EPSILON } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 /** The span one clip occupied before it was cut, and the track it was on. */
 export interface SplitClipRange {
@@ -90,8 +90,8 @@ function freshClipsByOldId(
     )) {
       for (const [oldClipId, range] of ranges) {
         if (
-          start >= range.startTime - EPSILON &&
-          start < range.endTime - EPSILON
+          start >= range.startTime - SAME_TIME_EPSILON &&
+          start < range.endTime - SAME_TIME_EPSILON
         ) {
           (freshByOldId.get(oldClipId) as LiveAPI[]).push(
             LiveAPI.from(toLiveApiId(id)),
@@ -110,8 +110,8 @@ function freshClipsByOldId(
  * Song-timeline positions become offsets from the clip's start; the deprecated
  * `split` param already gives offsets. Everything below is clip-relative.
  *
- * The margin is EPSILON, not 0, and it is load-bearing: the trims are all
- * guarded by `> EPSILON`, so a point within EPSILON of either edge would let one
+ * The margin is SAME_TIME_EPSILON, not 0, and it is load-bearing: the trims are all
+ * guarded by `> SAME_TIME_EPSILON`, so a point within SAME_TIME_EPSILON of either edge would let one
  * of them be skipped, and a skipped trim leaves a span the moves assume was
  * vacated still occupied. Those moves skip the overlap clear, so Live would
  * crash on the next duplicate. Keep the two thresholds equal. Such a point asks
@@ -133,7 +133,10 @@ export function splitOffsetsInside(
       index,
       offset: mode.origin === "song" ? point - clipStart : point,
     }))
-    .filter(({ offset }) => offset > EPSILON && offset < clipLength - EPSILON);
+    .filter(
+      ({ offset }) =>
+        offset > SAME_TIME_EPSILON && offset < clipLength - SAME_TIME_EPSILON,
+    );
 }
 
 /**

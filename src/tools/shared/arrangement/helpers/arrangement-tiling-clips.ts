@@ -20,14 +20,6 @@ import { clipFromDuplicateResult } from "./arrangement-duplicate-result.ts";
 import { type LaneView } from "./arrangement-lane-view.ts";
 import { type ClipReporter } from "./clip-reporter.ts";
 
-/**
- * Beat tolerance for length comparisons across arrangement editing. Splitting
- * also uses it as the margin keeping split points off a clip's edges — see the
- * validPoints filter in arrangement-splitting.ts, which must not drift from the
- * trim guards that share this value.
- */
-export const EPSILON = 0.001;
-
 export interface TilingContext {
   /** Path to silence WAV file for audio clip operations */
   silenceWavPath: string;

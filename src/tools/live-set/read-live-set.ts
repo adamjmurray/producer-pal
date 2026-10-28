@@ -25,6 +25,7 @@ import {
   readOneTrack,
   readTrackGeneric,
 } from "#src/tools/track/read/read-track.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 
 interface ReadLiveSetArgs {
   include?: string[];
@@ -65,10 +66,8 @@ export function readLiveSet(
 
   const liveSetName = liveSet.getName();
   // Read once: the result's time signature and the locators spell the same meter.
-  const timeSigNumerator = liveSet.getProperty("signature_numerator") as number;
-  const timeSigDenominator = liveSet.getProperty(
-    "signature_denominator",
-  ) as number;
+  const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
+    songMeter();
   const result: Record<string, unknown> = {
     ...(liveSetName ? { name: liveSetName } : {}),
     tempo: roundDisplayValue(liveSet.getProperty("tempo"), round2dp),

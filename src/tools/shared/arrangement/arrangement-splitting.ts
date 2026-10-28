@@ -19,7 +19,6 @@ import {
 import { type ClipReporter } from "#src/tools/shared/arrangement/helpers/clip-reporter.ts";
 import {
   createAndDeleteTempClip,
-  EPSILON,
   type TilingContext,
 } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import {
@@ -34,6 +33,7 @@ import {
   type SplitClipRange,
 } from "./arrangement-splitting-rescan.ts";
 import { ignoredText } from "#src/shared/max/ignored-wording.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 export interface SplittingContext {
   silenceWavPath?: string;
@@ -199,7 +199,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   const seg0End = boundaries[1] as number; // boundaries has >= 3 elements
   const rightTrimLen = clipLength - seg0End;
 
-  if (rightTrimLen > EPSILON) {
+  if (rightTrimLen > SAME_TIME_EPSILON) {
     createAndDeleteTempClip(
       track,
       clipArrangementStart + seg0End,
@@ -230,7 +230,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   const lastSegStart = boundaries[tailSegment] as number; // loop bounds guarantee valid
   const lastSegFinalPos = clipArrangementStart + lastSegStart;
 
-  if (lastSegStart > EPSILON) {
+  if (lastSegStart > SAME_TIME_EPSILON) {
     createAndDeleteTempClip(
       track,
       sourcePos,
@@ -387,14 +387,14 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): number {
       workClipId = workClip.id;
 
       // Left-trim to remove content before this segment
-      if (segStart > EPSILON) {
+      if (segStart > SAME_TIME_EPSILON) {
         createAndDeleteTempClip(track, workPos, segStart, isMidiClip, context);
       }
 
       // Right-trim to remove content after this segment
       const rightTrim = clipLength - segEnd;
 
-      if (rightTrim > EPSILON) {
+      if (rightTrim > SAME_TIME_EPSILON) {
         createAndDeleteTempClip(
           track,
           workPos + segEnd,

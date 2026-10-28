@@ -22,6 +22,7 @@ import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   objectPathForApi,
+  requireTrackIndex,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -70,9 +71,7 @@ export function getMinimalClipInfo(
     (clip.getProperty("is_arrangement_clip") as number) > 0;
 
   if (isArrangementClip) {
-    if (clip.trackIndex == null) {
-      throw new Error(`no track for arrangement clip ${targetLabel(clip)}`);
-    }
+    const trackIndex = requireTrackIndex(clip, "arrangement clip");
 
     // The path spells the lane and the start, so nothing else reports either.
     const entry = {
@@ -81,7 +80,7 @@ export function getMinimalClipInfo(
       ...(detail != null && { detail }),
     };
 
-    recordCopySpan(entry, clip, clip.trackIndex);
+    recordCopySpan(entry, clip, trackIndex);
 
     return entry;
   }

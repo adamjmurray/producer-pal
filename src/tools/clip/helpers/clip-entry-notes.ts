@@ -7,6 +7,7 @@
 // the same words.
 
 import { CLIP_IS_AUDIO, ignoredText } from "#src/shared/max/ignored-wording.ts";
+import { plural } from "#src/tools/shared/validation/lists/plural.ts";
 
 /**
  * What to say when notes sharing a pitch and start were collapsed into one.
@@ -15,7 +16,7 @@ import { CLIP_IS_AUDIO, ignoredText } from "#src/shared/max/ignored-wording.ts";
  */
 export function droppedDuplicatesNote(count: number): string | null {
   return count > 0
-    ? `dropped ${count} duplicate note${count === 1 ? "" : "s"} at the same pitch and start`
+    ? `dropped ${plural(count, "duplicate note")} at the same pitch and start`
     : null;
 }
 
@@ -24,7 +25,7 @@ export function droppedDuplicatesNote(count: number): string | null {
  * @returns "1 note" or "3 notes"
  */
 function notesCount(count: number): string {
-  return `${count} note${count === 1 ? "" : "s"}`;
+  return plural(count, "note");
 }
 
 /**
@@ -79,7 +80,7 @@ export function transformsIgnoredAudioNote(): string {
  * @returns "1 muted note" or "3 muted notes"
  */
 function mutedNotes(count: number): string {
-  return `${count} muted note${count === 1 ? "" : "s"}`;
+  return plural(count, "muted note");
 }
 
 /**
@@ -111,7 +112,7 @@ export function mutedOverlapNote(
 
   return mutedWasShortened
     ? `${mutedNotes(count)} shortened by an overlapping note`
-    : `${count} note${count === 1 ? "" : "s"} shortened by an overlapping muted note`;
+    : `${notesCount(count)} shortened by an overlapping muted note`;
 }
 
 /**

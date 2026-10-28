@@ -7,10 +7,10 @@
 // itself (arrangement-splitting.ts).
 
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type SplitMode } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 
 /**
  * Read the split positions, in song meter, and refuse any the tool can't use.
@@ -22,11 +22,11 @@ import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
  * @returns Sorted beat positions, none at 0
  */
 export function readSplitPoints(split: string, mode: SplitMode): number[] {
-  const liveSet = LiveAPI.from(livePath.liveSet);
+  const { numerator, denominator } = songMeter();
   const splitPoints = parseSplitPoints(
     split,
-    liveSet.getProperty("signature_numerator") as number,
-    liveSet.getProperty("signature_denominator") as number,
+    numerator,
+    denominator,
     mode.param,
   );
 

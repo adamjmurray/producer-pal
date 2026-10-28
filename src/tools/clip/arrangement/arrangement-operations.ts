@@ -20,8 +20,8 @@ import {
   type ArrangementContext,
   type ClipIdResult,
 } from "./helpers/arrangement-length-changes.ts";
-import { EPSILON } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { SESSION_CLIP, ignoredText } from "#src/shared/max/ignored-wording.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 interface HandleArrangementLengthOperationArgs {
   clip: LiveAPI;
@@ -85,9 +85,9 @@ export function handleArrangementLengthOperation({
   const currentArrangementLength = currentEndTime - currentStartTime;
 
   // Check if shortening, lengthening, or same. A length that differs by less
-  // than EPSILON is the same one: read-clip rounds, so a caller echoing back
+  // than SAME_TIME_EPSILON is the same one: read-clip rounds, so a caller echoing back
   // the length it read must not lengthen the clip.
-  if (arrangementLengthBeats > currentArrangementLength + EPSILON) {
+  if (arrangementLengthBeats > currentArrangementLength + SAME_TIME_EPSILON) {
     // Growing into the lane overwrites whatever sits after the clip, so note
     // the lane first and say what the growth cost. This clip's ledger starts
     // here, from the call's lane view, so it hears of nothing before it.
@@ -178,5 +178,5 @@ export function shortensArrangementClip(
   endTime: number,
   arrangementLengthBeats: number,
 ): boolean {
-  return arrangementLengthBeats < endTime - startTime - EPSILON;
+  return arrangementLengthBeats < endTime - startTime - SAME_TIME_EPSILON;
 }

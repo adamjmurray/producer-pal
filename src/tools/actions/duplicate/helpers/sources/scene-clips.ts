@@ -10,7 +10,7 @@
 import { idDoesNotExist } from "#src/tools/shared/validation/id-validation.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { copyLengthBeats } from "../clip/arrangement-length.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { requireSceneIndex } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** One clip of a scene, and the track holding it. */
 export interface SceneClip {
@@ -75,13 +75,7 @@ export function sceneIndexOf(sceneId: string): number {
     throw new Error(idDoesNotExist(sceneId, "scene"));
   }
 
-  const sceneIndex = scene.sceneIndex;
-
-  if (sceneIndex == null) {
-    throw new Error(`no scene index for ${targetLabel(scene)}`);
-  }
-
-  return sceneIndex;
+  return requireSceneIndex(scene);
 }
 
 /**

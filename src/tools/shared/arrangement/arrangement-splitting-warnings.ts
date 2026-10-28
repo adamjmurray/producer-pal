@@ -9,9 +9,9 @@
 // call that cut nothing at all, or a position that cut nothing anywhere.
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type SplitMode } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 
 /** A clip no split point fell inside, held until the whole call is known. */
 export interface SplitMiss {
@@ -86,9 +86,7 @@ export function warnUnusedSplitPoints(
  * @returns Beats to "bar|beat"
  */
 function barBeatFormatter(): (beats: number) => string {
-  const liveSet = LiveAPI.from(livePath.liveSet);
-  const numerator = liveSet.getProperty("signature_numerator") as number;
-  const denominator = liveSet.getProperty("signature_denominator") as number;
+  const { numerator, denominator } = songMeter();
 
   return (beats) => abletonBeatsToBarBeat(beats, numerator, denominator);
 }

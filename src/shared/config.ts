@@ -44,7 +44,9 @@ export const MIN_LIVE_VERSION = "12.3.0";
  *
  * This is the project's canonical "same position" epsilon. It is used for
  * note-collision dedupe, v0 deletion matching, serializer time-grouping (the
- * round-trip floor), locator-time matching, and start-marker comparisons.
+ * round-trip floor), locator-time matching, start-marker comparisons, and the
+ * arrangement edge/length comparisons (clip edges and split points, which must
+ * agree on one margin).
  *
  * It is specifically a POSITION-equality tolerance. It is deliberately NOT
  * shared with the other 0.001-magnitude tolerances in the codebase, which are
@@ -58,6 +60,12 @@ export const MIN_LIVE_VERSION = "12.3.0";
  * together.
  */
 export const SAME_TIME_EPSILON = 0.001;
+
+/**
+ * Margin for comparing a beat position to the 32-bit float Live stores for it:
+ * far below one tick, so anything over it is Live moving the position.
+ */
+export const LIVE_FLOAT_EPSILON = 1e-6;
 
 // --- Tool-call timeouts ---
 

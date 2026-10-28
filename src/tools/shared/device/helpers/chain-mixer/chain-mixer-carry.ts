@@ -16,6 +16,7 @@ import {
   rackPath,
   readChainMixer,
 } from "./chain-mixer.ts";
+import { plural } from "#src/tools/shared/validation/lists/plural.ts";
 
 export interface ChainMixerCarry {
   /** Mixer values read off the source chain */
@@ -242,7 +243,7 @@ function summarizeChainMixer(mixer: Record<string, unknown>): string {
   const sends = mixer.sends as unknown[] | undefined;
 
   if (sends != null && sends.length > 0) {
-    parts.push(`${sends.length} send${sends.length === 1 ? "" : "s"}`);
+    parts.push(plural(sends.length, "send"));
   }
 
   return parts.join(", ");

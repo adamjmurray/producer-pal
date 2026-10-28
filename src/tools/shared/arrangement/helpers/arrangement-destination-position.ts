@@ -16,6 +16,7 @@ import {
   type SongPositionLabels,
 } from "#src/tools/shared/locator/song-position.ts";
 import { type ClipDestinationPath } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 
 /**
  * Resolves every locator a destination list names. A list with none costs no
@@ -48,10 +49,11 @@ export function destinationPositionResolver<
   }
 
   const liveSet = LiveAPI.from(livePath.liveSet);
+  const meter = songMeter();
   const options = {
     ...labels,
-    timeSigNumerator: liveSet.getProperty("signature_numerator") as number,
-    timeSigDenominator: liveSet.getProperty("signature_denominator") as number,
+    timeSigNumerator: meter.numerator,
+    timeSigDenominator: meter.denominator,
   };
 
   return (entry) =>
