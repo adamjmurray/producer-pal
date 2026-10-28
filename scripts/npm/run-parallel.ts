@@ -8,13 +8,14 @@
  * Run multiple npm scripts in parallel with buffered output.
  * Output is printed in order after all scripts complete.
  *
- * Usage: node scripts/run-parallel.ts script1 script2 script3
+ * Usage: node scripts/npm/run-parallel.ts script1 script2 script3
  *
  * @example
- *   node scripts/run-parallel.ts typecheck:src typecheck:webui typecheck:e2e
+ *   node scripts/npm/run-parallel.ts typecheck:src typecheck:webui typecheck:e2e
  */
 
 import { spawn } from "node:child_process";
+import { npmRunCommand } from "./npm-run-command.ts";
 
 interface Result {
   name: string;
@@ -29,7 +30,8 @@ interface Result {
  */
 function runScript(name: string): Promise<Result> {
   return new Promise((resolve) => {
-    const child = spawn("npm", ["run", name, "--silent"], {
+    const [command, args] = npmRunCommand([name, "--silent"]);
+    const child = spawn(command, args, {
       stdio: ["ignore", "pipe", "pipe"],
     });
 
