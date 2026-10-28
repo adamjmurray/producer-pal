@@ -95,7 +95,10 @@ webui/
 **App.tsx** - Root component:
 
 - Screen Management
-  - Shows SettingsScreen if no API key saved
+  - Opens Settings on the Connection tab on a visit before chat is set up (a
+    `?settings=<tab>` link wins); it stays closable. Chat is "set up" once a
+    Save leaves the provider usable (an API key, or a local provider), and until
+    then the empty chat offers "Set up chat" and the composer is disabled
   - Otherwise routes by the selected model: **VoiceApp** for a realtime model
     (`isRealtimeSelection`), **ChatApp** otherwise — both get the same shared
     mode props and settings modal

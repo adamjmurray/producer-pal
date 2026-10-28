@@ -81,7 +81,7 @@ describe("useSettings crypto error handling", () => {
     const { result, errorSpy } = await renderPastFailedLoad();
 
     const initialSavedModel = result.current.savedModel;
-    const initialSettingsConfigured = result.current.settingsConfigured;
+    const initialChatSetUp = result.current.chatSetUp;
 
     await act(() => {
       result.current.setApiKey("sk-will-fail-to-encrypt");
@@ -101,7 +101,7 @@ describe("useSettings crypto error handling", () => {
     expect(saved).toBe(false);
     expect(result.current.saveError).toMatch(/encrypt boom/);
     expect(result.current.savedModel).toBe(initialSavedModel);
-    expect(result.current.settingsConfigured).toBe(initialSettingsConfigured);
+    expect(result.current.chatSetUp).toBe(initialChatSetUp);
     await waitForHookState(() => {
       expect(errorSpy).toHaveBeenCalledWith(
         "Failed to save provider settings",

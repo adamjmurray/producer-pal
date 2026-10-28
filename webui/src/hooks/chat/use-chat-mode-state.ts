@@ -121,6 +121,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
   const resolvedApiKey = resolveProviderApiKey(
     settings.provider,
     settings.apiKey,
+    settings.baseUrl,
   );
 
   // Resolve a provider's connection (key + base URL) from current settings.
@@ -134,7 +135,11 @@ export function useChatModeState(params: UseChatModeStateParams) {
       const conn = getProviderConnection(targetProvider);
 
       return {
-        apiKey: resolveProviderApiKey(targetProvider, conn.apiKey),
+        apiKey: resolveProviderApiKey(
+          targetProvider,
+          conn.apiKey,
+          conn.baseUrl,
+        ),
         baseUrl: getBaseUrl(targetProvider, conn.baseUrl),
       };
     },

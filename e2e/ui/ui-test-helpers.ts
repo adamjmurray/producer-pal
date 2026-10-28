@@ -92,8 +92,14 @@ export async function setupUiTest(
  * Install all route stubs and the settings-gate bypass. Must run before the
  * first navigation (addInitScript applies to every subsequent document).
  * @param page - Playwright page
+ * @param options - Stub options
+ * @param options.chatSetUp - Seed a set-up chat (default). False leaves the
+ * browser as a first visit: no stored settings, chat not set up.
  */
-export async function installStubs(page: Page): Promise<void> {
+export async function installStubs(
+  page: Page,
+  { chatSetUp = true }: { chatSetUp?: boolean } = {},
+): Promise<void> {
   // Serve the built single-file UI without a static server. The trailing `*`
   // also matches a deep link's query string (`?settings=installation`).
   await page.route("**/chat-ui.html*", (route) =>
@@ -220,6 +226,10 @@ export async function installStubs(page: Page): Promise<void> {
   // Bypass the first-run settings screen: mark settings configured with a dummy
   // Gemini (text) provider so the app routes straight to the chat screen. No
   // real key is needed — the conversation panel renders regardless.
+  if (!chatSetUp) {
+    return;
+  }
+
   await page.addInitScript(() => {
     localStorage.setItem("producer_pal_settings_configured", "true");
     localStorage.setItem("producer_pal_current_provider", "gemini");

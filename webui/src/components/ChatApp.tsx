@@ -53,6 +53,7 @@ export function ChatApp(props: ChatAppProps) {
       isCompacting={chat.isCompacting}
       rateLimitState={chat.rateLimitState}
       toolLimitReached={chat.toolLimitReached}
+      chatSetUp={settings.chatSetUp}
       handleSend={wrappedHandleSend}
       enqueueMessage={chat.enqueueMessage}
       queuedMessages={chat.queuedMessages}

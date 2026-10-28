@@ -13,7 +13,8 @@ no other app to install.
 
 1. Click "Open Chat UI" in the [Device Interface](/guide/device) Main tab
 2. Configure your AI provider in [Settings](#settings) (opens automatically on
-   first use)
+   first use). Until you do, the chat shows a "Set up chat" button that opens it
+   again, and you can't send messages
 3. Click "Quick Connect" to connect to Ableton Live
 
 ## Header Bar
@@ -308,9 +309,11 @@ detail, so leave it off unless you need it.
 
 ## Settings
 
-Settings open as a modal overlay. Press Escape or click outside to close (if
-there are unsaved changes, the dialog will shake as a reminder to save or
-cancel).
+Settings open as a modal overlay. Click **Close** (or **Cancel**), press Escape
+or click outside to close (if there are unsaved changes, the dialog will shake
+as a reminder to save or cancel). You can close Settings before setting up chat,
+for example after only using the **Installation** tab. Chat is set up once you
+save with an API key (or a local provider, or a custom endpoint with a URL).
 
 Settings are stored in your browser so you don't have to redo the setup every
 time. API keys are encrypted at rest, so they never sit in local storage as

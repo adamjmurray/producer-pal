@@ -40,6 +40,7 @@ const props = {
   isAssistantResponding: false,
   rateLimitState: null,
   toolLimitReached: false,
+  chatSetUp: true,
   handleSend: vi.fn(),
   enqueueMessage: vi.fn(),
   queuedMessages: [],
