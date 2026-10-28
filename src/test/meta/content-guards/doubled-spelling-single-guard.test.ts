@@ -42,7 +42,7 @@ describe("the doubled-spelling guard has one home", () => {
     const guard = fs.readFileSync(path.join(projectRoot, GUARD), "utf8");
 
     expect(guard).toContain("export function refuseDoubledSpelling");
-    expect(guard).not.toContain("console.warn");
+    expect(guard).not.toContain("emitWarning");
   });
 });
 

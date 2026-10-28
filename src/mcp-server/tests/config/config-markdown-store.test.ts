@@ -12,17 +12,17 @@ import {
   listConfigMarkdownFilesRecursive,
   skipIfUnreadable,
 } from "#src/mcp-server/helpers/config-store/config-markdown-store.ts";
-import { warn } from "#src/mcp-server/node-for-max-logger.ts";
+import { nodeWarn } from "#src/mcp-server/node-for-max-logger.ts";
 import {
   unreadableWays,
   useTempConfigDir,
 } from "../config-dir-test-helpers.ts";
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
-  log: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  nodeLog: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeWarn: vi.fn(),
+  nodeError: vi.fn(),
 }));
 
 vi.mock(import("node:fs"), async (importOriginal) => {
@@ -117,7 +117,9 @@ describe.each(unreadableWays)(
           "core.md",
           "ok/fine.md",
         ]);
-        expect(warn).toHaveBeenCalledWith(expect.stringContaining("locked"));
+        expect(nodeWarn).toHaveBeenCalledWith(
+          expect.stringContaining("locked"),
+        );
       },
     );
   },
@@ -130,13 +132,13 @@ describe("deleteConfigMarkdown", () => {
     deleteConfigMarkdown("context.md");
 
     expect(existsSync(join(getDir(), "context.md"))).toBe(false);
-    expect(warn).not.toHaveBeenCalled();
+    expect(nodeWarn).not.toHaveBeenCalled();
   });
 
   it("silently ignores a missing file (ENOENT)", () => {
     deleteConfigMarkdown("nope.md");
 
-    expect(warn).not.toHaveBeenCalled();
+    expect(nodeWarn).not.toHaveBeenCalled();
   });
 
   it("warns and continues when unlink fails for a non-ENOENT reason", () => {
@@ -148,7 +150,7 @@ describe("deleteConfigMarkdown", () => {
 
     deleteConfigMarkdown("adir.md");
 
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("adir.md"));
+    expect(nodeWarn).toHaveBeenCalledWith(expect.stringContaining("adir.md"));
   });
 
   it("is inert under Vitest without a dir override", () => {
@@ -166,7 +168,7 @@ describe("deleteConfigMarkdown", () => {
 describe("skipIfUnreadable", () => {
   it("returns the read result without warning", () => {
     expect(skipIfUnreadable("a.md", () => "ok")).toBe("ok");
-    expect(warn).not.toHaveBeenCalled();
+    expect(nodeWarn).not.toHaveBeenCalled();
   });
 
   it("warns with the file path and returns null when the read throws", () => {
@@ -175,7 +177,7 @@ describe("skipIfUnreadable", () => {
     });
 
     expect(result).toBeNull();
-    expect(warn).toHaveBeenCalledWith(
+    expect(nodeWarn).toHaveBeenCalledWith(
       expect.stringContaining(join(getDir(), "skills", "a.md")),
     );
   });

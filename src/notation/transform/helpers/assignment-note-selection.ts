@@ -5,7 +5,7 @@
 
 import { type NoteEvent } from "#src/notation/types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "../transform-warning-label.ts";
+import { clipDetail } from "../transform-warning-label.ts";
 import {
   type PitchRange,
   type PredicateNode,
@@ -134,7 +134,7 @@ function noteMatchesPredicate(
   try {
     return evaluatePredicate(predicate, ctx);
   } catch (error) {
-    console.clipDetail(`where() failed: ${errorMessage(error)}`);
+    clipDetail(`where() failed: ${errorMessage(error)}`);
 
     return null;
   }

@@ -30,10 +30,10 @@ vi.mock(
 );
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
-  warn,
-  log: vi.fn(),
-  info: vi.fn(),
-  error: vi.fn(),
+  nodeWarn: warn,
+  nodeLog: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeError: vi.fn(),
 }));
 
 const PING: RemoteScriptPing = {

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, type Mock, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { createClip } from "../create-clip.ts";
 import {
   setupArrangementClipMocks,
@@ -76,7 +76,7 @@ describe("createClip - region write order", () => {
   it("writes the starts first for a region before 1|1", async () => {
     // The new end (-1) is before the clip's current start (0), so moving it
     // first would be rejected.
-    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(maxConsole, "emitWarning").mockImplementation(() => {});
     const { track, clip } = setupArrangementClipMocks();
 
     await createClip({ path: "t0[3|1]", start: "1|1-n/2", length: "n/4" });
@@ -88,7 +88,7 @@ describe("createClip - region write order", () => {
   it("creates a session clip only as long as its region", async () => {
     // Created to the region's end, a region before 1|1 would ask Live for a
     // clip of negative length, and Live makes none.
-    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(maxConsole, "emitWarning").mockImplementation(() => {});
     const { clipSlot, clip } = setupSessionMocks({
       liveSet: { signature_numerator: 4, signature_denominator: 4 },
     });

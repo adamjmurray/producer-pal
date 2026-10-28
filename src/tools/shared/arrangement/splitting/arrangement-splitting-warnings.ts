@@ -9,7 +9,7 @@
 // call that cut nothing at all, or a position that cut nothing anywhere.
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { type SplitMode } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 
@@ -44,7 +44,7 @@ export function warnNothingSplit(misses: SplitMiss[], mode: SplitMode): void {
       ? "Positions are on the song timeline; the clips span"
       : "Positions are relative to each clip's start (1|1), and must be before its end; the clips span";
 
-  console.warn(
+  emitWarning(
     `${mode.param} cut nothing: no split point falls inside any of the clips. ${where} ${spans}.`,
   );
 }
@@ -76,7 +76,7 @@ export function warnUnusedSplitPoints(
       ? "no clip in the call spans"
       : "positions are relative to each clip's start, and no clip is long enough for";
 
-  console.warn(
+  emitWarning(
     `${mode.param} cut nothing at ${positions}: ${why} ${unused.length === 1 ? "it" : "them"}.`,
   );
 }

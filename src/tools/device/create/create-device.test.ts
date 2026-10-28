@@ -17,7 +17,7 @@ import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { createDevice } from "./create-device.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
@@ -352,7 +352,7 @@ describe("createDevice", () => {
           "insert_device",
           expect.anything(),
         );
-        expect(mockConsole.warn).not.toHaveBeenCalled();
+        expect(mockConsole.emitWarning).not.toHaveBeenCalled();
       });
 
       it("counts the devices in the past-the-end refusal in the plural", async () => {
@@ -674,7 +674,7 @@ describe("createDevice", () => {
           detail: 'container at path "t99" does not exist',
         },
       ]);
-      expect(mockConsole.warn).not.toHaveBeenCalled();
+      expect(mockConsole.emitWarning).not.toHaveBeenCalled();
     });
 
     it("answers every path with a skip when they all fail", async () => {

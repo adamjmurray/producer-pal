@@ -40,7 +40,7 @@ import { registerProjectContextBackupNodeRoutes } from "./helpers/project-contex
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 import { withDefaultOverrides } from "./helpers/request-overrides/default-overrides.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
-import * as console from "./node-for-max-logger.ts";
+import { nodeError, nodeInfo } from "./node-for-max-logger.ts";
 import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-collection-route.ts";
 import { registerGlobalContextRoutes } from "./routes/config/global-context-route.ts";
 import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
@@ -277,7 +277,7 @@ export function createExpressApp(): Express {
       const method =
         (req.body as { method?: string } | undefined)?.method ?? "unknown";
 
-      console.info(`MCP request: ${method}`);
+      nodeInfo(`MCP request: ${method}`);
 
       // The caller's own profile, off the per-request headers: the
       // built-in chat and each subagent worker send their own values, so one
@@ -309,7 +309,7 @@ export function createExpressApp(): Express {
 
       await serveStatelessMcp(server, req, res, req.body);
     } catch (error) {
-      console.error(`Error handling MCP request: ${String(error)}`);
+      nodeError(`Error handling MCP request: ${String(error)}`);
       // Echoed to the caller below: it's the only signal an MCP client gets
       // when this route breaks. That's only safe because nothing on this path
       // touches the filesystem or user data today (mirrors the `expose` note

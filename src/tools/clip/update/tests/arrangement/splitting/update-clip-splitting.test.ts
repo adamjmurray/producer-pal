@@ -16,7 +16,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   createSplittingCallMock,
   registerSessionClip,
@@ -94,7 +94,7 @@ describe("updateClip - splitting smoke tests", () => {
 
   it("splits for arrangementSplit when split is sent blank", async () => {
     const clipId = "clip_1";
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     const { callState } = setupClipSplittingMocks(clipId);
 
@@ -111,7 +111,7 @@ describe("updateClip - splitting smoke tests", () => {
 
   it("splits nothing, and says only that it was dropped, for a blank arrangementSplit", async () => {
     const clipId = "clip_1";
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     const { callState } = setupClipSplittingMocks(clipId);
 
@@ -207,7 +207,7 @@ describe("updateClip - splitting smoke tests", () => {
   // all — the same reading update-track gives a lone target — so every piece
   // takes it whole rather than one entry each.
   it("gives every piece a one-target name list whole", async () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     setupClipSplittingMocks("clip_1");
 
@@ -444,7 +444,7 @@ describe("updateClip - splitting smoke tests", () => {
 
   it("should not warn about split on a take-lane clip when split is not given", async () => {
     const clipId = "take_lane_clip";
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     setupTakeLaneClipMocks(clipId);
 

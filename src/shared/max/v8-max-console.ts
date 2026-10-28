@@ -4,6 +4,9 @@
 // SPDX-License-Identifier: MIT
 
 // Enhance Max v8's basic console logging functions (`post()` and `error()`) to behave more like a browser console
+// Import these by name (`import { emitWarning } from ...`), never as a namespace
+// named `console`: Max V8 is getting a native `console`, so a file that forgot the
+// import would silently log to it and its warning would never reach the response.
 // Note: this is for Max v8 runtime only, meaning is can be used with src/live-api-adapter and src/tools code.
 // There are dedicated logging solutions for the Claude Desktop Extension and MCP Server (Node for Max) code
 // in the respective source code folders.
@@ -71,7 +74,7 @@ const str = (value: unknown): string => {
  * Log values to Max console (or Node console as fallback)
  * @param args - Values to log
  */
-export const log = (...args: unknown[]): void => {
+export const maxLog = (...args: unknown[]): void => {
   if (typeof post === "function") {
     post(...args.map(str), "\n");
   } else {
@@ -84,7 +87,7 @@ export const log = (...args: unknown[]): void => {
  * Log error values to Max console (or Node console as fallback)
  * @param args - Values to log as errors
  */
-export const error = (...args: unknown[]): void => {
+export const maxError = (...args: unknown[]): void => {
   // Max V8's global error() is only ambiently typed under src/tsconfig (via
   // src/types/max-globals.d.ts). Self-type the access here so this module also
   // typechecks when pulled into graphs that don't include src/types (e.g. the
@@ -93,11 +96,12 @@ export const error = (...args: unknown[]): void => {
   // Max V8 does put its globals on globalThis (verified in Live). That is
   // load-bearing: a warning raised with no request in flight reaches the user
   // only through this call.
-  const maxError = (globalThis as { error?: (...args: unknown[]) => void })
-    .error;
+  const maxGlobalError = (
+    globalThis as { error?: (...args: unknown[]) => void }
+  ).error;
 
-  if (typeof maxError === "function") {
-    maxError(...args.map(str), "\n");
+  if (typeof maxGlobalError === "function") {
+    maxGlobalError(...args.map(str), "\n");
   } else {
     // Fallback for test environment
     console.error(...args.map(str));
@@ -114,7 +118,7 @@ export const error = (...args: unknown[]): void => {
  *
  * @param args - Values to log as warnings
  */
-export const warn = (...args: unknown[]): void => {
+export const emitWarning = (...args: unknown[]): void => {
   const parts = args.map(str);
   const message = parts.join(" ");
   const captured = recordWarning(message);
@@ -131,22 +135,22 @@ export const warn = (...args: unknown[]): void => {
   }
 
   if (!captured) {
-    error(message);
+    maxError(message);
   }
 };
 
 /**
- * Like {@link warn}, but skipped once the same key has already warned this
+ * Like {@link emitWarning}, but skipped once the same key has already warned this
  * request — for a lesson that stays true no matter how many targets in one
  * call trigger it.
  *
  * @param key - Identifies the lesson, not the specific message
  * @param args - Values to log as a warning, on the first call for this key
  */
-export const warnOnce = (key: string, ...args: unknown[]): void => {
+export const emitWarningOnce = (key: string, ...args: unknown[]): void => {
   if (alreadyWarnedOnce(key)) {
     return;
   }
 
-  warn(...args);
+  emitWarning(...args);
 };

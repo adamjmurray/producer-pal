@@ -12,9 +12,9 @@ import { handleCodeExecRequest } from "../../code-exec-protocol.ts";
 
 // Mock the logger to avoid console output
 vi.mock(import("../../node-for-max-logger.ts"), () => ({
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeWarn: vi.fn(),
+  nodeError: vi.fn(),
 }));
 
 /**
@@ -124,10 +124,10 @@ describe("code-exec-protocol", () => {
 
     await handleCodeExecRequest("req-err", request);
 
-    expect(consoleMock.error).toHaveBeenCalledWith(
+    expect(consoleMock.nodeError).toHaveBeenCalledWith(
       expect.stringContaining("Failed to send code_exec_result"),
     );
-    expect(consoleMock.error).toHaveBeenCalledWith(
+    expect(consoleMock.nodeError).toHaveBeenCalledWith(
       expect.stringContaining("req-err"),
     );
   });

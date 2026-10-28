@@ -6,7 +6,7 @@
 import { dedupeNotesKeepingLast } from "#src/notation/note-sort.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "./transform-warning-label.ts";
+import { clipDetail } from "./transform-warning-label.ts";
 import { type NoteEvent } from "../types.ts";
 import { formatTransformSyntaxError } from "./parser/transform-syntax-error.ts";
 import { applyTransformResult } from "./helpers/apply-transform-result.ts";
@@ -76,7 +76,7 @@ export function applyTransforms(
   );
 
   for (const reason of wrongClipTypeStatements(ast, false).reasons) {
-    console.clipDetail(reason);
+    clipDetail(reason);
   }
 
   // Sort by start_time then pitch so note.index reflects musical order
@@ -233,7 +233,7 @@ function deleteZeroedNotes(notes: NoteEvent[]): void {
   ).length;
 
   if (droppedForDuration > 0) {
-    console.clipDetail(
+    clipDetail(
       `${droppedForDuration} note(s) deleted: duration went to 0 or below`,
     );
   }
@@ -384,7 +384,7 @@ function applyAssignmentToNotes(
 
       if (!warnedFailures.has(message)) {
         warnedFailures.add(message);
-        console.clipDetail(message);
+        clipDetail(message);
       }
     }
   }

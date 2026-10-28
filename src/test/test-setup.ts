@@ -53,7 +53,7 @@ beforeEach(() => {
   beginLiveApiBuildStats();
 
   // Tool code only ever runs inside a request, so give every test one to warn
-  // into. Without it console.warn() takes the no-request-in-flight path and
+  // into. Without it emitWarning() takes the no-request-in-flight path and
   // reports to the Max console instead. A test covering that path ends the
   // capture itself.
   beginWarningCapture();

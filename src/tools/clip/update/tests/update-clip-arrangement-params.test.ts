@@ -47,12 +47,12 @@ vi.mock(import("#src/notation/barbeat/time/barbeat-time.ts"), () => ({
 }));
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  warn: vi.fn(),
-  log: vi.fn(),
+  maxError: vi.fn(),
+  emitWarning: vi.fn(),
+  maxLog: vi.fn(),
 }));
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 describe("parseArrangementParams", () => {
   beforeEach(() => {
@@ -78,7 +78,7 @@ describe("parseArrangementParams", () => {
     const { startBeats } = parseArrangementParams("", undefined, 2);
 
     expect(beatsForClip(startBeats, 0)).toBeNull();
-    expect(console.warn).not.toHaveBeenCalled();
+    expect(emitWarning).not.toHaveBeenCalled();
   });
 
   // Not blank, but names no position — the caller asked for a move, so the
@@ -99,8 +99,8 @@ describe("parseArrangementParams", () => {
     const { startBeats } = parseArrangementParams("null", undefined, 2);
 
     expect(beatsForClip(startBeats, 0)).toBeNull();
-    expect(console.warn).toHaveBeenCalledTimes(1);
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(emitWarning).toHaveBeenCalledTimes(1);
+    expect(emitWarning).toHaveBeenCalledWith(
       'arrangementStart "null" names nothing',
     );
   });
@@ -111,7 +111,7 @@ describe("parseArrangementParams", () => {
     expect([0, 1, 2].map((i) => beatsForClip(startBeats, i))).toStrictEqual([
       4, 4, 4,
     ]);
-    expect(console.warn).not.toHaveBeenCalled();
+    expect(emitWarning).not.toHaveBeenCalled();
   });
 
   it("broadcasts one length to every clip", () => {
@@ -120,7 +120,7 @@ describe("parseArrangementParams", () => {
     expect([0, 1, 2].map((i) => beatsForClip(lengthBeats, i))).toStrictEqual([
       4, 4, 4,
     ]);
-    expect(console.warn).not.toHaveBeenCalled();
+    expect(emitWarning).not.toHaveBeenCalled();
   });
 
   it("fans a position list out one per clip", () => {
@@ -129,7 +129,7 @@ describe("parseArrangementParams", () => {
     expect([0, 1, 2].map((i) => beatsForClip(startBeats, i))).toStrictEqual([
       0, 4, 8,
     ]);
-    expect(console.warn).not.toHaveBeenCalled();
+    expect(emitWarning).not.toHaveBeenCalled();
   });
 
   it("fans a length list out one per clip", () => {
@@ -148,7 +148,7 @@ describe("parseArrangementParams", () => {
       4,
       null,
     ]);
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(emitWarning).toHaveBeenCalledWith(
       "arrangementStart: 2 positions for 3 clips; the clips past the last position were not moved",
     );
   });
@@ -159,7 +159,7 @@ describe("parseArrangementParams", () => {
     expect([0, 1].map((i) => beatsForClip(startBeats, i))).toStrictEqual([
       0, 4,
     ]);
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(emitWarning).toHaveBeenCalledWith(
       "arrangementStart: 3 positions for 2 clips; the extra positions went unused",
     );
   });
@@ -167,7 +167,7 @@ describe("parseArrangementParams", () => {
   it("warns about a mismatched length list", () => {
     parseArrangementParams(undefined, "1bar,2bar,1bar", 2);
 
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(emitWarning).toHaveBeenCalledWith(
       "arrangementLength: 3 lengths for 2 clips; the extra lengths went unused",
     );
   });

@@ -6,7 +6,7 @@
 import { sortNotes } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
-import * as console from "./transform-warning-label.ts";
+import { clipDetail, emitTransformWarning } from "./transform-warning-label.ts";
 import {
   GRID_EPSILON,
   MAX_NOTE_PIECES,
@@ -212,13 +212,13 @@ function ratchetNotes(
   }
 
   if (shortNotes > 0) {
-    console.clipDetail(
+    clipDetail(
       `ratchet: ${shortNotes} note(s) spanned no grid line, left unchanged`,
     );
   }
 
   if (clamped > 0) {
-    console.clipDetail(
+    clipDetail(
       `ratchet: ${clamped} note(s) clamped to the max of ${MAX_NOTE_PIECES} pieces`,
     );
   }
@@ -262,7 +262,9 @@ function resolveRatchetPlan(
   const count = Math.round(value);
 
   if (count < 2) {
-    console.warn(`ratchet(${value}) needs a count of 2 or more; skipping`);
+    emitTransformWarning(
+      `ratchet(${value}) needs a count of 2 or more; skipping`,
+    );
 
     return null;
   }

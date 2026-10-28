@@ -42,7 +42,9 @@ describe("library tool — list-plugins action", () => {
 
     const consoleModule = await import("#src/shared/max/v8-max-console.ts");
 
-    warnSpy = vi.spyOn(consoleModule, "warn").mockImplementation(() => {});
+    warnSpy = vi
+      .spyOn(consoleModule, "emitWarning")
+      .mockImplementation(() => {});
   });
 
   afterEach(() => {

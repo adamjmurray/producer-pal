@@ -20,7 +20,7 @@
 // each clip lands on its own track, and so does a name or a color: a property,
 // not a place.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { plural } from "./plural.ts";
 import { splitEntries, unescapeCommas } from "./split-entries.ts";
 
@@ -225,7 +225,7 @@ export function warnPairingMismatch(
   const { param, noun, item, shortfall } = labels;
   const head = `${param}: ${plural(provided, noun)} for ${plural(count, item)}`;
 
-  console.warn(
+  emitWarning(
     provided > count
       ? `${head}; the extra ${noun}s went unused`
       : `${head}; the ${item}s past the last ${noun} ${shortfall}`,

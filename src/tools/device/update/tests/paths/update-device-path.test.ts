@@ -13,7 +13,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { updateDevice } from "../../update-device.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -26,7 +26,7 @@ describe("updateDevice with path parameter", () => {
   // z.coerce.string() renders that as "null" — counting it as sent refused the
   // update over a param the caller deliberately left empty.
   it("updates by path when id is a coerced null", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const device = registerMockObject("device-456", {
       path: livePath.track(1).device(0),
       type: "Device",

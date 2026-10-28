@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- dynamic property handling requires any */
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type PathLike } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { LIVE_API_DEVICE_TYPE_MIDI_EFFECT } from "#src/tools/constants.ts";
 import { buildOrReuse } from "./live-api-build.ts";
 import { NONEXISTENT_ID, parseIdOrPath } from "./live-api-id-or-path.ts";
@@ -88,7 +88,7 @@ if (typeof LiveAPI !== "undefined") {
 
             return parsed[property];
           } catch (error) {
-            console.warn(
+            emitWarning(
               `LiveAPI getProperty: failed to parse "${property}" response ${JSON.stringify(rawValue[0])}: ${errorMessage(error)}`,
             );
             return null;

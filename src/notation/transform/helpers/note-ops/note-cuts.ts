@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "../../transform-warning-label.ts";
+import { clipDetail } from "../../transform-warning-label.ts";
 import {
   type BarBeatPointNode,
   type NoteOp,
@@ -85,9 +85,7 @@ export function splitNotes(
 
   if (op.sync) {
     if (arrangementOrigin == null) {
-      console.clipDetail(
-        "sync ignored: session clip, so split is clip-relative",
-      );
+      clipDetail("sync ignored: session clip, so split is clip-relative");
     } else {
       originMusicalBeats = arrangementOrigin;
     }
@@ -129,13 +127,13 @@ export function splitNotes(
   }
 
   if (uncut > 0) {
-    console.clipDetail(
+    clipDetail(
       `split: ${uncut} note(s) contained none of the given positions, left unchanged`,
     );
   }
 
   if (clamped > 0) {
-    console.clipDetail(
+    clipDetail(
       `split: ${clamped} note(s) clamped to the max of ${MAX_NOTE_PIECES} pieces`,
     );
   }

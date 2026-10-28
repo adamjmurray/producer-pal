@@ -9,7 +9,7 @@ import { splitNotes } from "#src/notation/transform/helpers/note-ops/note-cuts.t
 import { type NoteOp } from "#src/notation/transform/parser/transform-parser.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   createTestNote,
   createTestNotes,
@@ -217,7 +217,9 @@ describe("note-count operation: split", () => {
   });
 
   it("leaves a note containing none of the positions unchanged (with a warning)", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warn = vi
+      .spyOn(maxConsole, "emitWarning")
+      .mockImplementation(() => {});
     const notes = createTestNote({ start_time: 0, duration: 1 });
 
     applyTransforms(notes, "split(2|1)", 4, 4);
@@ -288,7 +290,9 @@ describe("note-count operation: split", () => {
     });
 
     it("falls back to clip-relative (with a warning) on a session clip", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
       const sessionCtx: ClipContext = {
         clipDuration: 8,
         clipIndex: 0,
@@ -312,7 +316,9 @@ describe("note-count operation: split", () => {
   });
 
   it("keeps the maximum pieces without clamping at the boundary", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warn = vi
+      .spyOn(maxConsole, "emitWarning")
+      .mockImplementation(() => {});
 
     // 63 interior cuts produce exactly 64 pieces — the cap, not past it — so
     // there is no clamp and no warning.
@@ -324,7 +330,9 @@ describe("note-count operation: split", () => {
   });
 
   it("clamps one cut past the cap to the maximum pieces and warns", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warn = vi
+      .spyOn(maxConsole, "emitWarning")
+      .mockImplementation(() => {});
 
     // 64 interior cuts would make 65 pieces (one past the cap); the op keeps 64.
     const result = splitNotes([longNote()], splitOp(...cutPointsAt(64)), 4);
@@ -335,7 +343,9 @@ describe("note-count operation: split", () => {
   });
 
   it("clamps an excessive number of pieces and warns", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warn = vi
+      .spyOn(maxConsole, "emitWarning")
+      .mockImplementation(() => {});
 
     // A long note and 70 interior cut points (beats 1..70) exceed the 64-piece
     // cap; the op keeps 64 pieces (63 cuts) and warns.

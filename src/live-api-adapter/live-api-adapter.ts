@@ -26,7 +26,11 @@ import {
   isNotation,
   type Notation,
 } from "#src/shared/notation.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  emitWarning,
+  maxError,
+  maxLog,
+} from "#src/shared/max/v8-max-console.ts";
 import {
   beginWarningCapture,
   changedNothing,
@@ -322,7 +326,7 @@ function applyRestoredProjectContext(
   }
 
   if (sessionState.projectContext.content !== snapshot) {
-    console.warn(
+    emitWarning(
       "Project context changed while the backup restore was in flight; " +
         "keeping the newer content.",
     );
@@ -387,7 +391,7 @@ export function reportDevice(): void {
   const filepath = patcher?.filepath;
 
   if (typeof filepath !== "string" || filepath === "") {
-    console.warn("Could not read this device's file path.");
+    emitWarning("Could not read this device's file path.");
 
     return;
   }
@@ -399,7 +403,7 @@ export function reportDevice(): void {
     const response = await requestNode(DEVICE_REPORT_ROUTE, args);
 
     if (!response.success) {
-      console.warn(
+      emitWarning(
         `Could not report this device's file path: ${response.error}`,
       );
     }
@@ -511,7 +515,7 @@ export function node_response(requestId: string, ...rest: unknown[]): void {
     // the 10s timeout — and log loudly so it shows in the Max console.
     const message = errorMessage(error);
 
-    console.error(
+    maxError(
       `node_response wire-format error [requestId=${requestId}]: ${message}`,
     );
     json = JSON.stringify({ success: false, error: message });
@@ -577,7 +581,7 @@ async function handleRequest(
       } catch (contextError) {
         const message = errorMessage(contextError);
 
-        console.warn(`Failed to parse contextJSON: ${message}`);
+        emitWarning(`Failed to parse contextJSON: ${message}`);
       }
     }
 
@@ -652,7 +656,7 @@ async function handleRequest(
 
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 
-console.log(`[${now()}] Producer Pal ${VERSION} Live API adapter ready`);
+maxLog(`[${now()}] Producer Pal ${VERSION} Live API adapter ready`);
 
 // send a "started" signal so UI controls can resync their values
 // while changing the code repeatedly during development. The patch answers it

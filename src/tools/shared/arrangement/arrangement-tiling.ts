@@ -8,7 +8,7 @@
  * Creates partial tiles and tiles clips across ranges.
  */
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { createFullTiles, outOfTime } from "./arrangement-tiling-full-tiles.ts";
 import {
   type CreatedClip,
@@ -251,7 +251,7 @@ export function tileClipToRange(
     // guard it so a future caller tiling over the source can't corrupt it
     // (mirrors the full-tile loop's self-overlap skip above).
     if (sourceOverlapsTarget(sourceClipId, currentPosition, remainder)) {
-      console.warn(
+      emitWarning(
         `Source clip overlaps the partial tile at ${currentPosition}; skipping it to avoid corrupting the source`,
       );
     } else {

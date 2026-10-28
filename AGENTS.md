@@ -268,9 +268,13 @@ The practical consequences:
   plain afterwards. `npm run check:build` overwrites the device with a release
   build, so re-run `build:debug` afterwards or the device in Live is the wrong
   one.
-- **Debugging**: import `console` from `src/shared/max/v8-max-console.ts` and
-  use `console.warn()` — it shows up in the CLI and in the live MCP response.
-  `console.log()` and `console.error()` don't.
+- **Debugging**: in V8 code,
+  `import { emitWarning } from "#src/shared/max/v8-max-console.ts"` and call
+  `emitWarning()` — it shows up in the CLI and in the live MCP response.
+  `maxLog()` and `maxError()` (same module) only reach the Max console. Never
+  use a bare `console`, or alias a namespace import as `console`: lint and a
+  meta test ban both. In `src/mcp-server/` use `nodeError`, `nodeLog`,
+  `nodeWarn` and `nodeInfo` from `node-for-max-logger.ts` the same way.
 - **Coverage gaps**: `npm run check` prints totals only; the per-file breakdown
   is in `coverage/coverage-summary.txt`. Function coverage must be 100%; mark a
   genuinely untestable function with `/* v8 ignore start -- reason */`. Before

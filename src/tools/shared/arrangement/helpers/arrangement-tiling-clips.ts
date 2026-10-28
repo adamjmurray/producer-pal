@@ -10,7 +10,7 @@
  */
 
 import { assertDefined, errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
@@ -306,7 +306,7 @@ export function createAndDeleteTempClip(
 function reporter(
   report?: (message: string) => void,
 ): (message: string) => void {
-  return report ?? ((message: string) => console.warn(message));
+  return report ?? ((message: string) => emitWarning(message));
 }
 
 /**

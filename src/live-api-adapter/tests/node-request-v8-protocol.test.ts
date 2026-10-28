@@ -5,7 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEVICE_REPORT_ROUTE } from "#src/shared/max/device-install-contract.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import {
   MAX_CHUNK_SIZE,
   MAX_SINGLE_MESSAGE_BYTES,
@@ -25,10 +25,10 @@ import {
 } from "./v8-protocol-test-helpers.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  log: vi.fn(),
+  maxLog: vi.fn(),
   info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  emitWarning: vi.fn(),
+  maxError: vi.fn(),
 }));
 
 /**
@@ -224,7 +224,7 @@ describe("node-request-v8-protocol", () => {
       JSON.stringify({ success: true, result: 1 }),
     );
 
-    expect(consoleMock.error).toHaveBeenCalledWith(
+    expect(consoleMock.maxError).toHaveBeenCalledWith(
       expect.stringContaining("unknown-id"),
     );
   });
@@ -468,7 +468,7 @@ describe("reportDevice (the device.report request)", () => {
       route: DEVICE_REPORT_ROUTE,
       args: { filepath: "Macintosh HD:/Users/me/Producer_Pal.amxd" },
     });
-    expect(console.warn).not.toHaveBeenCalled();
+    expect(emitWarning).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -482,7 +482,7 @@ describe("reportDevice (the device.report request)", () => {
     reportDevice();
 
     expect(outlet).not.toHaveBeenCalled();
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(emitWarning).toHaveBeenCalledWith(
       "Could not read this device's file path.",
     );
   });
@@ -497,7 +497,7 @@ describe("reportDevice (the device.report request)", () => {
     );
 
     await vi.waitFor(() => {
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(emitWarning).toHaveBeenCalledWith(
         "Could not report this device's file path: no route",
       );
     });

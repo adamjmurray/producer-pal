@@ -5,7 +5,7 @@
 
 import { MIDI_TO_DRUM_NAME } from "#src/notation/stark/stark-config.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
@@ -328,7 +328,7 @@ export function readDevice(
   } = options;
 
   if (depth > maxDepth) {
-    console.warn(`Maximum recursion depth (${maxDepth}) exceeded`);
+    emitWarning(`Maximum recursion depth (${maxDepth}) exceeded`);
 
     return {};
   }

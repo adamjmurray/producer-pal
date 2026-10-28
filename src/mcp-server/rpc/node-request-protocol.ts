@@ -13,7 +13,7 @@
 import Max from "max-api";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { END_OF_CHUNKS, planChunks } from "#src/shared/mcp-responses.ts";
-import * as console from "../node-for-max-logger.ts";
+import { nodeError } from "../node-for-max-logger.ts";
 
 export type NodeRouteHandler = (args: unknown) => unknown;
 
@@ -84,7 +84,7 @@ export async function handleNodeRequest(
   } catch (error) {
     const message = errorMessage(error);
 
-    console.error(
+    nodeError(
       `Failed to parse node_request: ${message} [requestId=${requestId}]`,
     );
 
@@ -151,7 +151,7 @@ async function runWithTimeout(
     timer = setTimeout(() => {
       const message = `Route '${route}' timed out after ${timeoutMs}ms`;
 
-      console.error(`${message} [requestId=${requestId}]`);
+      nodeError(`${message} [requestId=${requestId}]`);
       reject(new Error(message));
     }, timeoutMs);
   });
@@ -196,7 +196,7 @@ async function sendNodeResponse(
   try {
     await Max.outlet("node_response", requestId, ...chunks, END_OF_CHUNKS);
   } catch (error) {
-    console.error(
+    nodeError(
       `Failed to send node_response: ${String(error)} [requestId=${requestId}]`,
     );
   }

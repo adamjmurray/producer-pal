@@ -20,9 +20,9 @@ import { registerArrangementTrack } from "../create-clip-test-helpers.ts";
 
 // Capture take lane warnings (session-ignore, hints)
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
@@ -214,7 +214,7 @@ describe("createClip take lanes", () => {
       expect(track.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
       expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
       expect(result.path).toBe("t0[1|1]");
-      expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      expect(consoleMock.emitWarning).not.toHaveBeenCalledWith(
         expect.stringContaining("takeLane"),
       );
     },
@@ -225,7 +225,7 @@ describe("createClip take lanes", () => {
 
     await createClip({ slot: "0/0", notes: "C3", takeLane: 1 });
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
       "takeLane ignored: session clips have no take lanes",
     );
   });
@@ -242,7 +242,7 @@ describe("createClip take lanes", () => {
     });
 
     expect(result).toBeDefined();
-    expect(consoleMock.warn).toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
       "takeLane ignored: session clips have no take lanes",
     );
   });
@@ -262,7 +262,7 @@ describe("createClip take lanes", () => {
       takeLane: 1,
     });
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
       "takeLane ignored: session clips have no take lanes",
     );
   });
@@ -416,7 +416,7 @@ describe("createClip take lane paths", () => {
     ).rejects.toThrow(
       "path names the take lane on its own - don't send takeLane with it",
     );
-    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).not.toHaveBeenCalledWith(
       "takeLane ignored: session clips have no take lanes",
     );
   });
@@ -443,7 +443,7 @@ describe("createClip take lane paths", () => {
       detail: takeLaneCapacityMessage(MAX_TAKE_LANES),
     });
     expect(result[1]?.path).toBe("t1[1|1]");
-    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).not.toHaveBeenCalledWith(
       expect.stringContaining("skipping"),
     );
   });

@@ -79,6 +79,17 @@ const NARROW_OXLINT_TEST_GLOBS = new Set([
   "e2e/mcp/mcp-test-helpers.ts",
   "src/live-api-adapter/tests/v8-protocol-test-helpers.ts",
   "src/test/meta/test-file-classification.test.ts",
+  // src suites only: they may namespace-import the console module to spy on it
+  // (see no-restricted-imports in .oxlintrc.json).
+  "src/**/*.test.ts",
+  "src/**/*.test.tsx",
+  "src/**/*-test-cases.ts",
+  "src/**/*-test-helpers.ts",
+  "src/**/*-test-helpers.tsx",
+  "src/**/test/**",
+  "src/**/tests/**",
+  "src/**/test-cases/**",
+  "src/**/test-utils/**",
   "src/tools/clip/update/tests/notes/notes-mock-test-helpers.ts",
 ]);
 

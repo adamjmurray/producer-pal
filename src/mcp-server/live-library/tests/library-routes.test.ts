@@ -30,10 +30,10 @@ vi.mock(import("../list-plugins.ts"), () => ({
   listPlugins: vi.fn(),
 }));
 vi.mock(import("../../node-for-max-logger.ts"), () => ({
-  log: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  nodeLog: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeWarn: vi.fn(),
+  nodeError: vi.fn(),
 }));
 // Keep the real exports (message, error type) but stub the runtime guard so it
 // resolves by default; one test overrides it to reject (unsupported runtime).

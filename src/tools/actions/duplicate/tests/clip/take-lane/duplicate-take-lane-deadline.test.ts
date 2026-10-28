@@ -10,9 +10,9 @@ import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpe
 
 // Capture the deadline warning, which shares the outlet with the take-lane ones
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
@@ -52,7 +52,7 @@ function registerSource(copyCostMs: number): void {
 /** A deadline warning, which no call should raise: every entry says it. */
 function deadlineWarning(): string | undefined {
   return vi
-    .mocked(consoleMock.warn)
+    .mocked(consoleMock.emitWarning)
     .mock.calls.map(([message]) => String(message))
     .find((message) => message.includes("Ran out of time"));
 }

@@ -22,10 +22,10 @@ import {
 } from "../tests/config-dir-test-helpers.ts";
 
 vi.mock(import("../node-for-max-logger.ts"), () => ({
-  log: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  nodeLog: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeWarn: vi.fn(),
+  nodeError: vi.fn(),
 }));
 
 const parseSentResponse = (): ParsedNodeResponse<unknown> =>
@@ -257,7 +257,7 @@ describe("node-request-protocol", () => {
 
     const consoleMock = await import("../node-for-max-logger.ts");
 
-    expect(consoleMock.error).toHaveBeenCalledWith(
+    expect(consoleMock.nodeError).toHaveBeenCalledWith(
       expect.stringContaining("Route 'hang' timed out"),
     );
   });
@@ -293,10 +293,10 @@ describe("node-request-protocol", () => {
 
     await handleNodeRequest("req-err", request);
 
-    expect(consoleMock.error).toHaveBeenCalledWith(
+    expect(consoleMock.nodeError).toHaveBeenCalledWith(
       expect.stringContaining("Failed to send node_response"),
     );
-    expect(consoleMock.error).toHaveBeenCalledWith(
+    expect(consoleMock.nodeError).toHaveBeenCalledWith(
       expect.stringContaining("req-err"),
     );
   });

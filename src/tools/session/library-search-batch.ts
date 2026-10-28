@@ -11,7 +11,7 @@ import {
   type LibrarySearchResult,
 } from "#src/mcp-server/live-library/library-types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 /** Hard cap on queries per `searches` fan-out. Internal — not a user param.
  * Extra queries beyond this are dropped (warn-and-truncate) so a runaway
@@ -46,7 +46,7 @@ export async function runSearchBatch(
   const capped = queries.slice(0, MAX_BATCH_QUERIES);
 
   if (queries.length > MAX_BATCH_QUERIES) {
-    console.warn(
+    emitWarning(
       `searches: ${queries.length} queries exceeds cap of ${MAX_BATCH_QUERIES}; ignoring the extra ${queries.length - MAX_BATCH_QUERIES}`,
     );
   }

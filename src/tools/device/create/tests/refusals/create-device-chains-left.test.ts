@@ -18,8 +18,8 @@ import { registerGrowingRack } from "../../../tests/helpers/growing-rack-fixture
 import { createDevice } from "../../create-device.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
-  warnOnce: vi.fn(),
+  emitWarning: vi.fn(),
+  emitWarningOnce: vi.fn(),
 }));
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({

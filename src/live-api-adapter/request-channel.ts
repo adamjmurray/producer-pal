@@ -7,7 +7,7 @@
 // one answer back, with a timeout in case none comes. Both the node_request and
 // code_exec protocols run on one of these.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { maxError } from "#src/shared/max/v8-max-console.ts";
 import { suspendWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 
@@ -142,7 +142,7 @@ export function requestChannel(spec: ChannelSpec): RequestChannel {
       const waiting = pending.get(requestId);
 
       if (!waiting) {
-        console.error(
+        maxError(
           `Received ${spec.responseMessage} for unknown request: ${requestId}`,
         );
 

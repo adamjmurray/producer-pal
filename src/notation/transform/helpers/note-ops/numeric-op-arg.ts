@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "../../transform-warning-label.ts";
+import { emitTransformWarning } from "../../transform-warning-label.ts";
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
 import {
   constantEvalContext,
@@ -200,7 +200,7 @@ export function numericOpArg(
   const result = evaluateNumericArg(arg, numerator, denominator);
 
   if ("problem" in result) {
-    console.warn(`${label} ${result.problem}; skipping`);
+    emitTransformWarning(`${label} ${result.problem}; skipping`);
 
     return null;
   }

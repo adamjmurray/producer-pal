@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   refuseDuplicateParamsOutsideType,
   validateAndConfigureRouteToSource,
@@ -21,7 +21,7 @@ describe("validateAndConfigureRouteToSource", () => {
   });
 
   it("forces withoutClips/withoutDevices to true and says so once", () => {
-    const warnSpy = vi.spyOn(console, "warn");
+    const warnSpy = vi.spyOn(maxConsole, "emitWarning");
 
     const result = validateAndConfigureRouteToSource(true, false, false);
 
@@ -35,7 +35,7 @@ describe("validateAndConfigureRouteToSource", () => {
   });
 
   it("names only the param the call actually sent as false", () => {
-    const warnSpy = vi.spyOn(console, "warn");
+    const warnSpy = vi.spyOn(maxConsole, "emitWarning");
 
     validateAndConfigureRouteToSource(true, undefined, false);
 
@@ -46,7 +46,7 @@ describe("validateAndConfigureRouteToSource", () => {
   });
 
   it("says nothing when withoutClips/withoutDevices are not explicitly false", () => {
-    const warnSpy = vi.spyOn(console, "warn");
+    const warnSpy = vi.spyOn(maxConsole, "emitWarning");
 
     const result = validateAndConfigureRouteToSource(true, true, undefined);
 

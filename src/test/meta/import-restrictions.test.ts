@@ -216,6 +216,45 @@ describe("import restrictions", () => {
     expect(violations).toHaveLength(0);
   });
 
+  it("should not alias a src/ import as `console`", () => {
+    // The Max loggers (v8-max-console, node-for-max-logger) are imported by
+    // name. A namespace named `console` makes a forgotten import look fine to a
+    // reader, and the native console would then swallow the output.
+    const pattern = /^\s*import\s+\*\s+as\s+console\s+from\b/;
+    const violations: Violation[] = [];
+
+    for (const file of findSourceFiles(path.join(projectRoot, "src"))) {
+      const rel = repoPath(file);
+
+      if (rel === SELF) {
+        continue;
+      }
+
+      const lines = fs.readFileSync(file, "utf8").split("\n");
+
+      for (const [i, line] of lines.entries()) {
+        if (
+          pattern.test(line) &&
+          !isSuppressed(lines, i, "no-restricted-syntax")
+        ) {
+          violations.push({
+            file: `${rel}:${i + 1}`,
+            reason:
+              "import the names you need instead of a `console` namespace",
+          });
+        }
+      }
+    }
+
+    throwOnFileViolations(
+      violations,
+      "Found import(s) aliased as console",
+      "Use a named import (e.g. { emitWarning }) so a missing import is an error.",
+    );
+
+    expect(violations).toHaveLength(0);
+  });
+
   it("should respect the src/ layering contract", () => {
     // shared/ is the foundation every other layer depends on, and notation/ sits
     // just above it, so neither may reach back up. tools/ is the domain layer

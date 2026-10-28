@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   type ClipDestinations,
   resolveClipDestinations,
@@ -92,7 +92,7 @@ describe("resolveClipDestinations", () => {
     // A toSlot that names nothing reads as unset, so the caller is told what to
     // send — under the param they should be using, not the deprecated one.
     it("reads a toSlot that names no slot as omitted, and says so", () => {
-      const warn = vi.spyOn(console, "warn");
+      const warn = vi.spyOn(maxConsole, "emitWarning");
 
       expect(() => resolveClipDestinations(undefined, ",", false)).toThrow(
         "clip requires toPath",
@@ -152,7 +152,7 @@ describe("resolveClipDestinations", () => {
     // toPath is where the copy goes; arrangementStart only says where on a
     // track. With no track named, the position has nothing to apply to.
     it("drops an arrangement position when toPath names only clip slots", () => {
-      const warnSpy = vi.spyOn(console, "warn");
+      const warnSpy = vi.spyOn(maxConsole, "emitWarning");
 
       expect(resolveClipDestinations("t2/s1", undefined, true)).toStrictEqual(
         sessionResult([{ trackIndex: 2, sceneIndex: 1 }]),
@@ -168,7 +168,7 @@ describe("resolveClipDestinations", () => {
     // The slot keeps its place with the entry it will contribute: nothing warns,
     // because that entry says it.
     it("drops the clip slots when toPath also names a track", () => {
-      const warnSpy = vi.spyOn(console, "warn");
+      const warnSpy = vi.spyOn(maxConsole, "emitWarning");
 
       expect(
         resolveClipDestinations("t2/s1,t3", undefined, true),
@@ -187,7 +187,7 @@ describe("resolveClipDestinations", () => {
     // Another source's share holds the arrangement entry, so this slot-only
     // share is refused on its own entry, just as in one source's mixed list.
     it("refuses a slot-only share when the call names the arrangement", () => {
-      const warnSpy = vi.spyOn(console, "warn");
+      const warnSpy = vi.spyOn(maxConsole, "emitWarning");
 
       expect(
         resolveClipDestinations("t2/s1", undefined, true, {
@@ -211,7 +211,7 @@ describe("resolveClipDestinations", () => {
     // The dropped slot keeps its place as a null, so the two lane entries stay
     // where the caller wrote them.
     it("keeps both lane entries when a dropped slot shares the list", () => {
-      vi.spyOn(console, "warn");
+      vi.spyOn(maxConsole, "emitWarning");
 
       expect(
         resolveClipDestinations("t2/s1,t3/l0,t3/l0", undefined, true),
@@ -231,7 +231,7 @@ describe("resolveClipDestinations", () => {
     // Warn, don't throw: the same conflict on toPath drops the weaker of the
     // two, and toSlot shouldn't be the harsher spelling of the same mistake.
     it("drops the arrangement position when the deprecated toSlot names a slot", () => {
-      const warnSpy = vi.spyOn(console, "warn");
+      const warnSpy = vi.spyOn(maxConsole, "emitWarning");
 
       expect(resolveClipDestinations(undefined, "2/1", true)).toStrictEqual(
         sessionResult([{ trackIndex: 2, sceneIndex: 1 }]),
@@ -247,7 +247,7 @@ describe("resolveClipDestinations", () => {
     // only destination left and it carries the call — where this used to refuse
     // the copy and ask for the deprecated param.
     it("honors the arrangement position when toSlot names nothing", () => {
-      const warnSpy = vi.spyOn(console, "warn");
+      const warnSpy = vi.spyOn(maxConsole, "emitWarning");
 
       expect(resolveClipDestinations(undefined, ",", true)).toStrictEqual(
         arrangementResult([], []),
@@ -291,7 +291,7 @@ describe("warnInapplicableClipParams", () => {
   const arrangement = resolveClipDestinations("t2", undefined, true);
 
   it("warns that a session copy ignores arrangementLength", () => {
-    const warnSpy = vi.spyOn(console, "warn");
+    const warnSpy = vi.spyOn(maxConsole, "emitWarning");
 
     warnInapplicableClipParams(session, "4bar");
 
@@ -301,7 +301,7 @@ describe("warnInapplicableClipParams", () => {
   });
 
   it("says nothing for params the copy actually uses", () => {
-    const warnSpy = vi.spyOn(console, "warn");
+    const warnSpy = vi.spyOn(maxConsole, "emitWarning");
 
     warnInapplicableClipParams(arrangement, "4bar");
     warnInapplicableClipParams(session, undefined);

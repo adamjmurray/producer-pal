@@ -22,7 +22,7 @@ import {
   type PluginCategory,
   type PluginFormat,
 } from "#src/mcp-server/live-library/library-types.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { refuseLibraryParamsOutsideAction } from "./helpers/library-action-params.ts";
 import { runSearchBatch } from "./library-search-batch.ts";
 import { readSamples } from "./read-samples.ts";
@@ -231,7 +231,7 @@ export async function runSearch(
  */
 function resolveAction(action: string | undefined): string {
   if (action === "search-batch") {
-    console.warn(
+    emitWarning(
       'action "search-batch" is deprecated and will be removed; use action "search" with searches instead',
     );
 

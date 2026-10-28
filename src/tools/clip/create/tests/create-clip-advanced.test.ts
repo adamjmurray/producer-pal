@@ -38,7 +38,7 @@ vi.mock(import("#src/tools/session/select.ts"), () => ({
 async function expectDuplicatePairDeduped(
   extraParams: Record<string, unknown> = {},
 ): Promise<void> {
-  const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+  const warn = vi.spyOn(v8Console, "emitWarning").mockImplementation(() => {});
   const { clip } = setupSessionMocks({
     liveSet: { signature_numerator: 4, signature_denominator: 4 },
   });
@@ -261,7 +261,9 @@ describe("createClip - advanced features", () => {
     // can't resolve. Letting that out would report the whole create as an error
     // with no record of the clip.
     it("still reports the clip when the focus fails", async () => {
-      const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(v8Console, "emitWarning")
+        .mockImplementation(() => {});
 
       setupSessionMocks({
         liveSet: { signature_numerator: 4, signature_denominator: 4 },

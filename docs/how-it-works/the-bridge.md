@@ -116,8 +116,8 @@ after a response has already gone out. A warning that gets appended to whatever
 response happens to leave next is worse than no warning at all: it tells one
 request about a mistake another one made.
 
-So `console.warn()` hands each warning to the request in flight, which buffers
-it and appends it to **its own** response (see
+So `emitWarning()` hands each warning to the request in flight, which buffers it
+and appends it to **its own** response (see
 [`v8-warning-capture.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/shared/max/v8-warning-capture.ts)).
 V8 is single-threaded, so keeping that pointed at the right request comes down
 to two rules: a request re-asserts itself after every `await` it performs, and

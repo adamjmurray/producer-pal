@@ -17,18 +17,18 @@ vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
 }));
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  log: vi.fn(),
+  maxLog: vi.fn(),
   info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  emitWarning: vi.fn(),
+  maxError: vi.fn(),
 }));
 
 const { requestNode } =
   await import("#src/live-api-adapter/node-request-v8-protocol.ts");
 const mockRequestNode = vi.mocked(requestNode);
 
-const { warn } = await import("#src/shared/max/v8-max-console.ts");
-const mockWarn = vi.mocked(warn);
+const { emitWarning } = await import("#src/shared/max/v8-max-console.ts");
+const mockWarn = vi.mocked(emitWarning);
 
 const SAVED_PATH = "/Users/x/MySong Project/MySong.als";
 

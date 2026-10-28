@@ -15,7 +15,9 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { createDevice } from "../create-device.ts";
 
-vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({ warn: vi.fn() }));
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
+  emitWarning: vi.fn(),
+}));
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),

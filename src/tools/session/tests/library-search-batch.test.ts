@@ -94,13 +94,13 @@ function itemNamesAt(
 }
 
 /**
- * Spy on the Max console's warn, silencing the output.
+ * Spy on emitWarning, silencing the output.
  * @returns The spy
  */
 async function spyOnMaxWarn() {
   const consoleModule = await import("#src/shared/max/v8-max-console.ts");
 
-  return vi.spyOn(consoleModule, "warn").mockImplementation(() => {});
+  return vi.spyOn(consoleModule, "emitWarning").mockImplementation(() => {});
 }
 
 describe("library tool — searches fan-out", () => {

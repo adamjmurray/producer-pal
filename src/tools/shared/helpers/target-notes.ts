@@ -8,7 +8,7 @@
 // puts it on. A caller with no entry to put it on passes nothing, and the note
 // goes to the Max console instead.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import {
   type EntryWithDetail,
   appendDetail,
@@ -74,7 +74,7 @@ export function noteTarget(
   detail: string,
 ): void {
   if (notes == null) {
-    console.warn(detail);
+    emitWarning(detail);
   } else {
     notes.said.push(detail);
   }

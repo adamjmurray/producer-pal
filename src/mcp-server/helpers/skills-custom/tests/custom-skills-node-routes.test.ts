@@ -13,10 +13,10 @@ import { rememberCustomSkill } from "../custom-skills-store.ts";
 import { registerCustomSkillsNodeRoutes } from "../custom-skills-node-routes.ts";
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
-  log: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  nodeLog: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeWarn: vi.fn(),
+  nodeError: vi.fn(),
 }));
 
 useTempConfigDir();
