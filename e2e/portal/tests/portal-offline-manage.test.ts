@@ -79,7 +79,14 @@ async function portalDown(options: DownOptions): Promise<PortalSession> {
   const copy = track(copyPortal(options.bundled !== false));
   // The user's real Live preferences must not steer the library lookup.
   const home = options.home ?? scratchLibrary();
-  const env = { ...script.env, HOME: home, USERPROFILE: home };
+  const env = {
+    ...script.env,
+    HOME: home,
+    USERPROFILE: home,
+    // Windows finds Live's preferences and database here, not under HOME
+    APPDATA: join(home, "AppData", "Roaming"),
+    LOCALAPPDATA: join(home, "AppData", "Local"),
+  };
 
   return track(await startPortal(device.origin, options.args, env, copy.file));
 }
@@ -308,8 +315,10 @@ describe("ppal-manage while the device is down", () => {
 
     expect(isError).toBeFalsy();
     expect(text).toContain(`remoteScript:{status:"installed"`);
-    expect(text).toContain(`path:"${folder}"`);
-    expect(text).toContain(`device:{status:"installed",path:"${device}"}`);
+    expect(text).toContain(`path:${JSON.stringify(folder)}`);
+    expect(text).toContain(
+      `device:{status:"installed",path:${JSON.stringify(device)}}`,
+    );
     expect(text).toContain("nextSteps:");
     expect(text).toContain("restart Live");
     expect(text).toContain("Then call add-producer-pal");
@@ -327,7 +336,9 @@ describe("ppal-manage while the device is down", () => {
     });
 
     expect(isError).toBeFalsy();
-    expect(text).toContain(`path:"${join(library, "Remote Scripts")}`);
+    expect(text).toContain(
+      `path:${JSON.stringify(join(library, "Remote Scripts", "Producer_Pal"))}`,
+    );
     expect(existsSync(join(library, ...DEVICE_DIR, "Producer_Pal.amxd"))).toBe(
       true,
     );

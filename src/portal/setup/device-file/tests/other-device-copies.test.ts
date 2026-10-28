@@ -6,6 +6,7 @@
 import { chmodSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { platformSupport } from "#src/test/fixtures/platform-support.ts";
 import { findOtherDeviceCopies } from "../other-device-copies.ts";
 import { makeScratchLibrary, put } from "../../tests/device-test-helpers.ts";
 
@@ -84,31 +85,39 @@ describe("findOtherDeviceCopies", () => {
     expect(findOtherDeviceCopies(library, installed())).toStrictEqual([]);
   });
 
-  it("doesn't follow a symlinked folder", () => {
-    const elsewhere = makeScratchLibrary();
+  it.skipIf(!platformSupport.symlinks)(
+    "doesn't follow a symlinked folder",
+    () => {
+      const elsewhere = makeScratchLibrary();
 
-    try {
-      put(join(elsewhere, "Producer_Pal.amxd"), "x");
-      symlinkSync(elsewhere, join(library, "Linked"));
+      try {
+        put(join(elsewhere, "Producer_Pal.amxd"), "x");
+        symlinkSync(elsewhere, join(library, "Linked"));
 
-      expect(findOtherDeviceCopies(library, installed())).toStrictEqual([]);
-    } finally {
-      rmSync(elsewhere, { recursive: true, force: true });
-    }
-  });
+        expect(findOtherDeviceCopies(library, installed())).toStrictEqual([]);
+      } finally {
+        rmSync(elsewhere, { recursive: true, force: true });
+      }
+    },
+  );
 
-  it("skips a folder it can't read and keeps going", () => {
-    const locked = join(library, "Locked");
-    const open = join(library, "Open/Producer_Pal.amxd");
+  it.skipIf(!platformSupport.fileModes)(
+    "skips a folder it can't read and keeps going",
+    () => {
+      const locked = join(library, "Locked");
+      const open = join(library, "Open/Producer_Pal.amxd");
 
-    put(join(locked, "Producer_Pal.amxd"), "x");
-    put(open, "x");
-    chmodSync(locked, 0);
+      put(join(locked, "Producer_Pal.amxd"), "x");
+      put(open, "x");
+      chmodSync(locked, 0);
 
-    try {
-      expect(findOtherDeviceCopies(library, installed())).toStrictEqual([open]);
-    } finally {
-      chmodSync(locked, 0o755);
-    }
-  });
+      try {
+        expect(findOtherDeviceCopies(library, installed())).toStrictEqual([
+          open,
+        ]);
+      } finally {
+        chmodSync(locked, 0o755);
+      }
+    },
+  );
 });

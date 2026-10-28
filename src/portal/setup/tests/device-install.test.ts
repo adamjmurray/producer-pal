@@ -324,7 +324,7 @@ describe("installDevice", () => {
 
     installDevice(library, source);
 
-    expect(statSync(device()).mode & 0o777).toBe(0o644);
+    expect(statSync(device()).mode & 0o200).toBe(0o200);
   });
 
   it("removes old temp files that an earlier crash left behind", () => {

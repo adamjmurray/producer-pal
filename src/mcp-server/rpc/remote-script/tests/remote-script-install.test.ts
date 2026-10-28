@@ -20,6 +20,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { platformSupport } from "#src/test/fixtures/platform-support.ts";
 import { EMBEDDED_REMOTE_SCRIPT_FILES } from "../bundle/embedded-remote-script.ts";
 import {
   installRemoteScript,
@@ -198,24 +199,27 @@ describe("installRemoteScript", () => {
     expect(installRemoteScript("~").path).toBe(remoteScriptPath(scratchDir));
   });
 
-  it("keeps the working install when the new copy can't be written", () => {
-    const { path } = installRemoteScript(scratchDir);
-    const parent = join(scratchDir, "Remote Scripts");
+  it.skipIf(!platformSupport.fileModes)(
+    "keeps the working install when the new copy can't be written",
+    () => {
+      const { path } = installRemoteScript(scratchDir);
+      const parent = join(scratchDir, "Remote Scripts");
 
-    writeFileSync(join(path, "marker.py"), "old install", "utf8");
-    // Read-only parent: the temp folder can't be created, so the install fails
-    // before anything is deleted.
-    chmodSync(parent, 0o500);
+      writeFileSync(join(path, "marker.py"), "old install", "utf8");
+      // Read-only parent: the temp folder can't be created, so the install fails
+      // before anything is deleted.
+      chmodSync(parent, 0o500);
 
-    expect(() => installRemoteScript(scratchDir)).toThrow(
-      /EACCES|EPERM|ENOTEMPTY/,
-    );
+      expect(() => installRemoteScript(scratchDir)).toThrow(
+        /EACCES|EPERM|ENOTEMPTY/,
+      );
 
-    chmodSync(parent, 0o700);
+      chmodSync(parent, 0o700);
 
-    expect(readFileSync(join(path, "marker.py"), "utf8")).toBe("old install");
-    expect(existsSync(join(path, "__init__.py"))).toBe(true);
-  });
+      expect(readFileSync(join(path, "marker.py"), "utf8")).toBe("old install");
+      expect(existsSync(join(path, "__init__.py"))).toBe(true);
+    },
+  );
 
   it("restores the working install when the new copy can't be moved in", () => {
     const { path } = installRemoteScript(scratchDir);
@@ -325,23 +329,26 @@ describe("installRemoteScript", () => {
     expect(existsSync(young)).toBe(true);
   });
 
-  it("clears a temp leftover it can't read the age of, like a looped link", () => {
-    const looped = join(
-      scratchDir,
-      "Remote Scripts",
-      `Producer_Pal.tmp-${UUID}`,
-    );
+  it.skipIf(!platformSupport.symlinks)(
+    "clears a temp leftover it can't read the age of, like a looped link",
+    () => {
+      const looped = join(
+        scratchDir,
+        "Remote Scripts",
+        `Producer_Pal.tmp-${UUID}`,
+      );
 
-    installRemoteScript(scratchDir);
-    symlinkSync(looped, looped);
+      installRemoteScript(scratchDir);
+      symlinkSync(looped, looped);
 
-    expect(installRemoteScript(scratchDir).path).toBe(
-      remoteScriptPath(scratchDir),
-    );
-    expect(readdirSync(join(scratchDir, "Remote Scripts"))).toStrictEqual([
-      "Producer_Pal",
-    ]);
-  });
+      expect(installRemoteScript(scratchDir).path).toBe(
+        remoteScriptPath(scratchDir),
+      );
+      expect(readdirSync(join(scratchDir, "Remote Scripts"))).toStrictEqual([
+        "Producer_Pal",
+      ]);
+    },
+  );
 
   it("reports the swap failure, not the cleanup's, when the new copy can't be removed", () => {
     const { path } = installRemoteScript(scratchDir);
@@ -376,15 +383,18 @@ describe("installRemoteScript", () => {
     expect(existsSync(backup)).toBe(true);
   });
 
-  it("replaces a broken link at the script folder", () => {
-    const path = remoteScriptPath(scratchDir);
+  it.skipIf(!platformSupport.symlinks)(
+    "replaces a broken link at the script folder",
+    () => {
+      const path = remoteScriptPath(scratchDir);
 
-    mkdirSync(join(scratchDir, "Remote Scripts"));
-    symlinkSync(join(scratchDir, "gone"), path);
+      mkdirSync(join(scratchDir, "Remote Scripts"));
+      symlinkSync(join(scratchDir, "gone"), path);
 
-    expect(installRemoteScript(scratchDir).path).toBe(path);
-    expect(existsSync(join(path, "__init__.py"))).toBe(true);
-  });
+      expect(installRemoteScript(scratchDir).path).toBe(path);
+      expect(existsSync(join(path, "__init__.py"))).toBe(true);
+    },
+  );
 
   it("installs when the Remote Scripts folder can't be listed", () => {
     installRemoteScript(scratchDir);

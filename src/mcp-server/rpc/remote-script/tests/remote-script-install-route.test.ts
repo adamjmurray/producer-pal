@@ -13,6 +13,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { platformSupport } from "#src/test/fixtures/platform-support.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { MANAGE_ROUTES } from "#src/tools/core/helpers/manage-contract.ts";
 import { findUserLibraryPath } from "../../../live-library/query/user-library-path.ts";
@@ -183,30 +184,33 @@ describe("manage.installProducerPal", () => {
 });
 
 describe("installRemoteScriptPart", () => {
-  it("says a write that failed partway left the old install as it was", () => {
-    const { path } = installRemoteScript(library);
-    const parent = join(library, "Remote Scripts");
+  it.skipIf(!platformSupport.fileModes)(
+    "says a write that failed partway left the old install as it was",
+    () => {
+      const { path } = installRemoteScript(library);
+      const parent = join(library, "Remote Scripts");
 
-    writeFileSync(join(path, "marker.py"), "old install", "utf8");
-    // Read-only parent: the new copy can't be written.
-    chmodSync(parent, 0o500);
+      writeFileSync(join(path, "marker.py"), "old install", "utf8");
+      // Read-only parent: the new copy can't be written.
+      chmodSync(parent, 0o500);
 
-    let part: unknown;
+      let part: unknown;
 
-    try {
-      part = installRemoteScriptPart(library);
-    } finally {
-      chmodSync(parent, 0o700);
-    }
+      try {
+        part = installRemoteScriptPart(library);
+      } finally {
+        chmodSync(parent, 0o700);
+      }
 
-    expect(part).toStrictEqual({
-      ok: false,
-      detail: expect.stringMatching(
-        /^install failed \(.*\)\. Nothing half-written was kept, and any previous install is unchanged$/,
-      ),
-    });
-    expect(readFileSync(join(path, "marker.py"), "utf8")).toBe("old install");
-  });
+      expect(part).toStrictEqual({
+        ok: false,
+        detail: expect.stringMatching(
+          /^install failed \(.*\)\. Nothing half-written was kept, and any previous install is unchanged$/,
+        ),
+      });
+      expect(readFileSync(join(path, "marker.py"), "utf8")).toBe("old install");
+    },
+  );
 
   it("says when the old install was moved aside and couldn't be put back", () => {
     mkdirSync(join(library, "Remote Scripts"), { recursive: true });
