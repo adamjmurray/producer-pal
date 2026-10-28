@@ -10,6 +10,7 @@ import {
   findSourceFiles,
   forEachSourceFile,
   projectRoot,
+  repoPath,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 
@@ -105,8 +106,8 @@ describe("import restrictions", () => {
     const srcRoot = path.join(projectRoot, "src");
 
     for (const file of findSourceFiles(srcRoot)) {
-      const rel = path.relative(projectRoot, file);
-      const from = moduleOf(path.relative(srcRoot, file));
+      const rel = repoPath(file);
+      const from = moduleOf(repoPath(file, srcRoot));
       const lines = fs.readFileSync(file, "utf8").split("\n");
 
       for (const { value, line } of specifiersIn(file)) {
@@ -181,7 +182,7 @@ describe("import restrictions", () => {
     const violations: Violation[] = [];
 
     for (const file of findSourceFiles(path.join(projectRoot, "src"))) {
-      const rel = path.relative(projectRoot, file);
+      const rel = repoPath(file);
 
       if (exempt.has(rel)) {
         continue;
@@ -255,7 +256,7 @@ describe("import restrictions", () => {
         path.join(projectRoot, target),
         true,
       )) {
-        const rel = path.relative(projectRoot, file);
+        const rel = repoPath(file);
         const lines = fs.readFileSync(file, "utf8").split("\n");
 
         for (const { value, line } of specifiersIn(file)) {
@@ -360,9 +361,9 @@ function ruleToken(rule: string): string {
 function pathWithinSrc(spec: string, fromRel: string): string | null {
   const aliased = spec.startsWith("#src/") ? spec.slice("#src/".length) : null;
   const relative = spec.startsWith(".")
-    ? path.relative(
-        path.join(projectRoot, "src"),
+    ? repoPath(
         path.resolve(path.dirname(path.join(projectRoot, fromRel)), spec),
+        path.join(projectRoot, "src"),
       )
     : null;
   const within = aliased ?? relative;

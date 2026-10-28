@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   findRepoTextFiles,
   projectRoot,
+  repoPath,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 import {
@@ -259,7 +260,7 @@ describe("test file classification", () => {
     // else. Rename into a live category instead of teaching every config a new
     // one.
     const violations = findRepoTextFiles()
-      .map((file) => path.relative(projectRoot, file))
+      .map((file) => repoPath(file))
       .filter((rel) =>
         RETIRED_TEST_FILE_SUFFIXES.some((suffix) => rel.endsWith(suffix)),
       )

@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   findSourceFiles,
   projectRoot,
+  repoPath,
 } from "#src/test/helpers/meta-test-helpers.ts";
 import { MANAGE_TOOL_ID } from "#src/shared/tool-groups.ts";
 import { presetNeedsRemoteScript } from "#src/tools/device/create/helpers/browser-presets.ts";
@@ -168,7 +169,7 @@ describe("where ppal-manage is named", () => {
           .join("\n");
 
         if (NAMING.test(code)) {
-          naming.push(path.relative(projectRoot, file));
+          naming.push(repoPath(file));
         }
       }
     }

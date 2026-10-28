@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   findSourceFiles,
   projectRoot,
+  repoPath,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 
@@ -57,7 +58,7 @@ function findBothSetChecks(): { file: string; reason: string }[] {
     return [...source.matchAll(BOTH_SET)]
       .filter(([, left, right]) => namesAPathAndASlot(left, right))
       .map((match) => ({
-        file: path.relative(projectRoot, file),
+        file: repoPath(file),
         reason: match[0] as string,
       }));
   });

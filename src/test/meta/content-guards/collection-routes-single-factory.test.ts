@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   findSourceFiles,
   projectRoot,
+  repoPath,
 } from "#src/test/helpers/meta-test-helpers.ts";
 
 // Memory and custom skills were once a verbatim read/remember/forget/list
@@ -22,7 +23,7 @@ describe("collection node routes", () => {
   it("registers the forget route from the shared factory only", () => {
     const registrars = findSourceFiles(path.join(projectRoot, "src"), true)
       .filter((file) => FORGET_ROUTE.test(fs.readFileSync(file, "utf8")))
-      .map((file) => path.relative(projectRoot, file));
+      .map((file) => repoPath(file));
 
     expect(
       registrars,
