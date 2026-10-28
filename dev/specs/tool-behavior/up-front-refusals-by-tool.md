@@ -113,10 +113,13 @@ code; when it disagrees with a tool, the tool wins.
   `split`): the split makes several clips and nothing says which to convert. It
   refuses `convert` beside a move (`toPath`, `toSlot`, `arrangementStart`) too:
   the conversion adds a track that shifts the paths the move names.
-- **`updateClip` refuses a `length` that spans nothing** (`0bar`, `n0/4`) before
-  any clip is touched. One that is empty only in some meters (`1bar-n/1` in 4/4)
-  skips that clip, as does a `start` at or past a looping clip's loop end sent
-  without a `length`: Live would keep the old region. Both are checked before
+- **`createClip` and `updateClip` refuse a `length` that spans nothing**
+  (`0bar`, `n0/4`) before any clip is made or touched. `createClip` leaves out
+  an audio clip, which takes its length from the sample. A length empty only in
+  some meters (`1bar-n/1` in 4/4) skips that clip (`createClip` names the length
+  there even when the clip's transform can't be read either). `updateClip` also
+  skips a clip whose `start` is at or past its looping loop end, sent without a
+  `length`: Live would keep the old region. All of these are checked before
   anything is written to the clip, in the meter the call sets — except an
   unwarped audio clip sent `looping: true` with a `start` and no `length`, whose
   loop end is known only once warping is on.
