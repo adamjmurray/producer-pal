@@ -58,6 +58,12 @@ interface ChatScreenProps extends MessageActions {
   showTimestamps: boolean;
   showTokenUsage: boolean;
   conversationPanel: ConversationPanelState;
+  /**
+   * Changes whenever the conversation is switched away from, started anew or
+   * deleted. The composer remounts on it, dropping the draft and any image
+   * still loading so neither lands in the next conversation.
+   */
+  conversationEpoch?: number;
   branchNav?: BranchNavState;
   /** System instruction shown as a collapsible notice atop the transcript. */
   systemInstruction?: string;
@@ -132,9 +138,7 @@ export function ChatScreen(props: ChatScreenProps) {
   } = props;
   const [thinking, setThinking] = useThinkingOverride(props);
 
-  const currentOverrides: MessageOverrides = {
-    thinking,
-  };
+  const currentOverrides: MessageOverrides = { thinking };
 
   return (
     <AppShell
@@ -174,6 +178,7 @@ export function ChatScreen(props: ChatScreenProps) {
         )}
 
         <ChatInput
+          key={props.conversationEpoch}
           handleSend={handleSend}
           onEnqueue={enqueueMessage}
           isAssistantResponding={isAssistantResponding}

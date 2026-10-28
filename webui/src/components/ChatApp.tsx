@@ -37,6 +37,7 @@ export function ChatApp(props: ChatAppProps) {
 
   const {
     chat,
+    conversationEpoch,
     wrappedHandleSend,
     conversationPanelState,
     headerInfo,
@@ -77,6 +78,7 @@ export function ChatApp(props: ChatAppProps) {
       showTimestamps={display.showTimestamps}
       showTokenUsage={display.showTokenUsage}
       conversationPanel={conversationPanelState}
+      conversationEpoch={conversationEpoch}
       branchNav={branchNav}
       systemInstruction={systemInstruction}
       importedPromptDiffers={importedPromptDiffers}
