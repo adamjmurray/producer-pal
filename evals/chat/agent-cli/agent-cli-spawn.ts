@@ -5,6 +5,7 @@
 
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { MAX_TOOL_STEPS } from "#evals/shared/step-budget.ts";
+import { agentCliCommand } from "./agent-cli-command.ts";
 import { createStepBudgetWatcher } from "./agent-cli-step-budget.ts";
 import {
   type AgentCliTransport,
@@ -49,10 +50,11 @@ export function spawnAgentCli(
   const stepBudget = options.stepBudget ?? MAX_TOOL_STEPS;
   const sigkillGraceMs = options.sigkillGraceMs ?? DEFAULT_SIGKILL_GRACE_MS;
   const executable = process.env[transport.binEnvVar] ?? transport.bin;
+  const [command, commandArgs] = agentCliCommand(executable, args);
   const env = scrubAgentCliEnv(process.env, transport.strippedEnvVars);
 
   return new Promise<string>((resolve, reject) => {
-    const child: ChildProcessWithoutNullStreams = spawn(executable, args, {
+    const child: ChildProcessWithoutNullStreams = spawn(command, commandArgs, {
       cwd: options.cwd,
       env: env,
     });
