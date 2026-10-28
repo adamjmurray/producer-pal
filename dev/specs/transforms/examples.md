@@ -163,11 +163,11 @@ velocity = (note.pitch + note.deviation) / 2
 ## Variable Periods
 
 ```
-// Use note duration as waveform period
-velocity += cos(note.duration)
+// Use the bar length as waveform period
+velocity += cos(clip.barDuration)
 
-// Expression as period (2x note duration)
-velocity += tri(note.duration * 2)
+// Expression as period (half a bar)
+velocity += tri(clip.barDuration / 2)
 
 // Ramp based on note velocity
 velocity = ramp(0, note.velocity)

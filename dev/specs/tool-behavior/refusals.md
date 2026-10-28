@@ -54,7 +54,8 @@ How the tool answers depends on what is wrong:
 - **A bad transform arg** is refused when it does not depend on the clip's
   meter, and skipped per clip when it does. A compound assignment of a
   `swing()`/`quant()` call (`timing += swing(...)`) is refused the same way, as
-  is a `swing()` amount at or past its grid (`swing(0.56, n/8)`)
+  is a `swing()` amount at or past its grid (`swing(0.56, n/8)`), and a waveform
+  period that uses a note property (`sin(note.start * 6.28)`)
   ([transform spec](../transforms/README.md)).
 
 ## A param only another action reads
