@@ -143,6 +143,127 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
     expect(clips.map((clip) => clip.id)).not.toContain(buried);
   });
 
+  // A copy that starts mid-loop doesn't play a note that began before it, and
+  // the clip before it ends the note at the boundary.
+  it("says on the clip's entry when a tile boundary cuts a note short", async () => {
+    const created = await callTool(ctx.client!, "ppal-create-clip", {
+      path: `t${EMPTY_MIDI_TRACK}[171|1]`,
+      notes: "n1/1 C3 1|3",
+      length: "2bar",
+      looping: true,
+    });
+    const id = parseToolResult<{ id: string }>(created).id;
+
+    await sleep(200);
+    await callTool(ctx.client!, "ppal-update-clip", {
+      id,
+      arrangementLength: "1bar",
+    });
+    await sleep(200);
+
+    const result = await callTool(ctx.client!, "ppal-update-clip", {
+      id,
+      arrangementLength: "4bar",
+    });
+
+    await sleep(200);
+
+    const { data, warnings } =
+      parseToolResultWithWarnings<LengthenedClip[]>(result);
+
+    // Counted once, though the note crosses the boundaries at 172|1 and 174|1.
+    expect(data[0]?.id).toBe(id);
+    expect(data[0]?.detail).toBe("1 note crossed a cut and now ends at it");
+    expect(warnings).toStrictEqual([]);
+    expect(clipsInBarRange(await readArrClips(), 171, 174)).toHaveLength(4);
+  });
+
+  // A clip that spans more than its loop is cut back to one pass before it is
+  // tiled, and with the start marker inside the loop the tiles restart at the
+  // loop start rather than carrying on from where the clip stops.
+  it("counts from where each piece stops when the tiles restart at the loop start", async () => {
+    // A 4-bar session clip with a note from beat 6 to 10, looped over bars 2-4
+    // with a 1-bar pre-roll: a plain arrangement copy spans 4 bars of a 3-bar loop.
+    const session = parseToolResult<{ id: string }>(
+      await callTool(ctx.client!, "ppal-create-clip", {
+        path: `t${EMPTY_MIDI_TRACK}/s5`,
+        notes: "n1/1 C3 2|3",
+        length: "4bar",
+        looping: true,
+      }),
+    );
+
+    await sleep(200);
+    await callTool(ctx.client!, "ppal-update-clip", {
+      id: session.id,
+      start: "2|1",
+      length: "3bar",
+      firstStart: "1|1",
+    });
+    await sleep(200);
+
+    const copy = parseToolResult<{ id: string }>(
+      await callTool(ctx.client!, "ppal-duplicate", {
+        type: "clip",
+        id: session.id,
+        toPath: `t${EMPTY_MIDI_TRACK}[351|1]`,
+      }),
+    );
+
+    await sleep(200);
+
+    // Move the start marker into the loop (beat 8 of a loop over beats 4-16).
+    await callTool(ctx.client!, "ppal-update-clip", {
+      id: copy.id,
+      firstStart: "3|1",
+    });
+    await sleep(200);
+
+    // The setup only means something if the clip still spans more than a pass.
+    const before = clipsInBarRange(await readArrClips(), 351, 360);
+
+    expect(before).toHaveLength(1);
+    expect(before[0]!.firstStart).toBe("3|1");
+    expect(lengthBeats(before[0])).toBeGreaterThan(beats("3bar"));
+
+    const result = await callTool(ctx.client!, "ppal-update-clip", {
+      id: copy.id,
+      arrangementLength: "10bar",
+    });
+
+    await sleep(200);
+
+    const { data, warnings } =
+      parseToolResultWithWarnings<LengthenedClip[]>(result);
+    const clips = clipsInBarRange(await readArrClips(), 351, 360);
+
+    // The first piece plays from beat 8 to the loop end, then 4 to 8, and stops
+    // at beat 8 with the note sounding. The tiles play from the loop start
+    // (2|1) to the loop end, where Live ends the note itself. A clip that plays
+    // from its loop start reads with no firstStart.
+    expect(clips[0]!.firstStart).toBe("3|1");
+    expect(clips.slice(1).map((clip) => clip.firstStart)).toStrictEqual(
+      clips.slice(1).map(() => undefined),
+    );
+    expect(data[0]?.id).toBe(copy.id);
+    expect(data[0]?.detail).toBe("1 note crossed a cut and now ends at it");
+    expect(warnings).toStrictEqual([]);
+  });
+
+  it("says nothing when no note crosses a tile boundary", async () => {
+    const id = await createLoopingArrClip("181|1");
+    const result = await callTool(ctx.client!, "ppal-update-clip", {
+      id,
+      arrangementLength: "4bar",
+    });
+
+    await sleep(200);
+
+    const { data } = parseToolResultWithWarnings<LengthenedClip[]>(result);
+
+    expect(data[0]?.detail).toBeUndefined();
+  });
+
   it("tiles when ppal-duplicate itself does the lengthening", async () => {
     const sourceId = await createLoopingArrClip("141|1");
 

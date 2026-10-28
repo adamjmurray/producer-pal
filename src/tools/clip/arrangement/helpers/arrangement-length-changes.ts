@@ -13,8 +13,10 @@ import {
   removeSessionClip,
   removeTempArrangementClip,
   type CreatedClip,
+  type TilePiece,
   type TilingContext,
 } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { reportTileCrossedNotes } from "#src/tools/shared/arrangement/crossed-notes/arrangement-crossed-notes.ts";
 import { tileClipToRange } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
@@ -95,8 +97,10 @@ export function handleArrangementLengthening({
   const track = LiveAPI.from(livePath.track(trackIndex));
   // Tiling speaks for this clip, so what it has to say goes on this clip's
   // entry rather than into a warning.
+  const pieces: TilePiece[] = [];
   const tilingContext: TilingContext = {
     ...(context as TilingContext),
+    pieces,
     reportClip: clipReporterFor(reasons),
     // A scratch clip Live won't remove is this clip's to report.
     reportScratch: (message) => noteClipReason(reasons, clip.id, message),
@@ -187,6 +191,11 @@ export function handleArrangementLengthening({
   // A pass whose every tile was refused changed nothing.
   if (tiledClips.length > 0) {
     noteLanded(reasons, "lengthened", { id: clip.id });
+
+    // Wherever one piece stops, a note still sounding there is cut off.
+    if (!isAudioClip) {
+      reportTileCrossedNotes(tilingContext.reportClip, clip, pieces);
+    }
   }
 
   updatedClips.push({ id: clip.id });

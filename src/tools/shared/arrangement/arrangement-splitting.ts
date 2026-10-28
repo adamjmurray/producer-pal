@@ -35,7 +35,7 @@ import {
 import {
   firstCutsCrossed,
   reportCrossedNotes,
-} from "#src/tools/shared/arrangement/splitting/arrangement-splitting-crossed-notes.ts";
+} from "#src/tools/shared/arrangement/crossed-notes/arrangement-crossed-notes.ts";
 import { ignoredText } from "#src/shared/max/ignored-wording.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 

@@ -120,6 +120,11 @@ export function createPartialTile(
   const clipLength = clipLoopEnd - clipLoopStart;
   const tileStartMarker = clipLoopStart + (contentOffset % clipLength);
 
+  context.pieces?.push({
+    start: targetPosition,
+    length: partialLength,
+    startMarker: tileStartMarker,
+  });
   partialTile.set("start_marker", tileStartMarker);
 
   // Optionally adjust pre-roll

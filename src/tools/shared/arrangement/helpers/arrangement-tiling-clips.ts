@@ -36,6 +36,18 @@ export interface TilingContext {
   lanes?: LaneView;
   /** Where to say a scratch clip or scene couldn't be removed; unset warns. */
   reportScratch?: (message: string) => void;
+  /** Collects each tile's place and where in the loop it starts playing. */
+  pieces?: TilePiece[];
+}
+
+/** A tile as tiling wrote it: where it sits and what it plays first. */
+export interface TilePiece {
+  /** Arrangement position, in beats. */
+  start: number;
+  /** Arrangement length, in beats. */
+  length: number;
+  /** The content position it starts playing from. */
+  startMarker: number;
 }
 
 export interface CreatedClip {

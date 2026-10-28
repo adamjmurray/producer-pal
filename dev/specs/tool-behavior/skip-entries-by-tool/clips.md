@@ -15,11 +15,16 @@ Part of [Skip entries, tool by tool](README.md).
   miss some, so those clips keep plain entries, and a call or position that cut
   nothing anywhere gets one WARNING for the call. A MIDI note that crosses a cut
   stays in the earlier piece and ends at the cut, so that clip's entry says
-  `N notes crossed a cut and now end at it`. If the notes can't be read, the cut
-  goes ahead and says nothing: the count is only a diagnostic. The `name` and
-  `color` lists pair by the target's place, so a skip doesn't slide them. The
-  deadline skips every target it never reached; a split that already cut keeps
-  its pieces, each saying what did not run.
+  `N notes crossed a cut and now end at it`. Lengthening a looped MIDI clip says
+  the same: each tile starts where the clip before it stopped, which may be
+  mid-loop, so a note still sounding at that point loses its tail. Each note
+  counts once, however many cuts or boundaries it crosses, and only those that
+  landed count; a note that ends at a cut or loop end, or is muted, does not,
+  and neither does a boundary next to a tile Live refused. If the notes can't be
+  read, the cut or tiling goes ahead and says nothing: the count is only a
+  diagnostic. The `name` and `color` lists pair by the target's place, so a skip
+  doesn't slide them. The deadline skips every target it never reached; a split
+  that already cut keeps its pieces, each saying what did not run.
 - **update-clip: a clip named twice** (id and path, or an id repeated) is
   updated as its last mention asks. The earlier mention keeps its slot as
   `{ id | path, detail }` with no `ok`; if the last mention then fails with
