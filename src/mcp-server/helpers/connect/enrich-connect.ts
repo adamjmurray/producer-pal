@@ -14,6 +14,7 @@ import { withMemory } from "../memory/memory-inject.ts";
 import { withSkills } from "../skills-inject.ts";
 import { type WrappedCallLiveApi } from "./connect-append.ts";
 import { shareConnectPing } from "./connect-ping.ts";
+import { isNewUser } from "./new-user.ts";
 import { withNextStep } from "./next-step-inject.ts";
 import { withPortalVersion } from "./portal-version-inject.ts";
 import { withRemoteScriptNotice } from "./remote-script-notice-inject.ts";
@@ -74,6 +75,7 @@ export function enrichConnect(
               notation: getConfig().notation,
               smallModelMode: getConfig().smallModelMode,
               tools: getConfig().tools,
+              newUser: isNewUser(getConfig()),
             }),
             connectPing.getPing,
           ),

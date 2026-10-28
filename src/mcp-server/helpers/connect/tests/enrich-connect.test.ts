@@ -233,4 +233,28 @@ describe("enrichConnect", () => {
     expect(blocks.at(-1)).not.toContain("nothing is saved about them yet");
     expect(blocks.at(-1)).toContain("Report the connection status");
   });
+
+  // The result's marker and the Skill's paragraph come from one check, so each
+  // appears exactly when the other does.
+  it("sends the New user paragraph only with the new-user marker", async () => {
+    const PARAGRAPH = "**New user** (connect says";
+    const MARKER = "nothing is saved about them yet";
+
+    const newUser = await enrichedBlocks();
+
+    expect(newUser[2]).toContain(PARAGRAPH);
+    expect(newUser.at(-1)).toContain(MARKER);
+
+    rememberMemory({
+      name: "prefers-dark-techno",
+      description: "Default genre for new material",
+      body: "Dark, hypnotic techno around 138 BPM.",
+    });
+
+    const known = await enrichedBlocks();
+
+    expect(known[2]).toContain("## Context & Memory");
+    expect(known[2]).not.toContain(PARAGRAPH);
+    expect(known.at(-1)).not.toContain(MARKER);
+  });
 });

@@ -15,6 +15,7 @@ import { REST_BASE_URL } from "#evals/shared/config.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { PORTAL_VERSION_HEADER, VERSION } from "#src/shared/config.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
+import { NEW_USER_MARKER } from "#src/skills/fragments/context.ts";
 import {
   fetchSkillOverrides,
   parseToolResult,
@@ -53,6 +54,15 @@ function extractBlock(result: unknown, prefix: string): string {
 /** Extract the injected "# Producer Pal Skills" block (see {@link extractBlock}). */
 function extractSkills(result: unknown): string {
   return extractBlock(result, "# Producer Pal Skills");
+}
+
+/** Whether the connect result marks the user as new (see NEW_USER_MARKER). */
+function marksNewUser(result: unknown): boolean {
+  const typed = result as { content?: Array<{ text?: string }> } | null;
+
+  return (
+    typed?.content?.some((c) => c.text?.includes(NEW_USER_MARKER)) ?? false
+  );
 }
 
 /**
@@ -137,9 +147,10 @@ describe("ppal-connect", () => {
     // runs against a live config dir, so they're part of what the server serves.
     const skills = extractSkills(result);
 
+    // The New user paragraph rides on the dev machine's own context and memory.
     expect(skills).toBe(
       buildSkills(
-        { notation: "barbeat", remoteScript },
+        { notation: "barbeat", remoteScript, newUser: marksNewUser(result) },
         await fetchSkillOverrides(),
       ),
     );
@@ -237,6 +248,45 @@ describe("ppal-connect", () => {
         // Always restore standard mode and delete the probe so the dev machine's
         // real ~/.producer-pal/memory/ is left untouched.
         await setConfig({ smallModelMode: false });
+        await fetch(MEMORY_URL, { method: "DELETE" });
+      }
+    });
+  });
+
+  describe("New user paragraph", () => {
+    // The Skills carry the New user paragraph exactly when the connect result
+    // marks the user as new; both come from one check.
+    const PARAGRAPH = "**New user** (connect says";
+    const MEMORY_NAME = "e2e-new-user-probe";
+    const MEMORY_URL = `${REST_BASE_URL}/memory/${MEMORY_NAME}`;
+
+    it("is sent with the marker and withheld once a memory exists", async () => {
+      await setConfig({ smallModelMode: false });
+
+      const before = await callConnectRaw();
+
+      expect(extractSkills(before).includes(PARAGRAPH)).toBe(
+        marksNewUser(before),
+      );
+
+      const putRes = await fetch(MEMORY_URL, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: "e2e probe body",
+          description: "e2e probe — safe to delete",
+        }),
+      });
+
+      try {
+        expect(putRes.ok).toBe(true);
+
+        const after = await callConnectRaw();
+
+        expect(marksNewUser(after)).toBe(false);
+        expect(extractSkills(after)).toContain("## Context & Memory");
+        expect(extractSkills(after)).not.toContain(PARAGRAPH);
+      } finally {
         await fetch(MEMORY_URL, { method: "DELETE" });
       }
     });
