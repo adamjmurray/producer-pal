@@ -11,6 +11,7 @@ import {
   pairValues,
   splitList,
   valueForIndex,
+  requirePairing,
   warnPairingMismatch,
 } from "../../lists/list-pairing.ts";
 
@@ -194,6 +195,22 @@ describe("list-pairing", () => {
       warnPairingMismatch(0, 3, LABELS);
 
       expect(console.warn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("requirePairing", () => {
+    it("stays quiet when the counts match or nothing was named", () => {
+      expect(() => requirePairing(3, 3, LABELS)).not.toThrow();
+      expect(() => requirePairing(0, 3, LABELS)).not.toThrow();
+    });
+
+    it("refuses a short or long list", () => {
+      expect(() => requirePairing(2, 3, LABELS)).toThrow(
+        "toPath names 2 destinations but the call acts on 3 clips",
+      );
+      expect(() => requirePairing(4, 3, LABELS)).toThrow(
+        "toPath names 4 destinations but the call acts on 3 clips",
+      );
     });
   });
 });
