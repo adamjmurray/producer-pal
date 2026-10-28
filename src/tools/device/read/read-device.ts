@@ -137,7 +137,7 @@ export function readOneDevice(
   const includeParamValues = includeAll || include.includes("param-values");
   // A search names the params to show, so it needs them on.
   const includeParams =
-    includeParamValues || include.includes("params") || paramSearch != null;
+    includeParamValues || include.includes("params") || isSearch(paramSearch);
   const includeSample = includeAll || include.includes("sample");
   const includeOptions = includeAll || include.includes("options");
   const includeActions = includeAll || include.includes("actions");
@@ -325,4 +325,14 @@ function readChainObject(
         readDeviceShared(device, { ...options, chainAutomation }),
       ),
   );
+}
+
+/**
+ * Whether a param search names anything. A blank one is ignored by the filter,
+ * so it must not switch the params on either.
+ * @param paramSearch - The search as sent
+ * @returns True when there is something to search for
+ */
+function isSearch(paramSearch: string | undefined): boolean {
+  return (paramSearch?.trim() ?? "") !== "";
 }

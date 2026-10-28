@@ -182,4 +182,21 @@ describe("playback - a failure after Live changed", () => {
       { path: "t1/s0", ok: false, detail: "Live refused stop_all_clips" },
     ]);
   });
+
+  it("keeps the transport result and warns when the focus then fails", () => {
+    registerMockObject(livePath.view.song, { path: livePath.view.song });
+    registerMockObject(livePath.view.app, {
+      path: livePath.view.app,
+    }).call.mockImplementation(() => {
+      throw new Error("Live refused show_view");
+    });
+
+    const result = playback({ action: "play-arrangement", focus: true });
+
+    expect(result.playing).toBe(true);
+    expect(liveSet.call).toHaveBeenCalledWith("start_playing");
+    expect(capturedWarnings()).toStrictEqual([
+      "Could not move the focus: Live refused show_view",
+    ]);
+  });
 });
