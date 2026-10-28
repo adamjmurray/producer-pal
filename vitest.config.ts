@@ -46,6 +46,9 @@ export default defineConfig({
       "scripts/**/*.test.ts",
     ],
     setupFiles: ["src/test/test-setup.ts"],
+    // Windows file I/O is slow enough under a full parallel run that tests
+    // touching many files pass 5s
+    ...(process.platform === "win32" && { testTimeout: 30_000 }),
     clearMocks: true,
     restoreMocks: true,
     execArgv,
