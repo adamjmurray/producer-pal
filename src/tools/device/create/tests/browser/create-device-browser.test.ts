@@ -286,7 +286,7 @@ describe("createDevice — a plug-in or Max for Live device", () => {
   });
 
   it("passes a lookup's error through, touching nothing", async () => {
-    const error = 'device "Pro" matches 2 devices; pass one of these';
+    const error = 'deviceName "Pro" matches 2 devices; pass one of these';
 
     answerRemoteScript({ resolution: { available: true, error } });
 

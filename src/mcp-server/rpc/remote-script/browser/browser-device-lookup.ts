@@ -287,7 +287,7 @@ export function searchFailed(
  * The error for a name more than one thing has, each spelled so it can be sent
  * straight back as the arg.
  * @param param - The arg the name came in, and what it names
- * @param param.name - The arg, e.g. "device"
+ * @param param.name - The arg, e.g. "deviceName"
  * @param param.noun - What it names, plural
  * @param value - The name the call used
  * @param matches - What it matched
@@ -371,7 +371,7 @@ async function searchSections(
     : {
         available: true,
         error: ambiguity(
-          { name: "device", noun: "devices" },
+          { name: "deviceName", noun: "devices" },
           deviceName,
           matches,
         ),
