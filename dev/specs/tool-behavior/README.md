@@ -84,6 +84,10 @@ refused, naming the param: `bpm: ""` must not become a call that sets no tempo
 and says nothing. For the action check below, a null, blank or `"null"` on a
 param counts as not sent.
 
+A blank `id` or `path` beside one that names the targets reads as unset. Every
+tool that takes both warns once (`blank id ignored`) and only when the call ran.
+A `"null"` there warns once as `id "null" names nothing`, not also as blank.
+
 Measured on one model (codex-cli, 128 tool calls): nothing arrived blank or
 null, and an all-optional tool with nothing to say came through as `{}`. The
 blank-fill risk is real only for a client that behaves differently, and no other
