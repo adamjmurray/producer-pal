@@ -81,9 +81,13 @@ it's why you don't see this approach often. For how the bridge actually moves
 data (JSON sent over Max patch cables, chunked to survive a length limit), see
 [The Bridge: JSON Over Patch Cables](/how-it-works/the-bridge).
 
-## One device, nothing to wire up
+## One device for the core
 
-Everything lives in a single Max for Live device. Drop it onto a track and the
+The core lives in a single Max for Live device. Drop it onto a track and the
 whole bridge comes up with it: server, Live API access, and all. No separate
-processes to launch, no second component to install and connect, no juggling an
-extension and a helper device.
+processes to launch, no juggling an extension and a helper device.
+
+One small add-on goes beside it: the [remote script](/guide/remote-script), a
+Live control surface that does what Max for Live can't on its own, like clip
+automation, loading plug-ins, and undo. It installs with one click from the
+device's **Finish installation…** button.

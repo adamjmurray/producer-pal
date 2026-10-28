@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { VERSION } from "#src/shared/config.ts";
@@ -14,6 +14,7 @@ import { toolDefReadClip } from "#src/tools/clip/read/read-clip.def.ts";
 import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
 import { toolDefConnect } from "#src/tools/core/connect.def.ts";
 import { toolDefContext } from "#src/tools/core/context.def.ts";
+import { toolDefManage } from "#src/tools/core/manage.def.ts";
 import { toolDefCreateDevice } from "#src/tools/device/create/create-device.def.ts";
 import { toolDefReadDevice } from "#src/tools/device/read/read-device.def.ts";
 import { toolDefUpdateDevice } from "#src/tools/device/update/update-device.def.ts";
@@ -25,7 +26,10 @@ import { toolDefUpdateScene } from "#src/tools/scene/update-scene.def.ts";
 import { toolDefLibrary } from "#src/tools/session/library.def.ts";
 import { toolDefPlayback } from "#src/tools/session/playback.def.ts";
 import { toolDefSelect } from "#src/tools/session/select.def.ts";
-import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
+import {
+  isOfferedInMode,
+  type ToolDefFunction,
+} from "#src/tools/shared/tool-framework/define-tool.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import { toolDefCreateTrack } from "#src/tools/track/create/create-track.def.ts";
 import { toolDefReadTrack } from "#src/tools/track/read/read-track.def.ts";
@@ -41,6 +45,7 @@ export type CallLiveApiFunction = (
 export const STANDARD_TOOL_DEFS: ToolDefFunction[] = [
   toolDefConnect,
   toolDefContext,
+  toolDefManage,
   toolDefReadLiveSet,
   toolDefUpdateLiveSet,
   toolDefReadTrack,
@@ -68,10 +73,10 @@ export const TOOL_NAMES: readonly string[] = Object.freeze(
 );
 
 /**
- * Union of params a small model never sees, across all standard tools: the ones
- * its mode hides (`smallModel: null`) plus the hidden ones no mode publishes.
- * Read off `resolveToolSchema`, the one place that answers "what does the model
- * get", so a retired param can't leak back in. The eval framework consults this
+ * Union of params a small model never sees, across the standard tools it is
+ * offered: the ones its mode hides (`smallModel: null`) plus the hidden ones no
+ * mode publishes. Read off `resolveToolSchema`, the one place that answers "what
+ * does the model get", so a retired param can't leak back in. The eval framework consults this
  * to SKIP (not fail) scenarios that depend on such a param — keeping
  * small-model scores apples-to-apples. NOTE: a flat union skips CONSERVATIVELY
  * — a shared param name hidden by only SOME tools skips every scenario
@@ -83,7 +88,7 @@ export const TOOL_NAMES: readonly string[] = Object.freeze(
  * check must become tool-scoped.
  */
 export const SMALL_MODEL_EXCLUDED_PARAMS: ReadonlySet<string> = new Set(
-  STANDARD_TOOL_DEFS.flatMap((td) => {
+  STANDARD_TOOL_DEFS.filter((td) => isOfferedInMode(td, true)).flatMap((td) => {
     const { inputSchema } = td.toolOptions;
     const { published } = resolveToolSchema(inputSchema, {
       smallModelMode: true,
@@ -137,18 +142,85 @@ export function createMcpServer(
     toolDef(server, callLiveApi, { smallModelMode, notation });
   }
 
-  // Live API: opt-in via device Setup tab. Goes through the same
-  // tools whitelist as standard tools. Excluded under smallModelMode
-  // because its schema is too large to be useful with small models.
+  // Goes through the same tools whitelist as standard tools.
   if (
-    liveApiEnabled &&
-    !smallModelMode &&
+    isLiveApiToolActive(liveApiEnabled, smallModelMode) &&
     (!includedSet || includedSet.has(toolDefLiveApi.toolName))
   ) {
     toolDefLiveApi(server, callLiveApi, { smallModelMode, notation });
   }
 
+  trimListedSchemas(server);
+
   return server;
+}
+
+type ListToolsHandler = (
+  request: unknown,
+  extra: unknown,
+) => Promise<{ tools: Array<{ inputSchema?: Record<string, unknown> }> }>;
+
+/**
+ * Drop two things from every tool's `inputSchema` in `tools/list`, as Anthropic
+ * and OpenAI bill for them and they say nothing:
+ *
+ * - `$schema`, which the SDK stamps on each tool with no switch to stop it.
+ *   Clients then read the schemas as JSON Schema 2020-12, and every keyword we
+ *   emit means the same there.
+ * - the top-level `additionalProperties: {}` that `.loose()` adds. Absent means
+ *   the same, and nested objects already omit it. Only the listing changes:
+ *   validation still uses the loose zod schema, so unknown args keep reaching
+ *   the handler.
+ *
+ * Call after the tools are registered: the SDK installs its `tools/list`
+ * handler on the first registration, and the only way to wrap it is its private
+ * handler table. An SDK change that moves the table fails the test that checks
+ * `tools/list`.
+ *
+ * @param server - The MCP server whose tools are registered
+ */
+function trimListedSchemas(server: McpServer): void {
+  const handlers = (
+    server.server as unknown as {
+      _requestHandlers: Map<string, ListToolsHandler>;
+    }
+  )._requestHandlers;
+  const original = handlers.get("tools/list");
+
+  // No tool registered, so the SDK never installed a handler.
+  if (original == null) {
+    return;
+  }
+
+  handlers.set("tools/list", async (request, extra) => {
+    const result = await original(request, extra);
+
+    for (const tool of result.tools) {
+      delete tool.inputSchema?.$schema;
+
+      if (isEmptyObject(tool.inputSchema?.additionalProperties)) {
+        delete tool.inputSchema?.additionalProperties;
+      }
+    }
+
+    return result;
+  });
+}
+
+/**
+ * Whether ppal-live-api is offered at all. It is opt-in (device Setup tab), and
+ * small-model mode drops it because its schema is too large for small models.
+ * MCP and REST both gate on this.
+ *
+ * @param liveApiEnabled - The Direct Live API opt-in
+ * @param smallModelMode - Whether small-model mode is on
+ * @returns True when the tool is offered
+ */
+export function isLiveApiToolActive(
+  liveApiEnabled: boolean,
+  smallModelMode: boolean,
+): boolean {
+  return liveApiEnabled && !smallModelMode;
 }
 
 /**
@@ -172,7 +244,11 @@ export function validateTools(
     return { error: "tools must be an array of tool names", validToolNames };
   }
 
-  const list = tools.map(String);
+  if (tools.some((name) => typeof name !== "string")) {
+    return { error: "tools must be an array of tool names", validToolNames };
+  }
+
+  const list = tools as string[];
   const invalid = list.filter((name) => !validToolSet.has(name));
 
   if (invalid.length > 0) {
@@ -205,4 +281,17 @@ function getValidToolNames(liveApiEnabled: boolean): string[] {
   }
 
   return [...TOOL_NAMES, toolDefLiveApi.toolName];
+}
+
+/**
+ * @param value - Any value
+ * @returns True for a plain `{}`
+ */
+function isEmptyObject(value: unknown): boolean {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 0
+  );
 }

@@ -1,17 +1,21 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
+  mockNonExistentObjects,
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
-import { moveDrumChainToPath } from "../../helpers/move-drum-chain.ts";
+import {
+  moveDrumChainToPath,
+  noteLayeredLanding,
+} from "../../helpers/move-drum-chain.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("moveDrumChainToPath", () => {
@@ -61,5 +65,20 @@ describe("moveDrumChainToPath", () => {
 
     expect(notes.said).toContain('toPath "t0/d0/pG9" is not a drum pad path');
     expect(chain.set).not.toHaveBeenCalled();
+  });
+
+  it("says nothing about layering for chains that are gone by the end of the call", () => {
+    mockNonExistentObjects();
+
+    const entry: { id: string; detail?: string } = { id: "chain-0" };
+
+    noteLayeredLanding(
+      entry,
+      { chains: [LiveAPI.from("gone")], fromNote: 36 },
+      "t0/d0/pD1",
+      new Set(),
+    );
+
+    expect(entry).toStrictEqual({ id: "chain-0" });
   });
 });

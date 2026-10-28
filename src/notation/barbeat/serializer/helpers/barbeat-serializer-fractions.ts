@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// SPDX-License-Identifier: MIT
 
 import {
   formatModifiedNoteValue,
@@ -40,6 +40,12 @@ export function formatBeatPosition(
   value: number,
   timeSigDenominator: number | undefined,
 ): string {
+  const whole = printedWholeBeat(value, timeSigDenominator);
+
+  if (whole != null) {
+    return whole.toString();
+  }
+
   if (value < 1) {
     // A beat below the downbeat (negative time, a note before the clip start)
     // can't be a bare sub-1 beat — the grammar requires a 1-based grid beat.
@@ -58,10 +64,6 @@ export function formatBeatPosition(
       formatAbsoluteDuration(wholeNoteFraction);
 
     return `1-n${offsetFraction}`;
-  }
-
-  if (value % 1 === 0) {
-    return value.toString();
   }
 
   const base = Math.floor(value);
@@ -223,6 +225,47 @@ export function formatOffGridBeats(beats: number): string {
   }
 
   return beats.toFixed(4).replace(/\.?0+$/, "");
+}
+
+/**
+ * The whole beat a beat position prints as, or null when it prints a fraction
+ * of one. A hair off a whole beat rounds to it in the 3-place decimal and in
+ * the escape's 4-place offset alike, so 4.99999 prints as beat 5 — which the
+ * bar split must then carry into the next bar.
+ * @param value - Beat position value
+ * @param timeSigDenominator - Time signature denominator (for the offset unit)
+ * @returns The whole beat, or null
+ */
+export function printedWholeBeat(
+  value: number,
+  timeSigDenominator: number | undefined,
+): number | null {
+  if (value >= 1) {
+    const whole = Math.round(value);
+
+    // A 3-place decimal that spells the whole beat prints as it.
+    if (
+      Number.isInteger(value) ||
+      (decimalRoundTripsCleanly(value) && Math.abs(value - whole) < 0.0005)
+    ) {
+      return whole;
+    }
+  }
+
+  // The escape spells the offset from the beat below (or back from beat 1) in
+  // quarter notes, rounded by formatOffGridBeats. Keep in step with
+  // formatBeatPosition's escape.
+  const base = value < 1 ? 1 : Math.floor(value);
+  const quartersPerBeat = 4 / (timeSigDenominator ?? 4);
+  const offset =
+    Number(formatOffGridBeats(Math.abs(value - base) * quartersPerBeat)) /
+    quartersPerBeat;
+
+  if (offset === 0) {
+    return base;
+  }
+
+  return value >= 1 && offset === 1 ? base + 1 : null;
 }
 
 /**

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E test for `clip.duration` in a transform on an unwarped audio clip.
@@ -17,7 +17,7 @@
  * it is just how the duration the expression saw gets back out of Live.
  *
  * Uses: e2e-test-set - t5 "Audio 2" (free slots)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-clip-transforms-audio-unwarped
  */

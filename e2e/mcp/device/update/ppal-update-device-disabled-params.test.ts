@@ -1,12 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for writes to macro-mapped (disabled) parameters.
  * Uses: racks-test, whose "Kit" Drum Rack has macros mapped onto specific
- * chain mixer and device parameters. See e2e/live-sets/racks-test-spec.md.
+ * chain mixer and device parameters. See e2e/live-sets/specs/racks-test-spec.md.
  *
  * Live accepts a `set` on a disabled parameter, reports success, and ignores
  * it — so these assert the write is refused on the target's entry: a detail

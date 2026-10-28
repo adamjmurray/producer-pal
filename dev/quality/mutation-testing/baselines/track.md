@@ -1,7 +1,6 @@
 # Mutation baseline — 2026-07-14, `src/tools/track/`
 
-First `src/tools/` domain triaged (highest-priority write-op tier). Full pass —
-Stryker 9.6.1, Node 24, `coverageAnalysis: "perTest"`:
+Full pass — Stryker 9.6.1, Node 24, `coverageAnalysis: "perTest"`:
 
 | Metric                     | Value      |
 | -------------------------- | ---------- |
@@ -16,23 +15,21 @@ Stryker 9.6.1, Node 24, `coverageAnalysis: "perTest"`:
 Gate: `break: 85` (`TOOL_DOMAIN_BREAKS.track` in `config/mutation-scopes.mjs`),
 ~1 point below the score for timeout-classification variance.
 
-Two scope refinements landed with this triage (both in `toolDomain()`), applying
-to **every** tool domain going forward:
+Two scope refinements landed with this triage (both in `toolDomain()`) and apply
+to **every** tool domain:
 
-- **`.def.ts` excluded.** Tool-definition files are purely declarative — a
-  `defineTool()` call (Zod schema + LLM-facing description strings), no logic.
-  Mutating a `.describe("…")` string just blanks prose that is eval-tested, not
-  unit-tested; asserting exact wording would over-fit and fight the
-  description-iteration workflow. This lifted the raw `track` score from 73.14%
-  (dominated by 111 description-string survivors across 3 def files) to a
-  behavioral 82.21%.
+- **`.def.ts` excluded.** Tool-definition files are purely declarative (a
+  `defineTool()` call: Zod schema plus LLM-facing description strings). Mutating
+  a `.describe("…")` string just blanks prose that is eval-tested, and asserting
+  exact wording would over-fit and fight description iteration. This lifted the
+  raw `track` score from 73.14% (111 description-string survivors across 3 def
+  files) to a behavioral 82.21%.
 - **`read-track-drum-rack-test-helpers.ts` excluded.** It is test-only mock
-  infrastructure (it imports the mock Live API; its sole importer is another
-  test helper), so mutating it is meaningless. Triage originally spelled it
-  `*-mock-helpers.ts` and added a glob for that name, which made it a test file
-  to the mutation scope and source everywhere else — vitest measured its
-  coverage as product code. It is now named `*-test-helpers.ts`, which the
-  existing glob already caught, and is a test file to every tool.
+  infrastructure, so mutating it is meaningless. It was first named
+  `*-mock-helpers.ts` with a mutation-only glob for that name, which made it a
+  test file to the mutation scope and source everywhere else (vitest measured
+  its coverage as product code). Renamed `*-test-helpers.ts`, the glob every
+  tool already honors.
 
 Per-file scores after triage:
 
@@ -51,27 +48,18 @@ midi-effect / instrument / audio-effect buckets, but its sole consumer
 (`read-track.ts`'s drum-map path) immediately re-flattens them — so mutating
 which bucket a device lands in cannot change any observable output.
 
-## Gaps closed (track)
+What changed (test-only): several "warn and skip" tests asserted only the
+returned `{id}` object (returned regardless), never the warning or the skipped
+write, so real misbehavior slipped through. Now pinned: an unmatched
+`sendReturn` no longer silently writes the wrong send; send letter-prefix
+matching (`"A"` must not match `"Analog"`); send-pair, no-mixer, no-sends and
+index-exceeds warnings; invalid `monitoringState` writing an undefined value;
+`createTrack` count/reach boundary (`count === MAX` allowed), return-track index
+taken from the right collection (mock symmetry had masked it), multi-track
+append insert index; the `firedSlotIndex === 0` boundary; and the
+multi-instrument warning.
 
-Mutation surfaced that several "warn and skip" tests asserted only the returned
-`{id}` object (returned regardless), never the warning or the skipped write — so
-real misbehavior slipped through (an unmatched `sendReturn` would silently write
-the _wrong_ send):
-
-| Gap (now killed)                                                     | Test strengthened / added    |
-| -------------------------------------------------------------------- | ---------------------------- |
-| Unmatched `sendReturn` silently wrote the wrong send (sentinel flip) | `update-track-send.test.ts`  |
-| Send letter-prefix over-matched (`"A"` matched `"Analog"`)           | `update-track-send.test.ts`  |
-| Send-pair / no-mixer / no-sends / index-exceeds warnings unasserted  | `update-track-send.test.ts`  |
-| Invalid `monitoringState` wrote an undefined value                   | `update-track.test.ts`       |
-| `createTrack` count/reach boundary (`count === MAX` allowed)         | `create-track.test.ts`       |
-| Return-track index from the wrong collection (mock symmetry masked)  | `create-track.test.ts`       |
-| Multi-track append shifted the insert index                          | `create-track.test.ts`       |
-| `firedSlotIndex === 0` boundary dropped                              | `read-track-basic.test.ts`   |
-| Multi-instrument warning unasserted                                  | `read-track-devices.test.ts` |
-
-Remaining survivors are bucket 2 (equivalent — the categorization split,
+Remaining survivors are bucket 2 (equivalent: the categorization split,
 `instruments[0] ?? null`, return/master/group clip guards that compute `0`
-either way since those track types have no clips) and bucket 3 (warn/error
-message string contents, internal option-passing flags, `.exists()` guards on
-always-present mocks).
+either way) and bucket 3 (warn/error message strings, internal option-passing
+flags, `.exists()` guards on always-present mocks).

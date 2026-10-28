@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Type declarations for Max/MSP V8 JavaScript environment globals.
@@ -37,6 +37,13 @@ interface ToolContext {
    * false = JSON. When undefined, V8 uses the global compactOutput config.
    */
   compactOutput?: boolean;
+  /**
+   * The arrangement lanes this request has read and written, shared by every
+   * arrangement write in it. Made by the outermost update-clip or duplicate
+   * call, which removes it when done; a helper given a context without one
+   * reads its lanes fresh.
+   */
+  lanes?: import("#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts").LaneView;
 }
 
 /**

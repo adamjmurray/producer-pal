@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * JSON-serializable types for persisted eval results
@@ -35,8 +35,8 @@ export interface JsonEvalResult {
   totalTrials?: number;
   /** Overall result. `skipped` means the scenario's `requires` weren't
    *  satisfied by the active run environment, so it never ran. `error` means it
-   *  tried and never got started — the Live Set would not open, or the config
-   *  would not apply, so the model never saw a turn. Both are kept out of
+   *  tested nothing about the model — the Live Set would not open, the config
+   *  would not apply, or the provider refused the request. Both are kept out of
    *  pass/fail counts and score averages: scoring them as failures reads as a
    *  clean 0/3 on scenarios nothing was ever asked of. */
   result: "pass" | "fail" | "skipped" | "error";
@@ -148,9 +148,14 @@ export interface JsonStepTiming {
 }
 
 export interface JsonTokenUsage {
+  /** All input, cached or not */
   inputTokens?: number;
   outputTokens?: number;
   reasoningTokens?: number;
+  /** The part of `inputTokens` read from a prompt cache */
+  cacheReadTokens?: number;
+  /** The part of `inputTokens` written to a prompt cache */
+  cacheWriteTokens?: number;
 }
 
 /** Individual deterministic check result */

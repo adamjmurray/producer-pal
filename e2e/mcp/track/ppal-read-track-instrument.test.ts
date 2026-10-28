@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for the `instrument` field on track reads.
@@ -12,7 +12,7 @@
  *
  * Uses: racks-test — t0 nests a Drum Rack in an Instrument Rack, t1 nests Meld
  * two Instrument Racks deep. The multi-instrument shapes are built at runtime.
- * See e2e/live-sets/racks-test-spec.md.
+ * See e2e/live-sets/specs/racks-test-spec.md.
  *
  * Run with: npm run e2e:mcp -- ppal-read-track-instrument
  */

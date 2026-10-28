@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import {
@@ -15,6 +15,7 @@ import {
   registerDrumRackPadChain,
   registerMockObject,
   registerSimplerDevice,
+  registerVariationRack,
   updateDevice,
 } from "../update-device-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -231,22 +232,7 @@ describe("updateDevice - written param values", () => {
   it("reads params back after a macro variation recall overwrites them", () => {
     const macro = registerContinuousParam("macro-1", { name: "Macro 1" });
 
-    registerMockObject("rack", {
-      path: livePath.track(0).device(0),
-      type: "RackDevice",
-      properties: {
-        can_have_chains: 1,
-        variation_count: 3,
-        selected_variation_index: 0,
-        parameters: children("macro-1"),
-      },
-      // A recall restores the stored macro values over what was just written.
-      methods: {
-        recall_selected_variation: () => {
-          macro.properties.value = 0.9;
-        },
-      },
-    });
+    registerVariationRack(macro);
 
     const result = updateDevice({
       id: "rack",
@@ -367,6 +353,24 @@ describe("updateDevice - written param values", () => {
     // caller would have nothing anywhere that says it never landed.
     expect(message).toBe(
       'no param landed — "sample": written, but no value reads back',
+    );
+  });
+
+  it("fails the earlier sample when the last one leaves nothing to read", () => {
+    registerSimplerDevice();
+
+    const message = noParamLanded(() =>
+      updateDevice({
+        id: "simpler-1",
+        params: [
+          { name: "sample", value: "/nowhere/first.wav" },
+          { name: "Sample", value: "/nowhere/missing.wav" },
+        ],
+      }),
+    );
+
+    expect(message).toBe(
+      'no param landed — "sample": not written: "Sample" was meant to replace it, but failed; "sample": written, but no value reads back',
     );
   });
 

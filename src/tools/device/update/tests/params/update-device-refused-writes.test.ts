@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import {
@@ -13,6 +13,8 @@ import {
   updateDevice,
 } from "../update-device-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { refuseIfNoParamLanded } from "#src/tools/device/update/helpers/update-device-properties.ts";
+import { newTargetNotes } from "#src/tools/shared/helpers/target-notes.ts";
 
 /**
  * Register a device with one continuous param, enabled or macro-mapped
@@ -161,7 +163,7 @@ describe("updateDevice - every param failed", () => {
 
     expect(() =>
       updateDevice({ id: "chain-0", params: [{ name: "Volume", value: "1" }] }),
-    ).toThrow(/^no param landed — "Volume": 'params' not applicable/);
+    ).toThrow(/^no param landed — "Volume": params ignored: can't be set on/);
   });
 });
 
@@ -173,6 +175,16 @@ describe("updateDevice - every action failed", () => {
       updateDevice({ id: "simpler-1", actions: ["nope", "warpAs(x)"] }),
     ).toThrow(
       'no action landed — "nope": unknown action for this device; "warpAs(x)": requires a numeric beats argument',
+    );
+  });
+
+  it("counts an action named again as not landed", () => {
+    registerSimplerDevice();
+
+    expect(() =>
+      updateDevice({ id: "simpler-1", actions: ["nope", "nope"] }),
+    ).toThrow(
+      'no action landed — "nope": not written: "nope" was meant to replace it, but failed; "nope": unknown action for this device',
     );
   });
 
@@ -189,5 +201,32 @@ describe("updateDevice - every action failed", () => {
         { action: "nope", ok: false, detail: "unknown action for this device" },
       ],
     });
+  });
+});
+
+describe("refuseIfNoParamLanded", () => {
+  it("names a failed param by its name", () => {
+    const notes = newTargetNotes();
+
+    refuseIfNoParamLanded(notes, [{ name: "Gain", ok: false, detail: "bad" }]);
+
+    expect(notes.refused).toStrictEqual(["params"]);
+    expect(notes.unlanded).toStrictEqual(['no param landed — "Gain": bad']);
+  });
+
+  it("names a failed param by its id when it has no name", () => {
+    const notes = newTargetNotes();
+
+    refuseIfNoParamLanded(notes, [{ id: "7", ok: false, detail: "bad" }]);
+
+    expect(notes.unlanded).toStrictEqual(['no param landed — "7": bad']);
+  });
+
+  it("falls back to an empty name when the param has neither", () => {
+    const notes = newTargetNotes();
+
+    refuseIfNoParamLanded(notes, [{ ok: false, detail: "bad" }]);
+
+    expect(notes.unlanded).toStrictEqual(['no param landed — "": bad']);
   });
 });

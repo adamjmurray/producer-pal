@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E test for `ppal-select` on a drum pad or a rack chain.
@@ -37,7 +37,7 @@ interface SelectRackResult {
 }
 
 interface LiveApiResult {
-  results: { result: unknown }[];
+  results: unknown[];
 }
 
 /** The rack view properties no Producer Pal tool reports. */
@@ -82,7 +82,7 @@ async function readRackView(
       },
     }),
   );
-  const values = result.results.map((r) => r.result as unknown[]);
+  const values = result.results as unknown[][];
 
   return {
     selectedPadId: String(values[0]?.[1]),

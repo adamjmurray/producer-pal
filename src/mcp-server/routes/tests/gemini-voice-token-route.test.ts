@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { setupExpressAppServer } from "../../tests/express-app-test-helpers.ts";
@@ -47,7 +47,7 @@ describe("gemini-voice-token route", () => {
   it("returns the key as a non-ephemeral credential (localhost passthrough)", async () => {
     const res = await postGeminiToken(appState.baseUrl, {
       key: "gem-secret-key",
-      body: { model: "gemini-3.1-flash-live-preview" },
+      body: { model: "gemini-3.8-live" },
     });
 
     expect(res.status).toBe(200);

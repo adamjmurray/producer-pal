@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Turns a segment that names a device by type (`inst`, `mfx0`, `afx1`) into the
 // `d<n>` it resolves to, so everything that walks a device path only ever sees
@@ -9,7 +9,7 @@
 // → audio effects, so this is a filter over that order.
 //
 // Runs on every device path, so the no-type-segment case must read nothing.
-// See dev/tools/object-paths/README.md.
+// See dev/specs/tool-behavior/object-paths/README.md.
 
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,

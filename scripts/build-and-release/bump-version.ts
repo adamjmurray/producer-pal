@@ -2,7 +2,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -12,8 +12,12 @@ import {
   type BumpType,
   nextVersion,
   parseVersion,
-} from "./helpers/next-version.ts";
-import { replaceVersionLine } from "./helpers/replace-version-line.ts";
+} from "./helpers/version/next-version.ts";
+import {
+  MIN_VERSION_FILE,
+  raiseMinRemoteScriptVersion,
+} from "./helpers/version/min-remote-script-version.ts";
+import { replaceVersionLine } from "./helpers/version/replace-version-line.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "../..");
@@ -53,9 +57,40 @@ try {
   process.exit(1);
 }
 
+// A remote script changed since the last release is only safe to talk to at
+// this version or later, so raise the minimum the server accepts. Worked out
+// before any file is written: a clone without tags fails here, not halfway.
+const minVersionPath = join(rootDir, MIN_VERSION_FILE);
+let lastTag: string;
+let changedScriptFiles: string[];
+let minVersionContent: string | null;
+
+try {
+  lastTag = execSync("git describe --tags --abbrev=0", {
+    cwd: rootDir,
+    encoding: "utf8",
+  }).trim();
+  changedScriptFiles = execSync(
+    `git diff --name-only ${lastTag} -- remote-script/Producer_Pal ":!remote-script/Producer_Pal/version.py"`,
+    { cwd: rootDir, encoding: "utf8" },
+  )
+    .split("\n")
+    .filter(Boolean);
+  minVersionContent = raiseMinRemoteScriptVersion(
+    readFileSync(minVersionPath, "utf8"),
+    newVersion,
+    changedScriptFiles,
+  );
+} catch (error) {
+  console.error(
+    `\n❌ Couldn't check the remote script against the last release tag (run git fetch --tags?): ${String(error)}`,
+  );
+  process.exit(1);
+}
+
 // Bump root package.json. `npm version` takes the literal version rather than
 // major|minor|patch: those keywords mishandle a pre-release input (see
-// helpers/next-version.ts), and this way one computation drives every file.
+// helpers/version/next-version.ts), and this way one computation drives every file.
 console.log(`Bumping ${currentVersion} → ${newVersion}...`);
 
 try {
@@ -120,6 +155,18 @@ const pyVersionContent = replaceVersionLine(
 
 writeFileSync(pyVersionPath, pyVersionContent);
 console.log("✓ Updated remote-script/Producer_Pal/version.py");
+
+// The remote script minimum, worked out above.
+if (minVersionContent == null) {
+  console.log(
+    `✓ MIN_REMOTE_SCRIPT_VERSION kept (no script change since ${lastTag})`,
+  );
+} else {
+  writeFileSync(minVersionPath, minVersionContent);
+  console.log(
+    `✓ Raised MIN_REMOTE_SCRIPT_VERSION: the remote script changed since ${lastTag} (${changedScriptFiles.join(", ")})`,
+  );
+}
 
 // Update npm/package.json
 const npmPkgPath = join(rootDir, "npm/package.json");

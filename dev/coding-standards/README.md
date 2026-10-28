@@ -80,10 +80,13 @@ named for nothing, and the cap only goes down.
 
 ## Imports
 
-Always include `.ts` extensions matching the actual file type:
+In `src/`, always include `.ts` extensions. In `webui/`, never. To cross between
+top-level modules use the `#src/`, `#webui/`, `#evals/` aliases; a relative
+import must stay inside its own module (`webui/` bans `..` entirely). Enforced
+by `src/test/meta/import-restrictions.test.ts`.
 
 ```typescript
-import { createMcpServer } from "../src/mcp-server/create-mcp-server.ts";
+import { createMcpServer } from "#src/mcp-server/create-mcp-server.ts";
 ```
 
 Peggy-generated parsers are wrapped in TypeScript files (e.g.,
@@ -112,27 +115,29 @@ for (let i = 0; i < tracks.length; i++) {
 
 - **Never use `!`** — the linter forbids the non-null assertion.
 - A commented `as` is for an index you can _prove_ is in range. Never delete a
-  runtime guard to buy coverage — warn-and-skip is a product requirement, not
-  coverage noise.
+  runtime guard to buy coverage. A target the call can't handle is skipped and
+  reported in its own result entry; a malformed call is refused up front. Both
+  are product behavior, not coverage noise (`dev/PRINCIPLES.md`,
+  `dev/specs/tool-behavior/`).
 
 ## Tools
 
-Always pass args in `src/main.ts`:
+Tool handlers are dispatched in `src/live-api-adapter/live-api-adapter.ts`. Each
+takes `(args, ctx)`:
 
-```javascript
-tools: {
-  "ppal-create-clip": (args) => createClip(args),
-}
+```typescript
+"ppal-create-clip": (args, ctx) => createClip(args as any, ctx),
 ```
 
-Zod schemas: primitives/enums only. For lists, use comma-separated strings.
+Pick each param's Zod shape per `dev/tools/tool-schemas.md`.
 
 ## Live API
 
 Use `src/live-api-adapter/live-api-extensions.ts` instead of raw
 `.get("property")?.[0]`
 
-Return optimistic results for playback operations.
+Playback operations return optimistic results: Live's state may not reflect the
+change yet when read straight back.
 
 **Never hardcode Live API path strings** — build them with `livePath`.
 
@@ -157,43 +162,15 @@ float32 values (tiny pan, gain, or tempo noise) as an exponent-notation STRING,
 not a number, so narrow with `asFiniteNumber`/`roundDisplayValue` rather than
 `typeof value === "number"` alone.
 
-## Coverage
+## Coverage and Tests
 
-Function coverage is enforced at **100%** via `vitest.config.ts` thresholds.
-
-When a function is genuinely untestable (e.g., IDB error callbacks, exhaustive
-`never` branches, no-op stubs, inline JSX callbacks in root components), exclude
-it with `/* v8 ignore start -- reason */` ... `/* v8 ignore stop */`. Use
-`start`/`stop` pairs (not `next`) because `v8 ignore next` only excludes
-line/branch coverage, not function coverage.
-
-**Rules:**
-
-- Every `v8 ignore start` and `v8 ignore next` must include a `-- reason`
-  description (enforced by test)
-- `v8 ignore stop` does not need a description
-- Per-tree counts are ratcheted in `src/test/lint-suppression-limits.test.ts` —
-  increasing limits requires user approval
-- Some functions are excluded from coverage as unreasonable to test (agreed upon
-  by human and AI review)
-
-## Testing
-
-Use the mock registry (`src/test/mocks/mock-registry.ts`) for LiveAPI tests:
-
-- `registerMockObject(id, { path, type, properties, methods })` — register a
-  mock object and get back a `RegisteredMockObject` with instance-level
-  `get`/`set`/`call` mocks
-- Assert directly on the mock: `expect(track.set).toHaveBeenCalledWith(...)`
-- `mockNonExistentObjects()` — make unregistered IDs non-existent (for
-  invalid-ID tests)
-- Domain-specific helpers (e.g., `setupTrackMock()`) wrap `registerMockObject()`
-  for common object graphs
+Coverage rules (100% function coverage, `v8 ignore`) and the mock registry are
+in [testing.md](../quality/testing.md).
 
 ## Builds
 
-- Dev: `npm run build:debug` (includes debugging tools)
-- Prod: `npm run build` (excludes debugging)
+Dev: `npm run build:debug`; prod: `npm run build`. Flags and what each build
+includes are in [DEVELOPERS.md](../../DEVELOPERS.md).
 
 ## Design
 
@@ -205,36 +182,28 @@ guidance.
 ### Note Values
 
 The note-value notation (durations like `n/4`, `±n` beat offsets, the off-grid
-`n<beats>/4` escape, and `<count>bar` forms) is parsed at six independent sites:
+`n<beats>/4` escape, and `<count>bar` forms) is parsed at several independent
+sites (the parity test's header lists them):
 
 - the `barbeat-grammar.peggy` rules (authoring),
 - the `transform-grammar.peggy` rules (transform expressions and time-range
   selectors), and
 - three regexes in `src/notation/barbeat/time/barbeat-time.ts`
-  (`durationToAbletonBeats`, `barBeatToMusicalBeats`, `parseBeatValue`).
+  (`durationToAbletonBeats`, `readBarBeat`, `parseBeatValue`).
 
-This duplication is deliberate and **should not be refactored away**:
-
-- Peggy has no grammar `import`/include and cannot share rule fragments between
-  two grammars. The only way to share them would be a build-time
-  text-concatenation step, which adds a new failure mode just to consolidate the
-  stable lexer rules that rarely change (the rules that actually change during a
-  reform — `beatValue`, `duration`/`nDuration` — are intentionally different per
-  grammar and cannot be shared anyway).
-- The TS regexes run in per-note hot paths (e.g. transform time-range
-  membership), so replacing them with a full parser invocation would be a
-  performance regression.
-- The sites are intentionally not byte-identical: the grammars reject
-  leading-zero denominators with `[1-9][0-9]*`, while the regexes use
-  `0|[1-9]\d*` so a lone `0` reaches a per-site division-by-zero message.
+This duplication is deliberate and **should not be refactored away**; the
+reasons are in [ADR-0003](../decisions/0003-notation-grammar-duplication.md).
+The sites are intentionally not byte-identical: the grammars reject leading-zero
+denominators with `[1-9][0-9]*`, while the regexes use `0|[1-9]\d*` so a lone
+`0` reaches a per-site division-by-zero message.
 
 The fraction arithmetic is already shared (`noteValueFractionToBeats()` in
 `barbeat-time.ts`); only the patterns are duplicated. Two parity tests are the
 enforcement mechanism — they turn silent divergence (the dangerous failure) into
 a loud test failure:
 
-- `note-value-grammar-parity.test.ts` feeds one corpus through all six parse
-  sites across multiple meters and asserts identical accept/reject and matching
+- `note-value-grammar-parity.test.ts` feeds one corpus through every parse site
+  across multiple meters and asserts identical accept/reject and matching
   values.
 - `note-value-denominator-parity.test.ts` locks the serializer's
   denominator-candidate lists as subsets of the canonical
@@ -247,9 +216,9 @@ to the parity test's site list.
 
 The same situation, smaller. Stark's `DrumPitchName`
 (`$([A-Ga-g] [#b]? "-"? [0-9]+)`) is respelled as `/^([A-Ga-g])([#b]?)(-?\d+)$/`
-inside `stark-interpreter.ts`'s `drumHeaderPitch`, which resolves the header
-arithmetically so enharmonic spellings (Cb/E#/Fb/B#) work — `pitch.ts`'s exact
-table omits them and would drop the whole drum line.
+inside `drumHeaderPitch` (`stark/helpers/stark-interpreter-pitch.ts`), which
+resolves the header arithmetically so enharmonic spellings (Cb/E#/Fb/B#) work —
+`pitch.ts`'s exact table omits them and would drop the whole drum line.
 
 `drumHeaderPitch` `assertDefined`s the match rather than null-checking it,
 because the grammar is what guarantees the shape. So widening one pattern alone

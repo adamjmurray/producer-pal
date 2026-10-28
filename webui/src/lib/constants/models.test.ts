@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import {
@@ -109,6 +109,10 @@ describe("isRealtimeModelId", () => {
 
 describe("isGeminiRealtimeModelId", () => {
   it("matches Gemini live / native-audio ids, not 'realtime' ids", () => {
+    expect(isGeminiRealtimeModelId("gemini-3.8-live")).toBe(true);
+    expect(isGeminiRealtimeModelId("gemini-3.8-live-extended-thinking")).toBe(
+      true,
+    );
     expect(isGeminiRealtimeModelId("gemini-3.1-flash-live-preview")).toBe(true);
     expect(isGeminiRealtimeModelId("gemini-2.0-flash-live-001")).toBe(true);
     expect(
@@ -120,7 +124,7 @@ describe("isGeminiRealtimeModelId", () => {
 
   it("does not match standard Gemini chat ids", () => {
     expect(isGeminiRealtimeModelId("gemini-3.8-flash")).toBe(false);
-    expect(isGeminiRealtimeModelId("gemini-3.1-pro-preview")).toBe(false);
+    expect(isGeminiRealtimeModelId("gemini-4-argon")).toBe(false);
   });
 
   it("returns false for null or undefined", () => {

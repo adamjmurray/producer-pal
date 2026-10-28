@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -54,6 +54,20 @@ describe("updateDevice - params addressed by id", () => {
       ...continuousParam("Volume"),
     });
   });
+
+  /**
+   * Expect Volume took only the last write, and the first entry says why not.
+   * @param result - What updateDevice returned
+   * @param detail - The reason the first entry carries
+   */
+  function expectOnlyLastWritten(result: unknown, detail: string): void {
+    expect(volume.set).toHaveBeenCalledTimes(1);
+    expect(volume.set).toHaveBeenCalledWith("value", 0.25);
+    expect(paramsOf(result)).toStrictEqual([
+      { id: "1", detail },
+      { id: "1", name: "Volume" },
+    ]);
+  }
 
   it("writes the param the id names", () => {
     const result = updateDevice({
@@ -173,12 +187,7 @@ describe("updateDevice - params addressed by id", () => {
       ],
     });
 
-    expect(volume.set).toHaveBeenCalledTimes(1);
-    expect(volume.set).toHaveBeenCalledWith("value", 0.25);
-    expect(paramsOf(result)).toStrictEqual([
-      { id: "1", ok: false, detail: "set again by id 1 later in the list" },
-      { id: "1", name: "Volume" },
-    ]);
+    expectOnlyLastWritten(result, "named again as id 1 later in this call");
   });
 
   it("reports an id that reaches nothing, sent twice, once per entry", () => {
@@ -193,7 +202,7 @@ describe("updateDevice - params addressed by id", () => {
     );
 
     expect(message).toBe(
-      'no param landed — "999": set again by id 999 later in the list; "999": not found on t0/d0 (id dev1)',
+      'no param landed — "999": not written: id 999 was meant to replace it, but failed; "999": not found on t0/d0 (id dev1)',
     );
   });
 
@@ -205,12 +214,7 @@ describe("updateDevice - params addressed by id", () => {
   it("writes only the last of an id and a name reaching one param", () => {
     const result = updateDevice({ id: "dev1", params: sameParamTwice });
 
-    expect(volume.set).toHaveBeenCalledTimes(1);
-    expect(volume.set).toHaveBeenCalledWith("value", 0.25);
-    expect(paramsOf(result)).toStrictEqual([
-      { id: "1", ok: false, detail: 'set again by "Volume" later in the list' },
-      { id: "1", name: "Volume" },
-    ]);
+    expectOnlyLastWritten(result, 'named again as "Volume" later in this call');
     expect(capturedWarnings()).toHaveLength(0);
   });
 
@@ -252,8 +256,7 @@ describe("updateDevice - params addressed by id", () => {
     expect(volume.set).toHaveBeenCalledWith("value", 0.25);
     expect(paramsOf(result)[0]).toStrictEqual({
       id: "1",
-      ok: false,
-      detail: 'set again by "Volume" later in the list',
+      detail: 'named again as "Volume" later in this call',
     });
   });
 

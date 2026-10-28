@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Scenarios for melodic stepping via pitch streams (pattern brackets).
@@ -134,7 +134,7 @@ export const barBeatMelodicCompoundStepping: EvalScenario =
       "Stepping melody on the dotted-quarter felt pulse in 6/8 and 12/8 — pitch stepping meets compound spacing",
     prompts: [
       "On the Lead track, create a 1-bar MIDI clip in scene 1 in 6/8 time. Put a two-note melody on the main felt pulse (the dotted-quarter beat): C3 on the first pulse, G3 on the second.",
-      "Now create a 1-bar clip on the Lead track in scene 2 in 12/8 time with an ascending arpeggio on each felt pulse (the dotted-quarter beat): C3, E3, G3, C4 — four notes.",
+      "Now create a 1-bar clip on the Lead track in scene 2 in 12/8 time with a four-note ascending arpeggio, one note per felt pulse (the dotted-quarter beat): C3, E3, G3, C4.",
     ],
     slots: [`${LEAD_TRACK}/0`, `${LEAD_TRACK}/1`],
     melodies: [

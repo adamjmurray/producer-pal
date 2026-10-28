@@ -16,8 +16,8 @@ head:
 
 Every Producer Pal conversation starts with a fixed overhead: the schemas for
 the tools your client can call, plus the [skills](/features#skills) that teach
-the AI how to use them. With everything switched on that's roughly **93,000
-characters, about 23,000 tokens** before you type a word.
+the AI how to use them. With everything switched on that's roughly **114,000
+characters, about 28,500 tokens** before you type a word.
 
 You can cut that by more than half without giving up anything you actually use.
 Worth doing if you run a [small or local model](/installation/choose-local) with
@@ -28,9 +28,9 @@ Producer Pal.
 
 | Sent at the start of every conversation | Characters | Tokens  |
 | --------------------------------------- | ---------- | ------- |
-| Tool schemas (the 21 default tools)     | ~44,000    | ~11,000 |
-| [Skills](/features#skills)              | ~49,000    | ~12,300 |
-| **Total**                               | ~93,000    | ~23,300 |
+| Tool schemas (the 22 default tools)     | ~53,000    | ~13,200 |
+| [Skills](/features#skills)              | ~61,000    | ~15,300 |
+| **Total**                               | ~114,000   | ~28,500 |
 
 On top of that: your [context and memory](/guide/context), however much you've
 written. Then per message, your prompt, the AI's reply, and the result of every
@@ -39,8 +39,9 @@ tool call it makes.
 Every figure on this page is in **characters**, with **tokens** alongside where
 it helps, converted at the usual rough estimate of 4 characters per token.
 Characters are what Producer Pal can actually count; tokens depend on the
-model's tokenizer. All measurements use the default `bar|beat` notation and
-standard skills, and your client wraps the schemas its own way, so treat them as
+model's tokenizer. All measurements use the default `bar|beat` notation,
+standard skills, and the remote script answering (it's part of the standard
+install), and your client wraps the schemas its own way, so treat them as
 ballpark.
 
 ## Narrow the toolset
@@ -54,13 +55,13 @@ Schemas plus skills, measured against the default toolset:
 
 | Toolset           | Tools | Characters | Tokens  | Saved |
 | ----------------- | ----- | ---------- | ------- | ----- |
-| Default           | 21    | ~93,000    | ~23,300 | 0%    |
-| `core,clip,track` | 8     | ~54,000    | ~13,600 | 42%   |
-| `read-only`       | 8     | ~29,000    | ~7,100  | 69%   |
+| Default           | 22    | ~114,000   | ~28,500 | 0%    |
+| `core,clip,track` | 9     | ~68,000    | ~17,000 | 41%   |
+| `read-only`       | 8     | ~36,000    | ~8,900  | 69%   |
 
-Those two rows keep the same number of tools and save very different amounts:
-`read-only` wins because dropping every writer takes the whole write-side half
-of the skills with it.
+Those two rows are one tool apart and save very different amounts: `read-only`
+wins because dropping every writer takes the whole write-side half of the skills
+with it.
 
 Where you set it depends on the client. See
 [Choosing a Toolset](/features#toolset) for the full list, or go straight to the
@@ -86,14 +87,14 @@ to a much shorter set, and advanced parameters come out of the tool schemas.
 
 | All tools enabled      | Standard | Small model mode |
 | ---------------------- | -------- | ---------------- |
-| Schemas (characters)   | ~44,000  | ~25,000          |
-| Skills (characters)    | ~49,000  | ~3,400           |
-| **Total (characters)** | ~93,000  | **~28,000**      |
-| **Total (tokens)**     | ~23,300  | **~7,100**       |
+| Schemas (characters)   | ~53,000  | ~28,000          |
+| Skills (characters)    | ~61,000  | ~4,100           |
+| **Total (characters)** | ~114,000 | **~32,000**      |
+| **Total (tokens)**     | ~28,500  | **~8,000**       |
 
-That's 70% off, the largest single reduction available, and it stacks with a
-narrow toolset: `read-only` in small model mode comes to ~9,000 characters
-(~2,400 tokens), 90% off.
+That's 72% off, the largest single reduction available, and it stacks with a
+narrow toolset: `read-only` in small model mode comes to ~11,000 characters
+(~2,800 tokens), 90% off.
 
 It isn't a pure cost lever, though. It exists to make
 [local models](/installation/choose-local) viable, so it trades away capability:
@@ -111,22 +112,22 @@ changes with the notation, and the three differ a lot:
 
 | Notation    | Notation guide (characters) | All skills (characters) | All skills (tokens) |
 | ----------- | --------------------------- | ----------------------- | ------------------- |
-| `bar\|beat` | ~8,400                      | ~49,000                 | ~12,300             |
-| `stark`     | ~3,700                      | ~44,000                 | ~11,100             |
-| `midi-json` | ~1,000                      | ~42,000                 | ~10,400             |
+| `bar\|beat` | ~8,600                      | ~61,000                 | ~15,300             |
+| `stark`     | ~3,800                      | ~56,000                 | ~14,100             |
+| `midi-json` | ~1,000                      | ~54,000                 | ~13,400             |
 
 `midi-json` needs an eighth of the guidance `bar|beat` does. It's a JSON array
 of note objects, so there's little to teach, and nothing extra for writing
 notes. Everything else in the skills is notation-neutral, so that gap _is_ the
 whole difference between the two totals.
 
-Still, pick for fit rather than size: the guide is a small slice of the ~93,000
+Still, pick for fit rather than size: the guide is a small slice of the ~114,000
 characters a conversation starts with, and the notation decides how well your
 model actually writes music. `midi-json` for coding agents, `stark` for small
 models, `bar|beat` for conversation.
 
 In [small model mode](#small-model-mode) the order changes (`stark`'s basic
-guide is ~3,100 characters against `bar|beat`'s ~1,400), so the standing
+guide is ~3,100 characters against `bar|beat`'s ~1,500), so the standing
 recommendation of `stark` for local models is about reliability, not size.
 
 ## Keep responses compact

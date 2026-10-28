@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Print functions for the unit test statistics tables (CLI and markdown).
@@ -56,15 +56,18 @@ const COVERAGE_NOTE =
  * @returns Display rows, totals last
  */
 function testRows(report: TestStatsReport): Row[] {
-  const rows = report.trees.map(testRow);
+  const suites = report.remoteScript
+    ? [...report.trees, report.remoteScript]
+    : report.trees;
+  const rows = suites.map(testRow);
 
   /**
-   * Total one field across every tree.
-   * @param pick - Reads the field from a tree's stats
-   * @returns Sum across all trees
+   * Total one field across every suite.
+   * @param pick - Reads the field from a suite's stats
+   * @returns Sum across all suites
    */
   const sum = (pick: (t: TreeStats) => number): number =>
-    report.trees.reduce((acc, t) => acc + pick(t), 0);
+    suites.reduce((acc, t) => acc + pick(t), 0);
 
   const tests = sum((t) => t.tests);
   const testFiles = sum((t) => t.testFiles);

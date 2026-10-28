@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -15,7 +15,7 @@ import { VersionDisplay } from "#webui/components/chat/controls/header/VersionDi
 const defaultHeaderInfo: HeaderInfo = {
   activeModel: null,
   activeProvider: null,
-  model: "gemini-3.1-pro-preview",
+  model: "gemini-4-argon",
   provider: "gemini",
   enabledToolsCount: 20,
   totalToolsCount: 20,
@@ -41,6 +41,8 @@ describe("ChatHeader", () => {
     isHistoryOpen: false,
     update: null,
     onDismissUpdate: vi.fn(),
+    remoteScriptNotice: null,
+    onOpenInstallationSettings: vi.fn(),
     onOpenSettings: vi.fn(),
     onOpenToolsSettings: vi.fn(),
     onOpenConnectionSettings: vi.fn(),
@@ -109,7 +111,7 @@ describe("ChatHeader", () => {
       );
       // Falls back to model prop from settings
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 3.1 Pro")).toBeDefined();
+      expect(screen.getByText("Gemini 4 Argon")).toBeDefined();
     });
 
     it("shows provider and model name when both are set", () => {
@@ -117,13 +119,13 @@ describe("ChatHeader", () => {
         <ChatHeader
           {...defaultProps}
           headerInfo={hi({
-            activeModel: "gemini-3.1-pro-preview",
+            activeModel: "gemini-4-argon",
             activeProvider: "gemini",
           })}
         />,
       );
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 3.1 Pro")).toBeDefined();
+      expect(screen.getByText("Gemini 4 Argon")).toBeDefined();
     });
 
     it("shows Flash model with provider", () => {
@@ -173,14 +175,14 @@ describe("ChatHeader", () => {
         <ChatHeader
           {...defaultProps}
           headerInfo={hi({
-            activeModel: "gemini-3.1-pro-preview",
+            activeModel: "gemini-4-argon",
             activeProvider: null,
           })}
         />,
       );
       // Falls back to provider prop from settings
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 3.1 Pro")).toBeDefined();
+      expect(screen.getByText("Gemini 4 Argon")).toBeDefined();
     });
   });
 
@@ -239,7 +241,7 @@ describe("ChatHeader", () => {
     });
 
     it("explains the gap the experimental tools leave in the denominator", () => {
-      // 21/23 out of the box is the normal state, not a fault.
+      // 22/24 out of the box is the normal state, not a fault.
       render(
         <ChatHeader
           {...defaultProps}
@@ -358,7 +360,7 @@ describe("ChatHeader", () => {
           {...defaultProps}
           mcpStatus="connected"
           headerInfo={hi({
-            activeModel: "gemini-3.1-pro-preview",
+            activeModel: "gemini-4-argon",
             activeProvider: "gemini",
             enabledToolsCount: 18,
             totalToolsCount: 20,
@@ -368,7 +370,7 @@ describe("ChatHeader", () => {
 
       expect(screen.getByText(/Ready/)).toBeDefined();
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 3.1 Pro")).toBeDefined();
+      expect(screen.getByText("Gemini 4 Argon")).toBeDefined();
       expect(screen.getByText("18/20 tools")).toBeDefined();
     });
   });
@@ -392,7 +394,7 @@ describe("ChatHeader", () => {
         <ChatHeader
           {...defaultProps}
           headerInfo={hi({
-            activeModel: "gemini-3.1-pro-preview",
+            activeModel: "gemini-4-argon",
             activeProvider: "gemini",
           })}
         />,
@@ -578,7 +580,7 @@ describe("ChatHeader", () => {
           {...defaultProps}
           headerInfo={hi({
             // The lock only exists once a conversation has connected.
-            activeModel: "gemini-3.1-pro-preview",
+            activeModel: "gemini-4-argon",
             smallModelMode: true,
             defaultSmallModelMode: false,
           })}
@@ -598,6 +600,29 @@ describe("ChatHeader", () => {
       render(<ChatHeader {...defaultProps} />);
 
       expect(screen.queryByTitle(/^Locked:/)).toBeNull();
+    });
+  });
+
+  describe("remote script badge", () => {
+    it("shows nothing by default", () => {
+      render(<ChatHeader {...defaultProps} />);
+
+      expect(screen.queryByText("(script update)")).toBeNull();
+    });
+
+    it("opens the Installation settings when clicked", () => {
+      const onOpenInstallationSettings = vi.fn();
+
+      render(
+        <ChatHeader
+          {...defaultProps}
+          remoteScriptNotice="restart"
+          onOpenInstallationSettings={onOpenInstallationSettings}
+        />,
+      );
+      fireEvent.click(screen.getByText("(restart Live)"));
+
+      expect(onOpenInstallationSettings).toHaveBeenCalledOnce();
     });
   });
 

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
@@ -38,6 +38,12 @@ describe("formatNotation() core", () => {
     ] as NoteEvent[];
 
     expect(formatNotation(notes)).toBe("v100 n/4 C3 1|1\nD3 1|2\nE3 2|1");
+  });
+
+  it("puts a note a hair under a bar line in the next bar", () => {
+    const notes = [createNote({ start_time: 3.999995 })] as NoteEvent[];
+
+    expect(formatNotation(notes)).toBe("v100 n/4 C3 2|1");
   });
 
   it("formats notes with probability changes", () => {

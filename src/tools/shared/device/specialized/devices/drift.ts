@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { exclusiveModes } from "../specialized-device-inactive.ts";
 import {
@@ -19,7 +19,7 @@ import {
 } from "../specialized-device-types.ts";
 
 // Drift (DriftDevice, class_name "Drift"). See
-// dev/live-api/specialized-devices/instruments.md.
+// dev/live-api/specialized-devices/instruments/drift.md.
 // Declarative mod matrix: each slot is an int `_index` property; the value
 // lists are stable, hardcoded. Modulation amounts are regular DeviceParameters
 // and are NOT duplicated here.

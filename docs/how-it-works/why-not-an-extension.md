@@ -101,7 +101,7 @@ Here's how I weigh each one:
 | **Import a file into the project**   | Producer Pal can already create clips from any audio file on disk. "Copy it into the project folder" is a nice convenience, not a new ability.                  |
 | **Render an audio region to a file** | Producer Pal already has the sample file for any audio clip. The only extra is bouncing an arbitrary time range, which is handy occasionally but rarely needed. |
 | **Native pop-up dialogs & menus**    | These are built around a person clicking through Live's interface. Producer Pal is driven by conversation, so they don't quite fit.                             |
-| **Grouped undo**                     | A genuinely nice touch (undo a big change in one step), but on its own not enough to outweigh everything above.                                                 |
+| **Grouped undo**                     | Producer Pal's [remote script](/guide/remote-script) already makes each request one undo step, so this isn't a new ability.                                     |
 
 ### The thing people most hope for, and the SDK can't do it yet
 

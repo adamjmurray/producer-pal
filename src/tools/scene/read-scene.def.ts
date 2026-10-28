@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z } from "zod";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
@@ -13,16 +13,13 @@ import { scenePathFromIndex } from "#src/tools/shared/validation/helpers/path-fr
 export const toolDefReadScene = defineTool("ppal-read-scene", {
   title: "Read Scene",
   description:
-    "Read scene settings and clips. Returns overview by default. Use include to add detail.",
+    "Read scene settings and clips by id or path. Returns overview by default. Use include to add detail.",
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
   },
   inputSchema: {
-    id: z.coerce
-      .string()
-      .optional()
-      .describe("scene ID(s) to read, comma-separated for multiple"),
+    id: z.coerce.string().optional().describe("scene id(s), comma-separated"),
 
     ...addressingAliases({ idAlias: "sceneId" }),
     path: z.coerce

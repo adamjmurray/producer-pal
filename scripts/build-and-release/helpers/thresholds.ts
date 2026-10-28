@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Readers for the code-quality thresholds held in vitest.config.ts and the
@@ -23,17 +23,22 @@ export interface CoverageThresholds {
   lines: number;
 }
 
-export interface DuplicationThresholds {
-  source: number;
-  tests: number;
-  scripts: number;
-  evals: number;
-  e2e: number;
-}
+const DUPLICATION_CONFIGS = {
+  source: ".jscpd.json",
+  tests: ".jscpd-tests.json",
+  scripts: ".jscpd-scripts.json",
+  evals: ".jscpd-evals.json",
+  e2e: ".jscpd-e2e.json",
+  docs: ".jscpd-docs.json",
+} as const;
+
+export type DuplicationThresholds = Record<
+  keyof typeof DUPLICATION_CONFIGS,
+  number
+>;
 
 /**
  * Reads coverage thresholds from vitest config
- *
  * @returns Coverage threshold values
  */
 export async function getCoverageThresholds(): Promise<CoverageThresholds> {
@@ -72,26 +77,16 @@ export async function getCoverageThresholds(): Promise<CoverageThresholds> {
 
 /**
  * Reads duplication thresholds from jscpd config files
- *
  * @returns Duplication threshold values
  */
 export async function getDuplicationThresholds(): Promise<DuplicationThresholds> {
-  const [srcConfig, testsConfig, scriptsConfig, evalsConfig, e2eConfig] =
-    await Promise.all([
-      readFile(join(configDir, ".jscpd.json"), "utf-8").then(JSON.parse),
-      readFile(join(configDir, ".jscpd-tests.json"), "utf-8").then(JSON.parse),
-      readFile(join(configDir, ".jscpd-scripts.json"), "utf-8").then(
-        JSON.parse,
-      ),
-      readFile(join(configDir, ".jscpd-evals.json"), "utf-8").then(JSON.parse),
-      readFile(join(configDir, ".jscpd-e2e.json"), "utf-8").then(JSON.parse),
-    ]);
+  const entries = await Promise.all(
+    Object.entries(DUPLICATION_CONFIGS).map(async ([group, file]) => {
+      const config = JSON.parse(await readFile(join(configDir, file), "utf-8"));
 
-  return {
-    source: srcConfig.threshold,
-    tests: testsConfig.threshold,
-    scripts: scriptsConfig.threshold,
-    evals: evalsConfig.threshold,
-    e2e: e2eConfig.threshold,
-  };
+      return [group, config.threshold as number] as const;
+    }),
+  );
+
+  return Object.fromEntries(entries) as DuplicationThresholds;
 }

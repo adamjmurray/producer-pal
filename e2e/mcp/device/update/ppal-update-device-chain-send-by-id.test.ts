@@ -1,13 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for naming a chain send's return chain by id, and for setting
  * several of a chain's sends in one call with `sends`.
  * Uses: racks-test, whose "Kit" Drum Rack has the two return chains
- * "A Saturator" and "B Reverb". See e2e/live-sets/racks-test-spec.md.
+ * "A Saturator" and "B Reverb". See e2e/live-sets/specs/racks-test-spec.md.
  *
  * Rack return chains can't be created through the Live API, so this needs the
  * prepared Set. The unit tests use mock ids; only real Live proves the id

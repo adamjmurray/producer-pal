@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -10,8 +10,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { duplicateClipWithPositions } from "../clip/duplicate-clip-with-positions.ts";
-import { copyLabels } from "../sources/copy-labels.ts";
+import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { duplicateClipSlot } from "../clip/duplicate-clip-slot.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
@@ -22,6 +21,58 @@ const SOURCE_CLIP_ID = "56";
 const COPY_ID = "61";
 /** Clip already sitting in the destination slot */
 const OCCUPANT_ID = "60";
+
+/**
+ * Registers the source clip and slot at t0/s0 and the destination track t1.
+ * @param opts - Test options
+ * @param opts.destClipPath - Path where the copy lands
+ * @param opts.copyLands - Whether duplicate_clip_to makes the copy
+ * @param opts.clipIsMidi - Whether the source clip is MIDI
+ * @param opts.destIsMidi - Whether the destination track takes MIDI
+ * @param opts.destIsFrozen - Whether the destination track is frozen
+ * @returns The source clip slot mock
+ */
+function registerSourceAndDestTrack(opts: {
+  destClipPath: string;
+  copyLands: boolean;
+  clipIsMidi?: number;
+  destIsMidi?: number;
+  destIsFrozen?: number;
+}): RegisteredMockObject {
+  const {
+    destClipPath,
+    copyLands,
+    clipIsMidi = 1,
+    destIsMidi = 1,
+    destIsFrozen = 0,
+  } = opts;
+
+  registerMockObject(SOURCE_CLIP_ID, {
+    path: livePath.track(0).clipSlot(0).clip(),
+    properties: { is_midi_clip: clipIsMidi },
+  });
+
+  const sourceClipSlot = registerMockObject("live_set/tracks/0/clip_slots/0", {
+    path: livePath.track(0).clipSlot(0),
+    properties: { has_clip: 1 },
+    methods: {
+      duplicate_clip_to: () => {
+        if (copyLands) {
+          registerMockObject(COPY_ID, { path: destClipPath });
+        }
+
+        return null;
+      },
+    },
+  });
+
+  registerMockObject("live_set/tracks/1", {
+    path: livePath.track(1),
+    properties: { has_midi_input: destIsMidi, is_frozen: destIsFrozen },
+  });
+
+  return sourceClipSlot;
+}
 
 /**
  * Register a source clip in slot 0/0 and a destination slot, with
@@ -59,29 +110,12 @@ function setupSlotDuplication(
   mockNonExistentObjects();
 
   const destClipPath = livePath.track(1).clipSlot(0).clip();
-
-  registerMockObject(SOURCE_CLIP_ID, {
-    path: livePath.track(0).clipSlot(0).clip(),
-    properties: { is_midi_clip: clipIsMidi },
-  });
-
-  const sourceClipSlot = registerMockObject("live_set/tracks/0/clip_slots/0", {
-    path: livePath.track(0).clipSlot(0),
-    properties: { has_clip: 1 },
-    methods: {
-      duplicate_clip_to: () => {
-        if (copyLands) {
-          registerMockObject(COPY_ID, { path: destClipPath });
-        }
-
-        return null;
-      },
-    },
-  });
-
-  registerMockObject("live_set/tracks/1", {
-    path: livePath.track(1),
-    properties: { has_midi_input: destIsMidi, is_frozen: destIsFrozen },
+  const sourceClipSlot = registerSourceAndDestTrack({
+    destClipPath,
+    copyLands,
+    clipIsMidi,
+    destIsMidi,
+    destIsFrozen,
   });
 
   registerMockObject("live_set/tracks/1/clip_slots/0", {
@@ -94,6 +128,23 @@ function setupSlotDuplication(
     : undefined;
 
   return { sourceClipSlot, occupant };
+}
+
+/**
+ * Make the copy land, then refuse to be renamed.
+ * @param sourceClipSlot - The slot being duplicated
+ */
+function makeCopyRefuseItsName(sourceClipSlot: RegisteredMockObject): void {
+  const makeCopy = sourceClipSlot.methods.duplicate_clip_to as () => null;
+
+  sourceClipSlot.methods.duplicate_clip_to = () => {
+    makeCopy();
+    registerMockObject(COPY_ID, {}).set.mockImplementation(() => {
+      throw new Error("name refused");
+    });
+
+    return null;
+  };
 }
 
 describe("duplicateClipSlot", () => {
@@ -160,6 +211,46 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).not.toHaveProperty("ok");
   });
 
+  it("reports a throw before the copy exists as a skip", () => {
+    const { sourceClipSlot } = setupSlotDuplication();
+
+    sourceClipSlot.methods.duplicate_clip_to = () => {
+      throw new Error("Live is unhappy");
+    };
+
+    expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
+      path: "t1/s0",
+      ok: false,
+      detail: "Live is unhappy",
+    });
+  });
+
+  // The clip is in the slot by then, so a skip would lose it from the result.
+  it("keeps a copy that exists when naming it throws", () => {
+    const { sourceClipSlot } = setupSlotDuplication();
+
+    makeCopyRefuseItsName(sourceClipSlot);
+
+    expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toStrictEqual({
+      id: COPY_ID,
+      path: "t1/s0",
+      detail: "the copy landed, but name refused",
+    });
+  });
+
+  it("keeps the overwrite note when a copy that replaced a clip can't be named", () => {
+    const { sourceClipSlot } = setupSlotDuplication({ destHasClip: 1 });
+
+    makeCopyRefuseItsName(sourceClipSlot);
+
+    expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toStrictEqual({
+      id: COPY_ID,
+      path: "t1/s0",
+      detail:
+        "overwrote the existing clip at t1/s0; the copy landed, but name refused",
+    });
+  });
+
   // Without the landing check this walks into getMinimalClipInfo with an
   // unresolvable clip and throws an internal path error.
   it("reports instead of failing when no clip lands in the destination", () => {
@@ -208,7 +299,7 @@ describe("duplicateClipSlot", () => {
   });
 });
 
-describe("duplicateClipWithPositions to clip slots", () => {
+describe("duplicate to clip slots", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -226,26 +317,11 @@ describe("duplicateClipWithPositions to clip slots", () => {
       properties: { has_clip: 0 },
     });
 
-    const result = await duplicateClipWithPositions(
-      {
-        destination: "session",
-        slots: [
-          { trackIndex: 1, sceneIndex: 0 },
-          { trackIndex: 2, sceneIndex: 0 },
-        ],
-        arrangementTargets: [],
-        arrangementPositions: [],
-        arrangementRefusals: [],
-      },
-      LiveAPI.from(SOURCE_CLIP_ID),
-      SOURCE_CLIP_ID,
-      copyLabels({}, 1),
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      {},
-    );
+    const result = await duplicate({
+      type: "clip",
+      id: SOURCE_CLIP_ID,
+      toPath: "t1/s0,t2/s0",
+    });
 
     expect(result).toStrictEqual([
       { id: COPY_ID, path: "t1/s0" },
@@ -279,28 +355,9 @@ describe("duplicateClipSlot past the last scene", () => {
 
     mockNonExistentObjects();
 
-    const destClipPath = livePath.track(1).clipSlot(3).clip();
-
-    registerMockObject(SOURCE_CLIP_ID, {
-      path: livePath.track(0).clipSlot(0).clip(),
-      properties: { is_midi_clip: 1 },
-    });
-    registerMockObject("live_set/tracks/0/clip_slots/0", {
-      path: livePath.track(0).clipSlot(0),
-      properties: { has_clip: 1 },
-      methods: {
-        duplicate_clip_to: () => {
-          if (copyLands) {
-            registerMockObject(COPY_ID, { path: destClipPath });
-          }
-
-          return null;
-        },
-      },
-    });
-    registerMockObject("live_set/tracks/1", {
-      path: livePath.track(1),
-      properties: { has_midi_input: 1, is_frozen: 0 },
+    registerSourceAndDestTrack({
+      destClipPath: livePath.track(1).clipSlot(3).clip(),
+      copyLands,
     });
 
     return registerMockObject("live-set", {

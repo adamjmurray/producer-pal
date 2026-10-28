@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -79,7 +79,7 @@ describe("handleArrangementLengthOperation", () => {
       path: "live_set tracks 0 take_lanes 1 arrangement_clips 0",
     });
 
-    expectSkippedWithReason(clip, "ignored for a take-lane clip");
+    expectSkippedWithReason(clip, "ignored: this is a take-lane clip");
   });
 
   it("delegates to handleArrangementLengthening when target length is longer", () => {
@@ -168,21 +168,30 @@ describe("handleArrangementLengthOperation", () => {
     ]);
   });
 
-  it("does nothing when target length equals current length", () => {
-    const lengtheningSpy = vi.spyOn(helpers, "handleArrangementLengthening");
-    const shorteningSpy = vi.spyOn(helpers, "handleArrangementShortening");
-    const clip = createMockClip({ props: { start_time: 0, end_time: 8 } });
+  // read-clip rounds the length it reports, so a caller echoing it back is a
+  // hair off the real one, on either side.
+  it.each([
+    { arrangementLengthBeats: 8, isAudioClip: false },
+    { arrangementLengthBeats: 7.9996, isAudioClip: true },
+    { arrangementLengthBeats: 8.0004, isAudioClip: true },
+  ])(
+    "does nothing when the target ($arrangementLengthBeats) is the current length or within rounding of it",
+    ({ arrangementLengthBeats, isAudioClip }) => {
+      const lengtheningSpy = vi.spyOn(helpers, "handleArrangementLengthening");
+      const shorteningSpy = vi.spyOn(helpers, "handleArrangementShortening");
+      const clip = createMockClip({ props: { start_time: 0, end_time: 8 } });
 
-    const result = handleArrangementLengthOperation({
-      clip,
-      isAudioClip: false,
-      arrangementLengthBeats: 8,
-      context: {},
-      reasons: newClipReasons(),
-    });
+      const result = handleArrangementLengthOperation({
+        clip,
+        isAudioClip,
+        arrangementLengthBeats,
+        context: {},
+        reasons: newClipReasons(),
+      });
 
-    expect(lengtheningSpy).not.toHaveBeenCalled();
-    expect(shorteningSpy).not.toHaveBeenCalled();
-    expect(result).toStrictEqual([]);
-  });
+      expect(lengtheningSpy).not.toHaveBeenCalled();
+      expect(shorteningSpy).not.toHaveBeenCalled();
+      expect(result).toStrictEqual([]);
+    },
+  );
 });

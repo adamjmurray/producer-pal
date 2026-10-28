@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -132,6 +132,7 @@ describe("MCP Express App", () => {
       expect(toolNames).toStrictEqual([
         "ppal-connect",
         "ppal-context",
+        "ppal-manage",
         "ppal-read-live-set",
         "ppal-update-live-set",
         "ppal-read-track",
@@ -443,9 +444,9 @@ describe("MCP Express App", () => {
     let rootUrl: string;
 
     beforeAll(() => {
-      chatUrl = appState.serverUrl.replace("/mcp", "/chat");
-      contextUrl = appState.serverUrl.replace("/mcp", "/context");
-      rootUrl = appState.serverUrl.replace("/mcp", "/");
+      chatUrl = `${appState.baseUrl}/chat`;
+      contextUrl = `${appState.baseUrl}/context`;
+      rootUrl = `${appState.baseUrl}/`;
     });
 
     it("should serve chat UI when enabled", async () => {
@@ -468,7 +469,7 @@ describe("MCP Express App", () => {
     });
 
     it("should serve the same HTML at /voice", async () => {
-      const voiceUrl = appState.serverUrl.replace("/mcp", "/voice");
+      const voiceUrl = `${appState.baseUrl}/voice`;
 
       await expectHtmlNoStoreResponse(voiceUrl);
     });

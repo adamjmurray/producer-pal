@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -12,11 +12,10 @@ import {
 import { readOneDevice } from "../read-device.ts";
 
 /**
- * Setup device with two parameters for search testing
- * @param includeFullProps - Whether to include full param properties (for param-values)
+ * Register an Operator at t0/d0 holding the given parameters.
+ * @param parameters - The device's `parameters` value, as Live reports it
  */
-function setupTwoParamDevice(includeFullProps = false) {
-  // Register the device
+function registerOperator(parameters: string[]): void {
   registerMockObject("device-123", {
     path: livePath.track(0).device(0),
     type: "Device",
@@ -27,9 +26,18 @@ function setupTwoParamDevice(includeFullProps = false) {
       can_have_chains: 0,
       can_have_drum_pads: 0,
       is_active: 1,
-      parameters: ["id", "param-1", "id", "param-2"],
+      parameters,
     },
   });
+}
+
+/**
+ * Setup device with two parameters for search testing
+ * @param includeFullProps - Whether to include full param properties (for param-values)
+ */
+function setupTwoParamDevice(includeFullProps = false) {
+  // Register the device
+  registerOperator(["id", "param-1", "id", "param-2"]);
 
   // Register param-1 (Volume)
   registerMockObject("param-1", {
@@ -180,19 +188,7 @@ describe("readOneDevice paramSearch filtering", () => {
   });
 
   it("finds a param Live pads with a trailing space, and reports it trimmed", () => {
-    registerMockObject("device-123", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: {
-        name: "Operator",
-        class_display_name: "Operator",
-        type: 1,
-        can_have_chains: 0,
-        can_have_drum_pads: 0,
-        is_active: 1,
-        parameters: ["id", "param-1"],
-      },
-    });
+    registerOperator(["id", "param-1"]);
     registerMockObject("param-1", {
       path: livePath.track(0).device(0).parameter(0),
       type: "DeviceParameter",

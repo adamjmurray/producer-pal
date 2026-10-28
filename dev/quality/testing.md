@@ -30,7 +30,7 @@ step.
   standard 375 / 115.
 - **Duplication**: `src/`, `webui/`, `scripts/`, and `evals/` scan tests
   separately at a looser threshold (`config/.jscpd-tests.json`). `e2e/` doesn't
-  split — 67 of its 85 files are tests, so `config/.jscpd-e2e.json` covers the
+  split — most of its files are tests, so `config/.jscpd-e2e.json` covers the
   whole tree at one threshold. Markdown is out of scope for all of them:
   `config/.jscpd-docs.json` scans the repo's prose in one pass, so a doc is
   measured once and never against a code threshold.
@@ -56,7 +56,9 @@ shape in a helper.
 
 ## Live API tests
 
-Use the mock registry (`src/test/mocks/mock-registry.ts`):
+Vitest, with tests colocated with source. The mock `LiveAPI` class is
+`src/test/mocks/mock-live-api.ts`; use the mock registry
+(`src/test/mocks/mock-registry.ts`):
 
 - `registerMockObject(id, { path, type, properties, methods })` returns a mock
   with instance-level `get`/`set`/`call` spies. Assert on it directly:
@@ -71,11 +73,29 @@ Use the mock registry (`src/test/mocks/mock-registry.ts`):
   `deleteMockObject(id)` does the same for a fixture whose own `call`
   implementation destroys something — an arrangement create clears the range it
   writes to, and that never reaches a `delete_*`.
+- Creating, duplicating and deleting shift later siblings' paths, and each
+  created object gets its own id. To make a created object _be_ a particular
+  mock, register it with `registerPendingMockObject()` instead of
+  `registerMockObject()`: a registered object is already there, so the insert
+  moves it. `simulateMockMoves()` makes `move_device` move its device, as
+  `simulateMockDeletes()` does for deletes. See `dev/live-api/object-reuse.md`.
+- `getMockWrites()` / `clearMockWrites()` (`mocks/registry/mock-write-log.ts`)
+  read the ordered log of every `set` and `call` on any LiveAPI object,
+  registered or not, with its id, path, name and args. Use it for "this wrote
+  nothing" assertions. It includes read-only calls like `get_version_string`.
 - Domain helpers like `setupTrackMock()` wrap `registerMockObject()` for common
   object graphs.
 
 What the mock does and doesn't model about a held object going stale is in
 `dev/live-api/object-reuse.md`.
+
+## Write-tool conformance
+
+`src/tools/shared/tests/write-conformance/` runs every write tool through the
+same cases from `dev/PRINCIPLES.md` (entries in order, a target named twice, a
+bad entry among good ones, a failure partway, a refusal that writes nothing,
+...). Each tool has a small adapter that builds its targets. A case that can't
+apply to a tool is listed under `na` in its adapter, with why.
 
 ## MCP server tests
 
@@ -139,12 +159,14 @@ Function coverage is enforced at 100%. `npm run check` prints totals only — th
 per-file breakdown is in `coverage/coverage-summary.txt`.
 
 For a genuinely untestable function (IDB error callbacks, exhaustive `never`
-branches, no-op stubs), use `/* v8 ignore start -- reason */` …
-`/* v8 ignore stop */`. Use `start`/`stop` rather than `next`, which only
-excludes line and branch coverage, not function coverage. The `-- reason` is
-required, and per-tree counts are ratcheted in
+branches, no-op stubs, inline JSX callbacks in root components), use
+`/* v8 ignore start -- reason */` … `/* v8 ignore stop */`. Use `start`/`stop`
+rather than `next`, which only excludes line and branch coverage, not function
+coverage. The `-- reason` is required on `start` and `next` (a test enforces
+it), not on `stop`. Per-tree counts are ratcheted in
 `src/test/lint-suppression-limits.test.ts` — raising a limit needs user
-approval.
+approval, and a new exclusion needs human and AI agreement that the function
+can't reasonably be tested.
 
 ## Comment volume
 
@@ -189,19 +211,22 @@ pairs — so a strict ratchet would push renames onto correctly named files.
 
 ## Auditing coverage
 
-**Don't audit by grepping for a name.** A table-driven test registers its cases
+Don't audit by grepping for a name: a table-driven test registers its cases
 through `it.each`, so the name never appears as a literal and the grep reports a
-gap that isn't there. A coverage audit did this twice in one pass: `sin()` and
-`tri()` were already covered by an `it.each` in
-`ppal-clip-transforms-waveforms.test.ts`, and `pitchShift`, `warpMode`,
-`firstStart` and `quantizePitch` each had a read and a write e2e. Read the
-suite, or grep for the helper that builds the table.
+gap that isn't there. Read the suite, or grep for the helper that builds the
+table.
 
-**Green after a semantics change is weaker evidence than it looks.** When the
-mock registry changed how a re-registered object behaves, the affected tests
-were not read one by one — whatever stayed green was kept. Nothing broke, but
-green does not prove that a test still means what its author intended. Worth
-remembering if something surfaces later around mock identity.
+Green after a mock-semantics change doesn't prove a test still means what its
+author intended. Read the affected tests instead of keeping whatever stayed
+green.
+
+## Remote script (Python) tests
+
+`remote-script/tests/` holds `unittest` tests for the Python routes, run by
+`npm run remote-script:test` (part of `npm run check`). They need neither Live
+nor the Live API: the tests use fake Live objects. A new route gets a test
+there; a route that changes the Set also gets an entry in
+`src/mcp-server/rpc/remote-script/tests/forwarded/remote-script-write-expiry.test.ts`.
 
 ## E2E
 

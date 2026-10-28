@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Polling waits for the V8 environment in Max for Live
@@ -15,6 +15,11 @@ declare const Task: new (callback: () => void) => {
   schedule: (ms: number) => void;
 };
 
+// Max can garbage-collect a scheduled Task that nothing references, and then
+// it never fires: the sleep never ends and the call times out. Hold each one
+// until it runs.
+const sleeping = new Set<object>();
+
 /**
  * Sleep for the specified number of milliseconds.
  *
@@ -27,7 +32,15 @@ declare const Task: new (callback: () => void) => {
  */
 const sleep = (ms: number): Promise<void> =>
   suspendWarningCapture(
-    new Promise((resolve) => new Task(resolve).schedule(ms)),
+    new Promise((resolve) => {
+      const task = new Task(() => {
+        sleeping.delete(task);
+        resolve();
+      });
+
+      sleeping.add(task);
+      task.schedule(ms);
+    }),
   );
 
 interface WaitUntilOptions {

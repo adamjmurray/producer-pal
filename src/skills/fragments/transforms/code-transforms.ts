@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Skills text for the experimental, dev-only `code` transform parameter (gated
 // behind ENABLE_CODE_EXEC). A top-level entry in the standard driver's manifest

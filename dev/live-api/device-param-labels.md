@@ -59,11 +59,23 @@ ratios count down. `param-display-search.ts` negates the display for those so
 one binary search serves both directions; the search would otherwise walk the
 wrong way and land anywhere.
 
-**A display range collapsed to a point is not writable.** If every raw value
-prints the same label there is no way back from a display value, and the search
-returns the middle of the raw range while reporting success. That case warns and
-skips. A param whose _raw_ range is a single point is different — it has exactly
-one value, and the linear branch lands on it.
+**Some plug-ins print the same label at every value.** Every Valhalla plug-in
+answers `str_for_value` with its current display, whatever value is asked about,
+and the display only updates some time after the request that set it ends. With
+the same label at both ends there is no display range, so the param is read and
+written in raw units: read-device reports the raw value (at Live's six
+significant digits), `min` and `max` with no unit, and update-device takes a
+bare number in that range and refuses anything else. A write is checked by its
+raw value, which does update within the request; comparing labels would prove
+nothing. Out of range is refused, not clamped: 30 there most likely means 30 %
+on the plug-in, not its maximum.
+
+**A display range that parses to a single number is not writable.** Ends that
+print differently but parse the same (`"1 : 1.00"` and `"1 : 1.0"`) leave no way
+back from a display value, and the search would return the middle of the raw
+range while reporting success, so the write is skipped. A param whose _raw_
+range is a single point is different — it has exactly one value, and the linear
+branch lands on it.
 
 **Recorded units are keyed by range, not just by name.** `known-param-units.ts`
 holds units Live states in its UI but never returns. A param that shares a name

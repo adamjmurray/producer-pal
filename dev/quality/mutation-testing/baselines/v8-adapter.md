@@ -1,9 +1,9 @@
 # Mutation baseline — 2026-07-16, `v8Adapter` — `src/live-api-adapter/`
 
-The Max V8 runtime side — the `LiveAPI` wrapper interface, the path helpers, and
-the V8 half of the two RPC protocols to Node. The counterpart to `mcpServer`
-(the Node-for-Max side) and the last tree to be mutated. Small: 4 mutated files
-/ ~750 source LOC. Stryker 9.6.1, Node 24, `coverageAnalysis: "perTest"`:
+The Max V8 runtime side: the `LiveAPI` wrapper interface, the path helpers, and
+the V8 half of the two RPC protocols to Node. The counterpart to `mcpServer`.
+Small: 4 mutated files / ~750 source LOC. Stryker 9.6.1, Node 24,
+`coverageAnalysis: "perTest"`:
 
 | Metric      | Baseline | Triaged    | Gate (`break`) |
 | ----------- | -------- | ---------- | -------------- |
@@ -18,15 +18,13 @@ Per file:
 | `node-request-v8-protocol.ts` (35) | 97.14%   | **100%**   | 0 (from 1)        |
 | `live-api-id-or-path.ts` (37)      | 97.30%   | **91.89%** | 3 (all one cause) |
 
-All test-only — no product code was touched. `live-api-adapter.ts` is excluded
-as the V8 bundle entry point (it emits `outlet(0, "started")` and registers Max
-message handlers at import), the same rationale `mcpServer` uses for
-`mcp-server.ts`.
+All test-only. `live-api-adapter.ts` is excluded as the V8 bundle entry point
+(it emits `outlet(0, "started")` and registers Max message handlers at import),
+the same rationale `mcpServer` uses for `mcp-server.ts`.
 
-`live-api-id-or-path.ts` _drops_ against its baseline without a single test
-being removed: two of its three survivors were classified `Timeout` (which
-counts as killed) in the first run and `Survived` in the second. The second
-reading is the honest one — see the noise note below.
+`live-api-id-or-path.ts` _drops_ against its baseline without a test being
+removed: two of its three survivors were `Timeout` (counts as killed) in the
+first run and `Survived` in the second. The second reading is the honest one.
 
 ## Why this scope is timeout-noisy
 
@@ -36,8 +34,8 @@ once per test file, outside any test. Nearly all of its mutants are therefore
 **static**: Stryker can't attribute them per-test and runs the whole suite for
 each ("Ran all tests for this mutant"). A mutant that breaks the patch breaks
 setup for _every_ test file, so the full run blows the time budget and lands as
-`Timeout` rather than `Killed` — both count as killed, but which mutants tip
-over shifts with machine load. Three runs of identical code:
+`Timeout` rather than `Killed`. Both count as killed, but which mutants tip over
+shifts with machine load. Three runs of identical code:
 
 | Run | Score  | Timeouts | Wall clock |
 | --- | ------ | -------- | ---------- |
@@ -45,14 +43,11 @@ over shifts with machine load. Three runs of identical code:
 | 2   | 97.97% | 10       | 14m        |
 | 3   | 97.97% | 1        | 1m35s      |
 
-The gate is set from the low end. Note the runtime swing has the same cause —
-each timeout burns a full budget, so an unloaded machine finishes the smallest
-tree in ~90 seconds while a busy one takes twenty minutes. Don't read a slow run
-as a hang.
-
-A `Timeout` here is not a weak kill. Spot-checking one (the `clipSlotIndex`
-guard) by hand: the adapter suite fails it in **1.5 seconds** — it can't flip to
-`Survived`, only between `Timeout` and `Killed`.
+The gate is set from the low end. The runtime swing has the same cause (each
+timeout burns a full budget): an unloaded machine finishes in ~90 seconds, a
+busy one in twenty minutes. Don't read a slow run as a hang. A `Timeout` here is
+not a weak kill: the adapter suite fails the `clipSlotIndex` guard mutant in 1.5
+seconds, so it can only flip between `Timeout` and `Killed`.
 
 Three levers did most of the work:
 
@@ -84,12 +79,18 @@ Three levers did most of the work:
 Six of the eight residuals are equivalent — each verified by applying the mutant
 and running the suite, then confirming the root cause in isolation:
 
-| Mutant                                               | Why it can't be killed                                                                                                                                                                                                |
-| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `live-api-id-or-path.ts:33` (×3)                     | Emptying/skipping the `typeof idOrPath === "number"` branch falls through to `/^\d+$/.test(idOrPath)`, which coerces the number and returns the identical `id N`. Only unreachable inputs (negatives, floats) differ. |
-| `live-api-extensions.ts:132` `startsWith`→`endsWith` | The branch only runs when `/^\d+$/.test(val)`, and an all-digit string can contain neither `"id "` prefix nor suffix — both sides are always false.                                                                   |
-| `live-api-extensions.ts:159` `<`→`<=`                | `getChildIds` steps `i += 2` and reads `idArray[i] === "id"`; the extra iteration reads index `length`, which is `undefined` and never `"id"`.                                                                        |
-| `live-api-extensions.ts:330` `matches.length === 0`  | `path.match(/devices (\d+)/g)` returns `null`, never `[]`, so the length arm is unreachable behind `!matches`.                                                                                                        |
+- **`live-api-id-or-path.ts`, the `typeof idOrPath === "number"` branch (×3).**
+  Emptying or skipping it falls through to `/^\d+$/.test(idOrPath)`, which
+  coerces the number and returns the identical `id N`. Only unreachable inputs
+  (negatives, floats) differ.
+- **`startsWith` → `endsWith` on the `"id "` prefix** in
+  `live-api-extensions.ts`: the branch only runs when `/^\d+$/.test(val)`, and
+  an all-digit string can contain neither prefix nor suffix.
+- **`<` → `<=` in `getChildIds`**: it steps `i += 2` and reads
+  `idArray[i] === "id"`; the extra iteration reads index `length`, which is
+  `undefined`.
+- **`matches.length === 0`** on `path.match(/devices (\d+)/g)`: `match` returns
+  `null`, never `[]`, so the length arm is unreachable behind `!matches`.
 
 The other two are bucket 3, both in the coverage-threshold-excluded
 `code-exec-v8-protocol.ts`: the `console.error` text for a result with no
@@ -100,17 +101,12 @@ to `extractNotesFromClip` + `buildCodeExecutionContext` +
 is the clip-mock scaffolding the vitest exclusion already calls out as not worth
 reconstructing.
 
-## Gaps closed (`v8Adapter`)
-
-| Gap (now killed)                                                            | Test strengthened / added                   |
-| --------------------------------------------------------------------------- | ------------------------------------------- |
-| The 8 `hasOwnProperty` install guards + the `typeof LiveAPI` module guard   | `live-api-extensions-install.test.ts` (new) |
-| `returnTrackIndex` / `takeLaneIndex` getters (regex, index 0, multi-digit)  | `live-api-extensions-path-indices.test.ts`  |
-| `sceneIndex` clip_slots fallback on a double-digit track index              | `live-api-extensions-path-indices.test.ts`  |
-| `exists()` for the `"id 0"` and numeric `0` id shapes                       | `live-api-extensions-basic.test.ts`         |
-| Routing `getProperty`: warns on parse failure, stays silent when unset      | `live-api-extensions.test.ts`               |
-| `setColor` format vs hex error messages; per-channel NaN rejection          | `live-api-extensions-color.test.ts`         |
-| `setProperty` passes a numeric value through without formatting             | `live-api-extensions-setters.test.ts`       |
-| Request IDs count **up** from their prefix (not merely unique)              | both `*-v8-protocol.test.ts`                |
-| code-exec round trip: resolve, parse error, timeout, cancel, late/dup reply | `code-exec-v8-protocol.test.ts`             |
-| `executeNoteCodeWithData` wraps code, passes globals, validates notes       | `code-exec-v8-protocol.test.ts`             |
+What changed (test-only): the 8 `hasOwnProperty` install guards and the
+`typeof LiveAPI` module guard (`live-api-extensions-install.test.ts`, new); the
+`returnTrackIndex` / `takeLaneIndex` getters (regex, index 0, multi-digit) and
+the `sceneIndex` fallback on a double-digit track index; `exists()` for `"id 0"`
+and numeric `0`; routing `getProperty` warning on parse failure and staying
+silent when unset; `setColor` error messages and per-channel NaN rejection;
+`setProperty` passing a number through unformatted; request IDs counting _up_
+from their prefix (not merely unique); and the code-exec round trip (resolve,
+parse error, timeout, cancel, late/duplicate reply).

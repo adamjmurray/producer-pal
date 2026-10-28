@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Scenario: find drum sounds in the library and put each on its own pad.
@@ -67,7 +67,10 @@ interface PadRead {
 function drumRackPath(turns: EvalTurnResult[]): string {
   const rackCall = lastSuccessfulToolCall(turns, "any", "ppal-create-device");
   const rackPath =
-    rackCall != null && /drum ?rack/i.test(argText(rackCall.args.device))
+    rackCall != null &&
+    /drum ?rack/i.test(
+      argText(rackCall.args.deviceName ?? rackCall.args.device),
+    )
       ? firstResultPath(rackCall.result)
       : undefined;
 

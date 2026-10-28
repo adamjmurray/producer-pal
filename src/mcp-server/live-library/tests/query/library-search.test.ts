@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -52,7 +52,7 @@ describe("librarySearch", () => {
       // Specific names pin down the kind→fourCC mapping so a regression
       // that returns the wrong audio items would fail (rather than just
       // "every item has kind audio", which holds via the reverse map).
-      // Order is default use_count desc: pack_kick (100) > user_kick (50)
+      // Order is default use-count desc: pack_kick (100) > user_kick (50)
       // > user_snare (25) > pack_clap (5) > subfolder_x (3) > subfolder_z (2)
       // > subfolder_y (1).
       expect(result.items.map((i) => i.name)).toStrictEqual([
@@ -138,7 +138,7 @@ describe("librarySearch", () => {
     it("returns only pack files when source=pack", async () => {
       const result = await librarySearch({ source: "pack" });
 
-      // Pin specific names in default use_count desc order so a regression
+      // Pin specific names in default use-count desc order so a regression
       // that returns the wrong pack items (or the right count of wrong items)
       // would fail. Includes subfolder_x/z/y from Pack One subdirectories.
       expect(result.items.map((i) => i.name)).toStrictEqual([
@@ -169,7 +169,7 @@ describe("librarySearch", () => {
       // this out, but the route is publicly callable. The guard converts
       // the empty folder_kind list into an impossible predicate so the
       // query parses cleanly instead of producing `IN ()`.
-      const result = await librarySearch({ source: "sampleFolder" });
+      const result = await librarySearch({ source: "sample-folder" });
 
       expect(result.items).toHaveLength(0);
       expect(result.dbAvailable).toBe(true);
@@ -399,7 +399,7 @@ describe("librarySearch", () => {
   });
 
   describe("sort", () => {
-    it("defaults to use_count desc", async () => {
+    it("defaults to use-count desc", async () => {
       const result = await librarySearch({ kind: "audio" });
 
       expect(result.items.map((i) => i.useCount)).toStrictEqual([
@@ -422,7 +422,7 @@ describe("librarySearch", () => {
     });
 
     it("sorts by mod_date desc when sort=mod_date", async () => {
-      const result = await librarySearch({ kind: "audio", sort: "mod_date" });
+      const result = await librarySearch({ kind: "audio", sort: "mod-date" });
 
       // subfolder_z mod_date 1700001200 is the latest of all audio files
       expect(result.items[0]?.name).toBe("subfolder_z.wav");
@@ -711,7 +711,8 @@ function createDbWithTruncatedPath(): {
       mod_date INTEGER DEFAULT 0,
       place_id INTEGER,
       subtype INTEGER,
-      flags INTEGER DEFAULT 1027
+      flags INTEGER DEFAULT 1027,
+      device_id TEXT
     );
     CREATE TABLE places (file_id INTEGER PRIMARY KEY, folder_kind INTEGER);
     INSERT INTO places VALUES (1, 1);

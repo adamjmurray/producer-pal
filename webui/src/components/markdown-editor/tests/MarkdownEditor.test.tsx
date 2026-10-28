@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -10,12 +10,13 @@ import { undo } from "@codemirror/commands";
 import { forceParsing } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { fireEvent, render } from "@testing-library/preact";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { notifyFocusChange } from "#webui/components/markdown-editor/markdown-editor-config";
 import {
   MarkdownEditor,
   type MarkdownEditorHandle,
 } from "#webui/components/markdown-editor/MarkdownEditor";
+import { deferSelectionChange } from "#webui/test-utils/dom-test-helpers";
 
 type EditorProps = Partial<Parameters<typeof MarkdownEditor>[0]>;
 
@@ -49,6 +50,8 @@ function renderEditor(props: EditorProps = {}) {
 function viewIn(container: Element): EditorView {
   return EditorView.findFromDOM(container as HTMLElement)!;
 }
+
+beforeEach(deferSelectionChange);
 
 describe("MarkdownEditor", () => {
   afterEach(() => {

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// SPDX-License-Identifier: MIT
 
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
@@ -67,7 +67,11 @@ export function calculateBarBeat(
   // Delegate the bar/beat split (incl. the bar-floor-at-1 rule that keeps a
   // negative position in bar 1 rather than bar 0) to the shared helper, so this
   // stays in lockstep with musicalBeatsToBarBeat's serialization.
-  return splitMusicalBeatsToBarBeat(adjustedTime, beatsPerBar);
+  return splitMusicalBeatsToBarBeat(
+    adjustedTime,
+    beatsPerBar,
+    timeSigDenominator,
+  );
 }
 
 /**

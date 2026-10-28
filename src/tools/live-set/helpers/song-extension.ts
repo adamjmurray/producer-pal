@@ -1,11 +1,17 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
-import { createAudioClipInSession } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import {
+  createAudioClipInSession,
+  removeSessionClip,
+  removeTempArrangementClip,
+} from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -14,6 +20,8 @@ interface TempClipInfo {
   clipId: string;
   isMidiTrack: boolean;
   slot?: LiveAPI;
+  /** The scene made for the audio clip, to remove with it */
+  sceneId?: string;
 }
 
 /**
@@ -34,13 +42,18 @@ export function extendSongIfNeeded(
     return null; // No extension needed
   }
 
-  // Find first track (prefer MIDI, fallback to audio)
+  // Find first usable track (prefer MIDI, fallback to audio). Frozen and group
+  // tracks can't take a new clip.
   const trackIds = liveSet.getChildIds("tracks");
   let selectedTrack: LiveAPI | null = null;
   let isMidiTrack = false;
 
   for (const trackId of trackIds) {
     const track = LiveAPI.from(trackId);
+
+    if (track.getProperty("is_frozen") || isGroupTrack(track)) {
+      continue;
+    }
 
     if ((track.getProperty("has_midi_input") as number) > 0) {
       selectedTrack = track;
@@ -80,44 +93,65 @@ export function extendSongIfNeeded(
     );
   }
 
-  const { clip: sessionClip, slot } = createAudioClipInSession(
+  const {
+    clip: sessionClip,
+    slot,
+    sceneId,
+  } = createAudioClipInSession(
     selectedTrack,
     1, // 1 beat length
     context.silenceWavPath,
   );
 
-  const arrangementClip = clipFromDuplicateResult(
-    selectedTrack.call(
-      "duplicate_clip_to_arrangement",
-      toLiveApiId(sessionClip.id),
-      targetBeats,
-    ),
-  );
+  let arrangementClip: LiveAPI;
+
+  try {
+    arrangementClip = clipFromDuplicateResult(
+      selectedTrack.call(
+        "duplicate_clip_to_arrangement",
+        toLiveApiId(sessionClip.id),
+        targetBeats,
+      ),
+    );
+  } catch (error) {
+    // Nothing returns the session clip to be cleaned up later, so it goes now.
+    // There is no entry to report on here, so a leftover is a warning.
+    removeSessionClip({ slot, sceneId });
+
+    throw error;
+  }
 
   return {
     track: selectedTrack,
     clipId: arrangementClip.id,
     isMidiTrack: false,
     slot,
+    ...(sceneId == null ? {} : { sceneId }),
   };
 }
 
 /**
- * Cleans up the temporary clip created by extendSongIfNeeded.
+ * Cleans up the temporary clip created by extendSongIfNeeded. Never throws, and
+ * tries every step even if an earlier one fails, so a leftover can't hide the
+ * outcome it follows.
  * @param tempClipInfo - Info from extendSongIfNeeded or null
+ * @param report - Where to say what couldn't be removed; unset warns
  */
-export function cleanupTempClip(tempClipInfo: TempClipInfo | null): void {
+export function cleanupTempClip(
+  tempClipInfo: TempClipInfo | null,
+  report?: (message: string) => void,
+): void {
   if (!tempClipInfo) {
     return;
   }
 
-  const { track, clipId, isMidiTrack, slot } = tempClipInfo;
+  const { track, clipId, isMidiTrack, slot, sceneId } = tempClipInfo;
+  const say = report ?? ((message: string) => console.warn(message));
 
-  // Delete the arrangement clip
-  track.call("delete_clip", toLiveApiId(clipId));
+  removeTempArrangementClip(track, clipId, say);
 
   // For audio clips, also delete the session clip
   if (!isMidiTrack && slot) {
-    slot.call("delete_clip");
+    removeSessionClip({ slot, sceneId }, say);
   }
 }

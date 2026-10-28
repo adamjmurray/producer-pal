@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Reading what a run did to a clip back out of its turns: the args a model
@@ -19,16 +19,17 @@ import {
   lastSuccessfulToolCall,
   parsedToolResult,
   requireSuccessfulToolCall,
+  successfulToolCallsWith,
 } from "../../../assertions/index.ts";
 import { type EvalTurnResult, type ToolCall } from "../../../types.ts";
 import { TOOL_CREATE_CLIP } from "./clip-tool-constants.ts";
 
 /**
- * Extract the transforms expressions from a ppal-update-clip call in the given
- * turn. transforms is now a single newline-separated string; a legacy array
- * value is still tolerated and joined with newlines so selector/expression
- * parsing in callers sees the raw expression text.
- * Throws descriptive errors if no call succeeded or transforms is missing.
+ * Extract the transforms the model wrote in the given turn: those of every
+ * successful call that carries them, joined with newlines in call order. A
+ * follow-up fix call must not hide the first call's work. Throws if no call
+ * succeeded or none carried transforms. For a check on ONE expression, use
+ * `getLastTransforms`.
  *
  * @param turns - All turn results
  * @param turn - Turn index to extract from
@@ -40,15 +41,44 @@ export function getTransforms(
   turn: number,
   toolName: string,
 ): string {
-  const updateCall = requireSuccessfulToolCall(turns, turn, toolName);
-  const raw = updateCall.args.transforms;
-  const transforms = Array.isArray(raw) ? raw.join("\n") : argText(raw);
+  const calls = successfulToolCallsWith(turns, turn, toolName, "transforms");
 
-  if (!transforms) {
+  if (calls.length === 0) {
     throw new Error(`transforms parameter missing in turn ${turn}`);
   }
 
-  return transforms;
+  return calls.map(transformsText).join("\n");
+}
+
+/**
+ * The transforms of the LAST successful call in the turn that carries any, for
+ * checks that classify a single expression.
+ *
+ * @param turns - All turn results
+ * @param turn - Turn index to extract from
+ * @param toolName - Tool name to look for
+ * @returns That call's transforms text
+ */
+export function getLastTransforms(
+  turns: EvalTurnResult[],
+  turn: number,
+  toolName: string,
+): string {
+  const call = successfulToolCallsWith(turns, turn, toolName, "transforms").at(
+    -1,
+  );
+
+  if (!call) {
+    throw new Error(`transforms parameter missing in turn ${turn}`);
+  }
+
+  return transformsText(call);
+}
+
+function transformsText(call: ToolCall): string {
+  const raw = call.args.transforms;
+
+  return Array.isArray(raw) ? raw.join("\n") : argText(raw);
 }
 
 /**
@@ -80,15 +110,11 @@ export function getCreateClipNotes(turns: EvalTurnResult[], turn = 1): string {
  * separate assertion checks whether it landed in the intended slot.
  *
  * Both come off the RESULT, not the args. The tool takes a destination several
- * ways — `path`, the hidden trackIndex/sceneIndex alias, the tolerated old
- * "0/0" spelling — and reports back one canonical path either way. Grading the
- * args would score a model that used a spelling this reader didn't know as a
- * placement failure for a clip that landed correctly.
+ * ways (`path`, hidden aliases, the old "0/0" spelling) and reports one
+ * canonical path, so grading the args would fail a clip that landed correctly.
  *
- * Reads the last SUCCESSFUL create call: a model that hits a param error is
- * told to fix the args and retry, and grading the discarded first attempt got
- * an empty id, so the read-back died with `id "" does not exist` and failed a
- * model for recovering correctly.
+ * Reads the last SUCCESSFUL create call: after a param error the model retries,
+ * and the discarded first attempt has no id.
  *
  * @param turns - All turn results
  * @param turn - Turn index containing the create-clip call (default 1)

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E test for two rack macros renamed the same — the realistic way a caller
@@ -10,7 +10,7 @@
  * `name (original_name)` form read-device reports picks one out, and the
  * caller never needs an id. A macro can only be renamed by hand in Live (the
  * Live API acks a name write and ignores it), so the rename is baked into
- * racks-test. See e2e/live-sets/racks-test-spec.md.
+ * racks-test. See e2e/live-sets/specs/racks-test-spec.md.
  *
  * Run with: npm run e2e:mcp -- device/params/ppal-device-duplicate-macro-name
  */

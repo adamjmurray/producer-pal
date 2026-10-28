@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Round to Live's 2-decimal display precision — dB, pan, and tempo all show
@@ -14,6 +14,17 @@ export function round2dp(value: number): number {
 }
 
 /**
+ * Round a beat position or length to a thousandth of a beat, the same value
+ * for comparing what was written with what Live holds: Live keeps a 32-bit
+ * float, so a position read back carries noise below that.
+ * @param beats - Raw position or length in beats
+ * @returns Beats rounded to three decimals
+ */
+export function roundBeats(beats: number): number {
+  return Math.round(beats * 1000) / 1000;
+}
+
+/**
  * Round a pan value to Live's 1% resolution (e.g. "30L"); the raw float
  * carries noise like -0.30000001192092896.
  * @param pan - Raw pan value from -1 to 1
@@ -21,6 +32,16 @@ export function round2dp(value: number): number {
  */
 export function roundPan(pan: number): number {
   return round2dp(pan);
+}
+
+/**
+ * Round a raw device-param value to the six significant digits Live keeps; the
+ * 32-bit float it stores reads back with noise like 0.30000001192092896.
+ * @param raw - Raw param value
+ * @returns The value rounded to six significant digits
+ */
+export function roundParamRaw(raw: number): number {
+  return Number(raw.toPrecision(6));
 }
 
 /**

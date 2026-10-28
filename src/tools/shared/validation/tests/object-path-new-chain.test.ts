@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import {
@@ -61,6 +61,12 @@ describe('parseObjectPath, the "c+" that appends a chain', () => {
       'invalid path "t0/d0/c+/d0" - "c+" appends a new, empty chain, so nothing can follow it',
     );
   });
+
+  it("says a slot under it belongs to the track, not a new chain", () => {
+    expect(() => parseObjectPath("t0/d0/c+/s1")).toThrow(
+      "clip slots belong to a track, not a new chain",
+    );
+  });
 });
 
 describe('narrowing a "c+" path', () => {
@@ -76,9 +82,9 @@ describe('narrowing a "c+" path', () => {
   // refusal has to name the tools that would have made one.
   it("is refused where an existing object was wanted", () => {
     expect(() => requireDevicePath(parseObjectPath("t0/d1/c+"))).toThrow(
-      'invalid path "t0/d1/c+" - "c+" appends a chain, which only ' +
-        "ppal-create-device, ppal-duplicate and ppal-update-device do; " +
-        'name an existing chain as "c<index>"',
+      'invalid path "t0/d1/c+" - "c+" appends a chain, so it only works as a ' +
+        "destination: path in ppal-create-device, toPath in ppal-duplicate " +
+        'and ppal-update-device; name an existing chain as "c<index>"',
     );
   });
 

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for drum detection through nested racks.
@@ -14,7 +14,7 @@
  * Uses: racks-test — t0 nests a Drum Rack in an Instrument Rack, t1 nests a
  * melodic instrument two racks deep for the negative case. Shapes the Live API
  * can build (a bare kit, a kit on a later chain or deeper, an Audio Effect
- * Rack) are made at runtime instead. See e2e/live-sets/racks-test-spec.md.
+ * Rack) are made at runtime instead. See e2e/live-sets/specs/racks-test-spec.md.
  *
  * Run with: npm run e2e:mcp -- nested-rack-drum-detection
  */

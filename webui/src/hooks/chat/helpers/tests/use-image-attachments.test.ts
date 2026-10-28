@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -37,21 +37,29 @@ function dragEvent(dataTransfer: unknown): DragEvent {
   } as unknown as DragEvent;
 }
 
+/**
+ * Paste into a fresh hook and expect the editor to keep the event.
+ * @param event - The paste event
+ */
+function expectPasteLeftToEditor(event: ClipboardEvent): void {
+  const { result } = renderHook(() => useImageAttachments());
+
+  result.current.zoneProps.onPasteCapture(event);
+
+  expect(event.preventDefault).not.toHaveBeenCalled();
+  expect(event.stopPropagation).not.toHaveBeenCalled();
+  expect(attachImages).not.toHaveBeenCalled();
+}
+
 describe("useImageAttachments pastes that carry no real image", () => {
   it("leaves a paste whose only image is empty to the editor", () => {
-    const { result } = renderHook(() => useImageAttachments());
     const empty = new File([], "image.png", { type: "image/png" });
-    const event = {
+
+    expectPasteLeftToEditor({
       clipboardData: { files: [empty] },
       preventDefault: vi.fn(),
       stopPropagation: vi.fn(),
-    } as unknown as ClipboardEvent;
-
-    result.current.zoneProps.onPasteCapture(event);
-
-    expect(event.preventDefault).not.toHaveBeenCalled();
-    expect(event.stopPropagation).not.toHaveBeenCalled();
-    expect(attachImages).not.toHaveBeenCalled();
+    } as unknown as ClipboardEvent);
   });
 });
 
@@ -68,30 +76,18 @@ describe("useImageAttachments pastes that carry text too", () => {
       "text/html": html,
     };
 
-    return {
-      clipboardData: {
-        files: [new File(["xy"], "image.png", { type: "image/png" })],
-        getData: (type: string) => types[type] ?? "",
-      },
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as ClipboardEvent;
+    return imagePaste((type) => types[type] ?? "");
   }
 
   it("pastes only the text from an Office app, not its picture of it", () => {
-    const { result } = renderHook(() => useImageAttachments());
-    const event = pasteEvent(
-      "C\tAm\n",
-      "<html><head><style>td {}</style></head><body><!--StartFragment-->" +
-        "<table><tr><td>C</td><td>Am</td></tr></table>" +
-        "<!--EndFragment--></body></html>",
+    expectPasteLeftToEditor(
+      pasteEvent(
+        "C\tAm\n",
+        "<html><head><style>td {}</style></head><body><!--StartFragment-->" +
+          "<table><tr><td>C</td><td>Am</td></tr></table>" +
+          "<!--EndFragment--></body></html>",
+      ),
     );
-
-    result.current.zoneProps.onPasteCapture(event);
-
-    expect(event.preventDefault).not.toHaveBeenCalled();
-    expect(event.stopPropagation).not.toHaveBeenCalled();
-    expect(attachImages).not.toHaveBeenCalled();
   });
 
   it("attaches the image when the HTML is only that image", () => {
@@ -109,6 +105,33 @@ describe("useImageAttachments pastes that carry text too", () => {
     // The editor still pastes the text.
     expect(event.preventDefault).not.toHaveBeenCalled();
     expect(attachImages).toHaveBeenCalled();
+  });
+});
+
+describe("useImageAttachments pastes from a clipboard that reports no text", () => {
+  it("attaches the image and keeps the editor from inserting the file", () => {
+    vi.mocked(attachImages).mockResolvedValue({ images: [], notice: null });
+    const { result } = renderHook(() => useImageAttachments());
+    const event = imagePaste(() => undefined);
+
+    void act(() => result.current.zoneProps.onPasteCapture(event));
+
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(attachImages).toHaveBeenCalledOnce();
+  });
+
+  it("attaches the image of a paste with text but no HTML", () => {
+    vi.mocked(attachImages).mockResolvedValue({ images: [], notice: null });
+    const { result } = renderHook(() => useImageAttachments());
+    const event = imagePaste((type) =>
+      type === "text/plain" ? "C Am" : undefined,
+    );
+
+    void act(() => result.current.zoneProps.onPasteCapture(event));
+
+    // The editor still pastes the text.
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(attachImages).toHaveBeenCalledOnce();
   });
 });
 
@@ -222,26 +245,25 @@ describe("useImageAttachments adds that finish after the list changed", () => {
     expect(result.current.loading).toBe(false);
   });
 
-  it("doesn't bring back sent images when a paste finishes after clear", async () => {
-    const { result } = renderHook(() => useImageAttachments());
-
-    add(result.current, "A");
-    await finishNextRead();
-    add(result.current, "B");
-    void act(() => result.current.clear());
-    await finishNextRead();
-
+  it.each([
     // B wasn't sent, so it stays for the next message.
-    expect(attached(result.current)).toStrictEqual(["B"]);
-  });
-
-  it("doesn't bring back an image removed while a paste was loading", async () => {
+    [
+      "sent images when a paste finishes after clear",
+      (attachments: ReturnType<typeof useImageAttachments>) =>
+        attachments.clear(),
+    ],
+    [
+      "an image removed while a paste was loading",
+      (attachments: ReturnType<typeof useImageAttachments>) =>
+        attachments.removeImage(0),
+    ],
+  ])("doesn't bring back %s", async (_name, drop) => {
     const { result } = renderHook(() => useImageAttachments());
 
     add(result.current, "A");
     await finishNextRead();
     add(result.current, "B");
-    void act(() => result.current.removeImage(0));
+    void act(() => drop(result.current));
     await finishNextRead();
 
     expect(attached(result.current)).toStrictEqual(["B"]);
@@ -264,3 +286,21 @@ describe("useImageAttachments adds that finish after the list changed", () => {
     expect(result.current.notice).toBe(TOO_MANY_IMAGES_MESSAGE);
   });
 });
+
+/**
+ * A paste of one PNG whose clipboard answers `getData` with the given function.
+ * @param getData - The clipboard's `getData`
+ * @returns A paste event stand-in
+ */
+function imagePaste(
+  getData: (type: string) => string | undefined,
+): ClipboardEvent {
+  return {
+    clipboardData: {
+      files: [new File(["xy"], "image.png", { type: "image/png" })],
+      getData,
+    },
+    preventDefault: vi.fn(),
+    stopPropagation: vi.fn(),
+  } as unknown as ClipboardEvent;
+}

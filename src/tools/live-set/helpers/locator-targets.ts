@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The locators one call names. locatorId and locatorTime combine into one
 // target list, ids first, the way id and path do elsewhere: each entry is its
@@ -12,16 +12,12 @@ import {
   barBeatToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { errorMessage } from "#src/shared/error-message.ts";
 import {
   type LocatorMatch,
   findLocator,
   findLocatorsByName,
 } from "#src/tools/shared/locator/locators.ts";
-import {
-  nameEntries,
-  targetEntries,
-} from "#src/tools/shared/helpers/target-entries.ts";
+import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   splitList,
@@ -120,29 +116,6 @@ export function locatorTargets(
       );
     default:
       throw new Error(`Unknown locator operation: ${operation}`);
-  }
-}
-
-/**
- * Runs one locator, turning a throw into that locator's skip entry so the rest
- * of the call still runs.
- * @param target - The locator, as the caller named it
- * @param run - The operation on that locator
- * @returns The operation's result, or the skip entry standing in for it
- */
-export async function attemptLocator(
-  target: LocatorTarget,
-  run: () => Promise<Record<string, unknown>>,
-): Promise<Record<string, unknown>> {
-  try {
-    return await run();
-  } catch (error) {
-    return {
-      operation: "skipped",
-      ...locatorAddress(target),
-      ok: false,
-      detail: errorMessage(error),
-    };
   }
 }
 
@@ -272,7 +245,7 @@ function deleteNames(
     return [whole];
   }
 
-  return nameEntries(locatorName, "locatorName");
+  return targetEntries(locatorName, "locatorName");
 }
 
 /**
@@ -323,19 +296,4 @@ function targetLabel(args: LocatorArgs): string {
   }
 
   return hasIds ? "locatorId" : "locatorTime";
-}
-
-/**
- * How a skip names its locator: the spelling that named it, and the name it was
- * to get, which is all the caller has to match the entry on.
- * @param target - The locator, as the caller named it
- * @returns The address
- */
-function locatorAddress(target: LocatorTarget): Record<string, string> {
-  const key = { locatorId: "id", locatorTime: "time", locatorName: "name" };
-
-  return {
-    [key[target.param]]: target.value as string,
-    ...(target.name != null && { name: target.name }),
-  };
 }

@@ -1,14 +1,14 @@
-# Using Multiple AI Providers
+# Using an AI Router
 
-Want flexibility to switch between providers or access many models?
+Want to switch between AI companies or try many models? An AI router gives you
+models from every big company with one account and one bill, and you pay for
+what you use. Producer Pal's Built-in Chat UI works with two:
 
-## OpenRouter
+- **[OpenRouter](./ai-routers#openrouter)** — add credits, then pay as you go
+- **[Vercel AI Gateway](./ai-routers#vercel-ai-gateway)** — each company's own
+  prices; needs a credit card on file
 
-[OpenRouter](https://openrouter.ai) provides access to 100+ models through a
-single API key with pay-per-use pricing. Access it via the
-[Built-in Chat UI](./chat-ui-other-providers#openrouter).
-
-### Why OpenRouter?
+## Why a Router?
 
 - **Model variety:** Switch between Claude, Gemini, GPT, Mistral, and more
 - **Cost optimization:** Use cheaper models for simple tasks, stronger ones for
@@ -16,7 +16,7 @@ single API key with pay-per-use pricing. Access it via the
 - **Single billing:** One account for all providers
 - **Availability:** Fallback options when one provider is rate-limited
 
-### Recommended Models
+## Recommended Models
 
 - **Gemini 3.8 Flash** - fast and capable
 - **Claude Opus 5.5** - strong reasoning
@@ -27,5 +27,4 @@ single API key with pay-per-use pricing. Access it via the
 
 The Chat UI also supports direct connections to other providers like Groq,
 Together AI, or any OpenAI-compatible endpoint. See the
-[Custom Providers setup](./chat-ui-other-providers#custom-providers) for
-details.
+[Custom Providers setup](./api-keys#custom-providers) for details.

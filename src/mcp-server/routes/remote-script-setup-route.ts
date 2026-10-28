@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // REST endpoints the chat UI uses to install Live's Producer Pal remote script.
 // The script's Python sources ride along inside this bundle, so installing is
@@ -9,11 +9,16 @@
 
 import { type Express, type Request, type Response } from "express";
 import { VERSION } from "#src/shared/config.ts";
-import { rejectForeignOriginWrite } from "../helpers/http/request-origin.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
+import * as console from "../node-for-max-logger.ts";
+import { syncDeviceInstallNotice } from "../rpc/device-install/device-install-notice.ts";
 import {
-  RemoteScriptInstallError,
-  installRemoteScript,
-} from "../rpc/remote-script/remote-script-install.ts";
+  answerUserLibraryError,
+  readUserLibraryPost,
+} from "../helpers/http/user-library-post.ts";
+import { UserLibraryFolderError } from "../rpc/remote-script/user-library/user-library-folder.ts";
+import { installRemoteScript } from "../rpc/remote-script/install/remote-script-install.ts";
+import { installLeftText } from "../rpc/remote-script/install/remote-script-install-reply.ts";
 import { remoteScriptStatus } from "../rpc/remote-script/remote-script-status.ts";
 
 /**
@@ -21,7 +26,8 @@ import { remoteScriptStatus } from "../rpc/remote-script/remote-script-status.ts
  *
  * The install is a same-origin write, like the other content endpoints, so a
  * LAN or tunnel chat UI can run it and only a foreign browser origin 403s. A
- * User Library path that isn't absolute (after a leading `~`) is a 400.
+ * User Library path that isn't an existing absolute folder (after a leading
+ * `~`) is a 400; a failed install is a 500 saying what it left.
  *
  * @param app - Express application
  */
@@ -34,37 +40,31 @@ export function registerRemoteScriptSetupRoutes(app: Express): void {
   });
 
   app.post("/remote-script/install", (req: Request, res: Response): void => {
-    if (
-      rejectForeignOriginWrite(
-        req,
-        res,
-        "cross-site /remote-script writes are not allowed",
-      )
-    ) {
-      return;
-    }
+    const posted = readUserLibraryPost(req, res, "/remote-script");
 
-    const body = req.body as { userLibrary?: unknown } | undefined;
-    const userLibrary =
-      typeof body?.userLibrary === "string" ? body.userLibrary.trim() : "";
-
-    if (userLibrary === "") {
-      res.status(400).json({ error: "userLibrary must be a non-empty string" });
-
+    if (posted == null) {
       return;
     }
 
     try {
-      res.json({
-        path: installRemoteScript(userLibrary).path,
-        version: VERSION,
-      });
+      const { path } = installRemoteScript(posted.userLibrary);
+
+      // The device's "Finish installation" notice may be done with.
+      void syncDeviceInstallNotice();
+      res.json({ path, version: VERSION });
     } catch (error) {
-      if (!(error instanceof RemoteScriptInstallError)) {
-        throw error;
+      if (error instanceof UserLibraryFolderError) {
+        answerUserLibraryError(error, res);
+
+        return;
       }
 
-      res.status(400).json({ error: error.message });
+      const message = errorMessage(error);
+
+      console.error(`Remote script install failed: ${message}`);
+      res.status(500).json({
+        error: `Couldn't install the remote script (${message}). ${installLeftText(message)}`,
+      });
     }
   });
 }

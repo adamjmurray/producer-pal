@@ -56,13 +56,14 @@ places:
   [Setup tab](/guide/device#behavior)
 - **Chat UI**: Settings → Tools, at the bottom of the **Clip** group
 - **REST API**: `POST /config` with `{"notation": "stark"}`
-- **Command line**: `npx producer-pal@latest --notation stark`
 
-A client can also pick its own notation for a single request, without changing
-the global, using the `x-producer-pal-notation`
-[header](/guide/rest-api#per-request-notation), honored by both the REST and MCP
-endpoints. This is how the [Agent Skill](/guide/skills) works in `midi-json`
-while your Chat UI stays on bar|beat.
+A client can also pick its own notation without changing the global. The
+`npx producer-pal@latest --notation stark` [flag](/guide/npx-cli) does it for
+one MCP client, and the `x-producer-pal-notation`
+[header](/guide/rest-api#per-request-notation) does it for a single request,
+honored by both the REST and MCP endpoints. This is how the
+[Agent Skill](/guide/skills) works in `midi-json` while your Chat UI stays on
+bar|beat.
 
 ::: tip Switching takes effect in a new conversation
 

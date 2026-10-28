@@ -33,7 +33,8 @@ the standard Live "routing object" used elsewhere (Track inputs, etc.).
 
 Two writable fields on `update-device`, also returned by `read-device`:
 
-- `sidechainSourceTrackId` (trackId or null) — `null` means "No Input"
+- `sidechainSourceTrackId` (trackId, track path `t0`/`rt0`/`mt`, or null) —
+  `null` means "No Input"
 - `sidechainChannel` (`"Pre FX"` | `"Post FX"` | `"Post Mixer"` or null)
 
 The class-level `available_input_routing_types` and

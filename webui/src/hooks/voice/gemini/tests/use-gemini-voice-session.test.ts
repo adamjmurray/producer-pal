@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -181,7 +181,7 @@ const PARAMS: UseGeminiVoiceSessionParams = {
   mcpUrl: "http://localhost:3350/mcp",
   voiceTokenUrl: "http://localhost:3350/gemini-voice-token",
   geminiKey: "gem-key" as string | null,
-  model: "gemini-3.1-flash-live-preview",
+  model: "gemini-3.8-live",
   voice: "Puck",
   volume: 1,
 };
@@ -373,7 +373,7 @@ describe("useGeminiVoiceSession", () => {
     expect(h.FakeMic.last!.start).toHaveBeenCalled();
     const params = h.state.connectParams!;
 
-    expect(params.model).toBe("gemini-3.1-flash-live-preview");
+    expect(params.model).toBe("gemini-3.8-live");
     expect(h.state.genaiOptions).toStrictEqual({ apiKey: "gem-key" });
   });
 

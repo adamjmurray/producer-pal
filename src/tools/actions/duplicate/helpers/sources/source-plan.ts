@@ -1,15 +1,20 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // `id` and `path` each name one source or a list of them. A list runs the
 // single-source logic once per source, in order, and concatenates — so the only
 // thing to settle here is how the destinations are shared out. One source takes
-// any number; several take one each, in order (ADR-0031).
+// any number; several take one each, in order.
 
+import { errorMessage } from "#src/shared/error-message.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
-import { idPerPathForType } from "#src/tools/shared/validation/id-per-path.ts";
+import { resolvePathForType } from "#src/tools/shared/validation/id-per-path.ts";
+import {
+  idDoesNotExist,
+  typeMismatch,
+} from "#src/tools/shared/validation/id-validation.ts";
 import {
   requireDestinationPerSource,
   requireSameLength,
@@ -18,22 +23,22 @@ import {
   namedTargets,
   type NamedTarget,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
-import {
-  targetIds,
-  type IdPerPath,
-} from "#src/tools/shared/validation/lists/target-lists.ts";
+import { type PathResolution } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import {
   pathEntries,
   pathNamesSomething,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   destinationLane,
+  loneToPath,
   pathCarriesPosition,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
+import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   resolveClipDestinations,
   type ClipDestinations,
 } from "../clip/clip-destinations.ts";
+import { regularTrackIndex } from "./duplicate-track.ts";
 
 /** One source's turn: which object to copy, and where its copies go. */
 export interface SourceShare {
@@ -41,10 +46,20 @@ export interface SourceShare {
   /** The source as the caller named it, for an entry with no destination to
    * name. */
   named: NamedTarget;
+  /** Why nothing can be copied from it: every copy it was to make is a skip. */
+  skip?: string;
   toPath: string | undefined;
   toSlot: string | undefined;
   /** This source's share of arrangementStart. */
   arrangementStart: string | undefined;
+}
+
+/** How a source is found and vetted: its path entries, and what an id is. */
+export interface SourceLookup {
+  /** What one `path` entry names */
+  resolvePath: (entry: string) => PathResolution;
+  /** Why an id can't be a source, or null when it can */
+  problem: (id: string) => string | null;
 }
 
 /** What a call needs to share its destinations out across its sources. */
@@ -64,9 +79,11 @@ interface SourcePlanArgs {
    * bare track with `arrangementStart` — pair across the sources the same way.
    */
   onArrangement: boolean;
-  /** How a `path` entry resolves, when the type's own lookup isn't it: a track
+  /** How a source resolves, when the type's own lookup isn't it: a track
    * copied onto a take lane takes a lane source too. */
-  idPerPath?: IdPerPath;
+  lookup?: SourceLookup;
+  /** Looks an object up, for a call that keeps the ones it has found */
+  objectOf?: (id: string) => LiveAPI;
 }
 
 /**
@@ -80,7 +97,9 @@ interface SourcePlanArgs {
  * @param args.arrangementStart - Position(s), already resolved to bar|beat
  * @param args.startParam - The param the caller wrote the positions in
  * @param args.onArrangement - Whether the copies land on the arrangement
- * @param args.idPerPath - Path lookup to use instead of the type's own
+ * @param args.lookup - Source lookup to use instead of the type's own
+ * @param args.objectOf - Looks an object up, for a call that keeps the ones
+ *   it has found
  * @returns One share per source, ids first, then the paths in order
  */
 export function planSources({
@@ -92,9 +111,10 @@ export function planSources({
   arrangementStart,
   startParam = "arrangementStart",
   onArrangement,
-  idPerPath,
+  lookup,
+  objectOf,
 }: SourcePlanArgs): SourceShare[] {
-  const sources = sourceTargets(type, id, path, idPerPath);
+  const sources = sourceTargets(id, path, lookup ?? typeLookup(type, objectOf));
 
   // One source is the whole call: leave the destinations exactly as they
   // arrived, so nothing re-splits a list that was already going to be split
@@ -196,10 +216,7 @@ export function resolveSourceClipDestinations(
 // --- Helpers below main exports ---
 
 /** A source the call named, once its id is known. */
-interface SourceTarget {
-  id: string;
-  named: NamedTarget;
-}
+type SourceTarget = Pick<SourceShare, "id" | "named" | "skip">;
 
 /**
  * Shares an arrangement destination out across the sources. A clip's
@@ -268,29 +285,6 @@ function namesArrangementEntry(toPath: string | undefined): boolean {
 }
 
 /**
- * What a toPath of one entry names: a bare `[5|1]` (or an entry that doesn't
- * parse, which is reported where it's resolved), or a track or take lane with
- * no position. A slot is neither — arrangementStart doesn't move it.
- * @param paths - toPath's entries, in call order
- * @returns Whether the lone entry is bare, or a track or lane alone
- */
-function loneToPath(paths: string[]): { bare: boolean; trackOrLane: boolean } {
-  const only = paths.length === 1 ? (paths[0] as string) : null;
-
-  if (only == null) {
-    return { bare: false, trackOrLane: false };
-  }
-
-  const lane = destinationLane(only, "toPath");
-
-  return {
-    bare: lane == null,
-    trackOrLane:
-      lane != null && lane.kind !== "slot" && !pathCarriesPosition(only),
-  };
-}
-
-/**
  * A clip position list's share per source: one entry covers them all, a list
  * names one each, and any other count is refused.
  * @param entries - The param's entries, in call order
@@ -317,8 +311,7 @@ function positionShares(
 
 /**
  * A destination list's share per source: one each, in order. Refused before
- * the first copy otherwise, which the caller would have to undo by hand
- * (ADR-0035).
+ * the first copy otherwise, which the caller would have to undo by hand.
  * @param entries - The destination param's entries, in call order
  * @param param - The param's name, for an error message
  * @param sources - What named the sources, and how many there are
@@ -346,37 +339,102 @@ function destinationShares(
  * objects, so they add up. Each keeps the spelling the caller wrote, which is
  * how an entry names a source that has no destination of its own.
  *
- * A path that names nothing refuses the call. `delete` reports such a miss as
- * undeleted, but a duplicate leaves copies behind for the caller to clean up by
- * hand, so nothing starts until every source is known (ADR-0035).
- * @param type - Object type to duplicate, which says how a path resolves
+ * A path that can't be parsed refuses the call. One that parses but names
+ * nothing, or an id that isn't there, keeps its slot as a source nothing can be
+ * copied from: each copy it was to make is that copy's own skip.
  * @param id - Source id(s), comma-separated for multiple
  * @param path - Source path(s), comma-separated for multiple
- * @param lookup - Path lookup to use instead of the type's own
+ * @param lookup - How the sources are found and vetted
  * @returns One entry per source, ids first, then the paths in order
  */
 function sourceTargets(
-  type: string,
   id: string | undefined,
   path: string | undefined,
-  lookup: IdPerPath = idPerPathForType(type),
+  lookup: SourceLookup,
 ): SourceTarget[] {
-  const named = namedTargets({ id, path });
-  const resolved = targetIds({ id, path }, lookup);
-  const missing = resolved.flatMap((entry, i) =>
-    entry == null ? [(named[i] as NamedTarget).value] : [],
-  );
+  return namedTargets({ id, path }).map((named): SourceTarget => {
+    if (named.param === "id") {
+      return vetted(named, named.value, lookup);
+    }
 
-  if (missing.length > 0) {
-    throw new Error(
-      `nothing to duplicate at path ${missing
-        .map((entry) => `"${entry}"`)
-        .join(", ")}`,
-    );
+    // A path that doesn't parse is a mistake in the call; one that parses but
+    // names nothing skips only its own copies.
+    parseObjectPath(named.value, "path");
+
+    const resolved = lookup.resolvePath(named.value);
+
+    return resolved.id == null
+      ? { id: named.value, named, skip: resolved.reason }
+      : vetted(named, resolved.id, lookup);
+  });
+}
+
+/**
+ * A source, with the reason it can't be copied when it can't.
+ * @param named - The source as the caller named it
+ * @param id - Its id
+ * @param lookup - What vets an id
+ * @returns The source
+ */
+function vetted(
+  named: NamedTarget,
+  id: string,
+  lookup: SourceLookup,
+): SourceTarget {
+  const skip = lookup.problem(id);
+
+  return skip == null ? { id, named } : { id, named, skip };
+}
+
+/**
+ * How a type's sources are found: its own path lookup, and its own id check.
+ * @param type - Object type to duplicate
+ * @param objectOf - Looks an object up
+ * @returns The lookup
+ */
+function typeLookup(
+  type: string,
+  objectOf?: (id: string) => LiveAPI,
+): SourceLookup {
+  const find = objectOf ?? ((id: string): LiveAPI => LiveAPI.from(id));
+
+  return {
+    resolvePath: (entry) => resolvePathForType(type, entry),
+    problem: (id) => {
+      try {
+        const object = vetObject(find(id), id, type);
+
+        // A return track passes the type check, but Live can't copy it.
+        if (type === "track") {
+          regularTrackIndex(object);
+        }
+
+        return null;
+      } catch (error) {
+        return errorMessage(error);
+      }
+    },
+  };
+}
+
+/**
+ * Checks an object is there and is what a call asked to copy.
+ * @param object - What the id names
+ * @param id - The id, for the reason
+ * @param type - Object type to duplicate
+ * @returns The object
+ * @throws Error saying why it can't be copied
+ */
+function vetObject(object: LiveAPI, id: string, type: string): LiveAPI {
+  if (!object.exists()) {
+    throw new Error(idDoesNotExist(id));
   }
 
-  return resolved.map((entry, i) => ({
-    id: entry as string,
-    named: named[i] as NamedTarget,
-  }));
+  const mismatch = typeMismatch(object, type);
+
+  if (mismatch != null) {
+    throw new Error(mismatch);
+  }
+
+  return object;
 }

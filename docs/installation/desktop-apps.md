@@ -1,12 +1,12 @@
 # Desktop Apps
 
-## Claude Desktop (Recommended)
+## Claude Desktop
 
-Anthropic's desktop app. The easiest way to use Producer Pal.
+Anthropic's desktop app. Producer Pal installs as an extension.
 
 - **Difficulty:** Easy — download, install, done
-- **Cost:** Subscription required
-- **Best for:** Most users wanting the simplest setup
+- **Cost:** Subscription recommended
+- **Best for:** Claude users
 
 [Get started with Claude Desktop →](./claude-desktop)
 
@@ -22,31 +22,28 @@ with an OpenAI account.
 
 [Get started with the ChatGPT App →](./chatgpt-app)
 
-## Antigravity
+## Google Antigravity
 
 Google's agent app for Gemini models. Adding Producer Pal means editing a JSON
 config file — one extra step, but everything else is the same.
 
 - **Difficulty:** Easy — one config file to edit
-- **Cost:** Free; a Google AI subscription raises the rate limits
+- **Cost:** a Google AI subscription is recommended; without one you hit limits
+  quickly
 - **Best for:** Gemini users who want a desktop app instead of the CLI
 
-[Get started with Antigravity →](./antigravity)
+[Get started with Google Antigravity →](./antigravity)
 
-## Bionic (Advanced)
+## Bionic / LM Studio
 
 LM Studio's agent app for open models, running entirely on your machine.
 
-::: warning For Power Users
+<!--@include: ../_partials/local-ai-warning.md-->
 
-Bionic requires significant hardware (Apple Silicon with lots of RAM or Nvidia
-4080+ GPU) and technical comfort with local models. Expect experimentation.
-Online options work better and faster at this time.
+Online AI is faster and smarter.
 
-:::
-
-- **Difficulty:** Advanced
+- **Difficulty:** Easy — download a model, then add Producer Pal in settings
 - **Cost:** Free (uses your hardware)
-- **Best for:** Privacy-focused users with capable hardware
+- **Best for:** Free, private, offline use on a powerful computer
 
 [Bionic setup guide →](./bionic)

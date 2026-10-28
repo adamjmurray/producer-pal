@@ -4,7 +4,7 @@ Known bugs and rough edges.
 
 ::: tip Looking for what Producer Pal can't do?
 
-Automation and clip envelopes, VST/AU plug-in internals, audio analysis and
+Clip envelopes lost on some moves, VST/AU plug-in internals, audio analysis and
 synthesis, drum pitch maps, and lengthening looped arrangement clips are
 **[Limitations](/features/limitations)**: design boundaries rather than bugs, so
 they aren't listed here.
@@ -13,17 +13,22 @@ they aren't listed here.
 
 ## Undo/Redo Behavior
 
-Live groups all Live API changes into a single undo step until you interact with
-Live's UI (clicking, typing, etc.). So if you make multiple requests to Producer
-Pal without clicking in Live between them, Cmd+Z / Ctrl+Z may undo everything at
-once. On the other hand, heavier operations can get split across multiple undo
-steps, so you might need to press undo several times.
+With the [remote script](/guide/remote-script) installed, each Producer Pal
+request is its own undo step, so Cmd+Z / Ctrl+Z undoes one request at a time.
+The AI can undo and redo for you too (the [Manage](/features/tools#ppal-manage)
+tool). That uses Live's own history, which also holds your edits in Live, so an
+undo can revert something you did.
 
-This comes from Live's own undo model as exposed through the Live API, not a Max
-for Live limitation specific to Producer Pal.
+Without it, Live groups all Live API changes into a single undo step until you
+interact with Live's UI (clicking, typing, etc.). So if you make multiple
+requests to Producer Pal without clicking in Live between them, Cmd+Z / Ctrl+Z
+may undo everything at once. On the other hand, heavier operations can get split
+across multiple undo steps, so you might need to press undo several times. This
+comes from Live's own undo model as exposed through the Live API.
 
-**Workaround:** Save your Live Set before big changes. Click somewhere in Live's
-UI between requests if you want separate undo steps.
+**Workaround:** Install the remote script. Without it, save your Live Set before
+big changes, and click somewhere in Live's UI between requests if you want
+separate undo steps.
 
 ## Recent Project Context Can Be Lost on a Device Upgrade (Pre-2.1.0 Devices)
 
@@ -67,32 +72,45 @@ load the device.
 before removing it, or open one of Live's automatic project backups (Live keeps
 several).
 
+## Library Search Misses New Plug-ins and Samples
+
+Live saves new library entries, like a plug-in you just installed or a sample
+you just added, in a place Producer Pal can't read until Live quits. Until then,
+`ppal-library` won't find them, even though Live's browser shows them. Asking
+for a plug-in by name still loads it.
+
+**Workaround:** quit and reopen Live. Reopening a Set is not enough.
+
+## Some Plug-in Settings Show Only Raw Values
+
+Some plug-ins, such as ValhallaFreqEcho, don't tell Live what a setting would
+read at other values. For those settings Producer Pal can't use the plug-in's
+own units (Hz, ms, %), so it reads and sets them on Live's internal scale,
+usually 0 to 1. The AI can't tell what a number means in the plug-in. On
+ValhallaFreqEcho, Delay 0.5 is 100 ms, but nothing tells the AI that. Settings
+that pick from a list come through as plain numbers too. ValhallaFreqEcho's
+Delay Sync reads 0 where the plug-in shows "Free".
+
+**Workaround:** check the plug-in's window after a change, and tell the AI what
+you see so it can adjust.
+
+## CC Control Can't Be Read or Changed
+
+Live doesn't let Max for Live devices see inside CC Control. Producer Pal can
+add CC Control to a track, but afterwards it shows up with no name, as switched
+off, and with no settings, and the AI can't change any of them. The device
+itself works normally in Live.
+
+**Workaround:** set CC Control up by hand in Live.
+
 ## Live's Memory Grows Over Very Long Sessions
 
-Every request Producer Pal makes to Live uses a little more of Live's memory,
-and Live doesn't give it back until you quit. The amount is tiny: each object
-Producer Pal looks up costs about 3 KB, so an everyday request costs a few dozen
-kilobytes, and even "read my whole Set" on a large Set stays in the hundreds.
-But it never stops, so a Live session left running for days across tens of
-thousands of AI requests can eventually run out of memory and crash. We have
-seen this once, after two and a half days of nearly continuous, heavy automated
-testing.
+Each request uses a tiny bit of Live's memory, which Live gives back only when
+you quit. Normal use never gets near a problem. We have seen Live run out of
+memory and crash once, after two and a half days of nonstop automated testing.
 
-Normal use is nowhere near that. Days of ordinary music-making won't reach it.
-
-**Workaround:** quit and reopen Live now and then if you leave it running for
-days at a time with heavy Producer Pal use. Saving and reopening your Set is not
-enough, because the memory is released only when Live itself quits.
-
-**Why we can't just fix it.** The growth is a direct consequence of asking Live
-for objects through the Live API, from the Max for Live device Producer Pal runs
-in. It happens per object looked up, no matter how the lookup is done. We
-measured the one alternative that reduces it, which is holding on to those
-objects between requests, and it makes things worse in a way you would actually
-notice: Live gets progressively slower the longer a session runs, and writes
-enormous log files. A slow leak that takes tens of thousands of requests to
-matter is the better trade. What we can do, and keep doing, is make each request
-look up fewer objects, which slows the growth proportionally.
+**Workaround:** if you leave Live running for days with heavy Producer Pal use,
+quit and reopen it now and then. Reopening a Set is not enough.
 
 ## Claude Desktop Caches Tool Definitions
 

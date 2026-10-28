@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // GET JSON from the device server. Every read here bypasses the browser cache:
 // the device's state changes under the page (AI writes, the Max UI), so a

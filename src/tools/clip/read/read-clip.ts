@@ -1,8 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
+import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
+import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import {
   abletonBeatsToBarBeat,
   abletonBeatsToDuration,
@@ -10,8 +12,10 @@ import {
 import { formatNotation } from "#src/notation/notation.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { readClipNotes } from "#src/tools/shared/clip/clip-notes.ts";
+import { groupTrackHoldsNoClips } from "#src/tools/shared/clip/group-track-clips.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { liveGainToDb } from "#src/tools/shared/helpers/gain-conversion.ts";
 import {
@@ -21,10 +25,12 @@ import {
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   readFanOut,
   type ReadResult,
 } from "#src/tools/shared/validation/lists/read-fan-out.ts";
+import { type ClipEnvelope, clipEnvelopes } from "./helpers/clip-envelopes.ts";
 import {
   clipRegionBeats,
   processWarpMarkers,
@@ -59,6 +65,9 @@ export interface ReadClipArgs {
   /** @internal The caller walked this track's or scene's own slots, so the
    * address is real by construction and an empty slot needn't prove it */
   slotValidated?: boolean;
+  /** @internal Told the track of a slot that is really empty; may throw to
+   * say why that slot holds no clip */
+  onEmptySlot?: (track: LiveAPI) => void;
 }
 
 interface WarpMarker {
@@ -78,7 +87,6 @@ export interface ReadClipResult {
   id: string | null;
   type: "midi" | "audio" | null;
   name?: string | null;
-  view?: "arrangement" | "session";
   color?: string | null;
   timeSignature?: string | null;
   looping?: boolean;
@@ -93,6 +101,9 @@ export interface ReadClipResult {
   recording?: boolean;
   overdubbing?: boolean;
   muted?: boolean;
+  /** Session clips only: the clip has automation. Follows Live's own flag, so
+   * it also covers envelopes an `envelopes` read can't show. */
+  envs?: boolean;
 
   // Location properties
   /** Where the clip is: "t0/s3" in the session, "t0[5|1]" or "t0/l0[5|1]" in
@@ -116,6 +127,9 @@ export interface ReadClipResult {
   warpMode?: string;
   warpMarkers?: WarpMarker[];
 
+  /** Each automated parameter (with a `detail` when its events couldn't be read or it won't play), or why there are none to report */
+  envelopes?: ClipEnvelope[] | string;
+
   /** What the read couldn't produce for this clip */
   detail?: string;
 }
@@ -131,19 +145,61 @@ export interface ReadClipResult {
  * @param context - Context object (supplies the global notation setting)
  * @returns One clip, or one entry per clip named
  */
-export function readClip(
+export async function readClip(
   args: ReadClipArgs = {},
   context: Partial<ToolContext> = {},
-): ReadResult<ReadClipResult> {
-  return readFanOut(
+): Promise<ReadResult<ReadClipResult>> {
+  const result = readFanOut(
     args,
     {
       object: "clip",
       idAlias: "clipId",
       oneTargetParams: ["trackIndex", "sceneIndex", "slot"],
+      indexParams: ["trackIndex", "sceneIndex"],
+      pathSpellings: ["slot"],
+      deadline: context.deadline,
     },
     (one) => readNamedClip(one, context),
   );
+
+  // Envelopes are read after the fan-out, not inside it: they are the one part
+  // of a clip read that waits on the remote script, and only this tool offers
+  // them — read-track and read-scene share the per-clip read and stay sync.
+  if (parseIncludeArray(args.include, READ_CLIP_DEFAULTS).includeEnvelopes) {
+    for (const entry of Array.isArray(result) ? result : [result]) {
+      await addClipEnvelopes(entry, context.deadline);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Put one clip's automation on its own entry. Nothing here throws: a clip read
+ * that can't reach the remote script still answers with everything else.
+ * @param entry - One clip the read produced, or a target it skipped
+ * @param deadline - The request deadline from ToolContext, if any
+ */
+async function addClipEnvelopes(
+  entry: ReadClipResult | TargetSkip,
+  deadline: number | null | undefined,
+): Promise<void> {
+  if ("ok" in entry || entry.id == null) {
+    return;
+  }
+
+  const clip = LiveAPI.from(entry.id);
+
+  try {
+    entry.envelopes = await clipEnvelopes(
+      clip,
+      (clip.getProperty("is_arrangement_clip") as number) > 0,
+      clipMeterReader(clip),
+      deadline,
+    );
+  } catch (error) {
+    entry.envelopes = errorMessage(error);
+  }
 }
 
 /**
@@ -158,13 +214,20 @@ function readNamedClip(
   args: ReadClipArgs,
   context: Partial<ToolContext>,
 ): ReadClipResult {
-  const clip = readOneClip(args, context);
+  const clip = readOneClip({ ...args, onEmptySlot: refuseGroupTrack }, context);
 
   if (clip.id == null) {
     throw new Error(`no clip at ${clip.path}`);
   }
 
   return clip;
+}
+
+// A group track holds no clips, so a path into one says that, not "no clip".
+function refuseGroupTrack(track: LiveAPI): void {
+  if (isGroupTrack(track)) {
+    throw new Error(groupTrackHoldsNoClips(track));
+  }
 }
 
 /**
@@ -191,7 +254,7 @@ export function readOneClip(
   } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
   if (clipId == null && (trackIndex == null || sceneIndex == null)) {
-    throw new Error("id or path is required");
+    throw new Error(idOrPathRequired());
   }
 
   const resolved = resolveClip(
@@ -199,6 +262,7 @@ export function readOneClip(
     trackIndex,
     sceneIndex,
     args.slotValidated,
+    args.onEmptySlot,
   );
 
   if (!resolved.found) {
@@ -216,11 +280,10 @@ export function readOneClip(
     id: clip.id,
     type: isMidiClip ? "midi" : "audio",
     ...(clipName && { name: clipName }),
-    view: isArrangementClip ? "arrangement" : "session",
     ...(includeColor && { color: clip.getColor() }),
   };
 
-  addBooleanStateProperties(result, clip);
+  addBooleanStateProperties(result, clip, isArrangementClip);
 
   addClipLocationProperties(result, clip, isArrangementClip);
 
@@ -249,14 +312,17 @@ export function readOneClip(
 }
 
 /**
- * Add boolean state properties (playing, triggered, recording, overdubbing, muted)
- * Only includes properties that are true
+ * Add boolean state properties (playing, triggered, recording, overdubbing,
+ * muted, envs). Only includes properties that are true
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
+ * @param isArrangementClip - Arrangement clips never get `envs`: their
+ *   envelopes can't be read or written
  */
 function addBooleanStateProperties(
   result: ReadClipResult,
   clip: LiveAPI,
+  isArrangementClip: boolean,
 ): void {
   if ((clip.getProperty("is_playing") as number) > 0) {
     result.playing = true;
@@ -276,6 +342,10 @@ function addBooleanStateProperties(
 
   if ((clip.getProperty("muted") as number) > 0) {
     result.muted = true;
+  }
+
+  if (!isArrangementClip && (clip.getProperty("has_envelopes") as number) > 0) {
+    result.envs = true;
   }
 }
 

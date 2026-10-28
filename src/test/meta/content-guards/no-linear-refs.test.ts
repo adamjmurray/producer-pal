@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Checking commit messages means reading git history, and git is a separate
 // process. The src/ shell-out ban exists so shipped code can't launch
@@ -28,7 +28,7 @@ const LINEAR_REF = /AJM-\d+/;
 //
 // Refs the guard can't undo. Rewriting a commit already published on origin
 // means force-pushing shared history — a worse trade than leaving one stale
-// reference. Scrub these from the squash body at merge time (dev/process/releasing.md
+// reference. Scrub these from the squash body at merge time (dev/process/releasing/testing-and-shipping.md
 // Step 5) rather than growing this list; new commits must not need an entry.
 const GRANDFATHERED_COMMITS = new Set([
   // Body of "feat(mcp): per-request smallModelMode via header", which points at

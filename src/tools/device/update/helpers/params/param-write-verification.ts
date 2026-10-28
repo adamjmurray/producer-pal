@@ -1,13 +1,17 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import {
   type WrittenParam,
   readParameterBasic,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
-import { setParamValueAndVerify } from "#src/tools/shared/device/helpers/param-writing.ts";
+import {
+  setParamValueAndVerify,
+  setRawParamValueAndVerify,
+} from "#src/tools/shared/device/helpers/param-writing.ts";
+import { writeCheckingOverride } from "#src/tools/shared/arrangement/tracks/automation-override.ts";
 
 /** What the caller asked for, for the entry that reports the write. */
 export interface WriteReport {
@@ -16,6 +20,8 @@ export interface WriteReport {
   /** The value asked for, when it is a bare number the read-back can be
    * compared with. A param that reads back the same number reports no value. */
   requested?: number;
+  /** Check the write by raw value: the param's label never changes */
+  verifyRaw?: boolean;
 }
 
 /** A param one write landed on, or the reason it landed nowhere. */
@@ -35,8 +41,11 @@ export function writeParam(
   rawValue: number,
   report: WriteReport = {},
 ): ParamWriteOutcome {
-  const { changed, requested } = report;
-  const refused = setParamValueAndVerify(param, rawValue);
+  const { changed, requested, verifyRaw } = report;
+  const verify = verifyRaw ? setRawParamValueAndVerify : setParamValueAndVerify;
+  const { result: refused, overrode } = writeCheckingOverride(param, () =>
+    verify(param, rawValue),
+  );
 
   if (refused != null) {
     // Both facts: Live took nothing, and the value it was offered was already
@@ -50,5 +59,6 @@ export function writeParam(
     ...readParameterBasic(param),
     ...(changed == null ? {} : { detail: changed }),
     ...(requested == null ? {} : { requested }),
+    ...(overrode ? { overrode: true as const } : {}),
   };
 }

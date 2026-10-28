@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { assertDefined } from "#src/shared/error-message.ts";
 import {
@@ -378,7 +378,7 @@ function resolveDrumPadSampleTarget(
   const chainsMade = createdCount(created);
 
   if (chainsMade > 0) {
-    noteSetAltered(notes);
+    noteSetAltered(notes, "pad chain made");
   }
 
   const instrument = findChainInstrument(chain);
@@ -442,7 +442,7 @@ function applyPadInstrumentPolicy(
   }
 
   chain.call("delete_device", instrument.index);
-  noteSetAltered(notes);
+  noteSetAltered(notes, "instrument removed");
   // A delete renumbers the chain's remaining devices, and the path cache's
   // contract says nothing cached survives that. createSimplerInChain invalidates
   // again after its insert; this one keeps the invariant true in between.
@@ -574,7 +574,7 @@ function createSimplerInChain(
 
   const device = LiveAPI.from(`id ${id}`);
 
-  noteSetAltered(notes);
+  noteSetAltered(notes, "Simpler made");
 
   return device.exists()
     ? {

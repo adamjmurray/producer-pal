@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import * as console from "../../transform-warning-label.ts";
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
@@ -15,12 +15,6 @@ import { type EvalContext } from "../transform-context.ts";
  * @returns Random value in configured range
  */
 export function evaluateRand(args: ExpressionNode[], ctx: EvalContext): number {
-  if (args.length > 2) {
-    throw new Error(
-      `Function rand() accepts 0-2 arguments: rand(), rand(max), or rand(min, max)`,
-    );
-  }
-
   // No args: random -1 to 1
   if (args.length === 0) {
     return waveforms.rand(-1, 1);
@@ -51,10 +45,6 @@ export function evaluateChoose(
   args: ExpressionNode[],
   ctx: EvalContext,
 ): number {
-  if (args.length === 0) {
-    throw new Error("Function choose() requires at least 1 argument");
-  }
-
   return waveforms.choose(args.map((arg) => ctx.evaluateExpression(arg, ctx)));
 }
 
@@ -68,23 +58,17 @@ export function evaluateChoose(
  * clip-granular ones. clipseq() has no fallback — forcing the clip axis onto a
  * note property must not silently borrow note.index. When no axis is in scope,
  * warns and returns the first value.
- * @param fnName - Function name for errors/warnings
  * @param axisKey - Primary NoteProperties key supplying the cycle index
  * @param missingWarning - Warning emitted when no usable axis is in scope
  * @param fallbackKey - Optional secondary axis key tried when the primary is absent
  * @returns Evaluator with the standard transform-function signature
  */
 function buildIndexedSeq(
-  fnName: string,
   axisKey: string,
   missingWarning: string,
   fallbackKey?: string,
 ): typeof evaluateRand {
   return function evaluate(args, ctx) {
-    if (args.length === 0) {
-      throw new Error(`Function ${fnName}() requires at least 1 argument`);
-    }
-
     const { noteProperties } = ctx;
     const rawIndex =
       noteProperties[axisKey] ??
@@ -107,7 +91,6 @@ function buildIndexedSeq(
  * clip axis there (== clipseq() for those).
  */
 export const evaluateSeq = buildIndexedSeq(
-  "seq",
   "index",
   "seq() needs note.index or clip.index. Returning first value.",
   "clip:index",
@@ -115,7 +98,6 @@ export const evaluateSeq = buildIndexedSeq(
 
 /** clipseq(a, b, ...) — cycle by clip.index (per-clip across the batch). */
 export const evaluateClipSeq = buildIndexedSeq(
-  "clipseq",
   "clip:index",
   "clipseq() needs clip.index — did you mean seq()? Returning first value.",
 );

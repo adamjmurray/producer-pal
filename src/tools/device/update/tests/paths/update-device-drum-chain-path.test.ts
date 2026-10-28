@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Pad C1 holds two layers and pad D1 one, so the rack's two chain numberings
 // disagree: pC1/c0 and pC1/c1 are chains 0 and 2, and pD1/c0 is chain 1.
@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   children,
   livePath,
+  mockNonExistentObjects,
   mockWorkingDeviceMoves,
   registerMockObject,
   updateDevice,
@@ -19,6 +20,7 @@ import {
   LAYERED_CHAIN_NOTES,
   registerLayeredDrumRack,
 } from "#src/tools/device/tests/helpers/device-rack-fixtures.ts";
+import { writtenContainer } from "#src/tools/device/update/helpers/call/resolve-device-target.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
@@ -198,7 +200,7 @@ describe("updateDevice — drum chain path spelling", () => {
     ).toStrictEqual({ id: "plain-dev", path: "t0/d0/pC1/c1/d0" });
 
     // The device it displaced answers with the index it shifted to.
-    expect(updateDevice({ id: "dev-2" })).toStrictEqual({
+    expect(updateDevice({ id: "dev-2", focus: true })).toStrictEqual({
       id: "dev-2",
       path: "t0/d0/pC1/c1/d1",
     });
@@ -228,5 +230,35 @@ describe("updateDevice — drum chain path spelling", () => {
     expect(
       updateDevice({ path: "t1/d0", toPath: "t0/d0/pC1/c+" }),
     ).toStrictEqual({ id: "plain-dev", path: "t0/d0/pC1/c2/d0" });
+  });
+});
+
+describe("writtenContainer", () => {
+  it("has nothing to echo for an id-addressed target", () => {
+    expect(writtenContainer(undefined)).toBeUndefined();
+  });
+
+  it("resolves a pad spelling to its first chain", () => {
+    registerMockObject("kit", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: { can_have_drum_pads: 1, chains: children("chain-0") },
+    });
+    registerMockObject("chain-0", {
+      path: livePath.track(0).device(0).chain(0),
+      type: "DrumChain",
+      properties: { in_note: 36 },
+    });
+
+    const written = writtenContainer("t0/d0/pC1/c0");
+
+    expect(written?.path).toBe("t0/d0/pC1");
+    expect(written?.container()?.id).toBe("chain-0");
+  });
+
+  it("resolves to nothing for a spelling that is not a path", () => {
+    mockNonExistentObjects();
+
+    expect(writtenContainer("pC1/c0")?.container()).toBeNull();
   });
 });

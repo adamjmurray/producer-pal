@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for the drum-pad sample pseudo-param (path-prefixed params).
@@ -22,9 +22,9 @@ import {
   parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
-  supportsSampleLoading,
   trackIndexFromPath,
 } from "../../mcp-test-helpers";
+import { liveVersionAtLeast } from "../../workflow/helpers/server-capability-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -33,7 +33,7 @@ const ctx = setupMcpTestContext({ once: true });
 let canLoadSamples = true;
 
 beforeAll(async () => {
-  canLoadSamples = await supportsSampleLoading(ctx.client!);
+  canLoadSamples = await liveVersionAtLeast(ctx.client!, "12.4");
 });
 
 interface CreateTrackResult {
@@ -160,7 +160,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
         await ctx.client!.callTool({
           name: "ppal-create-device",
           arguments: {
-            device: "Drum Rack",
+            deviceName: "Drum Rack",
             path: `t${t}`,
             params: [
               { name: "pC1/sample", value: KICK_FILE },
@@ -302,7 +302,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     // one before the Operator has anywhere to land.
     await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { device: "Operator", path: `${nested}/pE1` },
+      arguments: { deviceName: "Operator", path: `${nested}/pE1` },
     });
 
     await sleep(150);
@@ -323,7 +323,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     // Put a DrumSampler on pad E1.
     await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { device: "DrumSampler", path: `${rack}/pE1/d0` },
+      arguments: { deviceName: "DrumSampler", path: `${rack}/pE1/d0` },
     });
 
     await sleep(150);
@@ -441,7 +441,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     // leaves an empty chain on C1 and the lookup that follows fails anyway.
     const result = await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { device: "Operator", path: `${rack}/p*` },
+      arguments: { deviceName: "Operator", path: `${rack}/p*` },
     });
 
     expect(isToolError(result)).toBe(true);

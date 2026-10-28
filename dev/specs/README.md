@@ -11,6 +11,11 @@ whole tree.
   ([src/notation/transform/](../../src/notation/transform/))
 - [stark-spec.md](stark-spec.md) — Stark notation
   ([src/notation/stark/](../../src/notation/stark/))
+- [envelope-notation.md](envelope-notation.md) — clip automation envelopes
+  ([src/notation/barbeat/envelope/](../../src/notation/barbeat/envelope/))
+- [tool-behavior/](tool-behavior/README.md) — how every tool answers a call:
+  paths, lists, refusals, skips, result entries, overwrites. The next level of
+  detail below [PRINCIPLES.md](../PRINCIPLES.md).
 
-These have no test guarding them — update them by hand when you change grammar
-syntax.
+The grammar specs have no test guarding them — update them by hand when you
+change grammar syntax. Update `tool-behavior/` when a tool's behavior changes.

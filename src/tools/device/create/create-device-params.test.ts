@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -219,8 +219,7 @@ describe("createDevice params", () => {
         params: [
           {
             name: "Threshold",
-            ok: false,
-            detail: 'set again by "threshold" later in the list',
+            detail: 'named again as "threshold" later in this call',
           },
           { id: "threshold", name: "Threshold", value: -30 },
         ],
@@ -250,8 +249,7 @@ describe("createDevice params", () => {
         params: [
           {
             id: "threshold",
-            ok: false,
-            detail: 'set again by "Threshold" later in the list',
+            detail: 'named again as "Threshold" later in this call',
           },
           { id: "threshold", name: "Threshold", value: -30 },
         ],

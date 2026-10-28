@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic), Codex (OpenAI)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * AI SDK provider factory for evals.
@@ -13,8 +13,9 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { type LanguageModel } from "ai";
+import { createGateway, type LanguageModel } from "ai";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
+import { cacheAnthropicRequest } from "./anthropic-cache.ts";
 import {
   ANTHROPIC_CONFIG,
   GEMINI_CONFIG,
@@ -22,6 +23,7 @@ import {
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
   validateApiKey,
+  VERCEL_CONFIG,
 } from "#evals/shared/provider-configs.ts";
 
 const LOCAL_DEFAULT_BASE_URL = "http://localhost:11434/v1";
@@ -41,7 +43,7 @@ export function createProviderModel(
     case "anthropic": {
       const apiKey = validateApiKey(ANTHROPIC_CONFIG);
 
-      return createAnthropic({ apiKey })(model);
+      return createAnthropic({ apiKey, fetch: cacheAnthropicRequest })(model);
     }
 
     case "google": {
@@ -60,6 +62,12 @@ export function createProviderModel(
       const apiKey = validateApiKey(OPENROUTER_CONFIG);
 
       return createOpenRouter({ apiKey }).chat(model);
+    }
+
+    case "vercel": {
+      const apiKey = validateApiKey(VERCEL_CONFIG);
+
+      return createGateway({ apiKey })(model);
     }
 
     case "local": {

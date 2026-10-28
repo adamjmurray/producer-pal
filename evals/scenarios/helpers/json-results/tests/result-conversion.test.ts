@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Tests for result-conversion.ts
@@ -232,6 +232,14 @@ describe("toJsonResult", () => {
     expect(result.error).toBe("Connection failed");
   });
 
+  it.each([
+    ["errored before the first turn", [], "Live would not swap Sets", "error"],
+    ["was refused by the provider", [makeTurn()], "usage limit", "error"],
+    ["hit some other error mid-run", [makeTurn()], "timed out", "pass"],
+  ])("grades a run that %s", (_label, turns, error, outcome) => {
+    expect(convert({ turns, error }).result).toBe(outcome);
+  });
+
   it("handles zero checks gracefully", () => {
     const result = convert({ assertions: [] });
 
@@ -317,6 +325,28 @@ describe("toJsonResult", () => {
     const result = convert();
 
     expect(result.turns[0]?.usage).not.toHaveProperty("reasoningTokens");
+  });
+
+  it("sums cache reads and writes across steps, omitting them when zero", () => {
+    const result = convert({
+      turns: [
+        makeTurn({
+          stepUsages: [
+            { inputTokens: 9000, outputTokens: 10, cacheWriteTokens: 8000 },
+            { inputTokens: 9500, outputTokens: 10, cacheReadTokens: 8000 },
+            { inputTokens: 9900, outputTokens: 10, cacheReadTokens: 9400 },
+          ],
+        }),
+      ],
+    });
+
+    expect(result.turns[0]?.usage).toStrictEqual({
+      inputTokens: 28400,
+      outputTokens: 30,
+      cacheReadTokens: 17400,
+      cacheWriteTokens: 8000,
+    });
+    expect(convert().turns[0]?.usage).not.toHaveProperty("cacheReadTokens");
   });
 
   it("includes reflection on failing check when present", () => {

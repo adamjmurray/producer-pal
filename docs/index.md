@@ -18,11 +18,11 @@ hero:
     alt: Producer Pal
   actions:
     - theme: brand
+      text: Get Started
+      link: /installation
+    - theme: alt
       text: Download for Ableton Live
       link: https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd
-    - theme: alt
-      text: Installation Guide
-      link: /installation
     - theme: alt
       text: User Guide
       link: /guide
@@ -47,8 +47,8 @@ features:
   - title: Open Source & Free Forever
     details: >
       Built on shared knowledge, shared back to all of us. No subscriptions, no
-      paywalls, no premium tiers. GPL-3.0 licensed and developed completely in
-      the open.
+      paywalls, no premium tiers. MIT licensed and developed completely in the
+      open.
     link: https://github.com/adamjmurray/producer-pal
     linkText: View on GitHub
 ---
@@ -98,10 +98,10 @@ features:
         </div>
         <p class="card-description">Dedicated AI apps</p>
         <ul class="card-links">
-          <li><a href="/installation/claude-desktop">Claude Desktop</a> <span class="tag">easiest</span></li>
+          <li><a href="/installation/claude-desktop">Claude Desktop</a></li>
           <li><a href="/installation/chatgpt-app">ChatGPT App (OpenAI)</a></li>
-          <li><a href="/installation/antigravity">Antigravity (Google)</a></li>
-          <li><a href="/installation/bionic">LM Studio Bionic</a> <span class="tag">offline</span></li>
+          <li><a href="/installation/antigravity">Google Antigravity</a></li>
+          <li><a href="/installation/bionic">Bionic / LM Studio</a> <span class="tag">offline</span></li>
         </ul>
       </div>
       <div class="get-started-card card-secondary">
@@ -115,10 +115,10 @@ features:
         </div>
         <p class="card-description">Browser-based chat</p>
         <ul class="card-links">
-          <li><a href="/installation/ollama">Ollama</a> <span class="tag">offline</span></li>
-          <li><a href="/installation/chat-ui-other-providers#openrouter">OpenRouter</a></li>
-          <li><a href="/installation/gemini">Gemini</a></li>
-          <li><a href="/installation/chat-ui-other-providers">Mistral, etc.</a></li>
+          <li><a href="/installation/choose-local">Local AI</a> <span class="tag">offline</span></li>
+          <li><a href="/installation/ai-routers#openrouter">OpenRouter</a></li>
+          <li><a href="/installation/ai-routers#vercel-ai-gateway">Vercel AI Gateway</a></li>
+          <li><a href="/installation/chat-ui">Your own API key</a></li>
         </ul>
       </div>
       <div class="get-started-card card-tertiary">
@@ -203,10 +203,10 @@ features:
 **More helpful videos:**
 
 - [How to setup Producer Pal with Gemini](https://www.youtube.com/watch?v=A_NXOtnR57M&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-  ([written guide](/installation/gemini)). _Note: free tier now has strict
-  limits._
+  ([written guide](/installation/api-keys#gemini)). _Note: the free use shown
+  here is now very limited._
 - [How to setup Producer Pal with Gemini CLI](https://www.youtube.com/watch?v=jd3wTdDqd4Y&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-  (for command line users). _Note: free tier now has strict limits._
+  (for command line users). _Note: the free use shown here is now very limited._
 
 ## About Producer Pal
 
@@ -217,14 +217,14 @@ real edits in your Live Set: creating tracks, writing MIDI and audio clips,
 tweaking instruments and effects, building arrangements.
 
 It works with any MCP-compatible AI: Claude, Gemini, ChatGPT, Mistral, and local
-models via Ollama or LM Studio Bionic. The AI is optional. The same device
+models via Ollama or Bionic / LM Studio. The AI is optional. The same device
 exposes an open [REST API](/guide/rest-api), so anything that can make an HTTP
 request (scripts, coding agents, your own tools) can read and edit a Live Set
 with no AI involved. There's also a portable [Agent Skill](/guide/skills) for
 Claude Code, Codex CLI, Gemini CLI, and any SKILL.md-compatible runtime.
 
-Producer Pal is free, open-source (GPL-3.0), and developed in the open, with
-updates for new Ableton Live features.
+Producer Pal is free, open-source (MIT), and developed in the open, with updates
+for new Ableton Live features.
 
 ## Support
 

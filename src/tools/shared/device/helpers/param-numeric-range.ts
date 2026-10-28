@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { parseLabel, strForValue } from "./param-label-parsing.ts";
 
@@ -104,6 +104,26 @@ export function readNumericRange(
         maxLabel: trimmed.label,
         sentinel,
       };
+}
+
+/**
+ * Whether a param prints the same label at both ends of a raw range that has
+ * room in it. Some plug-ins (ValhallaFreqEcho) answer str_for_value with the
+ * current display whatever value is asked about, so there is no display range
+ * to find, and the param is read and written in raw units instead.
+ * @param rawMin - Raw minimum value
+ * @param rawMax - Raw maximum value
+ * @param minLabel - str_for_value(rawMin)
+ * @param maxLabel - str_for_value(rawMax)
+ * @returns True when the display gives nothing to convert from
+ */
+export function isDisplayCollapsed(
+  rawMin: number,
+  rawMax: number,
+  minLabel: string,
+  maxLabel: string,
+): boolean {
+  return rawMin !== rawMax && minLabel === maxLabel;
 }
 
 /**

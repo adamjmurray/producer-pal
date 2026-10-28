@@ -1,22 +1,28 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { constants, gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { MIN_LIVE_VERSION } from "#src/shared/config.ts";
-import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
+import {
+  projectRoot,
+  TEST_LIVE_SET_DIRS,
+} from "#src/test/helpers/meta-test-helpers.ts";
 
-// Live cannot open a Set saved by a newer Live. A test Set authored above
-// MIN_LIVE_VERSION is therefore unrunnable on the oldest version we claim to
-// support, and nothing notices until someone tries. This reads the version
-// stamp out of the file, so it needs no Ableton and runs in CI.
-const LIVE_SET_DIRS = ["e2e/live-sets", "evals/live-sets"];
+// Live cannot open a Set saved by a newer Live, and presets carry the same
+// stamp. A test file authored above MIN_LIVE_VERSION is therefore unusable on
+// the oldest version we claim to support, and nothing notices until someone
+// tries. This reads the version stamp out of the file, so it needs no Ableton
+// and runs in CI.
 
-// An .als is gzipped XML whose root element carries the stamp:
+// Live Sets, rack presets and device presets.
+const LIVE_FILE_EXTENSIONS = [".als", ".adg", ".adv"];
+
+// Each is gzipped XML whose root element carries the stamp:
 //
 //   <Ableton MajorVersion="5" MinorVersion="12.0_12300" Creator="Ableton Live 12.3.2" ...>
 //
@@ -34,16 +40,17 @@ const MINOR_VERSION_ATTR = /\bMinorVersion="([^"]*)"/;
 // test — so the pattern is strict and a miss throws.
 const MINOR_VERSION_FORMAT = /^(\d+)\.\d+_(\d{5})$/;
 
-describe("test Live Set versions", () => {
-  const liveSets = LIVE_SET_DIRS.flatMap(findLiveSets);
+describe("test Live Set and preset versions", () => {
+  const liveFiles = TEST_LIVE_SET_DIRS.flatMap(findLiveFiles);
   const minSchema = parseMinLiveVersion(MIN_LIVE_VERSION);
 
-  it("finds the test Live Sets", () => {
+  it("finds the test Live Sets and presets", () => {
     // Without this the suite passes by finding nothing.
-    expect(liveSets.length).toBeGreaterThan(0);
+    expect(liveFiles.length).toBeGreaterThan(0);
+    expect(liveFiles.some((file) => file.endsWith(".adg"))).toBe(true);
   });
 
-  it.each(liveSets)("%s opens in Live " + MIN_LIVE_VERSION, (relPath) => {
+  it.each(liveFiles)("%s opens in Live " + MIN_LIVE_VERSION, (relPath) => {
     const schema = readSchemaVersion(path.join(projectRoot, relPath));
 
     if (schema > minSchema) {
@@ -76,39 +83,39 @@ describe("parseSchemaVersion", () => {
 });
 
 /**
- * Finds every .als under a repo-relative directory.
+ * Finds every Live Set and preset under a repo-relative directory.
  * @param relDir - Directory relative to the repo root
- * @returns Repo-relative paths to the Live Sets found, sorted
+ * @returns Repo-relative paths to the files found, sorted
  */
-function findLiveSets(relDir: string): string[] {
+function findLiveFiles(relDir: string): string[] {
   return readdirSync(path.join(projectRoot, relDir), { recursive: true })
     .map(String)
-    .filter((entry) => entry.endsWith(".als"))
+    .filter((entry) => LIVE_FILE_EXTENSIONS.some((ext) => entry.endsWith(ext)))
     .map((entry) => path.join(relDir, entry))
     .toSorted();
 }
 
 /**
- * Reads the schema version out of a Live Set.
- * @param alsPath - Absolute path to the .als
+ * Reads the schema version out of a Live Set or preset.
+ * @param filePath - Absolute path to the file
  * @returns The major/minor schema key, e.g. 123 for Live 12.3
  */
-function readSchemaVersion(alsPath: string): number {
+function readSchemaVersion(filePath: string): number {
   // The stamp is in the first line, so inflating a slice is enough. Z_SYNC_FLUSH
   // makes zlib return what it has instead of rejecting the truncated stream.
-  const header = gunzipSync(readFileSync(alsPath).subarray(0, 2048), {
+  const header = gunzipSync(readFileSync(filePath).subarray(0, 2048), {
     finishFlush: constants.Z_SYNC_FLUSH,
   }).toString("utf8");
   const tag = ABLETON_TAG.exec(header)?.[0];
 
   if (tag == null) {
-    throw new Error(`${alsPath}: no <Ableton> element in the first 2KB`);
+    throw new Error(`${filePath}: no <Ableton> element in the first 2KB`);
   }
 
   const minorVersion = MINOR_VERSION_ATTR.exec(tag)?.[1];
 
   if (minorVersion == null) {
-    throw new Error(`${alsPath}: <Ableton> element has no MinorVersion`);
+    throw new Error(`${filePath}: <Ableton> element has no MinorVersion`);
   }
 
   return parseSchemaVersion(minorVersion);

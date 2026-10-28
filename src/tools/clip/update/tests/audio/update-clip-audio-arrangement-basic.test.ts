@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
@@ -201,7 +201,7 @@ describe("Unlooped warped audio clips - cap when file partially sufficient", () 
       assertSourceClipEndMarker(clip, 8.0);
 
       // Single clip returned (extended in place via loop_end, no tiles)
-      // unwrapSingleResult returns single object for single-element arrays
+      // A lone target returns its entry unwrapped
       expect(result).toStrictEqual({
         id: cId,
         path: "t0[1|1]",
@@ -230,7 +230,7 @@ describe("Unlooped warped audio clips - extend when file has sufficient content"
     assertSourceClipEndMarker(clip, 14.0);
 
     // Single clip returned (extended in place via loop_end, no tiles)
-    // unwrapSingleResult returns single object for single-element arrays
+    // A lone target returns its entry unwrapped
     expect(result).toStrictEqual({ id: "661", path: "t0[1|1]" });
     mockCreate.mockRestore();
   });

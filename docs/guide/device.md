@@ -13,8 +13,15 @@ to AI by giving it an interface to the Live API.
   trying to start.
 - **Docs** - Link to this documentation site
 - **Open Chat UI** - Opens the built-in Chat UI in your default browser. The UI
-  is also reachable from other devices on your local network (handy for phone
-  access, but be mindful on shared networks).
+  is also reachable from other devices on your local network (handy for
+  [phone access](/installation/remote-access#chat-from-a-phone-or-another-computer),
+  but be mindful on shared networks).
+- **Finish installation…** - Shown while the User Library copy of the device or
+  the remote script is missing or out of date. Opens the Chat UI's
+  [Installation](/guide/chat-ui#installation) tab. Hidden while **Update
+  available** shows.
+- **Update available** - A newer release exists. The **×** dismisses it for that
+  version (same as the **×** next to **(update)** in the Chat UI).
 
 If you see "Producer Pal Error", click the three-dot menu in the upper right of
 the device, select "Open Max Window", scroll down if needed, and look for an

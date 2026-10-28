@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { extractErrorSummary } from "#webui/components/chat/assistant/helpers/tool-call-error-summary";
 import { haltedToolStatus } from "#webui/components/chat/assistant/helpers/tool-call-halted-status";
@@ -136,6 +136,19 @@ function describeToolCall(
 }
 
 /**
+ * Turn the `\n` escapes in pretty-printed JSON into real line breaks. Escapes
+ * are read in pairs, so an escaped backslash followed by "n" (`\\n`, e.g. a
+ * Windows path) stays as written.
+ * @param json - Output of JSON.stringify
+ * @returns The JSON text with string newlines shown as line breaks
+ */
+function showEscapedNewlines(json: string): string {
+  return json.replaceAll(/\\(.)/g, (pair, char: string) =>
+    char === "n" ? "\n" : pair,
+  );
+}
+
+/**
  * Formats and displays full tool result with JSON formatting
  * @param {object} root0 - Component props
  * @param {string} root0.result - Tool result to format
@@ -148,10 +161,11 @@ function FullResultDetails({ result }: { result: string }) {
   if (s.startsWith("{") || s.startsWith("[") || s.startsWith('"')) {
     try {
       const parsed: unknown = JSON.parse(s);
-      const display =
-        typeof parsed === "string" ? parsed : JSON.stringify(parsed, null, 2);
 
-      formatted = display.replaceAll("\\n", "\n");
+      formatted =
+        typeof parsed === "string"
+          ? parsed
+          : showEscapedNewlines(JSON.stringify(parsed, null, 2));
     } catch {
       // JSON parsing failed, will render as plain text
     }

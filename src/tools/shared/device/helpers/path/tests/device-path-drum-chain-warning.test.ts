@@ -1,11 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Input paths resolve either spelling of a drum chain; only the warning
 // depends on which one the caller used. See
-// dev/tools/object-paths/results-and-errors.md.
+// dev/specs/tool-behavior/object-paths/results-and-errors.md.
 
 import { describe, expect, it } from "vitest";
 import "#src/live-api-adapter/live-api-extensions.ts";

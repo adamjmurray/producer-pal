@@ -13,6 +13,10 @@ own tools can read and edit a Live Set with plain HTTP.
 
 ## Quick Start
 
+Needs [Ableton Live 12.3+](https://www.ableton.com/live/) with
+[Max for Live](https://www.ableton.com/live/max-for-live/). Live 12.4 or later
+is recommended: a few features don't work on 12.3.
+
 1. **Install**: Download
    [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
 2. **Setup**: Follow the
@@ -56,12 +60,24 @@ Star ⭐️ the repo to help others discover Producer Pal!
 Want to contribute? See [CONTRIBUTING.md](./CONTRIBUTING.md). Building from
 source and other technical details are in [DEVELOPERS.md](./DEVELOPERS.md).
 
+### Contributors
+
+Thanks to everyone who has contributed to Producer Pal:
+
+- Eike Haß ([@eike-hass](https://github.com/eike-hass))
+- Taylor Haun ([@taylorhaun](https://github.com/taylorhaun))
+- Guido Macchi (outside contributor)
+- Dominik Zeman
+  ([@dominikzeman56-cloud](https://github.com/dominikzeman56-cloud))
+
 ## Open Source
 
 Producer Pal is open source software licensed under the
-[GNU General Public License (GPL-3.0)](./LICENSE). This means:
+[MIT License](./LICENSE). This means:
 
 - Free to use (no subscriptions, paywalls, or "premium" features)
 - Source code is public and development happens on GitHub
-- Forks and modifications are allowed under GPL
-- Redistributed versions (modified or not) must remain open source
+- You can fork, modify, and redistribute it, including in commercial projects,
+  as long as you keep the license notice
+- The Producer Pal name is a trademark, so a fork needs its own name (see
+  [TRADEMARK.md](./TRADEMARK.md))

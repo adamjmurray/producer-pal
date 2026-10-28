@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -25,7 +25,7 @@ describe("MCP Express App - Config", () => {
     let configUrl: string;
 
     beforeAll(() => {
-      configUrl = appState.serverUrl.replace("/mcp", "/config");
+      configUrl = appState.configUrl;
     });
 
     it("should return current config on GET /config", async () => {
@@ -46,7 +46,7 @@ describe("MCP Express App - Config", () => {
       });
     });
 
-    it("should update notation on POST /config and ignore invalid values", async () => {
+    it("should update notation on POST /config and refuse invalid values", async () => {
       const initialResponse = await fetch(configUrl);
       const initialConfig = await initialResponse.json();
 
@@ -57,13 +57,16 @@ describe("MCP Express App - Config", () => {
 
       expect(updatedConfig.notation).toBe("midi-json");
 
-      // Invalid values are ignored, leaving the current setting intact
+      // Invalid values are refused, leaving the current setting intact
       const invalidResponse = await appState.postConfig({
         notation: "not-a-notation",
       });
-      const invalidConfig = await invalidResponse.json();
 
-      expect(invalidConfig.notation).toBe("midi-json");
+      expect(invalidResponse.status).toBe(400);
+      const currentResponse = await fetch(configUrl);
+      const current = await currentResponse.json();
+
+      expect(current.notation).toBe("midi-json");
 
       // Restore
       await appState.postConfig({ notation: initialConfig.notation });
@@ -306,7 +309,7 @@ describe("MCP Express App - Config", () => {
       // Unlike /config, /mcp is deliberately NOT localhost-gated: the chat UI's
       // getMcpUrl() points at the page's own origin, so over LAN/tunnel it POSTs
       // /mcp with a non-localhost Origin. A localhost gate here would 403 the
-      // LAN/tunnel chat's own tool calls and break the documented web-tunnels
+      // LAN/tunnel chat's own tool calls and break the documented remote access
       // feature. Locked so the gate isn't added by mistake. (403 is returned
       // only by the /config origin gate, so "not 403" == "not origin-blocked".)
       const response = await fetch(appState.serverUrl, {
@@ -327,7 +330,7 @@ describe("MCP Express App - Config", () => {
     let configUrl: string;
 
     beforeAll(() => {
-      configUrl = appState.serverUrl.replace("/mcp", "/config");
+      configUrl = appState.configUrl;
     });
 
     it("should only include specified tools in listTools", async () => {

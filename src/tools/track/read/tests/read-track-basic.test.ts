@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -120,6 +120,22 @@ describe("readOneTrack", () => {
     });
   });
 
+  it("reports a frozen track", () => {
+    setupTrackPathMappedMocks({
+      trackId: "track1",
+      objects: {
+        Track: createSoloedMidiTrackProperties({ arm: 0, is_frozen: 1 }),
+      },
+    });
+
+    expect(readOneTrack({ trackIndex: 0 })).toStrictEqual({
+      ...expectedSoloedMidiTrackResult(),
+      isFrozen: true,
+      playingSlotIndex: 2,
+      firedSlotIndex: 3,
+    });
+  });
+
   it("reports an all-digit track name as a string", () => {
     setupTrackPathMappedMocks({
       trackId: "track1",
@@ -216,9 +232,15 @@ describe("readOneTrack", () => {
     });
 
     const result = readOneTrack({ trackIndex: 0 });
+    // A group holds no clips, so it has no counts to report.
+    const {
+      sessionClipCount: _session,
+      arrangementClipCount: _arrangement,
+      ...soloed
+    } = expectedSoloedMidiTrackResult();
 
     expect(result).toStrictEqual({
-      ...expectedSoloedMidiTrackResult(),
+      ...soloed,
       isGroup: true,
       isGroupMember: true,
       groupId: "456",

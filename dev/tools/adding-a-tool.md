@@ -12,7 +12,8 @@ them — this list is so you don't discover that one at a time.
    and `<name>.ts` (the handler) beside it, plus `tests/`. See
    [tool-schemas.md](tool-schemas.md) for param shapes and per-mode
    descriptions. Set `annotations.readOnlyHint: true` if it changes nothing in
-   Live's undo history.
+   Live's undo history. `omitInSmallModel: true` keeps it out of small-model
+   mode entirely (`ppal-manage`).
 
 2. **Register the def** in `STANDARD_TOOL_DEFS`
    ([create-mcp-server.ts](../../src/mcp-server/create-mcp-server.ts)). This is
@@ -39,12 +40,16 @@ them — this list is so you don't discover that one at a time.
 6. **Document it** in [docs/features/tools.md](../../docs/features/tools.md) — a
    hand-written section plus two generated partials: the schema table
    (`npm run docs:schemas`) and an example call (`npm run docs:examples`). The
-   tool count in the page's frontmatter description is hand-written too.
+   tool counts in `docs/features.md`, `docs/guide/optimizing.md` and
+   `docs/guide/chat-ui.md` are hand-written and untested: update them too.
 
 7. **Add an example call** to `TOOL_EXAMPLES`
    ([example-live-set/calls.ts](../../scripts/build-and-release/tool-reference/example-live-set/calls.ts)),
    which runs against the mock Live Set in that directory. Every tool needs one.
    If the fixture has nothing your tool can act on, add it there too.
+
+A write tool also runs through the shared pipeline and joins its conformance
+suite: see [write-pipeline.md](write-pipeline.md).
 
 Then `npm run fix && npm run check`. The tests that hold steps 4, 5, and 7 are
 [tool-groups-catalog.test.ts](../../src/shared/tests/tool-groups-catalog.test.ts),

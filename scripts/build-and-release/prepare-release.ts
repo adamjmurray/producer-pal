@@ -2,11 +2,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { execSync } from "node:child_process";
 import {
-  copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -16,6 +15,12 @@ import {
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildFlagGuard } from "./helpers/build-flag-guard.ts";
+import {
+  checkTreeClean,
+  type Checkout,
+  gitIn,
+  readCheckout,
+} from "./helpers/release-package/build-info.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "../..");
@@ -32,25 +37,33 @@ if (flagRefusal != null) {
 }
 
 // Deliberately does NOT expect a tag yet. Building comes first, tagging comes
-// after the artifacts have been looked at (`npm run tag`) — see dev/process/releasing.md.
+// after the artifacts have been looked at (`npm run tag`) — see dev/process/releasing/build-and-pre-release.md.
 
 // Get version from package.json
 const pkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
+
+let checkout: Checkout;
+
+try {
+  checkout = readCheckout(gitIn(rootDir));
+} catch (error) {
+  console.error(`\n❌ Could not resolve the build SHA: ${String(error)}`);
+  console.error("   Releases must be built from a git checkout.");
+  process.exit(1);
+}
 
 // Baked into the bundles and shown next to the version in the device UI. It is
 // diagnostic only: which commit produced these bytes, for when a bug report and
 // a version number disagree. The update check does not read it — the version
 // string alone answers that now that every build carries its own -rcN.
-let buildSha: string;
+const buildSha = checkout.head;
 
-try {
-  buildSha = execSync("git rev-parse --short=7 HEAD", {
-    encoding: "utf8",
-    stdio: ["pipe", "pipe", "ignore"],
-  }).trim();
-} catch (error) {
-  console.error(`\n❌ Could not resolve the build SHA: ${String(error)}`);
-  console.error("   Releases must be built from a git checkout.");
+// build-info.json records HEAD. A dirty tree would put changes in the artifacts
+// that no commit holds, and reverting them later would pass every other check.
+const dirty = checkTreeClean(checkout);
+
+if (dirty != null) {
+  console.error(`\n❌ Not building.\n${dirty.join("\n")}\n`);
   process.exit(1);
 }
 
@@ -66,11 +79,12 @@ if (existsSync(releaseDir)) {
 
 mkdirSync(releaseDir);
 
-// Build
-console.log("Building desktop extension...");
+// Build the bundles, then freeze the device from them. The mcpb and the npm
+// folder come later, from `npm run release:mcpb`.
+console.log("Building bundles...");
 
 try {
-  execSync("npm run build", {
+  execSync("npm run build:bundles", {
     cwd: rootDir,
     stdio: "inherit",
     env: { ...process.env, BUILD_SHA: buildSha },
@@ -80,20 +94,6 @@ try {
   console.error("Release directory was created but contains no artifacts.");
   process.exit(1);
 }
-
-// Copy .mcpb file
-const dxtSource = join(rootDir, "claude-desktop-extension/Producer_Pal.mcpb");
-const dxtDest = join(releaseDir, "Producer_Pal.mcpb");
-
-if (!existsSync(dxtSource)) {
-  console.error(
-    "❌ Error: Producer_Pal.mcpb not found. Build may have failed.",
-  );
-  process.exit(1);
-}
-
-copyFileSync(dxtSource, dxtDest);
-console.log("\n✅ Copied Producer_Pal.mcpb to release/");
 
 // Building and tagging are separate steps so the tag lands on artifacts someone
 // has looked at. The gap between them is the risk: a commit, or a version bump,
@@ -105,17 +105,18 @@ writeFileSync(
   JSON.stringify({ version: pkg.version, commit: buildSha }, null, 2) + "\n",
 );
 
-console.log("\n📋 Next steps:");
-console.log("1. Open max-for-live-device/Producer_Pal.amxd in Max");
-console.log("2. Click the freeze button");
-console.log("3. Save as: release/Producer_Pal.amxd");
-console.log("4. Test both files work correctly");
-console.log("5. Tag the release: npm run tag");
-console.log(
-  "6. Create the GitHub release, test, and proceed per dev/process/releasing.md",
-);
-console.log(
-  `\n🔖 These files call themselves ${pkg.version} (build ${buildSha}). If step 4 turns up\n` +
-    "   anything, don't rebuild under the same number — npm run version:bump:rc,\n" +
-    "   then build again, so the replacement is a version testers can name.\n",
-);
+// After build-info.json: package-release refuses a device older than it.
+// Writes release/Producer_Pal.amxd only; the checked-in device is untouched.
+console.log("\nFreezing the device...");
+
+try {
+  execSync("npm run device:freeze", { cwd: rootDir, stdio: "inherit" });
+} catch (error) {
+  console.error(`\n❌ Freeze failed: ${String(error)}`);
+  process.exit(1);
+}
+
+// `npm run release` passes --chain and prints the final steps after release:mcpb.
+if (!process.argv.includes("--chain")) {
+  console.log("\n📋 Next: npm run release:mcpb\n");
+}

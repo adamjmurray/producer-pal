@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import {
@@ -9,7 +9,10 @@ import {
   COMMENT_TREES,
 } from "#src/test/helpers/comment-scan-helpers.ts";
 import { MAIN_EXPORT_LIMITS } from "#src/test/helpers/naming/main-export-limits.ts";
-import { findMainExportViolations } from "#src/test/helpers/naming/main-export-scan.ts";
+import {
+  findMainExportViolations,
+  type ModuleExports,
+} from "#src/test/helpers/naming/main-export-scan.ts";
 
 // A ratchet on modules whose exports say nothing their filename says. It checks
 // a weaker rule than AGENTS.md's, on purpose.
@@ -24,18 +27,38 @@ import { findMainExportViolations } from "#src/test/helpers/naming/main-export-s
 // exported function or class has to share a word with the filename. The caps,
 // and the rule for changing them, live in helpers/naming/main-export-limits.ts.
 
+// Parsing a whole tree is slow on a loaded CI runner with coverage on, so each
+// tree is scanned once and both its tests share the result.
+const violationsByTree = new Map<CommentTree, ModuleExports[]>();
+
+/**
+ * A tree's offending modules, scanned on first use
+ * @param tree - Tree name
+ * @returns The offending modules, sorted by path
+ */
+function violationsIn(tree: CommentTree): ModuleExports[] {
+  let violations = violationsByTree.get(tree);
+
+  if (violations == null) {
+    violations = findMainExportViolations(tree);
+    violationsByTree.set(tree, violations);
+  }
+
+  return violations;
+}
+
 /**
  * Repo-relative paths of a tree's offending modules, with their exports
  * @param tree - Tree name
  * @returns One line per module, for a failure message
  */
 function violationLines(tree: CommentTree): string[] {
-  return findMainExportViolations(tree).map(
+  return violationsIn(tree).map(
     (entry) => `  ${entry.file}: ${entry.names.slice(0, 5).join(", ")}`,
   );
 }
 
-describe("Main export limits", () => {
+describe("Main export limits", { timeout: 30_000 }, () => {
   for (const tree of COMMENT_TREES) {
     const limit = MAIN_EXPORT_LIMITS[tree];
 
@@ -55,7 +78,7 @@ describe("Main export limits", () => {
     });
 
     it(`should lower the ${tree} cap when the count falls`, () => {
-      const count = findMainExportViolations(tree).length;
+      const count = violationsIn(tree).length;
 
       if (limit > count) {
         expect.fail(

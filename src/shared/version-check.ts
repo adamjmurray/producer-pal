@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // `/releases/latest` excludes anything marked as a pre-release, and we depend on
 // that: there is no opt-in beta track, so people on the current stable release
@@ -95,17 +95,40 @@ export function isNewerVersion(current: string, latest: string): boolean {
     }
   }
 
-  // Numeric parts are equal — check pre-release suffixes (e.g., "-beta", "-rc1").
-  // A version with a suffix is earlier than the same version without one.
+  // Numeric parts are equal. "-rcN" tags order by N. Otherwise a version with a
+  // pre-release tag is earlier than the same version without one, and two
+  // other tags can't be ordered (false both ways).
+  const currentRc = releaseCandidate(current);
+  const latestRc = releaseCandidate(latest);
+
+  if (currentRc != null && latestRc != null) {
+    return latestRc > currentRc;
+  }
+
   return hasPreReleaseSuffix(current) && !hasPreReleaseSuffix(latest);
 }
 
-function parseVersionParts(version: string): number[] {
-  let cleaned = version.trim();
+/**
+ * Whether an installed copy is behind a build: different from it, and not newer.
+ * An unreadable version counts as behind. Differs-from is the test, not
+ * `isNewerVersion`, which can't order every pair of pre-release tags (beta vs
+ * rc1). Use this wherever an installed copy is judged against the build.
+ * @param installed - The installed version, or null when unreadable
+ * @param build - This build's version
+ * @returns True when the installed copy should be updated
+ */
+export function isBehindBuild(
+  installed: string | null,
+  build: string,
+): boolean {
+  return (
+    installed !== build &&
+    !(installed != null && isNewerVersion(build, installed))
+  );
+}
 
-  if (cleaned.startsWith("v")) {
-    cleaned = cleaned.slice(1);
-  }
+function parseVersionParts(version: string): number[] {
+  const cleaned = withoutPrefix(version);
 
   // parseInt stops at first non-numeric char, handling suffixes like "4b7". A
   // part with no leading digits (e.g. "" from "1..3", or "x") parses to NaN;
@@ -125,11 +148,134 @@ function parseVersionParts(version: string): number[] {
  * @returns True if version contains a dash-delimited pre-release suffix
  */
 function hasPreReleaseSuffix(version: string): boolean {
-  let cleaned = version.trim();
+  return withoutPrefix(version).includes("-");
+}
 
-  if (cleaned.startsWith("v")) {
-    cleaned = cleaned.slice(1);
+/**
+ * @param version - Version string
+ * @returns N from a "-rcN" tag, or null when the version has no such tag
+ */
+function releaseCandidate(version: string): number | null {
+  const match = /-rc(\d+)$/.exec(withoutPrefix(version));
+
+  return match == null ? null : Number(match[1]);
+}
+
+/**
+ * @param version - Version string
+ * @returns It trimmed, without a leading "v"
+ */
+function withoutPrefix(version: string): string {
+  const cleaned = version.trim();
+
+  return cleaned.startsWith("v") ? cleaned.slice(1) : cleaned;
+}
+
+/** The slice of the remote script status that decides whether it needs care. */
+export interface RemoteScriptAttentionInput {
+  installed: boolean;
+  installedVersion: string | null;
+  /** The installed files' build ID. */
+  installedBuild: string | null;
+  running: boolean;
+  runningVersion: string | null;
+  /** The build ID Live loaded; null from a script too old to report one. */
+  runningBuild: string | null;
+  /** The port another program answered on, when it isn't our script. */
+  otherOnPort: number | null;
+  /** Installed differs from this build and isn't newer (or is unreadable). */
+  updateAvailable: boolean;
+}
+
+/**
+ * What the user has to do about the remote script: "update" when the installed
+ * copy is behind this build, "restart" when Live runs a different copy than the
+ * installed one. Null when neither, when it isn't installed, and when another
+ * program answers on the port (that is not a stale script).
+ *
+ * Shared by the ppal-connect line and the chat UI badge so they agree.
+ *
+ * @param status - The remote script status
+ * @returns The action needed, or null
+ */
+export function remoteScriptAttention(
+  status: RemoteScriptAttentionInput,
+): "update" | "restart" | null {
+  if (!status.installed || status.otherOnPort != null) {
+    return null;
   }
 
-  return cleaned.includes("-");
+  if (status.updateAvailable) {
+    return "update";
+  }
+
+  return liveRunsOtherCopy(status) ? "restart" : null;
+}
+
+/**
+ * Whether Live is running a different copy than the one on disk: another
+ * version, or another build of the same one. A restart fixes it either way
+ * (after an update, or a downgrade). Compared with `!==`, not `isNewerVersion`,
+ * since a restart is due in either direction.
+ *
+ * @param status - The remote script status
+ * @returns True when Live needs a restart to load the installed copy
+ */
+export function liveRunsOtherCopy(
+  status: Pick<
+    RemoteScriptAttentionInput,
+    | "running"
+    | "runningVersion"
+    | "installedVersion"
+    | "runningBuild"
+    | "installedBuild"
+  >,
+): boolean {
+  if (
+    !status.running ||
+    status.runningVersion == null ||
+    status.installedVersion == null
+  ) {
+    return false;
+  }
+
+  return (
+    status.runningVersion !== status.installedVersion ||
+    (status.runningBuild != null &&
+      status.installedBuild != null &&
+      status.runningBuild !== status.installedBuild)
+  );
+}
+
+/** What decides whether the installation is unfinished. */
+export interface InstallIncompleteInput {
+  /** Why the device can't be copied, or null when it can. */
+  problem: string | null;
+  /** The User Library copy compared with the device; null with a problem. */
+  state: string | null;
+  /**
+   * Whether the remote script in the User Library is in place and not behind
+   * this build. Null when there is no User Library to look in, or it hasn't
+   * been read yet.
+   */
+  remoteScriptCurrent: boolean | null;
+}
+
+/**
+ * Whether the installation is unfinished: the User Library has no copy of this
+ * device or an older one (only a frozen device can be copied; a newer or
+ * different copy is the user's call), or its remote script is missing or behind
+ * this build. The one definition the device's notice and the chat UI's
+ * Installation tab dot both go by.
+ *
+ * @param input - The device copy and remote script facts
+ * @returns Whether something in the User Library is missing or out of date
+ */
+export function isInstallIncomplete(input: InstallIncompleteInput): boolean {
+  const copyBehind =
+    input.problem == null &&
+    (input.state === "not-installed" || input.state === "installed-older");
+
+  // With no User Library there is nothing to compare, so nothing to nag about.
+  return copyBehind || input.remoteScriptCurrent === false;
 }

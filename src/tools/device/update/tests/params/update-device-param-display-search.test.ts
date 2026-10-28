@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -465,9 +465,9 @@ describe("updateDevice - display-value search on a descending range", () => {
 
 describe("updateDevice - a display range collapsed to a point", () => {
   it("skips the write instead of walking to the middle of the raw range", () => {
-    // Every raw value reads the same, so no display value maps back to a raw
-    // one. Searching would land in the middle and report success from there.
-    const param = registerRatioParam(() => "1 : 1.00");
+    // Both ends read 1, spelled differently, so no display value maps back to a
+    // raw one. Searching would land in the middle and report success there.
+    const param = registerRatioParam((v) => (v === 1 ? "1 : 1.0" : "1 : 1.00"));
 
     expect(
       noParamLanded(() =>
@@ -478,6 +478,55 @@ describe("updateDevice - a display range collapsed to a point", () => {
       ),
     ).toBe(
       'no param landed — "Above Ratio": reads "1 : 1.00" across its whole range, so there is no value to aim at and it was left alone',
+    );
+    expect(param.set).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateDevice - a plug-in that prints the same label at every value", () => {
+  // ValhallaFreqEcho answers str_for_value with its current display whatever
+  // value is asked about, so the param is written in raw units.
+  let param: RegisteredMockObject;
+
+  beforeEach(() => {
+    param = registerRatioParam(() => "50.0 %");
+  });
+
+  it.each(["0.3", "-1", "1"])("writes %s as the raw value", (value) => {
+    // Live stores 0.3 as 0.30000001192092896; that still reads as landed
+    const result = updateDevice({
+      id: "dev1",
+      params: [{ name: "Above Ratio", value }],
+    });
+
+    expect(expectValueSet(param)).toBe(Number(value));
+    expect(paramsOf(result)).toStrictEqual([
+      { id: "ratio-param", name: "Above Ratio" },
+    ]);
+  });
+
+  it("says so when Live ignores the write", () => {
+    param.set.mockImplementation(() => {});
+
+    expect(
+      noParamLanded(() =>
+        updateDevice({
+          id: "dev1",
+          params: [{ name: "Above Ratio", value: "0.3" }],
+        }),
+      ),
+    ).toBe(
+      'no param landed — "Above Ratio": was not changed — it still reads 0. Live ignores a value outside the parameter\'s range.',
+    );
+  });
+
+  it.each(["30 %", "1.5", "-1.01", "C4"])("refuses %s", (value) => {
+    expect(
+      noParamLanded(() =>
+        updateDevice({ id: "dev1", params: [{ name: "Above Ratio", value }] }),
+      ),
+    ).toBe(
+      `no param landed — "Above Ratio": has no readable display range, so it takes a plain number from -1 to 1 — "${value}" was not written`,
     );
     expect(param.set).not.toHaveBeenCalled();
   });

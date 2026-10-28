@@ -55,7 +55,11 @@ Pal is already running. It needs the
 installed and selected in Live, and the Producer Pal device installed in the
 User Library's Max MIDI Effect folder
 ([install guide](https://producer-pal.org/installation#install-the-device)). If
-either is missing, the error says how to fix it. Prints
+either is missing, the error says how to fix it. You can't install the remote
+script for the user: they add the device to a MIDI track by hand once, click
+"Finish installation…" on it, click "Install" next to the remote script, then
+restart Live and select Producer Pal as a Control Surface (Live Settings → Tempo
+& MIDI). Prints
 `{"producerPal": true, "addedProducerPal": {"trackIndex": 4, "trackName": "5-MIDI"}}`
 once the device answers (up to 30 seconds).
 
@@ -71,7 +75,7 @@ Decide once, then pass the same list on every call, including `ppal-connect`:
 ```bash
 # Read-only session: no writers, so all the note-writing and transform
 # instructions come off the Skills blob too
-node ppal.mjs ppal-connect --disable-tools ppal-create-clip,ppal-update-clip,ppal-create-track,ppal-update-track,ppal-create-scene,ppal-update-scene,ppal-create-device,ppal-update-device,ppal-update-live-set,ppal-delete,ppal-duplicate,ppal-context,ppal-playback
+node ppal.mjs ppal-connect --disable-tools ppal-create-clip,ppal-update-clip,ppal-create-track,ppal-update-track,ppal-create-scene,ppal-update-scene,ppal-create-device,ppal-update-device,ppal-update-live-set,ppal-delete,ppal-duplicate,ppal-context,ppal-manage,ppal-playback
 ```
 
 Run `--list-tools` first if you need the exact names. Only skip tools you're

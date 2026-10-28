@@ -36,7 +36,8 @@ This makes them suitable only for local QA testing, not automated CI.
 ## Test Files
 
 - `quick-connect.spec.ts` - Tests Quick Connect across multiple providers/models
-  (includes OpenRouter paid models; free models excluded due to rate limits)
+  (includes OpenRouter paid models; free models excluded due to rate limits, and
+  the Vercel AI Gateway models)
 
 ## Adding New Provider/Model Tests
 
@@ -46,8 +47,8 @@ Edit `quick-connect.spec.ts` and add a new entry to `TEST_CONFIGS`:
 {
   provider: "mistral",           // Value for provider select
   providerLabel: "Mistral",      // Display name for test output
-  model: "mistral-large-latest", // Value for model select
-  modelLabel: "Mistral Large",   // Display name for test output
+  model: "mistral-large-4", // Value for model select
+  modelLabel: "Mistral Large 4",   // Display name for test output
   envKey: "MISTRAL_KEY",         // Env var for API key
 },
 ```

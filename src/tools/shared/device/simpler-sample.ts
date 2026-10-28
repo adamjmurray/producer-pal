@@ -1,11 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
-import { isNewerVersion } from "#src/shared/version-check.ts";
+import { isAbsolutePath } from "#src/tools/shared/remote-script/absolute-path.ts";
 import { DEVICE_CLASS } from "#src/tools/constants.ts";
 import { dbToLiveGain } from "#src/tools/shared/helpers/gain-conversion.ts";
+import { liveVersionAtLeast } from "#src/tools/shared/helpers/live-api-values.ts";
 
 /**
  * Result of probing a device for its Simpler sample state. Callers branch on
@@ -88,7 +89,7 @@ export function setSimplerSample(
     return unwritable;
   }
 
-  if (!supportsReplaceSample()) {
+  if (!liveVersionAtLeast(REPLACE_SAMPLE_MIN_VERSION)) {
     return `'sample' requires Live ${REPLACE_SAMPLE_MIN_VERSION} or later`;
   }
 
@@ -151,18 +152,6 @@ export function isSingleSampleSimpler(
 const REPLACE_SAMPLE_MIN_VERSION = "12.4";
 
 /**
- * Test whether this Live can load a sample into Simpler. Older versions have no
- * `replace_sample` function, and calling a function Live doesn't have returns
- * normally and does nothing — so check the version instead of the return value.
- * @returns True on Live 12.4 and later
- */
-function supportsReplaceSample(): boolean {
-  const version = String(LiveAPI.from("live_app").call("get_version_string"));
-
-  return !isNewerVersion(version, REPLACE_SAMPLE_MIN_VERSION);
-}
-
-/**
  * Guard a Simpler single-sample write.
  * @param device - LiveAPI device object
  * @param param - Pseudo-param name for the reason text (e.g. "sample", "gainDb")
@@ -183,17 +172,4 @@ function unwritableSimplerReason(
   }
 
   return null;
-}
-
-/**
- * Test whether a path looks absolute. Accepts POSIX paths (leading `/`)
- * and Windows-style paths with a drive letter (e.g. `C:\` or `C:/`).
- * Used to reject obviously-invalid input before handing it to Live, which
- * silently fails on relative paths.
- *
- * @param p - Path to check
- * @returns True when the path appears absolute
- */
-function isAbsolutePath(p: string): boolean {
-  return p.startsWith("/") || /^[A-Za-z]:[/\\]/.test(p);
 }

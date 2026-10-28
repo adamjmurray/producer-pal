@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -11,6 +11,7 @@ import {
 } from "#src/mcp-server/create-mcp-server.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { TOOL_DEF_CASES } from "./tool-defs-test-helpers.ts";
 
 // Pins the published shape of the real tools. Without this, reverting a
 // deprecatedParam()/aliasParam() wrapper to a plain schema republishes the
@@ -343,4 +344,27 @@ describe("hidden params", () => {
     // Still holds what small-model mode hides on its own.
     expect(SMALL_MODEL_EXCLUDED_PARAMS).toContain("split");
   });
+});
+
+// Claude Desktop's remote-devices bridge strips tool arguments named `device`
+// or `session_id` before the call reaches a local MCP server, so a param with
+// either name silently never arrives. Hide the name with aliasParam() instead.
+const BRIDGE_DROPPED_PARAMS = new Set(["device", "session_id"]);
+
+describe("params the Claude Desktop bridge drops", () => {
+  it.each(TOOL_DEF_CASES)(
+    "%s publishes none of them",
+    (_label, def, context) => {
+      const { published } = resolveToolSchema(
+        def.toolOptions.inputSchema,
+        context,
+      );
+
+      expect(
+        Object.keys(published).filter((name) =>
+          BRIDGE_DROPPED_PARAMS.has(name),
+        ),
+      ).toStrictEqual([]);
+    },
+  );
 });

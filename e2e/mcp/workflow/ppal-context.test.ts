@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for the ppal-context tool across its three scopes: project context
@@ -14,8 +14,8 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   extractToolResultText,
+  getToolErrorMessage,
   parseToolResult,
-  parseToolResultWithWarnings,
   setConfig,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
@@ -87,26 +87,91 @@ describe("ppal-context (project scope)", () => {
     expect(verifyResult.content).toBe(UPDATED_CONTENT);
   });
 
-  it("skips an unforced write that keeps none of the existing document", async () => {
+  it("refuses an unforced write that keeps none of the existing document", async () => {
     const INITIAL_CONTENT = "- Genre: deep house.\n- Drop at bar 33.";
 
     await setConfig({ projectContext: INITIAL_CONTENT });
 
-    const writeResult = await callProjectContextTool(
-      "write",
-      "- Key: A minor.",
+    // Thrown, not returned beside a warning: that reply has the shape of a
+    // successful write.
+    const message = getToolErrorMessage(
+      await callProjectContextTool("write", "- Key: A minor."),
     );
 
-    // Warn-and-skip: the payload block is the document as it stands, and the
-    // refusal rides along beside it as its own WARNING: block — the relayed
-    // warnings are never concatenated onto the payload, which has to stay
-    // parseable on its own.
-    const { data, warnings } =
-      parseToolResultWithWarnings<ContentResult>(writeResult);
+    expect(message).toContain('write refused for scope "project"');
+    expect(message).toContain("force:true");
 
-    expect(data.content).toBe(INITIAL_CONTENT);
-    expect(warnings.join("\n")).toContain("scope:project write SKIPPED");
-    expect(warnings.join("\n")).toContain("force:true");
+    const verifyResult = parseToolResult<ContentResult>(
+      await callProjectContextTool("read"),
+    );
+
+    expect(verifyResult.content).toBe(INITIAL_CONTENT);
+  });
+
+  it("refuses name and description on a project write and leaves the document", async () => {
+    const INITIAL_CONTENT = "- Genre: deep house.";
+
+    await setConfig({ projectContext: INITIAL_CONTENT });
+
+    const message = getToolErrorMessage(
+      await ctx.client!.callTool({
+        name: "ppal-context",
+        arguments: {
+          action: "write",
+          name: "jungle-samples",
+          description: "where the jungle samples live",
+          content: "- Genre: jungle.",
+        },
+      }),
+    );
+
+    expect(message).toBe(
+      'Error: name, description are only for scope "memory"; this call has scope "project". Change the scope or drop name, description.',
+    );
+
+    const verifyResult = parseToolResult<ContentResult>(
+      await callProjectContextTool("read"),
+    );
+
+    expect(verifyResult.content).toBe(INITIAL_CONTENT);
+  });
+
+  it("refuses force on a read and leaves the document", async () => {
+    const INITIAL_CONTENT = "- Genre: deep house.";
+
+    await setConfig({ projectContext: INITIAL_CONTENT });
+
+    const message = getToolErrorMessage(
+      await ctx.client!.callTool({
+        name: "ppal-context",
+        arguments: { action: "read", force: true },
+      }),
+    );
+
+    expect(message).toBe(
+      'Error: force is only for action "write"; this call has action "read". Change the action or drop force.',
+    );
+
+    const verifyResult = parseToolResult<ContentResult>(
+      await callProjectContextTool("read"),
+    );
+
+    expect(verifyResult.content).toBe(INITIAL_CONTENT);
+  });
+
+  it("says delete is memory-only on the project scope", async () => {
+    const INITIAL_CONTENT = "- Genre: deep house.";
+
+    await setConfig({ projectContext: INITIAL_CONTENT });
+
+    const message = getToolErrorMessage(
+      await ctx.client!.callTool({
+        name: "ppal-context",
+        arguments: { action: "delete" },
+      }),
+    );
+
+    expect(message).toContain('action "delete" is only for scope "memory"');
 
     const verifyResult = parseToolResult<ContentResult>(
       await callProjectContextTool("read"),
@@ -152,7 +217,7 @@ describe("ppal-context (global scope)", () => {
       const testContent = `e2e global context ${randomUUID()}`;
 
       // `force` because this replaces whatever the developer already had — the
-      // clobber guard (see the project-scope test above) would otherwise skip
+      // clobber guard (see the project-scope test above) would otherwise refuse
       // both this write and the restore below.
       const written = parseToolResult<ContentResult>(
         await callContextTool({
@@ -242,6 +307,21 @@ describe("ppal-context (memory scope)", () => {
         );
       }
     }
+  });
+
+  it("refuses an unusable name without naming the internal route", async () => {
+    const message = getToolErrorMessage(
+      await callContextTool({
+        action: "write",
+        scope: "memory",
+        name: "!!!",
+        description: "e2e refused memory",
+        content: "never stored",
+      }),
+    );
+
+    expect(message).toContain("name must contain letters or digits");
+    expect(message).not.toContain("memory.remember");
   });
 });
 

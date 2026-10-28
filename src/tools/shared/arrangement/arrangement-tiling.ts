@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * High-level arrangement clip tiling orchestrators.
@@ -45,6 +45,8 @@ interface PartialTileOptions {
   contentOffset?: number;
   /** Caller guarantees the target span is already clear */
   targetIsEmpty?: boolean;
+  /** Told the moment the tile is in place, before its markers are written */
+  onPlaced?: (tile: LiveAPI) => void;
 }
 
 /**
@@ -63,6 +65,8 @@ interface PartialTileOptions {
  * @param options.targetIsEmpty - Caller guarantees nothing occupies the target,
  *   skipping the clear that exists to stop Ableton crashing on an overlap. Only
  *   pass true for a span already cleared or just vacated.
+ * @param options.onPlaced - Told once the tile is in place, before the markers
+ *   that can still throw
  * @returns The created partial tile clip (LiveAPI instance)
  */
 export function createPartialTile(
@@ -76,6 +80,7 @@ export function createPartialTile(
     adjustPreRoll = true,
     contentOffset = 0,
     targetIsEmpty = false,
+    onPlaced,
   }: PartialTileOptions = {},
 ): LiveAPI {
   // Read from the track, not from a start captured earlier in the request: a
@@ -84,6 +89,7 @@ export function createPartialTile(
   const holdingStart = holdingAreaStartOnTrack(
     track,
     targetPosition + partialLength,
+    context,
   );
 
   // Create shortened clip in holding area
@@ -105,6 +111,8 @@ export function createPartialTile(
     context,
     targetIsEmpty,
   );
+
+  onPlaced?.(partialTile);
 
   // Set start_marker to show correct portion of clip content
   const clipLoopStart = sourceClip.getProperty("loop_start") as number;
@@ -177,9 +185,10 @@ export function tileClipToRange(
   // Determine arrangement length per tile (defaults to clip content length)
   const arrangementTileLength = tileLength ?? clipLength;
 
-  // Calculate tiling requirements based on arrangement tile length
-  const fullTiles = Math.floor(totalLength / arrangementTileLength);
-  const remainder = totalLength % arrangementTileLength;
+  // Tolerance and subtraction, not floor and %: for a tile like 4/3 the two
+  // disagree, giving a whole tile as remainder after the last full tile.
+  const fullTiles = Math.floor((totalLength + EPSILON) / arrangementTileLength);
+  const remainder = totalLength - fullTiles * arrangementTileLength;
 
   // Check the deadline BEFORE clearing anything. A clear empties its span before
   // anything refills it, so bailing out after one would leave the caller with a
@@ -251,7 +260,7 @@ export function tileClipToRange(
         );
       }
 
-      const partialTile = createPartialTile(
+      createPartialTile(
         sourceClip,
         track,
         currentPosition,
@@ -262,10 +271,9 @@ export function tileClipToRange(
           adjustPreRoll,
           contentOffset: currentContentOffset,
           targetIsEmpty: clearAhead,
+          onPlaced: (tile) => createdClips.push({ id: tile.id }),
         },
       );
-
-      createdClips.push({ id: partialTile.id });
     }
   }
 

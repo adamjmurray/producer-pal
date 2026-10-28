@@ -1,19 +1,20 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-update-track routing writes.
  * Routing identifiers are assigned by Live per Set and per machine, so every
  * test reads the available options first and never hardcodes an id.
  * Uses: e2e-test-set (t8, the empty MIDI track with no instrument, and t10)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- track/ppal-update-track-routing
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolErrorMessage,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -165,6 +166,18 @@ describe("ppal-update-track routing", () => {
     expect(after.outputRoutingType?.outputId).toBe(target!.outputId);
 
     await updateRouting(before.id, { outputRoutingType: originalId });
+  });
+
+  it("names the published param when a routing name matches nothing", async () => {
+    const before = await readRouting(EMPTY_MIDI_TRACK);
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { id: before.id, outputRoutingType: "Nowhere" },
+    });
+
+    expect(getToolErrorMessage(result)).toContain(
+      'the track has no outputRoutingType named "Nowhere"',
+    );
   });
 
   it("assigns output routing channel", async () => {

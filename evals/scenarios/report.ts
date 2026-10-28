@@ -2,7 +2,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * CLI for viewing and comparing eval results from JSON files
@@ -16,6 +16,7 @@ import {
   type JsonEvalResult,
   RESULTS_DIR,
 } from "./helpers/json-results/types.ts";
+import { buildFailureTable } from "./helpers/reporting/failure-table.ts";
 import { printResult } from "./helpers/reporting/result-printer.ts";
 
 const program = new Command();
@@ -26,8 +27,14 @@ program
   .argument("[paths...]", "JSON result file(s) or scenario directories")
   .option("--run <runId>", "Show all scenarios from a specific run")
   .option("--compare <runIds...>", "Compare two or more runs")
+  .option(
+    "--failures <runIds...>",
+    "Print every failure as a markdown table, stitching runs (newest wins)",
+  )
   .action(async (paths: string[], options: ReportOptions) => {
-    if (options.compare) {
+    if (options.failures) {
+      await printFailures(options.failures);
+    } else if (options.compare) {
       await compareRuns(options.compare);
     } else if (options.run) {
       await showRun(options.run);
@@ -43,6 +50,26 @@ program.parse();
 interface ReportOptions {
   run?: string;
   compare?: string[];
+  failures?: string[];
+}
+
+/**
+ * Print every failure across one or more runs as a markdown table.
+ *
+ * @param runIds - Run identifiers, oldest first
+ */
+async function printFailures(runIds: string[]): Promise<void> {
+  const runs: JsonEvalResult[][] = [];
+
+  for (const runId of runIds) {
+    const files = await findResultsByRunId(runId);
+
+    runs.push(
+      await Promise.all(files.map(async (file) => await loadResult(file))),
+    );
+  }
+
+  console.log(buildFailureTable(runs));
 }
 
 /**
@@ -235,7 +262,10 @@ function passRate(
     return null;
   }
 
-  const graded = trials.filter((t) => t.result !== "skipped");
+  // Errored trials never tested the model, so they are not out of N.
+  const graded = trials.filter(
+    (t) => t.result !== "skipped" && t.result !== "error",
+  );
 
   if (graded.length === 0) {
     return null;

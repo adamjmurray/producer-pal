@@ -34,21 +34,20 @@ similar, but it's no longer officially supported — the new app is recommended.
 - [ChatGPT desktop app](https://chatgpt.com/download) (requires an OpenAI
   account) — use the main download button. The same page also offers **ChatGPT
   Classic**, which is the older app, not this one.
-- A paid ChatGPT plan (MCP servers aren't available on the free plan)
+- A paid ChatGPT plan is recommended
 
 ## Installation Steps
 
-<!--@include: ../_partials/install-device.md-->
+<!--@include: ../_partials/setup-by-ai.md-->
 
-### 2. Add Producer Pal to ChatGPT
+### 1. Add Producer Pal to ChatGPT
 
 In the ChatGPT app, go to Settings &rarr; Plugins &rarr; MCPs and click "+ Add
 server":
 
 <img src="/img/chatgpt-app-mcp-server-settings.png" alt="ChatGPT app MCP Servers settings page" width="650"/><br>
 
-**Option A: With npx (recommended)** — Allows flexible startup order and
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-npx.md-->
 
 Set **Type** to **STDIO** and fill in:
 
@@ -59,8 +58,7 @@ Set **Type** to **STDIO** and fill in:
 
 <img src="/img/chatgpt-app-add-mcp-stdio.png" alt="STDIO MCP configuration for Producer Pal" width="650"/><br>
 
-**Option B: Direct HTTP** — Requires Ableton running first, no
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-http.md-->
 
 Set **Type** to **Streamable HTTP** and fill in:
 
@@ -79,7 +77,7 @@ place makes it available in the others.
 
 :::
 
-### 3. Start a Conversation
+### 2. Start a Conversation
 
 Check that the mode dropdown at the top of the sidebar says **Codex**.
 
@@ -89,17 +87,21 @@ in the screenshot). Feel free to put reference documents in it, such as common
 workflow instructions or details of your preferred musical style and production
 techniques.
 
-Start a conversation with "connect to ableton":
+With Live open, start a conversation with "connect to ableton":
 
 <img src="/img/chatgpt-app-conversation-start.png" alt="Starting a conversation in the ChatGPT app" width="600"/>
 
-### 4. Verify Connection
+<!--@include: ../_partials/setup-by-ai-finish.md-->
+
+### 3. Verify Connection
 
 You should see a successful connection to Ableton Live:
 
 <img src="/img/chatgpt-app-connected.png" alt="ChatGPT app successfully connected to Producer Pal" width="600"/>
 
 You can also type `/mcp` in the composer to see the connected MCP servers.
+
+<!--@include: ../_partials/check-it-works.md-->
 
 ## Troubleshooting
 

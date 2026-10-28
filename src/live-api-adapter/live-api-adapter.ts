@@ -1,12 +1,16 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Entry point for the tool implementations with direct Live API access
 import "./live-api-extensions.ts";
 import "#src/polyfills/es2023-array.ts";
 
+import {
+  DEVICE_REPORT_ROUTE,
+  type DeviceReportArgs,
+} from "#src/shared/max/device-install-contract.ts";
 import { toCompactJSLiteral } from "#src/shared/compact/compact-serializer.ts";
 import { MIN_LIVE_VERSION, VERSION } from "#src/shared/config.ts";
 import {
@@ -25,6 +29,7 @@ import {
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   beginWarningCapture,
+  changedNothing,
   detachWarningCapture,
   endWarningCapture,
   resumeWarningCapture,
@@ -39,9 +44,10 @@ import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { connect } from "#src/tools/core/connect.ts";
 import { context as contextTool } from "#src/tools/core/context.ts";
+import { manage } from "#src/tools/core/manage.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
 import { readDevice } from "#src/tools/device/read/read-device.ts";
-import { updateDeviceWithPreset } from "#src/tools/device/update/update-device-with-preset.ts";
+import { updateDevice } from "#src/tools/device/update/update-device.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { createScene } from "#src/tools/scene/create-scene.ts";
@@ -59,14 +65,15 @@ import {
   reportLiveApiBuildStats,
 } from "./live-api-build-stats.ts";
 import { beginLiveApiScope, endLiveApiScope } from "./live-api-release.ts";
-import { handleNodeResponse } from "./node-request-v8-protocol.ts";
+import { handleNodeResponse, requestNode } from "./node-request-v8-protocol.ts";
 import {
   backupProjectContextOnEdit,
   noteProjectContextLoaded,
   syncProjectContextBackup,
 } from "./project-context-sync.ts";
 
-// One outlet: MCP responses. Warnings ride inside the response JSON (ADR-0032).
+// One outlet: MCP responses. Warnings ride inside the response JSON, not as
+// trailing Max atoms.
 outlets = 1;
 setoutletassist(0, "tool call results");
 
@@ -147,12 +154,13 @@ const toolDispatch: Record<
   "ppal-update-clip": (args, ctx) => updateClip(args as any, ctx),
   "ppal-create-device": (args, ctx) => createDevice(args as any, ctx),
   "ppal-read-device": (args, ctx) => readDevice(args as any, ctx),
-  "ppal-update-device": (args, ctx) => updateDeviceWithPreset(args as any, ctx),
+  "ppal-update-device": (args, ctx) => updateDevice(args as any, ctx),
   "ppal-playback": (args, ctx) => playback(args as any, ctx),
   "ppal-select": (args, ctx) => select(args as any, ctx),
   "ppal-delete": (args, ctx) => deleteObject(args as any, ctx),
   "ppal-duplicate": (args, ctx) => duplicate(args as any, ctx),
   "ppal-context": (args, ctx) => contextTool(args as any, ctx),
+  "ppal-manage": (args, ctx) => manage(args as any, ctx),
   "ppal-library": (args, ctx) => library(args as any, ctx),
   "ppal-live-api": (args, ctx) => liveApi(args as any, ctx),
 };
@@ -356,6 +364,48 @@ export function liveApiEnabled(): void {}
 export function tools(): void {}
 
 /**
+ * Ignore the update-notice dismissal. It only tells the device's Main tab to
+ * hide its notice.
+ */
+export function updateDismissed(): void {}
+
+/**
+ * Ignore the "Finish installation" notice toggle. It only tells the device's
+ * Main tab to show or hide its notice.
+ */
+export function installNotice(): void {}
+
+/**
+ * Tell Node where this device's file is. Only the device's patcher knows, and
+ * the Live Set references the device by that path. Node asks (as the
+ * `reportDevice` config key) when it starts, since V8 is up long before it is.
+ * Best-effort: a device with no file path just stays unknown.
+ */
+export function reportDevice(): void {
+  const patcher = (globalThis as { patcher?: { filepath?: unknown } }).patcher;
+  const filepath = patcher?.filepath;
+
+  if (typeof filepath !== "string" || filepath === "") {
+    console.warn("Could not read this device's file path.");
+
+    return;
+  }
+
+  const args: DeviceReportArgs = { filepath };
+
+  // Detached: a void-ed async call outlives any request that might be running.
+  detachWarningCapture(async () => {
+    const response = await requestNode(DEVICE_REPORT_ROUTE, args);
+
+    if (!response.success) {
+      console.warn(
+        `Could not report this device's file path: ${response.error}`,
+      );
+    }
+  });
+}
+
+/**
  * Chunk one payload for the Max IPC boundary and send it, as:
  * ["mcp_response", requestId, chunk1, ..., chunkN, END_OF_CHUNKS].
  *
@@ -378,19 +428,25 @@ function sendChunked(requestId: string, payload: object): string | null {
 /**
  * Send a response back to the MCP server. Warnings ride inside the JSON as a
  * `warnings` sidecar; Node strips it and turns it into WARNING: content items.
- * Nothing follows END_OF_CHUNKS.
+ * `changedNothing` is a sidecar too, set only when the request's writes were
+ * all proven to change nothing. Nothing follows END_OF_CHUNKS.
  *
  * @param requestId - Request identifier
  * @param result - Result object to send
  * @param warnings - Warnings this request raised
+ * @param unchanged - Whether the request provably changed nothing in the Set
  */
 function sendResponse(
   requestId: string,
   result: object,
   warnings: string[],
+  unchanged: boolean,
 ): void {
-  const withWarnings = (payload: object): object =>
-    warnings.length > 0 ? { ...payload, warnings } : payload;
+  const withWarnings = (payload: object): object => ({
+    ...payload,
+    ...(warnings.length > 0 && { warnings }),
+    ...(unchanged && { changedNothing: true }),
+  });
 
   const tooLargeError = sendChunked(requestId, withWarnings(result));
 
@@ -590,8 +646,11 @@ async function handleRequest(
     result = formatErrorResponse(`Error parsing tool call request: ${message}`);
   }
 
+  // Read before the capture ends. Node uses it to leave the undo step open.
+  const unchanged = changedNothing(warnings);
+
   // Send response back to Node for Max
-  sendResponse(requestId, result, endWarningCapture(warnings));
+  sendResponse(requestId, result, endWarningCapture(warnings), unchanged);
 }
 
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss

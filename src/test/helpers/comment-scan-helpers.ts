@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Measures comments in the non-test TypeScript sources. Shared by
 // `npm run comment:stats` and src/test/comment-limits.test.ts so both report the

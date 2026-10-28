@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for a batch move that destroys a clip the same call names.
@@ -35,9 +35,6 @@ const ctx = setupMcpTestContext({ once: true });
 
 const TRACK = `t${EMPTY_MIDI_TRACK}`;
 
-/** What a buried clip's entry says became of it. */
-const BURIED = "not updated: another clip in this call was moved onto it";
-
 describe("a batch move that buries a clip the call names", () => {
   it("reports the take-lane clip a sibling was re-created on top of", async () => {
     const mover = await createClip(`${TRACK}/l0[601|1]`, "Mover", "1bar");
@@ -51,17 +48,15 @@ describe("a batch move that buries a clip the call names", () => {
       { toPath: `${TRACK}/l0[605|1],${TRACK}/l0[605|1]` },
     );
 
-    expect(data[1]).toStrictEqual({
-      id: victim.id,
-      path: `${TRACK}/l0[605|1]`,
-      deleted: true,
-      detail: BURIED,
+    // Both land on one spot, so the mover's landing is pointless: it is left
+    // unwritten, says what replaced it, and the clip is still where it was.
+    expect(data[0]).toStrictEqual({
+      id: mover.id,
+      detail: `overwritten later in this call by ${TRACK}/l0[605|1]`,
     });
-    expect(data[0]?.path).toBe(`${TRACK}/l0[605|1]`);
+    expect(data[1]?.path).toBe(`${TRACK}/l0[605|1]`);
     expect(warnings).toStrictEqual([]);
-
-    // The id the entry names really is dead.
-    expect(await clipIsGone(victim.id)).toBe(true);
+    expect(await clipIsGone(mover.id)).toBe(false);
   });
 
   it("reports the main-lane clip a longer sibling landed on first", async () => {
@@ -72,11 +67,12 @@ describe("a batch move that buries a clip the call names", () => {
       toPath: "[629|1]",
     });
 
+    // The long clip's landing cleared the short one before its turn, so there
+    // was nothing left to move: a skip, not a delete.
     expect(data[1]).toStrictEqual({
       id: short.id,
-      path: `${TRACK}[629|1]`,
-      deleted: true,
-      detail: BURIED,
+      ok: false,
+      detail: `not updated: the clip was overwritten earlier in this call by ${TRACK}[629|1]`,
     });
     expect(data[0]?.path).toBe(`${TRACK}[629|1]`);
     // Only one clip ever landed there, so nothing stacked.

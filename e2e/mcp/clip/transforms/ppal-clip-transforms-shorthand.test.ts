@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for v1.4.11 transform-string additions:
@@ -11,7 +11,7 @@
  *    in ppal-clip-transforms.test.ts; here we cover MIDI pitch + wrap-around.
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track.
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-clip-transforms-shorthand
  */

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Scenario for synced-LFO note-value period syntax.
@@ -41,7 +41,7 @@ import {
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
 } from "../helpers/clip-tool-constants.ts";
-import { getTransforms } from "../helpers/clip-turn-readers.ts";
+import { getLastTransforms } from "../helpers/clip-turn-readers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 
@@ -64,7 +64,7 @@ function classifyLfoReach(
   turns: EvalTurnResult[],
   turn: number,
 ): { reach: LfoReach; evidence: string } {
-  const transforms = getTransforms(turns, turn, TOOL_UPDATE_CLIP);
+  const transforms = getLastTransforms(turns, turn, TOOL_UPDATE_CLIP);
 
   // The retired synced-period glyph: a number immediately followed by `t`
   // (e.g. `4t`, `1:0t`). A hard regression if it reappears.
@@ -151,7 +151,10 @@ export const syncedLfoMeterInvariance: EvalScenario = {
   messages: [
     MSG_CONNECT,
     "Create a 2-bar lead melody on the Lead track in the arrangement starting at bar 1",
-    "Add a sine-wave LFO to the note velocities that completes one full cycle every quarter note and stays locked to the song timeline (so the wave is continuous across the clip, not reset per note).",
+    // Ask for an LFO *shape*: "add an LFO" reads as a device request, and the
+    // model searches the library or declines that per-note velocity can't be
+    // modulated over time.
+    "Apply a sine LFO shape to the note velocities: one full cycle every quarter note, locked to the song timeline so the wave is continuous across the clip rather than reset per note.",
   ],
 
   assertions: [

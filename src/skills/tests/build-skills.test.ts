@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NOTATIONS } from "#src/shared/notation.ts";
@@ -79,7 +79,7 @@ describe("buildSkills - composition", () => {
       "## Generate notes",
       "Melody (a quarter note per beat)",
       "Chords (multiple pitches share one position",
-      "Drums (re-set n per lane",
+      "Drums (n carries over",
       "The beat can be a comma-separated list",
     ]) {
       expect(barbeatBasic, `lost "${marker}"`).toContain(marker);

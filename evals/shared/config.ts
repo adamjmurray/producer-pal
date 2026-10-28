@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Configuration utilities for MCP server settings
@@ -11,7 +11,8 @@ import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
 
-export const CONFIG_URL = MCP_URL.replace("/mcp", "/config");
+export const CONFIG_URL = siblingUrl(MCP_URL, "config");
+export const REST_BASE_URL = siblingUrl(MCP_URL, "").replace(/\/$/, "");
 
 /**
  * Configuration options that can be set via the /config endpoint
@@ -22,6 +23,10 @@ export interface ConfigOptions {
   jsonOutput?: boolean;
   sampleFolder?: string;
   liveApiEnabled?: boolean;
+  /** False makes the remote script look uninstalled. Debug builds only; a release build ignores it. */
+  remoteScriptEnabled?: boolean;
+  /** A version string makes a running remote script older than it look out of date; null clears it. Debug builds only. */
+  remoteScriptMinVersion?: string | null;
   tools?: string[];
   notation?: Notation;
 }
@@ -51,6 +56,7 @@ export async function setConfig(options: ConfigOptions): Promise<void> {
 async function fetchConfig(): Promise<{
   notation?: Notation;
   liveApiEnabled?: boolean;
+  smallModelMode?: boolean;
 }> {
   const response = await fetch(CONFIG_URL);
 
@@ -61,6 +67,7 @@ async function fetchConfig(): Promise<{
   return (await response.json()) as {
     notation?: Notation;
     liveApiEnabled?: boolean;
+    smallModelMode?: boolean;
   };
 }
 
@@ -91,6 +98,17 @@ export async function getLiveApiEnabled(): Promise<boolean> {
 }
 
 /**
+ * Whether the server is in small-model mode.
+ *
+ * @returns True when small-model mode is on
+ */
+export async function getSmallModelMode(): Promise<boolean> {
+  const config = await fetchConfig();
+
+  return config.smallModelMode === true;
+}
+
+/**
  * Reset server config to defaults
  */
 export async function resetConfig(): Promise<void> {
@@ -99,7 +117,26 @@ export async function resetConfig(): Promise<void> {
     projectContext: "",
     jsonOutput: true,
     sampleFolder: "",
+    // A release build ignores this, so the reset works on either build.
+    remoteScriptEnabled: true,
+    remoteScriptMinVersion: null,
     tools: [...TOOL_NAMES],
     notation: DEFAULT_NOTATION,
   });
+}
+
+/**
+ * The URL of a sibling endpoint of the MCP server. Only the trailing `/mcp`
+ * path segment changes, never a `mcp` in the host or an earlier path part.
+ *
+ * @param mcpUrl - The MCP endpoint URL
+ * @param endpoint - Endpoint name without a slash (e.g., "config")
+ * @returns The sibling endpoint URL
+ */
+export function siblingUrl(mcpUrl: string, endpoint: string): string {
+  const url = new URL(mcpUrl);
+
+  url.pathname = url.pathname.replace(/\/mcp$/, `/${endpoint}`);
+
+  return url.toString();
 }

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Self-reflection turn injection for eval scenarios
@@ -37,7 +37,7 @@ export async function maybeInjectReflection(
     return;
   }
 
-  const prompt = buildReflectionPrompt(failure);
+  const prompt = buildReflectionPrompt(failure, turns);
 
   if (!isQuietMode()) {
     console.log("\n" + styleText("gray", "Injecting self-reflection turn..."));
@@ -70,32 +70,37 @@ export async function maybeInjectReflection(
  * Build a reflection prompt for a failing assertion
  *
  * @param failure - The failing assertion result
+ * @param turns - The conversation so far, to name the turn a check looked at
  * @returns Reflection prompt string
  */
-export function buildReflectionPrompt(failure: EvalAssertionResult): string {
+export function buildReflectionPrompt(
+  failure: EvalAssertionResult,
+  turns: EvalTurnResult[] = [],
+): string {
   if (failure.assertion.type === "tool_called") {
     const details = failure.details as Record<string, unknown> | undefined;
     const expected = failure.assertion.tool;
     const nameMatchCount = Number(details?.nameMatchCount) || 0;
     const count = Number(details?.count) || 0;
+    const where = turnPhrase(turns, failure.assertion.turn);
 
     if (nameMatchCount === 0) {
       return (
-        `In the previous step, you didn't call any tool, but ${expected} was ` +
-        `expected. What about the request led you to respond without using a tool?`
+        `${where}, you didn't call ${expected}, which was expected. ` +
+        `What about the request led you to respond without it?`
       );
     }
 
     if (count === 0 && details?.argsSpecified) {
       return (
-        `In the previous step, you called ${expected} but the arguments ` +
+        `${where}, you called ${expected} but the arguments ` +
         `didn't match what was expected. ${failure.message}. What about the ` +
         `request led you to use different arguments?`
       );
     }
 
     return (
-      `In the previous step, the expected tool was ${expected} but it wasn't ` +
+      `${where}, the expected tool was ${expected} but it wasn't ` +
       `called as expected. ${failure.message}. What about the request or your ` +
       `available tools led you to make that choice?`
     );
@@ -111,4 +116,24 @@ export function buildReflectionPrompt(failure: EvalAssertionResult): string {
     `The following check failed: "${description}". Can you explain your ` +
     `reasoning for the approach you took?`
   );
+}
+
+/**
+ * Name the turn a tool_called check looked at, by the user message it answered,
+ * so a check on an early turn isn't read as being about the latest one.
+ *
+ * @param turns - The conversation so far
+ * @param turn - The checked turn index, or "any"/undefined for the whole run
+ * @returns The phrase that opens the prompt
+ */
+function turnPhrase(turns: EvalTurnResult[], turn?: number | "any"): string {
+  const message = typeof turn === "number" ? turns[turn]?.userMessage : null;
+
+  if (message == null) {
+    return "In this conversation";
+  }
+
+  const excerpt = message.length > 80 ? `${message.slice(0, 77)}...` : message;
+
+  return `In your reply to "${excerpt}"`;
 }

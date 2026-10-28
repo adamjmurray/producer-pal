@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -100,10 +100,16 @@ describe("readScene over a list of targets", () => {
     expect(readScene({ sceneIndex: 1 })).toStrictEqual(scene1);
   });
 
-  it("refuses sceneIndex beside a list", () => {
-    expect(() => readScene({ path: "s0,s1", sceneIndex: 0 })).toThrow(
+  it("refuses sceneIndex beside a list of ids", () => {
+    expect(() => readScene({ id: "10,11", sceneIndex: 0 })).toThrow(
       "sceneIndex names one scene, but id and path name 2. " +
         "Name every scene with id or path, or drop sceneIndex.",
+    );
+  });
+
+  it("refuses sceneIndex beside a path list", () => {
+    expect(() => readScene({ path: "s0,s1", sceneIndex: 0 })).toThrow(
+      "path names the scene on its own - don't send sceneIndex with it",
     );
   });
 
@@ -113,7 +119,7 @@ describe("readScene over a list of targets", () => {
       scene1,
     ]);
     expect(capturedWarnings()).toContainEqual(
-      'blank id ignored — "path" names the scenes',
+      'blank id ignored: "path" names the scenes',
     );
   });
 });

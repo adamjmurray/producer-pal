@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The `projectContext.sync` V8 → Node RPC route. V8 checks the current Live Set
 // on every tool call (file_path isn't observable, so we pull rather than get

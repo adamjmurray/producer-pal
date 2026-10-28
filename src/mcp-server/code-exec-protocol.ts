@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// SPDX-License-Identifier: MIT
 
 /**
  * Node-side handler for code execution requests from V8.
@@ -10,7 +10,10 @@
 
 import Max from "max-api";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { oversizedSingleMessageError } from "#src/shared/mcp-responses.ts";
+import {
+  CODE_EXEC_TOO_LARGE_ADVICE,
+  oversizedSingleMessageError,
+} from "#src/shared/mcp-responses.ts";
 import { executeSandboxedCode } from "./code-executor.ts";
 import * as console from "./node-for-max-logger.ts";
 
@@ -89,7 +92,11 @@ async function sendCodeExecResult(
     // A cardinality-increasing transform (e.g. ratchet) can push the result
     // past the single-message IPC limit, where Max would silently truncate it.
     // Replace it with a small, loud error rather than send a corrupt blob.
-    const tooLarge = oversizedSingleMessageError(json, "code-exec result");
+    const tooLarge = oversizedSingleMessageError(
+      json,
+      "code-exec result",
+      CODE_EXEC_TOO_LARGE_ADVICE,
+    );
     const payload = tooLarge
       ? JSON.stringify({ success: false, error: tooLarge })
       : json;

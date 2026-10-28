@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -25,7 +25,11 @@ vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
 }));
 
 import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  beginWarningCapture,
+  capturedWarnings,
+  changedNothing,
+} from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Make a clip's call mock report `noteCount` notes from get_notes_extended, so
@@ -159,7 +163,7 @@ describe("updateClip - duplicateLoop", () => {
 
   // start/length set the loop region, which is exactly what duplicate_loop
   // copies, so the pair reads two ways - "the region to double" or "the length
-  // to end up at" - and both look like success. Refused instead (ADR-0040).
+  // to end up at" - and both look like success. Refused instead.
   it.each([
     ["length", { length: "4bar" }, "combined with length: length sets"],
     ["start", { start: "2|1" }, "combined with start: start sets"],
@@ -346,7 +350,7 @@ describe("updateClip - duplicateLoop", () => {
     });
   });
 
-  it("prefers the transforms count over the preTransforms one", async () => {
+  it("adds the counts of the preTransforms and transforms passes", async () => {
     setupMidiClipMock(mocks.clip123);
     mockNoteCount(mocks.clip123, 8);
 
@@ -357,15 +361,114 @@ describe("updateClip - duplicateLoop", () => {
       transforms: "pitch += 1",
     });
 
-    // Both ran; the reported count is the later pass's, matching every other
-    // path where transforms wins over preTransforms.
+    // Both ran over the 8 notes the mock holds, and each pass compares its own
+    // before and after, so the report is their sum.
     expect(result).toStrictEqual({
-      transformed: 8,
+      transformed: 16,
       id: "123",
       path: "t0/s0",
       noteCount: 8,
       length: "2bar",
     });
+  });
+
+  it("reports what the preTransforms pass deleted beside what transforms changed", async () => {
+    setupMidiClipMock(mocks.clip123);
+    mockNoteCount(mocks.clip123, 8);
+
+    const result = await updateClip({
+      id: "123",
+      duplicateLoop: true,
+      preTransforms: "C3: velocity = 0",
+      transforms: "pitch += 1",
+    });
+
+    expect(result).toStrictEqual({
+      transformed: 8,
+      deletedNotes: 8,
+      id: "123",
+      path: "t0/s0",
+      noteCount: 8,
+      length: "2bar",
+    });
+  });
+
+  it("says how many muted notes duplicate_loop copied", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    let duplicated = false;
+
+    mocks.clip123.call.mockImplementation((method: string) => {
+      if (method === "duplicate_loop") {
+        duplicated = true;
+
+        return {};
+      }
+
+      // One muted note, copied into the new half
+      return method === "get_notes_extended"
+        ? JSON.stringify({
+            notes: [
+              { pitch: 60, start_time: 0, duration: 1, velocity: 100, mute: 0 },
+              ...Array.from({ length: duplicated ? 2 : 1 }, (_, i) => ({
+                pitch: 62,
+                start_time: i * 4,
+                duration: 1,
+                velocity: 100,
+                mute: 1,
+              })),
+            ],
+          })
+        : {};
+    });
+
+    const result = await updateClip({ id: "123", duplicateLoop: true });
+
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      noteCount: 1,
+      length: "2bar",
+      detail: "duplicateLoop copied 1 muted note",
+    });
+  });
+
+  it("counts copied muted notes over the window it read before, not the wider one after", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    let duplicated = false;
+
+    mocks.clip123.call.mockImplementation((method: string) => {
+      if (method === "duplicate_loop") {
+        duplicated = true;
+
+        return {};
+      }
+
+      const muted = (start: number) => ({
+        pitch: 62,
+        start_time: start,
+        duration: 1,
+        velocity: 100,
+        mute: 1,
+      });
+
+      // The wider window after the double also reaches a muted note that was
+      // never in the one read before, and that isn't a copy.
+      return method === "get_notes_extended"
+        ? JSON.stringify({
+            notes: duplicated ? [muted(0), muted(4), muted(1000)] : [muted(0)],
+          })
+        : {};
+    });
+
+    const result = await updateClip({ id: "123", duplicateLoop: true });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: "duplicateLoop copied 1 muted note",
+      }),
+    );
   });
 
   it("composes code: doubles the loop, then runs code on the doubled clip", async () => {
@@ -413,5 +516,43 @@ describe("updateClip - duplicateLoop", () => {
     expect(firstAdd).toBeGreaterThanOrEqual(0);
     expect(dup).toBeGreaterThan(firstAdd);
     expect(order.lastIndexOf("add_new_notes")).toBeGreaterThan(dup);
+  });
+});
+
+describe("updateClip - duplicateLoop, then the notes fail", () => {
+  let mocks: UpdateClipMocks;
+
+  // A zero repeat step in 4/4, which only shows once the notes are read.
+  const ZERO_STEP = "C1 1|1x3@1bar-n4/4";
+
+  beforeEach(() => {
+    mocks = setupUpdateClipMocks();
+    setupMidiClipMock(mocks.clip123);
+    mockNoteCount(mocks.clip123, 4);
+  });
+
+  it.each([
+    ["the loop was doubled", {}, "already changed: loop doubled"],
+    [
+      "the preTransforms were written first",
+      { preTransforms: "velocity = 50" },
+      "already changed: notes, loop doubled",
+    ],
+  ])("keeps the clip's entry, saying %s", async (_what, extra, landed) => {
+    const capture = beginWarningCapture();
+    const result = await updateClip({
+      id: "123",
+      duplicateLoop: true,
+      notes: ZERO_STEP,
+      ...extra,
+    });
+
+    expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      detail: `Repeat step size must be greater than 0; ${landed}`,
+    });
+    expect(changedNothing(capture)).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type Provider } from "#webui/types/settings";
 
@@ -31,6 +31,7 @@ const BRAND_NAMES: Record<Provider, string> = {
   openai: "OpenAI",
   mistral: "Mistral",
   openrouter: "OpenRouter",
+  vercel: "Vercel",
   lmstudio: "Bionic",
   ollama: "Ollama",
   custom: "Custom",

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Harness for the subagent specs: a scripted OpenAI-compatible chat endpoint
 // standing in for the LLM, so a whole spawn — orchestrator turn, nested worker

@@ -13,12 +13,15 @@ the built-in chat UI — and recommends the easiest path.
 
 | Provider                                 | Best for                               |
 | ---------------------------------------- | -------------------------------------- |
-| [Claude / Anthropic](./choose-claude)    | The original, most-tested experience   |
+| [Claude / Anthropic](./choose-claude)    | Claude users                           |
 | [ChatGPT / OpenAI](./choose-openai)      | OpenAI subscribers                     |
-| [Gemini / Google](./choose-gemini)       | Google users and free-tier experiments |
+| [Gemini / Google](./choose-gemini)       | Google users                           |
 | [Mistral / Mistral AI](./choose-mistral) | Mistral users                          |
 | [Local / Offline](./choose-local)        | Running fully offline on your hardware |
-| [Multiple Providers](./choose-multi)     | Mixing and matching as you go          |
+| [Multi / AI Routers](./choose-multi)     | Mixing and matching as you go          |
+
+Claude Code, Codex CLI, and Gemini CLI can also use the portable
+[Agent Skill](/guide/skills) instead of MCP.
 
 Not sure yet? The [installation overview](/installation) groups setups by _how_
 you want to interact — desktop app, chat UI, command line, or web app — which is

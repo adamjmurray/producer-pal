@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { expect } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -9,12 +9,21 @@ import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
+  registerPendingMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
 const NEW_TRACK_ID = "live_set/tracks/1";
 
 export { children };
-export { type RegisteredMockObject, registerMockObject };
+export {
+  registerTrackCopySet,
+  type TrackCopySet,
+} from "../tests/track/track-copy-set-test-helpers.ts";
+export {
+  type RegisteredMockObject,
+  registerMockObject,
+  registerPendingMockObject,
+};
 
 /**
  * Register the freshly duplicated track (index 1) together with one clip slot
@@ -30,7 +39,7 @@ export function registerDuplicatedTrackSlots(
 ): { newTrack: RegisteredMockObject; slots: RegisteredMockObject[] } {
   const slotIds = hasClip.map((_, index) => `slot${index}`);
 
-  const newTrack = registerMockObject(NEW_TRACK_ID, {
+  const newTrack = registerPendingMockObject(NEW_TRACK_ID, {
     path: livePath.track(1),
     properties: {
       devices: [],
@@ -41,7 +50,7 @@ export function registerDuplicatedTrackSlots(
   });
 
   const slots = hasClip.map((has, index) =>
-    registerMockObject(slotIds[index] as string, {
+    registerPendingMockObject(slotIds[index] as string, {
       path: livePath.track(1).clipSlot(index),
       properties: { has_clip: has ? 1 : 0 },
     }),
@@ -56,6 +65,8 @@ export function registerDuplicatedTrackSlots(
  * @param sceneIndex - Scene index
  * @param hasClip - Whether the clip slot has a clip
  * @param clipProperties - Optional clip properties (registered only if hasClip)
+ * @param register - How to add them: registerMockObject, or registerPendingMockObject for
+ *   slots that a later call creates
  * @returns The clip handle if hasClip and clipProperties, otherwise the slot handle
  */
 export function registerClipSlot(
@@ -63,8 +74,9 @@ export function registerClipSlot(
   sceneIndex: number,
   hasClip: boolean,
   clipProperties?: Record<string, unknown>,
+  register: typeof registerMockObject = registerMockObject,
 ): RegisteredMockObject {
-  const slot = registerMockObject(
+  const slot = register(
     `live_set/tracks/${trackIndex}/clip_slots/${sceneIndex}`,
     {
       path: livePath.track(trackIndex).clipSlot(sceneIndex),
@@ -73,7 +85,7 @@ export function registerClipSlot(
   );
 
   if (hasClip && clipProperties) {
-    return registerMockObject(
+    return register(
       `live_set/tracks/${trackIndex}/clip_slots/${sceneIndex}/clip`,
       {
         path: livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
@@ -231,13 +243,16 @@ export function expectDeleteDeviceCalls(
  * Register clip mock objects for each track at a given scene index.
  * @param trackCount - Number of tracks
  * @param sceneIndex - Scene index for the clip slot
+ * @param register - registerMockObject, or registerPendingMockObject for clips that a
+ *   later call creates
  */
 export function registerClipMocks(
   trackCount: number,
   sceneIndex: number,
+  register: typeof registerMockObject = registerMockObject,
 ): void {
   for (let i = 0; i < trackCount; i++) {
-    registerMockObject(`live_set/tracks/${i}/clip_slots/${sceneIndex}/clip`, {
+    register(`live_set/tracks/${i}/clip_slots/${sceneIndex}/clip`, {
       path: livePath.track(i).clipSlot(sceneIndex).clip(),
     });
   }
@@ -271,17 +286,23 @@ export function setupSessionSceneMocks(
   const trackIds = Array.from({ length: trackCount }, (_, i) => `track${i}`);
   const liveSet = registerMockObject("live_set", {
     path: livePath.liveSet,
-    properties: { tracks: children(...trackIds) },
+    properties: { tracks: children(...trackIds), scenes: children("scene1") },
   });
 
   for (let i = 0; i < trackCount; i++) {
-    registerClipSlot(i, targetSceneIndex, true);
+    registerClipSlot(
+      i,
+      targetSceneIndex,
+      true,
+      undefined,
+      registerPendingMockObject,
+    );
   }
 
-  registerClipMocks(trackCount, targetSceneIndex);
+  registerClipMocks(trackCount, targetSceneIndex, registerPendingMockObject);
 
   if (registerNewScene) {
-    registerMockObject(`live_set/scenes/${targetSceneIndex}`, {
+    registerPendingMockObject(`live_set/scenes/${targetSceneIndex}`, {
       path: livePath.scene(targetSceneIndex),
     });
   }
@@ -304,7 +325,7 @@ export function setupArrangementSceneMocks(
 
   return registerMockObject("live_set", {
     path: livePath.liveSet,
-    properties: { tracks: children(...trackIds) },
+    properties: { tracks: children(...trackIds), scenes: children("scene1") },
   });
 }
 
@@ -365,6 +386,7 @@ export function registerSessionClipDuplication(
  */
 export function setupDeviceDuplicationMocks(deviceIndex = 0): {
   liveSet: RegisteredMockObject;
+  tempDevice: RegisteredMockObject;
 } {
   registerMockObject("device1", {
     path: livePath.track(0).device(deviceIndex),
@@ -372,11 +394,12 @@ export function setupDeviceDuplicationMocks(deviceIndex = 0): {
   });
   const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
 
-  registerMockObject(`live_set/tracks/1/devices/${deviceIndex}`, {
-    path: livePath.track(1).device(deviceIndex),
-  });
+  const tempDevice = registerPendingMockObject(
+    `live_set/tracks/1/devices/${deviceIndex}`,
+    { path: livePath.track(1).device(deviceIndex) },
+  );
 
-  return { liveSet };
+  return { liveSet, tempDevice };
 }
 
 /**
@@ -394,7 +417,7 @@ export function setupProducerPalDeviceMocks(): {
   const liveSet = registerMockObject("live_set", {
     path: livePath.liveSet,
   });
-  const newTrack = registerMockObject(NEW_TRACK_ID, {
+  const newTrack = registerPendingMockObject(NEW_TRACK_ID, {
     path: livePath.track(1),
     properties: {
       devices: children("device0", "device1", "device2"),
@@ -423,7 +446,7 @@ export function setupRoutingMocks(
     path: livePath.track(0),
     properties: mockData[String(livePath.track(0))] as Record<string, unknown>,
   });
-  const newTrack = registerMockObject(NEW_TRACK_ID, {
+  const newTrack = registerPendingMockObject(NEW_TRACK_ID, {
     path: livePath.track(1),
     properties: {
       ...(mockData[String(livePath.track(1))] as Record<string, unknown>),
@@ -448,7 +471,7 @@ export function registerBareTrackDuplication(): {
   registerMockObject("track1", { path: livePath.track(0) });
 
   const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
-  const newTrack = registerMockObject(NEW_TRACK_ID, {
+  const newTrack = registerPendingMockObject(NEW_TRACK_ID, {
     path: livePath.track(1),
     properties: { devices: [], clip_slots: [], arrangement_clips: [] },
   });
@@ -468,85 +491,4 @@ export function registerLiveSetWithThreeTracks(
     path: livePath.liveSet,
     properties: { tracks: children("10", "11", "12"), ...properties },
   });
-}
-
-/** The Live Set {@link registerTrackCopySet} builds, and its tracks. */
-export interface TrackCopySet {
-  liveSet: RegisteredMockObject;
-  /** Every track so far, copies included, by id */
-  tracks: Map<string, RegisteredMockObject>;
-}
-
-/**
- * Register tracks whose duplicate_track behaves the way Live's does: the copy
- * lands right after its source, and a group's copy takes the members along and
- * lands after the last of them. Optionally one track is a group with its
- * members right after it. Copy N is `copy-N`, and its members `copy-N-m1`, `copy-N-m2`…
- * @param ids - Track ids, in Set order
- * @param group - Which track is a group, and how many members follow it;
- *   none when omitted
- * @param group.index - The group's index
- * @param group.members - How many tracks after it are its members
- * @param failing - Which duplicate_track calls make no copy, counting from 1
- * @returns The Live Set and its tracks
- */
-export function registerTrackCopySet(
-  ids: string[],
-  group?: { index: number; members: number },
-  failing: number[] = [],
-): TrackCopySet {
-  const order = [...ids];
-  const tracks = new Map<string, RegisteredMockObject>();
-  let copies = 0;
-  let calls = 0;
-
-  const place = (): void => {
-    for (const [index, id] of order.entries()) {
-      tracks.set(
-        id,
-        // Keep what a test registered on the track; only its index moves.
-        registerMockObject(id, {
-          path: livePath.track(index),
-          properties: tracks.get(id)?.properties ?? {
-            devices: [],
-            clip_slots: [],
-            arrangement_clips: [],
-          },
-        }),
-      );
-    }
-
-    liveSet.properties.tracks = children(...order);
-  };
-
-  const landCopy = (index: unknown): void => {
-    const members = group != null && index === group.index ? group.members : 0;
-
-    copies++;
-    const copy = Array.from({ length: members + 1 }, (_, m) =>
-      m === 0 ? `copy-${copies}` : `copy-${copies}-m${m}`,
-    );
-
-    order.splice(Number(index) + members + 1, 0, ...copy);
-    place();
-  };
-
-  const liveSet = registerMockObject("live_set", {
-    path: livePath.liveSet,
-    methods: {
-      duplicate_track: (index: unknown) => {
-        calls++;
-
-        if (!failing.includes(calls)) {
-          landCopy(index);
-        }
-
-        return null;
-      },
-    },
-  });
-
-  place();
-
-  return { liveSet, tracks };
 }

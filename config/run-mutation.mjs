@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Runner for scoped mutation testing. Expands the requested scope/group names,
 // then runs Stryker once per scope with MUTATION_SCOPE set, aggregating exit

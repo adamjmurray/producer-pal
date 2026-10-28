@@ -1,7 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
+
+import { isNewerVersion } from "#src/shared/version-check.ts";
 
 /**
  * Parses a time signature string into numerator and denominator
@@ -110,4 +112,69 @@ export function stripFields(
       delete (item as Record<string, unknown>)[field];
     }
   }
+}
+
+/** A time signature as the tools parse it. */
+interface TimeSignatureParts {
+  numerator: number;
+  denominator: number;
+}
+
+/**
+ * Read a time signature Live can keep as written. Live rounds a denominator
+ * that isn't a power of two to one that is ("4/3" becomes 4/2), which is no
+ * time signature the caller asked for, so it is refused before anything is
+ * written.
+ * @param entry - The time signature, "N/D"
+ * @returns The parsed time signature
+ * @throws Error when it isn't "N/D" or has a denominator Live can't keep
+ */
+export function parseKeptTimeSignature(entry: string): TimeSignatureParts {
+  const parsed = parseTimeSignature(entry);
+  const { denominator } = parsed;
+
+  if ((denominator & (denominator - 1)) !== 0) {
+    throw new Error(
+      `timeSignature "${entry}" has a denominator Live can't keep; use a power of two (e.g. "4/4", "6/8")`,
+    );
+  }
+
+  return parsed;
+}
+
+/**
+ * The time signature Live kept, when it isn't the one written. Live clamps a
+ * numerator it can't hold ("100/32" becomes 1/32), so a write is checked once
+ * by reading it back.
+ * @param asked - The time signature that was written
+ * @param numerator - What Live answered for the numerator
+ * @param denominator - What Live answered for the denominator
+ * @returns The kept "N/D", or undefined when it is as asked or Live didn't say
+ */
+export function keptTimeSignature(
+  asked: TimeSignatureParts,
+  numerator: unknown,
+  denominator: unknown,
+): string | undefined {
+  // Nothing came back to compare with, so nothing is claimed about the write.
+  if (typeof numerator !== "number" || typeof denominator !== "number") {
+    return undefined;
+  }
+
+  return numerator === asked.numerator && denominator === asked.denominator
+    ? undefined
+    : `${numerator}/${denominator}`;
+}
+
+/**
+ * Test whether the running Live is at least a version. Calling a Live function
+ * or setting a property that a version doesn't have does nothing and raises no
+ * error, so features added in a later Live check the version instead.
+ * @param min - The oldest version that has the feature, like "12.4"
+ * @returns True when the running Live is `min` or later
+ */
+export function liveVersionAtLeast(min: string): boolean {
+  const version = String(LiveAPI.from("live_app").call("get_version_string"));
+
+  return !isNewerVersion(version, min);
 }

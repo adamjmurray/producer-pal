@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
@@ -54,6 +54,8 @@ vi.mock(import("#webui/lib/rate-limit"), async (importOriginal) => {
 import { ChatSdkClient, MAX_TOOL_STEPS } from "#webui/chat/sdk/client";
 import {
   MAX_SPAWNS,
+  type RunWorkerOptions,
+  type WorkerRunResult,
   labelWorkerResult,
 } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
@@ -367,6 +369,31 @@ describe("ChatSdkClient runSubagent (delegation)", () => {
     }
 
     expect(attachedWhenErrorLanded).toBe(true);
+  });
+
+  it("runs a worker whose config carries no chat history", async () => {
+    const { client } = await orchestratorWithSpawnTool();
+
+    mockStreamParts([
+      { type: "text-delta", text: "Fresh worker done." },
+      { type: "finish", finishReason: "stop" },
+    ]);
+
+    // The runner is private; reach it directly to feed it a config the spawn
+    // tool itself never builds.
+    const { runSubagent } = client as unknown as {
+      runSubagent: (options: RunWorkerOptions) => Promise<WorkerRunResult>;
+    };
+    const result = await runSubagent.call(client, {
+      resolveConfig: () => Promise.resolve(createConfig()),
+      task: "x",
+      toolCallId: "tc-fresh",
+      subagentIndex: 1,
+    });
+
+    expect(result.messages.at(-1)?.content).toBe("Fresh worker done.");
+    expect(result.messages[0]?.role).toBe("user");
+    expect(result.messages[0]?.content).toBe("x");
   });
 });
 

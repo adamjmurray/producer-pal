@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * How an eval result reads on screen, shared by the text printers, the
@@ -96,14 +96,16 @@ export function toolErrorPenalty(result: JsonEvalResult): number {
  * @returns The score, or null when there is nothing to grade
  */
 export function scorePercentage(results: JsonEvalResult[]): number | null {
-  const base = basePercentage(results);
+  // Errored runs never tested the model, so they are not out of N.
+  const graded = results.filter((r) => r.result !== "error");
+  const base = basePercentage(graded, results.length > 1);
 
   if (base == null) {
     return null;
   }
 
   const penalty =
-    results.reduce((sum, r) => sum + toolErrorPenalty(r), 0) / results.length;
+    graded.reduce((sum, r) => sum + toolErrorPenalty(r), 0) / graded.length;
 
   return Math.round(base * (1 - penalty));
 }
@@ -111,16 +113,20 @@ export function scorePercentage(results: JsonEvalResult[]): number | null {
 /**
  * The score before the tool-error penalty.
  *
- * @param results - One trial, or every trial for a repeated scenario
+ * @param results - The graded trials
+ * @param repeated - Whether the scenario ran more than one trial
  * @returns The base percentage, or null when there is nothing to grade
  */
-function basePercentage(results: JsonEvalResult[]): number | null {
+function basePercentage(
+  results: JsonEvalResult[],
+  repeated: boolean,
+): number | null {
   if (results.length === 0) {
     return null;
   }
 
   // Repeated runs grade consistency: how many trials passed outright.
-  if (results.length > 1) {
+  if (repeated) {
     const passed = results.filter((r) => r.result === "pass").length;
 
     return (passed / results.length) * 100;

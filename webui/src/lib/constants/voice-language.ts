@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Voice-chat language lock. Both realtime backends are forced to a single
@@ -134,7 +134,7 @@ export function buildOpenAIVoiceInstructions(lang: VoiceLanguage): string {
 
 /**
  * Agent instructions for the Gemini Live backend. The native-audio model
- * (gemini-3.1-flash-live-preview) ignores speechConfig.languageCode, so the lock
+ * (gemini-3.8-live) ignores speechConfig.languageCode, so the lock
  * is instructions-only — prepend Google's emphatic recommended phrasing to the
  * shared anti-drift rules for the strongest soft lock available.
  * @param lang - The locked language

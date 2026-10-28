@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Cross-grammar parity for the pitch-class sub-grammar.
 //
@@ -96,13 +96,48 @@ describe("pitch-class grammar parity across both grammars", () => {
   describe("both grammars reject the same malformed pitch names", () => {
     // No such letter, a double accidental, and an accidental with no octave —
     // all stay rejected on both sites (tolerance widens, it does not collapse).
-    for (const token of ["H3", "Cbb3", "C##3", "c#"]) {
+    // Also an accidental after the octave. Only `A3#` parsed before (as a
+    // comment); the rest are regression guards. The block below guards the
+    // change.
+    for (const token of [
+      "H3",
+      "Cbb3",
+      "C##3",
+      "c#",
+      "A3b",
+      "A3#",
+      "A3♭",
+      "A-1♯",
+    ]) {
       it(`"${token}" is rejected on every site`, () => {
         for (const site of PITCH_SITES) {
           // Peggy's own syntax error, not the helpers' "parsed, but not as a
           // pitch" guard — that would pass this test for the wrong reason.
           expect(() => site.fn(token)).toThrow(/^Expected /);
         }
+      });
+    }
+  });
+
+  describe("both grammars refuse a glued accidental that used to parse", () => {
+    // `#` after an octave used to start a comment, dropping the rest of the
+    // line without a word. Each of these parsed on both sites before.
+    const BARBEAT = ["A3# 1|1", "C3 E3# 1|1"];
+    const TRANSFORM = ["A3#: velocity = 1", "pitch = A3# 5"];
+
+    for (const source of BARBEAT) {
+      it(`bar|beat refuses ${JSON.stringify(source)}`, () => {
+        expect(() =>
+          parseBarbeat(source, { beatsPerBar: 4, timeSigDenominator: 4 }),
+        ).toThrow(/^Expected /);
+      });
+    }
+
+    for (const source of TRANSFORM) {
+      it(`transform refuses ${JSON.stringify(source)}`, () => {
+        expect(() => parseTransform(source, { beatsPerBar: 4 })).toThrow(
+          /^Expected /,
+        );
       });
     }
   });

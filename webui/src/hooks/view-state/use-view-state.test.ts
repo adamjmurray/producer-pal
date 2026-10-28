@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
@@ -38,6 +38,17 @@ describe("useViewState", () => {
     expect(result.current.viewState.historyPanelOpen).toBe(true);
     expect(result.current.viewState.settingsTab).toBe("tools");
     expect(result.current.viewState.settingsOpen).toBe(false);
+  });
+
+  it("opens the Installation tab for a stored Remote Script tab", () => {
+    localStorage.setItem(
+      VIEW_STATE_KEY,
+      JSON.stringify({ settingsTab: "remote-script" }),
+    );
+
+    const { result } = renderHook(() => useViewState());
+
+    expect(result.current.viewState.settingsTab).toBe("installation");
   });
 
   it("merges partial updates and persists to localStorage", async () => {

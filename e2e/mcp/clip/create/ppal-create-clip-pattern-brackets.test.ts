@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for bar|beat pattern brackets (streams) through the
@@ -20,7 +20,7 @@
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track. Slots /0../6 (avoids /4, the
  * 3/4 scene s4, so all cases stay in 4/4).
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-create-clip-pattern-brackets
  */

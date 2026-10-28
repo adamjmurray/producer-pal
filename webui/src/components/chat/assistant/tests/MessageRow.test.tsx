@@ -1,15 +1,39 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
  */
-import { fireEvent, render, screen } from "@testing-library/preact";
+import { act, fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types";
 import { type UIMessage } from "#webui/types/messages";
+
+// Wraps the real editor, keeping its props so a test can fire a callback the
+// image strip would never send.
+const editorProps = vi.hoisted(() => ({
+  current: null as {
+    onRemoveImage?: (index: number) => void;
+  } | null,
+}));
+
+vi.mock(
+  import("#webui/components/chat/UserMessageEditor"),
+  async (importOriginal) => {
+    const actual = await importOriginal();
+
+    return {
+      UserMessageEditor: (props) => {
+        editorProps.current = props;
+
+        return actual.UserMessageEditor(props);
+      },
+    };
+  },
+);
+
 import { MessageRow } from "#webui/components/chat/assistant/MessageRow";
 
 /**
@@ -162,6 +186,16 @@ describe("MessageRow user images", () => {
         "match this",
         [0, 1],
       );
+    });
+
+    it("ignores removing an image the message does not have", () => {
+      const handleEdit = vi.fn();
+
+      renderUser(twoImages, 0, handleEdit);
+      void act(() => editorProps.current?.onRemoveImage?.(5));
+      fireEvent.click(screen.getByTestId("edit-message-save"));
+
+      expect(handleEdit).toHaveBeenCalledExactlyOnceWith(0, "match this", []);
     });
 
     it("can send an image-only message with one image fewer", () => {

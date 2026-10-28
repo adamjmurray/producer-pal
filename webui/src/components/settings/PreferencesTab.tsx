@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { useEffect, useRef, useState } from "preact/hooks";
 import {
@@ -19,8 +19,6 @@ interface PreferencesTabProps {
   setShowHelpLinks: (show: boolean) => void;
   showTokenUsage: boolean;
   setShowTokenUsage: (show: boolean) => void;
-  autoUpdateCheck: boolean;
-  setAutoUpdateCheck: (enabled: boolean) => void;
   maxToolSteps: number;
   setMaxToolSteps: (steps: number) => void;
   onDeleteAllConversations: () => void;
@@ -38,8 +36,6 @@ interface PreferencesTabProps {
  * @param {Function} props.setShowHelpLinks - Function to toggle help links
  * @param {boolean} props.showTokenUsage - Whether to show per-message token usage
  * @param {Function} props.setShowTokenUsage - Function to toggle token usage
- * @param {boolean} props.autoUpdateCheck - Whether to check GitHub for new releases
- * @param {Function} props.setAutoUpdateCheck - Function to toggle update checking
  * @param {number} props.maxToolSteps - Tool steps one turn may spend
  * @param {Function} props.setMaxToolSteps - Function to set the step budget
  * @param {Function} props.onDeleteAllConversations - Callback to delete all conversations
@@ -55,8 +51,6 @@ export function PreferencesTab({
   setShowHelpLinks,
   showTokenUsage,
   setShowTokenUsage,
-  autoUpdateCheck,
-  setAutoUpdateCheck,
   maxToolSteps,
   setMaxToolSteps,
   onDeleteAllConversations,
@@ -80,20 +74,13 @@ export function PreferencesTab({
         </select>
       </div>
 
-      {/* Rendered from one list so the four stay identical; the tests index
-          them by position, so the order here is the order on screen. The last
-          is machine-wide and shared with the Max for Live device, so it applies
-          on change rather than on Save — like the Delete buttons below. */}
+      {/* Rendered from one list so the three stay identical; the tests index
+          them by position, so the order here is the order on screen. */}
       {(
         [
           ["Show message timestamps", showTimestamps, setShowTimestamps],
           ["Show help links", showHelpLinks, setShowHelpLinks],
           ["Show message token usage", showTokenUsage, setShowTokenUsage],
-          [
-            "Automatically check for new versions",
-            autoUpdateCheck,
-            setAutoUpdateCheck,
-          ],
         ] as const
       ).map(([label, checked, setChecked]) => (
         <label

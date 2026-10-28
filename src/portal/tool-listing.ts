@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -102,7 +102,7 @@ async function fetchDeviceToolNames(
   mcpUrl: string,
   options: BridgeOptions,
 ): Promise<string[] | null> {
-  const client = new Client({ name: "producer-pal-portal", version: "1.0.0" });
+  const client = new Client({ name: "producer-pal-portal", version: VERSION });
 
   try {
     const transport = new StreamableHTTPClientTransport(

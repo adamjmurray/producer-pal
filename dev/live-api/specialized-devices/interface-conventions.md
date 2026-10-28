@@ -1,7 +1,7 @@
 # Interface conventions
 
 These cross-cutting decisions apply to multiple specialized devices. Per-device
-sections in [instruments.md](instruments.md) and
+sections in [instruments/](instruments/README.md) and
 [audio-effects.md](audio-effects.md) reference these patterns rather than
 redocumenting them.
 
@@ -51,7 +51,7 @@ beyond standard JS literal parsing).
 call wrote. `{ action }` alone means it ran; a `detail` beside it means it found
 nothing to change; `ok: false` with a `detail` means it was refused
 (unparseable, unknown for the device, bad args, or the handler turned it down).
-Nothing about an action warns (ADR-0042).
+Nothing about an action warns.
 
 **Action discovery (`include: ["actions"]`).** The actions a device supports are
 discoverable at runtime via `ppal-read-device include: ["actions"]`, which
@@ -168,16 +168,14 @@ writable enum/range params contributes `paramOptions`):
   13 mod-matrix source names (for the `setModulation` action; no LOM property
   exposes them).
 
-**Stable enums ARE surfaced — via `paramOptions`.** Previously stable enums
-lived only in Zod descriptions and skill text and were deliberately kept out of
-`options`. That is no longer the case: every writable pseudo-param with a fixed
-value space (Drift's source/target slots, `voiceMode`, `voiceCount`; EQ Eight
-`globalMode`; Roar `routingMode`; Spectral Resonator `modMode`/`pitchMode`/
-`polyphony`; Wavetable `filterRouting`/`unisonMode`/…) reports its accepted
-values under `paramOptions`. The skill now points to `options` for accepted
-values and carries only names + non-obvious semantics, keeping a few short
-high-frequency hints inline (`voiceMode`, `playbackMode`, `globalMode`) to avoid
-a round-trip on common operations.
+**Stable enums ARE surfaced — via `paramOptions`.** Every writable pseudo-param
+with a fixed value space (Drift's source/target slots, `voiceMode`,
+`voiceCount`; EQ Eight `globalMode`; Roar `routingMode`; Spectral Resonator
+`modMode`/`pitchMode`/ `polyphony`; Wavetable `filterRouting`/`unisonMode`/…)
+reports its accepted values under `paramOptions`. The skill points to `options`
+for accepted values and carries only names + non-obvious semantics, keeping a
+few short high-frequency hints inline (`voiceMode`, `playbackMode`,
+`globalMode`) to avoid a round-trip on common operations.
 
 **Why opt-in:** Most reads inspect current state, not catalogs. The dynamic ones
 (especially `modulatableParameters` and per-category wavetable lists) can be

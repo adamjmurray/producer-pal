@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // REST endpoints for the LLM-managed memory collection
 // (~/.producer-pal/memory/<slug>.md) — a thin binding of the generic
@@ -18,7 +18,10 @@ import {
   renameMemory,
   slugifyMemoryName,
 } from "../helpers/memory/memory-store.ts";
-import { registerCollectionRoutes } from "./collection-route.ts";
+import {
+  markdownEntryInput,
+  registerCollectionRoutes,
+} from "./collection-route.ts";
 
 /**
  * Register the /memory collection REST endpoints on the Express app.
@@ -34,17 +37,6 @@ export function registerMemoryCollectionRoutes(app: Express): void {
     forget: forgetMemory,
     remember: rememberMemory,
     rename: renameMemory,
-    buildInput: (name, reqBody) => {
-      if (typeof reqBody.content !== "string") {
-        return { error: "content must be a string" };
-      }
-
-      return {
-        name,
-        description:
-          typeof reqBody.description === "string" ? reqBody.description : "",
-        body: reqBody.content,
-      };
-    },
+    buildInput: markdownEntryInput,
   });
 }

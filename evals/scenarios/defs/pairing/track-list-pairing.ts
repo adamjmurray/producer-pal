@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Probes for the multi-target list params on the track tools.
@@ -184,6 +184,8 @@ export const trackListBatching: EvalScenario = {
   description: "Rename, color and then read four tracks with one call each",
   kind: "regression",
   liveSet: "basic-midi-4-track",
+  // Small-model schemas don't say the track params take lists.
+  requires: { largeModel: true },
   // The checks below pin the outcome. The judge only looks at how the reply
   // treats a color that landed on a nearby palette swatch.
   judgeAdvisory: true,

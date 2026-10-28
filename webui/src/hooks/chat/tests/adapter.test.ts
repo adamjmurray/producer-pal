@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type LanguageModel } from "ai";
 import { describe, expect, it, vi } from "vitest";
@@ -15,11 +15,11 @@ import { SYSTEM_INSTRUCTION } from "#webui/lib/config";
 // Mock provider-factories to avoid real OpenAI client creation
 const mockModel = { modelId: "test-model" } as unknown as LanguageModel;
 
-vi.mock(import("#webui/chat/sdk/provider-factories"), () => ({
+vi.mock(import("#webui/chat/sdk/provider/provider-factories"), () => ({
   createProviderModel: vi.fn(() => mockModel),
 }));
 
-import { createProviderModel } from "#webui/chat/sdk/provider-factories";
+import { createProviderModel } from "#webui/chat/sdk/provider/provider-factories";
 import { chatAdapter } from "#webui/hooks/chat/adapter";
 
 describe("chatAdapter", () => {
@@ -86,6 +86,15 @@ describe("chatAdapter", () => {
       expect(buildForProvider("anthropic").maxRequestImages).toBe(
         MAX_REQUEST_IMAGES,
       );
+    });
+
+    it.each([
+      ["openrouter", "mistralai/mistral-large-4-0"],
+      ["vercel", "mistral/pixtral-large-latest"],
+    ])("caps Mistral models on %s at Mistral's limit", (provider, model) => {
+      expect(
+        buildForProvider(provider, "Default", model).maxRequestImages,
+      ).toBe(MISTRAL_MAX_REQUEST_IMAGES);
     });
 
     it("carries smallModelMode from extraParams onto the config", () => {
@@ -282,11 +291,19 @@ describe("chatAdapter", () => {
       });
     });
 
-    it("sends none and no summary for gpt-6 with Off thinking", () => {
+    it("sends none and no summary for a gpt-6 model that accepts none with Off thinking", () => {
+      const config = buildForProvider("openai", "Off", "gpt-6-luna");
+
+      expect(config.providerOptions).toStrictEqual({
+        openai: { reasoningEffort: "none", reasoningSummary: null },
+      });
+    });
+
+    it("sends low for a gpt-6 model that rejects none with Off thinking", () => {
       const config = buildForProvider("openai", "Off", "gpt-6.1-sol");
 
       expect(config.providerOptions).toStrictEqual({
-        openai: { reasoningEffort: "none" },
+        openai: { reasoningEffort: "low", reasoningSummary: null },
       });
     });
 
@@ -352,19 +369,17 @@ describe("chatAdapter", () => {
       expect(config.providerOptions).toBeUndefined();
     });
 
-    it("sets ollama think option for supported model", () => {
+    it("sends no ollama reasoningEffort for Max thinking", () => {
       const config = buildForProvider("ollama", "Max", "qwq");
 
-      expect(config.providerOptions).toStrictEqual({
-        openai: { think: true },
-      });
+      expect(config.providerOptions).toBeUndefined();
     });
 
-    it("sets ollama think:false for Off thinking", () => {
+    it("sets ollama reasoningEffort none for Off thinking", () => {
       const config = buildForProvider("ollama", "Off", "qwq");
 
       expect(config.providerOptions).toStrictEqual({
-        openai: { think: false },
+        openai: { reasoningEffort: "none" },
       });
     });
 
@@ -386,10 +401,12 @@ describe("chatAdapter", () => {
       });
     });
 
-    it("returns undefined providerOptions for openrouter with Off thinking", () => {
+    it("sets reasoning effort none for openrouter with Off thinking", () => {
       const config = buildForProvider("openrouter", "Off", "some-model");
 
-      expect(config.providerOptions).toBeUndefined();
+      expect(config.providerOptions).toStrictEqual({
+        openrouter: { reasoning: { effort: "none" } },
+      });
     });
 
     it("sets anthropic adaptive thinking with max effort for Max thinking", () => {
@@ -613,6 +630,39 @@ describe("chatAdapter", () => {
         expect(config.model).toBe(mockModel); // orchestrator unaffected
         expect(config.subagentConfig).toBeUndefined();
         expect(warnSpy).toHaveBeenCalledOnce();
+
+        vi.mocked(createProviderModel).mockImplementation(() => mockModel);
+        warnSpy.mockRestore();
+      });
+
+      it("warns with the thrown value when it isn't an Error", () => {
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+        vi.mocked(createProviderModel).mockImplementation((_p, modelId) => {
+          if (modelId === "broken-worker") {
+            const notAnError: unknown = "no base URL";
+
+            throw notAnError;
+          }
+
+          return mockModel;
+        });
+
+        const config = chatAdapter.buildConfig(
+          "gpt-4o",
+          "Default",
+          {},
+          undefined,
+          {
+            ...extraParams,
+            subagentPreset: { ...subagentPreset, model: "broken-worker" },
+          },
+        );
+
+        expect(config.subagentConfig).toBeUndefined();
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("current settings. no base URL"),
+        );
 
         vi.mocked(createProviderModel).mockImplementation(() => mockModel);
         warnSpy.mockRestore();

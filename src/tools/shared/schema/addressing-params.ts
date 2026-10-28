@@ -1,10 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z, type ZodType } from "zod";
-import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
+import {
+  aliasParam,
+  deprecatedParam,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
 
 /** Options for {@link addressingAliases}. */
 export interface AddressingAliasOptions {
@@ -38,5 +41,27 @@ export function addressingAliases(
           }),
         }),
     paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
+  };
+}
+
+/**
+ * The unpublished ways a model names a clip slot instead of `path`: the old
+ * `slot` param, and a track and scene index like the rest of the toolset uses.
+ * @param example - A slot path to show in the alias hint, like "t0/s0"
+ * @returns Param schemas to spread into a tool's inputSchema after `path`
+ */
+export function clipSlotAliases(example: string): Record<string, ZodType> {
+  return {
+    slot: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "path",
+    }),
+    trackIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
+      canonical: "path",
+      example,
+    }),
+    sceneIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
+      canonical: "path",
+      example,
+    }),
   };
 }

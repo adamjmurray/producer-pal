@@ -133,7 +133,7 @@ C1 1|1x4@n/4         // Bar 1: kick on every beat
 
 ## Validation
 
-**Maximum repetitions**: Parser warns if `times > 100` (excessive notes)
+**Maximum repetitions**: Interpreter warns if `times > 100` (excessive notes)
 
 **Step size**: Must be greater than 0 (validated in grammar)
 

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { type VNode } from "preact";
 import { useState } from "preact/hooks";
@@ -14,20 +14,29 @@ import { EditButton } from "#webui/components/chat/EditButton";
 import { UserImages } from "#webui/components/chat/assistant/UserImages";
 import { UserMessageEditor } from "#webui/components/chat/UserMessageEditor";
 import { ErrorBoundary } from "#webui/components/ErrorBoundary";
-import {
-  calcNewContentTokens,
-  compactNumber,
-} from "#webui/lib/utils/compact-number";
+import { calcNewContentTokens } from "#webui/lib/utils/compact-number";
 import {
   formatTimestampDate,
   formatTimestampTime,
 } from "#webui/lib/utils/format-timestamp";
 import { type UIImagePart, type UIMessage } from "#webui/types/messages";
 import { AssistantMessage } from "./AssistantMessage";
+import { StepUsageLabel } from "./StepUsageLabel";
 import { RenderErrorFallback, SafeMarkdown } from "./helpers/SafeMarkdown";
-import { formatStepTiming } from "./helpers/step-usage";
 
-export interface MessageRowProps {
+/** What the user can do to a message in the transcript. */
+export interface MessageActions {
+  handleRetry: (messageIndex: number) => Promise<void>;
+  handleEdit: (
+    messageIndex: number,
+    newMessage: string,
+    removedImages?: number[],
+  ) => Promise<void>;
+  /** Compact-up-to-here; omitted in surfaces that don't support compaction (voice/demo) */
+  handleCompact?: (messageIndex: number) => Promise<void>;
+}
+
+export interface MessageRowProps extends MessageActions {
   message: UIMessage;
   originalIdx: number;
   messages: UIMessage[];
@@ -35,13 +44,6 @@ export interface MessageRowProps {
   showTimestamps: boolean;
   showTokenUsage: boolean;
   requestedModel?: string | null;
-  handleRetry: (messageIndex: number) => Promise<void>;
-  handleEdit: (
-    messageIndex: number,
-    newMessage: string,
-    removedImages?: number[],
-  ) => Promise<void>;
-  handleCompact?: (messageIndex: number) => Promise<void>;
   editingIndex: number | null;
   setEditingIndex: (index: number | null) => void;
   editText: string;
@@ -331,23 +333,17 @@ function TokenUsageLabel({
     return null;
   }
 
-  const newContent = calcNewContentTokens(
-    usage.inputTokens ?? 0,
-    prevUsage?.inputTokens,
-    prevUsage?.outputTokens,
-  );
-
   return (
-    <div className="pb-1 text-right text-xs text-zinc-400 dark:text-zinc-500">
-      tokens: {compactNumber(usage.inputTokens ?? 0)}
-      {newContent != null && ` (${compactNumber(newContent)} new)`}
-      {(usage.cacheReadTokens ?? 0) > 0 &&
-        ` (${compactNumber(usage.cacheReadTokens ?? 0)} cached)`}{" "}
-      → {compactNumber(usage.outputTokens ?? 0)}
-      {(usage.reasoningTokens ?? 0) > 0 &&
-        ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`}
-      {formatStepTiming(timing)}
-    </div>
+    <StepUsageLabel
+      usage={usage}
+      newContentTokens={calcNewContentTokens(
+        usage.inputTokens ?? 0,
+        prevUsage?.inputTokens,
+        prevUsage?.outputTokens,
+      )}
+      timing={timing}
+      className="pb-1"
+    />
   );
 }
 

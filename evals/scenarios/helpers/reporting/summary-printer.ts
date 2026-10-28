@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Print the single-run text summary for an eval run.
@@ -91,7 +91,7 @@ export function printSummary(
   const totalRuns = passCount + failCount + skipCount + errorCount;
   const skipText = skipCount > 0 ? `, ${skipCount} skipped` : "";
   const errorText =
-    errorCount > 0 ? styleText("red", `, ${errorCount} never ran (error)`) : "";
+    errorCount > 0 ? styleText("red", `, ${errorCount} errored`) : "";
 
   console.log(
     `\n  ${totalRuns} run(s): ${passCount} pass, ${failCount} fail${skipText}${errorText}`,

@@ -71,7 +71,7 @@ like?"_, never _"what raw value shows `2.3 dB`?"_
 So Producer Pal asks the first question over and over until it has answered the
 second. A binary search walks the raw range, calling Live's own renderer at each
 step, until it brackets the display value that was asked for
-([`param-display-search.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/device/update/helpers/param-display-search.ts)).
+([`param-display-search.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/device/update/helpers/params/param-display-search.ts)).
 
 That gets you close. Landing exactly takes three more details, each of which was
 a real bug first:
@@ -145,7 +145,7 @@ reach for to fake it are walled off:
   overlaps the _middle_ of an existing one, Live truncates at the overlap and
   **throws away everything after it**. It does not split into a "before" and an
   "after." (These constraints are documented in the project's
-  [Arrangement-Operations](https://github.com/adamjmurray/producer-pal/blob/main/dev/live-api/arrangement-operations.md)
+  [Arrangement-Operations](https://github.com/adamjmurray/producer-pal/blob/main/dev/live-api/arrangement-operations/README.md)
   notes, hard-won by probing real Ableton behavior.)
 
 So Producer Pal builds split out of the one primitive that _does_ work reliably,

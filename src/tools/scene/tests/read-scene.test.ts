@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { type ZodType } from "zod";
@@ -289,6 +289,22 @@ describe("readOneScene", () => {
 
     expect((result.clips as Record<string, unknown>[])[0]).not.toHaveProperty(
       "warping",
+    );
+  });
+
+  it("flags a nested session clip that has envelopes", () => {
+    setupLiveSetTracks(["track1"]);
+    setupScene("scene_envs", 0);
+    setupSessionClip("clip_envs", 0, 0, {
+      is_midi_clip: 0,
+      has_envelopes: 1,
+    });
+
+    const result = readOneScene({ sceneIndex: 0, include: ["clips"] });
+
+    expect((result.clips as Record<string, unknown>[])[0]).toHaveProperty(
+      "envs",
+      true,
     );
   });
 

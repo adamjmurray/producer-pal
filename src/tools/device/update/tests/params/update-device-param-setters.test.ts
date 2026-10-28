@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -192,7 +192,7 @@ describe("updateDevice - param value conversion", () => {
           max: 1,
         },
         methods: {
-          str_for_value: () => "custom",
+          str_for_value: (v: unknown) => (v === 1 ? "other" : "custom"),
         },
       });
     });
@@ -740,7 +740,7 @@ describe("updateDevice - actions arg", () => {
     });
 
     expect(() => updateDevice({ id: "chain-1", actions: ["reverse"] })).toThrow(
-      "actions not applicable to a chain",
+      "actions ignored: can't be set on a chain",
     );
     expect(capturedWarnings()).toStrictEqual([]);
   });

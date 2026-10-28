@@ -2,8 +2,7 @@
 
 What object lifetime costs in time and in memory, what 2.2.0 changed, and how to
 re-measure it. `dev/live-api/object-reuse.md` covers the correctness side — when
-reusing an object is safe. ADR-0023 covers why objects are pooled rather than
-cached.
+reusing an object is safe, and how release and pooling work.
 
 ## Three costs, and only one of them saturates
 

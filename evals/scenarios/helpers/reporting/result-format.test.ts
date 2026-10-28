@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Tests for result-format.ts
@@ -97,6 +97,16 @@ describe("scorePercentage", () => {
 
     // Both trials pass (100), mean penalty 5%.
     expect(scorePercentage(trials)).toBe(95);
+  });
+
+  it("leaves errored trials out of the repeated pass rate", () => {
+    const errored = { ...makeResult([]), result: "error" as const };
+
+    expect(
+      scorePercentage([makeResult([true]), errored, makeResult([false])]),
+    ).toBe(50);
+    expect(scorePercentage([makeResult([true]), errored])).toBe(100);
+    expect(scorePercentage([errored, errored])).toBeNull();
   });
 
   it("has nothing to grade without results or checks", () => {

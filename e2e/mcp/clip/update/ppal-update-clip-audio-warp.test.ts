@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-update-clip's audio warp handling: switching `warping`,
@@ -10,7 +10,7 @@
  * ../ppal-create-clip.test.ts; the shared setup is in the helpers module.
  *
  * Uses: e2e-test-set - t5 "Audio 2" (free slots, empty arrangement)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-update-clip-audio-warp
  */

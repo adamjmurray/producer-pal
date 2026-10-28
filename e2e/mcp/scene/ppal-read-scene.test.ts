@@ -1,12 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for ppal-read-scene tool
  * Uses: e2e-test-set (8 scenes with various tempo/time sig overrides)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- scene/ppal-read-scene
  */
@@ -204,6 +204,16 @@ describe("ppal-read-scene over a list of targets", () => {
       { path: "s999", ok: false, detail: 'nothing at path "s999"' },
       expect.objectContaining({ path: "s1", name: "Verse 1" }),
     ]);
+  });
+
+  it("refuses a path sent with sceneIndex, even for a list", async () => {
+    for (const path of ["s0", "s0,s1"]) {
+      const refused = await readScenes({ path, sceneIndex: 0 });
+
+      expect(getToolErrorMessage(refused)).toContain(
+        "path names the scene on its own - don't send sceneIndex with it",
+      );
+    }
   });
 
   it("unwraps a single target", async () => {

@@ -2,6 +2,8 @@
 
 Use Producer Pal in your web browser with OpenAI's chat web app.
 
+<!--@include: ../_partials/web-chat-warning.md-->
+
 ## Requirements
 
 <!--@include: ../_partials/live-requirement.md-->
@@ -9,7 +11,7 @@ Use Producer Pal in your web browser with OpenAI's chat web app.
 - [ChatGPT account](https://chatgpt.com) (at the time of writing, a paid
   subscription is required to access the advanced settings needed for this to
   work)
-- [Web tunnel](./web-tunnels) (e.g. Cloudflare or Pinggy)
+- [Web tunnel](./remote-access#web-tunnels) (e.g. Cloudflare or Pinggy)
 
 ## Installation Steps
 
@@ -17,7 +19,8 @@ Use Producer Pal in your web browser with OpenAI's chat web app.
 
 ### 2. Set Up a Web Tunnel
 
-Set up [a web tunnel](./web-tunnels) to expose your local Producer Pal server.
+Set up [a web tunnel](./remote-access#web-tunnels) to expose your local Producer
+Pal server.
 
 For example:
 
@@ -61,6 +64,8 @@ Start a new chat with "connect to ableton with your producer pal tools" (note
 that ChatGPT tends to need more nudging than "connect to ableton"):
 
 ![ChatGPT successfully connected to Producer Pal](/img/chatgpt-success.png)
+
+<!--@include: ../_partials/check-it-works.md-->
 
 ## Troubleshooting
 

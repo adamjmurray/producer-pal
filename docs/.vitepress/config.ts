@@ -1,5 +1,6 @@
 import { defineConfig } from "vitepress";
 import { VERSION } from "../../src/shared/config.ts";
+import { movedAnchorsScript } from "./moved-anchors.ts";
 
 const SITE_URL = "https://producer-pal.org";
 const SITE_TITLE = "Producer Pal — Ableton MCP for AI music production";
@@ -25,7 +26,13 @@ export default defineConfig({
         (item) =>
           !item.url.startsWith("guide/examples") &&
           item.url !== "installation/codex-app" &&
-          item.url !== "installation/lm-studio",
+          item.url !== "installation/lm-studio" &&
+          item.url !== "installation/gemini" &&
+          item.url !== "installation/openai" &&
+          item.url !== "installation/chat-ui-other-providers" &&
+          item.url !== "installation/ollama" &&
+          item.url !== "installation/web-apps" &&
+          item.url !== "installation/web-tunnels",
       ),
   },
 
@@ -41,6 +48,12 @@ export default defineConfig({
 
     pageData.frontmatter.head ??= [];
     const head = pageData.frontmatter.head;
+    const anchorsScript = movedAnchorsScript(path);
+
+    if (anchorsScript != null) {
+      head.unshift(["script", {}, anchorsScript]);
+    }
+
     const hasMeta = (property: string) =>
       head.some(
         ([tag, attrs]) => tag === "meta" && attrs?.property === property,
@@ -128,12 +141,98 @@ export default defineConfig({
 
     sidebar: [
       {
+        text: "Installation",
+        link: "/installation",
+        items: [
+          {
+            text: "Desktop Apps",
+            link: "/installation/desktop-apps",
+            items: [
+              {
+                text: "Claude Desktop",
+                link: "/installation/claude-desktop",
+              },
+              { text: "ChatGPT App", link: "/installation/chatgpt-app" },
+              {
+                text: "Google Antigravity",
+                link: "/installation/antigravity",
+              },
+              { text: "Bionic / LM Studio", link: "/installation/bionic" },
+            ],
+          },
+          {
+            text: "Command Line",
+            link: "/installation/cli",
+            items: [
+              { text: "Claude Code", link: "/installation/claude-code" },
+              { text: "Codex CLI", link: "/installation/codex-cli" },
+              { text: "Gemini CLI", link: "/installation/gemini-cli" },
+              { text: "Mistral Vibe", link: "/installation/mistral-vibe" },
+            ],
+          },
+          {
+            text: "Built-in Chat UI",
+            link: "/installation/chat-ui",
+            items: [
+              { text: "Local AI", link: "/installation/local-ai" },
+              { text: "AI Routers", link: "/installation/ai-routers" },
+              { text: "API Keys", link: "/installation/api-keys" },
+            ],
+          },
+          {
+            text: "Choose by Provider",
+            link: "/installation/choose-by-provider",
+            items: [
+              {
+                text: "Claude / Anthropic",
+                link: "/installation/choose-claude",
+              },
+              {
+                text: "ChatGPT / OpenAI",
+                link: "/installation/choose-openai",
+              },
+              {
+                text: "Gemini / Google",
+                link: "/installation/choose-gemini",
+              },
+              {
+                text: "Mistral / Mistral AI",
+                link: "/installation/choose-mistral",
+              },
+              { text: "Local / Offline", link: "/installation/choose-local" },
+              {
+                text: "Multi / AI Routers",
+                link: "/installation/choose-multi",
+              },
+            ],
+          },
+          {
+            text: "Other Options",
+            link: "/installation/advanced",
+            items: [
+              { text: "Other MCP Clients", link: "/installation/other-mcp" },
+              {
+                text: "Remote Access",
+                link: "/installation/remote-access",
+                items: [
+                  { text: "claude.ai", link: "/installation/claude-web" },
+                  { text: "ChatGPT Web", link: "/installation/chatgpt-web" },
+                  { text: "Le Chat", link: "/installation/mistral-le-chat" },
+                ],
+              },
+            ],
+          },
+          { text: "Upgrading", link: "/installation/upgrading" },
+        ],
+      },
+      {
         text: "Guide",
         link: "/guide",
         items: [
           { text: "Device Interface", link: "/guide/device" },
           { text: "Chat UI", link: "/guide/chat-ui" },
           { text: "Remote Script", link: "/guide/remote-script" },
+          { text: "Clip Automation", link: "/guide/automation" },
           { text: "Context & Memory", link: "/guide/context" },
           { text: "Customizing Skills", link: "/guide/customizing-skills" },
           { text: "Optimizing Cost & Context", link: "/guide/optimizing" },
@@ -198,93 +297,6 @@ export default defineConfig({
           { text: "Known Issues", link: "/support/known-issues" },
         ],
       },
-      {
-        text: "Installation",
-        link: "/installation",
-        items: [
-          { text: "Upgrading", link: "/installation/upgrading" },
-          {
-            text: "Built-in Chat UI",
-            link: "/installation/chat-ui",
-            items: [
-              { text: "Gemini", link: "/installation/gemini" },
-              { text: "OpenAI", link: "/installation/openai" },
-              { text: "Ollama", link: "/installation/ollama" },
-              {
-                text: "Other Providers",
-                link: "/installation/chat-ui-other-providers",
-              },
-            ],
-          },
-          {
-            text: "Desktop Apps",
-            link: "/installation/desktop-apps",
-            items: [
-              {
-                text: "Claude Desktop",
-                link: "/installation/claude-desktop",
-              },
-              { text: "ChatGPT App", link: "/installation/chatgpt-app" },
-              { text: "Antigravity", link: "/installation/antigravity" },
-              { text: "LM Studio Bionic", link: "/installation/bionic" },
-            ],
-          },
-          {
-            text: "Command Line",
-            link: "/installation/cli",
-            items: [
-              { text: "Gemini CLI", link: "/installation/gemini-cli" },
-              { text: "Codex CLI", link: "/installation/codex-cli" },
-              { text: "Claude Code", link: "/installation/claude-code" },
-              { text: "Mistral Vibe", link: "/installation/mistral-vibe" },
-            ],
-          },
-          {
-            text: "Web Apps",
-            link: "/installation/web-apps",
-            items: [
-              { text: "claude.ai", link: "/installation/claude-web" },
-              { text: "ChatGPT Web", link: "/installation/chatgpt-web" },
-              { text: "Le Chat", link: "/installation/mistral-le-chat" },
-            ],
-          },
-          {
-            text: "Choose by Provider",
-            link: "/installation/choose-by-provider",
-            items: [
-              {
-                text: "Claude / Anthropic",
-                link: "/installation/choose-claude",
-              },
-              {
-                text: "ChatGPT / OpenAI",
-                link: "/installation/choose-openai",
-              },
-              {
-                text: "Gemini / Google",
-                link: "/installation/choose-gemini",
-              },
-              {
-                text: "Mistral / Mistral AI",
-                link: "/installation/choose-mistral",
-              },
-              { text: "Local / Offline", link: "/installation/choose-local" },
-              {
-                text: "Multiple Providers",
-                link: "/installation/choose-multi",
-              },
-            ],
-          },
-          {
-            text: "Advanced",
-            link: "/installation/advanced",
-            items: [
-              { text: "Other MCP LLMs", link: "/installation/other-mcp" },
-              { text: "Web Tunnels", link: "/installation/web-tunnels" },
-            ],
-          },
-        ],
-      },
     ],
 
     socialLinks: [
@@ -298,7 +310,7 @@ export default defineConfig({
     },
 
     footer: {
-      message: "Released under the GPL-3.0 License.",
+      message: "Released under the MIT License.",
       copyright: `Copyright © ${new Date().getFullYear()} <a href="https://adammurray.link">Adam Murray</a>`,
     },
   },

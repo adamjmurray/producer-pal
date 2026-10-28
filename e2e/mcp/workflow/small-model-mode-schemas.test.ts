@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for small model mode schema filtering.
@@ -13,7 +13,7 @@ import { describe, expect, it, afterAll, beforeAll } from "vitest";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { connectMcp, type McpConnection } from "#evals/chat/mcp.ts";
 import { resetConfig, setConfig } from "#evals/shared/config.ts";
-import { MCP_URL } from "../mcp-test-helpers";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 
 /** Connect with small model mode enabled */
 let connection: McpConnection | null = null;
@@ -66,7 +66,6 @@ function getParamDescription(
 describe("small model mode schema filtering", () => {
   // Both routing values go, not just available-routings: small mode hides every
   // routing write param, so reading the state it cannot change is dead weight.
-  // See ADR-0026.
   it("read-track excludes both routing values and warp from include", () => {
     const includeValues = getIncludeEnum("ppal-read-track");
 
@@ -112,5 +111,35 @@ describe("small model mode schema filtering", () => {
     expect(includeValues).toContain("notes");
     expect(includeValues).toContain("timing");
     expect(includeValues).toContain("sample");
+  });
+});
+
+// The SDK stamps a `$schema` on every tool and `.loose()` adds an empty
+// top-level `additionalProperties`; the server drops both because providers
+// bill for them. Checked in both modes since the schemas differ.
+describe("tools/list schema trimming", () => {
+  it("leaves $schema and additionalProperties off every tool in small model mode", () => {
+    expect(tools.length).toBeGreaterThan(0);
+
+    for (const tool of tools) {
+      expect(tool.inputSchema).not.toHaveProperty("$schema");
+      expect(tool.inputSchema).not.toHaveProperty("additionalProperties");
+    }
+  });
+
+  it("leaves $schema and additionalProperties off every tool in default mode", async () => {
+    await setConfig({ smallModelMode: false });
+
+    const { client: defaultClient } = await connectMcp(MCP_URL);
+    const result = await defaultClient.listTools();
+
+    await defaultClient.close();
+
+    expect(result.tools.length).toBeGreaterThan(tools.length);
+
+    for (const tool of result.tools) {
+      expect(tool.inputSchema).not.toHaveProperty("$schema");
+      expect(tool.inputSchema).not.toHaveProperty("additionalProperties");
+    }
   });
 });

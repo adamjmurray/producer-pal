@@ -2,7 +2,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * CLI for running Producer Pal evaluation scenarios
@@ -32,11 +32,11 @@ import {
   type RunContext,
 } from "./helpers/trials/run-trials.ts";
 import { printSummary } from "./helpers/reporting/summary-printer.ts";
-import { parseRepeatCount } from "./helpers/trials/multi-trial-runs.ts";
 import {
-  describeRunAbort,
-  neverStartedRuns,
-} from "./helpers/trials/run-abort.ts";
+  liveSetLeftClean,
+  parseRepeatCount,
+} from "./helpers/trials/multi-trial-runs.ts";
+import { describeRunAbort, stalledModels } from "./helpers/trials/run-abort.ts";
 import {
   loadScenarios,
   printList,
@@ -111,9 +111,6 @@ function readCanaryScenarios(): string[] {
     .map((line) => line.replace(/#.*$/, "").trim())
     .filter((line) => line !== "");
 }
-
-/** Stop the run after this many scenarios in a row fail to start at all. */
-const MAX_CONSECUTIVE_SCENARIO_ERRORS = 3;
 
 const program = new Command();
 
@@ -377,15 +374,15 @@ async function runAllScenarios(
   ctx: RunContext,
 ): Promise<ResultsByScenario> {
   const resultsByScenario: ResultsByScenario = new Map();
-  // The Live Set left open by the previous scenario. A `reuseLiveSet` scenario
-  // that wants the same one runs against it instead of paying another open.
+  // The Set a `reuseLiveSet` scenario left clean; the next reuse scenario on
+  // the same Set skips the reopen.
   let lastOpenedLiveSet: string | null = null;
-  // Consecutive scenarios where nothing ran at all. Either Live has already
-  // retried and relaunched and still isn't back, or the provider is refusing
-  // every request — the run is not going to recover, and a long unattended run
-  // would otherwise fill the results directory with scenarios nobody ever asked
-  // a model about.
-  let consecutiveErrors = 0;
+  // Per model, consecutive scenarios where every trial errored. Live not
+  // coming back or the provider refusing every request won't recover, and a
+  // long unattended run would otherwise fill the results directory with
+  // scenarios nobody ever asked a model about.
+  const errorStreaks = new Map<string, number>();
+  let activeSpecs = modelSpecs;
 
   for (const scenario of scenarios) {
     const modelResults = new Map<string, Map<string, JsonEvalResult[]>>();
@@ -395,7 +392,7 @@ async function runAllScenarios(
     let liveSetOpened =
       scenario.reuseLiveSet === true && lastOpenedLiveSet === scenario.liveSet;
 
-    for (const spec of modelSpecs) {
+    for (const spec of activeSpecs) {
       const modelKey = `${spec.provider}/${spec.model}`;
       let results: JsonEvalResult[];
 
@@ -412,10 +409,12 @@ async function runAllScenarios(
           ctx,
           liveSetOpened,
         );
-        // The run just mutated the Set, so the next model only inherits it
-        // when the scenario resets what it writes. Same rule as trials 2+.
-        liveSetOpened = scenario.reuseLiveSet === true;
-        lastOpenedLiveSet = scenario.liveSet;
+        // Only a scenario that resets what it writes hands the Set on (same
+        // rule as trials 2+). A run that errored may have failed the open.
+        const leftClean = liveSetLeftClean(scenario.reuseLiveSet, results);
+
+        liveSetOpened = leftClean;
+        lastOpenedLiveSet = leftClean ? scenario.liveSet : null;
       }
 
       modelResults.set(modelKey, new Map([[label, results]]));
@@ -423,14 +422,47 @@ async function runAllScenarios(
 
     resultsByScenario.set(scenario.id, modelResults);
 
-    const neverStarted = neverStartedRuns(modelResults);
-
-    consecutiveErrors = neverStarted.length > 0 ? consecutiveErrors + 1 : 0;
-
-    if (consecutiveErrors >= MAX_CONSECUTIVE_SCENARIO_ERRORS) {
-      throw new Error(describeRunAbort(consecutiveErrors, neverStarted));
+    if (skipReason == null) {
+      activeSpecs = dropStalledModels(activeSpecs, errorStreaks, modelResults);
     }
   }
 
   return resultsByScenario;
+}
+
+/**
+ * Drop each model whose last few scenarios all errored, warning about it.
+ * Throws when no model is left.
+ *
+ * @param specs - Models still running
+ * @param streaks - Each model's error streak, updated in place
+ * @param modelResults - The scenario's results, by model and label
+ * @returns The models to keep running
+ */
+function dropStalledModels(
+  specs: ModelSpec[],
+  streaks: Map<string, number>,
+  modelResults: Map<string, Map<string, JsonEvalResult[]>>,
+): ModelSpec[] {
+  const stalled = stalledModels(streaks, modelResults);
+  const kept = specs.filter(
+    (spec) => !stalled.has(`${spec.provider}/${spec.model}`),
+  );
+
+  if (kept.length === 0) {
+    const [modelKey, runs] = [...stalled].at(-1) ?? ["", []];
+
+    throw new Error(describeRunAbort(streaks.get(modelKey) ?? 0, runs));
+  }
+
+  for (const [modelKey, runs] of stalled) {
+    console.warn(
+      styleText(
+        "yellow",
+        describeRunAbort(streaks.get(modelKey) ?? 0, runs, modelKey),
+      ),
+    );
+  }
+
+  return kept;
 }

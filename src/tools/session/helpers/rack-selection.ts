@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Selecting inside a rack: a drum pad, one of its layers, or any rack chain.
 // Live keeps this on the rack's own view rather than the song view, so it takes

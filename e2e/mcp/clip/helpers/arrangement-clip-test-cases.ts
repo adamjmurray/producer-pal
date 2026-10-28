@@ -1,12 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * Shared test case definitions for arrangement clip e2e tests.
  * Used by both lengthening and splitting test files.
- * See: e2e/live-sets/arrangement-clip-tests-spec.md
+ * See: e2e/live-sets/specs/arrangement-clip-tests-spec.md
  */
 
 export interface ArrangementClipTestCase {

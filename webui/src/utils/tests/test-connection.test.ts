@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { testConnection } from "#webui/utils/test-connection";
@@ -40,6 +40,7 @@ describe("testConnection", () => {
         "openai",
         "mistral",
         "openrouter",
+        "vercel",
       ] as const) {
         const result = await testConnection(provider, "");
 
@@ -129,6 +130,16 @@ describe("testConnection", () => {
 
       expect(url).toBe("https://openrouter.ai/api/v1/auth/key");
       expect(options.headers).toStrictEqual({ Authorization: "Bearer or-key" });
+    });
+
+    it("uses the credits endpoint for vercel", async () => {
+      mockFetch.mockResolvedValue(okResponse());
+      await testConnection("vercel", "vc-key");
+
+      const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
+
+      expect(url).toBe("https://ai-gateway.vercel.sh/v1/credits");
+      expect(options.headers).toStrictEqual({ Authorization: "Bearer vc-key" });
     });
 
     it("uses default ollama URL", async () => {

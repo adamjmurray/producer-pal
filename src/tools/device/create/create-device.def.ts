@@ -1,46 +1,47 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { z } from "zod";
 import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefCreateDevice = defineTool("ppal-create-device", {
   title: "Create Device",
   description:
-    "Create a native Live device (instrument, MIDI effect, or audio effect) on a track or inside a chain. Params with no list form apply to every device.",
+    "Create a native Live device (instrument, MIDI effect, or audio effect) on a track or inside a chain. Inserting shifts later devices in that chain down a slot, so a result path is where the device sits after the call. Params with no list form apply to every device.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
   inputSchema: {
-    device: param(z.string().optional(), {
+    // Don't publish this as `device`: Claude Desktop's remote-devices bridge
+    // drops any tool argument named `device` before the call reaches us.
+    deviceName: param(z.string().optional(), {
       default:
         'device (e.g. "Wavetable", "Drum Rack"), or comma-separated one per path; omit this and preset to list available devices',
       smallModel:
         'device (e.g. "Wavetable", "Drum Rack"), or comma-separated one per path; omit to list available devices',
     }),
 
-    deviceName: deprecatedParam(z.string().optional(), {
-      replacedBy: "device",
-    }),
+    // What the param was called in 2.4.0; models also reach for it unprompted.
+    device: aliasParam(z.string().optional(), { canonical: "deviceName" }),
 
     // Needs the remote script, which small-model mode never uses.
     preset: param(z.string().optional(), {
       default:
-        "create from a preset (needs the Producer Pal remote script): a preset name, looked up among device's presets when device is given, else among all; or a path from ppal-library. Comma-separated one per path",
+        "create from a preset (needs the Producer Pal remote script): a preset name, looked up among the device's presets when deviceName is given, else among all; a name not found there is searched across Live's library (Live 12.4+), and a name shared by several files is refused with their paths; or a path from ppal-library. Comma-separated one per path",
       smallModel: null,
     }),
 
     path: param(z.coerce.string().optional(), {
       default:
-        "insertion path(s), required with device, comma-separated for multiple (e.g., 't0/d+' or 't0/d+,t1/d+,t0/d0/c0/d+'). 't0/d+' appends; 't0/d1' inserts at 1. An insert renumbers the chain, so no later entry may be spelled through a chain an earlier one inserts into. 't0/d0/c+' appends a new chain to that rack and loads the device into it (the result reports the index it landed at); 'c<n>' makes the chains up to n. In a Drum Rack a chain belongs to a pad, so use 't0/d0/pC1' or 't0/d0/pC1/c+' for another layer",
+        "insertion path(s), required with deviceName, comma-separated for multiple (e.g., 't0/d+' or 't0/d+,t1/d+,t0/d0/c0/d+'). 't0/d+' appends; 't0/d1' inserts at 1 (an index past the end is refused). An insert renumbers the chain, so no later entry may be spelled through a chain an earlier one inserts into. 't0/d0/c+' appends a new chain to that rack and loads the device into it (the result reports the index it landed at); 'c<n>' makes the chains up to n. In a Drum Rack a chain belongs to a pad, so use 't0/d0/pC1' or 't0/d0/pC1/c+' for another layer",
       smallModel:
-        "insertion path, required with device ('t0/d+' appends, 't0/d1' inserts at 1, 't0/d0/c0/d+'; 't0/d0/c+' appends a new rack chain)",
+        "insertion path, required with deviceName ('t0/d+' appends, 't0/d1' inserts at 1, 't0/d0/c0/d+'; 't0/d0/c+' appends a new rack chain)",
     }),
     name: param(z.string().optional(), {
       default: "name, or comma-separated one per path",
@@ -48,7 +49,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
     }),
     params: param(paramsInputSchema, {
       default:
-        "applied after creation — array of {name, value} or {id, value}. name = a param name; id = a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one. Every param sent comes back as one entry, in order: id and name alone when it took the value asked for, the value it reads as (plus a `detail`) when Live kept a different one, or `ok:false` and why nothing was written. For a Drum Rack, prefix the name with a pad path to address a pad's device, e.g. {name:'pC1/sample', value:'<abs file path>'} loads a sample into pad C1 (auto-creates the pad's Simpler) — build a full kit in one call",
+        "applied after creation — array of {name, value}; value in the `unit` read-device reports, or none. For a Drum Rack, prefix the name with a pad path, e.g. {name:'pC1/sample', value:'<abs file path>'} loads a sample into pad C1 (auto-creates the pad's Simpler) — build a full kit in one call",
       // See update-device: small mode has no devices fragment, so the value
       // format and the sample write both have to survive the trim.
       smallModel:

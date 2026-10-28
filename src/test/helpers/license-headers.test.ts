@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, extname, join, relative } from "node:path";
@@ -20,7 +20,7 @@ const EXCLUDED_FILES = [
 ];
 
 const EXPECTED_HEADER_START = "// Producer Pal";
-const EXPECTED_SPDX = "// SPDX-License-Identifier: GPL-3.0-or-later";
+const EXPECTED_SPDX = "// SPDX-License-Identifier: MIT";
 
 function getAllSourceFiles(dir: string, files: string[] = []): string[] {
   let entries: string[];
@@ -119,7 +119,7 @@ describe("License headers", () => {
         `  // Producer Pal\n` +
         `  // Copyright (C) <year> <author>\n` +
         `  // AI assistance: <AI tool> (<company>)  (if AI-assisted)\n` +
-        `  // SPDX-License-Identifier: GPL-3.0-or-later`,
+        `  // SPDX-License-Identifier: MIT`,
     );
     expect(violations).toHaveLength(0);
   });

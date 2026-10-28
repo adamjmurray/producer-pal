@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { getProviderName } from "#webui/components/chat/controls/header/provider-name";
 import {
@@ -12,11 +12,15 @@ import {
   type PresetSelection,
   usePresetSelection,
 } from "#webui/hooks/settings/presets/use-preset-selection";
-import { useGlobalSettings } from "#webui/hooks/connection/use-global-settings";
+import {
+  useInstallation,
+  type UseInstallationReturn,
+} from "#webui/hooks/settings/installation/use-installation";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { CHAT_UI_DOCS_URL } from "#webui/lib/config";
 import { type UseSettingsReturn } from "#webui/types/settings";
 import { ConnectionTab } from "./ConnectionTab";
+import { InstallationTab } from "./installation/InstallationTab";
 import { ToolToggles } from "./controls/ToolToggles";
 import {
   type ConversationLock,
@@ -24,9 +28,9 @@ import {
 } from "./LockedSettingsNotice";
 import { PreferencesTab } from "./PreferencesTab";
 import { PresetsTab } from "./PresetsTab";
-import { RemoteScriptTab } from "./RemoteScriptTab";
 import { SettingsFooter } from "./SettingsFooter";
-import { type TabId, SettingsTabs } from "./SettingsTabs";
+import { type TabId } from "./helpers/settings-tab-ids";
+import { SettingsTabs } from "./SettingsTabs";
 
 interface SettingsScreenProps {
   settings: UseSettingsReturn;
@@ -86,6 +90,8 @@ export function SettingsScreen(props: SettingsScreenProps) {
   // selection is what sends the user back through Select — which re-applies the
   // preset over the edit they just made. See usePresetSelection.
   const presetSelection = usePresetSelection();
+  // Owned here too, so the tab button's dot and the tab share one read.
+  const installation = useInstallation(activeTab === "installation");
   const shakeClass = shake ? " settings-dialog-shake" : "";
 
   return (
@@ -121,9 +127,17 @@ export function SettingsScreen(props: SettingsScreenProps) {
           maxToolSteps={settings.maxToolSteps}
         />
 
-        <SettingsTabs activeTab={activeTab} onTabChange={onTabChange}>
+        <SettingsTabs
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+          attention={installation.incomplete ? ["installation"] : []}
+        >
           {() => (
-            <SettingsTabContent {...props} presetSelection={presetSelection} />
+            <SettingsTabContent
+              {...props}
+              presetSelection={presetSelection}
+              installation={installation}
+            />
           )}
         </SettingsTabs>
 
@@ -151,13 +165,13 @@ export function SettingsScreen(props: SettingsScreenProps) {
  * @returns Tab content element
  */
 function SettingsTabContent(
-  props: SettingsScreenProps & { presetSelection: PresetSelection },
+  props: SettingsScreenProps & {
+    presetSelection: PresetSelection;
+    installation: UseInstallationReturn;
+  },
 ) {
   const { settings, display, activeTab } = props;
   const providerLabel = getProviderName(settings.provider, "product");
-  // Machine-global settings, read fresh each time the modal opens so a
-  // device-side change shows up.
-  const globalSettings = useGlobalSettings();
 
   return (
     <div className="space-y-4">
@@ -214,7 +228,9 @@ function SettingsTabContent(
         />
       )}
 
-      {activeTab === "remote-script" && <RemoteScriptTab />}
+      {activeTab === "installation" && (
+        <InstallationTab installation={props.installation} />
+      )}
 
       {activeTab === "preferences" && (
         <PreferencesTab
@@ -226,8 +242,6 @@ function SettingsTabContent(
           setShowHelpLinks={display.setShowHelpLinks}
           showTokenUsage={display.showTokenUsage}
           setShowTokenUsage={display.setShowTokenUsage}
-          autoUpdateCheck={globalSettings.autoUpdateCheck}
-          setAutoUpdateCheck={globalSettings.setAutoUpdateCheck}
           maxToolSteps={settings.maxToolSteps}
           setMaxToolSteps={settings.setMaxToolSteps}
           onDeleteAllConversations={props.onDeleteAllConversations}

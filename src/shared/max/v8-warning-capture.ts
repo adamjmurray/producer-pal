@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Per-request buffering for console.warn(), so a warning lands on the response of
 // the request that produced it.
@@ -53,6 +53,11 @@ export interface WarningCapture {
   ended: boolean;
   /** Keys already handed to alreadyWarnedOnce this request. */
   warnedOnce: Set<string>;
+  /**
+   * What the request's writes proved. "none": every write run was proven to
+   * change nothing. "maybe": one may have. Unset: nothing reported.
+   */
+  writes?: "none" | "maybe";
 }
 
 /**
@@ -63,6 +68,21 @@ export interface WarningCapture {
 export const MAX_CAPTURED_WARNINGS = 1000;
 
 let activeCapture: WarningCapture | null = null;
+
+/**
+ * How many times any request has parked on a suspendWarningCapture promise.
+ * Every such park lets Max run another request, so anything a request cached
+ * about the Live Set can be stale once this number has moved.
+ */
+let suspensions = 0;
+
+/**
+ * @returns A number that rises each time a request parks, so a cache can tell
+ *   that another request may have run since it last looked
+ */
+export function suspensionCount(): number {
+  return suspensions;
+}
 
 /**
  * Start collecting warnings for a request, making it the active capture.
@@ -168,6 +188,30 @@ export function alreadyWarnedOnce(key: string): boolean {
 }
 
 /**
+ * Report what a write run did to the Set, against the request in flight. One
+ * "maybe" outweighs any number of "none". Ignored with no request in flight.
+ *
+ * @param provenUnchanged - True only when the run provably changed nothing
+ */
+export function recordWriteRun(provenUnchanged: boolean): void {
+  if (activeCapture == null || activeCapture.ended) {
+    return;
+  }
+
+  activeCapture.writes =
+    provenUnchanged && activeCapture.writes !== "maybe" ? "none" : "maybe";
+}
+
+/**
+ * @param capture - The capture returned by beginWarningCapture
+ * @returns True when the request's writes were all proven to change nothing;
+ *   false when one may have, or none reported (a read tool, say)
+ */
+export function changedNothing(capture: WarningCapture): boolean {
+  return capture.writes === "none";
+}
+
+/**
  * Await a promise with no capture active, restoring the caller's on resume.
  *
  * Wrap every promise V8 can suspend on. Clearing for the wait is what sends a
@@ -183,6 +227,7 @@ export async function suspendWarningCapture<T>(
 ): Promise<T> {
   const suspended = activeCapture;
 
+  suspensions++;
   activeCapture = null;
 
   try {

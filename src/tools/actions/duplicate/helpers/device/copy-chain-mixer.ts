@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // Carrying a chain's own mixer onto its copy. Gain and pan travel as-is; sends
 // are the interesting case, because a send is an index into the rack's return
@@ -18,6 +18,7 @@ import {
 
 interface ReadSend {
   return: string;
+  returnId?: string;
   gainDb: number;
 }
 
@@ -57,7 +58,8 @@ export function copyChainMixerTo(
 /**
  * The sends that have somewhere to land, saying which ones didn't.
  *
- * Within one rack every send carries over. Across racks a send is matched by
+ * Within one rack every send carries over, by return id: two returns can share
+ * a name, and an unnamed one reads back as "Return N". Across racks a send is matched by
  * its return chain's name, because that is the only thing the two racks can
  * share — the destination's returns are different objects, so ids are no help
  * here. A name that isn't in the destination has no equivalent to write to.
@@ -78,7 +80,10 @@ function carriedSends(
   }
 
   if (sourceRack.path === destinationRack.path) {
-    return sends.map((send) => ({ return: send.return, gainDb: send.gainDb }));
+    return sends.map((send) => ({
+      return: send.returnId ?? send.return,
+      gainDb: send.gainDb,
+    }));
   }
 
   const available = new Set(

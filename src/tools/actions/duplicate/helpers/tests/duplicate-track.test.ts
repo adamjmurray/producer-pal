@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -12,18 +12,21 @@ import {
   registerDuplicatedTrackSlots,
   registerLiveSetWithThreeTracks,
   registerMockObject,
+  registerPendingMockObject,
 } from "../duplicate-test-helpers.ts";
 import {
-  duplicateTrackCopies,
+  duplicateTrackCopy,
+  routeTrackCopy,
   type TrackCopyEntry,
 } from "../sources/duplicate-track.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/tracks/get-host-track-index.ts";
 
-// Mock getHostTrackIndex
+// The host is elsewhere unless a case says otherwise.
 vi.mock(
-  import("#src/tools/shared/arrangement/get-host-track-index.ts"),
+  import("#src/tools/shared/arrangement/tracks/get-host-track-index.ts"),
   () => ({
-    getHostTrackIndex: vi.fn(() => 0),
+    getHostTrackIndex: vi.fn(() => null),
   }),
 );
 
@@ -45,15 +48,27 @@ function duplicateTrack(
   withoutDevices?: boolean,
   routeToSource?: boolean,
 ): TrackCopyEntry {
-  const [entry] = duplicateTrackCopies(
+  const entry = duplicateTrackCopy(
     trackIndex,
-    { param: "id", value: "track" },
-    1,
-    () => ({ name, color }),
-    { withoutClips, withoutDevices, routeToSource },
+    { name, color },
+    { withoutClips, withoutDevices },
+    () => {},
   );
 
-  return entry as TrackCopyEntry;
+  // Routing waits until every copy exists, which is the call's last step.
+  if (routeToSource) {
+    routeTrackCopy(entry, LiveAPI.from(entry.id), trackIndex);
+  }
+
+  return entry;
+}
+
+/**
+ * Duplicates track 0 with routeToSource on.
+ * @returns The copy's entry
+ */
+function duplicateWithRouteToSource(): TrackCopyEntry {
+  return duplicateTrack(0, undefined, undefined, false, false, true);
 }
 
 describe("duplicate-track", () => {
@@ -67,7 +82,7 @@ describe("duplicate-track", () => {
     it("should duplicate a track and return basic info", () => {
       const liveSet = registerLiveSetWithThreeTracks();
 
-      const newTrack = registerMockObject("live_set/tracks/1", {
+      const newTrack = registerPendingMockObject("live_set/tracks/1", {
         path: livePath.track(1),
         properties: { devices: [], clip_slots: [], arrangement_clips: [] },
       });
@@ -86,7 +101,7 @@ describe("duplicate-track", () => {
     });
 
     it("should set name when provided", () => {
-      const newTrack = registerMockObject("live_set/tracks/1", {
+      const newTrack = registerPendingMockObject("live_set/tracks/1", {
         path: livePath.track(1),
         properties: { devices: [], clip_slots: [], arrangement_clips: [] },
       });
@@ -98,7 +113,7 @@ describe("duplicate-track", () => {
 
     it("should delete all devices when withoutDevices is true", () => {
       expect.hasAssertions();
-      const newTrack = registerMockObject("live_set/tracks/1", {
+      const newTrack = registerPendingMockObject("live_set/tracks/1", {
         path: livePath.track(1),
         properties: {
           devices: children("device0", "device1", "device2"),
@@ -110,6 +125,50 @@ describe("duplicate-track", () => {
       duplicateTrack(0, undefined, undefined, false, true);
 
       expectDeleteDeviceCalls(newTrack, 3);
+    });
+
+    // The track exists by then, so a skip would hide it from the caller.
+    it("keeps a copy that exists when stripping its devices throws", () => {
+      const newTrack = registerPendingMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: {
+          devices: children("device0"),
+          clip_slots: [],
+          arrangement_clips: [],
+        },
+      });
+
+      newTrack.methods.delete_device = () => {
+        throw new Error("Live is unhappy");
+      };
+
+      expect(
+        duplicateTrack(0, undefined, undefined, false, true),
+      ).toStrictEqual({
+        path: "t1",
+        id: "live_set/tracks/1",
+        clips: [],
+        detail: "the track was made, but setting it up failed: Live is unhappy",
+      });
+    });
+
+    it("keeps a copy that exists when naming it throws", () => {
+      const newTrack = registerPendingMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+      });
+
+      newTrack.set.mockImplementation(() => {
+        throw new Error("name refused");
+      });
+
+      expect(duplicateTrack(0, "New Track")).toStrictEqual({
+        path: "t1",
+        id: "live_set/tracks/1",
+        clips: [],
+        detail:
+          "the track was made, but naming or coloring it didn't finish: name refused",
+      });
     });
 
     it("should delete clips when withoutClips is true", () => {
@@ -125,7 +184,8 @@ describe("duplicate-track", () => {
     });
 
     it("says on the copy's entry when this_device can't be read", () => {
-      const newTrack = registerMockObject("live_set/tracks/1", {
+      vi.mocked(getHostTrackIndex).mockReturnValueOnce(0);
+      const newTrack = registerPendingMockObject("live_set/tracks/1", {
         path: livePath.track(1),
         properties: { devices: [], clip_slots: [], arrangement_clips: [] },
       });
@@ -157,7 +217,7 @@ describe("duplicate-track", () => {
     });
 
     it("should return empty clips array when no clips exist", () => {
-      registerMockObject("live_set/tracks/1", {
+      registerPendingMockObject("live_set/tracks/1", {
         path: livePath.track(1),
         properties: { devices: [], clip_slots: [], arrangement_clips: [] },
       });
@@ -180,7 +240,7 @@ describe("duplicate-track", () => {
         },
       });
 
-      registerMockObject("live_set/tracks/1", {
+      registerPendingMockObject("live_set/tracks/1", {
         path: livePath.track(1),
         properties: {
           devices: [],
@@ -192,7 +252,7 @@ describe("duplicate-track", () => {
         },
       });
 
-      duplicateTrack(0, undefined, undefined, false, false, true);
+      duplicateWithRouteToSource();
 
       // Should arm source track
       expect(sourceTrack.set).toHaveBeenCalledWith("arm", 1);
@@ -231,7 +291,7 @@ describe("duplicate-track", () => {
           }),
         },
       });
-      const newTrack = registerMockObject("live_set/tracks/1", {
+      const newTrack = registerPendingMockObject("live_set/tracks/1", {
         path: livePath.track(1),
         properties: {
           devices: [],
@@ -252,14 +312,7 @@ describe("duplicate-track", () => {
         [{ display_name: "Source Track", identifier: "source_track_id" }],
       );
 
-      const result = duplicateTrack(
-        0,
-        undefined,
-        undefined,
-        false,
-        false,
-        true,
-      );
+      const result = duplicateWithRouteToSource();
 
       expect(result).not.toHaveProperty("detail");
       expect(capturedWarnings()).toStrictEqual([]);
@@ -289,14 +342,7 @@ describe("duplicate-track", () => {
         outputRouting,
       );
 
-      const result = duplicateTrack(
-        0,
-        undefined,
-        undefined,
-        false,
-        false,
-        true,
-      );
+      const result = duplicateWithRouteToSource();
 
       expect(result.detail).toBe(expectedReason);
       // The copy's entry carries it, so nothing warns about it.
@@ -331,21 +377,14 @@ describe("duplicate-track", () => {
         [{ display_name: "Source Track", identifier: "source_track_id" }],
       );
 
-      const result = duplicateTrack(
-        0,
-        undefined,
-        undefined,
-        false,
-        false,
-        true,
-      );
+      const result = duplicateWithRouteToSource();
 
       expect(result.detail).toBe(expectedReason);
       expect(capturedWarnings()).toStrictEqual([]);
     });
 
     it("should delete session clips when withoutClips is true", () => {
-      registerMockObject("live_set/tracks/1", {
+      registerPendingMockObject("live_set/tracks/1", {
         path: livePath.track(1),
         properties: {
           devices: [],
@@ -353,11 +392,11 @@ describe("duplicate-track", () => {
           arrangement_clips: [],
         },
       });
-      const slot0 = registerMockObject("slot0", {
+      const slot0 = registerPendingMockObject("slot0", {
         path: livePath.track(1).clipSlot(0),
         properties: { has_clip: 1 },
       });
-      const emptySlot = registerMockObject("emptySlot", {
+      const emptySlot = registerPendingMockObject("emptySlot", {
         path: livePath.track(1).clipSlot(1),
         properties: { has_clip: 0 },
       });
@@ -370,7 +409,7 @@ describe("duplicate-track", () => {
     });
 
     it("should not set color when color is not provided", () => {
-      const newTrack = registerMockObject("live_set/tracks/1", {
+      const newTrack = registerPendingMockObject("live_set/tracks/1", {
         path: livePath.track(1),
         properties: { devices: [], clip_slots: [], arrangement_clips: [] },
       });
@@ -397,7 +436,7 @@ describe("duplicate-track", () => {
         signature_numerator: 4,
         signature_denominator: 4,
       });
-      registerMockObject("live_set/tracks/1", {
+      registerPendingMockObject("live_set/tracks/1", {
         path: livePath.track(1),
         properties: {
           devices: [],
@@ -405,7 +444,7 @@ describe("duplicate-track", () => {
           arrangement_clips: children(arrClipId),
         },
       });
-      registerMockObject(arrClipId, {
+      registerPendingMockObject(arrClipId, {
         path: livePath.track(1).arrangementClip(0),
         properties: {
           is_arrangement_clip: 1,

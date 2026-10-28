@@ -1,12 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for arrangement clip lengthening operations.
  * Uses: arrangement-clip-tests - comprehensive arrangement clip edge cases
- * See: e2e/live-sets/arrangement-clip-tests-spec.md
+ * See: e2e/live-sets/specs/arrangement-clip-tests-spec.md
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -29,7 +29,7 @@ import {
   NO_MORE_CONTENT,
   testLengthenClipTo4Bars,
 } from "../helpers/arrangement-lengthening-test-helpers.ts";
-import { setupMcpTestContext } from "../../mcp-test-helpers.ts";
+import { readSceneCount, setupMcpTestContext } from "../../mcp-test-helpers.ts";
 
 const ctx = setupMcpTestContext({
   once: true,
@@ -51,10 +51,14 @@ async function expectLengthenedTo4Bars(
   assert: (result: LengthenResult, expected: ExpectedClip[]) => void,
   sleepMs?: number,
 ): Promise<void> {
+  const scenesBefore = await readSceneCount(ctx.client!);
   const result = await testLengthenClipTo4Bars(ctx.client!, track, { sleepMs });
 
   expect(result.trackType).toBe(trackType);
   assert(result, expectedLengtheningClips[track]!);
+  // Audio work builds a scratch clip in a session slot, which may need a scene
+  // of its own; none may be left behind.
+  expect(await readSceneCount(ctx.client!)).toBe(scenesBefore);
 }
 
 /** A clip that couldn't grow at all fails the call, and says why. */

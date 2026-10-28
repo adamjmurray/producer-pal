@@ -1,14 +1,17 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// SPDX-License-Identifier: MIT
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DEVICE_REPORT_ROUTE } from "#src/shared/max/device-install-contract.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   MAX_CHUNK_SIZE,
   END_OF_CHUNKS,
   reassembleChunks,
 } from "#src/shared/mcp-responses.ts";
+import { reportDevice } from "../live-api-adapter.ts";
 import {
   handleNodeResponse,
   requestNode,
@@ -165,6 +168,22 @@ describe("node-request-v8-protocol", () => {
 
     expect(response.success).toBe(true);
     expect(response.result?.payload).toBe(payload);
+  });
+
+  // Max cuts a single message past ~32k chars, so Node would get broken JSON.
+  it("sends nothing when the request is too large for one Max message", async () => {
+    vi.mocked(globalThis.outlet).mockClear();
+
+    const response = await requestNode("test.huge", {
+      blob: "x".repeat(MAX_CHUNK_SIZE),
+    });
+
+    expect(globalThis.outlet).not.toHaveBeenCalled();
+    expect(response.success).toBe(false);
+    expect(response.tooLarge).toBe(true);
+    expect(response.error).toContain(
+      "node_request 'test.huge' too large for a single Max IPC message",
+    );
   });
 
   it("logs error and ignores response for unknown requestId", async () => {
@@ -374,5 +393,68 @@ describe("node-request-v8-protocol", () => {
     } finally {
       restoreTask();
     }
+  });
+});
+
+describe("reportDevice (the device.report request)", () => {
+  /**
+   * Stand in for the patcher Max puts in the v8 object's global scope.
+   *
+   * @param patcher - What `patcher` should be, or undefined for none
+   */
+  function setPatcher(patcher: unknown): void {
+    (globalThis as { patcher?: unknown }).patcher = patcher;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    setPatcher(undefined);
+  });
+
+  it("sends the patcher's file path to Node", () => {
+    setPatcher({ filepath: "Macintosh HD:/Users/me/Producer_Pal.amxd" });
+
+    reportDevice();
+
+    expect(latestRequestPayload()).toStrictEqual({
+      route: DEVICE_REPORT_ROUTE,
+      args: { filepath: "Macintosh HD:/Users/me/Producer_Pal.amxd" },
+    });
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { what: "no patcher", patcher: undefined },
+    { what: "no file path", patcher: {} },
+    { what: "an empty file path", patcher: { filepath: "" } },
+    { what: "a file path that isn't text", patcher: { filepath: 5 } },
+  ])("warns and sends nothing with $what", ({ patcher }) => {
+    setPatcher(patcher);
+
+    reportDevice();
+
+    expect(outlet).not.toHaveBeenCalled();
+    expect(console.warn).toHaveBeenCalledWith(
+      "Could not read this device's file path.",
+    );
+  });
+
+  it("warns when Node doesn't take the report", async () => {
+    setPatcher({ filepath: "/a/Producer_Pal.amxd" });
+
+    reportDevice();
+    handleNodeResponse(
+      latestRequestId(),
+      JSON.stringify({ success: false, error: "no route" }),
+    );
+
+    await vi.waitFor(() => {
+      expect(console.warn).toHaveBeenCalledWith(
+        "Could not report this device's file path: no route",
+      );
+    });
   });
 });

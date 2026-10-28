@@ -12,14 +12,13 @@ Use Producer Pal with Mistral's open-source command line coding assistant.
 
 ## Installation Steps
 
-<!--@include: ../_partials/install-device.md-->
+<!--@include: ../_partials/setup-by-ai.md-->
 
-### 2. Configure Mistral Vibe
+### 1. Configure Mistral Vibe
 
 Add Producer Pal to your Vibe configuration file (`~/.vibe/config.toml`):
 
-**Option A: With npx (recommended)** — Allows flexible startup order and
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-npx.md-->
 
 ```toml
 [[mcp_servers]]
@@ -29,8 +28,7 @@ command = "npx"
 args = ["-y", "producer-pal@latest"]
 ```
 
-**Option B: Direct HTTP** — Requires Ableton running first, no
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-http.md-->
 
 ```toml
 [[mcp_servers]]
@@ -39,12 +37,16 @@ transport = "streamable-http"
 url = "http://localhost:3350/mcp"
 ```
 
-### 3. Start Using Producer Pal
+### 2. Start Using Producer Pal
 
 1. Run `vibe` in an empty folder (so it can focus on Producer Pal instead of
    coding)
-2. Start a conversation with "connect to ableton"
+2. With Live open, start a conversation with "connect to ableton"
 3. Allow Producer Pal tools to be used when prompted
+
+<!--@include: ../_partials/setup-by-ai-finish.md-->
+
+<!--@include: ../_partials/check-it-works.md-->
 
 ## Troubleshooting
 

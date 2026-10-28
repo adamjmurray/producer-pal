@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 import { act } from "@testing-library/preact";
 import { onTestFinished, vi } from "vitest";
@@ -55,4 +55,30 @@ export function breakStorageWrites(): ReturnType<typeof vi.spyOn> {
   onTestFinished(() => spy.mockRestore());
 
   return spy;
+}
+
+/**
+ * Deliver happy-dom's `selectionchange` on a later task, as browsers do.
+ *
+ * happy-dom fires it synchronously inside `Selection.collapse()`, so when
+ * CodeMirror moves the DOM selection mid-update its listener re-enters
+ * `EditorView.update` and throws. Use as `beforeEach(deferSelectionChange)` in
+ * any test that renders the real editor.
+ * @returns Teardown that restores synchronous dispatch
+ */
+export function deferSelectionChange(): () => void {
+  const dispatch = document.dispatchEvent.bind(document);
+  const spy = vi
+    .spyOn(document, "dispatchEvent")
+    .mockImplementation((event: Event) => {
+      if (event.type !== "selectionchange") {
+        return dispatch(event);
+      }
+
+      setTimeout(() => dispatch(event), 0);
+
+      return true;
+    });
+
+  return () => spy.mockRestore();
 }

@@ -1,7 +1,7 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 /**
  * E2E tests for writing display values to non-linear device parameters.
@@ -83,7 +83,7 @@ describe("ppal-update-device display values", () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
-          device: "Utility",
+          deviceName: "Utility",
           path: "t0",
           params: [{ name: "Output", value: "-1.2" }],
         },
