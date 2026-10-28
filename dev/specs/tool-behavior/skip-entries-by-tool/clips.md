@@ -13,10 +13,13 @@ Part of [Skip entries, tool by tool](README.md).
   earlier write of the call already cleared hold their slot as a skip. A split
   that misses a clip is not a skip: one list cutting many clips is expected to
   miss some, so those clips keep plain entries, and a call or position that cut
-  nothing anywhere gets one WARNING for the call. The `name` and `color` lists
-  pair by the target's place, so a skip doesn't slide them. The deadline skips
-  every target it never reached; a split that already cut keeps its pieces, each
-  saying what did not run.
+  nothing anywhere gets one WARNING for the call. A MIDI note that crosses a cut
+  stays in the earlier piece and ends at the cut, so that clip's entry says
+  `N notes crossed a cut and now end at it`. If the notes can't be read, the cut
+  goes ahead and says nothing: the count is only a diagnostic. The `name` and
+  `color` lists pair by the target's place, so a skip doesn't slide them. The
+  deadline skips every target it never reached; a split that already cut keeps
+  its pieces, each saying what did not run.
 - **update-clip: a clip named twice** (id and path, or an id repeated) is
   updated as its last mention asks. The earlier mention keeps its slot as
   `{ id | path, detail }` with no `ok`; if the last mention then fails with

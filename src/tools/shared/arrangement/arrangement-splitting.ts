@@ -10,7 +10,7 @@ import {
   warnNothingSplit,
   warnUnusedSplitPoints,
   type SplitMiss,
-} from "#src/tools/shared/arrangement/arrangement-splitting-warnings.ts";
+} from "#src/tools/shared/arrangement/splitting/arrangement-splitting-warnings.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
 import {
   type LaneView,
@@ -31,7 +31,11 @@ import {
   rescanSplitClips,
   splitOffsetsInside,
   type SplitClipRange,
-} from "./arrangement-splitting-rescan.ts";
+} from "#src/tools/shared/arrangement/splitting/arrangement-splitting-rescan.ts";
+import {
+  firstCutsCrossed,
+  reportCrossedNotes,
+} from "#src/tools/shared/arrangement/splitting/arrangement-splitting-crossed-notes.ts";
 import { ignoredText } from "#src/shared/max/ignored-wording.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
@@ -193,6 +197,10 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
 
   const sourceClipId = sourceClip.id;
 
+  // Read before the trim changes the clip; only worth it with somewhere to say.
+  const crossed =
+    isMidiClip && reportClip != null ? firstCutsCrossed(clip, validPoints) : [];
+
   // Step 2: Right-trim original to keep only segment 0. This is what vacates
   // the rest of the clip's span, which is why the moves below can skip the
   // overlap clear. The validPoints margin guarantees it runs.
@@ -223,6 +231,9 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
     isMidiClip,
     context: tilingCtx,
   });
+
+  // The first `tailSegment` cuts landed.
+  reportCrossedNotes(reportClip, originalClipId, crossed, tailSegment);
 
   // Step 4: Left-trim source to isolate the tail, move to final position. The
   // tail is the last segment unless the deadline stopped step 3 early, in which
