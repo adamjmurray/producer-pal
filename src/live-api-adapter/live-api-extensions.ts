@@ -8,8 +8,19 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type PathLike } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { LIVE_API_DEVICE_TYPE_MIDI_EFFECT } from "#src/tools/constants.ts";
 import { buildOrReuse } from "./live-api-build.ts";
 import { NONEXISTENT_ID, parseIdOrPath } from "./live-api-id-or-path.ts";
+
+// Max's LiveAPI lists no members for CC Control, so every device-level read
+// fails on it. What it still answers is its `type` field, `getcount` and each
+// `parameters N` child. These are the properties we know for it.
+const CC_CONTROL_TYPE = "CcControlDevice";
+const CC_CONTROL_PROPERTIES: Record<string, unknown> = {
+  type: LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
+  class_display_name: "CC Control",
+  class_name: CC_CONTROL_TYPE,
+};
 
 if (typeof LiveAPI !== "undefined") {
   /**
@@ -91,7 +102,13 @@ if (typeof LiveAPI !== "undefined") {
         // Array.isArray is what keeps that sentinel from reaching callers as a
         // value. See the note on get() in src/types/live-api.d.ts.
         const result = this.get(property);
-        return Array.isArray(result) ? result[0] : undefined;
+        const value = Array.isArray(result) ? result[0] : undefined;
+
+        return value === undefined &&
+          Object.hasOwn(CC_CONTROL_PROPERTIES, property) &&
+          this.type === CC_CONTROL_TYPE
+          ? CC_CONTROL_PROPERTIES[property]
+          : value;
       }
     }
   };
@@ -165,20 +182,21 @@ if (typeof LiveAPI !== "undefined") {
     name: string,
   ): string[] {
     const idArray = this.get(name);
+    const children: string[] = [];
 
     // get() returns the number 1 when there is no object, so this is what makes
     // a missing collection read as empty rather than throwing.
-    if (!Array.isArray(idArray)) {
-      return [];
-    }
-
-    const children: string[] = [];
-    for (let i = 0; i < idArray.length; i += 2) {
-      if (idArray[i] === "id") {
-        children.push(`id ${String(idArray[i + 1])}`);
+    if (Array.isArray(idArray)) {
+      for (let i = 0; i < idArray.length; i += 2) {
+        if (idArray[i] === "id") {
+          children.push(`id ${String(idArray[i + 1])}`);
+        }
       }
     }
-    return children;
+
+    return children.length === 0 && this.type === CC_CONTROL_TYPE
+      ? indexedChildIds(this, name)
+      : children;
   };
 
   /**
@@ -417,4 +435,25 @@ function pathIndex(path: string, ...patterns: RegExp[]): number | null {
   }
 
   return null;
+}
+
+/**
+ * List a collection by counting it and addressing each child (`name N`), for
+ * CC Control, whose collections `get()` can't list.
+ * @param parent - The object that owns the collection
+ * @param name - Collection name to query
+ * @returns Array of child IDs in "id X" format
+ */
+function indexedChildIds(parent: LiveAPI, name: string): string[] {
+  const ids: string[] = [];
+
+  for (let i = 0; i < parent.getcount(name); i++) {
+    const child = parent.child(name, String(i));
+
+    if (child.exists()) {
+      ids.push(`id ${child.id}`);
+    }
+  }
+
+  return ids;
 }

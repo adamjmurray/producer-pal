@@ -4,7 +4,8 @@ An Ableton Live remote script that listens on **http://127.0.0.1:3349** (or the
 next free port, see [Port](#port)). It does what Max for Live's LiveAPI can't:
 list and load devices, plug-ins and presets, hotswap and copy devices, read and
 write clip automation envelopes, convert audio clips to MIDI, read rack macro
-mappings, set Simpler pitch bend ranges, and step Live's undo history.
+mappings, read a CC Control's name and on/off state, set Simpler pitch bend
+ranges, and step Live's undo history.
 
 Producer Pal installs it with the rest of the setup and uses it from
 `ppal-create-device`, `ppal-update-device`, `ppal-duplicate`, `ppal-read-clip`,
@@ -132,11 +133,11 @@ when unknown and absent from older scripts.
 
 The other routes, by what they work on:
 
-| Part                                                    | Routes                                                                                                                           |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| [list-and-load-routes.md](docs/list-and-load-routes.md) | The `type` values; `GET /list`, `POST /load`                                                                                     |
-| [device-routes.md](docs/device-routes.md)               | `POST /hotswap`, `/replace-producer-pal`, `/device/duplicate`, `/device/macros`, `/device/simpler/read`, `/device/simpler/write` |
-| [clip-routes.md](docs/clip-routes.md)                   | `POST /envelope/list`, `/envelope/read`, `/envelope/write`, `/envelope/clear`; `/clip/convert`                                   |
+| Part                                                    | Routes                                                                                                                                             |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [list-and-load-routes.md](docs/list-and-load-routes.md) | The `type` values; `GET /list`, `POST /load`                                                                                                       |
+| [device-routes.md](docs/device-routes.md)               | `POST /hotswap`, `/replace-producer-pal`, `/device/duplicate`, `/device/macros`, `/device/basics`, `/device/simpler/read`, `/device/simpler/write` |
+| [clip-routes.md](docs/clip-routes.md)                   | `POST /envelope/list`, `/envelope/read`, `/envelope/write`, `/envelope/clear`; `/clip/convert`                                                     |
 
 ### `POST /undo/end`
 
@@ -192,6 +193,7 @@ waits 30s for the reply, and 30s more if the job started in that time.
 - `producer_pal_device.py`: recognizing the Producer Pal device
 - `envelopes.py`: clip automation envelopes
 - `rack_macros.py`: which rack macros are mapped
+- `device_basics.py`: a device's name and on/off state (CC Control)
 - `conversions.py`: converting an audio clip to a new track
 - `clip_address.py`: finding the clip a route names
 - `simpler_settings.py`: a Simpler's pitch bend ranges

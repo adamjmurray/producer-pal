@@ -7,6 +7,7 @@
 
 from . import browser, hot_reload, hotswap, undo
 from .conversions import ROUTES as _CONVERSION_ROUTES
+from .device_basics import ROUTES as _DEVICE_BASICS_ROUTES
 from .device_copy import ROUTES as _DEVICE_COPY_ROUTES
 from .envelopes import ROUTES as _ENVELOPE_ROUTES
 from .errors import RouteError
@@ -458,6 +459,7 @@ ROUTES = {
     **_DEVICE_COPY_ROUTES,
     **_ENVELOPE_ROUTES,
     **_RACK_MACRO_ROUTES,
+    **_DEVICE_BASICS_ROUTES,
     **_CONVERSION_ROUTES,
     **_SIMPLER_ROUTES,
     **_UNDO_ROUTES,

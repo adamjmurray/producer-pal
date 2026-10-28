@@ -16,9 +16,9 @@ import {
 import {
   pathsAsked,
   remoteScriptSays,
-} from "../../tests/helpers/rack-macros-route-fixtures.ts";
-import { readDevice } from "../read-device.ts";
-import { addMappedMacros } from "../helpers/read-mapped-macros.ts";
+} from "../../../tests/helpers/rack-macros-route-fixtures.ts";
+import { readDevice } from "../../read-device.ts";
+import { addMappedMacros } from "../../helpers/read-mapped-macros.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),

@@ -17,15 +17,15 @@ import {
 import {
   pathsAsked as macroPathsAsked,
   remoteScriptSays,
-} from "../../tests/helpers/rack-macros-route-fixtures.ts";
+} from "../../../tests/helpers/rack-macros-route-fixtures.ts";
 import {
   bend,
   remoteScriptReads,
   simplerPathsRead,
-} from "../../tests/helpers/simpler-settings-route-fixtures.ts";
-import { addSimplerSettings } from "../helpers/read-simpler-settings.ts";
-import { findInReadResult } from "../helpers/find-in-read-result.ts";
-import { readDevice } from "../read-device.ts";
+} from "../../../tests/helpers/simpler-settings-route-fixtures.ts";
+import { addSimplerSettings } from "../../helpers/read-simpler-settings.ts";
+import { findInReadResult } from "../../helpers/find-in-read-result.ts";
+import { readDevice } from "../../read-device.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),
