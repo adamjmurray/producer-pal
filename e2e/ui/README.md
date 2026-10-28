@@ -119,3 +119,15 @@ Use `setupUiTest` for the chat "configured app + seeded history" starting point,
 rows expose `data-testid="conversation-item"`; row actions use their accessible
 labels (`Rename conversation`, `Delete conversation`, `Bookmark conversation` /
 `Remove bookmark`, `Export conversation`).
+
+## Docs screenshots
+
+`settings/docs-screenshots/` regenerates the settings screenshots in
+`docs/public/img` from this stubbed UI, in fixed example states:
+
+```bash
+npm run docs:screenshots
+```
+
+Its files end in `.screenshots.ts`, so `ui:test` never runs them. Re-run it
+after changing the settings UI, and look at the images before committing.

@@ -114,6 +114,7 @@
     "remote-script:test": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s remote-script/tests",
     "validate:typescript-only": "node scripts/build-and-release/validate-typescript-only.ts",
     "docs:dev": "npm run docs:generate && vitepress dev docs --port 5174",
+    "docs:screenshots": "npm run ui:build && playwright test -c config/playwright.docs-screenshots.config.ts",
     "docs:schemas": "node scripts/build-and-release/tool-reference/generate-tool-schema-docs.ts",
     "docs:examples": "npm run parser:build && node scripts/build-and-release/tool-reference/generate-tool-output-docs.ts",
     "docs:generate": "npm run docs:schemas && npm run docs:examples && node scripts/build-and-release/generate-docs-markdown.ts && node scripts/build-and-release/generate-skill-downloads.ts",
