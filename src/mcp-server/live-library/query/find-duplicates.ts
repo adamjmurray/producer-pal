@@ -22,7 +22,6 @@ import {
   type FindDuplicatesArgs,
   type LibraryDuplicateGroup,
   type LibraryFindDuplicatesResult,
-  type StalenessRisk,
 } from "../library-types.ts";
 import { resolveAbsolutePaths } from "../reconstruct-path.ts";
 import {
@@ -64,7 +63,7 @@ export function findDuplicates(
       groups: [],
       detail: `Failed to read Live database: ${message}`,
     }),
-    run: (db, stalenessRisk) => runFindDuplicates(db, stalenessRisk, args),
+    run: (db, stale) => runFindDuplicates(db, stale, args),
   });
 }
 
@@ -73,18 +72,18 @@ export function findDuplicates(
  * top groups.
  *
  * @param db - Open database handle
- * @param stalenessRisk - WAL-staleness advisory, if any
+ * @param stale - Staleness note, if any
  * @param args - Candidate filters (plus limit)
  * @returns The find-duplicates result
  */
 function runFindDuplicates(
   db: DatabaseSync,
-  stalenessRisk: StalenessRisk | undefined,
+  stale: string | undefined,
   args: FindDuplicatesArgs,
 ): LibraryFindDuplicatesResult {
   const base = {
     dbAvailable: true as const,
-    ...(stalenessRisk && { stalenessRisk }),
+    ...(stale && { stalenessNote: stale }),
   };
 
   // sampleFolder files aren't in Live's fe_values index, so the candidate query

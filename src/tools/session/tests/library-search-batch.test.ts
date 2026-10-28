@@ -487,14 +487,8 @@ describe("library tool — searches fan-out", () => {
     expect(protocolMock.requestNode).not.toHaveBeenCalled();
   });
 
-  it("surfaces stalenessRisk from any DB-consulting query at the batch level", async () => {
-    const stalenessRisk = {
-      kind: "wal-pending" as const,
-      dbMtime: 1_000_000,
-      walMtime: 4_600_000,
-      walSizeMb: 12,
-      ageSeconds: 3_600,
-    };
+  it("surfaces stalenessNote from any DB-consulting query at the batch level", async () => {
+    const stalenessNote = "snapshot may be out of date";
 
     vi.mocked(protocolMock.requestNode)
       .mockResolvedValueOnce({
@@ -505,18 +499,18 @@ describe("library tool — searches fan-out", () => {
         success: true,
         result: {
           dbAvailable: true,
-          stalenessRisk,
+          stalenessNote,
           items: [dbItem("snare.wav")],
         },
       });
 
     const result = await runSearchBatch([{ tags: "Kick" }, { tags: "Snare" }]);
 
-    expect(result.stalenessRisk).toStrictEqual(stalenessRisk);
+    expect(result.stalenessNote).toBe(stalenessNote);
     expect(result.dbAvailable).toBe(true);
   });
 
-  it("omits stalenessRisk when no DB-consulting query reports it", async () => {
+  it("omits stalenessNote when no DB-consulting query reports it", async () => {
     vi.mocked(protocolMock.requestNode).mockResolvedValue({
       success: true,
       result: { dbAvailable: true, items: [] },
@@ -524,40 +518,27 @@ describe("library tool — searches fan-out", () => {
 
     const result = await runLoneSearch([{ tags: "Kick" }]);
 
-    expect("stalenessRisk" in result).toBe(false);
+    expect("stalenessNote" in result).toBe(false);
   });
 
-  it("keeps the first stalenessRisk reading when two queries report different ones", async () => {
-    // Staleness is a single global DB property; the batch captures the first
-    // non-null reading and must not overwrite it with a later query's copy.
-    const first = {
-      kind: "wal-pending" as const,
-      dbMtime: 1_000_000,
-      walMtime: 4_600_000,
-      walSizeMb: 12,
-      ageSeconds: 3_600,
-    };
-    const second = {
-      kind: "wal-pending" as const,
-      dbMtime: 9_000_000,
-      walMtime: 9_600_000,
-      walSizeMb: 99,
-      ageSeconds: 9_999,
-    };
+  it("keeps the first stalenessNote when two queries report different ones", async () => {
+    // The batch keeps the first note and doesn't overwrite it with a later one.
+    const first = "first note";
+    const second = "second note";
 
     vi.mocked(protocolMock.requestNode)
       .mockResolvedValueOnce({
         success: true,
-        result: { dbAvailable: true, stalenessRisk: first, items: [] },
+        result: { dbAvailable: true, stalenessNote: first, items: [] },
       })
       .mockResolvedValueOnce({
         success: true,
-        result: { dbAvailable: true, stalenessRisk: second, items: [] },
+        result: { dbAvailable: true, stalenessNote: second, items: [] },
       });
 
     const result = await runSearchBatch([{ tags: "Kick" }, { tags: "Snare" }]);
 
-    expect(result.stalenessRisk).toStrictEqual(first);
+    expect(result.stalenessNote).toBe(first);
   });
 
   it("omits the reason key on an entry whose query returned no reason", async () => {

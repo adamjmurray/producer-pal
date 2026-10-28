@@ -18,6 +18,7 @@ apply it to every tool at once.
 | [up-front-refusals-by-tool.md](up-front-refusals-by-tool.md)    | Where each tool applies the refusal rules                                        |
 | [skip-entries-by-tool/](skip-entries-by-tool/README.md)         | How each write tool applies the entry rules                                      |
 | [ppal-manage.md](ppal-manage.md)                                | How `ppal-manage` answers: install, add Producer Pal, undo, redo, refusals       |
+| [ppal-library.md](ppal-library.md)                              | How `ppal-library` answers when Live's library data may be out of date           |
 | [dev/tools/tool-schemas.md](../../tools/tool-schemas.md)        | How to build the schema and the helpers that enforce these rules                 |
 
 ## Lists and pairing

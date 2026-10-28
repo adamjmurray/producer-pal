@@ -88,14 +88,23 @@ def list_items(bridge, params):
     start, start_path = _resolve(root, params.get("path"))
     query = params.get("q")
 
+    stop = False
+
     if not _as_bool(params.get("recursive", True)):
         items = browser.list_children(start, start_path, query)
     elif _as_bool(params.get("presets", False)):
         items = browser.list_presets(start, start_path, query)
     else:
-        items = browser.list_loadable(start, start_path, devices_only, query)
+        stop = _as_bool(params.get("plugins_only", False))
+        items = browser.list_loadable(start, start_path, devices_only, query, stop)
 
-    return {"type": item_type, "path": start_path, "count": len(items), "items": items}
+    reply = {"type": item_type, "path": start_path, "count": len(items), "items": items}
+
+    if stop:
+        # Tells the caller this script knows the param: an older one ignores it.
+        reply["plugins_only"] = True
+
+    return reply
 
 
 def load(bridge, params):

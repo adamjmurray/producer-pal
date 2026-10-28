@@ -23,7 +23,7 @@ vi.mock(import("../../live-db-path.ts"), () => ({
   liveDatabaseDir: vi.fn(),
 }));
 vi.mock(import("../../db-staleness.ts"), () => ({
-  detectStalenessRisk: vi.fn(),
+  stalenessNote: vi.fn(),
 }));
 
 const dbPathMod = await import("../../live-db-path.ts");
@@ -119,7 +119,7 @@ describe("plug-in preset folders", () => {
   setupLibraryFixtureLifecycle(dbPathMod, addPresetFolder);
 
   beforeEach(() => {
-    vi.mocked(stalenessMod.detectStalenessRisk).mockResolvedValue(undefined);
+    vi.mocked(stalenessMod.stalenessNote).mockResolvedValue(undefined);
   });
 
   describe("files Live hides are left out by default", () => {

@@ -26,12 +26,12 @@ import {
   parseToolResultWithWarnings,
   setConfig,
   setupMcpTestContext,
-} from "../mcp-test-helpers";
+} from "../../mcp-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SAMPLE_FOLDER = resolve(__dirname, "../../../evals/live-sets/samples");
+const SAMPLE_FOLDER = resolve(__dirname, "../../../../evals/live-sets/samples");
 
 /** The fan-out's hard cap, mirrored from MAX_BATCH_QUERIES. */
 const MAX_QUERIES = 20;

@@ -22,7 +22,6 @@ import {
   type FindSimilarArgs,
   type LibraryFindSimilarResult,
   type LibrarySimilarItem,
-  type StalenessRisk,
 } from "../library-types.ts";
 import { resolveAbsolutePaths } from "../reconstruct-path.ts";
 import {
@@ -75,8 +74,7 @@ export function findSimilar(
       items: [],
       detail: `Failed to read Live database: ${message}`,
     }),
-    run: (db, stalenessRisk) =>
-      runFindSimilar(db, stalenessRisk, args, seedPath),
+    run: (db, stale) => runFindSimilar(db, stale, args, seedPath),
   });
 }
 
@@ -87,20 +85,20 @@ export function findSimilar(
  * seed, or an unresolvable inFolder).
  *
  * @param db - Open database handle
- * @param stalenessRisk - WAL-staleness advisory, if any
+ * @param stale - Staleness note, if any
  * @param args - Seed path plus candidate filters
  * @param seedPath - The seed path (already defaulted to "")
  * @returns The find-similar result
  */
 function runFindSimilar(
   db: DatabaseSync,
-  stalenessRisk: StalenessRisk | undefined,
+  stale: string | undefined,
   args: FindSimilarArgs,
   seedPath: string,
 ): LibraryFindSimilarResult {
   const base = {
     dbAvailable: true as const,
-    ...(stalenessRisk && { stalenessRisk }),
+    ...(stale && { stalenessNote: stale }),
   };
   const miss = (found: boolean, detail: string): LibraryFindSimilarResult => ({
     ...base,

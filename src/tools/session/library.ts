@@ -210,8 +210,9 @@ export async function runSearch(
 
   const base: LibrarySearchResult = {
     dbAvailable: dbResult.dbAvailable,
-    // Propagate the stale-WAL advisory from the DB layer; omitted when absent.
-    ...(dbResult.stalenessRisk && { stalenessRisk: dbResult.stalenessRisk }),
+    ...(dbResult.stalenessNote != null && {
+      stalenessNote: dbResult.stalenessNote,
+    }),
     items,
     ...(dbResult.note != null && { note: dbResult.note }),
   };
