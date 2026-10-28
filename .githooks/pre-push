@@ -227,13 +227,19 @@ while read -r _local_ref local_sha remote_ref remote_sha; do
 
 	# --- 4. every other check on the remote head -------------------------
 	# CodeQL, the Netlify preview, and anything added later. Check runs come
-	# from Actions and apps; Netlify posts a commit status. Both lists keep only
-	# the latest result per name. Don't use the combined status's own state: it
-	# reads "pending" when there are no statuses at all.
+	# from Actions and apps; Netlify posts a commit status. Don't use the
+	# combined status's own state: it reads "pending" when there are no statuses
+	# at all.
+	#
+	# Skip "Dependabot" runs: they are Dependabot's own update jobs, posted on the
+	# default branch's head (dev's head too, right after a release), and say
+	# nothing about the commit. Each is listed separately, so one failed job
+	# stays red even after a later one passes.
 	checks_err=$(mktemp)
 	checks=$(
 		gh api --paginate "repos/{owner}/{repo}/commits/$remote_sha/check-runs?per_page=100" \
-			--jq '.check_runs[] | (if .status != "completed" then "running"
+			--jq '.check_runs[] | select(.name != "Dependabot")
+				| (if .status != "completed" then "running"
 				elif (.conclusion | IN("success", "neutral", "skipped")) then "green"
 				else .conclusion end) + " " + .name' 2>>"$checks_err"
 		gh api --paginate "repos/{owner}/{repo}/commits/$remote_sha/status?per_page=100" \
