@@ -7,12 +7,13 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { UserLibraryFolderError } from "#src/mcp-server/rpc/remote-script/user-library/user-library-folder.ts";
+import { deviceFilePath, deviceFileStatus } from "../device-file-status.ts";
+import { readDeviceVersion } from "../device-version.ts";
 import {
-  deviceFilePath,
-  deviceFileStatus,
-  readDeviceVersion,
-} from "../device-file-status.ts";
-import { fakeDevice, makeScratchLibrary, put } from "./device-test-helpers.ts";
+  fakeDevice,
+  makeScratchLibrary,
+  put,
+} from "../../tests/device-test-helpers.ts";
 
 let library: string;
 let source: string;

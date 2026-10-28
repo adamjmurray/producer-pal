@@ -31,6 +31,7 @@ import {
   RemoteScriptNotRunning,
   remoteScriptReady,
 } from "../setup/remote-script-ready.ts";
+import { setupDeadline } from "../setup/setup-deadline.ts";
 import { SetupFailed, type SetupPurpose } from "../setup/setup-failure.ts";
 import { type OfflineDeps } from "./offline-deps.ts";
 import { offlineError, offlineResult } from "./offline-responses.ts";
@@ -63,6 +64,8 @@ export async function addProducerPal(
   connect: () => Promise<void>,
   deps: OfflineDeps,
 ): Promise<McpResponse> {
+  const deadline = setupDeadline(deps);
+
   try {
     const bundled = requireBundledDevice(deps, ADD);
     let ping: RemoteScriptPing;
@@ -79,9 +82,9 @@ export async function addProducerPal(
 
     const library = await userLibraryFor(userLibrary, ping, deps, ADD);
     const device = copyDevice(library, bundled, deps);
-    const track = await loadDevice(device.path, deps);
+    const track = await loadDevice(device.path, deps, deadline);
 
-    await waitForServer(track, connect, deps);
+    await waitForServer(track, connect, deps, deadline);
 
     return offlineResult({
       ...(track == null ? {} : { track }),
@@ -201,12 +204,14 @@ function copyNote(result: DeviceInstallResult): string {
  * Ask the remote script to load the device onto a new MIDI track.
  * @param path - Absolute path of the device file
  * @param deps - The remote script, and the clock
+ * @param deadline - When the whole call must be done, as a `now()` time
  * @returns The track it landed on, when the remote script said
  * @throws SetupFailed when it didn't load, or may have
  */
 async function loadDevice(
   path: string,
   deps: OfflineDeps,
+  deadline: number,
 ): Promise<LoadedTrack | undefined> {
   const reply = await requestWithBrowserRetry(
     {
@@ -219,6 +224,7 @@ async function loadDevice(
         ),
     },
     deps,
+    deadline,
   );
 
   if (reply.status === 200) {
@@ -312,22 +318,28 @@ function trackOf(body: Record<string, unknown>): LoadedTrack | undefined {
  * @param track - Where the device was added, for the failure message
  * @param connect - Connect to the device's server; throws until it answers
  * @param deps - The clock
+ * @param deadline - When the whole call must be done, as a `now()` time
  * @throws SetupFailed when it never answers
  */
 async function waitForServer(
   track: LoadedTrack | undefined,
   connect: () => Promise<void>,
   deps: OfflineDeps,
+  deadline: number,
 ): Promise<void> {
-  const answered = await pollUntil(async () => {
-    try {
-      await connect();
+  const answered = await pollUntil(
+    async () => {
+      try {
+        await connect();
 
-      return true;
-    } catch {
-      return false;
-    }
-  }, deps);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    deps,
+    deadline,
+  );
 
   if (answered) {
     return;

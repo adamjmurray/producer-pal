@@ -16,12 +16,13 @@ import {
   setLibraryFileMode,
 } from "#src/mcp-server/rpc/remote-script/user-library/user-library-fs.ts";
 import { isStaleLeftover } from "#src/mcp-server/rpc/remote-script/user-library/stale-leftover.ts";
+import { forgetDeviceFile } from "./device-file/device-file-facts.ts";
 import {
   DEVICE_FILE_NAME,
   type DeviceFileStatus,
   type DeviceState,
   deviceFileStatus,
-} from "./device-file-status.ts";
+} from "./device-file/device-file-status.ts";
 
 // Temp files this code names, and nothing a user might name.
 const LEFTOVER = new RegExp(
@@ -191,6 +192,7 @@ function copyDevice(
     setLibraryFileMode(temp, INSTALLED_MODE);
     step = "rename";
     renameInLibrary(temp, path);
+    forgetDeviceFile(path);
   } catch (error) {
     return failure(error, temp, missing, step === "rename");
   }

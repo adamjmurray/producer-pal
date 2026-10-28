@@ -7,7 +7,7 @@ import { chmodSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { findOtherDeviceCopies } from "../other-device-copies.ts";
-import { makeScratchLibrary, put } from "./device-test-helpers.ts";
+import { makeScratchLibrary, put } from "../../tests/device-test-helpers.ts";
 
 let library: string;
 

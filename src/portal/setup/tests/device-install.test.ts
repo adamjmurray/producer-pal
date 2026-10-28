@@ -15,7 +15,7 @@ import {
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UserLibraryFolderError } from "#src/mcp-server/rpc/remote-script/user-library/user-library-folder.ts";
-import { deviceFilePath } from "../device-file-status.ts";
+import { deviceFilePath } from "../device-file/device-file-status.ts";
 import { installDevice } from "../device-install.ts";
 import { fakeDevice, makeScratchLibrary, put } from "./device-test-helpers.ts";
 

@@ -26,6 +26,7 @@ export interface Replacement {
  * @param replacement - What was replaced, and by what
  * @param device - The bridge's connection to the device
  * @param deps - The clock
+ * @param deadline - When the whole call must be done, as a `now()` time
  * @returns The version the new device reports
  * @throws SetupFailed when no new server answers in time
  */
@@ -33,23 +34,28 @@ export async function waitForNewDevice(
   replacement: Replacement,
   device: RunningDevice,
   deps: Pick<OfflineDeps, "now" | "sleep">,
+  deadline: number,
 ): Promise<string> {
   const { from, expected, track } = replacement;
   let seen: string | undefined;
 
-  const answered = await pollUntil(async () => {
-    device.reset();
+  const answered = await pollUntil(
+    async () => {
+      device.reset();
 
-    try {
-      await device.connect();
-    } catch {
-      return false;
-    }
+      try {
+        await device.connect();
+      } catch {
+        return false;
+      }
 
-    seen = device.version();
+      seen = device.version();
 
-    return seen != null && isNew(seen, from, expected);
-  }, deps);
+      return seen != null && isNew(seen, from, expected);
+    },
+    deps,
+    deadline,
+  );
 
   if (answered && seen != null) {
     return seen;

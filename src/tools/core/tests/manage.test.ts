@@ -313,14 +313,73 @@ describe("ppal-manage install-producer-pal", () => {
     );
   });
 
-  it("says the install may or may not have finished when Node gave no answer", async () => {
+  it("says the install may or may not have finished when Node gave no answer in time", async () => {
     vi.mocked(requestNode).mockResolvedValue({
       success: false,
-      error: "timed out",
+      error: "node_request 'manage.installProducerPal' timed out after 20000ms",
+      timedOut: true,
     });
 
     await expect(manage({ action: "install-producer-pal" })).rejects.toThrow(
       /may or may not have finished\. Run it again/,
+    );
+  });
+
+  it.each([
+    ["an unknown route", "Unknown route: manage.installProducerPal"],
+    ["a request too large to send", "node_request too large"],
+    ["a send failure", "Failed to send node_request: outlet exploded"],
+  ])(
+    "says nothing was installed, with the real error, for %s",
+    async (_why, error) => {
+      vi.mocked(requestNode).mockResolvedValue({
+        success: false,
+        error,
+        notRun: true,
+      });
+
+      const failure = manage({ action: "install-producer-pal" });
+
+      await expect(failure).rejects.toThrow(`nothing was installed: ${error}`);
+      await expect(failure).rejects.not.toThrow(/may or may not/);
+    },
+  );
+
+  it("says a failure that did not run may have finished, without an error text", async () => {
+    vi.mocked(requestNode).mockResolvedValue({ success: false, notRun: true });
+
+    await expect(manage({ action: "install-producer-pal" })).rejects.toThrow(
+      "nothing was installed: the install did not run",
+    );
+  });
+
+  it.each([
+    ["an unreadable answer", "Failed to parse node_response: Unexpected token"],
+    [
+      "Node's own route timeout",
+      "Route 'manage.installProducerPal' timed out after 25000ms",
+    ],
+    [
+      "a reply too large to send back",
+      "Response too large: 9 bytes would require 9 chunks",
+    ],
+    ["a handler that threw", "EACCES: permission denied"],
+  ])(
+    "says the install may have finished, with the real error, for %s",
+    async (_why, error) => {
+      vi.mocked(requestNode).mockResolvedValue({ success: false, error });
+
+      await expect(manage({ action: "install-producer-pal" })).rejects.toThrow(
+        `(${error}), so it may or may not have finished. Run it again`,
+      );
+    },
+  );
+
+  it("says the install may have finished when the route answered success with no result", async () => {
+    vi.mocked(requestNode).mockResolvedValue({ success: true });
+
+    await expect(manage({ action: "install-producer-pal" })).rejects.toThrow(
+      "(no result), so it may or may not have finished",
     );
   });
 });

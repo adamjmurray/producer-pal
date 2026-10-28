@@ -8,8 +8,8 @@ import {
   libraryPathExists,
   removeFromLibrary,
 } from "#src/mcp-server/rpc/remote-script/user-library/user-library-fs.ts";
-import { deviceFilePath } from "#src/portal/setup/device-file-status.ts";
-import { findOtherDeviceCopies } from "#src/portal/setup/other-device-copies.ts";
+import { deviceFilePath } from "#src/portal/setup/device-file/device-file-status.ts";
+import { findOtherDeviceCopies } from "#src/portal/setup/device-file/other-device-copies.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { findRemoteScriptLeftovers } from "./remote-script-leftovers.ts";
 

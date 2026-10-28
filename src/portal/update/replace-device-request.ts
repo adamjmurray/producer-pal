@@ -30,6 +30,7 @@ export interface ReplacedTrack {
  * @param deps - The remote script, and the clock
  * @param libraryUpdated - Whether this update just wrote the device file into
  *   the User Library, which a refusal then says
+ * @param deadline - When the whole update must be done, as a `now()` time
  * @returns The track it sits on, when the remote script said
  * @throws SetupFailed when it didn't swap, or may have
  */
@@ -38,6 +39,7 @@ export async function replaceDevice(
   from: string,
   deps: Pick<OfflineDeps, "request" | "now" | "sleep">,
   libraryUpdated: boolean,
+  deadline: number,
 ): Promise<ReplacedTrack | undefined> {
   const reply = await requestWithBrowserRetry(
     {
@@ -50,6 +52,7 @@ export async function replaceDevice(
         ),
     },
     deps,
+    deadline,
   );
 
   if (reply.status === 200) {

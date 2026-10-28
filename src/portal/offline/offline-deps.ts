@@ -26,7 +26,7 @@ import { findBundledDevice } from "../setup/bundled-device.ts";
 import {
   type DeviceFileStatus,
   deviceFileStatus,
-} from "../setup/device-file-status.ts";
+} from "../setup/device-file/device-file-status.ts";
 import {
   type DeviceInstallResult,
   installDevice,

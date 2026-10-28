@@ -27,6 +27,7 @@ import {
 import { type DeviceInstallResult } from "../setup/device-install.ts";
 import { userLibraryFor } from "../setup/library-for-device.ts";
 import { remoteScriptReady } from "../setup/remote-script-ready.ts";
+import { setupDeadline } from "../setup/setup-deadline.ts";
 import { SetupFailed, type SetupPurpose } from "../setup/setup-failure.ts";
 import { waitForNewDevice } from "./new-device-wait.ts";
 import { setUnchanged } from "./set-unchanged.ts";
@@ -62,6 +63,8 @@ export async function updateProducerPal(
   device: RunningDevice,
   deps: OfflineDeps,
 ): Promise<McpResponse> {
+  const deadline = setupDeadline(deps);
+
   // A fresh handshake: the cached connection may predate a manual update.
   device.reset();
 
@@ -88,11 +91,18 @@ export async function updateProducerPal(
       installBundledDevice(library, bundled, deps, UPDATE),
       from,
     );
-    const track = await replaceDevice(file.path, from, deps, file.written);
+    const track = await replaceDevice(
+      file.path,
+      from,
+      deps,
+      file.written,
+      deadline,
+    );
     const to = await waitForNewDevice(
       { from, expected: file.version, track },
       device,
       deps,
+      deadline,
     );
 
     device.toolsChanged();

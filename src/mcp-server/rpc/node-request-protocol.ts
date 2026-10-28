@@ -91,6 +91,7 @@ export async function handleNodeRequest(
     await sendNodeResponse(requestId, {
       success: false,
       error: `Failed to parse request: ${message}`,
+      notRun: true,
     });
 
     return;
@@ -102,6 +103,7 @@ export async function handleNodeRequest(
     await sendNodeResponse(requestId, {
       success: false,
       error: `Unknown route: ${route}`,
+      notRun: true,
     });
 
     return;
@@ -172,10 +174,17 @@ async function runWithTimeout(
  * @param response.success - Whether the route succeeded
  * @param response.result - The route's return value (on success)
  * @param response.error - Error message (on failure)
+ * @param response.notRun - The route never ran (an unknown route or an
+ *   unreadable request)
  */
 async function sendNodeResponse(
   requestId: string,
-  response: { success: boolean; result?: unknown; error?: string },
+  response: {
+    success: boolean;
+    result?: unknown;
+    error?: string;
+    notRun?: true;
+  },
 ): Promise<void> {
   const jsonString = JSON.stringify(response);
   const plan = planChunks(jsonString);

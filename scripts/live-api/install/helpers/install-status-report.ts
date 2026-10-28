@@ -14,9 +14,9 @@ import {
   type DeviceState,
   deviceFilePath,
   deviceFileStatus,
-  readDeviceVersion,
-} from "#src/portal/setup/device-file-status.ts";
-import { findOtherDeviceCopies } from "#src/portal/setup/other-device-copies.ts";
+} from "#src/portal/setup/device-file/device-file-status.ts";
+import { readDeviceVersion } from "#src/portal/setup/device-file/device-version.ts";
+import { findOtherDeviceCopies } from "#src/portal/setup/device-file/other-device-copies.ts";
 import { findRemoteScriptLeftovers } from "./remote-script-leftovers.ts";
 
 const VS_RELEASE: Record<DeviceState, string> = {

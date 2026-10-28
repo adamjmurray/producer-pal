@@ -21,6 +21,10 @@ export const REQUEST_TIMEOUT_MS = 10_000;
 interface ChannelResult {
   success: boolean;
   error?: string;
+  /** No answer came in time, so the request may or may not have run. */
+  timedOut?: true;
+  /** The request was never sent, so nothing ran. */
+  notRun?: true;
 }
 
 /** How one protocol spells its messages. */
@@ -37,6 +41,11 @@ interface ChannelSpec {
    * whole timeout for nothing.
    */
   reportSendFailure?: boolean;
+  /**
+   * Mark a failure with `timedOut` (it may have run) or `notRun` (it never
+   * went out), so a caller can tell them apart from an answered failure.
+   */
+  markOutcomes?: boolean;
 }
 
 /** One protocol's send and receive ends. */
@@ -81,19 +90,23 @@ export function requestChannel(spec: ChannelSpec): RequestChannel {
       // v8-warning-capture.
       return suspendWarningCapture(
         new Promise<T>((resolve) => {
-          const fail = (error: string): void => {
-            resolve({ success: false, error } as T);
+          const fail = (error: string, mark?: "timedOut" | "notRun"): void => {
+            resolve({
+              success: false,
+              error,
+              ...(spec.markOutcomes && mark != null && { [mark]: true }),
+            } as T);
           };
 
           if (refusal != null) {
-            fail(refusal);
+            fail(refusal, "notRun");
 
             return;
           }
 
           const task = new Task(() => {
             if (pending.delete(requestId)) {
-              fail(`${subject} timed out after ${timeoutMs}ms`);
+              fail(`${subject} timed out after ${timeoutMs}ms`, "timedOut");
             }
           });
 
@@ -113,7 +126,7 @@ export function requestChannel(spec: ChannelSpec): RequestChannel {
               throw error;
             }
 
-            fail(`Failed to send ${subject}: ${asMessage(error)}`);
+            fail(`Failed to send ${subject}: ${asMessage(error)}`, "notRun");
           }
         }),
       );

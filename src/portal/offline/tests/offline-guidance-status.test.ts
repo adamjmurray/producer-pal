@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { type InstalledRemoteScript } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { UPDATE_PORTAL_ADVICE, VERSION } from "#src/shared/config.ts";
-import { type DeviceFileStatus } from "../../setup/device-file-status.ts";
+import { type DeviceFileStatus } from "../../setup/device-file/device-file-status.ts";
 import { type OfflineDeps } from "../offline-deps.ts";
 import { offlineGuidance } from "../offline-guidance.ts";
 import { SETUP_URL } from "../offline-setup-hints.ts";

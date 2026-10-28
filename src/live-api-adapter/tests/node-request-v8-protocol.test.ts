@@ -137,6 +137,21 @@ describe("node-request-v8-protocol", () => {
 
     expect(response.success).toBe(false);
     expect(response.error).toContain("Failed to parse node_response");
+    // Node answered, so the route may have run.
+    expect(response.notRun).toBeUndefined();
+    expect(response.timedOut).toBeUndefined();
+  });
+
+  it("marks a request it could not send as not run", async () => {
+    vi.mocked(globalThis.outlet).mockImplementationOnce(() => {
+      throw new Error("outlet exploded");
+    });
+
+    expect(await requestNode("test.unsent")).toStrictEqual({
+      success: false,
+      error: "Failed to send node_request 'test.unsent': outlet exploded",
+      notRun: true,
+    });
   });
 
   it("reassembles chunked responses produced by the Node sender", async () => {
@@ -182,6 +197,7 @@ describe("node-request-v8-protocol", () => {
     expect(globalThis.outlet).not.toHaveBeenCalled();
     expect(response.success).toBe(false);
     expect(response.tooLarge).toBe(true);
+    expect(response.notRun).toBe(true);
     expect(response.error).toContain(
       "node_request 'test.huge' too large for a single Max IPC message",
     );
@@ -314,6 +330,7 @@ describe("node-request-v8-protocol", () => {
 
       expect(response.success).toBe(false);
       expect(response.error).toMatch(/test\.timeout.*timed out/);
+      expect(response.timedOut).toBe(true);
 
       // After timeout, a late response for the same id is ignored — the
       // pending entry was deleted by the timeout path.
@@ -326,6 +343,20 @@ describe("node-request-v8-protocol", () => {
     } finally {
       restoreTask();
     }
+  });
+
+  it("does not mark a failure Node answered as a timeout", async () => {
+    const promise = requestNode("test.unknown");
+
+    handleNodeResponse(
+      latestRequestId(),
+      JSON.stringify({ success: false, error: "Unknown route: test.unknown" }),
+    );
+
+    expect(await promise).toStrictEqual({
+      success: false,
+      error: "Unknown route: test.unknown",
+    });
   });
 
   it("waits as long as the request asks", async () => {

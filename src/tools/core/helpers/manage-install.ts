@@ -17,7 +17,7 @@ import { manageInstallResult } from "./manage-install-result.ts";
  * Install the remote script and this device into the User Library, in Node (V8
  * has no filesystem). Producer Pal is running, since this is the device.
  *
- * No answer says nothing of whether the files were written. An install replaces
+ * A timeout says nothing of whether the files were written. An install replaces
  * the old copy whole, so running it again is safe.
  * @param userLibrary - Absolute path to the User Library; absent means Node
  *   looks for it
@@ -36,13 +36,25 @@ export async function installFromTool(
     request,
     INSTALL_WAIT_MS,
   );
-  const reply = response.success ? response.result : undefined;
 
-  if (reply == null) {
+  if (response.success && response.result != null) {
+    return manageInstallResult(response.result, { running: true });
+  }
+
+  // Only a failure that provably ran no route says nothing was installed. Any
+  // other (a timeout, an unreadable answer, Node's own limit) may follow a
+  // route that already wrote files.
+  if (response.notRun) {
     throw new Error(
-      "the install did not answer in time, so it may or may not have finished. Run it again: an install replaces the old copy whole",
+      `nothing was installed: ${response.error ?? "the install did not run"}`,
     );
   }
 
-  return manageInstallResult(reply, { running: true });
+  const why = response.timedOut
+    ? "the install did not answer in time"
+    : `the install failed without a clear answer (${response.error ?? "no result"})`;
+
+  throw new Error(
+    `${why}, so it may or may not have finished. Run it again: an install replaces the old copy whole`,
+  );
 }

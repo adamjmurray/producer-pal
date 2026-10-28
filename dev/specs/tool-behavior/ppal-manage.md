@@ -89,9 +89,17 @@ script.
   missing until the install runs again. A device copy that fails (Windows can
   lock a file Live has loaded) is `{ ok: false, path, detail }` the same way;
   the old device file is unchanged.
-- **No answer from Node:** throws, saying the install may or may not have
-  finished and to run it again. Repeating it is safe: the script is replaced
-  whole and the device is version-aware.
+- **No answer from Node in time:** throws, saying the install may or may not
+  have finished and to run it again. Repeating it is safe: the script is
+  replaced whole and the device is version-aware.
+- **A failure that provably ran no route:** throws
+  `nothing was installed: <the real error>`. These are an unknown route, an
+  unreadable request on Node's side, a request too large to send, and a send
+  failure.
+- **Any other failure** (a handler that threw, an unreadable answer, a reply too
+  large to send back, Node's own route timeout) may follow an install that
+  already wrote files, so it gets the same "may or may not have finished" text
+  as a timeout, with the real error in parentheses.
 
 ## `add-producer-pal`
 
@@ -113,6 +121,9 @@ description tells the model to ask the user first, since it changes their Set.
 - **A remote script that is too old:** refused before anything is copied. The
   error says to update it, that nothing was added, and to call
   `add-producer-pal` again after the user restarts Live.
+- **Time limit:** the load (and a not-found retried for up to 15 s) and the wait
+  for the server share a deadline of about 50 s, as described under
+  `update-producer-pal`.
 - **No running remote script:** an error, because the Set wasn't changed. The
   device file is still put in the User Library (the same copy, with the same
   `device` note, as above), so the error says what the call did leave: nothing
@@ -166,12 +177,22 @@ to ask the user first.
      older when the file is newer than the portal's (else that which is newer
      can't be told).
   6. The remote script's `/replace-producer-pal` hot-swaps the Set's one
-     Producer Pal device with that file (a not-found is asked again for 15 s). A
-     refusal there (none in the Set, more than one, bad file) says the Live Set
-     wasn't changed, and whether the library file was updated.
+     Producer Pal device with that file (a not-found is asked again for up to 15
+     s, within the call's time limit below). A refusal there (none in the Set,
+     more than one, bad file) says the Live Set wasn't changed, and whether the
+     library file was updated.
   7. The bridge drops its connection and reconnects until a server answers with
-     a newer version than the old one (30 s), then tells the client to re-list
-     tools, which may differ between versions.
+     a newer version than the old one (up to 30 s, within the call's time limit
+     below), then tells the client to re-list tools, which may differ between
+     versions.
+- **Time limit:** `add-producer-pal` and `update-producer-pal` finish in about
+  50 s (the last request gets a ~1 s reply grace), since a client with a 60 s
+  tool timeout reports failure while Live goes on to change the Set. The steps
+  share one deadline and each takes what is left: the load or swap request (and
+  its not-found retries) and the wait for the server. A step that runs out of
+  time after the request was sent says the device may have been added or
+  replaced, as for any other lost answer; one that runs out before it was sent
+  says nothing changed.
 - **Undo:** the remote script closes the swap as its own undo step (and clears
   the guard, as any write does), since the server that would close it dies with
   the swap. Left open, it would merge with the next edit. Undoing that step puts

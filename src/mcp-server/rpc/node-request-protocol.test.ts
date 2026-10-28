@@ -93,6 +93,7 @@ describe("node-request-protocol", () => {
 
     expect(response.success).toBe(false);
     expect(response.error).toContain("Unknown route: missing");
+    expect(response.notRun).toBe(true);
   });
 
   it("returns failure when handler throws", async () => {
@@ -147,6 +148,7 @@ describe("node-request-protocol", () => {
 
     expect(response.success).toBe(false);
     expect(response.error).toContain("Failed to parse request");
+    expect(response.notRun).toBe(true);
   });
 
   it("throws when registering a duplicate route", () => {
@@ -226,6 +228,8 @@ describe("node-request-protocol", () => {
 
     expect(response.success).toBe(false);
     expect(response.error).toMatch(/Response too large/);
+    // The handler ran, so the caller can't claim nothing happened.
+    expect(response.notRun).toBeUndefined();
   });
 
   it("synthesizes a timeout failure when a handler hangs", async () => {

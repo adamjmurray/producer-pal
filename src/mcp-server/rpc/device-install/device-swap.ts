@@ -13,6 +13,7 @@
 // UI waits for a new device to answer instead.
 
 import { requestWithBrowserRetry } from "#src/portal/setup/browser-retry-request.ts";
+import { SETUP_BUDGET_MS } from "#src/portal/setup/setup-deadline.ts";
 import { SetupFailed } from "#src/portal/setup/setup-failure.ts";
 import {
   mayHaveSwapped,
@@ -92,6 +93,7 @@ export async function swapForLibraryCopy(
           ),
       },
       deps,
+      deps.now() + SETUP_BUDGET_MS,
     );
 
     return answer(reply);
