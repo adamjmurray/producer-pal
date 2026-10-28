@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
+import { loopBorrow } from "#src/notation/barbeat/parser/tests/barbeat-parser-test-helpers.ts";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
 import { expectTimeRangeBounds } from "./parse-test-helpers.ts";
 
@@ -211,6 +212,43 @@ describe("Transform Parser - time range selectors", () => {
       expect(result[0]!.timeRange!.startBeat).toBeCloseTo(4.6667);
       expect(result[0]!.timeRange!.endBar).toBe(1);
       expect(result[0]!.timeRange!.endBeat).toBeCloseTo(4.6667);
+    });
+  });
+
+  it("matches the bar-at-a-time loop across offsets and meters", () => {
+    for (const bpb of [2, 3, 4, 5, 6, 7, 12]) {
+      for (let den = 1; den <= 24; den++) {
+        for (let num = 0; num <= 3 * den; num += Math.max(1, den >> 2)) {
+          const bar = 1 + ((num + den) % 5);
+          const raw = 2.5 - (num / den) * 4;
+          const [result] = parser.parse(
+            `${bar}|2.5-n${num}/${den}: velocity += 1`,
+            { beatsPerBar: bpb },
+          );
+          const expected = loopBorrow(bar, raw, bpb);
+
+          expect((result as { timeRange: unknown }).timeRange).toStrictEqual({
+            startBar: expected.bar,
+            startBeat: expected.beat,
+            endBar: expected.bar,
+            endBeat: expected.beat,
+          });
+        }
+      }
+    }
+  });
+
+  it("returns for a huge negative offset", () => {
+    const started = performance.now();
+    const [result] = parser.parse("1|1-n1000000000/1-1|1: velocity += 1");
+
+    // The bar-at-a-time loop took over a minute here.
+    expect(performance.now() - started).toBeLessThan(2000);
+    expect((result as { timeRange: unknown }).timeRange).toStrictEqual({
+      startBar: 1 - 1_000_000_000,
+      startBeat: 1,
+      endBar: 1,
+      endBeat: 1,
     });
   });
 });

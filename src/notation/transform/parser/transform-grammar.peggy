@@ -55,11 +55,13 @@
   // bar(s) using beatsPerBar. A pull before `1|1` is allowed: the bar goes to
   // 0 / negative and the bound resolves to negative time. Never throws.
   function borrowBars(bar, beat, beatsPerBar) {
-    while (beat < 1) {
-      beat += beatsPerBar;
-      bar -= 1;
-    }
-    return { bar, beat };
+    if (!(beat < 1)) return { bar, beat };
+    // Closed form of "add a bar until beat >= 1", so a huge offset stays fast.
+    // The ceil can land one off from float rounding, so nudge.
+    let bars = Math.ceil((1 - beat) / beatsPerBar);
+    if (beat + bars * beatsPerBar < 1) bars += 1;
+    else if (bars > 1 && beat + (bars - 1) * beatsPerBar >= 1) bars -= 1;
+    return { bar: bar - bars, beat: beat + bars * beatsPerBar };
   }
 
   // Targeted error for the removed synced-period syntax (Nt, N:Nt).
