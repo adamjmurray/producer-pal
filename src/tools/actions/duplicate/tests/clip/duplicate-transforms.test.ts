@@ -384,6 +384,34 @@ describe("duplicate - transforms/code", () => {
       );
     });
 
+    // A copy a later one cleared has lost its id but still holds its place, so
+    // the copies after it keep the clip.index their name pairs with.
+    it("numbers copies by their place when an earlier copy was cleared", async () => {
+      const createdObjects: object[] = [
+        {
+          path: "t0[1|1]",
+          detail: "overwritten later in this call by t0[1|1]",
+        },
+        { id: "b", path: "t0[1|1]" },
+        { id: "c", path: "t0[5|1]" },
+      ];
+
+      updateClipMock.mockReturnValueOnce([]);
+
+      await applyTransformsToDuplicatedClips(
+        createdObjects,
+        "pitch += clip.index * 2",
+        undefined,
+        {},
+      );
+
+      expect(updateClipMock).toHaveBeenCalledWith(
+        expect.objectContaining({ ids: "b,c" }),
+        {},
+        { indexes: [1, 2], count: 3 },
+      );
+    });
+
     it("numbers each tile by its copy", async () => {
       const createdObjects: object[] = [
         { path: "t0", clips: [{ id: "a" }, { id: "b" }] },
