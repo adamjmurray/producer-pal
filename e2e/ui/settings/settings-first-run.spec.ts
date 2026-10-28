@@ -7,7 +7,7 @@
 // "Finish installation" link) must be able to leave without setting up chat;
 // chat asks for setup only when they try to use it.
 
-import { type Locator, type Page, expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 import { installStubs } from "../ui-test-helpers";
 import {
   openInstallationTab,
@@ -40,21 +40,6 @@ function readSetupFlag(page: Page): Promise<string | null> {
 async function firstVisit(page: Page, path = "/chat-ui.html"): Promise<void> {
   await installStubs(page, { chatSetUp: false });
   await page.goto(path);
-}
-
-/**
- * Type into a field and leave it. These fields commit on blur, which shows the
- * unsaved-changes notice and moves Save; a click made before that lands
- * mid-shift and is lost.
- * @param field - The input to fill
- * @param text - What to type
- */
-async function fillAndCommit(field: Locator, text: string): Promise<void> {
-  await field.fill(text);
-  await field.blur();
-  await expect(
-    field.page().getByText("You have unsaved changes."),
-  ).toBeVisible();
 }
 
 /**
@@ -129,7 +114,9 @@ test.describe("Settings — before chat is set up (stubbed backend)", () => {
   test("saving with an API key sets chat up for good", async ({ page }) => {
     await firstVisit(page);
 
-    await fillAndCommit(page.getByTestId("api-key-input"), "test-key");
+    // One click, no blur first: the field must already count as changed on
+    // mouse-down, or the notice appears and moves Save out from under the click.
+    await page.getByTestId("api-key-input").fill("test-key");
     await saveButton(page).click();
     await expect(heading(page)).toBeHidden();
 
@@ -152,10 +139,9 @@ test.describe("Settings — before chat is set up (stubbed backend)", () => {
     await firstVisit(page);
 
     await page.getByTestId("provider-select").selectOption("custom");
-    await fillAndCommit(
-      page.getByPlaceholder("https://api.example.com/v1"),
-      "https://example.test/v1",
-    );
+    await page
+      .getByPlaceholder("https://api.example.com/v1")
+      .fill("https://example.test/v1");
     await saveButton(page).click();
     await expect(heading(page)).toBeHidden();
 
