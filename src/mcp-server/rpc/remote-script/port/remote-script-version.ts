@@ -16,7 +16,7 @@ import { isNewerVersion } from "#src/shared/version-check.ts";
  * new release whenever the script changed since the last one. -rcN tags of one
  * x.y.z order by N; other tags don't.
  */
-export const MIN_REMOTE_SCRIPT_VERSION = "2.5.0-rc2";
+export const MIN_REMOTE_SCRIPT_VERSION = "2.5.0";
 
 /**
  * Dev switch (POST /config `remoteScriptMinVersion`): replaces the minimum, so
