@@ -12,6 +12,7 @@
 // failure. Nothing here may hold state that has to outlive the swap. The chat
 // UI waits for a new device to answer instead.
 
+import { outdatedFor } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import { requestWithBrowserRetry } from "#src/portal/setup/browser-retry-request.ts";
 import { SETUP_BUDGET_MS } from "#src/portal/setup/setup-deadline.ts";
 import { SetupFailed } from "#src/portal/setup/setup-failure.ts";
@@ -87,9 +88,11 @@ export async function swapForLibraryCopy(
         route: "/replace-producer-pal",
         body: { path: check.copy },
         thrown: requestThrew,
+        // Only the chat UI's Installation tab reaches this, so a person reads it:
+        // no tool name.
         unavailable: (unavailable) =>
           new SetupFailed(
-            `${unavailable.outdated ?? "The remote script stopped answering"}, so the Live Set was not changed.`,
+            `${outdatedFor(unavailable, false) ?? "The remote script stopped answering"}, so the Live Set was not changed.`,
           ),
       },
       deps,

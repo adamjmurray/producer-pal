@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { type BrowserItem } from "#src/tools/device/create/helpers/remote-script-contract.ts";
@@ -134,7 +135,7 @@ const DEVICE_WRITE: WriteSpec<
   lists: deviceListArgs,
   targets: deviceTargets,
   check: (call, targets, { ctx }) =>
-    checkDeviceUpdate(call, targets, ctx.deadline),
+    checkDeviceUpdate(call, targets, ctx.deadline, manageOffered(ctx)),
   write: writeDevice,
   settle: settleDeviceUpdate,
 };
@@ -297,7 +298,12 @@ async function loadThenUpdate(
   const { device, item } = preset;
   // Read now: the device may be gone afterwards, and its id means nothing then.
   const where = pathField(device, writtenContainer(writtenPath));
-  const loaded = await loadPreset(device, item, step.call.ctx.deadline);
+  const loaded = await loadPreset(
+    device,
+    item,
+    step.call.ctx.deadline,
+    manageOffered(step.call.ctx),
+  );
 
   // Live changed the device before refusing, so it isn't the one the call
   // named. Throw after landing, so the entry keeps what changed.
@@ -387,7 +393,11 @@ function updateResolved(
     target,
     options.params,
     step.checked.pitchBend,
-    { deadline: step.call.ctx.deadline, landed },
+    {
+      deadline: step.call.ctx.deadline,
+      manage: manageOffered(step.call.ctx),
+      landed,
+    },
   );
 
   return pitchBend == null ? finish() : pitchBend.then(finish);

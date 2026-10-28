@@ -24,6 +24,11 @@ interface ToolContext {
    */
   notation?: "barbeat" | "midi-json" | "stark";
   sampleFolder: string | null;
+  /**
+   * Whether this request's caller can use ppal-manage. Undefined ⇒ true unless
+   * small-model mode is on.
+   */
+  manageAvailable?: boolean;
   silenceWavPath?: string;
   timeoutMs?: number;
   /**

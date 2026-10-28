@@ -25,11 +25,17 @@ import {
   REQUEST_OUT_OF_TIME,
   unreachedDetail,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
+import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { lookupOutOfTime } from "./browser-devices.ts";
 
-/** Why nothing loads when the remote script isn't answering. */
-export const PRESET_NEEDS_REMOTE_SCRIPT = `loading a preset needs the Producer Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`;
+/**
+ * Why nothing loads when the remote script isn't answering.
+ * @param manage - Whether the caller can use ppal-manage
+ * @returns The reason, with how to get the script
+ */
+export function presetNeedsRemoteScript(manage: boolean): string {
+  return `loading a preset needs the Producer Pal remote script, which isn't answering; ${remoteScriptSetup(manage)}`;
+}
 
 /** The remote script's section `type` for each kind of native device. */
 const NATIVE_SECTIONS = [
@@ -63,6 +69,7 @@ export type PresetHotswap =
  * @param preset - The preset as the call named it
  * @param scope - The device whose presets it's searched among, if any
  * @param deadline - The request deadline from ToolContext
+ * @param manage - Whether the caller can use ppal-manage
  * @returns The item
  * @throws Error when the remote script isn't answering, or no one preset has
  *   that name
@@ -71,6 +78,7 @@ export async function resolveBrowserPreset(
   preset: string,
   scope: PresetScope | undefined,
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<BrowserItem> {
   const waitMs = remoteScriptWait(deadline);
   const lookUpFailed = (why: string): Error =>
@@ -107,7 +115,9 @@ export async function resolveBrowserPreset(
   const resolution = response.result;
 
   if (!resolution.available) {
-    throw new Error(whyUnavailable(resolution, PRESET_NEEDS_REMOTE_SCRIPT));
+    throw new Error(
+      whyUnavailable(resolution, presetNeedsRemoteScript(manage), manage),
+    );
   }
 
   if ("error" in resolution) {
@@ -165,12 +175,14 @@ export function presetScopeForTarget(device: LiveAPI): PresetScope {
  * @param device - The device to load it onto
  * @param item - The preset
  * @param deadline - The request deadline from ToolContext
+ * @param manage - Whether the caller can use ppal-manage
  * @returns The device there now, or why nothing loaded
  */
 export async function hotswapPreset(
   device: LiveAPI,
   item: BrowserItem,
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<PresetHotswap> {
   const waitMs = remoteScriptWait(deadline);
 
@@ -204,7 +216,9 @@ export async function hotswapPreset(
   const result = response.result;
 
   if (!result.available) {
-    return { error: whyUnavailable(result, PRESET_NEEDS_REMOTE_SCRIPT) };
+    return {
+      error: whyUnavailable(result, presetNeedsRemoteScript(manage), manage),
+    };
   }
 
   if ("error" in result) {

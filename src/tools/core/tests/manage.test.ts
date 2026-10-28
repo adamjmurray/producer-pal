@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
-import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
+import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { MANAGE_ROUTES } from "../helpers/manage-contract.ts";
 import { manage } from "../manage.ts";
 
@@ -158,9 +158,9 @@ describe("ppal-manage undo and redo", () => {
     answers({ available: false });
 
     await expect(manage({ action: "undo" })).rejects.toThrow(
-      `undo needs the Producer Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`,
+      `undo needs the Producer Pal remote script, which isn't answering; ${remoteScriptSetup(true)}`,
     );
-    expect(REMOTE_SCRIPT_SETUP).toContain(
+    expect(remoteScriptSetup(true)).toContain(
       'ppal-manage action "install-producer-pal"',
     );
   });

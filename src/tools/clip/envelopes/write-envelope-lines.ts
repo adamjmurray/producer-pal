@@ -87,6 +87,7 @@ export function canWriteEnvelopePoints(): boolean {
  * @param lines - The `envelopes` param, already read into lines
  * @param address - The clip the lines write to, and its meter
  * @param deadline - The request deadline, if any
+ * @param manage - Whether the caller can use ppal-manage
  * @returns How many lines were written
  */
 export async function writeEachLine(
@@ -94,6 +95,7 @@ export async function writeEachLine(
   lines: readonly EnvelopeLine[],
   address: ClipAddress,
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<number> {
   const resolved = resolveEnvelopeLines(lines, address.trackIndex);
   const clash = findSameParameter(resolved);
@@ -113,6 +115,7 @@ export async function writeEachLine(
       resolved[index] as ResolvedEnvelopeLine,
       address,
       deadline,
+      manage,
     );
 
     if (outcome.ok) {
@@ -235,12 +238,14 @@ function named(lines: readonly EnvelopeLine[]): string {
  * @param resolved - The line to apply, with the parameter it reaches
  * @param address - The clip it writes to, and its meter
  * @param deadline - The request deadline, if any
+ * @param manage - Whether the caller can use ppal-manage
  * @returns Whether it landed, and why it didn't when it didn't
  */
 async function writeOneLine(
   resolved: ResolvedEnvelopeLine,
   address: ClipAddress,
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<RouteOutcome<unknown> & { note?: string }> {
   if ("error" in resolved) {
     return { ok: false, reason: resolved.error, available: true };
@@ -271,6 +276,7 @@ async function writeOneLine(
       ENVELOPE_ROUTES.clear,
       request,
       deadline,
+      manage,
     );
 
     return cleared.ok && !cleared.result.cleared
@@ -292,6 +298,7 @@ async function writeOneLine(
     ENVELOPE_ROUTES.write,
     { ...request, points: writePoints },
     deadline,
+    manage,
   );
 
   if (!outcome.ok && outcome.tooLarge === true) {

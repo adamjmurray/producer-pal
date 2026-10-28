@@ -78,12 +78,14 @@ export function lookUpSimplerSettings(
  * @param simpler - The Simpler
  * @param change - The settings to change, one or both
  * @param deadline - The request deadline from ToolContext, if any
+ * @param manage - Whether the caller can use ppal-manage
  * @returns Both settings as the remote script read them back, or why not
  */
 export async function writeSimplerSettings(
   simpler: LiveAPI,
   change: SimplerSettingsChange,
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<RouteOutcome<SimplerSettings>> {
   const request: SimplerWriteRequest = { devicePath: simpler.path, ...change };
 
@@ -93,6 +95,7 @@ export async function writeSimplerSettings(
       request,
       deadline,
       REMOTE_SCRIPT_MISSING,
+      manage,
     );
 
     return outcome.ok

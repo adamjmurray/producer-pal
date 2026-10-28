@@ -62,6 +62,8 @@ uninstalled (a dev switch, debug builds only; `resetConfig()` turns it back on).
 `POST /config { "remoteScriptMinVersion": "99.0.0" }` makes a running script
 look out of date (`null` clears it; debug builds only, and `resetConfig()`
 clears it). `control/ppal-remote-script-min-version` covers it.
+`device/create/ppal-create-device-manage-wording` uses both with small-model
+mode to check a refusal names `ppal-manage` only for a caller that has it.
 
 ### The direct Live API tool is off during e2e
 

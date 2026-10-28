@@ -684,6 +684,8 @@ describe("clipEnvelopes - clip placement", () => {
       LiveAPI.from("loose-clip"),
       false,
       () => ({ numerator: 4, denominator: 4 }),
+      undefined,
+      true,
     );
 
     expect(result).toBe(

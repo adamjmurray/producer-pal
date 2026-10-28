@@ -15,7 +15,7 @@ import {
   isNotation,
   type Notation,
 } from "#src/shared/notation.ts";
-import { withLiveApiTool } from "#src/shared/tool-groups.ts";
+import { manageToolOffered, withLiveApiTool } from "#src/shared/tool-groups.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { type WrappedCallLiveApi } from "./helpers/connect/connect-append.ts";
@@ -201,7 +201,10 @@ function buildEnrichedCall(
 ): WrappedCallLiveApi {
   return enrichConnect(
     withDefaultOverrides(withUndoStepEnd(callLiveApi), () => {
-      const overrides: RequestOverrides = { notation: getNotation() };
+      const overrides: RequestOverrides = {
+        notation: getNotation(),
+        manageAvailable: manageToolOffered(getSmallModelMode(), getTools()),
+      };
       const compactOutput = getCompactOutput();
 
       // Only when a header asked: an absent one must leave V8 on its own

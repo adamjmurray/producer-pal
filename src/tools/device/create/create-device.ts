@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { refuseNamedTwice } from "#src/tools/shared/helpers/param-presence.ts";
@@ -125,7 +126,7 @@ const CREATE_WRITE: WriteSpec<
   lists: createListArgs,
   targets: createTargets,
   check: (call, targets, { ctx }) =>
-    checkCreateCall(call, targets, ctx.deadline),
+    checkCreateCall(call, targets, ctx.deadline, manageOffered(ctx)),
   write: writeCreatedDevice,
   settle: settleCreatedDevices,
 };

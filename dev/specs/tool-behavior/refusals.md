@@ -93,10 +93,23 @@ treated as missing: its requests are held back before they are sent, so nothing
 is asked of Live, and every caller falls back or refuses as it does when no
 script answers. Where the answer tells the model the script is needed or
 missing, it says instead that the script is out of date, with the running and
-needed versions, and to update it with `ppal-manage` or in Settings → Remote
-Script and restart Live. The same goes for a 404 that says the route is unknown;
-any other 404 still means "not found". The Skills teach remote-script features
-only for a current script.
+needed versions, and to update it with `ppal-manage` or in the chat UI's
+Settings → Installation and restart Live. The same goes for a 404 that says the
+route is unknown; any other 404 still means "not found". The Skills teach
+remote-script features only for a current script.
+
+**Only a caller that has `ppal-manage` is pointed at it.** Small-model mode
+never offers the tool, and a toolset can leave it out. Every message that tells
+the caller how to get or update the script (preset and plug-in loads, clip
+conversion, Simpler pitch bend, an out-of-date or different-build script, and
+the same notice in `ppal-connect`) sends such a caller to the chat UI's Settings
+→ Installation, then restart Live and choose Producer Pal as a Control Surface.
+The clip automation message for a script that isn't running names no install
+path, for any caller. The device learns this per request from the caller's own
+settings, never from state held between requests. `ppal-manage`'s own undo and
+redo refusals still name it, and so do the portal's messages for its own
+`ppal-manage`. The chat UI's device swap (a person, over REST) never sees the
+tool name.
 
 ## A write that waits for another
 

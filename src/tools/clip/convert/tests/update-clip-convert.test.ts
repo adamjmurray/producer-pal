@@ -628,6 +628,20 @@ describe("updateClip - convert", () => {
       );
     });
 
+    it("sends a caller without ppal-manage to the chat UI instead", async () => {
+      answerRoute(undefined, { available: false });
+
+      const refused = updateClip(
+        { id: "123", convert: "drums" },
+        { manageAvailable: false },
+      );
+
+      await expect(refused).rejects.toThrow(
+        /converting a clip needs the Producer Pal remote script.*Settings → Installation/,
+      );
+      await expect(refused).rejects.not.toThrow("ppal-manage");
+    });
+
     it("says so when the remote script is out of date", async () => {
       answerRoute(undefined, { available: false, outdated: OUTDATED });
 

@@ -24,5 +24,30 @@ export const INSTALL_IN_CHAT_UI =
 export const ENABLE_IN_LIVE =
   "restart Live, then choose Producer Pal as a Control Surface in Settings → Tempo & MIDI, with Input and Output left as None";
 
-/** What to tell the user when a load needs the remote script. */
-export const REMOTE_SCRIPT_SETUP = `set it up with ${INSTALL_WITH_TOOL} if it isn't installed, then ask the user to ${ENABLE_IN_LIVE} (or have them use ${INSTALL_IN_CHAT_UI}; guide: https://producer-pal.org/guide/remote-script)`;
+/**
+ * Whether this request's caller can use ppal-manage, which decides if a refusal
+ * may name it. The device fills `manageAvailable` per request from the caller's
+ * toolset; a context without it (no profile) falls back to small-model mode.
+ * @param context - The request's tool context
+ * @returns True when a message may point at ppal-manage
+ */
+export function manageOffered(context: {
+  manageAvailable?: boolean;
+  smallModelMode?: boolean;
+}): boolean {
+  return context.manageAvailable ?? !context.smallModelMode;
+}
+
+/**
+ * What to tell the model when a call needs the remote script. A caller without
+ * ppal-manage is sent to the human path only.
+ * @param manage - Whether the caller can use ppal-manage
+ * @returns The setup steps, as the rest of "...which isn't answering; <steps>"
+ */
+export function remoteScriptSetup(manage: boolean): string {
+  const guide = "guide: https://producer-pal.org/guide/remote-script";
+
+  return manage
+    ? `set it up with ${INSTALL_WITH_TOOL} if it isn't installed, then ask the user to ${ENABLE_IN_LIVE} (or have them use ${INSTALL_IN_CHAT_UI}; ${guide})`
+    : `have the user install it in ${INSTALL_IN_CHAT_UI} if it isn't installed, then ${ENABLE_IN_LIVE} (${guide})`;
+}
