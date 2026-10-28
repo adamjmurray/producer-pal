@@ -44,6 +44,10 @@ import {
   ignoreClipParams,
   noteLanded,
 } from "../entries/clip-reasons.ts";
+import {
+  reportTransformsChangedNothing,
+  type StagedTransforms,
+} from "./transform-no-change-report.ts";
 import { QUANTIZE_GRID, QUANTIZE_GRID_ALIASES } from "./quantize-grid.ts";
 import {
   mutedNotesHit,
@@ -73,6 +77,7 @@ interface QuantizationOptions {
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Clip-level context for transform variables, undefined when the call edits no notes
  * @param notation - Global notation setting the notes string is written in (default barbeat)
+ * @param staged - What an earlier duplicateLoop stage handed over, if this is the last one
  * @returns Note update result, or null if notes not modified
  */
 export function handleNoteUpdates(
@@ -85,6 +90,7 @@ export function handleNoteUpdates(
   timeSigDenominator: number,
   clipContext: ClipContext | undefined,
   notation: Notation | undefined,
+  staged?: StagedTransforms,
 ): NoteUpdateResult | null {
   // Nothing to do. The caller builds the clip context on this same check, so
   // an undefined one never reaches the code below.
@@ -104,6 +110,7 @@ export function handleNoteUpdates(
       timeSigNumerator,
       timeSigDenominator,
       clipContext,
+      staged,
     );
   }
 
@@ -195,9 +202,14 @@ export function handleNoteUpdates(
   });
 
   // Both stages count: a note either one changed counts once.
+  const outcome = combineOutcomes(preOutcome, postOutcome);
+  const counts = countTransforms(outcome, mergedNotes);
+
+  reportTransformsChangedNothing(reasons, clip.id, outcome, counts, staged);
+
   return {
     noteCount: getClipNoteCount(clip),
-    ...countTransforms(combineOutcomes(preOutcome, postOutcome), mergedNotes),
+    ...counts,
     putOutside: countPutOutsideRegion(region, mergedNotes, mutedNotes, visible),
   };
 }
@@ -367,8 +379,12 @@ export function handleDuplicateLoopWithEdits({
   notation: Notation | undefined;
   scaleMask?: ScaleMaskReader;
 }): NoteUpdateResult | null {
-  // Stage 1: flush preTransforms onto the existing notes before doubling.
+  // Stage 1: flush preTransforms onto the existing notes before doubling. With
+  // a stage 3 it hands its results over, so "nothing changed" is judged on both.
   let preCounts: TransformCounts = {};
+  const staged: StagedTransforms = {
+    defer: notationString != null || transformString != null,
+  };
 
   if (preTransformString != null) {
     const preContext = buildClipContext(
@@ -387,6 +403,7 @@ export function handleDuplicateLoopWithEdits({
       timeSigNumerator,
       timeSigDenominator,
       preContext,
+      staged,
     );
 
     preCounts = {
@@ -394,6 +411,8 @@ export function handleDuplicateLoopWithEdits({
       deletedNotes: preResult.deletedNotes,
     };
   }
+
+  staged.defer = false;
 
   // Stage 2: native double (MIDI guaranteed by the caller).
   const dupResult = handleDuplicateLoop(clip, reasons);
@@ -423,6 +442,7 @@ export function handleDuplicateLoopWithEdits({
     timeSigDenominator,
     postContext,
     notation,
+    staged,
   );
 
   // Stage 3 only counts notes, so carry stage 2's length across it — nothing

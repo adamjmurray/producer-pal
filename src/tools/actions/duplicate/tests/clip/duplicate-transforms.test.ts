@@ -176,6 +176,34 @@ describe("duplicate - transforms/code", () => {
       expect(consoleMock.warn).not.toHaveBeenCalled();
     });
 
+    // The copies are edited by updateClip, which says why nothing changed.
+    it.each([
+      "the expression changed none of the 4 matched notes",
+      "no notes matched the selector",
+    ])('carries the update\'s "%s" onto the copy', async (detail) => {
+      registerSessionClipDuplication({ destClipProperties: {} });
+      const destId = "live_set/tracks/0/clip_slots/1/clip";
+
+      updateClipMock.mockReturnValueOnce([
+        { id: destId, noteCount: 4, transformed: 0, detail },
+      ]);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        toSlot: "0/1",
+        transforms: "velocity += 0",
+      });
+
+      expect(result).toStrictEqual({
+        id: destId,
+        path: "t0/s1",
+        noteCount: 4,
+        transformed: 0,
+        detail,
+      });
+    });
+
     it("passes the code string through to updateClip", async () => {
       registerSessionClipDuplication({ destClipProperties: {} });
       const destId = "live_set/tracks/0/clip_slots/1/clip";

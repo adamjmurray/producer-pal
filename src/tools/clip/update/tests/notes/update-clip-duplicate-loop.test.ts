@@ -350,6 +350,59 @@ describe("updateClip - duplicateLoop", () => {
     });
   });
 
+  const NO_CHANGE_8 = "the expression changed none of the 8 matched notes";
+
+  // The stages count as one, so "nothing changed" is judged on both.
+  it.each([
+    ["preTransforms alone", { preTransforms: "pitch += 0" }, NO_CHANGE_8],
+    [
+      "preTransforms, then notes with no transforms",
+      { preTransforms: "pitch += 0", notes: "1|1 C3" },
+      NO_CHANGE_8,
+    ],
+    [
+      "a no-op in both stages",
+      { preTransforms: "pitch += 0", transforms: "pitch += 0" },
+      NO_CHANGE_8,
+    ],
+    [
+      "preTransforms that change notes, then a no-op transforms",
+      { preTransforms: "pitch += 12", transforms: "pitch += 0" },
+      undefined,
+    ],
+    [
+      "a no-op preTransforms, then transforms that change notes",
+      { preTransforms: "pitch += 0", transforms: "pitch += 12" },
+      undefined,
+    ],
+  ])("says nothing changed: %s", async (_name, args, detail) => {
+    setupMidiClipMock(mocks.clip123);
+    mockNoteCount(mocks.clip123, 8);
+
+    const result = (await updateClip({
+      id: "123",
+      duplicateLoop: true,
+      ...args,
+    })) as { detail?: string };
+
+    expect(result.detail).toBe(detail);
+  });
+
+  it("doesn't call a failed preTransforms a no-op", async () => {
+    setupMidiClipMock(mocks.clip123);
+    mockNoteCount(mocks.clip123, 8);
+
+    const result = (await updateClip({
+      id: "123",
+      duplicateLoop: true,
+      preTransforms: "velocity = audio.gain",
+      transforms: "pitch += 0",
+    })) as { detail?: string };
+
+    expect(result.detail).toMatch(/^velocity transform failed: /);
+    expect(result.detail).not.toContain("changed none");
+  });
+
   it("adds the counts of the preTransforms and transforms passes", async () => {
     setupMidiClipMock(mocks.clip123);
     mockNoteCount(mocks.clip123, 8);

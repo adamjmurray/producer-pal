@@ -7,6 +7,10 @@
 // the same words.
 
 import { CLIP_IS_AUDIO, ignoredText } from "#src/shared/max/ignored-wording.ts";
+import {
+  type TransformCounts,
+  type TransformOutcome,
+} from "#src/notation/transform/transformed-count.ts";
 import { plural } from "#src/tools/shared/validation/lists/plural.ts";
 
 /**
@@ -65,6 +69,39 @@ export function transformsIgnoredNoNotesNote(
     sent,
     `the clip has ${hasMuted ? "only muted notes, which edits leave alone" : "no notes"}`,
   );
+}
+
+/**
+ * What to say when transforms ran and changed nothing, so `transformed: 0`
+ * isn't read as a failure. The two causes need different fixes: a selector that
+ * matched nothing, or an expression that left what it matched as it was. Says
+ * nothing when a statement failed or was skipped: that has its own detail.
+ * @param outcome - What the transforms did, or undefined when none ran
+ * @param counts - The counts reported for them
+ * @returns The note for the clip's entry, or null when something changed
+ */
+export function transformsChangedNothingNote(
+  outcome: TransformOutcome | undefined,
+  counts: TransformCounts,
+): string | null {
+  if (
+    outcome?.selected !== true ||
+    outcome.failed ||
+    counts.transformed !== 0 ||
+    counts.deletedNotes
+  ) {
+    return null;
+  }
+
+  const matched = outcome.matched.size;
+
+  if (matched === 0) {
+    return "no notes matched the selector";
+  }
+
+  return matched === 1
+    ? "the expression didn't change the 1 matched note"
+    : `the expression changed none of the ${matched} matched notes`;
 }
 
 /**

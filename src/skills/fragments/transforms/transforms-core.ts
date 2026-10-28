@@ -80,7 +80,6 @@ timing += n/8                    // nudge every note an eighth note later (relat
 
 \`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use ppal-update-clip with only transforms to modify existing notes.
 Transforms modify notes in place — previous transforms are already baked in, so don't re-apply earlier ones. Muted notes are hidden from reads and left untouched by edits, except that a note landing on one's pitch and start replaces it.
-The result's \`transformed\` counts notes whose values changed: 0 means the expression left every note as it was, not that the call failed.
 MIDI params ignored for audio clips, vice versa.
 Across a batch (ppal-update-clip \`id\` / ppal-duplicate copies / ppal-create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch (\`pitch += clip.index * 12\`).`;
 

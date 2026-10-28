@@ -97,6 +97,8 @@ export function applyTransforms(
   const touched = new Set<NoteEvent>();
   const original = new Map(notes.map((note) => [note, { ...note }]));
   const roots = new Map<NoteEvent, ReadonlySet<NoteEvent>>();
+  let anySelected = false;
+  let failed = false;
 
   // Process statements sequentially (statement-major order).
   // Each statement is fully applied before the next one runs.
@@ -107,15 +109,17 @@ export function applyTransforms(
 
     // Note-count op (ratchet/merge/split/repeat): rebuilds the note array in place.
     if (isNoteOp(stmt)) {
-      applyTrackedNoteOp(
-        stmt,
-        notes,
-        timeSigNumerator,
-        timeSigDenominator,
-        arrangementOrigin(clipContext),
-        touched,
-        roots,
-      );
+      anySelected = true;
+      failed =
+        applyTrackedNoteOp(
+          stmt,
+          notes,
+          timeSigNumerator,
+          timeSigDenominator,
+          arrangementOrigin(clipContext),
+          touched,
+          roots,
+        ) || failed;
 
       continue;
     }
@@ -130,21 +134,26 @@ export function applyTransforms(
       continue;
     }
 
-    applyAssignmentToNotes(
-      stmt,
-      pitchRange,
-      notes,
-      timeSigNumerator,
-      timeSigDenominator,
-      clipTimeRange,
-      clipContext,
-      touched,
-    );
+    anySelected = true;
+    failed =
+      applyAssignmentToNotes(
+        stmt,
+        pitchRange,
+        notes,
+        timeSigNumerator,
+        timeSigDenominator,
+        clipTimeRange,
+        clipContext,
+        touched,
+      ) || failed;
   }
 
   deleteZeroedNotes(notes);
 
-  return buildOutcome(original, roots, touched, notes);
+  return buildOutcome(original, roots, touched, notes, {
+    selected: anySelected,
+    failed,
+  });
 }
 
 /**
@@ -158,6 +167,7 @@ export function applyTransforms(
  * @param originBeats - Arrangement position of note time 0, or undefined
  * @param touched - Set to track which notes were transformed
  * @param roots - Records, for each note an op made, the starting notes it came from
+ * @returns True when the op was skipped
  */
 function applyTrackedNoteOp(
   op: NoteOp,
@@ -167,14 +177,12 @@ function applyTrackedNoteOp(
   originBeats: number | undefined,
   touched: Set<NoteEvent>,
   roots: Map<NoteEvent, ReadonlySet<NoteEvent>>,
-): void {
-  const { notes: produced, parents } = applyNoteOp(
-    op,
-    notes,
-    timeSigNumerator,
-    timeSigDenominator,
-    originBeats,
-  );
+): boolean {
+  const {
+    notes: produced,
+    parents,
+    skipped,
+  } = applyNoteOp(op, notes, timeSigNumerator, timeSigDenominator, originBeats);
 
   for (const note of produced) {
     touched.add(note);
@@ -190,6 +198,8 @@ function applyTrackedNoteOp(
       );
     }
   }
+
+  return skipped;
 }
 
 /**
@@ -246,7 +256,8 @@ function deleteZeroedNotes(notes: NoteEvent[]): void {
  * @param timeSigDenominator - Time signature denominator
  * @param clipTimeRange - Clip time range for expression evaluation
  * @param clipContext - Optional clip-level context for clip variables
- * @param touched - Set to track which notes were transformed
+ * @param touched - Set to track the notes selected (changed or not)
+ * @returns True when the selector's where() or the expression failed on a note
  */
 function applyAssignmentToNotes(
   assignment: TransformAssignment,
@@ -257,23 +268,31 @@ function applyAssignmentToNotes(
   clipTimeRange: TimeRange,
   clipContext: ClipContext | undefined,
   touched: Set<NoteEvent>,
-): void {
+): boolean {
   // The selected notes are those matching BOTH the pitch range AND the
   // time-range selector. Indexing and next.*/legato() are scoped to this set,
   // so a sub-range selector (e.g. one bar of a ratcheted hat run) gets a
   // 0-based, selection-local index instead of one offset by earlier same-pitch
   // notes outside the window.
-  const selectedIndices = selectAssignmentNotes(
-    assignment,
-    pitchRange,
-    notes,
-    timeSigNumerator,
-    timeSigDenominator,
-    clipTimeRange,
-    clipContext,
-  );
+  const { indices: selectedIndices, failed: selectionFailed } =
+    selectAssignmentNotes(
+      assignment,
+      pitchRange,
+      notes,
+      timeSigNumerator,
+      timeSigDenominator,
+      clipTimeRange,
+      clipContext,
+    );
 
   const selectedCount = selectedIndices.length;
+
+  // Selected counts as matched even if the expression then fails or changes
+  // nothing, so a result can tell "matched none" from "matched, no change".
+  for (const idx of selectedIndices) {
+    touched.add(notes[idx] as NoteEvent);
+  }
+
   const beatScale = timeSigDenominator / 4;
 
   // Pre-compute selected start times in musical beats for legato() tolerance scan
@@ -303,6 +322,7 @@ function applyAssignmentToNotes(
   // touched is cumulative across the whole transform, so it can't
   // tell whether THIS assignment applied anything. Count what this one wrote.
   let appliedCount = 0;
+  let evaluationFailed = false;
 
   for (let cursor = 0; cursor < selectedIndices.length; cursor++) {
     const i = selectedIndices[cursor] as number;
@@ -358,6 +378,8 @@ function applyAssignmentToNotes(
       touched.add(note);
       appliedCount++;
     } catch (error) {
+      evaluationFailed = true;
+
       const message = `${assignment.parameter} transform failed: ${errorMessage(error)}`;
 
       if (!warnedFailures.has(message)) {
@@ -377,6 +399,8 @@ function applyAssignmentToNotes(
       timeSigDenominator,
     );
   }
+
+  return selectionFailed || evaluationFailed;
 }
 
 /**

@@ -132,5 +132,45 @@ describe("createClip - transform counts", () => {
 
       expect(result).toStrictEqual(expect.objectContaining({ transformed: 0 }));
     });
+
+    it("says the expression left the matched notes as they were", async () => {
+      const result = await create("v100 C3 1|1 D3 1|2", "velocity += 0");
+
+      expect(result).toStrictEqual(
+        expect.objectContaining({
+          transformed: 0,
+          detail: "the expression changed none of the 2 matched notes",
+        }),
+      );
+    });
+
+    it("says when the selector matched no notes", async () => {
+      const result = await create("v100 C3 1|1 D3 1|2", "G5: velocity += 10");
+
+      expect(result).toStrictEqual(
+        expect.objectContaining({
+          transformed: 0,
+          detail: "no notes matched the selector",
+        }),
+      );
+    });
+
+    it.each([
+      ["an expression that fails", "velocity = audio.gain"],
+      ["a skipped note op", "G5: velocity += 10\nC3: ratchet(rand(0, 0))"],
+    ])("doesn't call %s a no-op or a miss", async (_name, transforms) => {
+      const result = (await create("v100 C3 1|1 D3 1|2", transforms)) as {
+        detail?: string;
+      };
+
+      expect(result.detail ?? "").not.toMatch(/changed none|no notes matched/);
+    });
+
+    it("says nothing extra when a note changed", async () => {
+      const result = await create("v100 C3 1|1 D3 1|2", "D3: velocity += 10");
+
+      expect(result).toStrictEqual(expect.objectContaining({ transformed: 1 }));
+      expect(result).not.toHaveProperty("detail");
+    });
   });
 });

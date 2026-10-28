@@ -37,7 +37,8 @@ import {
  * @param timeSigDenominator - Time signature denominator
  * @param clipTimeRange - Clip time range used when no selector is present
  * @param clipContext - Optional clip-level context, threaded into where() function eval
- * @returns Indices into `notes` of the selected notes, in note order
+ * @returns Indices into `notes` of the selected notes, in note order, and
+ *   whether a where() predicate failed (the note it failed on is left out)
  */
 export function selectAssignmentNotes(
   assignment: TransformAssignment,
@@ -47,8 +48,9 @@ export function selectAssignmentNotes(
   timeSigDenominator: number,
   clipTimeRange: TimeRange,
   clipContext?: ClipContext,
-): number[] {
+): { indices: number[]; failed: boolean } {
   const selected: number[] = [];
+  let failed = false;
 
   // The where() predicate's normalization window for ramp/curve-style functions:
   // the line's selector bounds, or the clip range when unscoped. Matches the
@@ -83,9 +85,8 @@ export function selectAssignmentNotes(
     }
 
     // where() predicate filter, AND-combined with the pitch/time selectors above.
-    if (
-      assignment.predicate != null &&
-      !noteMatchesPredicate(assignment.predicate, {
+    if (assignment.predicate != null) {
+      const verdict = noteMatchesPredicate(assignment.predicate, {
         position: noteContext.position,
         timeSigNumerator,
         timeSigDenominator,
@@ -98,15 +99,19 @@ export function selectAssignmentNotes(
           clipContext,
         ),
         evaluateExpression,
-      })
-    ) {
-      continue;
+      });
+
+      failed ||= verdict == null;
+
+      if (verdict !== true) {
+        continue;
+      }
     }
 
     selected.push(idx);
   }
 
-  return selected;
+  return { indices: selected, failed };
 }
 
 /**
@@ -120,18 +125,18 @@ export function selectAssignmentNotes(
  * the note (warn-and-skip), matching the apply path.
  * @param predicate - where() predicate AST
  * @param ctx - Evaluation context for the note under test
- * @returns Whether the note satisfies the predicate
+ * @returns Whether the note satisfies the predicate, or null when it failed
  */
 function noteMatchesPredicate(
   predicate: PredicateNode,
   ctx: EvalContext,
-): boolean {
+): boolean | null {
   try {
     return evaluatePredicate(predicate, ctx);
   } catch (error) {
     console.clipDetail(`where() failed: ${errorMessage(error)}`);
 
-    return false;
+    return null;
   }
 }
 
