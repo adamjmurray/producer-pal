@@ -3,7 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setRemoteScriptMinVersion } from "#src/mcp-server/rpc/remote-script/port/remote-script-version.ts";
 import { VERSION } from "#src/shared/config.ts";
 import {
   copied,
@@ -22,6 +23,10 @@ vi.mock(import("#src/shared/config.ts"), async (importOriginal) => {
 
   return { ...actual, VERSION: "2.5.0-rc2" as typeof actual.VERSION };
 });
+
+// The stand-in script reports VERSION, so it must not fall below the minimum.
+beforeEach(() => setRemoteScriptMinVersion("2.5.0-rc2"));
+afterEach(() => setRemoteScriptMinVersion(null));
 
 describe("update-producer-pal between release candidates", () => {
   it("updates an earlier release candidate of the same version", async () => {
