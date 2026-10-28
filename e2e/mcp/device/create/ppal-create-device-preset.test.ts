@@ -163,6 +163,39 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     });
   }
 
+  // Live's browser lists none of a pack Max device's presets under the device,
+  // so a name is found in the library database by the device's own entry.
+  it("creates a pack Max device's preset from its name, with deviceName", async ({
+    skip,
+  }) => {
+    await skipTestBeforeLive(ctx.client!, skip, "12.4", LIBRARY_NEEDS);
+
+    const found = parseToolResult<{ items?: Array<{ name: string }> }>(
+      await callToolAndSettle(ctx.client!, "ppal-library", {
+        kind: "preset",
+        query: "Add Oxide",
+        source: "pack",
+      }),
+    ).items;
+
+    if (found?.some(({ name }) => name === "Add Oxide.adv") !== true) {
+      skip("the Tape by Softube pack isn't installed");
+    }
+
+    const track = await createMidiTrack(ctx.client!);
+    const created = parseToolResult<{ path: string }>(
+      await create({
+        deviceName: "Tape",
+        preset: "Add Oxide",
+        path: `t${track}/d+`,
+      }),
+    );
+
+    expect((await readDevice(ctx.client!, created.path)).name).toBe(
+      "Add Oxide",
+    );
+  });
+
   // An audio effect always lands last, so appending one moves no sibling and a
   // later entry may still name a device by index.
   it("appends an audio effect's preset before an indexed entry", async () => {

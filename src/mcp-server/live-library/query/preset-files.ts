@@ -124,19 +124,15 @@ function presetFilesIn(db: DatabaseSync, query: PresetFileQuery): PresetFile[] {
 }
 
 /**
- * Live's class for a device, which presets record as their `device_id`. A
- * device's own presets sit in a folder named after it, directly or one level
- * down (Core Library files them under categories), so take the class most of
- * those share. Racks built around the device don't count.
- *
- * Still a guess: an unrelated folder with the device's name, with presets for
- * another device in it, could outvote the real ones.
+ * Live's class for a device, which presets record as their `device_id`. Taken
+ * from the device's own entry (`Tape`, `Tape.amxd`, `Wavetable`), else guessed
+ * from a folder named after it.
  *
  * @param db - Open database handle
  * @param device - The device's name, and its kind
  * @param device.name - The device as the browser names it
  * @param device.kind - Instrument, audio effect or MIDI effect
- * @returns The class, or null when no such folder holds presets for such a device
+ * @returns The class, or null when nothing in the database identifies it
  */
 function classOf(
   db: DatabaseSync,
@@ -148,6 +144,62 @@ function classOf(
     return rack;
   }
 
+  return (
+    ownClassOf(db, name.trim(), kind) ?? folderClassOf(db, name.trim(), kind)
+  );
+}
+
+/**
+ * The class of the device's own entry. Of several (a user copy of a Max
+ * device), the one most presets point to.
+ *
+ * @param db - Open database handle
+ * @param name - The device's name
+ * @param kind - The device's kind
+ * @returns The class, or null when no entry is named for the device
+ */
+function ownClassOf(
+  db: DatabaseSync,
+  name: string,
+  kind: LibraryDeviceKind,
+): string | null {
+  const row = db
+    .prepare(
+      `SELECT o.device_id FROM files o
+       WHERE o.name COLLATE NOCASE IN (?, ?)
+         AND o.device_type = ?
+         AND o.device_id IS NOT NULL AND o.device_id != ''
+         AND o.device_id NOT LIKE '%GroupDevice'
+       GROUP BY o.device_id
+       ORDER BY (SELECT COUNT(*) FROM files p
+                 WHERE p.device_id = o.device_id
+                   AND p.file_type IN (${PRESET_TYPES.map(() => "?").join(",")})) DESC,
+                o.device_id
+       LIMIT 1`,
+    )
+    .get(name, `${name}.amxd`, deviceTypeForKind(kind), ...PRESET_TYPES) as
+    | { device_id: string }
+    | undefined;
+
+  return row?.device_id ?? null;
+}
+
+/**
+ * The class most of the presets in a folder named for the device share,
+ * directly or one level down (Core Library files them under categories). Racks
+ * don't count. An unrelated folder with the device's name can outvote the real
+ * presets.
+ *
+ * @param db - Open database handle
+ * @param name - The device's name
+ * @param kind - The device's kind
+ * @returns The class, or null when no such folder holds presets for such a device
+ */
+function folderClassOf(
+  db: DatabaseSync,
+  name: string,
+  kind: LibraryDeviceKind,
+): string | null {
   const folders = fourCCsForKind("folder");
   const named = `SELECT file_id FROM files
     WHERE name = ? COLLATE NOCASE
@@ -165,9 +217,9 @@ function classOf(
     .get(
       ...PRESET_TYPES,
       deviceTypeForKind(kind),
-      name.trim(),
+      name,
       ...folders,
-      name.trim(),
+      name,
       ...folders,
     ) as { device_id: string } | undefined;
 
