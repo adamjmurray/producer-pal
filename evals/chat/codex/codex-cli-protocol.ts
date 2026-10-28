@@ -23,6 +23,7 @@ import {
   MCP_SERVER_NAME,
   type ParsedAgentTurn,
 } from "../agent-cli/agent-cli-transport.ts";
+import { errorPayloadMessage } from "#src/shared/error-message.ts";
 
 export const CODEX_MODEL_ALIASES: Record<string, string> = {
   luna: "gpt-6-luna",
@@ -336,23 +337,5 @@ function mapCodexUsage(value: unknown): TokenUsage | undefined {
  * @returns Error message
  */
 function getErrorMessage(value: Record<string, unknown>): string {
-  if (typeof value.message === "string") {
-    return value.message;
-  }
-
-  const error = value.error;
-
-  if (typeof error === "string") {
-    return error;
-  }
-
-  if (error != null && typeof error === "object") {
-    const message = (error as Record<string, unknown>).message;
-
-    if (typeof message === "string") {
-      return message;
-    }
-  }
-
-  return "unknown error";
+  return errorPayloadMessage(value) ?? "unknown error";
 }

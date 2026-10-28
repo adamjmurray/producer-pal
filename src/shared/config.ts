@@ -369,3 +369,36 @@ export function resolvePortalVersion(
  * Any value passes; presence is the whole signal.
  */
 export const BRIEFING_REQUEST_HEADER = "x-producer-pal-briefing";
+
+// --- /config wire shape ---
+//
+// `notation` is a plain string because this file stays import-free (see top):
+// narrow it with `isNotation`, or intersect `{ notation: Notation }`.
+
+/** What GET /config answers with. */
+export interface ProducerPalConfig {
+  projectContext: string;
+  smallModelMode: boolean;
+  notation: string;
+  jsonOutput: boolean; // true = JSON, false = compact (default)
+  sampleFolder: string;
+  liveApiEnabled: boolean;
+  liveApiForcedOn: boolean;
+  // Debug builds only: false makes the remote script look uninstalled. POST
+  // /config only (evals and e2e); not a device setting, so it is never sent to
+  // Max. A release build neither lists nor accepts it.
+  remoteScriptEnabled?: boolean;
+  // Debug builds only, like remoteScriptEnabled: a version string replaces the
+  // minimum remote script version, so a running script can look out of date.
+  // Listed only while set.
+  remoteScriptMinVersion?: string;
+  tools: string[];
+}
+
+/** What POST /config accepts: any of the settings. */
+export type ProducerPalConfigUpdate = Partial<
+  Omit<ProducerPalConfig, "remoteScriptMinVersion" | "liveApiForcedOn">
+> & {
+  /** A version string makes a running script look older than it; null clears it. Debug builds only. */
+  remoteScriptMinVersion?: string | null;
+};

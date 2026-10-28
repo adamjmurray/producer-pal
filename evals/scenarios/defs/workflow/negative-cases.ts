@@ -8,6 +8,7 @@
  */
 
 import { type EvalScenario } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** basic-midi-4-track opens at this tempo. */
 const SET_TEMPO = 120;
@@ -26,14 +27,14 @@ export const negativeCases: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     // The tempo is untouched. Grade the outcome, not the prose: a refusal
     // ("I can't set the tempo to -50") contains the same words as a claim of
     // success, so no negated text pattern can separate the two.
     {
       type: "state",
-      tool: "ppal-read-live-set",
+      tool: TOOLS.readLiveSet,
       args: {},
       expect: (result) => (result as { tempo?: number }).tempo === SET_TEMPO,
       explain: (result) =>

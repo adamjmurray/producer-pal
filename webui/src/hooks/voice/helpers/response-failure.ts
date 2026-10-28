@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { errorPayloadMessage } from "#src/shared/error-message";
+
 export interface ResponseFailure {
   code: string;
   message: string;
@@ -112,18 +114,10 @@ export function extractErrorMessage(value: unknown): string {
   }
 
   if (value && typeof value === "object") {
-    const obj = value as Record<string, unknown>;
+    const message = errorPayloadMessage(value);
 
-    if (typeof obj.message === "string" && obj.message) {
-      return obj.message;
-    }
-
-    if (obj.error && typeof obj.error === "object") {
-      const nested = (obj.error as Record<string, unknown>).message;
-
-      if (typeof nested === "string" && nested) {
-        return nested;
-      }
+    if (message != null) {
+      return message;
     }
 
     try {

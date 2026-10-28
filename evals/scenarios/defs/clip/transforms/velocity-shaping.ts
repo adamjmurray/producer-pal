@@ -22,6 +22,7 @@ import {
 } from "../../../types.ts";
 import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
 import { TOOL_UPDATE_CLIP } from "../helpers/clip-tool-constants.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /**
  * Everything a model wrote to place notes in one turn: `transforms`, `notes`
@@ -187,7 +188,7 @@ export const velocityShaping: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     assertNotesRead(1),
 

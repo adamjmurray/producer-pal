@@ -12,6 +12,7 @@
  */
 
 import { type ChatMessage } from "#webui/chat/sdk/types";
+import { errorMessage } from "#src/shared/error-message";
 
 /**
  * Handle a single stream part, updating the current message.
@@ -122,7 +123,7 @@ export function handleStreamPart(
       id: part.toolCallId as string,
       name: part.toolName as string,
       args: part.input as Record<string, unknown>,
-      result: extractErrorMessage(part.error),
+      result: errorMessage(part.error),
       isError: true,
     });
 
@@ -159,22 +160,4 @@ function captureReasoningSignature(
   if (typeof meta.redactedData === "string") {
     last.redactedData = meta.redactedData;
   }
-}
-
-/**
- * Extract a displayable message from a tool-error part's error value.
- * The AI SDK may pass an Error object (which JSON.stringify turns into "{}").
- * @param error - Error value from stream part (Error object or string)
- * @returns Error message string
- */
-function extractErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (typeof error === "string") {
-    return error;
-  }
-
-  return String(error);
 }

@@ -279,3 +279,11 @@ export function isInstallIncomplete(input: InstallIncompleteInput): boolean {
   // With no User Library there is nothing to compare, so nothing to nag about.
   return copyBehind || input.remoteScriptCurrent === false;
 }
+
+/**
+ * @param version - A version a status reported, or null
+ * @returns The version to show, never "vnull"
+ */
+export function versionText(version: string | null): string {
+  return version == null ? "an unknown version" : `v${version}`;
+}

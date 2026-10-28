@@ -48,6 +48,7 @@ import {
 import { findLiveFilesDbPath, findLivePluginsDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
 import { mergeBrowserPlugins } from "./query/merge-browser-plugins.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 /** Name of the plugin table in Live's DB (per spike notes — see file header). */
 const PLUGINS_TABLE = "plugins";
@@ -133,9 +134,7 @@ export async function listPlugins(
     return {
       dbAvailable: false,
       plugins: [],
-      detail: `Failed to read Live plugin database: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+      detail: `Failed to read Live plugin database: ${errorMessage(error)}`,
     };
   }
 }

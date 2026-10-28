@@ -10,6 +10,7 @@
 import { getAllToolCalls } from "../../assertions/index.ts";
 import { CONNECT_MESSAGE } from "../../helpers/seed-connect/seed-connect.ts";
 import { type EvalScenario } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 export const connectToAbleton: EvalScenario = {
   id: "connect-to-ableton",
@@ -32,7 +33,7 @@ export const connectToAbleton: EvalScenario = {
     // Verify ppal-connect was called immediately
     {
       type: "tool_called",
-      tool: "ppal-connect",
+      tool: TOOLS.connect,
       turn: 0,
       args: {},
     },
@@ -46,10 +47,10 @@ export const connectToAbleton: EvalScenario = {
         // violation whether or not the call came back clean.
         const calls = getAllToolCalls(turns);
         // Tools that may be called at most once
-        const onceOnly = ["ppal-connect", "ppal-read-live-set"];
+        const onceOnly = [TOOLS.connect, TOOLS.readLiveSet];
         // Tools that may be called multiple times
-        const repeatable = ["ppal-read-track", "ppal-read-scene"];
-        const allowed = new Set([...onceOnly, ...repeatable]);
+        const repeatable = [TOOLS.readTrack, TOOLS.readScene];
+        const allowed = new Set<string>([...onceOnly, ...repeatable]);
 
         for (const call of calls) {
           if (!allowed.has(call.name)) {

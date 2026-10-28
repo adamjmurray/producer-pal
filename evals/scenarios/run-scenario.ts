@@ -38,6 +38,7 @@ import {
   type EvalTurnResult,
   type EvalProvider,
 } from "./types.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 export interface RunScenarioOptions {
   provider: EvalProvider;
@@ -149,7 +150,7 @@ export async function runScenario(
       turns,
       assertions: [],
       totalDurationMs: Date.now() - startTime,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
     };
   } finally {
     if (session) {
@@ -163,9 +164,7 @@ export async function runScenario(
         console.warn(
           styleText(
             "yellow",
-            `teardown failed for "${scenario.id}": ${
-              error instanceof Error ? error.message : String(error)
-            }`,
+            `teardown failed for "${scenario.id}": ${errorMessage(error)}`,
           ),
         );
       }

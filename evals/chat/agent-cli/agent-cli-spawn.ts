@@ -10,6 +10,7 @@ import {
   type AgentCliTransport,
   scrubAgentCliEnv,
 } from "./agent-cli-transport.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 /** Grace period between SIGTERM and SIGKILL when a turn is cut off. */
@@ -198,7 +199,7 @@ function exitError(
   try {
     transport.parseStream(stdout);
   } catch (error) {
-    streamError = error instanceof Error ? error.message : String(error);
+    streamError = errorMessage(error);
   }
 
   if (streamError !== "") {

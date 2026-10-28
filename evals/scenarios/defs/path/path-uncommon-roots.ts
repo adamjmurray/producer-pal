@@ -23,8 +23,9 @@ import {
   TOOL_CONNECT,
 } from "../clip/helpers/clip-tool-constants.ts";
 import { assertCallResult } from "./path-assertions.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_SELECT = "ppal-select";
+const TOOL_SELECT = TOOLS.select;
 
 /**
  * Read the selected track's path off a select result.

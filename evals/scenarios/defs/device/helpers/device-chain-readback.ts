@@ -11,6 +11,7 @@
 import { getToolCalls } from "../../../assertions/index.ts";
 import { type EvalAssertion, type EvalTurnResult } from "../../../types.ts";
 import { listEntries } from "../../path/path-assertions.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** One device in a track read's flat `devices` list. */
 interface ReadDevice {
@@ -166,7 +167,7 @@ export function assertTrackChain(
 
   return {
     type: "state",
-    tool: "ppal-read-track",
+    tool: TOOLS.readTrack,
     args: { path: trackPath, include: ["devices"] },
     expect: (result) => {
       const devices = trackDevices(result);

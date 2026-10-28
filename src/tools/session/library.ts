@@ -26,6 +26,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { refuseLibraryParamsOutsideAction } from "./helpers/library-action-params.ts";
 import { runSearchBatch } from "./library-search-batch.ts";
 import { readSamples } from "./read-samples.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 // The source that bypasses Live's DB for the user's sample folder.
 const SAMPLE_FOLDER = "sample-folder";
@@ -308,7 +309,7 @@ function scanFolderItems(
   } catch (err) {
     return {
       items: [],
-      detail: `sample folder scan failed: ${err instanceof Error ? err.message : String(err)}`,
+      detail: `sample folder scan failed: ${errorMessage(err)}`,
     };
   }
 

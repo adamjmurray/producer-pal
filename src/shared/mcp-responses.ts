@@ -3,14 +3,45 @@
 // AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { isHighSurrogate, utf8ByteLength } from "./max/utf8-byte-length.ts";
-
 /**
  * Marks a content item as a warning rather than part of the result. The REST
  * route splits on it, so a producer that spells it differently has its warning
  * filed as an appended block instead. Case included.
  */
 export const WARNING_PREFIX = "WARNING: ";
+
+/**
+ * What a LiveAPI build-stats warning starts with (after `WARNING_PREFIX`).
+ * That counter is instrumentation, not something a tool is telling us.
+ */
+export const BUILD_STATS_WARNING_LABEL = "LiveAPI stats:";
+
+/**
+ * The relayed warning texts in an MCP content array, prefix included, in order.
+ * @param content - The result's content blocks (anything else yields none)
+ * @param options - `excludeBuildStats` drops the build-stats counter
+ * @returns The text of every warning block
+ */
+export function getWarningTexts(
+  content: unknown,
+  options: { excludeBuildStats?: boolean } = {},
+): string[] {
+  if (!Array.isArray(content)) {
+    return [];
+  }
+
+  const skip = `${WARNING_PREFIX}${BUILD_STATS_WARNING_LABEL}`;
+
+  return (content as Array<{ type?: unknown; text?: unknown } | null>)
+    .filter((block) => block?.type == null || block.type === "text")
+    .map((block) => block?.text)
+    .filter(
+      (text): text is string =>
+        typeof text === "string" &&
+        text.startsWith(WARNING_PREFIX) &&
+        !(options.excludeBuildStats && text.startsWith(skip)),
+    );
+}
 
 // Message chunking constants
 export const END_OF_CHUNKS = "$$___END_OF_CHUNKS___$$";
@@ -198,4 +229,52 @@ export function formatErrorResponse(
   }
 
   return response;
+}
+
+/**
+ * How many bytes a string takes in UTF-8, which is what Max's message limit
+ * counts. Hand-rolled because Max's V8 runtime isn't guaranteed a TextEncoder.
+ * A lone surrogate counts as 3 bytes, like the U+FFFD an encoder writes for it.
+ *
+ * @param text - The string to measure
+ * @returns Its size in UTF-8 bytes
+ */
+export function utf8ByteLength(text: string): number {
+  let bytes = 0;
+
+  for (let i = 0; i < text.length; i++) {
+    const unit = text.charCodeAt(i);
+
+    if (unit < 0x80) {
+      bytes += 1;
+    } else if (unit < 0x800) {
+      bytes += 2;
+    } else if (
+      isHighSurrogate(unit) &&
+      isLowSurrogate(text.charCodeAt(i + 1))
+    ) {
+      bytes += 4;
+      i++; // the pair is one character
+    } else {
+      bytes += 3;
+    }
+  }
+
+  return bytes;
+}
+
+/**
+ * @param unit - A UTF-16 code unit (NaN past the end of a string)
+ * @returns Whether it is the first half of a surrogate pair
+ */
+export function isHighSurrogate(unit: number): boolean {
+  return unit >= 0xd800 && unit <= 0xdbff;
+}
+
+/**
+ * @param unit - A UTF-16 code unit (NaN past the end of a string)
+ * @returns Whether it is the second half of a surrogate pair
+ */
+function isLowSurrogate(unit: number): boolean {
+  return unit >= 0xdc00 && unit <= 0xdfff;
 }

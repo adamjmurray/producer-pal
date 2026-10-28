@@ -46,15 +46,13 @@ describe("extractWarnings", () => {
     ]);
   });
 
-  it("handles case-insensitive Warning: prefix", () => {
+  it("only takes the prefix the server emits", () => {
     const result = toolResult(
       { view: "arrangement" },
       "Warning: ignored unexpected argument(s): invalidParam",
     );
 
-    expect(extractWarnings(result)).toStrictEqual([
-      "ignored unexpected argument(s): invalidParam",
-    ]);
+    expect(extractWarnings(result)).toStrictEqual([]);
   });
 
   it("returns empty array for results with no warnings", () => {

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { utf8ByteLength } from "#src/shared/max/utf8-byte-length.ts";
+import { utf8ByteLength } from "#src/shared/mcp-responses.ts";
 
 describe("utf8ByteLength", () => {
   it.each([

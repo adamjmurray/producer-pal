@@ -10,8 +10,9 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createGateway, type LanguageModel } from "ai";
+import { summarizeAdaptiveThinking } from "#webui/chat/sdk/provider/anthropic-thinking-display";
 import { settleOpenRouterReasoningOff } from "#webui/chat/sdk/provider/openrouter-reasoning";
-import { getThinkingOffType } from "#webui/hooks/settings/config-builders";
+import { getThinkingOffType } from "#webui/chat/sdk/provider/thinking-effort";
 import { type Provider } from "#webui/types/settings";
 import {
   addCacheControl,
@@ -142,19 +143,7 @@ export const transformAnthropicRequest: RewritingFetch = rewritingFetch(
  * @returns True when anything changed
  */
 function applyAnthropicRewrites(body: AnthropicRequestBody): boolean {
-  let modified = false;
-
-  if (body.thinking?.type === "adaptive" && !body.thinking.display) {
-    // "summarized" returns a human-readable summary of the thinking, but the
-    // block's signature still covers the full underlying reasoning. The
-    // signature — not the visible summary text — is Anthropic's source of
-    // truth, so replaying a captured summarized block verbatim with its
-    // original signature on later turns is supported (see build-model-messages
-    // buildAssistantContent, which re-emits the signed block as-is).
-    body.thinking.display = "summarized";
-    modified = true;
-  }
-
+  let modified = summarizeAdaptiveThinking(body);
   const offType = omittedThinkingOffType(body);
 
   if (offType != null) {

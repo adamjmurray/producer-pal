@@ -37,8 +37,9 @@ import {
   ON_BARE_LEAD_CLIP,
   seedLeadEnvelopes,
 } from "./helpers/seed-clip-envelopes.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_READ_TRACK = "ppal-read-track";
+const TOOL_READ_TRACK = TOOLS.readTrack;
 
 /** Where the Lead clip is, or is asked to go, on the arrangement. */
 const ARRANGEMENT_SPOT = "5|1";

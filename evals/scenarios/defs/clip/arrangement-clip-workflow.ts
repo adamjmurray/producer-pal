@@ -17,11 +17,12 @@ import {
   clipStarts,
 } from "../arrangement-readback.ts";
 import { requireToolCall } from "./helpers/clip-turn-readers.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** Bass is the second track of the basic-midi-4-track Live Set. */
 const BASS_TRACK_INDEX = 1;
 
-const TOOL_UPDATE_CLIP = "ppal-update-clip";
+const TOOL_UPDATE_CLIP = TOOLS.updateClip;
 
 /**
  * Where the four clips end up: the 8-bar clip cut at bar 9, the duplicate, and
@@ -47,7 +48,7 @@ function starts(result: unknown): string {
 function assertClipLayout(): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-track",
+    tool: TOOLS.readTrack,
     args: {
       trackIndex: BASS_TRACK_INDEX,
       include: ["arrangement-clips"],
@@ -120,17 +121,17 @@ export const arrangementClipWorkflow: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     // Turn 1: Arrangement clip creation
-    { type: "tool_called", tool: "ppal-create-clip", turn: 1 },
+    { type: "tool_called", tool: TOOLS.createClip, turn: 1 },
 
     // Verify arrangement placement (not session)
     {
       type: "custom",
       description: "ppal-create-clip names an arrangement position",
       assert: (turns) => {
-        const createCall = requireToolCall(turns, 1, "ppal-create-clip");
+        const createCall = requireToolCall(turns, 1, TOOLS.createClip);
 
         if (!callNamesArrangementPosition(createCall.args, "path")) {
           throw new Error(
@@ -143,7 +144,7 @@ export const arrangementClipWorkflow: EvalScenario = {
     },
 
     // Turn 2: Duplicate
-    { type: "tool_called", tool: "ppal-duplicate", turn: 2 },
+    { type: "tool_called", tool: TOOLS.duplicate, turn: 2 },
 
     // Turn 3: Split. The call alone proves nothing — a split whose positions
     // miss the clip is warned-and-skipped, and the tool still returns success.

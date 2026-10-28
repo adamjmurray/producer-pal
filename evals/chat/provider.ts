@@ -20,13 +20,12 @@ import {
   ANTHROPIC_CONFIG,
   GEMINI_CONFIG,
   LOCAL_CONFIG,
+  LOCAL_DEFAULT_BASE_URL,
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
   validateApiKey,
   VERCEL_CONFIG,
 } from "#evals/shared/provider-configs.ts";
-
-const LOCAL_DEFAULT_BASE_URL = "http://localhost:11434/v1";
 
 /**
  * Create an AI SDK LanguageModel for the given provider and model

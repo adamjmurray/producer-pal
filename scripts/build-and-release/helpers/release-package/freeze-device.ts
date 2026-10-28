@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import { DEV_BUILD_OVERRIDE } from "../build-flag-guard.ts";
 import { freezeDeviceFromRoot } from "./device-freeze/freeze-device-from-root.ts";
 import { FROZEN_DEVICE_FILENAME } from "./frozen-device.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const outIndex = process.argv.indexOf("--out");
@@ -50,8 +51,6 @@ try {
     console.log(`  ${name} (${size} bytes)`);
   }
 } catch (error) {
-  console.error(
-    `\n❌ ${error instanceof Error ? error.message : String(error)}`,
-  );
+  console.error(`\n❌ ${errorMessage(error)}`);
   process.exit(1);
 }

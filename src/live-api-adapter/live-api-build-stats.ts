@@ -39,6 +39,7 @@
  */
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { BUILD_STATS_WARNING_LABEL } from "#src/shared/mcp-responses.ts";
 
 /** Shapes listed in the report before the rest collapse into a count. */
 const MAX_REPORTED_SHAPES = 20;
@@ -114,7 +115,7 @@ export function reportLiveApiBuildStats(): void {
   }
 
   console.warn(
-    `LiveAPI stats: ${String(resolvedCount)} resolved, ` +
+    `${BUILD_STATS_WARNING_LABEL} ${String(resolvedCount)} resolved, ` +
       `${String(targetCounts.size)} distinct, ` +
       `${String(constructedCount)} constructed | ${shown.join("; ")}`,
   );

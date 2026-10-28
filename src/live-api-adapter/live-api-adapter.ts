@@ -71,6 +71,7 @@ import {
   noteProjectContextLoaded,
   syncProjectContextBackup,
 } from "./project-context-sync.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 // One outlet: MCP responses. Warnings ride inside the response JSON, not as
 // trailing Max atoms.
@@ -508,7 +509,7 @@ export function node_response(requestId: string, ...rest: unknown[]): void {
     // Wire-format error (missing delimiter, etc.). Surface as a failure
     // response so the pending Promise resolves rather than hanging until
     // the 10s timeout — and log loudly so it shows in the Max console.
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
 
     console.error(
       `node_response wire-format error [requestId=${requestId}]: ${message}`,
@@ -574,10 +575,7 @@ async function handleRequest(
       try {
         incomingContext = JSON.parse(contextJSON) as Partial<ToolContext>;
       } catch (contextError) {
-        const message =
-          contextError instanceof Error
-            ? contextError.message
-            : String(contextError);
+        const message = errorMessage(contextError);
 
         console.warn(`Failed to parse contextJSON: ${message}`);
       }
@@ -626,8 +624,7 @@ async function handleRequest(
       // failed after a round trip, leaving a later request's capture active.
       resumeWarningCapture(warnings);
 
-      const message =
-        toolError instanceof Error ? toolError.message : String(toolError);
+      const message = errorMessage(toolError);
 
       result = formatErrorResponse(`Error: ${message}`);
     } finally {
@@ -641,7 +638,7 @@ async function handleRequest(
     // throw after its await.
     resumeWarningCapture(warnings);
 
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
 
     result = formatErrorResponse(`Error parsing tool call request: ${message}`);
   }

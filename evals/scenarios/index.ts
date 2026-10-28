@@ -44,6 +44,7 @@ import {
 } from "./load-scenarios/load-scenarios.ts";
 import { parseTagArgs } from "./load-scenarios/scenario-tags.ts";
 import { buildRunEnv, envLabel, type RunEnv } from "./run-env/run-env.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 collapseStdoutNewlines();
 
@@ -252,7 +253,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
   try {
     runEnv = buildRunEnv(options);
   } catch (error) {
-    program.error(error instanceof Error ? error.message : String(error));
+    program.error(errorMessage(error));
 
     return;
   }
@@ -304,10 +305,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
 
     printSummary(resultsByScenario, modelSpecs, label);
   } catch (error) {
-    console.error(
-      "Error:",
-      error instanceof Error ? error.message : String(error),
-    );
+    console.error("Error:", errorMessage(error));
     process.exit(1);
   }
 }
@@ -347,7 +345,7 @@ function resolveSelection(options: CliOptions): string[] {
   try {
     return parseTagArgs(options.tag);
   } catch (error) {
-    program.error(error instanceof Error ? error.message : String(error));
+    program.error(errorMessage(error));
 
     return [];
   }

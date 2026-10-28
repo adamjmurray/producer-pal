@@ -7,6 +7,7 @@ import { VERSION } from "#src/shared/config.ts";
 import {
   liveRunsOtherCopy,
   remoteScriptAttention,
+  versionText,
 } from "#src/shared/version-check.ts";
 import {
   ENABLE_IN_LIVE,
@@ -115,14 +116,6 @@ function runningLine(status: RemoteScriptStatus): string {
   return status.runningVersion == null
     ? "remoteScript: running"
     : `remoteScript: v${status.runningVersion} running`;
-}
-
-/**
- * @param version - A version the status reported, or null
- * @returns The version to show, never "vnull"
- */
-function versionText(version: string | null): string {
-  return version == null ? "an unknown version" : `v${version}`;
 }
 
 /**

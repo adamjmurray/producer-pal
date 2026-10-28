@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response, type Express } from "express";
 import Max from "max-api";
@@ -15,11 +14,17 @@ import {
   isNotation,
   type Notation,
 } from "#src/shared/notation.ts";
+import { type ProducerPalConfig } from "#src/shared/config.ts";
 import { manageToolOffered, withLiveApiTool } from "#src/shared/tool-groups.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { type WrappedCallLiveApi } from "./helpers/connect/connect-append.ts";
 import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
+import {
+  type JsonRpcError,
+  rejectStatelessMcpMethods,
+  serveStatelessMcp,
+} from "./helpers/http/stateless-mcp.ts";
 import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
 import { errorHandlerMiddleware } from "./helpers/http/error-handler-middleware.ts";
 import { parseConfigBody } from "./helpers/http/config-body.ts";
@@ -53,25 +58,6 @@ import { registerSystemPromptRoutes } from "./routes/config/system-prompt-route.
 import { registerGeminiVoiceTokenRoute } from "./routes/voice/gemini-voice-token-route.ts";
 import { registerVoiceTokenRoute } from "./routes/voice/voice-token-route.ts";
 
-interface ProducerPalConfig {
-  projectContext: string;
-  smallModelMode: boolean;
-  notation: Notation;
-  jsonOutput: boolean; // true = JSON, false = compact (default)
-  sampleFolder: string;
-  liveApiEnabled: boolean;
-  liveApiForcedOn: boolean;
-  // Debug builds only: false makes the remote script look uninstalled. POST
-  // /config only (evals and e2e); not a device setting, so it is never sent to
-  // Max. A release build neither lists nor accepts it.
-  remoteScriptEnabled?: boolean;
-  // Debug builds only, like remoteScriptEnabled: a version string replaces the
-  // minimum remote script version, so a running script can look out of date.
-  // Listed only while set.
-  remoteScriptMinVersion?: string;
-  tools: string[];
-}
-
 // ENABLE_LIVE_API=true forces the Live API tool on for dev builds
 // (npm run dev:debug / build:debug). When set, the device Setup-tab toggle
 // cannot disable it — the Max handler at "liveApiEnabled" ignores
@@ -83,7 +69,7 @@ interface ProducerPalConfig {
 // don't set ENABLE_LIVE_API, so the asymmetry is dev-only.
 const liveApiForcedOn = process.env.ENABLE_LIVE_API === "true";
 
-const config: ProducerPalConfig = {
+const config: ProducerPalConfig & { notation: Notation } = {
   projectContext: "",
   smallModelMode: false,
   notation: DEFAULT_NOTATION,
@@ -242,24 +228,6 @@ function buildRestCall(profile: RequestProfile): WrappedCallLiveApi {
   );
 }
 
-interface JsonRpcError {
-  jsonrpc: string;
-  error: {
-    code: number;
-    message: string;
-  };
-  id: null;
-}
-
-const methodNotAllowed: JsonRpcError = {
-  jsonrpc: "2.0",
-  error: {
-    code: ErrorCode.ConnectionClosed,
-    message: "Method not allowed.",
-  },
-  id: null,
-};
-
 const internalError = (message: string): JsonRpcError => ({
   jsonrpc: "2.0",
   error: {
@@ -338,17 +306,8 @@ export function createExpressApp(): Express {
           tools: profile.tools,
         },
       );
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined, // Stateless mode
-      });
 
-      res.on("close", () => {
-        void transport.close();
-        void server.close();
-      });
-
-      await server.connect(transport);
-      await transport.handleRequest(req, res, req.body);
+      await serveStatelessMcp(server, req, res, req.body);
     } catch (error) {
       console.error(`Error handling MCP request: ${String(error)}`);
       // Echoed to the caller below: it's the only signal an MCP client gets
@@ -360,16 +319,9 @@ export function createExpressApp(): Express {
     }
   });
 
-  // Stateless server doesn't support SSE streams, so GET is not allowed.
-  // Returning 405 tells the MCP SDK not to attempt SSE reconnection.
-  app.get("/mcp", (_req: Request, res: Response): void => {
-    res.status(405).json(methodNotAllowed);
-  });
-
-  // Because we're using a stateless server, DELETE is not needed:
-  app.delete("/mcp", (_req: Request, res: Response): void => {
-    res.status(405).json(methodNotAllowed);
-  });
+  // Stateless server doesn't support SSE streams or sessions: GET and DELETE
+  // get a 405.
+  rejectStatelessMcpMethods(app);
 
   // Serve the chat UI (inlined for frozen .amxd builds).
   // The same bundle handles both /chat and /context — main.tsx reads

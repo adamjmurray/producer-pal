@@ -18,12 +18,11 @@
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import express, { type Request, type Response } from "express";
+import { startStatelessMcpServer } from "#src/mcp-server/helpers/http/stateless-mcp.ts";
 import { type Args, type Variant } from "./schema-compat-variants.ts";
 
 /** A running probe server: where to point a client, and what it heard. */
@@ -36,12 +35,6 @@ export interface ProbeServer {
   reset: () => void;
   close: () => Promise<void>;
 }
-
-const METHOD_NOT_ALLOWED = {
-  jsonrpc: "2.0",
-  error: { code: -32000, message: "Method not allowed." },
-  id: null,
-};
 
 /**
  * Start a probe MCP server publishing one variant's schema.
@@ -57,64 +50,17 @@ export async function startProbeMcpServer(
   variant: Variant,
 ): Promise<ProbeServer> {
   const calls: Args[] = [];
-  const app = express();
-
-  app.use(express.json());
-  app.post("/mcp", (req: Request, res: Response) => {
-    void handlePost(variant, calls, req, res);
-  });
-  // Stateless, so there is no SSE stream to open and no session to delete.
-  // The 405 is what stops the SDK client retrying both.
-  app.get("/mcp", (_req: Request, res: Response) => {
-    res.status(405).json(METHOD_NOT_ALLOWED);
-  });
-  app.delete("/mcp", (_req: Request, res: Response) => {
-    res.status(405).json(METHOD_NOT_ALLOWED);
-  });
-
-  const httpServer = await listenOnEphemeralPort(app);
-  const address = httpServer.address();
-  const port =
-    typeof address === "object" && address != null ? address.port : 0;
+  const server = await startStatelessMcpServer(() =>
+    buildServer(variant, calls),
+  );
 
   return {
-    url: `http://127.0.0.1:${port}/mcp`,
+    ...server,
     calls,
     reset: () => {
       calls.length = 0;
     },
-    close: () =>
-      new Promise<void>((resolve, reject) => {
-        httpServer.close((error) => (error ? reject(error) : resolve()));
-      }),
   };
-}
-
-/**
- * Serve one stateless MCP POST.
- * @param variant - The variant being published
- * @param calls - Mutable record of received tool-call arguments
- * @param req - Express request
- * @param res - Express response
- */
-async function handlePost(
-  variant: Variant,
-  calls: Args[],
-  req: Request,
-  res: Response,
-): Promise<void> {
-  const server = buildServer(variant, calls);
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
-  });
-
-  res.on("close", () => {
-    void transport.close();
-    void server.close();
-  });
-
-  await server.connect(transport);
-  await transport.handleRequest(req, res, req.body);
 }
 
 /**
@@ -163,19 +109,4 @@ function toolInputSchema(
   variant: Variant,
 ): { type: "object" } & Record<string, unknown> {
   return { ...(variant.schema as Record<string, unknown>), type: "object" };
-}
-
-/**
- * Listen on a free port chosen by the OS.
- * @param app - The express app to serve
- * @returns The listening HTTP server
- */
-function listenOnEphemeralPort(
-  app: express.Express,
-): Promise<ReturnType<express.Express["listen"]>> {
-  return new Promise((resolve, reject) => {
-    const httpServer = app.listen(0, "127.0.0.1", () => resolve(httpServer));
-
-    httpServer.on("error", reject);
-  });
 }

@@ -30,6 +30,7 @@ import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
 import { asArrangementTrack, clipStarts } from "../arrangement-readback.ts";
 import { assertCallResult } from "./path-assertions.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** The arrangement Set, named by path — it lives under e2e/live-sets/. */
 const LIVE_SET =
@@ -49,9 +50,7 @@ const BRIDGE_POSITION = "[25|1]";
  */
 const AFTER_DUPLICATE = ["1|1", "9|1", "17|1", "25|1", "33|1"];
 
-const TOOL_CREATE_CLIP = "ppal-create-clip";
-const TOOL_UPDATE_CLIP = "ppal-update-clip";
-const TOOL_DUPLICATE = "ppal-duplicate";
+const TOOL_CREATE_CLIP = TOOLS.createClip;
 
 /** A path whose song position names a locator instead of a bar. */
 const LOCATOR_COORDINATE = /\[\s*loc(?:ator)?\s*:/i;
@@ -110,7 +109,7 @@ function assertLocatorCoordinate(options: {
 function assertBassClipsAt(expected: string[]): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-track",
+    tool: TOOLS.readTrack,
     args: { trackIndex: BASS_TRACK_INDEX, include: ["arrangement-clips"] },
     expect: (result) =>
       clipStarts(asArrangementTrack(result).arrangementClips).join(",") ===
@@ -135,7 +134,7 @@ export const pathLocatorCoordinate: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
     assertLocatorCoordinate({
@@ -153,17 +152,17 @@ export const pathLocatorCoordinate: EvalScenario = {
       check: (result) => argText(result.path).endsWith(BRIDGE_POSITION),
     }),
 
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
+    { type: "tool_called", tool: TOOLS.updateClip, turn: 2 },
     assertLocatorCoordinate({
       turn: 2,
-      tool: TOOL_UPDATE_CLIP,
+      tool: TOOLS.updateClip,
       param: "toPath",
       locator: "Intro",
     }),
-    { type: "tool_called", tool: TOOL_DUPLICATE, turn: 3 },
+    { type: "tool_called", tool: TOOLS.duplicate, turn: 3 },
     assertLocatorCoordinate({
       turn: 3,
-      tool: TOOL_DUPLICATE,
+      tool: TOOLS.duplicate,
       param: "toPath",
       locator: "Bridge",
     }),

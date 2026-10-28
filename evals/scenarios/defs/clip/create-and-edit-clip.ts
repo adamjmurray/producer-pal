@@ -10,8 +10,9 @@
 import { getToolCalls } from "../../assertions/index.ts";
 import { requireToolCall } from "./helpers/clip-turn-readers.ts";
 import { type EvalScenario } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_UPDATE_CLIP = "ppal-update-clip";
+const TOOL_UPDATE_CLIP = TOOLS.updateClip;
 const SIXTEENTH_GRIDS = new Set(["1/16", "n/16"]);
 
 export const createAndEditClip: EvalScenario = {
@@ -33,10 +34,10 @@ export const createAndEditClip: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     // Turn 1: Clip creation
-    { type: "tool_called", tool: "ppal-create-clip", turn: 1 },
+    { type: "tool_called", tool: TOOLS.createClip, turn: 1 },
 
     // Verify notes use bar|beat notation (regression test). Writing them with
     // a follow-up update-clip on an empty new clip is a valid way to get there.
@@ -46,7 +47,7 @@ export const createAndEditClip: EvalScenario = {
       assert: (turns) => {
         const notes = getToolCalls(turns, 1)
           .filter(
-            (c) => c.name === "ppal-create-clip" || c.name === TOOL_UPDATE_CLIP,
+            (c) => c.name === TOOLS.createClip || c.name === TOOL_UPDATE_CLIP,
           )
           .map((c) => c.args.notes)
           .find((n) => n != null);

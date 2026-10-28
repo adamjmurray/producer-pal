@@ -86,4 +86,26 @@ describe("cacheAnthropicRequest", () => {
       { type: "text", text: "make a clip", cache_control: EPHEMERAL },
     ]);
   });
+
+  it("asks for summarized thinking on adaptive requests", async () => {
+    const fetchSpy = vi.fn<typeof fetch>(async () => new Response("{}"));
+
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await cacheAnthropicRequest("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      body: JSON.stringify({
+        ...scenarioBody(),
+        thinking: { type: "adaptive" },
+      }),
+    });
+
+    const sentBody = fetchSpy.mock.calls[0]?.[1]?.body as string;
+    const sent = JSON.parse(sentBody) as AnthropicRequestBody;
+
+    expect(sent.thinking).toStrictEqual({
+      type: "adaptive",
+      display: "summarized",
+    });
+  });
 });

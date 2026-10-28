@@ -8,8 +8,10 @@
  * breakpoints (tools + system, and the conversation tail), mark the connect
  * turn's result: it holds the Skills and is byte-identical across scenarios on
  * the same Live Set, so every scenario after the first reads it from cache.
+ * Also asks for summarized thinking, as the chat UI does.
  */
 
+import { summarizeAdaptiveThinking } from "#webui/chat/sdk/provider/anthropic-thinking-display.ts";
 import {
   addCacheControl,
   type AnthropicRequestBody,
@@ -23,9 +25,10 @@ import {
 /** The fetch to hand `createAnthropic` so eval requests are cached. */
 export const cacheAnthropicRequest: RewritingFetch = rewritingFetch((body) => {
   const request = body as AnthropicRequestBody;
+  const summarized = summarizeAdaptiveThinking(request);
   const connectMarked = markConnectResult(request);
 
-  return addCacheControl(request) || connectMarked;
+  return addCacheControl(request) || connectMarked || summarized;
 });
 
 /**

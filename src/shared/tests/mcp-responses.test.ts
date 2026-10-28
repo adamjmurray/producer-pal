@@ -4,10 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { utf8ByteLength } from "#src/shared/max/utf8-byte-length.ts";
 import {
+  utf8ByteLength,
   formatErrorResponse,
   formatSuccessResponse,
+  getWarningTexts,
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
   MAX_SINGLE_MESSAGE_BYTES,
@@ -327,5 +328,36 @@ describe("mcp-responses", () => {
         oversizedSingleMessageError("あ".repeat(10_000), "x", "Send less."),
       ).toBeNull();
     });
+  });
+});
+
+describe("getWarningTexts", () => {
+  const content = [
+    { type: "text", text: '{"ok":true}' },
+    { type: "text", text: "WARNING: no clip at t0/s5" },
+    { type: "text", text: "WARNING: LiveAPI stats: 3 resolved" },
+    { type: "text", text: "Warning: wrong case" },
+    { type: "text", text: "WARNING:no space" },
+    { type: "image", text: "WARNING: not text" },
+    null,
+    { type: "text" },
+  ];
+
+  it("returns the warning blocks with their prefix, in order", () => {
+    expect(getWarningTexts(content)).toStrictEqual([
+      "WARNING: no clip at t0/s5",
+      "WARNING: LiveAPI stats: 3 resolved",
+    ]);
+  });
+
+  it("can leave out the build-stats counter", () => {
+    expect(getWarningTexts(content, { excludeBuildStats: true })).toStrictEqual(
+      ["WARNING: no clip at t0/s5"],
+    );
+  });
+
+  it("returns none when there is no content array", () => {
+    expect(getWarningTexts(undefined)).toStrictEqual([]);
+    expect(getWarningTexts({ content })).toStrictEqual([]);
   });
 });

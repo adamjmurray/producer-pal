@@ -27,8 +27,9 @@ import {
 } from "../../../types.ts";
 import { argText } from "../../arg-text.ts";
 import { asArrangementTrack, clipStarts } from "../../arrangement-readback.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_PLAYBACK = "ppal-playback";
+const TOOL_PLAYBACK = TOOLS.playback;
 
 /** The arrangement Set, named by path — it lives under e2e/live-sets/. */
 const LIVE_SET =
@@ -165,7 +166,7 @@ export const locatorNavigation: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     assertNavigatedByLocator(1, ["startTime"], {
       expected: `the chorus (${CHORUS})`,
@@ -195,7 +196,7 @@ export const locatorNavigation: EvalScenario = {
 
     {
       type: "state",
-      tool: "ppal-read-track",
+      tool: TOOLS.readTrack,
       args: { trackIndex: BASS_TRACK_INDEX, include: ["arrangement-clips"] },
       expect: (result) =>
         clipStarts(asArrangementTrack(result).arrangementClips).join(",") ===

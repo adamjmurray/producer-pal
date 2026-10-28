@@ -9,6 +9,7 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { suspendWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 declare const Task: new (callback: () => void) => {
   schedule: (ms: number) => void;
@@ -175,5 +176,5 @@ interface Pending {
  * @returns Its message
  */
 function asMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return errorMessage(error);
 }

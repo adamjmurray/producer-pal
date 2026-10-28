@@ -119,7 +119,7 @@ export async function handleNodeRequest(
 
     await sendNodeResponse(requestId, { success: true, result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
 
     await sendNodeResponse(requestId, {
       success: false,

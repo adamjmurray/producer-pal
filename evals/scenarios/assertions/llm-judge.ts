@@ -18,6 +18,7 @@ import {
   type EvalAssertionResult,
   type EvalProvider,
 } from "../types.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 export const JUDGE_SYSTEM_PROMPT = `You are reviewing an AI assistant's performance in a music production task.
 
@@ -99,7 +100,7 @@ export async function assertWithLlmJudge(
       result,
     );
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
+    const msg = errorMessage(error);
 
     return noScoreResult(assertion, `LLM judge error: ${msg}`, {
       pass: false,
