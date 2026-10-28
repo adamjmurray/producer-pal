@@ -64,7 +64,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     const track = await createMidiTrack(ctx.client!);
     const created = parseToolResult<{ id: string; path: string }>(
       await create({
-        device: "Drift",
+        deviceName: "Drift",
         preset: presetName(adv.name),
         path: `t${track}/d0`,
       }),
@@ -129,7 +129,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     skip,
   }) => {
     const result = await create({
-      device: "Operator",
+      deviceName: "Operator",
       preset: await driftPresetFile(skip),
       path: "t0/d+",
     });
@@ -151,7 +151,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
       const track = await createMidiTrack(ctx.client!);
       const created = parseToolResult<{ path: string }>(
         await create({
-          ...(device == null ? {} : { device }),
+          ...(device == null ? {} : { deviceName: device }),
           preset: presetName(kit.name),
           path: `t${track}/d0`,
         }),
@@ -172,9 +172,9 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     );
     const track = await createMidiTrack(ctx.client!);
 
-    await create({ device: "Reverb", path: `t${track}/d+` });
+    await create({ deviceName: "Reverb", path: `t${track}/d+` });
     const result = await create({
-      device: "Reverb",
+      deviceName: "Reverb",
       preset: presetName(reverb.name),
       path: `t${track}/d+,t${track}/d1`,
     });
@@ -185,7 +185,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
 
   it("refuses a preset that isn't the named device's", async () => {
     const result = await create({
-      device: "Operator",
+      deviceName: "Operator",
       preset: presetName(adv.name),
       path: "t0/d+",
     });

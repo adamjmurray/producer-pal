@@ -33,12 +33,12 @@ How the tool answers depends on what is wrong:
     beside a path with a lane segment);
   - a published param with the deprecated spelling it replaced (`path` and
     `slot`, `toPath` and `toSlot`, `arrangementSplit` and `split`, `startTime`
-    and `startLocator`, `arrangementStart` and `locator`, `device` and
-    `deviceName`), or with a position spelled in its own coordinate
-    (`toPath: "t0[5|1]"` and `arrangementStart`);
+    and `startLocator`, `arrangementStart` and `locator`), or with a position
+    spelled in its own coordinate (`toPath: "t0[5|1]"` and `arrangementStart`);
   - `id` beside `ids` or the tool's own id spelling (`clipId`, `trackId`, ...),
     and `path` beside `paths`, whatever the values: a param and its alias are
-    never sent together.
+    never sent together. Same for create-device's `deviceName` and its `device`
+    alias.
 
   One wording, built by `refuseNamedTwice`:
   `<param> names the <noun> on its own - don't send <params> with it`, listing

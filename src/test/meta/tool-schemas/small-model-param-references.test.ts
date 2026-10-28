@@ -38,10 +38,19 @@ import { TOOL_DEF_CASES } from "./tool-defs-test-helpers.ts";
 //     duplicate publishes while deprecating a `count` param. Angle brackets
 //     mark a placeholder, and a param is never written inside them.
 //
+// One tool-specific exemption: ppal-create-device keeps `device` as a hidden
+// alias of `deviceName`, and its prose uses the ordinary word "device"
+// throughout. See ENGLISH_WORD_ALIASES.
+//
 // Every other surviving description is clean under a plain word-boundary match,
 // including the removed params whose names are also ordinary English (`count`,
 // `name`, `format`, `sort`). If another legitimate prose use collides, blank
 // that term out the same way — don't loosen the match.
+
+// Hidden aliases that are also an ordinary word in the tool's own prose.
+const ENGLISH_WORD_ALIASES: Record<string, string[]> = {
+  "ppal-create-device": ["device"],
+};
 
 describe("published param references", () => {
   it.each(TOOL_DEF_CASES)(
@@ -186,10 +195,11 @@ function danglingReferences(
 ): string[] {
   const { inputSchema, description } = def.toolOptions;
   const { published, hidden } = resolveToolSchema(inputSchema, context);
+  const exempt = ENGLISH_WORD_ALIASES[def.toolName] ?? [];
   const removed = [
     ...resolveParamModes(inputSchema, context).excludeParams,
     ...Object.keys(hidden),
-  ];
+  ].filter((name) => !exempt.includes(name));
 
   if (removed.length === 0) {
     return [];

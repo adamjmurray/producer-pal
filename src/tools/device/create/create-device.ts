@@ -58,7 +58,7 @@ function validateListModeArgs(args: {
     const pronoun = sent.length === 1 ? "it" : "them";
 
     throw new Error(
-      `${sent.join(", ")} ${verb} device; omit ${pronoun} to list available devices`,
+      `${sent.join(", ")} ${verb} deviceName; omit ${pronoun} to list available devices`,
     );
   }
 }
@@ -68,13 +68,13 @@ function validateListModeArgs(args: {
  * device that isn't native (plug-ins, Max for Live devices), and any preset, is
  * loaded from Live's browser when the Producer Pal remote script is running.
  * @param args - The device parameters
- * @param args.device - Device for all, or comma-separated one per path, in
+ * @param args.deviceName - Device for all, or comma-separated one per path, in
  *   order; omit this and preset to list available devices
- * @param args.deviceName - Deprecated spelling of `device`
+ * @param args.device - Alias for `deviceName`
  * @param args.preset - Preset for all, or comma-separated one per path: a name
  *   looked up among the device's presets (all presets with no device), or a
  *   file path
- * @param args.path - Device path(s), comma-separated for multiple (required when device provided)
+ * @param args.path - Device path(s), comma-separated for multiple (required when deviceName provided)
  * @param args.name - Name for all, or comma-separated for each
  * @param args.params - {name, value} entries applied to each created device (e.g. Simpler: {name:"sample", value:"<file path>"})
  * @param args.focus - Select the device and show device detail view
@@ -87,11 +87,10 @@ export async function createDevice(
 ): Promise<CreateDeviceAnswer> {
   // Both spellings name the device, so neither is honored over the other.
   refuseNamedTwice({
-    param: "device",
-    value: args.device,
+    param: "deviceName",
+    value: args.deviceName,
     noun: "device",
-    also: { deviceName: args.deviceName },
-    hint: "deviceName is deprecated",
+    also: { device: args.device },
   });
 
   // List mode: return valid devices when no device is named

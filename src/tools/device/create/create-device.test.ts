@@ -217,19 +217,19 @@ describe("createDevice", () => {
       ["params", { params: [{ name: "Dry/Wet", value: "50%" }] }],
     ])("refuses a list-mode call carrying %s", async (param, args) => {
       await expect(createDevice(args)).rejects.toThrow(
-        `${param} requires device; omit it to list available devices`,
+        `${param} requires deviceName; omit it to list available devices`,
       );
     });
 
     it("names every create-only arg it was sent", async () => {
       await expect(createDevice({ path: "t0", name: "Lead" })).rejects.toThrow(
-        "path, name require device; omit them to list available devices",
+        "path, name require deviceName; omit them to list available devices",
       );
     });
 
     it("does not touch Live before refusing", async () => {
       await expect(createDevice({ path: "t0" })).rejects.toThrow(
-        "path requires device",
+        "path requires deviceName",
       );
 
       expect(track0.call).not.toHaveBeenCalled();

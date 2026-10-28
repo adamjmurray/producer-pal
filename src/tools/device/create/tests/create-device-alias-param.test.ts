@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// `device` replaced `deviceName`. The old name still works so a caller
-// mid-migration keeps creating devices, and the warning tells it the new one.
+// The published param is `deviceName`; `device` is a permanent hidden alias
+// (Claude Desktop's bridge drops an argument named `device`, but models and
+// 2.4.0 callers still send it).
 
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
@@ -41,12 +42,12 @@ function registerTrack(): RegisteredMockObject {
   return track;
 }
 
-describe("createDevice — deprecated deviceName", () => {
+describe("createDevice — device alias", () => {
   beforeEach(() => {
     clearMockRegistry();
   });
 
-  it("still creates the device", async () => {
+  it("creates the device from deviceName", async () => {
     registerTrack();
 
     expect(
@@ -54,24 +55,32 @@ describe("createDevice — deprecated deviceName", () => {
     ).toStrictEqual({ id: "new-device", path: "t0/d0" });
   });
 
+  it("creates the device from the device alias", async () => {
+    registerTrack();
+
+    expect(
+      await createDevice({ device: "Reverb", path: "t0/d+" }),
+    ).toStrictEqual({ id: "new-device", path: "t0/d0" });
+  });
+
   // Both spellings name the same thing, so the call is refused rather than
   // quietly taking one of them.
-  it("refuses deviceName beside device, creating nothing", async () => {
+  it("refuses device beside deviceName, creating nothing", async () => {
     const track = registerTrack();
 
     await expect(
       createDevice({
-        device: "Reverb",
-        deviceName: "Delay",
+        deviceName: "Reverb",
+        device: "Delay",
         path: "t0/d+",
       }),
     ).rejects.toThrow(
-      "device names the device on its own - don't send deviceName with it (deviceName is deprecated)",
+      "deviceName names the device on its own - don't send device with it",
     );
     expect(track.call).not.toHaveBeenCalled();
   });
 
-  it("tells the caller the param is now device", async () => {
+  it("tells a device caller the param is deviceName", async () => {
     const mockServer = {
       registerTool: vi.fn(),
     } as unknown as McpServer & { registerTool: Mock };
@@ -86,17 +95,17 @@ describe("createDevice — deprecated deviceName", () => {
       extra: { signal: AbortSignal },
     ) => Promise<{ content: { text?: string }[] }>;
     const result = await handler(
-      { deviceName: "Reverb", path: "t0/d+" },
+      { device: "Reverb", path: "t0/d+" },
       { signal: new AbortController().signal },
     );
 
     expect(callLiveApi).toHaveBeenCalledWith(
       "ppal-create-device",
-      { deviceName: "Reverb", path: "t0/d+" },
+      { device: "Reverb", path: "t0/d+" },
       { signal: expect.any(AbortSignal) },
     );
     expect(result.content.map((entry) => entry.text)).toContain(
-      'WARNING: param "deviceName" is deprecated and will be removed; use "device" instead',
+      'WARNING: "device" accepted as a fallback; the parameter is "deviceName"',
     );
   });
 });

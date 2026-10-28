@@ -83,7 +83,7 @@ describe("ppal-update-device display values", () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
-          device: "Utility",
+          deviceName: "Utility",
           path: "t0",
           params: [{ name: "Output", value: "-1.2" }],
         },

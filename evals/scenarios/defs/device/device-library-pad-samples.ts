@@ -67,7 +67,10 @@ interface PadRead {
 function drumRackPath(turns: EvalTurnResult[]): string {
   const rackCall = lastSuccessfulToolCall(turns, "any", "ppal-create-device");
   const rackPath =
-    rackCall != null && /drum ?rack/i.test(argText(rackCall.args.device))
+    rackCall != null &&
+    /drum ?rack/i.test(
+      argText(rackCall.args.deviceName ?? rackCall.args.device),
+    )
       ? firstResultPath(rackCall.result)
       : undefined;
 

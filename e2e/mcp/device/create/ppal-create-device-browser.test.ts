@@ -74,7 +74,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       const created = parseToolResult<CreateDeviceResult>(
         await ctx.client!.callTool({
           name: "ppal-create-device",
-          arguments: { device: deviceName, path },
+          arguments: { deviceName, path },
         }),
       );
 
@@ -160,7 +160,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       const before = await trackCount();
       const result = await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { device: "NoSuchDevice12345", path: "t0/d+" },
+        arguments: { deviceName: "NoSuchDevice12345", path: "t0/d+" },
       });
 
       expect(isToolError(result)).toBe(true);
@@ -177,7 +177,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       const before = await trackCount();
       const result = await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { device: "Producer_Pal", path: "t0/d+" },
+        arguments: { deviceName: "Producer_Pal", path: "t0/d+" },
       });
 
       expect(isToolError(result)).toBe(true);
@@ -228,7 +228,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            device: await lfoBrowserPath(),
+            deviceName: await lfoBrowserPath(),
             path: `t${trackIndex}/d+`,
           }),
         },

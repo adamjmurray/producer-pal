@@ -55,7 +55,7 @@ async function seedEmptyDrumRack(mcpClient: Client): Promise<void> {
 
   await mcpClient.callTool({
     name: "ppal-create-device",
-    arguments: { device: "Drum Rack", path: `${NEW_TRACK}/d+` },
+    arguments: { deviceName: "Drum Rack", path: `${NEW_TRACK}/d+` },
   });
 
   const read = parseToolResult(

@@ -90,7 +90,7 @@ async function seedDrumSampler(mcpClient: Client): Promise<void> {
 
   const result = await mcpClient.callTool({
     name: TOOL_CREATE_DEVICE,
-    arguments: { device: "DrumSampler", path: `${SAMPLER_PAD}/d0` },
+    arguments: { deviceName: "DrumSampler", path: `${SAMPLER_PAD}/d0` },
   });
 
   if (result.isError === true) {

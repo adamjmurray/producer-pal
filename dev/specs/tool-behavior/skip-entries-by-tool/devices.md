@@ -80,14 +80,14 @@ Part of [Skip entries, tool by tool](README.md).
   preset added this session may not be found; with no database, today's "no
   preset" error stands.
 - **A preset file is checked against the device a call names.** create-device
-  with a `device` and an absolute file path (a Windows drive or network share
-  too) reads the gzipped XML and refuses a file for another device, as it does a
-  browser path: `preset "<path>" is not a preset for <device>`. An `.adv` is for
-  the device its root element names; an `.adg` for the rack it holds, or (for a
-  device that isn't a rack) the device it is built around, the first device of
-  its first chain. A rack that merely holds the device isn't for it. A device
-  with no known class (plug-ins, Max devices), or a file that can't be read,
-  isn't checked. update-device takes any file, as it does any preset.
+  with a `deviceName` and an absolute file path (a Windows drive or network
+  share too) reads the gzipped XML and refuses a file for another device, as it
+  does a browser path: `preset "<path>" is not a preset for <device>`. An `.adv`
+  is for the device its root element names; an `.adg` for the rack it holds, or
+  (for a device that isn't a rack) the device it is built around, the first
+  device of its first chain. A rack that merely holds the device isn't for it. A
+  device with no known class (plug-ins, Max devices), or a file that can't be
+  read, isn't checked. update-device takes any file, as it does any preset.
 - **A preset that holds the Producer Pal device is refused after Live loads
   it.** The remote script looks through what `/load` or `/hotswap` loaded
   (chains, return chains, drum pads) and deletes what holds it, by device name

@@ -160,7 +160,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
         await ctx.client!.callTool({
           name: "ppal-create-device",
           arguments: {
-            device: "Drum Rack",
+            deviceName: "Drum Rack",
             path: `t${t}`,
             params: [
               { name: "pC1/sample", value: KICK_FILE },
@@ -302,7 +302,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     // one before the Operator has anywhere to land.
     await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { device: "Operator", path: `${nested}/pE1` },
+      arguments: { deviceName: "Operator", path: `${nested}/pE1` },
     });
 
     await sleep(150);
@@ -323,7 +323,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     // Put a DrumSampler on pad E1.
     await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { device: "DrumSampler", path: `${rack}/pE1/d0` },
+      arguments: { deviceName: "DrumSampler", path: `${rack}/pE1/d0` },
     });
 
     await sleep(150);
@@ -441,7 +441,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     // leaves an empty chain on C1 and the lookup that follows fails anyway.
     const result = await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { device: "Operator", path: `${rack}/p*` },
+      arguments: { deviceName: "Operator", path: `${rack}/p*` },
     });
 
     expect(isToolError(result)).toBe(true);

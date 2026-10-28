@@ -90,8 +90,8 @@ code; when it disagrees with a tool, the tool wins.
     name a slot and a device, and select takes both), `playback` (`path` and
     `slots`; `startTime`, `loopStart`, `loopEnd` and their `*Locator`
     spellings), `duplicate` (`arrangementStart` and `locator`), `createDevice`
-    (`device` and `deviceName`) and every tool with a position in a path
-    coordinate (`refuseDoubledPosition`).
+    (`deviceName` and its `device` alias) and every tool with a position in a
+    path coordinate (`refuseDoubledPosition`).
 
   Neither param is honored, so a warning would return a success-shaped result
   for a call that moved or split nothing. A param that names nothing (blank, or

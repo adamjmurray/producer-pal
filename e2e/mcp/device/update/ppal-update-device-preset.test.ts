@@ -94,7 +94,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
 
     return parseToolResult(
       await call("ppal-create-device", {
-        device: "Drift",
+        deviceName: "Drift",
         path: `t${trackIndexFromPath(track.path)}/d0`,
       }),
     );
@@ -118,7 +118,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     );
     const drift = parseToolResult<{ id: string; path: string }>(
       await call("ppal-create-device", {
-        device: "Drift",
+        deviceName: "Drift",
         path: `${rack}/c0`,
       }),
     );
@@ -220,7 +220,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     );
     const rack = parseToolResult<{ id: string; path: string }>(
       await call("ppal-create-device", {
-        device: "Drum Rack",
+        deviceName: "Drum Rack",
         path: `t${trackIndexFromPath(track.path)}/d0`,
       }),
     );

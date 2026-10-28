@@ -83,21 +83,21 @@ describe("createDevice — a device per path", () => {
   it("refuses a device list that doesn't match the paths", async () => {
     await expect(
       createDevice({ path: "t0,t1", device: "Compressor,Reverb,Delay" }),
-    ).rejects.toThrow("path names 2 entries but device names 3 entries");
+    ).rejects.toThrow("path names 2 entries but deviceName names 3 entries");
     expect(track0.call).not.toHaveBeenCalled();
   });
 
   it("refuses an empty entry in a device list", async () => {
     await expect(
       createDevice({ path: "t0,t1", device: "Compressor," }),
-    ).rejects.toThrow("path names 2 entries but device names 1 entry");
+    ).rejects.toThrow("path names 2 entries but deviceName names 1 entry");
   });
 
   it("refuses a hole in a device list", async () => {
     await expect(
       createDevice({ path: "t0,t1,t0", device: "Compressor,,Reverb" }),
     ).rejects.toThrow(
-      'invalid device "Compressor,,Reverb" - it has an empty entry.',
+      'invalid deviceName "Compressor,,Reverb" - it has an empty entry.',
     );
   });
 

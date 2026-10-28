@@ -381,7 +381,7 @@ async function createDevice(
 ): Promise<CreateDeviceResult> {
   const result = await client.callTool({
     name: "ppal-create-device",
-    arguments: { device: deviceName, path },
+    arguments: { deviceName, path },
   });
   const created = parseToolResult<CreateDeviceResult>(result);
 
@@ -502,7 +502,7 @@ export async function createTwoPadDrumRack(
     await client.callTool({
       name: "ppal-create-device",
       arguments: {
-        device: "Drum Rack",
+        deviceName: "Drum Rack",
         path,
         params: [
           { name: "pC1/sample", value: KICK_FILE },

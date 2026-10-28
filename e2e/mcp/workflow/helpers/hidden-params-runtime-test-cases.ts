@@ -337,9 +337,9 @@ export const CASES: Case[] = [
   },
   {
     tool: CREATE_DEVICE,
-    param: "deviceName",
+    param: "device",
     args: () => ({
-      deviceName: "Arpeggiator",
+      device: "Arpeggiator",
       path: `t${EMPTY_MIDI_TRACK}/d+`,
     }),
     verify: async (d, call) => {
