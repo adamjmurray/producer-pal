@@ -65,10 +65,35 @@ guarded() {
 	git config --get-all push-guard.ref 2>/dev/null | grep -qxF "$1"
 }
 
+# The throwaway worktree check_commit is using, if any. Removed on exit, so an
+# interrupt (Ctrl-C) mid-check does not leave it registered with git.
+CHECK_WT=""
+
+cleanup() {
+	[ -n "$CHECK_WT" ] || return 0
+	git worktree remove --force "$CHECK_WT/tree" 2>/dev/null
+	rm -rf "$CHECK_WT"
+	git worktree prune 2>/dev/null
+	CHECK_WT=""
+}
+
+# On the way out, also drop the log an interrupted check left behind.
+on_exit() {
+	[ -n "$CHECK_WT" ] && rm -f "$CHECK_WT.log"
+	cleanup
+}
+
+# Exit statuses stay as they are: the EXIT trap does not change them, and an
+# interrupt exits 128 + the signal number, as an untrapped one would.
+trap on_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 # Run format:check and lint against one commit's own files.
 check_commit() {
 	short=$(printf %.8s "$1")
 	wt=$(mktemp -d) || return 1
+	CHECK_WT=$wt
 	log="$wt.log"
 	root=$(git rev-parse --show-toplevel)
 
@@ -76,7 +101,7 @@ check_commit() {
 
 	if ! git worktree add -q --detach "$wt/tree" "$1" </dev/null 2>"$log"; then
 		cat "$log" >&2
-		rm -rf "$wt" "$log"
+		cleanup
 		return 1
 	fi
 
@@ -86,8 +111,7 @@ check_commit() {
 	(cd "$wt/tree" && npm run format:check --silent && npm run lint --silent) </dev/null >"$log" 2>&1
 	status=$?
 
-	git worktree remove --force "$wt/tree"
-	rm -rf "$wt"
+	cleanup
 
 	if [ "$status" -ne 0 ]; then
 		cat "$log" >&2
