@@ -5,25 +5,13 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { askJev, JevError, resolveJevRoute } from "../jev-client.ts";
+import { stubKeys } from "./jev-test-helpers.ts";
 
 const okBody = {
   model: "jev-1.14.0",
   answers: { met: { type: "noul", noul: 0.07 } },
   usage: { input_tokens: 330, output_tokens: 33 },
 };
-
-const KEY_VARS = ["TYPESAFE_KEY", "OPENROUTER_KEY", "VERCEL_AI_GATEWAY_KEY"];
-
-/**
- * Set the three route keys; unlisted ones are blanked.
- *
- * @param keys - Values by env var name
- */
-function stubKeys(keys: Record<string, string> = {}): void {
-  for (const name of KEY_VARS) {
-    vi.stubEnv(name, keys[name] ?? "");
-  }
-}
 
 const json = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), { status });

@@ -206,6 +206,22 @@ export function decideVerdict(minProbability: number): JevVerdict {
   return minProbability < FAIL_THRESHOLD ? "fail" : "escalate";
 }
 
+/**
+ * Say why an escalated run was too close to call.
+ *
+ * @param questions - Jev's answers
+ * @param minProbability - The lowest P(yes)
+ * @returns A one-line reason naming the lowest question
+ */
+export function escalationReason(
+  questions: Pick<JevQuestionResult, "id" | "probability">[],
+  minProbability: number,
+): string {
+  const lowest = questions.find((q) => q.probability === minProbability);
+
+  return `lowest answer ${minProbability.toFixed(2)} (${lowest?.id ?? "?"}) is between ${FAIL_THRESHOLD} and ${PASS_THRESHOLD}`;
+}
+
 interface PlannedQuestion extends Omit<JevQuestionResult, "probability"> {
   instructions: string;
 }

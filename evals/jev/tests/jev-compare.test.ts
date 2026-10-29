@@ -89,7 +89,11 @@ describe("runJevCompare", () => {
       log,
       load: { scenarios, criteriaDate: () => undefined },
     });
-  const resultJson = (judge?: { pass: boolean; issues: string[] }): string =>
+  const resultJson = (judge?: {
+    pass: boolean;
+    issues: string[];
+    decidedBy?: string;
+  }): string =>
     JSON.stringify({
       scenarioId: "a",
       timestamp: "2026-10-29T00:00:00Z",
@@ -150,6 +154,40 @@ describe("runJevCompare", () => {
     expect(jev).toHaveBeenCalledTimes(1);
     expect(output()).toContain("Jev vs stored judge");
     expect(output()).toContain("Wrong pass 0, wrong fail 1");
+  });
+
+  it("leaves out results Jev decided in the run, and says so", async () => {
+    await writeFile(
+      join(dir, "run1", "d.json"),
+      resultJson({ pass: false, issues: [], decidedBy: "jev" }),
+    );
+    await writeFile(
+      join(dir, "run1", "e.json"),
+      resultJson({ pass: true, issues: [], decidedBy: "llm" }),
+    );
+
+    const jev = vi.fn(async () => jevAnswer("pass"));
+
+    await run(["run1"], jev);
+
+    expect(jev).toHaveBeenCalledTimes(2); // a.json and e.json, not d.json
+    expect(output()).toContain("Compared 2 result(s)");
+    expect(output()).toContain("1 decided by Jev in the run (no LLM verdict");
+  });
+
+  it("uses a Jev-decided result when sidecar judges are the reference", async () => {
+    await writeFile(
+      join(dir, "run1", "d.json"),
+      resultJson({ pass: false, issues: [], decidedBy: "jev" }),
+    );
+    await vote("run1/d.json", "h", true);
+
+    const jev = vi.fn(async () => jevAnswer("pass"));
+
+    await run(["run1", "--reference=h"], jev);
+
+    expect(jev).toHaveBeenCalledTimes(1);
+    expect(output()).not.toContain("decided by Jev in the run");
   });
 
   it("writes the report into the results directory", async () => {

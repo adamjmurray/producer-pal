@@ -18,6 +18,7 @@ import {
 } from "#evals/chat/shared/formatting.ts";
 import { formatTokenLabel } from "../json-results/assertion-label.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
+import { jevJudgeNote, jevJudgeTag } from "./jev-judge-report.ts";
 import { checkTally, judgeVerdict, scorePercentage } from "./result-format.ts";
 
 /**
@@ -224,6 +225,12 @@ function printJudgeSection(result: JsonEvalResult): void {
     judge.issues.length > 0 ? ` — ${judge.issues.length} issue(s)` : "";
 
   console.log("\n  " + styleText(color, `${label}${issueSuffix}`));
+
+  const note = jevJudgeNote(judge);
+
+  if (note != null) {
+    console.log("  " + styleText("gray", note));
+  }
 }
 
 /**
@@ -273,7 +280,10 @@ export function printResultBlock(result: JsonEvalResult): void {
     const { color, label, issueCount } = judgeVerdict(result.judge);
     const issueSuffix = issueCount > 0 ? ` — ${issueCount} issue(s)` : "";
 
-    console.log(`  Judge:      ${styleText(color, label + issueSuffix)}`);
+    const tag = jevJudgeTag(result.judge);
+    const by = tag == null ? "" : styleText("gray", ` (${tag})`);
+
+    console.log(`  Judge:      ${styleText(color, label + issueSuffix)}${by}`);
   }
 
   // Duration line

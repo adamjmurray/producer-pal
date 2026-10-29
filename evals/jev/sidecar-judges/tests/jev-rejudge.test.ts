@@ -147,6 +147,60 @@ describe("runRejudge", () => {
     expect(fail?.durationMs).toBeGreaterThanOrEqual(0);
   });
 
+  it("re-judges results from a --jev run, whoever decided them", async () => {
+    const jev = {
+      route: "typesafe",
+      verdict: "pass",
+      model: "jev-1",
+      minProbability: 0.9,
+      questions: [],
+      outcome: { score: 3, level: "complete success", confidence: 0.9 },
+      inputTokens: 1,
+      outputTokens: 1,
+      truncated: false,
+    };
+
+    await writeFile(
+      join(dir, "run1", "j1.json"),
+      resultJson({
+        version: 2,
+        judge: {
+          pass: true,
+          issues: [],
+          provider: "jev",
+          model: "jev-1",
+          decidedBy: "jev",
+          jev,
+        },
+      }),
+    );
+    await writeFile(
+      join(dir, "run1", "j2.json"),
+      resultJson({
+        version: 2,
+        turns: turns("bad"),
+        judge: {
+          pass: true,
+          issues: [],
+          decidedBy: "llm",
+          jev: { ...jev, verdict: "escalate" },
+          llm: { pass: true, issues: [] },
+        },
+      }),
+    );
+
+    const summary = await runRejudge(base(), deps(fakeJudge()));
+    const j2 = await readSidecar(
+      dir,
+      join("run1", "j2.json"),
+      "codex-code_luna",
+      "Prompt A",
+    );
+
+    expect(summary.judged).toBe(4);
+    expect(j2?.pass).toBe(false);
+  });
+
   it("never changes the saved result", async () => {
     const before = await readFile(join(dir, "run1", "a1.json"), "utf8");
 

@@ -101,6 +101,8 @@ scripts/eval [options]
 | `--tools <list>`       | Tool subset, comma-separated (default: all)        |
 | `--live-api`           | Enable the Direct Live API tool (`ppal-live-api`)  |
 | `-j, --judge <model>`  | Judge model (default: `gemini-3.8-flash`)          |
+| `--jev`                | Jev judges first; `-j` decides what Jev escalates  |
+| `--jev-via <route>`    | Jev route: typesafe, openrouter, vercel            |
 | `-s, --skip-setup`     | Skip Live Set setup (reuse existing connection)    |
 | `--skip-judge`         | Skip the LLM-as-judge step (checks only)           |
 | `--skip-reflection`    | Skip the self-reflection turn after a failure      |
@@ -450,6 +452,17 @@ run outranks a recovered one without either being marked a failure.
 The judge defaults to Gemini 3 Flash. Override with `-j`, or skip it entirely
 with `--skip-judge`.
 
+With `--jev`, Jev (TypeSafe AI) judges every `llm_judge` assertion first. A
+clear pass or fail stands. When Jev is unsure, or its call fails, the `-j` LLM
+judge decides as usual. `--skip-judge` wins over `--jev`. The route is the first
+one with a key set (`TYPESAFE_KEY`, `OPENROUTER_KEY`, `VERCEL_AI_GATEWAY_KEY`),
+or `--jev-via`; a run with no key stops at startup. Each saved `judge` records
+`decidedBy` (`jev` or `llm`), Jev's per-question probabilities, outcome level
+and verdict (`pass`, `fail`, `escalate`, or `error` with the reason), and the
+LLM verdict when it ran. Such results are `version: 2`. The summary counts calls
+Jev decided versus escalated, and its token cost. The thresholds are in
+`evals/jev/jev-judge.ts`.
+
 ### Re-judging saved results
 
 A run stores one judge's verdict, or none under `--skip-judge`. To judge saved
@@ -472,6 +485,11 @@ Other flags: `--scenario=id`, `--limit=N`, `--concurrency=N`,
 `--include-failed-checks`, `--fails-from=<judge-slug>` (count another judge's
 fails as fails for `--sample`), `--results-dir=D`. The header of
 `evals/jev/sidecar-judges/jev-rejudge.ts` lists them all.
+
+`npm run probe:jev` compares Jev with the stored verdict. Results Jev decided in
+a `--jev` run have no LLM verdict, so it leaves them out (and says how many);
+the ones Jev escalated are the hard cases. `probe:rejudge` judges any saved
+result.
 
 `npm run probe:jev -- <run> --reference=<judge-slug>` (repeatable) then compares
 Jev with those sidecar judges instead of the stored verdict. With several, their

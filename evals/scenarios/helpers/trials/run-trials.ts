@@ -9,6 +9,7 @@
  */
 
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
+import { type JevSettings } from "../judge/jev-first-judge.ts";
 import { type RunEnv } from "../../run-env/run-env.ts";
 import { runScenario } from "../../run-scenario.ts";
 import { type EvalScenario } from "../../types.ts";
@@ -40,6 +41,8 @@ export interface TrialRunOptions {
 export interface RunContext {
   runId: string;
   judgeOverride: ModelSpec;
+  /** Set by `--jev`: Jev judges first, the LLM judge handles escalations */
+  jev?: JevSettings;
   repeatCount: number;
   options: TrialRunOptions;
 }
@@ -63,7 +66,7 @@ export async function runTrials(
   ctx: RunContext,
   liveSetAlreadyOpened: boolean,
 ): Promise<JsonEvalResult[]> {
-  const { runId, judgeOverride, repeatCount, options } = ctx;
+  const { runId, judgeOverride, jev, repeatCount, options } = ctx;
   const modelKey = `${spec.provider}/${spec.model}`;
   const results: JsonEvalResult[] = [];
   const skipOpens = planTrialLiveSetOpens(
@@ -86,6 +89,7 @@ export async function runTrials(
       envLabel: label,
       usage: options.usage,
       skipJudge: options.skipJudge,
+      jev,
       skipReflection: options.skipReflection,
       seedConnect: options.seedConnect,
     });

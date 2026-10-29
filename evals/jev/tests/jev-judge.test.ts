@@ -8,6 +8,7 @@ import {
   buildOutcomeQuestion,
   buildQuestions,
   decideVerdict,
+  escalationReason,
   FAIL_THRESHOLD,
   jevJudge,
   outcomeLabel,
@@ -31,6 +32,24 @@ describe("decideVerdict", () => {
     expect(decideVerdict(0.3)).toBe("escalate");
     expect(decideVerdict(0.5)).toBe("escalate");
     expect(decideVerdict(0.84)).toBe("escalate");
+  });
+});
+
+describe("escalationReason", () => {
+  it("names the lowest question and the thresholds", () => {
+    expect(
+      escalationReason(
+        [
+          { id: "req1", probability: 0.9 },
+          { id: "whole", probability: 0.5 },
+        ],
+        0.5,
+      ),
+    ).toBe("lowest answer 0.50 (whole) is between 0.3 and 0.85");
+  });
+
+  it("copes with no matching question", () => {
+    expect(escalationReason([], 0.4)).toContain("(?)");
   });
 });
 

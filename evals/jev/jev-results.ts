@@ -37,6 +37,8 @@ export interface SkipCounts {
   unreadable: number;
   /** Recorded before the scenario's judge criteria last changed */
   staleCriteria: number;
+  /** Jev gave the stored verdict (a `--jev` run), so there is no LLM verdict */
+  jevDecided: number;
 }
 
 export interface LoadedResults {
@@ -55,6 +57,9 @@ export interface LoadOptions {
   includeStale?: boolean;
   /** Also load results with no stored judge verdict (default: skip them) */
   includeUnjudged?: boolean;
+  /** Leave out results whose stored verdict came from Jev, for comparing Jev
+   *  with the stored LLM verdict */
+  llmVerdictOnly?: boolean;
   /** When a prompt last changed (ISO date); default reads git history */
   criteriaDate?: (prompt: string) => string | undefined;
 }
@@ -80,6 +85,7 @@ export async function loadJudgedResults(
     noLlmJudge: 0,
     unreadable: 0,
     staleCriteria: 0,
+    jevDecided: 0,
   };
   const dateOf = options.criteriaDate ?? lastCriteriaChange;
   const changedAt = new Map<string, number | undefined>();
@@ -93,6 +99,7 @@ export async function loadJudgedResults(
         byId,
         options.scenarioIds,
         options.includeUnjudged,
+        options.llmVerdictOnly,
       );
 
       if (typeof outcome === "string") {
@@ -153,6 +160,7 @@ function isStale(
  * @param scenarios - Known scenarios by id
  * @param scenarioIds - Scenario filter, if any
  * @param includeUnjudged - Accept results with no stored judge verdict
+ * @param llmVerdictOnly - Reject results whose stored verdict came from Jev
  * @returns The result with its criteria, "ignored" (out of scope), or the skip reason
  */
 function classify(
@@ -160,6 +168,7 @@ function classify(
   scenarios: Map<string, EvalScenario>,
   scenarioIds: string[] | undefined,
   includeUnjudged = false,
+  llmVerdictOnly = false,
 ): "ignored" | keyof SkipCounts | { result: JsonEvalResult; criteria: string } {
   if (result == null) {
     return "unreadable";
@@ -176,6 +185,10 @@ function classify(
 
   if (result.result !== "pass" && result.result !== "fail") {
     return "notScored";
+  }
+
+  if (llmVerdictOnly && result.judge?.decidedBy === "jev") {
+    return "jevDecided";
   }
 
   const scenario = scenarios.get(result.scenarioId);

@@ -21,6 +21,8 @@ import {
   parseModelArgOrExit,
 } from "#evals/shared/parse-model-arg.ts";
 import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
+import { type JevSettings } from "./helpers/judge/jev-first-judge.ts";
+import { resolveJevSettings } from "./helpers/judge/jev-settings.ts";
 import { generateRunId } from "./helpers/json-results/run-id.ts";
 import { shouldSkipScenario } from "./helpers/json-results/skip-scenario.ts";
 import { type JsonEvalResult } from "./helpers/json-results/types.ts";
@@ -64,6 +66,10 @@ interface CliOptions {
   /** Enable the opt-in Direct Live API tool on top of the toolset. */
   liveApi?: boolean;
   judge?: string;
+  /** Judge with Jev first; the LLM judge handles what Jev won't decide. */
+  jev?: boolean;
+  /** Jev route: typesafe, openrouter or vercel. */
+  jevVia?: string;
   repeat?: string;
   list?: boolean;
   listTags?: boolean;
@@ -158,6 +164,14 @@ program
     `Override judge LLM (default: google/${GEMINI_CONFIG.defaultModel})`,
   )
   .option(
+    "--jev",
+    "Judge with Jev first; the -j LLM judge decides what Jev escalates",
+  )
+  .option(
+    "--jev-via <route>",
+    "Jev route: typesafe, openrouter or vercel (default: first with a key set)",
+  )
+  .option(
     "-r, --repeat <N>",
     "Run each scenario N times to detect flaky results",
   )
@@ -248,6 +262,16 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     options.judge ?? GEMINI_CONFIG.defaultModel,
   );
 
+  let jev: JevSettings | undefined;
+
+  try {
+    jev = resolveJevSettings(options);
+  } catch (error) {
+    program.error(errorMessage(error));
+
+    return;
+  }
+
   let runEnv: RunEnv;
 
   try {
@@ -287,10 +311,22 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       console.log(styleText("gray", `Environment: ${label}`));
     }
 
+    if (jev != null) {
+      console.log(
+        styleText(
+          "gray",
+          `Judge: Jev first (via ${jev.route}); LLM judge for escalations`,
+        ),
+      );
+    } else if (options.jev && options.skipJudge) {
+      console.log(styleText("gray", "--skip-judge: Jev is not used"));
+    }
+
     const runId = generateRunId();
     const runCtx: RunContext = {
       runId,
       judgeOverride,
+      jev,
       repeatCount,
       options,
     };

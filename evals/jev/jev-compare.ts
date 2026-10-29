@@ -33,11 +33,7 @@ import { writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { RESULTS_DIR } from "#evals/scenarios/helpers/json-results/types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import {
-  JEV_ROUTE_NAMES,
-  resolveJevRoute,
-  type JevRoute,
-} from "./jev-client.ts";
+import { parseJevRoute, resolveJevRoute, type JevRoute } from "./jev-client.ts";
 import { jevJudge } from "./jev-judge.ts";
 import { resolveReference, type Vote } from "./sidecar-judges/jev-reference.ts";
 import { referenceLines } from "./sidecar-judges/jev-reference-report.ts";
@@ -98,6 +94,7 @@ export async function runJevCompare(
     scenarioIds: args.scenarioIds.length > 0 ? args.scenarioIds : undefined,
     includeStale: args.includeStale,
     includeUnjudged: args.references.length > 0,
+    llmVerdictOnly: args.references.length === 0,
     resultsDir: args.resultsDir,
   });
   const candidates = await withVotes(items, args);
@@ -262,20 +259,12 @@ export function parseArgs(argv: string[]): CliArgs {
     return Number.isFinite(n) && n > 0 ? Math.floor(n) : undefined;
   };
 
-  const via = flag("via").at(-1);
-
-  if (via != null && !JEV_ROUTE_NAMES.includes(via as JevRoute)) {
-    throw new Error(
-      `Unknown --via=${via}; use one of ${JEV_ROUTE_NAMES.join(", ")}`,
-    );
-  }
-
   return {
     runIds: runIds.length > 0 ? runIds : undefined,
     scenarioIds: flag("scenario"),
     limit: num("limit"),
     concurrency: num("concurrency") ?? DEFAULT_CONCURRENCY,
-    via: via as JevRoute | undefined,
+    via: parseJevRoute(flag("via").at(-1)),
     includeStale: argv.includes("--include-stale"),
     references: flag("reference").map(judgeSlug),
     resultsDir: flag("results-dir").at(-1) ?? RESULTS_DIR,
