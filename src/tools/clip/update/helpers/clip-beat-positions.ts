@@ -109,8 +109,8 @@ export function calculateBeatPositions(
   const { startBeats, endBeats, firstStartBeats } = resolveRegion(request);
 
   // Determine start_marker value (must be < end_marker content boundary).
-  // Bound it by the end this update is writing rather than the stale one — an
-  // expanding write moves the end first (see endMovesFirst).
+  // Bound it by the end this update is writing rather than the stale one — a
+  // growing end is written before the starts (see endMovesFirst).
   const startMarkerBeats = determineStartMarker(
     request.clip.id,
     firstStartBeats,

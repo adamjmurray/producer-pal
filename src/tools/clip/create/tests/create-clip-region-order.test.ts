@@ -35,21 +35,21 @@ function markerWrites(set: Mock): unknown[][] {
   return set.mock.calls.filter(([prop]) => MARKERS.has(prop as string));
 }
 
-// Live rejects a loop_start past loop_end and drops a start_marker past
-// end_marker, and a new clip's markers run from 0 to the length it was created
-// with. These pin the order that keeps every write.
+// A looping clip checks each write against all four values, and a new clip's
+// markers run from 0 to the length it was created with. These pin the order
+// that keeps every write: growing ends, then starts, then shrinking ends.
 describe("createClip - region write order", () => {
-  it("writes the starts first when they fall inside the new clip", async () => {
+  it("moves the ends first when they grow, even with the starts inside the clip", async () => {
     const { track, clip } = setupArrangementClipMocks();
 
     await createClip({ path: "t0[3|1]", start: "1|2", length: "1bar" });
 
     expect(track.call).toHaveBeenCalledWith("create_midi_clip", 8, 4);
     expect(markerWrites(clip.set)).toStrictEqual([
-      ["start_marker", 1],
-      ["loop_start", 1],
       ["loop_end", 5],
       ["end_marker", 5],
+      ["start_marker", 1],
+      ["loop_start", 1],
     ]);
   });
 
