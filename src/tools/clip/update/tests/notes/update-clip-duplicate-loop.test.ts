@@ -54,14 +54,21 @@ function mockNoteCount(
  * @returns The JSON string Live's API hands back
  */
 function notesJson(noteCount: number): string {
-  return JSON.stringify({
-    notes: Array.from({ length: noteCount }, (_, i) => ({
-      pitch: 60,
-      start_time: i,
-      duration: 1,
-      velocity: 100,
-    })),
-  });
+  return JSON.stringify({ notes: plainNotes(noteCount) });
+}
+
+/**
+ * `noteCount` notes, one per beat.
+ * @param noteCount - Number of notes
+ * @returns The notes
+ */
+function plainNotes(noteCount: number): Record<string, number>[] {
+  return Array.from({ length: noteCount }, (_, i) => ({
+    pitch: 60,
+    start_time: i,
+    duration: 1,
+    velocity: 100,
+  }));
 }
 
 /**
@@ -87,17 +94,35 @@ function mockNoteCountAroundDuplication(
   before: number,
   after: number,
 ): void {
+  mockNotesAroundDuplication(clip, plainNotes(before), plainNotes(after));
+}
+
+/**
+ * Answer get_notes_extended with one note list before duplicate_loop runs and
+ * another after it.
+ * @param clip - Registered mock clip
+ * @param before - Notes before duplicate_loop
+ * @param after - Notes afterwards
+ * @param onDuplicate - Runs when duplicate_loop is called
+ */
+function mockNotesAroundDuplication(
+  clip: UpdateClipMocks[keyof UpdateClipMocks],
+  before: Record<string, number>[],
+  after: Record<string, number>[],
+  onDuplicate?: () => void,
+): void {
   let duplicated = false;
 
   clip.call.mockImplementation((method: string) => {
     if (method === "duplicate_loop") {
       duplicated = true;
+      onDuplicate?.();
 
       return {};
     }
 
     return method === "get_notes_extended"
-      ? notesJson(duplicated ? after : before)
+      ? JSON.stringify({ notes: duplicated ? after : before })
       : {};
   });
 }
@@ -458,31 +483,14 @@ describe("updateClip - duplicateLoop", () => {
   it("says how many muted notes duplicate_loop copied", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    let duplicated = false;
+    // One muted note, copied into the new half
+    const visible = { pitch: 60, start_time: 0, duration: 1, velocity: 100 };
 
-    mocks.clip123.call.mockImplementation((method: string) => {
-      if (method === "duplicate_loop") {
-        duplicated = true;
-
-        return {};
-      }
-
-      // One muted note, copied into the new half
-      return method === "get_notes_extended"
-        ? JSON.stringify({
-            notes: [
-              { pitch: 60, start_time: 0, duration: 1, velocity: 100, mute: 0 },
-              ...Array.from({ length: duplicated ? 2 : 1 }, (_, i) => ({
-                pitch: 62,
-                start_time: i * 4,
-                duration: 1,
-                velocity: 100,
-                mute: 1,
-              })),
-            ],
-          })
-        : {};
-    });
+    mockNotesAroundDuplication(
+      mocks.clip123,
+      [visible, mutedNote(0)],
+      [visible, mutedNote(0), mutedNote(4)],
+    );
 
     const result = await updateClip({ id: "123", duplicateLoop: true });
 
@@ -503,27 +511,19 @@ describe("updateClip - duplicateLoop", () => {
       length: 4,
     });
 
-    let duplicated = false;
-
-    mocks.clip123.call.mockImplementation((method: string) => {
-      if (method === "duplicate_loop") {
-        duplicated = true;
+    mockNotesAroundDuplication(
+      mocks.clip123,
+      [mutedNote(0)],
+      [mutedNote(0), mutedNote(4)],
+      () => {
         setupMidiClipMock(mocks.clip123, {
           looping: 1,
           loop_end: 8,
           end_marker: 8,
           length: 8,
         });
-
-        return {};
-      }
-
-      return method === "get_notes_extended"
-        ? JSON.stringify({
-            notes: duplicated ? [mutedNote(0), mutedNote(4)] : [mutedNote(0)],
-          })
-        : {};
-    });
+      },
+    );
 
     const result = await updateClip({ id: "123", duplicateLoop: true });
 
@@ -537,24 +537,12 @@ describe("updateClip - duplicateLoop", () => {
   it("counts copied muted notes only inside the doubled clip's window", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    let duplicated = false;
-
-    mocks.clip123.call.mockImplementation((method: string) => {
-      if (method === "duplicate_loop") {
-        duplicated = true;
-
-        return {};
-      }
-
-      // A muted note past the doubled clip's window isn't a copy.
-      return method === "get_notes_extended"
-        ? JSON.stringify({
-            notes: duplicated
-              ? [mutedNote(0), mutedNote(4), mutedNote(1000)]
-              : [mutedNote(0)],
-          })
-        : {};
-    });
+    // A muted note past the doubled clip's window isn't a copy.
+    mockNotesAroundDuplication(
+      mocks.clip123,
+      [mutedNote(0)],
+      [mutedNote(0), mutedNote(4), mutedNote(1000)],
+    );
 
     const result = await updateClip({ id: "123", duplicateLoop: true });
 
