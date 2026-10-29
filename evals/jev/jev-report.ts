@@ -16,6 +16,7 @@ import {
 } from "./jev-agreement.ts";
 import { type JevRoute } from "./jev-client.ts";
 import { type JevJudgeResult } from "./jev-judge.ts";
+import { type ReferenceVerdict } from "./sidecar-judges/jev-reference.ts";
 import { type SkipCounts } from "./jev-results.ts";
 
 /** Jev input price, USD per million tokens. */
@@ -38,6 +39,10 @@ export interface CompareEntry {
   };
   /** The deterministic checks passed, so the judge decides the outcome */
   checksPass: boolean;
+  /** Set when the reference is the sidecar LLM judges, not the stored judge.
+   *  `judge.pass` is then their majority; a tie has no majority and is left
+   *  out of the stats. */
+  reference?: ReferenceVerdict;
   jev?: JevJudgeResult;
   /** Why the Jev call failed */
   error?: string;
@@ -57,14 +62,19 @@ export function formatReport(
   skipped: SkipCounts,
   route?: JevRoute,
 ): string[] {
-  const judged = entries.filter((e) => e.jev != null);
   const errors = entries.filter((e) => e.jev == null);
+  const answered = entries.filter((e) => e.jev != null);
+  const judged = answered.filter(hasReference);
+  const ties = answered.length - judged.length;
+  const sidecars = entries.some((e) => e.reference != null);
+  const tieNote =
+    ties > 0 ? "; " + ties + " tied (no majority, not counted)" : "";
 
   return [
-    "Jev vs stored judge",
-    `Stored judge: ${judgeCounts(judged)}`,
+    sidecars ? "Jev vs LLM judges" : "Jev vs stored judge",
+    `${sidecars ? "Reference" : "Stored judge"}: ${judgeCounts(judged)}`,
     `Jev: ${route ?? "unknown route"}, ${jevModelCounts(judged)}`,
-    `Compared ${judged.length} result(s); ${errors.length} Jev error(s).`,
+    `Compared ${judged.length} result(s); ${errors.length} Jev error(s)${tieNote}.`,
     `Left out: ${skipped.notScored} skipped/error, ${skipped.noScenario} unknown scenario, ${skipped.noLlmJudge} scenario without llm_judge, ${skipped.unreadable} unreadable, ${skipped.staleCriteria} recorded before the criteria changed.`,
     "",
     ...statsLines(
@@ -92,7 +102,7 @@ export function formatReport(
  * @param subset - Entries with a Jev answer
  * @returns Report lines
  */
-function statsLines(title: string, subset: CompareEntry[]): string[] {
+export function statsLines(title: string, subset: CompareEntry[]): string[] {
   const s: VerdictStats = summarizeAgreement(subset.map(toPair));
   const o = summarizeOutcome(
     subset.flatMap((e) =>
@@ -108,6 +118,17 @@ function statsLines(title: string, subset: CompareEntry[]): string[] {
     `  Wrong pass ${s.wrongPass}, wrong fail ${s.wrongFail}; agreement on non-escalated ${pct(s.agreePct)}`,
     outcomeLine(o),
   ];
+}
+
+/**
+ * Does the entry have a verdict to compare Jev against? Only a tie among the
+ * LLM judges has none.
+ *
+ * @param entry - A compared result
+ * @returns False for a tie
+ */
+function hasReference(entry: CompareEntry): boolean {
+  return entry.reference == null || entry.reference.majority != null;
 }
 
 /**

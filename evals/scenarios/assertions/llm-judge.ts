@@ -37,6 +37,9 @@ If everything looks good and all checks passed, respond with:
 
 Do not include any other text before or after the JSON.`;
 
+/** Starts the message of a result whose judge call failed (no real verdict). */
+export const LLM_JUDGE_ERROR_PREFIX = "LLM judge error: ";
+
 interface JudgeOverride {
   provider?: EvalProvider;
   model?: string;
@@ -124,7 +127,7 @@ export async function assertWithLlmJudge(
   } catch (error) {
     const msg = errorMessage(error);
 
-    return noScoreResult(assertion, `LLM judge error: ${msg}`, {
+    return noScoreResult(assertion, `${LLM_JUDGE_ERROR_PREFIX}${msg}`, {
       pass: false,
       issues: [msg],
       provider,

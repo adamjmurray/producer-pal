@@ -6,8 +6,8 @@
 
 /**
  * Offline probe: re-judge saved eval results with Jev and measure how often it
- * agrees with the stored judge verdict stored in each result. No Ableton
- * needed.
+ * agrees with the judge verdict stored in each result, or with sidecar verdicts
+ * from `jev-rejudge.ts`. No Ableton needed.
  *
  * Run: node --env-file=.env evals/jev/jev-compare.ts [run-ids...] [flags]
  *   run-ids: run directories under evals/results (default: all)
@@ -18,8 +18,15 @@
  *                            with its key set, in that order)
  *            --include-stale also use results recorded before the scenario's
  *                            judge criteria last changed
+ *            --reference=slug use this sidecar judge (a folder under a run's
+ *                            judges/, or provider/model) as the reference
+ *                            instead of the stored verdict (repeatable). With
+ *                            several, their majority is the reference; ties
+ *                            are left out and listed as splits. Also reports
+ *                            pairwise agreement and each judge's wrong calls.
+ *            --results-dir=D results directory (default evals/results)
  *
- * The full per-result report goes to evals/results/jev-compare-<time>.json.
+ * The full per-result report goes to <results-dir>/jev-compare-<time>.json.
  */
 
 import { writeFile } from "node:fs/promises";
@@ -32,8 +39,16 @@ import {
   type JevRoute,
 } from "./jev-client.ts";
 import { jevJudge } from "./jev-judge.ts";
+import { resolveReference, type Vote } from "./sidecar-judges/jev-reference.ts";
+import { referenceLines } from "./sidecar-judges/jev-reference-report.ts";
 import { formatReport, type CompareEntry } from "./jev-report.ts";
-import { loadJudgedResults, type JudgedResult } from "./jev-results.ts";
+import {
+  loadJudgedResults,
+  type JudgedResult,
+  type LoadOptions,
+} from "./jev-results.ts";
+import { judgeSlug, readSidecar } from "./sidecar-judges/jev-sidecar.ts";
+import { mapConcurrent } from "./map-concurrent.ts";
 
 const DEFAULT_CONCURRENCY = 4;
 
@@ -44,108 +59,185 @@ interface CliArgs {
   concurrency: number;
   via?: JevRoute;
   includeStale: boolean;
+  /** Sidecar judge slugs to use as the reference; empty = the stored verdict */
+  references: string[];
+  resultsDir: string;
+}
+
+/** A loaded result and the sidecar votes on it (none in stored-judge mode). */
+interface Candidate {
+  item: JudgedResult;
+  votes: Vote[];
+}
+
+/** Test seams: the Jev call and route, and how scenarios and criteria load. */
+export interface CompareDeps {
+  jev?: typeof jevJudge;
+  route?: JevRoute;
+  load?: Pick<LoadOptions, "scenarios" | "criteriaDate">;
+  log?: (text: string) => void;
 }
 
 /**
  * Run the comparison and print the report.
  *
  * @param argv - Command-line arguments (without node and script path)
+ * @param deps - Test seams
  * @returns Promise resolving once the report is printed and saved
  */
-export async function runJevCompare(argv: string[]): Promise<void> {
+export async function runJevCompare(
+  argv: string[],
+  deps: CompareDeps = {},
+): Promise<void> {
   const args = parseArgs(argv);
-  const { route } = resolveJevRoute(args.via);
+  const route = deps.route ?? resolveJevRoute(args.via).route;
+  const log = deps.log ?? ((text: string) => console.log(text));
   const { items, skipped } = await loadJudgedResults({
+    ...deps.load,
     runIds: args.runIds,
     scenarioIds: args.scenarioIds.length > 0 ? args.scenarioIds : undefined,
     includeStale: args.includeStale,
+    includeUnjudged: args.references.length > 0,
+    resultsDir: args.resultsDir,
   });
-  const selected = args.limit == null ? items : items.slice(0, args.limit);
+  const candidates = await withVotes(items, args);
+  const selected =
+    args.limit == null ? candidates : candidates.slice(0, args.limit);
 
-  console.log(
-    `Judging ${selected.length} of ${items.length} saved result(s) with Jev via ${route}...`,
+  log(
+    `Judging ${selected.length} of ${candidates.length} saved result(s) with Jev via ${route}...`,
   );
 
-  const entries = await mapConcurrent(selected, args.concurrency, (item) =>
-    compareOne(item, route),
+  const entries = await mapConcurrent(selected, args.concurrency, (c) =>
+    compareOne(c, route, deps.jev ?? jevJudge),
   );
-  const lines = formatReport(entries, skipped, route);
+  const lines = [
+    ...formatReport(entries, skipped, route),
+    ...(args.references.length > 0
+      ? ["", ...referenceLines(entries, args.references)]
+      : []),
+  ];
 
-  console.log(`\n${lines.join("\n")}`);
+  log(`\n${lines.join("\n")}`);
 
   const stamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
-  const path = join(RESULTS_DIR, `jev-compare-${stamp}.json`);
+  const path = join(args.resultsDir, `jev-compare-${stamp}.json`);
 
   await writeFile(path, JSON.stringify({ skipped, entries }, null, 2) + "\n");
-  console.log(`\nFull report: ${path}`);
+  log(`\nFull report: ${path}`);
+}
+
+/**
+ * Attach the sidecar votes to each result. With references, a result with no
+ * vote from any of them is dropped.
+ *
+ * @param items - Loaded results
+ * @param args - Parsed arguments
+ * @returns The results to compare
+ */
+async function withVotes(
+  items: JudgedResult[],
+  args: CliArgs,
+): Promise<Candidate[]> {
+  if (args.references.length === 0) {
+    return items.map((item) => ({ item, votes: [] }));
+  }
+
+  const out: Candidate[] = [];
+
+  for (const item of items) {
+    const votes: Vote[] = [];
+
+    for (const slug of args.references) {
+      const v = await readSidecar(
+        args.resultsDir,
+        item.file,
+        slug,
+        item.criteria,
+      );
+
+      if (v != null) {
+        votes.push({ slug, pass: v.pass, issues: v.issues });
+      }
+    }
+
+    if (votes.length > 0) {
+      out.push({ item, votes });
+    }
+  }
+
+  return out;
 }
 
 /**
  * Re-judge one saved result. A Jev failure is recorded, not thrown.
  *
- * @param item - The saved result and its criteria
+ * @param candidate - The saved result, its criteria and any sidecar votes
  * @param route - The Jev route to call
+ * @param jev - The Jev judge
  * @returns The comparison entry
  */
 async function compareOne(
-  item: JudgedResult,
+  candidate: Candidate,
   route: JevRoute,
+  jev: typeof jevJudge,
 ): Promise<CompareEntry> {
-  const { result, file, criteria } = item;
-  const judge = {
-    pass: result.judge?.pass ?? false,
-    issues: result.judge?.issues ?? [],
-    advisory: result.judge?.advisory,
-    provider: result.judge?.provider,
-    model: result.judge?.model,
-  };
+  const { result, file, criteria } = candidate.item;
+  const reference =
+    candidate.votes.length > 0 ? resolveReference(candidate.votes) : undefined;
   const base = {
     file,
     scenarioId: result.scenarioId,
-    judge,
+    judge: reference == null ? storedJudge(result) : voteJudge(reference.votes),
+    reference,
     checksPass: result.checks.pass,
   };
 
   try {
-    const jev = await jevJudge(
+    const answer = await jev(
       { turns: result.turns, checks: result.checks.results },
       criteria,
       { route },
     );
 
-    return { ...base, jev };
+    return { ...base, jev: answer };
   } catch (error) {
     return { ...base, error: errorMessage(error) };
   }
 }
 
 /**
- * Map items with at most `limit` calls in flight, keeping input order.
+ * The verdict stored in the saved result.
  *
- * @param items - Inputs
- * @param limit - Max concurrent calls
- * @param fn - Async mapper
- * @returns Outputs in input order
+ * @param result - A saved result
+ * @returns The stored verdict (a fail when there is none)
  */
-async function mapConcurrent<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const out: R[] = Array.from({ length: items.length });
-  let next = 0;
-
-  const worker = async (): Promise<void> => {
-    while (next < items.length) {
-      const i = next++;
-
-      out[i] = await fn(items[i] as T);
-    }
+function storedJudge(result: JudgedResult["result"]): CompareEntry["judge"] {
+  return {
+    pass: result.judge?.pass ?? false,
+    issues: result.judge?.issues ?? [],
+    advisory: result.judge?.advisory,
+    provider: result.judge?.provider,
+    model: result.judge?.model,
   };
+}
 
-  await Promise.all(Array.from({ length: Math.max(1, limit) }, () => worker()));
+/**
+ * The sidecar votes as one verdict: their majority (a fail on a tie, which the
+ * report leaves out), with the failing judges' issues.
+ *
+ * @param votes - The sidecar votes
+ * @returns A verdict in the stored-judge shape
+ */
+function voteJudge(votes: Vote[]): CompareEntry["judge"] {
+  const { majority } = resolveReference(votes);
 
-  return out;
+  return {
+    pass: majority ?? false,
+    issues: votes.filter((v) => !v.pass).flatMap((v) => v.issues),
+    provider:
+      votes.length === 1 ? votes[0]?.slug : `majority of ${votes.length}`,
+  };
 }
 
 /**
@@ -185,6 +277,8 @@ export function parseArgs(argv: string[]): CliArgs {
     concurrency: num("concurrency") ?? DEFAULT_CONCURRENCY,
     via: via as JevRoute | undefined,
     includeStale: argv.includes("--include-stale"),
+    references: flag("reference").map(judgeSlug),
+    resultsDir: flag("results-dir").at(-1) ?? RESULTS_DIR,
   };
 }
 

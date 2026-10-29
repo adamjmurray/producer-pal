@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Loads saved eval results that carry a stored judge verdict, paired with the
- * criteria their scenario gave the judge.
+ * Loads saved eval results (by default only those with a stored judge verdict),
+ * paired with the criteria their scenario gives the judge.
  */
 
 import { readdir, readFile } from "node:fs/promises";
@@ -53,12 +53,15 @@ export interface LoadOptions {
   scenarios?: EvalScenario[];
   /** Keep results recorded before the criteria last changed */
   includeStale?: boolean;
+  /** Also load results with no stored judge verdict (default: skip them) */
+  includeUnjudged?: boolean;
   /** When a prompt last changed (ISO date); default reads git history */
   criteriaDate?: (prompt: string) => string | undefined;
 }
 
 /**
- * Read saved results that have a stored judge verdict.
+ * Read saved results that have a stored judge verdict (or all, with
+ * `includeUnjudged`).
  *
  * @param options - Which runs and scenarios to read
  * @returns Judged results with their criteria, and counts of what was skipped
@@ -85,7 +88,12 @@ export async function loadJudgedResults(
     for (const name of await listJsonFiles(join(dir, runId))) {
       const file = join(runId, name);
       const result = await readResult(join(dir, file));
-      const outcome = classify(result, byId, options.scenarioIds);
+      const outcome = classify(
+        result,
+        byId,
+        options.scenarioIds,
+        options.includeUnjudged,
+      );
 
       if (typeof outcome === "string") {
         if (outcome !== "ignored") {
@@ -144,19 +152,21 @@ function isStale(
  * @param result - The parsed result, or undefined when unreadable
  * @param scenarios - Known scenarios by id
  * @param scenarioIds - Scenario filter, if any
+ * @param includeUnjudged - Accept results with no stored judge verdict
  * @returns The result with its criteria, "ignored" (out of scope), or the skip reason
  */
 function classify(
   result: JsonEvalResult | undefined,
   scenarios: Map<string, EvalScenario>,
   scenarioIds: string[] | undefined,
+  includeUnjudged = false,
 ): "ignored" | keyof SkipCounts | { result: JsonEvalResult; criteria: string } {
   if (result == null) {
     return "unreadable";
   }
 
   // No judge on the result, or filtered out: not part of the comparison
-  if (result.judge == null) {
+  if (result.judge == null && !includeUnjudged) {
     return "ignored";
   }
 

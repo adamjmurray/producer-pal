@@ -65,6 +65,7 @@
     "skills:snapshot": "node scripts/skills/snapshot-skills.ts",
     "probe:skills": "node --env-file=.env scripts/probes/skill-recall-probe.ts",
     "probe:jev": "node --env-file=.env evals/jev/jev-compare.ts",
+    "probe:rejudge": "node --env-file=.env evals/jev/sidecar-judges/jev-rejudge.ts",
     "loc": "node scripts/stats/loc.ts",
     "test:stats": "node scripts/stats/test-stats.ts",
     "e2e:stats": "node scripts/stats/e2e-stats.ts",

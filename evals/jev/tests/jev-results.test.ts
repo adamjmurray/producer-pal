@@ -100,4 +100,27 @@ describe("loadJudgedResults", () => {
     expect(items).toHaveLength(3);
     expect(skipped.staleCriteria).toBe(0);
   });
+
+  it("loads results with no stored judge only when asked", async () => {
+    await writeFile(
+      join(dir, "run1", "unjudged.json"),
+      JSON.stringify({
+        scenarioId: "a",
+        timestamp: "2026-03-01T00:00:00Z",
+        result: "pass",
+        turns: [],
+        checks: { pass: true, results: [] },
+      }),
+    );
+
+    const plain = await loadJudgedResults({ resultsDir: dir, scenarios });
+    const all = await loadJudgedResults({
+      resultsDir: dir,
+      scenarios,
+      includeUnjudged: true,
+    });
+
+    expect(plain.items).toHaveLength(3);
+    expect(all.items).toHaveLength(4);
+  });
 });

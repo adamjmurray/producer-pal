@@ -450,6 +450,35 @@ run outranks a recovered one without either being marked a failure.
 The judge defaults to Gemini 3 Flash. Override with `-j`, or skip it entirely
 with `--skip-judge`.
 
+### Re-judging saved results
+
+A run stores one judge's verdict, or none under `--skip-judge`. To judge saved
+results afterwards with another judge, without Live or re-running the model, use
+`npm run probe:rejudge`. It runs the production judge prompt on the saved turns
+with `-j` (same `provider/model` format as above) and writes each verdict to
+`<results>/<run>/judges/<judge-slug>/<result-file>`. Saved results are never
+changed, and re-runs skip results that judge already did (`--force` redoes
+them). Results from before the scenario's judge criteria last changed are left
+out (`--include-stale` keeps them).
+
+```bash
+# Gating-passed results only: that is where the judge decides
+npm run probe:rejudge -- 2026-10-29T07-51-59Z -j anthropic/claude-haiku-5-5 --dry-run
+# An expensive judge: all fails plus 40 random passes (repeatable with --seed)
+npm run probe:rejudge -- 2026-10-29T07-51-59Z -j claude-code/sonnet --sample=fails+40
+```
+
+Other flags: `--scenario=id`, `--limit=N`, `--concurrency=N`,
+`--include-failed-checks`, `--fails-from=<judge-slug>` (count another judge's
+fails as fails for `--sample`), `--results-dir=D`. The header of
+`evals/jev/sidecar-judges/jev-rejudge.ts` lists them all.
+
+`npm run probe:jev -- <run> --reference=<judge-slug>` (repeatable) then compares
+Jev with those sidecar judges instead of the stored verdict. With several, their
+majority is the reference; it also reports pairwise agreement, each judge's
+wrong passes and fails against the others, and lists the results where the LLM
+judges split, for hand-labeling.
+
 When using `-r N`, the summary aggregates across trials: checks are totaled,
 tool errors are summed, efficiency is averaged, and judge shows a pass rate.
 
