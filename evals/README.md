@@ -360,7 +360,8 @@ port (`PPAL_REMOTE_SCRIPT_PORT` overrides; else 3349 if the script answers
 there, else the port in `~/.producer-pal/remote-script-port.txt`). One scenario,
 `automation-no-remote-script`, sets `config: { remoteScriptEnabled: false }` to
 run as if it weren't installed (debug builds only; a release build ignores the
-field); `resetConfig()` turns it back on after every scenario.
+field, so the run fails at setup instead of using the real script);
+`resetConfig()` turns it back on after every scenario.
 
 A scenario can set `toolOverrides` to change what a tool returns to the model: a
 canned result, or the real one with changes (`callReal()` makes the real call).
