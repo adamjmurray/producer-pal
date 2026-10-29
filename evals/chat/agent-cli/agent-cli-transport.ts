@@ -54,6 +54,10 @@ export interface ParsedAgentTurn {
   /** The CLI's own conversation id, replayed to resume the next turn. */
   sessionId?: string;
   usage?: TokenUsage;
+  /** The model's reasoning, when the CLI streams it. */
+  reasoningText?: string;
+  /** Why the turn stopped, when the CLI reports it. */
+  finishReason?: string;
   /**
    * The turn's generation speed, when the CLI reports how long the model took.
    * A transport that reports nothing leaves this unset, and the session times

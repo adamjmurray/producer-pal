@@ -169,6 +169,10 @@ function buildRestrictedArgs(input: AgentCliArgsInput): string[] {
     'web_search="disabled"',
     "-c",
     'sandbox_mode="read-only"',
+    // Without this the default models emit no reasoning item at all, so the
+    // turn's reasoning text would be lost.
+    "-c",
+    'model_reasoning_summary="detailed"',
     "-c",
     `model_instructions_file=${JSON.stringify(input.instructionsFile)}`,
   ];
@@ -208,6 +212,11 @@ function handleItem(itemValue: unknown, state: AgentStreamState): void {
 
   if (item.type === "agent_message" && typeof item.text === "string") {
     state.textParts.push(item.text);
+  } else if (item.type === "reasoning" && typeof item.text === "string") {
+    // Codex streams the reasoning summary; it reports no finish reason.
+    if (item.text !== "") {
+      state.reasoningParts.push(item.text);
+    }
   } else if (item.type === "mcp_tool_call") {
     collectMcpCall(item, state);
   }

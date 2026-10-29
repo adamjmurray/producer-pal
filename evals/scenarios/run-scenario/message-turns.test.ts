@@ -56,6 +56,24 @@ describe("runMessageTurns", () => {
     expect(sendMessage).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps each turn's reasoning text and finish reason", async () => {
+    const { run, turns } = runWithReplies(
+      {
+        text: "",
+        toolCalls: [],
+        reasoningText: "thinking it over",
+        finishReason: "stop",
+      },
+      { text: "done", toolCalls: [] },
+    );
+
+    await run;
+    expect(turns[0]?.reasoningText).toBe("thinking it over");
+    expect(turns[0]?.finishReason).toBe("stop");
+    expect(turns[1]).not.toHaveProperty("reasoningText");
+    expect(turns[1]).not.toHaveProperty("finishReason");
+  });
+
   it("keeps going after a turn error that is not a refusal", async () => {
     const { run, turns } = runWithReplies(
       { text: "", toolCalls: [], error: "empty response" },

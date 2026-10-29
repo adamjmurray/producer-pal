@@ -34,6 +34,7 @@ import {
   claudeTurnStdout,
   codexTurnStdout,
   FIXTURE_BIN,
+  FIXTURE_REASONING,
   type FixtureInvocation,
   makeFixtureDir,
   readInvocations,
@@ -72,6 +73,8 @@ interface TransportCase {
   resumeToken: string;
   /** Tokens per second the fixture's turn should report. */
   outputTokensPerSecond: number;
+  /** The finish reason the fixture's turn should report, if its CLI has one. */
+  finishReason?: string;
 }
 
 const CASES: TransportCase[] = [
@@ -88,12 +91,13 @@ const CASES: TransportCase[] = [
     resumeToken: "--resume",
     // duration_api_ms beats the wall clock: 4 tokens over the fixture's 2s.
     outputTokensPerSecond: 2,
+    finishReason: "end_turn",
   },
 ];
 
 describe.each(CASES)(
   "createAgentCliSession — $transport.provider",
-  ({ transport, stdout, resumeToken, outputTokensPerSecond }) => {
+  ({ transport, stdout, resumeToken, outputTokensPerSecond, finishReason }) => {
     let fixture: Awaited<ReturnType<typeof makeFixtureDir>>;
     let nowSpy: MockInstance<() => number>;
 
@@ -149,6 +153,21 @@ describe.each(CASES)(
           { inputTokens: 10, outputTokens: 4 },
         ]);
         expect(result.stepTimings).toStrictEqual([{ outputTokensPerSecond }]);
+      } finally {
+        await session.close();
+      }
+    });
+
+    it("returns the turn's reasoning text and finish reason when its CLI has them", async () => {
+      const session = await openSession();
+
+      try {
+        const result = await session.sendMessage("Connect to Ableton Live", 1);
+
+        expect(result.reasoningText).toBe(FIXTURE_REASONING);
+        expect(result.finishReason).toBe(finishReason);
+        // Unset rather than undefined, so the JSON carries no key at all.
+        expect("finishReason" in result).toBe(finishReason != null);
       } finally {
         await session.close();
       }

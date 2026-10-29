@@ -17,6 +17,7 @@ import { type LlmJudgeDetails } from "../../assertions/llm-judge.ts";
 import { isProviderRefusal } from "../trials/provider-refusal.ts";
 import { assertionLabel } from "./assertion-label.ts";
 import { aggregateStepTimings } from "./step-timing-aggregate.ts";
+import { reasoningFields } from "#evals/chat/shared/reasoning-fields.ts";
 import { collectToolErrors } from "./tool-errors.ts";
 import {
   type JsonCheckResult,
@@ -306,6 +307,7 @@ function convertTurn(turn: EvalTurnResult): JsonTurnRecord {
     durationMs: turn.durationMs,
     ...(turn.stepUsages && { usage: sumStepUsages(turn.stepUsages) }),
     ...(timing && { timing }),
+    ...reasoningFields(turn),
     ...(turn.seeded === true && { seeded: true }),
   };
 }
