@@ -3,14 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// Max's Live API can't read a CC Control's name or on/off state. A read reports
-// the device and its params without them, and adds them when the remote script
-// answers.
+// Before Live 12.4.15, Max's Live API can't read a CC Control's name or on/off
+// state. A read reports the device and its params without them, and adds them
+// when the remote script answers. From 12.4.15 the read has them and never asks.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { DEVICE_BASICS_ROUTE } from "#src/tools/shared/remote-script/device-basics/device-basics-contract.ts";
-import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
+import {
+  clearMockRegistry,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { registerCcControl } from "../../../tests/helpers/cc-control-fixtures.ts";
 import { readDevice } from "../../read-device.ts";
 
@@ -31,6 +34,17 @@ function remoteScriptSays(...devices: unknown[]): void {
         ? { available: true, result: { devices } }
         : { available: false },
   }));
+}
+
+/**
+ * Register live_app reporting a specific Live version.
+ * @param version - Version string `get_version_string` should return
+ */
+function registerLiveApp(version: string): void {
+  registerMockObject("live_app", {
+    path: "live_app",
+    methods: { get_version_string: () => version },
+  });
 }
 
 describe("readDevice of a CC Control", () => {
@@ -86,7 +100,34 @@ describe("readDevice of a CC Control", () => {
     });
   });
 
+  describe("on Live 12.4.15 and later", () => {
+    it("makes no remote-script request and leaves the read as it is", async () => {
+      registerLiveApp("12.4.15");
+      remoteScriptSays({ name: "Wheel lane", is_active: false });
+
+      expect(await readDevice({ id: "cc-1" })).toStrictEqual({
+        id: "cc-1",
+        path: "t0/d0",
+        type: "midi-effect: CC Control",
+      });
+      expect(requestNode).not.toHaveBeenCalledWith(
+        DEVICE_BASICS_ROUTE,
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+  });
+
   describe("with the remote script", () => {
+    it("still asks on a Live just before 12.4.15", async () => {
+      registerLiveApp("12.4.14");
+      remoteScriptSays({ name: "Wheel lane", is_active: false });
+
+      expect(await readDevice({ id: "cc-1" })).toStrictEqual(
+        expect.objectContaining({ name: "Wheel lane", deactivated: true }),
+      );
+    });
+
     it("adds a name the user gave it, and that it is off, right after its type", async () => {
       remoteScriptSays({ name: "Wheel lane", is_active: false });
 

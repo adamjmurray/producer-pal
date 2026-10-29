@@ -4,10 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * E2E tests for CC Control, whose members Max's Live API can't list: no name,
- * no on/off state, no parameter list. Its params still answer by index, so
- * Mod Wheel reads, updates and takes a clip envelope. The remote script adds
- * the name and on/off state, and writes the envelope.
+ * E2E tests for CC Control. Before Live 12.4.15, Max's Live API can't list its
+ * members: no name, no on/off state, no parameter list. Its params still answer
+ * by index, so Mod Wheel reads, updates and takes a clip envelope. The remote
+ * script adds the name and on/off state, and writes the envelope. From 12.4.15
+ * a read has the name and on/off state itself.
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track.
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
@@ -30,6 +31,7 @@ import {
 } from "../../mcp-test-helpers.ts";
 import {
   ENVELOPE_WRITE_NEEDS,
+  liveVersionAtLeast,
   skipBeforeLive,
 } from "../../workflow/helpers/server-capability-test-helpers.ts";
 import { createClipInSlot } from "../../clip/helpers/ppal-clip-transforms-test-helpers.ts";
@@ -40,6 +42,9 @@ import {
 import { readParam } from "../helpers/device-param-test-helpers.ts";
 
 const TRACK = `t${String(EMPTY_MIDI_TRACK)}`;
+
+/** Live 12.4.15 made a CC Control's LOM properties readable. */
+const CC_CONTROL_READABLE = "12.4.15";
 
 interface ReadDeviceResult {
   id: string;
@@ -90,7 +95,13 @@ async function setModWheel(path: string, value: string): Promise<void> {
 }
 
 describe("CC Control without the remote script", () => {
-  it("reads as a MIDI effect with its params, and no name or on/off state", async () => {
+  it("reads as a MIDI effect with its params, and no name or on/off state, before Live 12.4.15", async ({
+    skip,
+  }) => {
+    if (await liveVersionAtLeast(ctx.client!, CC_CONTROL_READABLE)) {
+      skip("12.4.15 and later read the name and on/off state natively");
+    }
+
     await setConfig({ remoteScriptEnabled: false });
     const path = await createCcControl();
     const device = await readCcControl(path);
@@ -114,6 +125,38 @@ describe("CC Control without the remote script", () => {
     expect((await readParam(ctx.client!, deviceId, "Mod Wheel")).value).toBe(
       64,
     );
+  });
+});
+
+describe("CC Control on Live 12.4.15 and later", () => {
+  skipBeforeLive(
+    ctx,
+    CC_CONTROL_READABLE,
+    "a CC Control's name and on/off state read natively",
+  );
+
+  it("reads a renamed, switched-off CC Control's name and deactivated without the remote script", async () => {
+    await setConfig({ remoteScriptEnabled: false });
+    const path = await createCcControl();
+    const written = parseToolResult<{ params?: unknown[] }>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: {
+          path,
+          name: "Wheel lane",
+          params: [{ name: "Device On", value: "Off" }],
+        },
+      }),
+    );
+
+    expect(written.params).toHaveLength(1);
+    await sleep(100);
+
+    const device = await readCcControl(path);
+
+    expect(device.type).toBe("midi-effect: CC Control");
+    expect(device.name).toBe("Wheel lane");
+    expect(device.deactivated).toBe(true);
   });
 });
 

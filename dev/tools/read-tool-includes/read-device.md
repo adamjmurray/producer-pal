@@ -21,8 +21,11 @@ because its includes are unique (`params`, `param-values`, `drum-map`,
 
 ### CC Control
 
-Max's Live API lists no members for CC Control, so its name and on/off state
-can't be read. A read recognizes it by its `type` field and reports
+On Live 12.4.15 and later a CC Control reads like any device: `type`, `name`
+(when renamed) and `deactivated` (when off) come from the Live API.
+
+Before 12.4.15, Max's Live API lists no members for CC Control, so its name and
+on/off state can't be read. A read recognizes it by its `type` field and reports
 `type: "midi-effect: CC Control"`. It lists its params by counting and
 addressing each one, so they read, update and take clip envelopes as usual.
 `name` and `deactivated` are left out (an unreadable on/off is not off). With

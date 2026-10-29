@@ -105,11 +105,12 @@ macro can still be mapped.
 ## `POST /device/basics`
 
 A device's `name` and `is_active` (on/off), which Max for Live's LOM can't read
-on a CC Control (it lists no members for it). Takes `device_paths` (up to 200,
-as for `/device/macros`) and answers `{devices: [...]}`, one entry per path in
-order: `{name, is_active}`, or `{error}` when the path names nothing or Live
-can't read it. One bad path doesn't fail the rest. Producer Pal asks only about
-CC Controls.
+on a CC Control before Live 12.4.15 (it lists no members for it). Takes
+`device_paths` (up to 200, as for `/device/macros`) and answers
+`{devices: [...]}`, one entry per path in order: `{name, is_active}`, or
+`{error}` when the path names nothing or Live can't read it. One bad path
+doesn't fail the rest. Producer Pal asks only about CC Controls, and only on
+Live before 12.4.15.
 
 ```sh
 curl -s -X POST localhost:3349/device/basics -d '{"device_paths": ["live_set tracks 0 devices 0"]}'

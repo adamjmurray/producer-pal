@@ -4,8 +4,8 @@ An Ableton Live remote script that listens on **http://127.0.0.1:3349** (or the
 next free port, see [Port](#port)). It does what Max for Live's LiveAPI can't:
 list and load devices, plug-ins and presets, hotswap and copy devices, read and
 write clip automation envelopes, convert audio clips to MIDI, read rack macro
-mappings, read a CC Control's name and on/off state, set Simpler pitch bend
-ranges, and step Live's undo history.
+mappings, read a CC Control's name and on/off state (Live before 12.4.15), set
+Simpler pitch bend ranges, and step Live's undo history.
 
 Producer Pal installs it with the rest of the setup and uses it from
 `ppal-create-device`, `ppal-update-device`, `ppal-duplicate`, `ppal-read-clip`,

@@ -3,14 +3,19 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// A CC Control's name and on/off state. Max's Live API can't read either, so a
-// read leaves them out; only the Producer Pal remote script can say.
+// A CC Control's name and on/off state. Before Live 12.4.15, Max's Live API
+// can't read either, so a read leaves them out and only the Producer Pal remote
+// script can say. From 12.4.15 a read has them and this does nothing.
 
 import { DEVICE_TYPE } from "#src/tools/constants.ts";
 import { lookUpDeviceBasics } from "#src/tools/shared/remote-script/device-basics/device-basics.ts";
+import { liveVersionAtLeast } from "#src/tools/shared/helpers/live-api-values.ts";
 import { isStalled } from "#src/tools/shared/remote-script/device-batch-route.ts";
 import { READ_DETAIL_MAX_WAIT_MS } from "#src/tools/shared/remote-script/remote-script-wait.ts";
 import { findInReadResult } from "./find-in-read-result.ts";
+
+/** Live 12.4.15 fixed the LOM, so a CC Control's name and state read natively. */
+const CC_CONTROL_READABLE_MIN_VERSION = "12.4.15";
 
 /** How a read types a CC Control (Max reports its class name). */
 const CC_CONTROL_TYPE = `${DEVICE_TYPE.MIDI_EFFECT}: CC Control`;
@@ -23,15 +28,16 @@ interface ReadCcControl extends Record<string, unknown> {
 }
 
 /**
- * Give each CC Control a read found its name, when the user renamed it, and
- * `deactivated`, when it is off, in one remote-script call for all of them. A
- * CC Control stays as the read left it (no name, no on/off) when the remote
- * script isn't running, can't answer, or can't read it: this is extra detail,
- * never a reason to fail the read.
+ * Before Live 12.4.15, give each CC Control a read found its name, when the
+ * user renamed it, and `deactivated`, when it is off, in one remote-script call
+ * for all of them. A CC Control stays as the read left it (no name, no on/off)
+ * when the remote script isn't running, can't answer, or can't read it: this
+ * is extra detail, never a reason to fail the read. On 12.4.15 and later the
+ * read already has both, so nothing is asked.
  * @param results - What the read produced: devices, or skips
  * @param deadline - The request deadline from ToolContext, if any
  * @returns Whether the remote script stalled (no time, or no reply), so the
- *   next thing asked of it would stall too
+ *   next thing asked of it would stall too; false when nothing was asked
  */
 export async function addCcControlBasics(
   results: unknown[],
@@ -39,7 +45,10 @@ export async function addCcControlBasics(
 ): Promise<boolean> {
   const controls = findInReadResult(results, isReadCcControl);
 
-  if (controls.length === 0) {
+  if (
+    controls.length === 0 ||
+    liveVersionAtLeast(CC_CONTROL_READABLE_MIN_VERSION)
+  ) {
     return false;
   }
 

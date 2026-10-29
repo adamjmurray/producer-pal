@@ -12,9 +12,11 @@ import { LIVE_API_DEVICE_TYPE_MIDI_EFFECT } from "#src/tools/constants.ts";
 import { buildOrReuse } from "./live-api-build.ts";
 import { NONEXISTENT_ID, parseIdOrPath } from "./live-api-id-or-path.ts";
 
-// Max's LiveAPI lists no members for CC Control, so every device-level read
-// fails on it. What it still answers is its `type` field, `getcount` and each
-// `parameters N` child. These are the properties we know for it.
+// Before Live 12.4.15, Max's LiveAPI lists no members for CC Control, so every
+// device-level read fails on it. What it still answers is its `type` field,
+// `getcount` and each `parameters N` child. These are the properties we know
+// for it. They only apply when a normal read comes back empty, so they do
+// nothing on 12.4.15 and later.
 const CC_CONTROL_TYPE = "CcControlDevice";
 const CC_CONTROL_PROPERTIES: Record<string, unknown> = {
   type: LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
@@ -439,7 +441,7 @@ function pathIndex(path: string, ...patterns: RegExp[]): number | null {
 
 /**
  * List a collection by counting it and addressing each child (`name N`), for
- * CC Control, whose collections `get()` can't list.
+ * CC Control before Live 12.4.15, whose collections `get()` can't list.
  * @param parent - The object that owns the collection
  * @param name - Collection name to query
  * @returns Array of child IDs in "id X" format

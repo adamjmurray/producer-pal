@@ -386,7 +386,8 @@ export function readDevice(
 /**
  * Add the user's name for a device when it differs from the class name, and
  * `deactivated` when the device is off. A name or on/off state Live won't give
- * (CC Control) is left out: an unreadable on/off is not off.
+ * (CC Control before Live 12.4.15) is left out: an unreadable on/off is not
+ * off.
  * @param device - LiveAPI device object
  * @param deviceInfo - Device info object to mutate
  * @param className - The device's class display name

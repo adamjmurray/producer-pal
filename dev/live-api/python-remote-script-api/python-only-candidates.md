@@ -27,7 +27,7 @@ it with Max's `info`. Spot checks agree with the list (`Clip.is_session_clip`,
 | SpectralResonatorDevice | `frequency_dial_mode_list`, `midi_gate_list`, `mod_mode_list`, `mono_poly_list`, `pitch_mode_list`                                                       | same                                                                                                            |
 | TuningSystem            | `number_of_notes_in_pseudo_octave`                                                                                                                       | just `len(note_tunings)`                                                                                        |
 | Application             | `browser`, `get_build_id`, `get_variant`, `has_option`, `show_message`, `show_on_the_fly_message`, `number_of_push_apps_running`, `unavailable_features` |                                                                                                                 |
-| CcControlDevice         | everything, even `name`                                                                                                                                  | Max's `info` lists no members for CC Control; `name` and `is_active` are used by `/device/basics`               |
+| CcControlDevice         | everything, even `name`                                                                                                                                  | none in Max before 12.4.15; `name` and `is_active` are used by `/device/basics`                                 |
 
 Not in Max's allowlist at all: every module-level function (below), the browser,
 envelopes, `MidiNote` and `WarpMarker` structs, routing structs, and licensing.

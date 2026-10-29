@@ -3,9 +3,9 @@
 # AI assistance: Claude (Anthropic)
 # SPDX-License-Identifier: MIT
 
-"""A device's name and on/off state. Max for Live's LOM can't read either on a
-CC Control (it lists no members for it); Live's Python API can, as
-`Device.name` and `Device.is_active`. Main thread only."""
+"""A device's name and on/off state. Before Live 12.4.15, Max for Live's LOM
+can't read either on a CC Control (it lists no members for it); Live's Python
+API can, as `Device.name` and `Device.is_active`. Main thread only."""
 
 from . import hotswap
 from .params import parse_device_paths

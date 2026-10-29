@@ -4,8 +4,9 @@
 // SPDX-License-Identifier: MIT
 
 // What V8 and Node share about a device's name and on/off state, which Max's
-// Live API can't read on a CC Control but the Producer Pal remote script
-// (remote-script/) can. The result is the remote script's own JSON.
+// Live API can't read on a CC Control before Live 12.4.15 but the Producer Pal
+// remote script (remote-script/) can. The result is the remote script's own
+// JSON.
 
 /** The Node route V8 calls to reach the remote script's `/device/basics`. */
 export const DEVICE_BASICS_ROUTE = "remoteScript.device.basics";
