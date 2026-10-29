@@ -18,6 +18,7 @@ import { isNewUser } from "./new-user.ts";
 import { withNextStep } from "./next-step-inject.ts";
 import { withPortalVersion } from "./portal-version-inject.ts";
 import { withRemoteScriptNotice } from "./remote-script-notice-inject.ts";
+import { withUpToDate } from "./up-to-date-inject.ts";
 
 /** The live device settings the connect-enrichment blocks depend on. */
 export interface ConnectEnrichmentConfig {
@@ -46,6 +47,10 @@ export interface ConnectEnrichmentConfig {
  * withNextStep MUST stay outermost — it reads the same context and memory the
  * blocks before it carry (to decide whether this is a user we know nothing
  * about) and its instruction only works as the final word.
+ *
+ * A `versionCheck: true` call gets only the portal and remote script lines,
+ * plus the new-chat line when both are current.
+ *
  * Settings arrive through a getter because the device can change them between
  * requests; createMcpServer is rebuilt per POST /mcp for the same reason.
  *
@@ -57,15 +62,15 @@ export function enrichConnect(
   inner: CallLiveApiFunction,
   getConfig: () => ConnectEnrichmentConfig,
 ): WrappedCallLiveApi {
-  // The skills and the remote script notice both need the script's ping.
+  // The skills and the remote script blocks share one ping and one status read.
   const connectPing = shareConnectPing(inner);
   const portalVersioned = withRemoteScriptNotice(
     withPortalVersion(connectPing.inner, () => getConfig().portalVersion),
-    connectPing.getPing,
+    connectPing.getStatus,
     () => manageToolOffered(getConfig().smallModelMode, getConfig().tools),
   );
 
-  return withNextStep(
+  const full = withNextStep(
     withMemory(
       withGlobalContext(
         withProjectContext(
@@ -93,4 +98,22 @@ export function enrichConnect(
       tools: getConfig().tools,
     }),
   );
+  const versionCheck = withUpToDate(
+    portalVersioned,
+    connectPing.getStatus,
+    () => getConfig().portalVersion,
+  );
+
+  return (tool, args, overrides) =>
+    tool === "ppal-connect" && isVersionCheck(args)
+      ? versionCheck(tool, args, overrides)
+      : full(tool, args, overrides);
+}
+
+/**
+ * @param args - The ppal-connect args
+ * @returns True when the call asks for the version check only
+ */
+function isVersionCheck(args: object): boolean {
+  return (args as { versionCheck?: unknown }).versionCheck === true;
 }

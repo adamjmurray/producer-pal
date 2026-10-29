@@ -37,6 +37,16 @@ describe("manageInstallResult next steps", () => {
 
     expect(nextSteps).toContain("restart Live, then");
     expect(nextSteps).not.toContain("add-producer-pal");
+    expect(nextSteps).toContain("call ppal-connect with versionCheck: true");
+  });
+
+  it("leaves the connect check out when nothing is running to connect to", () => {
+    const { nextSteps } = manageInstallResult(
+      { ran: true, remoteScript: OK, device: OK },
+      { running: false },
+    );
+
+    expect(nextSteps).not.toContain("versionCheck");
   });
 
   it("retries a failed device with install-producer-pal when running", () => {

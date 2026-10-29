@@ -5,6 +5,7 @@
 
 import { VERSION } from "#src/shared/config.ts";
 import {
+  AFTER_RESTART_CHECK,
   liveRunsOtherCopy,
   remoteScriptAttention,
   versionText,
@@ -15,18 +16,11 @@ import {
   REMOTE_SCRIPT_ADDS,
 } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
-import { type RemoteScriptPing } from "../../rpc/remote-script/remote-script-client.ts";
-import {
-  remoteScriptStatus,
-  type RemoteScriptStatus,
-} from "../../rpc/remote-script/remote-script-status.ts";
+import { type RemoteScriptStatus } from "../../rpc/remote-script/remote-script-status.ts";
 import {
   withConnectAppend,
   type WrappedCallLiveApi,
 } from "./connect-append.ts";
-
-/** Reading the status must not hold connect up. */
-const STATUS_TIMEOUT_MS = 1500;
 
 /**
  * Wrap a callLiveApi so a successful ppal-connect response says where the
@@ -35,21 +29,22 @@ const STATUS_TIMEOUT_MS = 1500;
  * from the device, so it drifts.
  *
  * Done Node-side: the installed copy is a file in the User Library, which V8
- * can't read. A status that fails or runs long adds no line.
+ * can't read. A status that fails or runs long (see shareConnectPing) adds no
+ * line.
  *
  * @param inner - The underlying callLiveApi to wrap
- * @param getPing - Reads the remote script ping (shared with the skills)
+ * @param getStatus - Reads the remote script status (shared per connect)
  * @param manageAvailable - Whether the caller can call ppal-manage; when not,
  *   the line points at the Chat UI instead
  * @returns A callLiveApi that appends the status line to connect results
  */
 export function withRemoteScriptNotice(
   inner: CallLiveApiFunction,
-  getPing: () => Promise<RemoteScriptPing>,
+  getStatus: () => Promise<RemoteScriptStatus>,
   manageAvailable: () => boolean,
 ): WrappedCallLiveApi {
   return withConnectAppend(inner, async () =>
-    remoteScriptLine(await readStatus(getPing), manageAvailable()),
+    remoteScriptLine(await getStatus(), manageAvailable()),
   );
 }
 
@@ -84,8 +79,8 @@ function remoteScriptLine(status: RemoteScriptStatus, manage: boolean): string {
         : `remoteScript: ${versionText(status.installedVersion)} is installed, but this device ships v${VERSION}.`;
 
     return manage
-      ? `${behind} To update it, call ${INSTALL_WITH_TOOL}, then tell the user to restart Live.`
-      : `${behind} Tell the user to update it (Chat UI > Settings > Installation > Update), then restart Live.`;
+      ? `${behind} To update it, call ${INSTALL_WITH_TOOL}, then tell the user to restart Live. ${AFTER_RESTART_CHECK}`
+      : `${behind} Tell the user to update it (Chat UI > Settings > Installation > Update), then restart Live. ${AFTER_RESTART_CHECK}`;
   }
 
   if (!status.running) {
@@ -102,7 +97,7 @@ function remoteScriptLine(status: RemoteScriptStatus, manage: boolean): string {
         ? `a different build of v${String(status.runningVersion)} than the one installed`
         : `v${String(status.runningVersion)}, but v${String(status.installedVersion)} is installed`;
 
-    return `remoteScript: Live is running ${running}. Tell the user to restart Live.`;
+    return `remoteScript: Live is running ${running}. Tell the user to restart Live. ${AFTER_RESTART_CHECK}`;
   }
 
   return runningLine(status);
@@ -116,31 +111,4 @@ function runningLine(status: RemoteScriptStatus): string {
   return status.runningVersion == null
     ? "remoteScript: running"
     : `remoteScript: v${status.runningVersion} running`;
-}
-
-/**
- * Read the status from a ping, giving up after STATUS_TIMEOUT_MS.
- *
- * @param getPing - Reads the remote script ping
- * @returns The status
- * @throws When the status takes too long or can't be read
- */
-async function readStatus(
-  getPing: () => Promise<RemoteScriptPing>,
-): Promise<RemoteScriptStatus> {
-  let timer: NodeJS.Timeout | undefined;
-
-  try {
-    return await Promise.race([
-      getPing().then((ping) => remoteScriptStatus(ping)),
-      new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(
-          () => reject(new Error("remote script status timed out")),
-          STATUS_TIMEOUT_MS,
-        );
-      }),
-    ]);
-  } finally {
-    clearTimeout(timer);
-  }
 }

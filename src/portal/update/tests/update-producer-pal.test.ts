@@ -39,7 +39,7 @@ describe("update-producer-pal", () => {
 
     expect(response.isError).toBeUndefined();
     expect(responseText(response)).toBe(
-      `{device:{from:"${OLD}",to:"${VERSION}"},track:{path:"t3",name:"3-MIDI"},nextSteps:"Call ppal-connect next."}`,
+      `{device:{from:"${OLD}",to:"${VERSION}"},track:{path:"t3",name:"3-MIDI"},nextSteps:"Call ppal-connect with versionCheck: true, or plain ppal-connect if this chat hasn't connected yet."}`,
     );
     expect(deps.installDevice).toHaveBeenCalledWith(
       LIBRARY,
@@ -85,7 +85,7 @@ describe("update-producer-pal", () => {
     const response = await updateCall(fakeDevice(OLD, VERSION), deps);
 
     expect(responseText(response)).toBe(
-      `{device:{from:"${OLD}",to:"${VERSION}"},nextSteps:"Call ppal-connect next."}`,
+      `{device:{from:"${OLD}",to:"${VERSION}"},nextSteps:"Call ppal-connect with versionCheck: true, or plain ppal-connect if this chat hasn't connected yet."}`,
     );
   });
 
@@ -302,7 +302,7 @@ describe("update-producer-pal when the User Library holds another device", () =>
 
     expect(response.isError).toBeUndefined();
     expect(responseText(response)).toBe(
-      `{device:{from:"${OLD}",to:"9.0.0"},track:{path:"t3",name:"3-MIDI"},note:"loaded the device already in the User Library (9.0.0), which is newer than this portal's (${VERSION}). ${UPDATE_PORTAL_ADVICE}",nextSteps:"Call ppal-connect next."}`,
+      `{device:{from:"${OLD}",to:"9.0.0"},track:{path:"t3",name:"3-MIDI"},note:"loaded the device already in the User Library (9.0.0), which is newer than this portal's (${VERSION}). ${UPDATE_PORTAL_ADVICE}",nextSteps:"Call ppal-connect with versionCheck: true, or plain ppal-connect if this chat hasn't connected yet."}`,
     );
     expect(deps.request).toHaveBeenCalledTimes(1);
   });

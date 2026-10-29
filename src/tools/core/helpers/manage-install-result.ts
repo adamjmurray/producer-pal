@@ -6,6 +6,7 @@
 // What an install-producer-pal call tells the caller. No V8 code in here: the
 // portal bundles it.
 
+import { VERSION_CHECK_OR_CONNECT } from "#src/shared/version-check.ts";
 import {
   type InstallPart,
   type InstallReply,
@@ -96,7 +97,7 @@ function nextSteps(
   }
 
   return context.running
-    ? finish
+    ? `${finish} Once they have, call ${VERSION_CHECK_OR_CONNECT}.`
     : `${finish} Then call ${ADD} (ask the user first). ${DRAG_NOW}`;
 }
 

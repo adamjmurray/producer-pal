@@ -11,12 +11,15 @@
 // says what to check.
 
 import { UPDATE_PORTAL_ADVICE, VERSION } from "#src/shared/config.ts";
+import {
+  VERSION_CHECK_OR_CONNECT,
+  isNewerVersion,
+} from "#src/shared/version-check.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
   formatSuccessResponse,
   type McpResponse,
 } from "#src/shared/mcp-responses.ts";
-import { isNewerVersion } from "#src/shared/version-check.ts";
 import { type OfflineDeps } from "../offline/offline-deps.ts";
 import { offlineGuidance } from "../offline/offline-guidance.ts";
 import { offlineError, offlineResult } from "../offline/offline-responses.ts";
@@ -111,7 +114,7 @@ export async function updateProducerPal(
       device: { from, to },
       ...(track == null ? {} : { track }),
       ...(file.note == null ? {} : { note: file.note }),
-      nextSteps: "Call ppal-connect next.",
+      nextSteps: `Call ${VERSION_CHECK_OR_CONNECT}.`,
     });
   } catch (error) {
     return offlineError(errorMessage(error));

@@ -8,18 +8,19 @@ tool that differs from a rule here is a bug in the tool.
 Changing one of these answers is a rule change: ask first, update this spec, and
 apply it to every tool at once.
 
-| Part                                                            | What is in it                                                                    |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| This file                                                       | Lists and pairing, result entries, overwrites                                    |
-| [refusals.md](refusals.md)                                      | What is refused up front, and how                                                |
-| [skips-and-replaced-targets.md](skips-and-replaced-targets.md)  | Skip entries, no-ops, last wins, replaced targets, locators                      |
-| [object-paths/](object-paths/README.md)                         | The path grammar, creating by path, results and errors                           |
-| [clips-playback-and-sends/](clips-playback-and-sends/README.md) | Looping, `duplicateLoop`, envelopes, audio conversion, muted notes, send returns |
-| [up-front-refusals-by-tool.md](up-front-refusals-by-tool.md)    | Where each tool applies the refusal rules                                        |
-| [skip-entries-by-tool/](skip-entries-by-tool/README.md)         | How each write tool applies the entry rules                                      |
-| [ppal-manage.md](ppal-manage.md)                                | How `ppal-manage` answers: install, add Producer Pal, undo, redo, refusals       |
-| [ppal-library.md](ppal-library.md)                              | How `ppal-library` answers when Live's library data may be out of date           |
-| [dev/tools/tool-schemas.md](../../tools/tool-schemas.md)        | How to build the schema and the helpers that enforce these rules                 |
+| Part                                                            | What is in it                                                                      |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| This file                                                       | Lists and pairing, result entries, overwrites                                      |
+| [refusals.md](refusals.md)                                      | What is refused up front, and how                                                  |
+| [skips-and-replaced-targets.md](skips-and-replaced-targets.md)  | Skip entries, no-ops, last wins, replaced targets, locators                        |
+| [object-paths/](object-paths/README.md)                         | The path grammar, creating by path, results and errors                             |
+| [clips-playback-and-sends/](clips-playback-and-sends/README.md) | Looping, `duplicateLoop`, envelopes, audio conversion, muted notes, send returns   |
+| [up-front-refusals-by-tool.md](up-front-refusals-by-tool.md)    | Where each tool applies the refusal rules                                          |
+| [skip-entries-by-tool/](skip-entries-by-tool/README.md)         | How each write tool applies the entry rules                                        |
+| [ppal-connect.md](ppal-connect.md)                              | How `ppal-connect` answers: the full connect, the version check, the new-chat line |
+| [ppal-manage.md](ppal-manage.md)                                | How `ppal-manage` answers: install, add Producer Pal, undo, redo, refusals         |
+| [ppal-library.md](ppal-library.md)                              | How `ppal-library` answers when Live's library data may be out of date             |
+| [dev/tools/tool-schemas.md](../../tools/tool-schemas.md)        | How to build the schema and the helpers that enforce these rules                   |
 
 ## Lists and pairing
 

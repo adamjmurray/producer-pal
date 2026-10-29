@@ -107,6 +107,8 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
     await expect(page.getByTestId("device-installed-path")).toHaveText(
       `Installed the device. (${DEVICE_PATH})`,
     );
+    // The new version isn't running until the device is swapped.
+    await expect(page.getByText(/new chat/i)).toBeHidden();
     await expect(page.getByTestId("device-status")).toHaveText(
       "In your User Library (v1.2.0)",
     );
@@ -279,6 +281,9 @@ test.describe("Settings — installation: device swap (stubbed backend)", () => 
     await expect(page.getByTestId("device-swap-done")).toContainText(
       "Save your Live Set",
       { timeout: 15_000 },
+    );
+    await expect(page.getByTestId("device-swap-new-chat-hint")).toContainText(
+      "Start a new chat",
     );
     expect(posted).toStrictEqual([{ userLibrary: USER_LIBRARY }]);
   });

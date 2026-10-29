@@ -14,6 +14,7 @@ import { connectMcp } from "#evals/chat/mcp.ts";
 import { REST_BASE_URL } from "#evals/shared/config.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { PORTAL_VERSION_HEADER, VERSION } from "#src/shared/config.ts";
+import { UP_TO_DATE_NEW_CHAT } from "#src/shared/version-check.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import { NEW_USER_MARKER } from "#src/skills/fragments/context.ts";
 import {
@@ -342,6 +343,87 @@ describe("ppal-connect", () => {
 
     it("says nothing for a caller that is not a portal", async () => {
       expect(await portalBlock()).toBe("");
+    });
+  });
+
+  describe("version check", () => {
+    // versionCheck: true re-checks versions after an install, update or restart
+    // without re-sending the Skills, contexts, memory index or next step.
+    const SCRIPT_PREFIX = "remoteScript:";
+    const CURRENT_SCRIPT = /^remoteScript: (v\S+ )?running$/;
+
+    /**
+     * Call ppal-connect with versionCheck on a fresh connection, optionally
+     * sending a portal version.
+     * @param portalVersion - Header value, or undefined to send no header
+     * @returns The raw tool result
+     */
+    async function versionCheck(portalVersion?: string): Promise<unknown> {
+      const { client } = await connectMcp(MCP_URL, {
+        headers:
+          portalVersion == null
+            ? undefined
+            : { [PORTAL_VERSION_HEADER]: portalVersion },
+      });
+
+      try {
+        return await client.callTool({
+          name: "ppal-connect",
+          arguments: { versionCheck: true },
+        });
+      } finally {
+        await client.close();
+      }
+    }
+
+    /**
+     * @param result - Raw tool result
+     * @returns The text of every content block
+     */
+    function texts(result: unknown): string[] {
+      const typed = result as { content?: Array<{ text?: string }> };
+
+      return (typed.content ?? []).map((c) => c.text ?? "");
+    }
+
+    it("returns only the versions and the version lines", async () => {
+      await setConfig({
+        smallModelMode: false,
+        projectContext: "e2e version-check project context",
+      });
+
+      const result = await versionCheck(VERSION);
+      const blocks = texts(result);
+      const parsed = parseToolResult<Partial<ConnectResult>>(result);
+
+      expect(parsed.connected).toBe(true);
+      expect(parsed.producerPalVersion).toBe(VERSION);
+      expect(parsed.abletonLiveVersion).toMatch(/^\d+\.\d+(\.\d+)?$/);
+      expect(parsed.liveSet).toBeUndefined();
+      expect(blocks[1]).toBe(`portalVersion: ${VERSION}`);
+      expect(extractSkills(result)).toBe("");
+      expect(extractBlock(result, "Project context")).toBe("");
+      expect(extractBlock(result, "Memory index")).toBe("");
+      expect(blocks.some((b) => b.includes("Report the connection"))).toBe(
+        false,
+      );
+    });
+
+    it("ends with the new-chat line exactly when the remote script is current", async () => {
+      const blocks = texts(await versionCheck(VERSION));
+      const script = blocks.find((b) => b.startsWith(SCRIPT_PREFIX));
+      const current = script != null && CURRENT_SCRIPT.test(script);
+
+      expect(blocks.at(-1) === UP_TO_DATE_NEW_CHAT).toBe(current);
+    });
+
+    it("withholds the new-chat line when the portal and device versions differ", async () => {
+      expect(texts(await versionCheck("99.0.0"))).not.toContain(
+        UP_TO_DATE_NEW_CHAT,
+      );
+      expect(texts(await versionCheck("1.0.0"))).not.toContain(
+        UP_TO_DATE_NEW_CHAT,
+      );
     });
   });
 

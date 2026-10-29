@@ -49,6 +49,23 @@ describe("withUpdateHint", () => {
     ]);
   });
 
+  it("adds the hint after the last block of a version check, which is a ppal-connect too", async () => {
+    const check = {
+      content: [
+        { type: "text", text: "connected" },
+        { type: "text", text: "remoteScript: running" },
+      ],
+    };
+    const result = await withUpdateHint(
+      check,
+      CONNECT,
+      await connectedDevice("2.5.0-rc1"),
+    );
+
+    expect(result.content).toHaveLength(3);
+    expect(result.content[2]?.text).toContain("is older than this connector");
+  });
+
   it("sends the user to the by-hand guide for a device older than ppal-manage", async () => {
     const result = await withUpdateHint(
       connected(),

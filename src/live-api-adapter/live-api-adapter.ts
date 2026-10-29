@@ -46,7 +46,7 @@ import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import { computeLoopDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-import { connect } from "#src/tools/core/connect.ts";
+import { connect, connectVersions } from "#src/tools/core/connect.ts";
 import { context as contextTool } from "#src/tools/core/context.ts";
 import { manage } from "#src/tools/core/manage.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
@@ -138,14 +138,17 @@ function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
 Use the `(args, ctx) => toolFunction(args, ctx)` pattern
 This ensures all tools have access to context (silenceWavPath, deadline, etc.)
 Exception: ppal-connect takes args only — its signature intentionally dropped ctx
-(see the `connect(args)` line below), so it does not follow this pattern.
+(see the `ppal-connect` line below), so it does not follow this pattern.
 */
 /* eslint-disable @typescript-eslint/no-explicit-any -- tools use dynamic dispatch with any types */
 const toolDispatch: Record<
   string,
   (args: unknown, ctx: ToolContext) => unknown
 > = {
-  "ppal-connect": (args) => connect(args as any),
+  "ppal-connect": (args) =>
+    (args as { versionCheck?: unknown }).versionCheck === true
+      ? connectVersions()
+      : connect(),
   "ppal-read-live-set": (args, ctx) => readLiveSet(args as any, ctx),
   "ppal-update-live-set": (args, ctx) => updateLiveSet(args as any, ctx),
   "ppal-create-track": (args, ctx) => createTrack(args as any, ctx),

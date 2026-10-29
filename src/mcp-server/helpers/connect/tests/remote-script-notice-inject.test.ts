@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   connectResponse,
   fakeInnerCall,
@@ -12,13 +12,15 @@ import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-
 import { currentRemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/tests/remote-script-test-helpers.ts";
 import { type RemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { VERSION } from "#src/shared/config.ts";
+import { AFTER_RESTART_CHECK } from "#src/shared/version-check.ts";
 import { withRemoteScriptNotice } from "../remote-script-notice-inject.ts";
 
 const ADDS =
   "It adds clip automation, loading plug-ins, Max for Live devices and presets, audio-to-MIDI conversion, and undo/redo with one undo step per tool call.";
 
 const { remoteScriptStatus, warn } = vi.hoisted(() => ({
-  remoteScriptStatus: vi.fn<() => Promise<RemoteScriptStatus>>(),
+  remoteScriptStatus:
+    vi.fn<(ping?: RemoteScriptPing) => Promise<RemoteScriptStatus>>(),
   warn: vi.fn(),
 }));
 
@@ -48,17 +50,17 @@ const PING: RemoteScriptPing = {
 
 /**
  * Run withRemoteScriptNotice over a ppal-connect call.
- * @param getPing - Reads the ping
+ * @param getStatus - Reads the status
  * @param manage - Whether the caller can use ppal-manage
  * @returns The response content blocks
  */
 async function connectThrough(
-  getPing: () => Promise<RemoteScriptPing> = () => Promise.resolve(PING),
+  getStatus: () => Promise<RemoteScriptStatus> = () => remoteScriptStatus(PING),
   manage = true,
 ): Promise<Array<{ text?: string }>> {
   const result = await withRemoteScriptNotice(
     fakeInnerCall(connectResponse()),
-    getPing,
+    getStatus,
     () => manage,
   )("ppal-connect", {});
 
@@ -68,10 +70,6 @@ async function connectThrough(
 beforeEach(() => {
   remoteScriptStatus.mockReset();
   warn.mockReset();
-});
-
-afterEach(() => {
-  vi.useRealTimers();
 });
 
 const INSTALL = 'ppal-manage action "install-producer-pal"';
@@ -92,7 +90,7 @@ describe("withRemoteScriptNotice", () => {
     expect(content).toHaveLength(2);
     expect(content[1]?.text).toBe(
       `remoteScript: v2.3.0 is installed, but this device ships v${VERSION}. ` +
-        `To update it, call ${INSTALL}, then tell the user to restart Live.`,
+        `To update it, call ${INSTALL}, then tell the user to restart Live. ${AFTER_RESTART_CHECK}`,
     );
   });
 
@@ -105,7 +103,7 @@ describe("withRemoteScriptNotice", () => {
 
     expect(content[1]?.text).toBe(
       `remoteScript: the installed v${VERSION} is a different build than this device ships. ` +
-        `To update it, call ${INSTALL}, then tell the user to restart Live.`,
+        `To update it, call ${INSTALL}, then tell the user to restart Live. ${AFTER_RESTART_CHECK}`,
     );
   });
 
@@ -121,7 +119,8 @@ describe("withRemoteScriptNotice", () => {
 
     expect(content[1]?.text).toBe(
       `remoteScript: v2.3.0 is installed, but this device ships v${VERSION}. ` +
-        "Tell the user to update it (Chat UI > Settings > Installation > Update), then restart Live.",
+        "Tell the user to update it (Chat UI > Settings > Installation > Update), then restart Live. " +
+        AFTER_RESTART_CHECK,
     );
   });
 
@@ -218,7 +217,7 @@ describe("withRemoteScriptNotice", () => {
     const content = await connectThrough();
 
     expect(content[1]?.text).toBe(
-      `remoteScript: Live is running v2.3.0, but v${VERSION} is installed. Tell the user to restart Live.`,
+      `remoteScript: Live is running v2.3.0, but v${VERSION} is installed. Tell the user to restart Live. ${AFTER_RESTART_CHECK}`,
     );
   });
 
@@ -230,7 +229,7 @@ describe("withRemoteScriptNotice", () => {
     const content = await connectThrough();
 
     expect(content[1]?.text).toBe(
-      `remoteScript: Live is running a different build of v${VERSION} than the one installed. Tell the user to restart Live.`,
+      `remoteScript: Live is running a different build of v${VERSION} than the one installed. Tell the user to restart Live. ${AFTER_RESTART_CHECK}`,
     );
   });
 
@@ -242,16 +241,8 @@ describe("withRemoteScriptNotice", () => {
     const content = await connectThrough();
 
     expect(content[1]?.text).toBe(
-      `remoteScript: Live is running v999.0.0, but v${VERSION} is installed. Tell the user to restart Live.`,
+      `remoteScript: Live is running v999.0.0, but v${VERSION} is installed. Tell the user to restart Live. ${AFTER_RESTART_CHECK}`,
     );
-  });
-
-  it("hands the ping it was given to the status read", async () => {
-    remoteScriptStatus.mockResolvedValue(currentRemoteScriptStatus());
-
-    await connectThrough();
-
-    expect(remoteScriptStatus).toHaveBeenCalledExactlyOnceWith(PING);
   });
 
   it("gives just the version when the script is current and running", async () => {
@@ -312,25 +303,6 @@ describe("withRemoteScriptNotice", () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("db locked"));
   });
 
-  it("still connects, with no line, when the ping throws", async () => {
-    const content = await connectThrough(() => Promise.reject(new Error("no")));
-
-    expect(content).toHaveLength(1);
-    expect(remoteScriptStatus).not.toHaveBeenCalled();
-  });
-
-  it("still connects, with no line, when the status takes too long", async () => {
-    vi.useFakeTimers();
-    remoteScriptStatus.mockReturnValue(new Promise(() => {}));
-
-    const pending = connectThrough();
-
-    await vi.advanceTimersByTimeAsync(2000);
-
-    expect(await pending).toHaveLength(1);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("timed out"));
-  });
-
   it("leaves other tools alone", async () => {
     remoteScriptStatus.mockResolvedValue(
       currentRemoteScriptStatus({ runningVersion: "2.3.0" }),
@@ -338,7 +310,7 @@ describe("withRemoteScriptNotice", () => {
 
     const result = await withRemoteScriptNotice(
       fakeInnerCall(connectResponse()),
-      () => Promise.resolve(PING),
+      () => remoteScriptStatus(PING),
       () => true,
     )("ppal-read-live-set", {});
 

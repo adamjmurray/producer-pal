@@ -24,7 +24,7 @@ import {
   updateDeps,
 } from "./update-test-helpers.ts";
 
-const CHECK = `Wait a few seconds, then call ppal-connect to see which version is running (it was ${OLD}). If it is still ${OLD}, call update-producer-pal again.`;
+const CHECK = `Wait a few seconds, then check which version is running (it was ${OLD}): call ppal-connect with versionCheck: true, or plain ppal-connect if this chat hasn't connected yet. If it is still ${OLD}, call update-producer-pal again.`;
 
 /**
  * Run an update whose swap request gets these answers, against an old device.
@@ -252,7 +252,7 @@ describe("update-producer-pal when the new device doesn't answer", () => {
 
     expect(response.isError).toBe(true);
     expect(responseText(response)).toBe(
-      "Error: Live replaced the Producer Pal device on t3 \"3-MIDI\", but the new one hasn't answered yet. Wait a few seconds, then call ppal-connect. Don't call update-producer-pal again.",
+      "Error: Live replaced the Producer Pal device on t3 \"3-MIDI\", but the new one hasn't answered yet. Wait a few seconds, then call ppal-connect with versionCheck: true, or plain ppal-connect if this chat hasn't connected yet. Don't call update-producer-pal again.",
     );
     expect(device.toolsChanged).not.toHaveBeenCalled();
     // Left for the next call to connect afresh.
@@ -263,7 +263,7 @@ describe("update-producer-pal when the new device doesn't answer", () => {
     const response = await updateCall(fakeDevice(OLD));
 
     expect(responseText(response)).toBe(
-      `Error: Live replaced the Producer Pal device on t3 "3-MIDI", but the old version (${OLD}) is still answering. Ask the user to check the Producer Pal device in Live, then call ppal-connect.`,
+      `Error: Live replaced the Producer Pal device on t3 "3-MIDI", but the old version (${OLD}) is still answering. Ask the user to check the Producer Pal device in Live, then call ppal-connect with versionCheck: true, or plain ppal-connect if this chat hasn't connected yet.`,
     );
   });
 

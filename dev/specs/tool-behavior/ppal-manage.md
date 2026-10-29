@@ -65,7 +65,10 @@ script.
   Control Surface in Settings → Tempo & MIDI (Input and Output None). When
   Producer Pal isn't running yet it adds: call `add-producer-pal` (the model
   asks first), and the device is already in the User Library, so the user can
-  also drag it onto a MIDI track in Live right away, without the restart.
+  also drag it onto a MIDI track in Live right away, without the restart. When
+  Producer Pal is already running, it ends with: once the user has restarted,
+  call `ppal-connect` with `versionCheck: true`, or a plain one if the chat
+  hasn't connected yet (see [ppal-connect](ppal-connect.md)).
 
 - **One part fails:** the call does what it can and reports both. It is a
   result, not an error: the part that failed is `{ ok: false, path?, detail }`,
@@ -198,16 +201,18 @@ to ask the user first.
   the swap. Left open, it would merge with the next edit. Undoing that step puts
   the old build back, which the guard allows: Producer Pal is still in the Set.
   That undo replaces the server answering it, so its answer is lost; call
-  `ppal-connect` to see which build runs.
+  `ppal-connect` with `versionCheck: true` to see which build runs.
 - **After Live may have acted** (no answer to the swap request, a lost
   connection, a 500, a 504 that started), the error says the device may have
-  been replaced and to call `ppal-connect` to see which version runs. If the
-  swap went through but no new server answers in time, it says Live replaced the
-  device, to wait and call `ppal-connect`, and not to update again (or, if the
-  old version still answers, to ask the user to check the device in Live).
+  been replaced and to call `ppal-connect` with `versionCheck: true` to see
+  which version runs. If the swap went through but no new server answers in
+  time, it says Live replaced the device, to wait and call `ppal-connect` with
+  `versionCheck: true`, and not to update again (or, if the old version still
+  answers, to ask the user to check the device in Live).
 - **Result:** `{ device: { from, to }, track: { path, name }, nextSteps }`,
   where `path` is `t3`, `rt0` or `mt` as in the tools, plus `note` when the
-  loaded file wasn't the portal's. `nextSteps` is `Call ppal-connect next.`
+  loaded file wasn't the portal's. `nextSteps` is
+  `Call ppal-connect with versionCheck: true, or plain ppal-connect if this chat hasn't connected yet.`
 - **The `ppal-connect` hint** comes from the portal, since old devices can't
   learn new wording: when a successful `ppal-connect` finds a device older than
   the portal, the portal appends a block telling the model to ask the user, then
