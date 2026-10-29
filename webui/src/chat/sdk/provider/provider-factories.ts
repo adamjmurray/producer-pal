@@ -11,7 +11,10 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createGateway, type LanguageModel } from "ai";
 import { summarizeAdaptiveThinking } from "#webui/chat/sdk/provider/anthropic-thinking-display";
-import { settleOpenRouterReasoningOff } from "#webui/chat/sdk/provider/openrouter-reasoning";
+import {
+  dropUnusableClaudeReasoning,
+  settleOpenRouterReasoningOff,
+} from "#webui/chat/sdk/provider/openrouter-reasoning";
 import { getThinkingOffType } from "#webui/chat/sdk/provider/thinking-effort";
 import { type Provider } from "#webui/types/settings";
 import {
@@ -189,25 +192,33 @@ interface OpenRouterMessage {
 interface OpenRouterRequestBody {
   model?: string;
   reasoning?: { effort?: string };
-  messages?: OpenRouterMessage[];
+  messages?: Array<
+    OpenRouterMessage & {
+      reasoning?: string;
+      reasoning_details?: Array<{ format?: string }>;
+    }
+  >;
 }
 
 /**
  * Rewrites the outgoing OpenRouter request: settles the "Off" reasoning effort
- * for the model, and adds `cache_control` breakpoints for Anthropic and Gemini
+ * for the model, takes Claude's signed reasoning off earlier turns when the
+ * request can't use it, and adds `cache_control` breakpoints for Anthropic and Gemini
  * models, which don't cache without them. The body is OpenAI-chat-shaped, so
  * breakpoints land inside message content blocks rather than on separate
  * system/tools fields.
  */
 export const transformOpenRouterRequest: RewritingFetch = rewritingFetch(
   async (body) => {
-    // Both steps run: `||` would skip the cache breakpoints once Off changed.
+    // Every step runs: `||` would skip the later ones once an earlier one changed.
+    // The drop comes after the Off settle, which decides whether reasoning stays.
     const settled = await settleOpenRouterReasoningOff(
       body as OpenRouterRequestBody,
     );
+    const dropped = dropUnusableClaudeReasoning(body as OpenRouterRequestBody);
     const cached = addOpenRouterCacheControl(body as OpenRouterRequestBody);
 
-    return settled || cached;
+    return settled || dropped || cached;
   },
 );
 

@@ -11,6 +11,7 @@
  * accumulating onto one ChatMessage.
  */
 
+import { CLAUDE_REASONING_FORMAT } from "#webui/chat/sdk/provider/openrouter-reasoning";
 import { type ChatMessage } from "#webui/chat/sdk/types";
 import { errorMessage } from "#src/shared/error-message";
 
@@ -68,11 +69,15 @@ export function handleStreamPart(
 
   if (type === "reasoning-end") {
     captureReasoningSignature(part, msg);
+    captureOpenRouterReasoning(part, msg, false);
 
     return false;
   }
 
   if (type === "tool-call") {
+    // OpenRouter puts the step's reasoning_details on the first tool call when
+    // no text follows the reasoning.
+    captureOpenRouterReasoning(part, msg, true);
     msg.toolCalls ??= [];
     // If tool-input-start already created an entry, update it with parsed args
     const existing = msg.toolCalls.find(
@@ -160,4 +165,69 @@ function captureReasoningSignature(
   if (typeof meta.redactedData === "string") {
     last.redactedData = meta.redactedData;
   }
+}
+
+// Messages whose details came from a tool call. The SDK prefers those over the
+// reasoning block's when it builds the next request, so a later reasoning-end
+// must not replace them.
+const detailsFromToolCall = new WeakSet<ChatMessage>();
+
+/**
+ * Keep an OpenRouter step's `reasoning_details` on the message, but only when
+ * they are Claude's and complete: every entry in Claude's format, thinking text
+ * signed, redacted blocks carrying their data. Anything else would be rejected
+ * (or mean nothing) when re-sent, so it is cleared and the turn goes back as
+ * plain content. A non-empty list from a tool call wins over the reasoning
+ * block's, as it does when the SDK sends the step back within a turn.
+ * @param part - Stream part (reasoning-end or tool-call)
+ * @param msg - Message that receives the details
+ * @param fromToolCall - True when the part is a tool call
+ */
+function captureOpenRouterReasoning(
+  part: Record<string, unknown>,
+  msg: ChatMessage,
+  fromToolCall: boolean,
+): void {
+  const providerMetadata = part.providerMetadata as
+    | { openrouter?: { reasoning_details?: unknown } }
+    | undefined;
+  const details = providerMetadata?.openrouter?.reasoning_details;
+
+  if (
+    !Array.isArray(details) ||
+    details.length === 0 ||
+    (!fromToolCall && detailsFromToolCall.has(msg))
+  ) {
+    return;
+  }
+
+  if (fromToolCall) {
+    detailsFromToolCall.add(msg);
+  }
+
+  msg.openrouterReasoningDetails = details.every(isClaudeReasoningDetail)
+    ? (details as NonNullable<ChatMessage["openrouterReasoningDetails"]>)
+    : undefined;
+}
+
+/**
+ * Whether one OpenRouter reasoning detail is a complete Claude thinking block.
+ * @param detail - One `reasoning_details` entry
+ * @returns True for a signed thinking block or a redacted block with its data
+ */
+function isClaudeReasoningDetail(detail: unknown): boolean {
+  const d = detail as
+    | { type?: string; format?: string; signature?: unknown; data?: unknown }
+    | null
+    | undefined;
+
+  if (d?.format !== CLAUDE_REASONING_FORMAT) {
+    return false;
+  }
+
+  if (d.type === "reasoning.text") {
+    return typeof d.signature === "string" && d.signature !== "";
+  }
+
+  return d.type === "reasoning.encrypted" && typeof d.data === "string";
 }
