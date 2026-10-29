@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Scenario: create an arrangement clip, duplicate it, then cut both — once at a
+ * Scenario: create an arrangement clip, duplicate it, then split both — once at a
  * bar inside one clip, once at a bar that only the last clip reaches.
  */
 
@@ -25,8 +25,8 @@ const BASS_TRACK_INDEX = 1;
 const TOOL_UPDATE_CLIP = TOOLS.updateClip;
 
 /**
- * Where the four clips end up: the 8-bar clip cut at bar 9, the duplicate, and
- * the duplicate cut at bar 17. `tool_called` alone passed on a split that was
+ * Where the four clips end up: the 8-bar clip split at bar 9, the duplicate, and
+ * the duplicate split at bar 17. `tool_called` alone passed on a split that was
  * skipped, so this reads the track and pins the boundaries the turns were
  * supposed to produce.
  */
@@ -62,7 +62,7 @@ function assertClipLayout(): EvalAssertion {
 }
 
 /**
- * The cut was aimed in song time. `split` still works, but its positions are
+ * The split was aimed in song time. `split` still works, but its positions are
  * offsets into each clip, so a model that reaches for it aims at the wrong bar
  * — the failure `arrangementSplit` was published to end.
  *
@@ -72,7 +72,7 @@ function assertClipLayout(): EvalAssertion {
 function assertSplitInSongTime(turn: number): EvalAssertion {
   return {
     type: "custom",
-    description: `turn ${turn}: cuts with arrangementSplit, not the clip-relative split`,
+    description: `turn ${turn}: splits with arrangementSplit, not the clip-relative split`,
     assert: (turns) => {
       const calls = getToolCalls(turns, turn).filter(
         (c) => c.name === TOOL_UPDATE_CLIP,
@@ -102,10 +102,10 @@ export const arrangementClipWorkflow: EvalScenario = {
   id: "arrangement-clip-workflow",
   tags: ["clips"],
   description:
-    "Create arrangement clip, duplicate, and cut at song-timeline positions",
+    "Create arrangement clip, duplicate, and split at song-timeline positions",
   kind: "regression",
   liveSet: "basic-midi-4-track",
-  // The cuts need update-clip's `arrangementSplit` param, which small-model
+  // The splits need update-clip's `arrangementSplit` param, which small-model
   // mode strips from the schema — they are impossible there.
   requires: { params: ["arrangementSplit"] },
 
@@ -116,7 +116,7 @@ export const arrangementClipWorkflow: EvalScenario = {
     "Split the clip at bar 9",
     // Bar 17 falls inside only the last clip; the tool ignores a position
     // outside a clip, so all four can be named in one call.
-    "Now cut everything on the Bass track at bar 17.",
+    "Now split everything on the Bass track at bar 17.",
   ],
 
   assertions: [
@@ -151,7 +151,7 @@ export const arrangementClipWorkflow: EvalScenario = {
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 3 },
     assertSplitInSongTime(3),
 
-    // Turn 4: the same cut across several clips, three of which it misses.
+    // Turn 4: the same split across several clips, three of which it misses.
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 4 },
     assertSplitInSongTime(4),
     assertClipLayout(),

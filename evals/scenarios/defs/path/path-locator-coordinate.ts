@@ -6,20 +6,17 @@
 /**
  * Scenario: `loc:<name>` works as a song position inside a path.
  *
- * `locator-navigation` asks whether a model REACHES for a locator when nothing
- * points it there, and it currently fails every trial — models compute the bar
- * instead. That leaves the form itself unproven from a model's hands: we know
- * `t2[loc:Bridge]` resolves in e2e, and nothing shows a model can write one.
+ * `locator-navigation` grades only where a model lands, in either spelling. This
+ * scenario is the only check that a model can write the `loc:` form: we know
+ * `t2[loc:Bridge]` resolves in e2e, and nothing else shows a model can write
+ * one.
  *
- * So this prompt asks for the locator spelling outright. Between the two, a
- * failure is attributable: fail here and the form is broken, fail only there
- * and the model just didn't think of it.
+ * So this prompt asks for the locator spelling outright: a failure here means
+ * the form itself is broken.
  *
  * All three writing tools are covered because they take the coordinate in
  * different params — `path` on create, `toPath` on update and duplicate — and
- * a break in one would not show in the others. `locator-navigation` reaches
- * `ppal-duplicate` too, but only in the "did the model think of it" sense, and
- * it fails there every trial, so duplicate's `toPath` had no proof at all.
+ * a break in one would not show in the others.
  *
  * No `requires` — a path coordinate is in every schema, small-model mode
  * included, unlike duplicate's `locator` param.

@@ -4,13 +4,15 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Does the model navigate by SECTION NAME, or compute a bar number?
+ * Does the model reach the right section when asked for it by name?
  *
- * ppal-playback takes `loc:<name>` for `startTime` / `loopStart` / `loopEnd`.
- * A computed bar lands in the same place, so an outcome-only check passes a
- * model that never found the feature: the playback turns grade the argument,
- * and a play-arrangement read checks where the loop landed. The copy is graded
- * only on where it landed, since a placed clip does not follow its locator.
+ * ppal-playback takes `loc:<name>` for `startTime` / `loopStart` / `loopEnd`,
+ * but a computed bar lands in the same place, so only where the model lands is
+ * graded, not how it spelled the position. The start turn reads the position
+ * the call reported; the loop turn reads the loop back. A `loc:` naming the
+ * wrong locator still fails, since it lands somewhere else. The copy is graded
+ * on where it landed too. `path-locator-coordinate` is the check that a model
+ * can write the `loc:` spelling.
  *
  * `kind: "capability"` — an improvement target, not a regression guard.
  *
@@ -72,37 +74,16 @@ function playbackCall(
   return { args: call.args, result: parsedToolResult(call) ?? {} };
 }
 
-/** A song position that names a locator rather than a computed bar. */
-const LOCATOR_VALUE = /^\s*loc(?:ator)?:/i;
-
 /**
- * Assert the model named a locator rather than computing a bar position.
+ * Assert the start-playback call began at the chorus, however it was spelled.
  *
  * @param turn - Turn index to grade
- * @param positionParams - Song-position params the call should spell with loc:
- * @param outcome - Where the placement should land, when the call's result shows it
- * @param outcome.expected - Human-readable description of the expected placement
- * @param outcome.check - Reads the playback call; true when the placement landed
  * @returns A custom assertion
  */
-function assertNavigatedByLocator(
-  turn: number,
-  positionParams: string[],
-  outcome?: {
-    expected: string;
-    check: (call: {
-      args: Record<string, unknown>;
-      result: Record<string, unknown>;
-    }) => boolean;
-  },
-): EvalAssertion {
-  const spelled = `spelled ${positionParams.join(" + ")} as loc:`;
-
+function assertStartedAtChorus(turn: number): EvalAssertion {
   return {
     type: "custom",
-    description: outcome
-      ? `${spelled} and reached ${outcome.expected}`
-      : spelled,
+    description: `started playback at the chorus (${CHORUS})`,
     assert: (turns) => {
       const call = playbackCall(turns, turn);
 
@@ -110,35 +91,10 @@ function assertNavigatedByLocator(
         throw new Error(`no ${TOOL_PLAYBACK} call in turn ${turn}`);
       }
 
-      // Report the idiom AND the outcome together. A computed position and a
-      // wrong result usually have the same cause, and seeing only the first
-      // sends you probing Live to find out whether the placement even landed.
-      const issues: string[] = [];
-      const computed = positionParams
-        .map((p) => [p, argText(call.args[p])] as const)
-        .filter(([, value]) => !LOCATOR_VALUE.test(value));
-
-      if (computed.length > 0) {
-        issues.push(
-          `did not name a locator: ` +
-            computed
-              .map(([p, value]) => `${p}=${value || "(unset)"}`)
-              .join(", "),
+      if (call.result.startTime !== CHORUS) {
+        throw new Error(
+          `expected the chorus (${CHORUS}), sent startTime=${argText(call.args.startTime) || "(unset)"}, got ${JSON.stringify(call.result)}`,
         );
-      }
-
-      if (outcome != null && !outcome.check(call)) {
-        const sent = positionParams
-          .map((p) => `${p}=${argText(call.args[p]) || "(unset)"}`)
-          .join(", ");
-
-        issues.push(
-          `expected ${outcome.expected}, sent ${sent}, got ${JSON.stringify(call.result)}`,
-        );
-      }
-
-      if (issues.length > 0) {
-        throw new Error(issues.join(" — "));
       }
 
       return true;
@@ -149,13 +105,10 @@ function assertNavigatedByLocator(
 export const locatorNavigation: EvalScenario = {
   id: "locator-navigation",
   tags: ["workflow"],
-  description: "Navigate the arrangement by section name, not by bar number",
+  description:
+    "Navigate the arrangement to a named section (chorus, bridge, outro)",
   kind: "capability",
   liveSet: LIVE_SET,
-
-  // duplicate's locator param is hidden in small-model mode, so a small model
-  // is never offered the whole feature this grades.
-  requires: { params: ["locator"] },
 
   messages: [
     "Connect to Ableton Live",
@@ -168,15 +121,9 @@ export const locatorNavigation: EvalScenario = {
   assertions: [
     { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
-    assertNavigatedByLocator(1, ["startTime"], {
-      expected: `the chorus (${CHORUS})`,
-      check: ({ result }) => result.startTime === CHORUS,
-    }),
+    assertStartedAtChorus(1),
 
-    // A locator id can't be checked from the args — ids are assigned when the
-    // Set opens — so the loop read below grades where the loop landed.
-    assertNavigatedByLocator(2, ["loopStart", "loopEnd"]),
-
+    // The loop read below grades where the loop landed, in either spelling.
     {
       type: "state",
       tool: TOOL_PLAYBACK,
