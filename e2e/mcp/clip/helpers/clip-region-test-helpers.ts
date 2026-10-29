@@ -146,3 +146,63 @@ async function getProperties(
 
   return results as number[];
 }
+
+/**
+ * Every note in the clip, wherever it sits, as Live reports it.
+ * @param client - The connected MCP client
+ * @param clipId - The clip's Live API id
+ * @returns One dictionary per note, minus the note_id Live assigns itself,
+ *   ordered by start and then pitch
+ */
+export async function readEveryNote(
+  client: Client,
+  clipId: string,
+): Promise<Array<Record<string, number>>> {
+  const { results } = await liveApi(client, `id ${clipId}`, [
+    { type: "call", method: "get_notes_extended", args: [0, 128, -64, 256] },
+  ]);
+  const { notes } = JSON.parse(results[0] as string) as {
+    notes: Array<Record<string, number>>;
+  };
+
+  return notes
+    .map(({ note_id: _noteId, ...note }) => note)
+    .toSorted((a, b) => a.start_time! - b.start_time! || a.pitch! - b.pitch!);
+}
+
+/**
+ * Add a note straight through Live, wherever in the clip it falls. A JSON
+ * string is how the dictionary `add_new_notes` wants gets through
+ * ppal-live-api; never use Live's older note protocol (it pops a modal).
+ * @param client - The connected MCP client
+ * @param clipId - The clip's Live API id
+ * @param note - The note's pitch, start and duration, in beats
+ * @param note.pitch - MIDI pitch
+ * @param note.start - Start in beats
+ * @param note.duration - Length in beats
+ */
+export async function addRawNote(
+  client: Client,
+  clipId: string,
+  note: { pitch: number; start: number; duration: number },
+): Promise<void> {
+  await liveApi(client, `id ${clipId}`, [
+    {
+      type: "call",
+      method: "add_new_notes",
+      args: [
+        JSON.stringify({
+          notes: [
+            {
+              pitch: note.pitch,
+              start_time: note.start,
+              duration: note.duration,
+              velocity: 100,
+            },
+          ],
+        }),
+      ],
+    },
+  ]);
+  await sleep(100);
+}

@@ -307,9 +307,6 @@ export function handleDuplicateLoop(
   }
 
   // Live copies muted notes too; the model can't see them, so say how many.
-  // Counted over the window read before, which the doubled clip's wider one
-  // contains.
-  const window = clipNoteScanWindow(clip);
   const mutedBefore = readClipNotes(clip).muted.length;
 
   clip.call("duplicate_loop");
@@ -321,7 +318,15 @@ export function handleDuplicateLoop(
   const freshClip = LiveAPI.from(clip.id);
   const { visible, muted } = readClipNotes(freshClip);
 
-  reportMutedCopies(clip, reasons, mutedBefore, window, muted);
+  // The doubled clip's window: on a looping clip the copies land past the old
+  // loop_end, outside the window read before.
+  reportMutedCopies(
+    clip,
+    reasons,
+    mutedBefore,
+    clipNoteScanWindow(freshClip),
+    muted,
+  );
 
   return {
     noteCount: visible.length,

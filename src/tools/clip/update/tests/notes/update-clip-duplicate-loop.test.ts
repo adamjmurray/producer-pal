@@ -65,6 +65,15 @@ function notesJson(noteCount: number): string {
 }
 
 /**
+ * A muted note as get_notes_extended reports it.
+ * @param start - Its start, in beats
+ * @returns The note
+ */
+function mutedNote(start: number): Record<string, number> {
+  return { pitch: 62, start_time: start, duration: 1, velocity: 100, mute: 1 };
+}
+
+/**
  * Report a different note count before and after duplicate_loop runs. The whole
  * point of the preTransform count is that it is the pre-doubling number, and a
  * fixture that answers the same on both sides cannot tell a correct report from
@@ -486,7 +495,46 @@ describe("updateClip - duplicateLoop", () => {
     });
   });
 
-  it("counts copied muted notes over the window it read before, not the wider one after", async () => {
+  it("counts copies that land past the old loop_end of a looping clip", async () => {
+    setupMidiClipMock(mocks.clip123, {
+      looping: 1,
+      loop_end: 4,
+      end_marker: 4,
+      length: 4,
+    });
+
+    let duplicated = false;
+
+    mocks.clip123.call.mockImplementation((method: string) => {
+      if (method === "duplicate_loop") {
+        duplicated = true;
+        setupMidiClipMock(mocks.clip123, {
+          looping: 1,
+          loop_end: 8,
+          end_marker: 8,
+          length: 8,
+        });
+
+        return {};
+      }
+
+      return method === "get_notes_extended"
+        ? JSON.stringify({
+            notes: duplicated ? [mutedNote(0), mutedNote(4)] : [mutedNote(0)],
+          })
+        : {};
+    });
+
+    const result = await updateClip({ id: "123", duplicateLoop: true });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: "duplicateLoop copied 1 muted note",
+      }),
+    );
+  });
+
+  it("counts copied muted notes only inside the doubled clip's window", async () => {
     setupMidiClipMock(mocks.clip123);
 
     let duplicated = false;
@@ -498,19 +546,12 @@ describe("updateClip - duplicateLoop", () => {
         return {};
       }
 
-      const muted = (start: number) => ({
-        pitch: 62,
-        start_time: start,
-        duration: 1,
-        velocity: 100,
-        mute: 1,
-      });
-
-      // The wider window after the double also reaches a muted note that was
-      // never in the one read before, and that isn't a copy.
+      // A muted note past the doubled clip's window isn't a copy.
       return method === "get_notes_extended"
         ? JSON.stringify({
-            notes: duplicated ? [muted(0), muted(4), muted(1000)] : [muted(0)],
+            notes: duplicated
+              ? [mutedNote(0), mutedNote(4), mutedNote(1000)]
+              : [mutedNote(0)],
           })
         : {};
     });

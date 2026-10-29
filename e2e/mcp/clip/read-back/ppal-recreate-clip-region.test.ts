@@ -30,8 +30,10 @@ import {
   updateClip,
 } from "../helpers/clip-io-test-helpers.ts";
 import {
+  addRawNote,
   arrangementSpanBeats,
   type ClipRegion,
+  readEveryNote,
   readRegion,
   shapeRegion,
 } from "../helpers/clip-region-test-helpers.ts";
@@ -236,5 +238,42 @@ describe("re-created clip keeps a loop apart from its markers", () => {
 
       expect(await readRegion(ctx.client!, copyId)).toStrictEqual(APART);
     });
+  });
+});
+
+// A looping clip's end_marker can sit far past loop_end, with a note out there
+// that never plays. Reads and edits leave it alone; a re-create must still carry
+// it, and the end_marker that keeps it in the clip.
+const FAR_END: ClipRegion = {
+  looping: true,
+  loop_start: 0,
+  loop_end: 4,
+  start_marker: 0,
+  end_marker: 16,
+};
+const BEAT_PAST_LOOP_END = 10;
+
+describe("re-created clip keeps a note past loop_end", () => {
+  it.each(ROUTES)("$name", async (route) => {
+    const to = destinationFor(route);
+    const sourceId = await makeSource(route, to, "4bar");
+
+    await addRawNote(ctx.client!, sourceId, {
+      pitch: 72,
+      start: BEAT_PAST_LOOP_END,
+      duration: 1,
+    });
+    await shapeRegion(ctx.client!, sourceId, FAR_END);
+
+    const before = await readEveryNote(ctx.client!, sourceId);
+
+    // The chord the source starts with, inside the loop, and the added note.
+    expect(before.map((note) => note.start_time)).toContain(BEAT_PAST_LOOP_END);
+    expect(before.some((note) => note.start_time === 0)).toBe(true);
+
+    const copyId = await route.run(sourceId, to);
+
+    expect(await readEveryNote(ctx.client!, copyId)).toStrictEqual(before);
+    expect((await readRegion(ctx.client!, copyId)).end_marker).toBe(16);
   });
 });

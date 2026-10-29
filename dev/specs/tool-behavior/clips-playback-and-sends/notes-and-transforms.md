@@ -49,9 +49,10 @@ after:
 
 Live keeps a note that starts before the clip's region or at or after its end,
 but never plays it. A note far enough out is also past the window every note
-read and rewrite uses, so it drops out of `noteCount` and later reads. No
-refusal, no skip: the write lands as asked, and the clip's entry says so in
-`detail`:
+read and rewrite uses, so it drops out of `noteCount` and later reads. On a
+looping clip the window ends at `loop_end`, so every note at or past it drops
+out, and no edit (replace, transform, delete) touches it. No refusal, no skip:
+the write lands as asked, and the clip's entry says so in `detail`:
 
 - `ppal-create-clip`: `N notes landed outside the region and won't play`, for
   the notes the call wrote (after any transform).
