@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { searchesInputSchema } from "../library-query-schema.ts";
+import { z } from "zod";
+import {
+  batchQuerySchema,
+  searchesInputSchema,
+} from "../library-query-schema.ts";
 
 describe("searchesInputSchema (searches fan-out input)", () => {
   it("parses an array of query objects", () => {
@@ -91,5 +95,20 @@ describe("searchesInputSchema (searches fan-out input)", () => {
     expect(() => searchesInputSchema.parse([{ kind: "bogus" }])).toThrow(
       /Invalid option: expected one of .*audio.*folder/,
     );
+  });
+});
+
+describe("batchQuerySchema (published JSON schema)", () => {
+  it("states the audio default on kind, the only per-field text the model sees in searches", () => {
+    const json = z.toJSONSchema(batchQuerySchema, { io: "input" }) as {
+      properties: Record<string, { description?: string }>;
+    };
+
+    expect(json.properties.kind?.description).toContain("audio");
+    expect(
+      Object.entries(json.properties)
+        .filter(([, prop]) => prop.description != null)
+        .map(([name]) => name),
+    ).toStrictEqual(["kind"]);
   });
 });
