@@ -166,7 +166,7 @@ async function addDevices(
 
     try {
       await callTool(client, "ppal-create-device", {
-        device: name,
+        deviceName: name,
         path: pathFor(i),
       });
       console.log(" ✓");

@@ -16,7 +16,7 @@ const DEFAULT_DIR = "/repo/tmp/skills-snapshots";
 describe("parseSnapshotArgs", () => {
   it("defaults the output directory and asks for no comparison", () => {
     expect(parseSnapshotArgs([], DEFAULT_DIR)).toStrictEqual({
-      outDir: DEFAULT_DIR,
+      outDir: path.resolve(DEFAULT_DIR),
       diffDir: null,
     });
   });

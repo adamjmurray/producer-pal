@@ -16,6 +16,7 @@ import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { addProbeRoute } from "../python-probe/add-probe-route.ts";
+import { pythonCommand } from "../python/python-command.ts";
 import { addReloadRoute } from "./add-reload-route.ts";
 import { hashRemoteScript } from "./source-hash.ts";
 
@@ -103,8 +104,7 @@ describe("hashRemoteScript on an installed copy", () => {
       addReloadRoute(installed);
 
       const python = spawnSync(
-        "python3",
-        [
+        ...pythonCommand([
           "-c",
           [
             "import json, sys, types",
@@ -116,7 +116,7 @@ describe("hashRemoteScript on an installed copy", () => {
             "print(json.dumps({'reloaded': reloaded, 'hash': digest, 'loaded': hot_reload.loaded_hash}))",
           ].join("\n"),
           parent,
-        ],
+        ]),
         { encoding: "utf8" },
       );
 

@@ -40,17 +40,15 @@ import {
   MSG_CONNECT,
   TOOL_CONNECT,
 } from "../clip/helpers/clip-tool-constants.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_CREATE_CLIP = "ppal-create-clip";
-const TOOL_UPDATE_CLIP = "ppal-update-clip";
-const TOOL_READ_TRACK = "ppal-read-track";
-const TOOL_DUPLICATE = "ppal-duplicate";
+const TOOL_CREATE_CLIP = TOOLS.createClip;
 
 /** The tools that can carry a per-item list into a clip. */
-const WRITE_TOOLS = new Set([
+const WRITE_TOOLS = new Set<string>([
   TOOL_CREATE_CLIP,
-  TOOL_UPDATE_CLIP,
-  TOOL_DUPLICATE,
+  TOOLS.updateClip,
+  TOOLS.duplicate,
 ]);
 
 /**
@@ -100,7 +98,7 @@ function assertNoShortList(
 function assertAlternatingColors(): EvalAssertion {
   return {
     type: "state",
-    tool: TOOL_READ_TRACK,
+    tool: TOOLS.readTrack,
     args: { trackIndex: 0, include: ["session-clips", "color"] },
     expect: (result) => {
       const clips = (result as { sessionClips?: Array<{ color?: unknown }> })
@@ -137,7 +135,7 @@ function assertArrangementBars(
 ): EvalAssertion {
   return {
     type: "state",
-    tool: TOOL_READ_TRACK,
+    tool: TOOLS.readTrack,
     args: { trackIndex, include: ["arrangement-clips"] },
     expect: (result) =>
       clipStarts(asArrangementTrack(result).arrangementClips).join(",") ===

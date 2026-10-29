@@ -39,7 +39,7 @@ import {
   type ToolDefFunction,
 } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { type McpResponse, type RequestOverrides } from "../max-api-adapter.ts";
-import * as console from "../node-for-max-logger.ts";
+import { nodeError } from "../node-for-max-logger.ts";
 
 interface RestApiConfig {
   tools: string[];
@@ -257,7 +257,7 @@ export function registerRestApiRoutes(
 
         res.json(unwrapMcpResponse(mcpResponse, formatOverride === "json"));
       } catch (error) {
-        console.error(`REST API error calling ${toolName}: ${String(error)}`);
+        nodeError(`REST API error calling ${toolName}: ${String(error)}`);
         res.status(500).json({ error: "Internal server error" });
       }
     },

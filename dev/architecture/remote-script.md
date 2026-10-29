@@ -29,7 +29,8 @@ tool (V8) -> requestNode -> Node route -> remote-script-client -> HTTP -> routes
 Names, request and reply shapes, and timeouts that V8 and Node both need live in
 `*-contract.ts` files beside the feature (`remote-script-envelope-contract.ts`,
 `remote-script-convert-contract.ts`, `rack-macros-contract.ts`,
-`simpler-settings-contract.ts`, `manage-contract.ts`, and the device one in
+`device-basics-contract.ts`, `simpler-settings-contract.ts`,
+`manage-contract.ts`, and the device one in
 `src/tools/device/create/helpers/remote-script-contract.ts`). They hold only
 types and constants, so both runtimes can import them. Python spells fields in
 snake_case; the forwarding route translates.

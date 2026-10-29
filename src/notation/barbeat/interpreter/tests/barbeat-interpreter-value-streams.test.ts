@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 
 describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)", () => {
   describe("velocity streams", () => {
@@ -336,7 +336,9 @@ describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)"
       // dropped for this group (notes stay at the default velocity) AND the
       // trailing-setting warning fires (it didn't before — the warning keyed
       // only off the bare-chord buffer, not a buffered pitch stream).
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
       const result = interpretNotation("[C3 E3] v80 1|1x2@n/4");
 
       expect(result.map((n) => [n.pitch, n.velocity])).toStrictEqual([

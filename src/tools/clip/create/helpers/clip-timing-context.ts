@@ -11,6 +11,7 @@ import { refuseArrangementPositionPastCap } from "#src/tools/shared/validation/h
 import { parseKeptTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type ArrangementPosition } from "./create-clip-destinations.ts";
 import { convertTimingParameters } from "./timing-parameters.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 
 /** The song's meter, read once per call — every clip's positions share it. */
 export interface SongMeter {
@@ -93,15 +94,14 @@ export function resolveClipTimingContext(
 
 /**
  * Read the song's meter, once for the whole call.
- * @param liveSet - The live_set LiveAPI object
  * @returns The song time signature
  */
-export function readSongMeter(liveSet: LiveAPI): SongMeter {
+export function readSongMeter(): SongMeter {
+  const { numerator, denominator } = songMeter();
+
   return {
-    songTimeSigNumerator: liveSet.getProperty("signature_numerator") as number,
-    songTimeSigDenominator: liveSet.getProperty(
-      "signature_denominator",
-    ) as number,
+    songTimeSigNumerator: numerator,
+    songTimeSigDenominator: denominator,
   };
 }
 

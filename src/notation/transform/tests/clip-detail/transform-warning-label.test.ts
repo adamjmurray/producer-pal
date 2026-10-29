@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  warn,
+  emitTransformWarning,
   withClipWarningLabel,
 } from "#src/notation/transform/transform-warning-label.ts";
 import {
@@ -19,24 +19,26 @@ describe("transform warning label", () => {
   });
 
   it("names the clip a transform is running for", () => {
-    withClipWarningLabel("clip id 7", () => warn("skipping"));
+    withClipWarningLabel("clip id 7", () => emitTransformWarning("skipping"));
 
     expect(capturedWarnings()).toStrictEqual(["clip id 7: skipping"]);
   });
 
   it("leaves a warning bare when no clip is named", () => {
-    warn("skipping");
-    withClipWarningLabel(undefined, () => warn("also skipping"));
+    emitTransformWarning("skipping");
+    withClipWarningLabel(undefined, () =>
+      emitTransformWarning("also skipping"),
+    );
 
     expect(capturedWarnings()).toStrictEqual(["skipping", "also skipping"]);
   });
 
   it("restores the previous label, so the next clip is not mislabelled", () => {
     withClipWarningLabel("clip id 7", () => {
-      withClipWarningLabel("clip id 8", () => warn("inner"));
-      warn("outer");
+      withClipWarningLabel("clip id 8", () => emitTransformWarning("inner"));
+      emitTransformWarning("outer");
     });
-    warn("after");
+    emitTransformWarning("after");
 
     expect(capturedWarnings()).toStrictEqual([
       "clip id 8: inner",
@@ -52,7 +54,7 @@ describe("transform warning label", () => {
       }),
     ).toThrow("boom");
 
-    warn("after");
+    emitTransformWarning("after");
 
     expect(capturedWarnings()).toStrictEqual(["after"]);
   });

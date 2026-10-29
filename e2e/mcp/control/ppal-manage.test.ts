@@ -7,16 +7,21 @@
  * E2E tests for ppal-manage. Undo and redo step Live's own history through the
  * remote script, so they are opt-in like the other remote script suites:
  * skipped unless E2E_REMOTE_SCRIPT=true, and failed when that's set but the
- * script isn't answering. The install is only driven into its refusals: a real
- * install would overwrite the developer's installed script.
+ * script isn't answering. The install only ever targets a scratch User Library
+ * or is driven into its refusals: a real install would overwrite the
+ * developer's installed script and device.
  *
  * Every test opens a fresh Set and only undoes its own track creations.
  *
  * Run with: npm run e2e:mcp:remote-script -- control/ppal-manage
  */
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   getToolErrorMessage,
+  type McpTestContext,
   parseToolResult,
   resetConfig,
   setConfig,
@@ -53,21 +58,10 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-manage undo and redo", () => {
   const createTrack = (): Promise<void> =>
     appendTracksInOneCall(ctx.client!, 1);
 
-  /**
-   * Call ppal-manage.
-   * @param action - undo, redo or install-remote-script
-   * @param extra - Other params
-   * @returns The raw tool result
-   */
-  function manage(
+  const manage = (
     action: string,
     extra: Record<string, unknown> = {},
-  ): Promise<unknown> {
-    return ctx.client!.callTool({
-      name: "ppal-manage",
-      arguments: { action, ...extra },
-    });
-  }
+  ): Promise<unknown> => manageWith(ctx, action, extra);
 
   it("undoes the last write call, and reports what Live can do next", async () => {
     const before = await trackCount();
@@ -232,7 +226,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-manage undo and redo", () => {
     const message = getToolErrorMessage(await manage("undo"));
 
     expect(message).toContain("needs the Producer Pal remote script");
-    expect(message).toContain('ppal-manage action "install-remote-script"');
+    expect(message).toContain('ppal-manage action "install-producer-pal"');
   });
 
   it("refuses userLibrary on an undo, before touching Live", async () => {
@@ -242,23 +236,99 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-manage undo and redo", () => {
 
     expect(
       getToolErrorMessage(await manage("undo", { userLibrary: "/lib" })),
-    ).toContain('userLibrary is only for action "install-remote-script"');
+    ).toContain('userLibrary is only for action "install-producer-pal"');
     expect(await trackCount()).toBe(before);
   });
 });
 
-// The install needs no remote script, so its refusals run in every e2e pass.
-describe("ppal-manage install-remote-script and add-producer-pal refusals", () => {
+/**
+ * Call ppal-manage on a running test context.
+ * @param ctx - The test context
+ * @param action - The ppal-manage action
+ * @param extra - Other params
+ * @returns The raw tool result
+ */
+function manageWith(
+  ctx: McpTestContext,
+  action: string,
+  extra: Record<string, unknown> = {},
+): Promise<unknown> {
+  return ctx.client!.callTool({
+    name: "ppal-manage",
+    arguments: { action, ...extra },
+  });
+}
+
+/** What one file of an install reports. */
+interface InstallPartResult {
+  ok?: false;
+  status?: string;
+  path?: string;
+  detail?: string;
+}
+
+/** What install-producer-pal reports. */
+interface InstallResult {
+  remoteScript: InstallPartResult;
+  device: InstallPartResult;
+  nextSteps: string;
+}
+
+// The install needs no remote script, so these run in every e2e pass.
+describe("ppal-manage install-producer-pal and add-producer-pal", () => {
   const ctx = setupMcpTestContext();
+  const scratch: string[] = [];
+
+  afterEach(() => {
+    for (const dir of scratch.splice(0)) {
+      rmSync(dir, { recursive: true });
+    }
+  });
+
+  /** @returns A User Library folder that is gone after the test */
+  function scratchLibrary(): string {
+    const dir = mkdtempSync(join(tmpdir(), "ppal-manage-e2e-"));
+
+    scratch.push(dir);
+
+    return dir;
+  }
+
+  it.each(["install-producer-pal", "install-remote-script"])(
+    "%s installs the remote script into a User Library and reports the device too",
+    async (action) => {
+      const userLibrary = scratchLibrary();
+      const result = parseToolResult<InstallResult>(
+        await manageWith(ctx, action, { userLibrary }),
+      );
+
+      expect(result.remoteScript.status).toBe("installed");
+      expect(existsSync(join(result.remoteScript.path!, "__init__.py"))).toBe(
+        true,
+      );
+      expect(result.remoteScript.path!.startsWith(userLibrary)).toBe(true);
+
+      // A development device can't be copied, so the debug build reports it as
+      // failed beside the installed script; a frozen one is installed. Either
+      // way each file reports for itself and the next steps match.
+      if (result.device.ok === false) {
+        expect(result.device.detail).toBeTruthy();
+        expect(result.nextSteps).toContain(
+          "Only the remote script was installed; the device was not (see device).",
+        );
+        expect(existsSync(join(userLibrary, "Presets"))).toBe(false);
+      } else {
+        expect(result.device.status).toBe("installed");
+        expect(existsSync(result.device.path!)).toBe(true);
+        expect(result.nextSteps).toContain("restart Live");
+      }
+    },
+  );
 
   it("refuses a User Library that isn't a folder, installing nothing", async () => {
     const message = getToolErrorMessage(
-      await ctx.client!.callTool({
-        name: "ppal-manage",
-        arguments: {
-          action: "install-remote-script",
-          userLibrary: "/nonexistent/producer-pal-e2e/User Library",
-        },
+      await manageWith(ctx, "install-producer-pal", {
+        userLibrary: "/nonexistent/producer-pal-e2e/User Library",
       }),
     );
 
@@ -266,14 +336,20 @@ describe("ppal-manage install-remote-script and add-producer-pal refusals", () =
     expect(message).toContain("pass it as userLibrary");
   });
 
+  it("refuses a User Library that isn't a folder under the retired name too", async () => {
+    const message = getToolErrorMessage(
+      await manageWith(ctx, "install-remote-script", {
+        userLibrary: "/nonexistent/producer-pal-e2e/User Library",
+      }),
+    );
+
+    expect(message).toContain("nothing was installed");
+  });
+
   it("refuses a relative User Library path", async () => {
     const message = getToolErrorMessage(
-      await ctx.client!.callTool({
-        name: "ppal-manage",
-        arguments: {
-          action: "install-remote-script",
-          userLibrary: "Music/User Library",
-        },
+      await manageWith(ctx, "install-producer-pal", {
+        userLibrary: "Music/User Library",
       }),
     );
 

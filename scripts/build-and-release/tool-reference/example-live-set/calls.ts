@@ -23,7 +23,7 @@ const ALL = ["*"];
 export const TOOL_EXAMPLES: ToolExample[] = [
   { toolName: "ppal-connect", args: {} },
   { toolName: "ppal-context", args: { action: "read" } },
-  { toolName: "ppal-manage", args: { action: "install-remote-script" } },
+  { toolName: "ppal-manage", args: { action: "install-producer-pal" } },
 
   { toolName: "ppal-playback", args: { action: "play-scene", path: "s0" } },
   { toolName: "ppal-select", args: { path: "t0/s0" } },
@@ -75,7 +75,7 @@ export const TOOL_EXAMPLES: ToolExample[] = [
 
   {
     toolName: "ppal-create-device",
-    args: { device: "Saturator", path: "t1" },
+    args: { deviceName: "Saturator", path: "t1" },
   },
   {
     toolName: "ppal-read-device",

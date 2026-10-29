@@ -6,7 +6,7 @@
 import Max from "max-api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetHubForTesting } from "../../gen-ui-hub.ts";
-import { RETRY_MS, SAVE_DELAY_MS, type SetStorage } from "../../set-storage.ts";
+import { RETRY_MS, SAVE_DELAY_MS, SetStorage } from "../../set-storage.ts";
 import {
   createWidget,
   listWidgets,
@@ -142,5 +142,53 @@ describe("a save that fails", () => {
     await vi.advanceTimersByTimeAsync(RETRY_MS * 3);
 
     expect(script.requests).toStrictEqual([]);
+  });
+});
+
+describe("rounds that overlap", () => {
+  it("runs one round at a time", async () => {
+    createWidget({ kind: "text", text: "a" });
+    await Promise.all([storage.sync(), storage.sync()]);
+
+    expect(script.saves).toHaveLength(1);
+  });
+
+  it("saves a change that lands mid-save in a round of its own", async () => {
+    storage.stop();
+
+    const request = script.request;
+    let changed = false;
+
+    script.request = (r) => {
+      if (r.route === "/ui-widgets/save" && !changed) {
+        changed = true;
+        createWidget({ kind: "text", text: "b" });
+      }
+
+      return request(r);
+    };
+
+    storage = connectToScript(script);
+    storage.start();
+    await vi.advanceTimersByTimeAsync(0);
+    createWidget({ kind: "text", text: "a" });
+    await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS * 2);
+
+    expect(script.saves.map((text) => widgetsIn(text).length)).toStrictEqual([
+      1, 2,
+    ]);
+  });
+
+  it("saves nothing when early changes leave no list to save", async () => {
+    storage.stop();
+    storage = new SetStorage({
+      request: script.request,
+      load: vi.fn(),
+      currentText: () => null,
+    });
+    storage.save("early");
+    await storage.sync();
+
+    expect(script.saves).toStrictEqual([]);
   });
 });

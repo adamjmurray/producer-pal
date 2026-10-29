@@ -31,7 +31,7 @@ export async function runProbe(
     throw new Error(
       reply.outdated == null
         ? "The remote script isn't running in Live"
-        : "The running remote script has no /probe route, or is out of date: run `npm run remote-script:install -- --probe` and restart Live",
+        : "The running remote script has no /probe route, or is out of date: run `npm run install:remote-script -- --probe` and restart Live",
     );
   }
 

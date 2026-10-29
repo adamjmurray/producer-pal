@@ -36,11 +36,11 @@ best. Or skip the AI and drive Live from your own code.
 Dedicated AI apps — the easiest setup for most people:
 
 - **[Claude Desktop](./installation/claude-desktop)** — Anthropic's desktop app
-  (subscription required)
+  (subscription recommended)
 - **[ChatGPT App](./installation/chatgpt-app)** — OpenAI's desktop app, with
-  Codex built in
-- **[Google Antigravity](./installation/antigravity)** — agent app for Gemini (a
-  Google AI subscription recommended)
+  Codex built in (subscription recommended)
+- **[Google Antigravity](./installation/antigravity)** — agent app for Gemini
+  (subscription recommended)
 - **[Bionic / LM Studio](./installation/bionic)** — runs models fully offline,
   no account needed, but needs a powerful computer
 
@@ -49,8 +49,8 @@ Dedicated AI apps — the easiest setup for most people:
 For users comfortable with the terminal:
 
 - **[Claude Code](./installation/claude-code)** — Anthropic (subscription
-  required)
-- **[Codex CLI](./installation/codex-cli)** — OpenAI (subscription required)
+  recommended)
+- **[Codex CLI](./installation/codex-cli)** — OpenAI (subscription recommended)
 - **[Gemini CLI](./installation/gemini-cli)** — Google (subscription
   recommended)
 - **[Mistral Vibe](./installation/mistral-vibe)** — Mistral (API key required)

@@ -3,12 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { getColorForIndex, parseColors } from "../color-parsing.ts";
-
-vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
-}));
 
 describe("color-parsing", () => {
   describe("parseColors", () => {
@@ -37,23 +33,15 @@ describe("color-parsing", () => {
       ]);
     });
 
-    it("warns when a short list would once have cycled", async () => {
-      vi.clearAllMocks();
-      parseColors("#FF0000,#0000FF", 6, "clip");
-      const console = await import("#src/shared/max/v8-max-console.ts");
-
-      expect(console.warn).toHaveBeenCalledWith(
-        "color: 2 colors for 6 clips; the clips past the last color were not recolored",
+    it("refuses a short list instead of leaving items uncolored", () => {
+      expect(() => parseColors("#FF0000,#0000FF", 6, "clip")).toThrow(
+        "color names 2 colors but the call acts on 6 clips",
       );
     });
 
-    it("warns when more colors than items", async () => {
-      vi.clearAllMocks();
-      parseColors("#FF0000,#00FF00,#0000FF", 2, "track");
-      const console = await import("#src/shared/max/v8-max-console.ts");
-
-      expect(console.warn).toHaveBeenCalledWith(
-        "color: 3 colors for 2 tracks; the extra colors went unused",
+    it("refuses more colors than items", () => {
+      expect(() => parseColors("#FF0000,#00FF00,#0000FF", 2, "track")).toThrow(
+        "color names 3 colors but the call acts on 2 tracks",
       );
     });
 

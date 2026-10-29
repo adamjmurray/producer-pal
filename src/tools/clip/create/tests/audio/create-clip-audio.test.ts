@@ -639,7 +639,7 @@ describe("createClip - audio clip warping", () => {
   });
 
   it("reports the warp state Live settled on without warning about it", async () => {
-    const warnSpy = vi.spyOn(v8Console, "warn");
+    const warnSpy = vi.spyOn(v8Console, "emitWarning");
 
     // A 2.7s render mapped onto 4 beats plays over 2s at 120bpm — a stretch,
     // but warping to tempo is usually what the user wants, so it is reported
@@ -661,7 +661,7 @@ describe("createClip - audio clip warping", () => {
   });
 
   it("says on the entry that MIDI-only timing params are ignored for audio", async () => {
-    const warnSpy = vi.spyOn(v8Console, "warn");
+    const warnSpy = vi.spyOn(v8Console, "emitWarning");
 
     setupSessionAudioClipMocks({ clipLength: 8 });
 
@@ -681,7 +681,7 @@ describe("createClip - audio clip warping", () => {
   it("says on the entry that warping is ignored on a MIDI clip", async () => {
     // The inverse of the audio warning: warping is documented audio-only, and
     // the MIDI path has nowhere to put it.
-    const warnSpy = vi.spyOn(v8Console, "warn");
+    const warnSpy = vi.spyOn(v8Console, "emitWarning");
 
     setupSessionMocks();
 

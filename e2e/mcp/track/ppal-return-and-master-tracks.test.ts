@@ -91,7 +91,7 @@ describe("return and master tracks", () => {
     const created = parseToolResult<{ id: string; path: string }>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { device: "Compressor", path: "rt1" },
+        arguments: { deviceName: "Compressor", path: "rt1" },
       }),
     );
 

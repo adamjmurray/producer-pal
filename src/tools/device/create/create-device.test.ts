@@ -17,7 +17,7 @@ import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { createDevice } from "./create-device.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
@@ -217,19 +217,19 @@ describe("createDevice", () => {
       ["params", { params: [{ name: "Dry/Wet", value: "50%" }] }],
     ])("refuses a list-mode call carrying %s", async (param, args) => {
       await expect(createDevice(args)).rejects.toThrow(
-        `${param} requires device; omit it to list available devices`,
+        `${param} requires deviceName; omit it to list available devices`,
       );
     });
 
     it("names every create-only arg it was sent", async () => {
       await expect(createDevice({ path: "t0", name: "Lead" })).rejects.toThrow(
-        "path, name require device; omit them to list available devices",
+        "path, name require deviceName; omit them to list available devices",
       );
     });
 
     it("does not touch Live before refusing", async () => {
       await expect(createDevice({ path: "t0" })).rejects.toThrow(
-        "path requires device",
+        "path requires deviceName",
       );
 
       expect(track0.call).not.toHaveBeenCalled();
@@ -352,7 +352,7 @@ describe("createDevice", () => {
           "insert_device",
           expect.anything(),
         );
-        expect(mockConsole.warn).not.toHaveBeenCalled();
+        expect(mockConsole.emitWarning).not.toHaveBeenCalled();
       });
 
       it("counts the devices in the past-the-end refusal in the plural", async () => {
@@ -674,7 +674,7 @@ describe("createDevice", () => {
           detail: 'container at path "t99" does not exist',
         },
       ]);
-      expect(mockConsole.warn).not.toHaveBeenCalled();
+      expect(mockConsole.emitWarning).not.toHaveBeenCalled();
     });
 
     it("answers every path with a skip when they all fail", async () => {

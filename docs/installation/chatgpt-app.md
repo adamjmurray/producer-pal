@@ -34,7 +34,7 @@ similar, but it's no longer officially supported — the new app is recommended.
 - [ChatGPT desktop app](https://chatgpt.com/download) (requires an OpenAI
   account) — use the main download button. The same page also offers **ChatGPT
   Classic**, which is the older app, not this one.
-- A paid ChatGPT plan (MCP servers aren't available on the free plan)
+- A paid ChatGPT plan is recommended
 
 ## Installation Steps
 

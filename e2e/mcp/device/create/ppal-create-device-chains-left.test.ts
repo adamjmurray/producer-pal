@@ -65,7 +65,7 @@ describe("ppal-create-device when the insert is refused after a c+", () => {
 
     const result = await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { device: "Operator", path: `${rack}/c+` },
+      arguments: { deviceName: "Operator", path: `${rack}/c+` },
     });
 
     expect(isToolError(result)).toBe(true);
@@ -85,7 +85,7 @@ describe("ppal-create-device when the insert is refused after a c+", () => {
     const result = await ctx.client!.callTool({
       name: "ppal-create-device",
       arguments: {
-        device: "Operator,Reverb",
+        deviceName: "Operator,Reverb",
         path: `${rack}/c+,${rack}/c+`,
       },
     });

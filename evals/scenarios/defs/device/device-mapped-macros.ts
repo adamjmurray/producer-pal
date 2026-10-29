@@ -23,6 +23,7 @@ import {
   TOOL_CONNECT,
 } from "../clip/helpers/clip-tool-constants.ts";
 import { macroProblem } from "./helpers/device-param-readback.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** basic-midi-4-track: the Bass track's instrument rack. */
 const BASS_RACK = "t1/d0";
@@ -39,7 +40,7 @@ export const deviceMappedMacros: EvalScenario = {
   kind: "capability",
   liveSet: "basic-midi-4-track",
   judgeAdvisory: true,
-  requires: { tools: ["ppal-read-device", "ppal-update-device"] },
+  requires: { tools: [TOOLS.readDevice, TOOLS.updateDevice] },
 
   messages: [
     MSG_CONNECT,
@@ -51,7 +52,7 @@ export const deviceMappedMacros: EvalScenario = {
 
     {
       type: "state",
-      tool: "ppal-read-device",
+      tool: TOOLS.readDevice,
       args: { path: BASS_RACK, include: ["params", "param-values"] },
       expect: (result) => macroProblem(result, MAPPED, VISIBLE_MACROS) == null,
       explain: (result) =>

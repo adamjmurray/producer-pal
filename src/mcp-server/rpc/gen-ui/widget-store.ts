@@ -14,7 +14,7 @@ import {
   type Widget,
   type WidgetChange,
 } from "#src/shared/gen-ui-types.ts";
-import * as console from "../../node-for-max-logger.ts";
+import { nodeWarn } from "../../node-for-max-logger.ts";
 import { currentVersion, EPOCH, getSync, publish } from "./gen-ui-hub.ts";
 import { buildWidget, patchWidget, type WidgetFields } from "./widget-input.ts";
 import { decodeWidgets, encodeWidgets } from "./widget-blob.ts";
@@ -192,7 +192,7 @@ export function loadWidgetsFromSet(text: string): void {
   const loaded = decodeWidgets(text);
 
   if (loaded == null) {
-    console.warn("Ignoring a saved UI widget list that can't be read");
+    nodeWarn("Ignoring a saved UI widget list that can't be read");
 
     return;
   }
@@ -264,12 +264,12 @@ function commit(change: WidgetChange): void {
     const text = encodeWidgets(widgets);
 
     if (text == null) {
-      console.warn("The UI widget list is too big to save in the Live Set");
+      nodeWarn("The UI widget list is too big to save in the Live Set");
     } else {
       sink?.(text);
     }
   } catch (error) {
-    console.warn(`Could not save the UI widgets: ${errorMessage(error)}`);
+    nodeWarn(`Could not save the UI widgets: ${errorMessage(error)}`);
   }
 }
 

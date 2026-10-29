@@ -158,6 +158,15 @@ stand in for:
 | `no-restricted-imports` regex form      | `src/test/meta/import-restrictions.test.ts` |
 | `jsdoc/require-jsdoc`                   | `src/test/meta/jsdoc-requirements.test.ts`  |
 
+**The Max console.** Warnings and logs reach the tool response or the Max
+console only through `v8-max-console.ts` (V8) and `node-for-max-logger.ts`
+(Node); a native `console` would swallow them silently. Three layers keep that
+from happening: the global `console` is banned in `src/`
+(`no-restricted-globals`), a namespace import of either module is banned outside
+tests (`no-restricted-imports`), and a meta test in
+`import-restrictions.test.ts` (not a stand-in for a lint rule, so it has no row
+above) bans `import * as console` anywhere in `src/`.
+
 **Relative imports.** A relative import must stay inside its own top-level
 `src/` module. `src/` holds hundreds of parent-relative specifiers, nearly all
 of them files in `helpers/` or `tests/` reaching back up to their own module

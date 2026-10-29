@@ -317,7 +317,10 @@ describe("updateDevice", () => {
           min: 0,
           max: 1,
         },
-        methods: { str_for_value: () => "C" },
+        methods: {
+          str_for_value: (v: unknown) =>
+            v === 0 ? "50L" : v === 1 ? "50R" : "C",
+        },
       });
     });
 

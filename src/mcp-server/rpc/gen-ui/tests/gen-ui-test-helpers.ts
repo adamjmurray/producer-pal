@@ -3,11 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { vi } from "vitest";
 import { type GenUiEvent } from "#src/shared/gen-ui-types.ts";
 import {
   type RemoteScriptReply,
   type RemoteScriptRequest,
 } from "../../remote-script/remote-script-client.ts";
+import { resetHubForTesting } from "../gen-ui-hub.ts";
+import { resetWidgetStoreForTesting } from "../widget-store.ts";
 
 export interface TestEventStream {
   /** The next event, skipping comments; rejects if none arrives in a second. */
@@ -77,6 +80,33 @@ export async function openEventStream(url: string): Promise<TestEventStream> {
   };
 
   return { next, nextBlock, close };
+}
+
+/**
+ * Fake timers and an empty hub and widget store, for a live watcher test.
+ * @param slots - The clips the fake script holds
+ * @returns A fresh fake script
+ */
+export function resetForWatcherTest(
+  slots: Record<string, FakeClip>,
+): FakeScript {
+  vi.useFakeTimers();
+  resetHubForTesting();
+  resetWidgetStoreForTesting();
+
+  const script = new FakeScript();
+
+  script.slots = slots;
+
+  return script;
+}
+
+/**
+ * @param ref - A clip id or Session path
+ * @returns The input for a clip widget
+ */
+export function clipInput(ref: string): Record<string, unknown> {
+  return { kind: "clip", ref };
 }
 
 export interface FakeClip {

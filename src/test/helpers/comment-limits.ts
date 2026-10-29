@@ -26,10 +26,10 @@ export type TreeLimits = Record<CommentTree, number>;
  */
 export const COMMENT_DENSITY_LIMITS: TreeLimits = {
   src: 0.51,
-  scripts: 0.325,
+  scripts: 0.32,
   webui: 0.45,
-  evals: 0.465,
-  e2e: 0.455,
+  evals: 0.46,
+  e2e: 0.295,
 };
 
 /**

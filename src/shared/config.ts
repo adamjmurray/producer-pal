@@ -16,7 +16,7 @@
 // Currently in pre-release, working towards 1.0.0
 // NOTE: the VERSION value is updated in place by
 // scripts/build-and-release/bump-version.ts (regex on this exact line shape).
-export const VERSION = "2.5.0-rc2";
+export const VERSION = "2.5.1-rc1";
 
 // The short commit SHA this build came from, or "" when unknown (running from
 // source, tests). Substituted at build time by config/build-sha.mjs — read via
@@ -44,7 +44,9 @@ export const MIN_LIVE_VERSION = "12.3.0";
  *
  * This is the project's canonical "same position" epsilon. It is used for
  * note-collision dedupe, v0 deletion matching, serializer time-grouping (the
- * round-trip floor), locator-time matching, and start-marker comparisons.
+ * round-trip floor), locator-time matching, start-marker comparisons, and the
+ * arrangement edge/length comparisons (clip edges and split points, which must
+ * agree on one margin).
  *
  * It is specifically a POSITION-equality tolerance. It is deliberately NOT
  * shared with the other 0.001-magnitude tolerances in the codebase, which are
@@ -58,6 +60,12 @@ export const MIN_LIVE_VERSION = "12.3.0";
  * together.
  */
 export const SAME_TIME_EPSILON = 0.001;
+
+/**
+ * Margin for comparing a beat position to the 32-bit float Live stores for it:
+ * far below one tick, so anything over it is Live moving the position.
+ */
+export const LIVE_FLOAT_EPSILON = 1e-6;
 
 // --- Tool-call timeouts ---
 
@@ -361,3 +369,36 @@ export function resolvePortalVersion(
  * Any value passes; presence is the whole signal.
  */
 export const BRIEFING_REQUEST_HEADER = "x-producer-pal-briefing";
+
+// --- /config wire shape ---
+//
+// `notation` is a plain string because this file stays import-free (see top):
+// narrow it with `isNotation`, or intersect `{ notation: Notation }`.
+
+/** What GET /config answers with. */
+export interface ProducerPalConfig {
+  projectContext: string;
+  smallModelMode: boolean;
+  notation: string;
+  jsonOutput: boolean; // true = JSON, false = compact (default)
+  sampleFolder: string;
+  liveApiEnabled: boolean;
+  liveApiForcedOn: boolean;
+  // Debug builds only: false makes the remote script look uninstalled. POST
+  // /config only (evals and e2e); not a device setting, so it is never sent to
+  // Max. A release build neither lists nor accepts it.
+  remoteScriptEnabled?: boolean;
+  // Debug builds only, like remoteScriptEnabled: a version string replaces the
+  // minimum remote script version, so a running script can look out of date.
+  // Listed only while set.
+  remoteScriptMinVersion?: string;
+  tools: string[];
+}
+
+/** What POST /config accepts: any of the settings. */
+export type ProducerPalConfigUpdate = Partial<
+  Omit<ProducerPalConfig, "remoteScriptMinVersion" | "liveApiForcedOn">
+> & {
+  /** A version string makes a running script look older than it; null clears it. Debug builds only. */
+  remoteScriptMinVersion?: string | null;
+};

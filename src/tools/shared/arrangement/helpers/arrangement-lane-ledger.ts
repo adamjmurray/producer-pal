@@ -24,7 +24,6 @@
 import { fromLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
-import { EPSILON } from "./arrangement-tiling-clips.ts";
 import {
   laneKey,
   laneObject,
@@ -37,6 +36,7 @@ import {
   describeWriteEffects,
 } from "./arrangement-write-effects.ts";
 import { type ArrangementTrack } from "./take-lanes.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 /** What {@link LaneLedger.afterWrite} may be told besides the written ids. */
 interface AfterWriteOptions {
@@ -242,8 +242,8 @@ export class LaneLedger {
       const cutFromOwn = before.some(
         (clip) =>
           this.ours.has(clip.id) &&
-          tail.start > clip.start + EPSILON &&
-          tail.start < clip.end - EPSILON,
+          tail.start > clip.start + SAME_TIME_EPSILON &&
+          tail.start < clip.end - SAME_TIME_EPSILON,
       );
 
       if (cutFromOwn) {

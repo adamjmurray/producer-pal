@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   lookupMockObject,
   mockNonExistentObjects,
@@ -96,7 +96,7 @@ describe("createClip - arrangement view", () => {
   // Live refuses this without reporting anything, so create-clip checks the
   // destination track first and words the refusal itself.
   it("refuses a clip aimed at a frozen track", async () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const { track } = setupArrangementClipMocks();
 
     track.properties.is_frozen = 1;

@@ -10,7 +10,7 @@
 import { type Express, type Request, type Response } from "express";
 import { VERSION } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "../node-for-max-logger.ts";
+import { nodeError } from "../node-for-max-logger.ts";
 import { syncDeviceInstallNotice } from "../rpc/device-install/device-install-notice.ts";
 import {
   answerUserLibraryError,
@@ -61,7 +61,7 @@ export function registerRemoteScriptSetupRoutes(app: Express): void {
 
       const message = errorMessage(error);
 
-      console.error(`Remote script install failed: ${message}`);
+      nodeError(`Remote script install failed: ${message}`);
       res.status(500).json({
         error: `Couldn't install the remote script (${message}). ${installLeftText(message)}`,
       });

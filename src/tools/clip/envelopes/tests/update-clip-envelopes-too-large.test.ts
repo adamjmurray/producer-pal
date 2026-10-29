@@ -8,7 +8,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
-import { MAX_CHUNK_SIZE } from "#src/shared/mcp-responses.ts";
+import { MAX_SINGLE_MESSAGE_BYTES } from "#src/shared/mcp-responses.ts";
 import {
   setupMidiClipMock,
   setupUpdateClipMocks,
@@ -31,7 +31,7 @@ describe("updateClip - an envelope line too large to send", () => {
     setupMidiClipMock(setupUpdateClipMocks().clip123);
     // Stands in for requestNode's own size check.
     vi.mocked(requestNode).mockImplementation(async (_route, args) =>
-      JSON.stringify(args).length > MAX_CHUNK_SIZE
+      JSON.stringify(args).length > MAX_SINGLE_MESSAGE_BYTES
         ? { success: false, error: "too large", tooLarge: true }
         : { success: true, result: { available: true, result: {} } },
     );
@@ -72,7 +72,7 @@ describe("updateClip - an envelope line too large to send", () => {
 
     expect(fit).toBeGreaterThan(0);
     expect(JSON.stringify({ route, args: fitting }).length).toBeLessThanOrEqual(
-      MAX_CHUNK_SIZE,
+      MAX_SINGLE_MESSAGE_BYTES,
     );
   });
 });

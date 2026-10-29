@@ -29,7 +29,7 @@ describe("processWarpMarkers", () => {
   });
 
   it("returns markers for a direct array, with nothing to report", () => {
-    const consoleSpy = vi.spyOn(consoleModule, "warn");
+    const consoleSpy = vi.spyOn(consoleModule, "emitWarning");
 
     const result = processWarpMarkers(
       warpClip(JSON.stringify([{ sample_time: 44100, beat_time: 1 }])),
@@ -47,14 +47,14 @@ describe("processWarpMarkers", () => {
     ["an object with no warp_markers key", "{}"],
     ["a non-array value", JSON.stringify({ warp_markers: 42 })],
   ])("returns nothing at all when warp_markers is %s", (_label, value) => {
-    const consoleSpy = vi.spyOn(consoleModule, "warn");
+    const consoleSpy = vi.spyOn(consoleModule, "emitWarning");
 
     expect(processWarpMarkers(warpClip(value))).toStrictEqual({});
     expect(consoleSpy).not.toHaveBeenCalled();
   });
 
   it("reports the reason on the clip when the JSON cannot be parsed", () => {
-    const consoleSpy = vi.spyOn(consoleModule, "warn");
+    const consoleSpy = vi.spyOn(consoleModule, "emitWarning");
 
     const result = processWarpMarkers(warpClip("invalid json{"));
 

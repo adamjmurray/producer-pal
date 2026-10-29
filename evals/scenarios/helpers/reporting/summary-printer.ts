@@ -91,7 +91,7 @@ export function printSummary(
   const totalRuns = passCount + failCount + skipCount + errorCount;
   const skipText = skipCount > 0 ? `, ${skipCount} skipped` : "";
   const errorText =
-    errorCount > 0 ? styleText("red", `, ${errorCount} never ran (error)`) : "";
+    errorCount > 0 ? styleText("red", `, ${errorCount} errored`) : "";
 
   console.log(
     `\n  ${totalRuns} run(s): ${passCount} pass, ${failCount} fail${skipText}${errorText}`,

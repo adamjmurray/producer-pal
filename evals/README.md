@@ -304,12 +304,14 @@ environment can't satisfy a requirement — e.g. a transforms scenario under
 scenario is **skipped** (reported as `skipped`, not `fail`) so scores stay
 apples-to-apples.
 
-A run that never got started is reported as `error`, and is likewise kept out of
-pass/fail counts. That means Live would not open the Set or the config would not
-apply, so the model never took a turn — scoring it would turn an outage into a
-wall of convincing zeros. The harness retries a failed open three times, waiting
-once and then killing Live for a cold launch, and stops the whole run after
-three scenarios in a row fail to start.
+A run that tested nothing about the model is reported as `error`, and is
+likewise kept out of pass/fail counts and scores: Live would not open the Set,
+the config would not apply, or the provider refused the request (usage limit,
+credits, capacity, rate limit) at any turn. Scoring it would turn an outage into
+a wall of convincing zeros. The harness retries a failed open three times,
+waiting once and then killing Live for a cold launch. After three scenarios in a
+row where every trial of a model errored, that model is dropped from the rest of
+the run; the run stops when no model is left.
 
 ```bash
 # Default environment
@@ -346,9 +348,9 @@ scripts/eval --list-tags  # every tag, with how many scenarios carry it
 Each scenario is **regression** (should always pass) or **capability**
 (improvement target, may have low pass rates), and carries one or more subset
 tags — `notation`, `transforms`, `paths`, `context`, `clips`, `devices`,
-`workflow`, `pairing`, `results`, `automation`. A whole-suite run costs hours,
-so `--tag` is how most runs are scoped; `-t` and `--tag` together narrow to
-scenarios matching both.
+`workflow`, `pairing`, `results`, `automation`, `upgrade`. A whole-suite run
+costs hours, so `--tag` is how most runs are scoped; `-t` and `--tag` together
+narrow to scenarios matching both.
 
 `automation` scenarios need the Producer Pal remote script running in Live (it
 is the only way to reach clip envelopes), and their `setup` talks to it on its
@@ -357,6 +359,14 @@ there, else the port in `~/.producer-pal/remote-script-port.txt`). One scenario,
 `automation-no-remote-script`, sets `config: { remoteScriptEnabled: false }` to
 run as if it weren't installed (debug builds only; a release build ignores the
 field); `resetConfig()` turns it back on after every scenario.
+
+A scenario can set `toolOverrides` to change what a tool returns to the model: a
+canned result, or the real one with changes (`callReal()` makes the real call).
+The `upgrade` scenarios use it to fake an older device or a pending install
+without touching the machine. The run starts a local proxy MCP server in front
+of the real one (listing and forwarding unchanged, except the overridden tools)
+and points the session at it, so every provider, the agent CLIs included, sees
+the same results. The proxy stops when the scenario ends.
 
 ### The seeded connect turn
 
@@ -389,6 +399,13 @@ resumes a session by id and owns its own history, so there is nothing to write
 into and they fall back to a real connect turn. Worth remembering when comparing
 one of those runs against any other provider — only one of them paid for that
 turn.
+
+On the `anthropic` provider, requests are prompt-cached: tools + system, the
+conversation tail, and the connect result. The connect result is identical
+across scenarios on the same Live Set, so every scenario after the first reads
+it from cache. Results record `cacheReadTokens` / `cacheWriteTokens` per turn;
+both are part of `inputTokens`. Other providers get no cache markers (OpenAI
+caches automatically).
 
 ### Scoring
 
@@ -433,6 +450,35 @@ run outranks a recovered one without either being marked a failure.
 The judge defaults to Gemini 3 Flash. Override with `-j`, or skip it entirely
 with `--skip-judge`.
 
+### Re-judging saved results
+
+A run stores one judge's verdict, or none under `--skip-judge`. To judge saved
+results afterwards with another judge, without Live or re-running the model, use
+`npm run probe:rejudge`. It runs the production judge prompt on the saved turns
+with `-j` (same `provider/model` format as above) and writes each verdict to
+`<results>/<run>/judges/<judge-slug>/<result-file>`. Saved results are never
+changed, and re-runs skip results that judge already did (`--force` redoes
+them). Results from before the scenario's judge criteria last changed are left
+out (`--include-stale` keeps them).
+
+```bash
+# Gating-passed results only: that is where the judge decides
+npm run probe:rejudge -- 2026-10-29T07-51-59Z -j anthropic/claude-haiku-5-5 --dry-run
+# An expensive judge: all fails plus 40 random passes (repeatable with --seed)
+npm run probe:rejudge -- 2026-10-29T07-51-59Z -j claude-code/sonnet --sample=fails+40
+```
+
+Other flags: `--scenario=id`, `--limit=N`, `--concurrency=N`,
+`--include-failed-checks`, `--fails-from=<judge-slug>` (count another judge's
+fails as fails for `--sample`), `--results-dir=D`. The header of
+`evals/jev/sidecar-judges/jev-rejudge.ts` lists them all.
+
+`npm run probe:jev -- <run> --reference=<judge-slug>` (repeatable) then compares
+Jev with those sidecar judges instead of the stored verdict. With several, their
+majority is the reference; it also reports pairwise agreement, each judge's
+wrong passes and fails against the others, and lists the results where the LLM
+judges split, for hand-labeling.
+
 When using `-r N`, the summary aggregates across trials: checks are totaled,
 tool errors are summed, efficiency is averaged, and judge shows a pass rate.
 
@@ -454,6 +500,8 @@ scripts/eval -a -m gemini-3.8-flash -m claude-sonnet-5-5
 
 To compare environments (e.g. default vs `--small-model`), do a run per
 environment and diff them with `scripts/eval-report --compare <runId> <runId>`.
+`scripts/eval-report --failures <runId> [...]` prints every failure as the
+markdown table that `dev/quality/eval-findings/scenario-results/` records.
 
 Each cell tallies passing trials, so a `-r 3` run reads `3/3`, `~ 2/3`, or `0/3`
 rather than the verdict of one arbitrary trial. The tag on the right compares

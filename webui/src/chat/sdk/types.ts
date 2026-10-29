@@ -121,6 +121,13 @@ export interface ChatMessage {
     signature?: string;
     redactedData?: string;
   }>;
+  /**
+   * OpenRouter's `reasoning_details` for this step, kept only when they are
+   * Claude's signed blocks. Re-sent verbatim to the model that signed them
+   * (`responseModel`), so the cached prefix survives the turn boundary (the
+   * OpenRouter counterpart of `reasoningParts`).
+   */
+  openrouterReasoningDetails?: Array<NonNullable<ProviderOptions[string]>>;
   /** Model ID from the API response (assistant messages only) */
   responseModel?: string;
   /** Token usage from the API response (assistant messages only) */

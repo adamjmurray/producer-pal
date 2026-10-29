@@ -499,7 +499,7 @@ describe("useSettings", () => {
     expect(result.current).toStrictEqual(
       expect.objectContaining({
         apiKey: "",
-        model: "gpt-6.1-sol",
+        model: "gpt-6.1-terra",
         thinking: "Default",
       }),
     );
@@ -632,35 +632,6 @@ describe("useSettings", () => {
       );
       await waitFor(() => expect(result2.current.apiKey).toBe(s.apiKey));
     }
-  });
-
-  it("settingsConfigured is false by default", () => {
-    const { result } = renderHook(() => useSettings());
-
-    expect(result.current.settingsConfigured).toBe(false);
-  });
-
-  it("loads settingsConfigured from localStorage", () => {
-    localStorage.setItem("producer_pal_settings_configured", "true");
-    const { result } = renderHook(() => useSettings());
-
-    expect(result.current.settingsConfigured).toBe(true);
-  });
-
-  it("sets settingsConfigured to true after saveSettings is called", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    expect(result.current.settingsConfigured).toBe(false);
-
-    await flushLoad();
-    await act(async () => {
-      await result.current.saveSettings();
-    });
-
-    expect(result.current.settingsConfigured).toBe(true);
-    expect(localStorage.getItem("producer_pal_settings_configured")).toBe(
-      "true",
-    );
   });
 
   it("saveSettings returns true and leaves saveError null on success", async () => {

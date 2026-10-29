@@ -10,7 +10,7 @@
 import { randomUUID } from "node:crypto";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type GenUiEvent, type SyncStatus } from "#src/shared/gen-ui-types.ts";
-import * as console from "../../node-for-max-logger.ts";
+import { nodeWarn } from "../../node-for-max-logger.ts";
 
 /** An event before the hub stamps its version on it. */
 export type UnversionedEvent =
@@ -88,7 +88,7 @@ export function publish(event: UnversionedEvent): GenUiEvent {
     try {
       listener(stamped);
     } catch (error) {
-      console.warn(`Dropping a UI viewer: ${errorMessage(error)}`);
+      nodeWarn(`Dropping a UI viewer: ${errorMessage(error)}`);
       listeners.delete(listener);
     }
   }

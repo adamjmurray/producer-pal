@@ -25,8 +25,9 @@ import {
   assertPathArg,
   assertSlotOccupancy,
 } from "./path-assertions.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_DUPLICATE = "ppal-duplicate";
+const TOOL_DUPLICATE = TOOLS.duplicate;
 
 /** Drums holds the source clip; Chords receives every copy. */
 const SOURCE_SLOT = "t0/s0";
@@ -68,7 +69,7 @@ function arrangementLayout(result: unknown): {
 function assertArrangementLayout(): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-track",
+    tool: TOOLS.readTrack,
     args: {
       trackIndex: CHORDS_TRACK_INDEX,
       include: ["arrangement-clips"],

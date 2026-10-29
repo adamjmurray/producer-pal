@@ -11,7 +11,7 @@
  *
  * Usage: node scripts/live-api/python-probe/compare-python-max.ts [out-dir]
  *
- * Needs the /probe route (`npm run remote-script:install -- --probe`, then
+ * Needs the /probe route (`npm run install:remote-script -- --probe`, then
  * restart Live). Any Live Set works. See
  * dev/live-api/python-remote-script-api/README.md.
  */

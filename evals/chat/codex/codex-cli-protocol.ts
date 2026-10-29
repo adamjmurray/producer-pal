@@ -23,6 +23,7 @@ import {
   MCP_SERVER_NAME,
   type ParsedAgentTurn,
 } from "../agent-cli/agent-cli-transport.ts";
+import { errorPayloadMessage } from "#src/shared/error-message.ts";
 
 export const CODEX_MODEL_ALIASES: Record<string, string> = {
   luna: "gpt-6-luna",
@@ -168,6 +169,10 @@ function buildRestrictedArgs(input: AgentCliArgsInput): string[] {
     'web_search="disabled"',
     "-c",
     'sandbox_mode="read-only"',
+    // Without this the default models emit no reasoning item at all, so the
+    // turn's reasoning text would be lost.
+    "-c",
+    'model_reasoning_summary="detailed"',
     "-c",
     `model_instructions_file=${JSON.stringify(input.instructionsFile)}`,
   ];
@@ -207,6 +212,11 @@ function handleItem(itemValue: unknown, state: AgentStreamState): void {
 
   if (item.type === "agent_message" && typeof item.text === "string") {
     state.textParts.push(item.text);
+  } else if (item.type === "reasoning" && typeof item.text === "string") {
+    // Codex streams the reasoning summary; it reports no finish reason.
+    if (item.text !== "") {
+      state.reasoningParts.push(item.text);
+    }
   } else if (item.type === "mcp_tool_call") {
     collectMcpCall(item, state);
   }
@@ -336,23 +346,5 @@ function mapCodexUsage(value: unknown): TokenUsage | undefined {
  * @returns Error message
  */
 function getErrorMessage(value: Record<string, unknown>): string {
-  if (typeof value.message === "string") {
-    return value.message;
-  }
-
-  const error = value.error;
-
-  if (typeof error === "string") {
-    return error;
-  }
-
-  if (error != null && typeof error === "object") {
-    const message = (error as Record<string, unknown>).message;
-
-    if (typeof message === "string") {
-      return message;
-    }
-  }
-
-  return "unknown error";
+  return errorPayloadMessage(value) ?? "unknown error";
 }

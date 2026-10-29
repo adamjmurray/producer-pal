@@ -5,10 +5,13 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  utf8ByteLength,
   formatErrorResponse,
   formatSuccessResponse,
+  getWarningTexts,
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
+  MAX_SINGLE_MESSAGE_BYTES,
   END_OF_CHUNKS,
   oversizedSingleMessageError,
   planChunks,
@@ -22,11 +25,11 @@ describe("mcp-responses", () => {
     });
 
     it("exports MAX_CHUNK_SIZE constant", () => {
-      expect(MAX_CHUNK_SIZE).toBe(30000);
+      expect(MAX_CHUNK_SIZE).toBe(10000);
     });
 
     it("exports MAX_CHUNKS constant", () => {
-      expect(MAX_CHUNKS).toBe(100);
+      expect(MAX_CHUNKS).toBe(300);
     });
   });
 
@@ -185,6 +188,70 @@ describe("mcp-responses", () => {
       expect(plan.tooLargeError).toMatch(/Response too large/);
       expect(plan.tooLargeError).toMatch(new RegExp(`max ${MAX_CHUNKS}`));
     });
+
+    it("keeps every chunk under the byte limit for CJK text", () => {
+      // 3 bytes per char: the worst case for a UTF-16 unit count.
+      const plan = planChunks("あ".repeat(MAX_CHUNK_SIZE * 3 + 1));
+
+      expect(plan.chunks).toHaveLength(4);
+
+      for (const chunk of plan.chunks) {
+        expect(utf8ByteLength(chunk)).toBeLessThanOrEqual(
+          MAX_SINGLE_MESSAGE_BYTES,
+        );
+      }
+    });
+
+    it("keeps every chunk under the byte limit for emoji", () => {
+      const plan = planChunks("😀".repeat(MAX_CHUNK_SIZE * 2));
+
+      for (const chunk of plan.chunks) {
+        expect(utf8ByteLength(chunk)).toBeLessThanOrEqual(
+          MAX_SINGLE_MESSAGE_BYTES,
+        );
+      }
+    });
+
+    it("backs off one unit instead of splitting a surrogate pair", () => {
+      // The emoji's high half would be the last unit of the first chunk.
+      const jsonString = "a".repeat(MAX_CHUNK_SIZE - 1) + "😀tail";
+
+      const plan = planChunks(jsonString);
+
+      expect(plan.chunks).toHaveLength(2);
+      expect(plan.chunks[0]!).toHaveLength(MAX_CHUNK_SIZE - 1);
+      expect(plan.chunks[1]!.startsWith("😀")).toBe(true);
+      expect(plan.chunks.join("")).toBe(jsonString);
+    });
+
+    it("never leaves a lone surrogate at any chunk edge", () => {
+      // Odd offset: every boundary falls inside an emoji.
+      const jsonString = "a" + "😀".repeat(MAX_CHUNK_SIZE);
+
+      const plan = planChunks(jsonString);
+
+      expect(plan.chunks.join("")).toBe(jsonString);
+
+      for (const chunk of plan.chunks) {
+        // Throws on a lone surrogate.
+        expect(() => encodeURIComponent(chunk)).not.toThrow();
+      }
+    });
+
+    it("counts the chunks backing off adds against MAX_CHUNKS", () => {
+      // An emoji starts every 9,999 units, so each chunk backs off by one:
+      // 301 chunks for a payload whose length alone says 300.
+      const unit = "😀" + "a".repeat(MAX_CHUNK_SIZE - 3);
+      const jsonString = unit.repeat(MAX_CHUNKS) + "a".repeat(10);
+
+      const plan = planChunks(jsonString);
+
+      expect(jsonString.length).toBeLessThanOrEqual(
+        MAX_CHUNKS * MAX_CHUNK_SIZE,
+      );
+      expect(plan.chunks).toStrictEqual([]);
+      expect(plan.tooLargeError).toMatch(/301 chunks \(max 300\)/);
+    });
   });
 
   describe("reassembleChunks", () => {
@@ -225,27 +292,72 @@ describe("mcp-responses", () => {
       expect(
         oversizedSingleMessageError("x".repeat(100), "x", "Send less."),
       ).toBeNull();
-      // Exactly MAX_CHUNK_SIZE is the boundary and still allowed.
+      // Exactly the limit is the boundary and still allowed.
       expect(
         oversizedSingleMessageError(
-          "x".repeat(MAX_CHUNK_SIZE),
+          "x".repeat(MAX_SINGLE_MESSAGE_BYTES),
           "x",
           "Send less.",
         ),
       ).toBeNull();
     });
 
-    it("returns a labeled error when the payload exceeds MAX_CHUNK_SIZE", () => {
+    it("returns a labeled error when the payload exceeds the limit", () => {
       const error = oversizedSingleMessageError(
-        "x".repeat(MAX_CHUNK_SIZE + 1),
+        "x".repeat(MAX_SINGLE_MESSAGE_BYTES + 1),
         "code-exec request",
         "Send less.",
       );
 
       expect(error).toContain("code-exec request too large");
       expect(error).toMatch(/\. Send less\.$/);
-      expect(error).toContain(String(MAX_CHUNK_SIZE + 1));
-      expect(error).toContain(String(MAX_CHUNK_SIZE));
+      expect(error).toContain(String(MAX_SINGLE_MESSAGE_BYTES + 1));
+      expect(error).toContain(String(MAX_SINGLE_MESSAGE_BYTES));
     });
+
+    it("measures UTF-8 bytes, not characters", () => {
+      // 10,001 chars, 30,003 bytes.
+      const error = oversizedSingleMessageError(
+        "あ".repeat(10_001),
+        "x",
+        "Send less.",
+      );
+
+      expect(error).toContain("30003 bytes");
+      expect(
+        oversizedSingleMessageError("あ".repeat(10_000), "x", "Send less."),
+      ).toBeNull();
+    });
+  });
+});
+
+describe("getWarningTexts", () => {
+  const content = [
+    { type: "text", text: '{"ok":true}' },
+    { type: "text", text: "WARNING: no clip at t0/s5" },
+    { type: "text", text: "WARNING: LiveAPI stats: 3 resolved" },
+    { type: "text", text: "Warning: wrong case" },
+    { type: "text", text: "WARNING:no space" },
+    { type: "image", text: "WARNING: not text" },
+    null,
+    { type: "text" },
+  ];
+
+  it("returns the warning blocks with their prefix, in order", () => {
+    expect(getWarningTexts(content)).toStrictEqual([
+      "WARNING: no clip at t0/s5",
+      "WARNING: LiveAPI stats: 3 resolved",
+    ]);
+  });
+
+  it("can leave out the build-stats counter", () => {
+    expect(getWarningTexts(content, { excludeBuildStats: true })).toStrictEqual(
+      ["WARNING: no clip at t0/s5"],
+    );
+  });
+
+  it("returns none when there is no content array", () => {
+    expect(getWarningTexts(undefined)).toStrictEqual([]);
+    expect(getWarningTexts({ content })).toStrictEqual([]);
   });
 });

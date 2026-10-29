@@ -18,6 +18,7 @@ import {
 } from "./helpers/clip-tool-constants.ts";
 import { convertedTrackPath } from "./helpers/converted-track.ts";
 import { seedAudioClip } from "./helpers/seed-audio-clip.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** basic-midi-4-track has five tracks, and the seed adds an audio one. */
 const SEEDED_TRACKS = 6;
@@ -79,7 +80,7 @@ export const audioConvertToMidi: EvalScenario = {
 
     {
       type: "state",
-      tool: "ppal-read-live-set",
+      tool: TOOLS.readLiveSet,
       args: { include: ["tracks"] },
       expect: addedOneTrack,
       explain: (result) =>
@@ -90,7 +91,7 @@ export const audioConvertToMidi: EvalScenario = {
     // which is still an answer, so the clip's notes aren't graded.
     {
       type: "state",
-      tool: "ppal-read-track",
+      tool: TOOLS.readTrack,
       args: (turns) => ({
         path: convertedTrackPath(turns),
         include: ["session-clips"],

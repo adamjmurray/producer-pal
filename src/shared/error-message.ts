@@ -14,6 +14,26 @@ export function errorMessage(err: unknown): string {
 }
 
 /**
+ * Find the message in a provider's JSON error payload. Providers wrap it
+ * (`{ error: { message } }` from OpenAI, OpenRouter and Anthropic), and the
+ * wrapper's own `message` is at best generic, so the nested one wins. Then
+ * `message`, a string `error`, and `detail`.
+ * @param payload - The payload, or anything else (which has no message)
+ * @returns The first non-empty message, or undefined when there is none
+ */
+export function errorPayloadMessage(payload: unknown): string | undefined {
+  if (payload == null || typeof payload !== "object") {
+    return undefined;
+  }
+
+  const { error, message, detail } = payload as Record<string, unknown>;
+
+  return [errorPayloadMessage(error), message, error, detail].find(
+    (value): value is string => typeof value === "string" && value !== "",
+  );
+}
+
+/**
  * Asserts a value is defined, throwing if null/undefined. Used for type narrowing.
  * @param value - Value to check
  * @param msg - Error message if undefined

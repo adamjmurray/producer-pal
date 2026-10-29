@@ -263,7 +263,7 @@ describe("subagent-briefing route", () => {
 
   it("reports a broken user override to the Max window", async () => {
     // The blob would otherwise just come back short, with nothing to say why.
-    const warn = vi.spyOn(maxConsole, "warn").mockImplementation(() => {});
+    const warn = vi.spyOn(maxConsole, "nodeWarn").mockImplementation(() => {});
 
     try {
       writeSkillOverride("standard", {

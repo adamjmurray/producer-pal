@@ -26,7 +26,11 @@ import {
   isNotation,
   type Notation,
 } from "#src/shared/notation.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  emitWarning,
+  maxError,
+  maxLog,
+} from "#src/shared/max/v8-max-console.ts";
 import {
   beginWarningCapture,
   changedNothing,
@@ -42,7 +46,7 @@ import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import { computeLoopDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-import { connect } from "#src/tools/core/connect.ts";
+import { connect, connectVersions } from "#src/tools/core/connect.ts";
 import { context as contextTool } from "#src/tools/core/context.ts";
 import { manage } from "#src/tools/core/manage.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
@@ -71,6 +75,7 @@ import {
   noteProjectContextLoaded,
   syncProjectContextBackup,
 } from "./project-context-sync.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 // One outlet: MCP responses. Warnings ride inside the response JSON, not as
 // trailing Max atoms.
@@ -133,14 +138,17 @@ function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
 Use the `(args, ctx) => toolFunction(args, ctx)` pattern
 This ensures all tools have access to context (silenceWavPath, deadline, etc.)
 Exception: ppal-connect takes args only — its signature intentionally dropped ctx
-(see the `connect(args)` line below), so it does not follow this pattern.
+(see the `ppal-connect` line below), so it does not follow this pattern.
 */
 /* eslint-disable @typescript-eslint/no-explicit-any -- tools use dynamic dispatch with any types */
 const toolDispatch: Record<
   string,
   (args: unknown, ctx: ToolContext) => unknown
 > = {
-  "ppal-connect": (args) => connect(args as any),
+  "ppal-connect": (args) =>
+    (args as { versionCheck?: unknown }).versionCheck === true
+      ? connectVersions()
+      : connect(),
   "ppal-read-live-set": (args, ctx) => readLiveSet(args as any, ctx),
   "ppal-update-live-set": (args, ctx) => updateLiveSet(args as any, ctx),
   "ppal-create-track": (args, ctx) => createTrack(args as any, ctx),
@@ -321,7 +329,7 @@ function applyRestoredProjectContext(
   }
 
   if (sessionState.projectContext.content !== snapshot) {
-    console.warn(
+    emitWarning(
       "Project context changed while the backup restore was in flight; " +
         "keeping the newer content.",
     );
@@ -386,7 +394,7 @@ export function reportDevice(): void {
   const filepath = patcher?.filepath;
 
   if (typeof filepath !== "string" || filepath === "") {
-    console.warn("Could not read this device's file path.");
+    emitWarning("Could not read this device's file path.");
 
     return;
   }
@@ -398,7 +406,7 @@ export function reportDevice(): void {
     const response = await requestNode(DEVICE_REPORT_ROUTE, args);
 
     if (!response.success) {
-      console.warn(
+      emitWarning(
         `Could not report this device's file path: ${response.error}`,
       );
     }
@@ -508,9 +516,9 @@ export function node_response(requestId: string, ...rest: unknown[]): void {
     // Wire-format error (missing delimiter, etc.). Surface as a failure
     // response so the pending Promise resolves rather than hanging until
     // the 10s timeout — and log loudly so it shows in the Max console.
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
 
-    console.error(
+    maxError(
       `node_response wire-format error [requestId=${requestId}]: ${message}`,
     );
     json = JSON.stringify({ success: false, error: message });
@@ -574,12 +582,9 @@ async function handleRequest(
       try {
         incomingContext = JSON.parse(contextJSON) as Partial<ToolContext>;
       } catch (contextError) {
-        const message =
-          contextError instanceof Error
-            ? contextError.message
-            : String(contextError);
+        const message = errorMessage(contextError);
 
-        console.warn(`Failed to parse contextJSON: ${message}`);
+        emitWarning(`Failed to parse contextJSON: ${message}`);
       }
     }
 
@@ -626,8 +631,7 @@ async function handleRequest(
       // failed after a round trip, leaving a later request's capture active.
       resumeWarningCapture(warnings);
 
-      const message =
-        toolError instanceof Error ? toolError.message : String(toolError);
+      const message = errorMessage(toolError);
 
       result = formatErrorResponse(`Error: ${message}`);
     } finally {
@@ -641,7 +645,7 @@ async function handleRequest(
     // throw after its await.
     resumeWarningCapture(warnings);
 
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
 
     result = formatErrorResponse(`Error parsing tool call request: ${message}`);
   }
@@ -655,7 +659,7 @@ async function handleRequest(
 
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 
-console.log(`[${now()}] Producer Pal ${VERSION} Live API adapter ready`);
+maxLog(`[${now()}] Producer Pal ${VERSION} Live API adapter ready`);
 
 // send a "started" signal so UI controls can resync their values
 // while changing the code repeatedly during development. The patch answers it

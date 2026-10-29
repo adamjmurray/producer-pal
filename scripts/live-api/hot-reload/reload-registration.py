@@ -3,7 +3,7 @@
 # AI assistance: Claude (Anthropic)
 # SPDX-License-Identifier: MIT
 
-# Dev-only, added by `npm run remote-script:install -- --probe`.
+# Dev-only, added by `npm run install:remote-script -- --probe`.
 from .hot_reload import reload_route as _reload_route  # noqa: E402
 ROUTES["/reload"] = _reload_route
 POST_ONLY = POST_ONLY + ("/reload",)

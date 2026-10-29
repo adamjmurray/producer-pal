@@ -10,13 +10,14 @@
  *
  * Usage: node scripts/live-api/python-probe/run-probe.ts <file.py> [out.json]
  *
- * Needs `npm run remote-script:install -- --probe` and a Live restart. The
+ * Needs `npm run install:remote-script -- --probe` and a Live restart. The
  * file sees `song`, `app`, `Live` and `bridge`, and returns what it assigns to
  * `result`. See snippets/ for examples.
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { runProbe } from "./probe-client.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 const [file, outFile] = process.argv.slice(2);
 
@@ -41,6 +42,6 @@ try {
     console.log(`Wrote ${outFile}`);
   }
 } catch (error) {
-  console.error(error instanceof Error ? error.message : String(error));
+  console.error(errorMessage(error));
   process.exit(1);
 }

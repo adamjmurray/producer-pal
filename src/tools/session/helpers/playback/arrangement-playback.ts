@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { LIVE_FLOAT_EPSILON } from "#src/shared/config.ts";
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
   paramNamesSomething,
@@ -228,7 +229,7 @@ export function readStartTime(
   const landedWhereAsked =
     startTimeBeats != null &&
     locatorRef(startTime ?? "") == null &&
-    Math.abs(beats - startTimeBeats) < 1e-6;
+    Math.abs(beats - startTimeBeats) < LIVE_FLOAT_EPSILON;
 
   return landedWhereAsked
     ? undefined

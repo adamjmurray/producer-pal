@@ -35,6 +35,16 @@ export function roundPan(pan: number): number {
 }
 
 /**
+ * Round a raw device-param value to the six significant digits Live keeps; the
+ * 32-bit float it stores reads back with noise like 0.30000001192092896.
+ * @param raw - Raw param value
+ * @returns The value rounded to six significant digits
+ */
+export function roundParamRaw(raw: number): number {
+  return Number(raw.toPrecision(6));
+}
+
+/**
  * Round a gain to Live's 0.01 dB display resolution; the raw float32 carries
  * noise like -6.333000183105469.
  * @param gainDb - Raw gain in dB

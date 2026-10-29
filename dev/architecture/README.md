@@ -136,7 +136,7 @@ the MCP server. Provides graceful fallback when Producer Pal is not running.
 - Graceful degradation when Live isn't running
 - Answers calls itself when the device is offline (`src/portal/offline/`): it
   pings the remote script to say whether Live is up without Producer Pal, and
-  runs `ppal-manage` `install-remote-script` and `add-producer-pal`. See
+  runs `ppal-manage` `install-producer-pal` and `add-producer-pal`. See
   [ppal-manage](../specs/tool-behavior/ppal-manage.md#while-producer-pal-isnt-running).
 - Updates the running device in place (`src/portal/update/`): the bridge answers
   `ppal-manage` `update-producer-pal` itself, online or off, since the device it
@@ -241,8 +241,9 @@ Four bundles: MCP server, V8, Portal, and Chat UI. See
 
 ## Message Protocol
 
-Communication between Node.js and V8. Max caps a single symbol at ~32,767
-characters, so the response JSON is split into chunks and terminated with
+Communication between Node.js and V8. Max caps a message at ~32,767 UTF-8 bytes,
+so the response JSON is split into chunks of 10,000 UTF-16 units (at most 30,000
+bytes whatever the text; a chunk never ends inside an emoji) and terminated with
 `END_OF_CHUNKS` — the receiver joins everything before it, and a missing
 terminator is a loud wire-format error rather than a vague parse failure.
 
@@ -260,9 +261,9 @@ and `warnings` (the warnings that request raised, which `handleLiveApiResult`
 collapses and appends as `WARNING:` content items).
 
 `node_request` / `node_response` is the V8→Node RPC going the other way. Its
-`node_response` uses the same chunking and terminator, but a `node_request` goes
-as one message: V8 refuses one too large to send rather than let Max cut it
-short.
+`node_response` uses the same chunking and terminator, but `mcp_request` and
+`node_request` go as one message: the sender measures UTF-8 bytes and refuses
+one over 30,000 rather than let Max cut it short.
 
 ### Write calls run one at a time
 

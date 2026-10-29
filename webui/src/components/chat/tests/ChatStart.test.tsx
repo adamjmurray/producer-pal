@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
 /**
@@ -24,27 +25,67 @@ const defaultOverrides = {
 type RenderProps = Partial<ChatStartProps> & {
   checkMcpConnection?: Mock;
   handleSend?: Mock;
+  onSetUpChat?: Mock;
 };
 
-function renderChatStart(
-  props: RenderProps = {},
-): RenderResult & { checkMcpConnection: Mock; handleSend: Mock } {
+function renderChatStart(props: RenderProps = {}): RenderResult & {
+  checkMcpConnection: Mock;
+  handleSend: Mock;
+  onSetUpChat: Mock;
+} {
   const checkMcpConnection = props.checkMcpConnection ?? vi.fn();
   const handleSend = props.handleSend ?? vi.fn();
+  const onSetUpChat = props.onSetUpChat ?? vi.fn();
   const result = render(
     <ChatStart
       mcpStatus={props.mcpStatus ?? "connected"}
       mcpError={props.mcpError ?? ""}
+      chatSetUp={props.chatSetUp ?? true}
+      onSetUpChat={onSetUpChat}
       checkMcpConnection={checkMcpConnection}
       handleSend={handleSend}
       overrides={props.overrides ?? defaultOverrides}
     />,
   );
 
-  return { ...result, checkMcpConnection, handleSend };
+  return { ...result, checkMcpConnection, handleSend, onSetUpChat };
 }
 
 describe("ChatStart", () => {
+  describe("when chat is not set up", () => {
+    it("offers Set up chat instead of Quick Connect", () => {
+      const { onSetUpChat, handleSend } = renderChatStart({
+        chatSetUp: false,
+      });
+
+      expect(
+        screen.queryByRole("button", { name: "Quick Connect" }),
+      ).toBeNull();
+
+      fireEvent.click(screen.getByRole("button", { name: "Set up chat" }));
+
+      expect(onSetUpChat).toHaveBeenCalledOnce();
+      expect(handleSend).not.toHaveBeenCalled();
+    });
+
+    it("still shows the Producer Pal error", () => {
+      renderChatStart({
+        chatSetUp: false,
+        mcpStatus: "error",
+        mcpError: "boom",
+      });
+
+      expect(screen.getByText("Producer Pal Not Found")).toBeDefined();
+      expect(screen.getByRole("button", { name: "Set up chat" })).toBeDefined();
+    });
+  });
+
+  it("does not offer Set up chat once chat is set up", () => {
+    renderChatStart();
+
+    expect(screen.queryByRole("button", { name: "Set up chat" })).toBeNull();
+  });
+
   describe("when mcpStatus is connected", () => {
     it("shows start conversation message", () => {
       renderChatStart();

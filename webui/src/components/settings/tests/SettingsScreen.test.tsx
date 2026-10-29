@@ -144,7 +144,7 @@ describe("SettingsScreen", () => {
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
     hasApiKey: false,
-    settingsConfigured: false,
+    chatSetUp: false,
     settingsLoaded: true,
     saveError: null,
     enabledTools: {} as Record<string, boolean>,
@@ -375,7 +375,7 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          settings={ss({ settingsConfigured: false })}
+          settings={ss({ chatSetUp: false })}
         />,
       );
       expect(
@@ -385,10 +385,7 @@ describe("SettingsScreen", () => {
 
     it("does not show browser storage message when settings configured", () => {
       render(
-        <SettingsScreen
-          {...defaultProps}
-          settings={ss({ settingsConfigured: true })}
-        />,
+        <SettingsScreen {...defaultProps} settings={ss({ chatSetUp: true })} />,
       );
       expect(
         screen.queryByText("Settings will be stored in this web browser."),
@@ -397,22 +394,20 @@ describe("SettingsScreen", () => {
   });
 
   describe("Cancel button", () => {
-    it("is not shown when settings not configured", () => {
+    it("reads Close when chat is not set up", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          settings={ss({ settingsConfigured: false })}
+          settings={ss({ chatSetUp: false })}
         />,
       );
       expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Close" })).toBeDefined();
     });
 
     it("is shown when settings configured", () => {
       render(
-        <SettingsScreen
-          {...defaultProps}
-          settings={ss({ settingsConfigured: true })}
-        />,
+        <SettingsScreen {...defaultProps} settings={ss({ chatSetUp: true })} />,
       );
       expect(screen.getByRole("button", { name: "Cancel" })).toBeDefined();
     });
@@ -423,7 +418,7 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          settings={ss({ settingsConfigured: true })}
+          settings={ss({ chatSetUp: true })}
           cancelSettings={cancelSettings}
         />,
       );

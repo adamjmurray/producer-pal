@@ -13,7 +13,7 @@ import {
   LEGACY_SPLIT_MODE,
   performSplitting,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
-import { readSplitPoints } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
+import { readSplitPoints } from "#src/tools/shared/arrangement/splitting/arrangement-splitting-params.ts";
 import {
   mockArrangementClipsRescan,
   overrideWithDuplicateCounter,

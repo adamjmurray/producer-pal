@@ -43,7 +43,7 @@ describe("a pad path aimed at the rack that holds the kit", () => {
   it("names the nested path when creating a device", async () => {
     expect(
       await say("ppal-create-device", {
-        device: "Operator",
+        deviceName: "Operator",
         path: "t0/d0/pC1",
       }),
     ).toContain(`container at path "t0/d0/pC1" does not exist — ${NESTED}"`);

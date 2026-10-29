@@ -25,9 +25,9 @@ import {
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 describe("isTakeLaneClip", () => {
@@ -57,7 +57,7 @@ describe("warnUnusedTakeLane", () => {
   it("warns for takeLaneName on a track copy that lands on no lane", () => {
     warnUnusedTakeLane("track", "arrangement", null, "Take");
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
       'takeLaneName ignored: no destination names a take lane (type "track")',
     );
   });
@@ -65,7 +65,7 @@ describe("warnUnusedTakeLane", () => {
   it("warns for takeLane on a session-destination clip duplicate", () => {
     warnUnusedTakeLane("clip", "session", 3);
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
       "takeLane ignored: session destinations have no take lanes",
     );
   });
@@ -74,11 +74,11 @@ describe("warnUnusedTakeLane", () => {
     warnUnusedTakeLane("track", "arrangement", null, "Verse take");
     warnUnusedTakeLane("clip", "session", 3, "Verse take");
 
-    expect(consoleMock.warn).toHaveBeenNthCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining("takeLaneName ignored"),
     );
-    expect(consoleMock.warn).toHaveBeenNthCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining("takeLane, takeLaneName ignored"),
     );
@@ -89,13 +89,13 @@ describe("warnUnusedTakeLane", () => {
     warnUnusedTakeLane("clip", "session", null);
     warnUnusedTakeLane("track", "arrangement", 0, "");
 
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   it("stays quiet for an arrangement clip duplicate, which uses it", () => {
     warnUnusedTakeLane("clip", "arrangement", 2);
 
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 });
 
@@ -241,7 +241,7 @@ describe("resolveTakeLane", () => {
     // Regression: it was the one inapplicable param on these tools dropped
     // without a word, so the caller saw a successful duplicate onto a lane
     // still carrying its old name.
-    expect(consoleMock.warn).toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
       expect.stringContaining("takeLaneName ignored"),
     );
   });
@@ -318,7 +318,7 @@ describe("takeLaneTargetsThatFit", () => {
     expect(dropped.get(`t0/l${MAX_TAKE_LANES}`)).toBe(
       `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
     );
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   // The cap limits the lanes a call makes; the user can make more in Live.

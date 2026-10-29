@@ -9,11 +9,11 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type McpResponse } from "#src/shared/mcp-responses.ts";
 import { type CheckedManageArgs } from "#src/tools/core/helpers/manage-args.ts";
-import { manageInstallResult } from "#src/tools/core/helpers/manage-contract.ts";
 import { type OfflineDeps } from "./offline-deps.ts";
 import { addProducerPal } from "./offline-add-producer-pal.ts";
+import { installProducerPal } from "./offline-install-producer-pal.ts";
 import { checkedManageArgs } from "./offline-manage-args.ts";
-import { offlineError, offlineResult } from "./offline-responses.ts";
+import { offlineError } from "./offline-responses.ts";
 
 /**
  * Run a ppal-manage call the portal can answer without the device.
@@ -35,8 +35,10 @@ export async function offlineManage(
     return offlineError(errorMessage(error));
   }
 
-  if (checked.action === "install-remote-script") {
-    return await installRemoteScript(checked.userLibrary, deps);
+  if (checked.action === "install-producer-pal") {
+    return await installProducerPal(checked.userLibrary, deps, {
+      running: false,
+    });
   }
 
   if (checked.action === "add-producer-pal") {
@@ -44,23 +46,4 @@ export async function offlineManage(
   }
 
   return null;
-}
-
-/**
- * Install the remote script bundled with this portal.
- * @param userLibrary - Absolute path to the User Library, if the call gave one
- * @param deps - The install
- * @returns The same result or error the device's install gives
- */
-export async function installRemoteScript(
-  userLibrary: string | undefined,
-  deps: Pick<OfflineDeps, "installRemoteScript">,
-): Promise<McpResponse> {
-  try {
-    return offlineResult(
-      manageInstallResult(await deps.installRemoteScript(userLibrary)),
-    );
-  } catch (error) {
-    return offlineError(errorMessage(error));
-  }
 }

@@ -10,7 +10,7 @@
  */
 
 import { assertDefined, errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
@@ -19,14 +19,6 @@ import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts"
 import { clipFromDuplicateResult } from "./arrangement-duplicate-result.ts";
 import { type LaneView } from "./arrangement-lane-view.ts";
 import { type ClipReporter } from "./clip-reporter.ts";
-
-/**
- * Beat tolerance for length comparisons across arrangement editing. Splitting
- * also uses it as the margin keeping split points off a clip's edges — see the
- * validPoints filter in arrangement-splitting.ts, which must not drift from the
- * trim guards that share this value.
- */
-export const EPSILON = 0.001;
 
 export interface TilingContext {
   /** Path to silence WAV file for audio clip operations */
@@ -44,6 +36,18 @@ export interface TilingContext {
   lanes?: LaneView;
   /** Where to say a scratch clip or scene couldn't be removed; unset warns. */
   reportScratch?: (message: string) => void;
+  /** Collects each tile's place and where in the loop it starts playing. */
+  pieces?: TilePiece[];
+}
+
+/** A tile as tiling wrote it: where it sits and what it plays first. */
+export interface TilePiece {
+  /** Arrangement position, in beats. */
+  start: number;
+  /** Arrangement length, in beats. */
+  length: number;
+  /** The content position it starts playing from. */
+  startMarker: number;
 }
 
 export interface CreatedClip {
@@ -302,7 +306,7 @@ export function createAndDeleteTempClip(
 function reporter(
   report?: (message: string) => void,
 ): (message: string) => void {
-  return report ?? ((message: string) => console.warn(message));
+  return report ?? ((message: string) => emitWarning(message));
 }
 
 /**

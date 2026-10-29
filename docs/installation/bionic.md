@@ -125,7 +125,8 @@ These flags apply to Bionic only. To set them for the whole device instead
 
 - Skip `npx` by setting **Connection** to **Web address** with the URL
   `http://localhost:3350/mcp`. Live and the device must then be running before
-  Bionic connects, and it won't reconnect on its own.
+  Bionic connects (install the device yourself), and it won't reconnect on its
+  own.
 - Add tools back to `--tools` when you miss features. Every tool you add takes
   up room on every conversation.
 - Follow-up messages are often faster than the first: the model reuses work from

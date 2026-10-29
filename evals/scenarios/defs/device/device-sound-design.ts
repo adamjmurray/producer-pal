@@ -38,8 +38,9 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_UPDATE_DEVICE = "ppal-update-device";
+const TOOL_UPDATE_DEVICE = TOOLS.updateDevice;
 
 export const deviceSoundDesign: EvalScenario = {
   id: "device-sound-design",
@@ -61,9 +62,9 @@ export const deviceSoundDesign: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
-    { type: "tool_called", tool: "ppal-create-track", turn: 1 },
-    { type: "tool_called", tool: "ppal-create-device", turn: 1 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
+    { type: "tool_called", tool: TOOLS.createTrack, turn: 1 },
+    { type: "tool_called", tool: TOOLS.createDevice, turn: 1 },
     { type: "tool_called", tool: TOOL_UPDATE_DEVICE, turn: 2 },
     { type: "tool_called", tool: TOOL_UPDATE_DEVICE, turn: 3 },
 

@@ -6,9 +6,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
@@ -312,7 +312,9 @@ describe("createClip path param", () => {
     await createClip({ path: "null", slot: "0/0", notes: "C3 1|1" });
 
     expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
-    expect(consoleMock.warn).toHaveBeenCalledWith('path "null" names nothing');
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
+      'path "null" names nothing',
+    );
   });
 
   it("refuses path and slot together rather than picking one", async () => {
@@ -356,7 +358,9 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
     });
 
     expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
-    expect(consoleMock.warn).toHaveBeenCalledWith('slot "," names nothing');
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
+      'slot "," names nothing',
+    );
   });
 
   it("still reads trackIndex alone as the arrangement", async () => {
@@ -426,7 +430,7 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
     await createClip({ slot: "0/0", trackIndex: 1, notes: "C3 1|1" });
 
     expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
       expect.stringContaining("trackIndex ignored"),
     );
   });

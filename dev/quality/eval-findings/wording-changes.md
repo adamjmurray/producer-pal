@@ -49,14 +49,16 @@ message alone.
 
 Both guards were removed on 2026-09-13: any signed period is legitimate (a
 negative one runs the cycle backwards, a zero one is phase 0), and so is a
-waveform that gives every note the same value. So the lever that moved the
-number is gone on purpose. The finding stands — refusal is what causes
-self-correction — but the turn-4 check is now a capability target with no
-product lever behind it.
+waveform that gives every note the same value. What is refused instead, up
+front, is a period that references a note property (`note.*`, `next.*`): it can
+only be the radians habit. Clip values and random functions stay allowed. The
+error names the property and shows `sin(n/4)`, so the model can fix it off the
+message alone.
 
 The first call is still the radian form, and nothing we send can reach it — the
-model writes it before it has seen anything from us. The turn-4 check wants one
-call, so it stays red whatever ships. Don't retry this as prose.
+model writes it before it has seen anything from us. The scenario's turn-4 check
+wants one call, so a refusal still costs a second call and it stays red. Don't
+retry this as prose.
 
 **A locator param loses to a value the model already has.** `ppal-duplicate`'s
 locator was missed in 3 of 3 trials while `ppal-playback`'s `startLocator`

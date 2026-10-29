@@ -37,6 +37,7 @@ export function ChatApp(props: ChatAppProps) {
 
   const {
     chat,
+    conversationEpoch,
     wrappedHandleSend,
     conversationPanelState,
     headerInfo,
@@ -52,6 +53,7 @@ export function ChatApp(props: ChatAppProps) {
       isCompacting={chat.isCompacting}
       rateLimitState={chat.rateLimitState}
       toolLimitReached={chat.toolLimitReached}
+      chatSetUp={settings.chatSetUp}
       handleSend={wrappedHandleSend}
       enqueueMessage={chat.enqueueMessage}
       queuedMessages={chat.queuedMessages}
@@ -77,6 +79,7 @@ export function ChatApp(props: ChatAppProps) {
       showTimestamps={display.showTimestamps}
       showTokenUsage={display.showTokenUsage}
       conversationPanel={conversationPanelState}
+      conversationEpoch={conversationEpoch}
       branchNav={branchNav}
       systemInstruction={systemInstruction}
       importedPromptDiffers={importedPromptDiffers}

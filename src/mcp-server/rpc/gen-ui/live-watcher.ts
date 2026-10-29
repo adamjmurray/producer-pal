@@ -25,7 +25,7 @@ import {
   type GenUiEvent,
   type Widget,
 } from "#src/shared/gen-ui-types.ts";
-import * as console from "../../node-for-max-logger.ts";
+import { nodeInfo, nodeWarn } from "../../node-for-max-logger.ts";
 import {
   remoteScriptRequest,
   type RemoteScriptReply,
@@ -186,7 +186,7 @@ export class LiveWatcher {
 
       this.wake();
     } catch (error) {
-      console.warn(`Live watcher: ${errorMessage(error)}`);
+      nodeWarn(`Live watcher: ${errorMessage(error)}`);
     }
   }
 
@@ -446,7 +446,7 @@ export class LiveWatcher {
 
   private refreshAll(why: string): void {
     this.refreshedThisTick = true;
-    console.info(`Live watcher: refreshing every clip widget (${why})`);
+    nodeInfo(`Live watcher: refreshing every clip widget (${why})`);
     this.deps.publish({
       type: "live",
       tool: "remote-script",
@@ -492,7 +492,7 @@ export class LiveWatcher {
       error instanceof ScriptUnavailable ? error.message : errorMessage(error);
 
     if (this.available) {
-      console.warn(`Live watcher: ${why}`);
+      nodeWarn(`Live watcher: ${why}`);
     }
 
     this.available = false;

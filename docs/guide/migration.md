@@ -585,8 +585,9 @@ Send one.
   `path names the clip on its own - don't send slot with it (slot is deprecated)`:
   `path` and `slot`, `toPath` and `toSlot`, `arrangementSplit` and `split`,
   `startTime` and `startLocator` (and the loop pair), `arrangementStart` and
-  `locator`, `device` and `deviceName` on `ppal-create-device`, and a `toPath`
-  with a position in it beside `arrangementStart`. 2.4 quietly used `device`.
+  `locator`, and a `toPath` with a position in it beside `arrangementStart`.
+- `deviceName` beside its `device` alias on `ppal-create-device`. 2.4 quietly
+  used `device`.
 - `id` beside `ids` (or a tool's own spelling such as `clipId`), and `path`
   beside `paths`. 2.4 used the first and warned about the other when the values
   differed, and said nothing when they matched; every tool that takes them now
@@ -848,12 +849,14 @@ slot, `t2[5|1]` a spot on an arrangement, `t2/l0` a take lane.
 | `startLocator`, `loopStartLocator`, `loopEndLocator` | `startTime` / `loopStart` / `loopEnd`: `loc:Chorus` |
 | `devicePath` on select                               | `path`                                              |
 | `inputRoutingTypeId` and the other three `*Id`       | drop the `Id` suffix                                |
-| `deviceName` on create-device                        | `device`                                            |
 | `split` on update-clip                               | `arrangementSplit`, but see below                   |
 
-The `*Id` and `deviceName` rows are plain renames: the `*Id` survivors already
-accept a name or an id. Most of the rest are mechanical. **Four are not**, and a
-find-and-replace on them writes a call that quietly does the wrong thing.
+`ppal-create-device` keeps `deviceName`. `device` still works as an alias, but
+isn't the main name: Claude Desktop drops an argument named `device`.
+
+The `*Id` row is a plain rename: the `*Id` survivors already accept a name or an
+id. Most of the rest are mechanical. **Four are not**, and a find-and-replace on
+them writes a call that quietly does the wrong thing.
 
 ### `count` becomes one path entry per object
 

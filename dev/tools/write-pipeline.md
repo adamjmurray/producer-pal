@@ -25,6 +25,7 @@ Types are in `write-pipeline-types.ts`; `runWrite()` is in `write-pipeline.ts`.
 | 4b    | `write`          | Write one target; return its entry. A throw becomes that target's entry.                                                     |
 | 5     | `settle`         | After every target: fix up paths, focus, warnings. May await a write that needs every entry.                                 |
 |       | `loneSkipThrows` | Whether a lone skipped target throws its detail (default yes).                                                               |
+|       | `locate`         | Optional: where path-named objects sit, so a skip whose path another target moved says where its object went (below).        |
 
 Refusals (stages 1 to 4a) happen before the first write. Once targets are being
 written, a failed target costs only its own entry; the rest still run. A
@@ -34,6 +35,27 @@ pipeline returns every entry with a `WARNING:`
 With nothing written, the throw ends the call. A tool that fills call-level
 result fields in `settle` (`playing`) must leave them out until then, not
 default them: a placeholder would be reported as fact.
+
+## Moved paths
+
+A skip entry keeps the caller's path. A tool whose targets can move each other's
+paths (an earlier target deletes, inserts or moves what a later path named)
+gives the pipeline `locate` and sets `atStart` on each target it resolved from a
+path: the object's id, or `null` when the path named nothing. After `settle`,
+for each skipped target, the pipeline asks `locate.idAt(path)` what the path
+names now. If that isn't `atStart`, it appends to the skip's `detail` where the
+object is now (`locate.whereIs`) or, for `atStart: null`,
+`nothing was there when the call began`. A target that is gone, an id, or has no
+`atStart` gets nothing, and so does a call where nothing was written. A lookup
+that throws leaves its entry as it was: the writes are done, so it can't cost
+entries or warn. All sync, so it adds no suspension point.
+
+Checked for every write tool: update-device (pad moves re-number chains),
+delete, update-clip (a conversion's new track, moves, splits) and duplicate (a
+source path; copies insert beside it) can shift paths, so they have `locate`.
+The create tools name places for new objects, in the caller's coordinates, so a
+skip names no existing object. update-track, update-scene, update-live-set,
+playback and select write in place and never insert, move or delete.
 
 ## Targets
 

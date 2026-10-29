@@ -13,14 +13,15 @@ import {
   removeSessionClip,
   removeTempArrangementClip,
   type CreatedClip,
-  EPSILON,
+  type TilePiece,
   type TilingContext,
 } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { reportTileCrossedNotes } from "#src/tools/shared/arrangement/crossed-notes/arrangement-crossed-notes.ts";
 import { tileClipToRange } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   pathPrefix,
-  targetLabel,
+  requireTrackIndex,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   clipReporterFor,
@@ -29,6 +30,7 @@ import {
   type ClipReasons,
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { handleUnloopedLengthening } from "./unlooped-lengthening.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 export interface ArrangementContext {
   silenceWavPath?: string;
@@ -90,17 +92,15 @@ export function handleArrangementLengthening({
     : clipEndMarker - clipStartMarker;
 
   // Get track for clip operations
-  const trackIndex = clip.trackIndex;
-
-  if (trackIndex == null) {
-    throw new Error(`no track for clip ${targetLabel(clip)}`);
-  }
+  const trackIndex = requireTrackIndex(clip);
 
   const track = LiveAPI.from(livePath.track(trackIndex));
   // Tiling speaks for this clip, so what it has to say goes on this clip's
   // entry rather than into a warning.
+  const pieces: TilePiece[] = [];
   const tilingContext: TilingContext = {
     ...(context as TilingContext),
+    pieces,
     reportClip: clipReporterFor(reasons),
     // A scratch clip Live won't remove is this clip's to report.
     reportScratch: (message) => noteClipReason(reasons, clip.id, message),
@@ -191,6 +191,11 @@ export function handleArrangementLengthening({
   // A pass whose every tile was refused changed nothing.
   if (tiledClips.length > 0) {
     noteLanded(reasons, "lengthened", { id: clip.id });
+
+    // Wherever one piece stops, a note still sounding there is cut off.
+    if (!isAudioClip) {
+      reportTileCrossedNotes(tilingContext.reportClip, clip, pieces);
+    }
   }
 
   updatedClips.push({ id: clip.id });
@@ -249,9 +254,9 @@ function createLoopedClipTiles({
 }: CreateLoopedClipTilesArgs): ClipIdResult[] {
   const updatedClips: ClipIdResult[] = [];
 
-  // Showing less than one pass: tile with start_marker offsets. EPSILON keeps
+  // Showing less than one pass: tile with start_marker offsets. SAME_TIME_EPSILON keeps
   // a float wobble between two Live reads from truncating an exact pass.
-  if (currentArrangementLength < totalContentLength - EPSILON) {
+  if (currentArrangementLength < totalContentLength - SAME_TIME_EPSILON) {
     const remainingLength = arrangementLengthBeats - currentArrangementLength;
     const tiledClips = tileClipToRange(
       clip,
@@ -273,7 +278,7 @@ function createLoopedClipTiles({
   }
 
   // If current arrangement length > total content length, shorten first then tile
-  if (currentArrangementLength > totalContentLength + EPSILON) {
+  if (currentArrangementLength > totalContentLength + SAME_TIME_EPSILON) {
     let newEndTime = currentStartTime + totalContentLength;
     const tempClipLength = currentEndTime - newEndTime;
 
@@ -374,11 +379,7 @@ export function handleArrangementShortening({
   const tempClipLength = currentEndTime - newEndTime;
 
   // Get track
-  const trackIndex = clip.trackIndex;
-
-  if (trackIndex == null) {
-    throw new Error(`no track for clip ${targetLabel(clip)}`);
-  }
+  const trackIndex = requireTrackIndex(clip);
 
   const track = LiveAPI.from(livePath.track(trackIndex));
 

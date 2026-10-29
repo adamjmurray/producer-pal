@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../../types.ts";
 import {
   validateBufferedState,
@@ -43,7 +43,7 @@ function warnIfSourceEntirelyEmpty(
   const lo = Math.min(...sourceBars);
   const hi = Math.max(...sourceBars);
 
-  console.warn(
+  emitWarning(
     lo === hi
       ? `Bar ${lo} is empty, nothing to copy`
       : `Bars ${lo}-${hi} are empty, nothing to copy`,
@@ -66,7 +66,7 @@ function determineSourceBarsForCopy(element: BarCopyElement): number[] | null {
     const previousBar = element.destination.bar - 1;
 
     if (previousBar <= 0) {
-      console.warn("Cannot copy from previous bar when at bar 1 or earlier");
+      emitWarning("Cannot copy from previous bar when at bar 1 or earlier");
 
       return null;
     }
@@ -77,7 +77,7 @@ function determineSourceBarsForCopy(element: BarCopyElement): number[] | null {
   if (element.source.bar !== undefined) {
     /* v8 ignore start -- parser guarantees bar > 0 */
     if (element.source.bar <= 0) {
-      console.warn(`Cannot copy from bar ${element.source.bar} (no such bar)`);
+      emitWarning(`Cannot copy from bar ${element.source.bar} (no such bar)`);
 
       return null;
     }
@@ -90,7 +90,7 @@ function determineSourceBarsForCopy(element: BarCopyElement): number[] | null {
     const [start, end] = element.source.range;
 
     if (start <= 0 || end <= 0) {
-      console.warn(
+      emitWarning(
         `Cannot copy from range ${start}-${end} (invalid bar numbers)`,
       );
 
@@ -98,7 +98,7 @@ function determineSourceBarsForCopy(element: BarCopyElement): number[] | null {
     }
 
     if (start > end) {
-      console.warn(`Invalid source range ${start}-${end} (start > end)`);
+      emitWarning(`Invalid source range ${start}-${end} (start > end)`);
 
       return null;
     }
@@ -143,7 +143,7 @@ function handleMultiBarSourceRangeCopy(
 
   // Validate source range
   if (sourceStart <= 0 || sourceEnd <= 0) {
-    console.warn(
+    emitWarning(
       `Invalid source range @${destStart}-${destEnd}=${sourceStart}-${sourceEnd} (invalid bar numbers)`,
     );
 
@@ -151,7 +151,7 @@ function handleMultiBarSourceRangeCopy(
   }
 
   if (sourceStart > sourceEnd) {
-    console.warn(
+    emitWarning(
       `Invalid source range @${destStart}-${destEnd}=${sourceStart}-${sourceEnd} (start > end)`,
     );
 
@@ -176,7 +176,7 @@ function handleMultiBarSourceRangeCopy(
 
     // Skip copying a bar to itself
     if (sourceBar === destBar) {
-      console.warn(`Skipping copy of bar ${sourceBar} to itself`);
+      emitWarning(`Skipping copy of bar ${sourceBar} to itself`);
       destBar++;
       sourceOffset++;
       continue;
@@ -252,7 +252,7 @@ export function handleBarCopyRangeDestination(
 
   // Validate destination range
   if (destStart <= 0 || destEnd <= 0) {
-    console.warn(
+    emitWarning(
       `Invalid destination range @${destStart}-${destEnd}= (invalid bar numbers)`,
     );
 
@@ -260,7 +260,7 @@ export function handleBarCopyRangeDestination(
   }
 
   if (destStart > destEnd) {
-    console.warn(
+    emitWarning(
       `Invalid destination range @${destStart}-${destEnd}= (start > end)`,
     );
 
@@ -288,7 +288,7 @@ export function handleBarCopyRangeDestination(
     sourceBar = destStart - 1;
 
     if (sourceBar <= 0) {
-      console.warn(
+      emitWarning(
         `Cannot copy from previous bar when destination starts at bar ${destStart}`,
       );
 
@@ -299,7 +299,7 @@ export function handleBarCopyRangeDestination(
     sourceBar = element.source.bar as number;
 
     if (sourceBar <= 0) {
-      console.warn(`Cannot copy from bar ${sourceBar} (no such bar)`);
+      emitWarning(`Cannot copy from bar ${sourceBar} (no such bar)`);
 
       return { currentTime: null };
     }
@@ -311,7 +311,7 @@ export function handleBarCopyRangeDestination(
   const sourceNotes = notesByBar.get(sourceBar);
 
   if (sourceNotes == null || sourceNotes.length === 0) {
-    console.warn(`Bar ${sourceBar} is empty, nothing to copy`);
+    emitWarning(`Bar ${sourceBar} is empty, nothing to copy`);
 
     return { currentTime: null };
   }
@@ -327,7 +327,7 @@ export function handleBarCopyRangeDestination(
   for (let destBar = destStart; destBar <= destEnd; destBar++) {
     // Skip copying a bar to itself
     if (sourceBar === destBar) {
-      console.warn(`Skipping copy of bar ${sourceBar} to itself`);
+      emitWarning(`Skipping copy of bar ${sourceBar} to itself`);
       continue;
     }
 

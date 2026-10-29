@@ -132,4 +132,18 @@ describe("dedupeNotesKeepingLast()", () => {
     expect(result.some((n) => n.id === 8)).toBe(false);
     expect(result.some((n) => n.id === 9)).toBe(true);
   });
+
+  it("stays fast on a 50k-note write", () => {
+    const notes = Array.from({ length: 50000 }, (_, id) => ({
+      id,
+      start_time: (id % 2500) * 0.25,
+      pitch: 36 + (id % 40),
+    }));
+    const started = performance.now();
+    const result = dedupeNotesKeepingLast(notes);
+
+    // Quadratic dedupe took many seconds here; this is a generous bound.
+    expect(performance.now() - started).toBeLessThan(2000);
+    expect(result.length).toBeGreaterThan(0);
+  });
 });

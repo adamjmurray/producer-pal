@@ -10,6 +10,7 @@
 import { trackNames } from "../helpers/track-names.ts";
 import { type EvalScenario } from "../../types.ts";
 import { assertNamesTarget } from "../path/path-assertions.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 export const updateLiveSet: EvalScenario = {
   id: "update-live-set",
@@ -31,15 +32,15 @@ export const updateLiveSet: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     // Turn 1: Live set property updates
-    { type: "tool_called", tool: "ppal-update-live-set", turn: 1 },
+    { type: "tool_called", tool: TOOLS.updateLiveSet, turn: 1 },
 
     // The outcome, not the prose: both properties actually landed in the Set.
     {
       type: "state",
-      tool: "ppal-read-live-set",
+      tool: TOOLS.readLiveSet,
       args: {},
       expect: (result) => {
         const set = result as { tempo?: number; timeSignature?: string };
@@ -56,12 +57,12 @@ export const updateLiveSet: EvalScenario = {
     { type: "response_contains", pattern: /6\/8/, turn: 1 },
 
     // Turn 2: Delete track
-    { type: "tool_called", tool: "ppal-delete", turn: 2 },
+    { type: "tool_called", tool: TOOLS.delete, turn: 2 },
 
     // The outcome, not the prose: the track is really gone.
     {
       type: "state",
-      tool: "ppal-read-live-set",
+      tool: TOOLS.readLiveSet,
       args: { include: ["tracks"] },
       expect: (result) => !trackNames(result).includes("Lead"),
       explain: (result) =>
@@ -69,7 +70,7 @@ export const updateLiveSet: EvalScenario = {
     },
 
     // The only place delete's target arg is graded. 2.2.0 renamed it to `id`.
-    assertNamesTarget({ turn: 2, tool: "ppal-delete" }),
+    assertNamesTarget({ turn: 2, tool: TOOLS.delete }),
     { type: "response_contains", pattern: /delet/i, turn: 2 },
 
     {

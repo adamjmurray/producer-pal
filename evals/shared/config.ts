@@ -9,27 +9,17 @@
 
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
+import {
+  type ProducerPalConfig,
+  type ProducerPalConfigUpdate,
+} from "#src/shared/config.ts";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
 
 export const CONFIG_URL = siblingUrl(MCP_URL, "config");
 export const REST_BASE_URL = siblingUrl(MCP_URL, "").replace(/\/$/, "");
 
-/**
- * Configuration options that can be set via the /config endpoint
- */
-export interface ConfigOptions {
-  projectContext?: string;
-  smallModelMode?: boolean;
-  jsonOutput?: boolean;
-  sampleFolder?: string;
-  liveApiEnabled?: boolean;
-  /** False makes the remote script look uninstalled. Debug builds only; a release build ignores it. */
-  remoteScriptEnabled?: boolean;
-  /** A version string makes a running remote script older than it look out of date; null clears it. Debug builds only. */
-  remoteScriptMinVersion?: string | null;
-  tools?: string[];
-  notation?: Notation;
-}
+/** Configuration options that can be set via the /config endpoint */
+export type ConfigOptions = ProducerPalConfigUpdate & { notation?: Notation };
 
 /**
  * Update server config via the /config endpoint
@@ -48,27 +38,23 @@ export async function setConfig(options: ConfigOptions): Promise<void> {
   }
 }
 
+type RestorableConfig = Partial<
+  Pick<ProducerPalConfig, "liveApiEnabled" | "smallModelMode">
+> & { notation?: Notation };
+
 /**
  * Read the server's current config via the /config endpoint.
  *
  * @returns The fields scenarios restore after changing them
  */
-async function fetchConfig(): Promise<{
-  notation?: Notation;
-  liveApiEnabled?: boolean;
-  smallModelMode?: boolean;
-}> {
+async function fetchConfig(): Promise<RestorableConfig> {
   const response = await fetch(CONFIG_URL);
 
   if (!response.ok) {
     throw new Error(`Failed to get config: ${response.status}`);
   }
 
-  return (await response.json()) as {
-    notation?: Notation;
-    liveApiEnabled?: boolean;
-    smallModelMode?: boolean;
-  };
+  return (await response.json()) as RestorableConfig;
 }
 
 /**

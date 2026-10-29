@@ -144,6 +144,9 @@ describe("InstallationTab remote script section", () => {
     expect(
       screen.getByTestId("remote-script-installed-path").textContent,
     ).toContain(`${USER_LIBRARY}/Remote Scripts/Producer_Pal`);
+    expect(screen.getByTestId("remote-script-new-chat-hint").textContent).toBe(
+      "After restarting Live, start a new chat so it picks up the new version.",
+    );
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/remote-script/install"),
       expect.objectContaining({
@@ -180,6 +183,7 @@ describe("InstallationTab remote script section", () => {
 
     expect(error.textContent).toBe("No such directory: /nope");
     expect(screen.queryByTestId("remote-script-installed-path")).toBeNull();
+    expect(screen.queryByTestId("remote-script-new-chat-hint")).toBeNull();
   });
 
   it("asks for the path when no User Library was detected", async () => {

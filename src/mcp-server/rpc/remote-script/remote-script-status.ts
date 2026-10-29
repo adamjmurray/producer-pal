@@ -23,7 +23,7 @@ import {
 const VERSION_LINE = /^VERSION\s*=\s*["']([^"']*)["']/m;
 
 /**
- * Added only by `npm run remote-script:install -- --probe`: a dev copy that
+ * Added only by `npm run install:remote-script -- --probe`: a dev copy that
  * differs from every device build on purpose, so it is never offered an update.
  */
 const DEV_PROBE_FILE = "probe.py";

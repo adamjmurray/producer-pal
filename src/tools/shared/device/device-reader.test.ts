@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { LiveAPI as MockLiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -534,7 +534,7 @@ describe("device-reader", () => {
     });
 
     it("returns empty object when max recursion depth exceeded", () => {
-      const consoleSpy = vi.spyOn(console, "warn");
+      const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
       const device = makeOperatorDevice();
 
       setupLiveApiMock();

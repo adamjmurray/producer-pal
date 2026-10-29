@@ -23,7 +23,7 @@ this is a good option.
 - [Node.js 22+](https://nodejs.org/en/download) (required by Codex; Producer Pal
   itself only needs 20+)
 - [OpenAI Codex](https://github.com/openai/codex#quickstart) (requires OpenAI
-  account, and a paid subscription at time of writing)
+  account; a paid subscription is recommended)
 
 ## Installation Steps
 

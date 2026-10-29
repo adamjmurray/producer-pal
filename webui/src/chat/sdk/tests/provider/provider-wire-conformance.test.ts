@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetOpenRouterReasoningCache } from "#webui/chat/sdk/provider/openrouter-reasoning";
 import { createProviderModel } from "#webui/chat/sdk/provider/provider-factories";
 import { buildProviderOptions } from "#webui/chat/sdk/provider/provider-options";
-import { isAlwaysOnThinkingModel } from "#webui/hooks/settings/config-builders";
+import { isAlwaysOnThinkingModel } from "#webui/chat/sdk/provider/thinking-effort";
 import { PROVIDER_MODELS } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
 

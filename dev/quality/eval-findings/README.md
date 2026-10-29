@@ -11,11 +11,11 @@ not doing a day of work and doing it twice.
 
 ## Parts
 
-| File                                       | What's in it                                                               |
-| ------------------------------------------ | -------------------------------------------------------------------------- |
-| [recorded-runs.md](recorded-runs.md)       | Every recorded run: model, mode, commit, pass rate, tokens, and caveats    |
-| [scenario-results.md](scenario-results.md) | Per-scenario failures across runs, and what moved between runs             |
-| [wording-changes.md](wording-changes.md)   | Skill wording changes that did and did not work, and where a fragment sits |
+| File                                            | What's in it                                                               |
+| ----------------------------------------------- | -------------------------------------------------------------------------- |
+| [recorded-runs.md](recorded-runs.md)            | Every recorded run: model, mode, commit, pass rate, tokens, and caveats    |
+| [scenario-results/](scenario-results/README.md) | Every failure of each recorded run, and what moved between runs            |
+| [wording-changes.md](wording-changes.md)        | Skill wording changes that did and did not work, and where a fragment sits |
 
 ## Scenarios that are red on purpose
 

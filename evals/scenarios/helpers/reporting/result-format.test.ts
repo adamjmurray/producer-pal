@@ -99,6 +99,16 @@ describe("scorePercentage", () => {
     expect(scorePercentage(trials)).toBe(95);
   });
 
+  it("leaves errored trials out of the repeated pass rate", () => {
+    const errored = { ...makeResult([]), result: "error" as const };
+
+    expect(
+      scorePercentage([makeResult([true]), errored, makeResult([false])]),
+    ).toBe(50);
+    expect(scorePercentage([makeResult([true]), errored])).toBe(100);
+    expect(scorePercentage([errored, errored])).toBeNull();
+  });
+
   it("has nothing to grade without results or checks", () => {
     expect(scorePercentage([])).toBeNull();
     expect(scorePercentage([makeResult([])])).toBeNull();

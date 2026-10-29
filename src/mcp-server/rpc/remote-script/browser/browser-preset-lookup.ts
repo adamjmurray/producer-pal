@@ -5,9 +5,12 @@
 
 // Finding the preset a `preset` arg refers to. Live's browser files every
 // device preset (.adv, and .adg racks built around a device) under that device,
-// so a name is searched there first. A name it doesn't have is looked up in
-// Live's library database, which also reaches presets filed elsewhere, such as
-// a pack's drum kits. A file path from ppal-library names one directly.
+// so a name is searched there first. Live's library database reaches presets
+// filed elsewhere, such as a pack's drum kits: a name the browser lacks is
+// looked up there, and one it finds once is refused if the database has
+// several. A name it finds several times is settled by the database's files, as
+// the browser lists one file under every device a rack is built around. A file
+// path from ppal-library names one directly.
 
 import { isAbsolutePath } from "#src/tools/shared/remote-script/absolute-path.ts";
 import {
@@ -18,16 +21,24 @@ import {
   type Candidate,
   SECTIONS,
   type Section,
-  ambiguity,
   candidateList,
   findAtPath,
   found,
   listBrowser,
   normalizedName,
+  pathSegments,
   pooledCandidates,
   sectionPrefixed,
 } from "./browser-device-lookup.ts";
-import { lookUpPresetFile, presetFile } from "./browser-preset-files.ts";
+import {
+  drumKitFilesAt,
+  duplicatePresetFiles,
+  listedPresetFiles,
+  loadablePresetFile,
+  lookUpPresetFile,
+  presetFile,
+  severalPresets,
+} from "./browser-preset-files.ts";
 import { presetFileIsFor } from "./preset-file-device.ts";
 
 /** Sections that hold presets. Plug-ins list none. */
@@ -38,7 +49,11 @@ const PRESET_SECTIONS = SECTIONS.filter((section) => section.type !== "plugin");
  * `<section>/<path>` browser path, or a name searched for among the presets.
  * A name must match exactly (any case, with or without its suffix): loading a
  * preset that merely contains it would load one the caller didn't name. A name
- * the browser doesn't have is looked up in Live's library database.
+ * the browser doesn't have is looked up in Live's library database. One it
+ * finds once is refused when the database has other files by that name. Ones it
+ * finds several times are refused with the database's files, or load when the
+ * database has just the one and the browser's matches are that one file. A
+ * browser path is checked against a named device before its folder is listed.
  * @param preset - The preset as the call named it
  * @param scope - The device whose presets a name is searched among, if the call
  *   named one
@@ -54,33 +69,19 @@ export async function lookUpBrowserPreset(
   const wanted = preset.trim();
 
   if (isAbsolutePath(wanted)) {
-    const file = presetFile(wanted);
-
     // A device in the Set may take any preset, a rack included.
     return scope != null &&
       !scope.orAnywhere &&
-      "item" in file &&
+      "item" in presetFile(wanted) &&
       !(await presetFileIsFor(wanted, scope.device))
       ? notAPresetFor(preset, scope)
-      : file;
+      : await loadablePresetFile(wanted);
   }
 
   const prefixed = sectionPrefixed(wanted);
 
   if (prefixed != null) {
-    const resolution = await findAtPath(
-      preset,
-      prefixed,
-      () => nothingNamed(preset, scope),
-      endsAt,
-    );
-
-    return scope != null &&
-      !scope.orAnywhere &&
-      "item" in resolution &&
-      !inScope(resolution, scope)
-      ? notAPresetFor(preset, scope)
-      : resolution;
+    return await lookUpAtPath(preset, prefixed, scope, endsAt);
   }
 
   const key = normalizedName(wanted);
@@ -96,7 +97,25 @@ export async function lookUpBrowserPreset(
   }
 
   if (searched.exact.length > 0) {
-    return pickPreset(preset, searched.exact);
+    // Live's browser doesn't list every file, and lists a rack under each
+    // device it is built around, so its matches say little about the files.
+    const fromLibrary =
+      searched.exact.length === 1
+        ? await duplicatePresetFiles(
+            preset,
+            key,
+            searched.searchedScope,
+            endsAt,
+          )
+        : await listedPresetFiles(
+            preset,
+            key,
+            searched.exact,
+            searched.searchedScope,
+            endsAt,
+          );
+
+    return fromLibrary ?? pickPreset(preset, searched.exact);
   }
 
   return (
@@ -106,6 +125,65 @@ export async function lookUpBrowserPreset(
 }
 
 // --- Helpers below main export ---
+
+/**
+ * Find the preset a `<section>/<path>` spells. When the call named a device,
+ * the path is checked against it before the folder is listed, so a path for
+ * another device is refused for that, not for being shared. A Drum Rack also
+ * takes a kit the browser files under Instrument Rack, judged by its file.
+ * @param preset - The preset as the call named it
+ * @param prefixed - Its section, and everything after the section
+ * @param prefixed.section - The section it starts with
+ * @param prefixed.rest - Everything after the section
+ * @param scope - The device the call named, if any
+ * @param endsAt - When the lookup must be done, in epoch ms
+ * @returns The resolution
+ */
+async function lookUpAtPath(
+  preset: string,
+  prefixed: { section: Section; rest: string },
+  scope: PresetScope | undefined,
+  endsAt: number,
+): Promise<BrowserItemResolution> {
+  const { section, rest } = prefixed;
+  const segments = pathSegments(rest);
+
+  if (
+    scope != null &&
+    !scope.orAnywhere &&
+    segments.length > 0 &&
+    !inScope({ type: section.type, path: segments.join("/") }, scope)
+  ) {
+    const kits = await drumKitFilesAt(section.type, segments, scope, endsAt);
+
+    if (kits.length > 1) {
+      return { available: true, error: sharedAtPath(preset, kits.length) };
+    }
+
+    return kits[0] == null
+      ? notAPresetFor(preset, scope)
+      : await loadablePresetFile(kits[0].path);
+  }
+
+  return await findAtPath(
+    preset,
+    prefixed,
+    {
+      missing: () => nothingNamed(preset, scope),
+      shared: (count) => sharedAtPath(preset, count),
+    },
+    endsAt,
+  );
+}
+
+/**
+ * @param preset - The preset as the call named it
+ * @param count - How many items sit at its browser path
+ * @returns The refusal for a path that does not name one
+ */
+function sharedAtPath(preset: string, count: number): string {
+  return `preset "${preset}" matches ${count} items at that browser path; pass a file's absolute path from ppal-library as preset`;
+}
 
 /** What a name search in the browser found. */
 interface NameSearch {
@@ -201,10 +279,7 @@ async function searchPresets(
 function pickPreset(preset: string, exact: Candidate[]): BrowserItemResolution {
   return exact.length === 1
     ? found(exact[0] as Candidate)
-    : {
-        available: true,
-        error: ambiguity({ name: "preset", noun: "presets" }, preset, exact),
-      };
+    : severalPresets(preset, exact);
 }
 
 /**
@@ -221,20 +296,29 @@ function scopeSection(
 }
 
 /**
- * Whether a resolved item sits under the device a call named.
- * @param resolution - What a browser path resolved to
- * @param resolution.item - The item
+ * Whether a browser path sits under the device a call named.
+ * @param item - The path, as a section type and a path below the section
+ * @param item.type - The section's remote script type
+ * @param item.path - The path, trimmed
  * @param scope - The device
- * @returns True when the item is one of that device's presets
+ * @returns True when the path is one of that device's presets
  */
 function inScope(
-  { item }: { item: { type: string; path: string } },
+  item: { type: string; path: string },
   scope: PresetScope,
 ): boolean {
   return (
     item.type === scope.type &&
-    item.path.toLowerCase().startsWith(`${scope.path.toLowerCase()}/`)
+    folded(item.path).startsWith(`${folded(scope.path)}/`)
   );
+}
+
+/**
+ * @param path - A browser path
+ * @returns The path composed and in lower case, as the browser compares it
+ */
+function folded(path: string): string {
+  return path.normalize("NFC").toLowerCase();
 }
 
 /**

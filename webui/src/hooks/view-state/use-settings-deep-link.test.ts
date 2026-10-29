@@ -57,4 +57,33 @@ describe("useSettingsDeepLink", () => {
     expect(openSettings).not.toHaveBeenCalled();
     expect(window.location.hash).toBe("#abc-123");
   });
+
+  describe("fallback tab", () => {
+    it("opens it when the URL names no tab", () => {
+      const openSettings = vi.fn();
+
+      renderHook(() => useSettingsDeepLink(openSettings, "connection"));
+
+      expect(openSettings).toHaveBeenCalledExactlyOnceWith("connection");
+    });
+
+    it("opens it when the named tab doesn't exist", () => {
+      window.history.replaceState(null, "", "/chat?settings=nope");
+      const openSettings = vi.fn();
+
+      renderHook(() => useSettingsDeepLink(openSettings, "connection"));
+
+      expect(openSettings).toHaveBeenCalledExactlyOnceWith("connection");
+      expect(window.location.search).toBe("");
+    });
+
+    it("loses to a tab named in the URL", () => {
+      window.history.replaceState(null, "", "/chat?settings=installation");
+      const openSettings = vi.fn();
+
+      renderHook(() => useSettingsDeepLink(openSettings, "connection"));
+
+      expect(openSettings).toHaveBeenCalledExactlyOnceWith("installation");
+    });
+  });
 });

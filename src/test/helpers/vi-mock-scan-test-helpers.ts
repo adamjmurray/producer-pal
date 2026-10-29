@@ -17,7 +17,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
-import { findTestFiles, projectRoot } from "./meta-test-helpers.ts";
+import { findTestFiles, projectRoot, repoPath } from "./meta-test-helpers.ts";
 
 /** One offending identifier reference inside a vi.mock() factory. */
 export interface MockImportRefViolation {
@@ -209,7 +209,7 @@ function factoryViolations(
       );
 
       out.push({
-        file: path.relative(projectRoot, file),
+        file: repoPath(file),
         line: line + 1,
         name: node.text,
       });

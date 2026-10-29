@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import * as console from "../../transform-warning-label.ts";
+import { clipDetail } from "../../transform-warning-label.ts";
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
 import { normalizePhase } from "../../transform-waveforms.ts";
 import { type EvalContext } from "../transform-context.ts";
@@ -121,7 +121,7 @@ export function evaluateLegato(
   // No next note and no known clip end (e.g. the final note in a context that
   // doesn't supply a clip length): keep the note's current duration rather than
   // failing the whole transform.
-  console.clipDetail(
+  clipDetail(
     "legato(): last note has no next note or clip end; kept its duration",
   );
 

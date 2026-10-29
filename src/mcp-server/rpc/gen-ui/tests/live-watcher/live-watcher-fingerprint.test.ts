@@ -5,13 +5,15 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type ClipWidget } from "#src/shared/gen-ui-types.ts";
-import { FakeScript } from "../gen-ui-test-helpers.ts";
-import { resetHubForTesting } from "../../gen-ui-hub.ts";
+import {
+  clipInput,
+  type FakeScript,
+  resetForWatcherTest,
+} from "../gen-ui-test-helpers.ts";
 import { LiveWatcher, POLL_MS, type WatcherDeps } from "../../live-watcher.ts";
 import {
   createWidget,
   listWidgets,
-  resetWidgetStoreForTesting,
   updateClipState,
 } from "../../widget-store.ts";
 
@@ -34,11 +36,7 @@ function deps(update: typeof updateClipState = updateClipState): WatcherDeps {
 }
 
 beforeEach(() => {
-  vi.useFakeTimers();
-  resetHubForTesting();
-  resetWidgetStoreForTesting();
-  script = new FakeScript();
-  script.slots = { "t0/s0": { name: "Bass", length: 8 } };
+  script = resetForWatcherTest({ "t0/s0": { name: "Bass", length: 8 } });
   watcher = new LiveWatcher(deps());
 });
 
@@ -47,7 +45,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const clip = (ref: string): Record<string, unknown> => ({ kind: "clip", ref });
+const clip = clipInput;
 
 /**
  * @param kind - The kind of event the script reports

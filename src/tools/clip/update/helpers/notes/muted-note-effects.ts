@@ -156,13 +156,13 @@ export function reportMutedQuantize(
 }
 
 /**
- * Say how many muted notes duplicateLoop copied: the muted notes in the window
- * that was read before, now against the same window after.
+ * Say how many muted notes duplicateLoop copied: the muted notes in the doubled
+ * clip's window, less those its window held before.
  * @param clip - The clip that was just doubled
  * @param reasons - What each clip has to say beyond its result, added to
  * @param mutedBefore - How many muted notes the window held before
- * @param window - The window those were read over: [from, span] in beats
- * @param mutedAfter - The clip's muted notes now, over its new, wider window
+ * @param window - The doubled clip's window: [from, span] in beats
+ * @param mutedAfter - The clip's muted notes now
  */
 export function reportMutedCopies(
   clip: LiveAPI,

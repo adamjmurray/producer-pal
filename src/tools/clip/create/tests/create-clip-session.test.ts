@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { createNoteTrackingMethods } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
@@ -168,7 +168,7 @@ describe("createClip - session view", () => {
     ["a MIDI clip", {}, {}],
     ["an audio clip", { sampleFile: "/tmp/kick.wav" }, { has_midi_input: 0 }],
   ])("refuses %s Live declined to create", async (_what, extra, trackProps) => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     mockNonExistentObjects();
     setupLiveSet();
@@ -201,7 +201,7 @@ describe("createClip - session view", () => {
       "track t0 (id track-0) is MIDI; an audio clip needs an audio track",
     ],
   ])("refuses a clip aimed at %s", async (_what, extra, trackProps, reason) => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     setupLiveSet();
     setupTrack(0, trackProps);

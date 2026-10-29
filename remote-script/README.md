@@ -4,7 +4,8 @@ An Ableton Live remote script that listens on **http://127.0.0.1:3349** (or the
 next free port, see [Port](#port)). It does what Max for Live's LiveAPI can't:
 list and load devices, plug-ins and presets, hotswap and copy devices, read and
 write clip automation envelopes, convert audio clips to MIDI, read rack macro
-mappings, set Simpler pitch bend ranges, and step Live's undo history.
+mappings, read a CC Control's name and on/off state (Live before 12.4.15), set
+Simpler pitch bend ranges, and step Live's undo history.
 
 Producer Pal installs it with the rest of the setup and uses it from
 `ppal-create-device`, `ppal-update-device`, `ppal-duplicate`, `ppal-read-clip`,
@@ -20,18 +21,20 @@ To open or create a Set with Producer Pal in it, use the
 Users install from the Chat UI's **Settings → Installation** tab. See
 [the guide](https://producer-pal.org/guide/remote-script).
 
-From a checkout, set `ABLETON_USER_LIBRARY` in `.env` (see `.env.example`),
-then:
+From a checkout:
 
 ```sh
-npm run remote-script:install
+npm run install:remote-script
 ```
 
-Either way it replaces `<User Library>/Remote Scripts/Producer_Pal`. **Restart
-Live** (it only scans Remote Scripts at startup), then pick **Producer Pal**
-under Settings → Tempo & MIDI → Control Surface. Leave Input and Output as None.
+Either way it replaces `<User Library>/Remote Scripts/Producer_Pal`. It uses
+`ABLETON_USER_LIBRARY` from `.env` (see `.env.example`), or finds the User
+Library Live is using. `npm run uninstall:remote-script` removes it and
+`npm run install:status` shows what's installed. **Restart Live** (it only scans
+Remote Scripts at startup), then pick **Producer Pal** under Settings → Tempo &
+MIDI → Control Surface. Leave Input and Output as None.
 
-`npm run remote-script:install -- --probe` also adds two dev-only routes:
+`npm run install:remote-script -- --probe` also adds two dev-only routes:
 `/probe`, which runs posted Python (see
 [dev/live-api/python-remote-script-api/](../dev/live-api/python-remote-script-api/README.md)),
 and `/reload`. See [Hot reload](#hot-reload).
@@ -130,11 +133,11 @@ when unknown and absent from older scripts.
 
 The other routes, by what they work on:
 
-| Part                                                    | Routes                                                                                                                           |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| [list-and-load-routes.md](docs/list-and-load-routes.md) | The `type` values; `GET /list`, `POST /load`                                                                                     |
-| [device-routes.md](docs/device-routes.md)               | `POST /hotswap`, `/replace-producer-pal`, `/device/duplicate`, `/device/macros`, `/device/simpler/read`, `/device/simpler/write` |
-| [clip-routes.md](docs/clip-routes.md)                   | `POST /envelope/list`, `/envelope/read`, `/envelope/write`, `/envelope/clear`; `/clip/convert`                                   |
+| Part                                                    | Routes                                                                                                                                             |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [list-and-load-routes.md](docs/list-and-load-routes.md) | The `type` values; `GET /list`, `POST /load`                                                                                                       |
+| [device-routes.md](docs/device-routes.md)               | `POST /hotswap`, `/replace-producer-pal`, `/device/duplicate`, `/device/macros`, `/device/basics`, `/device/simpler/read`, `/device/simpler/write` |
+| [clip-routes.md](docs/clip-routes.md)                   | `POST /envelope/list`, `/envelope/read`, `/envelope/write`, `/envelope/clear`; `/clip/convert`                                                     |
 
 ### `POST /undo/end`
 
@@ -235,6 +238,7 @@ waits 30s for the reply, and 30s more if the job started in that time.
 - `producer_pal_device.py`: recognizing the Producer Pal device
 - `envelopes.py`: clip automation envelopes
 - `rack_macros.py`: which rack macros are mapped
+- `device_basics.py`: a device's name and on/off state (CC Control)
 - `conversions.py`: converting an audio clip to a new track
 - `clip_address.py`: finding the clip a route names
 - `simpler_settings.py`: a Simpler's pitch bend ranges
@@ -248,7 +252,7 @@ waits 30s for the reply, and 30s more if the job started in that time.
 Change the code and run it in Live without restarting:
 
 ```sh
-npm run remote-script:install -- --probe --reload
+npm run install:remote-script -- --probe --reload
 ```
 
 It reinstalls, reloads the code in Live, and checks Live loaded what was

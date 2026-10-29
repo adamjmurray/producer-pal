@@ -21,6 +21,8 @@ import {
 } from "../assertions/index.ts";
 import { type EvalSession } from "../eval-session.ts";
 import { assertionLabel } from "../helpers/json-results/assertion-label.ts";
+import { reasoningFields } from "#evals/chat/shared/reasoning-fields.ts";
+import { isProviderRefusal } from "../helpers/trials/provider-refusal.ts";
 import { isQuietMode } from "../helpers/quiet-mode.ts";
 import {
   seedConnectTurn,
@@ -81,7 +83,14 @@ export async function runMessageTurns(
       durationMs: Date.now() - turnStart,
       stepUsages: turnResult.stepUsages,
       stepTimings: turnResult.stepTimings,
+      ...reasoningFields(turnResult),
     });
+
+    // The AI SDK reports a refused request as a turn error, not a throw. Later
+    // turns would be refused too, and grading them would score an outage.
+    if (turnResult.error != null && isProviderRefusal(turnResult.error)) {
+      throw new Error(turnResult.error);
+    }
   }
 }
 

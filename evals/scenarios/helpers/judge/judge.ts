@@ -38,13 +38,9 @@ export async function callJudge(
   criteria: string,
 ): Promise<string> {
   const agentCli = getAgentCliTransport(provider);
+  const judgeModel = resolveJudgeModel(provider, model);
 
   if (agentCli != null) {
-    // Isolated judge model, distinct from the model under test, to avoid
-    // self-grading. Must resolve before the generic default below, which would
-    // otherwise pick the CLI session default (the model being evaluated).
-    const judgeModel = model ?? agentCli.judgeModel;
-
     return await callAgentCliJudge(
       agentCli,
       prompt,
@@ -54,7 +50,6 @@ export async function callJudge(
     );
   }
 
-  const judgeModel = model ?? getDefaultModel(provider);
   const languageModel = createProviderModel(provider, judgeModel);
 
   printJudgeHeader(provider, judgeModel, criteria);
@@ -75,4 +70,23 @@ export async function callJudge(
   finishJudgeOutput();
 
   return text.trim();
+}
+
+/**
+ * The model a judge call uses for a provider.
+ *
+ * @param provider - LLM provider
+ * @param model - Optional model override
+ * @returns The override, else the provider's judge or default model
+ */
+export function resolveJudgeModel(
+  provider: EvalProvider,
+  model: string | undefined,
+): string {
+  // Agent CLIs judge with an isolated model, distinct from the one under test,
+  // to avoid self-grading. Their session default is that model, so it must not
+  // be used here.
+  const agentCli = getAgentCliTransport(provider);
+
+  return model ?? agentCli?.judgeModel ?? getDefaultModel(provider);
 }

@@ -427,7 +427,7 @@ describe("ppal-delete", () => {
     const created = parseToolResult<{ path: string }>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { device: "EQ Eight", path: `t${RACKS_TRACK}` },
+        arguments: { deviceName: "EQ Eight", path: `t${RACKS_TRACK}` },
       }),
     );
 

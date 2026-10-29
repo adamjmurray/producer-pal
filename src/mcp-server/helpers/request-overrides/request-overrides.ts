@@ -33,6 +33,12 @@ export interface RequestOverrides {
    */
   notation?: Notation;
   /**
+   * Whether this caller can use ppal-manage (not in small-model mode, and not
+   * when its toolset leaves it out). Remote script refusals point at the tool
+   * only when it is true. Filled with the notation, off the same profile.
+   */
+  manageAvailable?: boolean;
+  /**
    * Aborts when the caller goes away, so a queued write leaves without
    * running. Node-only: the write queue strips it before the call reaches V8.
    */

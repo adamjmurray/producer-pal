@@ -8,6 +8,7 @@ import {
   type RemoteScriptAnswer,
 } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { RemoteScriptTimeout } from "#src/mcp-server/rpc/remote-script/remote-script-errors.ts";
+import { VERSION_CHECK_OR_CONNECT } from "#src/shared/version-check.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type OfflineDeps } from "../offline/offline-deps.ts";
 import { requestWithBrowserRetry } from "../setup/browser-retry-request.ts";
@@ -30,6 +31,7 @@ export interface ReplacedTrack {
  * @param deps - The remote script, and the clock
  * @param libraryUpdated - Whether this update just wrote the device file into
  *   the User Library, which a refusal then says
+ * @param deadline - When the whole update must be done, as a `now()` time
  * @returns The track it sits on, when the remote script said
  * @throws SetupFailed when it didn't swap, or may have
  */
@@ -38,6 +40,7 @@ export async function replaceDevice(
   from: string,
   deps: Pick<OfflineDeps, "request" | "now" | "sleep">,
   libraryUpdated: boolean,
+  deadline: number,
 ): Promise<ReplacedTrack | undefined> {
   const reply = await requestWithBrowserRetry(
     {
@@ -50,6 +53,7 @@ export async function replaceDevice(
         ),
     },
     deps,
+    deadline,
   );
 
   if (reply.status === 200) {
@@ -64,7 +68,7 @@ export async function replaceDevice(
  * @returns What to do to learn which device is running now
  */
 function checkWhichRuns(from: string): string {
-  return `Wait a few seconds, then call ppal-connect to see which version is running (it was ${from}). If it is still ${from}, call update-producer-pal again.`;
+  return `Wait a few seconds, then check which version is running (it was ${from}): call ${VERSION_CHECK_OR_CONNECT}. If it is still ${from}, call update-producer-pal again.`;
 }
 
 /**

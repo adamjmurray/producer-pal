@@ -34,14 +34,15 @@ import {
   assertTrackChain,
   pathEntries,
 } from "./helpers/device-chain-readback.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_UPDATE_DEVICE = "ppal-update-device";
+const TOOL_UPDATE_DEVICE = TOOLS.updateDevice;
 
 /** Lead is track 3 in basic-midi-4-track. */
 const LEAD_PATH = "t3";
 
 /** Reads that show a track's devices. */
-const READ_TOOLS = new Set(["ppal-read-track", "ppal-read-device"]);
+const READ_TOOLS = new Set<string>([TOOLS.readTrack, TOOLS.readDevice]);
 
 /** The three by-type paths the prompt calls for, in the order it names them. */
 const BY_TYPE_PATHS = ["t3/inst", "t3/mfx0", "t3/afx1"];

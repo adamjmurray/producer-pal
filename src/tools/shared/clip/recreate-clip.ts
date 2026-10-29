@@ -13,7 +13,7 @@ import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts"
 import {
   type CopiedNote,
   rawNotesToCopiedNotes,
-  readAllClipNotes,
+  readEveryClipNote,
 } from "./clip-notes.ts";
 import { arrangementSpan, noteSpanLoss } from "./arrangement-span.ts";
 import { clipRegionWrites } from "./clip-region-writes.ts";
@@ -369,10 +369,10 @@ function snapshotClip(
   color: string | undefined,
   span: number | null,
 ): ClipSnapshot {
-  // readAllClipNotes brings pickups and overhang along. Only note_id is
-  // stripped, so a stale id isn't re-fed when copying one source to several
-  // positions.
-  const notes = rawNotesToCopiedNotes(readAllClipNotes(sourceClip));
+  // readEveryClipNote brings pickups and overhang along, past loop_end too.
+  // Only note_id is stripped, so a stale id isn't re-fed when copying one
+  // source to several positions.
+  const notes = rawNotesToCopiedNotes(readEveryClipNote(sourceClip));
   const length = span ?? (sourceClip.getProperty("length") as number);
 
   return {

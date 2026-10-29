@@ -9,7 +9,7 @@ import { join } from "node:path";
 const PROBE_SOURCE = join(import.meta.dirname, "probe.py");
 
 const REGISTRATION = `
-# Dev-only, added by \`npm run remote-script:install -- --probe\`.
+# Dev-only, added by \`npm run install:remote-script -- --probe\`.
 from .probe import probe as _probe  # noqa: E402
 ROUTES["/probe"] = _probe
 POST_ONLY = POST_ONLY + ("/probe",)

@@ -15,6 +15,10 @@ export interface NodeResponse<T = unknown> {
   error?: string;
   /** The request was too large for one Max message, so nothing was sent. */
   tooLarge?: true;
+  /** No answer came in time, so the route may or may not have run. */
+  timedOut?: true;
+  /** The route provably did not run: not sent, unknown, or an unreadable request. */
+  notRun?: true;
 }
 
 const channel = requestChannel({
@@ -24,6 +28,9 @@ const channel = requestChannel({
   // A Max IPC failure otherwise leaves the caller waiting out the whole
   // timeout — max-api-adapter.ts does the same for the Node→V8 direction.
   reportSendFailure: true,
+  // ppal-manage install must tell a failure that may have run from one that
+  // provably didn't.
+  markOutcomes: true,
 });
 
 /**

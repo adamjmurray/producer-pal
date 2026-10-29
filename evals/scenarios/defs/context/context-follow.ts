@@ -26,8 +26,9 @@ import {
   assertMemoryRead,
   assertNoMemoryRead,
 } from "./helpers/memory-assertions.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_CREATE_CLIP = "ppal-create-clip";
+const TOOL_CREATE_CLIP = TOOLS.createClip;
 
 /** Quarter beats in two 4/4 bars — the length ceiling the project context sets. */
 const TWO_BARS = 8;

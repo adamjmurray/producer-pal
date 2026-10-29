@@ -617,7 +617,7 @@ describe("updateClip - Basic operations", () => {
     setupToSlotMocks();
 
     const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-    const warnSpy = vi.spyOn(consoleModule, "warn");
+    const warnSpy = vi.spyOn(consoleModule, "emitWarning");
 
     const result = await updateClip({ id: "123", toSlot: "1/2, 3/4" });
 

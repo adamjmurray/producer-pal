@@ -146,7 +146,3 @@ There is no uninstall button yet, so remove it by hand:
   browser.
 - **The first plug-in listing is slow.** Live scans your plug-in folders the
   first time it is asked.
-- **Developers** can install from a checkout with
-  `npm run remote-script:install`. See
-  [`remote-script/README.md`](https://github.com/adamjmurray/producer-pal/blob/main/remote-script/README.md)
-  for the HTTP API.

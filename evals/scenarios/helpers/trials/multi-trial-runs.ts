@@ -42,11 +42,11 @@ export function printTrialSummary(trials: JsonEvalResult[]): void {
   const passed = trials.filter((r) => r.result === "pass").length;
   const graded = trials.filter((r) => r.result !== "error");
   const color = passed === graded.length ? "green" : "red";
-  // Errored trials never reached the model, so they are not out of N.
+  // Errored trials never tested the model, so they are not out of N.
   const errorNote =
     trials.length === graded.length
       ? ""
-      : ` (${trials.length - graded.length} never ran)`;
+      : ` (${trials.length - graded.length} errored)`;
 
   console.log(
     styleText(

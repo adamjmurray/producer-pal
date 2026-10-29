@@ -166,6 +166,15 @@ describe("ppal-update-track", () => {
     ]);
   });
 
+  it('warns once when id "null" rides along with a path', async () => {
+    const { data, warnings } = parseToolResultWithWarnings<UpdateTrackResult>(
+      await updateTrack({ id: "null", path: "t0", name: "Null Id" }),
+    );
+
+    expect(data.path).toBe("t0");
+    expect(warnings).toStrictEqual(['WARNING: id "null" names nothing']);
+  });
+
   it("refuses path beside paths with different values, renaming nothing", async () => {
     const readNames = async (): Promise<string[]> =>
       (await readTracks()).tracks!.map((track) => track.name);

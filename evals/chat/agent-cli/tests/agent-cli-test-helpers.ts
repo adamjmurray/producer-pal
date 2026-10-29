@@ -73,6 +73,9 @@ export function toJsonl(events: unknown[]): string {
   return events.map((event) => JSON.stringify(event)).join("\n") + "\n";
 }
 
+/** The reasoning both turn fixtures carry before their reply. */
+export const FIXTURE_REASONING = "The user wants a connection.";
+
 /**
  * Build a one-tool Codex turn: thread id, an MCP call, a reply, and usage.
  *
@@ -81,21 +84,24 @@ export function toJsonl(events: unknown[]): string {
  * @returns Codex JSONL stdout
  */
 export function codexTurnStdout(threadId: string, text: string): string {
+  const completed = (item: unknown): unknown => ({
+    type: "item.completed",
+    item,
+  });
+
   return toJsonl([
     { type: "thread.started", thread_id: threadId },
-    {
-      type: "item.completed",
-      item: {
-        id: "call-1",
-        type: "mcp_tool_call",
-        server: "producer-pal",
-        tool: "ppal-connect",
-        arguments: {},
-        status: "completed",
-        result: { content: [{ type: "text", text: "connected" }] },
-      },
-    },
-    { type: "item.completed", item: { type: "agent_message", text } },
+    completed({
+      id: "call-1",
+      type: "mcp_tool_call",
+      server: "producer-pal",
+      tool: "ppal-connect",
+      arguments: {},
+      status: "completed",
+      result: { content: [{ type: "text", text: "connected" }] },
+    }),
+    completed({ type: "reasoning", text: FIXTURE_REASONING }),
+    completed({ type: "agent_message", text }),
     {
       type: "turn.completed",
       usage: { input_tokens: 10, output_tokens: 4 },
@@ -151,12 +157,18 @@ export function claudeTurnStdout(sessionId: string, text: string): string {
     {
       type: "assistant",
       session_id: sessionId,
-      message: { content: [{ type: "text", text }] },
+      message: {
+        content: [
+          { type: "thinking", thinking: FIXTURE_REASONING },
+          { type: "text", text },
+        ],
+      },
     },
     {
       type: "result",
       subtype: "success",
       is_error: false,
+      stop_reason: "end_turn",
       result: text,
       session_id: sessionId,
       duration_api_ms: CLAUDE_FIXTURE_DURATION_API_MS,

@@ -14,6 +14,7 @@ import {
   type McpConnection,
 } from "#evals/chat/mcp.ts";
 import { openLiveSet } from "#evals/scenarios/open-live-set.ts";
+import { getWarningTexts } from "#src/shared/mcp-responses.ts";
 import { type SkillOverrides } from "#src/skills/build-skills.ts";
 import {
   CONFIG_URL,
@@ -23,6 +24,7 @@ import {
 } from "#evals/shared/config.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { KICK_FILE, LIVE_SET_PATH, SAMPLE_FILE } from "./e2e-test-set.ts";
+import { sleep } from "#evals/shared/sleep.ts";
 
 // Re-export for use in tests
 export { extractToolResultText };
@@ -90,35 +92,16 @@ export function getToolErrorMessage(result: unknown): string {
 }
 
 /**
- * The LiveAPI object counter rides the same warning channel, and a build made
- * with ENABLE_BUILD_STATS attaches one to every response. It is instrumentation,
- * not something a tool is telling us, so it never counts as a tool warning —
- * otherwise measuring against real Live would fail this whole suite on the first
- * parseToolResult(). See dev/quality/development-tools/live-api-measurement.md.
- */
-const BUILD_STATS_WARNING = "WARNING: LiveAPI stats:";
-
-/**
- * Extract warning messages from a tool result.
- * Warnings are content items that start with "WARNING: ".
+ * Extract warning messages from a tool result. The build-stats counter is left
+ * out: a build made with ENABLE_BUILD_STATS attaches one to every response, and
+ * counting it would fail this whole suite on the first parseToolResult() when
+ * measuring against real Live. See
+ * dev/quality/development-tools/live-api-measurement.md.
  */
 export function getToolWarnings(result: unknown): string[] {
-  const typed = result as {
-    content?: Array<{ text?: string; type?: string }>;
-  } | null;
+  const typed = result as { content?: unknown } | null;
 
-  if (!typed?.content) {
-    return [];
-  }
-
-  return typed.content
-    .filter(
-      (item) =>
-        item.type === "text" &&
-        item.text?.startsWith("WARNING:") &&
-        !item.text.startsWith(BUILD_STATS_WARNING),
-    )
-    .map((item) => item.text ?? "");
+  return getWarningTexts(typed?.content, { excludeBuildStats: true });
 }
 
 /**
@@ -201,14 +184,6 @@ export function parseAliasedToolResult<T>(
   ]);
 
   return data;
-}
-
-/**
- * Sleep for a specified number of milliseconds.
- * Useful for waiting for Live API state to settle.
- */
-export function sleep(ms: number): Promise<void> {
-  return new Promise((done) => setTimeout(done, ms));
 }
 
 /**
@@ -381,7 +356,7 @@ async function createDevice(
 ): Promise<CreateDeviceResult> {
   const result = await client.callTool({
     name: "ppal-create-device",
-    arguments: { device: deviceName, path },
+    arguments: { deviceName, path },
   });
   const created = parseToolResult<CreateDeviceResult>(result);
 
@@ -502,7 +477,7 @@ export async function createTwoPadDrumRack(
     await client.callTool({
       name: "ppal-create-device",
       arguments: {
-        device: "Drum Rack",
+        deviceName: "Drum Rack",
         path,
         params: [
           { name: "pC1/sample", value: KICK_FILE },
@@ -698,3 +673,5 @@ export interface ClipEnvelopeResult {
   /** Why the events are missing, or why the envelope doesn't play */
   detail?: string;
 }
+
+export { sleep };

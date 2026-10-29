@@ -7,7 +7,9 @@ import { expect, test } from "@playwright/test";
 import {
   expectNoConsoleOutput,
   installStubs,
+  makeConversation,
   setupConsoleCapture,
+  setupUiTest,
 } from "./ui-test-helpers";
 
 const captured = setupConsoleCapture();
@@ -81,6 +83,75 @@ test.describe("chat image attachments", () => {
         ]),
       )
       .toStrictEqual([1568, 784]);
+
+    expectNoConsoleOutput(captured);
+  });
+
+  test("pasting a copied file attaches the image without its file name", async ({
+    page,
+  }) => {
+    await installStubs(page);
+    await page.goto("/chat-ui.html");
+
+    // What a Finder copy puts on the clipboard: the file, plus its name as text.
+    await page
+      .getByRole("textbox", { name: "Message" })
+      .evaluate((editor, base64) => {
+        const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+        const data = new DataTransfer();
+
+        data.items.add(new File([bytes], "groove.png", { type: "image/png" }));
+        data.setData("text/plain", "groove.png");
+        editor.dispatchEvent(
+          new ClipboardEvent("paste", {
+            clipboardData: data,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      }, PNG_BYTES.toString("base64"));
+
+    await expect(page.getByAltText("Attachment 1")).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "Message" }),
+    ).not.toContainText("groove.png");
+
+    expectNoConsoleOutput(captured);
+  });
+
+  test("switching conversations leaves the draft and image behind", async ({
+    page,
+  }) => {
+    await setupUiTest(page, [
+      makeConversation({
+        id: "other",
+        title: "Other chat",
+        updatedAt: 100,
+        messages: [
+          { role: "user", content: "FIXTURE_USER_PROMPT" },
+          { role: "assistant", content: "FIXTURE_ASSISTANT_REPLY" },
+        ],
+      }),
+    ]);
+
+    await page.getByRole("textbox", { name: "Message" }).fill("half a thought");
+    await page.getByTestId("image-file-input").setInputFiles({
+      name: "groove.png",
+      mimeType: "image/png",
+      buffer: PNG_BYTES,
+    });
+    await expect(page.getByAltText("Attachment 1")).toBeVisible();
+
+    await page
+      .getByTestId("conversation-item")
+      .filter({ hasText: "Other chat" })
+      .click();
+    await expect(page.getByText("FIXTURE_USER_PROMPT")).toBeVisible();
+
+    await expect(page.getByAltText("Attachment 1")).toBeHidden();
+    await expect(
+      page.getByRole("textbox", { name: "Message" }),
+    ).not.toContainText("half a thought");
 
     expectNoConsoleOutput(captured);
   });

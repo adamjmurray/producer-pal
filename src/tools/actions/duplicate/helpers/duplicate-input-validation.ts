@@ -6,6 +6,7 @@
 import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import { DUPLICATE_TYPES } from "#src/tools/constants.ts";
+import { validateCount } from "#src/tools/shared/validation/lists/insertion-plan.ts";
 import { isTakeLaneRequested } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
   type ParamHome,
@@ -39,9 +40,7 @@ export function validateBasicInputs(
     throw new Error(idOrPathRequired());
   }
 
-  if (count < 1) {
-    throw new Error("count must be at least 1");
-  }
+  validateCount(count);
 }
 
 /**

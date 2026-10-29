@@ -26,6 +26,9 @@ export type ResolvedTarget =
   | { kind: "object"; target: LiveAPI }
   | { kind: "drum-pad"; group: DrumPadGroup; padPath: string };
 
+/** A path that names nothing, as opposed to one that can't be resolved. */
+export class NothingThereError extends Error {}
+
 /** An object's own last path segment, so the rest of the path is its container. */
 const OWN_SEGMENT = /\/[^/]+$/;
 
@@ -45,11 +48,11 @@ export function resolveNamedTarget({
     param === "id" ? resolveIdToTarget(value) : resolvePathToTarget(value);
 
   if (!resolved) {
-    throw new Error(
-      param === "id"
-        ? idDoesNotExist(value)
-        : `${nothingAtPath(value)}${nestedRackHintForPath(value)}`,
-    );
+    throw param === "id"
+      ? new Error(idDoesNotExist(value))
+      : new NothingThereError(
+          `${nothingAtPath(value)}${nestedRackHintForPath(value)}`,
+        );
   }
 
   return resolved;
@@ -170,7 +173,7 @@ function resolvePathToTarget(path: string): ResolvedTarget | null {
   // A type segment that named no device says what the container holds instead
   // of the bare miss the substituted position would report.
   if (resolved.namesNothing != null) {
-    throw new Error(nothingAtPath(path, resolved.namesNothing));
+    throw new NothingThereError(nothingAtPath(path, resolved.namesNothing));
   }
 
   switch (resolved.targetType) {

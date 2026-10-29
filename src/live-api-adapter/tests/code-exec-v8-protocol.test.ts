@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { MAX_CHUNK_SIZE } from "#src/shared/mcp-responses.ts";
+import { MAX_SINGLE_MESSAGE_BYTES } from "#src/shared/mcp-responses.ts";
 import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
 import {
   executeNoteCodeWithData,
@@ -42,8 +42,8 @@ describe("code-exec-v8-protocol requestCodeExecution", () => {
 
     outletMock.mockClear();
 
-    // Enough notes that JSON.stringify({ code, globals }) exceeds MAX_CHUNK_SIZE.
-    const noteCount = Math.ceil(MAX_CHUNK_SIZE / 10) + 100;
+    // Enough notes that JSON.stringify({ code, globals }) exceeds MAX_SINGLE_MESSAGE_BYTES.
+    const noteCount = Math.ceil(MAX_SINGLE_MESSAGE_BYTES / 10) + 100;
     const notes = Array.from({ length: noteCount }, (_, i) => ({
       pitch: 60,
       start: i,
@@ -114,9 +114,22 @@ describe("code-exec-v8-protocol requestCodeExecution", () => {
     );
   });
 
+  it("refuses a request under the character limit but over the byte limit", async () => {
+    const outletMock = vi.mocked(globalThis.outlet);
+
+    outletMock.mockClear();
+
+    const result = await requestCodeExecution("return notes", {
+      notes: "あ".repeat(15_000),
+    });
+
+    expect(result.success).toBe(false);
+    expect(outletMock).not.toHaveBeenCalled();
+  });
+
   it("names the oversized request in the error it resolves", async () => {
     const result = await requestCodeExecution("return notes", {
-      notes: "x".repeat(MAX_CHUNK_SIZE),
+      notes: "x".repeat(MAX_SINGLE_MESSAGE_BYTES),
     });
 
     expect((result as { error: string }).error).toContain("code-exec request");

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
 import {
   type InsertionSpot,
@@ -103,7 +103,7 @@ function targetFromIndex(
   // A return track is still reachable by the retired spelling, so say what
   // replaced it rather than refusing a call that works.
   if (type === "return") {
-    console.warn(
+    emitWarning(
       'type "return" is deprecated and will be removed; use path "rt+" instead',
     );
 

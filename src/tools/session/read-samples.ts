@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: MIT
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 const MAX_SAMPLE_FILES = 1000;
 
@@ -61,7 +61,7 @@ export function readSamples(
   scanFolder(sampleFolder, sampleFolder, samples, limitReached, matcher);
 
   if (limitReached.value) {
-    console.warn(
+    emitWarning(
       `Stopped scanning for samples at ${MAX_SAMPLE_FILES} files. Consider using a smaller sample folder.`,
     );
   }

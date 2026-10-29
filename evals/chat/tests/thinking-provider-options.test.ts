@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildProviderOptions } from "#evals/chat/thinking-provider-options.ts";
 
@@ -16,7 +15,10 @@ describe("buildProviderOptions for the Vercel gateway", () => {
     expect(
       buildProviderOptions("vercel", "high", "anthropic/claude-sonnet-5.5"),
     ).toStrictEqual({
-      anthropic: { thinking: { type: "adaptive" }, effort: "high" },
+      anthropic: {
+        thinking: { type: "adaptive", display: "summarized" },
+        effort: "high",
+      },
     });
     expect(
       buildProviderOptions("vercel", "low", "openai/gpt-6-luna"),
@@ -124,34 +126,14 @@ describe("buildProviderOptions for OpenAI", () => {
     ).toStrictEqual({ openai: { reasoningEffort: "max" } });
   });
 
-  it("sends nothing for off or ultra on other models", () => {
+  it("sends nothing for off on GPT-5 and models without reasoning effort", () => {
     expect(buildProviderOptions("openai", "off", "gpt-5.4")).toBeUndefined();
-    expect(buildProviderOptions("openai", "ultra", "gpt-5.4")).toBeUndefined();
+    expect(buildProviderOptions("openai", "high", "gpt-4o")).toBeUndefined();
   });
-});
 
-describe("rules copied from the chat UI", () => {
-  // Copied from webui (evals can't import it at runtime); keep in step.
-  const read = (path: string): string =>
-    readFileSync(new URL(path, import.meta.url), "utf8");
-  const webui = read("../../../webui/src/hooks/settings/config-builders.ts");
-  const evals = read("../thinking-provider-options.ts");
-
-  it.each(["GPT6_ACCEPTS_NONE", "ALWAYS_ON_THINKING_MODEL"])(
-    "%s is the same pattern",
-    (name) => {
-      const rule = new RegExp(`const ${name} = (/.*/);`);
-
-      expect(rule.exec(webui)?.[1]).toBeDefined();
-      expect(rule.exec(evals)?.[1]).toBe(rule.exec(webui)?.[1]);
-    },
-  );
-
-  it("treats a model as always-on on the same capability test", () => {
-    const test =
-      "caps.rejectsThinkingDisabled && !caps.supportsBetweenToolsThinking";
-
-    expect(webui).toContain(test);
-    expect(evals).toContain(test);
+  it("sends xhigh for ultra where the model supports it", () => {
+    expect(buildProviderOptions("openai", "ultra", "gpt-5.4")).toStrictEqual({
+      openai: { reasoningEffort: "xhigh" },
+    });
   });
 });

@@ -22,7 +22,8 @@ import { resolveUserLibraryFolder } from "../user-library/user-library-folder.ts
 const SCRIPT_FOLDER = "Producer_Pal";
 
 // Temp and backup folders this code names, and nothing a user might name.
-const LEFTOVER = new RegExp(
+// Exported so the dev uninstall script can remove them.
+export const REMOTE_SCRIPT_LEFTOVER = new RegExp(
   `^${SCRIPT_FOLDER}\\.(tmp|old)-[\\da-f]{8}(-[\\da-f]{4}){3}-[\\da-f]{12}$`,
 );
 
@@ -157,7 +158,7 @@ function removeLeftovers(path: string): void {
   }
 
   for (const name of names) {
-    const kind = LEFTOVER.exec(name)?.[1];
+    const kind = REMOTE_SCRIPT_LEFTOVER.exec(name)?.[1];
     const leftover = join(folder, name);
 
     if (

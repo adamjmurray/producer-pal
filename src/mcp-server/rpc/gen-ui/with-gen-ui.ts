@@ -7,7 +7,7 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import { GEN_UI_TOOL_ID } from "#src/shared/gen-ui-types.ts";
 import { type WrappedCallLiveApi } from "../../helpers/connect/connect-append.ts";
 import { type McpResponse } from "../../max-api-adapter.ts";
-import * as console from "../../node-for-max-logger.ts";
+import { nodeWarn } from "../../node-for-max-logger.ts";
 import { isWriteCall } from "../write-queue/write-calls.ts";
 import { publish } from "./gen-ui-hub.ts";
 import { touchedRefs } from "./touched-refs.ts";
@@ -53,8 +53,6 @@ function announceWrite(tool: string, args: object, result: McpResponse): void {
       publish({ type: "live", ...touchedRefs(tool, args, result) });
     }
   } catch (error) {
-    console.warn(
-      `Could not announce ${tool} to the UI: ${errorMessage(error)}`,
-    );
+    nodeWarn(`Could not announce ${tool} to the UI: ${errorMessage(error)}`);
   }
 }

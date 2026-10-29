@@ -15,9 +15,11 @@ import { type FailedLine, readFailedLine } from "./failed-line.ts";
 import { isTransformSharp } from "./transform-comments.ts";
 import {
   afterParameterMistake,
+  barBeatValueMistake,
   shorthandMathMistake,
   unknownParameterMistake,
 } from "./transform-assignment-mistakes.ts";
+import { misplacedKeywordMistake } from "./transform-argument-mistakes.ts";
 import {
   bareConditionMistake,
   unknownPropertyMistake,
@@ -38,9 +40,11 @@ const CHECKS: MistakeCheck[] = [
   unknownPropertyMistake,
   whereNameMistake,
   bareConditionMistake,
+  barBeatValueMistake,
   shorthandMathMistake,
   afterParameterMistake,
   danglingOperator,
+  misplacedKeywordMistake,
   angleConstantMistake,
   unknownParameterMistake,
 ];

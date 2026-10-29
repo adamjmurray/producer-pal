@@ -15,7 +15,7 @@ import {
   createClipsForLength,
   parseArrangementLength,
 } from "./arrangement-length.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { requireTrackIndex } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Duplicate a clip to the arrangement view
@@ -59,11 +59,7 @@ export async function duplicateClipToArrangement(
     throw new Error(idDoesNotExist(clipId));
   }
 
-  const trackIndex = destTrackIndex ?? clip.trackIndex;
-
-  if (trackIndex == null) {
-    throw new Error(`no track for clip ${targetLabel(clip)}`);
-  }
+  const trackIndex = destTrackIndex ?? requireTrackIndex(clip);
 
   const track =
     tracks.get(trackIndex) ?? LiveAPI.from(livePath.track(trackIndex));

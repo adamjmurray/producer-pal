@@ -15,6 +15,7 @@ import { getToolCalls } from "../../../assertions/index.ts";
 import { type EvalAssertion, type EvalTurnResult } from "../../../types.ts";
 import { TOOL_READ_CLIP } from "./clip-tool-constants.ts";
 import { slotToPath } from "./clip-turn-readers.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /**
  * Create a custom assertion that verifies clips were found and notes were read.
@@ -41,7 +42,7 @@ export function assertNotesRead(turn: number): EvalAssertion {
         }
 
         if (
-          name !== "ppal-read-live-set" &&
+          name !== TOOLS.readLiveSet &&
           Array.isArray(args.include) &&
           (args.include.includes("notes") || args.include.includes("*"))
         ) {

@@ -49,6 +49,13 @@ interface StreamState {
   /** True once any reasoning-delta arrived — distinguishes a reasoning-only
    * turn (normal thinking-model finish) from a truly empty one. */
   sawReasoning: boolean;
+  /** Reasoning text so far, blocks separated by a blank line. */
+  reasoningText: string;
+  /** True when the next reasoning delta starts a new block (a new step, or a
+   *  `reasoning-start` part). */
+  reasoningBreak: boolean;
+  /** The latest step's finish reason; the last step's is the turn's. */
+  finishReason?: string;
   /** Errored tool-call ids from the MCP bridge — see {@link processCliStream}. */
   erroredToolCallIds?: Set<string>;
   error?: string;
@@ -66,7 +73,8 @@ interface StreamState {
  * @param options.erroredToolCallIds - Ids of calls whose MCP result carried
  *   `isError: true` (from `createMcpTools`). The flag can't ride on the result
  *   itself — that string is the model's context — so it arrives on the side.
- * @returns TurnResult with text and tool calls
+ * @returns TurnResult with text, tool calls, and the turn's reasoning text and
+ *   finish reason when the model reported them
  */
 export async function processCliStream(
   result: ReturnType<typeof streamText>,
@@ -85,6 +93,8 @@ export async function processCliStream(
     stepCount: 0,
     stepToolCalls: 0,
     sawReasoning: false,
+    reasoningText: "",
+    reasoningBreak: false,
     ...(options?.prevUsage != null && { prevUsage: options.prevUsage }),
     ...(options?.erroredToolCallIds != null && {
       erroredToolCallIds: options.erroredToolCallIds,
@@ -97,7 +107,13 @@ export async function processCliStream(
 
   finishStream(state);
 
-  return { text: state.text, toolCalls: state.toolCalls, error: state.error };
+  return {
+    text: state.text,
+    toolCalls: state.toolCalls,
+    error: state.error,
+    ...(state.reasoningText !== "" && { reasoningText: state.reasoningText }),
+    ...(state.finishReason != null && { finishReason: state.finishReason }),
+  };
 }
 
 /**
@@ -112,6 +128,9 @@ function handleStreamPart(
   state: StreamState,
 ): void {
   switch (part.type) {
+    case "reasoning-start":
+      state.reasoningBreak = true;
+      break;
     case "text-delta":
       handleTextDelta(part.text as string, state);
       break;
@@ -139,6 +158,7 @@ function handleStreamPart(
       break;
     case "finish-step":
       handleFinishStep(
+        part.finishReason as string | undefined,
         part.usage as LanguageModelUsage | undefined,
         part.performance as StepPerformance | undefined,
         state,
@@ -165,6 +185,9 @@ function handleError(error: unknown, state: StreamState): void {
   }
 
   state.error = describeStreamError(error);
+  // A step that dies mid-stream sends no finish-step, so the last step's
+  // reason would otherwise stand in for the turn's.
+  state.finishReason = "error";
 
   process.stderr.write(formatError(state.error) + "\n");
 }
@@ -212,6 +235,7 @@ function handleReasoningDelta(text: string, state: StreamState): void {
   // Record this before the quiet-mode return so the empty-turn diagnostic can
   // tell a reasoning-only turn apart even when thoughts aren't printed.
   state.sawReasoning = true;
+  recordReasoning(text, state);
 
   if (isQuietMode()) {
     return;
@@ -221,6 +245,25 @@ function handleReasoningDelta(text: string, state: StreamState): void {
     state.inThought ? continueThought(text) : startThought(text),
   );
   state.inThought = true;
+}
+
+/**
+ * Keep the turn's reasoning text, a blank line between blocks.
+ *
+ * @param text - Reasoning text delta
+ * @param state - Mutable stream state
+ */
+function recordReasoning(text: string, state: StreamState): void {
+  if (text === "") {
+    return;
+  }
+
+  if (state.reasoningBreak && state.reasoningText !== "") {
+    state.reasoningText += "\n\n";
+  }
+
+  state.reasoningText += text;
+  state.reasoningBreak = false;
 }
 
 /**
@@ -277,6 +320,7 @@ function handleToolResult(
 function handleStartStep(state: StreamState): void {
   closeThought(state);
 
+  state.reasoningBreak = true;
   state.stepCount++;
   state.stepToolCalls = 0;
 
@@ -294,15 +338,21 @@ function handleStartStep(state: StreamState): void {
  * runs while the part is still in flight, so its line could print ahead of the
  * step's own output. Printing from the consume loop fixes the order.
  *
+ * @param finishReason - Why the step's model call stopped
  * @param usage - The step's token usage, as the SDK reports it
  * @param performance - The step's timings, as the SDK measured them
  * @param state - Mutable stream state
  */
 function handleFinishStep(
+  finishReason: string | undefined,
   usage: LanguageModelUsage | undefined,
   performance: StepPerformance | undefined,
   state: StreamState,
 ): void {
+  if (finishReason != null) {
+    state.finishReason = finishReason;
+  }
+
   if (usage == null) {
     return;
   }

@@ -10,7 +10,10 @@ import {
   remoteScriptRequest,
   resolveRemoteScriptPort,
 } from "../remote-script-client.ts";
-import { setRemoteScriptMinVersion } from "../port/remote-script-version.ts";
+import {
+  MIN_REMOTE_SCRIPT_VERSION,
+  setRemoteScriptMinVersion,
+} from "../port/remote-script-version.ts";
 import {
   type FakeRemoteScript,
   expectUnsentTimeout,
@@ -31,8 +34,9 @@ vi.mock(import("../port/remote-script-port-file.ts"), () => ({
   remoteScriptPortFromFile: () => ports.file,
 }));
 
-const OUTDATED_2_4 =
-  'the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0-rc2 or later); update it with ppal-manage action "install-remote-script" or in the Producer Pal chat UI\'s Settings → Installation, then restart Live';
+const OUTDATED_2_4 = `the Producer Pal remote script is out of date (running 2.4.0, needs ${MIN_REMOTE_SCRIPT_VERSION} or later); update it with ppal-manage action "install-producer-pal" or in the Producer Pal chat UI's Settings → Installation, then restart Live`;
+
+const OUTDATED_2_4_NO_MANAGE = `the Producer Pal remote script is out of date (running 2.4.0, needs ${MIN_REMOTE_SCRIPT_VERSION} or later); have the user update it in the Producer Pal chat UI's Settings → Installation, then restart Live`;
 
 let fake: FakeRemoteScript | undefined;
 let version = "2.4.0";
@@ -112,7 +116,11 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
 
     expect(
       await remoteScriptRequest({ method: "POST", route: "/list", body: {} }),
-    ).toStrictEqual({ available: false, outdated: OUTDATED_2_4 });
+    ).toStrictEqual({
+      available: false,
+      outdated: OUTDATED_2_4,
+      outdatedWithoutManage: OUTDATED_2_4_NO_MANAGE,
+    });
     expect(routesAsked(remote)).toStrictEqual(["/ping"]);
   });
 
@@ -162,7 +170,7 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
 
     expect(await available("/list")).toBe(false);
 
-    version = "2.5.0";
+    version = MIN_REMOTE_SCRIPT_VERSION;
     expect(await available("/list")).toBe(true);
     expect(routesAsked(remote)).toStrictEqual(["/ping", "/ping", "/list"]);
 
@@ -198,6 +206,7 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
     expect(await remoteScriptRequest({ route: "/list" })).toStrictEqual({
       available: false,
       outdated: OUTDATED_2_4,
+      outdatedWithoutManage: OUTDATED_2_4_NO_MANAGE,
     });
     expect(Date.now() - started).toBeLessThan(800);
     expect(routesAsked(moved)).toStrictEqual(["/ping"]);
@@ -235,7 +244,11 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
     // reports is old, and there is none left to ask for it again.
     expect(
       await remoteScriptRequest({ route: "/list", expiresInMs: 300 }),
-    ).toStrictEqual({ available: false, outdated: OUTDATED_2_4 });
+    ).toStrictEqual({
+      available: false,
+      outdated: OUTDATED_2_4,
+      outdatedWithoutManage: OUTDATED_2_4_NO_MANAGE,
+    });
     expect(routesAsked(remote)).toStrictEqual(["/ping"]);
     vi.restoreAllMocks();
   });
@@ -251,7 +264,11 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
 
     expect(
       await remoteScriptRequest({ route: "/list", expiresInMs: 300 }),
-    ).toStrictEqual({ available: false, outdated: OUTDATED_2_4 });
+    ).toStrictEqual({
+      available: false,
+      outdated: OUTDATED_2_4,
+      outdatedWithoutManage: OUTDATED_2_4_NO_MANAGE,
+    });
     expect(routesAsked(remote)).toStrictEqual(["/ping"]);
     vi.restoreAllMocks();
   });
@@ -279,7 +296,7 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
 
 describe("remoteScriptRequest against a current remote script", () => {
   it("keeps the version with the port, so there is no ping per call", async () => {
-    version = "2.5.0";
+    version = MIN_REMOTE_SCRIPT_VERSION;
 
     const remote = await standIn();
 
@@ -290,7 +307,7 @@ describe("remoteScriptRequest against a current remote script", () => {
   });
 
   it("looks at the version again once the port is forgotten", async () => {
-    version = "2.5.0";
+    version = MIN_REMOTE_SCRIPT_VERSION;
     await standIn();
     expect(await available("/list")).toBe(true);
 
@@ -303,7 +320,7 @@ describe("remoteScriptRequest against a current remote script", () => {
   });
 
   it("sends the request", async () => {
-    version = "2.5.0-rc2";
+    version = MIN_REMOTE_SCRIPT_VERSION;
 
     const remote = await standIn();
     const reply = await remoteScriptRequest({ route: "/list" });
@@ -317,33 +334,32 @@ describe("remoteScriptRequest against a current remote script", () => {
   });
 
   it("words a 404 for an unknown route from a new-enough script as another build", async () => {
-    version = "2.5.0";
+    version = MIN_REMOTE_SCRIPT_VERSION;
     await standIn(() => unknownRouteAnswer("/envelope/read"));
 
     expect(
       await remoteScriptRequest({ route: "/envelope/read" }),
     ).toStrictEqual({
       available: false,
-      outdated:
-        "the Producer Pal remote script in Live (v2.5.0) is a different build than this device's and can't do this; update it with ppal-manage action \"install-remote-script\" or in the Producer Pal chat UI's Settings → Installation, then restart Live",
+      outdated: `the Producer Pal remote script in Live (v${MIN_REMOTE_SCRIPT_VERSION}) is a different build than this device's and can't do this; update it with ppal-manage action "install-producer-pal" or in the Producer Pal chat UI's Settings → Installation, then restart Live`,
+      outdatedWithoutManage: `the Producer Pal remote script in Live (v${MIN_REMOTE_SCRIPT_VERSION}) is a different build than this device's and can't do this; have the user update it in the Producer Pal chat UI's Settings → Installation, then restart Live`,
     });
   });
 
   it("words an unknown route for the portal as its own, without the chat UI", async () => {
-    version = "2.5.0";
+    version = MIN_REMOTE_SCRIPT_VERSION;
     await standIn(() => unknownRouteAnswer("/envelope/read"));
 
     expect(
       await remoteScriptRequest({ route: "/envelope/read", asker: "portal" }),
     ).toStrictEqual({
       available: false,
-      outdated:
-        "the Producer Pal remote script in Live (v2.5.0) is a different build than this connector's and can't do this; update it with ppal-manage action \"install-remote-script\", then restart Live",
+      outdated: `the Producer Pal remote script in Live (v${MIN_REMOTE_SCRIPT_VERSION}) is a different build than this connector's and can't do this; update it with ppal-manage action "install-producer-pal", then restart Live`,
     });
   });
 
   it("keeps the port after an unknown route", async () => {
-    version = "2.5.0";
+    version = MIN_REMOTE_SCRIPT_VERSION;
 
     const remote = await standIn((request) =>
       request.route === "/missing" ? unknownRouteAnswer("/missing") : null,
@@ -360,7 +376,7 @@ describe("remoteScriptRequest against a current remote script", () => {
   });
 
   it("leaves a 404 that means not found as an answer", async () => {
-    version = "2.5.0";
+    version = MIN_REMOTE_SCRIPT_VERSION;
     await standIn(() => ({ status: 404, body: { error: "no track t9" } }));
 
     expect(await remoteScriptRequest({ route: "/clip/convert" })).toStrictEqual(
@@ -369,7 +385,7 @@ describe("remoteScriptRequest against a current remote script", () => {
   });
 
   it("leaves a 404 that only starts like an unknown route", async () => {
-    version = "2.5.0";
+    version = MIN_REMOTE_SCRIPT_VERSION;
     await standIn(() => ({
       status: 404,
       body: { error: "unknown route: /x" },
@@ -381,13 +397,16 @@ describe("remoteScriptRequest against a current remote script", () => {
 
 describe("the dev override of the minimum version", () => {
   it("makes a current script look out of date, and back", async () => {
-    version = "2.5.0";
+    version = MIN_REMOTE_SCRIPT_VERSION;
     await standIn();
     setRemoteScriptMinVersion("9.0.0");
 
     expect(await remoteScriptRequest({ route: "/list" })).toStrictEqual({
       available: false,
-      outdated: expect.stringContaining("running 2.5.0, needs 9.0.0 or later"),
+      outdated: expect.stringContaining(
+        `running ${MIN_REMOTE_SCRIPT_VERSION}, needs 9.0.0 or later`,
+      ),
+      outdatedWithoutManage: expect.stringContaining("needs 9.0.0 or later"),
     });
 
     setRemoteScriptMinVersion(null);

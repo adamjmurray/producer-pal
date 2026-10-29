@@ -74,7 +74,11 @@ export async function lookUpBrowserDevice(
     : await findAtPath(
         deviceName,
         prefixed,
-        () => nothingNamed(deviceName),
+        {
+          missing: () => nothingNamed(deviceName),
+          shared: (count) =>
+            `deviceName "${deviceName}" matches ${count} items at that browser path, so none was loaded`,
+        },
         endsAt,
       );
 }
@@ -123,25 +127,44 @@ export function sectionPrefixed(
 }
 
 /**
+ * The folders and name of a path below its section, as the lookup reads them.
+ * @param rest - Everything after the section
+ * @returns The trimmed, non-empty segments
+ */
+export function pathSegments(rest: string): string[] {
+  return rest
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment !== "");
+}
+
+/**
  * Find the item a section-prefixed name spells out, one level listing its folder.
  * @param name - The name the call used
  * @param prefixed - Its section, and everything after the section
  * @param prefixed.section - The section it starts with
  * @param prefixed.rest - Everything after the section
- * @param missing - The resolution when nothing is there
+ * @param refusals - What to say when the path can't be settled
+ * @param refusals.missing - The resolution when nothing is there
+ * @param refusals.shared - The error when several loadable items are there,
+ *   given how many. Live can list two files at one browser path, and the
+ *   remote script loads the first, so one is never picked.
  * @param endsAt - When the lookup must be done, in epoch ms
  * @returns The resolution
  */
 export async function findAtPath(
   name: string,
   { section, rest }: { section: Section; rest: string },
-  missing: () => BrowserItemResolution,
+  {
+    missing,
+    shared,
+  }: {
+    missing: () => BrowserItemResolution;
+    shared: (count: number) => string;
+  },
   endsAt: number,
 ): Promise<BrowserItemResolution> {
-  const segments = rest
-    .split("/")
-    .map((segment) => segment.trim())
-    .filter((segment) => segment !== "");
+  const segments = pathSegments(rest);
   const leaf = segments.pop();
 
   if (leaf == null) {
@@ -167,15 +190,24 @@ export async function findAtPath(
   }
 
   const key = normalizedName(leaf);
-  const item =
+  const named =
     reply.status === 200
-      ? listedItems(reply).find(
+      ? listedItems(reply).filter(
           (child) =>
             child.loadable !== false && normalizedName(child.name) === key,
         )
-      : undefined;
+      : [];
+  // `Foo.adv` names one of `Foo.adg` and `Foo.adv`; a bare `Foo` names neither.
+  const spelled = named.filter(
+    (child) => spelledName(child.name) === spelledName(leaf),
+  );
+  const items = spelled.length > 0 ? spelled : named;
 
-  return item == null ? missing() : found({ ...item, section });
+  if (items.length > 1) {
+    return { available: true, error: shared(items.length) };
+  }
+
+  return items[0] == null ? missing() : found({ ...items[0], section });
 }
 
 /**
@@ -250,9 +282,16 @@ export function pooledCandidates(
  * @returns The comparable name
  */
 export function normalizedName(name: string): string {
-  return pathSegment(name.trim().normalize("NFC"))
-    .toLowerCase()
-    .replace(FILE_SUFFIX, "");
+  return spelledName(name).replace(FILE_SUFFIX, "");
+}
+
+/**
+ * A name as spelled, suffix kept, in the form names are compared in.
+ * @param name - A name
+ * @returns It trimmed, NFC, in path form and lowercase
+ */
+function spelledName(name: string): string {
+  return pathSegment(name.trim().normalize("NFC")).toLowerCase();
 }
 
 /**
@@ -287,7 +326,7 @@ export function searchFailed(
  * The error for a name more than one thing has, each spelled so it can be sent
  * straight back as the arg.
  * @param param - The arg the name came in, and what it names
- * @param param.name - The arg, e.g. "device"
+ * @param param.name - The arg, e.g. "deviceName"
  * @param param.noun - What it names, plural
  * @param value - The name the call used
  * @param matches - What it matched
@@ -371,7 +410,7 @@ async function searchSections(
     : {
         available: true,
         error: ambiguity(
-          { name: "device", noun: "devices" },
+          { name: "deviceName", noun: "devices" },
           deviceName,
           matches,
         ),

@@ -28,14 +28,11 @@ for more detailed information.
   to under 2 s), and calls through the remote script answer faster
 - Turn an audio clip's drums, melody or harmony into a new MIDI track, using
   Live's own audio-to-MIDI conversion
-- Every write tool now answers the same way when a target is named twice or
-  fails partway
+- Load any preset by name, anywhere in your library (packs, your own folders)
 - Set up and update Producer Pal by asking the AI (coding agents / npx and
   Claude Desktop): it installs the remote script, adds the device to your Set,
-  and swaps in a newer version
-- Version checks between the portal (for Claude Desktop and some coding agent
-  setups), the device, and the remote script, with a prompt when one needs
-  updating
+  and swaps in a newer version. Producer Pal says when the portal, device or
+  remote script needs updating
 - Built-in chat: Support for Vercel AI Gateway
 
 Producer Pal is now MIT licensed.

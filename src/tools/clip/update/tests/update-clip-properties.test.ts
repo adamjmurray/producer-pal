@@ -344,7 +344,7 @@ describe("buildClipPropertiesToSet", () => {
     expectKeyOrder(result, ["looping", "loop_end", "loop_start"]);
   });
 
-  it("sets loop_start before loop_end when not expanding (startBeats < both ends)", () => {
+  it("sets loop_end first when it grows, even with the start inside the clip", () => {
     const result = build({
       isLooping: true,
       looping: true,
@@ -357,10 +357,23 @@ describe("buildClipPropertiesToSet", () => {
     expect(result).toStrictEqual(
       expected({
         looping: true,
-        loop_start: 2,
         loop_end: 16,
+        loop_start: 2,
       }),
     );
+    expectKeyOrder(result, ["looping", "loop_end", "loop_start"]);
+  });
+
+  it("sets loop_start before loop_end when loop_end shrinks", () => {
+    const result = build({
+      isLooping: true,
+      looping: true,
+      startBeats: 0,
+      endBeats: 2,
+      currentLoopEnd: 4,
+      currentEndMarker: 4,
+    });
+
     expectKeyOrder(result, ["looping", "loop_start", "loop_end"]);
   });
 
@@ -385,10 +398,8 @@ describe("buildClipPropertiesToSet", () => {
     );
   });
 
-  it("orders each pair by its own end", () => {
-    // start_marker (4) is past end_marker (2), so end_marker moves first.
-    // loop_start (4) is before loop_end (16), so the loop brace keeps the
-    // start-first order.
+  it("writes the ends that grow, then the starts, then the ends that shrink", () => {
+    // loop_end (16 to 16) and end_marker (2 to 16) grow; nothing shrinks.
     const result = build({
       isLooping: false,
       looping: undefined,
@@ -401,10 +412,10 @@ describe("buildClipPropertiesToSet", () => {
 
     expectKeyOrder(result, [
       "looping",
+      "loop_end",
       "end_marker",
       "loop_start",
       "start_marker",
-      "loop_end",
     ]);
   });
 

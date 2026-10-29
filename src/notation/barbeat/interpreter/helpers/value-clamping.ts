@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 const MIDI_MIN = 0;
 const MIDI_MAX = 127;
@@ -44,7 +44,7 @@ export function clampProbability(value: number): number {
  */
 export function acceptPitch(pitch: number): boolean {
   if (pitch < MIDI_MIN || pitch > MIDI_MAX) {
-    console.warn(
+    emitWarning(
       `MIDI pitch ${pitch} outside valid range ${MIDI_MIN}-${MIDI_MAX}; note skipped`,
     );
 
@@ -74,7 +74,7 @@ function clampAndWarn(
   if (value < min || value > max) {
     const clamped = Math.max(min, Math.min(max, value));
 
-    console.warn(
+    emitWarning(
       `${label} ${value} outside valid range ${range}; clamped to ${clamped}`,
     );
 

@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   findSourceFiles,
   projectRoot,
+  repoPath,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 
@@ -88,7 +89,7 @@ function scanTools(
   const violations: { file: string; reason: string }[] = [];
 
   for (const file of findSourceFiles(TOOLS_DIR, true)) {
-    const rel = path.relative(projectRoot, file);
+    const rel = repoPath(file);
 
     if (rel === home) {
       continue;

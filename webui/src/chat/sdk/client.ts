@@ -14,6 +14,7 @@ import {
 } from "./build-model-messages";
 import { summarizeHistory } from "./compaction";
 import { createMcpTools } from "./mcp-tools";
+import { type ReasoningReplay, reasoningReplayFor } from "./reasoning-replay";
 import { handleStreamPart } from "./streaming/stream-part-handlers";
 import { createStreamErrorSignal } from "./streaming/stream-with-error-signal";
 import {
@@ -368,7 +369,7 @@ export class ChatSdkClient {
     if (
       endsOnAssistantTurn(
         this.chatHistory,
-        isAnthropicThinkingEnabled(providerOptions),
+        this.reasoningReplay(providerOptions),
       )
     ) {
       this.chatHistory.push({ role: "user", content: RESUME_MESSAGE });
@@ -397,6 +398,22 @@ export class ChatSdkClient {
     yield* this.processStream(providerOptions, abortSignal, shouldInterrupt);
     // Final yield to ensure last step's usage (attached by onStepEnd) is emitted
     yield [...this.chatHistory];
+  }
+
+  /**
+   * Which earlier reasoning this request re-sends (see reasoningReplayFor).
+   * @param providerOptions - Already-resolved providerOptions for this request
+   * @returns The reasoning to re-send
+   */
+  private reasoningReplay(
+    providerOptions: Parameters<typeof streamText>[0]["providerOptions"],
+  ): ReasoningReplay {
+    const model = this.config.model;
+
+    return reasoningReplayFor(
+      providerOptions,
+      typeof model === "string" ? model : model.modelId,
+    );
   }
 
   /**
@@ -441,7 +458,7 @@ export class ChatSdkClient {
       instructions: this.config.systemInstruction,
       messages: buildModelMessages(
         this.chatHistory,
-        isAnthropicThinkingEnabled(providerOptions),
+        this.reasoningReplay(providerOptions),
         this.config.maxRequestImages,
       ),
       tools: Object.keys(this.tools).length > 0 ? this.tools : undefined,
@@ -603,33 +620,6 @@ export function detectToolLimitReached(
  */
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
-}
-
-/**
- * Whether the request's provider options enable Anthropic thinking. Only then is
- * it valid to re-send signed reasoning blocks (the API rejects reasoning content
- * when thinking is disabled), and only then does re-sending help caching.
- *
- * Note: this keys off the `anthropic` provider namespace, so it is intentionally
- * false on the OpenRouter→Claude path (those options live under the `openrouter`
- * namespace). Reasoning re-emission therefore does not run for OpenRouter; its
- * cache prefix is stabilized separately by transformOpenRouterRequest. This is an
- * intended asymmetry, not a missed case — don't "fix" it by widening the check.
- * The Vercel gateway forwards `anthropic` options as-is, but its stream carries
- * no signature, so nothing signed is ever captured or re-sent there. That also
- * makes it harmless that `between_tools` (Sonnet 5.5 "Off") counts as thinking
- * on over the gateway but not on the direct route.
- * @param providerOptions - Provider options passed to streamText
- * @returns True when Anthropic thinking is enabled for this request
- */
-function isAnthropicThinkingEnabled(
-  providerOptions: Parameters<typeof streamText>[0]["providerOptions"],
-): boolean {
-  const anthropic = providerOptions?.anthropic as
-    | { thinking?: { type?: string } }
-    | undefined;
-
-  return anthropic?.thinking != null && anthropic.thinking.type !== "disabled";
 }
 
 /**

@@ -6,14 +6,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type ClipWidget, type GenUiEvent } from "#src/shared/gen-ui-types.ts";
 import { type RemoteScriptRequest } from "../../../remote-script/remote-script-client.ts";
-import { FakeScript } from "../gen-ui-test-helpers.ts";
-import { RemoteScriptTimeout } from "../../../remote-script/remote-script-errors.ts";
 import {
-  getSync,
-  resetHubForTesting,
-  setSync,
-  subscribe,
-} from "../../gen-ui-hub.ts";
+  clipInput,
+  type FakeScript,
+  resetForWatcherTest,
+} from "../gen-ui-test-helpers.ts";
+import { RemoteScriptTimeout } from "../../../remote-script/remote-script-errors.ts";
+import { getSync, setSync, subscribe } from "../../gen-ui-hub.ts";
 import { encodeWidgets } from "../../widget-blob.ts";
 import {
   LiveWatcher,
@@ -27,7 +26,6 @@ import {
   listWidgets,
   loadWidgetsFromSet,
   removeWidget,
-  resetWidgetStoreForTesting,
   updateClipState,
   updateWidget,
 } from "../../widget-store.ts";
@@ -55,14 +53,10 @@ function deps(): WatcherDeps {
 }
 
 beforeEach(() => {
-  vi.useFakeTimers();
-  resetHubForTesting();
-  resetWidgetStoreForTesting();
-  script = new FakeScript();
-  script.slots = {
+  script = resetForWatcherTest({
     "t0/s0": { name: "Bass", length: 8 },
     "t1/s1": { name: "Lead", length: 4 },
-  };
+  });
   published = [];
   syncs = [];
   now = 0;
@@ -74,7 +68,19 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const clip = (ref: string): Record<string, unknown> => ({ kind: "clip", ref });
+const clip = clipInput;
+
+/**
+ * Swap in a watcher whose requests go through `request`, and watch t0/s0.
+ * @param request - Wraps the fake script's request
+ */
+async function restartWatching(request: WatcherDeps["request"]): Promise<void> {
+  watcher.stop();
+  watcher = new LiveWatcher({ ...deps(), request });
+  watcher.start();
+  createWidget(clip("t0/s0"));
+  await vi.advanceTimersByTimeAsync(0);
+}
 
 const lives = (): GenUiEvent[] => published.filter((e) => e.type === "live");
 
@@ -629,8 +635,6 @@ describe("rounds that overlap or are overtaken", () => {
   });
 
   it("goes again at once when a widget arrives mid-round", async () => {
-    watcher.stop();
-
     let added = false;
 
     const request: WatcherDeps["request"] = (r) => {
@@ -642,10 +646,7 @@ describe("rounds that overlap or are overtaken", () => {
       return script.request(r);
     };
 
-    watcher = new LiveWatcher({ ...deps(), request });
-    watcher.start();
-    createWidget(clip("t0/s0"));
-    await vi.advanceTimersByTimeAsync(0);
+    await restartWatching(request);
     await vi.advanceTimersByTimeAsync(1);
 
     expect([...script.watching].toSorted()).toStrictEqual(["w1", "w2"]);
@@ -686,8 +687,6 @@ describe("widgets that are not clips, and removals that fail", () => {
   });
 
   it("survives a request function that throws instead of rejecting", async () => {
-    watcher.stop();
-
     const request: WatcherDeps["request"] = (r) => {
       if (r.route === "/unwatch") {
         throw new Error("broken");
@@ -696,10 +695,7 @@ describe("widgets that are not clips, and removals that fail", () => {
       return script.request(r);
     };
 
-    watcher = new LiveWatcher({ ...deps(), request });
-    watcher.start();
-    createWidget(clip("t0/s0"));
-    await vi.advanceTimersByTimeAsync(0);
+    await restartWatching(request);
     removeWidget("w1");
     createWidget(clip("t1/s1"));
     await vi.advanceTimersByTimeAsync(1);

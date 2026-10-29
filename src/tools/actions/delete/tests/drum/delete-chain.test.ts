@@ -10,7 +10,7 @@
 import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -170,7 +170,7 @@ describe("deleteObject chain deletion", () => {
   });
 
   it("refuses a bare pad path, which names the whole pad", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     registerDrumRack([36]);
 
@@ -182,7 +182,7 @@ describe("deleteObject chain deletion", () => {
   });
 
   it("refuses a chain that is not on a drum pad", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     registerMockObject("rack-chain", {
       path: livePath.track(0).device(0).chain(0),
@@ -220,7 +220,7 @@ describe("deleteObject chain deletion", () => {
   });
 
   it("refuses a rack return chain", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     registerMockObject("drum-rack", { path: RACK_PATH, type: "RackDevice" });
     registerMockObject("return-chain", {
@@ -235,7 +235,7 @@ describe("deleteObject chain deletion", () => {
   });
 
   it("refuses a chain in a rack that has no pads of its own", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     registerDrumRack([36], []);
 
@@ -249,7 +249,7 @@ describe("deleteObject chain deletion", () => {
   });
 
   it("puts the chain back when Live refuses the clear", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
     const { chains } = registerDrumRack([36]);
 
     // A pad whose clear does nothing: the chain survives on the scratch pad.
@@ -330,7 +330,7 @@ describe("deleteObject chain deletion", () => {
   });
 
   it("refuses a device path, saying what it found", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     registerMockObject("some-device", {
       path: livePath.track(0).device(1),
@@ -344,7 +344,7 @@ describe("deleteObject chain deletion", () => {
   });
 
   it("reports a rack chain path naming nothing as nothing to delete", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     registerMockObject("drum-rack", { path: RACK_PATH, type: "RackDevice" });
     mockNonExistentObjects();
@@ -359,7 +359,7 @@ describe("deleteObject chain deletion", () => {
   });
 
   it("reports a pad layer path naming nothing as nothing to delete", () => {
-    const consoleSpy = vi.spyOn(console, "warn");
+    const consoleSpy = vi.spyOn(maxConsole, "emitWarning");
 
     registerDrumRack([36]);
 

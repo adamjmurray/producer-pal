@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
@@ -7,6 +8,11 @@ import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 export interface ChatStartProps {
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
+  /** Whether chat has been set up. When not, the screen offers setup instead
+   * of starting a conversation. */
+  chatSetUp: boolean;
+  /** Opens Settings on the Connection tab. */
+  onSetUpChat: () => void;
   checkMcpConnection: () => Promise<void>;
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   overrides: MessageOverrides;
@@ -17,6 +23,8 @@ export interface ChatStartProps {
  * @param {ChatStartProps} props - Component props
  * @param {"connected" | "connecting" | "error"} props.mcpStatus - MCP connection status
  * @param {string | null} props.mcpError - MCP error message
+ * @param {boolean} props.chatSetUp - Whether chat has been set up
+ * @param {() => void} props.onSetUpChat - Open Settings on the Connection tab
  * @param {() => Promise<void>} props.checkMcpConnection - Check MCP connection callback
  * @param {(message: string, options?: MessageOverrides) => Promise<void>} props.handleSend - Send message callback
  * @param {MessageOverrides} props.overrides - Per-message overrides
@@ -25,13 +33,29 @@ export interface ChatStartProps {
 export function ChatStart({
   mcpStatus,
   mcpError,
+  chatSetUp,
+  onSetUpChat,
   checkMcpConnection,
   handleSend,
   overrides,
 }: ChatStartProps) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-8">
-      {mcpStatus === "connected" && (
+      {!chatSetUp && (
+        <>
+          <p className="text-zinc-500 dark:text-zinc-400">
+            Set up chat to talk to Producer Pal
+          </p>
+          <button
+            onClick={onSetUpChat}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          >
+            Set up chat
+          </button>
+        </>
+      )}
+
+      {chatSetUp && mcpStatus === "connected" && (
         <>
           <p className="text-zinc-500 dark:text-zinc-400">
             Start a conversation with Producer Pal

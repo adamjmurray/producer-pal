@@ -9,6 +9,7 @@
 import { UPDATE_PORTAL_ADVICE, VERSION } from "#src/shared/config.ts";
 import { isBehindBuild, isNewerVersion } from "#src/shared/version-check.ts";
 import { INSTALL_WITH_TOOL } from "#src/tools/shared/remote-script/remote-script-setup.ts";
+import { type InstalledRemoteScript } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { type OfflineInstallStatus } from "./offline-install-status.ts";
 
 export const SETUP_URL = "https://producer-pal.org/installation";
@@ -30,14 +31,57 @@ const UNKNOWN = "unknown version";
 export function notRunningHint(
   status: OfflineInstallStatus | undefined,
 ): string {
-  const script = status == null ? undefined : scriptLine(status);
+  const script = status?.script;
 
-  if (status == null || script == null) {
-    return `
-Or run ${INSTALL_WITH_TOOL} now (it works without Producer Pal), then ask the user to restart Live and choose Producer Pal as a Control Surface. After that, ${ADD_CALL} adds the device.`;
+  if (status == null || (status.library != null && script == null)) {
+    return `\nRun ${INSTALL_WITH_TOOL} now (it installs the remote script and the device, and works without Producer Pal), then ask the user to restart Live and ${CONTROL_SURFACE}. ${afterInstall(status)}`;
   }
 
-  return `\n${script} ${afterThat(status)}${olderPortalNote(status, null)}`;
+  if (status.library == null) {
+    return `\nRun ${INSTALL_WITH_TOOL} now. Live's User Library wasn't found, so ask the user for its path (Live: Settings → Library → Location of User Library) and pass it as userLibrary. ${afterInstall(status)}`;
+  }
+
+  // The script step runs the install unless the script is already current.
+  const after = scriptNeedsInstall(script)
+    ? afterInstall(status)
+    : afterThat(status);
+
+  return `\n${scriptSetupSteps(script)} ${after}${olderPortalNote(status, null)}`;
+}
+
+/**
+ * What gets the remote script running, for a call that needs it. An install
+ * puts the device in the User Library too.
+ * @param script - The remote script in the User Library, if it could be read
+ * @returns The steps, as sentences
+ */
+export function scriptSetupSteps(
+  script: InstalledRemoteScript | undefined,
+): string {
+  if (script?.installed !== true) {
+    const where = script == null ? "" : ` to ${script.path}`;
+
+    return `Run ${INSTALL_WITH_TOOL} (it installs the remote script${where} and the device), then ask the user to restart Live and ${CONTROL_SURFACE}.`;
+  }
+
+  const version = script.installedVersion ?? UNKNOWN;
+
+  return scriptNeedsInstall(script)
+    ? `The Producer Pal remote script at ${script.path} is out of date (${version}; this is ${VERSION}). Run ${INSTALL_WITH_TOOL} to update it, then ask the user to restart Live and ${CONTROL_SURFACE}.`
+    : `The Producer Pal remote script is installed (${version}, ${script.path}) but not running. Ask the user to restart Live if they installed it since Live started, and to ${CONTROL_SURFACE}.`;
+}
+
+/**
+ * @param script - The remote script in the User Library, if it could be read
+ * @returns True when the steps for it run install-producer-pal
+ */
+function scriptNeedsInstall(
+  script: InstalledRemoteScript | undefined,
+): boolean {
+  return (
+    script?.installed !== true ||
+    isBehindBuild(script.installedVersion, VERSION)
+  );
 }
 
 /**
@@ -53,12 +97,7 @@ export function runningHint(
   runningScript: string | null = null,
 ): string {
   if (outdated != null) {
-    const after =
-      status == null
-        ? `After that, ${ADD_CALL} adds the device.`
-        : afterThat(status);
-
-    return `${outdated.charAt(0).toUpperCase()}${outdated.slice(1)}. ${after}`;
+    return `${outdated.charAt(0).toUpperCase()}${outdated.slice(1)}. ${afterInstall(status)}`;
   }
 
   const device = status == null ? undefined : deviceAction(status);
@@ -105,30 +144,6 @@ function olderPortalNote(
 }
 
 /**
- * @param status - What was found
- * @returns What to do about the remote script, or undefined when it can't be said
- */
-function scriptLine(status: OfflineInstallStatus): string | undefined {
-  const { library, script } = status;
-
-  if (library == null) {
-    return `Or run ${INSTALL_WITH_TOOL} now. Live's User Library wasn't found, so ask the user for its path (Live: Settings → Library → Location of User Library) and pass it as userLibrary.`;
-  }
-
-  if (script == null) {
-    return undefined;
-  }
-
-  if (!script.installed) {
-    return `Or set it up now: run ${INSTALL_WITH_TOOL} (installs to ${script.path}), then ask the user to restart Live and ${CONTROL_SURFACE}.`;
-  }
-
-  return !isBehindBuild(script.installedVersion, VERSION)
-    ? `The Producer Pal remote script is installed (${script.installedVersion}, ${script.path}) but not running. Ask the user to restart Live if they installed it since Live started, and to ${CONTROL_SURFACE}.`
-    : `The Producer Pal remote script at ${script.path} is out of date (${script.installedVersion ?? UNKNOWN}; this is ${VERSION}). Run ${INSTALL_WITH_TOOL} to update it, then ask the user to restart Live and ${CONTROL_SURFACE}.`;
-}
-
-/**
  * What add-producer-pal does with the device file, as the rest of a sentence.
  * @param status - What was found
  * @returns The predicate, or null when the portal has no device to add
@@ -168,6 +183,18 @@ function afterThat(status: OfflineInstallStatus): string {
   return device == null
     ? noBundledDevice()
     : `After that, ${ADD_CALL} ${device}`;
+}
+
+/**
+ * What follows an install-producer-pal step, which has put the device in the
+ * User Library already.
+ * @param status - What was found, if anything
+ * @returns What add-producer-pal does next, or where to install by hand
+ */
+function afterInstall(status: OfflineInstallStatus | undefined): string {
+  return status?.bundled === false
+    ? noBundledDevice()
+    : `After that, ${ADD_CALL} adds the device ${NEW_TRACK}.`;
 }
 
 /** @returns Why ppal-manage can't add the device, and what to do instead */

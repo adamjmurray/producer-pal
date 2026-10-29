@@ -10,6 +10,7 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { markerBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
+import { refuseEmptyLength } from "#src/tools/shared/schema/refuse-empty-length.ts";
 import { parseTimeSignature } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type ClipReasons, ignoreClipParams } from "./entries/clip-reasons.ts";
 
@@ -108,8 +109,8 @@ export function calculateBeatPositions(
   const { startBeats, endBeats, firstStartBeats } = resolveRegion(request);
 
   // Determine start_marker value (must be < end_marker content boundary).
-  // Bound it by the end this update is writing rather than the stale one — an
-  // expanding write moves the end first (see endMovesFirst).
+  // Bound it by the end this update is writing rather than the stale one — a
+  // growing end is written before the starts (see endMovesFirst).
   const startMarkerBeats = determineStartMarker(
     request.clip.id,
     firstStartBeats,
@@ -233,18 +234,6 @@ export function resolveRegion(request: RegionRequest): ResolvedRegion {
   }
 
   return { startBeats, endBeats, firstStartBeats };
-}
-
-/**
- * Refuse a length that spans nothing. Live keeps the region it had.
- * @param length - The length as the caller wrote it
- * @param lengthBeats - What it comes to in the clip's meter
- * @throws Error when the length is zero or less
- */
-export function refuseEmptyLength(length: string, lengthBeats: number): void {
-  if (lengthBeats <= 0) {
-    throw new Error(`length "${length}" must be longer than zero`);
-  }
 }
 
 /**

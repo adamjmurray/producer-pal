@@ -20,7 +20,7 @@
 // lives in the Set, not in the script.
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "../../node-for-max-logger.ts";
+import { nodeWarn } from "../../node-for-max-logger.ts";
 import {
   remoteScriptRequest,
   replyError,
@@ -204,7 +204,7 @@ export class SetStorage {
     const why =
       error instanceof SaveFailed ? error.message : errorMessage(error);
 
-    console.warn(`The UI widgets are not saved in the Live Set: ${why}`);
+    nodeWarn(`The UI widgets are not saved in the Live Set: ${why}`);
   }
 
   private schedule(delayMs: number): void {

@@ -5,7 +5,7 @@
 
 import { MIDI_TO_DRUM_NAME } from "#src/notation/stark/stark-config.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
@@ -328,14 +328,13 @@ export function readDevice(
   } = options;
 
   if (depth > maxDepth) {
-    console.warn(`Maximum recursion depth (${maxDepth}) exceeded`);
+    emitWarning(`Maximum recursion depth (${maxDepth}) exceeded`);
 
     return {};
   }
 
   const deviceType = getDeviceType(device);
   const className = device.getProperty("class_display_name") as string;
-  const userDisplayName = device.getName();
   const isRedundant = isRedundantDeviceClassName(deviceType, className);
   // Use parentPath if provided (for devices inside drum pads), otherwise extract from Live API path
   const path = parentPath ?? extractDevicePath(device.path);
@@ -346,15 +345,7 @@ export function readDevice(
     type: isRedundant ? deviceType : `${deviceType}: ${className}`,
   };
 
-  if (userDisplayName !== className) {
-    deviceInfo.name = userDisplayName;
-  }
-
-  const isActive = (device.getProperty("is_active") as number) > 0;
-
-  if (!isActive) {
-    deviceInfo.deactivated = true;
-  }
+  addNameAndState(device, deviceInfo, className);
 
   // collapsed — kept for potential future use
   // const deviceView = LiveAPI.from(`${device.path} view`);
@@ -390,6 +381,33 @@ export function readDevice(
   });
 
   return deviceInfo;
+}
+
+/**
+ * Add the user's name for a device when it differs from the class name, and
+ * `deactivated` when the device is off. A name or on/off state Live won't give
+ * (CC Control before Live 12.4.15) is left out: an unreadable on/off is not
+ * off.
+ * @param device - LiveAPI device object
+ * @param deviceInfo - Device info object to mutate
+ * @param className - The device's class display name
+ */
+function addNameAndState(
+  device: LiveAPI,
+  deviceInfo: Record<string, unknown>,
+  className: string,
+): void {
+  const userDisplayName = device.getName();
+
+  if (userDisplayName !== "" && userDisplayName !== className) {
+    deviceInfo.name = userDisplayName;
+  }
+
+  const isActive = device.getProperty("is_active") as number | undefined;
+
+  if (isActive != null && isActive <= 0) {
+    deviceInfo.deactivated = true;
+  }
 }
 
 interface DeviceDetailOptions {

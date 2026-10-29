@@ -140,6 +140,26 @@ export async function readDevice(
   );
 }
 
+/** The ppal-library kind that finds .adg racks. */
+const DEVICE_GROUP = "device-group";
+
+/**
+ * Search ppal-library.
+ * @param client - Connected MCP client
+ * @param args - Its args
+ * @returns The items it found
+ */
+async function searchLibrary(
+  client: Client,
+  args: Record<string, unknown>,
+): Promise<Preset[]> {
+  return (
+    parseToolResult<{ items?: Preset[] }>(
+      await callToolAndSettle(client, "ppal-library", { limit: 200, ...args }),
+    ).items ?? []
+  );
+}
+
 /**
  * A pack's drum kit whose name nothing else in the library shares, found with
  * ppal-library. Installed packs differ per machine, so a test picks one at run
@@ -158,16 +178,9 @@ export async function packDrumKitOrSkip(
   await skipTestBeforeLive(client, skip, "12.4", LIBRARY_NEEDS);
 
   const search = async (kind: string, query: string): Promise<Preset[]> =>
-    parseToolResult<{ items?: Preset[] }>(
-      await callToolAndSettle(client, "ppal-library", {
-        kind,
-        query,
-        source: "pack",
-        limit: 200,
-      }),
-    ).items ?? [];
+    searchLibrary(client, { kind, query, source: "pack" });
 
-  const kits = (await search("device-group", "Kit")).filter(
+  const kits = (await search(DEVICE_GROUP, "Kit")).filter(
     ({ name, path }) => name.endsWith(".adg") && path.includes("/Drums/"),
   );
 
@@ -178,7 +191,7 @@ export async function packDrumKitOrSkip(
 
     const name = presetName(kit.name).toLowerCase();
     const same = [
-      ...(await search("device-group", presetName(kit.name))),
+      ...(await search(DEVICE_GROUP, presetName(kit.name))),
       ...(await search("preset", presetName(kit.name))),
     ].filter((item) => presetName(item.name).toLowerCase() === name);
 
@@ -188,6 +201,72 @@ export async function packDrumKitOrSkip(
   }
 
   return skip();
+}
+
+/**
+ * The Wasted Space pack's `Transmission.adv`, a Max device preset sharing its
+ * name with a Shifter preset that Live's browser lists. Not every machine has
+ * the pack, so a test skips when it's missing.
+ * @param client - Connected MCP client
+ * @param skip - The test's `skip`, called when the pack or the library is
+ *   missing
+ * @returns The preset's absolute path
+ */
+export async function wastedSpaceTransmissionOrSkip(
+  client: Client,
+  skip: (note?: string) => never,
+): Promise<string> {
+  await skipTestBeforeLive(client, skip, "12.4", LIBRARY_NEEDS);
+
+  const found = await searchLibrary(client, {
+    kind: "preset",
+    query: "Transmission",
+    source: "pack",
+  });
+  const file = found.find(
+    ({ name, path }) =>
+      name === "Transmission.adv" && path.includes("Wasted Space"),
+  );
+
+  return file?.path ?? skip("the Wasted Space pack isn't installed");
+}
+
+/**
+ * The Core Library's `Vibraphone.adg` and a pack's, which share one browser
+ * path. Live's browser lists each under every device the rack is built around,
+ * so only the library tells them apart. Not every machine has a pack with one,
+ * so a test skips when it's missing.
+ * @param client - Connected MCP client
+ * @param skip - The test's `skip`, called when no pack has one or Live has no
+ *   library
+ * @returns Both files' absolute paths
+ */
+export async function vibraphoneFilesOrSkip(
+  client: Client,
+  skip: (note?: string) => never,
+): Promise<{ core: string; pack: string }> {
+  await skipTestBeforeLive(client, skip, "12.4", LIBRARY_NEEDS);
+
+  const search = async (source?: string): Promise<Preset[]> =>
+    searchLibrary(client, {
+      kind: DEVICE_GROUP,
+      query: "Vibraphone",
+      ...(source == null ? {} : { source }),
+    });
+  const vibraphones = (items: Preset[]): string[] =>
+    items
+      .filter(({ name }) => name === "Vibraphone.adg")
+      .map(({ path }) => path);
+  const core = vibraphones(await search()).find((path) =>
+    path.includes("Core Library"),
+  );
+  const pack = vibraphones(await search("pack")).find(
+    (path) => !path.includes("Core Library"),
+  );
+
+  return core != null && pack != null
+    ? { core, pack }
+    : skip("no pack besides the Core Library has a Vibraphone rack");
 }
 
 // Puts the rack preset holding Producer Pal where Live can load it. Live only
