@@ -5,29 +5,29 @@
 
 import { type DatabaseSync } from "node:sqlite";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fourCC } from "../../library-filters.ts";
-import { listCategories } from "../../list-categories.ts";
-import { listTags } from "../../list-tags.ts";
-import { findDuplicates } from "../../query/find-duplicates.ts";
-import { findSimilar } from "../../query/find-similar.ts";
-import { librarySearch } from "../../query/library-search.ts";
+import { fourCC } from "../../../library-filters.ts";
+import { listCategories } from "../../../list-categories.ts";
+import { listTags } from "../../../list-tags.ts";
+import { findDuplicates } from "../../../query/find-duplicates.ts";
+import { findSimilar } from "../../../query/find-similar.ts";
+import { librarySearch } from "../../../query/library-search.ts";
 import {
   featureBlob,
   KICK_VECTOR,
   setupLibraryFixtureLifecycle,
-} from "../fixtures/library-fixture.ts";
+} from "../../fixtures/library-fixture.ts";
 
-vi.mock(import("../../live-db-path.ts"), () => ({
+vi.mock(import("../../../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),
   findLivePluginsDbPath: vi.fn(),
   liveDatabaseDir: vi.fn(),
 }));
-vi.mock(import("../../db-staleness.ts"), () => ({
+vi.mock(import("../../../db-staleness.ts"), () => ({
   stalenessNote: vi.fn(),
 }));
 
-const dbPathMod = await import("../../live-db-path.ts");
-const stalenessMod = await import("../../db-staleness.ts");
+const dbPathMod = await import("../../../live-db-path.ts");
+const stalenessMod = await import("../../../db-staleness.ts");
 
 const USER_LIBRARY = "/Users/test/Music/Ableton/User Library";
 const PRESET_FOLDER = "/Presets";

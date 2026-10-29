@@ -40,8 +40,8 @@ import {
   resolveFileIdForPath,
   type SearchRow,
 } from "./candidate-query.ts";
-import { presetFolderNote } from "./preset-folder-note.ts";
-import { rackKindNote } from "./rack-kind-note.ts";
+import { presetFolderNote } from "./notes/preset-folder-note.ts";
+import { rackKindNote } from "./notes/rack-kind-note.ts";
 
 /**
  * Run a structured library search.

@@ -30,6 +30,10 @@ import { RemoteScriptTimeout } from "../../remote-script-errors.ts";
 vi.mock(import("../../../../live-library/query/preset-files.ts"), () => ({
   findPresetFiles: vi.fn(),
 }));
+// The pack-name mapping reads the machine's own library; keep paths as given.
+vi.mock(import("../../../../live-library/query/pack-folder-names.ts"), () => ({
+  browserNamedPackPath: (path: string) => Promise.resolve(path),
+}));
 
 const PRESET = {
   name: "Add Oxide.adv",

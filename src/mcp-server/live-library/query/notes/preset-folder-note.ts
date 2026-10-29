@@ -11,8 +11,8 @@
  */
 
 import { type DatabaseSync } from "node:sqlite";
-import { type LibrarySearchArgs } from "../library-types.ts";
-import { buildCandidateWhere, CANDIDATE_FROM } from "./candidate-query.ts";
+import { type LibrarySearchArgs } from "../../library-types.ts";
+import { buildCandidateWhere, CANDIDATE_FROM } from "../candidate-query.ts";
 
 /**
  * Say so when the default left matching files out of plug-in preset folders,

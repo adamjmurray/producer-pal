@@ -23,6 +23,10 @@ import {
 vi.mock(import("../../../../live-library/query/preset-files.ts"), () => ({
   findPresetFiles: vi.fn(),
 }));
+// The pack-name mapping reads the machine's own library; keep paths as given.
+vi.mock(import("../../../../live-library/query/pack-folder-names.ts"), () => ({
+  browserNamedPackPath: (path: string) => Promise.resolve(path),
+}));
 
 /** Preset paths under each remote script `type`. */
 type Browser = Partial<Record<string, string[]>>;

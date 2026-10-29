@@ -36,7 +36,7 @@ import {
 } from "./candidate-query.ts";
 import { decodeFeatureVector, euclideanDistance } from "./feature-vectors.ts";
 import { withLiveDb } from "./live-db-query.ts";
-import { presetFolderNote } from "./preset-folder-note.ts";
+import { presetFolderNote } from "./notes/preset-folder-note.ts";
 
 /** Default top-K for findSimilar — a focused shortlist, not search's broad 50. */
 const DEFAULT_FIND_SIMILAR_LIMIT = 20;

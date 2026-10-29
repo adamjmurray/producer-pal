@@ -35,7 +35,7 @@ import {
 } from "./candidate-query.ts";
 import { decodeFeatureVector } from "./feature-vectors.ts";
 import { withLiveDb } from "./live-db-query.ts";
-import { presetFolderNote } from "./preset-folder-note.ts";
+import { presetFolderNote } from "./notes/preset-folder-note.ts";
 
 /** Default cap on duplicate groups returned (most-duplicated first). */
 const DEFAULT_FIND_DUPLICATES_LIMIT = 50;

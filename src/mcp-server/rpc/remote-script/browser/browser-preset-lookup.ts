@@ -32,6 +32,7 @@ import {
 import {
   duplicatePresetFiles,
   listedPresetFiles,
+  loadablePresetFile,
   lookUpPresetFile,
   presetFile,
   severalPresets,
@@ -65,15 +66,13 @@ export async function lookUpBrowserPreset(
   const wanted = preset.trim();
 
   if (isAbsolutePath(wanted)) {
-    const file = presetFile(wanted);
-
     // A device in the Set may take any preset, a rack included.
     return scope != null &&
       !scope.orAnywhere &&
-      "item" in file &&
+      "item" in presetFile(wanted) &&
       !(await presetFileIsFor(wanted, scope.device))
       ? notAPresetFor(preset, scope)
-      : file;
+      : await loadablePresetFile(wanted);
   }
 
   const prefixed = sectionPrefixed(wanted);

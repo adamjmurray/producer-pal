@@ -5,17 +5,17 @@
 
 import { type DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
-import { fourCC } from "../../library-filters.ts";
-import { librarySearch } from "../../query/library-search.ts";
-import { setupLibraryFixtureLifecycle } from "../fixtures/library-fixture.ts";
+import { fourCC } from "../../../library-filters.ts";
+import { librarySearch } from "../../../query/library-search.ts";
+import { setupLibraryFixtureLifecycle } from "../../fixtures/library-fixture.ts";
 
-vi.mock(import("../../live-db-path.ts"), () => ({
+vi.mock(import("../../../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),
   findLivePluginsDbPath: vi.fn(),
   liveDatabaseDir: vi.fn(),
 }));
 
-const dbPathMod = await import("../../live-db-path.ts");
+const dbPathMod = await import("../../../live-db-path.ts");
 
 describe("librarySearch rack note", () => {
   setupLibraryFixtureLifecycle(dbPathMod);

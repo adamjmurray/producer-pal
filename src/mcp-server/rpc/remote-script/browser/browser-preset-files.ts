@@ -21,6 +21,7 @@ import {
   type BrowserItemResolution,
   type PresetScope,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+import { browserNamedPackPath } from "../../../live-library/query/pack-folder-names.ts";
 import { type Candidate, ambiguity } from "./browser-device-lookup.ts";
 import { presetFileIsFor } from "./preset-file-device.ts";
 import { RemoteScriptTimeout } from "../remote-script-errors.ts";
@@ -70,7 +71,7 @@ export async function lookUpPresetFile(
     return null;
   }
 
-  return oneOrSeveral(preset, files);
+  return await oneOrSeveral(preset, files);
 }
 
 /**
@@ -146,7 +147,7 @@ export async function listedPresetFiles(
 
   return files.length > 1 ||
     isListedUnderEachDevice(matches, (files[0] as PresetFile).path)
-    ? oneOrSeveral(preset, files)
+    ? await oneOrSeveral(preset, files)
     : null;
 }
 
@@ -248,12 +249,12 @@ function comparable(path: string): string {
  * @param files - The library's files, at least one
  * @returns The file when there is one, else the error naming them
  */
-function oneOrSeveral(
+async function oneOrSeveral(
   preset: string,
   files: PresetFile[],
-): BrowserItemResolution {
+): Promise<BrowserItemResolution> {
   return files.length === 1
-    ? presetFile((files[0] as PresetFile).path)
+    ? await loadablePresetFile((files[0] as PresetFile).path)
     : severalPresets(preset, files);
 }
 
@@ -311,4 +312,25 @@ export function presetFile(path: string): BrowserItemResolution {
   const name = path.split(/[\\/]/).at(-1) as string;
 
   return { available: true, item: { type: "file", path, name } };
+}
+
+/**
+ * The resolution for a preset file the remote script is to load. The remote
+ * script finds a file in a pack by the pack's name in Live's library, which can
+ * differ from its folder's name on disk, so the item's path names the pack that
+ * way.
+ * @param path - The absolute path, as on disk
+ * @returns The item, or an error when it isn't a preset file
+ */
+export async function loadablePresetFile(
+  path: string,
+): Promise<BrowserItemResolution> {
+  const file = presetFile(path);
+
+  return "item" in file
+    ? {
+        ...file,
+        item: { ...file.item, path: await browserNamedPackPath(path) },
+      }
+    : file;
 }

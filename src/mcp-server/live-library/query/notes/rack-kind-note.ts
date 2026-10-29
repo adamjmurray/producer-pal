@@ -13,8 +13,8 @@
  */
 
 import { type DatabaseSync } from "node:sqlite";
-import { type LibrarySearchArgs } from "../library-types.ts";
-import { buildCandidateWhere, CANDIDATE_FROM } from "./candidate-query.ts";
+import { type LibrarySearchArgs } from "../../library-types.ts";
+import { buildCandidateWhere, CANDIDATE_FROM } from "../candidate-query.ts";
 
 /**
  * Say how many racks match when a preset search found nothing.
