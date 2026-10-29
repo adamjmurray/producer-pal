@@ -60,6 +60,12 @@ interface WrapperParam {
  * @returns The hosted plug-in, or null for any other device
  */
 export function detectHostedPlugin(device: LiveAPI): HostedPlugin | null {
+  // Unfinished: a release build reads a wrapper as the Max device it is, which
+  // also keeps hosted writes off, since they only reach a detected wrapper.
+  if (process.env.ENABLE_HOSTED_PLUGINS !== "true") {
+    return null;
+  }
+
   const className = device.getProperty("class_name");
 
   if (typeof className !== "string" || !WRAPPER_CLASSES.has(className)) {

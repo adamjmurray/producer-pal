@@ -47,6 +47,9 @@ const envVarReplacements = {
   "process.env.ENABLE_OBJECT_PROBE": JSON.stringify(
     process.env.ENABLE_OBJECT_PROBE,
   ),
+  "process.env.ENABLE_HOSTED_PLUGINS": JSON.stringify(
+    process.env.ENABLE_HOSTED_PLUGINS,
+  ),
 };
 
 // Substitute dev-only modules with do-nothing stubs unless the build asked for

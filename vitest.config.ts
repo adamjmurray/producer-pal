@@ -37,6 +37,7 @@ export default defineConfig({
     environment: "node",
     env: {
       ENABLE_WARP_MARKERS: "true",
+      ENABLE_HOSTED_PLUGINS: "true",
     },
     include: [
       "src/**/*.test.ts",

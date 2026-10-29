@@ -446,6 +446,22 @@ describe("updateDevice hosted plug-in params", () => {
     );
   });
 
+  it("leaves a wrapper to the usual write when hosting is built off", async () => {
+    vi.stubEnv("ENABLE_HOSTED_PLUGINS", "");
+    const heard = wrapperWrites([landed(24, "Mix", "75.00")]);
+
+    try {
+      await expect(
+        update({ id: "device-123", params: [{ name: "Mix", value: "75" }] }),
+      ).rejects.toThrow(
+        'no param landed — "Mix": not found on t0/d0 (id device-123)',
+      );
+      expect(heard).toStrictEqual([]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("sends nothing once the request is out of time", async () => {
     const heard = wrapperWrites([landed(24, "Mix", "75.00")]);
     const settled = await writeMix({}, Date.now() - 1);

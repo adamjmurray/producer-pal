@@ -32,7 +32,11 @@ const DEBUG_FLAGS = ["ENABLE_LIVE_API"];
 // note-count transforms it was being tested on. ENABLE_LIVE_API is not in this
 // class: it only forces a runtime flag that `POST /config` still controls.
 // Set these by hand for the build you're testing that feature on.
-const UNGATED_SCHEMA_FLAGS = ["ENABLE_CODE_EXEC", "ENABLE_WARP_MARKERS"];
+const UNGATED_SCHEMA_FLAGS = [
+  "ENABLE_CODE_EXEC",
+  "ENABLE_WARP_MARKERS",
+  "ENABLE_HOSTED_PLUGINS",
+];
 
 const OPT_IN_FLAGS = [
   "ENABLE_REMOTE_CORS",

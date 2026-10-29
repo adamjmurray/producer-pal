@@ -64,6 +64,24 @@ describe("readOneDevice on a plug-in host wrapper", () => {
     });
   });
 
+  it("reads a wrapper as the Max device it is when hosting is built off", () => {
+    vi.stubEnv("ENABLE_HOSTED_PLUGINS", "");
+    registerMaxDevice();
+    installWrapper({ info: () => info("Serum 2") });
+
+    try {
+      expect(readOneDevice({ path: "t0/d0" })).toStrictEqual({
+        id: "device-123",
+        path: "t0/d0",
+        type: "audio-effect: Max Audio Effect",
+        name: "PPal Plug-in Effect",
+      });
+      expect(globalThis.messnamed).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("keeps a name the user gave the wrapper", () => {
     registerMaxDevice("My Lead");
     installWrapper({ info: () => info("Serum 2") });

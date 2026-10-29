@@ -75,7 +75,8 @@ export const STANDARD_TOOL_DEFS: ToolDefFunction[] = [
  */
 export const OPT_IN_TOOL_DEFS: ToolDefFunction[] = [
   toolDefLiveApi,
-  toolDefPluginHost,
+  // Unfinished plug-in hosting: release builds leave it out.
+  ...(process.env.ENABLE_HOSTED_PLUGINS === "true" ? [toolDefPluginHost] : []),
 ];
 
 /** All standard tool names (frozen). Opt-in tools like ppal-live-api are not included. */

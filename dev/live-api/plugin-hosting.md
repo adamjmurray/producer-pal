@@ -7,6 +7,11 @@ Max for Live device built around Max's `vst~` object.
 **Status: spike, working end to end on macOS with VST3** (Live 12, Colour Copy
 and Serum 2). AU, VST2 and Windows are untested.
 
+Release builds leave it out. To use it, build with
+`ENABLE_HOSTED_PLUGINS=true npm run build:debug`: that adds `hosted` to
+ppal-create-device, the Skills text, hosted reads and writes, and
+ppal-plugin-host.
+
 ## How it works
 
 Two generic wrapper devices ship with Producer Pal, in
