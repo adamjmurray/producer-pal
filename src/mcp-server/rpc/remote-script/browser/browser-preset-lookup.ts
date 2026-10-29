@@ -82,7 +82,11 @@ export async function lookUpBrowserPreset(
     const resolution = await findAtPath(
       preset,
       prefixed,
-      () => nothingNamed(preset, scope),
+      {
+        missing: () => nothingNamed(preset, scope),
+        shared: (count) =>
+          `preset "${preset}" matches ${count} items at that browser path; pass a file's absolute path from ppal-library as preset`,
+      },
       endsAt,
     );
 

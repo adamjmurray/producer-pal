@@ -95,6 +95,14 @@ Part of [Skip entries, tool by tool](README.md).
     for Live, has no class to filter by, so its name isn't looked up in the
     database. The database is read as of Live's last save, so a preset added
     this session may not be found.
+- **A browser path two items share is refused, never guessed.** A `preset` or
+  `deviceName` spelled `<section>/<path>` (e.g.
+  `Instruments/Instrument Rack/Mallets/Vibraphone.adg`) that lists two or more
+  loadable items at the end is refused with the count: Live can list a Core
+  Library file and a pack's at one path, and the remote script would load the
+  first. A `preset` refusal says to pass the file's absolute path from
+  ppal-library; `deviceName` has no way to name one. A suffix picks between a
+  rack and a preset of one name (`Foo.adv`); folders don't count.
 - **A preset file is checked against the device a call names.** create-device
   with a `deviceName` and an absolute file path (a Windows drive or network
   share too) reads the gzipped XML and refuses a file for another device, as it

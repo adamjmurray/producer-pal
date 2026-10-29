@@ -20,6 +20,7 @@ import {
   getToolErrorMessage,
   isToolError,
   parseToolResult,
+  readDeviceCount,
   setupMcpTestContext,
 } from "../../mcp-test-helpers";
 import {
@@ -315,6 +316,31 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
 
       expect(rack.chains?.[0]?.name).toBe(chain);
     }
+  });
+
+  it("refuses a browser path two racks share, loading neither", async ({
+    skip,
+  }) => {
+    const { pack } = await vibraphoneFilesOrSkip(ctx.client!, skip);
+
+    // The browser files a rack under its folder's name, so only a pack's rack
+    // in a Mallets folder shares the Core Library's browser path.
+    if (!pack.replaceAll("\\", "/").endsWith("/Mallets/Vibraphone.adg")) {
+      skip("the pack's Vibraphone rack isn't in a Mallets folder");
+    }
+
+    const track = await createMidiTrack(ctx.client!);
+    const before = await readDeviceCount(ctx.client!, track);
+    const result = await create({
+      preset: "Instruments/Instrument Rack/Mallets/Vibraphone.adg",
+      path: `t${track}/d+`,
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "items at that browser path; pass a file's absolute path from ppal-library as preset",
+    );
+    expect(await readDeviceCount(ctx.client!, track)).toBe(before);
   });
 
   it("loads the named device's own preset when another device files the name too", async ({
