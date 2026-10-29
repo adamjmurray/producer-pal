@@ -83,9 +83,13 @@ Part of [Skip entries, tool by tool](README.md).
     Rack. Such a file counts as a Drum Rack preset when named or given by file
     path: for a Drum Rack the database is asked for Instrument Rack files too,
     and those are read and kept unless they're readably a plain Instrument Rack
-    (an unreadable file counts, as elsewhere). A browser path to one is still
-    refused for Drum Rack. Live loads such a kit as the Instrument Rack, not a
-    bare Drum Rack.
+    (an unreadable file counts, as elsewhere). A browser path under
+    `Instruments/Instrument Rack/` is mapped to its file too: the database's
+    Drum Rack files of that name are kept if their path ends with what the
+    browser path has below `Instrument Rack`. One file loads; several refuse as
+    a shared browser path (below); none, or a library that can't be read, leaves
+    the refusal "not a preset for Drum Rack". Live loads such a kit as the
+    Instrument Rack, not a bare Drum Rack.
   - **Several matches.** The browser lists a rack under every device it is built
     around, and two files can share a browser path, so the database settles it.
     It is asked for every file with the name; with a device named or targeted,
@@ -110,7 +114,12 @@ Part of [Skip entries, tool by tool](README.md).
   Library file and a pack's at one path, and the remote script would load the
   first. A `preset` refusal says to pass the file's absolute path from
   ppal-library; `deviceName` has no way to name one. A suffix picks between a
-  rack and a preset of one name (`Foo.adv`); folders don't count.
+  rack and a preset of one name (`Foo.adv`); folders don't count. With a device
+  named, the path is checked against it first (trimmed segments, any case),
+  before the folder is listed: a path outside the device's presets is refused
+  "not a preset for <device>" even when two items share it, unless it is a Drum
+  Rack kit (above), where the Drum Rack files of that name settle which file it
+  is. A device already in the Set (update-device) takes a path anywhere.
 - **A preset file is checked against the device a call names.** create-device
   with a `deviceName` and an absolute file path (a Windows drive or network
   share too) reads the gzipped XML and refuses a file for another device, as it

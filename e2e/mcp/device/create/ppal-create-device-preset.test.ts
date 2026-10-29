@@ -24,6 +24,7 @@ import {
   setupMcpTestContext,
 } from "../../mcp-test-helpers";
 import {
+  type DeviceRead,
   type Preset,
   REMOTE_SCRIPT_E2E,
   packDrumKitOrSkip,
@@ -39,6 +40,12 @@ import {
   LIBRARY_NEEDS,
   skipTestBeforeLive,
 } from "../../workflow/helpers/server-capability-test-helpers.ts";
+
+// The Core Library's "Beard Kit" is an Instrument Rack holding a Drum Rack.
+// Live's browser doesn't list it under Instrument Rack, but a model may type
+// this path since the file is an Instrument Rack.
+const BEARD_KIT_AS_INSTRUMENT_RACK =
+  "Instruments/Instrument Rack/Sampled/Beard Kit.adg";
 
 describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
   requireRemoteScript();
@@ -61,6 +68,22 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
    */
   async function create(args: Record<string, unknown>): Promise<unknown> {
     return callToolAndSettle(ctx.client!, "ppal-create-device", args);
+  }
+
+  /**
+   * Call create-device on a fresh track and read what it made.
+   * @param args - Its args, less the path
+   * @returns The new device
+   */
+  async function createdOnNewTrack(
+    args: Record<string, unknown>,
+  ): Promise<DeviceRead> {
+    const track = await createMidiTrack(ctx.client!);
+    const created = parseToolResult<{ path: string }>(
+      await create({ ...args, path: `t${track}/d+` }),
+    );
+
+    return await readDevice(ctx.client!, created.path);
   }
 
   it("creates a device from one of its presets, by name", async () => {
@@ -229,12 +252,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
   }) => {
     await skipTestBeforeLive(ctx.client!, skip, "12.4", LIBRARY_NEEDS);
 
-    const track = await createMidiTrack(ctx.client!);
-    const created = parseToolResult<{ path: string }>(
-      await create({ preset: "Dunkel Pad", path: `t${track}/d+` }),
-    );
-
-    const device = await readDevice(ctx.client!, created.path);
+    const device = await createdOnNewTrack({ preset: "Dunkel Pad" });
 
     expect(device.type).toBe("instrument-rack");
     expect(device.name).toBe("Dunkel Pad");
@@ -248,16 +266,10 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
   }) => {
     await skipTestBeforeLive(ctx.client!, skip, "12.4", LIBRARY_NEEDS);
 
-    const track = await createMidiTrack(ctx.client!);
-    const created = parseToolResult<{ path: string }>(
-      await create({
-        deviceName: "Drum Rack",
-        preset: "Beard Kit",
-        path: `t${track}/d+`,
-      }),
-    );
-
-    const device = await readDevice(ctx.client!, created.path);
+    const device = await createdOnNewTrack({
+      deviceName: "Drum Rack",
+      preset: "Beard Kit",
+    });
 
     expect(device.type).toBe("instrument-rack");
     expect(device.name).toBe("Beard Kit");
@@ -344,29 +356,98 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     }
   });
 
-  it("refuses a browser path two racks share, loading neither", async ({
-    skip,
-  }) => {
+  /**
+   * Call create-device on a fresh track, expecting a refusal that loads
+   * nothing.
+   * @param args - Its args, less the path
+   * @returns The refusal's message
+   */
+  async function refusedWithNothingLoaded(
+    args: Record<string, unknown>,
+  ): Promise<string> {
+    const track = await createMidiTrack(ctx.client!);
+    const before = await readDeviceCount(ctx.client!, track);
+    const result = await create({ ...args, path: `t${track}/d+` });
+
+    expect(isToolError(result)).toBe(true);
+    expect(await readDeviceCount(ctx.client!, track)).toBe(before);
+
+    return getToolErrorMessage(result);
+  }
+
+  /**
+   * Skip unless a pack's Vibraphone rack shares the Core Library's browser
+   * path. The browser files a rack under its folder's name, so only a rack in
+   * a Mallets folder does.
+   * @param skip - The test's `skip`
+   */
+  async function sharedVibraphonePathOrSkip(
+    skip: (note?: string) => never,
+  ): Promise<void> {
     const { pack } = await vibraphoneFilesOrSkip(ctx.client!, skip);
 
-    // The browser files a rack under its folder's name, so only a pack's rack
-    // in a Mallets folder shares the Core Library's browser path.
     if (!pack.replaceAll("\\", "/").endsWith("/Mallets/Vibraphone.adg")) {
       skip("the pack's Vibraphone rack isn't in a Mallets folder");
     }
+  }
 
-    const track = await createMidiTrack(ctx.client!);
-    const before = await readDeviceCount(ctx.client!, track);
-    const result = await create({
-      preset: "Instruments/Instrument Rack/Mallets/Vibraphone.adg",
-      path: `t${track}/d+`,
-    });
+  it("refuses a browser path two racks share, loading neither", async ({
+    skip,
+  }) => {
+    await sharedVibraphonePathOrSkip(skip);
 
-    expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toContain(
+    expect(
+      await refusedWithNothingLoaded({
+        preset: "Instruments/Instrument Rack/Mallets/Vibraphone.adg",
+      }),
+    ).toContain(
       "items at that browser path; pass a file's absolute path from ppal-library as preset",
     );
-    expect(await readDeviceCount(ctx.client!, track)).toBe(before);
+  });
+
+  // The path is for another device than Drift, so that is the one answer; it
+  // isn't first refused for the two racks sharing it.
+  it("refuses a shared browser path as not the named device's, in one step", async ({
+    skip,
+  }) => {
+    await sharedVibraphonePathOrSkip(skip);
+
+    const message = await refusedWithNothingLoaded({
+      deviceName: "Drift",
+      preset: "Instruments/Instrument Rack/Mallets/Vibraphone.adg",
+    });
+
+    expect(message).toContain("is not a preset for Drift");
+    expect(message).not.toContain("browser path;");
+  });
+
+  // The browser files the Core Library's "Beard Kit" under Instrument Rack, but
+  // it holds a Drum Rack, so it is a Drum Rack preset: judged by its file.
+  it("loads a drum kit given as a browser path, with deviceName Drum Rack", async ({
+    skip,
+  }) => {
+    await skipTestBeforeLive(ctx.client!, skip, "12.4", LIBRARY_NEEDS);
+
+    const device = await createdOnNewTrack({
+      deviceName: "Drum Rack",
+      preset: BEARD_KIT_AS_INSTRUMENT_RACK,
+    });
+
+    expect(device.type).toBe("instrument-rack");
+    expect(device.name).toBe("Beard Kit");
+  });
+
+  it("refuses that drum kit's browser path for another device", async ({
+    skip,
+  }) => {
+    await skipTestBeforeLive(ctx.client!, skip, "12.4", LIBRARY_NEEDS);
+
+    expect(
+      await refusedWithNothingLoaded({
+        deviceName: "Drift",
+        preset: BEARD_KIT_AS_INSTRUMENT_RACK,
+      }),
+    ).toContain("is not a preset for Drift");
   });
 
   it("loads the named device's own preset when another device files the name too", async ({

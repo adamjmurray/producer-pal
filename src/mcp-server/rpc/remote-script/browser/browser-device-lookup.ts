@@ -127,6 +127,18 @@ export function sectionPrefixed(
 }
 
 /**
+ * The folders and name of a path below its section, as the lookup reads them.
+ * @param rest - Everything after the section
+ * @returns The trimmed, non-empty segments
+ */
+export function pathSegments(rest: string): string[] {
+  return rest
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment !== "");
+}
+
+/**
  * Find the item a section-prefixed name spells out, one level listing its folder.
  * @param name - The name the call used
  * @param prefixed - Its section, and everything after the section
@@ -152,10 +164,7 @@ export async function findAtPath(
   },
   endsAt: number,
 ): Promise<BrowserItemResolution> {
-  const segments = rest
-    .split("/")
-    .map((segment) => segment.trim())
-    .filter((segment) => segment !== "");
+  const segments = pathSegments(rest);
   const leaf = segments.pop();
 
   if (leaf == null) {

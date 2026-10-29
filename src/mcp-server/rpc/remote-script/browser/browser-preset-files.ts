@@ -22,7 +22,11 @@ import {
   type PresetScope,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { browserNamedPackPath } from "../../../live-library/query/pack-folder-names.ts";
-import { type Candidate, ambiguity } from "./browser-device-lookup.ts";
+import {
+  type Candidate,
+  ambiguity,
+  normalizedName,
+} from "./browser-device-lookup.ts";
 import { presetFileIsFor } from "./preset-file-device.ts";
 import { RemoteScriptTimeout } from "../remote-script-errors.ts";
 
@@ -152,6 +156,54 @@ export async function listedPresetFiles(
 }
 
 /**
+ * The Drum Rack kits a browser path stands for. Many kits are an Instrument
+ * Rack the browser lists under Instrument Rack, not under Drum Rack, so a
+ * browser path to one is judged by the file behind it: found by name, kept if
+ * it is a Drum Rack preset and its path ends with what the browser path has
+ * below its device folder.
+ * @param type - The browser section's remote script `type`
+ * @param segments - The browser path below the section, name last
+ * @param scope - The device the call named
+ * @param endsAt - When the lookup must be done, in epoch ms
+ * @returns The kits' files: none when the device isn't a Drum Rack, the path
+ *   isn't under Instrument Rack, nothing matches or the library can't be read
+ * @throws RemoteScriptTimeout when `endsAt` passes first
+ */
+export async function drumKitFilesAt(
+  type: string,
+  segments: string[],
+  scope: PresetScope,
+  endsAt: number,
+): Promise<PresetFile[]> {
+  const [folder, ...tail] = segments;
+
+  if (
+    type !== "instrument" ||
+    !isDrumRackScope(scope.device) ||
+    comparable(folder ?? "") !== "instrument rack" ||
+    tail.length === 0
+  ) {
+    return [];
+  }
+
+  const name = normalizedName(tail.at(-1) as string);
+  const wanted = [...tail.slice(0, -1).map(comparable), name].join("/");
+
+  try {
+    const files = await findNamedPresetFiles(name, deviceOf(scope), endsAt);
+
+    return (files ?? []).filter(({ path }) => endsWith(path, wanted));
+  } catch (error) {
+    // Any other failure leaves the caller's refusal standing.
+    if (error instanceof RemoteScriptTimeout) {
+      throw error;
+    }
+
+    return [];
+  }
+}
+
+/**
  * The refusal for a preset name several presets share.
  * @param preset - The preset as the call named it
  * @param matches - The presets, at least two
@@ -234,6 +286,19 @@ function isListedUnderEachDevice(matches: Candidate[], file: string): boolean {
     tails.every((parts) => parts.join("/") === tail) &&
     comparable(file).endsWith(`/${tail}`)
   );
+}
+
+/**
+ * @param file - A file's absolute path
+ * @param tail - Folders and a name, joined by "/", as `comparable` writes them
+ *   and with no suffix
+ * @returns True when the file's path ends with them
+ */
+function endsWith(file: string, tail: string): boolean {
+  const parts = comparable(file).split("/");
+  const last = normalizedName(parts.pop() as string);
+
+  return [...parts, last].join("/").endsWith(`/${tail}`);
 }
 
 /**
