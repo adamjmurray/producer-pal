@@ -5,10 +5,12 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  buildOutcomeQuestion,
   buildQuestions,
   decideVerdict,
   FAIL_THRESHOLD,
   jevJudge,
+  outcomeLabel,
   PASS_THRESHOLD,
 } from "../jev-judge.ts";
 
@@ -63,6 +65,39 @@ describe("buildQuestions", () => {
   });
 });
 
+describe("buildOutcomeQuestion", () => {
+  it("is a four-level score question over the trimmed criteria", () => {
+    expect(buildOutcomeQuestion("  1. A.\n")).toStrictEqual({
+      type: "score",
+      instructions:
+        "Scenario expectations:\n1. A.\n\nOverall, how did the assistant do against these expectations?",
+      criteria: [
+        "Complete failure: none of what was asked got done",
+        "Mostly failed: little of what was asked got done, or it went badly wrong",
+        "Partial success: some of what was asked got done, with real gaps or problems",
+        "Complete success: everything asked got done, and the reply is accurate",
+      ],
+    });
+  });
+});
+
+describe("outcomeLabel", () => {
+  it("names the nearest level", () => {
+    expect(outcomeLabel(0)).toBe("complete failure");
+    expect(outcomeLabel(0.4)).toBe("complete failure");
+    expect(outcomeLabel(0.6)).toBe("mostly failed");
+    expect(outcomeLabel(1.4)).toBe("mostly failed");
+    expect(outcomeLabel(2.4)).toBe("partial success");
+    expect(outcomeLabel(2.6)).toBe("complete success");
+    expect(outcomeLabel(3)).toBe("complete success");
+  });
+
+  it("clamps scores outside the range", () => {
+    expect(outcomeLabel(-1)).toBe("complete failure");
+    expect(outcomeLabel(5)).toBe("complete success");
+  });
+});
+
 describe("jevJudge", () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -75,6 +110,13 @@ describe("jevJudge", () => {
             req1: { type: "noul", noul: 0.9 },
             req2: { type: "noul", noul: 0.4 },
             whole: { type: "noul", noul: 0.95 },
+            outcome: {
+              type: "score",
+              score: 2.4,
+              confidence: 0.7,
+              legend: {},
+              probabilities: {},
+            },
           },
           usage: { input_tokens: 100, output_tokens: 5, cost: 0.002 },
         }),
@@ -102,10 +144,17 @@ describe("jevJudge", () => {
       "req1",
       "req2",
       "whole",
+      "outcome",
     ]);
     expect(sent.questions.req1?.type).toBe("noul");
+    expect(sent.questions.outcome?.type).toBe("score");
     expect(result.verdict).toBe("escalate");
     expect(result.minProbability).toBe(0.4);
+    expect(result.outcome).toStrictEqual({
+      score: 2.4,
+      confidence: 0.7,
+      label: "partial success",
+    });
     expect(result.inputTokens).toBe(100);
     expect(result.model).toBe("jev-1.14.0");
     expect(result.cost).toBe(0.002);
@@ -114,22 +163,42 @@ describe("jevJudge", () => {
     ]);
   });
 
+  it("throws when the outcome answer is missing", async () => {
+    stubAnswers({
+      req1: { type: "noul", noul: 0.9 },
+      whole: { type: "noul", noul: 0.9 },
+    });
+
+    await expect(
+      jevJudge({ turns: [], checks: [] }, "Be good.", { apiKey: "k" }),
+    ).rejects.toThrow(/no outcome score/);
+  });
+
   it("throws when an answer is missing", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            model: "m",
-            answers: {},
-            usage: { input_tokens: 1, output_tokens: 1 },
-          }),
-        ),
-      ),
-    );
+    stubAnswers({});
 
     await expect(
       jevJudge({ turns: [], checks: [] }, "Be good.", { apiKey: "k" }),
     ).rejects.toThrow(/no yes\/no answer/);
   });
 });
+
+/**
+ * Make fetch answer every Jev call with these answers.
+ *
+ * @param answers - The answers object of the response
+ */
+function stubAnswers(answers: Record<string, unknown>): void {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          model: "m",
+          answers,
+          usage: { input_tokens: 1, output_tokens: 1 },
+        }),
+      ),
+    ),
+  );
+}

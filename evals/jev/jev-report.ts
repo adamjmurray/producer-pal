@@ -9,6 +9,8 @@
 
 import {
   summarizeAgreement,
+  summarizeOutcome,
+  type OutcomeStats,
   type VerdictPair,
   type VerdictStats,
 } from "./jev-agreement.ts";
@@ -18,6 +20,9 @@ import { type SkipCounts } from "./jev-results.ts";
 
 /** Jev input price, USD per million tokens. */
 export const JEV_USD_PER_M_INPUT_TOKENS = 0.042;
+
+/** How many results the "Lowest outcome scores" section lists. */
+const LOWEST_OUTCOME_COUNT = 10;
 
 /** One compared result. `jev` is missing when the Jev call failed. */
 export interface CompareEntry {
@@ -39,7 +44,8 @@ export interface CompareEntry {
 }
 
 /**
- * Build the report lines: counts, verdict stats, wrong calls and cost.
+ * Build the report lines: counts, verdict stats, wrong calls, the lowest
+ * outcome scores among judge passes, and cost.
  *
  * @param entries - Compared results
  * @param skipped - What the loader left out
@@ -71,6 +77,8 @@ export function formatReport(
     `Truncated transcripts: ${judged.filter((e) => e.jev?.truncated).length}`,
     "",
     ...wrongCallLines(judged),
+    "",
+    ...lowestOutcomeLines(judged),
     ...errorLines(errors),
     "",
     costLine(judged),
@@ -86,12 +94,32 @@ export function formatReport(
  */
 function statsLines(title: string, subset: CompareEntry[]): string[] {
   const s: VerdictStats = summarizeAgreement(subset.map(toPair));
+  const o = summarizeOutcome(
+    subset.flatMap((e) =>
+      e.jev == null
+        ? []
+        : [{ judgePass: e.judge.pass, score: e.jev.outcome.score }],
+    ),
+  );
 
   return [
     `${title}: n=${s.n}, judge fails ${s.judgeFails}`,
     `  Jev pass ${s.jevPass}, fail ${s.jevFail}, escalate ${s.escalate} (${pct(s.escalatePct)})`,
     `  Wrong pass ${s.wrongPass}, wrong fail ${s.wrongFail}; agreement on non-escalated ${pct(s.agreePct)}`,
+    outcomeLine(o),
   ];
+}
+
+/**
+ * Format the outcome score stats for one subset.
+ *
+ * @param o - Outcome stats
+ * @returns One report line
+ */
+function outcomeLine(o: OutcomeStats): string {
+  const auc = o.auc == null ? "n/a" : o.auc.toFixed(3);
+
+  return `  Outcome score (0-3), mean: judge pass ${fixed(o.passMean)} (n=${o.passN}), judge fail ${fixed(o.failMean)} (n=${o.failN}); AUC ${auc}`;
 }
 
 /**
@@ -139,11 +167,40 @@ function wrongCallLines(judged: CompareEntry[]): string[] {
       `- ${e.file} (${kind})`,
       `  scenario ${e.scenarioId}; checks ${e.checksPass ? "passed" : "failed"}`,
       `  Judge (${judgeName(e)}): ${e.judge.pass ? "pass" : "fail"}${issues}`,
-      `  Jev: ${jev.verdict} - ${probs}`,
+      `  Jev: ${jev.verdict} - ${probs} outcome=${jev.outcome.score.toFixed(1)} ${jev.outcome.label}`,
     );
   }
 
   return count === 0 ? [...lines, "  (none)"] : lines;
+}
+
+/**
+ * List the results with the lowest outcome score among those the stored judge
+ * passed: candidates the judge may have missed.
+ *
+ * @param judged - Entries with a Jev answer
+ * @returns Report lines
+ */
+function lowestOutcomeLines(judged: CompareEntry[]): string[] {
+  const lowest = judged
+    .filter((e) => e.judge.pass && e.jev != null)
+    .toSorted(
+      (a, b) => (a.jev?.outcome.score ?? 0) - (b.jev?.outcome.score ?? 0),
+    )
+    .slice(0, LOWEST_OUTCOME_COUNT);
+  const lines = ["Lowest outcome scores (judge passed):"];
+
+  for (const e of lowest) {
+    const jev = e.jev;
+
+    if (jev != null) {
+      lines.push(
+        `- ${e.file}: scenario ${e.scenarioId}; outcome=${jev.outcome.score.toFixed(1)} ${jev.outcome.label}; Jev ${jev.verdict}`,
+      );
+    }
+  }
+
+  return lowest.length === 0 ? [...lines, "  (none)"] : lines;
 }
 
 /**
@@ -184,6 +241,16 @@ function costLine(judged: CompareEntry[]): string {
   const usd = (tokens / 1_000_000) * JEV_USD_PER_M_INPUT_TOKENS;
 
   return `Jev input tokens: ${tokens} (~$${usd.toFixed(4)} estimated)`;
+}
+
+/**
+ * Format a mean to two decimals.
+ *
+ * @param value - A number, or null
+ * @returns Text like "2.33" or "n/a"
+ */
+function fixed(value: number | null): string {
+  return value == null ? "n/a" : value.toFixed(2);
 }
 
 /**

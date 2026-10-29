@@ -16,13 +16,22 @@ const skipped: SkipCounts = {
   staleCriteria: 4,
 };
 
-const jevResult = (verdict: JevVerdict, p: number): JevJudgeResult => ({
+const jevResult = (
+  verdict: JevVerdict,
+  p: number,
+  score = verdict === "pass" ? 3 : 1,
+): JevJudgeResult => ({
   verdict,
   minProbability: p,
   questions: [
     { id: "req1", kind: "requirement", text: "A", probability: p },
     { id: "whole", kind: "whole", text: "A", probability: 0.9 },
   ],
+  outcome: {
+    score,
+    confidence: 0.8,
+    label: score >= 2.5 ? "complete success" : "mostly failed",
+  },
   model: "jev-1.14.0",
   inputTokens: 1000,
   outputTokens: 5,
@@ -67,6 +76,48 @@ describe("formatReport", () => {
     expect(text).toContain("Wrong pass 1, wrong fail 1");
   });
 
+  it("reports mean outcome scores and AUC for both subsets", () => {
+    // checks passed: judge passes a (3), c (1); judge fails b (3), d (1)
+    expect(text).toContain(
+      "Outcome score (0-3), mean: judge pass 2.00 (n=2), judge fail 2.00 (n=2); AUC 0.500",
+    );
+    // all results: judge passes a (3), c (1); judge fails b (3), d (1), e (3)
+    expect(text).toContain(
+      "judge pass 2.00 (n=2), judge fail 2.33 (n=3); AUC 0.417",
+    );
+  });
+
+  it("lists the lowest outcome scores among judge passes, lowest first", () => {
+    const rows = Array.from({ length: 12 }, (_, i) => ({
+      ...entry(`r${i}.json`, true, "pass"),
+      jev: jevResult("pass", 0.95, i / 4),
+    }));
+
+    rows.push({
+      ...entry("fail.json", false, "fail"),
+      jev: jevResult("fail", 0.1, 0),
+    });
+
+    const out = formatReport(rows, skipped).join("\n");
+    const section = out.slice(out.indexOf("Lowest outcome scores"));
+
+    expect(section).toContain(
+      "- r0.json: scenario s; outcome=0.0 mostly failed; Jev pass",
+    );
+    expect(section).toContain("- r9.json:");
+    expect(section).not.toContain("- r10.json:");
+    expect(section).not.toContain("fail.json:");
+    expect(section.indexOf("r0.json")).toBeLessThan(section.indexOf("r1.json"));
+  });
+
+  it("says none when no judge-passed result has an outcome", () => {
+    const out = formatReport([entry("a.json", false, "fail")], skipped);
+
+    expect(out.join("\n")).toContain(
+      "Lowest outcome scores (judge passed):\n  (none)",
+    );
+  });
+
   it("counts the stored judges, most common first, and names them", () => {
     const mixed = [
       entry("a.json", true, "pass"),
@@ -84,7 +135,7 @@ describe("formatReport", () => {
     expect(text).toContain("- b.json (wrong pass)");
     expect(text).toContain("checks passed");
     expect(text).toContain("Judge (codex-code/luna): fail - bad reply");
-    expect(text).toContain("req1=0.95 whole=0.90");
+    expect(text).toContain("req1=0.95 whole=0.90 outcome=3.0 complete success");
     expect(text).toContain("- c.json (wrong fail)");
     expect(text).toContain("- e.json (wrong pass)");
     expect(text).toContain("checks failed");

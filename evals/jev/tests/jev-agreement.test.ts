@@ -4,7 +4,12 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { summarizeAgreement, type VerdictPair } from "../jev-agreement.ts";
+import {
+  rankAuc,
+  summarizeAgreement,
+  summarizeOutcome,
+  type VerdictPair,
+} from "../jev-agreement.ts";
 
 const pair = (judgePass: boolean, jev: VerdictPair["jev"]): VerdictPair => ({
   judgePass,
@@ -44,5 +49,56 @@ describe("summarizeAgreement", () => {
     expect(empty.agreePct).toBeNull();
     expect(allEscalated.escalatePct).toBe(100);
     expect(allEscalated.agreePct).toBeNull();
+  });
+});
+
+describe("rankAuc", () => {
+  it("is 1 when every fail scores below every pass", () => {
+    expect(rankAuc([0, 1], [2, 3])).toBe(1);
+  });
+
+  it("is 0 when every fail scores above every pass", () => {
+    expect(rankAuc([2, 3], [0, 1])).toBe(0);
+  });
+
+  it("counts ties as half", () => {
+    expect(rankAuc([1], [1])).toBe(0.5);
+    // fail 1 vs passes 1, 2: 0.5 + 1; fail 3 vs passes 1, 2: 0 + 0
+    expect(rankAuc([1, 3], [1, 2])).toBe(1.5 / 4);
+  });
+
+  it("is null when either side is empty", () => {
+    expect(rankAuc([], [1])).toBeNull();
+    expect(rankAuc([1], [])).toBeNull();
+    expect(rankAuc([], [])).toBeNull();
+  });
+});
+
+describe("summarizeOutcome", () => {
+  it("gives group sizes, means and AUC", () => {
+    const s = summarizeOutcome([
+      { judgePass: true, score: 3 },
+      { judgePass: true, score: 2 },
+      { judgePass: false, score: 1 },
+      { judgePass: false, score: 2.5 },
+    ]);
+
+    expect(s).toStrictEqual({
+      passN: 2,
+      failN: 2,
+      passMean: 2.5,
+      failMean: 1.75,
+      auc: 0.75,
+    });
+  });
+
+  it("has null means and AUC with no rows", () => {
+    expect(summarizeOutcome([])).toStrictEqual({
+      passN: 0,
+      failN: 0,
+      passMean: null,
+      failMean: null,
+      auc: null,
+    });
   });
 });

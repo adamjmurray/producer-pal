@@ -6,7 +6,8 @@
 /**
  * Judge an eval run with Jev: one yes/no question per requirement in the
  * scenario's criteria, plus one for the criteria as a whole. The lowest answer
- * decides: pass, fail, or hand the run to the LLM judge.
+ * decides: pass, fail, or hand the run to the LLM judge. A graded outcome
+ * score rides along in the same request but does not affect the verdict.
  */
 
 import {
@@ -17,6 +18,7 @@ import {
   askJev,
   type AskJevOptions,
   type JevNoulQuestion,
+  type JevQuestion,
 } from "./jev-client.ts";
 import { splitRequirements } from "./jev-requirements.ts";
 import { buildJevState } from "./jev-state.ts";
@@ -42,6 +44,40 @@ export interface JevQuestionResult {
   probability: number;
 }
 
+/** The outcome levels, lowest first: the index is the score. */
+const OUTCOME_LEVELS = [
+  {
+    label: "complete failure",
+    criterion: "Complete failure: none of what was asked got done",
+  },
+  {
+    label: "mostly failed",
+    criterion:
+      "Mostly failed: little of what was asked got done, or it went badly wrong",
+  },
+  {
+    label: "partial success",
+    criterion:
+      "Partial success: some of what was asked got done, with real gaps or problems",
+  },
+  {
+    label: "complete success",
+    criterion:
+      "Complete success: everything asked got done, and the reply is accurate",
+  },
+];
+
+const OUTCOME_ID = "outcome";
+
+/** A graded 0-3 judgment of the whole run. */
+export interface JevOutcome {
+  /** 0 (complete failure) to 3 (complete success) */
+  score: number;
+  confidence: number;
+  /** The name of the nearest level */
+  label: string;
+}
+
 /** "escalate" means too uncertain to call; ask the LLM judge. */
 export type JevVerdict = "pass" | "fail" | "escalate";
 
@@ -50,6 +86,8 @@ export interface JevJudgeResult {
   /** The lowest answer, which decided the verdict */
   minProbability: number;
   questions: JevQuestionResult[];
+  /** Graded outcome; not part of the verdict */
+  outcome: JevOutcome;
   /** The model version that answered, as the route reports it */
   model: string;
   inputTokens: number;
@@ -75,11 +113,16 @@ export async function jevJudge(
 ): Promise<JevJudgeResult> {
   const { state, truncated } = buildJevState(run.turns, run.checks);
   const planned = buildQuestions(criteria);
-  const questions: Record<string, JevNoulQuestion> = {};
+  const questions: Record<string, JevQuestion> = {};
 
   for (const q of planned) {
-    questions[q.id] = { type: "noul", instructions: q.instructions };
+    questions[q.id] = {
+      type: "noul",
+      instructions: q.instructions,
+    } satisfies JevNoulQuestion;
   }
+
+  questions[OUTCOME_ID] = buildOutcomeQuestion(criteria);
 
   const response = await askJev(state, questions, options);
   const results = planned.map((q): JevQuestionResult => {
@@ -97,18 +140,56 @@ export async function jevJudge(
     };
   });
 
+  const outcomeAnswer = response.answers[OUTCOME_ID];
+
+  if (outcomeAnswer?.type !== "score") {
+    throw new Error("Jev gave no outcome score");
+  }
+
   const minProbability = Math.min(...results.map((r) => r.probability));
 
   return {
     verdict: decideVerdict(minProbability),
     minProbability,
     questions: results,
+    outcome: {
+      score: outcomeAnswer.score,
+      confidence: outcomeAnswer.confidence,
+      label: outcomeLabel(outcomeAnswer.score),
+    },
     model: response.model,
     inputTokens: response.usage.input_tokens,
     outputTokens: response.usage.output_tokens,
     cost: response.usage.cost,
     truncated,
   };
+}
+
+/**
+ * Build the graded question asked alongside the yes/no ones.
+ *
+ * @param criteria - The scenario's llm_judge prompt
+ * @returns A score question with one level per outcome
+ */
+export function buildOutcomeQuestion(criteria: string): JevQuestion {
+  return {
+    type: "score",
+    instructions: `Scenario expectations:\n${criteria.trim()}\n\nOverall, how did the assistant do against these expectations?`,
+    criteria: OUTCOME_LEVELS.map((l) => l.criterion),
+  };
+}
+
+/**
+ * Name the outcome level nearest a score.
+ *
+ * @param score - 0 to 3, fractional allowed
+ * @returns The short level name
+ */
+export function outcomeLabel(score: number): string {
+  const top = OUTCOME_LEVELS.length - 1;
+  const level = Math.min(top, Math.max(0, Math.round(score)));
+
+  return OUTCOME_LEVELS[level]?.label ?? "unknown";
 }
 
 /**
