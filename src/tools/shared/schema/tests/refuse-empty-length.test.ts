@@ -17,6 +17,12 @@ describe("refuseEmptyLength", () => {
     expect(() => refuseEmptyLength("1bar-n/1", -4)).toThrow("1bar-n/1");
   });
 
+  it("names the parameter it was given", () => {
+    expect(() => refuseEmptyLength("0bar", 0, "arrangementLength")).toThrow(
+      'arrangementLength "0bar" must be longer than zero',
+    );
+  });
+
   it("takes a length that spans something", () => {
     expect(() => refuseEmptyLength("1bar", 4)).not.toThrow();
   });

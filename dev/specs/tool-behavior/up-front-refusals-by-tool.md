@@ -123,6 +123,9 @@ code; when it disagrees with a tool, the tool wins.
   anything is written to the clip, in the meter the call sets — except an
   unwarped audio clip sent `looping: true` with a `start` and no `length`, whose
   loop end is known only once warping is on.
+- **`duplicate` and `updateClip` refuse an `arrangementLength` entry that spans
+  nothing** (zero or less in the song's meter), in the same words as `length`:
+  `arrangementLength "0bar" must be longer than zero`.
 - **`duplicate` and `updateClip` refuse an `arrangementLength` entry longer than
   1,576,800 beats** (`arrangementLength can be at most 394200bar`, written in
   the song's meter) before anything is changed. The limit is Producer Pal's, not

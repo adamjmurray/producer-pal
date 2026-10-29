@@ -14,11 +14,16 @@ const ANY_BEATS_PER_BAR = Number.MAX_SAFE_INTEGER;
  * length, or keeps the region it had.
  * @param length - The length as the caller wrote it
  * @param lengthBeats - What it comes to in the clip's meter
+ * @param param - The parameter the length came from, named in the refusal
  * @throws Error when the length is zero or less
  */
-export function refuseEmptyLength(length: string, lengthBeats: number): void {
+export function refuseEmptyLength(
+  length: string,
+  lengthBeats: number,
+  param = "length",
+): void {
   if (lengthBeats <= 0) {
-    throw new Error(`length "${length}" must be longer than zero`);
+    throw new Error(`${param} "${length}" must be longer than zero`);
   }
 }
 

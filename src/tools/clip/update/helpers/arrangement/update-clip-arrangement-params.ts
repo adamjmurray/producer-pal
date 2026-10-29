@@ -18,6 +18,7 @@ import {
   pairValues,
   type PairLabels,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { refuseEmptyLength } from "#src/tools/shared/schema/refuse-empty-length.ts";
 import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 
 /** One arrangement time per clip, in beats. */
@@ -130,9 +131,7 @@ export function parseArrangementParams(
       durations.map((duration) => {
         const beats = durationToAbletonBeats(duration, numerator, denominator);
 
-        if (beats <= 0) {
-          throw new Error("arrangementLength must be greater than 0");
-        }
+        refuseEmptyLength(duration, beats, "arrangementLength");
 
         refuseArrangementLengthTooLong(beats, numerator, denominator);
 

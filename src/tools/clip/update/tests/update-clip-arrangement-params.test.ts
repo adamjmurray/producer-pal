@@ -181,7 +181,7 @@ describe("parseArrangementParams", () => {
 
   it.each(["0bar", "-1bar"])("throws when a length is %s", (duration) => {
     expect(() => parseArrangementParams(undefined, duration, 1)).toThrow(
-      "arrangementLength must be greater than 0",
+      `arrangementLength "${duration}" must be longer than zero`,
     );
   });
 
