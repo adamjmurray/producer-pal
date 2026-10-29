@@ -150,12 +150,16 @@ export type CopyDraft =
   | {
       /** How a skip entry addresses it */
       named: NamedTarget;
+      /** What `named` named at the start, when it is a source's path */
+      atStart?: string | null;
       /** Why it can't be made */
       skip: string;
       make?: undefined;
     }
   | {
       named: NamedTarget;
+      /** What `named` named at the start, when it is a source's path */
+      atStart?: string | null;
       skip?: undefined;
       /** What the copy is, and what it writes over, once its label is known */
       make: (label: CopyLabel) => CopyMade;

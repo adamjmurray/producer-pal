@@ -48,6 +48,8 @@ export interface SourceShare {
   named: NamedTarget;
   /** Why nothing can be copied from it: every copy it was to make is a skip. */
   skip?: string;
+  /** What a source named by path named at the start: its id, or null if nothing */
+  atStart?: string | null;
   toPath: string | undefined;
   toSlot: string | undefined;
   /** This source's share of arrangementStart. */
@@ -216,7 +218,7 @@ export function resolveSourceClipDestinations(
 // --- Helpers below main exports ---
 
 /** A source the call named, once its id is known. */
-type SourceTarget = Pick<SourceShare, "id" | "named" | "skip">;
+type SourceTarget = Pick<SourceShare, "id" | "named" | "skip" | "atStart">;
 
 /**
  * Shares an arrangement destination out across the sources. A clip's
@@ -363,9 +365,15 @@ function sourceTargets(
 
     const resolved = lookup.resolvePath(named.value);
 
+    // `atStart` lets a skip say where the source went if a copy moved it.
     return resolved.id == null
-      ? { id: named.value, named, skip: resolved.reason }
-      : vetted(named, resolved.id, lookup);
+      ? {
+          id: named.value,
+          named,
+          skip: resolved.reason,
+          atStart: resolved.empty ? null : undefined,
+        }
+      : { ...vetted(named, resolved.id, lookup), atStart: resolved.id };
   });
 }
 

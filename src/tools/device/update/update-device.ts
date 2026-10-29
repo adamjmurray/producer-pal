@@ -17,6 +17,7 @@ import { blankTargetIgnores } from "#src/tools/shared/validation/lists/target-li
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { refuseUnparsableEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { whereObjectIs } from "#src/tools/shared/write-pipeline/where-object-is.ts";
 import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
 import {
   type AppliedTarget,
@@ -44,6 +45,7 @@ import {
   parseDeviceCall,
 } from "./helpers/call/parse-device-call.ts";
 import {
+  NothingThereError,
   type ResolvedTarget,
   resolveNamedTarget,
   resolvedTargetKey,
@@ -138,6 +140,11 @@ const DEVICE_WRITE: WriteSpec<
     checkDeviceUpdate(call, targets, ctx.deadline, manageOffered(ctx)),
   write: writeDevice,
   settle: settleDeviceUpdate,
+  // A pad move re-indexes the chains on other pads.
+  locate: {
+    idAt: deviceIdAt,
+    whereIs: (id, spelled) => whereObjectIs(id, writtenContainer(spelled)),
+  },
 };
 
 // --- Helpers below main export ---
@@ -177,12 +184,37 @@ function deviceTargets(call: DeviceCall): Array<Target<DevicePayload>> {
       return {
         named: target,
         key: resolvedTargetKey(resolved),
+        // A pad is addressed by its note, which no move changes.
+        atStart: resolved.kind === "object" ? resolved.target.id : undefined,
         data: { resolved, before: pathBefore(call, resolved, target) },
       };
     } catch (error) {
-      return { named: target, skip: errorMessage(error) };
+      return {
+        named: target,
+        atStart: error instanceof NothingThereError ? null : undefined,
+        skip: errorMessage(error),
+      };
     }
   });
+}
+
+/**
+ * What a path names now, for a skipped target whose path may have moved on.
+ * @param path - A device, chain or pad path, as the caller wrote it
+ * @returns The object's id, or null when the path names nothing
+ */
+function deviceIdAt(path: string): string | null {
+  try {
+    return resolvedTargetKey(
+      resolveNamedTarget({ param: "path", value: path }),
+    );
+  } catch (error) {
+    if (error instanceof NothingThereError) {
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 /**

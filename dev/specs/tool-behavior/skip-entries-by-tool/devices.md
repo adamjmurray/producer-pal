@@ -14,6 +14,11 @@ Part of [Skip entries, tool by tool](README.md).
   since a replaced device makes the answer moot. The question is asked before
   the write, so nothing can fail after the count has changed. A rack Live won't
   take below 1 macro says where the count landed.
+- **update-device's skip can name a chain a pad move re-numbered.** A drum chain
+  move changes which chain `pD1/c0` names, so a skipped chain's entry adds
+  `that chain is now <path> (id N)`; see
+  [Tool Behavior](../skips-and-replaced-targets.md). A bare pad path is its
+  note, which no move changes, so it gets no clause.
 - **update-device's `pitchBendRange` and `notePitchBendRange` are `params`
   entries written through the remote script.** Only a Simpler has them (on
   another device the name is not found, as any unknown param). Each entry comes

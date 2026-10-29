@@ -25,6 +25,10 @@ Part of [Skip entries, tool by tool](README.md).
   diagnostic. The `name` and `color` lists pair by the target's place, so a skip
   doesn't slide them. The deadline skips every target it never reached; a split
   that already cut keeps its pieces, each saying what did not run.
+- **update-clip: a skipped clip's path can go stale.** A conversion's new track,
+  a move or a split changes what a later path names, so a skipped clip's entry
+  adds `that clip is now <path> (id N)`, read after all the writes; see
+  [Tool Behavior](../skips-and-replaced-targets.md).
 - **update-clip: a clip named twice** (id and path, or an id repeated) is
   updated as its last mention asks. The earlier mention keeps its slot as
   `{ id | path, detail }` with no `ok`; if the last mention then fails with

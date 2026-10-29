@@ -89,7 +89,7 @@ export function clipTargets(
     const result = found[index] as ReturnType<typeof findClip>;
 
     if ("skip" in result) {
-      return { named, skip: result.skip };
+      return { named, atStart: result.atStart, skip: result.skip };
     }
 
     const payload = payloadFor(call, result.clip, index, batchIds);
@@ -97,6 +97,8 @@ export function clipTargets(
     return {
       named,
       key: result.clip.id,
+      // What a path named at the start, for a skip to say if it has moved on.
+      atStart: named.param === "path" ? result.clip.id : undefined,
       covers: coversOf(payload, readers.destinationTracks),
       data: payload,
     };
@@ -109,13 +111,13 @@ export function clipTargets(
  * The clip one target names.
  * @param target - The target, as the caller wrote it
  * @param lanes - The call's lanes
- * @returns The clip, or why it names none
+ * @returns The clip, or why it names none, and for a path what it named
  * @throws Error when a path can't be parsed
  */
 function findClip(
   target: NamedTarget,
   lanes: LaneView | undefined,
-): { clip: LiveAPI } | { skip: string } {
+): { clip: LiveAPI } | { skip: string; atStart?: string | null } {
   let id = target.value;
 
   if (target.param === "path") {
@@ -128,7 +130,7 @@ function findClip(
     );
 
     if (lookup.id == null) {
-      return { skip: lookup.reason };
+      return { skip: lookup.reason, atStart: lookup.empty ? null : undefined };
     }
 
     id = lookup.id;
@@ -137,7 +139,10 @@ function findClip(
   try {
     return { clip: validateIdType(id, "clip") };
   } catch (error) {
-    return { skip: errorMessage(error) };
+    return {
+      skip: errorMessage(error),
+      atStart: target.param === "path" ? id : undefined,
+    };
   }
 }
 
