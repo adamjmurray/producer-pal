@@ -26,6 +26,14 @@ const REAL: McpContent = [
   { type: "text", text: "remoteScript: v1.0.0 running" },
 ];
 const callReal = vi.fn(() => Promise.resolve(REAL));
+const REAL_CHECK: McpContent = [
+  {
+    type: "text",
+    text: 'connected:true,producerPalVersion:"9.9.9",abletonLiveVersion:"12.4.15"',
+  },
+  { type: "text", text: "remoteScript: not installed." },
+];
+const callRealCheck = vi.fn(() => Promise.resolve(REAL_CHECK));
 const texts = (content: McpContent): string[] =>
   content.map((block) => block.text ?? "");
 
@@ -45,22 +53,36 @@ describe("canned results", () => {
   });
 
   it("version check is versions, a running script line, then the new-chat line", () => {
-    const blocks = texts(versionCheckUpToDate());
+    const blocks = texts(versionCheckUpToDate("12.4.15"));
 
     expect(blocks[0]).toContain(`producerPalVersion:"${VERSION}"`);
+    expect(blocks[0]).toContain('abletonLiveVersion:"12.4.15"');
     expect(blocks[1]).toBe(`remoteScript: v${VERSION} running`);
     expect(blocks.at(-1)).toBe(UP_TO_DATE_NEW_CHAT);
   });
 });
 
 describe("connect overrides", () => {
-  it("answers a version check with the canned result without calling", async () => {
-    callReal.mockClear();
+  it("answers a version check with the canned result and the real Live version", async () => {
+    const result = await connectOverride()(
+      { versionCheck: true },
+      callRealCheck,
+    );
 
-    const result = await connectOverride()({ versionCheck: true }, callReal);
+    expect(result).toStrictEqual(versionCheckUpToDate("12.4.15"));
+    expect(texts(result)).not.toContain(REAL_CHECK[1]?.text);
+  });
 
-    expect(result).toStrictEqual(versionCheckUpToDate());
-    expect(callReal).not.toHaveBeenCalled();
+  it("fails loudly when the real version check has no Live version", async () => {
+    await expect(
+      connectOverride()({ versionCheck: true }, callReal),
+    ).rejects.toThrow("No Live version");
+  });
+
+  it("an empty real result fails the same way", async () => {
+    await expect(
+      connectOverride()({ versionCheck: true }, () => Promise.resolve([])),
+    ).rejects.toThrow("No Live version");
   });
 
   it("passes a plain connect through to the real call", async () => {
@@ -96,6 +118,8 @@ describe("manageOverride", () => {
   });
 
   it("refuses any other action instead of running it", async () => {
+    callReal.mockClear();
+
     const [block] = texts(
       await override({ action: "install-producer-pal" }, callReal),
     );

@@ -17,7 +17,7 @@ import { remoteScriptLine } from "#src/mcp-server/helpers/connect/remote-script-
 import { type RemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { hintFor } from "#src/portal/update/update-connect-hint.ts";
 import { toCompactJSLiteral } from "#src/shared/compact/compact-serializer.ts";
-import { MIN_LIVE_VERSION, VERSION } from "#src/shared/config.ts";
+import { VERSION } from "#src/shared/config.ts";
 import {
   UP_TO_DATE_NEW_CHAT,
   VERSION_CHECK_OR_CONNECT,
@@ -40,7 +40,7 @@ const CURRENT_SCRIPT: RemoteScriptStatus = {
   running: true,
   runningVersion: VERSION,
   runningBuild: null,
-  liveVersion: MIN_LIVE_VERSION,
+  liveVersion: null,
   otherOnPort: null,
   updateAvailable: false,
   installedNewer: false,
@@ -56,17 +56,18 @@ const BEHIND_SCRIPT: RemoteScriptStatus = {
 
 /**
  * Answer `ppal-connect` with `versionCheck: true` from the canned result and
- * everything else with `otherwise`.
+ * everything else with `otherwise`. The canned result carries the Live version
+ * the real version check reports, which only reads versions.
  * @param otherwise - Handles a plain connect; the real call by default
  * @returns The `ppal-connect` override
  */
 export function connectOverride(
   otherwise: ToolOverride = (_args, callReal) => callReal(),
 ): ToolOverride {
-  return (args, callReal) =>
+  return async (args, callReal) =>
     args.versionCheck === true
-      ? versionCheckUpToDate()
-      : otherwise(args, callReal);
+      ? versionCheckUpToDate(liveVersionOf(await callReal()))
+      : await otherwise(args, callReal);
 }
 
 /**
@@ -160,21 +161,37 @@ export function installSuccess(): McpContent {
 }
 
 /**
+ * @param abletonLiveVersion - The Live version the real connect reports
  * @returns What `ppal-connect` with `versionCheck: true` answers when nothing
  *   needs fixing
  */
-export function versionCheckUpToDate(): McpContent {
+export function versionCheckUpToDate(abletonLiveVersion: string): McpContent {
   return [
     ...textContent(
       toCompactJSLiteral({
         connected: true,
         producerPalVersion: VERSION,
-        abletonLiveVersion: MIN_LIVE_VERSION,
+        abletonLiveVersion,
       }),
     ),
     { type: "text", text: remoteScriptLine(CURRENT_SCRIPT, true) },
     { type: "text", text: UP_TO_DATE_NEW_CHAT },
   ];
+}
+
+/**
+ * @param content - A real `ppal-connect` result
+ * @returns The Live version it reports
+ */
+function liveVersionOf(content: McpContent): string {
+  const text = content[0]?.text ?? "";
+  const version = /abletonLiveVersion:"([^"]+)"/.exec(text)?.[1];
+
+  if (version == null) {
+    throw new Error(`No Live version in the real version check: ${text}`);
+  }
+
+  return version;
 }
 
 /**
