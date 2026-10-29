@@ -90,7 +90,12 @@ function convert(overrides?: Partial<EvalScenarioResult>) {
  * @returns An llm_judge assertion result
  */
 function judgeAssertion(
-  details: { pass: boolean; issues: string[] },
+  details: {
+    pass: boolean;
+    issues: string[];
+    provider?: string;
+    model?: string;
+  },
   message: string,
 ): EvalAssertionResult {
   return makeAssertion({
@@ -169,6 +174,32 @@ describe("toJsonResult", () => {
     // there were zero checks, so the overall result hard-failed even though the
     // judge passed — a judge-only scenario could never report pass.
     expect(result.result).toBe("pass");
+  });
+
+  it("records which provider and model gave the judge verdict", () => {
+    const result = convert({
+      assertions: [
+        judgeAssertion(
+          { ...PASSING_JUDGE, provider: "codex-code", model: "luna" },
+          "LLM judge: pass",
+        ),
+      ],
+    });
+
+    expect(result.judge).toStrictEqual({
+      pass: true,
+      issues: [],
+      provider: "codex-code",
+      model: "luna",
+    });
+  });
+
+  it("omits provider and model when the assertion has none", () => {
+    const result = convert({
+      assertions: [judgeAssertion(PASSING_JUDGE, "LLM judge: pass")],
+    });
+
+    expect(result.judge).toStrictEqual({ pass: true, issues: [] });
   });
 
   it("derives judge from llm_judge assertion (failing)", () => {

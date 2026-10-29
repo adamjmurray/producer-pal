@@ -105,6 +105,10 @@ export interface JsonJudge {
    * the overall result to fail (the scenario's deterministic checks are
    * authoritative). Set per-scenario via `judgeAdvisory`. */
   advisory?: boolean;
+  /** Provider that produced the verdict (absent in older results) */
+  provider?: string;
+  /** Model that produced the verdict, as resolved (absent in older results) */
+  model?: string;
 }
 
 export interface JsonTurnRecord {

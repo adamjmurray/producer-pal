@@ -13,7 +13,7 @@ import {
   type EvalScenarioResult,
   type EvalTurnResult,
 } from "../../types.ts";
-import { type SimpleJudgeResult } from "../judge/judge-response-parser.ts";
+import { type LlmJudgeDetails } from "../../assertions/llm-judge.ts";
 import { isProviderRefusal } from "../trials/provider-refusal.ts";
 import { assertionLabel } from "./assertion-label.ts";
 import { aggregateStepTimings } from "./step-timing-aggregate.ts";
@@ -197,13 +197,19 @@ function buildJudge(
   }
 
   const advisoryFlag = advisory ? { advisory: true } : {};
-  const details = judgeResult.details as SimpleJudgeResult | undefined;
+  const details = judgeResult.details as LlmJudgeDetails | undefined;
 
   if (!details) {
     return { pass: false, issues: [judgeResult.message], ...advisoryFlag };
   }
 
-  return { pass: details.pass, issues: details.issues, ...advisoryFlag };
+  return {
+    pass: details.pass,
+    issues: details.issues,
+    ...advisoryFlag,
+    ...(details.provider != null && { provider: details.provider }),
+    ...(details.model != null && { model: details.model }),
+  };
 }
 
 /**
