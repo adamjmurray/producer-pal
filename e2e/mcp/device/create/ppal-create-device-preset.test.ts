@@ -31,6 +31,7 @@ import {
   presetName,
   readDevice,
   requireRemoteScript,
+  vibraphoneFilesOrSkip,
   wastedSpaceTransmissionOrSkip,
 } from "../helpers/remote-script-test-helpers";
 import {
@@ -215,6 +216,105 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     );
     expect(getToolErrorMessage(result)).toContain(packFile);
     expect(getToolErrorMessage(result)).toContain("Shifter/Transmission.adv");
+  });
+
+  // The Core Library's one "Dunkel Pad" rack is listed under Drift and under
+  // Instrument Rack.
+  it("loads a rack the browser lists under several devices", async ({
+    skip,
+  }) => {
+    await skipTestBeforeLive(ctx.client!, skip, "12.4", LIBRARY_NEEDS);
+
+    const track = await createMidiTrack(ctx.client!);
+    const created = parseToolResult<{ path: string }>(
+      await create({ preset: "Dunkel Pad", path: `t${track}/d+` }),
+    );
+
+    const device = await readDevice(ctx.client!, created.path);
+
+    expect(device.type).toBe("instrument-rack");
+    expect(device.name).toBe("Dunkel Pad");
+  });
+
+  // Live's browser lists a rack under every device it is built around, so the
+  // refusal names the library's files instead of browser paths.
+  it("refuses a name several files share, listing their file paths", async ({
+    skip,
+  }) => {
+    await skipTestBeforeLive(ctx.client!, skip, "12.4", LIBRARY_NEEDS);
+
+    const track = await createMidiTrack(ctx.client!);
+    const result = await create({
+      preset: "Flutter Pad",
+      path: `t${track}/d+`,
+    });
+    const message = getToolErrorMessage(result);
+    const listed = [...message.matchAll(/"((?:\/|[A-Za-z]:[\\/])[^"]+)"/g)].map(
+      (match) => match[1] as string,
+    );
+    const advFile = listed.find((path) =>
+      path
+        .replaceAll("\\", "/")
+        .endsWith("Devices/Instruments/Drift/Pad/Flutter Pad.adv"),
+    );
+    const adgFile = listed.find((path) =>
+      path
+        .replaceAll("\\", "/")
+        .endsWith("Racks/Instrument Racks/Pad/Flutter Pad.adg"),
+    );
+
+    expect(isToolError(result)).toBe(true);
+    expect(message).toContain('preset "Flutter Pad" matches');
+    expect(advFile).toBeDefined();
+    expect(adgFile).toBeDefined();
+
+    // Each listed path loads that file.
+    for (const [file, type] of [
+      [advFile, "instrument: Drift"],
+      [adgFile, "instrument-rack"],
+    ] as const) {
+      const fresh = await createMidiTrack(ctx.client!);
+      const created = parseToolResult<{ path: string }>(
+        await create({ preset: file, path: `t${fresh}/d+` }),
+      );
+
+      expect((await readDevice(ctx.client!, created.path)).type).toBe(type);
+    }
+  });
+
+  it("lists both files of a name the browser files under one path", async ({
+    skip,
+  }) => {
+    const { core, pack } = await vibraphoneFilesOrSkip(ctx.client!, skip);
+    const track = await createMidiTrack(ctx.client!);
+    const result = await create({
+      preset: "Vibraphone",
+      path: `t${track}/d+`,
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(`"${core}"`);
+    expect(getToolErrorMessage(result)).toContain(`"${pack}"`);
+
+    // The two racks differ in their first chain.
+    for (const [file, chain] of [
+      [core, "Vibraphone"],
+      [pack, "Pedal Down"],
+    ] as const) {
+      const fresh = await createMidiTrack(ctx.client!);
+      const created = parseToolResult<{ path: string }>(
+        await create({ preset: file, path: `t${fresh}/d+` }),
+      );
+      const rack = parseToolResult<{ chains?: Array<{ name?: string }> }>(
+        await callToolAndSettle(ctx.client!, "ppal-read-device", {
+          path: created.path,
+          include: ["chains"],
+          maxDepth: 1,
+        }),
+      );
+
+      expect(rack.chains?.[0]?.name).toBe(chain);
+    }
   });
 
   it("loads the named device's own preset when another device files the name too", async ({

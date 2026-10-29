@@ -8,7 +8,9 @@
 // so a name is searched there first. Live's library database reaches presets
 // filed elsewhere, such as a pack's drum kits: a name the browser lacks is
 // looked up there, and one it finds once is refused if the database has
-// several. A file path from ppal-library names one directly.
+// several. A name it finds several times is settled by the database's files, as
+// the browser lists one file under every device a rack is built around. A file
+// path from ppal-library names one directly.
 
 import { isAbsolutePath } from "#src/tools/shared/remote-script/absolute-path.ts";
 import {
@@ -29,6 +31,7 @@ import {
 } from "./browser-device-lookup.ts";
 import {
   duplicatePresetFiles,
+  listedPresetFiles,
   lookUpPresetFile,
   presetFile,
   severalPresets,
@@ -43,8 +46,10 @@ const PRESET_SECTIONS = SECTIONS.filter((section) => section.type !== "plugin");
  * `<section>/<path>` browser path, or a name searched for among the presets.
  * A name must match exactly (any case, with or without its suffix): loading a
  * preset that merely contains it would load one the caller didn't name. A name
- * the browser doesn't have is looked up in Live's library database, and one it
- * finds once is refused when the database has other files by that name.
+ * the browser doesn't have is looked up in Live's library database. One it
+ * finds once is refused when the database has other files by that name. Ones it
+ * finds several times are refused with the database's files, or load when the
+ * database has just the one and the browser's matches are that one file.
  * @param preset - The preset as the call named it
  * @param scope - The device whose presets a name is searched among, if the call
  *   named one
@@ -102,9 +107,9 @@ export async function lookUpBrowserPreset(
   }
 
   if (searched.exact.length > 0) {
-    // Live's browser doesn't list every file, so a name it finds once can
-    // still be filed elsewhere too.
-    const duplicates =
+    // Live's browser doesn't list every file, and lists a rack under each
+    // device it is built around, so its matches say little about the files.
+    const fromLibrary =
       searched.exact.length === 1
         ? await duplicatePresetFiles(
             preset,
@@ -112,9 +117,15 @@ export async function lookUpBrowserPreset(
             searched.searchedScope,
             endsAt,
           )
-        : null;
+        : await listedPresetFiles(
+            preset,
+            key,
+            searched.exact,
+            searched.searchedScope,
+            endsAt,
+          );
 
-    return duplicates ?? pickPreset(preset, searched.exact);
+    return fromLibrary ?? pickPreset(preset, searched.exact);
   }
 
   return (
