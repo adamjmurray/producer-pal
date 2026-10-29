@@ -154,6 +154,27 @@ describe("hotswapPreset after Live changed the device", () => {
 });
 
 describe("presetScopeForDevice", () => {
+  it("names the device the browser found, not the call's spelling", () => {
+    const item = { type: "instrument", path: "Operator", name: "Operator" };
+
+    expect(presetScopeForDevice("Instruments/Operator", item)).toStrictEqual({
+      type: "instrument",
+      path: "Operator",
+      device: "Operator",
+    });
+    expect(presetScopeForDevice("Operat", item).device).toBe("Operator");
+  });
+
+  it("drops a Max device's suffix", () => {
+    expect(
+      presetScopeForDevice("tape", {
+        type: "audio-effect",
+        path: "Tape/Tape.amxd",
+        name: "Tape.amxd",
+      }).device,
+    ).toBe("Tape");
+  });
+
   it("searches instruments for a name that is no native device", () => {
     expect(presetScopeForDevice("Not A Device", null)).toStrictEqual({
       type: "instrument",

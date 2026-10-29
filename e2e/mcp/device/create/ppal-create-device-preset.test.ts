@@ -128,20 +128,23 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     );
   });
 
-  it("refuses a preset file that isn't the named device's", async ({
-    skip,
-  }) => {
-    const result = await create({
-      deviceName: "Operator",
-      preset: await driftPresetFile(skip),
-      path: "t0/d+",
-    });
+  // A browser path gets the same check as the bare name.
+  for (const deviceName of ["Operator", "Instruments/Operator"]) {
+    it(`refuses a preset file that isn't the named device's, named "${deviceName}"`, async ({
+      skip,
+    }) => {
+      const result = await create({
+        deviceName,
+        preset: await driftPresetFile(skip),
+        path: "t0/d+",
+      });
 
-    expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toContain(
-      "is not a preset for Operator",
-    );
-  });
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toContain(
+        "is not a preset for Operator",
+      );
+    });
+  }
 
   for (const [label, device] of [
     ["which no device lists", undefined],

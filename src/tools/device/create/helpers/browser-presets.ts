@@ -132,15 +132,21 @@ export async function resolveBrowserPreset(
 /**
  * Where a device the call named keeps its presets.
  * @param device - The device as the call named it
- * @param item - Its browser item, or null for a native device
+ * @param item - Its browser item, or null for a native device named exactly
  * @returns The scope to search a preset name in
  */
 export function presetScopeForDevice(
   device: string,
   item: BrowserItem | null,
 ): PresetScope {
+  // The checks know devices by their own names, not by how the call spelled
+  // one ("Instruments/Operator", "Operat").
   if (item != null) {
-    return { type: item.type, path: item.path, device };
+    return {
+      type: item.type,
+      path: item.path,
+      device: item.name.replace(/\.amxd$/i, ""),
+    };
   }
 
   const section = NATIVE_SECTIONS.find(({ devices }) =>
