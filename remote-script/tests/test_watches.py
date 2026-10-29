@@ -831,18 +831,20 @@ class BridgeTest(unittest.TestCase):
         surface = object.__new__(bridge.ProducerPalBridge)
         surface._c_instance = types.SimpleNamespace(log_message=lambda m: None)
         surface._server = mock.Mock()
-        surface.watches = None
+        surface.cleanups = {}
+        surface.log = lambda message: None
         return surface
 
-    def registry_with_a_watch(self):
+    def registry_with_a_watch(self, surface):
+        """The bridge's registry, made the way the routes make it."""
         clip = FakeClip()
-        registry = watches.WatchRegistry()
+        registry = watches._registry(surface)
         registry.watch(song_with([FakeSlot(clip)]), "w1", 0, 0)
         return registry, clip
 
     def test_disconnecting_removes_every_listener(self):
         surface = self.make_bridge()
-        surface.watches, clip = self.registry_with_a_watch()
+        _, clip = self.registry_with_a_watch(surface)
         surface.disconnect()
 
         self.assertEqual(clip.listeners(), 0)
@@ -851,7 +853,7 @@ class BridgeTest(unittest.TestCase):
 
     def test_disconnecting_survives_a_registry_that_fails_to_close(self):
         surface = self.make_bridge()
-        surface.watches = mock.Mock(close=mock.Mock(side_effect=RuntimeError("x")))
+        watches._registry(surface).close = mock.Mock(side_effect=RuntimeError("x"))
         surface.disconnect()
 
         surface._server.stop.assert_called_once()
@@ -861,7 +863,7 @@ class BridgeTest(unittest.TestCase):
 
     def test_a_hot_reload_removes_every_listener_first(self):
         surface = self.make_bridge()
-        surface.watches, clip = self.registry_with_a_watch()
+        _, clip = self.registry_with_a_watch(surface)
         order = []
 
         def reload():
@@ -876,7 +878,7 @@ class BridgeTest(unittest.TestCase):
 
     def test_a_failed_reload_has_still_released_the_watches(self):
         surface = self.make_bridge()
-        surface.watches, clip = self.registry_with_a_watch()
+        _, clip = self.registry_with_a_watch(surface)
         failure = hot_reload.ReloadError("watches", "trace")
 
         with mock.patch.object(hot_reload, "reload_implementation", side_effect=failure):

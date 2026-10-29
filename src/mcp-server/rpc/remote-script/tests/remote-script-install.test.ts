@@ -21,6 +21,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { platformSupport } from "#src/test/fixtures/platform-support.ts";
+import {
+  GEN_UI_REMOTE_SCRIPT_FILES,
+  isGenUiScriptFile,
+  shippedScriptFiles,
+} from "../bundle/gen-ui-remote-script-files.ts";
 import { EMBEDDED_REMOTE_SCRIPT_FILES } from "../bundle/embedded-remote-script.ts";
 import {
   installRemoteScript,
@@ -121,6 +126,73 @@ describe("the embedded script", () => {
         "routes.py",
         "version.py",
       ]),
+    );
+  });
+});
+
+const FILES = {
+  "routes.py": "a",
+  "watches.py": "b",
+  "ui_widgets.py": "c",
+  "gen_ui_routes.py": "d",
+};
+
+describe("shippedScriptFiles", () => {
+  it("drops the gen-UI files from a release build", () => {
+    expect(shippedScriptFiles(FILES, false)).toStrictEqual({
+      "routes.py": "a",
+    });
+  });
+
+  it("keeps everything in a gen-UI build", () => {
+    expect(shippedScriptFiles(FILES, true)).toStrictEqual(FILES);
+  });
+});
+
+describe("isGenUiScriptFile", () => {
+  it.each(GEN_UI_REMOTE_SCRIPT_FILES)("knows %s", (file) => {
+    expect(isGenUiScriptFile(file)).toBe(true);
+    expect(isGenUiScriptFile(`remote-script/Producer_Pal/${file}`)).toBe(true);
+  });
+
+  it("does not match other files or look-alike names", () => {
+    expect(isGenUiScriptFile("remote-script/Producer_Pal/routes.py")).toBe(
+      false,
+    );
+    expect(isGenUiScriptFile("remote-script/Producer_Pal/my_watches.py")).toBe(
+      false,
+    );
+  });
+});
+
+describe("the embedded script and ENABLE_GEN_UI", () => {
+  /** @returns The embedded file names for a build with this flag value */
+  async function embeddedWith(flag: string): Promise<string[]> {
+    vi.stubEnv("ENABLE_GEN_UI", flag);
+    vi.resetModules();
+
+    const fresh = await import("../bundle/embedded-remote-script.ts");
+
+    return Object.keys(fresh.EMBEDDED_REMOTE_SCRIPT_FILES);
+  }
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("leaves out the gen-UI files, which a release never ships", async () => {
+    const names = await embeddedWith("");
+
+    expect(names).toContain("routes.py");
+
+    for (const file of GEN_UI_REMOTE_SCRIPT_FILES) {
+      expect(names).not.toContain(file);
+    }
+  });
+
+  it("has them in a gen-UI build, so the dev installer matches the device", async () => {
+    expect(await embeddedWith("true")).toStrictEqual(
+      expect.arrayContaining([...GEN_UI_REMOTE_SCRIPT_FILES]),
     );
   });
 });

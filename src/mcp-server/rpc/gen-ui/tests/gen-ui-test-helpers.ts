@@ -132,6 +132,8 @@ export class FakeScript {
   saves: string[] = [];
   /** Answer saves with this status instead of keeping them. */
   saveStatus = 200;
+  /** Answer 404 to every route, like a release build of the script. */
+  noGenUiRoutes = false;
   /** Fail the next request the way a timeout does. */
   failNext: Error | undefined;
 
@@ -150,6 +152,14 @@ export class FakeScript {
       return Promise.resolve({
         available: false,
         ...(this.down.outdated == null ? {} : { outdated: this.down.outdated }),
+      });
+    }
+
+    if (this.noGenUiRoutes) {
+      return Promise.resolve({
+        available: true,
+        status: 404,
+        body: { error: `unknown route: ${request.route}` },
       });
     }
 

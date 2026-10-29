@@ -17,6 +17,7 @@ import { tmpdir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { rolldown, type InputOptions, type RolldownOutput } from "rolldown";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { GEN_UI_REMOTE_SCRIPT_FILES } from "#src/mcp-server/rpc/remote-script/bundle/gen-ui-remote-script-files.ts";
 import { repoPath } from "#src/test/helpers/meta-test-helpers.ts";
 import {
   DEV_BUILD_MARKER,
@@ -217,6 +218,40 @@ describe("remote script embedding", () => {
 
   it("does not read remote-script/ from disk at runtime", () => {
     expect(portalWithInstaller).not.toContain("readRemoteScriptSource");
+  });
+});
+
+// A release leaves the gen-UI Python out entirely, and a gen-UI build has it.
+describe("gen-UI remote script files", () => {
+  const embeddedKey = (file: string): string => `"${file}":`;
+  let genUiCode = "";
+
+  beforeAll(async () => {
+    vi.resetModules();
+    process.env.ENABLE_GEN_UI = "true";
+
+    try {
+      const config = await import("../../../../config/rolldown.config.mjs");
+      const configs = config.default as (InputOptions & { output: unknown })[];
+
+      const built = await buildChunks(configs[1] as InputOptions);
+
+      genUiCode = built.code;
+    } finally {
+      delete process.env.ENABLE_GEN_UI;
+    }
+  }, 120_000);
+
+  it.each(GEN_UI_REMOTE_SCRIPT_FILES)(
+    "%s is not in a release build",
+    (file) => {
+      expect(chunkCode["mcp-server"]).not.toContain(embeddedKey(file));
+      expect(portalWithInstaller).not.toContain(embeddedKey(file));
+    },
+  );
+
+  it.each(GEN_UI_REMOTE_SCRIPT_FILES)("%s is in a gen-UI build", (file) => {
+    expect(genUiCode).toContain(embeddedKey(file));
   });
 });
 

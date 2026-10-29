@@ -16,6 +16,7 @@ import {
 import {
   MIN_VERSION_FILE,
   raiseMinRemoteScriptVersion,
+  shippedScriptChanges,
 } from "./helpers/version/min-remote-script-version.ts";
 import { replaceVersionLine } from "./helpers/version/replace-version-line.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
@@ -69,12 +70,14 @@ try {
     cwd: rootDir,
     encoding: "utf8",
   }).trim();
-  changedScriptFiles = execSync(
-    `git diff --name-only ${lastTag} -- remote-script/Producer_Pal ":!remote-script/Producer_Pal/version.py"`,
-    { cwd: rootDir, encoding: "utf8" },
-  )
-    .split("\n")
-    .filter(Boolean);
+  changedScriptFiles = shippedScriptChanges(
+    execSync(
+      `git diff --name-only ${lastTag} -- remote-script/Producer_Pal ":!remote-script/Producer_Pal/version.py"`,
+      { cwd: rootDir, encoding: "utf8" },
+    )
+      .split("\n")
+      .filter(Boolean),
+  );
   minVersionContent = raiseMinRemoteScriptVersion(
     readFileSync(minVersionPath, "utf8"),
     newVersion,

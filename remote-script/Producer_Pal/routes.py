@@ -23,12 +23,20 @@ from .producer_pal_device import (
 )
 from .rack_macros import ROUTES as _RACK_MACRO_ROUTES
 from .simpler_settings import ROUTES as _SIMPLER_ROUTES
-from .ui_widgets import POST_ONLY as _UI_WIDGET_POST_ONLY
-from .ui_widgets import ROUTES as _UI_WIDGET_ROUTES
 from .undo import ROUTES as _UNDO_ROUTES
 from .version import VERSION, build_commit
-from .watches import POST_ONLY as _WATCH_POST_ONLY
-from .watches import ROUTES as _WATCH_ROUTES
+
+# The generative UI's routes. Only a gen-UI build ships gen_ui_routes.py, so a
+# missing module means a release build, not a broken install. Any other import
+# error still surfaces.
+try:
+    from .gen_ui_routes import POST_ONLY as _GEN_UI_POST_ONLY
+    from .gen_ui_routes import ROUTES as _GEN_UI_ROUTES
+except ModuleNotFoundError as err:
+    if err.name != __package__ + ".gen_ui_routes":
+        raise
+    _GEN_UI_POST_ONLY = tuple()
+    _GEN_UI_ROUTES = {}
 
 # A new track's type follows what's being loaded. When that's unknown (plugins),
 # use MIDI: Live refuses an instrument on an audio track and makes a track of
@@ -467,8 +475,7 @@ ROUTES = {
     **_CONVERSION_ROUTES,
     **_SIMPLER_ROUTES,
     **_UNDO_ROUTES,
-    **_UI_WIDGET_ROUTES,
-    **_WATCH_ROUTES,
+    **_GEN_UI_ROUTES,
 }
 
 # Routes that change the Set. A browser can send a GET with no Origin (an
@@ -485,6 +492,5 @@ POST_ONLY = (
     "/undo/end",
     "/undo/undo",
     "/undo/redo",
-    *_UI_WIDGET_POST_ONLY,
-    *_WATCH_POST_ONLY,
+    *_GEN_UI_POST_ONLY,
 )

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { isGenUiScriptFile } from "#src/mcp-server/rpc/remote-script/bundle/gen-ui-remote-script-files.ts";
 import { replaceVersionLine } from "./replace-version-line.ts";
 
 /** The file that holds MIN_REMOTE_SCRIPT_VERSION, from the repo root. */
@@ -10,6 +11,16 @@ export const MIN_VERSION_FILE =
   "src/mcp-server/rpc/remote-script/port/remote-script-version.ts";
 
 const MIN_VERSION_LINE = /^export const MIN_REMOTE_SCRIPT_VERSION = "(.*)";$/m;
+
+/**
+ * Drop the gen-UI files from a list of changed remote script files: no release
+ * ships them, so changing one never needs a newer script.
+ * @param changedFiles - Remote script files changed since the last release
+ * @returns The ones a release ships
+ */
+export function shippedScriptChanges(changedFiles: string[]): string[] {
+  return changedFiles.filter((file) => !isGenUiScriptFile(file));
+}
 
 /**
  * Raise MIN_REMOTE_SCRIPT_VERSION to a new release when the remote script

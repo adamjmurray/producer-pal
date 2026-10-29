@@ -22,8 +22,9 @@ and length) from an earlier session: if the clip at the path doesn't match, it
 is refused too, since the old object is gone and this is some other clip.
 
 Every listener is removed when the watch ends or goes gone, the Set changes,
-the registry is closed (script disconnect), or a hot reload begins (see
-`hot_reload.reload_route`). A late callback from a removed watch is ignored.
+the registry is closed (script disconnect), or a hot reload begins (the bridge
+runs its cleanups; see `hot_reload.reload_route`). A late callback from a
+removed watch is ignored.
 
 Events are coalesced (many callbacks between two reads become one event per
 watch) and kept in a ring of MAX_EVENTS. A reader that falls further behind than
@@ -477,7 +478,21 @@ def _registry(bridge):
     if registry is None:
         registry = WatchRegistry(log=bridge.log)
         bridge.watches = registry
+        _close_with_bridge(bridge, registry)
     return registry
+
+
+def _close_with_bridge(bridge, registry):
+    """Close the registry when the bridge runs its cleanups (disconnect, hot
+    reload), so no listener outlives the code that handles it."""
+
+    def close():
+        bridge.watches = None
+        registry.close()
+
+    cleanups = getattr(bridge, "cleanups", None)
+    if cleanups is not None:
+        cleanups["watches"] = close
 
 
 def watch_route(bridge, params):
