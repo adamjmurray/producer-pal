@@ -10,6 +10,8 @@
 import { styleText } from "node:util";
 import { formatScenarioHeader, orange } from "#evals/chat/shared/formatting.ts";
 import { resetConfig, setConfig } from "#evals/shared/config.ts";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
+import { type StatelessMcpServer } from "#src/mcp-server/helpers/http/stateless-mcp.ts";
 import { SYSTEM_INSTRUCTION } from "#src/shared/config.ts";
 import {
   createEvalSession,
@@ -19,6 +21,7 @@ import {
 import { isQuietMode } from "./helpers/quiet-mode.ts";
 import { openLiveSetWithRecovery } from "./helpers/open-live-set/open-live-set-recovery.ts";
 import { type RunEnv } from "./run-env/run-env.ts";
+import { startToolOverrideProxy } from "./run-scenario/tool-override-proxy.ts";
 import {
   computeTotalUsage,
   runMessageTurns,
@@ -73,6 +76,7 @@ export async function runScenario(
   const startTime = Date.now();
   const turns: EvalTurnResult[] = [];
   let session: EvalSession | null = null;
+  let proxy: StatelessMcpServer | null = null;
   const instructions =
     scenario.instructions === null
       ? undefined
@@ -103,11 +107,16 @@ export async function runScenario(
 
     logScenarioHeader(scenario, provider, effectiveModel, options.envLabel);
 
+    if (scenario.toolOverrides != null) {
+      proxy = await startToolOverrideProxy(MCP_URL, scenario.toolOverrides);
+    }
+
     session = await createEvalSession({
       provider,
       model,
       instructions,
       usage: options.usage,
+      ...(proxy != null && { mcpUrl: proxy.url }),
     });
 
     // 3b. Scenario-specific setup (e.g. clear stale clip slots, so a run
@@ -170,6 +179,12 @@ export async function runScenario(
       }
 
       await session.close();
+    }
+
+    try {
+      await proxy?.close();
+    } catch {
+      // Nothing left to serve; the scenario result is already determined
     }
 
     // Reset config to defaults after scenario completes

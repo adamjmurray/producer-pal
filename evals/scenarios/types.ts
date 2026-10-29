@@ -12,6 +12,7 @@ import { type ConfigOptions } from "#evals/shared/config.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { type ToolCall } from "#evals/chat/shared/types.ts";
 import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types.ts";
+import { type ToolOverrides } from "./run-scenario/tool-override-proxy.ts";
 import { type ScenarioTag } from "./load-scenarios/scenario-tags.ts";
 
 // Re-export types from chat for convenience
@@ -65,6 +66,13 @@ export interface EvalScenario {
    *  unset: the turn is seeded whenever `messages[0]` is the connect message
    *  and something follows it. */
   seedConnect?: boolean;
+
+  /** Replaces the result of named tools (by full name) with a canned one, or
+   *  the real one changed — for situations a run can't really set up, such as
+   *  an old device or a pending install. Served by a local proxy MCP server, so
+   *  every provider, the agent CLIs included, sees the same results. A seeded
+   *  connect turn goes through it too. */
+  toolOverrides?: ToolOverrides;
 
   /** When true, the llm_judge assertion is advisory: its issues are still run
    * and reported, but a judge "fail" does NOT flip the overall result to fail.

@@ -348,9 +348,9 @@ scripts/eval --list-tags  # every tag, with how many scenarios carry it
 Each scenario is **regression** (should always pass) or **capability**
 (improvement target, may have low pass rates), and carries one or more subset
 tags — `notation`, `transforms`, `paths`, `context`, `clips`, `devices`,
-`workflow`, `pairing`, `results`, `automation`. A whole-suite run costs hours,
-so `--tag` is how most runs are scoped; `-t` and `--tag` together narrow to
-scenarios matching both.
+`workflow`, `pairing`, `results`, `automation`, `upgrade`. A whole-suite run
+costs hours, so `--tag` is how most runs are scoped; `-t` and `--tag` together
+narrow to scenarios matching both.
 
 `automation` scenarios need the Producer Pal remote script running in Live (it
 is the only way to reach clip envelopes), and their `setup` talks to it on its
@@ -359,6 +359,14 @@ there, else the port in `~/.producer-pal/remote-script-port.txt`). One scenario,
 `automation-no-remote-script`, sets `config: { remoteScriptEnabled: false }` to
 run as if it weren't installed (debug builds only; a release build ignores the
 field); `resetConfig()` turns it back on after every scenario.
+
+A scenario can set `toolOverrides` to change what a tool returns to the model: a
+canned result, or the real one with changes (`callReal()` makes the real call).
+The `upgrade` scenarios use it to fake an older device or a pending install
+without touching the machine. The run starts a local proxy MCP server in front
+of the real one (listing and forwarding unchanged, except the overridden tools)
+and points the session at it, so every provider, the agent CLIs included, sees
+the same results. The proxy stops when the scenario ends.
 
 ### The seeded connect turn
 

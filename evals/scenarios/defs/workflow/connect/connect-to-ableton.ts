@@ -7,9 +7,9 @@
  * Scenario: Connect to Ableton Live
  */
 
-import { getAllToolCalls } from "../../assertions/index.ts";
-import { CONNECT_MESSAGE } from "../../helpers/seed-connect/seed-connect.ts";
-import { type EvalScenario } from "../../types.ts";
+import { getAllToolCalls } from "../../../assertions/index.ts";
+import { CONNECT_MESSAGE } from "../../../helpers/seed-connect/seed-connect.ts";
+import { type EvalScenario } from "../../../types.ts";
 import { TOOLS } from "#evals/shared/tool-names.ts";
 
 export const connectToAbleton: EvalScenario = {

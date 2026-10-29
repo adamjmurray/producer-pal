@@ -63,6 +63,8 @@ interface EvalSessionOptions {
   model?: string;
   instructions?: string;
   usage?: boolean;
+  /** MCP endpoint to use instead of the real one (a tool-override proxy). */
+  mcpUrl?: string;
 }
 
 /**
@@ -78,6 +80,7 @@ export async function createEvalSession(
 
   if (agentCli != null) {
     return await createAgentCliSession(agentCli, {
+      ...(options.mcpUrl != null ? { mcpUrl: options.mcpUrl } : {}),
       ...(options.model != null ? { model: options.model } : {}),
       ...(options.instructions != null
         ? { instructions: options.instructions }
@@ -90,7 +93,9 @@ export async function createEvalSession(
     options.provider,
     options.model ?? getDefaultModel(options.provider),
   );
-  const { tools, mcpClient, erroredToolCallIds } = await createMcpTools();
+  const { tools, mcpClient, erroredToolCallIds } = await createMcpTools(
+    options.mcpUrl,
+  );
   const messages: ModelMessage[] = [];
   let prevUsage: TokenUsage | undefined;
 

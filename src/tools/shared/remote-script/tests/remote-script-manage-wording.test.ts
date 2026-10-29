@@ -130,7 +130,7 @@ describe("where ppal-manage is named", () => {
     "src/tools/shared/remote-script/outdated-remote-script.ts",
     "src/tools/shared/remote-script/remote-script-setup.ts",
     // The connect notice, which splits on whether the tool is offered.
-    "src/mcp-server/helpers/connect/remote-script-notice-inject.ts",
+    "src/mcp-server/helpers/connect/remote-script-line.ts",
     // Dispatch table entry for the tool.
     "src/live-api-adapter/live-api-adapter.ts",
     // Skips the undo-step end for ppal-manage's own calls; not a message.
