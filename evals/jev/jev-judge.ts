@@ -50,8 +50,12 @@ export interface JevJudgeResult {
   /** The lowest answer, which decided the verdict */
   minProbability: number;
   questions: JevQuestionResult[];
+  /** The model version that answered, as the route reports it */
+  model: string;
   inputTokens: number;
   outputTokens: number;
+  /** Actual cost in USD, when the route reports it */
+  cost?: number;
   /** True when the transcript had to be cut to fit */
   truncated: boolean;
 }
@@ -99,8 +103,10 @@ export async function jevJudge(
     verdict: decideVerdict(minProbability),
     minProbability,
     questions: results,
+    model: response.model,
     inputTokens: response.usage.input_tokens,
     outputTokens: response.usage.output_tokens,
+    cost: response.usage.cost,
     truncated,
   };
 }

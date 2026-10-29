@@ -76,7 +76,7 @@ describe("jevJudge", () => {
             req2: { type: "noul", noul: 0.4 },
             whole: { type: "noul", noul: 0.95 },
           },
-          usage: { input_tokens: 100, output_tokens: 5 },
+          usage: { input_tokens: 100, output_tokens: 5, cost: 0.002 },
         }),
       ),
     );
@@ -107,6 +107,8 @@ describe("jevJudge", () => {
     expect(result.verdict).toBe("escalate");
     expect(result.minProbability).toBe(0.4);
     expect(result.inputTokens).toBe(100);
+    expect(result.model).toBe("jev-1.14.0");
+    expect(result.cost).toBe(0.002);
     expect(result.questions.map((q) => q.probability)).toStrictEqual([
       0.9, 0.4, 0.95,
     ]);

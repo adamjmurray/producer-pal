@@ -12,6 +12,7 @@ import {
   type VerdictPair,
   type VerdictStats,
 } from "./jev-agreement.ts";
+import { type JevRoute } from "./jev-client.ts";
 import { type JevJudgeResult } from "./jev-judge.ts";
 import { type SkipCounts } from "./jev-results.ts";
 
@@ -42,11 +43,13 @@ export interface CompareEntry {
  *
  * @param entries - Compared results
  * @param skipped - What the loader left out
+ * @param route - The route the Jev calls went through
  * @returns Report lines
  */
 export function formatReport(
   entries: CompareEntry[],
   skipped: SkipCounts,
+  route?: JevRoute,
 ): string[] {
   const judged = entries.filter((e) => e.jev != null);
   const errors = entries.filter((e) => e.jev == null);
@@ -54,6 +57,7 @@ export function formatReport(
   return [
     "Jev vs stored judge",
     `Stored judge: ${judgeCounts(judged)}`,
+    `Jev: ${route ?? "unknown route"}, ${jevModelCounts(judged)}`,
     `Compared ${judged.length} result(s); ${errors.length} Jev error(s).`,
     `Left out: ${skipped.notScored} skipped/error, ${skipped.noScenario} unknown scenario, ${skipped.noLlmJudge} scenario without llm_judge, ${skipped.unreadable} unreadable, ${skipped.staleCriteria} recorded before the criteria changed.`,
     "",
@@ -161,16 +165,25 @@ function errorLines(errors: CompareEntry[]): string[] {
 }
 
 /**
- * Summarize tokens used and what they cost.
+ * Summarize tokens used and what they cost: the actual cost when every
+ * answer carried one, otherwise an estimate from the TypeSafe price.
  *
  * @param judged - Entries with a Jev answer
  * @returns One report line
  */
 function costLine(judged: CompareEntry[]): string {
   const tokens = judged.reduce((sum, e) => sum + (e.jev?.inputTokens ?? 0), 0);
+  const costs = judged.map((e) => e.jev?.cost);
+
+  if (judged.length > 0 && costs.every((c) => c != null)) {
+    const actual = costs.reduce((sum, c) => sum + c, 0);
+
+    return `Jev input tokens: ${tokens} (actual $${actual.toFixed(4)})`;
+  }
+
   const usd = (tokens / 1_000_000) * JEV_USD_PER_M_INPUT_TOKENS;
 
-  return `Jev input tokens: ${tokens} (~$${usd.toFixed(4)})`;
+  return `Jev input tokens: ${tokens} (~$${usd.toFixed(4)} estimated)`;
 }
 
 /**
@@ -210,6 +223,26 @@ function judgeCounts(entries: CompareEntry[]): string {
 
   for (const e of entries) {
     counts.set(judgeName(e), (counts.get(judgeName(e)) ?? 0) + 1);
+  }
+
+  const sorted = [...counts].toSorted((a, b) => b[1] - a[1]);
+
+  return sorted.map(([name, n]) => `${name} (${n})`).join(", ") || "none";
+}
+
+/**
+ * Count the answers per resolved Jev model version, most common first.
+ *
+ * @param entries - Compared results with a Jev answer
+ * @returns Text like "jev-1.14.0 (50)"
+ */
+function jevModelCounts(entries: CompareEntry[]): string {
+  const counts = new Map<string, number>();
+
+  for (const e of entries) {
+    const model = e.jev?.model ?? "unknown";
+
+    counts.set(model, (counts.get(model) ?? 0) + 1);
   }
 
   const sorted = [...counts].toSorted((a, b) => b[1] - a[1]);

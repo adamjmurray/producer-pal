@@ -14,6 +14,8 @@
  *   flags:   --scenario=id   only this scenario (repeatable)
  *            --limit=N       compare at most N results
  *            --concurrency=N parallel Jev calls (default 4)
+ *            --via=route     typesafe, openrouter or vercel (default: the first
+ *                            with its key set, in that order)
  *            --include-stale also use results recorded before the scenario's
  *                            judge criteria last changed
  *
@@ -24,6 +26,11 @@ import { writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { RESULTS_DIR } from "#evals/scenarios/helpers/json-results/types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
+import {
+  JEV_ROUTE_NAMES,
+  resolveJevRoute,
+  type JevRoute,
+} from "./jev-client.ts";
 import { jevJudge } from "./jev-judge.ts";
 import { formatReport, type CompareEntry } from "./jev-report.ts";
 import { loadJudgedResults, type JudgedResult } from "./jev-results.ts";
@@ -35,6 +42,7 @@ interface CliArgs {
   scenarioIds: string[];
   limit?: number;
   concurrency: number;
+  via?: JevRoute;
   includeStale: boolean;
 }
 
@@ -46,6 +54,7 @@ interface CliArgs {
  */
 export async function runJevCompare(argv: string[]): Promise<void> {
   const args = parseArgs(argv);
+  const { route } = resolveJevRoute(args.via);
   const { items, skipped } = await loadJudgedResults({
     runIds: args.runIds,
     scenarioIds: args.scenarioIds.length > 0 ? args.scenarioIds : undefined,
@@ -54,11 +63,13 @@ export async function runJevCompare(argv: string[]): Promise<void> {
   const selected = args.limit == null ? items : items.slice(0, args.limit);
 
   console.log(
-    `Judging ${selected.length} of ${items.length} saved result(s) with Jev...`,
+    `Judging ${selected.length} of ${items.length} saved result(s) with Jev via ${route}...`,
   );
 
-  const entries = await mapConcurrent(selected, args.concurrency, compareOne);
-  const lines = formatReport(entries, skipped);
+  const entries = await mapConcurrent(selected, args.concurrency, (item) =>
+    compareOne(item, route),
+  );
+  const lines = formatReport(entries, skipped, route);
 
   console.log(`\n${lines.join("\n")}`);
 
@@ -73,9 +84,13 @@ export async function runJevCompare(argv: string[]): Promise<void> {
  * Re-judge one saved result. A Jev failure is recorded, not thrown.
  *
  * @param item - The saved result and its criteria
+ * @param route - The Jev route to call
  * @returns The comparison entry
  */
-async function compareOne(item: JudgedResult): Promise<CompareEntry> {
+async function compareOne(
+  item: JudgedResult,
+  route: JevRoute,
+): Promise<CompareEntry> {
   const { result, file, criteria } = item;
   const judge = {
     pass: result.judge?.pass ?? false,
@@ -95,6 +110,7 @@ async function compareOne(item: JudgedResult): Promise<CompareEntry> {
     const jev = await jevJudge(
       { turns: result.turns, checks: result.checks.results },
       criteria,
+      { route },
     );
 
     return { ...base, jev };
@@ -137,6 +153,7 @@ async function mapConcurrent<T, R>(
  *
  * @param argv - Arguments
  * @returns Parsed options
+ * @throws On an unknown `--via` route
  */
 export function parseArgs(argv: string[]): CliArgs {
   const runIds = argv
@@ -153,11 +170,20 @@ export function parseArgs(argv: string[]): CliArgs {
     return Number.isFinite(n) && n > 0 ? Math.floor(n) : undefined;
   };
 
+  const via = flag("via").at(-1);
+
+  if (via != null && !JEV_ROUTE_NAMES.includes(via as JevRoute)) {
+    throw new Error(
+      `Unknown --via=${via}; use one of ${JEV_ROUTE_NAMES.join(", ")}`,
+    );
+  }
+
   return {
     runIds: runIds.length > 0 ? runIds : undefined,
     scenarioIds: flag("scenario"),
     limit: num("limit"),
     concurrency: num("concurrency") ?? DEFAULT_CONCURRENCY,
+    via: via as JevRoute | undefined,
     includeStale: argv.includes("--include-stale"),
   };
 }

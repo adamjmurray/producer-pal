@@ -23,6 +23,7 @@ const jevResult = (verdict: JevVerdict, p: number): JevJudgeResult => ({
     { id: "req1", kind: "requirement", text: "A", probability: p },
     { id: "whole", kind: "whole", text: "A", probability: 0.9 },
   ],
+  model: "jev-1.14.0",
   inputTokens: 1000,
   outputTokens: 5,
   truncated: false,
@@ -93,7 +94,56 @@ describe("formatReport", () => {
   it("mentions stale skips, errors and cost", () => {
     expect(text).toContain("4 recorded before the criteria changed");
     expect(text).toContain("- f.json: boom");
-    expect(text).toContain("Jev input tokens: 5000");
+    expect(text).toContain("Jev input tokens: 5000 (~$0.0002 estimated)");
+  });
+
+  it("names the route and counts the model versions that answered", () => {
+    const mixed = [
+      entry("a.json", true, "pass"),
+      entry("b.json", true, "pass"),
+      entry("c.json", true, "pass"),
+    ];
+
+    mixed[2] = {
+      ...mixed[2],
+      jev: { ...jevResult("pass", 0.95), model: "jev-1.15.0" },
+    } as CompareEntry;
+
+    const out = formatReport(mixed, skipped, "openrouter").join("\n");
+
+    expect(out).toContain("Jev: openrouter, jev-1.14.0 (2), jev-1.15.0 (1)");
+  });
+
+  it("sums the actual cost when every answer has one", () => {
+    const priced = [
+      entry("a.json", true, "pass"),
+      entry("b.json", true, "pass"),
+    ];
+
+    for (const e of priced) {
+      e.jev = { ...(e.jev as JevJudgeResult), cost: 0.0123 };
+    }
+
+    const out = formatReport(priced, skipped).join("\n");
+
+    expect(out).toContain("Jev input tokens: 2000 (actual $0.0246)");
+  });
+
+  it("keeps the estimate when any answer lacks a cost", () => {
+    const partial = [
+      entry("a.json", true, "pass"),
+      entry("b.json", true, "pass"),
+    ];
+
+    partial[0] = {
+      ...partial[0],
+      jev: { ...jevResult("pass", 0.95), cost: 0.5 },
+    } as CompareEntry;
+
+    const out = formatReport(partial, skipped).join("\n");
+
+    expect(out).toContain("(~$0.0001 estimated)");
+    expect(out).not.toContain("actual");
   });
 
   it("says none when there are no wrong calls", () => {

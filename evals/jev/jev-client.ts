@@ -10,7 +10,27 @@
 
 import { sleep } from "#evals/shared/sleep.ts";
 
-const JEV_URL = "https://api.typesafe.ai/v1/systemone";
+/** Where Jev can be reached; all take the same request and answer alike. */
+export const JEV_ROUTES = {
+  typesafe: {
+    url: "https://api.typesafe.ai/v1/systemone",
+    envVar: "TYPESAFE_KEY",
+  },
+  openrouter: {
+    url: "https://openrouter.ai/api/v1/systemone",
+    envVar: "OPENROUTER_KEY",
+  },
+  vercel: {
+    url: "https://ai-gateway.vercel.sh/typesafe/v1/systemone",
+    envVar: "VERCEL_AI_GATEWAY_KEY",
+  },
+} as const;
+
+export type JevRoute = keyof typeof JEV_ROUTES;
+
+/** Route names in default-pick order. */
+export const JEV_ROUTE_NAMES = Object.keys(JEV_ROUTES) as JevRoute[];
+
 const DEFAULT_MODEL = "jev-latest";
 const MAX_RETRIES = 2;
 
@@ -48,13 +68,20 @@ export type JevAnswer = JevNoulAnswer | JevScoreAnswer;
 export interface JevResponse {
   model: string;
   answers: Record<string, JevAnswer>;
-  usage: { input_tokens: number; output_tokens: number };
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+    /** Actual cost in USD; only OpenRouter reports it */
+    cost?: number;
+  };
 }
 
 export interface AskJevOptions {
   /** Defaults to `jev-latest` */
   model?: string;
-  /** Defaults to the TYPESAFE_KEY environment variable */
+  /** Defaults to the first route whose key is set (see `resolveJevRoute`) */
+  route?: JevRoute;
+  /** Defaults to the route's environment variable */
   apiKey?: string;
   /** Wait before retrying a 429/5xx, doubled per retry. Default 1000. */
   retryDelayMs?: number;
@@ -72,11 +99,51 @@ export class JevError extends Error {
 }
 
 /**
+ * Pick the route and key to call Jev with.
+ *
+ * @param route - The route to use; default is the first with a key set
+ * @param apiKey - Key override; with no route, it goes to TypeSafe
+ * @returns The route name, its URL and the key
+ */
+export function resolveJevRoute(
+  route?: JevRoute,
+  apiKey?: string,
+): { route: JevRoute; url: string; apiKey: string } {
+  const keyFor = (name: JevRoute): string | undefined => {
+    const key = process.env[JEV_ROUTES[name].envVar];
+
+    return key == null || key === "" ? undefined : key;
+  };
+
+  const hasOverride = apiKey != null && apiKey !== "";
+  const name =
+    route ??
+    JEV_ROUTE_NAMES.find((n) => keyFor(n) != null) ??
+    (hasOverride ? "typesafe" : undefined);
+
+  if (name == null) {
+    const vars = JEV_ROUTE_NAMES.map((n) => JEV_ROUTES[n].envVar).join(", ");
+
+    throw new Error(`No Jev API key set: set one of ${vars} (add it to .env)`);
+  }
+
+  const key = hasOverride ? apiKey : keyFor(name);
+
+  if (key == null) {
+    throw new Error(
+      `${JEV_ROUTES[name].envVar} is not set (add it to .env), needed for --via=${name}`,
+    );
+  }
+
+  return { route: name, url: JEV_ROUTES[name].url, apiKey: key };
+}
+
+/**
  * Ask Jev a set of questions about some state.
  *
  * @param state - What the questions are about (string, object or array)
  * @param questions - Questions by id
- * @param options - Model, key and retry settings
+ * @param options - Route, model, key and retry settings
  * @returns Jev's answers by question id, plus token usage
  */
 export async function askJev(
@@ -84,11 +151,7 @@ export async function askJev(
   questions: Record<string, JevQuestion>,
   options: AskJevOptions = {},
 ): Promise<JevResponse> {
-  const apiKey = options.apiKey ?? process.env.TYPESAFE_KEY;
-
-  if (apiKey == null || apiKey === "") {
-    throw new Error("TYPESAFE_KEY is not set (add it to .env)");
-  }
+  const { url, apiKey } = resolveJevRoute(options.route, options.apiKey);
 
   const body = JSON.stringify({
     model: options.model ?? DEFAULT_MODEL,
@@ -97,7 +160,7 @@ export async function askJev(
   });
 
   for (let attempt = 0; ; attempt++) {
-    const response = await fetch(JEV_URL, {
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
