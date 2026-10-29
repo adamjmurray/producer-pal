@@ -19,6 +19,21 @@ because its includes are unique (`params`, `param-values`, `drum-map`,
 | `name`        | `string` | Display name (omitted if same as class name)  |
 | `deactivated` | `true`   | Only present when device is inactive          |
 
+### CC Control
+
+On Live 12.4.15 and later a CC Control reads like any device: `type`, `name`
+(when renamed) and `deactivated` (when off) come from the Live API.
+
+Before 12.4.15, Max's Live API lists no members for CC Control, so its name and
+on/off state can't be read. A read recognizes it by its `type` field and reports
+`type: "midi-effect: CC Control"`. It lists its params by counting and
+addressing each one, so they read, update and take clip envelopes as usual.
+`name` and `deactivated` are left out (an unreadable on/off is not off). With
+the remote script, `/device/basics` (one call for every CC Control in the read,
+at most 3 seconds, skipped when an earlier call stalled) adds `name` when the
+user renamed it and `deactivated` when it is off. `ppal-read-track` has no
+remote-script step, so it never shows either.
+
 ## Include: `"chains"`
 
 Adds chain list for rack devices. Depth-controlled by `maxDepth` arg.

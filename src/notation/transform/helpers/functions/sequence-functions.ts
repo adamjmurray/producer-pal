@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import * as console from "../../transform-warning-label.ts";
+import { emitTransformWarning } from "../../transform-warning-label.ts";
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
 import * as waveforms from "../../transform-waveforms.ts";
 import { type EvalContext } from "../transform-context.ts";
@@ -76,7 +76,7 @@ function buildIndexedSeq(
     const missing = rawIndex == null;
 
     if (missing) {
-      console.warn(missingWarning);
+      emitTransformWarning(missingWarning);
     }
 
     const pick = missing ? 0 : rawIndex % args.length;

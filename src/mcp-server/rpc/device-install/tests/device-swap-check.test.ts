@@ -3,9 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { symlinkSync } from "node:fs";
+import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { platformSupport } from "#src/test/fixtures/platform-support.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { type RemoteScriptPing } from "../../remote-script/remote-script-client.ts";
 import { deviceInstallStatus } from "../device-install-status.ts";
@@ -118,18 +119,21 @@ describe("deviceSwapCheck", () => {
     });
   });
 
-  it("sees through a link to the User Library copy", async () => {
-    const { library, installed, downloads, put } = scratch();
-    const link = join(downloads, "link.amxd");
+  it.skipIf(!platformSupport.symlinks)(
+    "sees through a link to the User Library copy",
+    async () => {
+      const { library, installed, downloads, put } = scratch();
+      const link = join(downloads, "link.amxd");
 
-    put(installed, frozenDevice(VERSION));
-    symlinkSync(installed, link);
-    recordDeviceSource(link);
+      put(installed, frozenDevice(VERSION));
+      symlinkSync(installed, link);
+      recordDeviceSource(link);
 
-    const status = await deviceInstallStatus(library);
+      const status = await deviceInstallStatus(library);
 
-    expect(status.inUserLibrary).toBe(true);
-  });
+      expect(status.inUserLibrary).toBe(true);
+    },
+  );
 
   it("refuses when there is no copy", async () => {
     expect(await check()).toStrictEqual({
@@ -159,6 +163,23 @@ describe("deviceSwapCheck", () => {
     expect(result.allowed).toBe(true);
   });
 
+  it("refuses a copy that can't be read", async () => {
+    const { library, installed, runFromDownloads } = scratch();
+
+    runFromDownloads(frozenDevice(VERSION));
+    mkdirSync(installed, { recursive: true });
+
+    expect(
+      await deviceSwapCheck(
+        await deviceInstallStatus(library),
+        async () => RUNNING_PING,
+      ),
+    ).toStrictEqual({
+      allowed: false,
+      reason: "The copy in your User Library can't be read.",
+    });
+  });
+
   it("refuses a copy that names no version", async () => {
     expect(await check(frozenDevice())).toStrictEqual({
       allowed: false,
@@ -171,7 +192,7 @@ describe("deviceSwapCheck", () => {
     expect(await check(frozenDevice(VERSION), NOT_RUNNING_PING)).toStrictEqual({
       allowed: false,
       reason:
-        "The remote script isn't running, and it does the swap. Install and enable it below first.",
+        "The remote script isn't running, and it does the swap. Install and enable it above first.",
     });
   });
 
@@ -181,7 +202,10 @@ describe("deviceSwapCheck", () => {
       scriptVersion: "0.0.1",
     });
 
-    expect(result.allowed).toBe(false);
-    expect(result.reason).toContain("Restart Live after updating it.");
+    expect(result).toStrictEqual({
+      allowed: false,
+      reason:
+        "The remote script running in Live is too old to do the swap. Follow its steps above, then try again.",
+    });
   });
 });

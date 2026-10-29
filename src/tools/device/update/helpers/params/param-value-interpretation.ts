@@ -17,6 +17,7 @@ import {
   trimmedParamName,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
+  isDisplayCollapsed,
   readNumericRange,
   sentinelRawValue,
 } from "#src/tools/shared/device/helpers/params/param-numeric-range.ts";
@@ -79,7 +80,18 @@ export function setParamValue(
     return writeParam(param, index);
   }
 
-  // 2. Note - string matching note pattern (e.g., "C4", "F#-1")
+  // 2. No display range to convert from, so take the raw value read-device
+  // reports for it.
+  const rawMin = param.getProperty("min") as number;
+  const rawMax = param.getProperty("max") as number;
+  const minLabel = strForValue(param, rawMin);
+  const maxLabel = strForValue(param, rawMax);
+
+  if (isDisplayCollapsed(rawMin, rawMax, minLabel, maxLabel)) {
+    return setRawParamValue(param, requested, rawMin, rawMax, writtenText);
+  }
+
+  // 3. Note - string matching note pattern (e.g., "C4", "F#-1")
   if (typeof inputValue === "string" && isValidNoteName(inputValue)) {
     const midi = noteNameToMidi(inputValue);
 
@@ -90,7 +102,7 @@ export function setParamValue(
     return writeParam(param, midi);
   }
 
-  // 3. Pan - detect via current label, convert -1/1 to internal range
+  // 4. Pan - detect via current label, convert -1/1 to internal range
   const currentValue = param.getProperty("value") as number;
   const currentLabel = strForValue(param, currentValue);
 
@@ -98,12 +110,7 @@ export function setParamValue(
     return setPanParamValue(param, inputValue, requested);
   }
 
-  // 4. Division params - string input matching fraction format (e.g., "1/8")
-  const rawMin = param.getProperty("min") as number;
-  const rawMax = param.getProperty("max") as number;
-  const minLabel = strForValue(param, rawMin);
-  const maxLabel = strForValue(param, rawMax);
-
+  // 5. Division params - string input matching fraction format (e.g., "1/8")
   if (isDivisionParam(currentLabel, minLabel, maxLabel)) {
     const rawValue = findDivisionRawValue(param, inputValue);
 
@@ -114,7 +121,7 @@ export function setParamValue(
     return writeParam(param, rawValue);
   }
 
-  // 5. Numeric - convert display value to raw value. A param with no numeric
+  // 6. Numeric - convert display value to raw value. A param with no numeric
   // range at all (a note-name or word-list display) has nothing to convert, so
   // the input goes to Live as a raw value the way it always has.
   const range = readNumericRange(param, rawMin, rawMax, minLabel, maxLabel);
@@ -134,7 +141,7 @@ export function setParamValue(
     });
   }
 
-  // 6. The word at one end of a numeric range — Glue Compressor's Release
+  // 7. The word at one end of a numeric range — Glue Compressor's Release
   // reads "A" (Auto) at its top. The search trims that end off, so naming the
   // label is the only way left to reach it.
   const sentinelRaw = range && sentinelRawValue(range, inputValue);
@@ -143,11 +150,38 @@ export function setParamValue(
     return writeParam(param, sentinelRaw);
   }
 
-  // 7. Uninterpretable string — Live silently rejects string writes to numeric
+  // 8. Uninterpretable string — Live silently rejects string writes to numeric
   // params, so say so rather than pretending the update succeeded.
   return {
     reason: `could not interpret "${String(inputValue)}" as a value — expected a number (a unit suffix like Hz/kHz/ms/s/dB/% is optional)`,
   };
+}
+
+/**
+ * Write a raw value to a param whose display gives nothing to convert from.
+ * Out-of-range values are refused, not clamped: 30 here most likely means
+ * 30 % on the plug-in's display, not "as high as it goes".
+ * @param param - Parameter to set
+ * @param requested - The value asked for, when the call wrote a bare number
+ * @param rawMin - Raw minimum value
+ * @param rawMax - Raw maximum value
+ * @param writtenText - The value as the caller wrote it, unit and all
+ * @returns The param the write landed on, or why it landed nowhere
+ */
+function setRawParamValue(
+  param: LiveAPI,
+  requested: number | undefined,
+  rawMin: number,
+  rawMax: number,
+  writtenText: string,
+): ParamWriteOutcome {
+  if (requested == null || requested < rawMin || requested > rawMax) {
+    return {
+      reason: `has no readable display range, so it takes a plain number from ${rawMin} to ${rawMax} — "${writtenText}" was not written`,
+    };
+  }
+
+  return writeParam(param, requested, { requested, verifyRaw: true });
 }
 
 /**

@@ -12,7 +12,7 @@
 // ask and applies a restore back into the device param. See dev/tools/memory-system/ppal-context-tool.md.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { requestNode } from "./protocols/node-request-v8-protocol.ts";
 
 /** Subset of the Node route's result this side acts on. */
@@ -319,8 +319,20 @@ async function requestSync(
     },
   );
 
+  // Too big for one Max message, and retrying can't change that. Reported as
+  // ok so the caller memoizes it: it warns once per blob, not on every tool call.
+  if (response.tooLarge === true) {
+    emitWarning(
+      "The project context is too large to back up beside the Live Set " +
+        "(Max messages are capped at about 30 KB). It is safe in the device, " +
+        "but won't survive a device upgrade. Tell the user to shorten it.",
+    );
+
+    return { ok: true, restored: null };
+  }
+
   if (!response.success) {
-    console.warn(`Project context backup sync failed: ${response.error}`);
+    emitWarning(`Project context backup sync failed: ${response.error}`);
 
     return { ok: false, restored: null };
   }
@@ -344,7 +356,7 @@ async function requestSync(
   // An empty blob was a clear, which fails the opposite way round: the sidecar
   // survived, so the next device load restores what was just deleted.
   if (response.result?.action === "failed") {
-    console.warn(
+    emitWarning(
       content.trim() === ""
         ? "Could not delete the project context backup beside the Live Set, " +
             "so a device reload will restore the context that was just " +
@@ -389,7 +401,7 @@ function handleUnreadableSidecar(
   }
 
   if (isWrite) {
-    console.warn(
+    emitWarning(
       "Could not read the project context backup beside the Live Set, so it " +
         "was left alone rather than risk burying notes shared with the other " +
         "Sets in the folder. The context is safe in the device, but won't " +
@@ -416,7 +428,7 @@ function warnUnreadableRestoreOnce(): void {
 
   memo.warnedUnreadableRestore = true;
 
-  console.warn(
+  emitWarning(
     "Could not read the project context backup beside the Live Set, so the " +
       "saved context was not restored into the device. Tell the user to check " +
       'that "Producer Pal Project Context.md" in their Live project folder is ' +

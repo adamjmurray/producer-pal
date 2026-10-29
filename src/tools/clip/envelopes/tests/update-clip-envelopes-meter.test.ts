@@ -8,7 +8,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { answerEnvelopeRoutes } from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import {
@@ -27,9 +27,9 @@ vi.mock(
 );
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  warn: vi.fn(),
-  log: vi.fn(),
+  maxError: vi.fn(),
+  emitWarning: vi.fn(),
+  maxLog: vi.fn(),
 }));
 
 /**
@@ -50,7 +50,7 @@ describe("updateClip - envelopes in the clip's meter", () => {
   let mocks: UpdateClipMocks;
 
   beforeEach(() => {
-    vi.mocked(console.warn).mockClear();
+    vi.mocked(emitWarning).mockClear();
     mocks = setupUpdateClipMocks();
     answerEnvelopeRoutes();
   });
@@ -83,7 +83,7 @@ describe("updateClip - envelopes in the clip's meter", () => {
     ]);
     expect(result).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
     expect(result).not.toHaveProperty("detail");
-    expect(console.warn).not.toHaveBeenCalled();
+    expect(emitWarning).not.toHaveBeenCalled();
   });
 
   it("writes points past beat 4 of a 5/4 bar", async () => {
@@ -101,7 +101,7 @@ describe("updateClip - envelopes in the clip's meter", () => {
       { time: 5, value: 0 },
     ]);
     expect(result).toStrictEqual(expect.objectContaining({ envelopes: 1 }));
-    expect(console.warn).not.toHaveBeenCalled();
+    expect(emitWarning).not.toHaveBeenCalled();
   });
 
   it("reports a line that runs backwards in 6/8 on the clip, writing nothing", async () => {
@@ -137,6 +137,6 @@ describe("updateClip - envelopes in the clip's meter", () => {
       { time: 8, value: 0.8 },
       { time: 12, value: 0.2, jump: true },
     ]);
-    expect(console.warn).not.toHaveBeenCalled();
+    expect(emitWarning).not.toHaveBeenCalled();
   });
 });

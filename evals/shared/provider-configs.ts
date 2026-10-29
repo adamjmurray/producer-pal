@@ -55,7 +55,7 @@ export const GEMINI_CONFIG: ProviderConfig = {
 export const OPENAI_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "OPENAI_KEY",
   providerName: "OpenAI",
-  defaultModel: "gpt-6.1-sol",
+  defaultModel: "gpt-6.1-terra",
 };
 
 /** OpenRouter provider configuration */
@@ -79,6 +79,9 @@ export const LOCAL_CONFIG: ProviderConfig = {
   defaultModel: "",
   apiKeyOptional: true,
 };
+
+/** Where the local provider looks when --base-url / LOCAL_BASE_URL is unset. */
+export const LOCAL_DEFAULT_BASE_URL = "http://localhost:11434/v1";
 
 /**
  * Validate API key is present in environment

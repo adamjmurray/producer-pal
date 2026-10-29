@@ -10,6 +10,7 @@ import {
   findSourceFiles,
   forEachSourceFile,
   projectRoot,
+  repoPath,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 
@@ -105,8 +106,8 @@ describe("import restrictions", () => {
     const srcRoot = path.join(projectRoot, "src");
 
     for (const file of findSourceFiles(srcRoot)) {
-      const rel = path.relative(projectRoot, file);
-      const from = moduleOf(path.relative(srcRoot, file));
+      const rel = repoPath(file);
+      const from = moduleOf(repoPath(file, srcRoot));
       const lines = fs.readFileSync(file, "utf8").split("\n");
 
       for (const { value, line } of specifiersIn(file)) {
@@ -181,7 +182,7 @@ describe("import restrictions", () => {
     const violations: Violation[] = [];
 
     for (const file of findSourceFiles(path.join(projectRoot, "src"))) {
-      const rel = path.relative(projectRoot, file);
+      const rel = repoPath(file);
 
       if (exempt.has(rel)) {
         continue;
@@ -210,6 +211,45 @@ describe("import restrictions", () => {
       violations,
       "Found direct LiveAPI construction",
       "LiveAPI.from() handles raw ids safely; the constructor does not.",
+    );
+
+    expect(violations).toHaveLength(0);
+  });
+
+  it("should not alias a src/ import as `console`", () => {
+    // The Max loggers (v8-max-console, node-for-max-logger) are imported by
+    // name. A namespace named `console` makes a forgotten import look fine to a
+    // reader, and the native console would then swallow the output.
+    const pattern = /^\s*import\s+\*\s+as\s+console\s+from\b/;
+    const violations: Violation[] = [];
+
+    for (const file of findSourceFiles(path.join(projectRoot, "src"))) {
+      const rel = repoPath(file);
+
+      if (rel === SELF) {
+        continue;
+      }
+
+      const lines = fs.readFileSync(file, "utf8").split("\n");
+
+      for (const [i, line] of lines.entries()) {
+        if (
+          pattern.test(line) &&
+          !isSuppressed(lines, i, "no-restricted-syntax")
+        ) {
+          violations.push({
+            file: `${rel}:${i + 1}`,
+            reason:
+              "import the names you need instead of a `console` namespace",
+          });
+        }
+      }
+    }
+
+    throwOnFileViolations(
+      violations,
+      "Found import(s) aliased as console",
+      "Use a named import (e.g. { emitWarning }) so a missing import is an error.",
     );
 
     expect(violations).toHaveLength(0);
@@ -255,7 +295,7 @@ describe("import restrictions", () => {
         path.join(projectRoot, target),
         true,
       )) {
-        const rel = path.relative(projectRoot, file);
+        const rel = repoPath(file);
         const lines = fs.readFileSync(file, "utf8").split("\n");
 
         for (const { value, line } of specifiersIn(file)) {
@@ -360,9 +400,9 @@ function ruleToken(rule: string): string {
 function pathWithinSrc(spec: string, fromRel: string): string | null {
   const aliased = spec.startsWith("#src/") ? spec.slice("#src/".length) : null;
   const relative = spec.startsWith(".")
-    ? path.relative(
-        path.join(projectRoot, "src"),
+    ? repoPath(
         path.resolve(path.dirname(path.join(projectRoot, fromRel)), spec),
+        path.join(projectRoot, "src"),
       )
     : null;
   const within = aliased ?? relative;

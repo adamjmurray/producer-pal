@@ -5,23 +5,12 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { plugin_host_response } from "#src/live-api-adapter/live-api-adapter.ts";
-import { installCapturingTask } from "#src/live-api-adapter/protocols/tests/v8-protocol-test-helpers.ts";
+import {
+  installCapturingTask,
+  latestWrapperRequest as sent,
+} from "#src/live-api-adapter/protocols/tests/v8-protocol-test-helpers.ts";
 import { pluginHost } from "./plugin-host.ts";
 import { toolDefPluginHost } from "./plugin-host.def.ts";
-
-/**
- * Read the most recent request sent to the wrapper.
- *
- * @returns The request id and parsed payload
- */
-function sent(): { requestId: string; payload: Record<string, unknown> } {
-  const call = vi.mocked(globalThis.messnamed).mock.calls.at(-1) as string[];
-
-  return {
-    requestId: call[2] as string,
-    payload: JSON.parse(call[3] as string) as Record<string, unknown>,
-  };
-}
 
 describe("ppal-plugin-host", () => {
   it("returns the wrapper's reply without `success`", async () => {
@@ -94,6 +83,22 @@ describe("ppal-plugin-host", () => {
     });
   });
 
+  it("sends the message for raw", async () => {
+    const pending = pluginHost({
+      deviceId: "9",
+      action: "raw",
+      message: ["get", "params"],
+    });
+
+    expect(sent().payload).toStrictEqual({
+      deviceId: "9",
+      op: "raw",
+      message: ["get", "params"],
+    });
+    plugin_host_response(sent().requestId, '{"success":true}');
+    await expect(pending).resolves.toStrictEqual({});
+  });
+
   it("throws the wrapper's error", async () => {
     const pending = pluginHost({ deviceId: "9", action: "info" });
 
@@ -139,7 +144,7 @@ describe("ppal-plugin-host", () => {
     }
   });
 
-  it("refuses load without a plug-in and set without params", async () => {
+  it("refuses load without a plug-in, set without params and raw without a message", async () => {
     vi.mocked(globalThis.messnamed).mockClear();
 
     await expect(pluginHost({ deviceId: "9", action: "load" })).rejects.toThrow(
@@ -148,6 +153,12 @@ describe("ppal-plugin-host", () => {
     await expect(
       pluginHost({ deviceId: "9", action: "set", params: [] }),
     ).rejects.toThrow("needs `params`");
+    await expect(pluginHost({ deviceId: "9", action: "raw" })).rejects.toThrow(
+      "needs `message`",
+    );
+    await expect(
+      pluginHost({ deviceId: "9", action: "raw", message: [] }),
+    ).rejects.toThrow("needs `message`");
     expect(globalThis.messnamed).not.toHaveBeenCalled();
   });
 });

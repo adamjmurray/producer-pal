@@ -3,18 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import {
-  deviceFilePath,
-  readDeviceVersion,
-} from "#src/portal/setup/device-file-status.ts";
+import { deviceFileFacts } from "#src/portal/setup/device-file/device-file-facts.ts";
+import { deviceFilePath } from "#src/portal/setup/device-file/device-file-status.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { outdatedScript } from "../remote-script/port/remote-script-version.ts";
 import { type RemoteScriptPing } from "../remote-script/remote-script-client.ts";
-import {
-  libraryPathExists,
-  readLibraryBytes,
-} from "../remote-script/user-library/user-library-fs.ts";
+import { libraryPathExists } from "../remote-script/user-library/user-library-fs.ts";
 import { type DeviceInstallStatus } from "./device-install-status.ts";
 
 /** Whether the running device can be swapped for the User Library copy. */
@@ -70,15 +65,16 @@ export async function deviceSwapCheck(
 
   if (!script.running) {
     return refuse(
-      "The remote script isn't running, and it does the swap. Install and enable it below first.",
+      "The remote script isn't running, and it does the swap. Install and enable it above first.",
     );
   }
 
-  const outdated = outdatedScript(script.scriptVersion);
-
-  return outdated == null
+  // Worded for the person in the Installation tab, not the model.
+  return outdatedScript(script.scriptVersion) == null
     ? { allowed: true, copy, reason: null }
-    : refuse(`${outdated}. Restart Live after updating it.`);
+    : refuse(
+        "The remote script running in Live is too old to do the swap. Follow its steps above, then try again.",
+      );
 }
 
 /**
@@ -104,7 +100,7 @@ function copyProblem(copy: string): string | null {
   let version: string | undefined;
 
   try {
-    version = readDeviceVersion(readLibraryBytes(copy));
+    version = deviceFileFacts(copy).version;
   } catch {
     return "The copy in your User Library can't be read.";
   }

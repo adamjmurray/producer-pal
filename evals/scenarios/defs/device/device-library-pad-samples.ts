@@ -27,6 +27,7 @@ import {
 import { argText } from "../arg-text.ts";
 import { lastSuccessfulToolCall } from "../../assertions/index.ts";
 import { firstResultPath, newTrackPath } from "../helpers/new-track-path.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** One pad the user asked for, and what its sample's name should read as. */
 interface PadSpec {
@@ -65,9 +66,12 @@ interface PadRead {
  * @returns The rack's path
  */
 function drumRackPath(turns: EvalTurnResult[]): string {
-  const rackCall = lastSuccessfulToolCall(turns, "any", "ppal-create-device");
+  const rackCall = lastSuccessfulToolCall(turns, "any", TOOLS.createDevice);
   const rackPath =
-    rackCall != null && /drum ?rack/i.test(argText(rackCall.args.device))
+    rackCall != null &&
+    /drum ?rack/i.test(
+      argText(rackCall.args.deviceName ?? rackCall.args.device),
+    )
       ? firstResultPath(rackCall.result)
       : undefined;
 
@@ -119,7 +123,7 @@ function padProblems(result: unknown): string[] {
 function assertPadSamples(): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-device",
+    tool: TOOLS.readDevice,
     args: (turns) => ({
       path: PADS.map(
         (spec) => `${drumRackPath(turns)}/p${spec.pad}/c0/d0`,
@@ -149,7 +153,7 @@ export const deviceLibraryPadSamples: EvalScenario = {
 
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: "ppal-library", turn: 1 },
+    { type: "tool_called", tool: TOOLS.library, turn: 1 },
     assertPadSamples(),
 
     { type: "token_usage", maxTokens: 8_000 },

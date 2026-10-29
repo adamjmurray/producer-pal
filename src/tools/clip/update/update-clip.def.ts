@@ -102,7 +102,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         `comma-separated song positions to cut clips at: bar|beat in song meter, or loc:<locator name or id> (e.g., '9|1, loc:Chorus') - max ${MAX_SPLIT_POINTS} points. ` +
         "Cuts the clip into separate clips; to cut a held note into separate notes use split() in transforms. " +
         "One list for every clip, not one per clip: each clip is cut wherever a position falls inside it, and a position outside it is ignored. Arrangement clips only; song meter. " +
-        "Cannot be combined with toPath or arrangementLength: the cut makes new clips, so those would either miss the new pieces or apply to every one of them - cut in one call, then move/resize the pieces in the next",
+        "Cannot be combined with toPath or arrangementLength - cut in one call, then move/resize the pieces in the next",
       smallModel: null,
     }),
     toSlot: deprecatedParam(z.coerce.string().optional(), {
@@ -182,8 +182,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       default:
         "clip automation, one '<target>: <notation>' line per parameter, broadcast across the clips. On an arrangement clip it writes the track's automation lane over the clip's span: times run from the clip start, once through, and the clip comes back under a new id. " +
         "target: a device parameter id (from ppal-read-device, or a ppal-read-clip envelopes entry) or a mixer name - volume, pan, send0, send1... " +
-        "notation: bar|beat points in the clip meter, joined by '/' (straight ramp), '_' (hold, then jump) or '~N' (curved ramp, N from -1 to 1, no space; positive bends above the straight line, negative below), e.g. '1|1 0 / 3|1 0.8 _ 4|1 0.2 ~0.5 5|1 1'. " +
-        "Values are raw, usually 0..1 - not the display units of ppal-read-device min/max; an out-of-range value is refused with the real range. Mixer volume: 0.85 = 0 dB; pan: -1 = hard left, 1 = hard right. " +
+        "notation: bar|beat points in the clip meter, joined by '/' (straight ramp), '_' (hold, then jump) or '~N' (curved ramp, N from -1 to 1, no space; positive bends above the straight line (fast start), negative below (slow start)), e.g. '1|1 0 / 3|1 0.8 _ 4|1 0.2 ~0.5 5|1 1'. " +
+        "Values are raw, usually 0..1 - not the display units of ppal-read-device min/max. Mixer volume: 0.85 = 0 dB; pan: -1 = hard left, 1 = hard right. " +
         "Each line REPLACES that parameter's whole envelope; on a session clip a line with nothing after the colon ('472:') clears it (a lane can't be cleared: write a flat line). Needs the remote script (Live 12.4+ to write points). Not on an unwarped session audio clip or a take-lane clip",
       smallModel: null,
     }),
@@ -191,7 +191,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     convert: param(z.enum(CONVERT_TYPES).optional(), {
       default:
         "audio clips only: make a new MIDI track from each clip, after the other edits (adds a track, shifting the ones after it), " +
-        "with an instrument loaded and a clip of the notes Live detects in the source's place, ready to play; the result names the track, instrument and clip. " +
+        "with an instrument loaded and a clip of the notes Live detects in the source's place. " +
         "drums = rhythm of unpitched percussion (Drum Rack); melody = pitches of monophonic audio (voice, solo instrument); harmony = pitches of polyphonic audio (chords, full mix). " +
         "Needs the remote script. Cannot be combined with arrangementSplit or a move (toPath)",
       smallModel: null,

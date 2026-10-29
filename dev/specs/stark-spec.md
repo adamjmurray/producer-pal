@@ -119,9 +119,14 @@ case-insensitive) + **accidental** (`#`/`b`, _immediately after the letter_, so
 suffix modifiers in **any order**. The accidentals are `#`, lowercase `b`, and
 the `♯`/`♭` glyphs (normalized to `#`/`b` by the grammar, so nothing downstream
 sees them; the Skills teach `#`/`b` only). Unlike bar|beat, an uppercase `B` is
-never a flat (it's the note B). The same accidentals work everywhere Stark reads
-one: bracket-chord notes, drum-header pitch names, chord roots, slash bass, and
-chord qualities (`7♯9` = `7#9`):
+never a flat (it's the note B). An accidental glued right after the octave
+number or an octave mark — even one that follows a duration or accent (`A3b`,
+`E'b`, `E/8'b`) — is refused, not read as a note plus a stray B. The error gives
+the flat reading (`Ab3`), and for a lowercase `b` after marks alone also the
+two-note reading (`E' b`). An accidental after a duration, accent or repeat with
+no mark before it (`C/4b`) still starts a new note. The same accidentals work
+everywhere Stark reads one: bracket-chord notes, drum-header pitch names, chord
+roots, slash bass, and chord qualities (`7♯9` = `7#9`):
 
 - **absolute octave** — a number bound right after the accidental (`C3`, `F#1`,
   `Gb-1`), Ableton convention (C3 = 60). It pins the pitch instead of placing it

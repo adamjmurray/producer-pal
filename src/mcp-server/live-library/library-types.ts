@@ -156,35 +156,14 @@ export interface LibraryItem {
   pathExists?: boolean;
 }
 
-/**
- * Advisory that the served DB snapshot may be stale.
- *
- * We open Live's DB with `immutable=1`, which ignores the WAL sidecar. When a
- * `-wal` persists with an mtime newer than the committed `.db` (typical after
- * an unclean Live exit), the immutable read serves the last-checkpoint
- * snapshot — missing whatever the WAL holds. This payload quantifies the gap.
- */
-export interface StalenessRisk {
-  kind: "wal-pending";
-  /** Committed `.db` modification time (epoch ms). */
-  dbMtime: number;
-  /** `-wal` sidecar modification time (epoch ms). */
-  walMtime: number;
-  /** `-wal` sidecar size in MB (2-decimal rounding). */
-  walSizeMb: number;
-  /** How stale the served data could be: (walMtime - dbMtime) / 1000. */
-  ageSeconds: number;
-}
-
 export interface LibrarySearchResult {
   items: LibraryItem[];
   /** Present when the Live DB was consulted. False if the DB couldn't be
    * found (Live not installed). Omitted when the request bypassed the DB
    * entirely (e.g. source=sampleFolder). */
   dbAvailable?: boolean;
-  /** Set when the served snapshot may be stale (unclean Live exit left a
-   * pending WAL). Omitted when there's no detectable risk. */
-  stalenessRisk?: StalenessRisk;
+  /** Set when the DB snapshot may miss what Live added since it last quit. */
+  stalenessNote?: string;
   /** Set when items is empty due to a discoverable failure (e.g. DB missing). */
   detail?: string;
   /** Set when matching files in plug-in preset folders were left out. */
@@ -216,8 +195,8 @@ export interface LibraryFindSimilarResult {
   items: LibrarySimilarItem[];
   /** Present when the Live DB was consulted; false if it couldn't be found. */
   dbAvailable?: boolean;
-  /** Set when the served snapshot may be stale (pending WAL). */
-  stalenessRisk?: StalenessRisk;
+  /** Set when the DB snapshot may miss what Live added since it last quit. */
+  stalenessNote?: string;
   /** Set when items is empty due to a discoverable cause (seed not in the
    * library, seed not analyzed, or DB missing). */
   detail?: string;
@@ -238,8 +217,8 @@ export interface LibraryFindDuplicatesResult {
   groups: LibraryDuplicateGroup[];
   /** Present when the Live DB was consulted; false if it couldn't be found. */
   dbAvailable?: boolean;
-  /** Set when the served snapshot may be stale (pending WAL). */
-  stalenessRisk?: StalenessRisk;
+  /** Set when the DB snapshot may miss what Live added since it last quit. */
+  stalenessNote?: string;
   /** Set when groups is empty due to a discoverable cause (DB missing). */
   detail?: string;
   /** Set when matching files in plug-in preset folders were left out. */
@@ -269,12 +248,10 @@ export interface LibraryBatchResult {
   /** Present when the Live DB was consulted; false if it couldn't be found.
    * Omitted when every query bypassed the DB (e.g. all source=sampleFolder). */
   dbAvailable?: boolean;
-  /** Set when any DB-consulting query saw a pending-WAL snapshot. Surfaced at
-   * the batch level (not per entry) because the staleness measurement is a
-   * single global property of Live's DB at request time — repeating it per
-   * entry would add noise without adding signal. Omitted when no risk
-   * detected or no query consulted the DB. */
-  stalenessRisk?: StalenessRisk;
+  /** Set when any DB-consulting query saw a stale snapshot. Surfaced at the
+   * batch level, not per entry: staleness is one property of Live's DB, so
+   * repeating it per entry adds noise. */
+  stalenessNote?: string;
 }
 
 export interface LibraryTag {
@@ -287,9 +264,8 @@ export interface LibraryListTagsResult {
   tags: LibraryTag[];
   /** Present when the Live DB was consulted; false if it couldn't be found. */
   dbAvailable?: boolean;
-  /** Set when the served snapshot may be stale (unclean Live exit left a
-   * pending WAL). Omitted when there's no detectable risk. */
-  stalenessRisk?: StalenessRisk;
+  /** Set when the DB snapshot may miss what Live added since it last quit. */
+  stalenessNote?: string;
   /** Set when tags is empty due to a discoverable failure (e.g. DB missing). */
   detail?: string;
 }
@@ -308,9 +284,8 @@ export interface LibraryListCategoriesResult {
   tags?: LibraryTag[];
   /** Present when the Live DB was consulted; false if it couldn't be found. */
   dbAvailable?: boolean;
-  /** Set when the served snapshot may be stale (unclean Live exit left a
-   * pending WAL). */
-  stalenessRisk?: StalenessRisk;
+  /** Set when the DB snapshot may miss what Live added since it last quit. */
+  stalenessNote?: string;
   /** Set when the result is empty due to a discoverable failure (DB missing). */
   detail?: string;
 }
@@ -372,9 +347,8 @@ export interface ListPluginsResult {
   plugins: PluginItem[];
   /** Present when a plugin source DB was consulted; false if none was found. */
   dbAvailable?: boolean;
-  /** Set when the served snapshot may be stale (unclean Live exit left a
-   * pending WAL). Omitted when there's no detectable risk. */
-  stalenessRisk?: StalenessRisk;
+  /** Set when the DB snapshot may miss what Live added since it last quit. */
+  stalenessNote?: string;
   /** Set when plugins is empty due to a discoverable failure (e.g. DB missing). */
   detail?: string;
 }

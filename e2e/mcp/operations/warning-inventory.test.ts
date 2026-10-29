@@ -12,7 +12,7 @@
  * Each probe asserts the exact warnings, in order — not "contains", and not
  * "at least". Ids are read out of the Set, since Live reassigns them on open.
  *
- * Uses: e2e-test-set. See: e2e/live-sets/e2e-test-set-spec.md
+ * Uses: e2e-test-set. See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- operations/warning-inventory
  */

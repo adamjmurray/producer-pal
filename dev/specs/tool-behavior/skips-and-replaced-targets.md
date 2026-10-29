@@ -7,6 +7,15 @@ A target the call couldn't carry out keeps its slot as a skip entry:
 
 - `id` or `path` is exactly the caller's spelling, under the param that named
   it. It is all they have to match the entry on.
+- **A skip's path can go stale, and says so.** An earlier target in the same
+  call may move things (a drum chain move, a delete, a track a copy inserts), so
+  that path names another object by the end. Then the entry keeps its `path` and
+  adds one clause to its `detail`: where the object the target resolved to is
+  now, with its id (`; that chain is now t14/d0/pD1/c1 (id 42)`). A path that
+  named nothing when the call began but names something now says
+  `; nothing was there when the call began`. Nothing is added when the path
+  still names what it did, for an `id`, or for an object a later target
+  destroyed. If the lookup fails, the entry is returned without the clause.
 - `detail` is prose, the words a lone target would have thrown. No slugs.
 - `ok` appears only on a skip. A hit says so by having a result, and a key per
   hit is paid for in the caller's context again and again.

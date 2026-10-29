@@ -8,7 +8,7 @@
  * as ppal-update-device keeps them: a target named twice, an entry that can't
  * be parsed, and an action named twice.
  * Uses: e2e-test-set
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- device/update/ppal-update-device-write-rules
  */

@@ -11,7 +11,7 @@
  *
  * Uses: racks-test — t0/d0/c0/d0 is the "Kit" Drum Rack with macros 1-7
  * mapped. The visible count is read at run time, and put back after each test.
- * See: e2e/live-sets/racks-test-spec.md
+ * See: e2e/live-sets/specs/racks-test-spec.md
  *
  * Run with: npm run e2e:mcp:remote-script -- device/params/ppal-rack-macros-remote-script
  */

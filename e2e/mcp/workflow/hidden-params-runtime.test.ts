@@ -13,7 +13,7 @@
  * without a case in helpers/hidden-params-runtime-test-cases.ts.
  *
  * Uses: e2e-test-set (t7 and t8 are empty MIDI tracks)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- workflow/hidden-params-runtime
  */

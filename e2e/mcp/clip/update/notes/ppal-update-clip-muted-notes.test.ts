@@ -7,7 +7,7 @@
  * E2E tests for muted notes: read-clip hides them and reports `mutedNotes`,
  * and edits leave them in place as if they weren't there.
  * Uses: e2e-test-set - tests create clips in empty slots (t8 is empty MIDI track)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-update-clip-muted-notes
  */

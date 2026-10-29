@@ -14,7 +14,6 @@ type DismissOptions = Parameters<typeof useSettingsDismiss>[0];
 
 const defaultOptions = {
   showSettings: true,
-  settingsConfigured: true,
   settingsClosing: false,
   hasUnsavedChanges: false,
   handleCancelSettings: vi.fn(),
@@ -93,17 +92,6 @@ describe("useSettingsDismiss", () => {
     expect(result.current.shake).toBe(true);
 
     await act(() => result.current.clearShake());
-    expect(result.current.shake).toBe(false);
-  });
-
-  it("does nothing when settings not configured", async () => {
-    const { result, handleCancel } = renderDismiss({
-      settingsConfigured: false,
-    });
-
-    await act(() => result.current.handleSettingsDismiss());
-
-    expect(handleCancel).not.toHaveBeenCalled();
     expect(result.current.shake).toBe(false);
   });
 

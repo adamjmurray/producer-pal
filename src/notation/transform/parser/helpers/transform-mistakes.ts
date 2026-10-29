@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 import {
+  gluedAccidentalHint,
+  gluedCheckLine,
   isUnclosed,
   type SyntaxFailure,
   unclosedCommentHint,
@@ -13,9 +15,11 @@ import { type FailedLine, readFailedLine } from "./failed-line.ts";
 import { isTransformSharp } from "./transform-comments.ts";
 import {
   afterParameterMistake,
+  barBeatValueMistake,
   shorthandMathMistake,
   unknownParameterMistake,
 } from "./transform-assignment-mistakes.ts";
+import { misplacedKeywordMistake } from "./transform-argument-mistakes.ts";
 import {
   bareConditionMistake,
   unknownPropertyMistake,
@@ -36,9 +40,11 @@ const CHECKS: MistakeCheck[] = [
   unknownPropertyMistake,
   whereNameMistake,
   bareConditionMistake,
+  barBeatValueMistake,
   shorthandMathMistake,
   afterParameterMistake,
   danglingOperator,
+  misplacedKeywordMistake,
   angleConstantMistake,
   unknownParameterMistake,
 ];
@@ -55,6 +61,14 @@ export function diagnoseTransformMistake(
 
   if (comment != null) {
     return comment;
+  }
+
+  // Comment-free, so a pitch written in a comment can't take over the hint.
+  const code = gluedCheckLine(failure, isTransformSharp);
+  const glued = gluedAccidentalHint(code.line, code.column, false);
+
+  if (glued != null) {
+    return glued;
   }
 
   const failed = readFailedLine(failure);

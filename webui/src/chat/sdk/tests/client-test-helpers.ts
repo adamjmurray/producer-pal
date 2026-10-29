@@ -5,6 +5,7 @@
 
 import { streamText } from "ai";
 import { type vi } from "vitest";
+import { ChatSdkClient } from "#webui/chat/sdk/client";
 import { type ChatMessage, type ChatClientConfig } from "#webui/chat/sdk/types";
 
 /**
@@ -41,6 +42,28 @@ export function mockStreamParts(parts: Record<string, unknown>[]): void {
   (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
     stream: iterate(),
   });
+}
+
+/**
+ * Send a message through a new client whose mocked stream yields `parts`.
+ * @param parts - Stream parts to emit
+ * @param config - Client config
+ * @returns Final chat history
+ */
+export async function sendWithParts(
+  parts: Record<string, unknown>[],
+  config: ChatClientConfig = createConfig(),
+): Promise<ChatMessage[]> {
+  mockStreamParts(parts);
+
+  const client = new ChatSdkClient("key", config);
+  let last: ChatMessage[] = [];
+
+  for await (const history of client.sendMessage("Hello")) {
+    last = history;
+  }
+
+  return last;
 }
 
 /**

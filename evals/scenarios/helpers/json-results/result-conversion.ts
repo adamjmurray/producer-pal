@@ -13,9 +13,11 @@ import {
   type EvalScenarioResult,
   type EvalTurnResult,
 } from "../../types.ts";
-import { type SimpleJudgeResult } from "../judge/judge-response-parser.ts";
+import { type LlmJudgeDetails } from "../../assertions/llm-judge.ts";
+import { isProviderRefusal } from "../trials/provider-refusal.ts";
 import { assertionLabel } from "./assertion-label.ts";
 import { aggregateStepTimings } from "./step-timing-aggregate.ts";
+import { reasoningFields } from "#evals/chat/shared/reasoning-fields.ts";
 import { collectToolErrors } from "./tool-errors.ts";
 import {
   type JsonCheckResult,
@@ -196,20 +198,26 @@ function buildJudge(
   }
 
   const advisoryFlag = advisory ? { advisory: true } : {};
-  const details = judgeResult.details as SimpleJudgeResult | undefined;
+  const details = judgeResult.details as LlmJudgeDetails | undefined;
 
   if (!details) {
     return { pass: false, issues: [judgeResult.message], ...advisoryFlag };
   }
 
-  return { pass: details.pass, issues: details.issues, ...advisoryFlag };
+  return {
+    pass: details.pass,
+    issues: details.issues,
+    ...advisoryFlag,
+    ...(details.provider != null && { provider: details.provider }),
+    ...(details.model != null && { model: details.model }),
+  };
 }
 
 /**
- * Classify a run's outcome. A run that errored before the model took a single
- * turn never tested anything: the Live Set would not open, or the config would
- * not apply. That is infrastructure, not a model failure, and calling it one
- * turns an outage into a wall of convincing-looking zeros.
+ * Classify a run's outcome. A run that errored before the model's first turn
+ * (the Set would not open, the config would not apply), or that the provider
+ * cut off (usage limit, credits, capacity), tested nothing about the model.
+ * Calling it a fail turns an outage into a wall of convincing-looking zeros.
  *
  * @param result - Internal scenario result
  * @param checks - Checks result
@@ -221,7 +229,10 @@ function deriveOutcome(
   checks: JsonChecks,
   judge: JsonJudge | undefined,
 ): "pass" | "fail" | "error" {
-  if (result.error != null && result.turns.length === 0) {
+  if (
+    result.error != null &&
+    (result.turns.length === 0 || isProviderRefusal(result.error))
+  ) {
     return "error";
   }
 
@@ -296,6 +307,7 @@ function convertTurn(turn: EvalTurnResult): JsonTurnRecord {
     durationMs: turn.durationMs,
     ...(turn.stepUsages && { usage: sumStepUsages(turn.stepUsages) }),
     ...(timing && { timing }),
+    ...reasoningFields(turn),
     ...(turn.seeded === true && { seeded: true }),
   };
 }
@@ -310,17 +322,23 @@ function sumStepUsages(steps: JsonTokenUsage[]): JsonTokenUsage {
   let input = 0;
   let output = 0;
   let reasoning = 0;
+  let cacheRead = 0;
+  let cacheWrite = 0;
 
   for (const step of steps) {
     input += step.inputTokens ?? 0;
     output += step.outputTokens ?? 0;
     reasoning += step.reasoningTokens ?? 0;
+    cacheRead += step.cacheReadTokens ?? 0;
+    cacheWrite += step.cacheWriteTokens ?? 0;
   }
 
   return {
     inputTokens: input,
     outputTokens: output,
     ...(reasoning > 0 && { reasoningTokens: reasoning }),
+    ...(cacheRead > 0 && { cacheReadTokens: cacheRead }),
+    ...(cacheWrite > 0 && { cacheWriteTokens: cacheWrite }),
   };
 }
 

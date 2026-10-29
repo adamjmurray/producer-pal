@@ -20,9 +20,9 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
@@ -194,7 +194,7 @@ describe("duplicate - drum pad", () => {
 
     expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 38);
     expect(result).toStrictEqual({ id: "pad38", path: "t0/d0/pD1" });
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   it("refuses to call copy_pad on a rack with no pads, which crashes Live", async () => {
@@ -239,7 +239,7 @@ describe("duplicate - drum pad", () => {
     });
 
     await expect(copyC1ToD1()).rejects.toThrow(
-      "cannot duplicate drum pad C1: it holds the Producer Pal device",
+      "cannot duplicate drum pad t0/d0/pC1 (id pad36): it holds the Producer Pal device",
     );
     expectNoCopy(rack);
   });
@@ -250,7 +250,21 @@ describe("duplicate - drum pad", () => {
       { note: 38, chainIds: [] },
     ]);
 
-    await expect(copyC1ToD1()).rejects.toThrow("drum pad C1 is empty");
+    await expect(copyC1ToD1()).rejects.toThrow(
+      "drum pad t0/d0/pC1 (id pad36) is empty",
+    );
+    expectNoCopy(rack);
+  });
+
+  it("names a source pad the rack doesn't list by its note", async () => {
+    const rack = registerDrumRack([{ note: 38, chainIds: [] }]);
+
+    // The pad exists as an object, but the rack's pad list leaves it out.
+    registerPad(36, ["kick"]);
+
+    await expect(copyC1ToD1()).rejects.toThrow(
+      "drum pad C1 is empty, nothing to copy",
+    );
     expectNoCopy(rack);
   });
 
@@ -265,7 +279,7 @@ describe("duplicate - drum pad", () => {
       path: "t0/d0/pD1",
       detail: expect.stringContaining("layers on top of them"),
     });
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   it("names only the chains the copy created", async () => {
@@ -344,11 +358,11 @@ describe("duplicate - drum pad", () => {
       {
         path: "t0/d0/pC1",
         ok: false,
-        detail: expect.stringContaining("can't be copied onto itself"),
+        detail: "drum pad t0/d0/pC1 (id pad36) can't be copied onto itself",
       },
       { id: "pad38", path: "t0/d0/pD1" },
     ]);
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   it("refuses the catch-all pad, which copy_pad cannot address", async () => {
@@ -429,12 +443,16 @@ describe("duplicate - drum pad", () => {
       {
         path: "t0/d0/pD1",
         ok: false,
-        detail: expect.stringContaining("drum pad C1 is empty"),
+        detail: expect.stringContaining(
+          "drum pad t0/d0/pC1 (id pad36) is empty",
+        ),
       },
       {
         path: "t0/d0/pE1",
         ok: false,
-        detail: expect.stringContaining("drum pad C1 is empty"),
+        detail: expect.stringContaining(
+          "drum pad t0/d0/pC1 (id pad36) is empty",
+        ),
       },
     ]);
   });
@@ -584,7 +602,7 @@ describe("duplicate - drum pad", () => {
 
       expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 38);
       expect(result).toStrictEqual({ id: "pad38", path: "t0/d0/pD1" });
-      expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect(consoleMock.emitWarning).toHaveBeenCalledWith(
         `${param} "null" names nothing`,
       );
     },

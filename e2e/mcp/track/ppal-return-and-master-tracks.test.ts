@@ -9,7 +9,7 @@
  * regular track has, so reads, mixer writes and device work all take a
  * different route through the Live API.
  * Uses: e2e-test-set (rt0 A-Delay/Echo, rt1 B-Reverb, master has 3 devices)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- track/ppal-return-and-master-tracks
  */
@@ -91,7 +91,7 @@ describe("return and master tracks", () => {
     const created = parseToolResult<{ id: string; path: string }>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { device: "Compressor", path: "rt1" },
+        arguments: { deviceName: "Compressor", path: "rt1" },
       }),
     );
 

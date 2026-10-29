@@ -70,6 +70,12 @@ export function currentRemoteScriptStatus(
 export const OUTDATED_ANSWER = {
   available: false,
   outdated: outdatedReason(null, MIN_REMOTE_SCRIPT_VERSION),
+  outdatedWithoutManage: outdatedReason(
+    null,
+    MIN_REMOTE_SCRIPT_VERSION,
+    "device",
+    false,
+  ),
 };
 
 /** What a write answers when the connection drops: it may have landed. */

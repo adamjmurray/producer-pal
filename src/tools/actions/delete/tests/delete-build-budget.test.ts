@@ -17,7 +17,9 @@ import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { deleteObject } from "#src/tools/actions/delete/delete.ts";
 
-vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({ warn: vi.fn() }));
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
+  emitWarning: vi.fn(),
+}));
 
 const CLIPS = 6;
 const clipIds = Array.from({ length: CLIPS }, (_, i) => String(101 + i));

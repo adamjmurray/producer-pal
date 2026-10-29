@@ -14,8 +14,9 @@ import {
   getLastTransforms,
   getTransforms,
 } from "../helpers/clip-turn-readers.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_UPDATE_CLIP = "ppal-update-clip";
+const TOOL_UPDATE_CLIP = TOOLS.updateClip;
 
 /**
  * Extract the selector portion (before the first ":") of a transforms string
@@ -75,7 +76,7 @@ export const drumTransforms: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     // Turn 1: Clips found and notes read
     assertNotesRead(1),

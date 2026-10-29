@@ -376,7 +376,7 @@ export function readTrackGeneric({
     ...(includeColor && { color: track.getColor() }),
   };
 
-  addOptionalBooleanProperties(result, track, canBeArmed, isGroup);
+  addOptionalBooleanProperties(result, track, canBeArmed, isGroup, category);
 
   const instrumentName = getInstrumentName(trackDevices);
 

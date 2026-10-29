@@ -6,7 +6,7 @@
 /**
  * E2E tests for ppal-read-device tool
  * Uses: e2e-test-set with pre-populated devices
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp
  */
@@ -374,6 +374,16 @@ describe("ppal-read-device over a list of targets", () => {
     );
 
     expect(device.parameters!.length).toBeGreaterThan(0);
+  });
+
+  it("leaves params off for a blank paramSearch", async () => {
+    for (const paramSearch of ["", "  "]) {
+      const device = parseToolResult<ReadDeviceResult>(
+        await readDevices({ path: "t3/d1", paramSearch }),
+      );
+
+      expect(device.parameters).toBeUndefined();
+    }
   });
 });
 

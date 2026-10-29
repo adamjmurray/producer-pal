@@ -17,7 +17,7 @@
  * in take-lanes.ts). So an audio take is muted and marked instead.
  */
 
-import { removeAllClipNotes } from "#src/tools/shared/clip/clip-notes.ts";
+import { removeEveryClipNote } from "#src/tools/shared/clip/clip-notes.ts";
 
 /** Marks the leftover so it reads as debris, not content. */
 const PLACEHOLDER_PREFIX = "(moved)";
@@ -43,7 +43,7 @@ export function emptyTakeLaneClip(clip: LiveAPI): string {
     : `${PLACEHOLDER_PREFIX} ${name}`.trim();
 
   if (isMidi) {
-    removeAllClipNotes(clip);
+    removeEveryClipNote(clip);
   }
 
   clip.setAll({ name: placeholderName, muted: 1 });

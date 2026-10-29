@@ -16,12 +16,13 @@
  * Every clip ramps pan up by 0.1 a beat from -0.8, holding its last value to
  * the clip's end (a 2-bar MIDI clip loops 8 beats, a 1-bar warped audio clip 4).
  * The copy's entry says it wrote the lane, and says nothing for a clip with no
- * automation (t3/s1).
+ * automation (t3/s1). Copied over an existing lane, a clip replaces only the
+ * parameters it automates, only over its span.
  *
  * Uses: e2e-test-set — t3 "Lead" (MIDI) and t5 "Audio 2" (audio) with s2, s3,
- * s4, s6 and s7 free in both; t8 holds an anchor clip so the song is long
+ * s4, s6 and s7 free in both (t3 also s0 and s5); t8 holds an anchor clip so the song is long
  * enough to read anywhere in the test range.
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp:remote-script -- clip/remote-script/ppal-duplicate-arrangement-automation
  */
@@ -354,6 +355,79 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
           );
         }
       });
+    });
+
+    it("replaces only its own parameters' lanes, only over its span", async () => {
+      const start = 720; // bar 181
+
+      const write = async (slot: number, length: string, envelopes: string) => {
+        const id = await createClipInSlot(
+          ctx,
+          `t${String(MIDI_TRACK)}/s${String(slot)}`,
+          {
+            notes: "C3 1|1",
+            length,
+            looping: true,
+          },
+        );
+        const written = await settledTool<UpdateClipResult>(
+          ctx.client!,
+          "ppal-update-clip",
+          { id, envelopes },
+        );
+
+        expect(written).toStrictEqual(
+          expect.objectContaining({ envelopes: envelopes.split("\n").length }),
+        );
+
+        return id;
+      };
+
+      const volumeAt = (into: number): Promise<number> =>
+        readLaneAt(ctx.client!, MIDI_TRACK, start + into, "volume");
+      const quietVolume = await readLaneAt(
+        ctx.client!,
+        MIDI_TRACK,
+        8,
+        "volume",
+      );
+
+      // An existing lane: pan and volume held over bars 181-184.
+      await copyClip(
+        {
+          id: await write(
+            5,
+            "4bar",
+            "pan: 1|1 -0.6 / 4|4 -0.6\nvolume: 1|1 0.4 / 4|4 0.4",
+          ),
+        },
+        MIDI_TRACK,
+        181,
+      );
+      // Copied over bar 182, a clip with pan automation only.
+      await copyClip(
+        { id: await write(0, "1bar", "pan: 1|1 0.5 / 1|4 0.5") },
+        MIDI_TRACK,
+        182,
+      );
+
+      await expectLane(
+        "midi",
+        start,
+        [
+          [1.5, -0.6],
+          [5.5, 0.5],
+          [9.5, -0.6],
+        ],
+        baseline as number,
+      );
+
+      const heldVolume = await volumeAt(1.5);
+
+      expect(Math.abs(heldVolume - quietVolume)).toBeGreaterThan(TOLERANCE);
+      expect(Math.abs((await volumeAt(5.5)) - heldVolume)).toBeLessThan(
+        TOLERANCE,
+      );
     });
   },
 );

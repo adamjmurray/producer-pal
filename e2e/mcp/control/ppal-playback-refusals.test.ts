@@ -8,7 +8,7 @@
  * timeline, an empty clip slot, a scene id that doesn't name a scene.
  * Uses: e2e-test-set (t8 is empty, and s3 on it stays empty here; t9 "Parent"
  * is a group track and t10 "Child" is its member)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- control/ppal-playback-refusals
  */

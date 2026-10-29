@@ -9,7 +9,7 @@
  * with high velocity values that would exceed MIDI max 127, and the low end:
  * Live drops a note written under velocity 1.
  * Uses: e2e-test-set - tests create clips in empty slots (t8 is empty MIDI track)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- --testPathPattern update-clip-merge-velocity
  */

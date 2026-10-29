@@ -10,7 +10,7 @@
  * whole span. A copy is also measured at that length when a later copy in the
  * same call lands on it.
  * Uses: e2e-test-set (t8 is an empty MIDI track; s5 and s6 are empty scenes)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- e2e/mcp/operations/duplicate/ppal-duplicate-copy-length.test.ts
  */

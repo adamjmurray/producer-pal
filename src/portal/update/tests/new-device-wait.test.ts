@@ -13,6 +13,7 @@ describe("waitForNewDevice", () => {
       { from: "2.4.0" },
       fakeDevice("2.4.0", "2.5.0"),
       updateDeps(),
+      Date.now() + 50_000,
     );
 
     expect(version).toBe("2.5.0");
@@ -23,6 +24,7 @@ describe("waitForNewDevice", () => {
       { from: "2.5.0-beta", expected: "2.5.0-rc2" },
       fakeDevice("2.5.0-beta", "2.5.0-rc2"),
       updateDeps(),
+      Date.now() + 50_000,
     );
 
     expect(version).toBe("2.5.0-rc2");
@@ -34,6 +36,7 @@ describe("waitForNewDevice", () => {
         { from: "2.4.0", expected: "2.4.0" },
         fakeDevice("2.4.0"),
         updateDeps(),
+        Date.now() + 50_000,
       ),
     ).rejects.toThrow("old version (2.4.0) is still answering");
   });

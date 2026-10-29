@@ -81,7 +81,7 @@ timing += n/8                    // nudge every note an eighth note later (relat
 \`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use ppal-update-clip with only transforms to modify existing notes.
 Transforms modify notes in place — previous transforms are already baked in, so don't re-apply earlier ones. Muted notes are hidden from reads and left untouched by edits, except that a note landing on one's pitch and start replaces it.
 MIDI params ignored for audio clips, vice versa.
-Across a batch (ppal-update-clip \`id\` / ppal-duplicate copies / ppal-create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\`; see Shape above.`;
+Across a batch (ppal-update-clip \`id\` / ppal-duplicate copies / ppal-create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch (\`pitch += clip.index * 12\`).`;
 
 /**
  * Everything about changing a clip that already has notes in it. A SIBLING of
@@ -102,7 +102,7 @@ Across a batch (ppal-update-clip \`id\` / ppal-duplicate copies / ppal-create-cl
  */
 export const transformsEditing = `### Editing Notes Already in a Clip (ppal-update-clip only)
 
-\`preTransforms\` is *the* way to delete or change notes already in the clip (its schema has the examples). Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge. The \`delete\` shorthand (alias \`v0\`) is preferred for clearing (\`velocity = 0\` is the longhand equivalent). Prefer it over deleting inline in \`notes\`. Ignored on audio clips. Same syntax as transforms. To *replace* a region rather than edit it in place, clear it first (\`preTransforms: "1|1-2|1: delete"\`) or the notes you didn't restate stay behind. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate densely in \`notes\`, then prune with a selector instead of scattering \`delete\`s. When the note COUNT changes in a regular way — rolling one note into several, echoing notes later, cutting a held note, gluing repeated hits — \`transforms\` has a note-count operation for it (ratchet, repeat, split, merge). Reach for those before clearing the clip and rewriting the notes by hand.`;
+\`preTransforms\` is *the* way to delete or change notes already in the clip (its schema has the examples). Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge. Prefer it over deleting inline in \`notes\`. Ignored on audio clips. Same syntax as transforms. To *replace* a region rather than edit it in place, clear it first (\`preTransforms: "1|1-2|1: delete"\`) or the notes you didn't restate stay behind. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate densely in \`notes\`, then prune with a selector instead of scattering \`delete\`s. To roll, echo, cut or glue notes, use a note-count operation (ratchet, repeat, split, merge) instead of clearing and rewriting them.`;
 
 /**
  * The transforms fragment at basic (small-model) depth: the merge rule and

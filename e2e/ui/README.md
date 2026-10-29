@@ -30,7 +30,8 @@ current source.
   `max-for-live-device/chat-ui.html`), `**/mcp` (a minimal JSON-RPC
   `initialize`/`tools/list` stub so the status reads "connected"), `**/config`,
   and `**/update`; and seeds a "configured" Gemini text-chat provider in
-  `localStorage` to skip the first-run settings screen.
+  `localStorage` to skip the first-run settings screen (pass
+  `{ chatSetUp: false }` to get a first visit instead).
 - **`seedConversations(page, records)`** — writes fixture records into the
   `producer-pal-conversations` IndexedDB store.
 - **`readConversationsFromDb(page)`** — reads them back to assert persistence.
@@ -74,6 +75,10 @@ model request and every `/subagent-briefing` request for assertions.
 
 Settings modal (`settings/settings-test-helpers.ts`, localStorage-backed):
 
+- `settings/settings-first-run.spec.ts` — Settings before chat is set up:
+  closable, "Set up chat" and the blocked composer, what a Save does and doesn't
+  set up, an Installation deep link, and the Installation tab's Save/Close
+  footer.
 - `settings/presets.spec.ts` — the Presets tab: create → persists across reload
   → re-select, blank/duplicate-name rejection, delete, description edits, and
   the Subagent-preset picker. Presets write to localStorage on click rather than
@@ -119,3 +124,15 @@ Use `setupUiTest` for the chat "configured app + seeded history" starting point,
 rows expose `data-testid="conversation-item"`; row actions use their accessible
 labels (`Rename conversation`, `Delete conversation`, `Bookmark conversation` /
 `Remove bookmark`, `Export conversation`).
+
+## Docs screenshots
+
+`settings/docs-screenshots/` regenerates the settings screenshots in
+`docs/public/img` from this stubbed UI, in fixed example states:
+
+```bash
+npm run docs:screenshots
+```
+
+Its files end in `.screenshots.ts`, so `ui:test` never runs them. Re-run it
+after changing the settings UI, and look at the images before committing.

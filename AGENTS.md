@@ -189,7 +189,8 @@ UI.
   with private ticket numbers. Never write `AJM-NNN` in a tracked file or a
   commit message; explain the reasoning instead. `npm run check` scans both
   tracked files and your commits on this branch, but only locally, so run it
-  before pushing. PR titles and bodies are fine.
+  before pushing. Keep them out of PR titles and bodies too: outside readers
+  can't open them, so describe follow-ups in words.
 
 - **GitHub issues go in the commit message, not the release PR body** — put
   `Resolves #NNNN` in the commit that fixes it. `dev -> main` merges onto the
@@ -221,10 +222,10 @@ UI.
 
 ## Type Checking
 
-`src/`, `scripts/`, `evals/`, and `webui/` are all type-checked. Prefer explicit
-return types on exported functions. Every exported function declaration needs a
-JSDoc block with `@param`/`@returns` descriptions — no types, since TypeScript
-already has them.
+Every TypeScript tree (`src/`, `scripts/`, `evals/`, `webui/`, `config/`,
+`e2e/`) is type-checked. Prefer explicit return types on exported functions.
+Every exported function declaration needs a JSDoc block with `@param`/`@returns`
+descriptions — no types, since TypeScript already has them.
 
 **TypeScript 6 and 7 are installed side-by-side.** TypeScript 7 ships no
 programmatic API (it's the Go port; a new API is expected in 7.1), but oxlint's
@@ -267,9 +268,13 @@ The practical consequences:
   plain afterwards. `npm run check:build` overwrites the device with a release
   build, so re-run `build:debug` afterwards or the device in Live is the wrong
   one.
-- **Debugging**: import `console` from `src/shared/max/v8-max-console.ts` and
-  use `console.warn()` — it shows up in the CLI and in the live MCP response.
-  `console.log()` and `console.error()` don't.
+- **Debugging**: in V8 code,
+  `import { emitWarning } from "#src/shared/max/v8-max-console.ts"` and call
+  `emitWarning()` — it shows up in the CLI and in the live MCP response.
+  `maxLog()` and `maxError()` (same module) only reach the Max console. Never
+  use a bare `console`, or alias a namespace import as `console`: lint and a
+  meta test ban both. In `src/mcp-server/` use `nodeError`, `nodeLog`,
+  `nodeWarn` and `nodeInfo` from `node-for-max-logger.ts` the same way.
 - **Coverage gaps**: `npm run check` prints totals only; the per-file breakdown
   is in `coverage/coverage-summary.txt`. Function coverage must be 100%; mark a
   genuinely untestable function with `/* v8 ignore start -- reason */`. Before

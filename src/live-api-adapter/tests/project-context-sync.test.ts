@@ -20,18 +20,18 @@ vi.mock(
 );
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  log: vi.fn(),
+  maxLog: vi.fn(),
   info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  emitWarning: vi.fn(),
+  maxError: vi.fn(),
 }));
 
 const { requestNode } =
   await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
 const mockRequestNode = vi.mocked(requestNode);
 
-const { warn } = await import("#src/shared/max/v8-max-console.ts");
-const mockWarn = vi.mocked(warn);
+const { emitWarning } = await import("#src/shared/max/v8-max-console.ts");
+const mockWarn = vi.mocked(emitWarning);
 
 const SAVED_PATH = "/Users/x/MySong Project/MySong.als";
 
@@ -290,6 +290,57 @@ describe("syncProjectContextBackup — the filesystem refused", () => {
     expect(mockWarn).toHaveBeenCalledWith(
       expect.stringContaining("Could not delete the project context backup"),
     );
+  });
+});
+
+describe("syncProjectContextBackup — too large for one message", () => {
+  function mockTooLarge(): void {
+    mockRequestNode.mockResolvedValueOnce({
+      success: false,
+      error: "node_request too large",
+      tooLarge: true,
+    });
+  }
+
+  it("warns once for the blob instead of on every tool call", async () => {
+    setFilePath(SAVED_PATH);
+    mockTooLarge();
+
+    await syncProjectContextBackup("x".repeat(40_000));
+    await syncProjectContextBackup("x".repeat(40_000));
+    await syncProjectContextBackup("x".repeat(40_000));
+
+    expect(mockRequestNode).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.stringContaining("too large to back up"),
+    );
+    expect(mockWarn).not.toHaveBeenCalledWith(
+      expect.stringContaining("sync failed"),
+    );
+  });
+
+  it("warns again when a changed blob is still too large", async () => {
+    setFilePath(SAVED_PATH);
+    mockTooLarge();
+    await syncProjectContextBackup("x".repeat(40_000));
+    mockTooLarge();
+
+    await syncProjectContextBackup("y".repeat(40_000));
+
+    expect(mockWarn).toHaveBeenCalledTimes(2);
+  });
+
+  it("warns once for an oversized manual edit too", async () => {
+    setFilePath(SAVED_PATH);
+    noteProjectContextLoaded("old notes");
+    mockTooLarge();
+
+    await backupProjectContextOnEdit("x".repeat(40_000));
+    await backupProjectContextOnEdit("x".repeat(40_000));
+
+    expect(mockRequestNode).toHaveBeenCalledTimes(1);
+    expect(mockWarn).toHaveBeenCalledTimes(1);
   });
 });
 

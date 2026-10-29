@@ -170,6 +170,22 @@ describe("Max API Adapter", () => {
       expect(result.content[0]!.text).toBe("test response");
     });
 
+    it("refuses an oversized request without sending it", async () => {
+      // 15,000 chars but 45,000 bytes: only a byte count catches it.
+      const result = await callLiveApi("test-tool", {
+        text: "あ".repeat(15_000),
+      });
+
+      expect(Max.outlet).not.toHaveBeenCalled();
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain(
+        "Tool call 'test-tool' args too large for a single Max IPC message",
+      );
+      expect(result.content[0]!.text).toMatch(/Nothing changed\.$/);
+      // Not run, so the undo-step wrapper must not treat it as a change.
+      expect(isChangedNothing(result)).toBe(true);
+    });
+
     it("should timeout after specified timeout period", async () => {
       // Set a short timeout for fast testing
       setTimeoutForTesting(2);

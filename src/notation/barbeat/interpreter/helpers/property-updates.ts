@@ -8,7 +8,7 @@ import {
   wholeNoteFractionToMusicalBeats,
 } from "#src/notation/barbeat/barbeat-config.ts";
 import { type ASTElement } from "#src/notation/barbeat/parser/barbeat-parser.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import {
   handlePropertyUpdate,
   type InterpreterState,
@@ -102,7 +102,7 @@ export function processDurationUpdate(
   // clamps — unlike the @step guard, which throws because a non-positive step
   // would break the repeat expansion.
   if (newDuration <= 0) {
-    console.warn(
+    emitWarning(
       `duration resolves to ${newDuration} musical beats (non-positive); keeping the previous duration`,
     );
 

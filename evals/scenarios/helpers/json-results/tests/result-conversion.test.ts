@@ -90,7 +90,12 @@ function convert(overrides?: Partial<EvalScenarioResult>) {
  * @returns An llm_judge assertion result
  */
 function judgeAssertion(
-  details: { pass: boolean; issues: string[] },
+  details: {
+    pass: boolean;
+    issues: string[];
+    provider?: string;
+    model?: string;
+  },
   message: string,
 ): EvalAssertionResult {
   return makeAssertion({
@@ -171,6 +176,32 @@ describe("toJsonResult", () => {
     expect(result.result).toBe("pass");
   });
 
+  it("records which provider and model gave the judge verdict", () => {
+    const result = convert({
+      assertions: [
+        judgeAssertion(
+          { ...PASSING_JUDGE, provider: "codex-code", model: "luna" },
+          "LLM judge: pass",
+        ),
+      ],
+    });
+
+    expect(result.judge).toStrictEqual({
+      pass: true,
+      issues: [],
+      provider: "codex-code",
+      model: "luna",
+    });
+  });
+
+  it("omits provider and model when the assertion has none", () => {
+    const result = convert({
+      assertions: [judgeAssertion(PASSING_JUDGE, "LLM judge: pass")],
+    });
+
+    expect(result.judge).toStrictEqual({ pass: true, issues: [] });
+  });
+
   it("derives judge from llm_judge assertion (failing)", () => {
     const result = convert({
       assertions: [
@@ -230,6 +261,14 @@ describe("toJsonResult", () => {
     const result = convert({ error: "Connection failed" });
 
     expect(result.error).toBe("Connection failed");
+  });
+
+  it.each([
+    ["errored before the first turn", [], "Live would not swap Sets", "error"],
+    ["was refused by the provider", [makeTurn()], "usage limit", "error"],
+    ["hit some other error mid-run", [makeTurn()], "timed out", "pass"],
+  ])("grades a run that %s", (_label, turns, error, outcome) => {
+    expect(convert({ turns, error }).result).toBe(outcome);
   });
 
   it("handles zero checks gracefully", () => {
@@ -317,6 +356,46 @@ describe("toJsonResult", () => {
     const result = convert();
 
     expect(result.turns[0]?.usage).not.toHaveProperty("reasoningTokens");
+  });
+
+  it("keeps the turn's reasoning text and finish reason in full", () => {
+    const reasoningText =
+      "step one thought\n\nstep two thought " + "x".repeat(5000);
+    const result = convert({
+      turns: [makeTurn({ reasoningText, finishReason: "length" })],
+    });
+
+    expect(result.turns[0]?.reasoningText).toBe(reasoningText);
+    expect(result.turns[0]?.finishReason).toBe("length");
+  });
+
+  it("omits reasoning text and finish reason when the turn has none", () => {
+    const result = convert();
+
+    expect(result.turns[0]).not.toHaveProperty("reasoningText");
+    expect(result.turns[0]).not.toHaveProperty("finishReason");
+  });
+
+  it("sums cache reads and writes across steps, omitting them when zero", () => {
+    const result = convert({
+      turns: [
+        makeTurn({
+          stepUsages: [
+            { inputTokens: 9000, outputTokens: 10, cacheWriteTokens: 8000 },
+            { inputTokens: 9500, outputTokens: 10, cacheReadTokens: 8000 },
+            { inputTokens: 9900, outputTokens: 10, cacheReadTokens: 9400 },
+          ],
+        }),
+      ],
+    });
+
+    expect(result.turns[0]?.usage).toStrictEqual({
+      inputTokens: 28400,
+      outputTokens: 30,
+      cacheReadTokens: 17400,
+      cacheWriteTokens: 8000,
+    });
+    expect(convert().turns[0]?.usage).not.toHaveProperty("cacheReadTokens");
   });
 
   it("includes reflection on failing check when present", () => {

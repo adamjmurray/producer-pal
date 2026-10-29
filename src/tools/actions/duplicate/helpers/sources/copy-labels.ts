@@ -16,6 +16,7 @@ import {
   splitList,
   valueForIndex,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { refuseArrangementLengthTooLong } from "#src/tools/shared/validation/helpers/arrangement-position-cap.ts";
 import { parseArrangementLength } from "../clip/arrangement-length.ts";
 import { readsArrangementLength } from "../duplicate-destinations.ts";
 import { type CopyLabel } from "../call/duplicate-call-types.ts";
@@ -95,10 +96,10 @@ export function arrangementLengthMeter(
 // --- Helpers below main exports ---
 
 /**
- * Refuses the call when any copy's arrangementLength won't parse or isn't
- * positive. Checked per copy instead, a bad entry would strand the copies
- * before it. The song meter matters: "1bar-n/2d" is one beat in 4/4 and none
- * in 3/4.
+ * Refuses the call when any copy's arrangementLength won't parse, isn't
+ * positive, or is longer than Producer Pal takes. Checked per copy instead, a
+ * bad entry would strand the copies before it. The song meter matters:
+ * "1bar-n/2d" is one beat in 4/4 and none in 3/4.
  * @param length - The raw arrangementLength param, when some copy reads it
  * @param lengths - Its entries, when it is a list
  * @param meter - The song meter, when some copy reads a length
@@ -113,6 +114,10 @@ function refuseUnreadableLengths(
   }
 
   for (const entry of lengths ?? [length]) {
-    parseArrangementLength(entry, meter.numerator, meter.denominator);
+    refuseArrangementLengthTooLong(
+      parseArrangementLength(entry, meter.numerator, meter.denominator),
+      meter.numerator,
+      meter.denominator,
+    );
   }
 }

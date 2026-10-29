@@ -58,6 +58,7 @@ describe("updateClip - a bad transform argument is refused before any clip is to
     ["timing += swing(0.3, n/8)", "swing() returns the new start"],
     ["timing -= quant(n/16)", "quant() returns the new start"],
     ["timing = swing(0.56)", "for 56% swing, use 0.06"],
+    ["velocity = sin(note.start)", "sin() period is a cycle length"],
   ])(
     "refuses %s for a MIDI and an audio clip together, touching neither",
     async (transforms, message) => {

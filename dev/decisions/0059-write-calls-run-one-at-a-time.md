@@ -6,10 +6,9 @@
 ## Decision
 
 Node sends tool calls that may change the Set to V8 one at a time; reads run
-alongside them. V8 runs other requests while one waits on the remote script, and
-models send parallel tool calls, so a write holding track or slot numbers across
-a wait could land on another track once a parallel call shifted them. How the
-queue works is in `dev/architecture/README.md`.
+alongside them. A write that held a track or slot number across a wait could
+land on another track once a parallel call shifted it. How the queue works is in
+`dev/architecture/write-queue.md`.
 
 ## Rejected
 

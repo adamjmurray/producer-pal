@@ -18,3 +18,23 @@ export const obeat = (
   den: number,
   denom = 4,
 ): number => base + (num / den) * denom;
+
+/**
+ * The original borrow: add a bar at a time until the beat reaches 1.
+ * @param bar - Starting bar
+ * @param beat - Raw beat, possibly below 1
+ * @param beatsPerBar - Beats per bar
+ * @returns The canonical bar and beat
+ */
+export function loopBorrow(
+  bar: number,
+  beat: number,
+  beatsPerBar: number,
+): { bar: number; beat: number } {
+  while (beat < 1) {
+    beat += beatsPerBar;
+    bar -= 1;
+  }
+
+  return { bar, beat };
+}

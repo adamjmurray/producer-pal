@@ -16,20 +16,20 @@
  * chat UI a REST caller must not drag onto its notation.
  *
  * Uses: e2e-test-set - t8 "9-MIDI" (empty MIDI track), t0/s0 "Beat"
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- per-request-headers
  */
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { connectMcp, type McpConnection } from "#evals/chat/mcp.ts";
+import { REST_BASE_URL } from "#evals/shared/config.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { DISABLED_TOOLS_HEADER } from "#src/shared/config.ts";
 import { NOTATION_HEADER } from "#src/shared/notation.ts";
 import { buildSkills, type SkillOverrides } from "#src/skills/build-skills.ts";
 import { builtinFragments } from "#src/skills/builtin-fragments.ts";
 import {
-  CONFIG_URL,
   type CreateClipResult,
   fetchSkillOverrides,
   getToolErrorMessage,
@@ -250,8 +250,6 @@ describe("x-producer-pal-disabled-tools", () => {
     }
   });
 });
-
-const REST_BASE_URL = CONFIG_URL.replace("/config", "");
 
 /**
  * Call a tool over the REST API with the given per-request headers.

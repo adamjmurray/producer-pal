@@ -9,7 +9,7 @@
  * copying from a group track, which Live copies members and all.
  * Uses: e2e-test-set (t0 Drums has a drum rack and a clip, t1 Bass has a rack,
  * t9 Parent is a group holding t10 Child, which has Operator)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- operations/ppal-duplicate-track-options
  */

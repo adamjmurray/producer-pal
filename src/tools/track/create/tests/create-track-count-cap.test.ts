@@ -10,8 +10,8 @@ import { registerCreateTrackLiveSet } from "./create-track-test-helpers.ts";
 import { createTrack } from "../create-track.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 const TOO_MANY = (count: number): string =>
@@ -45,6 +45,17 @@ describe("createTrack count cap", () => {
 
   it("refuses one past the cap with the same message", () => {
     expect(() => createTrack({ count: MAX_AUTO_CREATED_TRACKS + 1 })).toThrow(
+      TOO_MANY(MAX_AUTO_CREATED_TRACKS + 1),
+    );
+  });
+
+  it("refuses a path list longer than the cap", () => {
+    const path = Array.from(
+      { length: MAX_AUTO_CREATED_TRACKS + 1 },
+      () => "t+",
+    ).join(",");
+
+    expect(() => createTrack({ path })).toThrow(
       TOO_MANY(MAX_AUTO_CREATED_TRACKS + 1),
     );
   });

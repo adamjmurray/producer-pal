@@ -225,8 +225,7 @@ All specialized devices catalogued in [instruments/](instruments/README.md) and
 [audio-effects.md](audio-effects.md) are implemented in
 `src/tools/shared/device/specialized/` (one file per device under `devices/`,
 registered in `specialized-device-registry.ts`) and e2e-validated against Live
-12.4 — **except Shifter**. The original value-ranked backlog that lived here (a
-guide for what to build first) has been retired now that the work is done.
+12.4 — **except Shifter**.
 
 What each device exposes:
 

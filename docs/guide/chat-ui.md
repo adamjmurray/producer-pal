@@ -13,7 +13,8 @@ no other app to install.
 
 1. Click "Open Chat UI" in the [Device Interface](/guide/device) Main tab
 2. Configure your AI provider in [Settings](#settings) (opens automatically on
-   first use)
+   first use). Until you do, the chat shows a "Set up chat" button that opens it
+   again, and you can't send messages
 3. Click "Quick Connect" to connect to Ableton Live
 
 ## Header Bar
@@ -152,7 +153,7 @@ The thinking toggle next to the text area controls how much reasoning effort the
 AI uses for the next message. Click it to cycle through three levels:
 
 - <img src="/img/thinking-off.png" alt="Off" width="40" class="no-zoom" style="display:inline;vertical-align:middle;margin:0"/>
-  **Off** - No thinking
+  **Off** - The least thinking the model allows
 - <img src="/img/thinking-default.png" alt="Default" width="40" class="no-zoom" style="display:inline;vertical-align:middle;margin:0"/>
   **Default** - Let the AI decide
 - <img src="/img/thinking-max.png" alt="Max" width="40" class="no-zoom" style="display:inline;vertical-align:middle;margin:0"/>
@@ -224,10 +225,10 @@ costs much less.
 
 :::
 
-Pressing **Stop** while a subagent is working no longer throws its work away.
-The card reads **stopped** and keeps the work log it got through, and the AI can
-resume that subagent to finish the job. You may have to say which one, since a
-run stopped before it reported back doesn't hand the AI its number.
+Pressing **Stop** while a subagent is working keeps its work. The card reads
+**stopped** and keeps the work log it got through, and the AI can resume that
+subagent to finish the job. You may have to say which one, since a run stopped
+before it reported back doesn't hand the AI its number.
 
 If a provider rate-limits a subagent, its card shows a **rate limited**
 countdown and the subagent retries on its own instead of failing. Subagents
@@ -308,9 +309,11 @@ detail, so leave it off unless you need it.
 
 ## Settings
 
-Settings open as a modal overlay. Press Escape or click outside to close (if
-there are unsaved changes, the dialog will shake as a reminder to save or
-cancel).
+Settings open as a modal overlay. Click **Close** (or **Cancel**), press Escape
+or click outside to close (if there are unsaved changes, the dialog will shake
+as a reminder to save or cancel). You can close Settings before setting up chat,
+for example after only using the **Installation** tab. Chat is set up once you
+save with an API key (or a local provider, or a custom endpoint with a URL).
 
 Settings are stored in your browser so you don't have to redo the setup every
 time. API keys are encrypted at rest, so they never sit in local storage as
@@ -527,9 +530,9 @@ also turns the tool on at the device level (MCP clients and the
 the conversation like the rest of the toolset, so flipping the device flag
 doesn't add or remove the tool mid-chat.
 
-The **Notation** dropdown under **Advanced** chooses how the AI reads and writes
-clip notes: **[bar|beat](/features/midi-notation#bar-beat)** (the default),
-**[MIDI JSON](/features/midi-notation#midi-json)**, or
+The **Notation** dropdown, at the bottom of the **Clip** group, chooses how the
+AI reads and writes clip notes: **[bar|beat](/features/midi-notation#bar-beat)**
+(the default), **[MIDI JSON](/features/midi-notation#midi-json)**, or
 **[Stark](/features/midi-notation#stark)** (a literal, round-trippable notation
 with chord symbols, friendly to small/local models). See
 [MIDI Notation](/features/midi-notation) for the tradeoffs. Like the Live API
@@ -545,18 +548,18 @@ notation and then handed notes in another.
 ### Installation
 
 The Installation tab puts Producer Pal's files in your Live User Library. Both
-sections use the one User Library path at the top of the tab.
+cards use the one User Library path at the top of the tab.
 
-- **Device:** copies the Producer Pal device you loaded into your User Library,
-  so every Live Set can find it. The device shows a **Finish installation…**
-  button until it's there (and the remote script is current); the button opens
-  this tab. A development (unfrozen) device can't be copied. A Live Set
-  remembers the file a device was loaded from, so a device loaded from Downloads
-  stays tied to that file. Once the [remote script](/guide/remote-script) is
-  running and your User Library has a copy that is the same version or newer,
-  **Swap this device for the User Library copy** replaces the device in your Set
-  with it. The AI connection drops for a moment while the new device starts.
-  Save your Live Set afterwards so it keeps using the User Library copy.
+- **Max for Live device:** copies the Producer Pal device you loaded into your
+  User Library, so every Live Set can find it. The device shows a **Finish
+  installation…** button until it's there (and the remote script is current);
+  the button opens this tab. A development (unfrozen) device can't be copied. A
+  Live Set remembers the file a device was loaded from, so a device loaded from
+  Downloads stays tied to that file. Once the remote script is running and your
+  User Library has a copy that is the same version or newer, **Swap** replaces
+  the device in your Set with it. The AI connection drops for a moment while the
+  new device starts. Save your Live Set afterwards so it keeps using the User
+  Library copy.
 - **Remote script:** installs the Producer Pal
   [remote script](/guide/remote-script), which adds clip automation, undo and
   redo, and loading plug-ins, Max for Live devices and presets. It shows whether
@@ -568,7 +571,8 @@ sections use the one User Library path at the top of the tab.
 
 See the [remote script guide](/guide/remote-script) to install and enable it.
 
-Two checkboxes at the bottom of the tab control the notices on the device:
+Two checkboxes under **Options**, at the bottom of the tab, control the notices
+on the device:
 
 - **Warn when installation is incomplete** - On by default. The device shows
   **Finish installation…** while its User Library copy or the remote script is

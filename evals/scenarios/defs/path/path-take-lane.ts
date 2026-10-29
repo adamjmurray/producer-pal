@@ -9,29 +9,21 @@
  * `takeLane: 1` used to mean the first take lane. `t1/l0` means it now, because
  * the segment index is the Live API index like every other one. A model
  * carrying the old habit writes `t1/l1`, Live auto-creates both lanes, and the
- * clip lands on the SECOND one — no error, wrong result. That silent failure is
- * what the state assertion catches; the path assertion says which spelling
- * caused it.
+ * clip lands on the SECOND one — no error, wrong result. Only where the clip
+ * landed is graded: creating it on the main lane and moving it to `l0` is a
+ * pass, and the failure message lists the lanes, which shows the spelling.
  */
 
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
-import { takeLanes } from "../arrangement-readback.ts";
-import { MSG_CONNECT } from "../clip/helpers/clip-tool-constants.ts";
-import { assertClipCreatedAtPath } from "./path-assertions.ts";
+import { asArrangementTrack, takeLanes } from "../arrangement-readback.ts";
+import {
+  MSG_CONNECT,
+  TOOL_CONNECT,
+} from "../clip/helpers/clip-tool-constants.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** Bass is track 1 in basic-midi-4-track. */
 const BASS_TRACK_INDEX = 1;
-
-/**
- * `l0` is the first take lane. `l1` is not, and neither is the bare main lane
- * `t1`.
- *
- * The lane is what this grades, so the `[bar|beat]` start the path carries is
- * optional: where the clip goes is the next scenario's question.
- */
-const ACCEPTED_PATHS = new RegExp(
-  String.raw`^t${BASS_TRACK_INDEX}/l0(\[[^\]]*\])?$`,
-);
 
 /**
  * Summarize the track's take lanes for a failure message.
@@ -51,14 +43,15 @@ function describeLanes(result: unknown): string {
 }
 
 /**
- * Exactly one take lane exists on the Bass track and it holds exactly one clip.
- * A model that wrote `l1` gets two lanes with the clip on the second.
+ * Exactly one take lane exists on the Bass track, it holds exactly one clip,
+ * and the main lane holds none. A model that wrote `l1` gets two lanes with the
+ * clip on the second.
  * @returns A state assertion over the track's take lanes
  */
 function assertClipOnFirstLane(): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-track",
+    tool: TOOLS.readTrack,
     args: {
       trackIndex: BASS_TRACK_INDEX,
       include: ["arrangement-clips"],
@@ -66,10 +59,16 @@ function assertClipOnFirstLane(): EvalAssertion {
     expect: (result) => {
       const lanes = takeLanes(result);
 
-      return lanes.length === 1 && (lanes[0]?.clips?.length ?? 0) === 1;
+      const mainClips = asArrangementTrack(result).arrangementClips ?? [];
+
+      return (
+        lanes.length === 1 &&
+        (lanes[0]?.clips?.length ?? 0) === 1 &&
+        mainClips.length === 0
+      );
     },
     explain: (result) =>
-      `expected one take lane holding one clip, got ${describeLanes(result)}`,
+      `expected one take lane holding one clip and an empty main lane, got lanes ${describeLanes(result)} and ${asArrangementTrack(result).arrangementClips?.length ?? 0} main-lane clip(s)`,
   };
 }
 
@@ -88,7 +87,7 @@ export const pathTakeLaneFirst: EvalScenario = {
   ],
 
   assertions: [
-    ...assertClipCreatedAtPath(ACCEPTED_PATHS),
+    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
     assertClipOnFirstLane(),
 
     { type: "token_usage", maxTokens: 1_500 },

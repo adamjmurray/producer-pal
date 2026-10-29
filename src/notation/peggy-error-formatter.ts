@@ -7,6 +7,20 @@ import { type PeggySyntaxError } from "./peggy-parser-types.ts";
 
 const NEAR_MAX_LENGTH = 24;
 
+// A pitch name with its accidental after the octave (`A3b`, `A3#`) or, in
+// Stark, after an octave mark (`E'b`, `E/8'b`). The grammars refuse it; the
+// error names the fix. Linear-time: no nested quantifiers, and it runs on the
+// Max thread. A digit after the accidental (`C7b9`) makes it a chord name.
+const AFTER_OCTAVE =
+  /(?<![\w#♯♭'])(?<letter>[A-Ga-g])(?<accidental>[#b♯♭]?)(?<octave>-?\d+)(?<glued>[#b♯♭])(?!\d)/gu;
+// Stark never takes parentheses, so a pitch inside them is not this either.
+// After a mark a new note may start (`e'D`), except a lowercase `b`.
+const AFTER_OCTAVE_OR_MARK =
+  /(?:(?<![\w#♯♭',(])|(?<=[',])(?=[A-Gacdefg]))(?<letter>[A-Ga-g])(?<accidental>[#b♯♭]?)(?<octave>-?\d+)?(?<marks>(?:[',!?]|\/(?:16|8|4|2|1)[.t]?)*[',])?(?<glued>[#b♯♭])(?!\d)/gu;
+
+// A pitch with its octave, ending where a `#` would be glued on (`A3`).
+const PITCH_BEFORE_SHARP = /(?<![\w#♯♭'])[A-Ga-g][#b♯♭]?-?\d+$/u;
+
 /** One of Peggy's "expected" items. */
 export type ExpectedItem = NonNullable<PeggySyntaxError["expected"]>[number];
 
@@ -195,6 +209,27 @@ export function commentFreeLine(
 }
 
 /**
+ * The failing line with comments removed, except a `#` glued right after a
+ * pitch's octave (`A3#`): both grammars read that as a comment, but it is the
+ * mistake the glued-accidental hint names.
+ * @param failure - Where the parse stopped
+ * @param isSharp - The grammar's sharp rule
+ * @returns The line and the failure's column in it
+ */
+export function gluedCheckLine(
+  failure: SyntaxFailure,
+  isSharp: IsSharp,
+): { line: string; column: number } {
+  return commentFreeLine(
+    failure,
+    // 8 characters always reach past the longest pitch (`Bb-12`).
+    (text, index) =>
+      isSharp(text, index) ||
+      PITCH_BEFORE_SHARP.test(text.slice(Math.max(0, index - 8), index)),
+  );
+}
+
+/**
  * @param text - Text to search
  * @param open - Opening bracket
  * @param close - Closing bracket
@@ -221,6 +256,128 @@ export function zeroDenominatorHint(code: string): string | null {
   const problem = token.endsWith("/0") ? "be 0" : "start with 0";
 
   return `a note value's denominator can't ${problem} (got ${token}): n/4 = quarter, n/8 = eighth, n/12 = eighth triplet.`;
+}
+
+/**
+ * Hint for a pitch name written with its accidental after the octave. Shared
+ * by all three notations so the wording stays the same.
+ * @param line - The failing line, as written
+ * @param column - 0-based offset in the line where the parse stopped
+ * @param stark - Whether the notation is Stark: octave marks (`'` `,`) can
+ *   follow the octave, and `(` is not a bracket
+ * @param where - What a pitch at `[start, end)` is: a note, a Stark drum pitch
+ *   header (`A3b: X`, which takes no marks and no second note), or null for
+ *   text where no note could have parsed (a drum line)
+ * @returns The hint for the first such pitch in the item the parse stopped in,
+ *   or null when there is none
+ */
+export function gluedAccidentalHint(
+  line: string,
+  column: number,
+  stark: boolean,
+  where: (start: number, end: number) => "note" | "header" | null = () =>
+    "note",
+): string | null {
+  const limit = itemEnd(line, column, stark);
+
+  for (const match of line.matchAll(
+    stark ? AFTER_OCTAVE_OR_MARK : AFTER_OCTAVE,
+  )) {
+    const end = match.index + match[0].length;
+    const { letter, accidental, octave, marks, glued } = match.groups as Record<
+      string,
+      string | undefined
+    >;
+
+    // A bare `Cb`, or a duration alone (`C/4b`), has nothing glued after an
+    // octave or mark.
+    if (
+      end > column &&
+      match.index < limit &&
+      (octave != null || marks != null)
+    ) {
+      const place = where(match.index, end);
+
+      // A header can't take a mark, so `E'b:` is an unknown header, not this.
+      if (place == null || (place === "header" && marks != null)) {
+        continue;
+      }
+
+      return gluedMessage(match[0], stark && place === "note", {
+        letter: letter as string,
+        accidental: accidental as string,
+        glued: glued as string,
+        octave: octave ?? "",
+        marks: marks ?? "",
+      });
+    }
+  }
+
+  return null;
+}
+
+/**
+ * @param token - The pitch as written
+ * @param twoNotes - Whether a lowercase `b` may be a second note (Stark notes)
+ * @param parts - The pitch's parts; `marks` includes any suffixes before the
+ *   last mark
+ * @param parts.letter - Note letter
+ * @param parts.accidental - Accidental on the letter, or ""
+ * @param parts.glued - The accidental after the octave or mark
+ * @param parts.octave - Absolute octave, or ""
+ * @param parts.marks - Octave marks and suffixes up to the last mark, or ""
+ * @returns The hint text
+ */
+function gluedMessage(
+  token: string,
+  twoNotes: boolean,
+  parts: {
+    letter: string;
+    accidental: string;
+    glued: string;
+    octave: string;
+    marks: string;
+  },
+): string {
+  const { letter, accidental, glued, octave, marks } = parts;
+  const rest = `${octave}${marks}`;
+  const flat = `${letter}${glued}${rest}`;
+  const two = `${letter}${accidental}${rest} b`;
+  const lead = `"${token}": `;
+
+  // In Stark a lowercase `b` may be the note B: `g,b` is `g,` then `b` unless
+  // an absolute octave pins the flat reading. A letter that already has an
+  // accidental can only be the note.
+  if (twoNotes && glued === "b" && (octave === "" || accidental !== "")) {
+    return accidental === ""
+      ? `${lead}write ${flat} for a flat, or ${two} for two notes.`
+      : `${lead}write ${two} for two notes.`;
+  }
+
+  return accidental === ""
+    ? `${lead}the accidental goes right after the letter — write ${flat}.`
+    : `${lead}one accidental, right after the letter.`;
+}
+
+/**
+ * @param line - The failing line
+ * @param column - Where the parse stopped
+ * @param stark - Whether the notation is Stark
+ * @returns Where the item the parse stopped in ends: the next space, or the
+ *   closing bracket when it stopped at an opening one
+ */
+function itemEnd(line: string, column: number, stark: boolean): number {
+  const closer = { "[": "]", "(": stark ? "" : ")" }[line[column] ?? ""];
+
+  if (closer != null && closer !== "") {
+    const close = line.indexOf(closer, column);
+
+    return close === -1 ? line.length : close + 1;
+  }
+
+  const space = line.slice(column).search(/\s/);
+
+  return space === -1 ? line.length : column + space;
 }
 
 /**

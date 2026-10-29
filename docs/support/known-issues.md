@@ -72,32 +72,36 @@ load the device.
 before removing it, or open one of Live's automatic project backups (Live keeps
 several).
 
+## Library Search Misses New Plug-ins and Samples
+
+Live saves new library entries, like a plug-in you just installed or a sample
+you just added, in a place Producer Pal can't read until Live quits. Until then,
+`ppal-library` won't find them, even though Live's browser shows them. Asking
+for a plug-in by name still loads it.
+
+**Workaround:** quit and reopen Live. Reopening a Set is not enough.
+
+## Some Plug-in Settings Show Only Raw Values
+
+Some plug-ins, such as ValhallaFreqEcho, don't tell Live what a setting would
+read at other values. For those settings Producer Pal can't use the plug-in's
+own units (Hz, ms, %), so it reads and sets them on Live's internal scale,
+usually 0 to 1. The AI can't tell what a number means in the plug-in. On
+ValhallaFreqEcho, Delay 0.5 is 100 ms, but nothing tells the AI that. Settings
+that pick from a list come through as plain numbers too. ValhallaFreqEcho's
+Delay Sync reads 0 where the plug-in shows "Free".
+
+**Workaround:** check the plug-in's window after a change, and tell the AI what
+you see so it can adjust.
+
 ## Live's Memory Grows Over Very Long Sessions
 
-Every request Producer Pal makes to Live uses a little more of Live's memory,
-and Live doesn't give it back until you quit. The amount is tiny: each object
-Producer Pal looks up costs about 3 KB, so an everyday request costs a few dozen
-kilobytes, and even "read my whole Set" on a large Set stays in the hundreds.
-But it never stops, so a Live session left running for days across tens of
-thousands of AI requests can eventually run out of memory and crash. We have
-seen this once, after two and a half days of nearly continuous, heavy automated
-testing.
+Each request uses a tiny bit of Live's memory, which Live gives back only when
+you quit. Normal use never gets near a problem. We have seen Live run out of
+memory and crash once, after two and a half days of nonstop automated testing.
 
-Normal use is nowhere near that. Days of ordinary music-making won't reach it.
-
-**Workaround:** quit and reopen Live now and then if you leave it running for
-days at a time with heavy Producer Pal use. Saving and reopening your Set is not
-enough, because the memory is released only when Live itself quits.
-
-**Why we can't just fix it.** The growth is a direct consequence of asking Live
-for objects through the Live API, from the Max for Live device Producer Pal runs
-in. It happens per object looked up, no matter how the lookup is done. We
-measured the one alternative that reduces it, which is holding on to those
-objects between requests, and it makes things worse in a way you would actually
-notice: Live gets progressively slower the longer a session runs, and writes
-enormous log files. A slow leak that takes tens of thousands of requests to
-matter is the better trade. What we can do, and keep doing, is make each request
-look up fewer objects, which slows the growth proportionally.
+**Workaround:** if you leave Live running for days with heavy Producer Pal use,
+quit and reopen it now and then. Reopening a Set is not enough.
 
 ## Claude Desktop Caches Tool Definitions
 

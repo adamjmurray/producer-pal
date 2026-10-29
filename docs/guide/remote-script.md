@@ -51,7 +51,7 @@ Click **Finish installation…** on the device's Main tab. Or open the
 [Chat UI](/guide/chat-ui) with **Open Chat UI** and go to **Settings →
 Installation**.
 
-<!-- TODO screenshot: Installation tab (Device and Remote script sections) -->
+<img src="/img/producer-pal-chat-settings-remote-script-pre-install.png" alt="The Installation tab before installing: the User Library folder, the device not in the User Library yet, and the remote script not installed" width="500"/>
 
 1. **Confirm your User Library folder.** Producer Pal reads it from Live's
    browser database or settings, or finds it in the default location. If it is
@@ -59,21 +59,20 @@ Installation**.
    Library → Location of User Library**.
    - macOS: `~/Music/Ableton/User Library`
    - Windows: `C:\Users\you\Documents\Ableton\User Library`
-2. **Device:** click **Install** (or **Update**) to copy the Producer Pal device
-   to `<User Library>/Presets/MIDI Effects/Max MIDI Effect/Producer_Pal.amxd`.
-   One copy there serves all your projects, and lets a coding agent or the
-   Claude Desktop extension add Producer Pal to a new project.
+2. **Max for Live device:** click **Copy** (or **Update copy**) to copy the
+   Producer Pal device to
+   `<User Library>/Presets/MIDI Effects/Max MIDI Effect/Producer_Pal.amxd`. One
+   copy there serves all your projects, and lets a coding agent or the Claude
+   Desktop extension add Producer Pal to a new project.
 3. **Remote script:** click **Install** (or **Update**). The script is written
    to `<User Library>/Remote Scripts/Producer_Pal`, replacing any older copy.
-
-<img src="/img/producer-pal-chat-settings-remote-script-pre-install.png" alt="The Installation tab before installing, showing Not installed, the User Library path, and the Install button" width="500"/>
 
 ### Swap the running device for the User Library copy
 
 Your Live Set remembers which file its device was loaded from, so a device
 loaded from Downloads stays tied to that file. Once the remote script is running
-and the User Library copy is the same version or newer, click **Swap this device
-for the User Library copy**. The AI connection drops for a moment while the new
+and the User Library copy is the same version or newer, click **Swap** on the
+Max for Live device card. The AI connection drops for a moment while the new
 device starts. **Save your Live Set afterwards** so it keeps using the User
 Library copy.
 
@@ -102,17 +101,17 @@ A freshly installed script is **not running** yet:
 1. **Restart Live.** It only scans Remote Scripts at startup.
 2. Go to **Settings → Tempo & MIDI**, and set an unused **Control Surface** slot
    to **Producer Pal**. Leave **Input** and **Output** as **None**. The script
-   doesn't use MIDI.
+   doesn't use MIDI, so your other control surfaces keep working.
 
 <img src="/img/producer-pal-remote-script-control-surface-setup.png" alt="Live's Settings, Tempo & MIDI tab, with Control Surface 1 set to Producer Pal and Input and Output set to None" width="500"/>
 
 ## Check it's working
 
-After restarting Live, click **Refresh** in the Installation tab. It shows the
-installed version and whether Live is running it. "Running" means Live loaded it
-and it is answering on its port:
+After restarting Live, click **Check again** (or **Refresh**) in the
+Installation tab. It shows the installed version and whether Live is running it.
+"Running" means Live loaded it and it is answering on its port:
 
-<img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="The Installation tab showing Installed v2.4.0, running in Live" width="500"/>
+<img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="The Installation tab with the device in the User Library and the remote script installed and running in Live" width="500"/>
 
 If it says installed but not running, you either skipped the restart or the
 Control Surface slot isn't set.
@@ -147,7 +146,3 @@ There is no uninstall button yet, so remove it by hand:
   browser.
 - **The first plug-in listing is slow.** Live scans your plug-in folders the
   first time it is asked.
-- **Developers** can install from a checkout with
-  `npm run remote-script:install`. See
-  [`remote-script/README.md`](https://github.com/adamjmurray/producer-pal/blob/main/remote-script/README.md)
-  for the HTTP API.

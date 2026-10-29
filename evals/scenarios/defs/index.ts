@@ -67,7 +67,7 @@ export {
   contextWriteLayerProject,
 } from "./context/context-write-layers.ts";
 export { contextWritePreserves } from "./context/context-write-preserve.ts";
-export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
+export { connectToAbleton } from "./workflow/connect/connect-to-ableton.ts";
 export { deleteTargets } from "./workflow/delete-targets.ts";
 export {
   libraryDiscoveryActions,
@@ -164,3 +164,6 @@ export { trackAndDeviceWorkflow } from "./workflow/track-and-device-workflow.ts"
 export { updateLiveSet } from "./workflow/update-live-set.ts";
 export { pathInsertPosition } from "./path/path-insert-position.ts";
 export { pathLocatorCoordinate } from "./path/path-locator-coordinate.ts";
+export { upgradeDeviceVersionCheck } from "./workflow/connect/upgrade-device-version-check.ts";
+export { upgradeFirstMessageFullConnect } from "./workflow/connect/upgrade-first-message-full-connect.ts";
+export { upgradeRemoteScriptRestartCheck } from "./workflow/connect/upgrade-remote-script-restart-check.ts";

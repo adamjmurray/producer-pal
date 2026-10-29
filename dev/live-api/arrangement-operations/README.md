@@ -29,13 +29,15 @@ unwarped audio), `loop_end` is writable and extends the clip's arrangement
 length.
 
 - **MIDI**: `loop_end` is in **beats**. No boundary — MIDI content is notes, so
-  `loop_end` can be set to any value. See "Lengthening — Unlooped MIDI" below.
+  `loop_end` can be set to any value. See
+  [Lengthening — Unlooped MIDI](operations.md#lengthening--unlooped-midi).
 - **Unwarped audio**: `loop_end` is in **seconds**. Ableton auto-clamps to the
-  file boundary. See "Lengthening — Unlooped Unwarped Audio" below.
+  file boundary. See
+  [Lengthening — Unlooped Unwarped Audio](operations.md#lengthening--unlooped-unwarped-audio).
 - **Warped audio**: `loop_end` is in **content beats** (1:1 with arrangement
   beats). Ableton does **not** auto-clamp — the clip extends with silence past
   the file boundary. Manual boundary detection and clamping is required. See
-  "Lengthening — Unlooped Warped Audio" below.
+  [Lengthening — Unlooped Warped Audio](operations.md#lengthening--unlooped-warped-audio).
 
 ### Mid-Clip Splitting Doesn't Work
 
@@ -68,8 +70,8 @@ that rather than fix it.
 
 `end_marker` is **not clamped** to the audio file boundary. You can set it to
 99999 and it will stick. This means you can't rely on `end_marker` to tell you
-the actual file content length. Use content boundary detection instead (see Core
-Techniques below).
+the actual file content length. Use content boundary detection instead (see
+[File Content Boundary Detection](core-techniques.md#file-content-boundary-detection)).
 
 ### `loop_end` Reverts on Looped Warped Arrangement Clips
 
@@ -157,8 +159,8 @@ Empirical example (e2e, real Live, 2026-06-28): a 2-bar looping MIDI clip with
    loop.
 3. Result (`length: "2bar"`, 3 notes): `C3 1|1` (original), `C3 2|1` (inserted
    copy), and `E3 3|1` — the orphaned bar-2 note **pushed forward** to bar 3,
-   landing beyond the new loop (overhang; read-clip's scan window sees it, but
-   the loop does not play it).
+   landing at or past the new loop's end (read-clip leaves it out, and the loop
+   does not play it).
 
 So selecting a smaller sub-region and doubling is non-destructive: out-of-loop
 notes are displaced forward, never deleted or overwritten. The envelope/

@@ -13,7 +13,7 @@ import {
   jsonResponse,
 } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { waitForHookState } from "#webui/test-utils/async-test-helpers";
-import { InstallationTab } from "#webui/components/settings/installation/InstallationTab";
+import { InstallationTabHarness } from "#webui/components/settings/installation/tests/helpers/InstallationTabHarness";
 import { type RemoteScriptStatus } from "#webui/hooks/settings/installation/use-remote-script";
 import {
   deviceStatusBody,
@@ -48,7 +48,7 @@ describe("InstallationTab remote script section", () => {
       routes.device(jsonResponse(deviceStatusBody({ userLibrary: null })));
     }
 
-    render(<InstallationTab />);
+    render(<InstallationTabHarness />);
 
     const summary = await waitForHookState(() =>
       screen.getByTestId("remote-script-status"),
@@ -59,7 +59,7 @@ describe("InstallationTab remote script section", () => {
 
   it("shows a loading state until the status lands", async () => {
     routes.remote(new Promise(() => {}));
-    render(<InstallationTab />);
+    render(<InstallationTabHarness />);
 
     expect(screen.getByTestId("remote-script-loading")).toBeTruthy();
   });
@@ -68,7 +68,7 @@ describe("InstallationTab remote script section", () => {
     routes.remote(
       new Response("nope", { status: 500, statusText: "Server Error" }),
     );
-    render(<InstallationTab />);
+    render(<InstallationTabHarness />);
 
     const error = await waitForHookState(() =>
       screen.getByTestId("remote-script-load-error"),
@@ -137,13 +137,16 @@ describe("InstallationTab remote script section", () => {
     fireEvent.click(screen.getByTestId("remote-script-install"));
 
     // The steps only render once the post-install status read has landed.
-    const steps = (await waitForHookState(() =>
+    const steps = await waitForHookState(() =>
       screen.getByTestId("remote-script-steps"),
-    )) as HTMLDetailsElement;
+    );
 
     expect(
       screen.getByTestId("remote-script-installed-path").textContent,
     ).toContain(`${USER_LIBRARY}/Remote Scripts/Producer_Pal`);
+    expect(screen.getByTestId("remote-script-new-chat-hint").textContent).toBe(
+      "After restarting Live, start a new chat so it picks up the new version.",
+    );
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/remote-script/install"),
       expect.objectContaining({
@@ -152,7 +155,8 @@ describe("InstallationTab remote script section", () => {
       }),
     );
 
-    expect(steps.open).toBe(true);
+    // Expanded: a section, not the collapsed <details>.
+    expect(steps.tagName).toBe("DIV");
     expect(steps.textContent).toContain("Restart Live");
     expect(screen.getByTestId("remote-script-status").textContent).toBe(
       "Installed v1.2.0 (not running)",
@@ -179,6 +183,7 @@ describe("InstallationTab remote script section", () => {
 
     expect(error.textContent).toBe("No such directory: /nope");
     expect(screen.queryByTestId("remote-script-installed-path")).toBeNull();
+    expect(screen.queryByTestId("remote-script-new-chat-hint")).toBeNull();
   });
 
   it("asks for the path when no User Library was detected", async () => {
@@ -279,11 +284,9 @@ describe("InstallationTab remote script section", () => {
       runningVersion: "1.1.0",
     });
 
-    expect(
-      (screen.getByTestId("remote-script-steps") as HTMLDetailsElement).open,
-    ).toBe(true);
-    expect(screen.getByTestId("remote-script-restart").textContent).toBe(
-      "Restart Live to load v1.2.0.",
+    expect(screen.getByTestId("remote-script-steps").tagName).toBe("DIV");
+    expect(screen.getByTestId("remote-script-status").textContent).toBe(
+      "Installed v1.2.0 (running v1.1.0 in Live 12.1; restart Live to load it)",
     );
   });
 
@@ -295,8 +298,8 @@ describe("InstallationTab remote script section", () => {
       runningVersion: "1.3.0",
     });
 
-    expect(screen.getByTestId("remote-script-restart").textContent).toBe(
-      "Restart Live to load v1.2.0.",
+    expect(screen.getByTestId("remote-script-status").textContent).toBe(
+      "Installed v1.2.0 (running v1.3.0 in Live 12.1; restart Live to load it)",
     );
   });
 
@@ -308,8 +311,23 @@ describe("InstallationTab remote script section", () => {
       runningVersion: "1.2.0-rc1",
     });
 
-    expect(screen.getByTestId("remote-script-restart").textContent).toBe(
-      "Restart Live to load v1.2.0-rc2.",
+    expect(screen.getByTestId("remote-script-status").textContent).toBe(
+      "Installed v1.2.0-rc2 (running v1.2.0-rc1 in Live 12.1; restart Live to load it)",
+    );
+  });
+
+  it("asks for a restart when Live runs another build of the same version", async () => {
+    await renderTab({
+      installed: true,
+      installedVersion: "1.2.0",
+      installedBuild: "new",
+      running: true,
+      runningVersion: "1.2.0",
+      runningBuild: "old",
+    });
+
+    expect(screen.getByTestId("remote-script-status").textContent).toBe(
+      "Installed v1.2.0 (restart Live to load it)",
     );
   });
 
@@ -341,7 +359,7 @@ describe("InstallationTab remote script section", () => {
     fireEvent.click(screen.getByTestId("remote-script-refresh"));
 
     await waitForHookState(() =>
-      expect(screen.getByText("Is this your User Library?")).toBeTruthy(),
+      expect(screen.queryByText(/Location of User Library/)).toBeNull(),
     );
     expect(
       (screen.getByTestId("user-library-path") as HTMLInputElement).value,
@@ -441,7 +459,7 @@ describe("InstallationTab remote script section", () => {
   it("falls back to generic copy when the read answers nothing", async () => {
     // A 200 with a null body: no status to show and no error to quote.
     routes.remote(jsonResponse(null));
-    render(<InstallationTab />);
+    render(<InstallationTabHarness />);
 
     const error = await waitForHookState(() =>
       screen.getByTestId("remote-script-load-error"),

@@ -39,17 +39,29 @@ const readTrack: ToolCall = {
   result: '{id:"3"}',
 };
 
-const turnsWith = (toolCalls: ToolCall[]): EvalTurnResult[] =>
+const createClip = (path: string): ToolCall => ({
+  name: "ppal-create-clip",
+  args: { path, length: "4bar" },
+  result: `{id:"7",path:"${path}"}`,
+});
+
+const turnsWith = (
+  toolCalls: ToolCall[],
+  created: ToolCall[],
+): EvalTurnResult[] =>
   [0, 1, 2].map((turnIndex) => ({
     turnIndex,
     userMessage: "u",
     assistantResponse: "a",
-    toolCalls: turnIndex === 2 ? toolCalls : [],
+    toolCalls: [[], created, toolCalls][turnIndex] ?? [],
     durationMs: 1,
   }));
 
-const grade = (toolCalls: ToolCall[]): boolean | Promise<boolean> =>
-  grader.assert(turnsWith(toolCalls)) as boolean | Promise<boolean>;
+const grade = (
+  toolCalls: ToolCall[],
+  created: ToolCall[] = [],
+): boolean | Promise<boolean> =>
+  grader.assert(turnsWith(toolCalls, created)) as boolean | Promise<boolean>;
 
 describe("path-arrangement-covers assertTrustsCoveringBar", () => {
   it("passes on one write aimed at the covered bar", () => {
@@ -91,6 +103,16 @@ describe("path-arrangement-covers assertTrustsCoveringBar", () => {
   it("fails when the path is on another track", () => {
     expect(() => grade([rename("t2[3|1]")])).toThrow(
       /not a bar-3 coordinate on track 3/,
+    );
+  });
+
+  it("passes on a rename by the id its own create on track 3 returned", () => {
+    expect(grade([renameById("7")], [createClip("t3[1|1]")])).toBe(true);
+  });
+
+  it("fails on an id created on another track", () => {
+    expect(() => grade([renameById("7")], [createClip("t2[1|1]")])).toThrow(
+      /created: none/,
     );
   });
 

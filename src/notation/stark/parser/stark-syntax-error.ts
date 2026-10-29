@@ -6,6 +6,7 @@
 import {
   editDistance,
   firstWord,
+  gluedAccidentalHint,
   fixParses,
   type ExpectedItem,
   formatSyntaxError,
@@ -50,6 +51,7 @@ interface FailedLine {
 // Runs only after a parse has already failed, so a hint can never change what
 // parses. Each check returns a short fix, or null when it isn't sure.
 const CHECKS: Array<(failed: FailedLine) => string | null> = [
+  gluedAccidental,
   unclosedChord,
   badDuration,
   badRepeat,
@@ -120,6 +122,36 @@ function literalsOf(expected: ExpectedItem[]): Set<string> {
   }
 
   return literals;
+}
+
+/**
+ * @param failed - The failing line
+ * @returns Hint for an accidental glued after an octave or octave mark, in a
+ *   melody, bass or chords line or a drum pitch header (`A3b: X`) — not in a
+ *   drum line, where no note could have parsed
+ */
+function gluedAccidental(failed: FailedLine): string | null {
+  const { line, before } = failed;
+
+  return gluedAccidentalHint(line, before.length, true, (start, end) => {
+    // A drum pitch header: the pitch, an optional /N, then ":".
+    if (/^(?:\/[^\s:]*)?[ \t]*:/.test(line.slice(end))) {
+      return "header";
+    }
+
+    return STARK_LINE_TYPES.includes(lastHeader(line.slice(0, start)))
+      ? "note"
+      : null;
+  });
+}
+
+/**
+ * @param text - A line up to some point
+ * @returns The last section header in it, lowercased, or ""
+ */
+function lastHeader(text: string): string {
+  // One line can hold several sections (`melody: C D kick: X`).
+  return [...text.matchAll(SECTION_HEADER)].at(-1)?.[1]?.toLowerCase() ?? "";
 }
 
 /**
@@ -213,14 +245,15 @@ function unknownHeader(failed: FailedLine): string | null {
 function badContent(failed: FailedLine): string | null {
   const { before, rest, literals } = failed;
 
-  if (!literals.has("|")) {
+  // The grammar refuses an accidental after an octave (`C7#9`) mid-token,
+  // where it doesn't list `|` among what it would accept.
+  const afterOctave = /\d$/.test(before) && /^[#b♯♭]/.test(rest);
+
+  if (!literals.has("|") && !afterOctave) {
     return null;
   }
 
-  // One line can hold several sections (`melody: C D kick: X`), so read the
-  // last header before the failure.
-  const headers = [...before.matchAll(SECTION_HEADER)];
-  const header = headers.at(-1)?.[1]?.toLowerCase() ?? "";
+  const header = lastHeader(before);
   const kind =
     header === "chords"
       ? "chords"

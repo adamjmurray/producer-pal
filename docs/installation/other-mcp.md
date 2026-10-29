@@ -1,4 +1,4 @@
-# Other MCP-compatible LLMs
+# Other MCP Clients
 
 Producer Pal works with any LLM that supports the Model Context Protocol (MCP).
 
@@ -18,9 +18,18 @@ environment variables are listed in the
 
 <!--@include: ../_partials/setup-by-ai.md-->
 
-### 2. Configure Your AI
+### 1. Configure Your AI
 
-Configure your AI to connect to Producer Pal using one of the following methods:
+Configure your AI to connect to Producer Pal using one of the
+[connection methods](#connection-methods) below.
+
+### 2. Start Using Producer Pal
+
+With Live open, start a conversation with "connect to ableton".
+
+<!--@include: ../_partials/setup-by-ai-finish.md-->
+
+<!--@include: ../_partials/check-it-works.md-->
 
 ## Connection Methods
 
@@ -39,8 +48,8 @@ This option requires [Node.js 20+](https://nodejs.org/en/download).
 
 Add the `--small-model-mode` flag to enable
 [Small Model Mode](./bionic#_4-tune-it-for-your-model-recommended), which
-simplifies the tool interface for smaller LLMs and automatically enables it on
-the device when connected:
+simplifies the tool interface for smaller LLMs. It applies to this client only
+and doesn't change the device:
 
 ```json
 {
@@ -70,9 +79,8 @@ ones you don't:
 ::: details Advanced: enabling the Direct Live API
 
 Add the `--live-api` flag to turn on the opt-in
-[Direct Live API](/features/tools#ppal-live-api) tool (`ppal-live-api`) when the
-server connects — the same setting as the device's **Setup** tab, so it's global
-to the device:
+[Direct Live API](/features/tools#ppal-live-api) tool (`ppal-live-api`) for this
+client only. It doesn't change the device's **Setup** tab or other clients:
 
 ```json
 {
@@ -92,7 +100,8 @@ setting you toggled on the device.
 
 ### Option B: Local MCP via HTTP
 
-Requires Ableton running first, no auto-reconnection. Use the URL:
+Requires the device running in Live first (install it yourself, see above), no
+auto-reconnection. Use the URL:
 
 ```
 http://localhost:3350/mcp
@@ -107,10 +116,11 @@ Ableton Live with Producer Pal Max first.
 
 ### Option C: Remote MCP via HTTP tunnel
 
-Requires Ableton running first, no auto-reconnection. For cloud-hosted LLMs or
-remote access:
+Requires the device running in Live first (install it yourself, see above), no
+auto-reconnection. For cloud-hosted LLMs or remote access:
 
-1. Set up a [web tunnel](./web-tunnels) (e.g. Cloudflare or Pinggy)
+1. Set up a [web tunnel](./remote-access#web-tunnels) (e.g. Cloudflare or
+   Pinggy)
 2. Configure your LLM with the public URL + `/mcp`
 
 ## Example: Configuring Cline

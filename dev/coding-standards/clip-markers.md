@@ -71,7 +71,12 @@ Writing them is not symmetric, and these two are the ones that bite:
 So `buildClipPropertiesToSet` writes the markers **before** switching looping
 off, and the brace **after** switching it on.
 
-Two more traps in the same write: Live rejects a `loop_start` past `loop_end`,
-and silently drops a `start_marker` past `end_marker`. So each pair (loop brace,
-markers) moves its end first when its new start lands at or past that pair's
-current end (`endMovesFirst`).
+Two more traps in the same write. On a looping clip Live checks every write
+against all four values: it refuses or clamps a write that leaves `loop_start`
+at or past `loop_end`, `start_marker` at or past `end_marker`, or `start_marker`
+at or past `loop_end` (across the two pairs). Shrinking mirrors it: a `loop_end`
+or `end_marker` at or below the current `start_marker` is refused. So the pairs
+can't be ordered one at a time. The order is: every end that grows (or stays),
+then both starts, then every end that shrinks (`clipRegionWrites`,
+`endMovesFirst`). Growing loop 0..4 / markers 0..4 to loop 2..6 / start 5 / end
+6 only works with both ends written before `start_marker`.

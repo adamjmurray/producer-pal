@@ -26,6 +26,7 @@ import {
   type RemoteScriptUnavailable,
   whyUnavailable,
 } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
+import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { errorWithChainsLeft } from "#src/tools/shared/device/helpers/path/chains-left.ts";
 import { moveDeviceIntoContainer } from "#src/tools/device/update/helpers/move-device.ts";
 import {
@@ -86,10 +87,13 @@ const MIN_LOAD_WAIT_MS = 2 * REMOTE_SCRIPT_EXPIRY_MARGIN_MS;
 const LOAD_STRANDED =
   "Live may still have loaded it, but onto the temp track, which is removed; nothing was added at this path, re-run for it";
 
-/** The request's time limits, from ToolContext. */
+/**
+ * What a browser load reads off the request: its time limits, and who the
+ * caller is, which words a refusal.
+ */
 export type RequestTiming = Pick<
   Partial<ToolContext>,
-  "deadline" | "timeoutMs"
+  "deadline" | "timeoutMs" | "manageAvailable" | "smallModelMode"
 >;
 
 /** What a browser load needs besides the device. */
@@ -415,7 +419,11 @@ async function loadOnto(
     },
     waitMs,
   );
-  const failure = loadFailure(response, Date.now() - started >= waitMs);
+  const failure = loadFailure(
+    response,
+    Date.now() - started >= waitMs,
+    manageOffered(timing),
+  );
 
   if (failure != null) {
     throw new Error(`could not load "${deviceName}": ${failure}`);
@@ -447,11 +455,13 @@ function stranded(why: string, timedOut: boolean): string {
  * so nothing reaches the path.
  * @param response - The load route's response
  * @param gaveUp - Whether V8 stopped waiting for it
+ * @param manage - Whether the caller can use ppal-manage
  * @returns The reason, or undefined when the load succeeded
  */
 function loadFailure(
   response: NodeResponse<BrowserItemLoad>,
   gaveUp: boolean,
+  manage: boolean,
 ): string | undefined {
   if (!response.success) {
     return stranded(response.error ?? "no answer", gaveUp);
@@ -464,7 +474,7 @@ function loadFailure(
   }
 
   if (!result.available) {
-    return whyUnavailable(result, "Live's browser stopped answering");
+    return whyUnavailable(result, "Live's browser stopped answering", manage);
   }
 
   return result.error == null

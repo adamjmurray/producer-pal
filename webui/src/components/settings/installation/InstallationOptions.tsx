@@ -5,7 +5,7 @@
 
 import { useGlobalSettings } from "#webui/hooks/connection/use-global-settings";
 import { FINISH_INSTALLATION_DOCS_URL } from "#webui/lib/config";
-import { linkClass } from "./installation-classes";
+import { linkClass } from "./helpers/installation-classes";
 
 /**
  * The machine-wide notices the Max for Live device can show: the unfinished
@@ -17,7 +17,13 @@ export function InstallationOptions() {
   const settings = useGlobalSettings();
 
   return (
-    <div className="space-y-2" data-testid="installation-options">
+    <div
+      role="group"
+      aria-label="Notices"
+      className="flex flex-col gap-1.5 border-t border-zinc-300 pt-3 dark:border-zinc-600"
+      data-testid="installation-options"
+    >
+      <h4 className="text-[13px] font-semibold">Options</h4>
       <label className="flex cursor-pointer items-center gap-2">
         <input
           type="checkbox"

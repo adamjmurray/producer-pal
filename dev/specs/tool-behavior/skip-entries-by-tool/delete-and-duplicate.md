@@ -39,6 +39,11 @@ Part of [Skip entries, tool by tool](README.md).
   (`the tracks inside it too` when that group holds more). If that group holds
   the Producer Pal device, the detail names that group as one that can't be
   deleted, and suggests none.
+- **delete: a skipped target's path can go stale.** Deleting shifts the siblings
+  after it, so a target that wasn't deleted (Live refused, or it is the only
+  track in a group) adds `that <noun> is now <path> (id N)` when its path now
+  names something else. A path that named nothing can't gain an object by a
+  delete, so it never gets the other clause.
 - **duplicate answers per copy named, in the order named.** Every copy of every
   source is a target: `count` copies of a track or scene, one per destination of
   a clip, device, chain or pad, one per scene position, one per lane a track
@@ -57,6 +62,12 @@ Part of [Skip entries, tool by tool](README.md).
   by their destination), and the other sources still copy. A path that can't be
   parsed refuses the call, and so does a `toPath` entry that can't be, for every
   kind of copy: a destination written wrong is never a per-copy skip.
+- **duplicate: a skip addressed by its source path can go stale.** A copy
+  inserts a track, scene or device, so a source path later in the call can name
+  another object by the end, or name one where nothing was. Such an entry adds
+  `that <noun> is now <path> (id N)` or `nothing was there when the call began`.
+  A copy addressed by its destination path is a place, not an object, so it gets
+  neither.
 - **duplicate: a copy a later copy replaces is left unwritten.** Two copies to
   one clip slot, or one a later copy covers whole on an arrangement lane (a lane
   copy's clips each need covering, a scene copy's clips each on their track),

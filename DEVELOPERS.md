@@ -51,7 +51,10 @@ non-localhost browser origin (a remote inspector, or over the LAN), build with
 `ALLOW_DEV_BUILD_FLAGS=true ENABLE_REMOTE_CORS=true npm run build`. A plain
 `npm run build` refuses to run with any of the debug flags set, so an ambient
 one can't be baked into something that ships — `build:debug` and that override
-are the ways past it.
+are the ways past it. The guarded flags are listed in `GUARDED_BUILD_FLAGS`
+(`scripts/build-and-release/helpers/build-flag-guard.ts`): the ones above plus
+the measurement flags `ENABLE_BUILD_STATS` and `ENABLE_OBJECT_PROBE` (see
+`dev/quality/development-tools/live-api-measurement.md`).
 
 ## Core Development Scripts
 
@@ -143,11 +146,9 @@ And `npm run check:build` additionally validates:
 ### Why so strict?
 
 - **100% function coverage** means every function has at least one test. This
-  caught regressions that slipped through with lower thresholds. A handful of
-  genuinely untestable functions are excluded with `v8 ignore` comments (which
-  require a reason and count against the suppression limits). Adding a new
-  exception requires discussion — the AI agent is guided to raise it rather than
-  silently excluding coverage.
+  caught regressions that slipped through with lower thresholds. A new
+  `v8 ignore` exception needs discussion; the AI agent is guided to raise it
+  rather than silently excluding coverage (see `dev/quality/testing.md`).
 - **Lint suppression limits** are ratcheted to current counts. Adding a new
   `eslint-disable` or `@ts-expect-error` requires fixing an existing one first
   (or getting approval to raise the limit). Write directives with the `eslint-`
@@ -234,8 +235,19 @@ and installs with a dev switch:
 
 - `npm run remote-script:test` - Python unit tests (also part of
   `npm run check`)
-- `npm run remote-script:install -- --probe --reload` - install, reload in the
+- `npm run install:remote-script -- --probe --reload` - install, reload in the
   running Live, and verify
+- `npm run install:device` - copy `release/Producer_Pal.amxd` (from
+  `npm run release:amxd`) into the User Library; `-- --force` replaces a newer
+  one
+- `npm run install:status` - show what's installed, plus other `.amxd` copies
+- `npm run uninstall` - remove the device and remote script (also
+  `uninstall:device`, `uninstall:remote-script`; `uninstall:device:all` and
+  `uninstall:all` also delete other `Producer_Pal*.amxd` copies)
+
+The install and uninstall scripts use `ABLETON_USER_LIBRARY` from `.env`, or
+find Live's User Library if it's unset.
+
 - `npm run e2e:mcp:remote-script -- <file>` - e2e suites that need the script
   (ask before running; they open Live)
 

@@ -5,6 +5,8 @@
 
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { sharingLaneView } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
+import { clipIdAtPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
+import { whereObjectIs } from "#src/tools/shared/write-pipeline/where-object-is.ts";
 import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
 import {
   type PipelineResult,
@@ -123,5 +125,11 @@ function clipWriteSpec(
     write: (target, step) => writeClip(run, target, step),
 
     settle: (done, call) => settleClipUpdate(run, done, call),
+    // A conversion's new track, a move or a split changes what a path names.
+    // Read fresh: the call's lane view predates the writes.
+    locate: {
+      idAt: (path) => clipIdAtPath(path, "path").id,
+      whereIs: (id) => whereObjectIs(id),
+    },
   };
 }

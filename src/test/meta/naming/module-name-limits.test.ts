@@ -12,6 +12,7 @@ import {
 import {
   findSourceFiles,
   projectRoot,
+  repoPath,
 } from "#src/test/helpers/meta-test-helpers.ts";
 import {
   NOTHING_WORD_FILE_LIMITS,
@@ -34,7 +35,7 @@ const NOTHING_WORD_BASENAME = new RegExp(
 function findNothingWordFiles(tree: CommentTree): string[] {
   return findSourceFiles(path.join(projectRoot, tree), true)
     .filter((file) => NOTHING_WORD_BASENAME.test(path.basename(file)))
-    .map((file) => path.relative(projectRoot, file))
+    .map((file) => repoPath(file))
     .toSorted();
 }
 

@@ -14,7 +14,7 @@
  * reopening the Live Set between tests to reset state (no `once`).
  *
  * Uses: e2e-test-set. t8 "9-MIDI" is an empty MIDI track, t9 "Parent" a group.
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- track/ppal-take-lanes-update-track
  */

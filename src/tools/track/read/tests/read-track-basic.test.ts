@@ -120,6 +120,22 @@ describe("readOneTrack", () => {
     });
   });
 
+  it("reports a frozen track", () => {
+    setupTrackPathMappedMocks({
+      trackId: "track1",
+      objects: {
+        Track: createSoloedMidiTrackProperties({ arm: 0, is_frozen: 1 }),
+      },
+    });
+
+    expect(readOneTrack({ trackIndex: 0 })).toStrictEqual({
+      ...expectedSoloedMidiTrackResult(),
+      isFrozen: true,
+      playingSlotIndex: 2,
+      firedSlotIndex: 3,
+    });
+  });
+
   it("reports an all-digit track name as a string", () => {
     setupTrackPathMappedMocks({
       trackId: "track1",

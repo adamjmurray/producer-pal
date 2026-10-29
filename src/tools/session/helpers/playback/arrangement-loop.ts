@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { songPositionToBeats } from "#src/tools/shared/locator/song-position.ts";
 import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import { type ArrangementParams } from "./arrangement-playback.ts";
@@ -91,7 +91,7 @@ export function writeArrangementLoop(
   landed: (phrase: string) => void,
 ): boolean {
   if (write.refusal != null) {
-    console.warn(write.refusal);
+    emitWarning(write.refusal);
 
     return false;
   }

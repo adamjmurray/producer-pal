@@ -30,6 +30,9 @@ import {
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { setUpArrangementPair } from "../move-order/arrangement-pair-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { newClipReasons } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
+import { type ProcessSingleClipUpdateParams } from "#src/tools/clip/update/helpers/batch/process-single-clip-update.ts";
+import { writeClipProperties } from "#src/tools/clip/update/helpers/batch/write-clip-properties.ts";
 import { registerMoveToEmptySlot } from "../session/slot-move-fixtures.ts";
 
 vi.mock(
@@ -368,6 +371,41 @@ describe("updateClip - Live throws after an arrangement write landed", () => {
         detail: `arrangementLength didn't finish: ${REFUSED}`,
       },
       { id: "1000", path: "t0[2|1]" },
+    ]);
+  });
+});
+
+describe("writeClipProperties - what it says landed", () => {
+  it("names each meter property it writes as the time signature", () => {
+    setupMidiClipMock(
+      registerMockObject("123", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        type: "Clip",
+      }),
+      { length: 4 },
+    );
+
+    const journal = vi.fn();
+
+    writeClipProperties(
+      {
+        clip: LiveAPI.from("123"),
+        name: "A",
+        timeSignature: "3/4",
+        reasons: { ...newClipReasons(), journal },
+      } as unknown as ProcessSingleClipUpdateParams,
+      {
+        timeSigNumerator: 3,
+        timeSigDenominator: 4,
+        isLooping: true,
+        wasLooping: true,
+      },
+    );
+
+    expect(journal.mock.calls.map(([phrase]) => phrase)).toStrictEqual([
+      "name",
+      "time signature",
+      "time signature",
     ]);
   });
 });

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../../types.ts";
 
 /**
@@ -64,7 +64,7 @@ export function copyBarToBar(
 ): boolean {
   // Reject self-copy to prevent infinite loop
   if (sourceBar === destinationBar) {
-    console.warn(
+    emitWarning(
       `Cannot copy bar ${sourceBar} to itself (would cause infinite loop)`,
     );
 

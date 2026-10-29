@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// Per-request buffering for console.warn(), so a warning lands on the response of
+// Per-request buffering for emitWarning(), so a warning lands on the response of
 // the request that produced it.
 //
 // Warnings used to be buffered in the Max patch: a `list.group` fed by v8 outlet

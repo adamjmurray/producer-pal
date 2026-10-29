@@ -215,7 +215,7 @@ describe("writeSimplerSettings", () => {
     });
 
     expect(
-      await writeSimplerSettings(simpler, { pitchBendRange: 12 }, null),
+      await writeSimplerSettings(simpler, { pitchBendRange: 12 }, null, true),
     ).toStrictEqual({
       ok: true,
       result: { pitchBendRange: 12, notePitchBendRange: 48 },
@@ -228,6 +228,7 @@ describe("writeSimplerSettings", () => {
         simpler,
         { pitchBendRange: 12 },
         Date.now() - 1,
+        true,
       ),
     ).toStrictEqual({
       ok: false,
@@ -242,7 +243,7 @@ describe("writeSimplerSettings", () => {
     vi.mocked(requestNode).mockRejectedValue(new Error("channel closed"));
 
     expect(
-      await writeSimplerSettings(simpler, { pitchBendRange: 12 }, null),
+      await writeSimplerSettings(simpler, { pitchBendRange: 12 }, null, true),
     ).toStrictEqual({
       ok: false,
       reason:
@@ -258,7 +259,7 @@ describe("writeSimplerSettings", () => {
       result: { available: true, result: {} },
     });
 
-    await writeSimplerSettings(simpler, { pitchBendRange: 12 }, null);
+    await writeSimplerSettings(simpler, { pitchBendRange: 12 }, null, true);
 
     const [, args, waitMs] = vi.mocked(requestNode).mock.calls[0] ?? [];
 
@@ -282,7 +283,7 @@ describe("writeSimplerSettings", () => {
     });
 
     expect(
-      await writeSimplerSettings(simpler, { pitchBendRange: 12 }, null),
+      await writeSimplerSettings(simpler, { pitchBendRange: 12 }, null, true),
     ).toStrictEqual({
       ok: false,
       reason:
@@ -302,7 +303,7 @@ describe("writeSimplerSettings", () => {
     });
 
     expect(
-      await writeSimplerSettings(simpler, { pitchBendRange: 12 }, null),
+      await writeSimplerSettings(simpler, { pitchBendRange: 12 }, null, true),
     ).toStrictEqual({
       ok: false,
       reason: "the request expired before Live ran it; nothing changed",

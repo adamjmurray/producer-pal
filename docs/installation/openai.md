@@ -1,57 +1,17 @@
-# OpenAI
+---
+title: OpenAI
+search: false
+head:
+  - - meta
+    - http-equiv: refresh
+      content: 0; url=/installation/api-keys#openai
+  - - link
+    - rel: canonical
+      href: https://producer-pal.org/installation/api-keys
+---
 
-Use Producer Pal with OpenAI's GPT models through the built-in chat interface.
+# OpenAI setup moved
 
-::: warning Pay-as-you-go Pricing
+OpenAI setup for the built-in chat UI is now on the API Keys page.
 
-The OpenAI API uses pay-as-you-go pricing which can add up with long
-conversations. Monitor your usage at
-[platform.openai.com](https://platform.openai.com/usage). For flat-rate pricing,
-use the [ChatGPT App](./chatgpt-app) or [ChatGPT web app](./chatgpt-web) with an
-OpenAI subscription instead.
-
-:::
-
-## What You Need
-
-- An [OpenAI account](https://platform.openai.com) with API credits
-
-<!--@include: ../_partials/live-requirement.md-->
-
-## 1. Get an OpenAI API Key
-
-1. Go to [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
-2. Sign in with your OpenAI account
-3. Create a new API key
-4. Copy the key for the next step
-
-## 2. Install the Max for Live Device
-
-<!--@include: ../_partials/device-steps.md-->
-
-## 3. Open the Chat UI
-
-In the Producer Pal device, click "Open Chat UI".
-
-## 4. Configure OpenAI
-
-In the chat UI settings:
-
-- Provider: **OpenAI**
-- API Key: Paste your key
-- Model: `gpt-6.1-sol`
-
-Click "Save".
-
-## 5. Connect
-
-Click "Quick Connect" and say "connect to ableton".
-
-## Privacy Note
-
-Your API key is stored in browser local storage. Use a private browser session
-if that concerns you, or delete the key from settings after use.
-
-## Troubleshooting
-
-If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).
+**[Continue to the API Keys page &rarr;](/installation/api-keys#openai)**

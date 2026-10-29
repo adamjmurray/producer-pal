@@ -7,7 +7,7 @@
  * E2E tests for ppal-duplicate copying a clip over one that is already there:
  * into an occupied slot, and onto an arrangement clip.
  * Uses: e2e-test-set (t8 and t7 have no clips)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- e2e/mcp/operations/duplicate/ppal-duplicate-clip-slot-overwrite.test.ts
  */

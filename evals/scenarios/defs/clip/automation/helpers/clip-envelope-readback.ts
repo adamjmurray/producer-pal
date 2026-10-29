@@ -21,11 +21,12 @@ import {
   type EvalTurnResult,
   type ToolCall,
 } from "../../../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-export const TOOL_READ_CLIP = "ppal-read-clip";
-export const TOOL_UPDATE_CLIP = "ppal-update-clip";
-export const TOOL_DUPLICATE = "ppal-duplicate";
-export const TOOL_CREATE_CLIP = "ppal-create-clip";
+export const TOOL_READ_CLIP = TOOLS.readClip;
+export const TOOL_UPDATE_CLIP = TOOLS.updateClip;
+export const TOOL_DUPLICATE = TOOLS.duplicate;
+export const TOOL_CREATE_CLIP = TOOLS.createClip;
 
 /** The Lead clip: session slot, and its track's index. */
 export const LEAD_CLIP = "t3/s0";

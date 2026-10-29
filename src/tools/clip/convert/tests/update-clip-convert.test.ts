@@ -306,6 +306,28 @@ describe("updateClip - convert", () => {
     );
   });
 
+  it("looks for no clip on a new track that has no track index", async () => {
+    answerRoute(() => {
+      addTrack("200", 4);
+      registerMockObject("200", {
+        path: "live_set return_tracks 0",
+        type: "Track",
+        properties: { name: TRACK_NAME },
+      });
+    });
+
+    const result = await updateClip({ id: "123", convert: "drums" });
+
+    expect(convertedOf(result)).toStrictEqual({
+      track: expect.objectContaining({ id: "200", name: TRACK_NAME }),
+    });
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: "the new track has no MIDI clip where this clip was",
+      }),
+    );
+  });
+
   it("keeps the entry when no track ever appears, saying it was started", async () => {
     answerRoute();
 
@@ -359,6 +381,35 @@ describe("updateClip - convert", () => {
       detail:
         "2 new tracks appeared (t4, t5), so which one came from this clip is unclear",
     });
+  });
+
+  it("names a new track by its id when its path can't be spelled", async () => {
+    answerRoute(() => {
+      addTrack("200", 4);
+      addTrack("201", 5);
+      // A track that has since lost its path.
+      registerMockObject("201", { path: "", type: "Track" });
+    });
+
+    const result = await updateClip({ id: "123", convert: "drums" });
+
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      detail:
+        "2 new tracks appeared (t4, id 201), so which one came from this clip is unclear",
+    });
+  });
+
+  it("converts within the time the request has left", async () => {
+    answerRoute(() => addTrack("200", 4));
+
+    const result = await updateClip(
+      { id: "123", convert: "drums" },
+      { deadline: Date.now() + 60_000 },
+    );
+
+    expect(convertedOf(result)).toStrictEqual({ track: NEW_TRACK });
   });
 
   it("re-reads the clip's path when the new track lands ahead of it", async () => {
@@ -480,6 +531,33 @@ describe("updateClip - convert", () => {
     ]);
   });
 
+  it("keeps the path it reported for a track that has since lost its path", async () => {
+    setupAudioClipMock(mocks.clip456);
+
+    let calls = 0;
+
+    answerRoute(() => {
+      calls += 1;
+
+      if (calls === 1) {
+        addTrack("200", 4);
+
+        return;
+      }
+
+      addTrack("201", 5);
+      registerMockObject("200", { path: "", type: "Track" });
+    });
+
+    const result = await updateClip({ id: "123,456", convert: "drums" });
+
+    expect(convertedOf((result as ClipResult[])[0])?.track).toStrictEqual({
+      id: "200",
+      path: "t4",
+      name: TRACK_NAME,
+    });
+  });
+
   it("doesn't call a clip overwritten because a later conversion shifted its path", async () => {
     setupAudioClipMock(mocks.clip456);
 
@@ -553,6 +631,20 @@ describe("updateClip - convert", () => {
       );
     });
 
+    it("sends a caller without ppal-manage to the chat UI instead", async () => {
+      answerRoute(undefined, { available: false });
+
+      const refused = updateClip(
+        { id: "123", convert: "drums" },
+        { manageAvailable: false },
+      );
+
+      await expect(refused).rejects.toThrow(
+        /converting a clip needs the Producer Pal remote script.*Settings → Installation/,
+      );
+      await expect(refused).rejects.not.toThrow("ppal-manage");
+    });
+
     it("says so when the remote script is out of date", async () => {
       answerRoute(undefined, { available: false, outdated: OUTDATED });
 
@@ -612,6 +704,15 @@ describe("updateClip - convert", () => {
         expect(requestNode).not.toHaveBeenCalled();
       },
     );
+
+    it("refuses a clip that is in neither a slot nor the arrangement", async () => {
+      mocks.clip123.path = String(livePath.track(0).device(0));
+
+      await expect(updateClip({ id: "123", convert: "drums" })).rejects.toThrow(
+        /only a clip in a session slot or on a track's main/,
+      );
+      expect(requestNode).not.toHaveBeenCalled();
+    });
 
     it("refuses a clip in a take lane", async () => {
       setupArrangementAudioClipMock(

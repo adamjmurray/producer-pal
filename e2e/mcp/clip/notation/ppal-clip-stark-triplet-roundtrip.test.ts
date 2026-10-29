@@ -18,7 +18,7 @@
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track (pitched, no Drum Rack, so it
  * serializes back as a `melody:` line). Slots /0 and /1 are both 4/4.
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-clip-stark-triplet-roundtrip
  */

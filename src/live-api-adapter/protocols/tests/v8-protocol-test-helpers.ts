@@ -48,6 +48,23 @@ export function latestOutletPayload<T>(message: string): T {
 }
 
 /**
+ * Read the most recent request sent to a plug-in wrapper over `messnamed`.
+ *
+ * @returns The request id and parsed payload
+ */
+export function latestWrapperRequest(): {
+  requestId: string;
+  payload: Record<string, unknown>;
+} {
+  const call = vi.mocked(globalThis.messnamed).mock.calls.at(-1) as string[];
+
+  return {
+    requestId: call[2] as string,
+    payload: JSON.parse(call[3] as string) as Record<string, unknown>,
+  };
+}
+
+/**
  * Install a non-auto-firing Task on globalThis that records each schedule(ms)
  * call into the supplied array. Returns a restore function the caller should
  * invoke in a finally block.

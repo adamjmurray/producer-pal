@@ -4,9 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { useState } from "preact/hooks";
-import { useDeviceInstall } from "#webui/hooks/settings/installation/use-device-install";
-import { useDeviceSwap } from "#webui/hooks/settings/installation/use-device-swap";
-import { useRemoteScript } from "#webui/hooks/settings/installation/use-remote-script";
+import { type UseInstallationReturn } from "#webui/hooks/settings/installation/use-installation";
 import { DeviceSection } from "./DeviceSection";
 import { InstallationOptions } from "./InstallationOptions";
 import { RemoteScriptSection } from "./RemoteScriptSection";
@@ -14,13 +12,20 @@ import { UserLibraryField } from "./UserLibraryField";
 
 /**
  * Installation tab: puts the Producer Pal device and its remote script in
- * Live's User Library. Both installs use the one User Library path at the top.
+ * Live's User Library, in install order: the remote script loads the device
+ * from there. Both installs use the one User Library path above them.
+ * The state is owned by the settings screen, which also reads it for the tab
+ * button's attention dot.
+ * @param {object} props - Component props
+ * @param {UseInstallationReturn} props.installation - The device and remote script state
  * @returns {JSX.Element} Installation tab component
  */
-export function InstallationTab() {
-  const remote = useRemoteScript();
-  const device = useDeviceInstall();
-  const swap = useDeviceSwap(device.refresh);
+export function InstallationTab({
+  installation,
+}: {
+  installation: UseInstallationReturn;
+}) {
+  const { remote, device, swap } = installation;
   // Either status may be the one that finds it; a failed read has none.
   const detected =
     remote.status?.userLibrary ?? device.status?.userLibrary ?? null;
@@ -30,7 +35,7 @@ export function InstallationTab() {
   const path = typed ?? detected ?? "";
 
   return (
-    <div className="space-y-6 text-sm" data-testid="installation-tab">
+    <div className="space-y-3.5 text-sm" data-testid="installation-tab">
       <UserLibraryField detected={detected} value={path} onInput={setTyped} />
       <DeviceSection
         device={device}

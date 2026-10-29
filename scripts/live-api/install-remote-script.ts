@@ -7,7 +7,7 @@
 /**
  * Copy the Producer_Pal remote script into Live's User Library.
  *
- * Usage: npm run remote-script:install [-- --probe [--reload]]
+ * Usage: npm run install:remote-script [-- --probe [--reload]]
  *
  * --probe also adds the dev-only /probe route, which runs posted Python in
  * Live (see scripts/live-api/python-probe/), and the dev-only /reload route.
@@ -19,13 +19,15 @@
  * still needs a restart, as does a change to a bootstrap file
  * (see remote-script/README.md).
  *
- * Reads ABLETON_USER_LIBRARY from .env (see .env.example). The device installs
- * the same files from its own bundle; this is the dev shortcut. Live only scans
- * Remote Scripts at startup, so without --reload, restart Live afterwards.
+ * Uses ABLETON_USER_LIBRARY from .env if set (see .env.example), else the User
+ * Library Live is using. The device installs the same files from its own
+ * bundle; this is the dev shortcut. Live only scans Remote Scripts at startup,
+ * so without --reload, restart Live afterwards.
  */
 
 import { installRemoteScript } from "#src/mcp-server/rpc/remote-script/install/remote-script-install.ts";
-import { UserLibraryFolderError } from "#src/mcp-server/rpc/remote-script/user-library/user-library-folder.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
+import { resolveInstallLibraryOrExit } from "./install/helpers/install-library.ts";
 import { addReloadRoute } from "./hot-reload/add-reload-route.ts";
 import {
   describeReload,
@@ -33,17 +35,8 @@ import {
 } from "./hot-reload/reload-remote-script.ts";
 import { addProbeRoute } from "./python-probe/add-probe-route.ts";
 
-// installRemoteScript expands a leading "~" and checks the folder.
-const userLibrary = process.env.ABLETON_USER_LIBRARY;
 const withProbe = process.argv.includes("--probe");
 const withReload = process.argv.includes("--reload");
-
-if (!userLibrary) {
-  console.error(
-    "Set ABLETON_USER_LIBRARY in .env to your Ableton User Library folder (see .env.example).",
-  );
-  process.exit(1);
-}
 
 if (withReload && !withProbe) {
   console.error(
@@ -52,10 +45,11 @@ if (withReload && !withProbe) {
   process.exit(1);
 }
 
+const userLibrary = await resolveInstallLibraryOrExit();
 let installedPath: string;
 
 try {
-  const { path } = installRemoteScript(userLibrary);
+  const { path } = installRemoteScript(userLibrary.path);
 
   installedPath = path;
   console.log(`Installed to ${path}`);
@@ -66,11 +60,7 @@ try {
     console.log("Added the dev-only /probe and /reload routes.");
   }
 } catch (error) {
-  console.error(
-    error instanceof UserLibraryFolderError
-      ? `ABLETON_USER_LIBRARY: ${error.message}`
-      : String(error),
-  );
+  console.error(errorMessage(error));
   process.exit(1);
 }
 

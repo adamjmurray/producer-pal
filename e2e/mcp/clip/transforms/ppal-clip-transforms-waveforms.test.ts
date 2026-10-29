@@ -7,7 +7,7 @@
  * E2E tests for waveform phase behavior in transforms.
  * Verifies that each waveform produces correct values at key phase points.
  * Uses: e2e-test-set - t8 is empty MIDI track
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-clip-transforms-waveforms
  */

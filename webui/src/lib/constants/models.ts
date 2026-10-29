@@ -144,9 +144,10 @@ export const GEMINI_MODELS: ModelPresetItem[] = [
 ];
 
 export const OPENAI_MODELS: ModelPresetItem[] = [
+  { value: "gpt-6.1-terra", label: "GPT-6.1 Terra" },
   { value: "gpt-6.1-sol", label: "GPT-6.1 Sol" },
-  { value: "gpt-6-luna", label: "GPT-6 Luna" },
   { value: "gpt-6-astra", label: "GPT-6 Astra" },
+  { value: "gpt-6-luna", label: "GPT-6 Luna" },
   {
     value: OPENAI_REALTIME_MODEL,
     label: "GPT Realtime 2.1 (Voice)",
@@ -157,8 +158,7 @@ export const OPENAI_MODELS: ModelPresetItem[] = [
 
 export const MISTRAL_MODELS = [
   { value: "mistral-medium-latest", label: "Mistral Medium" },
-  { value: "magistral-medium-2509", label: "Magistral Medium" },
-  { value: "mistral-large-latest", label: "Mistral Large" },
+  { value: "mistral-large-4", label: "Mistral Large 4" },
   { value: "devstral-latest", label: "Devstral" },
   OTHER_MODEL_OPTION,
 ];
@@ -173,7 +173,17 @@ export const OPENROUTER_MODELS = [
     value: "anthropic/claude-opus-5.5",
     label: "[Paid] Anthropic Claude Opus 5.5",
   },
+  {
+    value: "anthropic/claude-fable-5.1",
+    label: "[Paid] Anthropic Claude Fable 5.1",
+  },
+  {
+    value: "anthropic/claude-haiku-5.5",
+    label: "[Paid] Anthropic Claude Haiku 5.5",
+  },
+  { value: "openai/gpt-6.1-terra", label: "[Paid] OpenAI GPT-6.1 Terra" },
   { value: "openai/gpt-6.1-sol", label: "[Paid] OpenAI GPT-6.1 Sol" },
+  { value: "openai/gpt-6-astra", label: "[Paid] OpenAI GPT-6 Astra" },
   { value: "openai/gpt-6-luna", label: "[Paid] OpenAI GPT-6 Luna" },
   {
     value: "google/gemini-3.8-flash",
@@ -183,12 +193,12 @@ export const OPENROUTER_MODELS = [
     value: "google/gemini-4-argon",
     label: "[Paid] Google Gemini 4 Argon",
   },
-  { value: "qwen/qwen3.8-max", label: "[Paid] Qwen 3.8 Max" },
+  { value: "qwen/qwen3.8-max-prime", label: "[Paid] Qwen 3.8 Max Prime" },
   {
-    value: "deepseek/deepseek-v4.1-flash",
-    label: "[Paid] DeepSeek V4.1 Flash",
+    value: "deepseek/deepseek-v4.1-flash-1017",
+    label: "[Paid] DeepSeek V4.1 Flash (1017)",
   },
-  { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
+  { value: "mistralai/mistral-large-4-0", label: "[Paid] Mistral Large 4" },
   { value: "moonshotai/kimi-k3", label: "[Paid] Moonshot AI Kimi K3" },
   { value: "z-ai/glm-5.3", label: "[Paid] Z.ai GLM 5.3" },
   // Free models
@@ -197,8 +207,8 @@ export const OPENROUTER_MODELS = [
     label: "[Free] Google Gemma 4 31B",
   },
   {
-    value: "nvidia/nemotron-3-super-120b-a12b:free",
-    label: "[Free] Nvidia Nemotron 3 Super 120B",
+    value: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    label: "[Free] Nvidia Nemotron 3 Ultra 550B",
   },
   {
     value: "poolside/laguna-xs-2.1:free",
@@ -218,13 +228,20 @@ export const VERCEL_MODELS = [
     label: "Anthropic Claude Sonnet 5.5",
   },
   { value: "anthropic/claude-opus-5.5", label: "Anthropic Claude Opus 5.5" },
+  { value: "anthropic/claude-fable-5.1", label: "Anthropic Claude Fable 5.1" },
+  { value: "anthropic/claude-haiku-5.5", label: "Anthropic Claude Haiku 5.5" },
+  { value: "openai/gpt-6.1-terra", label: "OpenAI GPT-6.1 Terra" },
   { value: "openai/gpt-6.1-sol", label: "OpenAI GPT-6.1 Sol" },
+  { value: "openai/gpt-6-astra", label: "OpenAI GPT-6 Astra" },
   { value: "openai/gpt-6-luna", label: "OpenAI GPT-6 Luna" },
   { value: "google/gemini-3.8-flash", label: "Google Gemini 3.8 Flash" },
   { value: "google/gemini-4-argon", label: "Google Gemini 4 Argon" },
-  { value: "alibaba/qwen3.8-max", label: "Qwen 3.8 Max" },
-  { value: "deepseek/deepseek-v4.1-flash", label: "DeepSeek V4.1 Flash" },
-  { value: "mistral/mistral-large-3", label: "Mistral Large" },
+  { value: "alibaba/qwen3.8-max-prime", label: "Qwen 3.8 Max Prime" },
+  {
+    value: "deepseek/deepseek-v4.1-flash-1017",
+    label: "DeepSeek V4.1 Flash (1017)",
+  },
+  { value: "mistral/mistral-large-4", label: "Mistral Large 4" },
   { value: "moonshotai/kimi-k3", label: "Moonshot AI Kimi K3" },
   { value: "zai/glm-5.3", label: "Z.ai GLM 5.3" },
   OTHER_MODEL_OPTION,

@@ -13,6 +13,7 @@ import {
 import {
   findSourceFiles,
   projectRoot,
+  repoPath,
 } from "#src/test/helpers/meta-test-helpers.ts";
 import { ADAPTERS } from "#src/tools/shared/tests/write-conformance/write-conformance-adapters.ts";
 import {
@@ -95,7 +96,7 @@ describe("write tools use the pipeline", () => {
     const violations: string[] = [];
 
     for (const file of findSourceFiles(path.join(projectRoot, "src"))) {
-      const rel = path.relative(projectRoot, file);
+      const rel = repoPath(file);
 
       if (rel.startsWith(`${WRITE_PIPELINE}/`)) {
         continue;

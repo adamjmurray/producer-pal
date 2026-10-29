@@ -143,8 +143,7 @@ export async function setConfig(patch, options = {}) {
   return res.json();
 }
 
-const REMOTE_SCRIPT_REPO =
-  "https://github.com/adamjmurray/producer-pal/tree/main/remote-script";
+const REMOTE_SCRIPT_GUIDE = "https://producer-pal.org/guide/remote-script";
 const ADD_WAIT_MS = 30_000;
 // Live can re-create the device right after a load, so one answer can be the
 // old device's last. Two in a row counts as up.
@@ -219,7 +218,7 @@ export async function addToLiveSet(options = {}) {
   const remoteScriptUrl = await findRemoteScript();
   if (remoteScriptUrl == null) {
     throw new Error(
-      `The Producer Pal remote script isn't answering on port ${remoteScriptPorts().join(" or ")}. Is Live running? Install the script and select it as a Control Surface (Live Settings → Tempo & MIDI): ${REMOTE_SCRIPT_REPO}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`,
+      `The Producer Pal remote script isn't answering on port ${remoteScriptPorts().join(" or ")}. Is Live running? To install it, add the Producer Pal device to a track and click "Finish installation…" on it, click "Install" next to the remote script, then restart Live and select Producer Pal as a Control Surface (Live Settings → Tempo & MIDI): ${REMOTE_SCRIPT_GUIDE}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`,
     );
   }
   let res;

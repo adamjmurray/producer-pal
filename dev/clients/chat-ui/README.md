@@ -10,10 +10,9 @@ browser.
 
 **Why not embed in Max for Live?**
 
-Initially, the UI was designed to be embedded using Max's jweb (webview) object.
-However, a longstanding macOS issue makes this impractical: keypresses in jweb
-are passed through to Ableton Live. For example, typing space in a text input
-would also trigger Live's play/pause. This is a
+Max's jweb (webview) object is impractical because of a longstanding macOS
+issue: keypresses in jweb are passed through to Ableton Live. For example,
+typing space in a text input would also trigger Live's play/pause. This is a
 [known issue](https://cycling74.com/forums/any-way-to-prevent-max-jweb-object-from-passing-all-keyboard-input-through-to-live)
 with no timeline for a fix. The browser-based approach provides a better user
 experience.
@@ -84,7 +83,7 @@ webui/
     │   │   ├── client.ts         # Wraps streamText(), processes events
     │   │   ├── formatter.ts      # Formats stream data for UI
     │   │   ├── mcp-tools.ts      # Converts MCP tools to AI SDK format
-    │   │   ├── provider-factories.ts # Creates provider model instances
+    │   │   ├── provider/         # Provider model factories, thinking options
     │   │   ├── streaming/        # Stream part handlers, error signal
     │   │   └── subagent/         # spawn tool, briefing, session, rate limit
     │   └── helpers/              # Shared chat utilities
@@ -96,7 +95,10 @@ webui/
 **App.tsx** - Root component:
 
 - Screen Management
-  - Shows SettingsScreen if no API key saved
+  - Opens Settings on the Connection tab on a visit before chat is set up (a
+    `?settings=<tab>` link wins); it stays closable. Chat is "set up" once a
+    Save leaves the provider usable (an API key, or a local provider), and until
+    then the empty chat offers "Set up chat" and the composer is disabled
   - Otherwise routes by the selected model: **VoiceApp** for a realtime model
     (`isRealtimeSelection`), **ChatApp** otherwise — both get the same shared
     mode props and settings modal
@@ -201,7 +203,17 @@ every turn. A message may be images with no text at all, so both the send path
 and the composer treat attachments as content. A paste with both images and text
 lets the editor paste the text. Excel, Word and OneNote add a picture of the
 copied content, so when the clipboard's HTML holds text, the picture is skipped;
-HTML that is only an image (a browser's Copy Image) still attaches it.
+HTML that is only an image (a browser's Copy Image) still attaches it. Text that
+only labels the image (the file names a Finder copy adds, or a lone image URL
+from Copy Image) is dropped, not pasted
+(`components/chat/controls/composer/stray-paste-text.ts`).
+
+The composer belongs to its conversation: `ChatScreen` keys it on
+`conversationEpoch`, which `useChatModeState` bumps each time the conversation
+is torn down (switch, New, delete, back/forward). Switching clears the draft and
+the attached images, and an image still being read is dropped when it finishes.
+Drafts are not kept per conversation. The active id can't be the key: a first
+send or a fork mints a new one without the user leaving.
 
 Anything over 1568 px on its longest side is scaled down to that in the browser
 (canvas redraw, re-encoded as the same type) before it's read to base64. GIFs

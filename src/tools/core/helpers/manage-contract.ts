@@ -10,7 +10,7 @@
 import { type RouteReply } from "#src/tools/shared/remote-script/remote-script-route-contract.ts";
 
 export const MANAGE_ACTIONS = [
-  "install-remote-script",
+  "install-producer-pal",
   "add-producer-pal",
   "update-producer-pal",
   "undo",
@@ -18,6 +18,27 @@ export const MANAGE_ACTIONS = [
 ] as const;
 
 export type ManageAction = (typeof MANAGE_ACTIONS)[number];
+
+/**
+ * Retired action names that still work, mapped to the action they mean. A
+ * connector and a device can be different versions, so one may still send or
+ * advertise a name the other has retired. The schema doesn't publish these.
+ */
+export const MANAGE_ACTION_ALIASES = {
+  "install-remote-script": "install-producer-pal",
+} as const satisfies Record<string, ManageAction>;
+
+/**
+ * @param action - The action as sent
+ * @returns The action it means: a retired name becomes its replacement, and
+ *   anything else comes back as it was
+ */
+export function canonicalManageAction(action: unknown): unknown {
+  return typeof action === "string" &&
+    Object.keys(MANAGE_ACTION_ALIASES).includes(action)
+    ? MANAGE_ACTION_ALIASES[action as keyof typeof MANAGE_ACTION_ALIASES]
+    : action;
+}
 
 /** The actions that step through Live's undo history. */
 export type HistoryAction = "undo" | "redo";
@@ -27,7 +48,7 @@ export const MAX_STEPS = 50;
 
 /** The Node routes V8 calls for ppal-manage. */
 export const MANAGE_ROUTES = {
-  install: "manage.installRemoteScript",
+  install: "manage.installProducerPal",
   undo: "remoteScript.undo.undo",
   redo: "remoteScript.undo.redo",
 } as const;
@@ -45,43 +66,34 @@ export interface InstallRequest {
 }
 
 /**
+ * What became of one file the install puts in the User Library.
+ * - `installed`: it wasn't there. `updated`: replaced an older copy.
+ * - `current`: already the same. `kept`: a newer or different copy was left.
+ * - `ok: false`: couldn't be installed; `detail` says why and what it left.
+ */
+export type InstallPart =
+  | {
+      ok?: undefined;
+      status: "installed" | "updated" | "current" | "kept";
+      path: string;
+      version?: string;
+      detail?: string;
+    }
+  | { ok: false; path?: string; detail: string };
+
+/**
  * What the install route answers. `error` is worded for the model and says what
- * state the install was left in.
+ * state the install was left in. `ran: false` means neither file was tried.
  */
 export type InstallReply =
-  | { installed: true; version: string; path: string }
-  | { installed: false; error: string };
+  | { ran: false; error: string }
+  | { ran: true; remoteScript: InstallPart; device: InstallPart };
 
 /** What an install tells the caller, and what is left for the user to do. */
 export interface ManageInstallResult {
-  version: string;
-  path: string;
+  remoteScript: InstallPart;
+  device: InstallPart;
   nextSteps: string;
-}
-
-/**
- * Live only reads Remote Scripts at startup, so the restart comes first: until
- * then a first install isn't in the Control Surface list to choose.
- */
-export const INSTALL_NEXT_STEPS =
-  'Tell the user to finish in Live: restart Live, then, on first install, choose "Producer Pal" as a Control Surface in Settings → Tempo & MIDI.';
-
-/**
- * The result of an install the route answered.
- * @param reply - What the install route answered
- * @returns The version and path installed, and what the user does next
- * @throws Error with the route's own wording when the install failed
- */
-export function manageInstallResult(reply: InstallReply): ManageInstallResult {
-  if (!reply.installed) {
-    throw new Error(reply.error);
-  }
-
-  return {
-    version: reply.version,
-    path: reply.path,
-    nextSteps: INSTALL_NEXT_STEPS,
-  };
 }
 
 /**

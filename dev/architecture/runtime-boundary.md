@@ -22,10 +22,9 @@ tool handler that has no way to read the files. The webui, which also has no
 filesystem, round-trips through Node REST routes (`config-markdown-route.ts` and
 friends) for the same reason.
 
-This is why the built-in skills blob — historically assembled in the V8
-`connect()` handler — is assembled **Node-side** once overrides enter the
-picture: the override files are only readable from Node, so `buildSkills` runs
-where the filesystem lives and the result is injected into `ppal-connect`.
+So the built-in skills blob is assembled **Node-side**: the override files are
+only readable from Node, so `buildSkills` runs where the filesystem lives and
+the result is injected into `ppal-connect`.
 
 ## The embedded remote script
 
@@ -126,7 +125,10 @@ User Library copy through the remote script's `/replace-producer-pal`, the route
 the portal's update uses (`requestWithBrowserRetry`, `mayHaveSwapped`). The
 server refuses first, with a 409 and a plain reason (`device-swap-check.ts`): no
 copy, an older copy, already running from the copy, or no new-enough remote
-script. `GET /device-install` carries the same check as `swap`.
+script. `GET /device-install` carries the same check as `swap`. It is polled
+every few seconds during a swap, so the device files (~10 MB each) are read once
+and recalled while their size, modified time and identity are unchanged
+(`device-file-facts.ts`); an install here drops what it wrote.
 
 Live unloads the old device inside the swap, so the server that sent the request
 usually dies before the remote script answers. A dropped connection is therefore
@@ -215,7 +217,7 @@ device bundled" mode. See `dev/process/releasing/build-and-pre-release.md`.
 Notation is the one axis that crosses the runtime boundary. The other two are
 settled entirely Node-side, but notation also decides how V8 parses and formats
 clip notes (`ToolContext.notation`), and V8 holds it as a session global with no
-per-request setter. So `withNotationOverride`
+per-request setter. So `withDefaultOverrides`
 (`src/mcp-server/helpers/request-overrides/`) wraps `callLiveApi` and puts the
 resolved value in the same `RequestOverrides` blob as
 `timeoutMs`/`compactOutput` — V8's `buildRequestContext` spreads it onto the

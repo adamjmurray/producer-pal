@@ -9,7 +9,7 @@ import {
   type EnvelopeLine,
   parseEnvelopeLines,
 } from "#src/tools/clip/envelopes/envelope-lines.ts";
-import { readSplitPoints } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
+import { readSplitPoints } from "#src/tools/shared/arrangement/splitting/arrangement-splitting-params.ts";
 import {
   ARRANGEMENT_SPLIT_MODE,
   LEGACY_SPLIT_MODE,

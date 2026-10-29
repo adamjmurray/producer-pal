@@ -113,3 +113,33 @@ describe("small model mode schema filtering", () => {
     expect(includeValues).toContain("sample");
   });
 });
+
+// The SDK stamps a `$schema` on every tool and `.loose()` adds an empty
+// top-level `additionalProperties`; the server drops both because providers
+// bill for them. Checked in both modes since the schemas differ.
+describe("tools/list schema trimming", () => {
+  it("leaves $schema and additionalProperties off every tool in small model mode", () => {
+    expect(tools.length).toBeGreaterThan(0);
+
+    for (const tool of tools) {
+      expect(tool.inputSchema).not.toHaveProperty("$schema");
+      expect(tool.inputSchema).not.toHaveProperty("additionalProperties");
+    }
+  });
+
+  it("leaves $schema and additionalProperties off every tool in default mode", async () => {
+    await setConfig({ smallModelMode: false });
+
+    const { client: defaultClient } = await connectMcp(MCP_URL);
+    const result = await defaultClient.listTools();
+
+    await defaultClient.close();
+
+    expect(result.tools.length).toBeGreaterThan(tools.length);
+
+    for (const tool of result.tools) {
+      expect(tool.inputSchema).not.toHaveProperty("$schema");
+      expect(tool.inputSchema).not.toHaveProperty("additionalProperties");
+    }
+  });
+});

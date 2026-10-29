@@ -21,6 +21,12 @@ export interface TransformOutcome {
   original: ReadonlyMap<NoteEvent, NoteEvent>;
   /** For each note an op made, the starting notes it came from */
   roots: ReadonlyMap<NoteEvent, ReadonlySet<NoteEvent>>;
+  /** Every note the transform's selectors picked, plus any an op made */
+  matched: ReadonlySet<NoteEvent>;
+  /** False when every statement was skipped (audio-only parameters on a MIDI clip) */
+  selected: boolean;
+  /** True when a selection, expression or note op failed or was skipped */
+  failed: boolean;
 }
 
 /** What a result entry reports about a transform. */
@@ -56,6 +62,9 @@ export function combineOutcomes(
   const roots = new Map<NoteEvent, ReadonlySet<NoteEvent>>();
   const gone = new Set<NoteEvent>();
   const touched = new Set<NoteEvent>();
+  const matched = new Set<NoteEvent>();
+  let selected = false;
+  let failed = false;
   const rootsOf = (note: NoteEvent): ReadonlySet<NoteEvent> =>
     roots.get(note) ?? new Set([note]);
 
@@ -86,6 +95,13 @@ export function combineOutcomes(
     for (const note of [...outcome.changed, ...outcome.roots.keys()]) {
       touched.add(note);
     }
+
+    for (const note of outcome.matched) {
+      matched.add(note);
+    }
+
+    selected ||= outcome.selected;
+    failed ||= outcome.failed;
   }
 
   const changed = new Set<NoteEvent>();
@@ -98,7 +114,7 @@ export function combineOutcomes(
 
   const deleted = [...gone].map((note) => original.get(note) as NoteEvent);
 
-  return { changed, deleted, original, roots };
+  return { changed, deleted, original, roots, matched, selected, failed };
 }
 
 /**

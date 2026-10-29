@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { UPDATE_PORTAL_ADVICE } from "#src/shared/config.ts";
 import { UserLibraryFolderError } from "#src/mcp-server/rpc/remote-script/user-library/user-library-folder.ts";
 import { ASK_FOR_LIBRARY } from "#src/mcp-server/rpc/remote-script/install/remote-script-install-reply.ts";
-import { NOT_RUNNING, RUNNING } from "./offline-test-helpers.ts";
+import { RUNNING } from "./offline-test-helpers.ts";
 import {
   addProducerPalCall,
   connectsAfter,
@@ -67,20 +67,6 @@ describe("add-producer-pal before anything changes", () => {
     expect(deps.ping).not.toHaveBeenCalled();
   });
 
-  it("says the remote script is needed, and how to get it", async () => {
-    const deps = happyDeps({ ping: () => Promise.resolve(NOT_RUNNING) });
-    const response = await addProducerPalCall(deps);
-    const text = responseText(response);
-
-    expect(response.isError).toBe(true);
-    expect(text).toContain("remote script isn't running");
-    expect(text).toContain('ppal-manage action "install-remote-script"');
-    expect(text).toContain("restart Live");
-    expect(text).toContain("Control Surface");
-    expect(deps.installDevice).not.toHaveBeenCalled();
-    expect(deps.request).not.toHaveBeenCalled();
-  });
-
   it("gives the install advice for a remote script that is too old", async () => {
     const deps = happyDeps({
       ping: () => Promise.resolve({ ...RUNNING, scriptVersion: "1.0.0" }),
@@ -90,7 +76,8 @@ describe("add-producer-pal before anything changes", () => {
 
     expect(response.isError).toBe(true);
     expect(text).toContain("out of date (running 1.0.0");
-    expect(text).toContain('ppal-manage action "install-remote-script"');
+    expect(text).toContain('ppal-manage action "install-producer-pal"');
+    expect(text).not.toContain("chat UI");
     expect(text).toContain(
       "Nothing was added. Call add-producer-pal again after the user restarts Live.",
     );
@@ -475,5 +462,23 @@ describe("add-producer-pal's wait for the server", () => {
     );
 
     expect(responseText(slow)).toContain("added to a new MIDI track but");
+  });
+
+  it.each([
+    ["an index that isn't a number", { index: "3", name: "3-MIDI" }],
+    ["a name that isn't text", { index: 3, name: 3 }],
+  ])("names no track when the answer has %s", async (_, track) => {
+    const deps = happyDeps({
+      request: requestAnswers({
+        available: true,
+        status: 200,
+        body: { track },
+      }),
+    });
+    const response = await addProducerPalCall(deps);
+
+    expect(responseText(response)).toBe(
+      '{device:"installed in the User Library",nextSteps:"Call ppal-connect next."}',
+    );
   });
 });

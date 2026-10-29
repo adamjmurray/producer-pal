@@ -14,6 +14,7 @@ import { installStubs } from "../ui-test-helpers";
 import {
   type InstallStub,
   openInstallationTab,
+  loadSettings,
   setupSettingsTest,
   stubStatusAndInstall,
 } from "./settings-test-helpers";
@@ -79,7 +80,7 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
   test("installs this device into the detected User Library", async ({
     page,
   }) => {
-    await setupSettingsTest(page);
+    await installStubs(page);
     const posted = await stubDevice(page, status(), {
       status: 200,
       body: {
@@ -90,6 +91,7 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
       after: { state: "same", installedVersion: "1.2.0" },
     });
 
+    await loadSettings(page);
     await openInstallationTab(page);
 
     await expect(page.getByTestId("device-status")).toHaveText(
@@ -105,31 +107,34 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
     await expect(page.getByTestId("device-installed-path")).toHaveText(
       `Installed the device. (${DEVICE_PATH})`,
     );
+    // The new version isn't running until the device is swapped.
+    await expect(page.getByText(/new chat/i)).toBeHidden();
     await expect(page.getByTestId("device-status")).toHaveText(
-      "The copy in your User Library is this device (v1.2.0)",
+      "In your User Library (v1.2.0)",
     );
     await expect(page.getByTestId("device-install")).toBeHidden();
     expect(posted).toStrictEqual([{ userLibrary: USER_LIBRARY, force: false }]);
   });
 
   test("offers Update for an older copy", async ({ page }) => {
-    await setupSettingsTest(page);
+    await installStubs(page);
     await stubDevice(
       page,
       status({ state: "installed-older", installedVersion: "1.1.0" }),
     );
+    await loadSettings(page);
     await openInstallationTab(page);
 
     await expect(page.getByTestId("device-status")).toHaveText(
-      "Update available: your User Library has v1.1.0, this device is v1.2.0",
+      "Update available: v1.1.0 → v1.2.0",
     );
-    await expect(page.getByTestId("device-install")).toHaveText("Update");
+    await expect(page.getByTestId("device-install")).toHaveText("Update copy");
   });
 
   test("asks before replacing a newer copy, and says so to the server", async ({
     page,
   }) => {
-    await setupSettingsTest(page);
+    await installStubs(page);
     const posted = await stubDevice(
       page,
       status({ state: "installed-newer", installedVersion: "1.3.0" }),
@@ -143,6 +148,7 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
       },
     );
 
+    await loadSettings(page);
     await openInstallationTab(page);
 
     await expect(page.getByTestId("device-install")).toHaveText(
@@ -158,28 +164,29 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
   });
 
   test("won't copy a development device", async ({ page }) => {
-    await setupSettingsTest(page);
+    await installStubs(page);
     await stubDevice(
       page,
       status({ problem: "not-frozen", state: null, path: null }),
     );
+    await loadSettings(page);
     await openInstallationTab(page);
 
-    await expect(page.getByTestId("device-status")).toContainText(
-      "development device",
+    await expect(page.getByTestId("device-status")).toHaveText(
+      "Development build: freeze it to copy.",
     );
-    await expect(page.getByTestId("device-status")).toContainText(
-      "Freeze it first",
-    );
-    await expect(page.getByTestId("device-install")).toBeHidden();
+    await expect(page.getByTestId("device-install")).toBeDisabled();
+    // Nothing to swap to until it is frozen and copied.
+    await expect(page.getByTestId("device-swap")).toBeHidden();
   });
 
   test("shows the server's reason when the install fails", async ({ page }) => {
-    await setupSettingsTest(page);
+    await installStubs(page);
     await stubDevice(page, status(), {
       status: 500,
       body: { error: "Couldn't install the device. ENOSPC: copy" },
     });
+    await loadSettings(page);
     await openInstallationTab(page);
 
     await page.getByTestId("device-install").click();
@@ -258,9 +265,10 @@ test.describe("Settings — installation: device swap (stubbed backend)", () => 
   test("offers the swap, then waits for the new device and says to save the Set", async ({
     page,
   }) => {
-    await setupSettingsTest(page);
+    await installStubs(page);
     const posted = await stubSwap(page, SWAPPABLE);
 
+    await loadSettings(page);
     await openInstallationTab(page);
 
     await expect(page.getByTestId("device-swap")).toBeEnabled();
@@ -274,17 +282,23 @@ test.describe("Settings — installation: device swap (stubbed backend)", () => 
       "Save your Live Set",
       { timeout: 15_000 },
     );
+    await expect(page.getByTestId("device-swap-new-chat-hint")).toContainText(
+      "Start a new chat",
+    );
     expect(posted).toStrictEqual([{ userLibrary: USER_LIBRARY }]);
   });
 
   test("shows why the swap isn't offered", async ({ page }) => {
-    await setupSettingsTest(page);
+    await installStubs(page);
     await stubDevice(
       page,
       status({
+        state: "same",
+        installedVersion: "1.2.0",
         swap: { allowed: false, reason: "The remote script isn't running." },
       }),
     );
+    await loadSettings(page);
     await openInstallationTab(page);
 
     await expect(page.getByTestId("device-swap")).toBeDisabled();
@@ -296,22 +310,24 @@ test.describe("Settings — installation: device swap (stubbed backend)", () => 
   test("offers nothing once the device is the User Library copy", async ({
     page,
   }) => {
-    await setupSettingsTest(page);
+    await installStubs(page);
     await stubDevice(page, { ...SWAPPABLE, inUserLibrary: true });
+    await loadSettings(page);
     await openInstallationTab(page);
 
     await expect(page.getByTestId("device-status")).toBeVisible();
-    await expect(page.getByTestId("device-swap-section")).toBeHidden();
+    await expect(page.getByTestId("device-swap")).toBeHidden();
   });
 
   test("shows the server's reason and keeps the button when the swap is refused", async ({
     page,
   }) => {
-    await setupSettingsTest(page);
+    await installStubs(page);
     await stubSwap(page, SWAPPABLE, {
       status: 409,
       body: { error: "Producer Pal isn't in this Live Set" },
     });
+    await loadSettings(page);
     await openInstallationTab(page);
 
     await page.getByTestId("device-swap").click();
@@ -323,11 +339,55 @@ test.describe("Settings — installation: device swap (stubbed backend)", () => 
   });
 });
 
+test.describe("Settings — installation: attention dot (stubbed backend)", () => {
+  test("marks the Installation tab while the copy is missing, on any tab, and clears once it lands", async ({
+    page,
+  }) => {
+    await installStubs(page);
+    await stubDevice(page, status(), {
+      status: 200,
+      body: {
+        outcome: "installed",
+        path: DEVICE_PATH,
+        detail: "Installed the device.",
+      },
+      after: { state: "same", installedVersion: "1.2.0" },
+    });
+    await loadSettings(page);
+
+    // Still on the first tab: the dot is on the tab button, not the tab.
+    const dot = page.getByRole("img", { name: "needs attention" });
+
+    await expect(dot).toBeVisible();
+
+    await openInstallationTab(page);
+    await page.getByTestId("device-install").click();
+
+    await expect(page.getByTestId("device-installed-path")).toBeVisible();
+    await expect(dot).toBeHidden();
+  });
+
+  test("shows no dot when nothing is missing", async ({ page }) => {
+    await installStubs(page);
+    await stubDevice(page, {
+      ...status(),
+      state: "same",
+      installedVersion: "1.2.0",
+    });
+    await loadSettings(page);
+
+    await expect(page.getByTestId("installation-tab")).toBeHidden();
+    await expect(
+      page.getByRole("img", { name: "needs attention" }),
+    ).toBeHidden();
+  });
+});
+
 test.describe("Settings — installation: notice options (stubbed backend)", () => {
   test("holds both device notice checkboxes, on by default, and writes a change", async ({
     page,
   }) => {
-    await setupSettingsTest(page);
+    await installStubs(page);
     await stubDevice(page, status());
 
     const writes: unknown[] = [];
@@ -347,6 +407,7 @@ test.describe("Settings — installation: notice options (stubbed backend)", () 
         }),
       });
     });
+    await loadSettings(page);
     await openInstallationTab(page);
 
     const warn = page.getByTestId("warn-install-incomplete");

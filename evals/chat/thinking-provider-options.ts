@@ -4,16 +4,22 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Maps CLI --thinking levels to AI SDK providerOptions per provider.
+ * Maps CLI --thinking levels to AI SDK providerOptions per provider. The
+ * model-aware rules are shared with the chat UI (src/shared).
  */
 
 import { type ProviderOptions } from "@ai-sdk/provider-utils";
+import {
+  buildAnthropicProviderOptions,
+  mapThinkingToOpenRouterEffort,
+  mapThinkingToReasoningEffort,
+  type ThinkingEffort,
+} from "#webui/chat/sdk/provider/thinking-effort.ts";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
 import { type ThinkingLevel } from "./shared/types.ts";
 
-/** Anthropic effort levels for adaptive thinking */
-const ANTHROPIC_EFFORT_MAP: Record<string, string> = {
-  off: "none",
+const THINKING_EFFORT: Record<string, ThinkingEffort> = {
+  off: "off",
   low: "low",
   medium: "medium",
   high: "high",
@@ -27,23 +33,6 @@ const GEMINI_THINKING_MAP: Record<string, number> = {
   medium: 4096,
   high: 8192,
   ultra: 16384,
-};
-
-/** OpenAI reasoning effort levels */
-const OPENAI_EFFORT_MAP: Record<string, string> = {
-  off: "none",
-  low: "low",
-  medium: "medium",
-  high: "high",
-};
-
-/** OpenRouter reasoning effort levels */
-const OPENROUTER_EFFORT_MAP: Record<string, string> = {
-  off: "none",
-  low: "low",
-  medium: "medium",
-  high: "high",
-  ultra: "xhigh",
 };
 
 /**
@@ -67,11 +56,11 @@ export function buildProviderOptions(
 
   switch (provider) {
     case "anthropic":
-      return buildAnthropicThinking(level);
+      return buildAnthropicThinking(level, model, false);
     case "google":
       return buildGeminiThinking(level);
     case "openai":
-      return buildOpenAIThinking(level);
+      return buildOpenAIThinking(level, model);
     case "openrouter":
       return buildOpenRouterThinking(level);
     case "vercel":
@@ -94,28 +83,34 @@ export function buildProviderOptions(
 }
 
 /**
- * Build Anthropic thinking provider options using adaptive thinking with effort.
+ * Build Anthropic thinking provider options. Off sends an explicit type:
+ * omitting `thinking` still thinks on adaptive-by-default models (Sonnet 5+).
  *
  * @param level - Thinking level string
+ * @param model - Anthropic model id, without any gateway prefix
+ * @param gateway - True when sent through the Vercel gateway
  * @returns Provider options with anthropic thinking and effort config
  */
-function buildAnthropicThinking(level: string): ProviderOptions | undefined {
-  const effort = ANTHROPIC_EFFORT_MAP[level];
+function buildAnthropicThinking(
+  level: string,
+  model: string,
+  gateway: boolean,
+): ProviderOptions | undefined {
+  const effort = THINKING_EFFORT[level];
 
-  if (!effort || effort === "none") {
+  if (effort == null) {
     return undefined;
   }
 
-  return {
-    anthropic: {
-      thinking: { type: "adaptive" },
-      effort,
-    },
-  };
+  // Direct requests get `display` from the wire rewrite in anthropic-cache.ts.
+  return buildAnthropicProviderOptions(effort, model, {
+    explicitOff: true,
+    summarized: gateway,
+  });
 }
 
 /**
- * Build Gemini thinking provider options
+ * Build Gemini thinking provider options. Off leaves the setting out.
  *
  * @param level - Thinking level string
  * @returns Provider options with google thinkingConfig
@@ -135,35 +130,43 @@ function buildGeminiThinking(level: string): ProviderOptions | undefined {
 }
 
 /**
- * Build OpenAI thinking provider options
+ * Build OpenAI thinking provider options.
  *
  * @param level - Thinking level string
+ * @param model - OpenAI model id (with or without a `provider/` prefix)
  * @returns Provider options with openai reasoningEffort
  */
-function buildOpenAIThinking(level: string): ProviderOptions | undefined {
-  const effort = OPENAI_EFFORT_MAP[level];
+function buildOpenAIThinking(
+  level: string,
+  model: string,
+): ProviderOptions | undefined {
+  const effort = THINKING_EFFORT[level];
+  const reasoningEffort =
+    effort == null
+      ? undefined
+      : mapThinkingToReasoningEffort(effort, model.split("/").at(-1) as string);
 
-  if (!effort || effort === "none") {
-    return undefined;
-  }
-
-  return { openai: { reasoningEffort: effort } };
+  return reasoningEffort ? { openai: { reasoningEffort } } : undefined;
 }
 
 /**
- * Build OpenRouter thinking provider options
+ * Build OpenRouter thinking provider options. Off leaves the setting out.
  *
  * @param level - Thinking level string
  * @returns Provider options with openrouter reasoning
  */
 function buildOpenRouterThinking(level: string): ProviderOptions | undefined {
-  const effort = OPENROUTER_EFFORT_MAP[level];
+  const thinking = THINKING_EFFORT[level];
 
-  if (!effort || effort === "none") {
+  if (thinking == null || thinking === "off") {
     return undefined;
   }
 
-  return { openrouter: { reasoning: { effort } } };
+  return {
+    openrouter: {
+      reasoning: { effort: mapThinkingToOpenRouterEffort(thinking) },
+    },
+  };
 }
 
 /**
@@ -179,13 +182,15 @@ function buildGatewayThinking(
   level: string,
   model: string,
 ): ProviderOptions | undefined {
-  switch (model.split("/")[0]) {
+  const [upstream, ...rest] = model.split("/");
+
+  switch (upstream) {
     case "anthropic":
-      return buildAnthropicThinking(level);
+      return buildAnthropicThinking(level, rest.join("/"), true);
     case "google":
       return buildGeminiThinking(level);
     case "openai":
-      return buildOpenAIThinking(level);
+      return buildOpenAIThinking(level, model);
     default:
       return undefined;
   }

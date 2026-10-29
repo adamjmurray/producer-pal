@@ -7,7 +7,7 @@
  * E2E tests for ppal-duplicate's lists: a list of sources in `id`, and values
  * that pair one per copy.
  * Uses: e2e-test-set (t8 and t10 are empty MIDI tracks; s5-s7 are empty scenes)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- e2e/mcp/operations/ppal-duplicate-source-list.test.ts
  */

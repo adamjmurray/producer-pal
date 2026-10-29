@@ -16,6 +16,7 @@ import { setupLocatorCreationMocks } from "../update-live-set-test-helpers.ts";
 describe("updateLiveSet - locator creation past the song end", () => {
   let liveSet: RegisteredMockObject;
   let track: RegisteredMockObject;
+  let newCue: RegisteredMockObject;
 
   beforeEach(() => {
     liveSet = registerMockObject("live_set_id", { path: "live_set" });
@@ -35,7 +36,10 @@ describe("updateLiveSet - locator creation past the song end", () => {
    * @param deleteClip - What the track's delete_clip does
    */
   function setup(deleteClip: () => void): void {
-    setupLocatorCreationMocks(liveSet, { time: 16, songLength: 8 });
+    ({ newCue } = setupLocatorCreationMocks(liveSet, {
+      time: 16,
+      songLength: 8,
+    }));
 
     const answer = liveSet.get.getMockImplementation()!;
 
@@ -98,6 +102,30 @@ describe("updateLiveSet - locator creation past the song end", () => {
     }).catch((error: unknown) => error);
 
     expect(String(result)).toContain("toggle failed");
+    expect(capturedWarnings()).toStrictEqual([
+      expect.stringContaining("couldn't remove the temp arrangement clip"),
+    ]);
+  });
+
+  it("warns about the leftover clip when naming the locator fails", async () => {
+    setup(() => {
+      throw new Error("Live says no");
+    });
+    newCue.set.mockImplementation(() => {
+      throw new Error("name refused");
+    });
+
+    const result = await updateLiveSet({
+      locatorOperation: "create",
+      locatorTime: "5|1",
+      locatorName: "Verse",
+    });
+
+    expect(result.locator).toStrictEqual({
+      operation: "create",
+      id: "26",
+      detail: "name refused; already changed: created",
+    });
     expect(capturedWarnings()).toStrictEqual([
       expect.stringContaining("couldn't remove the temp arrangement clip"),
     ]);

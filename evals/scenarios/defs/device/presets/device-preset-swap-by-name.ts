@@ -25,6 +25,7 @@ import {
 } from "../../clip/helpers/clip-tool-constants.ts";
 import { firstResultPath } from "../../helpers/new-track-path.ts";
 import { describeNames } from "../helpers/describe-names.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 const KIT = /505/;
 
@@ -44,7 +45,7 @@ interface TrackDevices {
  */
 async function seedEmptyDrumRack(mcpClient: Client): Promise<void> {
   const created = await mcpClient.callTool({
-    name: "ppal-create-track",
+    name: TOOLS.createTrack,
     arguments: { type: "midi" },
   });
   const path = firstResultPath(extractToolResultText(created));
@@ -54,14 +55,14 @@ async function seedEmptyDrumRack(mcpClient: Client): Promise<void> {
   }
 
   await mcpClient.callTool({
-    name: "ppal-create-device",
-    arguments: { device: "Drum Rack", path: `${NEW_TRACK}/d+` },
+    name: TOOLS.createDevice,
+    arguments: { deviceName: "Drum Rack", path: `${NEW_TRACK}/d+` },
   });
 
   const read = parseToolResult(
     extractToolResultText(
       await mcpClient.callTool({
-        name: "ppal-read-track",
+        name: TOOLS.readTrack,
         arguments: { path: NEW_TRACK, include: ["devices"] },
       }),
     ),
@@ -90,7 +91,7 @@ export const devicePresetSwapByName: EvalScenario = {
   description: "Swap a named library drum kit onto an existing Drum Rack",
   kind: "capability",
   liveSet: "basic-midi-4-track",
-  requires: { tools: ["ppal-update-device"], params: ["preset"] },
+  requires: { tools: [TOOLS.updateDevice], params: ["preset"] },
 
   setup: seedEmptyDrumRack,
 
@@ -104,7 +105,7 @@ export const devicePresetSwapByName: EvalScenario = {
 
     {
       type: "state",
-      tool: "ppal-read-track",
+      tool: TOOLS.readTrack,
       args: { path: NEW_TRACK, include: ["devices"] },
       expect: (result) => {
         const racks = drumRackNames(result);

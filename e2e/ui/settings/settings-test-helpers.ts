@@ -33,6 +33,16 @@ export interface StoredPreset {
  */
 export async function setupSettingsTest(page: Page): Promise<void> {
   await installStubs(page);
+  await loadSettings(page);
+}
+
+/**
+ * Load the chat UI and open the settings modal, for a test that stubs an
+ * endpoint first: the Installation tab reads its statuses as the settings
+ * open, so a stub registered after that is too late.
+ * @param page - Playwright page
+ */
+export async function loadSettings(page: Page): Promise<void> {
   await page.goto("/chat-ui.html");
   await openSettings(page);
 }

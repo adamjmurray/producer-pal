@@ -14,7 +14,7 @@ import {
   type PredicateNode,
   type TransformAssignment,
 } from "#src/notation/transform/parser/transform-parser.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import * as barBeatTime from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
   createContext,
@@ -52,7 +52,7 @@ function evaluateOutsidePitchRange(): ReturnType<typeof evaluateTransformAST> {
 
 describe("Transform Branch Coverage", () => {
   beforeEach(() => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(maxConsole, "emitWarning").mockImplementation(() => {});
   });
 
   afterEach(() => {

@@ -17,7 +17,7 @@ import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { createDevice } from "./create-device.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
@@ -220,19 +220,19 @@ describe("createDevice", () => {
       ["params", { params: [{ name: "Dry/Wet", value: "50%" }] }],
     ])("refuses a list-mode call carrying %s", async (param, args) => {
       await expect(createDevice(args)).rejects.toThrow(
-        `${param} requires device; omit it to list available devices`,
+        `${param} requires deviceName; omit it to list available devices`,
       );
     });
 
     it("names every create-only arg it was sent", async () => {
       await expect(createDevice({ path: "t0", name: "Lead" })).rejects.toThrow(
-        "path, name require device; omit them to list available devices",
+        "path, name require deviceName; omit them to list available devices",
       );
     });
 
     it("does not touch Live before refusing", async () => {
       await expect(createDevice({ path: "t0" })).rejects.toThrow(
-        "path requires device",
+        "path requires deviceName",
       );
 
       expect(track0.call).not.toHaveBeenCalled();
@@ -355,7 +355,7 @@ describe("createDevice", () => {
           "insert_device",
           expect.anything(),
         );
-        expect(mockConsole.warn).not.toHaveBeenCalled();
+        expect(mockConsole.emitWarning).not.toHaveBeenCalled();
       });
 
       it("counts the devices in the past-the-end refusal in the plural", async () => {
@@ -539,47 +539,6 @@ describe("createDevice", () => {
         );
       });
 
-      // Live gives back no id and no reason, so the refusal has to name the
-      // cause itself or the caller has nothing to act on.
-      it("names the instrument already there when Live refuses a second one", async () => {
-        registerMockObject("track-0", {
-          path: livePath.track(0),
-          properties: { devices: children("existing-instrument") },
-          methods: { insert_device: () => ["id", "0"] },
-        });
-        registerMockObject("existing-instrument", {
-          path: livePath.track(0).device(0),
-          properties: { type: 1, can_have_chains: 0 },
-        });
-
-        await expect(
-          createDevice({ path: "t0/d+", device: "Operator" }),
-        ).rejects.toThrow(
-          'could not insert "Operator" at end in path "t0/d+": the ' +
-            "destination already has an instrument, and only one is allowed",
-        );
-      });
-
-      // Nothing in the chain makes sound, so the instrument rule isn't what
-      // Live refused on and the message says only what it knows.
-      it("leaves the refusal bare when the cause isn't the instrument rule", async () => {
-        registerMockObject("track-0", {
-          path: livePath.track(0),
-          properties: { devices: children("existing-effect") },
-          methods: { insert_device: () => ["id", "0"] },
-        });
-        registerMockObject("existing-effect", {
-          path: livePath.track(0).device(0),
-          properties: { type: 2, can_have_chains: 0 },
-        });
-
-        await expect(
-          createDevice({ path: "t0/d+", device: "Operator" }),
-        ).rejects.toThrow(
-          /could not insert "Operator" at end in path "t0\/d\+"$/,
-        );
-      });
-
       it("should throw error with position when insert_device returns falsy id", async () => {
         track0 = registerMockObject("track-0", {
           path: livePath.track(0),
@@ -718,7 +677,7 @@ describe("createDevice", () => {
           detail: 'container at path "t99" does not exist',
         },
       ]);
-      expect(mockConsole.warn).not.toHaveBeenCalled();
+      expect(mockConsole.emitWarning).not.toHaveBeenCalled();
     });
 
     it("answers every path with a skip when they all fail", async () => {

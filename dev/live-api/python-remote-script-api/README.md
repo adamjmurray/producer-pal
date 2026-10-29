@@ -53,7 +53,7 @@ right beat.
 
 The scripts are in `scripts/live-api/python-probe/`.
 
-1. **Install the probe route:** `npm run remote-script:install -- --probe`, then
+1. **Install the probe route:** `npm run install:remote-script -- --probe`, then
    restart Live. This adds a `/probe` route that runs posted Python on Live's
    main thread. It's arbitrary code execution over local HTTP, so it exists only
    in the installed copy: the route's source sits outside

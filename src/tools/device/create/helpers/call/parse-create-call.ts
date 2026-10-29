@@ -13,9 +13,9 @@ import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { type Target } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 
 export interface CreateDeviceArgs {
-  device?: string;
-  /** Deprecated spelling of `device`. */
   deviceName?: string;
+  /** Alias for `deviceName`. */
+  device?: string;
   preset?: string;
   path?: string;
   name?: string;
@@ -67,7 +67,7 @@ export function parseCreateCall(args: CreateCallArgs): CreateCall {
   }
 
   return {
-    device: args.device ?? args.deviceName,
+    device: args.deviceName ?? args.device,
     preset,
     path: sent ? args.path : undefined,
     name,
@@ -109,7 +109,7 @@ export function createListArgs(call: CreateCall): ListArg[] {
     ? []
     : [
         { param: "path", value: call.path, target: true },
-        { param: "device", value: call.device },
+        { param: "deviceName", value: call.device },
         { param: "preset", value: call.preset },
         { param: "name", value: call.name },
       ];
@@ -124,7 +124,7 @@ export function createListArgs(call: CreateCall): ListArg[] {
  * @returns True when nothing in the call has to be loaded from Live's browser
  */
 export function namesOnlyNativeDevices(args: CreateDeviceArgs): boolean {
-  const device = args.device ?? args.deviceName;
+  const device = args.deviceName ?? args.device;
   const { path } = args;
 
   if (
@@ -140,7 +140,7 @@ export function namesOnlyNativeDevices(args: CreateDeviceArgs): boolean {
   try {
     const count = targetEntries(path, "path").length;
 
-    return everyEntry(device, count, "device").every((name) =>
+    return everyEntry(device, count, "deviceName").every((name) =>
       ALL_VALID_DEVICES.includes(name),
     );
   } catch {

@@ -90,8 +90,8 @@ code; when it disagrees with a tool, the tool wins.
     name a slot and a device, and select takes both), `playback` (`path` and
     `slots`; `startTime`, `loopStart`, `loopEnd` and their `*Locator`
     spellings), `duplicate` (`arrangementStart` and `locator`), `createDevice`
-    (`device` and `deviceName`) and every tool with a position in a path
-    coordinate (`refuseDoubledPosition`).
+    (`deviceName` and its `device` alias) and every tool with a position in a
+    path coordinate (`refuseDoubledPosition`).
 
   Neither param is honored, so a warning would return a success-shaped result
   for a call that moved or split nothing. A param that names nothing (blank, or
@@ -113,13 +113,25 @@ code; when it disagrees with a tool, the tool wins.
   `split`): the split makes several clips and nothing says which to convert. It
   refuses `convert` beside a move (`toPath`, `toSlot`, `arrangementStart`) too:
   the conversion adds a track that shifts the paths the move names.
-- **`updateClip` refuses a `length` that spans nothing** (`0bar`, `n0/4`) before
-  any clip is touched. One that is empty only in some meters (`1bar-n/1` in 4/4)
-  skips that clip, as does a `start` at or past a looping clip's loop end sent
-  without a `length`: Live would keep the old region. Both are checked before
+- **`createClip` and `updateClip` refuse a `length` that spans nothing**
+  (`0bar`, `n0/4`) before any clip is made or touched. `createClip` leaves out
+  an audio clip, which takes its length from the sample. A length empty only in
+  some meters (`1bar-n/1` in 4/4) skips that clip (`createClip` names the length
+  there even when the clip's transform can't be read either). `updateClip` also
+  skips a clip whose `start` is at or past its looping loop end, sent without a
+  `length`: Live would keep the old region. All of these are checked before
   anything is written to the clip, in the meter the call sets — except an
   unwarped audio clip sent `looping: true` with a `start` and no `length`, whose
   loop end is known only once warping is on.
+- **`duplicate` and `updateClip` refuse an `arrangementLength` entry that spans
+  nothing** (zero or less in the song's meter), in the same words as `length`:
+  `arrangementLength "0bar" must be longer than zero`.
+- **`duplicate` and `updateClip` refuse an `arrangementLength` entry longer than
+  1,576,800 beats** (`arrangementLength can be at most 394200bar`, written in
+  the song's meter) before anything is changed. The limit is Producer Pal's, not
+  Live's: no real song is that long, and a longer length only runs to the
+  deadline. One entry over refuses the whole call. Start and length are not
+  weighed together.
 - **`createClip` refuses a `path` entry it can't parse** before anything is
   made, as well as an arrangement position that won't parse or is past Live's
   last, a list that doesn't pair, and an unknown `auto`. A destination that

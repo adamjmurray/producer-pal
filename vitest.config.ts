@@ -46,6 +46,9 @@ export default defineConfig({
       "scripts/**/*.test.ts",
     ],
     setupFiles: ["src/test/test-setup.ts"],
+    // Windows file I/O is slow enough under a full parallel run that tests
+    // touching many files pass 5s
+    ...(process.platform === "win32" && { testTimeout: 30_000 }),
     clearMocks: true,
     restoreMocks: true,
     execArgv,
@@ -134,10 +137,10 @@ export default defineConfig({
 
       // IMPORTANT: Do NOT let test coverage drop:
       thresholds: {
-        statements: 99.8,
-        branches: 99.25,
+        statements: 99.9,
+        branches: 99.6,
         functions: 100,
-        lines: 99.8,
+        lines: 99.9,
       },
     },
   },

@@ -300,6 +300,15 @@ describe("remoteScriptPing", () => {
 
     expect(ping.otherOnPort).toBeNull();
   });
+
+  it("reads a dropped connection as not running", async () => {
+    await answerWith({ drop: true });
+
+    const ping = await remoteScriptPing();
+
+    expect(ping.running).toBe(false);
+    expect(ping.otherOnPort).toBeNull();
+  });
 });
 
 describe("replyError", () => {

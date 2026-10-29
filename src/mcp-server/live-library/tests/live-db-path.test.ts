@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { basename, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   findLiveFilesDbPath,
@@ -71,7 +72,7 @@ const SYNTHETIC_FUTURE_MAJOR_DB = "Live-files-13003.db";
  */
 function mockStatByName(mtimes: Record<string, number>): void {
   vi.mocked(fsMock.stat).mockImplementation((path) => {
-    const name = String(path).split("/").pop() ?? "";
+    const name = basename(String(path));
     const mtimeMs = mtimes[name];
 
     return mtimeMs == null
@@ -95,7 +96,7 @@ describe("liveDatabaseDir", () => {
     setPlatform("darwin");
 
     expect(liveDatabaseDir()).toBe(
-      "/Users/test/Library/Application Support/Ableton/Live Database",
+      join("/Users/test/Library/Application Support/Ableton/Live Database"),
     );
   });
 

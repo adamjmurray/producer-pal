@@ -8,7 +8,7 @@
  * Creates devices in the Live Set - these modifications persist within the session.
  *
  * Uses: e2e-test-set
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- device/create/ppal-create-device
  */
@@ -48,7 +48,7 @@ describe("ppal-create-device", () => {
     return parseToolResult<CreateDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { device: deviceName, path },
+        arguments: { deviceName, path },
       }),
     );
   }
@@ -193,7 +193,7 @@ describe("ppal-create-device", () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
-          device: "Compressor,Reverb",
+          deviceName: "Compressor,Reverb",
           path: `t${first}/d+,t${second}/d+`,
         },
       }),
@@ -210,15 +210,15 @@ describe("ppal-create-device", () => {
     expect((await createDevice("Limiter", "mt")).id).toBeDefined();
   });
 
-  it("refuses device beside the deprecated deviceName, creating nothing", async () => {
+  it("refuses deviceName beside its device alias, creating nothing", async () => {
     const before = await readDeviceCount(ctx.client!, 0);
     const refused = await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { device: "Reverb", deviceName: "Delay", path: "t0/d+" },
+      arguments: { deviceName: "Reverb", device: "Delay", path: "t0/d+" },
     });
 
     expect(getToolErrorMessage(refused)).toContain(
-      "device names the device on its own - don't send deviceName with it (deviceName is deprecated)",
+      "deviceName names the device on its own - don't send device with it",
     );
 
     await sleep(100);
@@ -229,7 +229,7 @@ describe("ppal-create-device", () => {
     const text = extractToolResultText(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { device: "InvalidDeviceName123", path: "t0" },
+        arguments: { deviceName: "InvalidDeviceName123", path: "t0" },
       }),
     );
 
@@ -242,7 +242,7 @@ describe("ppal-create-device", () => {
     const text = extractToolResultText(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { device: "Compressor", path: "t1/d0" },
+        arguments: { deviceName: "Compressor", path: "t1/d0" },
       }),
     );
 
@@ -261,7 +261,7 @@ describe("ppal-create-device", () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
-          device: "Compressor",
+          deviceName: "Compressor",
           path: `t99/d+,t${trackIndex}/d+`,
         },
       }),
@@ -283,11 +283,27 @@ describe("ppal-create-device", () => {
     const text = extractToolResultText(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { device: "Operator", path: "t1/d+" },
+        arguments: { deviceName: "Operator", path: "t1/d+" },
       }),
     );
 
     expect(text).toContain("could not insert");
+    expect(text).toContain("already has an instrument");
+  });
+
+  // An empty Drum Rack makes no sound, but Live still counts it.
+  it("names an empty Drum Rack as the instrument already there", async () => {
+    const trackIndex = await createTrack("midi");
+
+    await createDevice("Drum Rack", `t${trackIndex}`);
+
+    const text = extractToolResultText(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: { deviceName: "Operator", path: `t${trackIndex}/d+` },
+      }),
+    );
+
     expect(text).toContain("already has an instrument");
   });
 
@@ -305,7 +321,7 @@ describe("ppal-create-device", () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
-          device: "Utility",
+          deviceName: "Utility",
           path: `t${trackIndex}/d0,t${trackIndex}/d1`,
         },
       }),
@@ -327,7 +343,7 @@ describe("ppal-create-device", () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
-          device: "Utility",
+          deviceName: "Utility",
           path: `${pastEnd},t${trackIndex}/d0`,
         },
       }),
@@ -351,7 +367,7 @@ describe("ppal-create-device", () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
-          device: "Utility",
+          deviceName: "Utility",
           path: `${rackPath}/pD1/c0/d0,${rackPath}/c1/d0`,
         },
       }),
@@ -376,7 +392,7 @@ describe("ppal-create-device", () => {
     const pastEnd = `t${trackIndex}/d${startingDevices + 1}`;
     const result = await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { device: "Compressor", path: pastEnd },
+      arguments: { deviceName: "Compressor", path: pastEnd },
     });
 
     expect(isToolError(result)).toBe(true);
@@ -408,7 +424,7 @@ describe("ppal-create-device", () => {
       parseToolResultWithWarnings<CreateDeviceResult>(
         await ctx.client!.callTool({
           name: "ppal-create-device",
-          arguments: { device: "Chorus-Ensemble", path: `${rackPath}/c1` },
+          arguments: { deviceName: "Chorus-Ensemble", path: `${rackPath}/c1` },
         }),
       );
 
@@ -431,7 +447,7 @@ describe("ppal-create-device", () => {
   // own request to work out which entry vanished.
   it("reports a param name that matched nothing, beside one that landed", async () => {
     const created = await callForParams(ctx.client!, "ppal-create-device", {
-      device: "Compressor",
+      deviceName: "Compressor",
       path: "t0",
       params: [
         { name: "Nope", value: "1" },
@@ -529,7 +545,7 @@ describe("ppal-create-device", () => {
 
     const result = await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { device: "Chorus-Ensemble", path: `${rackPath}/c+` },
+      arguments: { deviceName: "Chorus-Ensemble", path: `${rackPath}/c+` },
     });
 
     expect(isToolError(result)).toBe(true);
@@ -622,24 +638,24 @@ describe("ppal-create-device", () => {
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      "path requires device; omit it to list available devices",
+      "path requires deviceName; omit it to list available devices",
     );
   });
 
-  // `deviceName` became `device`. The old name still creates the device so a
-  // caller mid-migration keeps working, and the warning names the new one.
-  it("creates a device from the deprecated deviceName", async () => {
+  // `device` is a hidden alias of `deviceName`. It can't be the published name:
+  // Claude Desktop's bridge drops an argument named `device`.
+  it("creates a device from the device alias, with a warning", async () => {
     const trackIndex = await createTrack("midi");
     const { data, warnings } = parseToolResultWithWarnings<CreateDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { deviceName: "Operator", path: `t${trackIndex}/d+` },
+        arguments: { device: "Operator", path: `t${trackIndex}/d+` },
       }),
     );
 
     expect((await readDevice(data.id)).type).toContain("Operator");
     expect(warnings.join("\n")).toContain(
-      'param "deviceName" is deprecated and will be removed; use "device" instead',
+      '"device" accepted as a fallback; the parameter is "deviceName"',
     );
   });
 

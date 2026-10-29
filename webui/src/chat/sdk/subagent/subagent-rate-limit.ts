@@ -20,6 +20,7 @@ import {
   shouldRetry,
 } from "#webui/lib/rate-limit";
 import { abortableSleep } from "#webui/lib/utils/abortable-sleep";
+import { errorMessage } from "#src/shared/error-message";
 
 /**
  * Longest single sleep inside a gate wait. The window can be extended by a
@@ -297,7 +298,7 @@ function isSameStatus(
  * @returns The error to throw out of the spawn tool
  */
 function exhaustedError(error: unknown, attempts: number): Error {
-  const detail = error instanceof Error ? error.message : String(error);
+  const detail = errorMessage(error);
 
   return new Error(
     `Subagent gave up after ${attempts} rate-limited attempts: ${detail}. ` +

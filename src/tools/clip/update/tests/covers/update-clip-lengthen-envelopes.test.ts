@@ -45,6 +45,20 @@ describe("updateClip - envelopes beside an arrangementLength that tiles", () => 
     expect(applyClipEnvelopes).not.toHaveBeenCalled();
   });
 
+  it("refuses a looped clip it would tile at the position it is sent to", async () => {
+    setUpLane([{ id: "100", start: 0, length: 4, looping: true }]);
+
+    await expect(
+      updateClip({
+        id: "100",
+        toPath: "t0[9|1]",
+        arrangementLength: "2bar",
+        envelopes: "pan: 1|1 0.5",
+      }),
+    ).rejects.toThrow(REFUSED);
+    expect(applyClipEnvelopes).not.toHaveBeenCalled();
+  });
+
   it("skips only the clip that tiles in a list", async () => {
     setUpLane([
       { id: "100", start: 0, length: 4, looping: true },

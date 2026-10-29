@@ -46,8 +46,7 @@ const LIVE_BUNDLE_ID = "com.ableton.live"; // shared by every installed Live
 const NEW_SET_NAME = "Untitled"; // a new Set's window title
 const PPAL_PORT = process.env.PPAL_PORT ?? 3350;
 const PPAL_CONFIG = `http://localhost:${PPAL_PORT}/config`;
-const REMOTE_SCRIPT_REPO =
-  "https://github.com/adamjmurray/producer-pal/tree/main/remote-script";
+const REMOTE_SCRIPT_GUIDE = "https://producer-pal.org/guide/remote-script";
 const POLL_MS = 250;
 const ASSISTIVE_ACCESS_DENIED = "not allowed assistive access";
 const ASSISTIVE_ACCESS_FIX =
@@ -501,7 +500,7 @@ async function loadProducerPal() {
   }, Date.now() + REMOTE_SCRIPT_START_MS);
   if (!reachable) {
     throw new Error(
-      `${open} Producer Pal couldn't be added: the Producer Pal remote script isn't answering on port ${remoteScriptPorts().join(" or ")}. Install it and select it as a Control Surface (Live Settings → Tempo & MIDI): ${REMOTE_SCRIPT_REPO}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`,
+      `${open} Producer Pal couldn't be added: the Producer Pal remote script isn't answering on port ${remoteScriptPorts().join(" or ")}. To install it, add the Producer Pal device to a track and click "Finish installation…" on it, click "Install" next to the remote script, then restart Live and select Producer Pal as a Control Surface (Live Settings → Tempo & MIDI): ${REMOTE_SCRIPT_GUIDE}. Set PPAL_REMOTE_SCRIPT_PORT if it uses another port.`,
     );
   }
 

@@ -5,6 +5,10 @@
 
 // What the E2E suites that need the Producer Pal remote script share.
 
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { presetFileIsFor } from "#src/mcp-server/rpc/remote-script/browser/preset-file-device.ts";
 import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
@@ -136,6 +140,26 @@ export async function readDevice(
   );
 }
 
+/** The ppal-library kind that finds .adg racks. */
+const DEVICE_GROUP = "device-group";
+
+/**
+ * Search ppal-library.
+ * @param client - Connected MCP client
+ * @param args - Its args
+ * @returns The items it found
+ */
+async function searchLibrary(
+  client: Client,
+  args: Record<string, unknown>,
+): Promise<Preset[]> {
+  return (
+    parseToolResult<{ items?: Preset[] }>(
+      await callToolAndSettle(client, "ppal-library", { limit: 200, ...args }),
+    ).items ?? []
+  );
+}
+
 /**
  * A pack's drum kit whose name nothing else in the library shares, found with
  * ppal-library. Installed packs differ per machine, so a test picks one at run
@@ -154,16 +178,9 @@ export async function packDrumKitOrSkip(
   await skipTestBeforeLive(client, skip, "12.4", LIBRARY_NEEDS);
 
   const search = async (kind: string, query: string): Promise<Preset[]> =>
-    parseToolResult<{ items?: Preset[] }>(
-      await callToolAndSettle(client, "ppal-library", {
-        kind,
-        query,
-        source: "pack",
-        limit: 200,
-      }),
-    ).items ?? [];
+    searchLibrary(client, { kind, query, source: "pack" });
 
-  const kits = (await search("device-group", "Kit")).filter(
+  const kits = (await search(DEVICE_GROUP, "Kit")).filter(
     ({ name, path }) => name.endsWith(".adg") && path.includes("/Drums/"),
   );
 
@@ -174,7 +191,7 @@ export async function packDrumKitOrSkip(
 
     const name = presetName(kit.name).toLowerCase();
     const same = [
-      ...(await search("device-group", presetName(kit.name))),
+      ...(await search(DEVICE_GROUP, presetName(kit.name))),
       ...(await search("preset", presetName(kit.name))),
     ].filter((item) => presetName(item.name).toLowerCase() === name);
 
@@ -184,4 +201,159 @@ export async function packDrumKitOrSkip(
   }
 
   return skip();
+}
+
+/**
+ * The Wasted Space pack's `Transmission.adv`, a Max device preset sharing its
+ * name with a Shifter preset that Live's browser lists. Not every machine has
+ * the pack, so a test skips when it's missing.
+ * @param client - Connected MCP client
+ * @param skip - The test's `skip`, called when the pack or the library is
+ *   missing
+ * @returns The preset's absolute path
+ */
+export async function wastedSpaceTransmissionOrSkip(
+  client: Client,
+  skip: (note?: string) => never,
+): Promise<string> {
+  await skipTestBeforeLive(client, skip, "12.4", LIBRARY_NEEDS);
+
+  const found = await searchLibrary(client, {
+    kind: "preset",
+    query: "Transmission",
+    source: "pack",
+  });
+  const file = found.find(
+    ({ name, path }) =>
+      name === "Transmission.adv" && path.includes("Wasted Space"),
+  );
+
+  return file?.path ?? skip("the Wasted Space pack isn't installed");
+}
+
+/**
+ * The Core Library's `Vibraphone.adg` and a pack's, which share one browser
+ * path. Live's browser lists each under every device the rack is built around,
+ * so only the library tells them apart. Not every machine has a pack with one,
+ * so a test skips when it's missing.
+ * @param client - Connected MCP client
+ * @param skip - The test's `skip`, called when no pack has one or Live has no
+ *   library
+ * @returns Both files' absolute paths
+ */
+export async function vibraphoneFilesOrSkip(
+  client: Client,
+  skip: (note?: string) => never,
+): Promise<{ core: string; pack: string }> {
+  await skipTestBeforeLive(client, skip, "12.4", LIBRARY_NEEDS);
+
+  const search = async (source?: string): Promise<Preset[]> =>
+    searchLibrary(client, {
+      kind: DEVICE_GROUP,
+      query: "Vibraphone",
+      ...(source == null ? {} : { source }),
+    });
+  const vibraphones = (items: Preset[]): string[] =>
+    items
+      .filter(({ name }) => name === "Vibraphone.adg")
+      .map(({ path }) => path);
+  const core = vibraphones(await search()).find((path) =>
+    path.includes("Core Library"),
+  );
+  const pack = vibraphones(await search("pack")).find(
+    (path) => !path.includes("Core Library"),
+  );
+
+  return core != null && pack != null
+    ? { core, pack }
+    : skip("no pack besides the Core Library has a Vibraphone rack");
+}
+
+// Puts the rack preset holding Producer Pal where Live can load it. Live only
+// loads presets from the User Library or a Places folder, and the committed
+// file points at User Library copies of the device and sample that no other
+// machine has. So the staged copy points at the repo's files instead, by paths
+// relative to the copy, with Live's size and checksum checks off, as the test
+// Sets do.
+const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
+const PRESET = join(
+  REPO,
+  "e2e/live-sets/presets/ppal-drum-pad-test-rack-preset.adg",
+);
+const PRESET_FILES = [
+  join(REPO, "max-for-live-device/Producer_Pal.amxd"),
+  join(REPO, "e2e/live-sets/samples/drums/synth-snare.wav"),
+];
+/** Our own folder in the User Library, removed whole afterwards. */
+const STAGING_FOLDER = "Producer Pal e2e";
+
+/** A staged copy of the preset. */
+export interface StagedPreset {
+  /** Its absolute path, which a tool's `preset` takes */
+  path: string;
+  /** Delete the copy and its folder */
+  remove: () => void;
+}
+
+/**
+ * Write the preset into the User Library, pointed at the repo's device and sample.
+ * @returns Where it is, and how to remove it
+ */
+export async function stagePpalPreset(): Promise<StagedPreset> {
+  const folder = join(await userLibrary(), STAGING_FOLDER);
+  const path = join(folder, basename(PRESET));
+  const staged = PRESET_FILES.reduce(
+    (xml, file) => pointFileRef(xml, file, folder),
+    gunzipSync(readFileSync(PRESET)).toString("utf8"),
+  );
+
+  mkdirSync(folder, { recursive: true });
+  writeFileSync(path, gzipSync(staged));
+
+  return {
+    path,
+    remove: () => rmSync(folder, { recursive: true, force: true }),
+  };
+}
+
+/** The User Library the running Live uses, as the remote script reports it. */
+async function userLibrary(): Promise<string> {
+  const port = await resolveRemoteScriptPort();
+  const ping = (await (
+    await fetch(`http://127.0.0.1:${String(port)}/ping`)
+  ).json()) as { user_library?: string };
+
+  if (ping.user_library == null) {
+    throw new Error("the remote script reported no User Library");
+  }
+
+  return ping.user_library;
+}
+
+/**
+ * Point the FileRef for a file's name at that file, relative to `folder`.
+ * @param xml - The preset's XML
+ * @param file - Absolute path of the repo's copy
+ * @param folder - Where the staged preset goes
+ * @returns The XML with that FileRef replaced
+ */
+function pointFileRef(xml: string, file: string, folder: string): string {
+  const name = basename(file).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // From RelativePathType through OriginalCrc
+  const fileRef = new RegExp(
+    `<RelativePathType Value="\\d+" />(\\s*)<RelativePath Value="[^"]*${name}" />(\\s*)<Path Value="[^"]*${name}" />([\\s\\S]*?)<OriginalFileSize Value="\\d+" />(\\s*)<OriginalCrc Value="\\d+" />`,
+  );
+
+  if (!fileRef.test(xml)) {
+    throw new Error(`${PRESET} has no ${basename(file)} file reference`);
+  }
+
+  return xml.replace(
+    fileRef,
+    (_match, a: string, b: string, middle: string, c: string) =>
+      `<RelativePathType Value="1" />${a}` +
+      `<RelativePath Value="${relative(folder, file)}" />${b}` +
+      `<Path Value="${file}" />${middle}` +
+      `<OriginalFileSize Value="0" />${c}<OriginalCrc Value="0" />`,
+  );
 }

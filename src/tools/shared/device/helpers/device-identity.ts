@@ -59,7 +59,8 @@ export function describeDevice(
 }
 
 /**
- * Whether a device's name is worth reporting: the user renamed it.
+ * Whether a device's name is worth reporting: the user renamed it. A name
+ * Live won't give (CC Control before Live 12.4.15) reads as "" and is left out.
  * @param name - The device's name
  * @param className - The class it reads as
  * @param hosted - The plug-in the device hosts, if it is a wrapper
@@ -70,5 +71,9 @@ function isCustomName(
   className: string,
   hosted: HostedPlugin | null,
 ): boolean {
-  return name !== className && !(hosted != null && isDefaultWrapperName(name));
+  return (
+    name !== "" &&
+    name !== className &&
+    !(hosted != null && isDefaultWrapperName(name))
+  );
 }

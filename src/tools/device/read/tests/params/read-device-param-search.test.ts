@@ -205,4 +205,36 @@ describe("readOneDevice paramSearch filtering", () => {
       { id: "param-1", name: "A Fix On" },
     ]);
   });
+
+  it("does not switch the params on for a blank search", () => {
+    setupTwoParamDevice();
+
+    for (const paramSearch of ["", "   "]) {
+      const result = readOneDevice({ id: "device-123", paramSearch });
+
+      expect(result).not.toHaveProperty("parameters");
+    }
+  });
+
+  it("lists every param for a blank search when params are asked for", () => {
+    setupTwoParamDevice();
+
+    const result = readOneDevice({
+      id: "device-123",
+      include: ["params"],
+      paramSearch: "",
+    });
+
+    expect(result.parameters).toHaveLength(2);
+  });
+
+  it("switches the params on for a search", () => {
+    setupTwoParamDevice();
+
+    const result = readOneDevice({ id: "device-123", paramSearch: "vol" });
+
+    expect(result.parameters).toStrictEqual([
+      { id: "param-1", name: "Volume" },
+    ]);
+  });
 });

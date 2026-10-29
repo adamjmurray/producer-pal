@@ -19,7 +19,7 @@ import {
 } from "#src/tools/shared/device/helpers/path/chains-left.ts";
 import {
   ONE_INSTRUMENT_PER_CHAIN,
-  deviceHasInstrument,
+  isInstrumentTyped,
 } from "#src/tools/shared/device/helpers/chain-info.ts";
 import { type ParamResult } from "#src/tools/shared/device/helpers/param-reading.ts";
 import {
@@ -280,7 +280,7 @@ export function insertRefusalCause(
     VALID_DEVICES.instruments as readonly string[]
   ).includes(deviceName);
 
-  return isInstrument && container.someChild("devices", deviceHasInstrument)
+  return isInstrument && container.someChild("devices", isInstrumentTyped)
     ? ONE_INSTRUMENT_PER_CHAIN
     : undefined;
 }

@@ -6,6 +6,8 @@
 import {
   commentFreeLine,
   firstWord,
+  gluedAccidentalHint,
+  gluedCheckLine,
   fixParses,
   type SyntaxFailure,
   unclosedCommentHint,
@@ -33,6 +35,8 @@ interface FailedLine {
   head: string;
   /** The token before it on the same line, or "" */
   previous: string;
+  /** The whole word the parse stopped in, as written (`#` comments kept) */
+  rawWord: string;
 }
 
 // Runs only after a parse has already failed, so a hint can never change what
@@ -50,6 +54,7 @@ const CHECKS: MistakeCheck[] = [
   missingBeat,
   badPositionSuffix,
   spacedPipe,
+  strayPipe,
   detachedToken,
   badBarCopy,
   commaBetweenItems,
@@ -81,6 +86,14 @@ export function diagnoseBarbeatMistake(
   }
 
   const failed = readFailedLine(failure);
+  // Comment-free, so a pitch written in a comment can't take over the hint.
+  const code = gluedCheckLine(failure, isBarbeatSharp);
+  const glued = gluedAccidentalHint(code.line, code.column, false);
+
+  if (glued != null) {
+    return glued;
+  }
+
   const checks = atItemStart ? [...CHECKS, ...ITEM_CHECKS] : CHECKS;
 
   for (const check of checks) {
@@ -115,7 +128,19 @@ function readFailedLine(failure: SyntaxFailure): FailedLine {
     rest,
     head,
     previous: line.slice(previousStart, tokenStart).trim(),
+    rawWord: readRawWord(failure),
   };
+}
+
+/**
+ * @param failure - Where the parse stopped
+ * @returns The whole space-separated word it stopped in, comments kept
+ */
+function readRawWord(failure: SyntaxFailure): string {
+  const { line, column } = failure;
+  const start = wordStart(line.slice(0, column));
+
+  return line.slice(start, column) + firstWord(line.slice(column));
 }
 
 /**
@@ -219,6 +244,18 @@ function spacedPipe(line: FailedLine): string | null {
 }
 
 /**
+ * @param line - The failing line
+ * @returns Hint for a pipe that no single fix explains (`1|1 | 3`, `C3 | 1`,
+ *   `1|1|3`). Names the rule and guesses no fix. Goes after `spacedPipe`,
+ *   which covers the pipes that have one.
+ */
+function strayPipe(line: FailedLine): string | null {
+  return line.rest.startsWith("|")
+    ? "a position is one bar|beat, with no spaces around the pipe (1|1); this | isn't part of one."
+    : null;
+}
+
+/**
  * @param before - The line up to a pipe, trailing space removed
  * @returns Where the position the pipe belongs to starts, or null
  */
@@ -306,11 +343,12 @@ function missingOctave(line: FailedLine): string | null {
  * @returns Hint for a chord name (`Cmaj7`, `Am`, `G7/B`)
  */
 function chordName(line: FailedLine): string | null {
-  const { token } = line;
+  // The line has its `#` comments removed, so also read `G7#9` as written.
+  const name = [line.token, line.rawWord].find((word) => CHORD_NAME.test(word));
 
-  return CHORD_NAME.test(token)
-    ? `bar|beat has no chord names like ${token} — list the notes before a position, e.g. C3 E3 G3 1|1.`
-    : null;
+  return name == null
+    ? null
+    : `bar|beat has no chord names like ${name} — list the notes before a position, e.g. C3 E3 G3 1|1.`;
 }
 
 /**

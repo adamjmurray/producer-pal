@@ -7,7 +7,7 @@
  * E2E tests for ppal-duplicate tool
  * Tests duplicating tracks, scenes, clips, and devices.
  * Uses: e2e-test-set (t8 is empty MIDI track, t7 is empty MIDI track for clip destinations)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- e2e/mcp/operations/ppal-duplicate.test.ts
  */

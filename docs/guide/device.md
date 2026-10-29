@@ -13,8 +13,9 @@ to AI by giving it an interface to the Live API.
   trying to start.
 - **Docs** - Link to this documentation site
 - **Open Chat UI** - Opens the built-in Chat UI in your default browser. The UI
-  is also reachable from other devices on your local network (handy for phone
-  access, but be mindful on shared networks).
+  is also reachable from other devices on your local network (handy for
+  [phone access](/installation/remote-access#chat-from-a-phone-or-another-computer),
+  but be mindful on shared networks).
 - **Finish installation…** - Shown while the User Library copy of the device or
   the remote script is missing or out of date. Opens the Chat UI's
   [Installation](/guide/chat-ui#installation) tab. Hidden while **Update

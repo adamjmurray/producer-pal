@@ -8,14 +8,18 @@ import {
   durationToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { refuseArrangementPositionPastCap } from "#src/tools/shared/validation/helpers/arrangement-position-cap.ts";
+import {
+  refuseArrangementLengthTooLong,
+  refuseArrangementPositionPastCap,
+} from "#src/tools/shared/validation/helpers/arrangement-position-cap.ts";
 import { namedParam } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import {
   pairValues,
   type PairLabels,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { refuseEmptyLength } from "#src/tools/shared/schema/refuse-empty-length.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 
 /** One arrangement time per clip, in beats. */
 export interface ArrangementBeats {
@@ -92,9 +96,7 @@ export function parseArrangementParams(
   // playhead and exposes no way to find where the meter changes, so in a Set
   // that changes meter these positions are wrong past the first change, and the
   // error shifts when the user moves the playhead. Documented as a limitation.
-  const liveSet = LiveAPI.from(livePath.liveSet);
-  const numerator = liveSet.getProperty("signature_numerator") as number;
-  const denominator = liveSet.getProperty("signature_denominator") as number;
+  const { numerator, denominator } = songMeter();
 
   // Validate the standalone position first so a 0-indexed/zero-bar arrangement
   // start gets the 1-indexing steer (matching create-clip), not a silent
@@ -129,9 +131,9 @@ export function parseArrangementParams(
       durations.map((duration) => {
         const beats = durationToAbletonBeats(duration, numerator, denominator);
 
-        if (beats <= 0) {
-          throw new Error("arrangementLength must be greater than 0");
-        }
+        refuseEmptyLength(duration, beats, "arrangementLength");
+
+        refuseArrangementLengthTooLong(beats, numerator, denominator);
 
         return beats;
       }),

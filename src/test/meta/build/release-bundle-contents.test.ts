@@ -14,10 +14,10 @@
 
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { rolldown, type InputOptions, type RolldownOutput } from "rolldown";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
+import { repoPath } from "#src/test/helpers/meta-test-helpers.ts";
 import {
   DEV_BUILD_MARKER,
   GUARDED_BUILD_FLAGS,
@@ -244,9 +244,7 @@ async function buildChunks(
   return {
     ids: chunks.flatMap((chunk) =>
       Object.keys(chunk.modules).map((id) =>
-        id.startsWith(`${projectRoot}/`)
-          ? id.slice(projectRoot.length + 1)
-          : id,
+        isAbsolute(id) && !repoPath(id).startsWith("..") ? repoPath(id) : id,
       ),
     ),
     code: chunks.map((chunk) => chunk.code).join("\n"),

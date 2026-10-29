@@ -7,6 +7,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type EvalSession } from "#evals/scenarios/eval-session.ts";
+import { reasoningFields } from "#evals/chat/shared/reasoning-fields.ts";
 import { logTurnStart } from "#evals/scenarios/helpers/turn-logging.ts";
 import { isQuietMode } from "#evals/scenarios/helpers/quiet-mode.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
@@ -122,6 +123,7 @@ export async function createAgentCliSession(
       return {
         text: parsed.text,
         toolCalls: parsed.toolCalls,
+        ...reasoningFields(parsed),
         ...(parsed.usage != null
           ? { stepUsages: [parsed.usage], stepTimings: [timing ?? {}] }
           : {}),

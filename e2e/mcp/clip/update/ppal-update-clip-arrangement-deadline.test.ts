@@ -16,6 +16,7 @@
  * Run with: npm run e2e:mcp -- ppal-update-clip-arrangement-deadline
  */
 import { describe, expect, it } from "vitest";
+import { siblingUrl } from "#evals/shared/config.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import {
   type CreateClipResult,
@@ -95,7 +96,7 @@ async function updateClipOverRest(
   args: Record<string, unknown>,
   timeoutMs: number,
 ): Promise<RestResponse> {
-  const url = `${MCP_URL.replace("/mcp", "/api/tools/ppal-update-clip")}?format=json&timeoutMs=${timeoutMs}`;
+  const url = `${siblingUrl(MCP_URL, "api/tools/ppal-update-clip")}?format=json&timeoutMs=${timeoutMs}`;
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

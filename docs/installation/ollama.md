@@ -1,116 +1,17 @@
-# Ollama
+---
+title: Ollama
+search: false
+head:
+  - - meta
+    - http-equiv: refresh
+      content: 0; url=/installation/local-ai#ollama
+  - - link
+    - rel: canonical
+      href: https://producer-pal.org/installation/local-ai
+---
 
-Run Producer Pal completely offline with local models.
+# Ollama setup moved
 
-## What You Need
+Ollama setup for the built-in chat UI is now on the Local AI page.
 
-- [Ollama](https://ollama.com/) installed
-
-<!--@include: ../_partials/live-requirement.md-->
-
-## 1. Install Ollama
-
-Download and install [Ollama](https://ollama.com/) for your operating system.
-
-## 2. Download a Model
-
-Download a model that supports tools. Some good options include:
-
-- `qwen3.8`
-- `gemma4`
-- `muse-glimmer`
-- `mistral-small3.2`
-
-And the others listed in Producer Pal's built-in chat UI settings. If your
-computer can handle it, use the larger variants of a model.
-
-Browse [models with tool support](https://ollama.com/search?c=tools) on the
-Ollama website.
-
-## 3. Install the Max for Live Device
-
-<!--@include: ../_partials/device-steps.md-->
-
-## 4. Enable Small Model Mode (Optional but Recommended)
-
-In [the Producer Pal "Setup" tab](/guide/device#setup-tab), enable **Small Model
-Mode**.
-
-<img src="/img/small-model-mode.png" alt="Small model mode setting" width="375"/>
-
-A smaller, simpler interface built for local models.
-
-## 5. Open the Chat UI
-
-In the Producer Pal device's Main tab, click "Open Chat UI". The built-in chat
-UI opens in a browser:
-
-![Chat UI](/img/producer-pal-chat.png)
-
-## 6. Configure Ollama
-
-In the chat UI settings:
-
-- Provider: **Ollama (local)**
-- URL: `http://localhost:11434`
-  - Use this default URL when everything runs on the same computer. Change
-    `localhost` to run Ollama on a different computer. Consult
-    [the user guide](/guide/chat-ui#local-ai-settings-ollama-bionic) for more
-    info.
-- Model: Your model name (e.g., `qwen3.8` or `gemma4`)
-
-Click "Save".
-
-<img src="/img/producer-pal-chat-settings-connection-ollama.png" alt="Ollama settings" width="500"/>
-
-::: tip Ollama Model Aliases
-
-If Producer Pal says a model like `muse-glimmer` is not installed but you
-downloaded `muse-glimmer:30b-mlx`, enter the full name with the tag. A bare
-`muse-glimmer` is short for `muse-glimmer:latest`, which is a different build —
-the shorthand doesn't find the tagged one you have. Run `ollama list` to see the
-exact names.
-
-:::
-
-## 7. Connect
-
-Click "Quick Connect" and say "connect to ableton":
-
-![Producer Pal Chat UI conversation](/img/producer-pal-chat-conversation.png)
-
-::: tip Local Model Limitations
-
-Local models work best for simple tasks. Complex edits may require more capable
-cloud models.
-
-:::
-
-<!-- TODO: Embed YouTube video walkthrough -->
-
-## Model Compatibility
-
-If the model responds with garbled text like `<|tool_call_start|>...` or says it
-can't connect to Ableton, the model doesn't support tools. Try a different model
-from the [tools category](https://ollama.com/search?c=tools).
-
-## Local Model Tips
-
-- **Set the context length high enough.** When you connect, Producer Pal sends a
-  sizable set of instructions (roughly 9,000 tokens). Ollama's default context
-  window (`num_ctx`, 4096) is too small and silently truncates them, which
-  breaks tool use. Use **16k (16000) or higher** — set it per model in a
-  Modelfile, or globally with the `OLLAMA_CONTEXT_LENGTH=16384` environment
-  variable. Larger windows use more memory and can run slower, so experiment to
-  find the balance.
-- **Follow-up turns are often much faster.** The local engine automatically
-  reuses its cached prompt prefix (your instructions and earlier messages)
-  between turns, so it usually only has to process your newest message. The
-  first turn after connecting is the slow one; later turns in the same
-  conversation can be dramatically quicker. There's nothing to configure. The
-  size of the speedup depends on the model — some keep the prefix stable across
-  turns and benefit fully, while others reprocess each turn and see little gain.
-
-## Troubleshooting
-
-If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).
+**[Continue to the Local AI page &rarr;](/installation/local-ai#ollama)**

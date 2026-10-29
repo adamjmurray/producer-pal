@@ -10,7 +10,7 @@
  * `name (original_name)` form read-device reports picks one out, and the
  * caller never needs an id. A macro can only be renamed by hand in Live (the
  * Live API acks a name write and ignores it), so the rename is baked into
- * racks-test. See e2e/live-sets/racks-test-spec.md.
+ * racks-test. See e2e/live-sets/specs/racks-test-spec.md.
  *
  * Run with: npm run e2e:mcp -- device/params/ppal-device-duplicate-macro-name
  */

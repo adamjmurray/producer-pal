@@ -14,7 +14,8 @@ import {
   splitList,
   valueForIndex,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
-import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
+import { outdatedFor } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
+import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { type WrittenContainer } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   type MaybePromise,
@@ -71,6 +72,7 @@ export interface CreateChecked {
  * @param call - The create-device call
  * @param targets - The call's targets
  * @param deadline - The request deadline
+ * @param manage - Whether the caller can use ppal-manage
  * @returns The call, checked; a promise when it names anything to look up
  * @throws Error when the call names no path, or a name isn't a device
  */
@@ -78,9 +80,10 @@ export function checkCreateCall(
   call: CreateCall,
   targets: Array<Target<CreatePayload>>,
   deadline: number | null | undefined,
+  manage: boolean,
 ): MaybePromise<CreateChecked> {
   if (call.path == null) {
-    return refuseMissingPath(call, deadline);
+    return refuseMissingPath(call, deadline, manage);
   }
 
   const paths = targets.map(({ named }) => named.value);
@@ -124,8 +127,8 @@ export function checkCreateCall(
 
   return (
     call.hosted
-      ? hostedDevicePlans(call, paths, deadline)
-      : devicePlans(call, paths, deadline)
+      ? hostedDevicePlans(call, paths, deadline, manage)
+      : devicePlans(call, paths, deadline, manage)
   ).then(checked);
 }
 
@@ -136,14 +139,16 @@ export function checkCreateCall(
  * report first; with no path there is nothing to pair a list against.
  * @param call - The create-device call
  * @param deadline - The request deadline
+ * @param manage - Whether the caller can use ppal-manage
  * @returns Never: it always throws
  */
 async function refuseMissingPath(
   call: CreateCall,
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<never> {
   if (call.device != null && call.preset == null && !call.hosted) {
-    await findBrowserItem(call.device, deadline);
+    await findBrowserItem(call.device, deadline, manage);
   }
 
   throw new Error("path is required when creating a device");
@@ -151,7 +156,7 @@ async function refuseMissingPath(
 
 // What each path creates when every device is native: nothing to look up.
 function nativePlans(call: CreateCall, paths: string[]): DevicePlan[] {
-  const devices = perPath(call.device, paths, "device");
+  const devices = perPath(call.device, paths, "deviceName");
 
   return paths.map((path, i) => ({
     path,
@@ -167,8 +172,9 @@ async function devicePlans(
   call: CreateCall,
   paths: string[],
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<DevicePlan[]> {
-  const devices = perPath(call.device, paths, "device");
+  const devices = perPath(call.device, paths, "deviceName");
   const presets = perPath(call.preset, paths, "preset");
   const found = new Map<string, BrowserItem | null>();
   const plans: DevicePlan[] = [];
@@ -190,7 +196,9 @@ async function devicePlans(
     const deviceItem =
       deviceName == null
         ? null
-        : await cached(deviceName, () => findBrowserItem(deviceName, deadline));
+        : await cached(deviceName, () =>
+            findBrowserItem(deviceName, deadline, manage),
+          );
 
     if (presetName == null) {
       plans.push({ path, device: deviceName as string, item: deviceItem });
@@ -202,7 +210,7 @@ async function devicePlans(
         ? undefined
         : presetScopeForDevice(deviceName, deviceItem);
     const item = await cached(`${deviceName ?? ""}\n${presetName}`, () =>
-      resolveBrowserPreset(presetName, scope, deadline),
+      resolveBrowserPreset(presetName, scope, deadline, manage),
     );
 
     plans.push({ path, device: presetName, item });
@@ -217,9 +225,10 @@ async function hostedDevicePlans(
   call: CreateCall,
   paths: string[],
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<DevicePlan[]> {
   const devices = perPath(call.device, paths, "device") as string[];
-  const hosted = await planHostedPlugins(devices, deadline);
+  const hosted = await planHostedPlugins(devices, deadline, manage);
 
   return paths.map((path, i) => ({
     path,
@@ -251,6 +260,7 @@ function perPath(
  * Look up a device that isn't native in Live's browser.
  * @param deviceName - Device name
  * @param deadline - The request deadline
+ * @param manage - Whether the caller can use ppal-manage
  * @returns The browser item, or null for a native device
  * @throws Error listing the native devices when the remote script isn't
  *   answering or is out of date, since without it they are all there is
@@ -259,6 +269,7 @@ function perPath(
 async function findBrowserItem(
   deviceName: string,
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<BrowserItem | null> {
   if (ALL_VALID_DEVICES.includes(deviceName)) {
     return null;
@@ -271,13 +282,14 @@ async function findBrowserItem(
       `Instruments: ${VALID_DEVICES.instruments.join(", ")} | ` +
       `MIDI Effects: ${VALID_DEVICES.midiEffects.join(", ")} | ` +
       `Audio Effects: ${VALID_DEVICES.audioEffects.join(", ")}`;
+    const outdated = outdatedFor(item, manage);
 
     throw new Error(
       `invalid device "${deviceName}". Valid devices - ${validList}. ` +
-        (item.outdated == null
+        (outdated == null
           ? "A plug-in or Max for Live device loads only with the Producer " +
-            `Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`
-          : `A plug-in or Max for Live device can't load: ${item.outdated}`),
+            `Pal remote script, which isn't answering; ${remoteScriptSetup(manage)}`
+          : `A plug-in or Max for Live device can't load: ${outdated}`),
     );
   }
 

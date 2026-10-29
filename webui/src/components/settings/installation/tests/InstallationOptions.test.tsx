@@ -36,6 +36,14 @@ describe("InstallationOptions", () => {
     );
   });
 
+  it("groups the boxes without a visible heading", () => {
+    fetchMock.mockReturnValue(new Promise(() => {}));
+    render(<InstallationOptions />);
+
+    expect(screen.getByRole("group", { name: "Notices" })).toBeTruthy();
+    expect(screen.queryByText("Checks")).toBeNull();
+  });
+
   it("shows what the server has stored", async () => {
     fetchMock.mockResolvedValue(
       jsonResponse({ autoUpdateCheck: false, warnIfInstallIncomplete: false }),

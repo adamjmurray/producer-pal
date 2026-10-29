@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import path from "node:path";
@@ -65,7 +66,7 @@ function createItemsArray(): KbItem[] {
     { src: "e2e/mcp/README.md" },
     { src: "e2e/webui/README.md" },
     { src: "e2e/docs/README.md" },
-    { src: "e2e/live-sets/e2e-test-set-spec.md" },
+    { src: "e2e/live-sets/specs/e2e-test-set-spec.md" },
 
     // Eval scenarios
     { src: "evals/scenarios/defs", isDir: true, flatName: "evals--scenarios" },

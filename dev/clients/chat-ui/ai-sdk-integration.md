@@ -22,7 +22,7 @@ for await (const part of result.fullStream) {
 
 All providers (Anthropic, Google, OpenAI, Mistral, OpenRouter, Vercel AI
 Gateway, Ollama) go through this single code path via provider-specific model
-factories in `provider-factories.ts`.
+factories in `provider/provider-factories.ts`.
 
 **Locked Settings:**
 
@@ -56,6 +56,26 @@ Per-message overrides (`MessageOverrides`) can still override thinking for
 individual messages. When used, the overridden value is stamped on the assistant
 `ChatMessage` as `thinkingOverride` — only when it differs from the conversation
 default.
+
+**Signed reasoning and prompt caching:**
+
+Claude checks its prompt cache against the exact earlier assistant messages. A
+dropped thinking block changes the prefix, so the cache read stops there and the
+earlier tool results are billed again on the next turn. So `buildModelMessages`
+re-sends each turn's signed reasoning (`reasoningReplayFor`,
+`chat/sdk/reasoning-replay.ts`):
+
+- Direct Anthropic: `reasoningParts`, only while the `anthropic` thinking option
+  is on. Never widen that check; the API rejects reasoning when thinking is
+  disabled.
+- OpenRouter→Claude: `openrouterReasoningDetails` (Claude's complete, signed
+  `reasoning_details` only), always offered, but only for a step whose
+  `responseModel` is the request's model. A signature means nothing to another
+  model, so after a model switch those steps go back as plain content.
+  `transformOpenRouterRequest` is the last check: if the final body has no
+  reasoning, effort `none`, or a non-`anthropic/` model, it strips Claude's
+  `reasoning_details` from earlier turns. It runs after the "Off" settle, so a
+  model that can't turn reasoning off (Sonnet 5.5) keeps its blocks at "Off".
 
 **Response Model Tracking:**
 

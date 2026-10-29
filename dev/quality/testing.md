@@ -56,7 +56,9 @@ shape in a helper.
 
 ## Live API tests
 
-Use the mock registry (`src/test/mocks/mock-registry.ts`):
+Vitest, with tests colocated with source. The mock `LiveAPI` class is
+`src/test/mocks/mock-live-api.ts`; use the mock registry
+(`src/test/mocks/mock-registry.ts`):
 
 - `registerMockObject(id, { path, type, properties, methods })` returns a mock
   with instance-level `get`/`set`/`call` spies. Assert on it directly:
@@ -157,12 +159,14 @@ Function coverage is enforced at 100%. `npm run check` prints totals only — th
 per-file breakdown is in `coverage/coverage-summary.txt`.
 
 For a genuinely untestable function (IDB error callbacks, exhaustive `never`
-branches, no-op stubs), use `/* v8 ignore start -- reason */` …
-`/* v8 ignore stop */`. Use `start`/`stop` rather than `next`, which only
-excludes line and branch coverage, not function coverage. The `-- reason` is
-required, and per-tree counts are ratcheted in
+branches, no-op stubs, inline JSX callbacks in root components), use
+`/* v8 ignore start -- reason */` … `/* v8 ignore stop */`. Use `start`/`stop`
+rather than `next`, which only excludes line and branch coverage, not function
+coverage. The `-- reason` is required on `start` and `next` (a test enforces
+it), not on `stop`. Per-tree counts are ratcheted in
 `src/test/lint-suppression-limits.test.ts` — raising a limit needs user
-approval.
+approval, and a new exclusion needs human and AI agreement that the function
+can't reasonably be tested.
 
 ## Comment volume
 
@@ -207,19 +211,14 @@ pairs — so a strict ratchet would push renames onto correctly named files.
 
 ## Auditing coverage
 
-**Don't audit by grepping for a name.** A table-driven test registers its cases
+Don't audit by grepping for a name: a table-driven test registers its cases
 through `it.each`, so the name never appears as a literal and the grep reports a
-gap that isn't there. A coverage audit did this twice in one pass: `sin()` and
-`tri()` were already covered by an `it.each` in
-`ppal-clip-transforms-waveforms.test.ts`, and `pitchShift`, `warpMode`,
-`firstStart` and `quantizePitch` each had a read and a write e2e. Read the
-suite, or grep for the helper that builds the table.
+gap that isn't there. Read the suite, or grep for the helper that builds the
+table.
 
-**Green after a semantics change is weaker evidence than it looks.** When the
-mock registry changed how a re-registered object behaves, the affected tests
-were not read one by one — whatever stayed green was kept. Nothing broke, but
-green does not prove that a test still means what its author intended. Worth
-remembering if something surfaces later around mock identity.
+Green after a mock-semantics change doesn't prove a test still means what its
+author intended. Read the affected tests instead of keeping whatever stayed
+green.
 
 ## Remote script (Python) tests
 
@@ -227,7 +226,7 @@ remembering if something surfaces later around mock identity.
 `npm run remote-script:test` (part of `npm run check`). They need neither Live
 nor the Live API: the tests use fake Live objects. A new route gets a test
 there; a route that changes the Set also gets an entry in
-`remote-script-write-expiry.test.ts`.
+`src/mcp-server/rpc/remote-script/tests/forwarded/remote-script-write-expiry.test.ts`.
 
 ## E2E
 

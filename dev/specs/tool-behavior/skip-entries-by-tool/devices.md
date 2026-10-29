@@ -14,6 +14,11 @@ Part of [Skip entries, tool by tool](README.md).
   since a replaced device makes the answer moot. The question is asked before
   the write, so nothing can fail after the count has changed. A rack Live won't
   take below 1 macro says where the count landed.
+- **update-device's skip can name a chain a pad move re-numbered.** A drum chain
+  move changes which chain `pD1/c0` names, so a skipped chain's entry adds
+  `that chain is now <path> (id N)`; see
+  [Tool Behavior](../skips-and-replaced-targets.md). A bare pad path is its
+  note, which no move changes, so it gets no clause.
 - **update-device's `pitchBendRange` and `notePitchBendRange` are `params`
   entries written through the remote script.** Only a Simpler has them (on
   another device the name is not found, as any unknown param). Each entry comes
@@ -97,27 +102,70 @@ Part of [Skip entries, tool by tool](README.md).
   says to load the file from a uniquely named folder.
 - **A `preset` name (create-device, update-device) is found wherever it's
   filed.** Live's browser is searched first, under the named device or, for
-  update-device, then anywhere. A name it lacks is looked up in Live's library
-  database, never by walking the Drums or Sounds sections (that can crash Live),
-  and loads by file. The match is the same as in the browser: the whole name,
-  any case, with or without `.adv`/`.adg`. One file loads; several refuse,
-  listing their paths. Only the device's presets count when a device is named
-  (racks by their rack class; any other device by the class of the presets filed
-  in or just under its folder). update-device asks for the target's presets
-  first and takes any preset only when it has none by that name. A plug-in or
-  Max device named on create-device has no class to filter by, so its name isn't
-  looked up in the database. The database is read as of Live's last save, so a
-  preset added this session may not be found; with no database, today's "no
-  preset" error stands.
+  update-device, then anywhere. The match is the whole name, any case, with or
+  without `.adv`/`.adg`. Where the files are listed depends on what the browser
+  finds:
+  - **Nothing.** The name is looked up in Live's library database, never by
+    walking the Drums or Sounds sections (that can crash Live), and loads by
+    file. One file loads; several refuse.
+  - **One match.** The database is asked too, for same-named files the browser
+    doesn't list (a pack Max device's preset sharing a name with a Core Library
+    one). Several refuse, filtered by the device's library class: racks by their
+    rack class, any other device by its own. One or none: the browser's match
+    loads.
+  - **Drum Racks.** Many drum kits are saved as an Instrument Rack whose first
+    chain starts with a Drum Rack, and the browser lists none of them under Drum
+    Rack. Such a file counts as a Drum Rack preset when named or given by file
+    path: for a Drum Rack the database is asked for Instrument Rack files too,
+    and those are read and kept unless they're readably a plain Instrument Rack
+    (an unreadable file counts, as elsewhere). A browser path under
+    `Instruments/Instrument Rack/` is mapped to its file too: the database's
+    Drum Rack files of that name are kept if their path ends with what the
+    browser path has below `Instrument Rack`. One file loads; several refuse as
+    a shared browser path (below); none, or a library that can't be read, leaves
+    the refusal "not a preset for Drum Rack". Live loads such a kit as the
+    Instrument Rack, not a bare Drum Rack.
+  - **Several matches.** The browser lists a rack under every device it is built
+    around, and two files can share a browser path, so the database settles it.
+    It is asked for every file with the name; with a device named or targeted,
+    the files are read and kept if they are for it (a rack counts for the device
+    it is built around; an unreadable file or an unknown device counts as for
+    it). Several files refuse, listing their absolute paths. One file loads only
+    when the browser's matches look like that file listed under several devices:
+    no two at the same browser path, all with the same path below their device
+    folder, and the file's path ending with it. Otherwise, and with no files
+    left, the browser's paths are listed.
+  - **No database.** The browser's match loads, or its paths are listed for
+    several; with no match, today's "no preset" error stands.
+  - update-device asks for the target's presets first and takes any preset only
+    when it has none by that name. A plug-in, or a Max device listed under Max
+    for Live, has no class to filter by, so its name isn't looked up in the
+    database. The database is read as of Live's last save, so a preset added
+    this session may not be found.
+- **A browser path two items share is refused, never guessed.** A `preset` or
+  `deviceName` spelled `<section>/<path>` (e.g.
+  `Instruments/Instrument Rack/Mallets/Vibraphone.adg`) that lists two or more
+  loadable items at the end is refused with the count: Live can list a Core
+  Library file and a pack's at one path, and the remote script would load the
+  first. A `preset` refusal says to pass the file's absolute path from
+  ppal-library; `deviceName` has no way to name one. A suffix picks between a
+  rack and a preset of one name (`Foo.adv`); folders don't count. With a device
+  named, the path is checked against it first (trimmed segments, any case),
+  before the folder is listed: a path outside the device's presets is refused
+  "not a preset for <device>" even when two items share it, unless it is a Drum
+  Rack kit (above), where the Drum Rack files of that name settle which file it
+  is. A device already in the Set (update-device) takes a path anywhere.
 - **A preset file is checked against the device a call names.** create-device
-  with a `device` and an absolute file path (a Windows drive or network share
-  too) reads the gzipped XML and refuses a file for another device, as it does a
-  browser path: `preset "<path>" is not a preset for <device>`. An `.adv` is for
-  the device its root element names; an `.adg` for the rack it holds, or (for a
-  device that isn't a rack) the device it is built around, the first device of
-  its first chain. A rack that merely holds the device isn't for it. A device
-  with no known class (plug-ins, Max devices), or a file that can't be read,
-  isn't checked. update-device takes any file, as it does any preset.
+  with a `deviceName` and an absolute file path (a Windows drive or network
+  share too) reads the gzipped XML and refuses a file for another device, as it
+  does a browser path: `preset "<path>" is not a preset for <device>`. An `.adv`
+  is for the device its root element names; an `.adg` for the rack it holds, or
+  (for a device that isn't a rack) the device it is built around, the first
+  device of its first chain. A rack that merely holds the device isn't for it,
+  except that an Instrument Rack whose first device is a Drum Rack is for Drum
+  Rack too. A device with no known class (plug-ins, Max devices), or a file that
+  can't be read, isn't checked. update-device takes any file, as it does any
+  preset.
 - **A preset that holds the Producer Pal device is refused after Live loads
   it.** The remote script looks through what `/load` or `/hotswap` loaded
   (chains, return chains, drum pads) and deletes what holds it, by device name

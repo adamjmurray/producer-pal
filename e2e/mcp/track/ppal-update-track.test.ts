@@ -7,7 +7,7 @@
  * E2E tests for ppal-update-track tool
  * Updates track properties - these modifications persist within the session.
  * Uses: e2e-test-set (note: t5 is soloed by default, must unsolo first)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp
  */
@@ -164,6 +164,15 @@ describe("ppal-update-track", () => {
     expect(warnings).toStrictEqual([
       'WARNING: blank id ignored: "path" names the tracks',
     ]);
+  });
+
+  it('warns once when id "null" rides along with a path', async () => {
+    const { data, warnings } = parseToolResultWithWarnings<UpdateTrackResult>(
+      await updateTrack({ id: "null", path: "t0", name: "Null Id" }),
+    );
+
+    expect(data.path).toBe("t0");
+    expect(warnings).toStrictEqual(['WARNING: id "null" names nothing']);
   });
 
   it("refuses path beside paths with different values, renaming nothing", async () => {

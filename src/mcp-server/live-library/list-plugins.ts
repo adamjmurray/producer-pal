@@ -34,7 +34,8 @@
  */
 
 import { type DatabaseSync } from "node:sqlite";
-import { detectStalenessRisk } from "./db-staleness.ts";
+import { listBrowserPlugins } from "../rpc/remote-script/browser/browser-plugins.ts";
+import { stalenessNote } from "./db-staleness.ts";
 import {
   clampLibraryLimit,
   DEFAULT_LIBRARY_LIMIT,
@@ -46,6 +47,8 @@ import {
 } from "./library-types.ts";
 import { findLiveFilesDbPath, findLivePluginsDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
+import { mergeBrowserPlugins } from "./query/plugins/merge-browser-plugins.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 /** Name of the plugin table in Live's DB (per spike notes — see file header). */
 const PLUGINS_TABLE = "plugins";
@@ -89,11 +92,11 @@ export async function listPlugins(
       };
     }
 
-    // Best-effort advisory: flag when an unclean Live exit left a pending WAL
-    // that our immutable read can't see. Spread into every success return so the
-    // signal sits at the top alongside dbAvailable; omitted when there's no risk.
-    // Mirrors librarySearch / listTags / listCategories.
-    const stalenessRisk = await detectStalenessRisk(source);
+    // Live's DB lags behind new installs, but its browser doesn't. Without the
+    // browser (remote script unavailable) the DB may be stale, and says so.
+    const browserPlugins = await listBrowserPlugins();
+    const stale =
+      browserPlugins == null ? await stalenessNote(source) : undefined;
     const db = await openLiveDb(source);
 
     try {
@@ -110,14 +113,18 @@ export async function listPlugins(
         )
         .all() as unknown as PluginRow[];
       const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
-      const plugins = rows
-        .map(buildPluginItem)
+      const dbPlugins = rows.map(buildPluginItem);
+      const plugins = (
+        browserPlugins == null
+          ? dbPlugins
+          : mergeBrowserPlugins(dbPlugins, browserPlugins)
+      )
         .filter((item) => matchesFilters(item, args))
         .slice(0, limit);
 
       return {
         dbAvailable: true,
-        ...(stalenessRisk && { stalenessRisk }),
+        ...(stale && { stalenessNote: stale }),
         plugins,
       };
     } finally {
@@ -127,9 +134,7 @@ export async function listPlugins(
     return {
       dbAvailable: false,
       plugins: [],
-      detail: `Failed to read Live plugin database: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+      detail: `Failed to read Live plugin database: ${errorMessage(error)}`,
     };
   }
 }

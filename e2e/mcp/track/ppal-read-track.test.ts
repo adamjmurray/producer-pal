@@ -6,7 +6,7 @@
 /**
  * E2E tests for ppal-read-track tool
  * Uses: e2e-test-set (12 tracks: t0-t3 MIDI, t4-t6 Audio, t7-t8 MIDI, t9 Group, t10-t11 MIDI)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp
  */

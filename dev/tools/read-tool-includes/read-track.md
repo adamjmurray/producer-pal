@@ -18,6 +18,7 @@ Returns track overview by default. Use `include` to add detail.
 | `instrument`           | `string` | Instrument class name (omitted if no instrument)                                                       |
 | `groupId`              | `string` | Parent group track ID (only when grouped)                                                              |
 | `isArmed`              | `true`   | Only present when armed                                                                                |
+| `isFrozen`             | `true`   | Only present when frozen                                                                               |
 | `isGroup`              | `true`   | Only present for group tracks                                                                          |
 | `isGroupMember`        | `true`   | Only present when inside a group                                                                       |
 | `playingSlotIndex`     | `number` | 0-based playing clip slot (only when >= 0)                                                             |

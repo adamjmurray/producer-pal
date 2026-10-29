@@ -22,12 +22,13 @@ import {
   type ScenarioRequirements,
 } from "../../../types.ts";
 import { clearClipSlots } from "../../clip/helpers/clip-turn-readers.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** Connect tool name (turn-0 connect assertion). */
-export const TOOL_CONNECT = "ppal-connect";
+export const TOOL_CONNECT = TOOLS.connect;
 
 /** The context/memory tool under evaluation. */
-export const TOOL_CONTEXT = "ppal-context";
+export const TOOL_CONTEXT = TOOLS.context;
 
 /** Standard turn-0 message that opens a connection to Live. */
 export const MSG_CONNECT = CONNECT_MESSAGE;

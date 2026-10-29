@@ -54,9 +54,11 @@
     letters, ASCII (`#`/`b`) or Unicode (`♯`/`♭`) accidentals, and enharmonic
     spellings (`E#`→F, `B#`→C of the next octave, `Cb`→B of the previous octave)
     — see [the bar|beat spec](../barbeat/README.md). (`B` also reads as a flat,
-    so `GB3` = `Gb3`.) The transform grammar shares one `pitchClassFromParts`,
-    locked in parity with the bar|beat note grammar by
-    `pitch-class-grammar-parity.test.ts`.
+    so `GB3` = `Gb3`.) The accidental goes right after the letter: one glued
+    after the octave (`A3b`, `A3#`) is refused with a "write Ab3" error (`#`
+    would otherwise start a comment and silently drop the rest of the line). The
+    transform grammar shares one `pitchClassFromParts`, locked in parity with
+    the bar|beat note grammar by `pitch-class-grammar-parity.test.ts`.
   - A bare pitch name is a value only for the `pitch` parameter (`pitch = C4`),
     as a selector (`C3:`), or as a function argument (`min(C3, C5)`). Assigned
     to any other parameter the transform is refused — not silently coerced to a

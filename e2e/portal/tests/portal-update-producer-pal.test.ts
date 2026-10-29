@@ -12,12 +12,13 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   callToolText,
+  callToolTexts,
   copyPortal,
   startPortal,
   stopAfterEach,
   tempFolders,
 } from "../portal-test-helpers";
-import { createStubDevice } from "../stub-device";
+import { createStubDevice, MANAGE_TOOL_REPLY } from "../stub-device";
 import {
   createStubRemoteScript,
   type RouteHandler,
@@ -50,17 +51,23 @@ const UPDATE = { action: "update-producer-pal" };
  *   null for a script without the route
  * @param options - What else differs between tests
  * @param options.deviceOnline - False for a device that isn't running
+ * @param options.deviceTools - Give the device ppal-connect and ppal-manage
  * @returns The pieces a test looks at
  */
 async function setup(
   running: string,
   swap?: RouteHandler | null,
-  options: { deviceOnline?: boolean } = {},
+  options: { deviceOnline?: boolean; deviceTools?: boolean } = {},
 ) {
   const library = newLibrary();
 
   const device = track(
-    await createStubDevice({ online: options.deviceOnline, version: running }),
+    await createStubDevice({
+      online: options.deviceOnline,
+      version: running,
+      connectTool: options.deviceTools,
+      manageTool: options.deviceTools,
+    }),
   );
   const script = track(
     await createStubRemoteScript({
@@ -98,7 +105,7 @@ describe("ppal-manage update-producer-pal", () => {
 
     expect(isError).toBeFalsy();
     expect(text).toBe(
-      `{device:{from:"${OLD}",to:"${PORTAL_VERSION}"},track:{path:"t1",name:"1-MIDI"},nextSteps:"Call ppal-connect next."}`,
+      `{device:{from:"${OLD}",to:"${PORTAL_VERSION}"},track:{path:"t1",name:"1-MIDI"},nextSteps:"Call ppal-connect with versionCheck: true, or plain ppal-connect if this chat hasn't connected yet."}`,
     );
     expect(existsSync(join(library, ...AMXD))).toBe(true);
 
@@ -166,7 +173,9 @@ describe("ppal-manage update-producer-pal", () => {
     const { text, isError } = await callToolText(portal, "ppal-manage", UPDATE);
 
     expect(isError).toBe(true);
-    expect(text).toContain("is a different build than this device's");
+    expect(text).toContain("is a different build than this connector's");
+    // The chat UI is the older device's, which would reinstall its older script.
+    expect(text).not.toContain("chat UI");
     expect(text).toContain(
       "The Live Set wasn't changed, but the Producer Pal device in the User Library was updated.",
     );
@@ -186,4 +195,83 @@ describe("ppal-manage update-producer-pal", () => {
       script.requests.filter((r) => r.route === "/replace-producer-pal"),
     ).toHaveLength(0);
   });
+});
+
+describe("a device older than the portal", () => {
+  const INSTALL = { action: "install-producer-pal" };
+  const RETIRED = { action: "install-remote-script" };
+
+  it("sends a device from before ppal-manage to the by-hand upgrade, not update-producer-pal", async () => {
+    const { portal } = await setup("2.4.0", undefined, { deviceTools: true });
+
+    const [result, hint] = await callToolTexts(portal, "ppal-connect");
+
+    expect(result).toBe("connected");
+    expect(hint).toContain("older than this connector");
+    expect(hint).toContain(
+      "https://producer-pal.org/installation/upgrading#update-by-hand",
+    );
+    expect(hint).not.toContain("update-producer-pal");
+  });
+
+  it.each([
+    ["install-producer-pal", INSTALL],
+    ["install-remote-script, which an older device advertises", RETIRED],
+  ])(
+    "answers %s itself, installing the portal's script and device",
+    async (_name, action) => {
+      const { library, device, portal } = await setup("2.5.0-rc1", undefined, {
+        deviceTools: true,
+      });
+
+      const { text, isError } = await callToolText(portal, "ppal-manage", {
+        ...action,
+        userLibrary: library,
+      });
+      const folder = join(library, "Remote Scripts", "Producer_Pal");
+
+      expect(isError).toBeFalsy();
+      expect(text).not.toContain(MANAGE_TOOL_REPLY);
+      expect(text).toContain(`version:"${PORTAL_VERSION}"`);
+      expect(text).toContain(`device:{status:"installed"`);
+      expect(readFileSync(join(folder, "version.py"), "utf8")).toContain(
+        PORTAL_VERSION,
+      );
+      expect(existsSync(join(library, ...AMXD))).toBe(true);
+      // Producer Pal is running, so there is no device to add afterwards.
+      expect(text).not.toContain("add-producer-pal");
+      expect(
+        device.requests.filter((r) => r.method === "tools/call"),
+      ).toStrictEqual([]);
+    },
+  );
+
+  it.each([
+    ["install-producer-pal", INSTALL],
+    ["install-remote-script", RETIRED],
+  ])(
+    "forwards %s to a device with the portal's version",
+    async (_name, action) => {
+      const { library, device, portal } = await setup(
+        PORTAL_VERSION,
+        undefined,
+        {
+          deviceTools: true,
+        },
+      );
+
+      const { text } = await callToolText(portal, "ppal-manage", {
+        ...action,
+        userLibrary: library,
+      });
+
+      expect(text).toBe(MANAGE_TOOL_REPLY);
+      expect(
+        device.requests
+          .filter((r) => r.method === "tools/call")
+          .map((r) => r.tool),
+      ).toStrictEqual(["ppal-manage"]);
+      expect(existsSync(join(library, "Remote Scripts"))).toBe(false);
+    },
+  );
 });

@@ -10,7 +10,7 @@
  *
  * Uses: racks-test — t0/d0/c0/d0/pC1/c0/d0 is the Simpler "synth-kick" on the
  * Kit's C1 pad. Its ranges are read at run time and put back after each test.
- * See: e2e/live-sets/racks-test-spec.md
+ * See: e2e/live-sets/specs/racks-test-spec.md
  *
  * Run with: npm run e2e:mcp:remote-script -- device/params/ppal-simpler-pitch-bend-remote-script
  */

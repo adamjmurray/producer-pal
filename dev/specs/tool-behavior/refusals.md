@@ -33,12 +33,12 @@ How the tool answers depends on what is wrong:
     beside a path with a lane segment);
   - a published param with the deprecated spelling it replaced (`path` and
     `slot`, `toPath` and `toSlot`, `arrangementSplit` and `split`, `startTime`
-    and `startLocator`, `arrangementStart` and `locator`, `device` and
-    `deviceName`), or with a position spelled in its own coordinate
-    (`toPath: "t0[5|1]"` and `arrangementStart`);
+    and `startLocator`, `arrangementStart` and `locator`), or with a position
+    spelled in its own coordinate (`toPath: "t0[5|1]"` and `arrangementStart`);
   - `id` beside `ids` or the tool's own id spelling (`clipId`, `trackId`, ...),
     and `path` beside `paths`, whatever the values: a param and its alias are
-    never sent together.
+    never sent together. Same for create-device's `deviceName` and its `device`
+    alias.
 
   One wording, built by `refuseNamedTwice`:
   `<param> names the <noun> on its own - don't send <params> with it`, listing
@@ -54,7 +54,8 @@ How the tool answers depends on what is wrong:
 - **A bad transform arg** is refused when it does not depend on the clip's
   meter, and skipped per clip when it does. A compound assignment of a
   `swing()`/`quant()` call (`timing += swing(...)`) is refused the same way, as
-  is a `swing()` amount at or past its grid (`swing(0.56, n/8)`)
+  is a `swing()` amount at or past its grid (`swing(0.56, n/8)`), and a waveform
+  period that uses a note property (`sin(note.start * 6.28)`)
   ([transform spec](../transforms/README.md)).
 
 ## A param only another action reads
@@ -93,16 +94,31 @@ treated as missing: its requests are held back before they are sent, so nothing
 is asked of Live, and every caller falls back or refuses as it does when no
 script answers. Where the answer tells the model the script is needed or
 missing, it says instead that the script is out of date, with the running and
-needed versions, and to update it with `ppal-manage` or in Settings → Remote
-Script and restart Live. The same goes for a 404 that says the route is unknown;
-any other 404 still means "not found". The Skills teach remote-script features
-only for a current script.
+needed versions, and to update it with `ppal-manage` or in the chat UI's
+Settings → Installation and restart Live. The same goes for a 404 that says the
+route is unknown; any other 404 still means "not found". The Skills teach
+remote-script features only for a current script.
+
+**Only a caller that has `ppal-manage` is pointed at it.** Small-model mode
+never offers the tool, and a toolset can leave it out. Every message that tells
+the caller how to get or update the script (preset and plug-in loads, clip
+conversion, Simpler pitch bend, an out-of-date or different-build script, and
+the same notice in `ppal-connect`) sends such a caller to the chat UI's Settings
+→ Installation, then restart Live and choose Producer Pal as a Control Surface.
+The clip automation message for a script that isn't running names no install
+path, for any caller. The device learns this per request from the caller's own
+settings, never from state held between requests. `ppal-manage`'s own undo and
+redo refusals still name it, and so do the portal's messages for its own
+`ppal-manage`. The chat UI's device swap (a person, over REST) never sees the
+tool name.
 
 ## A write that waits for another
 
-Write calls run one at a time, across every client; reads don't wait. A queued
-write counts the wait against its own timeout and runs with what is left. If it
-gets down to 5 s (or half its timeout, if shorter) before its turn, it doesn't
-run and answers
+A queued write that runs short of time before its turn doesn't run and answers
 `Not run: waited <N>s for other Producer Pal writes to finish and ran out of time. Nothing changed; retry it.`
-A write whose caller disconnects while it waits doesn't run either.
+A call whose args or context won't fit in one Max message (over ~30 KB of UTF-8)
+isn't sent and answers
+`... too large for a single Max IPC message: <N> bytes exceeds 30000. Not run. Send less in one call. Nothing changed.`
+A write whose caller disconnects while it waits doesn't run either. The queue's
+rules (what counts as a write, the timeout budget) are in
+[write-queue.md](../../architecture/write-queue.md).

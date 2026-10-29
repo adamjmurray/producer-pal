@@ -18,7 +18,8 @@ loop region:
 
 **Target >= clip loop length** ("standard tiling"):
 
-- `createLoopeClipTiles()` fills remaining space with duplicated loop iterations
+- `createLoopedClipTiles()` fills remaining space with duplicated loop
+  iterations
 - One pass is the loop length. A `firstStart` inside the loop does not shorten
   it: Live plays to `loop_end`, wraps to `loop_start` and plays out the rest, so
   the tiles carry that same offset instead of splitting into sub-loop pieces
@@ -155,9 +156,8 @@ reported `deleted` unless the call asked.
 
 ## Splitting
 
-Entry: `prepareSplitParams()` parses split points, `performSplitting()`
-executes. Per-clip work is in `splitSingleClip()`. All in
-`arrangement-splitting.ts`.
+Entry: `readSplitPoints()` parses split points, `performSplitting()` executes.
+Per-clip work is in `splitSingleClip()`. All in `arrangement-splitting.ts`.
 
 Optimized algorithm using 2(N-1) duplications for N segments (not 2N):
 

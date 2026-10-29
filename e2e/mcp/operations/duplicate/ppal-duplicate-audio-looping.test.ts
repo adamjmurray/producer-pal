@@ -14,7 +14,7 @@
  * a fraction of a loop.
  *
  * Uses: e2e-test-set - t4 "Audio 1" (looping warped clip in s0), s0 "Intro"
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-duplicate-audio-looping
  */

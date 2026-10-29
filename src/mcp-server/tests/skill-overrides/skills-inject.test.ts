@@ -21,10 +21,10 @@ import { useTempConfigDir } from "../config-dir-test-helpers.ts";
 const loggerWarn = vi.hoisted(() => vi.fn());
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
-  warn: loggerWarn,
-  log: vi.fn(),
-  info: vi.fn(),
-  error: vi.fn(),
+  nodeWarn: loggerWarn,
+  nodeLog: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeError: vi.fn(),
 }));
 
 useTempConfigDir();

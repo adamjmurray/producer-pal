@@ -25,7 +25,7 @@
 
 import { type DatabaseSync } from "node:sqlite";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { detectStalenessRisk } from "./db-staleness.ts";
+import { stalenessNote } from "./db-staleness.ts";
 import { fourCC } from "./library-filters.ts";
 import {
   clampLibraryLimit,
@@ -74,9 +74,8 @@ export async function listCategories(
     return { dbAvailable: false, detail: "Live database not found" };
   }
 
-  // Best-effort advisory: flag a pending WAL from an unclean Live exit that our
-  // immutable read can't see. Omitted from the response when there's no risk.
-  const stalenessRisk = await detectStalenessRisk(dbPath);
+  // Our immutable read misses what is still in Live's WAL; the note says so.
+  const stale = await stalenessNote(dbPath);
 
   // Guard the open + query: Live's DB schema varies across releases, so a future
   // rename of the metadata/metadata_values tables or columns would throw a raw
@@ -87,7 +86,7 @@ export async function listCategories(
     try {
       const base = {
         dbAvailable: true as const,
-        ...(stalenessRisk && { stalenessRisk }),
+        ...(stale && { stalenessNote: stale }),
       };
 
       if (args.category != null && args.category !== "") {

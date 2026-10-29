@@ -13,7 +13,7 @@ import {
   jsonResponse,
 } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { waitForHookState } from "#webui/test-utils/async-test-helpers";
-import { InstallationTab } from "#webui/components/settings/installation/InstallationTab";
+import { InstallationTabHarness } from "#webui/components/settings/installation/tests/helpers/InstallationTabHarness";
 import { type DeviceInstallStatus } from "#webui/hooks/settings/installation/use-device-install";
 import {
   DEVICE_PATH,
@@ -42,19 +42,19 @@ describe("InstallationTab device section", () => {
   /**
    * Render the tab past the device's mount read.
    * @param overrides - Status fields to change
-   * @returns The device summary line's text
+   * @returns The device status line's text
    */
   async function renderDevice(
     overrides: Partial<DeviceInstallStatus> = {},
-  ): Promise<string | null> {
+  ): Promise<string | undefined> {
     routes.device(jsonResponse(deviceStatusBody(overrides)));
-    render(<InstallationTab />);
+    render(<InstallationTabHarness />);
 
-    const summary = await waitForHookState(() =>
-      screen.getByTestId("device-status"),
-    );
+    await waitForHookState(() => {
+      expect(screen.queryByTestId("device-loading")).toBeNull();
+    });
 
-    return summary.textContent;
+    return screen.queryByTestId("device-status")?.textContent ?? undefined;
   }
 
   /**
@@ -81,22 +81,30 @@ describe("InstallationTab device section", () => {
     return JSON.parse(init?.body as string);
   }
 
-  it("shows the shared path field above both sections", async () => {
+  it("orders the path field, the device, the remote script, then the options", async () => {
     await renderDevice();
 
     const field = screen.getByTestId("user-library-path") as HTMLInputElement;
 
     expect(field.value).toBe(USER_LIBRARY);
     expect(
-      screen.getByTestId("installation-tab").firstElementChild?.contains(field),
+      Array.from(screen.getByTestId("installation-tab").children).map((child) =>
+        child.getAttribute("data-testid"),
+      ),
+    ).toStrictEqual([
+      null,
+      "device-section",
+      "remote-script-section",
+      "installation-options",
+    ]);
+    expect(
+      screen.getByTestId("installation-tab").children[0]?.contains(field),
     ).toBe(true);
-    expect(screen.getByTestId("device-section")).toBeTruthy();
-    expect(screen.getByTestId("remote-script-section")).toBeTruthy();
   });
 
-  it("offers Install when the User Library has no copy", async () => {
+  it("offers Copy when the User Library has no copy", async () => {
     expect(await renderDevice()).toBe("Not in your User Library");
-    expect(installLabel()).toBe("Install");
+    expect(installLabel()).toBe("Copy");
   });
 
   it("installs, shows what was done, and drops the button once current", async () => {
@@ -115,6 +123,8 @@ describe("InstallationTab device section", () => {
     );
 
     expect(done.textContent).toBe(`Installed the device. (${DEVICE_PATH})`);
+    // The new version isn't running until the device is swapped.
+    expect(screen.queryByText(/new chat/i)).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/device-install/install"),
       expect.objectContaining({
@@ -124,7 +134,7 @@ describe("InstallationTab device section", () => {
     );
     await waitForHookState(() => {
       expect(screen.getByTestId("device-status").textContent).toBe(
-        "The copy in your User Library is this device (v1.2.0)",
+        "In your User Library (v1.2.0)",
       );
     });
     expect(installLabel()).toBeNull();
@@ -136,10 +146,8 @@ describe("InstallationTab device section", () => {
       installedVersion: "1.1.0",
     });
 
-    expect(summary).toBe(
-      "Update available: your User Library has v1.1.0, this device is v1.2.0",
-    );
-    expect(installLabel()).toBe("Update");
+    expect(summary).toBe("Update available: v1.1.0 → v1.2.0");
+    expect(installLabel()).toBe("Update copy");
   });
 
   it("asks before replacing a newer copy, and sends force", async () => {
@@ -172,13 +180,13 @@ describe("InstallationTab device section", () => {
     expect(installLabel()).toBe("Replace with this device");
   });
 
-  it("offers a plain Install for a typed path the status doesn't describe", async () => {
+  it("offers a plain Copy for a typed path the status doesn't describe", async () => {
     await renderDevice({ state: "installed-newer", installedVersion: "1.3.0" });
 
     fireEvent.input(screen.getByTestId("user-library-path"), {
       target: { value: "/elsewhere" },
     });
-    await waitForHookState(() => expect(installLabel()).toBe("Install"));
+    await waitForHookState(() => expect(installLabel()).toBe("Copy"));
 
     routes.device(jsonResponse(INSTALL_DONE));
     expect(await installAndReadBody()).toStrictEqual({
@@ -187,14 +195,14 @@ describe("InstallationTab device section", () => {
     });
   });
 
-  it("keeps the Install button for a typed path even when the detected copy is current", async () => {
+  it("keeps the Copy button for a typed path even when the detected copy is current", async () => {
     await renderDevice({ state: "same", installedVersion: "1.2.0" });
     expect(installLabel()).toBeNull();
 
     fireEvent.input(screen.getByTestId("user-library-path"), {
       target: { value: "/elsewhere" },
     });
-    await waitForHookState(() => expect(installLabel()).toBe("Install"));
+    await waitForHookState(() => expect(installLabel()).toBe("Copy"));
   });
 
   it.each([
@@ -205,10 +213,6 @@ describe("InstallationTab device section", () => {
     {
       problem: "unreadable-source" as const,
       text: "This device's file can't be read.",
-    },
-    {
-      problem: "not-frozen" as const,
-      text: "This is a development device, which needs the files beside it, so it can't be copied. Freeze it first.",
     },
   ])("offers no install when $problem", async ({ problem, text }) => {
     const summary = await renderDevice({ problem, state: null, path: null });
@@ -330,7 +334,7 @@ describe("InstallationTab device section", () => {
 
   it("surfaces a failed status read and re-reads on Refresh", async () => {
     routes.device(new Response("nope", { status: 500, statusText: "Oops" }));
-    render(<InstallationTab />);
+    render(<InstallationTabHarness />);
 
     const error = await waitForHookState(() =>
       screen.getByTestId("device-load-error"),
@@ -341,7 +345,7 @@ describe("InstallationTab device section", () => {
     routes.device(jsonResponse(deviceStatusBody()));
     fireEvent.click(screen.getByTestId("device-refresh"));
 
-    await waitForHookState(() => screen.getByTestId("device-status"));
+    await waitForHookState(() => screen.getByTestId("device-install"));
   });
 
   it("keeps the last status and shows the error when a Refresh fails", async () => {
@@ -360,7 +364,7 @@ describe("InstallationTab device section", () => {
 
   it("falls back to generic copy when the read answers nothing", async () => {
     routes.device(jsonResponse(null));
-    render(<InstallationTab />);
+    render(<InstallationTabHarness />);
 
     const error = await waitForHookState(() =>
       screen.getByTestId("device-load-error"),
@@ -371,7 +375,7 @@ describe("InstallationTab device section", () => {
 
   it("shows a loading state until the status lands", () => {
     routes.device(new Promise(() => {}));
-    render(<InstallationTab />);
+    render(<InstallationTabHarness />);
 
     expect(screen.getByTestId("device-loading")).toBeTruthy();
   });

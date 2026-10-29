@@ -10,9 +10,9 @@
  * Run with: npm run e2e:mcp -- control/config-validation
  */
 import { afterEach, describe, expect, it } from "vitest";
+import { REST_BASE_URL } from "#evals/shared/config.ts";
 import { CONFIG_URL, resetConfig, setConfig } from "../mcp-test-helpers.ts";
 
-const REST_BASE_URL = CONFIG_URL.replace("/config", "");
 const LIVE_API = "ppal-live-api";
 
 type Config = Record<string, unknown>;

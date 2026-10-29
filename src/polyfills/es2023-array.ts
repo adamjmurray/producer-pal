@@ -35,21 +35,18 @@ export function polyfillToReversed<T>(arr: T[]): T[] {
 
 /**
  * Polyfill implementation for Array.prototype.toSpliced.
+ *
+ * Reads the argument count like native does: with only `start` it deletes to
+ * the end, but an explicit undefined `deleteCount` deletes nothing.
  * @param arr - Array to splice
- * @param start - Start index
- * @param deleteCount - Number of elements to remove
- * @param items - Elements to insert
+ * @param args - Start index, then the number to remove, then the items to insert
  * @returns New spliced array
  */
-export function polyfillToSpliced<T>(
-  arr: T[],
-  start: number,
-  deleteCount?: number,
-  ...items: T[]
-): T[] {
+export function polyfillToSpliced<T>(arr: T[], ...args: unknown[]): T[] {
   const copy = [...arr];
 
-  copy.splice(start, deleteCount ?? copy.length - start, ...items);
+  // splice() with no arguments deletes nothing, and so does the native method
+  copy.splice(...(args as [number, number, ...T[]]));
 
   return copy;
 }
@@ -80,35 +77,44 @@ export function polyfillWith<T>(arr: T[], index: number, value: T): T[] {
   return copy;
 }
 
+/**
+ * Install a method the way native ones are: non-enumerable, so it doesn't show
+ * up in `for...in` over an array.
+ * @param name - The method name
+ * @param value - The method
+ */
+function install(name: string, value: unknown): void {
+  Object.defineProperty(Array.prototype, name, {
+    value,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  });
+}
+
 // Install polyfills on Array.prototype if methods don't exist
 if (!Array.prototype.toSorted) {
-  Array.prototype.toSorted = function <T>(
-    this: T[],
-    compareFn?: (a: T, b: T) => number,
-  ): T[] {
+  install("toSorted", function <
+    T,
+  >(this: T[], compareFn?: (a: T, b: T) => number): T[] {
     return polyfillToSorted(this, compareFn);
-  };
+  });
 }
 
 if (!Array.prototype.toReversed) {
-  Array.prototype.toReversed = function <T>(this: T[]): T[] {
+  install("toReversed", function <T>(this: T[]): T[] {
     return polyfillToReversed(this);
-  };
+  });
 }
 
 if (!Array.prototype.toSpliced) {
-  Array.prototype.toSpliced = function <T>(
-    this: T[],
-    start: number,
-    deleteCount?: number,
-    ...items: T[]
-  ): T[] {
-    return polyfillToSpliced(this, start, deleteCount, ...items);
-  };
+  install("toSpliced", function <T>(this: T[], ...args: unknown[]): T[] {
+    return polyfillToSpliced(this, ...args);
+  });
 }
 
 if (!Array.prototype.with) {
-  Array.prototype.with = function <T>(this: T[], index: number, value: T): T[] {
+  install("with", function <T>(this: T[], index: number, value: T): T[] {
     return polyfillWith(this, index, value);
-  };
+  });
 }

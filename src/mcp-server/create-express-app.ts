@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response, type Express } from "express";
 import Max from "max-api";
@@ -15,11 +14,17 @@ import {
   isNotation,
   type Notation,
 } from "#src/shared/notation.ts";
-import { withLiveApiTool } from "#src/shared/tool-groups.ts";
+import { type ProducerPalConfig } from "#src/shared/config.ts";
+import { manageToolOffered, withLiveApiTool } from "#src/shared/tool-groups.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { type WrappedCallLiveApi } from "./helpers/connect/connect-append.ts";
 import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
+import {
+  type JsonRpcError,
+  rejectStatelessMcpMethods,
+  serveStatelessMcp,
+} from "./helpers/http/stateless-mcp.ts";
 import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
 import { errorHandlerMiddleware } from "./helpers/http/error-handler-middleware.ts";
 import { parseConfigBody } from "./helpers/http/config-body.ts";
@@ -35,7 +40,7 @@ import { registerProjectContextBackupNodeRoutes } from "./helpers/project-contex
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 import { withDefaultOverrides } from "./helpers/request-overrides/default-overrides.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
-import * as console from "./node-for-max-logger.ts";
+import { nodeError, nodeInfo } from "./node-for-max-logger.ts";
 import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-collection-route.ts";
 import { registerGlobalContextRoutes } from "./routes/config/global-context-route.ts";
 import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
@@ -53,25 +58,6 @@ import { registerSystemPromptRoutes } from "./routes/config/system-prompt-route.
 import { registerGeminiVoiceTokenRoute } from "./routes/voice/gemini-voice-token-route.ts";
 import { registerVoiceTokenRoute } from "./routes/voice/voice-token-route.ts";
 
-interface ProducerPalConfig {
-  projectContext: string;
-  smallModelMode: boolean;
-  notation: Notation;
-  jsonOutput: boolean; // true = JSON, false = compact (default)
-  sampleFolder: string;
-  liveApiEnabled: boolean;
-  liveApiForcedOn: boolean;
-  // Debug builds only: false makes the remote script look uninstalled. POST
-  // /config only (evals and e2e); not a device setting, so it is never sent to
-  // Max. A release build neither lists nor accepts it.
-  remoteScriptEnabled?: boolean;
-  // Debug builds only, like remoteScriptEnabled: a version string replaces the
-  // minimum remote script version, so a running script can look out of date.
-  // Listed only while set.
-  remoteScriptMinVersion?: string;
-  tools: string[];
-}
-
 // ENABLE_LIVE_API=true forces the Live API tool on for dev builds
 // (npm run dev:debug / build:debug). When set, the device Setup-tab toggle
 // cannot disable it — the Max handler at "liveApiEnabled" ignores
@@ -83,7 +69,7 @@ interface ProducerPalConfig {
 // don't set ENABLE_LIVE_API, so the asymmetry is dev-only.
 const liveApiForcedOn = process.env.ENABLE_LIVE_API === "true";
 
-const config: ProducerPalConfig = {
+const config: ProducerPalConfig & { notation: Notation } = {
   projectContext: "",
   smallModelMode: false,
   notation: DEFAULT_NOTATION,
@@ -201,7 +187,10 @@ function buildEnrichedCall(
 ): WrappedCallLiveApi {
   return enrichConnect(
     withDefaultOverrides(withUndoStepEnd(callLiveApi), () => {
-      const overrides: RequestOverrides = { notation: getNotation() };
+      const overrides: RequestOverrides = {
+        notation: getNotation(),
+        manageAvailable: manageToolOffered(getSmallModelMode(), getTools()),
+      };
       const compactOutput = getCompactOutput();
 
       // Only when a header asked: an absent one must leave V8 on its own
@@ -238,24 +227,6 @@ function buildRestCall(profile: RequestProfile): WrappedCallLiveApi {
     () => profile.notation,
   );
 }
-
-interface JsonRpcError {
-  jsonrpc: string;
-  error: {
-    code: number;
-    message: string;
-  };
-  id: null;
-}
-
-const methodNotAllowed: JsonRpcError = {
-  jsonrpc: "2.0",
-  error: {
-    code: ErrorCode.ConnectionClosed,
-    message: "Method not allowed.",
-  },
-  id: null,
-};
 
 const internalError = (message: string): JsonRpcError => ({
   jsonrpc: "2.0",
@@ -297,16 +268,16 @@ export function createExpressApp(): Express {
   // or https://*.trycloudflare.com). Gating by isLocalOrigin — or any
   // Origin/Host comparison, which reverse-proxy tunnels defeat by forwarding
   // Host=localhost while Origin stays the public domain — would 403 the
-  // LAN/tunnel chat's own tool calls and break the documented web-tunnels
+  // LAN/tunnel chat's own tool calls and break the documented remote access
   // feature, which is unauthenticated by design (docs/installation/
-  // web-tunnels.md). The localhost-CSRF surface (a web page POSTing to
+  // remote-access.md). The localhost-CSRF surface (a web page POSTing to
   // http://localhost:PORT/mcp) is accepted as part of that "no auth" model.
   app.post("/mcp", async (req: Request, res: Response): Promise<void> => {
     try {
       const method =
         (req.body as { method?: string } | undefined)?.method ?? "unknown";
 
-      console.info(`MCP request: ${method}`);
+      nodeInfo(`MCP request: ${method}`);
 
       // The caller's own profile, off the per-request headers: the
       // built-in chat and each subagent worker send their own values, so one
@@ -335,19 +306,10 @@ export function createExpressApp(): Express {
           tools: profile.tools,
         },
       );
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined, // Stateless mode
-      });
 
-      res.on("close", () => {
-        void transport.close();
-        void server.close();
-      });
-
-      await server.connect(transport);
-      await transport.handleRequest(req, res, req.body);
+      await serveStatelessMcp(server, req, res, req.body);
     } catch (error) {
-      console.error(`Error handling MCP request: ${String(error)}`);
+      nodeError(`Error handling MCP request: ${String(error)}`);
       // Echoed to the caller below: it's the only signal an MCP client gets
       // when this route breaks. That's only safe because nothing on this path
       // touches the filesystem or user data today (mirrors the `expose` note
@@ -357,16 +319,9 @@ export function createExpressApp(): Express {
     }
   });
 
-  // Stateless server doesn't support SSE streams, so GET is not allowed.
-  // Returning 405 tells the MCP SDK not to attempt SSE reconnection.
-  app.get("/mcp", (_req: Request, res: Response): void => {
-    res.status(405).json(methodNotAllowed);
-  });
-
-  // Because we're using a stateless server, DELETE is not needed:
-  app.delete("/mcp", (_req: Request, res: Response): void => {
-    res.status(405).json(methodNotAllowed);
-  });
+  // Stateless server doesn't support SSE streams or sessions: GET and DELETE
+  // get a 405.
+  rejectStatelessMcpMethods(app);
 
   // Serve the chat UI (inlined for frozen .amxd builds).
   // The same bundle handles both /chat and /context — main.tsx reads

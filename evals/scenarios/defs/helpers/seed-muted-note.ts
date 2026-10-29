@@ -17,9 +17,10 @@ import {
   getSmallModelMode,
   setConfig,
 } from "#evals/shared/config.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
+import { sleep } from "#evals/shared/sleep.ts";
 
 const TOOL_LIVE_API = "ppal-live-api";
-const TOOL_READ_CLIP = "ppal-read-clip";
 
 /** The one note to write, in Ableton beats (a quarter note is 1). */
 export interface MutedNote {
@@ -96,7 +97,7 @@ export async function seedMutedNote(
   });
 
   // Let Live settle before the check read, as the e2e muted-note tests do.
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await sleep(100);
 
   const after = await readClip(mcpClient, path);
 
@@ -114,7 +115,7 @@ export async function seedMutedNote(
  */
 async function readClip(mcpClient: Client, path: string): Promise<ClipRead> {
   const result = await mcpClient.callTool({
-    name: TOOL_READ_CLIP,
+    name: TOOLS.readClip,
     arguments: { path, include: ["notes"] },
   });
 

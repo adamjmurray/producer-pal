@@ -60,6 +60,7 @@ type ListedEnvelope = EnvelopeListResult["envelopes"][number];
  * @param isArrangementClip - Whether the clip is in the arrangement
  * @param clipMeter - Getter for the clip's meter, which spells the event times
  * @param deadline - The request deadline from ToolContext, if any
+ * @param manage - Whether the caller can use ppal-manage
  * @returns One entry per automated parameter, each saying why when its events
  *   couldn't be read or can't play, or why there are none to report at all
  */
@@ -67,7 +68,8 @@ export async function clipEnvelopes(
   clip: LiveAPI,
   isArrangementClip: boolean,
   clipMeter: () => { numerator: number; denominator: number },
-  deadline?: number | null,
+  deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<ClipEnvelope[] | string> {
   if (isArrangementClip) {
     return ARRANGEMENT_CLIP_NOTE;
@@ -85,6 +87,7 @@ export async function clipEnvelopes(
     ENVELOPE_ROUTES.list,
     target,
     deadline,
+    manage,
   );
 
   if (!listed.ok) {
@@ -123,6 +126,7 @@ export async function clipEnvelopes(
         limit: MAX_ENVELOPE_EVENTS,
       },
       deadline,
+      manage,
     );
 
     if (!read.ok) {

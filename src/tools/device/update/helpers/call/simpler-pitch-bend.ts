@@ -8,7 +8,7 @@
 // param write can't wait on. They are written here, ahead of the rest of the
 // target's update, and each param entry is handed on with what it came to.
 
-import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
+import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import {
   type ParamEntry,
   paramEntryKey,
@@ -40,6 +40,8 @@ export interface PitchBendStall {
 /** What the write needs from the call. */
 interface PitchBendCall {
   deadline: number | null | undefined;
+  /** Whether the caller can use ppal-manage (`manageOffered`) */
+  manage: boolean;
   /** Told that a write may have changed Live, for a later throw to say so */
   landed: (phrase: string) => void;
 }
@@ -158,7 +160,12 @@ async function settle(
     return refuseAll(settled, asked, stall.reason);
   }
 
-  const write = await writeSimplerSettings(target, change, call.deadline);
+  const write = await writeSimplerSettings(
+    target,
+    change,
+    call.deadline,
+    call.manage,
+  );
 
   if (write.ok) {
     call.landed("pitch bend range");
@@ -176,7 +183,7 @@ async function settle(
       asked,
       write.outdated === true
         ? write.reason
-        : `needs the Producer Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`,
+        : `needs the Producer Pal remote script, which isn't answering; ${remoteScriptSetup(call.manage)}`,
     );
   }
 

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { defaultBufferState } from "./barbeat-interpreter-test-helpers.ts";
 import {
   type BufferState,
@@ -94,7 +94,9 @@ describe("interpreter-buffer-state", () => {
     it("does not warn when nothing is buffered, even if pitches were not emitted", () => {
       // buffered === 0 isolates the `buffered > 0` guard: a `>= 0` mutant would
       // warn here because !pitchesEmitted is true.
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
       const state: BufferState = {
         ...defaultBufferState,
         pitchesEmitted: false,
@@ -107,7 +109,9 @@ describe("interpreter-buffer-state", () => {
     });
 
     it("warns when pitches are buffered but not emitted", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
       const state: BufferState = {
         ...defaultBufferState,
         currentPitches: [
@@ -130,7 +134,9 @@ describe("interpreter-buffer-state", () => {
       [{ stateChangedSinceLastPitch: true, pitchGroupStarted: true }],
       [{ stateChangedAfterEmission: true }],
     ])("warns about a wasted state change for %o", (flags) => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
 
       validateBufferedState({ ...defaultBufferState, ...flags }, "test-op");
 
@@ -143,7 +149,9 @@ describe("interpreter-buffer-state", () => {
     it("stays silent for a state change before any pitch group started", () => {
       // Nothing is wasted yet — the next pitch group picks the change up. This
       // isolates the `&& pitchGroupStarted` conjunct from the warning above.
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
       const state: BufferState = {
         ...defaultBufferState,
         stateChangedSinceLastPitch: true,

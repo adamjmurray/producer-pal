@@ -6,6 +6,7 @@
 import {
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   utimesSync,
   writeFileSync,
@@ -72,10 +73,14 @@ function writeDb(target: string, places: [number, number][]): string {
     CREATE TABLE places (file_id INTEGER PRIMARY KEY, folder_kind INTEGER);
   `);
 
-  const segments = target.split("/").filter(Boolean);
+  // Live stores a Windows path under a drive root ("C:"), a POSIX one under "/"
+  const segments = target.split(/[/\\]/).filter(Boolean);
+  const root = /^[A-Za-z]:$/.test(segments[0] ?? "")
+    ? (segments.shift() as string)
+    : "/";
   const insert = db.prepare("INSERT INTO files VALUES (?, ?, ?)");
 
-  insert.run(1, 0, "/");
+  insert.run(1, 0, root);
 
   for (const [i, name] of segments.entries()) {
     const isLeaf = i === segments.length - 1;
@@ -90,6 +95,14 @@ function writeDb(target: string, places: [number, number][]): string {
   db.close();
 
   return dbPath;
+}
+
+/**
+ * @param path - An absolute path
+ * @returns The path as read back from the database, which uses `/` on Windows too
+ */
+function dbStyle(path: string): string {
+  return path.replaceAll("\\", "/");
 }
 
 /**
@@ -153,7 +166,7 @@ describe("findUserLibraryPath from the browser database", () => {
       ]),
     );
 
-    expect(await findUserLibraryPath()).toBe(library);
+    expect(await findUserLibraryPath()).toBe(dbStyle(library));
   });
 
   it("wins over the preferences", async () => {
@@ -163,7 +176,7 @@ describe("findUserLibraryPath from the browser database", () => {
     writeCfg(macCfg("12.4"), join(scratchDir, "Other"));
     findLiveFilesDbPath.mockResolvedValue(writeDb(library, [[99, 1]]));
 
-    expect(await findUserLibraryPath()).toBe(library);
+    expect(await findUserLibraryPath()).toBe(dbStyle(library));
   });
 
   it("is skipped when its folder no longer exists", async () => {
@@ -228,6 +241,46 @@ describe("findUserLibraryPath from Live's preferences", () => {
     expect(await findUserLibraryPath()).toBe(library);
   });
 
+  it.each([
+    ["has no ProjectName", ""],
+    ["has an empty ProjectName", '<ProjectName Value="" />'],
+  ])("names the folder User Library when the entry %s", async (_, nameTag) => {
+    const library = folder(join(scratchDir, "Lib", "User Library"));
+    const file = macCfg("12.3");
+
+    folder(dirname(file));
+    writeFileSync(
+      file,
+      `<Ableton><ContentLibrary><UserLibrary><LibraryProject Id="0">
+        ${nameTag}
+        <ProjectPath Value="${join(scratchDir, "Lib")}" />
+      </LibraryProject></UserLibrary></ContentLibrary></Ableton>`,
+    );
+
+    expect(await findUserLibraryPath()).toBe(library);
+  });
+
+  it("uses the entry's own ProjectName", async () => {
+    const library = folder(join(scratchDir, "Lib", "My Library"));
+    const file = macCfg("12.3");
+
+    writeCfg(file, join(scratchDir, "Lib"));
+    writeFileSync(
+      file,
+      readFileSync(file, "utf8").replace("User Library", "My Library"),
+    );
+
+    expect(await findUserLibraryPath()).toBe(library);
+  });
+
+  it("skips a Library.cfg that can't be read", async () => {
+    const library = folder(join(home.dir, "Music/Ableton/User Library"));
+
+    folder(macCfg("12.4"));
+
+    expect(await findUserLibraryPath()).toBe(library);
+  });
+
   it("ignores folders that aren't a Live version", async () => {
     folder(join(scratchDir, "Lib", "User Library"));
     writeCfg(
@@ -265,6 +318,13 @@ describe("findUserLibraryPath from the default location", () => {
     const library = folder(join(home.dir, "Documents/Ableton/User Library"));
 
     expect(await findUserLibraryPath()).toBe(library);
+  });
+
+  it("is null when the default location is a file", async () => {
+    folder(join(home.dir, "Music/Ableton"));
+    writeFileSync(join(home.dir, "Music/Ableton/User Library"), "");
+
+    expect(await findUserLibraryPath()).toBeNull();
   });
 
   it("is null on other platforms", async () => {

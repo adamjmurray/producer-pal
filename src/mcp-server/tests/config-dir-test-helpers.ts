@@ -246,6 +246,7 @@ export interface ParsedNodeResponse<TResult = { content?: string }> {
   success: boolean;
   result?: TResult;
   error?: string;
+  notRun?: true;
 }
 
 /**

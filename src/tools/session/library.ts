@@ -22,10 +22,11 @@ import {
   type PluginCategory,
   type PluginFormat,
 } from "#src/mcp-server/live-library/library-types.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { refuseLibraryParamsOutsideAction } from "./helpers/library-action-params.ts";
 import { runSearchBatch } from "./library-search-batch.ts";
 import { readSamples } from "./read-samples.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 // The source that bypasses Live's DB for the user's sample folder.
 const SAMPLE_FOLDER = "sample-folder";
@@ -210,8 +211,9 @@ export async function runSearch(
 
   const base: LibrarySearchResult = {
     dbAvailable: dbResult.dbAvailable,
-    // Propagate the stale-WAL advisory from the DB layer; omitted when absent.
-    ...(dbResult.stalenessRisk && { stalenessRisk: dbResult.stalenessRisk }),
+    ...(dbResult.stalenessNote != null && {
+      stalenessNote: dbResult.stalenessNote,
+    }),
     items,
     ...(dbResult.note != null && { note: dbResult.note }),
   };
@@ -229,7 +231,7 @@ export async function runSearch(
  */
 function resolveAction(action: string | undefined): string {
   if (action === "search-batch") {
-    console.warn(
+    emitWarning(
       'action "search-batch" is deprecated and will be removed; use action "search" with searches instead',
     );
 
@@ -307,7 +309,7 @@ function scanFolderItems(
   } catch (err) {
     return {
       items: [],
-      detail: `sample folder scan failed: ${err instanceof Error ? err.message : String(err)}`,
+      detail: `sample folder scan failed: ${errorMessage(err)}`,
     };
   }
 

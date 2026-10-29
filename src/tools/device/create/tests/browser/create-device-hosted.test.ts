@@ -9,9 +9,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -21,10 +19,13 @@ import {
   infoReply,
   installWrapper,
 } from "#src/tools/device/tests/helpers/plugin-host-wrapper-fixtures.ts";
-import { mockWorkingDeviceMoves } from "#src/tools/device/update/tests/update-device-test-helpers.ts";
-import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
+import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { createDevice } from "../../create-device.ts";
-import { registerTempTrack, TEMP_TRACK } from "./temp-track-test-helpers.ts";
+import {
+  registerTargetTrack,
+  registerTempTrack,
+  TEMP_TRACK,
+} from "./temp-track-test-helpers.ts";
 
 vi.mock(
   import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
@@ -134,15 +135,8 @@ describe("createDevice hosted", () => {
   beforeEach(() => {
     loads = 0;
     vi.clearAllMocks();
-    liveSet = mockWorkingDeviceMoves();
-    liveSet.methods.delete_track = vi.fn();
-    track = registerMockObject("track-0", {
-      path: livePath.track(0),
-      type: "Track",
-      properties: { devices: children("existing") },
-    });
+    ({ liveSet, track } = registerTargetTrack());
     track.methods.delete_device = vi.fn();
-    registerMockObject("existing", { path: livePath.track(0).device(0) });
     ({ tempTrack } = registerTempTrack(liveSet));
     registerMockObject("live_app", {
       path: "live_app",
@@ -280,7 +274,7 @@ describe("createDevice hosted", () => {
     await expect(
       createDevice({ device: "Serum 2 FX", hosted: true, path: "t0/d+" }),
     ).rejects.toThrow(
-      `can't host "Serum 2 FX": hosting needs the Producer Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`,
+      `can't host "Serum 2 FX": hosting needs the Producer Pal remote script, which isn't answering; ${remoteScriptSetup(true)}`,
     );
   });
 
@@ -304,7 +298,7 @@ describe("createDevice hosted", () => {
       }),
     ).rejects.toThrow("hosted can't be combined with preset");
     await expect(createDevice({ hosted: true })).rejects.toThrow(
-      "hosted requires device; omit it to list available devices",
+      "hosted requires deviceName; omit it to list available devices",
     );
   });
 

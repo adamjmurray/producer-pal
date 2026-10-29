@@ -38,10 +38,9 @@ import {
   MSG_CONNECT,
   TOOL_CONNECT,
 } from "../clip/helpers/clip-tool-constants.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_UPDATE_DEVICE = "ppal-update-device";
-const TOOL_DUPLICATE = "ppal-duplicate";
-const TOOL_DELETE = "ppal-delete";
+const TOOL_UPDATE_DEVICE = TOOLS.updateDevice;
 
 /** The Cyndal Kit sits inside an Instrument Rack, two levels below the track. */
 const RACK = "t0/d0/c0/d0";
@@ -129,7 +128,7 @@ function assertPad(
 ): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-device",
+    tool: TOOLS.readDevice,
     args: { path, include: ["chains"] },
     expect: (result) => check(padChains(result)),
     explain: (result) =>
@@ -191,7 +190,7 @@ function assertLayeredOntoPad(turn: number): EvalAssertion {
     description: `turn ${turn}: the copy layered onto the occupied pad`,
     assert: (turns: EvalTurnResult[]) => {
       const details = getToolCalls(turns, turn)
-        .filter((c) => c.name === TOOL_DUPLICATE)
+        .filter((c) => c.name === TOOLS.duplicate)
         .flatMap((c) => {
           if (c.result == null) {
             return [];
@@ -246,14 +245,14 @@ export const rackPadOps: EvalScenario = {
     ),
 
     // Turn 2 — a pad copy brings the chain; a device copy would not.
-    assertCalledWithType(2, TOOL_DUPLICATE, "drum-pad"),
+    assertCalledWithType(2, TOOLS.duplicate, "drum-pad"),
 
     // Turn 3 — copying onto an occupied pad layers rather than replaces.
     assertLayeredOntoPad(3),
 
     // Turn 4 — one layer off, and the right one. The survivor still carries the
     // trim and choke group the copy brought over in turn 2.
-    assertCalledWithType(4, TOOL_DELETE, "chain"),
+    assertCalledWithType(4, TOOLS.delete, "chain"),
     assertPad(
       COPY_PAD,
       `one chain left, still at ${TRIM_DB} dB in choke group ${HAT_CHOKE_GROUP}`,

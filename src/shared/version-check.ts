@@ -246,3 +246,59 @@ export function liveRunsOtherCopy(
       status.runningBuild !== status.installedBuild)
   );
 }
+
+/** What decides whether the installation is unfinished. */
+export interface InstallIncompleteInput {
+  /** Why the device can't be copied, or null when it can. */
+  problem: string | null;
+  /** The User Library copy compared with the device; null with a problem. */
+  state: string | null;
+  /**
+   * Whether the remote script in the User Library is in place and not behind
+   * this build. Null when there is no User Library to look in, or it hasn't
+   * been read yet.
+   */
+  remoteScriptCurrent: boolean | null;
+}
+
+/**
+ * Whether the installation is unfinished: the User Library has no copy of this
+ * device or an older one (only a frozen device can be copied; a newer or
+ * different copy is the user's call), or its remote script is missing or behind
+ * this build. The one definition the device's notice and the chat UI's
+ * Installation tab dot both go by.
+ *
+ * @param input - The device copy and remote script facts
+ * @returns Whether something in the User Library is missing or out of date
+ */
+export function isInstallIncomplete(input: InstallIncompleteInput): boolean {
+  const copyBehind =
+    input.problem == null &&
+    (input.state === "not-installed" || input.state === "installed-older");
+
+  // With no User Library there is nothing to compare, so nothing to nag about.
+  return copyBehind || input.remoteScriptCurrent === false;
+}
+
+/**
+ * @param version - A version a status reported, or null
+ * @returns The version to show, never "vnull"
+ */
+export function versionText(version: string | null): string {
+  return version == null ? "an unknown version" : `v${version}`;
+}
+
+// Version check wording, shared with the portal: keep imports portal-safe.
+
+/** The call that re-checks versions without re-sending the Skills and context. */
+export const VERSION_CHECK_CALL = "ppal-connect with versionCheck: true";
+
+/** For results that may reach a chat that never connected (it needs Skills). */
+export const VERSION_CHECK_OR_CONNECT = `${VERSION_CHECK_CALL}, or plain ppal-connect if this chat hasn't connected yet`;
+
+/** Added where a connect result tells the user to restart Live. */
+export const AFTER_RESTART_CHECK = `Once they have, call ${VERSION_CHECK_CALL}.`;
+
+/** Ends a version check that found nothing to fix. */
+export const UP_TO_DATE_NEW_CHAT =
+  "Everything is up to date. If this chat only connected and updated Producer Pal, suggest the user start a new chat so it loads the new version's skills and tools.";

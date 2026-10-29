@@ -9,7 +9,7 @@
  * skip where it was all the call asked for.
  *
  * Uses: e2e-test-set - t8 (empty MIDI track) plus audio tracks it creates
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- ppal-update-clip-ignored-params
  */

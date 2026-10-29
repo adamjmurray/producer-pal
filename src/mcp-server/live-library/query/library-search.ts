@@ -20,7 +20,7 @@
 
 import { stat } from "node:fs/promises";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { detectStalenessRisk } from "../db-staleness.ts";
+import { stalenessNote } from "../db-staleness.ts";
 import {
   clampLibraryLimit,
   DEFAULT_LIBRARY_LIMIT,
@@ -40,7 +40,8 @@ import {
   resolveFileIdForPath,
   type SearchRow,
 } from "./candidate-query.ts";
-import { presetFolderNote } from "./preset-folder-note.ts";
+import { presetFolderNote } from "./notes/preset-folder-note.ts";
+import { rackKindNote } from "./notes/rack-kind-note.ts";
 
 /**
  * Run a structured library search.
@@ -62,10 +63,8 @@ export async function librarySearch(
     };
   }
 
-  // Best-effort advisory: flag when an unclean Live exit left a pending WAL
-  // that our immutable read can't see. Spread into every success return so the
-  // signal sits at the top alongside dbAvailable; omitted when there's no risk.
-  const stalenessRisk = await detectStalenessRisk(dbPath);
+  // Our immutable read misses what is still in Live's WAL; the note says so.
+  const stale = await stalenessNote(dbPath);
 
   // Guard the open + query: the f.subtype column (clip subtype) is the
   // most recently added column we SELECT, and Live's DB schema varies across
@@ -92,7 +91,7 @@ export async function librarySearch(
       if (inFolder != null && resolvedParent == null) {
         return {
           dbAvailable: true,
-          ...(stalenessRisk && { stalenessRisk }),
+          ...(stale && { stalenessNote: stale }),
           items: [],
           detail: `inFolder path not found: ${inFolder}`,
         };
@@ -115,11 +114,15 @@ export async function librarySearch(
         await verifyItemPaths(items);
       }
 
-      const note = presetFolderNote(db, args, parentId);
+      const notes = [
+        presetFolderNote(db, args, parentId),
+        rackKindNote(db, args, parentId, items.length),
+      ].filter((n) => n != null);
+      const note = notes.length > 0 ? notes.join("; ") : undefined;
 
       return {
         dbAvailable: true,
-        ...(stalenessRisk && { stalenessRisk }),
+        ...(stale && { stalenessNote: stale }),
         items,
         ...(note != null && { note }),
       };

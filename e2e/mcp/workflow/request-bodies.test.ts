@@ -11,13 +11,13 @@
  * the same inputs are unchanged.
  *
  * Uses: e2e-test-set - t8 "9-MIDI" (empty MIDI track)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- workflow/request-bodies
  */
 import { describe, expect, it } from "vitest";
+import { REST_BASE_URL } from "#evals/shared/config.ts";
 import {
-  CONFIG_URL,
   getToolErrorMessage,
   isToolError,
   setupMcpTestContext,
@@ -25,8 +25,6 @@ import {
 import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
-
-const REST_BASE_URL = CONFIG_URL.replace("/config", "");
 
 const BLANK_TRACK_INDEX =
   "trackIndex: a blank string is not a value for this param. Leave it out instead.";

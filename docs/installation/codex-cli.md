@@ -23,18 +23,17 @@ this is a good option.
 - [Node.js 22+](https://nodejs.org/en/download) (required by Codex; Producer Pal
   itself only needs 20+)
 - [OpenAI Codex](https://github.com/openai/codex#quickstart) (requires OpenAI
-  account, and a paid subscription at time of writing)
+  account; a paid subscription is recommended)
 
 ## Installation Steps
 
 <!--@include: ../_partials/setup-by-ai.md-->
 
-### 2. Configure Codex
+### 1. Configure Codex
 
 Add Producer Pal to Codex's settings in `~/.codex/config.toml`:
 
-**Option A: With npx** (recommended for MCP) - Allows flexible startup order and
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-npx.md-->
 
 ```toml
 [mcp_servers.producer-pal]
@@ -44,15 +43,19 @@ args = ["-y", "producer-pal@latest"]
 
 ::: tip Scripting or building against Producer Pal?
 
-If you're using MCP and will have the agent **write code that generates or
-parses** Producer Pal data — building MIDI programmatically, or piping tool
-output through JSON tooling — add `--format json` and `--notation midi-json` to
-the args:
+<!--@include: ../_partials/scripting-tip-intro.md-->
 
 ```toml
 [mcp_servers.producer-pal]
 command = "npx"
-args = ["-y", "producer-pal@latest", "--format", "json", "--notation", "midi-json"]
+args = [
+  "-y",
+  "producer-pal@latest",
+  "--format",
+  "json",
+  "--notation",
+  "midi-json",
+]
 ```
 
 <!--@include: ../_partials/scripting-tip.md-->
@@ -73,30 +76,33 @@ args = ["-y", "producer-pal@latest", "--tools", "core,clip,track"]
 
 :::
 
-**Option B: Direct HTTP** - Requires Ableton running first, no
-auto-reconnection:
+<!--@include: ../_partials/mcp-option-http.md-->
 
 ```toml
 [mcp_servers.producer-pal]
 url = "http://localhost:3350/mcp"
 ```
 
-### 3. Start Codex
+### 2. Start Codex
 
 Run `codex` in an empty folder (so it can focus on Producer Pal instead of
 coding)
 
-### 4. Verify Tools
+### 3. Verify Tools
 
 Run `/mcp` in the Codex CLI to confirm the Producer Pal tools are available:
 
 ![Producer Pal tools listed in Codex CLI](/img/codex-tool-list.png)
 
-### 5. Start Using Producer Pal
+### 4. Start Using Producer Pal
 
-Start a conversation with "connect to ableton"
+With Live open, start a conversation with "connect to ableton".
+
+<!--@include: ../_partials/setup-by-ai-finish.md-->
 
 ![Codex CLI successfully connected to Producer Pal](/img/codex-success.png)
+
+<!--@include: ../_partials/check-it-works.md-->
 
 ## Troubleshooting
 

@@ -168,14 +168,22 @@ describe("published JSON Schema", () => {
           isOfferedInMode(def, profile.smallModelMode === true),
         ).length,
       );
-      // The SDK's own converter, with the options it uses for tools/list.
+      // The SDK's own converter, with the options it uses for tools/list,
+      // minus the $schema and top-level additionalProperties we drop
+      // (see trimListedSchemas in create-mcp-server.ts).
       expect(schemaTexts(tools)).toStrictEqual(
-        schemaTexts(tools, (name) =>
-          toJsonSchemaCompat(authoredSchema(name, profile), {
+        schemaTexts(tools, (name) => {
+          const {
+            $schema: _dialect,
+            additionalProperties: _loose,
+            ...schema
+          } = toJsonSchemaCompat(authoredSchema(name, profile), {
             strictUnions: true,
             pipeStrategy: "input",
-          }),
-        ),
+          });
+
+          return schema;
+        }),
       );
     },
   );

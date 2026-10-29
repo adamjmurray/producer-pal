@@ -34,11 +34,13 @@
   // negative and the position resolves to negative time (Live accepts notes
   // before the clip start). Never throws — negative time is a valid result.
   function borrowBars(bar, beat, beatsPerBar) {
-    while (beat < 1) {
-      beat += beatsPerBar;
-      bar -= 1;
-    }
-    return { bar, beat };
+    if (!(beat < 1)) return { bar, beat };
+    // Closed form of "add a bar until beat >= 1", so a huge offset stays fast.
+    // The ceil can land one off from float rounding, so nudge.
+    let bars = Math.ceil((1 - beat) / beatsPerBar);
+    if (beat + bars * beatsPerBar < 1) bars += 1;
+    else if (bars > 1 && beat + (bars - 1) * beatsPerBar >= 1) bars -= 1;
+    return { bar: bar - bars, beat: beat + bars * beatsPerBar };
   }
 
   // Normalize one timePoints entry into a canonical { bar, beat }. The entry is
@@ -288,11 +290,18 @@ badBarDuration
     }
 
 pitch "note pitch"
-  = pitchClass:pitchClass octave:signedInt {
+  = pitchClass:pitchClass octave:pitchOctave {
     // Range is enforced in the interpreter (out-of-range pitch is skipped +
     // warned), so emit whatever the note name computes to.
     return { pitch: (octave + 2) * 12 + pitchClass.value };
   }
+
+// The octave number. An accidental glued after it (`A3b`, `A3#`) fails the
+// parse (`#` would otherwise start a comment and drop the rest of the line),
+// and the error names the fix. Uppercase `B` is not listed: it is only
+// a flat right after the letter.
+pitchOctave
+  = octave:signedInt ![#b♯♭] { return octave; }
 
 pitchClass
   = letter:[A-Ga-g] accidental:pitchAccidental? {

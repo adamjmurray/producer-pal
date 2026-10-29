@@ -13,6 +13,10 @@ own tools can read and edit a Live Set with plain HTTP.
 
 ## Quick Start
 
+Needs [Ableton Live 12.3+](https://www.ableton.com/live/) with
+[Max for Live](https://www.ableton.com/live/max-for-live/). Live 12.4 or later
+is recommended: a few features don't work on 12.3.
+
 1. **Install**: Download
    [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
 2. **Setup**: Follow the

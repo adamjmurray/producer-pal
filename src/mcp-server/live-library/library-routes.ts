@@ -25,7 +25,7 @@ import { listPlugins } from "./list-plugins.ts";
 import {
   type ResolvePluginArgs,
   resolvePlugin,
-} from "./query/resolve-plugin.ts";
+} from "./query/plugins/resolve-plugin.ts";
 import { type ListTagsArgs, listTags } from "./list-tags.ts";
 import { setRunningLiveMajor } from "./live-db-path.ts";
 import { ensureSqliteAvailable } from "./live-db.ts";

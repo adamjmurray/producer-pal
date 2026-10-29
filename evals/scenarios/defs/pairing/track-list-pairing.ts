@@ -31,10 +31,9 @@ import {
   MSG_CONNECT,
   TOOL_CONNECT,
 } from "../clip/helpers/clip-tool-constants.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_UPDATE_TRACK = "ppal-update-track";
-const TOOL_READ_TRACK = "ppal-read-track";
-const TOOL_READ_LIVE_SET = "ppal-read-live-set";
+const TOOL_UPDATE_TRACK = TOOLS.updateTrack;
 
 /** The turn carrying the first request; turn 0 is always connect. */
 const WRITE_TURN = 1;
@@ -101,7 +100,7 @@ function assertOneBatchedRead(): EvalAssertion {
     description: "read all four tracks with one read-track call",
     assert: (turns: EvalTurnResult[]) => {
       const reads = getToolCalls(turns, COMPARE_TURN).filter(
-        (call) => call.name === TOOL_READ_TRACK,
+        (call) => call.name === TOOLS.readTrack,
       );
       const coversAll = reads.some((call) => {
         const paths = listEntries(call.args.path);
@@ -148,7 +147,7 @@ function colorsOf(result: unknown): string[] {
 function assertDistinctColors(): EvalAssertion {
   return {
     type: "state",
-    tool: TOOL_READ_TRACK,
+    tool: TOOLS.readTrack,
     args: { path: FIRST_FOUR.join(","), include: ["color"] },
     expect: (result) => {
       const colors = colorsOf(result);
@@ -168,7 +167,7 @@ function assertDistinctColors(): EvalAssertion {
 function assertTrackNames(expected: string[]): EvalAssertion {
   return {
     type: "state",
-    tool: TOOL_READ_LIVE_SET,
+    tool: TOOLS.readLiveSet,
     args: { include: ["tracks"] },
     expect: (result) =>
       trackNames(result).slice(0, expected.length).join("|") ===
@@ -184,6 +183,8 @@ export const trackListBatching: EvalScenario = {
   description: "Rename, color and then read four tracks with one call each",
   kind: "regression",
   liveSet: "basic-midi-4-track",
+  // Small-model schemas don't say the track params take lists.
+  requires: { largeModel: true },
   // The checks below pin the outcome. The judge only looks at how the reply
   // treats a color that landed on a nearby palette swatch.
   judgeAdvisory: true,

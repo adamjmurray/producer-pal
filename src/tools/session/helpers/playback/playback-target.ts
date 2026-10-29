@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import {
   sessionClipTargets,
   type SlotPayload,
@@ -304,7 +304,7 @@ function resolveSceneTarget(
 
   // Otherwise another param still names the scene, so a bad id is warned.
   for (const problem of problems) {
-    console.warn(problem);
+    emitWarning(problem);
   }
 
   // Keep the first param to name each scene, so the error names one source per

@@ -236,6 +236,30 @@ describe("useConversationActions guards", () => {
     expect(client.chatHistory).toContainEqual(expected);
   });
 
+  it("handleRetry re-sends images alone when the adapter finds no text", async () => {
+    const images = [{ mediaType: "image/png", data: "AAA" }];
+    const { client, result, runWithChat, adapter } = setupWithHistory(
+      [
+        { role: "user", content: "", images },
+        { role: "assistant", content: "reply" },
+      ],
+      [userMessage(0, "")],
+    );
+
+    vi.mocked(adapter.extractUserMessage).mockReturnValue(undefined);
+
+    await act(async () => {
+      await result.current.handleRetry(0);
+    });
+
+    expect(runWithChat).toHaveBeenCalled();
+    expect(client.chatHistory).toContainEqual({
+      role: "user",
+      content: "",
+      images,
+    });
+  });
+
   it("handleRetry bails when the raw entry yields no user message", async () => {
     // The raw history slot resolves to an assistant turn, so extractUserMessage
     // returns undefined and there is nothing to re-send.

@@ -8,6 +8,9 @@ export const MAX_AUTO_CREATED_SCENES = 1000;
 // Copies per source in one ppal-duplicate call (tracks and scenes).
 export const MAX_DUPLICATE_COUNT = 25;
 export const MAX_ARRANGEMENT_POSITION_BEATS = 1_576_800;
+// Longest arrangementLength Producer Pal takes, not one of Live's. No real song
+// is that long; it stops absurd lengths, not slow ones.
+export const MAX_ARRANGEMENT_LENGTH_BEATS = 1_576_800;
 export const MAX_SPLIT_POINTS = 32;
 /** Take lanes per track (total non-main lanes). Producer Pal's cap, not one of
  * Live's. Here rather than beside the lane code because the e2e suites read it,

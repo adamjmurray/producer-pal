@@ -10,6 +10,8 @@ import {
   newClipReasons,
 } from "../../../helpers/entries/clip-reasons.ts";
 import { applyTransformsToExistingNotes } from "../../../helpers/notes/note-transforms.ts";
+import { type CopiedNote } from "#src/tools/shared/clip/clip-notes.ts";
+import { reportMutedNoteEffects } from "../../../helpers/notes/muted-note-effects.ts";
 import { handleNoteUpdates } from "../../../helpers/notes/note-updates.ts";
 import {
   setupMidiClipMock,
@@ -268,6 +270,26 @@ describe("muted notes a note write lands on", () => {
 
     it("says nothing when two visible notes overlap", () => {
       expect(update([held(E3, 1)], "n/2 E3 1|1")).toBeUndefined();
+    });
+
+    it("says what was replaced without reading the clip when nothing was written", () => {
+      const clip = liveClip([]);
+
+      reportMutedNoteEffects(
+        clip,
+        reasons,
+        {
+          written: [],
+          muted: [held(CS3, 0, { mute: 1 })] as unknown as CopiedNote[],
+          replaced: 1,
+        },
+        "123",
+      );
+
+      expect(reasons.said.get("123")).toStrictEqual([
+        "replaced 1 muted note at the same pitch and start",
+      ]);
+      expect(clip.call).not.toHaveBeenCalled();
     });
 
     it("reads the clip back only when it holds muted notes", () => {

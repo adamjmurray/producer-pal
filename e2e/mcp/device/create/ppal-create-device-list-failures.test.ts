@@ -9,7 +9,7 @@
  * skips only its own target.
  *
  * Uses: e2e-test-set
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- device/create/ppal-create-device-list-failures
  */
@@ -60,7 +60,7 @@ describe("ppal-create-device path lists", () => {
     const result = await ctx.client!.callTool({
       name: "ppal-create-device",
       arguments: {
-        device: "Utility",
+        deviceName: "Utility",
         path: `t${trackIndex}/d+,not-a-path,t${trackIndex}/d+`,
       },
     });
@@ -77,7 +77,7 @@ describe("ppal-create-device path lists", () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
-          device: "Utility",
+          deviceName: "Utility",
           path: `t${trackIndex}/d+,s0,t${trackIndex}/d+`,
         },
       }),
@@ -104,7 +104,7 @@ describe("ppal-create-device path lists", () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
-          device: "Auto Filter,Operator",
+          deviceName: "Auto Filter,Operator",
           path: `t${trackIndex}/d+,t${trackIndex}/d+`,
         },
       }),
@@ -149,7 +149,7 @@ describe("ppal-create-device path lists", () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: {
-          device: "Operator",
+          deviceName: "Operator",
           path: `t${PARENT_TRACK}/d+,t${AUDIO_TRACK}/d+,t${trackIndex}/d+`,
         },
       }),
@@ -174,7 +174,7 @@ describe("ppal-create-device path lists", () => {
     const groupId = await trackId(`t${PARENT_TRACK}`);
     const refused = await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { device: "Arpeggiator", path: `t${PARENT_TRACK}/d+` },
+      arguments: { deviceName: "Arpeggiator", path: `t${PARENT_TRACK}/d+` },
     });
 
     expect(isToolError(refused)).toBe(true);
@@ -185,7 +185,7 @@ describe("ppal-create-device path lists", () => {
     const made = parseToolResult<ListEntry>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { device: "Utility", path: `t${PARENT_TRACK}/d+` },
+        arguments: { deviceName: "Utility", path: `t${PARENT_TRACK}/d+` },
       }),
     );
 

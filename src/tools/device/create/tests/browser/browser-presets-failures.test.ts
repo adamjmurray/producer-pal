@@ -68,7 +68,7 @@ describe("resolveBrowserPreset", () => {
     });
 
     await expect(
-      resolveBrowserPreset("AG Bass", undefined, null),
+      resolveBrowserPreset("AG Bass", undefined, null, true),
     ).rejects.toThrow(OUT_OF_TIME);
   });
 
@@ -83,7 +83,7 @@ describe("resolveBrowserPreset", () => {
     });
 
     await expect(
-      resolveBrowserPreset("AG Bass", undefined, null),
+      resolveBrowserPreset("AG Bass", undefined, null, true),
     ).rejects.toThrow(OUT_OF_TIME);
   });
 
@@ -91,14 +91,19 @@ describe("resolveBrowserPreset", () => {
     vi.mocked(requestNode).mockResolvedValue({ success: false });
 
     await expect(
-      resolveBrowserPreset("AG Bass", undefined, null),
+      resolveBrowserPreset("AG Bass", undefined, null, true),
     ).rejects.toThrow('could not look up preset "AG Bass": no answer');
   });
 });
 
 describe("hotswapPreset", () => {
   it("sends nothing once the request is out of time", async () => {
-    const result = await hotswapPreset(driftDevice(), PRESET, Date.now() - 1);
+    const result = await hotswapPreset(
+      driftDevice(),
+      PRESET,
+      Date.now() - 1,
+      true,
+    );
 
     expect(result).toStrictEqual({ error: unreachedDetail("target") });
     expect(requestNode).not.toHaveBeenCalled();
@@ -107,7 +112,9 @@ describe("hotswapPreset", () => {
   it("says the remote script returned nothing when a failure gives no reason", async () => {
     vi.mocked(requestNode).mockResolvedValue({ success: false });
 
-    expect(await hotswapPreset(driftDevice(), PRESET, null)).toStrictEqual({
+    expect(
+      await hotswapPreset(driftDevice(), PRESET, null, true),
+    ).toStrictEqual({
       error: "the remote script returned nothing",
     });
   });
@@ -126,7 +133,7 @@ describe("hotswapPreset when the connection dropped after the request went out",
       },
     });
 
-    expect(await hotswapPreset(drift, PRESET, null)).toStrictEqual({
+    expect(await hotswapPreset(drift, PRESET, null, true)).toStrictEqual({
       error: `${CONNECTION_LOST}; Live may have loaded it anyway, so check the device before re-running`,
       unfinished: true,
     });
@@ -142,7 +149,7 @@ describe("hotswapPreset after Live changed the device", () => {
       result: { available: true, error: "slot is now empty", changed: true },
     });
 
-    expect(await hotswapPreset(drift, PRESET, null)).toStrictEqual({
+    expect(await hotswapPreset(drift, PRESET, null, true)).toStrictEqual({
       error: "slot is now empty",
       changed: true,
     });
@@ -150,6 +157,27 @@ describe("hotswapPreset after Live changed the device", () => {
 });
 
 describe("presetScopeForDevice", () => {
+  it("names the device the browser found, not the call's spelling", () => {
+    const item = { type: "instrument", path: "Operator", name: "Operator" };
+
+    expect(presetScopeForDevice("Instruments/Operator", item)).toStrictEqual({
+      type: "instrument",
+      path: "Operator",
+      device: "Operator",
+    });
+    expect(presetScopeForDevice("Operat", item).device).toBe("Operator");
+  });
+
+  it("drops a Max device's suffix", () => {
+    expect(
+      presetScopeForDevice("tape", {
+        type: "audio-effect",
+        path: "Tape/Tape.amxd",
+        name: "Tape.amxd",
+      }).device,
+    ).toBe("Tape");
+  });
+
   it("searches instruments for a name that is no native device", () => {
     expect(presetScopeForDevice("Not A Device", null)).toStrictEqual({
       type: "instrument",

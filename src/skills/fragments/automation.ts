@@ -19,7 +19,7 @@ export const automation = `## Clip Automation
 
 A track read (\`mixer\`), a device read (params with values, or \`chains\`) and a live set read (tempo) show \`automation\` where the arrangement has a lane. It's unknown, and left out, while the track plays from Session. Writing a parameter that has an arrangement lane (a mixer field, a device param, tempo, mute) overrides the lane, which Live then ignores until Re-Enable Automation; the result says so.`;
 
-export const automationWrite = `**Write** with ppal-update-clip \`envelopes\` (its schema gives the line format and value ranges). Mixer \`volume\`: 1 = +6 dB. Don't rewrite an envelope read as \`truncated\`: the part not shown is lost.
+export const automationWrite = `**Write** with ppal-update-clip \`envelopes\` (its schema gives the line format and value ranges): one \`<target>: <points>\` line per parameter, the target a param \`id\` or \`volume\`, \`pan\`, \`send0\`…, never a display name; a session clip's \`pan:\` with nothing after clears just that one. Mixer \`volume\`: 1 = +6 dB. Don't rewrite an envelope read as \`truncated\`: the part not shown is lost.
 
 **On an arrangement clip** times run once across its whole span however it loops, and points past its end never play. The lane returns to its old value after the span. The clip is re-created, so the result gives its **new id**; its content and settings are kept. Duplicating or moving an arrangement clip leaves its automation behind, and the lane can't be read to check, so automate the arrangement last, once clips stop moving.
 
@@ -27,4 +27,4 @@ export const automationWrite = `**Write** with ppal-update-clip \`envelopes\` (i
 
 ## Converting Audio Clips
 
-ppal-update-clip \`convert\` makes a new track from an audio clip: \`drums\`, \`melody\` or \`harmony\` give a new MIDI track with an instrument already loaded and a clip of the notes Live detects (it can find none) in the source's place, ready to play. The track is added, so later track paths shift; the result names the track, instrument and clip.`;
+ppal-update-clip \`convert\` (see its schema) makes a new MIDI track from an audio clip; Live's detection may find no notes.`;

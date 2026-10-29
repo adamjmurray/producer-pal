@@ -15,17 +15,17 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createGateway, type LanguageModel } from "ai";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
+import { cacheAnthropicRequest } from "./anthropic-cache.ts";
 import {
   ANTHROPIC_CONFIG,
   GEMINI_CONFIG,
   LOCAL_CONFIG,
+  LOCAL_DEFAULT_BASE_URL,
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
   validateApiKey,
   VERCEL_CONFIG,
 } from "#evals/shared/provider-configs.ts";
-
-const LOCAL_DEFAULT_BASE_URL = "http://localhost:11434/v1";
 
 /**
  * Create an AI SDK LanguageModel for the given provider and model
@@ -42,7 +42,7 @@ export function createProviderModel(
     case "anthropic": {
       const apiKey = validateApiKey(ANTHROPIC_CONFIG);
 
-      return createAnthropic({ apiKey })(model);
+      return createAnthropic({ apiKey, fetch: cacheAnthropicRequest })(model);
     }
 
     case "google": {

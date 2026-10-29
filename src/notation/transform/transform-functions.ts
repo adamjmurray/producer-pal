@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import * as console from "./transform-warning-label.ts";
+import { clipDetail } from "./transform-warning-label.ts";
 import {
   computePhase,
   evaluateArgs,
@@ -145,9 +145,7 @@ function evaluateWaveform(
       // gracefully to clip-relative (phase resets at clip start) instead of
       // skipping the whole assignment — mirrors the clip.position variable
       // fallback. effectivePosition stays at the clip-relative position.
-      console.clipDetail(
-        "sync ignored: session clip, so the LFO is clip-relative",
-      );
+      clipDetail("sync ignored: session clip, so the LFO is clip-relative");
     } else {
       effectivePosition = position + origin;
     }

@@ -345,7 +345,7 @@ describe("duplicate - arrangementLength functionality", () => {
         arrangementStart: "5|1",
         arrangementLength: "0bar", // 0 bars + 0 beats = 0 total
       }),
-    ).rejects.toThrow('arrangementLength must be positive, got "0bar"');
+    ).rejects.toThrow('arrangementLength "0bar" must be longer than zero');
   });
 
   it("should work normally without arrangementLength (backward compatibility)", async () => {

@@ -7,6 +7,7 @@ import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
@@ -28,7 +29,14 @@ vi.mock(import("../live-db-path.ts"), () => ({
   liveDatabaseDir: vi.fn(),
 }));
 
+// No remote script in these tests: the DB alone answers.
+vi.mock(import("../../rpc/remote-script/browser/browser-plugins.ts"), () => ({
+  listBrowserPlugins: vi.fn(),
+}));
+
 const dbPathMod = await import("../live-db-path.ts");
+const browserMod =
+  await import("../../rpc/remote-script/browser/browser-plugins.ts");
 
 /**
  * Point findLivePluginsDbPath at a path and findLiveFilesDbPath at null.
@@ -418,6 +426,85 @@ async function pluginsByName(dbPath: string): Promise<Map<string, PluginItem>> {
 
   return new Map(result.plugins.map((p) => [p.name, p]));
 }
+
+describe("listPlugins — with the remote script's browser list", () => {
+  let fixture: PluginsFixture;
+
+  beforeAll(() => {
+    fixture = createPluginsDbFixture("v2");
+  });
+
+  beforeEach(() => {
+    usePluginsDb(fixture.dbPath);
+    vi.mocked(browserMod.listBrowserPlugins).mockReset();
+  });
+
+  afterAll(() => {
+    fixture.cleanup();
+  });
+
+  it("lists the browser's plug-ins, with DB detail on the ones it knows", async () => {
+    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([
+      { name: "ValhallaRoom", vendor: "Valhalla DSP", format: "AU" },
+      { name: "Brand New", vendor: "New Co", format: "VST3" },
+    ]);
+
+    const result = await listPlugins();
+
+    expect(result).toStrictEqual({
+      dbAvailable: true,
+      plugins: [
+        {
+          name: "Brand New",
+          vendor: "New Co",
+          version: null,
+          format: "VST3",
+          category: null,
+          subcategories: [],
+        },
+        {
+          name: "ValhallaRoom",
+          vendor: "Valhalla DSP",
+          version: "1.6.1",
+          format: "AU",
+          category: "audiofx",
+          subcategories: ["Reverb"],
+        },
+      ],
+    });
+  });
+
+  it("drops DB plug-ins the browser doesn't list", async () => {
+    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([]);
+
+    const result = await listPlugins();
+
+    expect(result.plugins).toStrictEqual([]);
+  });
+
+  it("filters the merged list", async () => {
+    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([
+      { name: "ValhallaRoom", vendor: "Valhalla DSP", format: "AU" },
+      { name: "Brand New", vendor: "New Co", format: "VST3" },
+    ]);
+
+    const byVendor = await listPlugins({ vendor: "new co" });
+    const byCategory = await listPlugins({ category: "audiofx" });
+
+    expect(byVendor.plugins.map((p) => p.name)).toStrictEqual(["Brand New"]);
+    expect(byCategory.plugins.map((p) => p.name)).toStrictEqual([
+      "ValhallaRoom",
+    ]);
+  });
+
+  it("serves the DB alone when the browser can't answer", async () => {
+    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue(null);
+
+    const result = await listPlugins();
+
+    expect(result.plugins.map((p) => p.name)).toContain("Massive");
+  });
+});
 
 /**
  * Build a minimal enabled PluginSeed, overriding only the columns a test cares

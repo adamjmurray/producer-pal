@@ -38,7 +38,10 @@ track's automation lane over exactly the span of the clip. A few things follow:
 - **The clip gets a new ID.** The clip itself (notes, audio, settings) is kept.
 
 Copying an automated session clip into the Arrangement also writes its
-automation onto the track.
+automation onto the track, over the copy's span. For each parameter the clip
+automates, that replaces what the lane held there. Other parameters' lanes, and
+the lane outside the span, are kept. A copy longer than the clip loops its
+automation, as playback would.
 
 ### Overridden automation
 

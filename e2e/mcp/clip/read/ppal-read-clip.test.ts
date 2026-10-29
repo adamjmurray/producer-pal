@@ -6,7 +6,7 @@
 /**
  * E2E tests for ppal-read-clip tool
  * Uses: e2e-test-set with pre-populated clips
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp
  */
@@ -374,6 +374,16 @@ describe("ppal-read-clip over a list of targets", () => {
     expect(getToolErrorMessage(refused)).toContain(
       "slot names the clip on its own - don't send trackIndex or sceneIndex with it",
     );
+  });
+
+  it("refuses a deprecated slot whose parts are not whole numbers", async () => {
+    for (const slot of ["1.5/2", "1abc/2"]) {
+      const refused = await readClips({ slot });
+
+      expect(getToolErrorMessage(refused)).toContain(
+        `invalid slot "${slot}" - trackIndex and sceneIndex must be integers`,
+      );
+    }
   });
 
   // A group track's slot fires the tracks inside it and holds no clip, so a

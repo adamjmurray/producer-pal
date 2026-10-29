@@ -14,7 +14,7 @@
  *
  * Uses: e2e-test-set. t8 "9-MIDI" is an empty MIDI track, t10 "Child" an empty
  * MIDI track in a group, t5 "Audio 2" an audio track, t9 "Parent" the group.
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- operations/ppal-duplicate-track-to-lane
  */

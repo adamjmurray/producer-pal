@@ -121,6 +121,25 @@ describe("deleteObject of a group track and a track inside it", () => {
     expect(liveSet.call).toHaveBeenCalledTimes(1);
   });
 
+  it("says the tracks inside went too when Live threw after deleting a group whose members were all named", () => {
+    setUpGroupSet(PAIR, {
+      afterDelete: () => {
+        throw new Error("Live lost its place");
+      },
+    });
+
+    expect(deleteObject({ id: "g, a, b", type: "track" })).toStrictEqual([
+      {
+        id: "g",
+        deletedPath: "t0",
+        detail:
+          "Live lost its place; already changed: deleted the track and the tracks inside it",
+      },
+      { id: "a", deletedPath: "t1" },
+      { id: "b", deletedPath: "t2" },
+    ]);
+  });
+
   it("says a plain track is gone when Live threw after deleting it", () => {
     setUpGroupSet([{ id: "z" }, { id: "y" }], {
       afterDelete: () => {

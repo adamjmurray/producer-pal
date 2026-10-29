@@ -45,9 +45,10 @@ export function fakeOfflineDeps(
   return {
     ping: vi.fn(() => Promise.resolve(NOT_RUNNING)),
     request: vi.fn(() => Promise.resolve({ available: false as const })),
-    installRemoteScript: vi.fn(() =>
-      Promise.resolve({ installed: false as const, error: "not set up" }),
-    ),
+    installRemoteScript: vi.fn(() => ({
+      ok: false as const,
+      detail: "not set up",
+    })),
     findUserLibrary: vi.fn(() => Promise.resolve(null)),
     findBundledDevice: vi.fn(() => null),
     installDevice: vi.fn(() => {

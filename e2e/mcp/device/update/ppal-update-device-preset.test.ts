@@ -6,14 +6,16 @@
 /**
  * E2E tests for ppal-update-device's `preset`, swapped onto a device through
  * the Producer Pal remote script. Opt-in like the other browser tests. Presets
- * are picked from Drift's and Reverb's own lists at run time.
+ * are picked from Drift's and Reverb's own lists at run time. The preset holding
+ * Producer Pal is a repo file, copied into the User Library for the suite.
  *
  * Uses: e2e-test-set
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md,
+ * e2e/live-sets/specs/ppal-drum-pad-spec.md
  *
  * Run with: npm run e2e:mcp:remote-script -- device/update/ppal-update-device-preset
  */
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   callToolAndSettle,
   createTestDeviceAt,
@@ -24,6 +26,7 @@ import {
   trackIndexFromPath,
 } from "../../mcp-test-helpers";
 import {
+  type DeviceRead,
   type Preset,
   REMOTE_SCRIPT_E2E,
   packDrumKitOrSkip,
@@ -32,7 +35,11 @@ import {
   presetName,
   readDevice,
   requireRemoteScript,
+  type StagedPreset,
+  stagePpalPreset,
+  wastedSpaceTransmissionOrSkip,
 } from "../helpers/remote-script-test-helpers";
+import { PPAL_TRACK } from "../../e2e-test-set.ts";
 import {
   LIBRARY_NEEDS,
   skipTestBeforeLive,
@@ -45,8 +52,11 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
   let adv: Preset;
   let adg: Preset;
   let reverb: Preset;
+  let holdingPal: StagedPreset | undefined;
 
   beforeAll(async () => {
+    holdingPal = await stagePpalPreset();
+
     const drift = await listPresets("instrument", "Drift");
 
     adv = presetEndingIn(drift, ".adv");
@@ -55,6 +65,10 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
       await listPresets("audio-effect", "Reverb"),
       ".adv",
     );
+  });
+
+  afterAll(() => {
+    holdingPal?.remove();
   });
 
   /**
@@ -81,7 +95,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
 
     return parseToolResult(
       await call("ppal-create-device", {
-        device: "Drift",
+        deviceName: "Drift",
         path: `t${trackIndexFromPath(track.path)}/d0`,
       }),
     );
@@ -105,7 +119,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     );
     const drift = parseToolResult<{ id: string; path: string }>(
       await call("ppal-create-device", {
-        device: "Drift",
+        deviceName: "Drift",
         path: `${rack}/c0`,
       }),
     );
@@ -207,7 +221,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     );
     const rack = parseToolResult<{ id: string; path: string }>(
       await call("ppal-create-device", {
-        device: "Drum Rack",
+        deviceName: "Drum Rack",
         path: `t${trackIndexFromPath(track.path)}/d0`,
       }),
     );
@@ -222,6 +236,24 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     expect(updated.path).toBe(rack.path);
     expect(device.id).toBe(updated.id);
     expect(device.type).toBe("drum-rack");
+  });
+
+  // The Core Library's one "Beard Kit" is an Instrument Rack holding a Drum
+  // Rack, which the browser doesn't list under Drum Rack.
+  it("swaps a Drum Rack for a drum kit saved as an Instrument Rack, by name", async ({
+    skip,
+  }) => {
+    await skipTestBeforeLive(ctx.client!, skip, "12.4", LIBRARY_NEEDS);
+
+    const rack = await createOnFreshTrack("Drum Rack");
+    const updated = parseToolResult<UpdateResult>(
+      await call("ppal-update-device", { path: rack, preset: "Beard Kit" }),
+    );
+    const device = await readDevice(ctx.client!, rack);
+
+    expect(updated.path).toBe(rack);
+    expect(device.type).toBe("instrument-rack");
+    expect(device.name).toBe("Beard Kit");
   });
 
   it("loads nothing for a preset of another kind", async () => {
@@ -260,6 +292,108 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     expect((await readDevice(ctx.client!, drift.path)).name).toBe(
       presetName(adv.name),
     );
+  });
+
+  /**
+   * A device of the given name on a fresh MIDI track.
+   * @param deviceName - The device
+   * @returns Its path
+   */
+  async function createOnFreshTrack(deviceName: string): Promise<string> {
+    const track = parseToolResult<{ path: string }>(
+      await call("ppal-create-track", { type: "midi" }),
+    );
+
+    return await createTestDeviceAt(
+      ctx.client!,
+      deviceName,
+      `t${trackIndexFromPath(track.path)}`,
+    );
+  }
+
+  // Shifter's browser presets include a "Transmission"; the Wasted Space pack
+  // files another that the browser doesn't list.
+  it("refuses a name filed under another device and elsewhere", async ({
+    skip,
+  }) => {
+    const packFile = await wastedSpaceTransmissionOrSkip(ctx.client!, skip);
+    const reverbPath = await createOnFreshTrack("Reverb");
+    const result = await call("ppal-update-device", {
+      path: reverbPath,
+      preset: "Transmission",
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'preset "Transmission" matches',
+    );
+    expect(getToolErrorMessage(result)).toContain(packFile);
+  });
+
+  it("loads a Shifter's own preset when another device files the name too", async ({
+    skip,
+  }) => {
+    await wastedSpaceTransmissionOrSkip(ctx.client!, skip);
+
+    const shifterPath = await createOnFreshTrack("Shifter");
+
+    await call("ppal-update-device", {
+      path: shifterPath,
+      preset: "Transmission",
+    });
+
+    expect((await readDevice(ctx.client!, shifterPath)).name).toBe(
+      "Transmission",
+    );
+  });
+
+  it("refuses a preset holding Producer Pal, and one undo brings the old device back", async () => {
+    const drift = await createDrift();
+    const track = drift.path.split("/")[0]!;
+    const deviceIds = async (path: string): Promise<string[]> =>
+      (
+        parseToolResult<{ devices?: DeviceRead[] }>(
+          await call("ppal-read-track", { path, include: ["devices"] }),
+        ).devices ?? []
+      ).map((device) => device.id);
+    // A new track can come with this machine's default devices, so compare
+    // against what it holds rather than assuming it's empty.
+    const before = await deviceIds(track);
+    const palIds = await deviceIds(`t${PPAL_TRACK}`);
+
+    const updated = parseToolResult<UpdateResult>(
+      await call("ppal-update-device", {
+        path: drift.path,
+        preset: holdingPal!.path,
+      }),
+    );
+
+    // Live swaps the preset in before anything can look inside it, so the
+    // device is already gone: a normal entry, saying what landed.
+    expect(updated).toStrictEqual({
+      path: drift.path,
+      detail:
+        "preset not loaded: the preset contains the Producer Pal device, " +
+        "which a Set can only have once; Live had already swapped it in, so " +
+        "it was deleted and the slot is now empty; undoing this call brings " +
+        "the old device back, and reverts the rest of the call too; already " +
+        "changed: the device was replaced",
+    });
+
+    // Only the Drift is gone. The original Producer Pal is still there, and
+    // still answering.
+    expect(await deviceIds(track)).toStrictEqual(
+      before.filter((id) => id !== drift.id),
+    );
+    expect(await deviceIds(`t${PPAL_TRACK}`)).toStrictEqual(palIds);
+
+    await call("ppal-manage", { action: "undo" });
+
+    expect(await readDevice(ctx.client!, drift.path)).toStrictEqual({
+      id: drift.id,
+      path: drift.path,
+      type: "instrument: Drift",
+    });
   });
 });
 

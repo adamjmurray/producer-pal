@@ -18,6 +18,7 @@ import {
   raiseMinRemoteScriptVersion,
 } from "./helpers/version/min-remote-script-version.ts";
 import { replaceVersionLine } from "./helpers/version/replace-version-line.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "../..");
@@ -51,9 +52,7 @@ try {
     throw new Error(`Unknown bump "${mode}".\n${USAGE}`);
   }
 } catch (error) {
-  console.error(
-    `\n❌ ${error instanceof Error ? error.message : String(error)}`,
-  );
+  console.error(`\n❌ ${errorMessage(error)}`);
   process.exit(1);
 }
 

@@ -6,7 +6,7 @@
 /**
  * E2E tests for reading nested racks.
  * Uses: racks-test — a Drum Rack inside an Instrument Rack chain, with another
- * Drum Rack on one of its pads. See e2e/live-sets/racks-test-spec.md.
+ * Drum Rack on one of its pads. See e2e/live-sets/specs/racks-test-spec.md.
  *
  * Run with: npm run e2e:mcp -- ppal-read-device-nested-racks
  */
@@ -181,7 +181,7 @@ describe("read-device on nested racks", () => {
     it("leaves out a pad holding an empty rack", async () => {
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { device: "Instrument Rack", path: `${KIT}/pB1` },
+        arguments: { deviceName: "Instrument Rack", path: `${KIT}/pB1` },
       });
 
       const kit = await read(KIT, { include: ["drum-map"] });

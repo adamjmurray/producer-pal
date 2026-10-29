@@ -48,11 +48,10 @@ const CASES: Case[] = [
   {
     tool: "ppal-create-device",
     call: (args) => createDevice(args),
-    param: "device",
+    param: "deviceName",
     value: "Reverb",
     noun: "device",
-    also: { deviceName: "Delay" },
-    hint: "deviceName is deprecated",
+    also: { device: "Delay" },
   },
   {
     tool: "ppal-read-track",
@@ -172,17 +171,17 @@ const COVERED_ELSEWHERE = ["ppal-duplicate toPath takeLane"];
 // Pairs that are not a target named twice: a slot names no take lane, so
 // takeLane beside one has nothing to do, duplicate's path names the source
 // while takeLane names where a copy goes, and create-device's path names where
-// the device goes while deviceName names the device.
+// the device goes while deviceName (or its alias device) names the device.
 const NOT_NAMED_TWICE = [
   "ppal-create-clip slot takeLane",
   "ppal-duplicate toSlot takeLane",
   "ppal-duplicate path takeLane",
-  "ppal-create-device path deviceName",
+  "ppal-create-device path device",
 ];
 
 // The params that name a target on its own, and the ones that may name it again.
 const NAMING_PARAMS = [
-  "device",
+  "deviceName",
   "path",
   "slot",
   "slots",
@@ -190,7 +189,7 @@ const NAMING_PARAMS = [
   "toPath",
   "toSlot",
 ];
-const SECOND_NAMES = ["trackIndex", "sceneIndex", "takeLane", "deviceName"];
+const SECOND_NAMES = ["trackIndex", "sceneIndex", "takeLane", "device"];
 
 /** One tool that takes id and path with their plural and hidden spellings. */
 interface TargetCase {

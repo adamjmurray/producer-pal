@@ -10,14 +10,14 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
 import { registerCreateTrackLiveSet } from "./create-track-test-helpers.ts";
 import { createTrack } from "../create-track.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 describe("createTrack", () => {
@@ -382,7 +382,7 @@ describe("createTrack", () => {
         name: "Ignored Index",
       });
 
-      expect(console.warn).toHaveBeenCalledExactlyOnceWith(
+      expect(emitWarning).toHaveBeenCalledExactlyOnceWith(
         'type "return" is deprecated and will be removed; use path "rt+" instead',
       );
       // Should still create the track

@@ -76,14 +76,7 @@ describe("useImageAttachments pastes that carry text too", () => {
       "text/html": html,
     };
 
-    return {
-      clipboardData: {
-        files: [new File(["xy"], "image.png", { type: "image/png" })],
-        getData: (type: string) => types[type] ?? "",
-      },
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as ClipboardEvent;
+    return imagePaste((type) => types[type] ?? "");
   }
 
   it("pastes only the text from an Office app, not its picture of it", () => {
@@ -97,11 +90,11 @@ describe("useImageAttachments pastes that carry text too", () => {
     );
   });
 
-  it("attaches the image when the HTML is only that image", () => {
+  it("keeps real text typed alongside an image-only HTML paste", () => {
     vi.mocked(attachImages).mockResolvedValue({ images: [], notice: null });
     const { result } = renderHook(() => useImageAttachments());
     const event = pasteEvent(
-      "https://example.com/shot.png",
+      "look at this",
       "<meta charset='utf-8'><!--StartFragment-->" +
         '<img src="https://example.com/shot.png" alt="shot"/>' +
         "<!--EndFragment-->",
@@ -112,6 +105,67 @@ describe("useImageAttachments pastes that carry text too", () => {
     // The editor still pastes the text.
     expect(event.preventDefault).not.toHaveBeenCalled();
     expect(attachImages).toHaveBeenCalled();
+  });
+
+  it.each([
+    ["a Finder file name", "image.png", ""],
+    ["a file name with surrounding whitespace", " image.png\n", ""],
+    [
+      "a Firefox Copy Image URL",
+      "https://example.com/shot.png",
+      '<img src="https://example.com/shot.png"/>',
+    ],
+  ])("drops %s and attaches the image", (_label, text, html) => {
+    vi.mocked(attachImages).mockResolvedValue({ images: [], notice: null });
+    const { result } = renderHook(() => useImageAttachments());
+    const event = pasteEvent(text, html);
+
+    void act(() => result.current.zoneProps.onPasteCapture(event));
+
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(event.stopPropagation).toHaveBeenCalledOnce();
+    expect(attachImages).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a link that is part of an HTML copy with real text", () => {
+    vi.mocked(attachImages).mockResolvedValue({ images: [], notice: null });
+    const { result } = renderHook(() => useImageAttachments());
+    const event = pasteEvent(
+      "https://example.com/page",
+      '<a href="https://example.com/page">The page</a>',
+    );
+
+    void act(() => result.current.zoneProps.onPasteCapture(event));
+
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(attachImages).not.toHaveBeenCalled();
+  });
+});
+
+describe("useImageAttachments pastes from a clipboard that reports no text", () => {
+  it("attaches the image and keeps the editor from inserting the file", () => {
+    vi.mocked(attachImages).mockResolvedValue({ images: [], notice: null });
+    const { result } = renderHook(() => useImageAttachments());
+    const event = imagePaste(() => undefined);
+
+    void act(() => result.current.zoneProps.onPasteCapture(event));
+
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(attachImages).toHaveBeenCalledOnce();
+  });
+
+  it("attaches the image of a paste with text but no HTML", () => {
+    vi.mocked(attachImages).mockResolvedValue({ images: [], notice: null });
+    const { result } = renderHook(() => useImageAttachments());
+    const event = imagePaste((type) =>
+      type === "text/plain" ? "C Am" : undefined,
+    );
+
+    void act(() => result.current.zoneProps.onPasteCapture(event));
+
+    // The editor still pastes the text.
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(attachImages).toHaveBeenCalledOnce();
   });
 });
 
@@ -266,3 +320,21 @@ describe("useImageAttachments adds that finish after the list changed", () => {
     expect(result.current.notice).toBe(TOO_MANY_IMAGES_MESSAGE);
   });
 });
+
+/**
+ * A paste of one PNG whose clipboard answers `getData` with the given function.
+ * @param getData - The clipboard's `getData`
+ * @returns A paste event stand-in
+ */
+function imagePaste(
+  getData: (type: string) => string | undefined,
+): ClipboardEvent {
+  return {
+    clipboardData: {
+      files: [new File(["xy"], "image.png", { type: "image/png" })],
+      getData,
+    },
+    preventDefault: vi.fn(),
+    stopPropagation: vi.fn(),
+  } as unknown as ClipboardEvent;
+}

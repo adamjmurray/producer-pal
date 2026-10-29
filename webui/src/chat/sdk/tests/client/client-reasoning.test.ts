@@ -39,6 +39,7 @@ import { ChatSdkClient } from "#webui/chat/sdk/client";
 import {
   createConfig as createBaseConfig,
   mockStreamParts,
+  sendWithParts,
 } from "#webui/chat/sdk/tests/client-test-helpers";
 
 /**
@@ -56,26 +57,6 @@ function createConfig(overrides?: Partial<ChatClientConfig>): ChatClientConfig {
     } as never,
     ...overrides,
   });
-}
-
-/**
- * Send a message through a new client with mocked stream parts.
- * @param parts - Stream parts to emit
- * @returns Final chat history
- */
-async function sendWithParts(
-  parts: Record<string, unknown>[],
-): Promise<ChatMessage[]> {
-  mockStreamParts(parts);
-
-  const client = new ChatSdkClient("key", createConfig());
-  let last: ChatMessage[] = [];
-
-  for await (const history of client.sendMessage("Hello")) {
-    last = history;
-  }
-
-  return last;
 }
 
 /**
@@ -118,15 +99,18 @@ describe("ChatSdkClient reasoning (adaptive thinking)", () => {
 
   describe("signature capture from the stream", () => {
     it("captures a signature from reasoning-end onto the reasoning block", async () => {
-      const last = await sendWithParts([
-        { type: "reasoning-start" },
-        { type: "reasoning-delta", text: "Think" },
-        {
-          type: "reasoning-end",
-          providerMetadata: { anthropic: { signature: "sig-1" } },
-        },
-        { type: "text-delta", text: "Answer" },
-      ]);
+      const last = await sendWithParts(
+        [
+          { type: "reasoning-start" },
+          { type: "reasoning-delta", text: "Think" },
+          {
+            type: "reasoning-end",
+            providerMetadata: { anthropic: { signature: "sig-1" } },
+          },
+          { type: "text-delta", text: "Answer" },
+        ],
+        createConfig(),
+      );
 
       expect(last[1]!.reasoning).toBe("Think");
       expect(last[1]!.reasoningParts).toStrictEqual([
@@ -135,13 +119,16 @@ describe("ChatSdkClient reasoning (adaptive thinking)", () => {
     });
 
     it("captures redactedData from a reasoning-start part", async () => {
-      const last = await sendWithParts([
-        {
-          type: "reasoning-start",
-          providerMetadata: { anthropic: { redactedData: "blob" } },
-        },
-        { type: "text-delta", text: "Answer" },
-      ]);
+      const last = await sendWithParts(
+        [
+          {
+            type: "reasoning-start",
+            providerMetadata: { anthropic: { redactedData: "blob" } },
+          },
+          { type: "text-delta", text: "Answer" },
+        ],
+        createConfig(),
+      );
 
       expect(last[1]!.reasoningParts).toStrictEqual([
         { text: "", redactedData: "blob" },
@@ -152,13 +139,16 @@ describe("ChatSdkClient reasoning (adaptive thinking)", () => {
       // reasoning-start with redactedData then finish, no deltas/text/tool-calls.
       // The redacted block must keep the assistant turn in history rather than
       // being silently dropped with its captured redactedData.
-      const last = await sendWithParts([
-        {
-          type: "reasoning-start",
-          providerMetadata: { anthropic: { redactedData: "blob" } },
-        },
-        { type: "finish" },
-      ]);
+      const last = await sendWithParts(
+        [
+          {
+            type: "reasoning-start",
+            providerMetadata: { anthropic: { redactedData: "blob" } },
+          },
+          { type: "finish" },
+        ],
+        createConfig(),
+      );
 
       expect(last).toHaveLength(2);
       expect(last[1]!.role).toBe("assistant");
@@ -170,10 +160,10 @@ describe("ChatSdkClient reasoning (adaptive thinking)", () => {
     it("does not retain an empty turn from a bare reasoning-start", async () => {
       // reasoning-start with no redactedData and nothing following must NOT push
       // an empty assistant message (a normal start is followed by deltas/text).
-      const last = await sendWithParts([
-        { type: "reasoning-start" },
-        { type: "finish" },
-      ]);
+      const last = await sendWithParts(
+        [{ type: "reasoning-start" }, { type: "finish" }],
+        createConfig(),
+      );
 
       expect(last).toHaveLength(1);
       expect(last[0]!.role).toBe("user");
@@ -181,13 +171,16 @@ describe("ChatSdkClient reasoning (adaptive thinking)", () => {
 
     it("ignores reasoning metadata when there is no reasoning block yet", async () => {
       // reasoning-end with no preceding start/delta: nothing to attach to, no throw.
-      const last = await sendWithParts([
-        {
-          type: "reasoning-end",
-          providerMetadata: { anthropic: { signature: "sig-x" } },
-        },
-        { type: "text-delta", text: "Answer" },
-      ]);
+      const last = await sendWithParts(
+        [
+          {
+            type: "reasoning-end",
+            providerMetadata: { anthropic: { signature: "sig-x" } },
+          },
+          { type: "text-delta", text: "Answer" },
+        ],
+        createConfig(),
+      );
 
       expect(last[1]!.reasoningParts).toBeUndefined();
       expect(last[1]!.content).toBe("Answer");

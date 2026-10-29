@@ -6,7 +6,7 @@
 /**
  * E2E tests for the drum pad sample-write policy. Uses: racks-test, whose Kit
  * has a Drum Sampler on pAb1, a Sampler on pA1, and a multi-sample Simpler on
- * pBb1. See e2e/live-sets/racks-test-spec.md.
+ * pBb1. See e2e/live-sets/specs/racks-test-spec.md.
  *
  * The policy is uniform: the write targets the pad's *instrument*, wherever it
  * sits in the chain, and `force` replaces it whenever the Live API can't set its

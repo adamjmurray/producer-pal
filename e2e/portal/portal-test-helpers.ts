@@ -182,6 +182,26 @@ export async function callToolText(
 }
 
 /**
+ * Call a tool and read every text block, for a result with a note appended.
+ * @param session - A running portal session
+ * @param name - The tool
+ * @param args - Its arguments
+ * @returns The text of each text block
+ */
+export async function callToolTexts(
+  session: PortalSession,
+  name: string,
+  args: Record<string, unknown> = {},
+): Promise<string[]> {
+  const result = await session.client.callTool({ name, arguments: args });
+  const content = Array.isArray(result.content) ? result.content : [];
+
+  return content
+    .filter((item: { type?: unknown }) => item.type === "text")
+    .map(textOf);
+}
+
+/**
  * Register portals and devices for teardown. Call once at module level, then
  * pass each one to the returned function as you start it.
  * @returns Registers a resource and hands it back

@@ -4,29 +4,21 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Does the model navigate by SECTION NAME, or compute a bar number?
+ * Does the model reach the right section when asked for it by name?
  *
- * "Play from the chorus" and "copy the verse into the bridge" are how people
- * actually talk about an arrangement, and both have a spelling built for them:
- * `loc:<name>` on ppal-playback's `startTime` / `loopStart` / `loopEnd`, and
- * `locator` on ppal-duplicate.
+ * ppal-playback takes `loc:<name>` for `startTime` / `loopStart` / `loopEnd`,
+ * but a computed bar lands in the same place, so only where the model lands is
+ * graded, not how it spelled the position. The start turn reads the position
+ * the call reported; the loop turn reads the loop back. A `loc:` naming the
+ * wrong locator still fails, since it lands somewhere else. The copy is graded
+ * on where it landed too. `path-locator-coordinate` is the check that a model
+ * can write the `loc:` spelling.
  *
- * The trap is that computing the bar WORKS. A model that reads the locator list,
- * works out that Chorus is bar 17, and passes `startTime: "17|1"` lands the
- * playhead in exactly the right place — so an outcome-only check passes a model
- * that never found the feature. That is why each turn grades the ARGUMENT, and
- * the outcome: a call that sets the loop reports none of it back, so a
- * play-arrangement read after the run checks where the loop landed. The e2e
- * suite already proves the values resolve names and ids against a real Set
- * (`control/ppal-playback`, `operations/ppal-duplicate`); what is unmeasured is
- * whether a model reaches for them.
+ * `kind: "capability"` — an improvement target, not a regression guard.
  *
- * `kind: "capability"` — this is an improvement target, not a regression guard.
- *
- * Uses the arrangement-sections Set, the only one with named locators. It lives
- * under `e2e/live-sets/` and is named by path: `resolveLiveSetPath` returns any
- * value containing `/` unchanged, and only bare names default to
- * `evals/live-sets/`.
+ * Uses the arrangement-sections Set, the only one with named locators. It is
+ * named by path because it lives under `e2e/live-sets/`; only bare names
+ * default to `evals/live-sets/`.
  */
 
 import { getToolCalls, parsedToolResult } from "../../../assertions/index.ts";
@@ -37,9 +29,9 @@ import {
 } from "../../../types.ts";
 import { argText } from "../../arg-text.ts";
 import { asArrangementTrack, clipStarts } from "../../arrangement-readback.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_PLAYBACK = "ppal-playback";
-const TOOL_DUPLICATE = "ppal-duplicate";
+const TOOL_PLAYBACK = TOOLS.playback;
 
 /** The arrangement Set, named by path — it lives under e2e/live-sets/. */
 const LIVE_SET =
@@ -82,37 +74,16 @@ function playbackCall(
   return { args: call.args, result: parsedToolResult(call) ?? {} };
 }
 
-/** A song position that names a locator rather than a computed bar. */
-const LOCATOR_VALUE = /^\s*loc(?:ator)?:/i;
-
 /**
- * Assert the model named a locator rather than computing a bar position.
+ * Assert the start-playback call began at the chorus, however it was spelled.
  *
  * @param turn - Turn index to grade
- * @param positionParams - Song-position params the call should spell with loc:
- * @param outcome - Where the placement should land, when the call's result shows it
- * @param outcome.expected - Human-readable description of the expected placement
- * @param outcome.check - Reads the playback call; true when the placement landed
  * @returns A custom assertion
  */
-function assertNavigatedByLocator(
-  turn: number,
-  positionParams: string[],
-  outcome?: {
-    expected: string;
-    check: (call: {
-      args: Record<string, unknown>;
-      result: Record<string, unknown>;
-    }) => boolean;
-  },
-): EvalAssertion {
-  const spelled = `spelled ${positionParams.join(" + ")} as loc:`;
-
+function assertStartedAtChorus(turn: number): EvalAssertion {
   return {
     type: "custom",
-    description: outcome
-      ? `${spelled} and reached ${outcome.expected}`
-      : spelled,
+    description: `started playback at the chorus (${CHORUS})`,
     assert: (turns) => {
       const call = playbackCall(turns, turn);
 
@@ -120,78 +91,9 @@ function assertNavigatedByLocator(
         throw new Error(`no ${TOOL_PLAYBACK} call in turn ${turn}`);
       }
 
-      // Report the idiom AND the outcome together. A computed position and a
-      // wrong result usually have the same cause, and seeing only the first
-      // sends you probing Live to find out whether the placement even landed.
-      const issues: string[] = [];
-      const computed = positionParams
-        .map((p) => [p, argText(call.args[p])] as const)
-        .filter(([, value]) => !LOCATOR_VALUE.test(value));
-
-      if (computed.length > 0) {
-        issues.push(
-          `did not name a locator: ` +
-            computed
-              .map(([p, value]) => `${p}=${value || "(unset)"}`)
-              .join(", "),
-        );
-      }
-
-      if (outcome != null && !outcome.check(call)) {
-        const sent = positionParams
-          .map((p) => `${p}=${argText(call.args[p]) || "(unset)"}`)
-          .join(", ");
-
-        issues.push(
-          `expected ${outcome.expected}, sent ${sent}, got ${JSON.stringify(call.result)}`,
-        );
-      }
-
-      if (issues.length > 0) {
-        throw new Error(issues.join(" — "));
-      }
-
-      return true;
-    },
-  };
-}
-
-/**
- * Assert the duplicate placed the copy by locator name, not a computed bar.
- *
- * The published spelling is a `toPath` coordinate (`t2[loc:Bridge]`); the two
- * retired params still count, since a caller that sends one gets the same
- * placement.
- *
- * @param turn - Turn index to grade
- * @returns A custom assertion
- */
-function assertDuplicatedToLocator(turn: number): EvalAssertion {
-  return {
-    type: "custom",
-    description: "placed the copy by naming the Bridge locator",
-    assert: (turns) => {
-      const call = getToolCalls(turns, turn).findLast(
-        (c) => c.name === TOOL_DUPLICATE,
-      );
-
-      if (call == null) {
-        throw new Error(`no ${TOOL_DUPLICATE} call in turn ${turn}`);
-      }
-
-      const named = [
-        argText(call.args.toPath),
-        argText(call.args.arrangementStart),
-        argText(call.args.locator),
-      ]
-        .filter(Boolean)
-        .join(" ");
-
-      if (!/bridge|loc:\d+/i.test(named)) {
+      if (call.result.startTime !== CHORUS) {
         throw new Error(
-          named
-            ? `did not name the Bridge locator: ${named}`
-            : "nothing placed the copy",
+          `expected the chorus (${CHORUS}), sent startTime=${argText(call.args.startTime) || "(unset)"}, got ${JSON.stringify(call.result)}`,
         );
       }
 
@@ -203,13 +105,10 @@ function assertDuplicatedToLocator(turn: number): EvalAssertion {
 export const locatorNavigation: EvalScenario = {
   id: "locator-navigation",
   tags: ["workflow"],
-  description: "Navigate the arrangement by section name, not by bar number",
+  description:
+    "Navigate the arrangement to a named section (chorus, bridge, outro)",
   kind: "capability",
   liveSet: LIVE_SET,
-
-  // duplicate's locator param is hidden in small-model mode, so a small model
-  // is never offered the whole feature this grades.
-  requires: { params: ["locator"] },
 
   messages: [
     "Connect to Ableton Live",
@@ -220,17 +119,11 @@ export const locatorNavigation: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
-    assertNavigatedByLocator(1, ["startTime"], {
-      expected: `the chorus (${CHORUS})`,
-      check: ({ result }) => result.startTime === CHORUS,
-    }),
+    assertStartedAtChorus(1),
 
-    // A locator id can't be checked from the args — ids are assigned when the
-    // Set opens — so the loop read below grades where the loop landed.
-    assertNavigatedByLocator(2, ["loopStart", "loopEnd"]),
-
+    // The loop read below grades where the loop landed, in either spelling.
     {
       type: "state",
       tool: TOOL_PLAYBACK,
@@ -248,11 +141,9 @@ export const locatorNavigation: EvalScenario = {
         `loop ${JSON.stringify(result)}, expected ${BRIDGE} to ${OUTRO}`,
     },
 
-    assertDuplicatedToLocator(3),
-
     {
       type: "state",
-      tool: "ppal-read-track",
+      tool: TOOLS.readTrack,
       args: { trackIndex: BASS_TRACK_INDEX, include: ["arrangement-clips"] },
       expect: (result) =>
         clipStarts(asArrangementTrack(result).arrangementClips).join(",") ===

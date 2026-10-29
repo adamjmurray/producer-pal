@@ -131,7 +131,7 @@ describe("ConnectionTab", () => {
 
       const input = screen.getByPlaceholderText("Enter your Gemini API key");
 
-      fireEvent.change(input, { target: { value: "new-api-key" } });
+      fireEvent.input(input, { target: { value: "new-api-key" } });
 
       expect(setApiKey).toHaveBeenCalledWith("new-api-key");
     });
@@ -309,7 +309,7 @@ describe("ConnectionTab", () => {
 
       const input = screen.getByPlaceholderText("http://localhost:1234");
 
-      fireEvent.change(input, {
+      fireEvent.input(input, {
         target: { value: "http://192.168.1.100:1234" },
       });
 
@@ -331,7 +331,7 @@ describe("ConnectionTab", () => {
 
       const input = screen.getByPlaceholderText("http://localhost:11434");
 
-      fireEvent.change(input, {
+      fireEvent.input(input, {
         target: { value: "http://192.168.1.100:11434" },
       });
 
@@ -428,7 +428,7 @@ describe("ConnectionTab", () => {
 
       const input = screen.getByPlaceholderText("https://api.example.com/v1");
 
-      fireEvent.change(input, { target: { value: "https://my-api.com/v1" } });
+      fireEvent.input(input, { target: { value: "https://my-api.com/v1" } });
 
       expect(setBaseUrl).toHaveBeenCalledWith("https://my-api.com/v1");
     });

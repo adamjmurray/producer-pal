@@ -146,7 +146,10 @@ It adds a MIDI track with the device, and does nothing if Producer Pal is
 already running. The agent asks first unless you asked for Producer Pal. This
 needs the [remote script](/guide/remote-script) installed and selected in Live,
 and the device installed in your User Library's Max MIDI Effect folder (see
-[installing](/installation#install-the-device)).
+[installing](/installation#install-the-device)). The skill can't install the
+remote script itself: add the device to a MIDI track by hand once, click
+**Finish installation…** on it, then click **Install** next to the remote
+script.
 
 ### Notation and small-model mode
 

@@ -190,7 +190,7 @@ describe("lookUpBrowserDevice", () => {
     expect(await lookUpIn(browser, "Echo")).toStrictEqual({
       available: true,
       error:
-        'device "Echo" matches 2 devices; pass one of these as device: "Plug-Ins/VST3/Acme/Echo", "Audio Effects/Echo"',
+        'deviceName "Echo" matches 2 devices; pass one of these as deviceName: "Plug-Ins/VST3/Acme/Echo", "Audio Effects/Echo"',
     });
   });
 
@@ -229,7 +229,7 @@ describe("lookUpBrowserDevice", () => {
     expect(result).toHaveProperty(
       "error",
       expect.stringMatching(
-        /^device "delay" matches 12 devices; .*"Audio Effects\/Delay 10", and 2 more$/,
+        /^deviceName "delay" matches 12 devices; .*"Audio Effects\/Delay 10", and 2 more$/,
       ),
     );
   });

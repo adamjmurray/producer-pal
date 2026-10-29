@@ -14,7 +14,7 @@
  * "stopped in Session" (playing_slot_index -2).
  *
  * Uses: e2e-test-set — t3 "Lead" (Drift, Compressor at d1), s4 free.
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp:remote-script -- clip/remote-script/ppal-read-arrangement-automation
  */

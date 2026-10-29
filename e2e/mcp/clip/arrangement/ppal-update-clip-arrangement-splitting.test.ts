@@ -6,7 +6,7 @@
 /**
  * E2E tests for arrangement clip splitting operations.
  * Uses: arrangement-clip-tests - comprehensive arrangement clip edge cases
- * See: e2e/live-sets/arrangement-clip-tests-spec.md
+ * See: e2e/live-sets/specs/arrangement-clip-tests-spec.md
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import {
@@ -337,6 +337,33 @@ describe("Behavioral splitting tests", () => {
     const splitClips = parseSplitResult(result);
 
     expect(splitClips.length).toBe(4);
+  });
+
+  it("says a note that crosses a cut now ends at it", async () => {
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${dynamicTrackIndex}[240|1]`,
+        notes: "n4bar C2 1|1",
+        length: "4bar",
+        looping: false,
+      },
+    });
+    const clipId = parseToolResult<{ id: string }>(createResult).id;
+
+    await sleep(200);
+    const result = await splitClip(ctx.client!, clipId, "242|1, 243|1");
+    const entries = parseSplitResult(result) as Array<{
+      id: string;
+      detail?: string;
+    }>;
+
+    expect(entries).toHaveLength(3);
+    expect(entries[0]?.detail).toBe("1 note crossed a cut and now ends at it");
+    expect(entries.slice(1).map((e) => e.detail)).toStrictEqual([
+      undefined,
+      undefined,
+    ]);
   });
 
   /**

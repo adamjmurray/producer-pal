@@ -4,8 +4,10 @@ Part of the [Chat UI docs](README.md).
 
 Voice mode is a realtime speech-to-speech conversation with the model, reached
 by selecting a realtime model (`App.tsx` routes to `VoiceApp` via
-`isRealtimeSelection`). It reuses the chat conversation store, transcript
-rendering, and MCP tools — only the transport and audio handling are new.
+`isRealtimeSelection`). The provider is derived from the model id
+(`gpt-realtime-2.1` → OpenAI, `gemini-3.8-live` → Gemini). It reuses the chat
+conversation store, transcript rendering, and MCP tools — only the transport and
+audio handling are new.
 
 **Hook orchestration:** `use-voice-mode-state.ts` composes the whole voice hook
 graph and picks the backend from the selected model, exposing a single
@@ -38,7 +40,17 @@ through `voice-mcp-call.ts` (a 60s-timeout wrapper that returns errors as text
 rather than throwing), wrapped per provider by `realtime-mcp-tools.ts` (OpenAI)
 and `gemini-mcp-tools.ts` (Gemini).
 
-**Credentials** are minted/relayed by two server routes (`POST /voice-token`,
-`POST /gemini-voice-token`) so the long-lived key stays off the browser for the
-OpenAI path; see [the Architecture doc](../../architecture/README.md#voice-mode)
-for the server side.
+**Credentials.** The browser never holds the long-lived API key for the realtime
+connection. Two Express routes on the MCP server mint or relay credentials
+server-side, both gated to local origins:
+
+- `POST /voice-token`
+  ([routes/voice/voice-token-route.ts](../../../src/mcp-server/routes/voice/voice-token-route.ts))
+  forwards the user's OpenAI key to OpenAI's `client_secrets` endpoint
+  server-to-server and returns only the short-lived `ek_...` ephemeral token.
+- `POST /gemini-voice-token`
+  ([routes/voice/gemini-voice-token-route.ts](../../../src/mcp-server/routes/voice/gemini-voice-token-route.ts))
+  currently returns the Gemini key as-is (`ephemeral: false`), since Gemini Live
+  accepts the API key directly from the browser. A server-only upgrade path to
+  v1alpha ephemeral tokens exists; the client already honors the `ephemeral`
+  flag.

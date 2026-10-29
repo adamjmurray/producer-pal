@@ -40,6 +40,7 @@ import {
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 /** Matches the `take_lanes N` segment inside a clip path. The trailing `\b`
  * keeps the match anchored to the segment so future paths that happen to
@@ -361,7 +362,7 @@ export class TakeLanesMadeError extends Error {
    * @param created - The lanes made before it did ("l0", "l1-l2")
    */
   constructor(cause: unknown, created: string) {
-    super(cause instanceof Error ? cause.message : String(cause), { cause });
+    super(errorMessage(cause), { cause });
     this.created = created;
   }
 }

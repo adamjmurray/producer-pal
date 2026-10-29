@@ -123,6 +123,9 @@ import {
   trackListBatching,
   trackNameCommaPairing,
   updateLiveSet,
+  upgradeDeviceVersionCheck,
+  upgradeFirstMessageFullConnect,
+  upgradeRemoteScriptRestartCheck,
   writeTrustSilentResult,
 } from "../defs/index.ts";
 import { type EvalScenario } from "../types.ts";
@@ -191,6 +194,9 @@ export const allScenarios: EvalScenario[] = [
   sceneAndPlayback,
   sceneUpdateAndSelect,
   updateLiveSet,
+  upgradeDeviceVersionCheck,
+  upgradeFirstMessageFullConnect,
+  upgradeRemoteScriptRestartCheck,
   deleteTargets,
   liveApiEscapeHatch,
   librarySearchFanout,

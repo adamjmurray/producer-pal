@@ -7,7 +7,7 @@
  * E2E tests for ppal-create-clip auto, which drives Live's real transport:
  * play-clip fires only the new clip, play-scene fires the whole scene.
  * Uses: e2e-test-set (t8 is empty; s0 already holds clips on t0-t5)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- clip/create/ppal-create-clip-auto
  */

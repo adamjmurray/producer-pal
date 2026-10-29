@@ -5,7 +5,7 @@
 
 import { MIDI_TO_DRUM_NAME } from "#src/notation/stark/stark-config.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
@@ -326,7 +326,7 @@ export function readDevice(
   } = options;
 
   if (depth > maxDepth) {
-    console.warn(`Maximum recursion depth (${maxDepth}) exceeded`);
+    emitWarning(`Maximum recursion depth (${maxDepth}) exceeded`);
 
     return {};
   }
@@ -343,11 +343,7 @@ export function readDevice(
     hosted,
   });
 
-  const isActive = (device.getProperty("is_active") as number) > 0;
-
-  if (!isActive) {
-    deviceInfo.deactivated = true;
-  }
+  addDeactivated(device, deviceInfo);
 
   // collapsed — kept for potential future use
   // const deviceView = LiveAPI.from(`${device.path} view`);
@@ -384,6 +380,24 @@ export function readDevice(
   });
 
   return deviceInfo;
+}
+
+/**
+ * Add `deactivated` when the device is off. An on/off state Live won't give
+ * (CC Control before Live 12.4.15) is left out: an unreadable on/off is not
+ * off.
+ * @param device - LiveAPI device object
+ * @param deviceInfo - Device info object to mutate
+ */
+function addDeactivated(
+  device: LiveAPI,
+  deviceInfo: Record<string, unknown>,
+): void {
+  const isActive = device.getProperty("is_active") as number | undefined;
+
+  if (isActive != null && isActive <= 0) {
+    deviceInfo.deactivated = true;
+  }
 }
 
 interface DeviceDetailOptions {

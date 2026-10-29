@@ -12,16 +12,13 @@ import {
   formatOffGridBeats,
   printedWholeBeat,
 } from "#src/notation/barbeat/serializer/helpers/barbeat-serializer-fractions.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
-// NOTE-VALUE PARSING IS INTENTIONALLY DUPLICATED. The note-value regexes in
-// this file (durationToAbletonBeats, readBarBeat, parseBeatValue)
-// mirror the note-value rules in barbeat-grammar.peggy and
-// transform-grammar.peggy. Peggy can't share rules, and these run in per-note
-// hot paths, so the duplication is deliberate — see ADR-0003 "Notation grammar
-// duplication" and dev/coding-standards/README.md. The contract across all sites is
-// locked by note-value-grammar-parity.test.ts; change every site and that test
-// together.
+// The note-value regexes here (durationToAbletonBeats, readBarBeat,
+// parseBeatValue) deliberately duplicate the note-value rules in
+// barbeat-grammar.peggy and transform-grammar.peggy: Peggy can't share rules,
+// and these run in per-note hot paths. Change every site and
+// note-value-grammar-parity.test.ts together. (ADR-0003)
 
 const DURATION_EPSILON = 1e-9;
 const DURATION_FRACTION_TOLERANCE = 1e-6;
@@ -154,7 +151,7 @@ export function barBeatToMusicalBeats(
   // beyond that silently overflows multiple beats into a later, meter-dependent
   // bar and is almost certainly a mistake.
   if (beat > beatsPerBar + 1) {
-    console.warn(
+    emitWarning(
       `Beat ${beat} exceeds the bar (beatsPerBar=${beatsPerBar}); it will land in a later bar — did you mean a higher bar number?`,
     );
   }
@@ -367,7 +364,7 @@ export function abletonBeatsToDuration(
   timeSigDenominator: number,
 ): string {
   if (abletonBeats < 0) {
-    console.warn(
+    emitWarning(
       `duration cannot be negative, got ${abletonBeats}; clamped to 0`,
     );
     abletonBeats = 0;

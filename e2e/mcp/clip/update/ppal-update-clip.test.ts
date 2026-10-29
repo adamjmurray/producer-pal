@@ -7,7 +7,7 @@
  * E2E tests for ppal-update-clip tool
  * Creates clips, updates them, and verifies changes.
  * Uses: e2e-test-set - tests create clips in empty slots (t8 is empty MIDI track)
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp
  */

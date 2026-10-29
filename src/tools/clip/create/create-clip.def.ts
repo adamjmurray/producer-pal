@@ -18,7 +18,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   // own — `firstStart` is not one of them there.
   description: {
     default:
-      "Create MIDI or audio clip(s). Requires path — 't0/s0' for the session, 't0[5|1]' for the arrangement. " +
+      "Create MIDI or audio clip(s). Requires path. " +
       "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
       "The sample defines an audio clip's region, so start/length/firstStart/looping are MIDI-only. " +
       "Params with no list form apply to every clip.",

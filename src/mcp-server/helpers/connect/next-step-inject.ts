@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: MIT
 
 import { NEW_USER_MARKER } from "#src/skills/fragments/context.ts";
-import { CONTEXT_TOOL_ID } from "#src/shared/tool-groups.ts";
 import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
 import { readGlobalContext } from "../global-context/global-context-store.ts";
 import { listMemoryEntries } from "../memory/memory-store.ts";
@@ -12,6 +11,7 @@ import {
   withConnectAppend,
   type WrappedCallLiveApi,
 } from "./connect-append.ts";
+import { hasContextTool, isNewUser } from "./new-user.ts";
 
 // The ppal-connect "what to do now" instruction. It is appended Node-side so it
 // is the LAST thing in the response (compose withNextStep outermost): as a
@@ -121,44 +121,4 @@ function emptyLayers(config: NextStepConfig): string[] {
   }
 
   return empty;
-}
-
-/**
- * Whether this is a user we have learned nothing about yet: no pinned global
- * context and no memories.
- *
- * Always false when nothing can record the outcome — small-model mode, whose
- * tool surface drops scope:memory, and a caller with no ppal-context at all.
- * Either way the assistant could neither save what it learned nor record a
- * decline, so it would re-ask on every connect forever.
- *
- * Project context is deliberately not consulted: it describes the Live Set, not
- * the person, and a user can have a project blob while still being a stranger.
- *
- * @param config - Current device settings
- * @returns True when the onboarding next step should be used
- */
-function isNewUser(config: NextStepConfig): boolean {
-  if (config.smallModelMode) {
-    return false;
-  }
-
-  if (!hasContextTool(config)) {
-    return false;
-  }
-
-  if (readGlobalContext().trim()) {
-    return false;
-  }
-
-  return listMemoryEntries().length === 0;
-}
-
-/**
- * Whether this caller can call ppal-context at all.
- * @param config - Current device settings
- * @returns True when ppal-context is available, or nothing narrows the toolset
- */
-function hasContextTool(config: NextStepConfig): boolean {
-  return config.tools == null || config.tools.includes(CONTEXT_TOOL_ID);
 }

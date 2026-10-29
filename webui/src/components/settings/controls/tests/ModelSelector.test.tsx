@@ -12,6 +12,7 @@ import {
   screen,
   fireEvent,
 } from "@testing-library/preact";
+import { useState } from "preact/hooks";
 import { type Mock, describe, expect, it, vi } from "vitest";
 import {
   type ModelSelectorProps,
@@ -110,7 +111,7 @@ describe("ModelSelector", () => {
     it("renders Mistral models", () => {
       renderModelSelector({
         provider: "mistral",
-        model: "mistral-large-latest",
+        model: "mistral-large-4",
       });
       expect(
         screen.getByRole("option", { name: /Mistral Large/ }),
@@ -123,7 +124,7 @@ describe("ModelSelector", () => {
     it("calls setModel when Mistral model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "mistral",
-        model: "mistral-large-latest",
+        model: "mistral-large-4",
       });
 
       expectModelSelected("devstral-latest", setModel);
@@ -171,7 +172,7 @@ describe("ModelSelector", () => {
         model: "gpt-4",
       });
 
-      fireEvent.change(screen.getByPlaceholderText(/e.g., openai\/gpt-oss/), {
+      fireEvent.input(screen.getByPlaceholderText(/e.g., openai\/gpt-oss/), {
         target: { value: "claude-3-opus" },
       });
       expect(setModel).toHaveBeenCalledWith("claude-3-opus");
@@ -192,7 +193,7 @@ describe("ModelSelector", () => {
         model: "llama-3.1-70b",
       });
 
-      fireEvent.change(screen.getByPlaceholderText(/e.g., qwen\/qwen3.8-27b/), {
+      fireEvent.input(screen.getByPlaceholderText(/e.g., qwen\/qwen3.8-27b/), {
         target: { value: "qwen-2.5-72b" },
       });
       expect(setModel).toHaveBeenCalledWith("qwen-2.5-72b");
@@ -236,10 +237,38 @@ describe("ModelSelector", () => {
       fireEvent.change(screen.getByRole("combobox"), {
         target: { value: "OTHER" },
       });
-      fireEvent.change(screen.getByPlaceholderText(/e.g., gemini-3.8-flash/), {
+      fireEvent.input(screen.getByPlaceholderText(/e.g., gemini-3.8-flash/), {
         target: { value: "custom-model-name" },
       });
       expect(setModel).toHaveBeenCalledWith("custom-model-name");
+    });
+
+    it("keeps the custom input open when typing passes through a preset name", () => {
+      function Harness() {
+        const [model, setModel] = useState("my-model");
+
+        return (
+          <ModelSelector provider="gemini" model={model} setModel={setModel} />
+        );
+      }
+
+      render(<Harness />);
+
+      const placeholder = /e.g., gemini-3.8-flash/;
+
+      fireEvent.input(screen.getByPlaceholderText(placeholder), {
+        target: { value: "gemini-3.5-flash-lite" },
+      });
+      expect(
+        (screen.getByPlaceholderText(placeholder) as HTMLInputElement).value,
+      ).toBe("gemini-3.5-flash-lite");
+
+      fireEvent.input(screen.getByPlaceholderText(placeholder), {
+        target: { value: "gemini-3.5-flash-lite-2" },
+      });
+      expect(
+        (screen.getByPlaceholderText(placeholder) as HTMLInputElement).value,
+      ).toBe("gemini-3.5-flash-lite-2");
     });
 
     it("shows custom input initially for non-preset models", () => {

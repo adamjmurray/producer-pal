@@ -137,6 +137,33 @@ describe("a session clip with automation, copied at another length", () => {
     expect(shownByStamps(world.stamps())).toStrictEqual([[1, 9, 0]]);
   });
 
+  it("leaves the markers alone when an unlooped clip already shows the span", async () => {
+    const world = registerStampWorld({
+      source: { looping: 0, loop_end: 6, end_marker: 6 },
+    });
+
+    await copyAtLength(world, 6);
+
+    expect(shownByStamps(world.stamps())).toStrictEqual([[0, 6, 0]]);
+    expect(world.events.filter((event) => event.kind === "set")).toHaveLength(
+      0,
+    );
+  });
+
+  it("moves the end before the start when an unlooped clip starts at its end", async () => {
+    const world = registerStampWorld({
+      source: { looping: 0, start_marker: 4, loop_end: 4, end_marker: 4 },
+    });
+
+    await copyAtLength(world, 8);
+
+    expect(
+      world.events.flatMap((event) =>
+        event.kind === "set" ? [event.property] : [],
+      ),
+    ).toStrictEqual(["end_marker", "loop_end", "start_marker"]);
+  });
+
   it("carries warped audio the same way", async () => {
     const world = registerStampWorld({
       source: { is_midi_clip: 0, warping: 1 },

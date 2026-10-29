@@ -13,7 +13,7 @@ import { installStubs } from "../ui-test-helpers";
 import {
   type InstallStub,
   openInstallationTab,
-  setupSettingsTest,
+  loadSettings,
   stubStatusAndInstall,
 } from "./settings-test-helpers";
 
@@ -100,7 +100,7 @@ test.describe("Settings — installation: remote script (stubbed backend)", () =
   test("installs from the detected User Library and shows the steps", async ({
     page,
   }) => {
-    await setupSettingsTest(page);
+    await installStubs(page);
     await stubRemoteScript(page, status(), {
       status: 200,
       body: {
@@ -109,6 +109,7 @@ test.describe("Settings — installation: remote script (stubbed backend)", () =
       },
       after: { installed: true, installedVersion: "1.2.0" },
     });
+    await loadSettings(page);
     await openInstallationTab(page);
 
     await expect(page.getByTestId("remote-script-status")).toHaveText(
@@ -124,6 +125,9 @@ test.describe("Settings — installation: remote script (stubbed backend)", () =
     await expect(
       page.getByTestId("remote-script-installed-path"),
     ).toContainText("Producer_Pal");
+    await expect(page.getByTestId("remote-script-new-chat-hint")).toContainText(
+      "After restarting Live, start a new chat",
+    );
     await expect(page.getByTestId("remote-script-status")).toHaveText(
       "Installed v1.2.0 (not running)",
     );
@@ -136,8 +140,9 @@ test.describe("Settings — installation: remote script (stubbed backend)", () =
   test("offers Update when this build ships a newer version", async ({
     page,
   }) => {
-    await setupSettingsTest(page);
+    await installStubs(page);
     await stubUpdateAvailable(page);
+    await loadSettings(page);
     await openInstallationTab(page);
 
     await expect(page.getByTestId("remote-script-status")).toHaveText(
@@ -146,28 +151,27 @@ test.describe("Settings — installation: remote script (stubbed backend)", () =
 
     await page.getByTestId("remote-script-install").click();
 
+    // Live is still running the old copy, so the status asks for a restart and
+    // the steps reopen.
     await expect(page.getByTestId("remote-script-status")).toHaveText(
-      "Installed v1.2.0 (running v1.1.0 in Live 12.1)",
+      "Installed v1.2.0 (running v1.1.0 in Live 12.1; restart Live to load it)",
     );
-    // Live is still running the old copy, so the steps reopen with the restart.
-    await expect(page.getByTestId("remote-script-restart")).toHaveText(
-      "Restart Live to load v1.2.0.",
-    );
-    await expect(page.getByTestId("remote-script-steps")).toHaveAttribute(
-      "open",
-      "",
+    // Expanded as its own section, not the collapsed "Setup steps".
+    await expect(page.getByTestId("remote-script-steps")).toContainText(
+      "Enable it in Live",
     );
   });
 
   test("says another program answers on the port when the script is installed but not running", async ({
     page,
   }) => {
-    await setupSettingsTest(page);
+    await installStubs(page);
     await stubRemoteScript(
       page,
       status({ installed: true, installedVersion: "1.2.0", otherOnPort: 3349 }),
       { status: 200, body: {} },
     );
+    await loadSettings(page);
     await openInstallationTab(page);
 
     await expect(page.getByTestId("remote-script-status")).toHaveText(
@@ -175,14 +179,42 @@ test.describe("Settings — installation: remote script (stubbed backend)", () =
     );
   });
 
+  test("re-reads the status each time the tab opens", async ({ page }) => {
+    await installStubs(page);
+    let current = status({ installed: true, installedVersion: "1.2.0" });
+
+    await page.route("**/remote-script", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(current),
+      }),
+    );
+    await loadSettings(page);
+    await openInstallationTab(page);
+    await expect(page.getByTestId("remote-script-status")).toHaveText(
+      "Installed v1.2.0 (not running)",
+    );
+
+    // Live restarts with the script while another tab is showing.
+    await page.getByRole("button", { name: "Connection" }).click();
+    current = { ...current, running: true, runningVersion: "1.2.0" };
+    await openInstallationTab(page);
+
+    await expect(page.getByTestId("remote-script-status")).toHaveText(
+      "Installed v1.2.0 (running v1.2.0 in Live 12.1)",
+    );
+  });
+
   test("takes a pasted path when no User Library was detected", async ({
     page,
   }) => {
-    await setupSettingsTest(page);
+    await installStubs(page);
     await stubRemoteScript(page, status({ userLibrary: null }), {
       status: 400,
       body: { error: "No such directory: /nope" },
     });
+    await loadSettings(page);
     await openInstallationTab(page);
 
     await expect(page.getByTestId("user-library-path")).toHaveValue("");

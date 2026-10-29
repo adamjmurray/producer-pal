@@ -23,6 +23,10 @@ import {
 vi.mock(import("../../../../live-library/query/preset-files.ts"), () => ({
   findPresetFiles: vi.fn(),
 }));
+// The pack-name mapping reads the machine's own library; keep paths as given.
+vi.mock(import("../../../../live-library/query/pack-folder-names.ts"), () => ({
+  browserNamedPackPath: (path: string) => Promise.resolve(path),
+}));
 
 /** Preset paths under each remote script `type`. */
 type Browser = Partial<Record<string, string[]>>;
@@ -363,10 +367,12 @@ describe("lookUpBrowserPreset — a name only the library has", () => {
     });
   });
 
-  it("doesn't ask the library when the browser has the name", async () => {
+  it("only checks the library for same-named files when the browser has the name", async () => {
     await lookUp("Concert Hall");
 
-    expect(findPresetFiles).not.toHaveBeenCalled();
+    expect(findPresetFiles).toHaveBeenCalledExactlyOnceWith({
+      name: "concert hall",
+    });
   });
 
   it("asks only for presets for the device a call named", async () => {
@@ -498,6 +504,27 @@ describe("lookUpBrowserPreset — a name only the library has", () => {
     await expect(
       lookUpBrowserPreset("Nope", undefined, Date.now() + 200),
     ).rejects.toBeInstanceOf(RemoteScriptTimeout);
+    expect(findPresetFiles).not.toHaveBeenCalled();
+  });
+
+  it("stops when the deadline passes after the browser answers, before the library is read", async () => {
+    // The clock jumps once the stand-in has answered, so the search itself
+    // succeeds and finds nothing.
+    let answered = false;
+    const realNow = Date.now.bind(Date);
+
+    vi.spyOn(Date, "now").mockImplementation(
+      () => realNow() + (answered ? 60_000 : 0),
+    );
+    fake = await startFakeRemoteScript((request) => {
+      answered = true;
+
+      return listing(BROWSER, request);
+    });
+
+    await expect(
+      lookUpBrowserPreset("Nope", WAVETABLE, realNow() + 30_000),
+    ).rejects.toThrow("ran out of time before the library was searched");
     expect(findPresetFiles).not.toHaveBeenCalled();
   });
 });

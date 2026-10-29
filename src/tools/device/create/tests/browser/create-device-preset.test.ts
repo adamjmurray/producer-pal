@@ -11,7 +11,8 @@ import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-pro
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { PRESET_NEEDS_REMOTE_SCRIPT } from "#src/tools/device/create/helpers/browser-presets.ts";
+import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
+import { presetNeedsRemoteScript } from "#src/tools/device/create/helpers/browser-presets.ts";
 import {
   type BrowserItem,
   type BrowserItemResolution,
@@ -216,7 +217,19 @@ describe("createDevice — from a preset", () => {
 
     await expect(
       createDevice({ preset: "Abdominal Bass", path: "t0/d+" }),
-    ).rejects.toThrow(PRESET_NEEDS_REMOTE_SCRIPT);
+    ).rejects.toThrow(presetNeedsRemoteScript(true));
+  });
+
+  it("sends a caller without ppal-manage to the chat UI for presets", async () => {
+    answerLookups({ available: false });
+
+    const refused = createDevice(
+      { preset: "Abdominal Bass", path: "t0/d+" },
+      { manageAvailable: false },
+    );
+
+    await expect(refused).rejects.toThrow(presetNeedsRemoteScript(false));
+    await expect(refused).rejects.not.toThrow("ppal-manage");
   });
 
   it("says the remote script is out of date when it is", async () => {
@@ -328,5 +341,35 @@ describe("createDevice — from a preset", () => {
         createDevice({ device: "Vital", preset: "Pad", path: TWO_ENTRIES }),
       ).rejects.toThrow('path entry "t0/d1" is spelled through "t0"');
     });
+  });
+});
+
+describe("createDevice — a plug-in for a caller without ppal-manage", () => {
+  it("sends a caller without ppal-manage to the chat UI for plug-ins", async () => {
+    answerLookups(FOUND_PRESET, { available: false });
+
+    const refused = createDevice(
+      { device: "Pro-Q 4", path: "t0" },
+      { manageAvailable: false },
+    );
+
+    await expect(refused).rejects.toThrow(remoteScriptSetup(false));
+    await expect(refused).rejects.not.toThrow("ppal-manage");
+  });
+
+  it("words an out-of-date script without ppal-manage for a small model", async () => {
+    answerLookups(FOUND_PRESET, {
+      available: false,
+      outdated: `${OUTDATED}; update it with ppal-manage`,
+      outdatedWithoutManage: `${OUTDATED}; have the user update it`,
+    });
+
+    const refused = createDevice(
+      { device: "Pro-Q 4", path: "t0" },
+      { smallModelMode: true },
+    );
+
+    await expect(refused).rejects.toThrow("have the user update it");
+    await expect(refused).rejects.not.toThrow("ppal-manage");
   });
 });

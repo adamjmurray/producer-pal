@@ -48,7 +48,7 @@ has to be stated.
 - **Skipped entirely** in small-model mode, or when there are no memories.
 
 This is the `withMemory` producer in `helpers/memory/memory-inject.ts`, composed
-onto `callLiveApiEnriched` via the shared append seam
+onto `enrichConnect` via the shared append seam
 (`helpers/connect/connect-append.ts`'s `withConnectAppend` — the same mechanism
 `withProjectContext`, `withGlobalContext`, and the `WARNING:` relay use).
 Because it runs Node-side on the `ppal-connect` response, every MCP client sees
@@ -70,8 +70,9 @@ know anything about this user at all:
 - **Global context empty AND no memories** (large-model mode): the line adds
   "New user: nothing is saved about them yet." That is all it says. The
   procedure lives in the `New user` paragraph of the context Skill
-  (`src/skills/fragments/context.ts`), keyed on the same marker: end the connect
-  reply with a short yes/no question about their musical style, preferences, and
+  (`src/skills/fragments/context.ts`, left out when the same `isNewUser` check
+  says the user is not new), keyed on the same marker: end the connect reply
+  with a short yes/no question about their musical style, preferences, and
   goals, write what they share to **global context**, and record a decline as a
   memory.
 - **Otherwise**: the plain "report the overview, then wait for their

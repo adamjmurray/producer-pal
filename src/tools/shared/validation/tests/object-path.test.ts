@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   formatDeviceSegment,
   formatObjectPath,
@@ -407,7 +407,7 @@ describe("parseObjectPath", () => {
     // A model pasting back what a result told it made a well-founded guess, so
     // honor it and warn — the same trade already taken on hidden params.
     it("reads trackIndex/sceneIndex as a clip slot", () => {
-      const warn = vi.spyOn(console, "warn");
+      const warn = vi.spyOn(maxConsole, "emitWarning");
 
       expect(parseObjectPath("0/3")).toStrictEqual({
         kind: "slot",
@@ -420,7 +420,7 @@ describe("parseObjectPath", () => {
     });
 
     it("reads a bare index as a track", () => {
-      const warn = vi.spyOn(console, "warn");
+      const warn = vi.spyOn(maxConsole, "emitWarning");
 
       expect(parseObjectPath("7", "toPath")).toStrictEqual({
         kind: "track",
@@ -432,7 +432,7 @@ describe("parseObjectPath", () => {
     });
 
     it("reads both spellings without a warning when quiet", () => {
-      const warn = vi.spyOn(console, "warn");
+      const warn = vi.spyOn(maxConsole, "emitWarning");
 
       expect(parseObjectPath("0/3", "path", true)).toStrictEqual({
         kind: "slot",

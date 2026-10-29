@@ -8,7 +8,7 @@
  * did to the tracks inside. Uses: e2e-test-set, where t9 "Parent" is a group
  * whose only member is t10 "Child". A track made at t10 lands inside the group
  * and pushes Child down to t11.
- * See: e2e/live-sets/e2e-test-set-spec.md
+ * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- control/ppal-playback-group-track
  */

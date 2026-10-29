@@ -47,6 +47,7 @@ describe("ChatScreen", () => {
     isAssistantResponding: false,
     rateLimitState: null,
     toolLimitReached: false,
+    chatSetUp: true,
     handleSend: mockHandleSend,
     enqueueMessage: vi.fn(),
     queuedMessages: [],
@@ -107,6 +108,30 @@ describe("ChatScreen", () => {
       const chatStart = document.querySelector(".flex.flex-col.items-center");
 
       expect(chatStart).toBeDefined();
+    });
+
+    it("asks for setup instead of starting a chat, and blocks the composer, until chat is set up", () => {
+      const onOpenConnectionSettings = vi.fn();
+
+      render(
+        <ChatScreen
+          {...defaultProps}
+          messages={[]}
+          chatSetUp={false}
+          onOpenConnectionSettings={onOpenConnectionSettings}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Set up chat" }));
+
+      expect(onOpenConnectionSettings).toHaveBeenCalledOnce();
+      expect(
+        screen.queryByRole("button", { name: "Quick Connect" }),
+      ).toBeNull();
+      expect(
+        (screen.getByRole("button", { name: "Send" }) as HTMLButtonElement)
+          .disabled,
+      ).toBe(true);
     });
 
     it("shows MessageList when messages exist", () => {

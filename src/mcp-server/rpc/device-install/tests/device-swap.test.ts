@@ -106,6 +106,21 @@ describe("swapForLibraryCopy", () => {
     });
   });
 
+  it.each([
+    ["a path that isn't text", { path: 2, name: "Pal" }],
+    ["a name that isn't text", { path: "t2", name: null }],
+    ["no object", "t2"],
+  ])(
+    "reports a swap that names no track when the answer has %s",
+    async (_, track) => {
+      request.mockResolvedValue(answer(200, { track }));
+
+      expect(await swapForLibraryCopy(scratch().library, deps)).toStrictEqual({
+        status: "swapping",
+      });
+    },
+  );
+
   it("throws for a User Library that isn't a folder, before asking anything", async () => {
     await expect(
       swapForLibraryCopy(join(scratch().library, "nope"), deps),
@@ -218,8 +233,12 @@ describe("swapForLibraryCopy", () => {
     });
   });
 
-  it("fails with the remote script's own reason when it is out of date", async () => {
-    request.mockResolvedValue({ available: false, outdated: "it is too old" });
+  it("fails with the remote script's own reason when it is out of date, worded for a person", async () => {
+    request.mockResolvedValue({
+      available: false,
+      outdated: "it is too old; update it with ppal-manage",
+      outdatedWithoutManage: "it is too old",
+    });
 
     expect(await swapForLibraryCopy(scratch().library, deps)).toStrictEqual({
       status: "failed",

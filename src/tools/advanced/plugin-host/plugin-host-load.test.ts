@@ -5,7 +5,10 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { plugin_host_response } from "#src/live-api-adapter/live-api-adapter.ts";
-import { installCapturingTask } from "#src/live-api-adapter/protocols/tests/v8-protocol-test-helpers.ts";
+import {
+  installCapturingTask,
+  latestWrapperRequest as sent,
+} from "#src/live-api-adapter/protocols/tests/v8-protocol-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { pluginHost } from "./plugin-host.ts";
 
@@ -57,20 +60,6 @@ function resolvesTo(
     success: true,
     result: { name, vendor: "Xfer Records", category, file, shared },
   });
-}
-
-/**
- * Read the most recent request sent to the wrapper.
- *
- * @returns The request id and parsed payload
- */
-function sent(): { requestId: string; payload: Record<string, unknown> } {
-  const call = vi.mocked(globalThis.messnamed).mock.calls.at(-1) as string[];
-
-  return {
-    requestId: call[2] as string,
-    payload: JSON.parse(call[3] as string) as Record<string, unknown>,
-  };
 }
 
 describe("ppal-plugin-host load", () => {

@@ -43,7 +43,9 @@ update state in Ableton Live.
 
 ## Live API Tool
 
-Available only in debug builds (`npm run build:debug` or `npm run dev:debug`).
+On by default only in debug builds (`npm run build:debug` or
+`npm run dev:debug`). Release builds have it off until `liveApiEnabled` is
+turned on.
 
 If it's missing from `tools/list`, an e2e run whitelisted it out — see
 `e2e/mcp/README.md`, "The direct Live API tool is off during e2e", for how to
@@ -59,7 +61,7 @@ Claude Code should use this when:
 - Exploring undocumented API features
 - Verifying assumptions about how the Live API works
 
-Not included in production builds.
+Off by default in release builds.
 
 ### Usage Examples
 

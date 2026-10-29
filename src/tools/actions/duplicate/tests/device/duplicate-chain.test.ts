@@ -17,9 +17,9 @@ vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
 }));
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 import {
@@ -227,7 +227,7 @@ describe("duplicate - chain", () => {
         ),
       },
     ]);
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).not.toContain(
+    expect(vi.mocked(consoleMock.emitWarning).mock.calls.join()).not.toContain(
       "own kind",
     );
   });
@@ -422,7 +422,7 @@ describe("duplicate - chain", () => {
 
     expect(result.detail).toContain("macro mappings");
     // The entry carries it, so nothing warns about it.
-    expect(vi.mocked(consoleMock.warn)).not.toHaveBeenCalled();
+    expect(vi.mocked(consoleMock.emitWarning)).not.toHaveBeenCalled();
   });
 
   it("stays quiet about macros on a rack that has none", async () => {
@@ -558,7 +558,7 @@ describe("duplicate - chain", () => {
       id: "chain-new",
       detail: expect.stringContaining("no addressable path"),
     });
-    expect(vi.mocked(consoleMock.warn).mock.calls.join()).not.toContain(
+    expect(vi.mocked(consoleMock.emitWarning).mock.calls.join()).not.toContain(
       "no addressable path",
     );
   });

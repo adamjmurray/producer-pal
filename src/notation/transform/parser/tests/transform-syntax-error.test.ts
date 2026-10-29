@@ -251,7 +251,7 @@ describe("errors inside a call point at the failure", () => {
     [
       "empty argument",
       "velocity = rand(1,)",
-      'position 18 (line 1, column 19) near ")": expected expression.',
+      'position 18 (line 1, column 19) near ")": nothing after the comma in rand()',
     ],
     [
       "missing operand",

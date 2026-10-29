@@ -5,9 +5,10 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEVICE_REPORT_ROUTE } from "#src/shared/max/device-install-contract.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import {
   MAX_CHUNK_SIZE,
+  MAX_SINGLE_MESSAGE_BYTES,
   END_OF_CHUNKS,
   reassembleChunks,
 } from "#src/shared/mcp-responses.ts";
@@ -24,10 +25,10 @@ import {
 } from "./v8-protocol-test-helpers.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  log: vi.fn(),
+  maxLog: vi.fn(),
   info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  emitWarning: vi.fn(),
+  maxError: vi.fn(),
 }));
 
 /**
@@ -136,6 +137,21 @@ describe("node-request-v8-protocol", () => {
 
     expect(response.success).toBe(false);
     expect(response.error).toContain("Failed to parse node_response");
+    // Node answered, so the route may have run.
+    expect(response.notRun).toBeUndefined();
+    expect(response.timedOut).toBeUndefined();
+  });
+
+  it("marks a request it could not send as not run", async () => {
+    vi.mocked(globalThis.outlet).mockImplementationOnce(() => {
+      throw new Error("outlet exploded");
+    });
+
+    expect(await requestNode("test.unsent")).toStrictEqual({
+      success: false,
+      error: "Failed to send node_request 'test.unsent': outlet exploded",
+      notRun: true,
+    });
   });
 
   it("reassembles chunked responses produced by the Node sender", async () => {
@@ -175,15 +191,29 @@ describe("node-request-v8-protocol", () => {
     vi.mocked(globalThis.outlet).mockClear();
 
     const response = await requestNode("test.huge", {
-      blob: "x".repeat(MAX_CHUNK_SIZE),
+      blob: "x".repeat(MAX_SINGLE_MESSAGE_BYTES),
     });
 
     expect(globalThis.outlet).not.toHaveBeenCalled();
     expect(response.success).toBe(false);
     expect(response.tooLarge).toBe(true);
+    expect(response.notRun).toBe(true);
     expect(response.error).toContain(
       "node_request 'test.huge' too large for a single Max IPC message",
     );
+  });
+
+  it("refuses a request under the character limit but over the byte limit", async () => {
+    vi.mocked(globalThis.outlet).mockClear();
+
+    // 15,000 chars, 45,000 bytes.
+    const response = await requestNode("test.cjk", {
+      blob: "あ".repeat(15_000),
+    });
+
+    expect(globalThis.outlet).not.toHaveBeenCalled();
+    expect(response.tooLarge).toBe(true);
+    expect(response.error).toContain("bytes exceeds");
   });
 
   it("logs error and ignores response for unknown requestId", async () => {
@@ -194,7 +224,7 @@ describe("node-request-v8-protocol", () => {
       JSON.stringify({ success: true, result: 1 }),
     );
 
-    expect(consoleMock.error).toHaveBeenCalledWith(
+    expect(consoleMock.maxError).toHaveBeenCalledWith(
       expect.stringContaining("unknown-id"),
     );
   });
@@ -300,6 +330,7 @@ describe("node-request-v8-protocol", () => {
 
       expect(response.success).toBe(false);
       expect(response.error).toMatch(/test\.timeout.*timed out/);
+      expect(response.timedOut).toBe(true);
 
       // After timeout, a late response for the same id is ignored — the
       // pending entry was deleted by the timeout path.
@@ -312,6 +343,20 @@ describe("node-request-v8-protocol", () => {
     } finally {
       restoreTask();
     }
+  });
+
+  it("does not mark a failure Node answered as a timeout", async () => {
+    const promise = requestNode("test.unknown");
+
+    handleNodeResponse(
+      latestRequestId(),
+      JSON.stringify({ success: false, error: "Unknown route: test.unknown" }),
+    );
+
+    expect(await promise).toStrictEqual({
+      success: false,
+      error: "Unknown route: test.unknown",
+    });
   });
 
   it("waits as long as the request asks", async () => {
@@ -423,7 +468,7 @@ describe("reportDevice (the device.report request)", () => {
       route: DEVICE_REPORT_ROUTE,
       args: { filepath: "Macintosh HD:/Users/me/Producer_Pal.amxd" },
     });
-    expect(console.warn).not.toHaveBeenCalled();
+    expect(emitWarning).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -437,7 +482,7 @@ describe("reportDevice (the device.report request)", () => {
     reportDevice();
 
     expect(outlet).not.toHaveBeenCalled();
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(emitWarning).toHaveBeenCalledWith(
       "Could not read this device's file path.",
     );
   });
@@ -452,7 +497,7 @@ describe("reportDevice (the device.report request)", () => {
     );
 
     await vi.waitFor(() => {
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(emitWarning).toHaveBeenCalledWith(
         "Could not report this device's file path: no route",
       );
     });

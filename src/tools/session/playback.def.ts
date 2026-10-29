@@ -44,7 +44,7 @@ update-arrangement: set startTime and/or loop, without playing
 play-scene: all clips in scene
 play-session-clips: by id(s) or path(s); a group track's slot fires the tracks inside it
 stop-session-clips: by id(s) or path(s); stops each slot's whole track (a group track: all inside it)
-(both answer with clip: {id, path} for one id/path, an array of them for several, in order; {id|path, ok:false, detail} for one not reached, e.g. an empty slot to play; a slot named twice: the earlier entry says the later one replaced it)
+(both answer with clip: {id, path} per target, in order; {id|path, ok:false, detail} for one not reached)
 stop-all-session-clips: all
 stop: session and arrangement; takes startTime to park the next play`,
       ),
