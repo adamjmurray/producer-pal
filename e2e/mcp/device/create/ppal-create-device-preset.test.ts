@@ -240,6 +240,29 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     expect(device.name).toBe("Dunkel Pad");
   });
 
+  // The Core Library's one "Beard Kit" is an Instrument Rack holding a Drum
+  // Rack, which the browser doesn't list under Drum Rack. It counts as a Drum
+  // Rack preset, and Live loads it as the Instrument Rack.
+  it("loads a drum kit saved as an Instrument Rack, with deviceName Drum Rack", async ({
+    skip,
+  }) => {
+    await skipTestBeforeLive(ctx.client!, skip, "12.4", LIBRARY_NEEDS);
+
+    const track = await createMidiTrack(ctx.client!);
+    const created = parseToolResult<{ path: string }>(
+      await create({
+        deviceName: "Drum Rack",
+        preset: "Beard Kit",
+        path: `t${track}/d+`,
+      }),
+    );
+
+    const device = await readDevice(ctx.client!, created.path);
+
+    expect(device.type).toBe("instrument-rack");
+    expect(device.name).toBe("Beard Kit");
+  });
+
   // Live's browser lists a rack under every device it is built around, so the
   // refusal names the library's files instead of browser paths.
   it("refuses a name several files share, listing their file paths", async ({

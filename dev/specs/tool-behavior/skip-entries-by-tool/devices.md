@@ -78,6 +78,14 @@ Part of [Skip entries, tool by tool](README.md).
     one). Several refuse, filtered by the device's library class: racks by their
     rack class, any other device by its own. One or none: the browser's match
     loads.
+  - **Drum Racks.** Many drum kits are saved as an Instrument Rack whose first
+    chain starts with a Drum Rack, and the browser lists none of them under Drum
+    Rack. Such a file counts as a Drum Rack preset when named or given by file
+    path: for a Drum Rack the database is asked for Instrument Rack files too,
+    and those are read and kept unless they're readably a plain Instrument Rack
+    (an unreadable file counts, as elsewhere). A browser path to one is still
+    refused for Drum Rack. Live loads such a kit as the Instrument Rack, not a
+    bare Drum Rack.
   - **Several matches.** The browser lists a rack under every device it is built
     around, and two files can share a browser path, so the database settles it.
     It is asked for every file with the name; with a device named or targeted,
@@ -109,9 +117,11 @@ Part of [Skip entries, tool by tool](README.md).
   does a browser path: `preset "<path>" is not a preset for <device>`. An `.adv`
   is for the device its root element names; an `.adg` for the rack it holds, or
   (for a device that isn't a rack) the device it is built around, the first
-  device of its first chain. A rack that merely holds the device isn't for it. A
-  device with no known class (plug-ins, Max devices), or a file that can't be
-  read, isn't checked. update-device takes any file, as it does any preset.
+  device of its first chain. A rack that merely holds the device isn't for it,
+  except that an Instrument Rack whose first device is a Drum Rack is for Drum
+  Rack too. A device with no known class (plug-ins, Max devices), or a file that
+  can't be read, isn't checked. update-device takes any file, as it does any
+  preset.
 - **A preset that holds the Producer Pal device is refused after Live loads
   it.** The remote script looks through what `/load` or `/hotswap` loaded
   (chains, return chains, drum pads) and deletes what holds it, by device name

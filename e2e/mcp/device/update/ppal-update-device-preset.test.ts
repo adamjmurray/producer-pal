@@ -238,6 +238,24 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     expect(device.type).toBe("drum-rack");
   });
 
+  // The Core Library's one "Beard Kit" is an Instrument Rack holding a Drum
+  // Rack, which the browser doesn't list under Drum Rack.
+  it("swaps a Drum Rack for a drum kit saved as an Instrument Rack, by name", async ({
+    skip,
+  }) => {
+    await skipTestBeforeLive(ctx.client!, skip, "12.4", LIBRARY_NEEDS);
+
+    const rack = await createOnFreshTrack("Drum Rack");
+    const updated = parseToolResult<UpdateResult>(
+      await call("ppal-update-device", { path: rack, preset: "Beard Kit" }),
+    );
+    const device = await readDevice(ctx.client!, rack);
+
+    expect(updated.path).toBe(rack);
+    expect(device.type).toBe("instrument-rack");
+    expect(device.name).toBe("Beard Kit");
+  });
+
   it("loads nothing for a preset of another kind", async () => {
     const drift = await createDrift();
     const result = await call("ppal-update-device", {

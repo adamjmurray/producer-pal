@@ -10,6 +10,7 @@
 // by its file, which the remote script finds under Packs, User Library or
 // Places.
 
+import { isDrumRackScope } from "../../../live-library/query/drum-rack-scope.ts";
 import { type LibraryDeviceKind } from "../../../live-library/library-types.ts";
 import {
   type PresetFile,
@@ -282,10 +283,15 @@ async function findNamedPresetFiles(
 ): Promise<PresetFile[] | null> {
   throwIfLate(endsAt, "ran out of time before the library was searched");
 
-  return await findPresetFiles({
+  const files = await findPresetFiles({
     name: key,
     ...(device == null ? {} : { device }),
   });
+
+  // A Drum Rack's files include Instrument Racks, kept if they hold a Drum Rack.
+  return files != null && device != null && isDrumRackScope(device.name)
+    ? await keepFilesFor(files, device.name, endsAt)
+    : files;
 }
 
 /**

@@ -17,6 +17,7 @@ import {
   nameFromPathSegment,
   resolveAbsolutePaths,
 } from "../reconstruct-path.ts";
+import { isDrumRackScope } from "./drum-rack-scope.ts";
 import { withLiveDb } from "./live-db-query.ts";
 import { IN_A_PLACE, IN_LIBRARY_VIEWS } from "./candidate-query.ts";
 
@@ -42,6 +43,9 @@ const RACK_CLASSES = new Map([
   ["midi effect rack", "device:ableton:midifx:MidiEffectGroupDevice"],
 ]);
 
+/** Where a Drum Rack's presets are also filed (see `isDrumRackScope`). */
+const INSTRUMENT_RACK_CLASS = RACK_CLASSES.get("instrument rack") as string;
+
 const PRESET_TYPES = [
   ...fourCCsForKind("preset"),
   ...fourCCsForKind("device-group"),
@@ -49,7 +53,8 @@ const PRESET_TYPES = [
 
 /**
  * Presets with exactly this name (any case, with or without the suffix) among
- * the files Live lists in its browser.
+ * the files Live lists in its browser. For a Drum Rack, that includes every
+ * Instrument Rack of the name, not only those holding a Drum Rack.
  *
  * @param query - The name, and the device the presets must be for
  * @returns The files, or null when Live's database is missing or can't be read
@@ -95,8 +100,12 @@ function presetFilesIn(db: DatabaseSync, query: PresetFileQuery): PresetFile[] {
       return [];
     }
 
-    where.push("f.device_id = ?");
-    params.push(deviceClass);
+    const classes = isDrumRackScope(query.device.name)
+      ? [deviceClass, INSTRUMENT_RACK_CLASS]
+      : [deviceClass];
+
+    where.push(`f.device_id IN (${classes.map(() => "?").join(",")})`);
+    params.push(...classes);
   }
 
   const rows = db

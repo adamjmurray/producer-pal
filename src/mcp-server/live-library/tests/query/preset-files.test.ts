@@ -181,6 +181,13 @@ function writeDb(): string {
       ADG,
       { place: 20, flags: 0, deviceType: 1, deviceId: DRUM_RACK },
     ],
+    [
+      27,
+      21,
+      "Wrapped Kit.adg",
+      ADG,
+      { place: 20, deviceType: 1, deviceId: INSTRUMENT_RACK },
+    ],
     [70, 3, "Plugin Presets", FLDR],
     [71, 70, "Sample Kit.adg", ADG, { place: 70 }],
     [
@@ -412,6 +419,25 @@ describe("findPresetFiles", () => {
 
     expect(files).toHaveLength(1);
     expect(none).toStrictEqual([]);
+  });
+
+  it("adds Instrument Racks to a Drum Rack's files, for the caller to check", async () => {
+    const drums = await findPresetFiles({
+      name: "wrapped kit",
+      device: { name: " drum rack ", kind: "instrument" },
+    });
+    const instruments = await findPresetFiles({
+      name: "wrapped kit",
+      device: { name: "Instrument Rack", kind: "instrument" },
+    });
+    const other = await findPresetFiles({
+      name: "wrapped kit",
+      device: { name: "Audio Effect Rack", kind: "audiofx" },
+    });
+
+    expect(drums?.map(({ name }) => name)).toStrictEqual(["Wrapped Kit.adg"]);
+    expect(instruments).toHaveLength(1);
+    expect(other).toStrictEqual([]);
   });
 
   it("keeps to the class of the presets under the device's folder", async () => {
