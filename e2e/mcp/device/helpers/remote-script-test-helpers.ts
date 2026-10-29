@@ -190,6 +190,37 @@ export async function packDrumKitOrSkip(
   return skip();
 }
 
+/**
+ * The Wasted Space pack's `Transmission.adv`, a Max device preset sharing its
+ * name with a Shifter preset that Live's browser lists. Not every machine has
+ * the pack, so a test skips when it's missing.
+ * @param client - Connected MCP client
+ * @param skip - The test's `skip`, called when the pack or the library is
+ *   missing
+ * @returns The preset's absolute path
+ */
+export async function wastedSpaceTransmissionOrSkip(
+  client: Client,
+  skip: (note?: string) => never,
+): Promise<string> {
+  await skipTestBeforeLive(client, skip, "12.4", LIBRARY_NEEDS);
+
+  const found = parseToolResult<{ items?: Preset[] }>(
+    await callToolAndSettle(client, "ppal-library", {
+      kind: "preset",
+      query: "Transmission",
+      source: "pack",
+      limit: 200,
+    }),
+  ).items;
+  const file = found?.find(
+    ({ name, path }) =>
+      name === "Transmission.adv" && path.includes("Wasted Space"),
+  );
+
+  return file?.path ?? skip("the Wasted Space pack isn't installed");
+}
+
 // Puts the rack preset holding Producer Pal where Live can load it. Live only
 // loads presets from the User Library or a Places folder, and the committed
 // file points at User Library copies of the device and sample that no other

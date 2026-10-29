@@ -71,14 +71,17 @@ Part of [Skip entries, tool by tool](README.md).
   database, never by walking the Drums or Sounds sections (that can crash Live),
   and loads by file. The match is the same as in the browser: the whole name,
   any case, with or without `.adv`/`.adg`. One file loads; several refuse,
-  listing their paths. Only the device's presets count when a device is named
-  (racks by their rack class; any other device by the class of the presets filed
-  in or just under its folder). update-device asks for the target's presets
-  first and takes any preset only when it has none by that name. A plug-in or
-  Max device named on create-device has no class to filter by, so its name isn't
-  looked up in the database. The database is read as of Live's last save, so a
-  preset added this session may not be found; with no database, today's "no
-  preset" error stands.
+  listing their paths. The count includes same-named files Live's browser
+  doesn't list: a name the browser finds once is also looked up in the database,
+  and refused if that finds several (a pack Max device's preset sharing a name
+  with a Core Library one). Only the device's presets count when a device is
+  named or targeted (racks by their rack class; any other device by its own
+  class). update-device asks for the target's presets first and takes any preset
+  only when it has none by that name. A plug-in, or a Max device listed under
+  Max for Live, has no class to filter by, so its name isn't looked up in the
+  database. The database is read as of Live's last save, so a preset added this
+  session may not be found; with no database, the browser's match loads, or
+  today's "no preset" error stands when it has none.
 - **A preset file is checked against the device a call names.** create-device
   with a `deviceName` and an absolute file path (a Windows drive or network
   share too) reads the gzipped XML and refuses a file for another device, as it

@@ -5,9 +5,10 @@
 
 // Finding the preset a `preset` arg refers to. Live's browser files every
 // device preset (.adv, and .adg racks built around a device) under that device,
-// so a name is searched there first. A name it doesn't have is looked up in
-// Live's library database, which also reaches presets filed elsewhere, such as
-// a pack's drum kits. A file path from ppal-library names one directly.
+// so a name is searched there first. Live's library database reaches presets
+// filed elsewhere, such as a pack's drum kits: a name the browser lacks is
+// looked up there, and one it finds once is refused if the database has
+// several. A file path from ppal-library names one directly.
 
 import { isAbsolutePath } from "#src/tools/shared/remote-script/absolute-path.ts";
 import {
@@ -18,7 +19,6 @@ import {
   type Candidate,
   SECTIONS,
   type Section,
-  ambiguity,
   candidateList,
   findAtPath,
   found,
@@ -27,7 +27,12 @@ import {
   pooledCandidates,
   sectionPrefixed,
 } from "./browser-device-lookup.ts";
-import { lookUpPresetFile, presetFile } from "./browser-preset-files.ts";
+import {
+  duplicatePresetFiles,
+  lookUpPresetFile,
+  presetFile,
+  severalPresets,
+} from "./browser-preset-files.ts";
 import { presetFileIsFor } from "./preset-file-device.ts";
 
 /** Sections that hold presets. Plug-ins list none. */
@@ -38,7 +43,8 @@ const PRESET_SECTIONS = SECTIONS.filter((section) => section.type !== "plugin");
  * `<section>/<path>` browser path, or a name searched for among the presets.
  * A name must match exactly (any case, with or without its suffix): loading a
  * preset that merely contains it would load one the caller didn't name. A name
- * the browser doesn't have is looked up in Live's library database.
+ * the browser doesn't have is looked up in Live's library database, and one it
+ * finds once is refused when the database has other files by that name.
  * @param preset - The preset as the call named it
  * @param scope - The device whose presets a name is searched among, if the call
  *   named one
@@ -96,7 +102,19 @@ export async function lookUpBrowserPreset(
   }
 
   if (searched.exact.length > 0) {
-    return pickPreset(preset, searched.exact);
+    // Live's browser doesn't list every file, so a name it finds once can
+    // still be filed elsewhere too.
+    const duplicates =
+      searched.exact.length === 1
+        ? await duplicatePresetFiles(
+            preset,
+            key,
+            searched.searchedScope,
+            endsAt,
+          )
+        : null;
+
+    return duplicates ?? pickPreset(preset, searched.exact);
   }
 
   return (
@@ -201,10 +219,7 @@ async function searchPresets(
 function pickPreset(preset: string, exact: Candidate[]): BrowserItemResolution {
   return exact.length === 1
     ? found(exact[0] as Candidate)
-    : {
-        available: true,
-        error: ambiguity({ name: "preset", noun: "presets" }, preset, exact),
-      };
+    : severalPresets(preset, exact);
 }
 
 /**

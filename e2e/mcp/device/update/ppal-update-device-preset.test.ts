@@ -37,6 +37,7 @@ import {
   requireRemoteScript,
   type StagedPreset,
   stagePpalPreset,
+  wastedSpaceTransmissionOrSkip,
 } from "../helpers/remote-script-test-helpers";
 import { PPAL_TRACK } from "../../e2e-test-set.ts";
 import {
@@ -272,6 +273,59 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
 
     expect((await readDevice(ctx.client!, drift.path)).name).toBe(
       presetName(adv.name),
+    );
+  });
+
+  /**
+   * A device of the given name on a fresh MIDI track.
+   * @param deviceName - The device
+   * @returns Its path
+   */
+  async function createOnFreshTrack(deviceName: string): Promise<string> {
+    const track = parseToolResult<{ path: string }>(
+      await call("ppal-create-track", { type: "midi" }),
+    );
+
+    return await createTestDeviceAt(
+      ctx.client!,
+      deviceName,
+      `t${trackIndexFromPath(track.path)}`,
+    );
+  }
+
+  // Shifter's browser presets include a "Transmission"; the Wasted Space pack
+  // files another that the browser doesn't list.
+  it("refuses a name filed under another device and elsewhere", async ({
+    skip,
+  }) => {
+    const packFile = await wastedSpaceTransmissionOrSkip(ctx.client!, skip);
+    const reverbPath = await createOnFreshTrack("Reverb");
+    const result = await call("ppal-update-device", {
+      path: reverbPath,
+      preset: "Transmission",
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'preset "Transmission" matches',
+    );
+    expect(getToolErrorMessage(result)).toContain(packFile);
+  });
+
+  it("loads a Shifter's own preset when another device files the name too", async ({
+    skip,
+  }) => {
+    await wastedSpaceTransmissionOrSkip(ctx.client!, skip);
+
+    const shifterPath = await createOnFreshTrack("Shifter");
+
+    await call("ppal-update-device", {
+      path: shifterPath,
+      preset: "Transmission",
+    });
+
+    expect((await readDevice(ctx.client!, shifterPath)).name).toBe(
+      "Transmission",
     );
   });
 

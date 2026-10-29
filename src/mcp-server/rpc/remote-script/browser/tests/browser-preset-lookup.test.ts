@@ -363,10 +363,12 @@ describe("lookUpBrowserPreset — a name only the library has", () => {
     });
   });
 
-  it("doesn't ask the library when the browser has the name", async () => {
+  it("only checks the library for same-named files when the browser has the name", async () => {
     await lookUp("Concert Hall");
 
-    expect(findPresetFiles).not.toHaveBeenCalled();
+    expect(findPresetFiles).toHaveBeenCalledExactlyOnceWith({
+      name: "concert hall",
+    });
   });
 
   it("asks only for presets for the device a call named", async () => {

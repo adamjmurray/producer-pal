@@ -11,7 +11,11 @@
 // Places.
 
 import { type LibraryDeviceKind } from "../../../live-library/library-types.ts";
-import { findPresetFiles } from "../../../live-library/query/preset-files.ts";
+import {
+  type PresetFile,
+  type PresetFileQuery,
+  findPresetFiles,
+} from "../../../live-library/query/preset-files.ts";
 import {
   type BrowserItemResolution,
   type PresetScope,
@@ -47,29 +51,17 @@ export async function lookUpPresetFile(
   scope: PresetScope | undefined,
   endsAt: number,
 ): Promise<BrowserItemResolution | null> {
-  const kind = scope == null ? undefined : SCOPE_KINDS[scope.type];
+  const device = deviceOf(scope);
 
   // A plug-in's or Max device's presets can't be told from other files.
-  if (scope != null && kind == null && scope.orAnywhere !== true) {
+  if (scope != null && device == null && scope.orAnywhere !== true) {
     return null;
   }
 
-  if (Date.now() >= endsAt) {
-    throw new RemoteScriptTimeout(
-      "ran out of time before the library was searched",
-      false,
-    );
-  }
-
-  const device =
-    scope == null || kind == null ? undefined : { name: scope.device, kind };
-  let files = await findPresetFiles({
-    name: key,
-    ...(device == null ? {} : { device }),
-  });
+  let files = await findNamedPresetFiles(key, device, endsAt);
 
   if (device != null && scope?.orAnywhere === true && files?.length === 0) {
-    files = await findPresetFiles({ name: key });
+    files = await findNamedPresetFiles(key, undefined, endsAt);
   }
 
   if (files == null || files.length === 0) {
@@ -78,10 +70,96 @@ export async function lookUpPresetFile(
 
   return files.length === 1
     ? presetFile((files[0] as { path: string }).path)
-    : {
-        available: true,
-        error: ambiguity({ name: "preset", noun: "presets" }, preset, files),
-      };
+    : severalPresets(preset, files);
+}
+
+/**
+ * Whether the library has several files for a name the browser lists once.
+ * Live's browser lists only some of the files in its library, so a name it
+ * finds once can still be filed elsewhere too.
+ * @param preset - The preset as the call named it
+ * @param key - The name, normalized
+ * @param searched - The device the browser's match was searched under, or
+ *   undefined when it was found anywhere
+ * @param endsAt - When the lookup must be done, in epoch ms
+ * @returns The error naming the files, or null when there are fewer than two,
+ *   the library can't be read, or the device's presets can't be told apart
+ * @throws RemoteScriptTimeout when `endsAt` passes first
+ */
+export async function duplicatePresetFiles(
+  preset: string,
+  key: string,
+  searched: PresetScope | undefined,
+  endsAt: number,
+): Promise<BrowserItemResolution | null> {
+  const device = deviceOf(searched);
+
+  // A Max device listed under Max for Live has no class to filter by.
+  if (searched != null && device == null) {
+    return null;
+  }
+
+  const files = await findNamedPresetFiles(key, device, endsAt);
+
+  return files != null && files.length > 1
+    ? severalPresets(preset, files)
+    : null;
+}
+
+/**
+ * The refusal for a preset name several presets share.
+ * @param preset - The preset as the call named it
+ * @param matches - The presets, at least two
+ * @returns The error naming them
+ */
+export function severalPresets(
+  preset: string,
+  matches: Parameters<typeof ambiguity>[2],
+): BrowserItemResolution {
+  return {
+    available: true,
+    error: ambiguity({ name: "preset", noun: "presets" }, preset, matches),
+  };
+}
+
+/**
+ * The device a scope names, as the library knows it.
+ * @param scope - The device, if any
+ * @returns The device's name and kind, or undefined when there is none or its
+ *   kind has no presets in the library
+ */
+function deviceOf(scope: PresetScope | undefined): PresetFileQuery["device"] {
+  const kind = scope == null ? undefined : SCOPE_KINDS[scope.type];
+
+  return scope == null || kind == null
+    ? undefined
+    : { name: scope.device, kind };
+}
+
+/**
+ * Ask the library for the files with a name.
+ * @param key - The name, normalized
+ * @param device - Only presets for this device, if given
+ * @param endsAt - When the lookup must be done, in epoch ms
+ * @returns The files, or null when the library can't be read
+ * @throws RemoteScriptTimeout when `endsAt` has passed
+ */
+async function findNamedPresetFiles(
+  key: string,
+  device: PresetFileQuery["device"],
+  endsAt: number,
+): Promise<PresetFile[] | null> {
+  if (Date.now() >= endsAt) {
+    throw new RemoteScriptTimeout(
+      "ran out of time before the library was searched",
+      false,
+    );
+  }
+
+  return await findPresetFiles({
+    name: key,
+    ...(device == null ? {} : { device }),
+  });
 }
 
 /**

@@ -31,6 +31,7 @@ import {
   presetName,
   readDevice,
   requireRemoteScript,
+  wastedSpaceTransmissionOrSkip,
 } from "../helpers/remote-script-test-helpers";
 import {
   LIBRARY_NEEDS,
@@ -193,6 +194,45 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
 
     expect((await readDevice(ctx.client!, created.path)).name).toBe(
       "Add Oxide",
+    );
+  });
+
+  // Shifter's browser presets include a "Transmission"; the Wasted Space pack
+  // files another that the browser doesn't list.
+  it("refuses a name filed under a device and elsewhere, without deviceName", async ({
+    skip,
+  }) => {
+    const packFile = await wastedSpaceTransmissionOrSkip(ctx.client!, skip);
+    const track = await createMidiTrack(ctx.client!);
+    const result = await create({
+      preset: "Transmission",
+      path: `t${track}/d+`,
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'preset "Transmission" matches',
+    );
+    expect(getToolErrorMessage(result)).toContain(packFile);
+    expect(getToolErrorMessage(result)).toContain("Shifter/Transmission.adv");
+  });
+
+  it("loads the named device's own preset when another device files the name too", async ({
+    skip,
+  }) => {
+    await wastedSpaceTransmissionOrSkip(ctx.client!, skip);
+
+    const track = await createMidiTrack(ctx.client!);
+    const created = parseToolResult<{ path: string }>(
+      await create({
+        deviceName: "Shifter",
+        preset: "Transmission",
+        path: `t${track}/d+`,
+      }),
+    );
+
+    expect((await readDevice(ctx.client!, created.path)).name).toBe(
+      "Transmission",
     );
   });
 
