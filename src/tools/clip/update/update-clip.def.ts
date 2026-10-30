@@ -76,7 +76,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     looping: z.boolean().optional().describe("enable looping for the clip"),
     duplicateLoop: param(z.boolean().optional(), {
       default:
-        "double the clip length and copy existing notes (and automation envelopes) into the new half (Live's Duplicate Loop). MIDI clips only. Cannot be combined with start/length - they set the region this doubles, so the clip would end up twice the length you asked for; to double a portion, send start/length in its own call first. preTransforms edit the source before the double; notes/transforms then apply across the full doubled clip",
+        "double the clip length and copy existing notes (and automation envelopes) into the new half (Live's Duplicate Loop). MIDI clips only. Cannot be combined with start/length. preTransforms edit the source before the double; notes/transforms then apply across the full doubled clip",
       smallModel:
         "double the clip length and copy existing notes into the new half (Live's Duplicate Loop). MIDI clips only. Cannot be combined with start/length - send those in their own call first to pick the region. notes merge across the full doubled clip",
     }),
@@ -108,21 +108,26 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     toSlot: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "toPath",
     }),
-    toPath: z.coerce
-      .string()
-      .optional()
-      .describe(
+    toPath: param(z.coerce.string().optional(), {
+      default:
+        "where to move the clip(s): a clip slot 't<track>/s<scene>', a spot on the arrangement 't<track>[<position>]', " +
+        "a take lane 't<track>/l<lane>[<position>]' (scenes and lanes are created up to that index), or '[<position>]' alone to keep the clip's own lane. " +
+        "A position is bar|beat or loc:<locator name or id>. " +
+        "A clip re-created in a slot or on a take lane drops its automation; one moved on the arrangement leaves the track's automation where it was. " +
+        "Comma-separated, one per clip; a lone '[<position>]' moves every clip, each on its own lane",
+      // Small mode ships no arrangement-write skill, so it keeps the full text.
+      smallModel:
         "where to move the clip(s): a clip slot 't<track>/s<scene>' " +
-          "(scenes are created up to that index), " +
-          "a spot on the arrangement 't<track>[<position>]' (a position is bar|beat or " +
-          "loc:<locator name or id>), a take lane 't<track>/l<lane>[<position>]' (lanes are created up to that " +
-          "index), or " +
-          "'[<position>]' alone to keep the clip's own lane (e.g., 't2/s3' or 't2[5|1],[loc:Chorus]'). " +
-          "A lane with no position keeps the clip's own start. A clip re-created in a slot or on a " +
-          "take lane drops its automation; one moved on the arrangement leaves the track's automation " +
-          "where it was. Comma-separated, one per clip; a lone " +
-          "'[<position>]' moves every clip, each on its own lane",
-      ),
+        "(scenes are created up to that index), " +
+        "a spot on the arrangement 't<track>[<position>]' (a position is bar|beat or " +
+        "loc:<locator name or id>), a take lane 't<track>/l<lane>[<position>]' (lanes are created up to that " +
+        "index), or " +
+        "'[<position>]' alone to keep the clip's own lane (e.g., 't2/s3' or 't2[5|1],[loc:Chorus]'). " +
+        "A lane with no position keeps the clip's own start. A clip re-created in a slot or on a " +
+        "take lane drops its automation; one moved on the arrangement leaves the track's automation " +
+        "where it was. Comma-separated, one per clip; a lone " +
+        "'[<position>]' moves every clip, each on its own lane",
+    }),
     // Deprecated because its positions are clip-relative: models reason in song
     // time, so they aimed at the wrong bar every time. Kept working unchanged
     // for callers that scripted against it; arrangementSplit is the published
