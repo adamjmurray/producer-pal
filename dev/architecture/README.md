@@ -21,6 +21,8 @@ Detail lives in these parts:
   tool, and split into read and write halves.
 - [build-system.md](build-system.md) — entry, output, and target for each of the
   four bundles.
+- [generative-ui.md](generative-ui.md) — the 3.0 conversational app builder:
+  sandboxed AI-written apps, the bridge and SDK, storage, and its build gate.
 
 ## Architecture Diagrams
 
