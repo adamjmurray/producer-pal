@@ -11,6 +11,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
+import { isResultFile } from "../json-results/result-file.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { jevSummaryLines } from "./jev-judge-report.ts";
 import { printResultsTable, type ResultsByScenario } from "./report-table.ts";
@@ -59,7 +60,7 @@ async function loadResultsInDir(dir: string): Promise<JsonEvalResult[]> {
 
   return await Promise.all(
     files
-      .filter((file) => file.endsWith(".json"))
+      .filter(isResultFile)
       .toSorted()
       .map(async (file) => {
         const text = await readFile(join(dir, file), "utf-8");

@@ -158,9 +158,10 @@ describe("printStoredRunSummary", () => {
     expect(console.log).not.toHaveBeenCalled();
   });
 
-  it("ignores files that are not results", async () => {
+  it("ignores files that are not results, the run record included", async () => {
     await mkdir(join(dir, "sub"));
     await writeFile(join(dir, "notes.txt"), "x");
+    await writeFile(join(dir, "run.json"), '{"argv":[],"options":{}}');
 
     expect(await printStoredRunSummary(dir)).toBe(false);
   });

@@ -22,6 +22,7 @@ import { buildSkippedResult } from "../json-results/skip-scenario.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { writeJsonResult } from "../json-results/writer.ts";
 import { printResultBlock } from "../reporting/result-printer.ts";
+import { type ResumedTrials } from "./resume/resumed-trials.ts";
 
 /** The CLI options a trial run reads. Satisfied by the eval CLI's options. */
 export interface TrialRunOptions {
@@ -43,6 +44,8 @@ export interface RunContext {
   /** `--thinking` level per `provider/model`; a model not in it sends none. */
   thinking?: ThinkingByModel;
   options: TrialRunOptions;
+  /** Set by `--resume`: the trials already done, which don't run again. */
+  resumed?: ResumedTrials;
 }
 
 /**

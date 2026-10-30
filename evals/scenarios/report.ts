@@ -12,6 +12,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { styleText } from "node:util";
 import { Command } from "commander";
+import { isResultFile } from "./helpers/json-results/result-file.ts";
 import {
   type JsonEvalResult,
   RESULTS_DIR,
@@ -131,7 +132,7 @@ async function findResultsInDir(dir: string): Promise<string[]> {
     const files = await readdir(dir);
 
     return files
-      .filter((f) => f.endsWith(".json"))
+      .filter(isResultFile)
       .toSorted()
       .toReversed()
       .map((f) => join(dir, f));

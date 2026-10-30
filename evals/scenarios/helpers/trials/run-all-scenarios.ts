@@ -14,10 +14,12 @@ import { styleText } from "node:util";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { shouldSkipScenario } from "../json-results/skip-scenario.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
+import { resultFilePath } from "../json-results/writer.ts";
 import { type ResultsByScenario } from "../reporting/report-table.ts";
 import { type RunEnv } from "../../run-env/run-env.ts";
 import { type EvalScenario } from "../../types.ts";
 import { liveSetLeftClean, printTrialSummary } from "./multi-trial-runs.ts";
+import { dropReplacedError, trialKey } from "./resume/resumed-trials.ts";
 import { describeRunAbort, stalledModels } from "./run-abort.ts";
 import { emitSkipped, runTrial, type RunContext } from "./run-trials.ts";
 
@@ -27,7 +29,8 @@ import { emitSkipped, runTrial, type RunContext } from "./run-trials.ts";
  * for the reporting layer; with a single run environment the innermost map has
  * exactly one entry, keyed by `label`, holding that cell's trials in order.
  *
- * Skipped scenarios are skipped once (round 1), as a single result.
+ * Skipped scenarios are skipped once (round 1), as a single result. A trial a
+ * resumed run already finished is not run again; its saved result is used.
  *
  * @param scenarios - Scenarios to run
  * @param modelSpecs - Models to test
@@ -127,6 +130,14 @@ async function runScenarioRound(
 
     modelResults.set(modelKey, new Map([[label, results]]));
 
+    const key = trialKey(scenario.id, modelKey, label, round);
+    const done = ctx.resumed?.done.get(key);
+
+    if (done != null) {
+      results.push(done);
+      continue;
+    }
+
     if (skipReason != null) {
       // Skipped before running: no Live Set is opened, so leave
       // `cleanLiveSet` untouched.
@@ -145,6 +156,10 @@ async function runScenarioRound(
       round,
       scenario.reuseLiveSet === true && state.cleanLiveSet === scenario.liveSet,
     );
+
+    if (ctx.resumed != null && ctx.options.save !== false) {
+      await dropReplacedError(ctx.resumed, key, resultFilePath(result));
+    }
 
     results.push(result);
     latest.set(modelKey, new Map([[label, [result]]]));

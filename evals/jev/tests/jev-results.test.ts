@@ -44,6 +44,8 @@ describe("loadJudgedResults", () => {
       join(dir, "run1", "undated.json"),
       resultJson("b", "2026-01-01T00:00:00Z"),
     );
+    // The run record sits beside the results and is never one.
+    await writeFile(join(dir, "run1", "run.json"), '{"argv":[],"options":{}}');
   });
 
   afterEach(async () => {

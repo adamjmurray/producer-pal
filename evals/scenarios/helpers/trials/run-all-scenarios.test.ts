@@ -11,6 +11,7 @@ import { shouldSkipScenario } from "../json-results/skip-scenario.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { printTrialSummary } from "./multi-trial-runs.ts";
 import { runAllScenarios } from "./run-all-scenarios.ts";
+import { dropReplacedError, trialKey } from "./resume/resumed-trials.ts";
 import { MAX_CONSECUTIVE_ERRORED_TRIALS } from "./run-abort.ts";
 import { emitSkipped, runTrial, type RunContext } from "./run-trials.ts";
 
@@ -21,6 +22,14 @@ vi.mock(import("../json-results/skip-scenario.ts"), () => ({
 vi.mock(import("./multi-trial-runs.ts"), async (importOriginal) => ({
   ...(await importOriginal()),
   printTrialSummary: vi.fn(),
+}));
+vi.mock(import("../json-results/writer.ts"), () => ({
+  writeJsonResult: vi.fn(),
+  resultFilePath: vi.fn(() => "new.json"),
+}));
+vi.mock(import("./resume/resumed-trials.ts"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  dropReplacedError: vi.fn(),
 }));
 vi.mock(import("./run-trials.ts"), () => ({
   runTrial: vi.fn(),
@@ -67,6 +76,7 @@ beforeEach(() => {
   vi.mocked(emitSkipped).mockReset();
   vi.mocked(shouldSkipScenario).mockReset();
   vi.mocked(printTrialSummary).mockClear();
+  vi.mocked(dropReplacedError).mockClear();
   vi.mocked(shouldSkipScenario).mockReturnValue(null);
   vi.mocked(runTrial).mockImplementation(
     async (s, spec, _env, _label, _ctx, trial) =>
@@ -343,5 +353,84 @@ describe("runAllScenarios stalled models", () => {
         ctx(3),
       ),
     ).rejects.toThrow(/Stopping/);
+  });
+});
+
+describe("runAllScenarios resume", () => {
+  const key = (id: string, model: string, trial: number): string =>
+    trialKey(id, `openai/${model}`, "default", trial);
+
+  const resumedCtx = (
+    repeatCount: number,
+    done: string[],
+    errored: string[] = [],
+  ): RunContext => ({
+    ...ctx(repeatCount),
+    options: { save: true },
+    resumed: {
+      done: new Map(done.map((k) => [k, result("fail")])),
+      errored: new Map(errored.map((k) => [k, `old/${k}`])),
+    },
+  });
+
+  it("runs only the trials not done, keeping the done ones' results", async () => {
+    const results = await runAllScenarios(
+      [scenario("s1"), scenario("s2")],
+      [A],
+      RUN_ENV,
+      "default",
+      resumedCtx(2, [key("s1", "a", 1), key("s2", "a", 1), key("s1", "a", 2)]),
+    );
+
+    expect(order()).toStrictEqual(["s2/a/2"]);
+    expect(
+      results
+        .get("s1")
+        ?.get("openai/a")
+        ?.get("default")
+        ?.map((r) => r.result),
+    ).toStrictEqual(["fail", "fail"]);
+    expect(dropReplacedError).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a done skipped result instead of skipping again", async () => {
+    vi.mocked(shouldSkipScenario).mockReturnValue("no remote script");
+
+    await runAllScenarios(
+      [scenario("s1")],
+      [A],
+      RUN_ENV,
+      "default",
+      resumedCtx(1, [key("s1", "a", 1)]),
+    );
+
+    expect(emitSkipped).not.toHaveBeenCalled();
+  });
+
+  it("reruns an errored trial and replaces its old file", async () => {
+    const errored = key("s1", "a", 1);
+
+    await runAllScenarios(
+      [scenario("s1")],
+      [A],
+      RUN_ENV,
+      "default",
+      resumedCtx(1, [], [errored]),
+    );
+
+    expect(order()).toStrictEqual(["s1/a/1"]);
+    expect(vi.mocked(dropReplacedError).mock.calls[0]?.slice(1)).toStrictEqual([
+      errored,
+      "new.json",
+    ]);
+  });
+
+  it("leaves files alone with --no-save", async () => {
+    await runAllScenarios([scenario("s1")], [A], RUN_ENV, "default", {
+      ...resumedCtx(1, []),
+      options: { save: false },
+    });
+
+    expect(dropReplacedError).not.toHaveBeenCalled();
   });
 });

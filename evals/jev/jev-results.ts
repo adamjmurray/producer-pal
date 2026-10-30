@@ -13,6 +13,7 @@ import { dirname, join } from "node:path";
 import { lastCriteriaChange } from "./jev-criteria-dates.ts";
 import { allScenarios } from "#evals/scenarios/load-scenarios/all-scenarios.ts";
 import { restoreInjectedBlocks } from "#evals/scenarios/helpers/json-results/injected-blocks.ts";
+import { isResultFile } from "#evals/scenarios/helpers/json-results/result-file.ts";
 import {
   RESULTS_DIR,
   type JsonEvalResult,
@@ -244,7 +245,7 @@ async function listJsonFiles(dir: string): Promise<string[]> {
   try {
     const names = await readdir(dir);
 
-    return names.filter((n) => n.endsWith(".json")).toSorted();
+    return names.filter(isResultFile).toSorted();
   } catch {
     return [];
   }

@@ -29,11 +29,14 @@ import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
 import { type JevSettings } from "./helpers/judge/jev-first-judge.ts";
 import { resolveJevSettings } from "./helpers/judge/jev-settings.ts";
 import { generateRunId } from "./helpers/json-results/run-id.ts";
+import { type RunRecord } from "./helpers/trials/resume/run-record.ts";
 import { setQuietMode } from "./helpers/quiet-mode.ts";
 import { type RunContext } from "./helpers/trials/run-trials.ts";
 import { runAllScenarios } from "./helpers/trials/run-all-scenarios.ts";
 import { printSummary } from "./helpers/reporting/summary-printer.ts";
 import { parseRepeatCount } from "./helpers/trials/multi-trial-runs.ts";
+import { resumeOptions } from "./helpers/trials/resume/resume-options.ts";
+import { startRunFolder } from "./helpers/trials/resume/run-folder.ts";
 import {
   loadScenarios,
   printList,
@@ -69,6 +72,8 @@ interface CliOptions {
   /** Jev route: typesafe, openrouter or vercel. */
   jevVia?: string;
   repeat?: string;
+  /** Run id of an earlier run to finish, replaying its saved options. */
+  resume?: string;
   list?: boolean;
   listTags?: boolean;
   listModels?: string | boolean;
@@ -179,6 +184,10 @@ program
     "-r, --repeat <N>",
     "Run each scenario N times to detect flaky results (all scenarios once per round)",
   )
+  .option(
+    "--resume <runId>",
+    "Finish an earlier run with its own options, skipping trials already done (takes only -r, -q, -u)",
+  )
   .option("-l, --list", "List available scenarios")
   .option("--list-tags", "List scenario tags with their counts, then exit")
   .option(
@@ -213,7 +222,9 @@ program
     "-b, --base-url <url>",
     "Base URL for local provider (default: http://localhost:11434/v1)",
   )
-  .action(async (options: CliOptions) => {
+  .action(async (given: CliOptions) => {
+    const { argv, options } = await resolveResumeOrExit(given);
+
     // Apply --base-url to env so the local provider picks it up
     if (options.baseUrl) {
       process.env.LOCAL_BASE_URL = options.baseUrl;
@@ -237,18 +248,41 @@ program
       return;
     }
 
-    await runEvaluation(options);
+    await runEvaluation(options, argv);
   });
 
 program.parse();
 
 /**
+ * Settle the options to run with, reporting a refused resume as a usage error.
+ *
+ * @param given - Options from the command line
+ * @returns The command-line arguments to record and the options to run with
+ */
+async function resolveResumeOrExit(
+  given: CliOptions,
+): Promise<RunRecord<CliOptions>> {
+  try {
+    return await resumeOptions(program, given);
+  } catch (error) {
+    return program.error(errorMessage(error));
+  }
+}
+
+/**
  * Run the evaluation with given options
  *
  * @param options - CLI options
+ * @param argv - Command-line arguments the run was started with
  */
-async function runEvaluation(options: CliOptions): Promise<void> {
+async function runEvaluation(
+  options: CliOptions,
+  argv: string[],
+): Promise<void> {
   setQuietMode(options.quiet ?? false);
+
+  // Before --canary expands into ids, so a resume replays the flag itself.
+  const recorded: CliOptions = { ...options, resume: undefined };
 
   if (options.model.length === 0) {
     program.error(
@@ -331,7 +365,8 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       console.log(styleText("gray", "--skip-judge: Jev is not used"));
     }
 
-    const runId = generateRunId();
+    const runId = options.resume ?? generateRunId();
+    const resumed = await startRunFolder(runId, options, argv, recorded);
     const runCtx: RunContext = {
       runId,
       judgeOverride,
@@ -339,6 +374,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       repeatCount,
       thinking,
       options,
+      resumed,
     };
 
     const resultsByScenario = await runAllScenarios(

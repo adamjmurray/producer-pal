@@ -110,6 +110,7 @@ scripts/eval [options]
 | `--no-seed-connect`    | Let the model run the opening connect turn         |
 | `-q, --quiet`          | Suppress detailed AI and judge responses           |
 | `-r, --repeat <N>`     | Run every scenario N times, one round at a time    |
+| `--resume <runId>`     | Finish a stopped run (takes only `-r`, `-q`, `-u`) |
 | `-u, --usage`          | Show token usage per turn                          |
 | `--no-save`            | Skip writing JSON result files to disk             |
 | `-b, --base-url <url>` | Base URL for the `local` provider                  |
@@ -575,6 +576,23 @@ scripts/eval-report --summarize <runId|results folder>
 
 It shows passed/graded trials per scenario and model, plus a total. Errored and
 skipped runs are left out of the counts.
+
+To finish a run that broke or was killed, resume it by its run id:
+
+```bash
+scripts/eval --resume <runId>
+scripts/eval --resume <runId> -r 5   # also add rounds
+```
+
+Each run saves its command line and options to `run.json` in its results folder,
+and `--resume` replays them, so the run keeps its own models, scenarios and
+judge. Trials already saved are skipped and still count in the summary. An
+errored trial runs again, and its new result replaces the error's file. The
+trial that was running when the run stopped wasn't saved, so it runs again.
+`--resume` takes only `-r` (never fewer rounds than the run had), `-q` and `-u`;
+any other flag is refused, so one folder never mixes two different runs. A run
+from before `--resume` existed, or one made with `--no-save`, has no `run.json`
+and can't be resumed.
 
 Every run reopens the Live Set, so a trial is never graded on the previous run's
 leftovers. Scenarios that declare `reuseLiveSet` — they reset whatever they
