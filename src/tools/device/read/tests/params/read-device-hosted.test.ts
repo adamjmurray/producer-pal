@@ -141,7 +141,7 @@ describe("readOneDevice on a plug-in host wrapper", () => {
       { id: "h56", name: "Param 0" },
       { id: "h57", name: "Param 1" },
     ]);
-    expect(heard.at(-1)).toStrictEqual({
+    expect(heard.find((request) => request.op === "params")).toStrictEqual({
       deviceId: "device-123",
       op: "params",
       limit: 200,
@@ -189,7 +189,7 @@ describe("readOneDevice on a plug-in host wrapper", () => {
 
     readOneDevice({ path: "t0/d0", paramSearch: "  cut " });
 
-    expect(heard.at(-1)).toStrictEqual({
+    expect(heard.find((request) => request.op === "params")).toStrictEqual({
       deviceId: "device-123",
       op: "params",
       search: "cut",

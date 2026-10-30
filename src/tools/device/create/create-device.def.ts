@@ -52,7 +52,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       ? {
           hosted: param(z.boolean().optional(), {
             default:
-              "true: `deviceName` is a VST3 plug-in name as Live's browser shows it, loaded inside a Producer Pal wrapper so every parameter can be read and set (a plug-in loaded natively exposes only the params the user configured, up to 128). Cost: hosted params can't be automated yet. Applies to every device in the call; needs the Producer Pal remote script",
+              "true: `deviceName` is a VST3 plug-in name as Live's browser shows it, loaded inside a Producer Pal wrapper so every parameter can be read and set (a plug-in loaded natively exposes only the params the user configured, up to 128). Applies to every device in the call; needs the Producer Pal remote script",
             smallModel: null,
           }),
         }

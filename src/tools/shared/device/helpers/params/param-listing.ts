@@ -8,6 +8,7 @@ import {
   owningTrackFollowsArrangement,
 } from "#src/tools/shared/arrangement/tracks/follows-arrangement.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import { markSlottedParams } from "./hosted-param-slots.ts";
 import { readHostedParams } from "./hosted-plugin-reading.ts";
 import {
   applySpecializedInactiveStates,
@@ -59,7 +60,8 @@ export function appendParameters(
 
 /**
  * Append a hosted plug-in's own params to a device info object. They carry
- * `h` ids and values as the plug-in displays them.
+ * `h` ids and values as the plug-in displays them, and the slot that automates
+ * them when one does.
  * @param device - The wrapper device
  * @param deviceInfo - Device info object to mutate
  * @param includeValues - Whether to include current param values
@@ -80,6 +82,11 @@ export function appendHostedParameters(
     return;
   }
 
-  deviceInfo.parameters = hostedParams.parameters;
+  deviceInfo.parameters = markSlottedParams(
+    device,
+    hostedParams.parameters,
+    includeValues,
+    deviceInfo,
+  );
   noteParamsCapped(deviceInfo, hostedParams.total);
 }

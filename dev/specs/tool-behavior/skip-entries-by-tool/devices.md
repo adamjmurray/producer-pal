@@ -55,6 +55,14 @@ Part of [Skip entries, tool by tool](README.md).
   the hosted devices after it say they weren't tried. A wrapper from before this
   write existed says to create the hosted plug-in again. A Max device that isn't
   a wrapper takes `params` as any device does.
+- **read-device on a hosted plug-in marks the params a slot drives.** Params
+  that one of the wrapper's automation slots drives read with
+  `slot: "Automation 002"`, and, with values, `automation` (`active` or
+  `overridden`) from the slot's Live parameter, as any param reports it. It is
+  left out, with the usual
+  `arrangement automation unknown while the track plays from Session` detail,
+  while the track plays from Session. Params no slot drives read as before, and
+  so does a wrapper whose slots can't be read.
 - **create-device's `hosted: true` loads each `device` as a VST3 plug-in in a
   wrapper.** Every name is looked up in Live's plug-in database, and the wrapper
   that suits its kind (instrument or effect) in Live's browser, before anything

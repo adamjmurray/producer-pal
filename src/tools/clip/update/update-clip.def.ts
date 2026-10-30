@@ -18,6 +18,12 @@ import { aliasedEnum } from "#src/tools/shared/tool-framework/enum-aliases.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
+// Unfinished plug-in hosting: release builds don't mention it.
+const HOSTED_ENVELOPE_TARGET =
+  process.env.ENABLE_HOSTED_PLUGINS === "true"
+    ? ", or a hosted plug-in's param as its device path and h id (t0/d0/h56), which takes an automation slot"
+    : "";
+
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
   title: "Update Clip",
   description: {
@@ -186,7 +192,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     envelopes: param(z.string().optional(), {
       default:
         "clip automation, one '<target>: <notation>' line per parameter, broadcast across the clips. On an arrangement clip it writes the track's automation lane over the clip's span: times run from the clip start, once through, and the clip comes back under a new id. " +
-        "target: a device parameter id (from ppal-read-device, or a ppal-read-clip envelopes entry) or a mixer name - volume, pan, send0, send1... " +
+        "target: a device parameter id (from ppal-read-device, or a ppal-read-clip envelopes entry) or a mixer name - volume, pan, send0, send1..." +
+        HOSTED_ENVELOPE_TARGET +
+        " " +
         "notation: bar|beat points in the clip meter, joined by '/' (straight ramp), '_' (hold, then jump) or '~N' (curved ramp, N from -1 to 1, no space; positive bends above the straight line (fast start), negative below (slow start)), e.g. '1|1 0 / 3|1 0.8 _ 4|1 0.2 ~0.5 5|1 1'. " +
         "Values are raw, usually 0..1 - not the display units of ppal-read-device min/max. Mixer volume: 0.85 = 0 dB; pan: -1 = hard left, 1 = hard right. " +
         "Each line REPLACES that parameter's whole envelope; on a session clip a line with nothing after the colon ('472:') clears it (a lane can't be cleared: write a flat line). Needs the remote script (Live 12.4+ to write points). Not on an unwarped session audio clip or a take-lane clip",

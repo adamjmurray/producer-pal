@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
 import { readOneClip } from "#src/tools/clip/read/read-clip.ts";
-import { setupMidiClipMock } from "./read-clip-test-helpers.ts";
+import { setupMidiClipMock } from "../read-clip-test-helpers.ts";
 
 describe("readOneClip envs flag", () => {
   beforeEach(() => {

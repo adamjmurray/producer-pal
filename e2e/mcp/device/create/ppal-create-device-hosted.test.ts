@@ -16,7 +16,8 @@
  * fresh, with only what Live saved for it.
  *
  * The automation slot tests also use ppal-live-api and ppal-plugin-host, which
- * the suite turns on per test.
+ * the suite turns on per test. Hosted params are automated by device path and
+ * `h` id (`t3/d0/h1`), which maps an automation slot to the param.
  *
  * Uses: e2e-test-set (adds its own MIDI track)
  *
@@ -49,6 +50,12 @@ const RESTORE_MS = 3000;
 
 // Live closes an undo step after about this long without a change.
 const UNDO_SETTLE_MS = 5000;
+
+interface EnvelopeEntry {
+  parameter: string;
+  id: string;
+  slot?: string;
+}
 
 interface HostedDevice {
   id: string;
@@ -301,16 +308,9 @@ describe.skipIf(
       );
 
       const dial = await findDial(deviceId, "Automation 001");
-      const clip = await call<{ id: string }>("ppal-create-clip", {
-        path: `t${track}/s0`,
-        notes: "C3 1|1",
-        length: "4bar",
-      });
+      const clipId = await newClip(track);
 
-      await call("ppal-update-clip", {
-        id: clip.id,
-        envelopes: `${dial}: 1|1 0.2`,
-      });
+      await automate(clipId, `${dial}: 1|1 0.2`);
 
       // A tempo change is the marker: if playback added undo steps, one undo
       // would take one of them back instead of the tempo.
@@ -325,7 +325,7 @@ describe.skipIf(
         await sleep(UNDO_SETTLE_MS);
         await call("ppal-playback", {
           action: "play-session-clips",
-          id: clip.id,
+          id: clipId,
         });
 
         expect(await waitForMainVolume(deviceId, 0.2)).toBeCloseTo(0.2, 1);
@@ -368,6 +368,132 @@ describe.skipIf(
       ).toStrictEqual(
         expect.objectContaining({
           slots: [{ slot: 3, index: expect.any(Number), name: "Main Vol" }],
+        }),
+      );
+    });
+
+    /**
+     * Read a session clip's envelopes.
+     * @param clipId - The clip's id
+     * @returns One entry per automated parameter
+     */
+    async function readEnvelopes(clipId: string): Promise<EnvelopeEntry[]> {
+      const clip = await call<{ envelopes?: EnvelopeEntry[] }>(
+        "ppal-read-clip",
+        { id: clipId, include: ["envelopes"] },
+      );
+
+      return clip.envelopes ?? [];
+    }
+
+    /**
+     * Make a four-bar session clip on a track's first slot.
+     * @param track - Track index
+     * @returns The clip's id
+     */
+    async function newClip(track: number): Promise<string> {
+      const clip = await call<{ id: string }>("ppal-create-clip", {
+        path: `t${track}/s0`,
+        notes: "C3 1|1",
+        length: "4bar",
+      });
+
+      return clip.id;
+    }
+
+    /**
+     * Write a clip's envelopes.
+     * @param clipId - The clip's id
+     * @param envelopes - The `envelopes` lines
+     * @returns The clip's entry
+     */
+    function automate(clipId: string, envelopes: string) {
+      return call("ppal-update-clip", { id: clipId, envelopes });
+    }
+
+    it("automates a hosted param by its device path and h id, and reads it back by name", async () => {
+      const { track, path } = await hostOnNewTrack("Serum 2");
+      const deviceId = (await readDevice(path)).id;
+      const clipId = await newClip(track);
+
+      expect(await automate(clipId, `${path}/h1: 1|1 0.2`)).toStrictEqual(
+        expect.objectContaining({
+          envelopes: 1,
+          detail: `envelope "${path}/h1": mapped to slot "Automation 001"`,
+        }),
+      );
+
+      const [entry] = await readEnvelopes(clipId);
+
+      expect(entry).toStrictEqual(
+        expect.objectContaining({
+          parameter: "Main Vol",
+          id: `${path}/h1`,
+          slot: "Automation 001",
+        }),
+      );
+
+      // The id reads back as a target for the same envelope, with no new slot.
+      expect(
+        await automate(clipId, `${entry?.id}: 1|1 0.2`),
+      ).not.toHaveProperty("detail");
+
+      const [mainVol] = (await readDevice(path, "Main Vol")).parameters ?? [];
+
+      expect(mainVol).toStrictEqual(
+        expect.objectContaining({ id: "h1", slot: "Automation 001" }),
+      );
+
+      await call("ppal-playback", {
+        action: "play-session-clips",
+        id: clipId,
+      });
+
+      expect(await waitForMainVolume(deviceId, 0.2)).toBeCloseTo(0.2, 1);
+
+      await call("ppal-playback", { action: "stop-all-session-clips" });
+    }, 60_000);
+
+    it("gives a second param the next slot, and clears by the same target", async () => {
+      const { track, path } = await hostOnNewTrack("Serum 2");
+      const clipId = await newClip(track);
+      const listed = await call<HostedDevice>("ppal-read-device", {
+        path,
+        include: ["params"],
+      });
+      const other = listed.parameters?.find((param) => param.id !== "h1");
+
+      await automate(clipId, `${path}/h1: 1|1 0.2`);
+
+      expect(
+        await automate(clipId, `${path}/${other?.id}: 1|1 0.5`),
+      ).toStrictEqual(
+        expect.objectContaining({
+          envelopes: 1,
+          detail: `envelope "${path}/${other?.id}": mapped to slot "Automation 002"`,
+        }),
+      );
+      expect(
+        (await readEnvelopes(clipId))
+          .map((entry) => entry.slot ?? "")
+          .toSorted((a, b) => a.localeCompare(b)),
+      ).toStrictEqual(["Automation 001", "Automation 002"]);
+
+      await automate(clipId, `${path}/h1:`);
+
+      expect(
+        (await readEnvelopes(clipId)).map((entry) => entry.parameter),
+      ).toStrictEqual([other?.name]);
+    }, 60_000);
+
+    it("clears nothing, without an error, for a param no slot drives", async () => {
+      const { track, path } = await hostOnNewTrack("Serum 2");
+      const clipId = await newClip(track);
+
+      expect(await automate(clipId, `${path}/h1:`)).toStrictEqual(
+        expect.objectContaining({
+          envelopes: 1,
+          detail: `envelope "${path}/h1": there was no envelope to clear`,
         }),
       );
     });

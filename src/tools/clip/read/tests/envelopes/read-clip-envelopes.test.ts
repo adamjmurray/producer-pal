@@ -24,7 +24,7 @@ import {
   type ReadClipResult,
   readClip,
 } from "#src/tools/clip/read/read-clip.ts";
-import { setupMidiClipMock } from "./read-clip-test-helpers.ts";
+import { setupMidiClipMock } from "../read-clip-test-helpers.ts";
 
 /** What the remote script is told to say when it is too old. */
 const OUTDATED =

@@ -237,6 +237,26 @@ slot in the patcher, and `SLOT_COUNT` in the code box. Change both together.
   Notes Off lands there when playback starts and stops. Trade-off: an edit in
   the plug-in window or a program change made while slots move is saved only by
   the next real save. Setting the dial in `map` is one extra undo step.
+- **How the tools use slots**: `ppal-update-clip` takes a hosted param as an
+  `envelopes` target spelled as the wrapper's device path plus the param's `h`
+  id (`t3/d0/h206`; a rack-nested wrapper is `t3/d0/c1/d0/h206`). The wrapper
+  must be on the clip's own track. The tool picks the slot: the one already
+  driving that param; else the lowest unmapped slot with no arrangement
+  automation; else a mapped slot that has lost its automation everywhere (its
+  `automation_state` is 0 and no session clip on the track holds an envelope for
+  it), which it remaps. A slot with automation is never remapped. If none
+  qualifies the line is skipped. Reclaiming is off while the track plays from
+  Session, since `automation_state` reads 0 there whatever the lane holds. It
+  maps with `map`, then writes the envelope to the slot's Live parameter (found
+  by name) like any parameter id. A wrapper still loading (`map` refuses for
+  about 1.5 s after a Set opens or a track is duplicated) skips the line with a
+  "try again" detail. Clearing a hosted target clears its slot's envelope, and
+  does nothing when no slot drives the param. Slots are asked about once per
+  call per wrapper.
+- **Reads**: `ppal-read-clip` names an envelope on a mapped slot by the
+  plug-in's param, with `id` `t3/d0/h206` and `slot` "Automation 002"; an
+  unmapped slot reads as any parameter. `ppal-read-device` adds `slot`, and with
+  values `automation`, to hosted params that a slot drives.
 - **Why 128**: each slot adds about 1.5 KB to the `.amxd` (18 KB gzipped for the
   whole wrapper) and under 1 ms to loading it: 128 slots loaded about 40 ms
   slower than 32, and 1000 about 0.6 s slower. Slots can be added later, but
