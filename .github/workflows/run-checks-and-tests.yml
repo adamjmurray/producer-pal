@@ -118,7 +118,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -303,14 +303,19 @@ jobs:
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
           echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
-  playwright-tests:
+  # Two jobs that take about the same time: the chat UI suite alone, and the
+  # docs suite plus the portal test. The e2e-tests job gathers their
+  # reports for the summary.
+  e2e-test-suites:
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
 
-    outputs:
-      summary: ${{ steps.summary.outputs.summary }}
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [chat-ui, docs-and-portal]
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -346,32 +351,71 @@ jobs:
         run: npx playwright install chromium
 
       - name: Test built-in chat UI with Playwright
-        id: ui-tests
+        if: matrix.suite == 'chat-ui'
         run: npm run ui:test
 
       - name: Test documentation site with Playwright
-        id: docs-tests
+        if: matrix.suite == 'docs-and-portal'
         run: npm run docs:test
 
       # Drives the built portal against a stub device: no Ableton, no browser.
       # It sits here so its results share the end-to-end summary table.
       - name: Build bundles for the portal test
+        if: matrix.suite == 'docs-and-portal'
         run: npm run build:bundles
 
       - name: Test the portal binary end to end
+        if: matrix.suite == 'docs-and-portal'
         run: npm run e2e:portal
 
+      # Uploaded even when a suite fails, so the summary can report it.
+      - name: Upload test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: e2e-report-${{ matrix.suite }}
+          path: test-reports/*.json
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Upload test results
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: failure()
+        with:
+          name: playwright-report-${{ matrix.suite }}
+          path: playwright-report/
+          retention-days: 30
+
+  e2e-tests:
+    needs: e2e-test-suites
+    # Runs when a suite fails too, so failures still reach the summary.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    outputs:
+      summary: ${{ steps.summary.outputs.summary }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download test reports
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: e2e-report-*
+          path: test-reports
+          merge-multiple: true
+
+      # No `npm ci`: the stats script uses only Node built-ins. A suite whose
+      # report is missing is reported as "not run".
       - name: Report end-to-end test stats
         id: summary
-        # Runs even when a suite fails: each suite's JSON report is still
-        # written, and a suite that never started is reported as "not run".
-        # !cancelled() is required — an `if:` with no status check function
-        # implies success(), which would skip this step on the very failure it
-        # reports on. Gating on the first suite is deliberate: if it never ran,
-        # neither did the rest, so there is nothing to report.
-        if:
-          ${{ !cancelled() && (steps.ui-tests.outcome == 'success' ||
-          steps.ui-tests.outcome == 'failure') }}
         run: |
           npm run e2e:stats --silent -- --markdown > /tmp/summary.md
 
@@ -379,13 +423,11 @@ jobs:
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
           echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
-      - name: Upload test results
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        if: failure()
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 30
+      - name: Fail if any suite failed
+        if: ${{ !cancelled() && needs.e2e-test-suites.result != 'success' }}
+        run: |
+          echo "::error::An end-to-end test job failed: ${{ needs.e2e-test-suites.result }}"
+          exit 1
 
   repo-stats:
     runs-on: ubuntu-latest
@@ -423,14 +465,7 @@ jobs:
           echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
   post-summary:
-    needs:
-      [
-        build-verification,
-        unit-tests,
-        playwright-tests,
-        code-hygiene,
-        repo-stats,
-      ]
+    needs: [build-verification, unit-tests, e2e-tests, code-hygiene, repo-stats]
     # Cross-repo (fork) PRs get a read-only GITHUB_TOKEN, so commenting 403s.
     # Skip instead, rather than show a red check on an otherwise-green PR.
     if: >-
@@ -469,7 +504,7 @@ jobs:
               'Code Hygiene': '${{ needs.code-hygiene.result }}',
               'Unit Tests': '${{ needs.unit-tests.result }}',
               'Build': '${{ needs.build-verification.result }}',
-              'Playwright': '${{ needs.playwright-tests.result }}',
+              'E2E': '${{ needs.e2e-tests.result }}',
               'Repo Stats': '${{ needs.repo-stats.result }}'
             };
             const allPassed = Object.values(jobs).every(s => s === 'success');
@@ -484,7 +519,7 @@ jobs:
               decode(`${{ needs.build-verification.outputs.summary }}`),
               decode(`${{ needs.unit-tests.outputs.summary }}`),
               decode(`${{ needs.code-hygiene.outputs.summary }}`),
-              decode(`${{ needs.playwright-tests.outputs.summary }}`),
+              decode(`${{ needs.e2e-tests.outputs.summary }}`),
               decode(`${{ needs.repo-stats.outputs.summary }}`)
             ].filter(s => s && s.trim()).join('\n\n');
 
@@ -495,7 +530,7 @@ jobs:
               `| Build | ${icon(jobs['Build'])} ${jobs['Build']} |`,
               `| Unit Tests | ${icon(jobs['Unit Tests'])} ${jobs['Unit Tests']} |`,
               `| Lint, Typecheck & Code Hygiene | ${icon(jobs['Code Hygiene'])} ${jobs['Code Hygiene']} |`,
-              `| End-to-End Tests | ${icon(jobs['Playwright'])} ${jobs['Playwright']} |`,
+              `| End-to-End Tests | ${icon(jobs['E2E'])} ${jobs['E2E']} |`,
               `| Repo Stats | ${icon(jobs['Repo Stats'])} ${jobs['Repo Stats']} |`
             ].join('\n');
             const body = [
