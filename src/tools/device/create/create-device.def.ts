@@ -47,6 +47,16 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       default: "name, or comma-separated one per path",
       smallModel: "display name",
     }),
+    // Unfinished: release builds don't offer it.
+    ...(process.env.ENABLE_HOSTED_PLUGINS === "true"
+      ? {
+          hosted: param(z.boolean().optional(), {
+            default:
+              "true: `deviceName` is a VST3 plug-in name as Live's browser shows it, loaded inside a Producer Pal wrapper so every parameter can be read and set (a plug-in loaded natively exposes only the params the user configured, up to 128). Cost: hosted params can't be automated yet. Applies to every device in the call; needs the Producer Pal remote script",
+            smallModel: null,
+          }),
+        }
+      : {}),
     params: param(paramsInputSchema, {
       default:
         "applied after creation — array of {name, value}; value in the `unit` read-device reports, or none. For a Drum Rack, prefix the name with a pad path, e.g. {name:'pC1/sample', value:'<abs file path>'} loads a sample into pad C1 (auto-creates the pad's Simpler) — build a full kit in one call",

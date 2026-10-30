@@ -99,6 +99,24 @@ Adds parameter names, macro variation info, and A/B Compare state. A
 | `macros`     | `object`   | Rack only; see below                       |
 | `abCompare`  | `"a"\|"b"` | Current A/B preset (if device supports it) |
 
+A read lists at most 200 `parameters` per device, cutting before it reads any
+values. When more matched, the device gets `paramCount` (how many matched) and a
+`detail` saying to narrow with `paramSearch`. There is no paging.
+
+### Hosted plug-ins
+
+A Producer Pal plug-in wrapper (a Max for Live device around `vst~`; see
+`dev/live-api/plugin-hosting.md`) reads as the plug-in it hosts: `type` carries
+the plug-in's name, `hosted: true` marks it, and `name` appears only when the
+user renamed the device. A wrapper with nothing loaded keeps the Max device's
+type. A Max audio effect or instrument is asked once whether it is a wrapper;
+the wrapper answers inside the same Max call, so any other device costs nothing.
+Its `parameters` are the plug-in's own, with ids `h<number>` (`h56` is the
+plug-in's param 56) and, with `param-values`, `value` as the plug-in's display
+text. The plug-in's MIDI stand-in params are left out, and `paramSearch` filters
+by name. After a Set reload a wrapper knows its plug-in only by file name, so
+`type` shows that.
+
 `macros` is `{ count, mapped }` when the remote script is running: `mapped`
 lists the mapped macros' numbers (macro 1 is the first), and `hiddenMapped`
 lists any beyond `count`, since lowering the count hides macros but keeps their

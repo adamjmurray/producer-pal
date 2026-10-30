@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 
 /**
  * Make the remote script answer that it isn't running, so a device copy takes

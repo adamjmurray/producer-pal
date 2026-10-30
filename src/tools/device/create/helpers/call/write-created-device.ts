@@ -18,6 +18,7 @@ import {
 } from "../device-creation.ts";
 import { refuseIndexInNewChain } from "../index-in-new-chain.ts";
 import { type CreateChecked, type DevicePlan } from "./check-create-call.ts";
+import { createHostedDevice } from "./write-hosted-device.ts";
 import { type CreatePayload } from "./parse-create-call.ts";
 
 /**
@@ -37,6 +38,10 @@ export function writeCreatedDevice(
 
   // Before the path makes any chains: it would leave them behind when refused.
   refuseIndexInNewChain(target.data.path);
+
+  if (plan.hosted != null) {
+    return createHostedDevice({ ...plan, hosted: plan.hosted }, step);
+  }
 
   if (plan.item == null) {
     return place(insertNativeDevice(plan.device, plan.path), step);

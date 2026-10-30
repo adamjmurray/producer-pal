@@ -159,6 +159,12 @@ describe.each(BUNDLES)("release bundle: $name", ({ name, stubs }) => {
     expect(chunkCode[name]).not.toContain(DEV_BUILD_MARKER);
   });
 
+  // Unfinished: a model must not be offered it.
+  it("does not offer hosted plug-ins", () => {
+    expect(chunkCode[name]).not.toContain("hosted=true");
+    expect(chunkCode[name]).not.toContain("inside a Producer Pal wrapper");
+  });
+
   it("does not import node:vm", () => {
     expect(moduleIds[name]).not.toContain("node:vm");
   });

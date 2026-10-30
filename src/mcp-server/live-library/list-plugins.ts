@@ -47,7 +47,7 @@ import {
 } from "./library-types.ts";
 import { findLiveFilesDbPath, findLivePluginsDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
-import { mergeBrowserPlugins } from "./query/merge-browser-plugins.ts";
+import { mergeBrowserPlugins } from "./query/plugins/merge-browser-plugins.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 
 /** Name of the plugin table in Live's DB (per spike notes — see file header). */
@@ -146,7 +146,7 @@ export async function listPlugins(
  *
  * @returns Absolute path to a DB containing plugin tables, or null if none.
  */
-async function selectPluginDb(): Promise<string | null> {
+export async function selectPluginDb(): Promise<string | null> {
   const pluginsDbPath = await findLivePluginsDbPath();
 
   if (pluginsDbPath != null) {
@@ -264,7 +264,9 @@ function includesIgnoreCase(haystack: string, needle: string): boolean {
  * @param devIdentifier - Raw dev_identifier, possibly null
  * @returns Derived PluginFormat, or null when undeterminable
  */
-function deriveFormat(devIdentifier: string | null): PluginFormat | null {
+export function deriveFormat(
+  devIdentifier: string | null,
+): PluginFormat | null {
   const scheme = schemeSegment(devIdentifier);
 
   if (scheme === "vst3") {
@@ -294,7 +296,9 @@ function deriveFormat(devIdentifier: string | null): PluginFormat | null {
  * @param devIdentifier - Raw dev_identifier, possibly null
  * @returns Derived PluginCategory, or null when undeterminable
  */
-function deriveCategory(devIdentifier: string | null): PluginCategory | null {
+export function deriveCategory(
+  devIdentifier: string | null,
+): PluginCategory | null {
   const scheme = schemeSegment(devIdentifier);
 
   // Without a recognizable format scheme we can't trust the rest of the URI.

@@ -9,7 +9,7 @@ import {
   clearMockRegistry,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { readOneDevice } from "../read-device.ts";
+import { readOneDevice } from "../../read-device.ts";
 
 /**
  * Register an Operator at t0/d0 holding the given parameters.

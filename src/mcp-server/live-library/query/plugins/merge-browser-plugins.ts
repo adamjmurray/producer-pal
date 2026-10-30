@@ -12,8 +12,8 @@
  * category and subcategories.
  */
 
-import { type BrowserPlugin } from "../../rpc/remote-script/browser/browser-plugins.ts";
-import { type PluginItem } from "../library-types.ts";
+import { type BrowserPlugin } from "../../../rpc/remote-script/browser/browser-plugins.ts";
+import { type PluginItem } from "../../library-types.ts";
 
 /**
  * Merge DB plug-ins into the browser's list.

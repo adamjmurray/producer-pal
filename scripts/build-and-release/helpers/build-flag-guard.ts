@@ -27,6 +27,7 @@ export const GUARDED_BUILD_FLAGS: string[] = [
   "ENABLE_REMOTE_CORS",
   "ENABLE_BUILD_STATS",
   "ENABLE_OBJECT_PROBE",
+  "ENABLE_HOSTED_PLUGINS",
 ];
 
 /** Set to "true" alongside the flags to build with them on purpose. */

@@ -6,7 +6,7 @@
 // How V8 calls one remote-script route, folding every way it can fail into one
 // outcome.
 
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { REQUEST_OUT_OF_TIME } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   REMOTE_SCRIPT_UNANSWERED,

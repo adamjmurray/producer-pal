@@ -37,6 +37,7 @@ export default defineConfig({
     environment: "node",
     env: {
       ENABLE_WARP_MARKERS: "true",
+      ENABLE_HOSTED_PLUGINS: "true",
     },
     include: [
       "src/**/*.test.ts",
@@ -125,7 +126,7 @@ export default defineConfig({
         // covering every function would mean reconstructing the async Node
         // round-trip for thin orchestration, so it stays threshold-excluded and
         // is integration-tested via e2e instead.
-        "src/live-api-adapter/code-exec-v8-protocol.ts",
+        "src/live-api-adapter/protocols/code-exec-v8-protocol.ts",
 
         // ignore disabled stubs (build-time substitutions, not runtime code):
         "src/tools/clip/code-exec/*-disabled.ts",

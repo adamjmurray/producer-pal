@@ -9,6 +9,7 @@ import { type Notation } from "#src/shared/notation.ts";
 import { toolDefDelete } from "#src/tools/actions/delete/delete.def.ts";
 import { toolDefDuplicate } from "#src/tools/actions/duplicate/duplicate.def.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
+import { toolDefPluginHost } from "#src/tools/advanced/plugin-host/plugin-host.def.ts";
 import { toolDefCreateClip } from "#src/tools/clip/create/create-clip.def.ts";
 import { toolDefReadClip } from "#src/tools/clip/read/read-clip.def.ts";
 import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
@@ -65,6 +66,17 @@ export const STANDARD_TOOL_DEFS: ToolDefFunction[] = [
   toolDefSelect,
   toolDefPlayback,
   toolDefLibrary,
+];
+
+/**
+ * Tools offered only when the Direct Live API opt-in is on. The plug-in host
+ * spike rides on ppal-live-api's gate and whitelist entry: it is on exactly
+ * when ppal-live-api is.
+ */
+export const OPT_IN_TOOL_DEFS: ToolDefFunction[] = [
+  toolDefLiveApi,
+  // Unfinished plug-in hosting: release builds leave it out.
+  ...(process.env.ENABLE_HOSTED_PLUGINS === "true" ? [toolDefPluginHost] : []),
 ];
 
 /** All standard tool names (frozen). Opt-in tools like ppal-live-api are not included. */
@@ -147,7 +159,9 @@ export function createMcpServer(
     isLiveApiToolActive(liveApiEnabled, smallModelMode) &&
     (!includedSet || includedSet.has(toolDefLiveApi.toolName))
   ) {
-    toolDefLiveApi(server, callLiveApi, { smallModelMode, notation });
+    for (const toolDef of OPT_IN_TOOL_DEFS) {
+      toolDef(server, callLiveApi, { smallModelMode, notation });
+    }
   }
 
   trimListedSchemas(server);

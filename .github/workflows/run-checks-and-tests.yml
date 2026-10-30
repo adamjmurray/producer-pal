@@ -46,15 +46,16 @@ jobs:
       - name: Guard against dev-only env vars in CI
         # These flags enable Live API access, arbitrary code execution,
         # wildcard CORS, the unfinished warp-marker params, the LiveAPI
-        # object counter, and the object-staleness probe. They must never be
-        # baked into release artifacts.
+        # object counter, the object-staleness probe, and unfinished plug-in
+        # hosting. They must never be baked into release artifacts.
         run: |
           if [ "${ENABLE_LIVE_API:-}" = "true" ] || \
              [ "${ENABLE_CODE_EXEC:-}" = "true" ] || \
              [ "${ENABLE_REMOTE_CORS:-}" = "true" ] || \
              [ "${ENABLE_WARP_MARKERS:-}" = "true" ] || \
              [ "${ENABLE_BUILD_STATS:-}" = "true" ] || \
-             [ "${ENABLE_OBJECT_PROBE:-}" = "true" ]; then
+             [ "${ENABLE_OBJECT_PROBE:-}" = "true" ] || \
+             [ "${ENABLE_HOSTED_PLUGINS:-}" = "true" ]; then
             echo "::error::Dev-only env vars must not be set in CI builds:"
             echo "  ENABLE_LIVE_API=${ENABLE_LIVE_API:-}"
             echo "  ENABLE_CODE_EXEC=${ENABLE_CODE_EXEC:-}"
@@ -62,6 +63,7 @@ jobs:
             echo "  ENABLE_WARP_MARKERS=${ENABLE_WARP_MARKERS:-}"
             echo "  ENABLE_BUILD_STATS=${ENABLE_BUILD_STATS:-}"
             echo "  ENABLE_OBJECT_PROBE=${ENABLE_OBJECT_PROBE:-}"
+            echo "  ENABLE_HOSTED_PLUGINS=${ENABLE_HOSTED_PLUGINS:-}"
             exit 1
           fi
 

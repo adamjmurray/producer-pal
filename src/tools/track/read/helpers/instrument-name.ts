@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 import { DEVICE_TYPE } from "#src/tools/constants.ts";
+import { deviceClassName } from "#src/tools/shared/device/helpers/device-identity.ts";
+import { detectHostedPlugin } from "#src/tools/shared/device/helpers/params/hosted-plugin-reading.ts";
 import {
   DEFAULT_MAX_DEPTH,
   getDeviceType,
@@ -120,12 +122,13 @@ function deviceInstrumentNames(
 }
 
 /**
- * A device's Live class name, e.g. "Operator" or "Instrument Rack"
+ * A device's Live class name, e.g. "Operator" or "Instrument Rack"; a hosted
+ * plug-in's wrapper is the plug-in.
  * @param device - Device object
  * @returns The class display name
  */
 function className(device: LiveAPI): string {
-  return device.getProperty("class_display_name") as string;
+  return deviceClassName(device, detectHostedPlugin(device));
 }
 
 /**
