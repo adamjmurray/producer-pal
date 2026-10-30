@@ -5,6 +5,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { VERSION } from "#src/shared/config.ts";
+import { GEN_UI_TOOL_ID, isGenUiEnabled } from "#src/shared/gen-ui-types.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { toolDefDelete } from "#src/tools/actions/delete/delete.def.ts";
 import { toolDefDuplicate } from "#src/tools/actions/duplicate/duplicate.def.ts";
@@ -24,6 +25,7 @@ import { toolDefUpdateLiveSet } from "#src/tools/live-set/update-live-set.def.ts
 import { toolDefCreateScene } from "#src/tools/scene/create-scene.def.ts";
 import { toolDefReadScene } from "#src/tools/scene/read-scene.def.ts";
 import { toolDefUpdateScene } from "#src/tools/scene/update-scene.def.ts";
+import { toolDefUi } from "#src/tools/ui/ui.def.ts";
 import { toolDefLibrary } from "#src/tools/session/library.def.ts";
 import { toolDefPlayback } from "#src/tools/session/playback.def.ts";
 import { toolDefSelect } from "#src/tools/session/select.def.ts";
@@ -164,6 +166,11 @@ export function createMcpServer(
     }
   }
 
+  // Experimental ppal-ui, only in a build with ENABLE_GEN_UI.
+  if (isGenUiEnabled() && (!includedSet || includedSet.has(GEN_UI_TOOL_ID))) {
+    toolDefUi(server, callLiveApi, { smallModelMode, notation });
+  }
+
   trimListedSchemas(server);
 
   return server;
@@ -290,11 +297,11 @@ export function validateTools(
  * @returns The valid tool names
  */
 function getValidToolNames(liveApiEnabled: boolean): string[] {
-  if (!liveApiEnabled) {
-    return [...TOOL_NAMES];
-  }
-
-  return [...TOOL_NAMES, toolDefLiveApi.toolName];
+  return [
+    ...TOOL_NAMES,
+    ...(liveApiEnabled ? [toolDefLiveApi.toolName] : []),
+    ...(isGenUiEnabled() ? [GEN_UI_TOOL_ID] : []),
+  ];
 }
 
 /**

@@ -34,6 +34,7 @@ const DEBUG_FLAGS = ["ENABLE_LIVE_API"];
 // Set these by hand for the build you're testing that feature on.
 const UNGATED_SCHEMA_FLAGS = [
   "ENABLE_CODE_EXEC",
+  "ENABLE_GEN_UI",
   "ENABLE_WARP_MARKERS",
   "ENABLE_HOSTED_PLUGINS",
 ];

@@ -10,6 +10,8 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import { WARNING_PREFIX } from "#src/shared/mcp-responses.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
+import { toolDefUi } from "#src/tools/ui/ui.def.ts";
+import { isGenUiEnabled } from "#src/shared/gen-ui-types.ts";
 import {
   collectHiddenParams,
   hiddenParamWarnings,
@@ -62,9 +64,15 @@ function activeToolDefs(profile: RequestProfile): ToolDefFunction[] {
     isOfferedInMode(td, profile.smallModelMode),
   );
 
-  return isLiveApiToolActive(profile.liveApiEnabled, profile.smallModelMode)
+  const withLiveApi = isLiveApiToolActive(
+    profile.liveApiEnabled,
+    profile.smallModelMode,
+  )
     ? [...standard, toolDefLiveApi]
     : standard;
+
+  // Experimental, only in a build with ENABLE_GEN_UI.
+  return isGenUiEnabled() ? [...withLiveApi, toolDefUi] : withLiveApi;
 }
 
 /**

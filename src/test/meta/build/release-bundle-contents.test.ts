@@ -17,6 +17,7 @@ import { tmpdir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { rolldown, type InputOptions, type RolldownOutput } from "rolldown";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { GEN_UI_REMOTE_SCRIPT_FILES } from "#src/mcp-server/rpc/remote-script/bundle/gen-ui-remote-script-files.ts";
 import { repoPath } from "#src/test/helpers/meta-test-helpers.ts";
 import {
   DEV_BUILD_MARKER,
@@ -223,6 +224,62 @@ describe("remote script embedding", () => {
 
   it("does not read remote-script/ from disk at runtime", () => {
     expect(portalWithInstaller).not.toContain("readRemoteScriptSource");
+  });
+});
+
+// A release leaves the gen-UI Python out entirely, and a gen-UI build has it.
+describe("gen-UI remote script files", () => {
+  const embeddedKey = (file: string): string => `"${file}":`;
+  let genUiCode = "";
+
+  beforeAll(async () => {
+    vi.resetModules();
+    process.env.ENABLE_GEN_UI = "true";
+
+    try {
+      const config = await import("../../../../config/rolldown.config.mjs");
+      const configs = config.default as (InputOptions & { output: unknown })[];
+
+      const built = await buildChunks(configs[1] as InputOptions);
+
+      genUiCode = built.code;
+    } finally {
+      delete process.env.ENABLE_GEN_UI;
+    }
+  }, 120_000);
+
+  it.each(GEN_UI_REMOTE_SCRIPT_FILES)(
+    "%s is not in a release build",
+    (file) => {
+      expect(chunkCode["mcp-server"]).not.toContain(embeddedKey(file));
+      expect(portalWithInstaller).not.toContain(embeddedKey(file));
+    },
+  );
+
+  it.each(GEN_UI_REMOTE_SCRIPT_FILES)("%s is in a gen-UI build", (file) => {
+    expect(genUiCode).toContain(embeddedKey(file));
+  });
+
+  // The Python files above only prove the bundler dropped them. This proves the
+  // gate itself is a constant: a flag read the replacement plugin misses (say
+  // `process.env["ENABLE_GEN_UI"]`) would stay a runtime check in the release.
+  const CONSTANT_FALSE_GATE =
+    /function isGenUiEnabled\(\)\s*\{\s*return false;?\s*\}/;
+  const RUNTIME_FLAG_READ = /\benv\s*(?:\?\.|\.|\[\s*["'`])\s*ENABLE_GEN_UI/;
+
+  it("inlines isGenUiEnabled() to false in a release build", () => {
+    expect(chunkCode["mcp-server"]).toMatch(CONSTANT_FALSE_GATE);
+  });
+
+  it("does not read ENABLE_GEN_UI at runtime in a release build", () => {
+    expect(chunkCode["mcp-server"]).not.toMatch(RUNTIME_FLAG_READ);
+    expect(chunkCode["mcp-server"]).not.toMatch(
+      /ENABLE_GEN_UI[^\n]*=\s*process\.env\b/,
+    );
+  });
+
+  it("does not inline isGenUiEnabled() to false in a gen-UI build", () => {
+    expect(genUiCode).not.toMatch(CONSTANT_FALSE_GATE);
   });
 });
 

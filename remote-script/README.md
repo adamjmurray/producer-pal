@@ -165,6 +165,68 @@ Set, which gets a new bridge, starts clear): the next step in the same direction
 is a 409 that touches nothing, until `/undo/end` (Producer Pal wrote again) or a
 step the other way clears it.
 
+### `POST /watch`, `POST /unwatch`, `GET /events`, `GET /watches`
+
+Live listeners on Session clips, for the experimental generative UI panel. Only
+in gen-UI builds (see "Generative UI files" below). `/watch` takes `owner` (a
+widget id), `path` (`t0/s3`) and optionally `fingerprint` (`{name, length}`,
+from an earlier session). It binds to the clip object in that slot and follows
+the object, not the slot: when the clip moves (tracks or scenes inserted,
+deleted or reordered, or Live moves it) the watch reports `moved` with the new
+path; when it is deleted or replaced it reports `gone` once, with a `reason`,
+and stays gone. It never re-binds to whatever lands in the slot later. Where a
+clip is comes from its parents (clip, slot, track) and their indices.
+
+Refused (`reason` in the body): `empty` (404, no clip there), `no_slot` (404),
+`mismatch` (409, a `fingerprint` was sent and the clip there differs: this is
+how a watch is picked up again after a restart without binding a wrong clip),
+`limit` (409, at most 32 watches, gone ones included until unwatched).
+`/unwatch` takes `owner`.
+
+`/events?since=N` answers `{epoch, seq, resync, events, watching}`. Without
+`since` it only gives the position. Events are
+`{seq, owner, kind, fields, path?, reason?}` with `kind` `changed`, `moved` or
+`gone`. Live's callbacks only mark a watch; each read checks every watch against
+the Set and turns marks into one event per owner. The last 256 events are kept:
+a reader further behind gets `resync: true` and no events, and must re-read
+everything. A new `epoch` means the registry was reset (Set change, hot reload,
+script restart): watches are gone, register again.
+
+`/watches` lists every watch with its state, path, listener count and, for a
+gone one, whether its old clip object has become valid again (observed only; it
+is never re-bound). The Live log gets a line for each gone and each revival.
+
+Every listener is removed when its watch ends or goes gone, the Set changes,
+Live disconnects the script, or a hot reload starts. Poll rather than hold the
+request open: a request in flight keeps the update loop sleeping, and the HTTP
+threads only run while it does.
+
+### `GET /ui-widgets`, `POST /ui-widgets/save`
+
+Gen-UI builds only. Keep the generative UI's widget list in the Live Set, with
+the song's own data store (`song.set_data` / `song.get_data`). `GET` answers
+`{text}`: the saved string, or `null` when none. `POST` takes `text` (a string,
+at most 24,000 characters; longer is a 413) and answers `{ok: true}`. The list
+is saved in the .als, adds no undo step and survives reopening. It does not mark
+the Set as changed, so a widget-only change is lost if the user quits without
+saving.
+
+## Generative UI files
+
+`gen_ui_routes.py`, `watches.py` and `ui_widgets.py` ship only in a gen-UI build
+(`ENABLE_GEN_UI=true`). A release build leaves them out of the device bundle, so
+a release install has no `/watch`, `/events`, `/ui-widgets` routes, and changing
+these files never forces a remote script version bump. The list lives in
+`src/mcp-server/rpc/remote-script/bundle/gen-ui-remote-script-files.ts`.
+
+`routes.py` imports `gen_ui_routes.py` if it exists. It is the only module that
+imports the other two, and nothing shipped may depend on them
+(`tests/test_gen_ui_optional.py` checks both). A gen-UI device talking to a
+release-installed script gets 404s and falls back to refreshing after AI writes.
+
+To try them from the repo, install with the same flag as the device build:
+`ENABLE_GEN_UI=true npm run install:remote-script -- --probe --reload`.
+
 ## How it works
 
 Live's Python is single-threaded and the Live API breaks if touched from any
@@ -198,6 +260,8 @@ waits 30s for the reply, and 30s more if the job started in that time.
 - `clip_address.py`: finding the clip a route names
 - `simpler_settings.py`: a Simpler's pitch bend ranges
 - `undo.py`: Live's undo history: closing the pending step, undo and redo
+- `gen_ui_routes.py`, `watches.py`, `ui_widgets.py`: the generative UI (see
+  below)
 - `preset_guard.py`: refusing a loaded preset that holds the Producer Pal device
 - `version.py`: the release the script was built from
 

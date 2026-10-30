@@ -24,6 +24,11 @@ vi.mock(import("./components/context/ContextApp"), () => ({
   ContextApp: () => <div>ContextApp</div>,
 }));
 
+// Mock GenLayout component
+vi.mock(import("./components/gen/GenLayout"), () => ({
+  GenLayout: () => <div>GenLayout</div>,
+}));
+
 // Mock DemoMode component
 vi.mock(import("./demo/DemoMode"), () => ({
   DemoMode: () => <div>DemoMode</div>,
@@ -31,6 +36,15 @@ vi.mock(import("./demo/DemoMode"), () => ({
 
 // Mock CSS import
 vi.mock(import("./main.css"), () => ({}));
+
+/**
+ * @returns The name of the component main rendered at the root
+ */
+function rootName(): string {
+  const root = mockRender.mock.calls[0]?.[0] as { type: { name: string } };
+
+  return root.type.name;
+}
 
 describe("main", () => {
   beforeEach(() => {
@@ -96,6 +110,25 @@ describe("main", () => {
     await import("./main.js");
 
     expect(mockRender).toHaveBeenCalled();
+  });
+
+  it("renders the hidden generative-UI view only for ?view=gen", async () => {
+    const appElement = document.createElement("div");
+
+    appElement.id = "app";
+    document.body.appendChild(appElement);
+
+    window.history.replaceState({}, "", "/chat?view=gen");
+    await import("./main.js");
+
+    expect(rootName()).toBe("GenLayout");
+
+    vi.resetModules();
+    mockRender.mockClear();
+    window.history.replaceState({}, "", "/chat?view=other");
+    await import("./main.js");
+
+    expect(rootName()).toBe("App");
   });
 
   it("throws error when #app element does not exist", async () => {

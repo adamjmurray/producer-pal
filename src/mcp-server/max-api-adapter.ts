@@ -16,7 +16,7 @@ import {
   type McpErrorCode,
 } from "#src/shared/mcp-responses.ts";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
-import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
+import { ensureSilenceWav } from "./rpc/silent-wav-generator.ts";
 import { markChangedNothing } from "./rpc/remote-script/forwarded/changed-nothing.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";

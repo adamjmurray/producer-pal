@@ -38,6 +38,7 @@ const envVarReplacements = {
   "process.env.BUILD_SHA": JSON.stringify(BUILD_SHA),
   "process.env.ENABLE_LIVE_API": JSON.stringify(process.env.ENABLE_LIVE_API),
   "process.env.ENABLE_CODE_EXEC": JSON.stringify(process.env.ENABLE_CODE_EXEC),
+  "process.env.ENABLE_GEN_UI": JSON.stringify(process.env.ENABLE_GEN_UI),
   "process.env.ENABLE_WARP_MARKERS": JSON.stringify(
     process.env.ENABLE_WARP_MARKERS,
   ),

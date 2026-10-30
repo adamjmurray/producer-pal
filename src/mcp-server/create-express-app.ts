@@ -8,6 +8,7 @@ import express, { type Request, type Response, type Express } from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
 import { errorMessage } from "#src/shared/error-message.ts";
+import { GEN_UI_TOOL_ID, isGenUiEnabled } from "#src/shared/gen-ui-types.ts";
 import { textEditParamToString } from "#src/shared/max/max-atoms.ts";
 import {
   DEFAULT_NOTATION,
@@ -25,6 +26,9 @@ import {
   rejectStatelessMcpMethods,
   serveStatelessMcp,
 } from "./helpers/http/stateless-mcp.ts";
+import { startLiveWatcher } from "./rpc/gen-ui/live-watcher.ts";
+import { connectWidgetsToSet } from "./rpc/gen-ui/set-storage.ts";
+import { withGenUi } from "./rpc/gen-ui/with-gen-ui.ts";
 import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
 import { errorHandlerMiddleware } from "./helpers/http/error-handler-middleware.ts";
 import { parseConfigBody } from "./helpers/http/config-body.ts";
@@ -49,6 +53,7 @@ import { setRemoteScriptEnabled } from "./rpc/remote-script/remote-script-client
 import { setRemoteScriptMinVersion } from "./rpc/remote-script/port/remote-script-version.ts";
 import { withUndoStepEnd } from "./rpc/remote-script/forwarded/with-undo-step-end.ts";
 import { registerDeviceInstallRoutes } from "./routes/device-install-route.ts";
+import { registerGenUiRoutes } from "./rpc/gen-ui/gen-ui-routes.ts";
 import { registerRemoteScriptSetupRoutes } from "./routes/remote-script-setup-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerSkillOverridesRoutes } from "./routes/skill-overrides-route.ts";
@@ -78,9 +83,12 @@ const config: ProducerPalConfig & { notation: Notation } = {
   liveApiEnabled: liveApiForcedOn,
   liveApiForcedOn,
   ...(liveApiForcedOn && { remoteScriptEnabled: true }),
-  tools: liveApiForcedOn
-    ? [...TOOL_NAMES, toolDefLiveApi.toolName]
-    : [...TOOL_NAMES],
+  tools: [
+    ...TOOL_NAMES,
+    ...(liveApiForcedOn ? [toolDefLiveApi.toolName] : []),
+    // Experimental, build-flagged (ENABLE_GEN_UI). Absent from release builds.
+    ...(isGenUiEnabled() ? [GEN_UI_TOOL_ID] : []),
+  ],
 };
 
 Max.addHandler("smallModelMode", (enabled: unknown) => {
@@ -185,7 +193,7 @@ function buildEnrichedCall(
   getCompactOutput: () => boolean | undefined = () => undefined,
   getPortalVersion: () => string | undefined = () => undefined,
 ): WrappedCallLiveApi {
-  return enrichConnect(
+  const enriched = enrichConnect(
     withDefaultOverrides(withUndoStepEnd(callLiveApi), () => {
       const overrides: RequestOverrides = {
         notation: getNotation(),
@@ -209,6 +217,9 @@ function buildEnrichedCall(
       portalVersion: getPortalVersion(),
     }),
   );
+
+  // Outermost: serves ppal-ui itself and announces finished writes to the UI.
+  return isGenUiEnabled() ? withGenUi(enriched) : enriched;
 }
 
 /**
@@ -371,6 +382,12 @@ export function createExpressApp(): Express {
   });
 
   registerRestApiRoutes(app, () => config, buildRestCall);
+
+  if (isGenUiEnabled()) {
+    registerGenUiRoutes(app);
+    connectWidgetsToSet();
+    startLiveWatcher();
+  }
 
   registerGlobalContextRoutes(app);
   registerGlobalSettingsRoutes(app);

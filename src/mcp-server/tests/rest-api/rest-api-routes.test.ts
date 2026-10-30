@@ -5,7 +5,7 @@
 
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { MAX_TIMEOUT_MS, SMALL_MODEL_MODE_HEADER } from "#src/shared/config.ts";
-import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
+import { ensureSilenceWav } from "../../rpc/silent-wav-generator.ts";
 import {
   lastMcpContext,
   mcpRequests,

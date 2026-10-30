@@ -43,8 +43,10 @@ separately to redo just one.
    `licenses/`. The checked-in `max-for-live-device/Producer_Pal.amxd` is not
    changed. It refuses to build from a dirty working tree, since the recorded
    commit would not describe the artifacts. It also refuses if your shell has a
-   debug flag set — they are substituted into the bundles, so a leftover
-   `ENABLE_CODE_EXEC=true` would ship code execution to everyone.
+   debug flag set (any in `GUARDED_BUILD_FLAGS` in
+   `scripts/build-and-release/helpers/build-flag-guard.ts`) — they are
+   substituted into the bundles, so a leftover one would ship a dev-only feature
+   to everyone.
 
    The release tag has to land on the commit it records — see
    [How update detection works](#how-update-detection-works).

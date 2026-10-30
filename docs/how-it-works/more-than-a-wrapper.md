@@ -179,7 +179,7 @@ drop on the boundary, and Live won't create an audio clip without a real audio
 **file** to point at. There's no "empty audio clip."
 
 So Producer Pal generates its own: a tiny
-[silent WAV file](https://github.com/adamjmurray/producer-pal/blob/main/src/shared/silent-wav-generator.ts):
+[silent WAV file](https://github.com/adamjmurray/producer-pal/blob/main/src/mcp-server/rpc/silent-wav-generator.ts):
 0.1 seconds of 44.1 kHz, 16-bit mono silence, about 8.8 KB, written once to a
 temp directory and reused. It's built by hand, byte by byte (RIFF header, `fmt`
 chunk, and a `data` chunk that's simply all zeros):

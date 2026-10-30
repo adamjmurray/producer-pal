@@ -60,6 +60,7 @@ nodeLog(`Producer Pal ${versionLabel} starting MCP server on port ${port}...`);
 const devFlags = [
   ["ENABLE_LIVE_API", process.env.ENABLE_LIVE_API],
   ["ENABLE_CODE_EXEC", process.env.ENABLE_CODE_EXEC],
+  ["ENABLE_GEN_UI", process.env.ENABLE_GEN_UI],
   ["ENABLE_REMOTE_CORS", process.env.ENABLE_REMOTE_CORS],
 ].filter(([, value]) => value === "true");
 

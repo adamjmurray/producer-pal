@@ -18,7 +18,7 @@ interface WavModule {
 async function loadFresh(): Promise<WavModule> {
   vi.resetModules();
 
-  return await import("#src/shared/silent-wav-generator.ts");
+  return await import("./silent-wav-generator.ts");
 }
 
 describe("silent-wav-generator", () => {
