@@ -118,13 +118,16 @@ describe("ppal-plugin-host", () => {
     await expect(pending).rejects.toThrow("ppal-plugin-host info failed");
   });
 
-  it("only load and set count as changing the Set", () => {
+  it("only load, set, map and unmap count as changing the Set", () => {
     const { changesSet } = toolDefPluginHost.toolOptions;
 
     expect(changesSet?.({ action: "load" })).toBe(true);
     expect(changesSet?.({ action: "set" })).toBe(true);
+    expect(changesSet?.({ action: "map" })).toBe(true);
+    expect(changesSet?.({ action: "unmap" })).toBe(true);
     expect(changesSet?.({ action: "info" })).toBe(false);
     expect(changesSet?.({ action: "params" })).toBe(false);
+    expect(changesSet?.({ action: "slots" })).toBe(false);
   });
 
   it("throws when no wrapper answers", async () => {
@@ -159,6 +162,75 @@ describe("ppal-plugin-host", () => {
     await expect(
       pluginHost({ deviceId: "9", action: "raw", message: [] }),
     ).rejects.toThrow("needs `message`");
+    expect(globalThis.messnamed).not.toHaveBeenCalled();
+  });
+
+  it("sends the slot ops' fields", async () => {
+    const mapped = pluginHost({
+      deviceId: "9",
+      action: "map",
+      slot: 3,
+      name: "Cutoff",
+    });
+
+    expect(sent().payload).toStrictEqual({
+      deviceId: "9",
+      op: "map",
+      slot: 3,
+      name: "Cutoff",
+    });
+    plugin_host_response(
+      sent().requestId,
+      '{"success":true,"slot":3,"index":5,"name":"Cutoff"}',
+    );
+    await expect(mapped).resolves.toStrictEqual({
+      slot: 3,
+      index: 5,
+      name: "Cutoff",
+    });
+
+    const byIndex = pluginHost({
+      deviceId: "9",
+      action: "map",
+      slot: 4,
+      index: 7,
+    });
+
+    expect(sent().payload).toStrictEqual(
+      expect.objectContaining({ op: "map", slot: 4, index: 7 }),
+    );
+    plugin_host_response(sent().requestId, '{"success":true}');
+    await byIndex;
+
+    const unmapped = pluginHost({ deviceId: "9", action: "unmap", slot: 3 });
+
+    expect(sent().payload).toStrictEqual({
+      deviceId: "9",
+      op: "unmap",
+      slot: 3,
+    });
+    plugin_host_response(sent().requestId, '{"success":true}');
+    await unmapped;
+
+    const listed = pluginHost({ deviceId: "9", action: "slots" });
+
+    expect(sent().payload).toStrictEqual({ deviceId: "9", op: "slots" });
+    plugin_host_response(sent().requestId, '{"success":true,"slots":[]}');
+    await listed;
+  });
+
+  it("refuses map and unmap without what they need", async () => {
+    vi.mocked(globalThis.messnamed).mockClear();
+
+    await expect(
+      pluginHost({ deviceId: "9", action: "map", name: "Cutoff" }),
+    ).rejects.toThrow("needs `slot`");
+    await expect(
+      pluginHost({ deviceId: "9", action: "unmap" }),
+    ).rejects.toThrow("needs `slot`");
+    await expect(
+      pluginHost({ deviceId: "9", action: "map", slot: 1 }),
+    ).rejects.toThrow("needs `name` or `index`");
     expect(globalThis.messnamed).not.toHaveBeenCalled();
   });
 });

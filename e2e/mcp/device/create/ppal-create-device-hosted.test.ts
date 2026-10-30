@@ -15,6 +15,9 @@
  * Duplicating a track stands in for a Set reload: the copy's wrapper starts
  * fresh, with only what Live saved for it.
  *
+ * The automation slot tests also use ppal-live-api and ppal-plugin-host, which
+ * the suite turns on per test.
+ *
  * Uses: e2e-test-set (adds its own MIDI track)
  *
  * Run with: ENABLE_HOSTED_PLUGINS=true npm run e2e:mcp:remote-script -- device/create/ppal-create-device-hosted
@@ -22,10 +25,11 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   createMidiTrack,
   parseToolResult,
+  setConfig,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers";
@@ -42,6 +46,9 @@ const HAS_SERUM = [
 
 // A duplicated wrapper restores its plug-in a moment after it appears.
 const RESTORE_MS = 3000;
+
+// Live closes an undo step after about this long without a change.
+const UNDO_SETTLE_MS = 5000;
 
 interface HostedDevice {
   id: string;
@@ -184,5 +191,185 @@ describe.skipIf(
     const [param] = (await readDevice(devicePath, "Main Vol")).parameters ?? [];
 
     expect(param?.value).toMatch(/^25%/);
+  });
+
+  describe("automation slots", () => {
+    beforeEach(async () => {
+      await setConfig({ liveApiEnabled: true });
+    });
+
+    /**
+     * Run ppal-live-api operations.
+     * @param path - The LiveAPI path
+     * @param operations - The operations to run
+     * @returns One result per operation
+     */
+    async function liveApi(
+      path: string,
+      operations: unknown[],
+    ): Promise<unknown[]> {
+      return (
+        await call<{ results: unknown[] }>("ppal-live-api", {
+          path,
+          operations,
+        })
+      ).results;
+    }
+
+    /**
+     * Find a wrapper's automation dial by its Live parameter name.
+     * @param deviceId - The wrapper's Live device id
+     * @param dialName - e.g. "Automation 001"
+     * @returns The dial's parameter id, as ppal-update-clip envelopes take it
+     */
+    async function findDial(
+      deviceId: string,
+      dialName: string,
+    ): Promise<string> {
+      const [children] = (await liveApi(`id ${deviceId}`, [
+        { type: "get-child-ids", property: "parameters" },
+      ])) as [string[]];
+
+      for (const child of children) {
+        const [name] = await liveApi(child, [
+          { type: "get-property", property: "name" },
+        ]);
+
+        if (name === dialName) {
+          return child.replace("id ", "");
+        }
+      }
+
+      throw new Error(`no parameter named ${dialName}`);
+    }
+
+    /**
+     * Read the hosted plug-in's "Main Vol" through the wrapper.
+     * @param deviceId - The wrapper's Live device id
+     * @returns Its value, 0..1
+     */
+    async function mainVolume(deviceId: string): Promise<number> {
+      const { params } = await call<{ params: { value: number }[] }>(
+        "ppal-plugin-host",
+        { deviceId, action: "params", names: ["Main Vol"] },
+      );
+
+      return Number(params[0]?.value);
+    }
+
+    /**
+     * Wait (up to 6 s) for the plug-in's "Main Vol" to reach a value.
+     * @param deviceId - The wrapper's Live device id
+     * @param wanted - The value, 0..1
+     * @returns Its last value, 0..1
+     */
+    async function waitForMainVolume(
+      deviceId: string,
+      wanted: number,
+    ): Promise<number> {
+      let value = Number.NaN;
+
+      for (let attempt = 0; attempt < 30; attempt++) {
+        value = await mainVolume(deviceId);
+
+        if (Math.abs(value - wanted) < 0.01) {
+          break;
+        }
+
+        await sleep(200);
+      }
+
+      return value;
+    }
+
+    it("maps a slot, and clip automation on its dial moves the plug-in without undo steps", async () => {
+      const { track, path } = await hostOnNewTrack("Serum 2");
+      const deviceId = (await readDevice(path)).id;
+      const slot = { deviceId, action: "map", slot: 1, name: "Main Vol" };
+
+      expect(await call("ppal-plugin-host", slot)).toStrictEqual(
+        expect.objectContaining({
+          slot: 1,
+          name: "Main Vol",
+          dialSet: true,
+        }),
+      );
+
+      // Mapping the same param again changes nothing.
+      expect(await call("ppal-plugin-host", slot)).toStrictEqual(
+        expect.objectContaining({ dialSet: false, unchanged: true }),
+      );
+
+      const dial = await findDial(deviceId, "Automation 001");
+      const clip = await call<{ id: string }>("ppal-create-clip", {
+        path: `t${track}/s0`,
+        notes: "C3 1|1",
+        length: "4bar",
+      });
+
+      await call("ppal-update-clip", {
+        id: clip.id,
+        envelopes: `${dial}: 1|1 0.2`,
+      });
+
+      // A tempo change is the marker: if playback added undo steps, one undo
+      // would take one of them back instead of the tempo.
+      const [tempo] = (await liveApi("live_set", [
+        { type: "get-property", property: "tempo" },
+      ])) as [number];
+
+      try {
+        await liveApi("live_set", [
+          { type: "set-property", property: "tempo", value: tempo + 7 },
+        ]);
+        await sleep(UNDO_SETTLE_MS);
+        await call("ppal-playback", {
+          action: "play-session-clips",
+          id: clip.id,
+        });
+
+        expect(await waitForMainVolume(deviceId, 0.2)).toBeCloseTo(0.2, 1);
+
+        await call("ppal-playback", { action: "stop-all-session-clips" });
+        await sleep(UNDO_SETTLE_MS);
+        await liveApi("live_set", [{ type: "call", method: "undo" }]);
+
+        const [undone] = await liveApi("live_set", [
+          { type: "get-property", property: "tempo" },
+        ]);
+
+        expect(undone).toBe(tempo);
+      } finally {
+        await liveApi("live_set", [
+          { type: "set-property", property: "tempo", value: tempo },
+        ]);
+      }
+    }, 60_000);
+
+    it("keeps the slots on a duplicated track", async () => {
+      const { track, path } = await hostOnNewTrack("Serum 2");
+      const deviceId = (await readDevice(path)).id;
+
+      await call("ppal-plugin-host", {
+        deviceId,
+        action: "map",
+        slot: 3,
+        name: "Main Vol",
+      });
+
+      const copy = await duplicateTrack(track);
+      const copyDevice = await readDevice(`${copy}/${path.split("/").at(-1)}`);
+
+      expect(
+        await call("ppal-plugin-host", {
+          deviceId: copyDevice.id,
+          action: "slots",
+        }),
+      ).toStrictEqual(
+        expect.objectContaining({
+          slots: [{ slot: 3, index: expect.any(Number), name: "Main Vol" }],
+        }),
+      );
+    });
   });
 });

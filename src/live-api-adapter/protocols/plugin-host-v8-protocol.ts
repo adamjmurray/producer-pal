@@ -21,7 +21,16 @@ const SLOW_TIMEOUT_MS = 20_000;
 /** How a timeout's error begins. A wrapper's own error never does. */
 export const NO_ANSWER = "No plug-in host answered";
 
-export type PluginHostOp = "info" | "load" | "params" | "set" | "write" | "raw";
+export type PluginHostOp =
+  | "info"
+  | "load"
+  | "params"
+  | "set"
+  | "write"
+  | "raw"
+  | "map"
+  | "unmap"
+  | "slots";
 
 export interface PluginHostResponse {
   success: boolean;

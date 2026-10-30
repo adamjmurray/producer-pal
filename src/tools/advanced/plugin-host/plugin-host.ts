@@ -8,7 +8,15 @@ import { requestPluginHost } from "#src/live-api-adapter/protocols/plugin-host-v
 
 interface PluginHostArgs {
   deviceId: string;
-  action: "info" | "load" | "params" | "set" | "raw";
+  action:
+    | "info"
+    | "load"
+    | "params"
+    | "set"
+    | "raw"
+    | "map"
+    | "unmap"
+    | "slots";
   plugin?: string;
   names?: string[];
   search?: string;
@@ -16,6 +24,9 @@ interface PluginHostArgs {
   limit?: number;
   params?: Array<{ index?: number; name?: string; value: number }>;
   message?: string[];
+  slot?: number;
+  name?: string;
+  index?: number;
 }
 
 /**
@@ -30,6 +41,9 @@ interface PluginHostArgs {
  * @param args.limit - Most matches to return (params)
  * @param args.params - Parameters to set (set)
  * @param args.message - Message for vst~ (raw)
+ * @param args.slot - Automation slot number (map, unmap)
+ * @param args.name - Parameter name to link (map)
+ * @param args.index - Parameter index to link (map)
  * @returns The wrapper's reply, minus `success`
  */
 export async function pluginHost({
@@ -42,6 +56,9 @@ export async function pluginHost({
   limit,
   params,
   message,
+  slot,
+  name,
+  index,
 }: PluginHostArgs): Promise<Record<string, unknown>> {
   if (action === "load") {
     return await loadPlugin(deviceId, plugin);
@@ -52,6 +69,9 @@ export async function pluginHost({
     search,
     offset,
     limit,
+    slot,
+    name,
+    index,
   });
 
   return await send(deviceId, action, request);
@@ -115,12 +135,30 @@ function buildRequest(
   action: PluginHostArgs["action"],
   params: PluginHostArgs["params"],
   message: string[] | undefined,
-  query: Pick<PluginHostArgs, "names" | "search" | "offset" | "limit">,
+  query: Pick<
+    PluginHostArgs,
+    "names" | "search" | "offset" | "limit" | "slot" | "name" | "index"
+  >,
 ): object {
   switch (action) {
-    case "params":
+    case "params": {
+      const { names, search, offset, limit } = query;
+
       // Unset fields drop out when the request is serialized.
-      return query;
+      return { names, search, offset, limit };
+    }
+
+    case "map":
+    case "unmap":
+      if (query.slot == null) {
+        throw new Error(`action '${action}' needs \`slot\``);
+      }
+
+      if (action === "map" && query.name == null && query.index == null) {
+        throw new Error("action 'map' needs `name` or `index`");
+      }
+
+      return { slot: query.slot, name: query.name, index: query.index };
 
     case "set":
       if (params == null || params.length === 0) {

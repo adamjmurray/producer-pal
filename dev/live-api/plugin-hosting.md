@@ -164,6 +164,8 @@ Live saves the plug-in's state in a hidden blob parameter, not through `vst~`.
   - when playback stops, if edits are still pending
   - every 2 s (while playing too) when the state differs, which catches changes
     that send no parameter change, such as a program change
+  - not when slots moved the plug-in: reads and the poll adopt that state
+    without writing (see Automation)
 - **Gotcha:** Live saves only what was last written to `vststate`, never the
   live plug-in state, and a duplicate or a same-file hotswap restores from it
   too. A state change not written yet is lost.
@@ -197,29 +199,56 @@ Live saves the plug-in's state in a hidden blob parameter, not through `vst~`.
   to natural and linear phase moved it 0 → 320 → 5120 samples within a second
   each.
 
-### Automation (not supported)
+### Automation
 
-Wrapper parameters are not Live parameters, so they can't be automated. Making
-them automatable needs `live.*` dials mapped to plug-in parameters, and every
-way of naming those dials needs a wrapper file per plug-in or per instance, so
-it was dropped. What the spike found:
+Plug-in params aren't Live parameters, so the wrapper carries a fixed set of
+`live.dial`s, 0–1, that Live can automate. Each dial is a slot that can drive
+one plug-in param. There are 128: a dial, a `prepend slot N` and two cords per
+slot in the patcher, and `SLOT_COUNT` in the code box. Change both together.
 
-- Live reads a device's parameter list once, within about 90 ms of the device
-  loading. Dials created later, or renamed or re-ranged later, never reach Live.
-  The v8 script's load-time code can set names, ranges and units, and hide
-  unused dials (`_parameter_invisible 2`).
-- The restored plug-in and stored values arrive after that, so a generic wrapper
-  can't name its dials for the plug-in it holds. Real names need the dial
-  attributes baked into a wrapper file. A static 2500-dial device loads and Live
-  lists them all; each dial adds about 700 bytes to the `.amxd`.
+- **Names are fixed and zero-padded**: "Automation 001" to "Automation 128" (two
+  digits under 100 slots). Live reads a device's parameter list once, about 90
+  ms after load, before the plug-in is restored, so the dials can't be named for
+  it. Live sorts the names as text, so unpadded ones would list as 1, 10, 11,
+  … 2.
+- **Live matches automation to parameters by name** across reloads, so a slot
+  keeps its automation whatever it drives.
+- **The mapping** is `vstslots`, a stored-only blob like `vststate`: JSON
+  `{"<slot>": {index, name, file}}`, where `file` is the plug-in file the entry
+  was made for. Entries for another file are ignored, and dropped the next time
+  the mapping is saved. `ppal-plugin-host` has `map`, `unmap` and `slots` (which
+  also gives the slot count). The panel shows the list ("3: Cutoff").
+- **Running**: a dial change reaches the code box as `slot <n> <value>`, which
+  writes the mapped param. `vst~` echoes a write straight back, while the script
+  is still busy, so the echo isn't taken for an edit in the plug-in's window.
+- **After load**: once the restored plug-in is ready, the wrapper sends each
+  mapped dial's value to the plug-in, so a reopened Set matches its dials.
+- **`map`** sets the dial to the param's current value, so dial and plug-in
+  agree. It leaves the dial alone when the slot already drives that param (it
+  changes nothing and saves nothing) or when the dial has arrangement automation
+  (`automation_state` not 0 on its `DeviceParameter`), since setting a dial from
+  the wrapper overrides playing automation, as touching an automated knob does.
+  The reply says whether it did (`dialSet`).
+- **Undo**: the plug-in's state changes while slots write, but a state written
+  to `vststate` is an undo step, and a moving envelope writes its slot hundreds
+  of times a second. So a read request, or the poll, that finds the state
+  changed only because slots wrote since the last save takes it as saved without
+  writing it. Stand-in params for MIDI don't count as edits either: Live's All
+  Notes Off lands there when playback starts and stops. Trade-off: an edit in
+  the plug-in window or a program change made while slots move is saved only by
+  the next real save. Setting the dial in `map` is one extra undo step.
+- **Why 128**: each slot adds about 1.5 KB to the `.amxd` (18 KB gzipped for the
+  whole wrapper) and under 1 ms to loading it: 128 slots loaded about 40 ms
+  slower than 32, and 1000 about 0.6 s slower. Slots can be added later, but
+  never renamed or removed: that would cut off automation saved in users' Sets.
+  Three digits leave room up to 999.
 - Deleting the device and undoing re-reads it from its file, and crashed Live
   twice. Hotswapping the same `.amxd` over itself reloads it more safely,
   keeping the device id and plug-in state.
-- Live matches automation to parameters by name across reloads.
-- With `vst~` saving the plug-in's state (`parameter_enable 1`), every value
-  written to the plug-in is an undo step, automation included: 10–20 a second
-  while automation moves. `begin_undo_step`/`end_undo_step` don't merge them,
-  from the wrapper or the remote script.
+- With `vst~` saving the plug-in's state itself (`parameter_enable 1`), every
+  value written to the plug-in is an undo step, automation included.
+  `begin_undo_step`/`end_undo_step` don't merge them, from the wrapper or the
+  remote script. That is why `vst~` has it off.
 
 ### Building the devices
 

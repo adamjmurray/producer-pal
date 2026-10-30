@@ -12,21 +12,37 @@ export const toolDefPluginHost = defineTool("ppal-plugin-host", {
     "Spike: read and set VST3 plug-in parameters through a plug-in host wrapper device. " +
     "`info` shows the loaded plug-in, `load` loads one by the name Live's browser shows, " +
     "`params` lists parameters (value 0..1 plus the plug-in's own display text), " +
-    "`set` sets some and reads them back, `raw` sends vst~ a message.",
+    "`set` sets some and reads them back, `raw` sends vst~ a message. " +
+    "`map` links an automation slot to a param (by `name` or `index`) and sets the slot's dial to the param's value " +
+    "(unless the slot already drives it, or the dial has arrangement automation), `unmap` frees a slot, " +
+    "`slots` lists the links and the slot count.",
 
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
 
-  // Only these two change anything.
-  changesSet: ({ action }) => action === "load" || action === "set",
+  // Only these change anything.
+  changesSet: ({ action }) =>
+    action === "load" ||
+    action === "set" ||
+    action === "map" ||
+    action === "unmap",
 
   inputSchema: {
     deviceId: z.coerce
       .string()
       .describe("Live device id of the plug-in host wrapper device"),
-    action: z.enum(["info", "load", "params", "set", "raw"]),
+    action: z.enum([
+      "info",
+      "load",
+      "params",
+      "set",
+      "raw",
+      "map",
+      "unmap",
+      "slots",
+    ]),
     plugin: z
       .string()
       .optional()
@@ -56,6 +72,19 @@ export const toolDefPluginHost = defineTool("ppal-plugin-host", {
       )
       .optional()
       .describe("For set: each by index or name, value 0..1"),
+    slot: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .describe("For map and unmap: automation slot, from 1"),
+    name: z.string().optional().describe("For map: exact parameter name"),
+    index: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .describe("For map: the plug-in's 1-based parameter index"),
     message: z
       .array(z.string())
       .optional()
