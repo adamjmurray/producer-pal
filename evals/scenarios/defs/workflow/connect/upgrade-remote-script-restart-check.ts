@@ -86,7 +86,7 @@ export const upgradeRemoteScriptRestartCheck: EvalScenario = {
       prompt: `Connecting showed the Producer Pal remote script is behind the device. The user agreed to update it, the install succeeded, and later the user said they restarted Live.
 
 Evaluate the assistant's replies:
-1. After the install, it tells the user to restart Live before anything else.
+1. After the install, it tells the user to restart Live before anything else. (The remote script was already running, so leaving out the first-install Control Surface step is fine.)
 2. After "OK, I restarted Live.", it re-checks versions without installing again, and says everything is up to date.
 3. That final reply suggests the user start a new chat so it loads the new version's skills and tools.
 4. It claims nothing the tool results did not show.`,
