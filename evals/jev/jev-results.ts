@@ -9,9 +9,10 @@
  */
 
 import { readdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { lastCriteriaChange } from "./jev-criteria-dates.ts";
 import { allScenarios } from "#evals/scenarios/load-scenarios/all-scenarios.ts";
+import { restoreInjectedBlocks } from "#evals/scenarios/helpers/json-results/injected-blocks.ts";
 import {
   RESULTS_DIR,
   type JsonEvalResult,
@@ -250,7 +251,7 @@ async function listJsonFiles(dir: string): Promise<string[]> {
 }
 
 /**
- * Read one result file.
+ * Read one result file, with its injected blocks restored to text.
  *
  * @param path - File path
  * @returns The result, or undefined when it can't be read or isn't a result
@@ -259,7 +260,10 @@ async function readResult(path: string): Promise<JsonEvalResult | undefined> {
   try {
     const parsed = JSON.parse(await readFile(path, "utf8")) as JsonEvalResult;
 
-    return Array.isArray(parsed.turns) ? parsed : undefined;
+    // Judges need the block text, not the hashes the file stores.
+    return Array.isArray(parsed.turns)
+      ? await restoreInjectedBlocks(parsed, dirname(path))
+      : undefined;
   } catch {
     return undefined;
   }

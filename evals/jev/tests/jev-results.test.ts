@@ -149,4 +149,43 @@ describe("loadJudgedResults", () => {
     expect(llm.items).toHaveLength(3);
     expect(llm.skipped.jevDecided).toBe(1);
   });
+
+  it("hands judges the text of a result's injected blocks", async () => {
+    await mkdir(join(dir, "run1", "blocks"));
+    await writeFile(
+      join(dir, "run1", "blocks", "0123456789abcdef.txt"),
+      "Everything is up to date.",
+    );
+    await writeFile(
+      join(dir, "run1", "with-blocks.json"),
+      JSON.stringify({
+        ...JSON.parse(resultJson("b", "2026-03-01T00:00:00Z")),
+        turns: [
+          {
+            userMessage: "",
+            assistantResponse: "",
+            toolCalls: [
+              {
+                name: "ppal-connect",
+                args: {},
+                injectedBlocks: ["0123456789abcdef"],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    const { items } = await loadJudgedResults({
+      resultsDir: dir,
+      scenarios,
+      scenarioIds: ["b"],
+      includeStale: true,
+    });
+    const loaded = items.find((i) => i.file.endsWith("with-blocks.json"));
+
+    expect(loaded?.result.turns[0]?.toolCalls[0]?.injectedBlocks).toStrictEqual(
+      ["Everything is up to date."],
+    );
+  });
 });

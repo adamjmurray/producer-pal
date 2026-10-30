@@ -18,6 +18,7 @@ import {
   type EvalAssertionResult,
   type EvalProvider,
 } from "../types.ts";
+import { injectedBlockLines } from "./helpers/injected-blocks-transcript.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 
 export const JUDGE_SYSTEM_PROMPT = `You are reviewing an AI assistant's performance in a music production task.
@@ -60,6 +61,8 @@ export interface TranscriptTurn {
     args: Record<string, unknown>;
     result?: string;
     warnings?: string[];
+    /** Extra result blocks as text (not hashes); see `injectedBlockLines` */
+    injectedBlocks?: string[];
   }>;
 }
 
@@ -184,7 +187,13 @@ export function formatTranscript(turns: TranscriptTurn[]): string {
                 // judge reads a refused operation as a successful one.
                 const warnings = (tc.warnings ?? []).map((w) => `    ${w}`);
 
-                return [call, result, ...warnings].filter(Boolean).join("\n");
+                // The model sees these blocks too (ppal-connect's context, version
+                // notes); without them the judge calls true claims unsupported.
+                const blocks = injectedBlockLines(tc.injectedBlocks);
+
+                return [call, result, ...blocks, ...warnings]
+                  .filter(Boolean)
+                  .join("\n");
               })
               .join("\n")
           : "  (no tool calls)";
