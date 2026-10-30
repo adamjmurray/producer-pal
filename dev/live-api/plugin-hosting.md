@@ -26,9 +26,10 @@ Two generic wrapper devices ship with Producer Pal, in
 | `PPal Plug-in Instrument.amxd` | instrument   | `midiin` → `midiparse` → `vst~` → `plugout~` |
 
 Nothing is generated per plug-in. Producer Pal inserts a wrapper with the remote
-script's browser load, then tells it which plug-in to load. The `.amxd` files
-are the source: edit them in Max. The control logic is JavaScript in a
-`v8.codebox` inside each patch, so the devices need no external files.
+script's browser load, then tells it which plug-in to load. The control logic is
+`wrapper.js` beside the devices, embedded in a `v8.codebox` in each patch, so
+the devices need no external files. See
+[Building the devices](#building-the-devices).
 
 ### Messaging
 
@@ -278,6 +279,17 @@ the patcher JSON plus a trailing NUL. **A patcher whose `project` block lacks
 fields Max expects (such as `searchpath`) crashes Live on load**, inside
 `project_deserialize_searchpath`. Start from Live's own templates in
 `Ableton Live 12 Suite.app/Contents/App-Resources/Misc/Max Devices/`.
+
+`npm run plugin-host:build` rebuilds both devices in place
+(`scripts/live-api/plugin-host/build-plugin-host.ts`). It puts `wrapper.js` into
+each `v8.codebox` and regenerates the 128 automation dials, their
+`prepend slot N` boxes and cords, the `vstslots` pattr and the slot list. It
+leaves every other box, and the `project` block, alone. Edit `wrapper.js` and
+the generated boxes through the script; edit the rest of the patch in Max, then
+run the script so the files match what a rebuild gives. A test fails while a
+device is out of date with `wrapper.js`. After editing the code inside Max's
+code box instead, `npm run plugin-host:build -- --extract` copies it back into
+`wrapper.js` first.
 
 ## Not yet tested
 
