@@ -39,8 +39,8 @@ export const projectContextWorkflow: EvalScenario = {
     // Turn 1: Write project context
     { type: "tool_called", tool: TOOLS.context, turn: 1 },
 
-    // Turn 2: Read project context
-    { type: "tool_called", tool: TOOLS.context, turn: 2 },
+    // Turn 2 needs no ppal-context call: the project context is already in the
+    // model's context, so the response and state checks below carry it.
 
     // The outcome, not the prose: the note is really in the project context.
     {

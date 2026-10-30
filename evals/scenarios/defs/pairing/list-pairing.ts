@@ -124,27 +124,64 @@ function assertAlternatingColors(): EvalAssertion {
 }
 
 /**
+ * Whether a clip start is a repeat of the clip at `from`: the same beat, a whole
+ * number of `tileBars` later. Giving duplicate an `arrangementLength` longer
+ * than the clip tiles it, which is a fine way to fill the space.
+ *
+ * @param start - A clip start, as bar|beat
+ * @param from - A requested start, as bar|beat
+ * @param tileBars - The clip's length in bars
+ * @returns True when `start` is a tiled repeat of `from`
+ */
+function isTiledRepeat(start: string, from: string, tileBars: number): boolean {
+  const [bar, beat] = start.split("|").map(Number);
+  const [fromBar, fromBeat] = from.split("|").map(Number);
+
+  return (
+    bar != null &&
+    fromBar != null &&
+    beat === fromBeat &&
+    bar > fromBar &&
+    (bar - fromBar) % tileBars === 0
+  );
+}
+
+/**
  * One track's arrangement holds clips at exactly these bars.
  * @param trackIndex - The track to read
  * @param bars - The bar|beat positions expected on it
+ * @param tileBars - When set, repeats of a requested clip every `tileBars`
+ *   bars are fine too (the clip's length, for a copy the model stretched)
  * @returns A state assertion over the track's arrangement
  */
 function assertArrangementBars(
   trackIndex: number,
   bars: string[],
+  tileBars?: number,
 ): EvalAssertion {
+  const problem = (result: unknown): string | null => {
+    const starts = clipStarts(asArrangementTrack(result).arrangementClips);
+    const missing = bars.filter((bar) => !starts.includes(bar));
+    const stray = starts.filter(
+      (start) =>
+        !bars.includes(start) &&
+        (tileBars == null ||
+          !bars.some((bar) => isTiledRepeat(start, bar, tileBars))),
+    );
+
+    return missing.length === 0 && stray.length === 0
+      ? null
+      : `expected t${trackIndex} clips at ${bars.join(", ")}, got ${
+          starts.join(", ") || "none"
+        }`;
+  };
+
   return {
     type: "state",
     tool: TOOLS.readTrack,
     args: { trackIndex, include: ["arrangement-clips"] },
-    expect: (result) =>
-      clipStarts(asArrangementTrack(result).arrangementClips).join(",") ===
-      bars.join(","),
-    explain: (result) =>
-      `expected t${trackIndex} clips at ${bars.join(", ")}, got ${
-        clipStarts(asArrangementTrack(result).arrangementClips).join(", ") ||
-        "none"
-      }`,
+    expect: (result) => problem(result) == null,
+    explain: (result) => problem(result) ?? "ok",
   };
 }
 
@@ -196,6 +233,9 @@ export const arrangementDestinationPairing: EvalScenario = {
   ],
 };
 
+/** The drum clip is two bars long; a longer `arrangementLength` tiles it. */
+const DRUM_CLIP_BARS = 2;
+
 export const duplicateDestinationPairing: EvalScenario = {
   id: "duplicate-destination-pairing",
   tags: ["pairing"],
@@ -212,8 +252,8 @@ export const duplicateDestinationPairing: EvalScenario = {
 
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    assertArrangementBars(0, ["1|1", "9|1"]),
-    assertArrangementBars(1, ["5|1", "13|1"]),
+    assertArrangementBars(0, ["1|1", "9|1"], DRUM_CLIP_BARS),
+    assertArrangementBars(1, ["5|1", "13|1"], DRUM_CLIP_BARS),
     assertNoShortList("toPath", "arrangementStart"),
     { type: "token_usage", maxTokens: 1_500 },
   ],

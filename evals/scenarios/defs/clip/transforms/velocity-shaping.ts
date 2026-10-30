@@ -10,7 +10,9 @@
  * This is the counterpart to `drum-transforms`, which asks for the terse and
  * the fixed answer to the same two musical requests. Both readings are correct
  * musically; the prompts are what decide which one is wanted, so the pair
- * checks that the wording actually steers the model.
+ * checks that the wording actually steers the model. Any way of writing the
+ * values counts (hit by hit, a rewritten `notes`, even `ramp()`): the check
+ * reads the notes back, because that is what the user sees and tweaks.
  */
 
 import { argText } from "../../arg-text.ts";
@@ -20,7 +22,10 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
-import { assertNotesRead } from "../helpers/clip-note-assertions.ts";
+import {
+  assertNotesRead,
+  clipStateAssertion,
+} from "../helpers/clip-note-assertions.ts";
 import { TOOL_UPDATE_CLIP } from "../helpers/clip-tool-constants.ts";
 import { TOOLS } from "#evals/shared/tool-names.ts";
 
@@ -48,87 +53,45 @@ function noteWritingArgs(turns: EvalTurnResult[], turn: number): string {
   return text;
 }
 
-/**
- * Velocities in the order they were written, however they were spelled:
- * `velocity = 90` (transform longhand) and `v90` (shorthand, and the `notes`
- * layer) both count. Beat positions like `2|3.25` never match either form.
- *
- * @param text - Joined transforms/notes text
- * @returns Velocity values, in written order
- */
-function writtenVelocities(text: string): number[] {
-  const matches = [
-    ...text.matchAll(/velocity\s*=\s*(\d+)/g),
-    ...text.matchAll(/\bv(\d+)\b/g),
-  ];
-
-  return matches
-    .toSorted((a, b) => a.index - b.index)
-    .map((match) => Number(match[1]));
-}
-
-/** The closed hats this Set puts in bar 2 beats 3-4, as 8 sixteenths. */
-const HAT = "Ab1";
-
 /** The snare pitch in this Set's drum rack. */
 const SNARE = "E1";
 
+/** MIDI pitch of the closed hats (Ab1). */
+const HAT_PITCH = 44;
+
+/** Bar 2 beats 3-4 in 4/4, in quarter beats from the clip start. */
+const LAST_TWO_BEATS = { from: 6, to: 8 };
+
 /**
- * Assert the crescendo was written out hit by hit rather than as a ramp.
- * @returns A custom assertion over turn 2
+ * Assert the crescendo ended up as a rising velocity on each hat in the last two
+ * beats, quiet to max. Grades the notes in the clip, not how they were written:
+ * a `ramp()` that lands the right values counts, a wrong one does not.
+ *
+ * @returns A state assertion over the drum clip
  */
-function assertPerNoteCrescendo(): EvalAssertion {
-  return {
-    type: "custom",
-    description: "crescendo written as an explicit velocity per hat",
-    assert: (turns) => {
-      const text = noteWritingArgs(turns, 2);
+function assertCrescendoOutcome(): EvalAssertion {
+  return clipStateAssertion("0/0", "4/4", (events) => {
+    const velocities = events
+      .filter(
+        (event) =>
+          event.pitch === HAT_PITCH &&
+          event.start_time >= LAST_TWO_BEATS.from &&
+          event.start_time < LAST_TWO_BEATS.to,
+      )
+      .toSorted((a, b) => a.start_time - b.start_time)
+      .map((event) => event.velocity);
 
-      if (!text.includes(HAT)) {
-        throw new Error(`crescendo does not target ${HAT}: ${text}`);
-      }
-
-      // `ramp()` is the right answer to the OTHER prompt. Here it means the
-      // model ignored the ask for individual values.
-      if (/\bramp\(/i.test(text)) {
-        throw new Error(`asked for a value per hit, got a ramp(): ${text}`);
-      }
-
-      const velocities = writtenVelocities(text);
-
-      // Eight hats sit in the range; accept a model that shapes only some of
-      // them, but four points is the least that reads as a curve.
-      if (velocities.length < 4) {
-        throw new Error(
-          `expected a velocity per hit (>= 4), got ${velocities.length}: ${text}`,
-        );
-      }
-
-      const rising = velocities.every(
-        (velocity, index) =>
-          index === 0 || velocity > (velocities[index - 1] as number),
-      );
-
-      if (!rising) {
-        throw new Error(
-          `velocities should rise across the crescendo, got ${velocities.join(", ")}`,
-        );
-      }
-
-      const first = velocities[0] as number;
-      const last = velocities.at(-1) as number;
-
-      if (first >= 50) {
-        throw new Error(`crescendo starts at ${first}, should be < 50 (quiet)`);
-      }
-
-      if (last <= 120) {
-        throw new Error(`crescendo ends at ${last}, should be > 120 (max)`);
-      }
-
-      return true;
-    },
-  };
+    // Eight hats sit in the range; accept a model that shapes only some of
+    // them, but four points is the least that reads as a curve.
+    return (
+      velocities.length >= 4 &&
+      velocities.every(
+        (v, i) => i === 0 || v > (velocities[i - 1] as number),
+      ) &&
+      (velocities[0] as number) < 50 &&
+      (velocities.at(-1) as number) > 120
+    );
+  });
 }
 
 /**
@@ -193,7 +156,7 @@ export const velocityShaping: EvalScenario = {
     assertNotesRead(1),
 
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
-    assertPerNoteCrescendo(),
+    assertCrescendoOutcome(),
 
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 3 },
     assertReRandomizingSnare(),

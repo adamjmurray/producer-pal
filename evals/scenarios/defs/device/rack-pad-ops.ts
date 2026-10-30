@@ -229,7 +229,7 @@ export const rackPadOps: EvalScenario = {
     MSG_CONNECT,
     "In the Drums track's drum rack, turn the pedal hihat pad's mixer down to -6 dB and pan it a little to the right.",
     "Copy that pedal hihat pad onto the empty C3 pad.",
-    "Layer the shaker pad on top of C3 as well.",
+    "Copy the shaker pad onto C3 too, on top of what's there.",
     "That's too busy — take the shaker layer back off C3 and leave the pedal hihat on it.",
   ],
 
