@@ -171,14 +171,24 @@ function unmetRequirements(answer: JevJudgeResult): string[] {
     .filter((q) => q.probability < FAIL_THRESHOLD)
     .map((q) => {
       const text =
-        q.kind === "whole"
-          ? "the criteria as a whole"
-          : q.text.length > 200
-            ? `${q.text.slice(0, 200)}...`
-            : q.text;
+        q.kind === "requirement"
+          ? truncate(q.text)
+          : q.kind === "whole"
+            ? "the criteria as a whole"
+            : "replies claim actions the tool calls do not show";
 
       return `Jev: not met (P=${q.probability.toFixed(2)}): ${text}`;
     });
+}
+
+/**
+ * Cut a long requirement for an issue line.
+ *
+ * @param text - The requirement text
+ * @returns The text, shortened past 200 characters
+ */
+function truncate(text: string): string {
+  return text.length > 200 ? `${text.slice(0, 200)}...` : text;
 }
 
 /**
@@ -198,6 +208,7 @@ function toJudgment(answer: JevJudgeResult, route: JevRoute): JsonJevJudgment {
         answer.minProbability,
       ),
     }),
+    ...(answer.escalatedBy != null && { escalatedBy: answer.escalatedBy }),
     model: answer.model,
     minProbability: answer.minProbability,
     questions: answer.questions.map((q) => ({

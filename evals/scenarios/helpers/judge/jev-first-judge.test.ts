@@ -141,6 +141,24 @@ describe("assertWithJevFirst", () => {
     expect(details.jev).not.toHaveProperty("cost");
   });
 
+  it("names a low claims answer plainly when it is among the unmet", async () => {
+    const { details } = await run(async () => {
+      const base = answer(FAIL_THRESHOLD - 0.1, "fail");
+
+      return {
+        ...base,
+        questions: [
+          ...base.questions,
+          { id: "claims", kind: "claims", text: "C", probability: 0.1 },
+        ],
+      };
+    });
+
+    expect(details.issues).toContain(
+      "Jev: not met (P=0.10): replies claim actions the tool calls do not show",
+    );
+  });
+
   it("records the per-question probabilities without the question text", async () => {
     const { details } = await run(async () => answer(0.9, "pass"));
 
@@ -183,6 +201,40 @@ describe("assertWithJevFirst", () => {
     expect(result.message).toBe(
       "Jev escalated (lowest answer 0.50 (req2) is between 0.3 and 0.85); LLM judge: fail (1 issue(s))",
     );
+  });
+
+  it("records that the claims check alone caused an escalation", async () => {
+    const { details } = await run(async () => {
+      const base = answer(0.95, "escalate");
+
+      return {
+        ...base,
+        escalatedBy: "claims" as const,
+        questions: [
+          ...base.questions,
+          {
+            id: "claims",
+            kind: "claims" as const,
+            text: "C",
+            probability: 0.5,
+          },
+        ],
+      };
+    });
+
+    expect(details.jev).toStrictEqual(
+      expect.objectContaining({
+        verdict: "escalate",
+        escalatedBy: "claims",
+        escalationReason: "claims answer 0.50 is below 0.7",
+      }),
+    );
+  });
+
+  it("does not record escalatedBy for an ordinary escalation", async () => {
+    const { details } = await run(async () => answer(0.5, "escalate"));
+
+    expect(details.jev).not.toHaveProperty("escalatedBy");
   });
 
   it("escalates with a reason when the Jev call fails", async () => {

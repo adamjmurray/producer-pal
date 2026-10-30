@@ -145,9 +145,13 @@ export interface JsonJevAnswer {
   verdict: "pass" | "fail" | "escalate";
   /** Why Jev did not decide (present when `verdict` is escalate) */
   escalationReason?: string;
+  /** "claims" when every requirement passed and only the claims check kept the
+   *  pass from standing (present only on such escalations) */
+  escalatedBy?: "claims";
   /** The model version Jev reports */
   model: string;
-  /** The lowest answer, which decided `verdict` */
+  /** The lowest requirement or whole-criteria answer; it decides pass or fail
+   *  (the claims answer can only turn a pass into an escalation) */
   minProbability: number;
   questions: JsonJevQuestion[];
   /** A graded 0-3 read on the whole run; it does not affect `verdict` */
@@ -171,9 +175,10 @@ export type JsonJevJudgment = JsonJevAnswer | JsonJevFailure;
 
 /** One yes/no question Jev answered. */
 export interface JsonJevQuestion {
-  /** req1, req2, ... for the numbered requirements; "whole" for the criteria */
+  /** req1, req2, ... for the numbered requirements; "whole" for the criteria;
+   *  "claims" for the check of the replies' claims against the tool calls */
   id: string;
-  kind: "requirement" | "whole";
+  kind: "requirement" | "whole" | "claims";
   /** P(yes) */
   probability: number;
 }

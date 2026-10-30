@@ -6,8 +6,10 @@
 /**
  * Judge an eval run with Jev: one yes/no question per requirement in the
  * scenario's criteria, plus one for the criteria as a whole. The lowest answer
- * decides: pass, fail, or hand the run to the LLM judge. A graded outcome
- * score rides along in the same request but does not affect the verdict.
+ * decides: pass, fail, or hand the run to the LLM judge. A separate question
+ * checks the replies' claims against the tool calls; it can only turn a pass
+ * into an escalation. A graded outcome score rides along in the same request
+ * but does not affect the verdict.
  */
 
 import {
@@ -28,6 +30,12 @@ import { buildJevState } from "./jev-state.ts";
 export const PASS_THRESHOLD = 0.85;
 /** The lowest answer below this is a Jev fail; in between, escalate. */
 export const FAIL_THRESHOLD = 0.3;
+/**
+ * A claims answer below this turns a pass into an escalation. It never causes
+ * a fail: real runs with a few loose claims but a good outcome score as low as
+ * 0.3. Fabricated claims scored 0.05-0.15; clean runs mostly 0.8-0.95.
+ */
+export const CLAIMS_THRESHOLD = 0.7;
 
 export interface JevRun {
   turns: TranscriptTurn[];
@@ -36,8 +44,9 @@ export interface JevRun {
 
 export interface JevQuestionResult {
   id: string;
-  /** "requirement" is one numbered item; "whole" is all the criteria at once */
-  kind: "requirement" | "whole";
+  /** "requirement" is one numbered item; "whole" is all the criteria at once;
+   *  "claims" checks the replies against the tool calls, whatever the criteria */
+  kind: "requirement" | "whole" | "claims";
   /** The requirement text, or the whole criteria */
   text: string;
   /** P(yes) from Jev */
@@ -68,6 +77,10 @@ const OUTCOME_LEVELS = [
 ];
 
 const OUTCOME_ID = "outcome";
+const CLAIMS_ID = "claims";
+
+/** Kept narrow on purpose: a broad "no hallucinations" question over-failed. */
+const CLAIMS_QUESTION = `Every action the assistant's replies say it took (something created, named, renamed, set, changed, moved, deleted, played) is shown in the tool calls and their results. Answer yes only if no reply claims an action that the tool calls do not show.`;
 
 /** A graded 0-3 judgment of the whole run. */
 export interface JevOutcome {
@@ -83,7 +96,10 @@ export type JevVerdict = "pass" | "fail" | "escalate";
 
 export interface JevJudgeResult {
   verdict: JevVerdict;
-  /** The lowest answer, which decided the verdict */
+  /** Set when only the claims answer kept a pass from standing */
+  escalatedBy?: "claims";
+  /** The lowest requirement or whole-criteria answer, which decided pass or
+   *  fail (the claims answer is not part of it) */
   minProbability: number;
   questions: JevQuestionResult[];
   /** Graded outcome; not part of the verdict */
@@ -146,10 +162,16 @@ export async function jevJudge(
     throw new Error("Jev gave no outcome score");
   }
 
-  const minProbability = Math.min(...results.map((r) => r.probability));
+  const minProbability = Math.min(
+    ...results.filter((r) => r.kind !== "claims").map((r) => r.probability),
+  );
+
+  const verdict = decideVerdict(minProbability, claimsProbability(results));
 
   return {
-    verdict: decideVerdict(minProbability),
+    verdict,
+    ...(verdict === "escalate" &&
+      minProbability >= PASS_THRESHOLD && { escalatedBy: "claims" as const }),
     minProbability,
     questions: results,
     outcome: {
@@ -195,12 +217,16 @@ export function outcomeLabel(score: number): string {
 /**
  * Turn the lowest answer into a verdict.
  *
- * @param minProbability - The lowest P(yes) over all questions
- * @returns Pass, fail, or escalate when in between
+ * @param minProbability - The lowest P(yes) over the requirement and whole questions
+ * @param claims - P(yes) of the claims question, when it was asked
+ * @returns Pass, fail, or escalate when in between (or when a pass has doubtful claims)
  */
-export function decideVerdict(minProbability: number): JevVerdict {
+export function decideVerdict(
+  minProbability: number,
+  claims?: number,
+): JevVerdict {
   if (minProbability >= PASS_THRESHOLD) {
-    return "pass";
+    return claims != null && claims < CLAIMS_THRESHOLD ? "escalate" : "pass";
   }
 
   return minProbability < FAIL_THRESHOLD ? "fail" : "escalate";
@@ -210,16 +236,36 @@ export function decideVerdict(minProbability: number): JevVerdict {
  * Say why an escalated run was too close to call.
  *
  * @param questions - Jev's answers
- * @param minProbability - The lowest P(yes)
+ * @param minProbability - The lowest requirement or whole-criteria P(yes)
  * @returns A one-line reason naming the lowest question
  */
 export function escalationReason(
-  questions: Pick<JevQuestionResult, "id" | "probability">[],
+  questions: Pick<JevQuestionResult, "id" | "kind" | "probability">[],
   minProbability: number,
 ): string {
-  const lowest = questions.find((q) => q.probability === minProbability);
+  const claims = claimsProbability(questions);
+
+  if (minProbability >= PASS_THRESHOLD && claims != null) {
+    return `claims answer ${claims.toFixed(2)} is below ${CLAIMS_THRESHOLD}`;
+  }
+
+  const lowest = questions.find(
+    (q) => q.kind !== "claims" && q.probability === minProbability,
+  );
 
   return `lowest answer ${minProbability.toFixed(2)} (${lowest?.id ?? "?"}) is between ${FAIL_THRESHOLD} and ${PASS_THRESHOLD}`;
+}
+
+/**
+ * Find the claims answer among the answers.
+ *
+ * @param questions - Jev's answers
+ * @returns P(yes) of the claims question, or undefined when it was not asked
+ */
+export function claimsProbability(
+  questions: Pick<JevQuestionResult, "kind" | "probability">[],
+): number | undefined {
+  return questions.find((q) => q.kind === "claims")?.probability;
 }
 
 interface PlannedQuestion extends Omit<JevQuestionResult, "probability"> {
@@ -228,7 +274,8 @@ interface PlannedQuestion extends Omit<JevQuestionResult, "probability"> {
 
 /**
  * Build the questions to ask: one per numbered requirement (or one for the
- * whole prompt when there is no list), then one for the criteria as a whole.
+ * whole prompt when there is no list), one for the criteria as a whole, and
+ * the claims question.
  *
  * @param criteria - The scenario's llm_judge prompt
  * @returns Questions with ids and instruction text
@@ -259,12 +306,20 @@ export function buildQuestions(criteria: string): PlannedQuestion[] {
     });
   }
 
-  planned.push({
-    id: "whole",
-    kind: "whole",
-    text: criteria.trim(),
-    instructions: `${criteria.trim()}\n\nDid the assistant meet these expectations?`,
-  });
+  planned.push(
+    {
+      id: "whole",
+      kind: "whole",
+      text: criteria.trim(),
+      instructions: `${criteria.trim()}\n\nDid the assistant meet these expectations?`,
+    },
+    {
+      id: CLAIMS_ID,
+      kind: "claims",
+      text: CLAIMS_QUESTION,
+      instructions: CLAIMS_QUESTION,
+    },
+  );
 
   return planned;
 }
