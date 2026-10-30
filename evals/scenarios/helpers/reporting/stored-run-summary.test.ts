@@ -55,6 +55,64 @@ const rowFor = (name: string): string =>
   printed().find((line) => line.includes(name)) ?? "";
 
 describe("printStoredRunSummary", () => {
+  it("prints the Jev totals, with the claims check, when the run used Jev", async () => {
+    const jev = (verdict: string, escalatedBy?: string): object => ({
+      route: "typesafe",
+      verdict,
+      ...(escalatedBy != null && { escalatedBy }),
+      model: "jev-1",
+      minProbability: 0.9,
+      questions: [],
+      outcome: { score: 3, level: "complete success", confidence: 1 },
+      inputTokens: 10,
+      outputTokens: 1,
+      truncated: false,
+    });
+    const write = (name: string, judge: object): Promise<void> =>
+      writeFile(
+        join(dir, `${name}.json`),
+        JSON.stringify({
+          scenarioId: name,
+          model: "openai/m1",
+          trial: 1,
+          result: "pass",
+          judge,
+        }),
+      );
+
+    await write("a", {
+      pass: true,
+      issues: [],
+      decidedBy: "jev",
+      jev: jev("pass"),
+    });
+    await write("b", {
+      pass: true,
+      issues: [],
+      decidedBy: "llm",
+      jev: jev("escalate", "claims"),
+    });
+    await write("c", {
+      pass: true,
+      issues: [],
+      decidedBy: "llm",
+      jev: jev("escalate"),
+    });
+
+    await printStoredRunSummary(dir);
+
+    expect(printed().join("\n")).toContain(
+      "Jev judge: 3 call(s); decided 1 (1 pass, 0 fail); escalated 2 to the LLM judge (1 unsure, 1 by the claims check, 0 error)",
+    );
+  });
+
+  it("prints no Jev line for a run without Jev", async () => {
+    await store("alpha", "openai/m1", 1, "pass");
+    await printStoredRunSummary(dir);
+
+    expect(printed().join("\n")).not.toContain("Jev");
+  });
+
   it("tallies passed trials per scenario and model, with a total", async () => {
     await store("alpha", "openai/m1", 1, "pass");
     await store("alpha", "openai/m1", 2, "fail");

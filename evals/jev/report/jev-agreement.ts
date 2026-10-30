@@ -7,7 +7,7 @@
  * Counts how Jev's three-way verdicts line up with the stored judge.
  */
 
-import { type JevVerdict } from "./jev-judge.ts";
+import { type JevVerdict } from "../jev-judge.ts";
 
 export interface VerdictPair {
   judgePass: boolean;

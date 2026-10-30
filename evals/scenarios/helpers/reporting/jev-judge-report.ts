@@ -83,13 +83,16 @@ export function jevSummaryLines(results: JsonEvalResult[]): string[] {
   const passed = decided.filter((c) => c.jev.verdict === "pass").length;
   const failed = decided.length - passed;
   const errors = calls.filter((c) => c.jev.verdict === "error").length;
-  const unsure = calls.length - decided.length - errors;
+  const byClaims = calls.filter(
+    (c) => c.jev.verdict === "escalate" && c.jev.escalatedBy === "claims",
+  ).length;
+  const unsure = calls.length - decided.length - errors - byClaims;
   const answers = calls.flatMap((c) =>
     c.jev.verdict === "error" ? [] : [c.jev],
   );
 
   return [
-    `Jev judge: ${calls.length} call(s); decided ${decided.length} (${passed} pass, ${failed} fail); escalated ${calls.length - decided.length} to the LLM judge (${unsure} unsure, ${errors} error)`,
+    `Jev judge: ${calls.length} call(s); decided ${decided.length} (${passed} pass, ${failed} fail); escalated ${calls.length - decided.length} to the LLM judge (${unsure} unsure, ${byClaims} by the claims check, ${errors} error)`,
     tokenLine(answers),
   ];
 }

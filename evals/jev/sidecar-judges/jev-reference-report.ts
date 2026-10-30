@@ -14,7 +14,7 @@ import {
   pairwiseAgreement,
   type Calls,
 } from "./jev-reference.ts";
-import { statsLines, type CompareEntry } from "../jev-report.ts";
+import { statsLines, type CompareEntry } from "../report/jev-report.ts";
 
 const JEV_ID = "jev";
 
@@ -56,9 +56,35 @@ export function referenceLines(
     "",
     `Jev escalated on ${escalated.length} of ${answered.length} result(s).`,
     "",
+    ...escalatedLines(escalated, llmIds),
+    "",
     ...statsLines("Checks passed, LLM judges unanimous", unanimous),
     "",
     ...splitLines(answered),
+  ];
+}
+
+/**
+ * How the LLM judges do on the results Jev escalated, which is where a `--jev`
+ * run relies on one of them.
+ *
+ * @param escalated - Entries Jev escalated
+ * @param llmIds - The sidecar judge slugs
+ * @returns Report lines
+ */
+function escalatedLines(escalated: CompareEntry[], llmIds: string[]): string[] {
+  const rows = escalated.map(toCalls);
+
+  return [
+    `On the ${escalated.length} escalated result(s), pairwise agreement:`,
+    ...pairwiseAgreement(rows, llmIds).map(
+      (p) => `  ${p.a} vs ${p.b}: ${percent(p.pct)} (${p.agree}/${p.n})`,
+    ),
+    "  each judge against the others, where they all agree:",
+    ...errorsVsOthers(rows, llmIds, llmIds).map(
+      (e) =>
+        `    ${e.judge}: n=${e.n}, wrong pass ${e.wrongPass}, wrong fail ${e.wrongFail}`,
+    ),
   ];
 }
 

@@ -44,6 +44,13 @@ describe("parseArgs --via", () => {
   });
 });
 
+describe("parseArgs --recorded", () => {
+  it("is off by default and on with the flag", () => {
+    expect(parseArgs([]).recorded).toBe(false);
+    expect(parseArgs(["--recorded"]).recorded).toBe(true);
+  });
+});
+
 describe("parseArgs --reference and --results-dir", () => {
   it("defaults to the stored verdict and evals/results", () => {
     const args = parseArgs([]);
@@ -93,6 +100,8 @@ describe("runJevCompare", () => {
     pass: boolean;
     issues: string[];
     decidedBy?: string;
+    jev?: unknown;
+    llm?: unknown;
   }): string =>
     JSON.stringify({
       scenarioId: "a",
@@ -255,5 +264,84 @@ describe("runJevCompare", () => {
     await run(["run1", "--reference=h", "--limit=1"], jev);
 
     expect(jev).toHaveBeenCalledTimes(1);
+  });
+
+  describe("--recorded", () => {
+    const savedJev = (verdict: string, claims: number) => ({
+      route: "typesafe",
+      verdict,
+      model: "jev-1",
+      minProbability: 0.95,
+      questions: [
+        { id: "req1", kind: "requirement", probability: 0.95 },
+        { id: "whole", kind: "whole", probability: 0.95 },
+        { id: "claims", kind: "claims", probability: claims },
+      ],
+      outcome: { score: 3, level: "complete success", confidence: 1 },
+      inputTokens: 5,
+      outputTokens: 1,
+      truncated: false,
+    });
+
+    it("reads the answers saved in the run and never calls Jev", async () => {
+      await writeFile(
+        join(dir, "run1", "d.json"),
+        resultJson({
+          pass: false,
+          issues: [],
+          decidedBy: "llm",
+          llm: { pass: false, issues: [] },
+          jev: savedJev("escalate", 0.4),
+        }),
+      );
+      await writeFile(
+        join(dir, "run1", "e.json"),
+        resultJson({
+          pass: true,
+          issues: [],
+          decidedBy: "jev",
+          jev: savedJev("pass", 0.9),
+        }),
+      );
+      await vote("run1/d.json", "h", false);
+      await vote("run1/e.json", "h", true);
+      await vote("run1/b.json", "h", true); // no saved Jev answer
+
+      const jev = vi.fn(async () => jevAnswer("pass"));
+
+      await run(["run1", "--reference=h", "--recorded"], jev);
+
+      expect(jev).not.toHaveBeenCalled();
+      expect(output()).toContain("Reading the recorded Jev answer of 3 of 3");
+      expect(output()).toContain("1 result(s) have no saved Jev answer");
+      expect(output()).toContain("Compared 2 result(s)");
+      expect(output()).toContain("recorded in the run");
+      expect(output()).toContain("Jev pass 1, fail 0, escalate 1");
+      expect(output()).toContain("Claims question");
+      expect(output()).toContain(
+        "run1/d.json: claims 0.40; reference fail; LLM judge in the run fail",
+      );
+    });
+
+    it("records a Jev call that failed in the run as an error", async () => {
+      await writeFile(
+        join(dir, "run1", "d.json"),
+        resultJson({
+          pass: true,
+          issues: [],
+          decidedBy: "llm",
+          jev: {
+            route: "typesafe",
+            verdict: "error",
+            escalationReason: "down",
+          },
+        }),
+      );
+      await vote("run1/d.json", "h", true);
+
+      await run(["run1", "--reference=h", "--recorded"]);
+
+      expect(output()).toContain("run1/d.json: down");
+    });
   });
 });

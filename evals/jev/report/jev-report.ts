@@ -14,10 +14,10 @@ import {
   type VerdictPair,
   type VerdictStats,
 } from "./jev-agreement.ts";
-import { type JevRoute } from "./jev-client.ts";
-import { type JevJudgeResult } from "./jev-judge.ts";
-import { type ReferenceVerdict } from "./sidecar-judges/jev-reference.ts";
-import { type SkipCounts } from "./jev-results.ts";
+import { bandLines, claimsLines } from "./jev-bands.ts";
+import { type JevJudgeResult } from "../jev-judge.ts";
+import { type ReferenceVerdict } from "../sidecar-judges/jev-reference.ts";
+import { type SkipCounts } from "../jev-results.ts";
 
 /** Jev input price, USD per million tokens. */
 export const JEV_USD_PER_M_INPUT_TOKENS = 0.042;
@@ -37,6 +37,8 @@ export interface CompareEntry {
     provider?: string;
     model?: string;
   };
+  /** The LLM judge's verdict in a `--jev` run, when it ran (after an escalation) */
+  runLlmPass?: boolean;
   /** The deterministic checks passed, so the judge decides the outcome */
   checksPass: boolean;
   /** Set when the reference is the sidecar LLM judges, not the stored judge.
@@ -60,7 +62,7 @@ export interface CompareEntry {
 export function formatReport(
   entries: CompareEntry[],
   skipped: SkipCounts,
-  route?: JevRoute,
+  route?: string,
 ): string[] {
   const errors = entries.filter((e) => e.jev == null);
   const answered = entries.filter((e) => e.jev != null);
@@ -87,6 +89,10 @@ export function formatReport(
     `Truncated transcripts: ${judged.filter((e) => e.jev?.truncated).length}`,
     "",
     ...wrongCallLines(judged),
+    "",
+    ...claimsLines(judged),
+    "",
+    ...bandLines(judged),
     "",
     ...lowestOutcomeLines(judged),
     ...errorLines(errors),

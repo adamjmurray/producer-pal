@@ -22,8 +22,8 @@
  *                            judges/, or provider/model) as the reference
  *                            instead of the stored verdict (repeatable). With
  *                            several, their majority is the reference; ties
- *                            are left out and listed as splits. Also reports
- *                            pairwise agreement and each judge's wrong calls.
+ *                            are left out and listed as splits.
+ *            --recorded      use the Jev answers a `--jev` run saved (no calls)
  *            --results-dir=D results directory (default evals/results)
  *
  * The full per-result report goes to <results-dir>/jev-compare-<time>.json.
@@ -35,9 +35,10 @@ import { RESULTS_DIR } from "#evals/scenarios/helpers/json-results/types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { parseJevRoute, resolveJevRoute, type JevRoute } from "./jev-client.ts";
 import { jevJudge } from "./jev-judge.ts";
+import { recordedJev } from "./jev-recorded.ts";
 import { resolveReference, type Vote } from "./sidecar-judges/jev-reference.ts";
 import { referenceLines } from "./sidecar-judges/jev-reference-report.ts";
-import { formatReport, type CompareEntry } from "./jev-report.ts";
+import { formatReport, type CompareEntry } from "./report/jev-report.ts";
 import {
   loadJudgedResults,
   type JudgedResult,
@@ -55,6 +56,8 @@ interface CliArgs {
   concurrency: number;
   via?: JevRoute;
   includeStale: boolean;
+  /** Use the Jev answers saved in the results instead of calling Jev */
+  recorded: boolean;
   /** Sidecar judge slugs to use as the reference; empty = the stored verdict */
   references: string[];
   resultsDir: string;
@@ -86,7 +89,9 @@ export async function runJevCompare(
   deps: CompareDeps = {},
 ): Promise<void> {
   const args = parseArgs(argv);
-  const route = deps.route ?? resolveJevRoute(args.via).route;
+  const route = args.recorded
+    ? undefined
+    : (deps.route ?? resolveJevRoute(args.via).route);
   const log = deps.log ?? ((text: string) => console.log(text));
   const { items, skipped } = await loadJudgedResults({
     ...deps.load,
@@ -94,7 +99,7 @@ export async function runJevCompare(
     scenarioIds: args.scenarioIds.length > 0 ? args.scenarioIds : undefined,
     includeStale: args.includeStale,
     includeUnjudged: args.references.length > 0,
-    llmVerdictOnly: args.references.length === 0,
+    llmVerdictOnly: args.references.length === 0 && !args.recorded,
     resultsDir: args.resultsDir,
   });
   const candidates = await withVotes(items, args);
@@ -102,14 +107,24 @@ export async function runJevCompare(
     args.limit == null ? candidates : candidates.slice(0, args.limit);
 
   log(
-    `Judging ${selected.length} of ${candidates.length} saved result(s) with Jev via ${route}...`,
+    route == null
+      ? `Reading the recorded Jev answer of ${selected.length} of ${candidates.length} saved result(s)...`
+      : `Judging ${selected.length} of ${candidates.length} saved result(s) with Jev via ${route}...`,
   );
 
-  const entries = await mapConcurrent(selected, args.concurrency, (c) =>
+  const compared = await mapConcurrent(selected, args.concurrency, (c) =>
     compareOne(c, route, deps.jev ?? jevJudge),
   );
+  const entries = compared.filter((e) => e != null);
+
+  if (entries.length < compared.length) {
+    log(
+      `${compared.length - entries.length} result(s) have no saved Jev answer (not a --jev run) and are left out.`,
+    );
+  }
+
   const lines = [
-    ...formatReport(entries, skipped, route),
+    ...formatReport(entries, skipped, route ?? "recorded in the run"),
     ...(args.references.length > 0
       ? ["", ...referenceLines(entries, args.references)]
       : []),
@@ -170,15 +185,15 @@ async function withVotes(
  * Re-judge one saved result. A Jev failure is recorded, not thrown.
  *
  * @param candidate - The saved result, its criteria and any sidecar votes
- * @param route - The Jev route to call
+ * @param route - The Jev route to call; undefined reads the answer saved in the result
  * @param jev - The Jev judge
- * @returns The comparison entry
+ * @returns The comparison entry, or undefined for a result with no saved Jev answer
  */
 async function compareOne(
   candidate: Candidate,
-  route: JevRoute,
+  route: JevRoute | undefined,
   jev: typeof jevJudge,
-): Promise<CompareEntry> {
+): Promise<CompareEntry | undefined> {
   const { result, file, criteria } = candidate.item;
   const reference =
     candidate.votes.length > 0 ? resolveReference(candidate.votes) : undefined;
@@ -188,7 +203,14 @@ async function compareOne(
     judge: reference == null ? storedJudge(result) : voteJudge(reference.votes),
     reference,
     checksPass: result.checks.pass,
+    ...(result.judge?.llm != null && { runLlmPass: result.judge.llm.pass }),
   };
+
+  if (route == null) {
+    const saved = recordedJev(result, criteria);
+
+    return saved == null ? undefined : { ...base, ...saved };
+  }
 
   try {
     const answer = await jev(
@@ -266,6 +288,7 @@ export function parseArgs(argv: string[]): CliArgs {
     concurrency: num("concurrency") ?? DEFAULT_CONCURRENCY,
     via: parseJevRoute(flag("via").at(-1)),
     includeStale: argv.includes("--include-stale"),
+    recorded: argv.includes("--recorded"),
     references: flag("reference").map(judgeSlug),
     resultsDir: flag("results-dir").at(-1) ?? RESULTS_DIR,
   };

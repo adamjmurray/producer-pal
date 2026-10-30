@@ -5,13 +5,14 @@
 
 /**
  * Print the pass table for a results folder, for a run that was cancelled
- * before its own summary printed.
+ * before its own summary printed, plus the Jev totals when the run used Jev.
  */
 
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
+import { jevSummaryLines } from "./jev-judge-report.ts";
 import { printResultsTable, type ResultsByScenario } from "./report-table.ts";
 
 /**
@@ -31,6 +32,12 @@ export async function printStoredRunSummary(dir: string): Promise<boolean> {
   const { resultsByScenario, modelSpecs, label } = groupResults(results);
 
   printResultsTable(resultsByScenario, modelSpecs, label, { passes: true });
+
+  const jevLines = jevSummaryLines(results);
+
+  if (jevLines.length > 0) {
+    console.log("\n" + jevLines.map((l) => "  " + l).join("\n"));
+  }
 
   return true;
 }

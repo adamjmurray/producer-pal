@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { type JevJudgeResult, type JevVerdict } from "../jev-judge.ts";
+import { type JevJudgeResult, type JevVerdict } from "../../jev-judge.ts";
 import { formatReport, type CompareEntry } from "../jev-report.ts";
-import { type SkipCounts } from "../jev-results.ts";
+import { type SkipCounts } from "../../jev-results.ts";
 
 const skipped: SkipCounts = {
   notScored: 0,

@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { type JevJudgeResult, type JevVerdict } from "../../jev-judge.ts";
 import { resolveReference, type Vote } from "../jev-reference.ts";
 import { referenceLines } from "../jev-reference-report.ts";
-import { formatReport, type CompareEntry } from "../../jev-report.ts";
+import { formatReport, type CompareEntry } from "../../report/jev-report.ts";
 import { type SkipCounts } from "../../jev-results.ts";
 
 const jev = (verdict: JevVerdict, score = 2): JevJudgeResult => ({
@@ -93,6 +93,22 @@ describe("referenceLines", () => {
 
   it("reports Jev's escalations", () => {
     expect(text).toContain("Jev escalated on 1 of 6 result(s).");
+  });
+
+  it("reports how the LLM judges do on the escalated results alone", () => {
+    const out = referenceLines(
+      [
+        entry("e1.json", trio(true, true, true), "escalate"),
+        entry("e2.json", trio(true, false, true), "escalate"),
+        entry("e3.json", trio(false, false, false), "escalate"),
+        entry("p1.json", trio(true, false, false), "pass"),
+      ],
+      ["h", "l", "s"],
+    ).join("\n");
+
+    expect(out).toContain("On the 3 escalated result(s), pairwise agreement:");
+    expect(out).toContain("  h vs l: 66.7% (2/3)");
+    expect(out).toContain("    l: n=3, wrong pass 0, wrong fail 1");
   });
 
   it("lists split results with votes, Jev and the failing judges' issues", () => {

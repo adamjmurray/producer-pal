@@ -85,9 +85,24 @@ describe("jevSummaryLines", () => {
     ]);
 
     expect(lines).toStrictEqual([
-      "Jev judge: 4 call(s); decided 2 (1 pass, 1 fail); escalated 2 to the LLM judge (1 unsure, 1 error)",
+      "Jev judge: 4 call(s); decided 2 (1 pass, 1 fail); escalated 2 to the LLM judge (1 unsure, 0 by the claims check, 1 error)",
       "Jev tokens: 250 in, 25 out",
     ]);
+  });
+
+  it("counts escalations caused only by the claims check separately", () => {
+    const lines = jevSummaryLines([
+      withJudge({ decidedBy: "jev", jev: answer() }),
+      withJudge({
+        decidedBy: "llm",
+        jev: answer({ verdict: "escalate", escalatedBy: "claims" }),
+      }),
+      withJudge({ decidedBy: "llm", jev: answer({ verdict: "escalate" }) }),
+    ]);
+
+    expect(lines[0]).toBe(
+      "Jev judge: 3 call(s); decided 1 (1 pass, 0 fail); escalated 2 to the LLM judge (1 unsure, 1 by the claims check, 0 error)",
+    );
   });
 
   it("adds the cost when the route reports it", () => {
