@@ -52,12 +52,12 @@ Add \`transforms\` parameter to ppal-create-clip, ppal-update-clip, or ppal-dupl
 **Shape:** a single string, broadcast across every clip/copy. Multiple expressions: newline-separated. Per-clip variation: \`clip.index\` arithmetic or \`clipseq()\` inside the string (below). Structurally-distinct edits per clip → separate tool calls.
 
 **Syntax:** \`[selector:] parameter operator expression\` (one per line)
-- **Selector:** pitch and/or time filter, optionally a \`where(...)\` value test, followed by \`:\` - e.g., \`C3:\`, \`1|1-2|4:\`, \`C3 1|1-2|4:\`, \`1|1-2|4 C3:\`, \`where(note.velocity < 40):\`. **Per-line:** every selector (pitch, time, where) applies only to its own line — never carried to or inherited from neighbors; a line with no selector hits all notes. Repeat the selector to scope several lines
+- **Selector:** pitch and/or time filter, optionally a \`where(...)\` value test, followed by \`:\` - e.g., \`C3:\`, \`2|*:\`, \`C3 3|2-<3|4:\`, \`3|2-<3|4 C3:\`, \`where(note.velocity < 40):\`. **Per-line:** every selector (pitch, time, where) applies only to its own line — never carried to or inherited from neighbors; a line with no selector hits all notes. Repeat the selector to scope several lines
 - **Pitch filter:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches
-- **Time filter:** \`1|1-2|4\` (bar|beat range, **ends inclusive**, matches note start time); bounds use the same bar|beat dialect as Time & Note Values positions (decimal or \`±n\` offset, e.g. \`1|1+n/12-2|1\`)
+- **Time filter:** a bar|beat range that matches note **start** times. Each bound is an instant, not a whole beat, and the end is **inclusive**: \`3|1-3|4\` stops at the *start* of beat 4, so notes at 3|4.5 or 3|4.75 fall outside it. Bounds use the same bar|beat dialect as Time & Note Values positions (decimal or \`±n\` offset, e.g. \`1|1+n/12-2|1\`)
   - **Single point:** a bare bar|beat with no \`-\` (\`4|3.5:\`) targets only the note starting exactly there — e.g. \`Gb1 4|3.5: velocity = 120\` accents just that note
   - **Whole bars:** \`3|*\` = all of bar 3, \`1|*-3|*\` = bars 1-3 — half-open, so exactly those bars with no spill onto the next downbeat. Prefer this for "measure N"; \`3|1-4|1\` would also match a note on 4|1
-  - **Exclusive end:** append \`-<\` to make only the end bound exclusive — \`3|1-<4|1\` = up to but not including 4|1 (for sub-bar half-open spans)
+  - **Whole beats:** \`-<\` makes only the end bound exclusive, so end on the beat *after* the last one you want to cover all of it, every subdivision included — in 4/4, "beats 2-3 of bar 3" = \`3|2-<3|4\`, "the last two beats of bar 4" = \`4|3-<5|1\`
 - **Value filter** \`where(...)\`: keep only notes whose properties satisfy a boolean test — \`where(note.velocity < 40): delete\` deletes quiet notes, \`where(note.velocity > 100): velocity += 20\` accents loud ones, \`where(note.probability < .5): delete\` thins. Build it from comparisons (\`> >= < <= == !=\`), booleans (\`&& || !\`), parens, arithmetic, and functions over note.velocity/deviation/duration/probability/pitch/start (\`note.duration\`/\`note.start\` in musical beats; RHS may be a number, note name, or \`n/8\`). Math functions work inside the test too. AND-combines with a pitch/time selector: \`C3-C5 where(note.velocity > 80): velocity += 20\`. Comparisons tolerate sub-beat float drift, so \`==\`/\`!=\` are safe even on float props (\`note.start == n/8\` matches a note that names that beat); still prefer \`<\`/\`>\` for ranges. Note properties only (no note.index/count/next); all functions except legato/seq (they need the selection); not on note-count ops
 - **MIDI parameters:** velocity (capped at 127 on each line; after the last line, <=0 deletes the note, else at least 1: Live drops a note under 1), pitch (0-127), timing (musical beats), duration (musical beats; <=0 deletes note), probability (0-1), deviation (-127 to 127)
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
@@ -66,7 +66,7 @@ Add \`transforms\` parameter to ppal-create-clip, ppal-update-clip, or ppal-dupl
 - **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, current values, and durations: \`n<dur>\` note values (e.g. \`n/4\` = a quarter in any meter) and \`<count>bar\` meter-aware bars (e.g. \`1bar\`, \`1bar+n/4\`) — same grammar as bar|beat and length fields. Both evaluate to musical beats and compose in any math expression (so in a non-time param like \`velocity\` a bare \`1bar\` resolves to its beat count — e.g. 4 in 4/4 — rarely what you want there)
 
 \`\`\`
-1|1-2|4: velocity = 100          // forte in bars 1-2
+1|*-2|*: velocity = 100          // forte in bars 1-2
 C1-C2: velocity += 30            // accent bass notes
 where(note.velocity < 40): delete // delete the quiet notes
 where(note.velocity > 100): velocity += 20 // accent the loud ones (clamps at 127)
@@ -102,7 +102,7 @@ Across a batch (ppal-update-clip \`id\` / ppal-duplicate copies / ppal-create-cl
  */
 export const transformsEditing = `### Editing Notes Already in a Clip (ppal-update-clip only)
 
-\`preTransforms\` is *the* way to delete or change notes already in the clip (its schema has the examples). Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge. Prefer it over deleting inline in \`notes\`. Ignored on audio clips. Same syntax as transforms. To *replace* a region rather than edit it in place, clear it first (\`preTransforms: "1|1-2|1: delete"\`) or the notes you didn't restate stay behind. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate densely in \`notes\`, then prune with a selector instead of scattering \`delete\`s. To roll, echo, cut or glue notes, use a note-count operation (ratchet, repeat, split, merge) instead of clearing and rewriting them.`;
+\`preTransforms\` is *the* way to delete or change notes already in the clip (its schema has the examples). Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge. Prefer it over deleting inline in \`notes\`. Ignored on audio clips. Same syntax as transforms. To *replace* a region rather than edit it in place, clear it first (\`preTransforms: "1|*: delete"\`) or the notes you didn't restate stay behind. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate densely in \`notes\`, then prune with a selector instead of scattering \`delete\`s. To roll, echo, cut or glue notes, use a note-count operation (ratchet, repeat, split, merge) instead of clearing and rewriting them.`;
 
 /**
  * The transforms fragment at basic (small-model) depth: the merge rule and
@@ -127,6 +127,6 @@ export const transformsBasic = `## Editing a clip that already has notes (ppal-u
 \`preTransforms\` clears or edits notes already in the clip, before any new \`notes\` in the same call:
 - \`v0\` — delete all notes
 - \`[range]: v0\` — delete notes in a range
-- ranges: \`C1\` (one pitch) · \`C1-C5\` (pitch range) · \`3|*\` (all of bar 3) · \`1|1-2|1\` (explicit span, end inclusive)
+- ranges: \`C1\` (one pitch) · \`C1-C5\` (pitch range) · \`3|*\` (all of bar 3) · \`3|2-<3|4\` (beats 2-3 of bar 3, up to but not including 3|4)
 
 Ranges always use pitch names in Ableton's octaves (C3 = middle C = 60) and **bar|beat** positions counting from 1, whatever notation you write notes in.`;

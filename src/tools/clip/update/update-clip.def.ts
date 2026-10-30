@@ -170,9 +170,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     preTransforms: param(z.string().optional(), {
       default:
-        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across the clips); clear or edit notes already in the clip. 'delete' (alias 'v0') removes: a whole bar ('3|*: delete', |* wildcard avoids spilling onto the next downbeat), a span ('1|1-2|1: delete'), one pitch ('C1: delete'), a pitch range ('C1-C5: delete'), or all ('delete'); also remap a drum lane ('C1: C4'). Works with or without notes",
+        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across the clips); clear or edit notes already in the clip. 'delete' (alias 'v0') removes: a whole bar ('3|*: delete', |* wildcard avoids spilling onto the next downbeat), a span ('3|2-<3|4: delete' = beats 2-3 of bar 3), one pitch ('C1: delete'), a pitch range ('C1-C5: delete'), or all ('delete'); also remap a drum lane ('C1: C4'). Works with or without notes",
       smallModel:
-        "clear/edit notes already in the clip. Shorthand only (see Skills): `3|*: v0` clears all of bar 3 (|* wildcard = whole bar), `1|1-2|1: v0` clears a span, `v0` clears all, `C1: C4` remaps a drum lane",
+        "clear/edit notes already in the clip. Shorthand only (see Skills): `3|*: v0` clears all of bar 3 (|* wildcard = whole bar), `3|2-<3|4: v0` clears beats 2-3 of bar 3, `v0` clears all, `C1: C4` remaps a drum lane",
     }),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
