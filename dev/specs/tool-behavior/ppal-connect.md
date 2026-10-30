@@ -75,10 +75,11 @@ new-chat line, and the portal's hint still follows it.
 Every result that sends the model back to `ppal-connect` after an install or an
 update says to call it with `versionCheck: true`. Where the chat may never have
 connected (the `update-producer-pal` result and its failure messages, and the
-`ppal-manage` install result once Producer Pal is running), it adds "or plain
-`ppal-connect` if this chat hasn't connected yet". The remote script lines that
-tell the user to restart Live sit inside a connect result, so they say only
-`versionCheck: true`.
+`ppal-manage` install result once Producer Pal is running), it follows the call
+with "(Never connected in this chat? Call plain ppal-connect instead.)". The
+call itself comes first, as an instruction ("Now call ..."), never as one option
+among two. The remote script lines that tell the user to restart Live sit inside
+a connect result, so they say only `versionCheck: true`.
 
 `add-producer-pal` is the exception. It runs when Producer Pal wasn't running in
 the Set, so the chat may never have connected; its results say to call a full

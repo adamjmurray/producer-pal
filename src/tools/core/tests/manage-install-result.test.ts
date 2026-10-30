@@ -37,7 +37,8 @@ describe("manageInstallResult next steps", () => {
 
     expect(nextSteps).toContain("restart Live, then");
     expect(nextSteps).not.toContain("add-producer-pal");
-    expect(nextSteps).toContain("call ppal-connect with versionCheck: true");
+    expect(nextSteps).toContain("call ppal-connect with versionCheck: true.");
+    expect(nextSteps).toContain("Never connected in this chat?");
   });
 
   it("leaves the connect check out when nothing is running to connect to", () => {

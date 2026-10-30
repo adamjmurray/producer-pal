@@ -67,8 +67,8 @@ script.
   asks first), and the device is already in the User Library, so the user can
   also drag it onto a MIDI track in Live right away, without the restart. When
   Producer Pal is already running, it ends with: once the user has restarted,
-  call `ppal-connect` with `versionCheck: true`, or a plain one if the chat
-  hasn't connected yet (see [ppal-connect](ppal-connect.md)).
+  call `ppal-connect` with `versionCheck: true`, then a note: never connected in
+  this chat? Call a plain one instead (see [ppal-connect](ppal-connect.md)).
 
 - **One part fails:** the call does what it can and reports both. It is a
   result, not an error: the part that failed is `{ ok: false, path?, detail }`,
@@ -208,11 +208,14 @@ to ask the user first.
   which version runs. If the swap went through but no new server answers in
   time, it says Live replaced the device, to wait and call `ppal-connect` with
   `versionCheck: true`, and not to update again (or, if the old version still
-  answers, to ask the user to check the device in Live).
+  answers, to ask the user to check the device in Live). Each of these ends with
+  the never-connected note.
 - **Result:** `{ device: { from, to }, track: { path, name }, nextSteps }`,
   where `path` is `t3`, `rt0` or `mt` as in the tools, plus `note` when the
   loaded file wasn't the portal's. `nextSteps` is
-  `Call ppal-connect with versionCheck: true, or plain ppal-connect if this chat hasn't connected yet.`
+  `Now call ppal-connect with versionCheck: true to confirm the update. (Never connected in this chat? Call plain ppal-connect instead.)`
+  The check comes first and is worded as the required next step, so the model
+  doesn't read it as optional.
 - **The `ppal-connect` hint** comes from the portal, since old devices can't
   learn new wording: when a successful `ppal-connect` finds a device older than
   the portal, the portal appends a block telling the model to ask the user, then

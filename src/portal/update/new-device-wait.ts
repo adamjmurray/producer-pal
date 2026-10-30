@@ -4,7 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 import {
-  VERSION_CHECK_OR_CONNECT,
+  VERSION_CHECK_CALL,
+  VERSION_CHECK_NEVER_CONNECTED,
   isNewerVersion,
 } from "#src/shared/version-check.ts";
 import { type OfflineDeps } from "../offline/offline-deps.ts";
@@ -92,6 +93,6 @@ function notAnsweringYet(
   const replaced = `Live replaced the Producer Pal device${where}`;
 
   return seen == null
-    ? `${replaced}, but the new one hasn't answered yet. Wait a few seconds, then call ${VERSION_CHECK_OR_CONNECT}. Don't call update-producer-pal again.`
-    : `${replaced}, but the old version (${seen}) is still answering. Ask the user to check the Producer Pal device in Live, then call ${VERSION_CHECK_OR_CONNECT}.`;
+    ? `${replaced}, but the new one hasn't answered yet. Wait a few seconds, then call ${VERSION_CHECK_CALL}. Don't call update-producer-pal again. ${VERSION_CHECK_NEVER_CONNECTED}`
+    : `${replaced}, but the old version (${seen}) is still answering. Ask the user to check the Producer Pal device in Live, then call ${VERSION_CHECK_CALL}. ${VERSION_CHECK_NEVER_CONNECTED}`;
 }

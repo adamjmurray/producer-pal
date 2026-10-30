@@ -20,7 +20,8 @@ import { toCompactJSLiteral } from "#src/shared/compact/compact-serializer.ts";
 import { VERSION } from "#src/shared/config.ts";
 import {
   UP_TO_DATE_NEW_CHAT,
-  VERSION_CHECK_OR_CONNECT,
+  VERSION_CHECK_CALL,
+  VERSION_CHECK_NEVER_CONNECTED,
 } from "#src/shared/version-check.ts";
 import { manageInstallResult } from "#src/tools/core/helpers/manage-install-result.ts";
 
@@ -130,7 +131,7 @@ export function updateSuccess(): McpContent {
     toCompactJSLiteral({
       device: { from: OLD_VERSION, to: VERSION },
       track: { path: "t1", name: "Producer Pal" },
-      nextSteps: `Call ${VERSION_CHECK_OR_CONNECT}.`,
+      nextSteps: `Now call ${VERSION_CHECK_CALL} to confirm the update. ${VERSION_CHECK_NEVER_CONNECTED}`,
     }),
   );
 }

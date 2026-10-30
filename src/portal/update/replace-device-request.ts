@@ -8,7 +8,10 @@ import {
   type RemoteScriptAnswer,
 } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { RemoteScriptTimeout } from "#src/mcp-server/rpc/remote-script/remote-script-errors.ts";
-import { VERSION_CHECK_OR_CONNECT } from "#src/shared/version-check.ts";
+import {
+  VERSION_CHECK_CALL,
+  VERSION_CHECK_NEVER_CONNECTED,
+} from "#src/shared/version-check.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type OfflineDeps } from "../offline/offline-deps.ts";
 import { requestWithBrowserRetry } from "../setup/browser-retry-request.ts";
@@ -68,7 +71,7 @@ export async function replaceDevice(
  * @returns What to do to learn which device is running now
  */
 function checkWhichRuns(from: string): string {
-  return `Wait a few seconds, then check which version is running (it was ${from}): call ${VERSION_CHECK_OR_CONNECT}. If it is still ${from}, call update-producer-pal again.`;
+  return `Wait a few seconds, then check which version is running (it was ${from}): call ${VERSION_CHECK_CALL}. ${VERSION_CHECK_NEVER_CONNECTED} If it is still ${from}, call update-producer-pal again.`;
 }
 
 /**

@@ -105,7 +105,7 @@ describe("ppal-manage update-producer-pal", () => {
 
     expect(isError).toBeFalsy();
     expect(text).toBe(
-      `{device:{from:"${OLD}",to:"${PORTAL_VERSION}"},track:{path:"t1",name:"1-MIDI"},nextSteps:"Call ppal-connect with versionCheck: true, or plain ppal-connect if this chat hasn't connected yet."}`,
+      `{device:{from:"${OLD}",to:"${PORTAL_VERSION}"},track:{path:"t1",name:"1-MIDI"},nextSteps:"Now call ppal-connect with versionCheck: true to confirm the update. (Never connected in this chat? Call plain ppal-connect instead.)"}`,
     );
     expect(existsSync(join(library, ...AMXD))).toBe(true);
 

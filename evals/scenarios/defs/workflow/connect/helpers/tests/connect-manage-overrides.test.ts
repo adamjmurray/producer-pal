@@ -9,7 +9,8 @@ import { VERSION } from "#src/shared/config.ts";
 import {
   AFTER_RESTART_CHECK,
   UP_TO_DATE_NEW_CHAT,
-  VERSION_CHECK_OR_CONNECT,
+  VERSION_CHECK_CALL,
+  VERSION_CHECK_NEVER_CONNECTED,
 } from "#src/shared/version-check.ts";
 import {
   connectOverride,
@@ -38,10 +39,11 @@ const texts = (content: McpContent): string[] =>
   content.map((block) => block.text ?? "");
 
 describe("canned results", () => {
-  it("update points at the version check or a plain connect", () => {
+  it("update tells the model to run the version check", () => {
     const [block] = texts(updateSuccess());
 
-    expect(block).toContain(VERSION_CHECK_OR_CONNECT);
+    expect(block).toContain(`Now call ${VERSION_CHECK_CALL}`);
+    expect(block).toContain(VERSION_CHECK_NEVER_CONNECTED);
     expect(block).toContain(`to:"${VERSION}"`);
   });
 
@@ -49,7 +51,8 @@ describe("canned results", () => {
     const [block] = texts(installSuccess());
 
     expect(block).toContain("restart Live");
-    expect(block).toContain(VERSION_CHECK_OR_CONNECT);
+    expect(block).toContain(VERSION_CHECK_CALL);
+    expect(block).toContain(VERSION_CHECK_NEVER_CONNECTED);
   });
 
   it("version check is versions, a running script line, then the new-chat line", () => {

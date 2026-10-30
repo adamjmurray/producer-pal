@@ -12,7 +12,8 @@
 
 import { UPDATE_PORTAL_ADVICE, VERSION } from "#src/shared/config.ts";
 import {
-  VERSION_CHECK_OR_CONNECT,
+  VERSION_CHECK_CALL,
+  VERSION_CHECK_NEVER_CONNECTED,
   isNewerVersion,
 } from "#src/shared/version-check.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
@@ -114,7 +115,7 @@ export async function updateProducerPal(
       device: { from, to },
       ...(track == null ? {} : { track }),
       ...(file.note == null ? {} : { note: file.note }),
-      nextSteps: `Call ${VERSION_CHECK_OR_CONNECT}.`,
+      nextSteps: `Now call ${VERSION_CHECK_CALL} to confirm the update. ${VERSION_CHECK_NEVER_CONNECTED}`,
     });
   } catch (error) {
     return offlineError(errorMessage(error));
