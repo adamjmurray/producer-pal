@@ -5,11 +5,13 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
+import { toJsonResult } from "../json-results/result-conversion.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
+import { writeJsonResult } from "../json-results/writer.ts";
 import { type RunEnv } from "../../run-env/run-env.ts";
 import { runScenario } from "../../run-scenario.ts";
 import { type EvalScenario, type EvalScenarioResult } from "../../types.ts";
-import { runTrials, type RunContext } from "./run-trials.ts";
+import { runTrial, type RunContext } from "./run-trials.ts";
 
 vi.mock(import("../../run-scenario.ts"), () => ({ runScenario: vi.fn() }));
 vi.mock(import("../json-results/result-conversion.ts"), () => ({
@@ -20,96 +22,111 @@ vi.mock(import("../json-results/result-conversion.ts"), () => ({
       }) as JsonEvalResult,
   ),
 }));
+vi.mock(import("../json-results/writer.ts"), () => ({
+  writeJsonResult: vi.fn(),
+}));
 vi.mock(import("../reporting/result-printer.ts"), () => ({
   printResultBlock: vi.fn(),
-}));
-vi.mock(import("./multi-trial-runs.ts"), async (importOriginal) => ({
-  ...(await importOriginal()),
-  printTrialSummary: vi.fn(),
 }));
 
 const SPEC = { provider: "openai", model: "m" } as ModelSpec;
 const RUN_ENV = {} as RunEnv;
 
-const ctx = (repeatCount: number): RunContext => ({
+const ctx = (repeatCount: number, save = false): RunContext => ({
   runId: "r",
   judgeOverride: SPEC,
   repeatCount,
-  options: { save: false },
+  options: { save },
 });
 
-const scenario = (reuseLiveSet?: boolean): EvalScenario =>
-  ({ id: "s", reuseLiveSet }) as EvalScenario;
+const scenario = (): EvalScenario => ({ id: "s" }) as EvalScenario;
 
-/** Queue one scenario result per trial; a string is an error message. */
-function queueResults(outcomes: Array<string | null>): void {
-  for (const error of outcomes) {
-    vi.mocked(runScenario).mockResolvedValueOnce(
-      (error == null ? {} : { error }) as EvalScenarioResult,
-    );
-  }
-}
-
-const skipFlags = (): unknown[] =>
-  vi.mocked(runScenario).mock.calls.map(([, o]) => o.skipLiveSetOpen);
-
-describe("runTrials Live Set reuse", () => {
+describe("runTrial", () => {
   beforeEach(() => {
     vi.mocked(runScenario).mockReset();
+    vi.mocked(runScenario).mockResolvedValue({} as EvalScenarioResult);
+    vi.mocked(toJsonResult).mockClear();
+    vi.mocked(writeJsonResult).mockClear();
   });
 
-  it("reopens the Set after a trial that failed to open it", async () => {
-    queueResults(["Live Set open failed", null, null]);
+  it.each([true, false])(
+    "passes a Live Set already open (%s) on to the run",
+    async (opened) => {
+      await runTrial(scenario(), SPEC, RUN_ENV, "default", ctx(2), 1, opened);
 
-    await runTrials(scenario(true), SPEC, RUN_ENV, "default", ctx(3), false);
+      expect(vi.mocked(runScenario).mock.calls[0]?.[1].skipLiveSetOpen).toBe(
+        opened,
+      );
+    },
+  );
 
-    expect(skipFlags()).toStrictEqual([false, false, true]);
-  });
-
-  it("reuses the Set across trials that all ran", async () => {
-    queueResults([null, null, null]);
-
-    await runTrials(scenario(true), SPEC, RUN_ENV, "default", ctx(3), false);
-
-    expect(skipFlags()).toStrictEqual([false, true, true]);
-  });
-
-  it("still opens every trial for a scenario that does not reuse the Set", async () => {
-    queueResults([null, null]);
-
-    await runTrials(scenario(), SPEC, RUN_ENV, "default", ctx(2), false);
-
-    expect(skipFlags()).toStrictEqual([false, false]);
-  });
-});
-
-describe("runTrials judge settings", () => {
-  beforeEach(() => {
-    vi.mocked(runScenario).mockReset();
-  });
-
-  it("hands the Jev settings to every trial", async () => {
-    queueResults([null, null]);
-
-    await runTrials(
+  it("skips the open under --skip-setup", async () => {
+    await runTrial(
       scenario(),
       SPEC,
       RUN_ENV,
       "default",
-      { ...ctx(2), jev: { route: "vercel" } },
+      { ...ctx(1), options: { skipSetup: true } },
+      1,
       false,
     );
 
-    expect(
-      vi.mocked(runScenario).mock.calls.map(([, o]) => o.jev),
-    ).toStrictEqual([{ route: "vercel" }, { route: "vercel" }]);
+    expect(vi.mocked(runScenario).mock.calls[0]?.[1].skipLiveSetOpen).toBe(
+      true,
+    );
   });
 
-  it("passes no Jev settings by default", async () => {
-    queueResults([null]);
+  it("hands the Jev settings to the run", async () => {
+    await runTrial(
+      scenario(),
+      SPEC,
+      RUN_ENV,
+      "default",
+      { ...ctx(1), jev: { route: "vercel" } },
+      1,
+      false,
+    );
 
-    await runTrials(scenario(), SPEC, RUN_ENV, "default", ctx(1), false);
+    expect(vi.mocked(runScenario).mock.calls[0]?.[1].jev).toStrictEqual({
+      route: "vercel",
+    });
+  });
 
-    expect(vi.mocked(runScenario).mock.calls[0]?.[1].jev).toBeUndefined();
+  it("numbers the trial when repeating", async () => {
+    await runTrial(scenario(), SPEC, RUN_ENV, "default", ctx(3), 2, false);
+
+    expect(vi.mocked(toJsonResult).mock.calls[0]?.[4]).toStrictEqual({
+      trial: 2,
+      totalTrials: 3,
+    });
+  });
+
+  it("leaves a single run unnumbered", async () => {
+    await runTrial(scenario(), SPEC, RUN_ENV, "default", ctx(1), 1, false);
+
+    expect(vi.mocked(toJsonResult).mock.calls[0]?.[4]).toBeUndefined();
+  });
+
+  it("saves the result as soon as the trial finishes unless --no-save", async () => {
+    await runTrial(
+      scenario(),
+      SPEC,
+      RUN_ENV,
+      "default",
+      ctx(1, true),
+      1,
+      false,
+    );
+    await runTrial(
+      scenario(),
+      SPEC,
+      RUN_ENV,
+      "default",
+      ctx(1, false),
+      1,
+      false,
+    );
+
+    expect(writeJsonResult).toHaveBeenCalledTimes(1);
   });
 });

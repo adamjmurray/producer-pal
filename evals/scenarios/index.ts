@@ -24,21 +24,11 @@ import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
 import { type JevSettings } from "./helpers/judge/jev-first-judge.ts";
 import { resolveJevSettings } from "./helpers/judge/jev-settings.ts";
 import { generateRunId } from "./helpers/json-results/run-id.ts";
-import { shouldSkipScenario } from "./helpers/json-results/skip-scenario.ts";
-import { type JsonEvalResult } from "./helpers/json-results/types.ts";
 import { setQuietMode } from "./helpers/quiet-mode.ts";
-import { type ResultsByScenario } from "./helpers/reporting/report-table.ts";
-import {
-  emitSkipped,
-  runTrials,
-  type RunContext,
-} from "./helpers/trials/run-trials.ts";
+import { type RunContext } from "./helpers/trials/run-trials.ts";
+import { runAllScenarios } from "./helpers/trials/run-all-scenarios.ts";
 import { printSummary } from "./helpers/reporting/summary-printer.ts";
-import {
-  liveSetLeftClean,
-  parseRepeatCount,
-} from "./helpers/trials/multi-trial-runs.ts";
-import { describeRunAbort, stalledModels } from "./helpers/trials/run-abort.ts";
+import { parseRepeatCount } from "./helpers/trials/multi-trial-runs.ts";
 import {
   loadScenarios,
   printList,
@@ -173,7 +163,7 @@ program
   )
   .option(
     "-r, --repeat <N>",
-    "Run each scenario N times to detect flaky results",
+    "Run each scenario N times to detect flaky results (all scenarios once per round)",
   )
   .option("-l, --list", "List available scenarios")
   .option("--list-tags", "List scenario tags with their counts, then exit")
@@ -385,118 +375,4 @@ function resolveSelection(options: CliOptions): string[] {
 
     return [];
   }
-}
-
-/**
- * Run all scenarios across models in the active run environment, collecting
- * results. The result map keeps its 3-level shape (scenario → model → label)
- * for the reporting layer; with a single run environment the innermost map has
- * exactly one entry, keyed by `label`.
- *
- * @param scenarios - Scenarios to run
- * @param modelSpecs - Models to test
- * @param runEnv - The active run environment
- * @param label - The run-environment label (see `envLabel`)
- * @param ctx - Shared run context
- * @returns 3D results map
- */
-async function runAllScenarios(
-  scenarios: ReturnType<typeof loadScenarios>,
-  modelSpecs: ModelSpec[],
-  runEnv: RunEnv,
-  label: string,
-  ctx: RunContext,
-): Promise<ResultsByScenario> {
-  const resultsByScenario: ResultsByScenario = new Map();
-  // The Set a `reuseLiveSet` scenario left clean; the next reuse scenario on
-  // the same Set skips the reopen.
-  let lastOpenedLiveSet: string | null = null;
-  // Per model, consecutive scenarios where every trial errored. Live not
-  // coming back or the provider refusing every request won't recover, and a
-  // long unattended run would otherwise fill the results directory with
-  // scenarios nobody ever asked a model about.
-  const errorStreaks = new Map<string, number>();
-  let activeSpecs = modelSpecs;
-
-  for (const scenario of scenarios) {
-    const modelResults = new Map<string, Map<string, JsonEvalResult[]>>();
-    // The skip decision depends only on the scenario + run env, so it is the
-    // same for every model.
-    const skipReason = shouldSkipScenario(scenario, runEnv);
-    let liveSetOpened =
-      scenario.reuseLiveSet === true && lastOpenedLiveSet === scenario.liveSet;
-
-    for (const spec of activeSpecs) {
-      const modelKey = `${spec.provider}/${spec.model}`;
-      let results: JsonEvalResult[];
-
-      if (skipReason != null) {
-        // Skipped before running: no Live Set is opened, so leave
-        // `liveSetOpened` untouched for the next model.
-        results = await emitSkipped(scenario, modelKey, label, skipReason, ctx);
-      } else {
-        results = await runTrials(
-          scenario,
-          spec,
-          runEnv,
-          label,
-          ctx,
-          liveSetOpened,
-        );
-        // Only a scenario that resets what it writes hands the Set on (same
-        // rule as trials 2+). A run that errored may have failed the open.
-        const leftClean = liveSetLeftClean(scenario.reuseLiveSet, results);
-
-        liveSetOpened = leftClean;
-        lastOpenedLiveSet = leftClean ? scenario.liveSet : null;
-      }
-
-      modelResults.set(modelKey, new Map([[label, results]]));
-    }
-
-    resultsByScenario.set(scenario.id, modelResults);
-
-    if (skipReason == null) {
-      activeSpecs = dropStalledModels(activeSpecs, errorStreaks, modelResults);
-    }
-  }
-
-  return resultsByScenario;
-}
-
-/**
- * Drop each model whose last few scenarios all errored, warning about it.
- * Throws when no model is left.
- *
- * @param specs - Models still running
- * @param streaks - Each model's error streak, updated in place
- * @param modelResults - The scenario's results, by model and label
- * @returns The models to keep running
- */
-function dropStalledModels(
-  specs: ModelSpec[],
-  streaks: Map<string, number>,
-  modelResults: Map<string, Map<string, JsonEvalResult[]>>,
-): ModelSpec[] {
-  const stalled = stalledModels(streaks, modelResults);
-  const kept = specs.filter(
-    (spec) => !stalled.has(`${spec.provider}/${spec.model}`),
-  );
-
-  if (kept.length === 0) {
-    const [modelKey, runs] = [...stalled].at(-1) ?? ["", []];
-
-    throw new Error(describeRunAbort(streaks.get(modelKey) ?? 0, runs));
-  }
-
-  for (const [modelKey, runs] of stalled) {
-    console.warn(
-      styleText(
-        "yellow",
-        describeRunAbort(streaks.get(modelKey) ?? 0, runs, modelKey),
-      ),
-    );
-  }
-
-  return kept;
 }

@@ -27,6 +27,13 @@ export type ResultsByScenario = Map<
   Map<string, Map<string, JsonEvalResult[]>>
 >;
 
+/** Table options. */
+export interface ResultsTableOptions {
+  /** Show each cell as passed/graded trials (with a Total row) instead of a
+   *  score percentage (with an Avg % row). */
+  passes?: boolean;
+}
+
 /**
  * Print results as a formatted table, one column per model. Each run uses a
  * single run environment, so column labels show the model only.
@@ -34,18 +41,21 @@ export type ResultsByScenario = Map<
  * @param resultsByScenario - 3D results map
  * @param modelSpecs - All model specs tested
  * @param label - The run-environment label (see `envLabel`)
+ * @param options - Table options
  */
 export function printResultsTable(
   resultsByScenario: ResultsByScenario,
   modelSpecs: ModelSpec[],
   label: string,
+  options: ResultsTableOptions = {},
 ): void {
+  const passes = options.passes === true;
   const columns = buildColumnKeys(modelSpecs, label);
   const scenarioIds = [...resultsByScenario.keys()];
 
   // Calculate column widths
   const scenarioColWidth = Math.max(
-    5, // "Avg %"
+    8, // "Scenario" header
     ...scenarioIds.map((id) => id.length),
   );
   const colWidths = columns.map(
@@ -81,6 +91,12 @@ export function printResultsTable(
         return "skip";
       }
 
+      if (passes) {
+        const tally = passTally(results);
+
+        return tally.graded === 0 ? "—" : `${tally.passed}/${tally.graded}`;
+      }
+
       const pct = scorePercentage(results);
 
       if (pct == null) {
@@ -96,6 +112,10 @@ export function printResultsTable(
         return "gray";
       }
 
+      if (passes) {
+        return results ? passColor(passTally(results)) : undefined;
+      }
+
       const pct = results ? scorePercentage(results) : null;
 
       return pct != null ? pctColor(pct) : undefined;
@@ -108,7 +128,13 @@ export function printResultsTable(
 
   // Summary rows
   console.log(styleText("gray", separator));
-  printSummaryRow(resultsByScenario, columns, scenarioColWidth, colWidths);
+
+  if (passes) {
+    printTotalRow(resultsByScenario, columns, scenarioColWidth, colWidths);
+  } else {
+    printSummaryRow(resultsByScenario, columns, scenarioColWidth, colWidths);
+  }
+
   console.log(styleText("gray", separator));
 }
 
@@ -156,6 +182,83 @@ function printSummaryRow(
   console.log(
     buildRow("Avg %", avgPcts, scenarioColWidth, colWidths, avgColors, "bold"),
   );
+}
+
+/**
+ * Print the passed/graded totals row.
+ *
+ * @param resultsByScenario - 3D results map
+ * @param columns - Composite column keys
+ * @param scenarioColWidth - Width of scenario column
+ * @param colWidths - Widths of data columns
+ */
+function printTotalRow(
+  resultsByScenario: ResultsByScenario,
+  columns: ColumnKey[],
+  scenarioColWidth: number,
+  colWidths: number[],
+): void {
+  const totals = columns.map((col) =>
+    passTally(
+      [...resultsByScenario.values()].flatMap(
+        (modelResults) =>
+          modelResults.get(col.modelKey)?.get(col.configId) ?? [],
+      ),
+    ),
+  );
+
+  console.log(
+    buildRow(
+      "Total",
+      totals.map((t) => `${t.passed}/${t.graded}`),
+      scenarioColWidth,
+      colWidths,
+      totals.map((t) => passColor(t)),
+      "bold",
+    ),
+  );
+}
+
+/** Passed trials out of the graded ones. */
+interface PassTally {
+  passed: number;
+  graded: number;
+}
+
+/**
+ * Count passed trials over the graded ones. Skipped and errored runs never
+ * tested the model, so they are not out of N.
+ *
+ * @param results - Trials to count
+ * @returns Passed and graded counts
+ */
+function passTally(results: JsonEvalResult[]): PassTally {
+  const graded = results.filter(
+    (r) => r.result !== "skipped" && r.result !== "error",
+  );
+
+  return {
+    passed: graded.filter((r) => r.result === "pass").length,
+    graded: graded.length,
+  };
+}
+
+/**
+ * Color a pass tally: green when all passed, red when none, else yellow.
+ *
+ * @param tally - Passed and graded counts
+ * @returns The color, or undefined when nothing was graded
+ */
+function passColor(tally: PassTally): InspectColor | undefined {
+  if (tally.graded === 0) {
+    return undefined;
+  }
+
+  if (tally.passed === tally.graded) {
+    return "green";
+  }
+
+  return tally.passed === 0 ? "red" : "yellow";
 }
 
 /**

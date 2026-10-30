@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Repeat/trials runs for the eval CLI: repeat count, per-trial Live Set opens,
- * and the multi-trial summary.
+ * Repeat/trials runs for the eval CLI: repeat count, whether a run leaves the
+ * Live Set reusable, and the multi-trial summary.
  */
 
 import { type InspectColor, styleText } from "node:util";
@@ -183,53 +183,28 @@ export function formatParts(parts: SummaryPart[]): string {
 }
 
 /**
- * Which trials may skip the (slow) Live Set reopen.
+ * Whether a Live Set is known to be open after a run. A run that errored may
+ * have died partway through the open, so it counts as not opened and the next
+ * run opens the Set again.
  *
- * A completed trial leaves the Set mutated, so trial 2 onward can only inherit
- * it when the scenario declares `reuseLiveSet` — its promise to reset whatever
- * it writes. Without that, trial 2 is graded on trial 1's leftovers, which is
- * the flakiness `--repeat` exists to detect, not to manufacture.
- *
- * @param repeatCount - Number of trials to run
- * @param liveSetAlreadyOpened - A Set the runner knows is clean is already open
- * @param reuseLiveSet - The scenario's `reuseLiveSet` flag
- * @returns One skip-the-open flag per trial, in order
+ * @param result - The run's result
+ * @returns True when the run ran far enough to have opened the Set
  */
-export function planTrialLiveSetOpens(
-  repeatCount: number,
-  liveSetAlreadyOpened: boolean,
-  reuseLiveSet: boolean | undefined,
-): boolean[] {
-  return Array.from({ length: repeatCount }, (_unused, index) =>
-    index === 0 ? liveSetAlreadyOpened : reuseLiveSet === true,
-  );
+export function liveSetLeftOpen(result: JsonEvalResult): boolean {
+  return result.result !== "error";
 }
 
 /**
- * Whether a Live Set is known to be open after a scenario's trials. A run that
- * errored may have died partway through the open, so it counts as not opened
- * and the next run opens the Set again.
- *
- * @param results - The scenario's trial results, in order
- * @returns True when the last trial ran far enough to have opened the Set
- */
-export function liveSetLeftOpen(results: JsonEvalResult[]): boolean {
-  const last = results.at(-1);
-
-  return last != null && last.result !== "error";
-}
-
-/**
- * Whether the next run may inherit this scenario's Live Set: only a
- * `reuseLiveSet` scenario resets what it writes.
+ * Whether the next run may inherit this run's Live Set: only a `reuseLiveSet`
+ * scenario resets what it writes.
  *
  * @param reuseLiveSet - The scenario's `reuseLiveSet` flag
- * @param results - The scenario's trial results, in order
+ * @param result - The run's result
  * @returns True when the next run can skip the reopen
  */
 export function liveSetLeftClean(
   reuseLiveSet: boolean | undefined,
-  results: JsonEvalResult[],
+  result: JsonEvalResult,
 ): boolean {
-  return reuseLiveSet === true && liveSetLeftOpen(results);
+  return reuseLiveSet === true && liveSetLeftOpen(result);
 }

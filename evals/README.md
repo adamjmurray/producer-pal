@@ -108,7 +108,7 @@ scripts/eval [options]
 | `--skip-reflection`    | Skip the self-reflection turn after a failure      |
 | `--no-seed-connect`    | Let the model run the opening connect turn         |
 | `-q, --quiet`          | Suppress detailed AI and judge responses           |
-| `-r, --repeat <N>`     | Run each scenario N times (for flakiness)          |
+| `-r, --repeat <N>`     | Run every scenario N times, one round at a time    |
 | `-u, --usage`          | Show token usage per turn                          |
 | `--no-save`            | Skip writing JSON result files to disk             |
 | `-b, --base-url <url>` | Base URL for the `local` provider                  |
@@ -311,9 +311,9 @@ likewise kept out of pass/fail counts and scores: Live would not open the Set,
 the config would not apply, or the provider refused the request (usage limit,
 credits, capacity, rate limit) at any turn. Scoring it would turn an outage into
 a wall of convincing zeros. The harness retries a failed open three times,
-waiting once and then killing Live for a cold launch. After three scenarios in a
-row where every trial of a model errored, that model is dropped from the rest of
-the run; the run stops when no model is left.
+waiting once and then killing Live for a cold launch. After three of a model's
+trials in a row errored, that model is dropped from the rest of the run; the run
+stops when no model is left.
 
 ```bash
 # Default environment
@@ -498,13 +498,25 @@ majority is the reference; it also reports pairwise agreement, each judge's
 wrong passes and fails against the others, and lists the results where the LLM
 judges split, for hand-labeling.
 
-When using `-r N`, the summary aggregates across trials: checks are totaled,
-tool errors are summed, efficiency is averaged, and judge shows a pass rate.
+When using `-r N`, the run goes in rounds: every scenario once, then every
+scenario again, up to N. Cancelling part-way leaves about the same number of
+trials of every scenario. Each result file is saved as its trial finishes. The
+summary aggregates across trials: checks are totaled, tool errors are summed,
+efficiency is averaged, and judge shows a pass rate.
 
-Every trial reopens the Live Set, so trial 2 is never graded on trial 1's
+To get the pass table for a run that was cancelled before its summary printed:
+
+```bash
+scripts/eval-report --summarize <runId|results folder>
+```
+
+It shows passed/graded trials per scenario and model, plus a total. Errored and
+skipped runs are left out of the counts.
+
+Every run reopens the Live Set, so a trial is never graded on the previous run's
 leftovers. Scenarios that declare `reuseLiveSet` — they reset whatever they
-write — skip the reopen and run faster. Across scenarios, the reopen is skipped
-only right after another `reuseLiveSet` scenario on the same Set.
+write — skip the reopen and run faster, but only right after another
+`reuseLiveSet` scenario on the same Set that ran without erroring.
 
 ### Comparing models
 
