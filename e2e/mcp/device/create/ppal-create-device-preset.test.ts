@@ -122,15 +122,16 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     skip: (note?: string) => never,
   ): Promise<string> {
     await skipTestBeforeLive(ctx.client!, skip, "12.4", LIBRARY_NEEDS);
-    const library = parseToolResult<{
-      items: { name: string; path: string }[];
-    }>(
+    const library = parseToolResult<{ items: { path: string }[] }>(
       await callToolAndSettle(ctx.client!, "ppal-library", {
         kind: "preset",
         query: presetName(adv.name),
       }),
     );
-    const file = library.items.find((item) => item.name === adv.name)?.path;
+    // Search items carry no `name`: it is the path's last segment.
+    const file = library.items.find(({ path }) =>
+      path.endsWith(`/${adv.name}`),
+    )?.path;
 
     expect(file).toBeDefined();
 
@@ -199,7 +200,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
   }) => {
     await skipTestBeforeLive(ctx.client!, skip, "12.4", LIBRARY_NEEDS);
 
-    const found = parseToolResult<{ items?: Array<{ name: string }> }>(
+    const found = parseToolResult<{ items?: Array<{ path: string }> }>(
       await callToolAndSettle(ctx.client!, "ppal-library", {
         kind: "preset",
         query: "Add Oxide",
@@ -207,7 +208,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
       }),
     ).items;
 
-    if (found?.some(({ name }) => name === "Add Oxide.adv") !== true) {
+    if (found?.some(({ path }) => path.endsWith("/Add Oxide.adv")) !== true) {
       skip("the Tape by Softube pack isn't installed");
     }
 

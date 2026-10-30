@@ -7,6 +7,7 @@ import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-pro
 import {
   clampLibraryLimit,
   DEFAULT_LIBRARY_LIMIT,
+  MAX_SEARCH_LIMIT,
   type LibraryBatchQuery,
   type LibraryBatchResult,
   type LibraryDeviceKind,
@@ -18,12 +19,15 @@ import {
   type LibrarySearchArgs,
   type LibrarySearchResult,
   type LibrarySort,
+  type LibraryToolSearchResult,
   type ListPluginsResult,
   type PluginCategory,
   type PluginFormat,
 } from "#src/mcp-server/live-library/library-types.ts";
 import { emitWarning } from "#src/shared/max/v8-max-console.ts";
-import { refuseLibraryParamsOutsideAction } from "./helpers/library-action-params.ts";
+import { refuseLibraryParamsOutsideAction } from "./helpers/library/library-action-params.ts";
+import { trimLibraryItems } from "./helpers/library/library-item-trim.ts";
+import { refuseUnfilteredSearch } from "./helpers/library/library-unfiltered-search.ts";
 import { runSearchBatch } from "./library-search-batch.ts";
 import { readSamples } from "./read-samples.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
@@ -60,7 +64,7 @@ interface LibraryArgs extends LibrarySearchArgs {
 }
 
 type LibraryResult =
-  | LibrarySearchResult
+  | LibraryToolSearchResult
   | LibraryListTagsResult
   | LibraryListCategoriesResult
   | LibraryBatchResult
@@ -148,6 +152,8 @@ export async function library(
     throw new Error(`Unknown action: ${action}`);
   }
 
+  refuseUnfilteredSearch(args, searches);
+
   // searches is the fan-out form of a search: each entry carries its own
   // filters, so the top-level ones don't apply.
   if (searches != null) {
@@ -164,12 +170,12 @@ export async function library(
  *
  * @param args - Tool arguments
  * @param ctx - Per-request context
- * @returns Merged LibrarySearchResult
+ * @returns Merged result, its items trimmed of what the request already says
  */
 export async function runSearch(
   args: LibraryArgs,
   ctx: Partial<ToolContext>,
-): Promise<LibrarySearchResult> {
+): Promise<LibraryToolSearchResult> {
   const folderScan = scanFolderItems(args, ctx);
   // source=sample-folder bypasses the DB entirely; the response omits dbAvailable
   // to signal "did not consult the DB" instead of lying with `true`.
@@ -201,15 +207,20 @@ export async function runSearch(
     (i) => !folderPaths.has(i.path.toLowerCase()),
   );
   const merged = sortItems([...folderScan.items, ...dbItems], args.sort);
-  const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
-  const items = merged.slice(0, limit);
+  const limit = clampLibraryLimit(
+    args.limit,
+    DEFAULT_LIBRARY_LIMIT,
+    MAX_SEARCH_LIMIT,
+  );
+  // Trim after sorting: sorting reads the full fields.
+  const items = trimLibraryItems(merged.slice(0, limit), args);
   const detail = folderScan.detail ?? dbResult?.detail;
 
   if (dbResult == null) {
     return detail == null ? { items } : { items, detail };
   }
 
-  const base: LibrarySearchResult = {
+  const base: LibraryToolSearchResult = {
     dbAvailable: dbResult.dbAvailable,
     ...(dbResult.stalenessNote != null && {
       stalenessNote: dbResult.stalenessNote,
@@ -320,7 +331,6 @@ function scanFolderItems(
     tags: [],
     useCount: 0,
     source: SAMPLE_FOLDER,
-    folder: parentFolder(rel, result.sampleFolder),
     // These came from a live filesystem scan, so they exist by construction —
     // mark them without a redundant re-stat when the caller wants pathExists.
     ...(args.verifyPaths ? { pathExists: true } : {}),
@@ -339,26 +349,6 @@ function leafName(rel: string): string {
   const idx = rel.lastIndexOf("/");
 
   return idx === -1 ? rel : rel.slice(idx + 1);
-}
-
-/**
- * Immediate parent folder display name for a sampleFolder item, mirroring the
- * `folder` field DB items carry: a nested path's last folder segment
- * ("drums/kick.wav" → "drums"), else the sample folder's own basename.
- *
- * @param rel - Relative path like "drums/kick.wav"
- * @param sampleFolder - Absolute sample folder path (trailing slash)
- * @returns Parent folder display name
- */
-function parentFolder(rel: string, sampleFolder: string): string {
-  const idx = rel.lastIndexOf("/");
-
-  if (idx !== -1) {
-    return leafName(rel.slice(0, idx));
-  }
-
-  // readSamples always hands back a trailing slash.
-  return leafName(sampleFolder.slice(0, -1));
 }
 
 /**

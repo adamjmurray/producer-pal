@@ -1,8 +1,39 @@
 # ppal-library
 
-How `ppal-library` answers when Live's library data may be out of date. The
-refusal rules are in
+How `ppal-library` answers a search, and when Live's library data may be out of
+date. The refusal rules are in
 [up-front-refusals-by-tool.md](up-front-refusals-by-tool.md).
+
+## `search`
+
+- **A search needs a query or a filter.** `query`, `tags`, `type`, `deviceKind`,
+  `source`, `inFolder` or a `kind` other than `audio` count; blank strings,
+  `sort`, `verifyPaths`, `limit` and `label` do not. The schema fills in
+  `kind: "audio"`, and every audio file in the library is no narrower a set, so
+  the default counts for nothing. Without one the call would list the library's
+  first files, which can fill a small model's context. A bare search, or any
+  bare `searches` entry, refuses the whole call before any search runs, naming
+  the entries by label (or position) and what to add. `find-similar` and
+  `find-duplicates` are not searches in this sense: the seed or the whole
+  library is what they ask for.
+- **`limit` is capped at 200 for `search`** (default 50). A larger value is
+  clamped to 200 without a note. The other actions keep the 1000 cap
+  (`list-tags` defaults to 200): they have no paging, so a long plug-in list
+  must still fit.
+- **An item leaves out what the request or its own `path` already says.** The
+  items are sorted on their full fields first, then trimmed:
+  - `name` goes when it is the last segment of `path`. A name with a `/` in it
+    (a `:` in the file on disk) reads `:` in the path, so it differs and stays.
+  - `folder` goes when it is the second-to-last segment of `path`. It stays when
+    it differs the same way. A file directly under the root has no `folder`.
+  - `useCount` goes when 0.
+  - `kind` goes when it equals the search's `kind`, `source` when it equals the
+    search's `source`. They stay when the search sent none, and when the item
+    differs: a `kind: "midi"` search also returns MIDI Live clips, which stay
+    `kind: "live-clip"`.
+  - Everything else stays: `path`, `tags`, `subtype`, `type`, `pathTruncated`,
+    `pathExists`.
+- Only `search` trims. `find-similar` and `find-duplicates` return full items.
 
 Samples and tags come from Live's browser database, opened read-only with the
 write-ahead log ignored. New installs and samples sit in that log until Live

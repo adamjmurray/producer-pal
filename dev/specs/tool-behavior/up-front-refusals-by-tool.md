@@ -192,7 +192,9 @@ The tables sit next to each tool's code and feed one helper,
 - **`ppal-live-api`** (`live-api-operation-validation.ts`): per operation,
   `property`, `method`, `args` and `value` are for the types that read them; the
   message names `operations[N]`.
-- **`ppal-library`** also refuses top-level search filters beside `searches`.
+- **`ppal-library`** also refuses top-level search filters beside `searches`,
+  and a search (or any `searches` entry) with no query and no filter. See
+  [ppal-library.md](ppal-library.md#search).
 - **Not covered:** `ppal-create-track` (nothing depends on `type`; `arm` on a
   return track is per target), and `ppal-update-device`'s `wrapInRack`, which
   already refuses what it ignores in its own words.

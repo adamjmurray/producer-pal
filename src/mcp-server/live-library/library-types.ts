@@ -22,25 +22,32 @@ export const DEFAULT_LIST_TAGS_LIMIT = 200;
 /** Upper bound on `limit` for library queries. */
 export const MAX_LIBRARY_LIMIT = 1_000;
 
+/** Upper bound on `limit` for search. Lower on purpose: search items are big
+ * and a result of 1000 fills a small model's context. The list actions have no
+ * paging, so they keep the higher cap. */
+export const MAX_SEARCH_LIMIT = 200;
+
 /**
  * Clamp a requested limit to safe positive-integer bounds. Shared by
  * library.search, library.listTags, and the tool layer so all three
  * apply the same coercion semantics (non-finite/non-positive → default,
- * cap at MAX_LIBRARY_LIMIT, floor fractional values).
+ * cap at `max`, floor fractional values).
  *
  * @param requested - User-supplied limit
  * @param defaultLimit - Fallback when requested is missing/invalid
- * @returns Integer between 1 and MAX_LIBRARY_LIMIT
+ * @param max - Upper bound (defaults to MAX_LIBRARY_LIMIT)
+ * @returns Integer between 1 and `max`
  */
 export function clampLibraryLimit(
   requested: number | undefined,
   defaultLimit: number,
+  max: number = MAX_LIBRARY_LIMIT,
 ): number {
   if (requested == null || !Number.isFinite(requested) || requested <= 0) {
     return defaultLimit;
   }
 
-  return Math.min(Math.floor(requested), MAX_LIBRARY_LIMIT);
+  return Math.min(Math.floor(requested), max);
 }
 
 /** Content kinds supported by `library.search` and the ppal-library tool */
@@ -156,6 +163,25 @@ export interface LibraryItem {
   pathExists?: boolean;
 }
 
+/**
+ * A search result item as the tool returns it: a LibraryItem without what the
+ * caller can already read off the item's `path` or the request.
+ * - `name` and `folder` are left out when they are the last two segments of
+ *   `path`.
+ * - `useCount` is left out when 0.
+ * - `kind` and `source` are left out when they equal the search's own filter.
+ */
+export type LibraryToolItem = Omit<
+  LibraryItem,
+  "name" | "useCount" | "kind" | "source"
+> &
+  Partial<Pick<LibraryItem, "name" | "useCount" | "kind" | "source">>;
+
+/** What the tool returns for a search: the route's result with trimmed items. */
+export type LibraryToolSearchResult = Omit<LibrarySearchResult, "items"> & {
+  items: LibraryToolItem[];
+};
+
 export interface LibrarySearchResult {
   items: LibraryItem[];
   /** Present when the Live DB was consulted. False if the DB couldn't be
@@ -236,7 +262,7 @@ export interface LibraryBatchQuery extends LibrarySearchArgs {
 export interface LibraryBatchEntry {
   /** Provided label, or the query's index as a string when none was given. */
   label: string;
-  items: LibraryItem[];
+  items: LibraryToolItem[];
   /** Set when items is empty due to a discoverable failure (e.g. DB missing). */
   detail?: string;
   /** Set when matching files in plug-in preset folders were left out. */

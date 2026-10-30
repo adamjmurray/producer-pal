@@ -18,7 +18,11 @@ import {
 // clampLibraryLimit lives in the sibling library-types.ts (the same pure
 // library-DB coercion layer); its tests live here rather than in a separate file
 // to stay under the tests/ folder-item cap.
-import { clampLibraryLimit, MAX_LIBRARY_LIMIT } from "../library-types.ts";
+import {
+  clampLibraryLimit,
+  MAX_LIBRARY_LIMIT,
+  MAX_SEARCH_LIMIT,
+} from "../library-types.ts";
 
 describe("fourCC", () => {
   it("encodes 'fldr' as 1718379634 (matches Live's spike-confirmed value)", () => {
@@ -292,6 +296,19 @@ describe("clampLibraryLimit", () => {
     expect(clampLibraryLimit(MAX_LIBRARY_LIMIT + 500, DEFAULT)).toBe(
       MAX_LIBRARY_LIMIT,
     );
+  });
+
+  it("caps at 1000 by default, as the list actions need", () => {
+    expect(clampLibraryLimit(500, DEFAULT)).toBe(500);
+    expect(clampLibraryLimit(1_001, DEFAULT)).toBe(1_000);
+  });
+
+  it("caps at the given max, as search does", () => {
+    expect(clampLibraryLimit(201, DEFAULT, MAX_SEARCH_LIMIT)).toBe(200);
+    expect(clampLibraryLimit(200, DEFAULT, MAX_SEARCH_LIMIT)).toBe(200);
+    expect(
+      clampLibraryLimit(1_001_001_001_001_001, DEFAULT, MAX_SEARCH_LIMIT),
+    ).toBe(200);
   });
 
   it("falls back to the default when the request is missing", () => {

@@ -8,7 +8,7 @@ import {
   type LibraryBatchQuery,
   type LibraryBatchResult,
   type LibrarySearchArgs,
-  type LibrarySearchResult,
+  type LibraryToolSearchResult,
 } from "#src/mcp-server/live-library/library-types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { emitWarning } from "#src/shared/max/v8-max-console.ts";
@@ -41,8 +41,8 @@ export async function runSearchBatch(
   runSearch: (
     args: LibrarySearchArgs,
     ctx: Partial<ToolContext>,
-  ) => Promise<LibrarySearchResult>,
-): Promise<LibraryBatchResult | LibrarySearchResult> {
+  ) => Promise<LibraryToolSearchResult>,
+): Promise<LibraryBatchResult | LibraryToolSearchResult> {
   const capped = queries.slice(0, MAX_BATCH_QUERIES);
 
   if (queries.length > MAX_BATCH_QUERIES) {
@@ -71,7 +71,7 @@ export async function runSearchBatch(
     // contract, etc.) must not discard the entries that already succeeded. The
     // promise on this function — every query yields an entry, never dropped —
     // is the load-bearing one for the LLM's batch-results contract.
-    let searchResult: LibrarySearchResult;
+    let searchResult: LibraryToolSearchResult;
 
     try {
       searchResult = await runSearch(filters, ctx);

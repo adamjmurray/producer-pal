@@ -42,7 +42,7 @@ type BatchQuery = Record<string, string | number | boolean>;
 /** One group of results in a fan-out response. */
 interface BatchEntry {
   label: string;
-  items: Array<{ name: string; source: string | null }>;
+  items: Array<{ path: string; source?: string | null }>;
   detail?: string;
 }
 
@@ -69,12 +69,15 @@ describe("ppal-library searches", () => {
   }
 
   /**
-   * The item names in one group, sorted so order within a group can't flake.
+   * The item file names in one group (read off their paths), sorted so order
+   * within a group can't flake.
    * @param entry - The group to read
    * @returns Sorted item names
    */
   function names(entry: BatchEntry | undefined): string[] {
-    return (entry?.items ?? []).map((item) => item.name).toSorted();
+    return (entry?.items ?? [])
+      .map((item) => item.path.split("/").at(-1) ?? "")
+      .toSorted();
   }
 
   it("refuses top-level filters beside searches", async () => {

@@ -281,6 +281,32 @@ describe("listPlugins — filtering and derivation", () => {
   });
 });
 
+describe("listPlugins — limit", () => {
+  it("lists past 200 plugins, which only search is capped at, up to 1000", async () => {
+    // There is no paging, so a long plug-in list must still fit in one call.
+    const fixture = createPluginsDbFixture(
+      "v2",
+      Array.from({ length: 1_100 }, (_, i) =>
+        pluginSeed(`Plugin ${String(i).padStart(4, "0")}`, {
+          dev_identifier: `device:vst3:audiofx:P${i}`,
+        }),
+      ),
+    );
+
+    try {
+      usePluginsDb(fixture.dbPath);
+
+      const some = await listPlugins({ limit: 500 });
+      const most = await listPlugins({ limit: 5_000 });
+
+      expect(some.plugins).toHaveLength(500);
+      expect(most.plugins).toHaveLength(1_000);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+});
+
 describe("listPlugins — subcategories parsing", () => {
   it("splits on |, drops the redundant category prefix, handles empty/null", async () => {
     const fixture = createPluginsDbFixture("v2", [

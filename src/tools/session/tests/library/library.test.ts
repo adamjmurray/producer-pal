@@ -6,8 +6,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { type LibrarySearchResult } from "#src/mcp-server/live-library/library-types.ts";
-import { library } from "../library.ts";
+import { type LibraryToolSearchResult } from "#src/mcp-server/live-library/library-types.ts";
+import { library } from "../../library.ts";
 
 vi.mock(
   import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
@@ -20,7 +20,7 @@ vi.mock(
 // Wrap the real readSamples in a spy so existing tests keep their
 // mockFolderStructure-driven behavior, while letting new tests assert
 // the folder scan was skipped entirely (call count = 0).
-vi.mock(import("../read-samples.ts"), async (importOriginal) => {
+vi.mock(import("../../read-samples.ts"), async (importOriginal) => {
   const actual = await importOriginal();
 
   return { ...actual, readSamples: vi.fn(actual.readSamples) };
@@ -28,7 +28,11 @@ vi.mock(import("../read-samples.ts"), async (importOriginal) => {
 
 const protocolMock =
   await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
-const readSamplesMock = await import("../read-samples.ts");
+const readSamplesMock = await import("../../read-samples.ts");
+
+// A filter that matches every file these tests make, since a search with no
+// query or filter is refused.
+const ANY = { query: ".wav" };
 
 /**
  * Narrow a library result to the search shape the sample tests read from.
@@ -36,10 +40,20 @@ const readSamplesMock = await import("../read-samples.ts");
  */
 function assertItems(
   result: Awaited<ReturnType<typeof library>>,
-): asserts result is LibrarySearchResult {
+): asserts result is LibraryToolSearchResult {
   if (!("items" in result)) {
     throw new Error("expected items");
   }
+}
+
+/**
+ * The file names of a result's items, read off their paths (the items carry no
+ * `name`).
+ * @param result - A search result
+ * @returns Each item's file name, in order
+ */
+function leaves(result: LibraryToolSearchResult): Array<string | undefined> {
+  return result.items.map((i) => i.path.split("/").at(-1));
 }
 
 /**
@@ -135,7 +149,7 @@ async function libraryWithFailedScan(thrown: unknown) {
   });
   mockSearchRoute([]);
 
-  const result = await library({}, { sampleFolder: "/samples/" });
+  const result = await library(ANY, { sampleFolder: "/samples/" });
 
   assertItems(result);
 
@@ -292,7 +306,7 @@ describe("library tool — folder scan integration", () => {
       },
     ]);
 
-    const result = await library({ query: "" }, { sampleFolder: "/samples/" });
+    const result = await library(ANY, { sampleFolder: "/samples/" });
 
     expect("items" in result).toBe(true);
 
@@ -300,18 +314,22 @@ describe("library tool — folder scan integration", () => {
       return;
     }
 
-    const names = result.items.map((i) => i.name);
+    const names = leaves(result);
 
     expect(names).toContain("kick.wav");
     expect(names).toContain("snare.wav");
     expect(names).toContain("clap.wav");
-    // Folder items get source: "sample-folder", kind: "audio", and empty tags
-    // (the folder scan only surfaces audio and carries no tag metadata).
-    const kick = result.items.find((i) => i.name === "kick.wav");
+    // Folder items get source: "sample-folder" and empty tags (the folder scan
+    // carries no tag metadata). Their name, useCount and folder are trimmed.
+    // kind stays: this call sent no kind filter.
+    const kick = result.items.find((i) => i.path === "/samples/kick.wav");
 
-    expect(kick?.source).toBe("sample-folder");
-    expect(kick?.kind).toBe("audio");
-    expect(kick?.tags).toStrictEqual([]);
+    expect(kick).toStrictEqual({
+      path: "/samples/kick.wav",
+      kind: "audio",
+      tags: [],
+      source: "sample-folder",
+    });
   });
 
   it("marks sampleFolder items pathExists: true when verifyPaths is set", async () => {
@@ -319,7 +337,7 @@ describe("library tool — folder scan integration", () => {
     mockSearchRoute([]);
 
     const result = await library(
-      { query: "", verifyPaths: true },
+      { ...ANY, verifyPaths: true },
       { sampleFolder: "/samples/" },
     );
 
@@ -345,11 +363,11 @@ describe("library tool — folder scan integration", () => {
       },
     ]);
 
-    const result = await library({}, { sampleFolder: "/samples/" });
+    const result = await library(ANY, { sampleFolder: "/samples/" });
 
     assertItems(result);
 
-    const kicks = result.items.filter((i) => i.name === "kick.wav");
+    const kicks = result.items.filter((i) => i.path === "/samples/kick.wav");
 
     expect(kicks).toHaveLength(1);
     // Folder wins (it's user-explicit)
@@ -384,7 +402,7 @@ describe("library tool — folder scan integration", () => {
 
     assertItems(result);
 
-    expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
+    expect(leaves(result)).toStrictEqual(["kick.wav"]);
     // Folder-only requests bypass the DB; dbAvailable should be absent
     // rather than fabricated.
     expect("dbAvailable" in result).toBe(false);
@@ -397,7 +415,7 @@ describe("library tool — folder scan integration", () => {
     mockSampleFolder("kick.wav");
     mockSearchRoute([]);
 
-    const result = await library({}, { sampleFolder: "/samples/" });
+    const result = await library(ANY, { sampleFolder: "/samples/" });
 
     assertItems(result);
 
@@ -440,7 +458,7 @@ describe("library tool — folder scan integration", () => {
     mockSampleFolder("kick.wav");
     mockSearchRoute([]);
 
-    await library({ kind: "audio" }, { sampleFolder: "/samples/" });
+    await library(ANY, { sampleFolder: "/samples/" });
 
     expect(readSamplesMock.readSamples).toHaveBeenCalledTimes(1);
   });
@@ -457,7 +475,7 @@ describe("library tool — folder scan integration", () => {
       },
     ]);
 
-    const result = await library({}, {});
+    const result = await library(ANY, {});
 
     assertItems(result);
 
@@ -477,7 +495,10 @@ describe("library tool — folder scan integration", () => {
       },
     ]);
 
-    const result = await library({ limit: 2 }, { sampleFolder: "/samples/" });
+    const result = await library(
+      { ...ANY, limit: 2 },
+      { sampleFolder: "/samples/" },
+    );
 
     assertItems(result);
 
@@ -505,13 +526,13 @@ describe("library tool — folder scan integration", () => {
       },
     ]);
 
-    const result = await library({}, { sampleFolder: "/samples/" });
+    const result = await library(ANY, { sampleFolder: "/samples/" });
 
     assertItems(result);
 
     // Folder partition first (alphabetical tiebreaker at useCount=0),
     // then DB partition (useCount desc).
-    expect(result.items.map((i) => i.name)).toStrictEqual([
+    expect(leaves(result)).toStrictEqual([
       "folder_a.wav",
       "folder_z.wav",
       "high_use.wav",
@@ -530,14 +551,17 @@ describe("library tool — folder scan integration", () => {
 
     assertItems(result);
 
-    expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
+    expect(leaves(result)).toStrictEqual(["kick.wav"]);
   });
 
   it("limit=0 falls back to the default cap rather than returning an empty list", async () => {
     mockSampleFolder("a.wav", "b.wav");
     mockSearchRoute([]);
 
-    const result = await library({ limit: 0 }, { sampleFolder: "/samples/" });
+    const result = await library(
+      { ...ANY, limit: 0 },
+      { sampleFolder: "/samples/" },
+    );
 
     assertItems(result);
 
@@ -566,14 +590,14 @@ describe("library tool — folder scan integration", () => {
     ]);
 
     const result = await library(
-      { sort: "name" },
+      { ...ANY, sort: "name" },
       { sampleFolder: "/samples/" },
     );
 
     assertItems(result);
 
     // Folder partition first, each partition sorted alphabetically.
-    expect(result.items.map((i) => i.name)).toStrictEqual([
+    expect(leaves(result)).toStrictEqual([
       "m_snare.wav",
       "z_kick.wav",
       "a_clap.wav",
@@ -603,7 +627,7 @@ describe("library tool — folder scan integration", () => {
     ]);
 
     const result = await library(
-      { sort: "mod-date" },
+      { ...ANY, sort: "mod-date" },
       { sampleFolder: "/samples/" },
     );
 
@@ -611,7 +635,7 @@ describe("library tool — folder scan integration", () => {
 
     // Folder partition sorted by name (no mod_date metadata), then DB
     // partition in upstream mod_date order.
-    expect(result.items.map((i) => i.name)).toStrictEqual([
+    expect(leaves(result)).toStrictEqual([
       "a_folder.wav",
       "z_folder.wav",
       "newer.wav",
@@ -630,7 +654,7 @@ describe("library tool — folder scan integration", () => {
 
     assertItems(result);
 
-    expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
+    expect(leaves(result)).toStrictEqual(["kick.wav"]);
   });
 
   it("surfaces a reason when source=sample-folder is requested with no sampleFolder", async () => {
@@ -657,14 +681,14 @@ describe("library tool — folder scan integration", () => {
       },
     });
 
-    const result = await library({}, { sampleFolder: "/samples/" });
+    const result = await library(ANY, { sampleFolder: "/samples/" });
 
     assertItems(result);
 
     expect(result.dbAvailable).toBe(false);
     expect(result.detail).toBe("Live database not found");
     // Folder items should still come through alongside the diagnostic.
-    expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
+    expect(leaves(result)).toStrictEqual(["kick.wav"]);
   });
 
   it("surfaces a reason when the folder scan throws", async () => {
@@ -693,31 +717,30 @@ describe("library tool — folder scan integration", () => {
     });
     mockSearchRoute([]);
 
-    const result = await library({}, { sampleFolder: "/samples/" });
+    const result = await library(ANY, { sampleFolder: "/samples/" });
 
     assertItems(result);
 
     const item = result.items.find((i) => i.path.endsWith("snare.wav"));
 
-    expect(item?.name).toBe("snare.wav");
     expect(item?.path).toBe("/samples/drums/snare.wav");
-    // Immediate parent folder of a nested sample is its last folder segment.
-    expect(item?.folder).toBe("drums");
+    // The file name and parent folder are the path's last two segments, so
+    // neither is repeated on the item.
+    expect(item).not.toHaveProperty("name");
+    expect(item).not.toHaveProperty("folder");
   });
 
-  it("uses the sample folder's basename as folder for top-level files", async () => {
+  it("leaves a top-level sample's name and folder off too", async () => {
     mockSampleFolder("kick.wav");
     mockSearchRoute([]);
 
-    const result = await library({}, { sampleFolder: "/samples/" });
+    const result = await library(ANY, { sampleFolder: "/samples/" });
 
     assertItems(result);
 
-    // A top-level sample has no folder segment of its own, so its parent is
-    // the configured sample folder itself ("/samples/" → "samples").
-    expect(result.items.find((i) => i.name === "kick.wav")?.folder).toBe(
-      "samples",
-    );
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).not.toHaveProperty("name");
+    expect(result.items[0]).not.toHaveProperty("folder");
   });
 });
 
@@ -729,11 +752,11 @@ describe("library tool — sort ordering (DB partition)", () => {
   it("default sort orders the DB partition by use-count desc (name tiebreak)", async () => {
     mockDiscriminatingSortRoute();
 
-    const result = await library({}, {});
+    const result = await library(ANY, {});
 
     assertItems(result);
 
-    expect(result.items.map((i) => i.name)).toStrictEqual([
+    expect(leaves(result)).toStrictEqual([
       "a.wav", // useCount 3
       "c.wav", // useCount 2
       "b.wav", // useCount 1
@@ -743,30 +766,22 @@ describe("library tool — sort ordering (DB partition)", () => {
   it("sort=name orders the DB partition alphabetically, ignoring use_count", async () => {
     mockDiscriminatingSortRoute();
 
-    const result = await library({ sort: "name" }, {});
+    const result = await library({ ...ANY, sort: "name" }, {});
 
     assertItems(result);
 
-    expect(result.items.map((i) => i.name)).toStrictEqual([
-      "a.wav",
-      "b.wav",
-      "c.wav",
-    ]);
+    expect(leaves(result)).toStrictEqual(["a.wav", "b.wav", "c.wav"]);
   });
 
   it("sort=mod_date preserves the DB's upstream order for mixed-source items", async () => {
     mockDiscriminatingSortRoute();
 
-    const result = await library({ sort: "mod-date" }, {});
+    const result = await library({ ...ANY, sort: "mod-date" }, {});
 
     assertItems(result);
 
     // The DB partition is not all-sampleFolder, so mod_date keeps the upstream
     // (SQL-provided) order rather than re-sorting by name or use_count.
-    expect(result.items.map((i) => i.name)).toStrictEqual([
-      "b.wav",
-      "a.wav",
-      "c.wav",
-    ]);
+    expect(leaves(result)).toStrictEqual(["b.wav", "a.wav", "c.wav"]);
   });
 });

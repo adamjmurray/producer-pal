@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
-import { library } from "../library.ts";
+import { library } from "../../library.ts";
 
 vi.mock(
   import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
@@ -15,7 +15,7 @@ vi.mock(
   }),
 );
 
-vi.mock(import("../read-samples.ts"), async (importOriginal) => {
+vi.mock(import("../../read-samples.ts"), async (importOriginal) => {
   const actual = await importOriginal();
 
   return { ...actual, readSamples: vi.fn(actual.readSamples) };
@@ -84,6 +84,14 @@ async function runLoneSearch(
 }
 
 /**
+ * @param path - An item's path
+ * @returns Its last segment (items carry no `name`)
+ */
+function leaf(path: string): string {
+  return path.split("/").at(-1) ?? "";
+}
+
+/**
  * The names of the items one labeled result carries.
  * @param result - A fan-out search result
  * @param index - Which labeled result to read
@@ -93,7 +101,7 @@ function itemNamesAt(
   result: SearchBatchResult,
   index: number,
 ): string[] | undefined {
-  return result.results[index]?.items.map((item) => item.name);
+  return result.results[index]?.items.map((item) => leaf(item.path));
 }
 
 /**
@@ -146,6 +154,19 @@ describe("library tool — searches fan-out", () => {
       useCount: 1,
       source: "user",
     };
+  }
+
+  /**
+   * What a plain search returns for dbItem(name): the name is the path's last
+   * segment, so it is left off.
+   *
+   * @param name - Item name
+   * @returns The item as the tool returns it
+   */
+  function returned(name: string): Record<string, unknown> {
+    const { name: _name, ...rest } = dbItem(name);
+
+    return rest;
   }
 
   /** A DB holding one kick and one snare, keyed by their tags. */
@@ -359,7 +380,7 @@ describe("library tool — searches fan-out", () => {
 
     expect(
       await runLoneSearch([{ label: "Kicks", tags: "Kick" }]),
-    ).toStrictEqual({ dbAvailable: true, items: [dbItem("kick.wav")] });
+    ).toStrictEqual({ dbAvailable: true, items: [returned("kick.wav")] });
   });
 
   it("refuses searches on an action that has no use for it", async () => {
@@ -392,7 +413,7 @@ describe("library tool — searches fan-out", () => {
 
     expect(await library(args)).toStrictEqual({
       dbAvailable: true,
-      items: [dbItem("kick.wav")],
+      items: [returned("kick.wav")],
     });
   });
 
@@ -424,7 +445,7 @@ describe("library tool — searches fan-out", () => {
 
     expect(result).toStrictEqual({
       dbAvailable: true,
-      items: [dbItem("kick.wav")],
+      items: [returned("kick.wav")],
     });
   });
 
@@ -484,7 +505,7 @@ describe("library tool — searches fan-out", () => {
     }
 
     expect("dbAvailable" in result).toBe(false);
-    expect(result.results[0]?.items.map((i) => i.name)).toStrictEqual([
+    expect(result.results[0]?.items.map((i) => leaf(i.path))).toStrictEqual([
       "kick.wav",
     ]);
     expect(protocolMock.requestNode).not.toHaveBeenCalled();
@@ -582,12 +603,12 @@ describe("library tool — searches fan-out", () => {
       "Snares",
       "Hats",
     ]);
-    expect(result.results[0]?.items.map((i) => i.name)).toStrictEqual([
+    expect(result.results[0]?.items.map((i) => leaf(i.path))).toStrictEqual([
       "kick.wav",
     ]);
     expect(result.results[1]?.items).toStrictEqual([]);
     expect(result.results[1]?.detail).toBe("boom");
-    expect(result.results[2]?.items.map((i) => i.name)).toStrictEqual([
+    expect(result.results[2]?.items.map((i) => leaf(i.path))).toStrictEqual([
       "hat.wav",
     ]);
   });

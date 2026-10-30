@@ -24,6 +24,7 @@ import { stalenessNote } from "../db-staleness.ts";
 import {
   clampLibraryLimit,
   DEFAULT_LIBRARY_LIMIT,
+  MAX_SEARCH_LIMIT,
   type LibraryItem,
   type LibrarySearchArgs,
   type LibrarySearchResult,
@@ -103,7 +104,7 @@ export async function librarySearch(
       // node:sqlite returns `unknown[]`. We trust the SELECT column list to
       // match SearchRow — the SQL is hand-written and pinned by tests, so a
       // per-row runtime validator would be dead weight at the cost of
-      // measurable overhead at limit=1000.
+      // measurable overhead at limit=200.
       const rows = db.prepare(sql).all(...params) as unknown as SearchRow[];
       const fileIds = rows.map((r) => r.file_id);
       const paths = resolveAbsolutePaths(db, fileIds);
@@ -141,7 +142,7 @@ export async function librarySearch(
 /**
  * Stat each item's path and set `pathExists` so the caller can drop stale
  * entries. Runs in parallel — a warm-cache stat is sub-millisecond, so even a
- * full limit=1000 result set stays well under a second. Truncated paths are
+ * full limit=200 result set stays well under a second. Truncated paths are
  * skipped (their missing leading segments would always stat as not-found).
  *
  * @param items - Items to verify in place
@@ -202,7 +203,11 @@ function buildSearchQuery(
 ): QueryPieces {
   const { where, params } = buildCandidateWhere(args, parentId);
   const orderBy = orderByClause(args.sort);
-  const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
+  const limit = clampLibraryLimit(
+    args.limit,
+    DEFAULT_LIBRARY_LIMIT,
+    MAX_SEARCH_LIMIT,
+  );
 
   params.push(limit);
 

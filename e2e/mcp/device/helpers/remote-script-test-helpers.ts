@@ -153,11 +153,16 @@ async function searchLibrary(
   client: Client,
   args: Record<string, unknown>,
 ): Promise<Preset[]> {
-  return (
-    parseToolResult<{ items?: Preset[] }>(
+  const items =
+    parseToolResult<{ items?: Array<Omit<Preset, "name">> }>(
       await callToolAndSettle(client, "ppal-library", { limit: 200, ...args }),
-    ).items ?? []
-  );
+    ).items ?? [];
+
+  // Search items carry no `name`: it is the path's last segment.
+  return items.map((item) => ({
+    ...item,
+    name: item.path.split("/").at(-1) ?? "",
+  }));
 }
 
 /**

@@ -38,14 +38,20 @@ const ctx = setupMcpTestContext({ once: true });
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SAMPLE_FOLDER = resolve(__dirname, "../../../../evals/live-sets/samples");
 
+/**
+ * A search item as returned: `name` and `folder` are the path's last two
+ * segments, `useCount` is 0, and `kind` and `source` are the search's own
+ * filters, so each is left off when it says nothing new.
+ */
 interface LibraryItem {
-  name: string;
+  name?: string;
   path: string;
-  kind: string | null;
+  kind?: string | null;
   subtype?: "midi" | "audio";
   tags: string[];
-  useCount: number;
-  source: string | null;
+  useCount?: number;
+  source?: string | null;
+  folder?: string;
 }
 
 interface LibrarySearchResult {
@@ -113,6 +119,18 @@ async function findDuplicates(
     await callLibrary({ action: "find-duplicates", ...args }),
   );
 }
+
+/**
+ * An item's file name, read off its path (items carry no `name`).
+ * @param item - A search item
+ * @returns The path's last segment
+ */
+function fileName(item: LibraryItem): string {
+  return item.path.split("/").at(-1) ?? "";
+}
+
+/** A filter every search here sends, since a search with none is refused. */
+const SOME = { query: "a" };
 
 /** Live's database directory, or null on a platform that has none. */
 const DB_DIR = liveDatabaseDir();
@@ -185,14 +203,13 @@ describe("ppal-library", () => {
       expect(result.items).toHaveLength(2);
 
       for (const item of result.items) {
-        expect(item.source).toBe("sample-folder");
-        expect(item.kind).toBe("audio");
-        expect(item.useCount).toBe(0);
+        // The search already said source and kind, and the rest is derivable.
+        expect(Object.keys(item).toSorted()).toStrictEqual(["path", "tags"]);
         expect(item.tags).toStrictEqual([]);
         expect(item.path.startsWith(SAMPLE_FOLDER)).toBe(true);
       }
 
-      const names = result.items.map((i) => i.name).toSorted();
+      const names = result.items.map(fileName).toSorted();
 
       expect(names).toStrictEqual(["kick.aiff", "sample.aiff"]);
     });
@@ -203,7 +220,7 @@ describe("ppal-library", () => {
       const result = await search({ source: "sample-folder", query: "kick" });
 
       expect(result.items).toHaveLength(1);
-      expect(result.items[0]?.name).toBe("kick.aiff");
+      expect(fileName(result.items[0]!)).toBe("kick.aiff");
     });
 
     it("returns empty folder results when no sampleFolder is configured", async () => {
@@ -224,7 +241,7 @@ describe("ppal-library", () => {
       // the user's configured sample folder should always surface first.
       expect(result.items.length).toBeGreaterThanOrEqual(1);
       expect(result.items[0]?.source).toBe("sample-folder");
-      expect(result.items[0]?.name).toBe("kick.aiff");
+      expect(fileName(result.items[0]!)).toBe("kick.aiff");
     });
 
     it("suppresses folder scan when kind != audio", async () => {
@@ -273,7 +290,7 @@ describe("ppal-library", () => {
 
   describe("result envelope", () => {
     it("returns search envelope with dbAvailable=true and items array", async () => {
-      const result = await search();
+      const result = await search(SOME);
 
       expect(result.dbAvailable).toBe(true);
       expect(Array.isArray(result.items)).toBe(true);
@@ -314,7 +331,9 @@ describe("ppal-library", () => {
       // kind:midi covers .mid files (kind "midi") plus MIDI Live clips, which
       // keep their file-format kind "live-clip" qualified by subtype "midi".
       for (const item of result.items) {
+        // The search's own kind is left off, so no kind here means midi.
         const isMidi =
+          item.kind == null ||
           item.kind === "midi" ||
           (item.kind === "live-clip" && item.subtype === "midi");
 
@@ -325,8 +344,9 @@ describe("ppal-library", () => {
     it("source filter only returns items from that source", async () => {
       const result = await search({ source: "user" });
 
+      // The filter's own source is left off every item.
       for (const item of result.items) {
-        expect(item.source).toBe("user");
+        expect(item.source).toBeUndefined();
       }
     });
 
@@ -334,13 +354,17 @@ describe("ppal-library", () => {
       const result = await search({ source: "preset-folder", limit: 20 });
 
       for (const item of result.items) {
-        expect(item.source).toBe("preset-folder");
+        expect(item.source).toBeUndefined();
       }
     });
 
     it("leaves plug-in preset folder items out unless asked, and says so", async () => {
-      const asked = await search({ source: "preset-folder", limit: 1 });
-      const result = await search({ limit: 1000 });
+      const asked = await search({
+        ...SOME,
+        source: "preset-folder",
+        limit: 1,
+      });
+      const result = await search({ ...SOME, limit: 200 });
 
       for (const item of result.items) {
         expect(item.source).not.toBe("preset-folder");
@@ -368,7 +392,7 @@ describe("ppal-library", () => {
         return;
       }
 
-      const query = rack.name.replace(/\.adg$/i, "");
+      const query = fileName(rack).replace(/\.adg$/i, "");
       const result = await search({ kind: "preset", query });
 
       if (result.items.length === 0) {
@@ -404,29 +428,29 @@ describe("ppal-library", () => {
 
   describe("sort & limit", () => {
     it("limit caps the number of returned items", async () => {
-      const result = await search({ limit: 1 });
+      const result = await search({ ...SOME, limit: 1 });
 
       expect(result.items.length).toBeLessThanOrEqual(1);
     });
 
     it("name sort returns items alphabetically", async () => {
-      const result = await search({ sort: "name", limit: 50 });
+      const result = await search({ ...SOME, sort: "name", limit: 50 });
 
       if (result.items.length < 2) {
         return;
       }
 
       for (let i = 1; i < result.items.length; i++) {
-        const prev = result.items[i - 1]!.name.toLowerCase();
-        const curr = result.items[i]!.name.toLowerCase();
+        const prev = fileName(result.items[i - 1]!).toLowerCase();
+        const curr = fileName(result.items[i]!).toLowerCase();
 
         expect(prev.localeCompare(curr)).toBeLessThanOrEqual(0);
       }
     });
 
     it("default sort (use-count desc) is deterministic across repeated calls", async () => {
-      const a = await search({ limit: 20 });
-      const b = await search({ limit: 20 });
+      const a = await search({ ...SOME, limit: 20 });
+      const b = await search({ ...SOME, limit: 20 });
 
       expect(a.items.map((i) => i.path)).toStrictEqual(
         b.items.map((i) => i.path),

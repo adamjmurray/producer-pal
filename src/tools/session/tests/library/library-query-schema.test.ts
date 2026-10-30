@@ -8,7 +8,7 @@ import { z } from "zod";
 import {
   batchQuerySchema,
   searchesInputSchema,
-} from "../library-query-schema.ts";
+} from "../../library-query-schema.ts";
 
 describe("searchesInputSchema (searches fan-out input)", () => {
   it("parses an array of query objects", () => {
