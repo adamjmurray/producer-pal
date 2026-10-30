@@ -56,12 +56,12 @@ suite skips itself. With it, a remote script that doesn't answer `/ping` fails
 the suite instead of skipping it.
 
 `POST /config { "remoteScriptEnabled": false }` makes a running script look
-uninstalled (a dev switch, debug builds only; `resetConfig()` turns it back on).
+uninstalled (a test switch, on any build; `resetConfig()` turns it back on).
 `control/ppal-remote-script-switch` covers it.
 
 `POST /config { "remoteScriptMinVersion": "99.0.0" }` makes a running script
-look out of date (`null` clears it; debug builds only, and `resetConfig()`
-clears it). `control/ppal-remote-script-min-version` covers it.
+look out of date (`null` clears it, and so does `resetConfig()`).
+`control/ppal-remote-script-min-version` covers it.
 `device/create/ppal-create-device-manage-wording` uses both with small-model
 mode to check a refusal names `ppal-manage` only for a caller that has it.
 

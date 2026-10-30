@@ -54,21 +54,21 @@ describe("setConfig", () => {
     );
   }
 
-  it("accepts remoteScriptEnabled false when a debug build echoes it", async () => {
+  it("accepts remoteScriptEnabled false when the server echoes it", async () => {
     stubServer({ remoteScriptEnabled: false });
     await expect(
       setConfig({ remoteScriptEnabled: false }),
     ).resolves.toBeUndefined();
   });
 
-  it("throws when a release build drops remoteScriptEnabled false", async () => {
+  it("throws when an older build drops remoteScriptEnabled false", async () => {
     stubServer({ smallModelMode: false });
     await expect(setConfig({ remoteScriptEnabled: false })).rejects.toThrow(
-      /ignored remoteScriptEnabled.*build:debug/,
+      /ignored remoteScriptEnabled.*Rebuild the device/,
     );
   });
 
-  it("throws when a release build drops remoteScriptMinVersion", async () => {
+  it("throws when an older build drops remoteScriptMinVersion", async () => {
     stubServer({});
     await expect(
       setConfig({ remoteScriptMinVersion: "9.0.0" }),
@@ -82,7 +82,7 @@ describe("setConfig", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("lets the reset through a release build, which ignores both fields", async () => {
+  it("lets the reset through an older build, which ignores both fields", async () => {
     stubServer({});
     await expect(
       setConfig({ remoteScriptEnabled: true, remoteScriptMinVersion: null }),

@@ -26,10 +26,10 @@ Fields (all optional; unknown keys are ignored):
 - `smallModelMode`, `jsonOutput`, `liveApiEnabled`: boolean
 - `notation`: one of the notations in `src/shared/notation.ts`
 - `tools`: array of tool names; must be valid for the current `liveApiEnabled`
-- `remoteScriptEnabled`, `remoteScriptMinVersion`: **debug builds only** (a
-  release build ignores them). `false` makes the remote script look uninstalled;
-  a version string replaces the minimum version so a running script looks out of
-  date, `null` clears it
+- `remoteScriptEnabled`, `remoteScriptMinVersion`: test switches for evals and
+  e2e, left out of the user docs. `false` makes the remote script look
+  uninstalled; a version string replaces the minimum version so a running script
+  looks out of date, `null` clears it
 
 A bad body is refused whole: every field is checked first, a `400` returns
 `{error, fields, validToolNames?}` naming each bad field, and nothing is

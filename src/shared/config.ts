@@ -384,11 +384,11 @@ export interface ProducerPalConfig {
   sampleFolder: string;
   liveApiEnabled: boolean;
   liveApiForcedOn: boolean;
-  // Debug builds only: false makes the remote script look uninstalled. POST
-  // /config only (evals and e2e); not a device setting, so it is never sent to
-  // Max. A release build neither lists nor accepts it.
+  // Undocumented test switch (evals and e2e): false makes the remote script
+  // look uninstalled. POST /config only; not a device setting, so it is never
+  // sent to Max. A debug build lists it from the start, a release build once set.
   remoteScriptEnabled?: boolean;
-  // Debug builds only, like remoteScriptEnabled: a version string replaces the
+  // Test switch, like remoteScriptEnabled: a version string replaces the
   // minimum remote script version, so a running script can look out of date.
   // Listed only while set.
   remoteScriptMinVersion?: string;
@@ -399,6 +399,6 @@ export interface ProducerPalConfig {
 export type ProducerPalConfigUpdate = Partial<
   Omit<ProducerPalConfig, "remoteScriptMinVersion" | "liveApiForcedOn">
 > & {
-  /** A version string makes a running script look older than it; null clears it. Debug builds only. */
+  /** A version string makes a running script look older than it; null clears it. */
   remoteScriptMinVersion?: string | null;
 };

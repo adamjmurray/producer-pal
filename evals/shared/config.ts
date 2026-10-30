@@ -37,7 +37,7 @@ export async function setConfig(options: ConfigOptions): Promise<void> {
     throw new Error(`Failed to set config: ${response.status}`);
   }
 
-  await assertDebugSwitchesApplied(options, response);
+  await assertTestSwitchesApplied(options, response);
 }
 
 type RestorableConfig = Partial<
@@ -105,7 +105,6 @@ export async function resetConfig(): Promise<void> {
     projectContext: "",
     jsonOutput: true,
     sampleFolder: "",
-    // A release build ignores this, so the reset works on either build.
     remoteScriptEnabled: true,
     remoteScriptMinVersion: null,
     tools: [...TOOL_NAMES],
@@ -132,15 +131,16 @@ export function siblingUrl(mcpUrl: string, endpoint: string): string {
 // --- Helpers below main exports ---
 
 /**
- * A release build answers 200 and drops `remoteScriptEnabled` and
- * `remoteScriptMinVersion`, so a run meant to hide or age the remote script
- * would quietly use the real one. Their absence from the echoed config is how
- * to tell. Turning the remote script back on (the reset) is harmless either
- * way, so only a switch that changes the script is checked.
+ * A device built before it accepted `remoteScriptEnabled` and
+ * `remoteScriptMinVersion` answers 200 and drops them, so a run meant to hide
+ * or age the remote script would quietly use the real one. Their absence from
+ * the echoed config is how to tell. Turning the remote script back on (the
+ * reset) is harmless either way, so only a switch that changes the script is
+ * checked.
  * @param options - What was sent
  * @param response - The server's answer, which echoes the config it holds
  */
-async function assertDebugSwitchesApplied(
+async function assertTestSwitchesApplied(
   options: ConfigOptions,
   response: Response,
 ): Promise<void> {
@@ -163,7 +163,7 @@ async function assertDebugSwitchesApplied(
   for (const [name, value] of wanted) {
     if (applied[name] !== value) {
       throw new Error(
-        `The server ignored ${name}: only a debug build accepts it. Rebuild with npm run build:debug.`,
+        `The server ignored ${name}: the device build is too old to accept it. Rebuild the device.`,
       );
     }
   }

@@ -440,11 +440,7 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   // /config is a benign no-op update instead of a TypeError → 500.
   // Check every field first: a bad one refuses the whole request, so a 400
   // never leaves config half-applied (or Node and the device out of step).
-  const parsed = parseConfigBody(
-    requestBody(req),
-    config.liveApiEnabled,
-    liveApiForcedOn,
-  );
+  const parsed = parseConfigBody(requestBody(req), config.liveApiEnabled);
 
   if (!parsed.ok) {
     res.status(400).json(parsed.error);

@@ -69,8 +69,11 @@ script is missing, it says it is out of date when that is the case
   and holds back requests to an older script before sending them.
 - A 404 that lists `routes` means the script lacks the route: a different build
   of the same version, or too old.
-- `POST /config` can fake either state on a debug build:
-  `remoteScriptEnabled: false`, or a `remoteScriptMinVersion`.
+- `POST /config` can fake either state on any build:
+  `remoteScriptEnabled: false`, or a `remoteScriptMinVersion`. These are
+  undocumented test switches, open in release builds so evals and e2e test what
+  ships. Each only changes this server, resets on restart, and only localhost
+  can send it.
 
 How each tool words this to the model: the
 [tool-behavior spec](../specs/tool-behavior/refusals.md#a-remote-script-that-is-out-of-date).
