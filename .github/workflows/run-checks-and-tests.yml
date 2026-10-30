@@ -225,6 +225,17 @@ jobs:
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
           echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
+      # TEMP: per-file coverage, to find the branch that flips between runs.
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: coverage-attempt-${{ github.run_attempt }}
+          path: |
+            coverage/coverage-final.json
+            coverage/coverage-summary.json
+          retention-days: 3
+
       # A shard that crashed leaves no blob, and the merge passes without its
       # tests. This keeps the required unit-tests check red.
       - name: Fail if any shard failed
