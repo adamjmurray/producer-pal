@@ -464,6 +464,14 @@ LLM verdict when it ran. Such results are `version: 2`. The summary counts calls
 Jev decided versus escalated, and its token cost. The thresholds are in
 `evals/jev/jev-judge.ts`.
 
+On the Oct 2026 runs, Jev decided about 60–70% of judged results and made no
+wrong passes against a majority of three LLM judges. Its weak spot is a false
+claim in the model's reply (a scene "named" that never was): it trusts the
+reply, so escalation is what catches those. Deciding by Jev's outcome score
+instead of the lowest requirement probability looked perfect on one run and
+passed 5 failures on the next, so the thresholds stay on the requirements. Jev
+sees only the transcript; it can't inspect Live or hear audio.
+
 ### Re-judging saved results
 
 A run stores one judge's verdict, or none under `--skip-judge`. To judge saved
