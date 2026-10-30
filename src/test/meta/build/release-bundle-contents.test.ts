@@ -259,6 +259,28 @@ describe("gen-UI remote script files", () => {
   it.each(GEN_UI_REMOTE_SCRIPT_FILES)("%s is in a gen-UI build", (file) => {
     expect(genUiCode).toContain(embeddedKey(file));
   });
+
+  // The Python files above only prove the bundler dropped them. This proves the
+  // gate itself is a constant: a flag read the replacement plugin misses (say
+  // `process.env["ENABLE_GEN_UI"]`) would stay a runtime check in the release.
+  const CONSTANT_FALSE_GATE =
+    /function isGenUiEnabled\(\)\s*\{\s*return false;?\s*\}/;
+  const RUNTIME_FLAG_READ = /\benv\s*(?:\?\.|\.|\[\s*["'`])\s*ENABLE_GEN_UI/;
+
+  it("inlines isGenUiEnabled() to false in a release build", () => {
+    expect(chunkCode["mcp-server"]).toMatch(CONSTANT_FALSE_GATE);
+  });
+
+  it("does not read ENABLE_GEN_UI at runtime in a release build", () => {
+    expect(chunkCode["mcp-server"]).not.toMatch(RUNTIME_FLAG_READ);
+    expect(chunkCode["mcp-server"]).not.toMatch(
+      /ENABLE_GEN_UI[^\n]*=\s*process\.env\b/,
+    );
+  });
+
+  it("does not inline isGenUiEnabled() to false in a gen-UI build", () => {
+    expect(genUiCode).not.toMatch(CONSTANT_FALSE_GATE);
+  });
 });
 
 /**

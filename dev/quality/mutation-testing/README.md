@@ -40,16 +40,16 @@ scope's `break` floor (the table under "Baselines" mirrors them):
 - **`sharedRuntime`** — `src/shared/` (cross-cutting utilities shared by the
   Node MCP server and the V8 Max runtime: pitch, notation identity, compact
   serializer/parser, path builders, config, error/response utils, v8 console /
-  sleep, silent-wav, version-check). It is **not** under `src/tools/`, so it
-  uses its own glob const (`SHARED_RUNTIME_GLOBS`), and its scope key can't be
-  `shared` — that already means `src/tools/shared`.
+  sleep, version-check). It is **not** under `src/tools/`, so it uses its own
+  glob const (`SHARED_RUNTIME_GLOBS`), and its scope key can't be `shared` —
+  that already means `src/tools/shared`.
 - **`mcpServer`** — `src/mcp-server/` (the Node-for-Max side: the Express app,
   MCP server wiring, REST routes, the live-library SQLite reader, the
-  markdown/memory/skill override stores, and the RPC protocol to the V8
-  runtime). Also **not** under `src/tools/`, so it uses its own glob const
-  (`MCP_SERVER_GLOBS`) and the camelCase key `mcpServer`. The bundle entry point
-  `mcp-server.ts` is excluded (it runs module-load side effects wired to
-  `max-api` and is already coverage-excluded).
+  markdown/memory/skill override stores, the silent-WAV generator, and the RPC
+  protocol to the V8 runtime). Also **not** under `src/tools/`, so it uses its
+  own glob const (`MCP_SERVER_GLOBS`) and the camelCase key `mcpServer`. The
+  bundle entry point `mcp-server.ts` is excluded (it runs module-load side
+  effects wired to `max-api` and is already coverage-excluded).
 - **`v8Adapter`** — `src/live-api-adapter/` (the V8 side of the Max device).
 - **Groups** — `tools` (all ten tool domains) and `all` (every scope above),
   expanded by the runner into their member scopes.

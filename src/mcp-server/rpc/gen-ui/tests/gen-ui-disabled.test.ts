@@ -3,9 +3,38 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { setupExpressAppServer } from "../../../tests/express-app-test-helpers.ts";
 import { connectMcpClient } from "../../../tests/server/mcp-client-test-helpers.ts";
+import type * as RemoteScriptClient from "../../remote-script/remote-script-client.ts";
+import { remoteScriptRequest } from "../../remote-script/remote-script-client.ts";
+import type * as LiveWatcher from "../live-watcher.ts";
+import { startLiveWatcher } from "../live-watcher.ts";
+import type * as SetStorage from "../set-storage.ts";
+import { connectWidgetsToSet } from "../set-storage.ts";
+
+// Real behavior, wrapped so a call can be counted.
+vi.mock(
+  import("../../remote-script/remote-script-client.ts"),
+  async (original) => {
+    const actual = await original<typeof RemoteScriptClient>();
+
+    return {
+      ...actual,
+      remoteScriptRequest: vi.fn(actual.remoteScriptRequest),
+    };
+  },
+);
+vi.mock(import("../live-watcher.ts"), async (original) => {
+  const actual = await original<typeof LiveWatcher>();
+
+  return { ...actual, startLiveWatcher: vi.fn(actual.startLiveWatcher) };
+});
+vi.mock(import("../set-storage.ts"), async (original) => {
+  const actual = await original<typeof SetStorage>();
+
+  return { ...actual, connectWidgetsToSet: vi.fn(actual.connectWidgetsToSet) };
+});
 
 // ENABLE_GEN_UI is unset: a release build.
 const app = setupExpressAppServer();
@@ -42,5 +71,27 @@ describe("generative UI in a build without ENABLE_GEN_UI", () => {
     const { tools } = await client.listTools();
 
     expect(tools.map((t) => t.name)).not.toContain("ppal-ui");
+  });
+});
+
+describe("generative UI background work in a build without ENABLE_GEN_UI", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("starts no watcher or set storage, and asks the remote script for nothing", async () => {
+    // The app the server above started is already built; this builds another
+    // under fake timers so any timer it arms is counted and can be run.
+    vi.useFakeTimers();
+
+    const { createExpressApp } = await import("../../../create-express-app.ts");
+
+    createExpressApp();
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(startLiveWatcher).not.toHaveBeenCalled();
+    expect(connectWidgetsToSet).not.toHaveBeenCalled();
+    expect(remoteScriptRequest).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
