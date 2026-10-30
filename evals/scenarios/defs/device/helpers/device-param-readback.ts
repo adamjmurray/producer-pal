@@ -15,6 +15,7 @@ interface ReadParam {
   value?: unknown;
   min?: unknown;
   max?: unknown;
+  options?: unknown;
 }
 
 /** A device read that carries `parameters`. */
@@ -115,4 +116,53 @@ export function macroProblem(
   }
 
   return wrong.length === 0 ? null : wrong.join("; ");
+}
+
+/**
+ * The text a named param reads as, for a param whose value is an option name.
+ *
+ * @param result - Parsed ppal-read-device result
+ * @param name - Exact param name, or a pattern the name must match
+ * @returns The value as text, or undefined when there is no such param
+ */
+export function paramText(
+  result: unknown,
+  name: string | RegExp,
+): string | undefined {
+  const param = ((result as ParamRead).parameters ?? []).find((candidate) =>
+    typeof name === "string"
+      ? candidate.name === name
+      : name.test(candidate.name ?? ""),
+  );
+
+  return param?.value == null ? undefined : asText(param.value);
+}
+
+/**
+ * A value as text.
+ *
+ * @param value - A `value` a read reported
+ * @returns The text itself, or the value as JSON
+ */
+function asText(value: unknown): string {
+  return typeof value === "string" ? value : JSON.stringify(value);
+}
+
+/**
+ * Every option param's current option, by param name. A param is an option
+ * param when the read lists its `options`.
+ *
+ * @param result - Parsed ppal-read-device result
+ * @returns Param name to the option it reads as
+ */
+export function optionValues(result: unknown): Record<string, string> {
+  const values: Record<string, string> = {};
+
+  for (const param of (result as ParamRead).parameters ?? []) {
+    if (param.name != null && Array.isArray(param.options)) {
+      values[param.name] = asText(param.value);
+    }
+  }
+
+  return values;
 }

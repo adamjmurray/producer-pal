@@ -17,12 +17,12 @@
  * Graded on the macro values read back, not on how the model found out.
  */
 
-import { type EvalScenario } from "../../types.ts";
+import { type EvalScenario } from "../../../types.ts";
 import {
   MSG_CONNECT,
   TOOL_CONNECT,
-} from "../clip/helpers/clip-tool-constants.ts";
-import { macroProblem } from "./helpers/device-param-readback.ts";
+} from "../../clip/helpers/clip-tool-constants.ts";
+import { macroProblem } from "../helpers/device-param-readback.ts";
 import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** basic-midi-4-track: the Bass track's instrument rack. */

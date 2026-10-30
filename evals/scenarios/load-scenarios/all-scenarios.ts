@@ -54,6 +54,7 @@ import {
   deviceLibraryPadSamples,
   deviceMappedMacros,
   deviceMovePairing,
+  deviceOptionParams,
   devicePresetSwapByName,
   deviceSoundDesign,
   deviceTypePaths,
@@ -159,6 +160,7 @@ export const allScenarios: EvalScenario[] = [
   deviceMovePairing,
   deviceCopyInPlace,
   deviceMappedMacros,
+  deviceOptionParams,
   projectContextWorkflow,
   // ppal-context behavior. Kept CONTIGUOUS and on one Live Set: each sets
   // `reuseLiveSet`, which only skips the (slow) reopen when the PRECEDING
