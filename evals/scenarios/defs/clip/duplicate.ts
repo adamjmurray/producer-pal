@@ -132,7 +132,7 @@ export const duplicate: EvalScenario = {
 1. Created a 2-bar drum clip on the Drums track
 2. Duplicated the Drums track
 3. Duplicated the clip to bar 3 in the arrangement
-4. Confirmed each step was completed`,
+4. Said in its replies that each step above was done`,
     },
   ],
 };

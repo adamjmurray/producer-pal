@@ -122,7 +122,7 @@ export const createAndEditClip: EvalScenario = {
 1. Created a 4-bar drum clip with kick and snare
 2. Added hi-hats as requested
 3. Applied quantization
-4. Confirmed each step was completed`,
+4. Said in its replies that each step above was done`,
     },
 
     {

@@ -485,17 +485,36 @@ one with a key set (`TYPESAFE_KEY`, `OPENROUTER_KEY`, `VERCEL_AI_GATEWAY_KEY`),
 or `--jev-via`; a run with no key stops at startup. Each saved `judge` records
 `decidedBy` (`jev` or `llm`), Jev's per-question probabilities, outcome level
 and verdict (`pass`, `fail`, `escalate`, or `error` with the reason), and the
-LLM verdict when it ran. Such results are `version: 2`. The summary counts calls
-Jev decided versus escalated, and its token cost. The thresholds are in
+LLM verdict when it ran. An escalation caused only by the claims check (below)
+is marked `escalatedBy: "claims"`. Such results are `version: 2`. The summary
+(and `eval-report --summarize`) counts calls Jev decided versus escalated, how
+many of those the claims check caused, and the token cost. The thresholds are in
 `evals/jev/jev-judge.ts`.
 
-On the Oct 2026 runs, Jev decided about 60–70% of judged results and made no
+On the Oct 2026 runs, Jev decided about 55–70% of judged results and made no
 wrong passes against a majority of three LLM judges. Its weak spot is a false
 claim in the model's reply (a scene "named" that never was): it trusts the
-reply, so escalation is what catches those. Deciding by Jev's outcome score
-instead of the lowest requirement probability looked perfect on one run and
-passed 5 failures on the next, so the thresholds stay on the requirements. Jev
-sees only the transcript; it can't inspect Live or hear audio.
+reply. A separate narrow question asks whether every action the replies say they
+took appears in the tool calls; a low answer (under 0.7) turns a pass into an
+escalation and never into a fail. It flagged all 12 replies with a made-up
+action added to real passes, and none of the 12 unedited copies, but it also
+escalates passes with loose claims, so it adds about 2–14 points of escalations.
+A broad "no hallucinations" question over-failed, and deciding by Jev's outcome
+score instead of the lowest requirement probability passed 5 failures on a
+second run, so the thresholds stay on the requirements. Jev sees only the
+transcript; it can't inspect Live or hear audio. Re-running Jev on the same
+result flips about 5% of verdicts.
+
+Requirements like "Confirmed each step was completed" sat between the thresholds
+in nearly every result, because Jev can't tell what counts as confirmed. They
+now say "Said in its replies that each step above was done", which roughly
+halved those escalations. Saved judge verdicts for the five scenarios that use
+it (and any older Jev runs) predate the new wording.
+
+For `--jev` runs, `-j anthropic/claude-haiku-5-5` is recommended, not the
+default: escalations are the borderline cases, and Luna is the strictest judge.
+On escalated results Luna agreed with Haiku and Sonnet about 75–80% of the time;
+Haiku and Sonnet agreed with each other 91–93%. Haiku costs API money.
 
 ### Re-judging saved results
 
@@ -524,6 +543,17 @@ fails as fails for `--sample`), `--results-dir=D`. The header of
 a `--jev` run have no LLM verdict, so it leaves them out (and says how many);
 the ones Jev escalated are the hard cases. `probe:rejudge` judges any saved
 result.
+
+To check Jev on a finished `--jev` run in one go, run
+`npm run probe:jev-recheck -- evals/results/<run>`. It has Luna judge any result
+Luna hasn't judged yet (`--judges=codex-code/luna,anthropic/claude-haiku-5-5`
+adds others, which cost money; judges already in the run's `judges/` folder are
+used as is), then reports the Jev answers saved in the run against the majority
+of those judges: wrong passes and fails, the escalation rate, how each judge
+does on the escalated results, which requirements sit between the thresholds
+most often, and the claims-escalated results with the LLM judge's verdict on
+each. It calls no Jev and no model; `--dry-run` only counts. The same report for
+any run is `probe:jev -- <run> --recorded --reference=<judge-slug>`.
 
 `npm run probe:jev -- <run> --reference=<judge-slug>` (repeatable) then compares
 Jev with those sidecar judges instead of the stored verdict. With several, their

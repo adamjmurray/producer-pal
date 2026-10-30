@@ -70,7 +70,7 @@ export const sceneAndPlayback: EvalScenario = {
 2. Played that scene
 3. Then played the 4th scene instead
 4. Stopped playback
-5. Confirmed each step was completed`,
+5. Said in its replies that each step above was done`,
     },
   ],
 };

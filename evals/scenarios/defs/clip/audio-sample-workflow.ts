@@ -65,7 +65,7 @@ export const audioSampleWorkflow: EvalScenario = {
 1. Listed available drum samples including kick
 2. Created a new audio track (the set had only MIDI tracks) and placed the kick sample into an audio clip on that audio track — NOT on the MIDI Drums track
 3. Applied pitch shift of 5 semitones and enabled looping on the audio clip
-4. Confirmed each step was completed`,
+4. Said in its replies that each step above was done`,
     },
   ],
 };

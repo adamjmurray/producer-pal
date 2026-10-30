@@ -84,7 +84,7 @@ export const updateLiveSet: EvalScenario = {
 1. Set the tempo to 128 BPM
 2. Set the time signature to 6/8
 3. Deleted the Lead track
-4. Confirmed each step was completed`,
+4. Said in its replies that each step above was done`,
     },
   ],
 };
