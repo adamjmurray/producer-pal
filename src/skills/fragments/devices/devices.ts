@@ -3,6 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+// Hosting plug-ins is unfinished: release builds keep the native-only text.
+const pluginParams =
+  process.env.ENABLE_HOSTED_PLUGINS === "true"
+    ? `Producer Pal can open or close a plug-in's editor window (\`openPluginWindow\` on ppal-select) but **cannot control anything inside a natively loaded VST/AU plug-in directly** — its internal parameters aren't exposed to the Live API.
+
+**Hosted VST3:** to reach every parameter of a VST3, create it with \`ppal-create-device deviceName="<name as Live's browser shows it>" hosted=true\` (needs the remote script; applies to the whole call). It loads inside a Producer Pal wrapper. ppal-read-device shows it as that plug-in with \`hosted: true\` and lists its real params as ids like \`h56\` (at most 200 per read: narrow with \`paramSearch\`). \`param-values\` and \`params\` on create/update use the plug-in's display units, by name or \`h\` id: a number, or its text (\`"1/16"\`, \`"-6 dB"\`). A value the param never displays is refused, with what it does show. Hosted params can't be automated yet, and a plug-in already in the Set can't be converted. For a native plug-in, the user maps its parameters onto the Live plug-in device in Live's Configure mode (expand the device, click "Configure", then click the controls in the plug-in to expose); Producer Pal can then read and set those mapped parameters like any other device parameter. You cannot do the mapping for the user — explain the steps and point them to the [Configure mode manual](https://www.ableton.com/live-manual/12/working-with-instruments-and-effects/#plug-in-configure-mode). Limits: up to 128 parameters can be mapped (so pick the most important ones), and not every plug-in parameter is mappable.`
+    : `Producer Pal can open or close a plug-in's editor window (\`openPluginWindow\` on ppal-select) but **cannot control anything inside a VST/AU plug-in directly** — its internal parameters aren't exposed to the Live API. To make a plug-in's parameters controllable, the user maps them onto the Live plug-in device in Live's Configure mode (expand the device, click "Configure", then click the controls in the plug-in to expose); Producer Pal can then read and set those mapped parameters like any other device parameter. You cannot do the mapping for the user — explain the steps and point them to the [Configure mode manual](https://www.ableton.com/live-manual/12/working-with-instruments-and-effects/#plug-in-configure-mode). Limits: up to 128 parameters can be mapped (so pick the most important ones), and not every plug-in parameter is mappable.`;
+
 // What every device task needs regardless of direction: the path grammar and
 // the VST/AU limits. Gated by any *-device tool. Two siblings hang off it —
 // `devicesWrite` below (the build recipes, create/update-device only) and the
@@ -44,7 +52,7 @@ Chains are auto-created when referenced (e.g., \`c0\` on an empty rack creates a
 
 ### VST/AU Plugins
 
-Producer Pal can open or close a plug-in's editor window (\`openPluginWindow\` on ppal-select) but **cannot control anything inside a VST/AU plug-in directly** — its internal parameters aren't exposed to the Live API. To make a plug-in's parameters controllable, the user maps them onto the Live plug-in device in Live's Configure mode (expand the device, click "Configure", then click the controls in the plug-in to expose); Producer Pal can then read and set those mapped parameters like any other device parameter. You cannot do the mapping for the user — explain the steps and point them to the [Configure mode manual](https://www.ableton.com/live-manual/12/working-with-instruments-and-effects/#plug-in-configure-mode). Limits: up to 128 parameters can be mapped (so pick the most important ones), and not every plug-in parameter is mappable.`;
+${pluginParams}`;
 
 /**
  * How a param write behaves (values snap; the response says where they landed),
@@ -60,7 +68,7 @@ Producer Pal can open or close a plug-in's editor window (\`openPluginWindow\` o
  */
 export const devicesWrite = `### Setting Parameters
 
-Send a value in the \`unit\` ppal-read-device reports for that param, or with no unit; a param reporting no \`unit\` takes a plain number. A wrong or uncheckable unit is refused, not guessed. Address a param by \`name\`, or by \`id\` (from ppal-read-device) when two params share a name. Each param sent comes back as one entry, in order: just \`id\` and \`name\` when it took the value, or the value it reads as plus a \`detail\` when Live kept another (a clamp, the nearest step). A value written as a display string — a unit, an enum label, a note name — always reports what the param reads, since there is no number to compare it with. A param nothing was written to carries \`ok: false\` and a \`detail\` in place of the value, and warns nowhere. When none of a target's params, sends or actions landed and nothing else was asked, the target is \`ok: false\` naming each (a lone target errors). A pseudo-param like \`sample\` has no \`id\` but gets an entry the same way.
+Send a value in the \`unit\` ppal-read-device reports for that param, or with no unit; a param reporting no \`unit\` takes a plain number. A wrong or uncheckable unit is refused, not guessed. ppal-read-device lists at most 200 params per device (\`paramCount\` says how many it has): narrow with \`paramSearch\` to reach the rest. Address a param by \`name\`, or by \`id\` (from ppal-read-device) when two params share a name. Each param sent comes back as one entry, in order: just \`id\` and \`name\` when it took the value, or the value it reads as plus a \`detail\` when Live kept another (a clamp, the nearest step). A value written as a display string — a unit, an enum label, a note name — always reports what the param reads, since there is no number to compare it with. A param nothing was written to carries \`ok: false\` and a \`detail\` in place of the value, and warns nowhere. When none of a target's params, sends or actions landed and nothing else was asked, the target is \`ok: false\` naming each (a lone target errors). A pseudo-param like \`sample\` has no \`id\` but gets an entry the same way.
 
 ### Simpler & Drum Racks
 

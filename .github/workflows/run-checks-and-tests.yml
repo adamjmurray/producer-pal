@@ -46,8 +46,8 @@ jobs:
       - name: Guard against dev-only env vars in CI
         # These flags enable Live API access, arbitrary code execution,
         # wildcard CORS, the unfinished warp-marker params, the LiveAPI
-        # object counter, and the object-staleness probe. They must never be
-        # baked into release artifacts.
+        # object counter, the object-staleness probe, and unfinished plug-in
+        # hosting. They must never be baked into release artifacts.
         run: |
           if [ "${ENABLE_LIVE_API:-}" = "true" ] || \
              [ "${ENABLE_CODE_EXEC:-}" = "true" ] || \
@@ -55,7 +55,8 @@ jobs:
              [ "${ENABLE_REMOTE_CORS:-}" = "true" ] || \
              [ "${ENABLE_WARP_MARKERS:-}" = "true" ] || \
              [ "${ENABLE_BUILD_STATS:-}" = "true" ] || \
-             [ "${ENABLE_OBJECT_PROBE:-}" = "true" ]; then
+             [ "${ENABLE_OBJECT_PROBE:-}" = "true" ] || \
+             [ "${ENABLE_HOSTED_PLUGINS:-}" = "true" ]; then
             echo "::error::Dev-only env vars must not be set in CI builds:"
             echo "  ENABLE_LIVE_API=${ENABLE_LIVE_API:-}"
             echo "  ENABLE_CODE_EXEC=${ENABLE_CODE_EXEC:-}"
@@ -64,6 +65,7 @@ jobs:
             echo "  ENABLE_WARP_MARKERS=${ENABLE_WARP_MARKERS:-}"
             echo "  ENABLE_BUILD_STATS=${ENABLE_BUILD_STATS:-}"
             echo "  ENABLE_OBJECT_PROBE=${ENABLE_OBJECT_PROBE:-}"
+            echo "  ENABLE_HOSTED_PLUGINS=${ENABLE_HOSTED_PLUGINS:-}"
             exit 1
           fi
 
@@ -106,7 +108,72 @@ jobs:
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
           echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
+  # The unit tests are the slowest job, and most of their time is loading each
+  # test file, so they split across shards almost evenly. Each shard writes a
+  # blob report; the unit-tests job merges them, then checks coverage
+  # thresholds and reports on the whole suite. Thresholds are off per shard:
+  # one shard alone can never meet them.
+  unit-test-shards:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build parser
+        id: parser
+        run: npm run parser:build
+
+      # The remote script's Python, against fake Live objects. ubuntu-latest
+      # ships python3, and the tests use only the standard library.
+      # Its output is saved for the summary: unittest has no JSON reporter.
+      - name: Test the remote script
+        if: matrix.shard == 1
+        run: |
+          set -o pipefail
+          mkdir -p test-reports
+          npm run remote-script:test 2>&1 | tee test-reports/remote-script.log
+
+      # Runs even when the Python tests fail, so one run reports both suites.
+      - name: Run tests with coverage
+        if: ${{ !cancelled() && steps.parser.outcome == 'success' }}
+        run: >-
+          FORCE_COLOR=3 npx vitest run --shard=${{ matrix.shard }}/${{
+          strategy.job-total }} --coverage --coverage.reporter=text-summary
+          --coverage.thresholds.statements=0 --coverage.thresholds.branches=0
+          --coverage.thresholds.functions=0 --coverage.thresholds.lines=0
+          --reporter=default --reporter=blob --silent=true
+
+      - name: Upload shard report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: unit-test-shard-${{ matrix.shard }}
+          path: |
+            .vitest/blob/
+            test-reports/remote-script.log
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 1
+
   unit-tests:
+    needs: unit-test-shards
+    # Runs when a shard fails too, so failures still reach the summary.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
 
     permissions:
@@ -128,23 +195,18 @@ jobs:
       - name: Build parser
         run: npm run parser:build
 
-      # The remote script's Python, against fake Live objects. ubuntu-latest
-      # ships python3, and the tests use only the standard library.
-      # Its output is saved for the summary: unittest has no JSON reporter.
-      - name: Test the remote script
-        id: remote-script
-        run: |
-          set -o pipefail
-          mkdir -p test-reports
-          npm run remote-script:test 2>&1 | tee test-reports/remote-script.log
+      - name: Download shard reports
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: unit-test-shard-*
+          merge-multiple: true
 
-      # Runs even when the Python tests fail, so one run reports both suites.
-      - name: Run tests with coverage
+      - name: Merge shard reports and check coverage
         id: tests
-        if:
-          ${{ !cancelled() && (steps.remote-script.outcome == 'success' ||
-          steps.remote-script.outcome == 'failure') }}
-        run: FORCE_COLOR=3 npm run test:coverage:verbose
+        run: >-
+          FORCE_COLOR=3 npx vitest run --merge-reports=.vitest/blob --coverage
+          --reporter=default --reporter=json
+          --outputFile.json=test-reports/vitest.json
 
       - name: Report test stats and coverage
         id: summary
@@ -162,6 +224,14 @@ jobs:
           # Write to step summary and output (base64 encoded for multiline)
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
           echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
+
+      # A shard that crashed leaves no blob, and the merge passes without its
+      # tests. This keeps the required unit-tests check red.
+      - name: Fail if any shard failed
+        if: ${{ !cancelled() && needs.unit-test-shards.result != 'success' }}
+        run: |
+          echo "::error::A unit test shard failed: ${{ needs.unit-test-shards.result }}"
+          exit 1
 
   code-hygiene:
     runs-on: ubuntu-latest

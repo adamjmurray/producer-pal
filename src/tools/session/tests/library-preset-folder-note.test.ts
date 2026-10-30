@@ -6,13 +6,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { library } from "../library.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const protocolMock =
-  await import("#src/live-api-adapter/node-request-v8-protocol.ts");
+  await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
 
 const NOTE =
   "12 matching files in plug-in preset folders left out; source: preset-folder includes them";

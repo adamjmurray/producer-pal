@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { type BrowserPlugin } from "../../../rpc/remote-script/browser/browser-plugins.ts";
-import { type PluginItem } from "../../library-types.ts";
-import { mergeBrowserPlugins } from "../../query/merge-browser-plugins.ts";
+import { type BrowserPlugin } from "../../../../rpc/remote-script/browser/browser-plugins.ts";
+import { type PluginItem } from "../../../library-types.ts";
+import { mergeBrowserPlugins } from "../../../query/plugins/merge-browser-plugins.ts";
 
 function dbPlugin(overrides: Partial<PluginItem>): PluginItem {
   return {

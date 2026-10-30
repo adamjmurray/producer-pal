@@ -31,6 +31,27 @@ export type JevRoute = keyof typeof JEV_ROUTES;
 /** Route names in default-pick order. */
 export const JEV_ROUTE_NAMES = Object.keys(JEV_ROUTES) as JevRoute[];
 
+/**
+ * Check a route name from a command-line flag.
+ *
+ * @param name - The flag value, if given
+ * @param flag - The flag's name, for the error message
+ * @returns The route, or undefined when no name was given
+ * @throws On a name that is not a route
+ */
+export function parseJevRoute(
+  name: string | undefined,
+  flag = "--via",
+): JevRoute | undefined {
+  if (name != null && !JEV_ROUTE_NAMES.includes(name as JevRoute)) {
+    throw new Error(
+      `Unknown ${flag}=${name}; use one of ${JEV_ROUTE_NAMES.join(", ")}`,
+    );
+  }
+
+  return name as JevRoute | undefined;
+}
+
 const DEFAULT_MODEL = "jev-latest";
 const MAX_RETRIES = 2;
 

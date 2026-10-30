@@ -14,13 +14,16 @@ import {
 } from "vitest";
 import { library } from "../library.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const protocolMock =
-  await import("#src/live-api-adapter/node-request-v8-protocol.ts");
+  await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
 
 /**
  * Stub the library.listPlugins route with the given plugins.

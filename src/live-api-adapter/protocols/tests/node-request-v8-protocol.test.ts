@@ -12,7 +12,7 @@ import {
   END_OF_CHUNKS,
   reassembleChunks,
 } from "#src/shared/mcp-responses.ts";
-import { reportDevice } from "../live-api-adapter.ts";
+import { reportDevice } from "#src/live-api-adapter/live-api-adapter.ts";
 import {
   handleNodeResponse,
   requestNode,

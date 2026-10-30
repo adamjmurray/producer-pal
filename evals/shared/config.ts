@@ -36,6 +36,8 @@ export async function setConfig(options: ConfigOptions): Promise<void> {
   if (!response.ok) {
     throw new Error(`Failed to set config: ${response.status}`);
   }
+
+  await assertDebugSwitchesApplied(options, response);
 }
 
 type RestorableConfig = Partial<
@@ -125,4 +127,44 @@ export function siblingUrl(mcpUrl: string, endpoint: string): string {
   url.pathname = url.pathname.replace(/\/mcp$/, `/${endpoint}`);
 
   return url.toString();
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * A release build answers 200 and drops `remoteScriptEnabled` and
+ * `remoteScriptMinVersion`, so a run meant to hide or age the remote script
+ * would quietly use the real one. Their absence from the echoed config is how
+ * to tell. Turning the remote script back on (the reset) is harmless either
+ * way, so only a switch that changes the script is checked.
+ * @param options - What was sent
+ * @param response - The server's answer, which echoes the config it holds
+ */
+async function assertDebugSwitchesApplied(
+  options: ConfigOptions,
+  response: Response,
+): Promise<void> {
+  const wanted: Array<[string, unknown]> = [];
+
+  if (options.remoteScriptEnabled === false) {
+    wanted.push(["remoteScriptEnabled", false]);
+  }
+
+  if (typeof options.remoteScriptMinVersion === "string") {
+    wanted.push(["remoteScriptMinVersion", options.remoteScriptMinVersion]);
+  }
+
+  if (wanted.length === 0) {
+    return;
+  }
+
+  const applied = (await response.json()) as Record<string, unknown>;
+
+  for (const [name, value] of wanted) {
+    if (applied[name] !== value) {
+      throw new Error(
+        `The server ignored ${name}: only a debug build accepts it. Rebuild with npm run build:debug.`,
+      );
+    }
+  }
 }

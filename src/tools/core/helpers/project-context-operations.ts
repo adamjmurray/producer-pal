@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { backupProjectContextOnEdit } from "#src/live-api-adapter/project-context-sync.ts";
 import { detachWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
 

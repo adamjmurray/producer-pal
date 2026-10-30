@@ -7,7 +7,7 @@
 // one, so the Producer Pal remote script does: onto a temp track for
 // create-device, or in place of a device for update-device.
 
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { VALID_DEVICES } from "#src/tools/constants.ts";
 import {
   type BrowserItem,

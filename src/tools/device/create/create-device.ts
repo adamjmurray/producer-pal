@@ -49,9 +49,10 @@ function validateListModeArgs(args: {
   path?: string;
   name?: string;
   params?: ParamEntry[];
+  hosted?: boolean;
 }): void {
-  const sent = (["path", "name", "params"] as const).filter(
-    (key) => args[key] != null,
+  const sent = (["path", "name", "params", "hosted"] as const).filter((key) =>
+    key === "hosted" ? args.hosted === true : args[key] != null,
   );
 
   if (sent.length > 0) {
@@ -78,6 +79,8 @@ function validateListModeArgs(args: {
  * @param args.path - Device path(s), comma-separated for multiple (required when deviceName provided)
  * @param args.name - Name for all, or comma-separated for each
  * @param args.params - {name, value} entries applied to each created device (e.g. Simpler: {name:"sample", value:"<file path>"})
+ * @param args.hosted - `device` names VST3 plug-ins to host in a wrapper, not
+ *   devices to load
  * @param args.focus - Select the device and show device detail view
  * @param context - Internal context object, for the request deadline
  * @returns Device list, or object(s) naming each created device

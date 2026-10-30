@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import {
   INSTALL_WAIT_MS,
   type InstallReply,

@@ -53,7 +53,10 @@ const NO_VALUE_AFTER_WRITE = "written, but no value reads back";
 export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
   const read = outcomes.map((entry): ParamResult => {
     if (paramWritten(entry)) {
-      return writtenResult(entry, readParameter(LiveAPI.from(entry.id)).value);
+      return (
+        entry.reported ??
+        writtenResult(entry, readParameter(LiveAPI.from(entry.id)).value)
+      );
     }
 
     // A pseudo-param brings its own read; the read itself is not reported. A

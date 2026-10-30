@@ -5,8 +5,8 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
-import { setupDeviceParamMocks } from "./read-device-test-helpers.ts";
-import { readOneDevice } from "../read-device.ts";
+import { setupDeviceParamMocks } from "../read-device-test-helpers.ts";
+import { readOneDevice } from "../../read-device.ts";
 
 describe("readOneDevice param-values include option", () => {
   beforeEach(() => {

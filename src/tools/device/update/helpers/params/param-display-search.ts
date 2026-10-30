@@ -6,7 +6,7 @@
 import {
   type ParamNumericRange,
   displayAt,
-} from "#src/tools/shared/device/helpers/param-numeric-range.ts";
+} from "#src/tools/shared/device/helpers/params/param-numeric-range.ts";
 import { type ParamStep } from "#src/tools/shared/device/helpers/param-writing.ts";
 
 // Enough to pin a boundary to ~1e-9 of the raw range, far finer than the

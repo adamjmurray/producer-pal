@@ -75,7 +75,7 @@ export function formatReport(
     `${sidecars ? "Reference" : "Stored judge"}: ${judgeCounts(judged)}`,
     `Jev: ${route ?? "unknown route"}, ${jevModelCounts(judged)}`,
     `Compared ${judged.length} result(s); ${errors.length} Jev error(s)${tieNote}.`,
-    `Left out: ${skipped.notScored} skipped/error, ${skipped.noScenario} unknown scenario, ${skipped.noLlmJudge} scenario without llm_judge, ${skipped.unreadable} unreadable, ${skipped.staleCriteria} recorded before the criteria changed.`,
+    `Left out: ${skipped.notScored} skipped/error, ${skipped.noScenario} unknown scenario, ${skipped.noLlmJudge} scenario without llm_judge, ${skipped.unreadable} unreadable, ${skipped.staleCriteria} recorded before the criteria changed${jevNote(skipped)}.`,
     "",
     ...statsLines(
       "Checks passed (the judge decides)",
@@ -93,6 +93,18 @@ export function formatReport(
     "",
     costLine(judged),
   ];
+}
+
+/**
+ * Say why Jev-decided results are missing from a stored-judge comparison.
+ *
+ * @param skipped - What the loader left out
+ * @returns A report fragment, or "" when nothing was left out for this reason
+ */
+function jevNote(skipped: SkipCounts): string {
+  return skipped.jevDecided > 0
+    ? `, ${skipped.jevDecided} decided by Jev in the run (no LLM verdict to compare; the compared results include the ones Jev escalated, which are the hard cases)`
+    : "";
 }
 
 /**

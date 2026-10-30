@@ -74,3 +74,6 @@ test-reports
 # Sample analysis files Live rewrites whenever it opens a sample
 **/live-sets/**/*.asd
 __pycache__/
+
+# vitest blob reports (CI test shards)
+.vitest/

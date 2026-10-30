@@ -14,6 +14,7 @@ const skipped: SkipCounts = {
   noLlmJudge: 0,
   unreadable: 0,
   staleCriteria: 4,
+  jevDecided: 0,
 };
 
 const jevResult = (

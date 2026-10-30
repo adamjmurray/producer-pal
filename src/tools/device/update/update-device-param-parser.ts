@@ -6,7 +6,7 @@
 import {
   isBareThousands,
   parseLabel,
-} from "#src/tools/shared/device/helpers/param-label-parsing.ts";
+} from "#src/tools/shared/device/helpers/params/param-label-parsing.ts";
 import {
   recordedUnitSpelling,
   splitLeadingNumber,

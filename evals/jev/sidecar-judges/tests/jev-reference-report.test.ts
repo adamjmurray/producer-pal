@@ -53,6 +53,7 @@ const skipped: SkipCounts = {
   noLlmJudge: 0,
   unreadable: 0,
   staleCriteria: 0,
+  jevDecided: 0,
 };
 
 const trio = (a: boolean, b: boolean, c: boolean): Array<[string, boolean]> => [

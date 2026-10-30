@@ -12,6 +12,7 @@
  * rule on the way: a stack of takes on ONE lane is that lane's index twice.
  */
 
+import { asSignal } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
 import {
   asArrangementTrack,
@@ -37,6 +38,9 @@ const CHORDS_TRACK_INDEX = 2;
 /** Where the copies land on the Chords arrangement. */
 const MAIN_LANE_STARTS = ["1|1", "5|1"];
 const TAKE_LANE_STARTS = ["9|1", "13|1"];
+
+/** One take-lane destination, as a regex source: lane 0 at either start. */
+const TAKE_LANE_PATH = `t${CHORDS_TRACK_INDEX}/l0\\[(${TAKE_LANE_STARTS.map((s) => s.replaceAll("|", "\\|")).join("|")})\\]`;
 
 /**
  * Bar positions on the main lane and on the take lanes, plus the lane count.
@@ -142,15 +146,24 @@ export const pathToPathClipDestinations: EvalScenario = {
       ),
     }),
 
-    // Destination 3: two takes on ONE lane, its index written twice. The
-    // layout check below catches a model that lands them on two lanes instead.
+    // Destination 3: two takes on ONE lane, its index written twice. Batching
+    // doesn't gate here either; the layout check below catches a model that
+    // lands them on two lanes. One call naming both is reported as a signal.
     { type: "tool_called", tool: TOOL_DUPLICATE, turn: 4 },
     assertPathArg({
       turn: 4,
       tool: TOOL_DUPLICATE,
       param: "toPath",
-      expected: `t${CHORDS_TRACK_INDEX}/l0[${TAKE_LANE_STARTS[0]}],t${CHORDS_TRACK_INDEX}/l0[${TAKE_LANE_STARTS[1]}]`,
+      expected: new RegExp(`^${TAKE_LANE_PATH}(,${TAKE_LANE_PATH})?$`),
     }),
+    asSignal(
+      assertPathArg({
+        turn: 4,
+        tool: TOOL_DUPLICATE,
+        param: "toPath",
+        expected: `t${CHORDS_TRACK_INDEX}/l0[${TAKE_LANE_STARTS[0]}],t${CHORDS_TRACK_INDEX}/l0[${TAKE_LANE_STARTS[1]}]`,
+      }),
+    ),
     assertArrangementLayout(),
 
     { type: "token_usage", maxTokens: 6_000 },

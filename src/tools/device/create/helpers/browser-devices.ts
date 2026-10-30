@@ -10,7 +10,7 @@
 import {
   type NodeResponse,
   requestNode,
-} from "#src/live-api-adapter/node-request-v8-protocol.ts";
+} from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";

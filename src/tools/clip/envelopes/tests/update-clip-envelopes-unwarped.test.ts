@@ -7,7 +7,7 @@
 // envelopes but never plays them, so points aren't written to one.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   mockNonExistentObjects,
@@ -25,10 +25,13 @@ import {
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const NOTATION = "1|1 0 / 3|1 0.8";
 

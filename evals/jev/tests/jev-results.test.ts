@@ -123,4 +123,30 @@ describe("loadJudgedResults", () => {
     expect(plain.items).toHaveLength(3);
     expect(all.items).toHaveLength(4);
   });
+
+  it("leaves out Jev-decided results only when asked for LLM verdicts", async () => {
+    await writeFile(
+      join(dir, "run1", "jev.json"),
+      JSON.stringify({
+        scenarioId: "a",
+        timestamp: "2026-03-01T00:00:00Z",
+        result: "pass",
+        judge: { pass: true, issues: [], decidedBy: "jev" },
+        turns: [],
+        checks: { pass: true, results: [] },
+      }),
+    );
+
+    const both = await loadJudgedResults({ resultsDir: dir, scenarios });
+    const llm = await loadJudgedResults({
+      resultsDir: dir,
+      scenarios,
+      llmVerdictOnly: true,
+    });
+
+    expect(both.items).toHaveLength(4);
+    expect(both.skipped.jevDecided).toBe(0);
+    expect(llm.items).toHaveLength(3);
+    expect(llm.skipped.jevDecided).toBe(1);
+  });
 });

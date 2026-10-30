@@ -7,7 +7,7 @@
 // nothing, or runs out of time.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { lookupOutOfTime } from "#src/tools/device/create/helpers/browser-devices.ts";
@@ -23,10 +23,13 @@ import {
 import { CONNECTION_LOST } from "#src/mcp-server/rpc/remote-script/remote-script-errors.ts";
 import { unreachedDetail } from "#src/tools/shared/validation/lists/named-targets.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const PRESET: BrowserItem = {
   type: "instrument",

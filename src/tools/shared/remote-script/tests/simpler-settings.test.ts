@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { isStalled } from "#src/tools/shared/remote-script/device-batch-route.ts";
 import {
   lookUpSimplerSettings,
@@ -15,10 +15,13 @@ import { remoteScriptExpiry } from "#src/tools/shared/remote-script/remote-scrip
 import { REQUEST_OUT_OF_TIME } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { MAX_SIMPLERS_PER_CALL } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 /**
  * Simplers that only have a path.

@@ -82,3 +82,34 @@ describe("runTrials Live Set reuse", () => {
     expect(skipFlags()).toStrictEqual([false, false]);
   });
 });
+
+describe("runTrials judge settings", () => {
+  beforeEach(() => {
+    vi.mocked(runScenario).mockReset();
+  });
+
+  it("hands the Jev settings to every trial", async () => {
+    queueResults([null, null]);
+
+    await runTrials(
+      scenario(),
+      SPEC,
+      RUN_ENV,
+      "default",
+      { ...ctx(2), jev: { route: "vercel" } },
+      false,
+    );
+
+    expect(
+      vi.mocked(runScenario).mock.calls.map(([, o]) => o.jev),
+    ).toStrictEqual([{ route: "vercel" }, { route: "vercel" }]);
+  });
+
+  it("passes no Jev settings by default", async () => {
+    queueResults([null]);
+
+    await runTrials(scenario(), SPEC, RUN_ENV, "default", ctx(1), false);
+
+    expect(vi.mocked(runScenario).mock.calls[0]?.[1].jev).toBeUndefined();
+  });
+});

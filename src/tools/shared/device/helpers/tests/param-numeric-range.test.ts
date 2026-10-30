@@ -11,7 +11,7 @@ import {
   numericLabel,
   readNumericRange,
   sentinelRawValue,
-} from "../param-numeric-range.ts";
+} from "../params/param-numeric-range.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 const paramPath = `${livePath.track(0).device(0)} parameters 0`;

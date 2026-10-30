@@ -13,9 +13,9 @@ import {
   type EvalScenarioResult,
   type EvalTurnResult,
 } from "../../types.ts";
-import { type LlmJudgeDetails } from "../../assertions/llm-judge.ts";
 import { isProviderRefusal } from "../trials/provider-refusal.ts";
 import { assertionLabel } from "./assertion-label.ts";
+import { buildJudge } from "./judge-record.ts";
 import { aggregateStepTimings } from "./step-timing-aggregate.ts";
 import { reasoningFields } from "#evals/chat/shared/reasoning-fields.ts";
 import { collectToolErrors } from "./tool-errors.ts";
@@ -61,7 +61,7 @@ export function toJsonResult(
   const totalTiming = aggregateStepTimings(result.turns);
 
   return {
-    version: 1,
+    version: judge?.decidedBy == null ? 1 : 2,
     runId,
     timestamp: new Date().toISOString(),
     scenarioId: result.scenario.id,
@@ -177,39 +177,6 @@ function buildEfficiency(
     outputTokens: details?.total ?? 0,
     targetTokens: details?.target ?? 0,
     percentage: details?.percentage ?? 0,
-  };
-}
-
-/**
- * Build judge object from llm_judge assertion
- *
- * @param assertions - All assertion results
- * @param advisory - When true, mark the judge non-gating (see derivePassFail)
- * @returns Judge object, or undefined if no judge assertion
- */
-function buildJudge(
-  assertions: EvalAssertionResult[],
-  advisory: boolean,
-): JsonJudge | undefined {
-  const judgeResult = assertions.find((a) => a.assertion.type === "llm_judge");
-
-  if (!judgeResult) {
-    return undefined;
-  }
-
-  const advisoryFlag = advisory ? { advisory: true } : {};
-  const details = judgeResult.details as LlmJudgeDetails | undefined;
-
-  if (!details) {
-    return { pass: false, issues: [judgeResult.message], ...advisoryFlag };
-  }
-
-  return {
-    pass: details.pass,
-    issues: details.issues,
-    ...advisoryFlag,
-    ...(details.provider != null && { provider: details.provider }),
-    ...(details.model != null && { model: details.model }),
   };
 }
 

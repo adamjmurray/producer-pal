@@ -8,7 +8,7 @@
 // when the remote script answers. From 12.4.15 the read has them and never asks.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { DEVICE_BASICS_ROUTE } from "#src/tools/shared/remote-script/device-basics/device-basics-contract.ts";
 import {
   clearMockRegistry,
@@ -17,10 +17,13 @@ import {
 import { registerCcControl } from "../../../tests/helpers/cc-control-fixtures.ts";
 import { readDevice } from "../../read-device.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 /**
  * Have the remote script answer the device basics request.
