@@ -19,10 +19,11 @@ import { UPDATE_PORTAL_ADVICE } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { type McpResponse } from "#src/shared/mcp-responses.ts";
+import { describePluginHostParts } from "../setup/plugin-host/plugin-host-part.ts";
 import {
   installBundledDevice,
   requireBundledDevice,
-} from "../setup/bundled-device-copy.ts";
+} from "../setup/bundled-device/bundled-device-copy.ts";
 import { requestWithBrowserRetry } from "../setup/browser-retry-request.ts";
 import { type DeviceInstallResult } from "../setup/device-install.ts";
 import { userLibraryFor } from "../setup/library-for-device.ts";
@@ -82,6 +83,7 @@ export async function addProducerPal(
 
     const library = await userLibraryFor(userLibrary, ping, deps, ADD);
     const device = copyDevice(library, bundled, deps);
+    const pluginHost = deps.installPluginHost(library);
     const track = await loadDevice(device.path, deps, deadline);
 
     await waitForServer(track, connect, deps, deadline);
@@ -89,6 +91,7 @@ export async function addProducerPal(
     return offlineResult({
       ...(track == null ? {} : { track }),
       device: device.note,
+      ...(pluginHost.length === 0 ? {} : { pluginHost }),
       nextSteps: "Call ppal-connect next.",
     });
   } catch (error) {
@@ -116,10 +119,12 @@ async function deviceFileOnly(
 ): Promise<McpResponse> {
   const library = await userLibraryFor(userLibrary, ping, deps, ADD);
   const device = copyDevice(library, bundled, deps);
+  const wrappers = describePluginHostParts(deps.installPluginHost(library));
+  const wrapperNote = wrappers === "" ? "" : ` ${wrappers}`;
 
   // The file is in place from here on: nothing below may fail the answer.
   return offlineError(
-    `nothing was added to the Live Set: adding the device needs the Producer Pal remote script, and it isn't running. The device file is at ${device.path}. Device: ${device.note}. ` +
+    `nothing was added to the Live Set: adding the device needs the Producer Pal remote script, and it isn't running. The device file is at ${device.path}. Device: ${device.note}.${wrapperNote} ` +
       `Two ways forward. (1) Tell the user to open Live and drag the file from the browser (User Library) onto a MIDI track. (2) Finish the remote script setup. ${scriptSteps(library, deps)} Then call add-producer-pal again.`,
   );
 }

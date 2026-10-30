@@ -8,6 +8,7 @@ import {
   type InstallReply,
   MANAGE_ROUTES,
 } from "#src/tools/core/helpers/manage-contract.ts";
+import { installPluginHostParts } from "#src/portal/setup/plugin-host/plugin-host-part.ts";
 import { findUserLibraryPath } from "../../../live-library/query/user-library-path.ts";
 import { registerNodeRoute } from "../../node-request-protocol.ts";
 import { optionalString } from "../../route-string-args.ts";
@@ -39,6 +40,7 @@ async function installFromRoute(args: unknown): Promise<InstallReply> {
       findUserLibrary: findUserLibraryPath,
       installRemoteScript: installRemoteScriptPart,
       installDevice: installRunningDevicePart,
+      installPluginHost: installPluginHostParts,
     },
   );
 

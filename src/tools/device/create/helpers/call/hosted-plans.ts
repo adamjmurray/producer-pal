@@ -9,8 +9,12 @@
 // changed.
 
 import { outdatedFor } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
+import { pluginHostSetup } from "./plugin-host-setup.ts";
 import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
-import { resolveBrowserDevice } from "../browser-devices.ts";
+import {
+  BrowserDeviceNotFoundError,
+  resolveBrowserDevice,
+} from "../browser-devices.ts";
 import { type PluginPlan, resolvePluginPlan } from "../plugin-host-load.ts";
 import { type BrowserItem } from "../remote-script-contract.ts";
 
@@ -28,7 +32,7 @@ export interface HostedPlan {
  * @param manage - Whether the caller can use ppal-manage
  * @returns The plan for each name, in the order given
  * @throws Error when a name isn't an installed plug-in, or the wrapper it
- *   needs can't be found in Live's browser
+ *   needs isn't in Live's browser or can't be looked up
  */
 export async function planHostedPlugins(
   names: string[],
@@ -60,7 +64,7 @@ async function planOne(
   manage: boolean,
 ): Promise<HostedPlan> {
   const plugin = await resolvePluginPlan(name);
-  const item = await resolveBrowserDevice(plugin.wrapperName, deadline);
+  const item = await resolveWrapper(name, plugin.wrapperName, deadline, manage);
 
   if ("available" in item) {
     const outdated = outdatedFor(item, manage);
@@ -75,4 +79,33 @@ async function planOne(
   }
 
   return { plugin, item };
+}
+
+/**
+ * @param name - The plug-in name
+ * @param wrapperName - The wrapper device's browser name
+ * @param deadline - The request deadline
+ * @param manage - Whether the caller can use ppal-manage
+ * @returns The wrapper's item, or `available: false` when the remote script
+ *   isn't answering
+ * @throws Error saying how to install the wrapper when Live's browser has none
+ */
+async function resolveWrapper(
+  name: string,
+  wrapperName: string,
+  deadline: number | null | undefined,
+  manage: boolean,
+): ReturnType<typeof resolveBrowserDevice> {
+  try {
+    return await resolveBrowserDevice(wrapperName, deadline);
+  } catch (error) {
+    if (!(error instanceof BrowserDeviceNotFoundError)) {
+      throw error;
+    }
+
+    throw new Error(
+      `can't host "${name}": the "${wrapperName}" wrapper isn't installed; ${pluginHostSetup(manage)}`,
+      { cause: error },
+    );
+  }
 }

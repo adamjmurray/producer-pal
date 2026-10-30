@@ -54,6 +54,7 @@ export function fakeOfflineDeps(
     installDevice: vi.fn(() => {
       throw new Error("installDevice not set up");
     }),
+    installPluginHost: vi.fn(() => []),
     installedRemoteScript: vi.fn(() => {
       throw new Error("installedRemoteScript not set up");
     }),

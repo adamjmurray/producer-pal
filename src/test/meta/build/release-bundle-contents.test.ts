@@ -18,7 +18,11 @@ import { isAbsolute, join } from "node:path";
 import { rolldown, type InputOptions, type RolldownOutput } from "rolldown";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { GEN_UI_REMOTE_SCRIPT_FILES } from "#src/mcp-server/rpc/remote-script/bundle/gen-ui-remote-script-files.ts";
-import { repoPath } from "#src/test/helpers/meta-test-helpers.ts";
+import {
+  pluginHostSourceDir,
+  readPluginHostSource,
+} from "#src/portal/setup/plugin-host/plugin-host-source.ts";
+import { projectRoot, repoPath } from "#src/test/helpers/meta-test-helpers.ts";
 import {
   DEV_BUILD_MARKER,
   GUARDED_BUILD_FLAGS,
@@ -280,6 +284,71 @@ describe("gen-UI remote script files", () => {
 
   it("does not inline isGenUiEnabled() to false in a gen-UI build", () => {
     expect(genUiCode).not.toMatch(CONSTANT_FALSE_GATE);
+  });
+});
+
+// The wrappers ride in the Node bundles only for a hosting build. A release
+// carries neither their bytes nor the code that installs them.
+describe("plug-in host wrappers", () => {
+  const NODE_BUNDLES = ["mcp-server", "portal"] as const;
+  // The start of each file, which differs by device type.
+  const wrapperBytes = Object.values(
+    readPluginHostSource(pluginHostSourceDir(projectRoot)),
+  ).map((base64) => base64.slice(0, 200));
+  const hostingCode: Record<string, string> = {};
+
+  beforeAll(async () => {
+    vi.resetModules();
+    process.env.ENABLE_HOSTED_PLUGINS = "true";
+
+    try {
+      const config = await import("../../../../config/rolldown.config.mjs");
+      const configs = config.default as (InputOptions & { output: unknown })[];
+
+      for (const { name, index } of BUNDLES) {
+        if (NODE_BUNDLES.includes(name as "mcp-server" | "portal")) {
+          const built = await buildChunks(configs[index] as InputOptions);
+
+          hostingCode[name] = built.code;
+        }
+      }
+    } finally {
+      delete process.env.ENABLE_HOSTED_PLUGINS;
+    }
+  }, 120_000);
+
+  it("finds the wrapper files to look for", () => {
+    expect(new Set(wrapperBytes).size).toBe(2);
+    expect(wrapperBytes.every((bytes) => bytes.length === 200)).toBe(true);
+  });
+
+  it.each(NODE_BUNDLES)("%s: a release build embeds none", (name) => {
+    for (const bytes of wrapperBytes) {
+      expect(chunkCode[name]).not.toContain(bytes);
+    }
+  });
+
+  it.each(NODE_BUNDLES)(
+    "%s: a release build drops the install code",
+    (name) => {
+      expect(chunkCode[name]).not.toContain("installPluginHostWrappers");
+    },
+  );
+
+  it.each(NODE_BUNDLES)("%s: a hosting build embeds both", (name) => {
+    for (const bytes of wrapperBytes) {
+      expect(hostingCode[name]).toContain(bytes);
+    }
+  });
+
+  it.each(NODE_BUNDLES)("%s: a hosting build has the install code", (name) => {
+    expect(hostingCode[name]).toContain("installPluginHostWrappers");
+  });
+
+  it("keeps the bytes out of the V8 bundle, hosting or not", () => {
+    for (const bytes of wrapperBytes) {
+      expect(chunkCode["live-api-adapter"]).not.toContain(bytes);
+    }
   });
 });
 

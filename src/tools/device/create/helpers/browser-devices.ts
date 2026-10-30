@@ -71,6 +71,9 @@ export function lookupOutOfTime(nothingDone: string): string {
   return `${REQUEST_OUT_OF_TIME} searching Live's browser; ${nothingDone}, re-run it. If it keeps happening, ask the user to raise the Timeout setting`;
 }
 
+/** A browser lookup found nothing by that name. */
+export class BrowserDeviceNotFoundError extends Error {}
+
 /** How often, and how many times, to look for the loaded device. */
 const ARRIVAL_POLL = { pollingInterval: 50, maxRetries: 40 };
 
@@ -152,7 +155,8 @@ export async function createBrowserDevice(
  * @param deadline - The request deadline from ToolContext
  * @returns The item, or `available: false` when the remote script isn't
  *   answering (`outdated` when it is too old)
- * @throws Error when nothing, or more than one thing, goes by that name
+ * @throws BrowserDeviceNotFoundError when nothing goes by that name
+ * @throws Error when more than one thing does, or the lookup fails
  */
 export async function resolveBrowserDevice(
   deviceName: string,
@@ -190,8 +194,12 @@ export async function resolveBrowserDevice(
   }
 
   if ("error" in resolution) {
-    throw "outOfTime" in resolution
-      ? lookUpFailed(lookupOutOfTime("nothing was created"))
+    if ("outOfTime" in resolution) {
+      throw lookUpFailed(lookupOutOfTime("nothing was created"));
+    }
+
+    throw "notFound" in resolution
+      ? new BrowserDeviceNotFoundError(resolution.error)
       : new Error(resolution.error);
   }
 

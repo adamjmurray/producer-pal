@@ -202,6 +202,9 @@ always matches the portal's version:
 - **The remote script** is embedded in the bundle by `embedRemoteScript()`, the
   same plugin the device bundle uses. The portal never reads `remote-script/`
   from disk.
+- **The plug-in host wrappers** (two ~240 KB `.amxd` files) are embedded as
+  base64 by `embedPluginHost()`, only in a build with `ENABLE_HOSTED_PLUGINS`.
+  Any other build embeds nothing.
 - **The frozen device** (`Producer_Pal.amxd`, ~10 MB) is a plain file next to
   `producer-pal-portal.js`, in the npm package and in the mcpb. It is not
   embedded: base64 in the bundle would be parsed on every start for a feature

@@ -21,8 +21,11 @@ import {
   type InstalledRemoteScript,
 } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { libraryPathExists } from "#src/mcp-server/rpc/remote-script/user-library/user-library-fs.ts";
-import { type InstallPart } from "#src/tools/core/helpers/manage-contract.ts";
-import { findBundledDevice } from "../setup/bundled-device.ts";
+import {
+  type InstallPart,
+  type PluginHostPart,
+} from "#src/tools/core/helpers/manage-contract.ts";
+import { findBundledDevice } from "../setup/bundled-device/bundled-device.ts";
 import {
   type DeviceFileStatus,
   deviceFileStatus,
@@ -31,6 +34,7 @@ import {
   type DeviceInstallResult,
   installDevice,
 } from "../setup/device-install.ts";
+import { installPluginHostParts } from "../setup/plugin-host/plugin-host-part.ts";
 
 export interface OfflineDeps {
   /** Whether the remote script answers. Never throws. */
@@ -45,6 +49,8 @@ export interface OfflineDeps {
   findBundledDevice: () => string | null;
   /** Copy the bundled device into a User Library */
   installDevice: (userLibrary: string, source: string) => DeviceInstallResult;
+  /** Install the plug-in host wrappers into a User Library; never throws */
+  installPluginHost: (userLibrary: string) => PluginHostPart[];
   /** The remote script in a User Library, installed or not */
   installedRemoteScript: (userLibrary: string) => InstalledRemoteScript;
   /** How the device in a User Library compares with the bundled one */
@@ -62,6 +68,7 @@ export const realOfflineDeps: OfflineDeps = {
   findUserLibrary: findUserLibraryPath,
   findBundledDevice,
   installDevice,
+  installPluginHost: installPluginHostParts,
   installedRemoteScript,
   deviceFileStatus,
   fileExists: libraryPathExists,

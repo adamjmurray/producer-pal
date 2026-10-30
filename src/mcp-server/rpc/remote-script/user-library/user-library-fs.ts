@@ -151,12 +151,15 @@ export function removeFromLibrary(path: string): void {
 }
 
 /**
- * Write a UTF-8 file, creating its parent folders.
+ * Write a file, creating its parent folders. Text is written as UTF-8.
  *
  * @param file - Path to write
  * @param contents - File contents
  */
-export function writeLibraryFile(file: string, contents: string): void {
+export function writeLibraryFile(
+  file: string,
+  contents: string | Uint8Array,
+): void {
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, contents, "utf8");
 }

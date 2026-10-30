@@ -128,6 +128,7 @@ describe("where ppal-manage is named", () => {
     /^src\/tools\/core\//,
     // The shared wording, which takes `manage`.
     "src/tools/shared/remote-script/outdated-remote-script.ts",
+    "src/tools/device/create/helpers/call/plugin-host-setup.ts",
     "src/tools/shared/remote-script/remote-script-setup.ts",
     // The connect notice, which splits on whether the tool is offered.
     "src/mcp-server/helpers/connect/remote-script-line.ts",

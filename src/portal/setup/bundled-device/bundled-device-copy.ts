@@ -6,10 +6,10 @@
 import { ASK_FOR_LIBRARY } from "#src/mcp-server/rpc/remote-script/install/remote-script-install-reply.ts";
 import { UserLibraryFolderError } from "#src/mcp-server/rpc/remote-script/user-library/user-library-folder.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { type OfflineDeps } from "../offline/offline-deps.ts";
-import { SETUP_URL } from "../offline/offline-setup-hints.ts";
-import { type DeviceInstallResult } from "./device-install.ts";
-import { type SetupPurpose, SetupFailed, sentence } from "./setup-failure.ts";
+import { type OfflineDeps } from "../../offline/offline-deps.ts";
+import { SETUP_URL } from "../../offline/offline-setup-hints.ts";
+import { type DeviceInstallResult } from "../device-install.ts";
+import { type SetupPurpose, SetupFailed, sentence } from "../setup-failure.ts";
 
 /**
  * @param deps - The bundled device lookup

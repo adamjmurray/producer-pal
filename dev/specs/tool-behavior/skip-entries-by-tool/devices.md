@@ -66,21 +66,28 @@ Part of [Skip entries, tool by tool](README.md).
 - **create-device's `hosted: true` loads each `device` as a VST3, AU or VST2
   plug-in in a wrapper.** Every name is looked up in Live's plug-in database,
   and the wrapper that suits its kind (instrument or effect) in Live's browser,
-  before anything is made; a name that isn't an installed plug-in, or a remote
-  script that isn't answering, fails the call with nothing changed. A name
-  installed in several formats loads as VST3, else AU, else VST2. Several
-  plug-ins of that name in the chosen format, a VST2 shell plug-in, an AU that
-  is neither an instrument nor an audio effect, and a plug-in whose kind can't
-  be told, are refused the same way. An AU counts only if Live's browser lists
-  it; with the remote script unanswering there are none. `hosted` with `preset`,
-  or with no `device`, is refused. The wrapper is loaded and placed like any
-  browser device (same path, misfit and chain rules), then told to load the
-  plug-in; the target only counts as created once that worked, then takes its
-  `name` and `params` (routed to the plug-in as update-device's are). A plug-in
-  that won't load, or that doesn't answer in time, deletes the wrapper again and
-  skips the target with the reason (`could not load "<plug-in>": ...`), leaving
-  the other paths alone. A wrapper that can't be deleted stays: the entry keeps
-  its `id` and `path`, and the detail says so.
+  before anything is made; a name that isn't an installed plug-in, a remote
+  script that isn't answering, or a wrapper that Live's browser doesn't have
+  fails the call with nothing changed. The last reads
+  `can't host "<plug-in>": the "PPal Plug-in Effect" wrapper isn't installed; <setup>`:
+  the setup is `ppal-manage` with `install-producer-pal` (or the chat UI's
+  Settings → Installation) when the caller has `ppal-manage`, else the chat UI
+  alone, and it adds that Live's browser can take a few seconds to see a new
+  file. The lookup says "nothing by that name" with a typed flag, never by its
+  message text. A name installed in several formats loads as VST3, else AU, else
+  VST2. Several plug-ins of that name in the chosen format, a VST2 shell
+  plug-in, an AU that is neither an instrument nor an audio effect, and a
+  plug-in whose kind can't be told, are refused the same way. An AU counts only
+  if Live's browser lists it; with the remote script unanswering there are none.
+  `hosted` with `preset`, or with no `device`, is refused. The wrapper is loaded
+  and placed like any browser device (same path, misfit and chain rules), then
+  told to load the plug-in; the target only counts as created once that worked,
+  then takes its `name` and `params` (routed to the plug-in as update-device's
+  are). A plug-in that won't load, or that doesn't answer in time, deletes the
+  wrapper again and skips the target with the reason
+  (`could not load "<plug-in>": ...`), leaving the other paths alone. A wrapper
+  that can't be deleted stays: the entry keeps its `id` and `path`, and the
+  detail says so.
 - **A take lane reports the params it has no use for.** `ppal-update-track`
   writes a lane's name and nothing else, so everything else the call sent is a
   `detail` on the lane's own entry, which otherwise reads like any other hit.

@@ -45,6 +45,38 @@ describe("add-producer-pal", () => {
     });
   });
 
+  it("installs the plug-in host wrappers beside the device and reports them", async () => {
+    const parts = [
+      { name: "PPal Plug-in Effect", status: "installed" as const, path: "/e" },
+    ];
+    const deps = happyDeps({ installPluginHost: vi.fn(() => parts) });
+    const response = await addProducerPalCall(deps);
+
+    expect(response.isError).toBeUndefined();
+    expect(deps.installPluginHost).toHaveBeenCalledWith(LIBRARY);
+    expect(responseText(response)).toBe(
+      '{track:{path:"t3",name:"3-MIDI"},device:"installed in the User Library",pluginHost:[{name:"PPal Plug-in Effect",status:"installed",path:"/e"}],nextSteps:"Call ppal-connect next."}',
+    );
+  });
+
+  it("still adds the device when a wrapper can't be installed", async () => {
+    const deps = happyDeps({
+      installPluginHost: () => [
+        {
+          name: "PPal Plug-in Effect",
+          ok: false,
+          path: "/e",
+          detail: "In use.",
+        },
+      ],
+    });
+    const response = await addProducerPalCall(deps);
+
+    expect(response.isError).toBeUndefined();
+    expect(responseText(response)).toContain('track:{path:"t3"');
+    expect(responseText(response)).toContain("ok:false");
+  });
+
   it("refuses a bad call before touching anything", async () => {
     const deps = happyDeps();
     const response = await addProducerPalCall(deps, undefined, { steps: 2 });

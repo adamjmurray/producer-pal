@@ -326,6 +326,37 @@ device is out of date with `wrapper.js`. After editing the code inside Max's
 code box instead, `npm run plugin-host:build -- --extract` copies it back into
 `wrapper.js` first.
 
+### Installing the devices
+
+Live's browser must find the wrappers by name, so they go in the User Library:
+`Presets/Audio Effects/Max Audio Effect/` and
+`Presets/Instruments/Max Instrument/`.
+
+- **Bundles.** The device and portal bundles embed both `.amxd` files as base64
+  (`config/rolldown-plugin-embed-plugin-host.mjs` replaces
+  `src/portal/setup/plugin-host/embedded-plugin-host-wrappers.ts`). Only a build
+  with `ENABLE_HOSTED_PLUGINS=true` does. Any other build embeds an empty map
+  and the install step returns before touching it, so a release carries no
+  wrapper bytes and installs none.
+- **Where they install.** Every install path copies them: `ppal-manage`
+  `install-producer-pal` (device and portal), `update-producer-pal`, the
+  portal's offline `add-producer-pal`, and the chat UI's Settings → Installation
+  copy. The copy is temp-file-and-rename, the same step the device uses
+  (`src/portal/setup/replace-via-temp.ts`).
+- **Bytes decide.** A wrapper that differs from the embedded one is replaced; no
+  version is compared. A Set that's already open keeps the old wrapper until
+  it's reopened.
+- **A wrapper never fails an install.** Each reports for itself (`pluginHost` in
+  the result). On Windows, Live holding the file open is the usual cause; the
+  entry says to close the Sets that use it and run `install-producer-pal` again.
+- **Missing wrapper.** `ppal-create-device` with `hosted: true` fails with
+  nothing changed and says how to install it. Live's browser can take a few
+  seconds to see a file that was just copied.
+- **Dev scripts.** `npm run install:plugin-host` copies from the repo files,
+  whatever the build flags. `install:status` reports each wrapper as missing,
+  current or differing from the repo; `uninstall`, `uninstall:all` and
+  `uninstall:plugin-host` remove them.
+
 ## Not yet tested
 
 - CC, pitch bend and aftertouch reaching the plug-in: the Live API can't write

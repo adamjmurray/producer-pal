@@ -18,7 +18,7 @@ import {
 import {
   installBundledDevice,
   requireBundledDevice,
-} from "../setup/bundled-device-copy.ts";
+} from "../setup/bundled-device/bundled-device-copy.ts";
 import { installPartOfDevice } from "../setup/device-install-part.ts";
 import { type SetupPurpose } from "../setup/setup-failure.ts";
 import { type OfflineDeps } from "./offline-deps.ts";
@@ -50,6 +50,7 @@ export async function installProducerPal(
     | "findUserLibrary"
     | "findBundledDevice"
     | "installDevice"
+    | "installPluginHost"
     | "installRemoteScript"
   >,
   context: InstallContext,
@@ -60,6 +61,7 @@ export async function installProducerPal(
       findUserLibrary: () => firstUserLibrary([ping.userLibrary], deps),
       installRemoteScript: deps.installRemoteScript,
       installDevice: (folder) => installBundled(folder, deps),
+      installPluginHost: deps.installPluginHost,
     });
 
     return offlineResult(manageInstallResult(reply, context));

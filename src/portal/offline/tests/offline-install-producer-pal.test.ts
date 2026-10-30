@@ -89,6 +89,45 @@ describe("offline install-producer-pal", () => {
     );
   });
 
+  it("installs the plug-in host wrappers into the same library and reports them", async () => {
+    const parts = [
+      { name: "PPal Plug-in Effect", status: "installed" as const, path: "/e" },
+    ];
+    const deps = installDeps({ installPluginHost: vi.fn(() => parts) });
+    const text = textOf(await install(deps));
+
+    expect(deps.installPluginHost).toHaveBeenCalledWith(LIBRARY);
+    expect(text).toContain(
+      'pluginHost:[{name:"PPal Plug-in Effect",status:"installed",path:"/e"}]',
+    );
+  });
+
+  it("is not an error when a wrapper fails, and says to retry it", async () => {
+    const response = await install(
+      installDeps({
+        installPluginHost: vi.fn(() => [
+          {
+            name: "PPal Plug-in Effect",
+            ok: false as const,
+            path: "/e",
+            detail: "In use.",
+          },
+        ]),
+      }),
+    );
+
+    expect(response.isError).toBeUndefined();
+    expect(textOf(response)).toContain('remoteScript:{status:"installed"');
+    expect(textOf(response)).toContain('device:{status:"installed"');
+    expect(textOf(response)).toContain(
+      "Plug-in hosting needs PPal Plug-in Effect",
+    );
+  });
+
+  it("leaves pluginHost out when the build hosts no plug-ins", async () => {
+    expect(textOf(await install(installDeps()))).not.toContain("pluginHost");
+  });
+
   it("answers to the retired name exactly as to the new one", async () => {
     const answer = async (action: string): Promise<string> =>
       textOf(await install(installDeps(), { action }));

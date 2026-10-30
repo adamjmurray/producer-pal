@@ -27,7 +27,7 @@ import { offlineError, offlineResult } from "../offline/offline-responses.ts";
 import {
   installBundledDevice,
   requireBundledDevice,
-} from "../setup/bundled-device-copy.ts";
+} from "../setup/bundled-device/bundled-device-copy.ts";
 import { type DeviceInstallResult } from "../setup/device-install.ts";
 import { userLibraryFor } from "../setup/library-for-device.ts";
 import { remoteScriptReady } from "../setup/remote-script-ready.ts";
@@ -95,6 +95,7 @@ export async function updateProducerPal(
       installBundledDevice(library, bundled, deps, UPDATE),
       from,
     );
+    const pluginHost = deps.installPluginHost(library);
     const track = await replaceDevice(
       file.path,
       from,
@@ -115,6 +116,7 @@ export async function updateProducerPal(
       device: { from, to },
       ...(track == null ? {} : { track }),
       ...(file.note == null ? {} : { note: file.note }),
+      ...(pluginHost.length === 0 ? {} : { pluginHost }),
       nextSteps: `Now call ${VERSION_CHECK_CALL} to confirm the update. ${VERSION_CHECK_NEVER_CONNECTED}`,
     });
   } catch (error) {

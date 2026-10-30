@@ -247,10 +247,12 @@ and installs with a dev switch:
 - `npm run install:plugin-host` - copy the plug-in hosting wrappers from
   `max-for-live-device/plugin-host/` into the User Library (replaces any that
   differ)
-- `npm run install:status` - show what's installed, plus other `.amxd` copies
-- `npm run uninstall` - remove the device and remote script (also
-  `uninstall:device`, `uninstall:remote-script`; `uninstall:device:all` and
-  `uninstall:all` also delete other `Producer_Pal*.amxd` copies)
+- `npm run install:status` - show what's installed (including the plug-in
+  hosting wrappers), plus other `.amxd` copies
+- `npm run uninstall` - remove the device, remote script and plug-in hosting
+  wrappers (also `uninstall:device`, `uninstall:remote-script`,
+  `uninstall:plugin-host`; `uninstall:device:all` and `uninstall:all` also
+  delete other `Producer_Pal*.amxd` copies)
 
 The install and uninstall scripts use `ABLETON_USER_LIBRARY` from `.env`, or
 find Live's User Library if it's unset.

@@ -6,7 +6,8 @@
 
 /**
  * Copy the plug-in hosting wrapper devices (max-for-live-device/plugin-host/)
- * into the Ableton User Library, replacing any that differ.
+ * into the Ableton User Library, replacing any that differ. Reads the repo
+ * files, whatever the build flags.
  *
  * Usage: npm run install:plugin-host
  *
@@ -14,19 +15,24 @@
  */
 
 import { join } from "node:path";
+import { installPluginHostWrappers } from "#src/portal/setup/plugin-host/plugin-host-install.ts";
+import {
+  pluginHostSourceDir,
+  readPluginHostSource,
+} from "#src/portal/setup/plugin-host/plugin-host-source.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { resolveInstallLibraryOrExit } from "./helpers/install-library.ts";
-import {
-  describePluginHostInstall,
-  installPluginHostWrappers,
-} from "./helpers/plugin-host/plugin-host-install.ts";
+import { describePluginHostInstall } from "./plugin-host-report.ts";
 
 const rootDir = join(import.meta.dirname, "../../..");
 
 try {
   const library = await resolveInstallLibraryOrExit();
   const { lines, ok } = describePluginHostInstall(
-    installPluginHostWrappers(library.path, rootDir),
+    installPluginHostWrappers(
+      library.path,
+      readPluginHostSource(pluginHostSourceDir(rootDir)),
+    ),
   );
 
   for (const line of lines) {

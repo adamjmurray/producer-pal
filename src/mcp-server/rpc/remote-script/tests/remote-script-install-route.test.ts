@@ -15,6 +15,10 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { platformSupport } from "#src/test/fixtures/platform-support.ts";
 import { VERSION } from "#src/shared/config.ts";
+import {
+  PLUGIN_HOST_WRAPPERS,
+  pluginHostPath,
+} from "#src/portal/setup/plugin-host/plugin-host-wrappers.ts";
 import { MANAGE_ROUTES } from "#src/tools/core/helpers/manage-contract.ts";
 import { findUserLibraryPath } from "../../../live-library/query/user-library-path.ts";
 import { syncDeviceInstallNotice } from "../../device-install/device-install-notice.ts";
@@ -74,9 +78,19 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   clearNodeRoutes();
   rmSync(library, { recursive: true, force: true });
 });
+
+/** What the wrappers report when both were just installed into the library. */
+function wrappersInstalled(): unknown {
+  return PLUGIN_HOST_WRAPPERS.map((wrapper) => ({
+    name: wrapper.name,
+    status: "installed",
+    path: pluginHostPath(library, wrapper),
+  }));
+}
 
 /**
  * @param args - The route's args
@@ -101,8 +115,14 @@ describe("manage.installProducerPal", () => {
         status: "installed",
         path: join(library, "Producer_Pal.amxd"),
       },
+      pluginHost: wrappersInstalled(),
     });
     expect(existsSync(join(path, "__init__.py"))).toBe(true);
+
+    for (const wrapper of PLUGIN_HOST_WRAPPERS) {
+      expect(existsSync(pluginHostPath(library, wrapper))).toBe(true);
+    }
+
     expect(installRunningDevicePart).toHaveBeenCalledWith(library);
     // The device's "Finish installation" notice may be done with.
     expect(syncDeviceInstallNotice).toHaveBeenCalledTimes(1);
@@ -134,6 +154,7 @@ describe("manage.installProducerPal", () => {
       ran: true,
       remoteScript: expect.objectContaining({ status: "installed" }),
       device: { ok: false, detail: "This is a development device." },
+      pluginHost: wrappersInstalled(),
     });
     expect(existsSync(remoteScriptPath(library))).toBe(true);
   });
@@ -150,7 +171,69 @@ describe("manage.installProducerPal", () => {
         detail: expect.stringContaining("install failed"),
       },
       device: expect.objectContaining({ status: "installed" }),
+      pluginHost: wrappersInstalled(),
     });
+  });
+
+  it("reports a wrapper that can't be installed and still installs the rest", async () => {
+    // A folder where the effect wrapper belongs can't be replaced as a file.
+    const stuck = pluginHostPath(library, PLUGIN_HOST_WRAPPERS[0]);
+
+    mkdirSync(stuck, { recursive: true });
+
+    const result = (await install()) as {
+      remoteScript: unknown;
+      device: unknown;
+      pluginHost: unknown[];
+    };
+
+    expect(result.remoteScript).toStrictEqual(
+      expect.objectContaining({ status: "installed" }),
+    );
+    expect(result.device).toStrictEqual(
+      expect.objectContaining({ status: "installed" }),
+    );
+    expect(result.pluginHost).toStrictEqual([
+      {
+        name: "PPal Plug-in Effect",
+        ok: false,
+        path: stuck,
+        detail: expect.stringContaining("Couldn't install the wrapper"),
+      },
+      expect.objectContaining({
+        name: "PPal Plug-in Instrument",
+        status: "installed",
+      }),
+    ]);
+  });
+
+  it("still installs the wrappers when the device is kept", async () => {
+    vi.mocked(installRunningDevicePart).mockReturnValue({
+      status: "kept",
+      path: "/d",
+      detail: "newer",
+    });
+
+    expect(await install()).toStrictEqual(
+      expect.objectContaining({
+        device: { status: "kept", path: "/d", detail: "newer" },
+        pluginHost: wrappersInstalled(),
+      }),
+    );
+  });
+
+  it("installs no wrappers and reports none in a build without hosting", async () => {
+    vi.stubEnv("ENABLE_HOSTED_PLUGINS", "");
+
+    const result = await install();
+
+    expect(result).toHaveProperty("remoteScript.status", "installed");
+    expect(result).not.toHaveProperty("pluginHost");
+    expect(
+      PLUGIN_HOST_WRAPPERS.some((wrapper) =>
+        existsSync(pluginHostPath(library, wrapper)),
+      ),
+    ).toBe(false);
   });
 
   it("refuses, saying to ask for the path, when none is found or given", async () => {

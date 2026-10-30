@@ -35,6 +35,7 @@ function steps(
     findUserLibrary: vi.fn(() => Promise.resolve(library)),
     installRemoteScript: vi.fn(() => OK),
     installDevice: vi.fn(() => OK),
+    installPluginHost: vi.fn(() => []),
     ...overrides,
   };
 }
@@ -50,6 +51,29 @@ describe("installProducerPalReply", () => {
     });
     expect(used.installRemoteScript).toHaveBeenCalledWith(library);
     expect(used.installDevice).toHaveBeenCalledWith(library);
+    expect(used.installPluginHost).toHaveBeenCalledWith(library);
+  });
+
+  it("carries the wrappers' parts, and leaves the field out when there are none", async () => {
+    const parts = [
+      { name: "A", status: "installed" as const, path: "/a" },
+      { name: "B", ok: false as const, path: "/b", detail: "No." },
+    ];
+
+    expect(
+      await installProducerPalReply(
+        library,
+        steps({ installPluginHost: () => parts }),
+      ),
+    ).toStrictEqual({
+      ran: true,
+      remoteScript: OK,
+      device: OK,
+      pluginHost: parts,
+    });
+    expect(await installProducerPalReply(library, steps())).not.toHaveProperty(
+      "pluginHost",
+    );
   });
 
   it("runs the device install even when the script's failed, and the reverse", async () => {
@@ -80,5 +104,6 @@ describe("installProducerPalReply", () => {
     });
     expect(used.installRemoteScript).not.toHaveBeenCalled();
     expect(used.installDevice).not.toHaveBeenCalled();
+    expect(used.installPluginHost).not.toHaveBeenCalled();
   });
 });

@@ -15,6 +15,7 @@ import {
 import { BUILD_SHA } from "./build-sha.mjs";
 import { bundleDevice } from "./rolldown-plugin-bundle-device.mjs";
 import { copyFiles } from "./rolldown-plugin-copy.mjs";
+import { embedPluginHost } from "./rolldown-plugin-embed-plugin-host.mjs";
 import { embedRemoteScript } from "./rolldown-plugin-embed-remote-script.mjs";
 import { inlineChatUI } from "./rolldown-plugin-inline-chat-ui.mjs";
 import {
@@ -151,6 +152,7 @@ export default defineConfig([
       replacePlugin(envVarReplacements, { preventAssignment: true }),
       inlineChatUI(), // Inline chat-ui.html for frozen .amxd builds
       embedRemoteScript(), // Inline the Python remote script, same reason
+      embedPluginHost(), // And the plug-in host wrappers (hosting builds only)
       addLicenseHeader({ includeThirdPartyLicenses: true }),
     ],
   },
@@ -189,6 +191,7 @@ export default defineConfig([
       // Same reason as the device bundle: the portal installs the remote script
       // and must not read remote-script/ off disk when it runs.
       embedRemoteScript(),
+      embedPluginHost(),
       // The frozen device ships as a file beside the portal, not inside it.
       // Only `npm run release:mcpb` sets this; plain builds bundle none.
       bundleDevice({

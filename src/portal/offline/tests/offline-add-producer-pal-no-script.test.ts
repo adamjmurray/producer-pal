@@ -66,6 +66,28 @@ describe("add-producer-pal without a running remote script", () => {
     expect(deps.request).not.toHaveBeenCalled();
   });
 
+  it("puts the wrappers in the library too, and says what became of them", async () => {
+    const deps = stoppedDeps({
+      installPluginHost: vi.fn(() => [
+        { name: "A", status: "installed" as const, path: "/a" },
+        { name: "B", ok: false as const, path: "/b", detail: "In use." },
+      ]),
+    });
+    const response = await addProducerPalCall(deps);
+
+    expect(response.isError).toBe(true);
+    expect(deps.installPluginHost).toHaveBeenCalledWith(LIBRARY);
+    expect(responseText(response)).toContain(
+      "Device: installed in the User Library. Plug-in host wrappers: A installed; B failed: In use. Two ways forward.",
+    );
+  });
+
+  it("says nothing about wrappers in a build that hosts none", async () => {
+    expect(responseText(await addProducerPalCall(stoppedDeps()))).not.toContain(
+      "wrappers",
+    );
+  });
+
   it("uses the User Library the call gives", async () => {
     const deps = stoppedDeps();
 

@@ -479,5 +479,6 @@ function nothingNamed(deviceName: string): BrowserItemResolution {
   return {
     available: true,
     error: `invalid device "${deviceName}": no native device, plug-in, or Max for Live device has that name`,
+    notFound: true,
   };
 }

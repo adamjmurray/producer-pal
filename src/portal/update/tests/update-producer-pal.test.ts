@@ -53,6 +53,54 @@ describe("update-producer-pal", () => {
     });
   });
 
+  it("installs the plug-in host wrappers with the device and reports them", async () => {
+    const parts = [
+      { name: "PPal Plug-in Effect", status: "updated" as const, path: "/e" },
+    ];
+    const deps = updateDeps({ installPluginHost: vi.fn(() => parts) });
+    const response = await updateCall(fakeDevice(OLD, VERSION), deps);
+
+    expect(response.isError).toBeUndefined();
+    expect(deps.installPluginHost).toHaveBeenCalledWith(LIBRARY);
+    expect(responseText(response)).toContain(
+      'pluginHost:[{name:"PPal Plug-in Effect",status:"updated",path:"/e"}]',
+    );
+  });
+
+  it("still updates the device when a wrapper can't be installed", async () => {
+    const deps = updateDeps({
+      installPluginHost: () => [
+        {
+          name: "PPal Plug-in Effect",
+          ok: false,
+          path: "/e",
+          detail: "In use.",
+        },
+      ],
+    });
+    const response = await updateCall(fakeDevice(OLD, VERSION), deps);
+
+    expect(response.isError).toBeUndefined();
+    expect(responseText(response)).toContain(`to:"${VERSION}"`);
+    expect(responseText(response)).toContain("ok:false");
+  });
+
+  it("leaves pluginHost out of the answer in a build that hosts none", async () => {
+    const response = await updateCall(fakeDevice(OLD, VERSION));
+
+    expect(responseText(response)).not.toContain("pluginHost");
+  });
+
+  it("installs no wrappers when the update is refused before the swap", async () => {
+    const deps = updateDeps({
+      installDevice: () => copied("failed", { error: "EBUSY", changed: false }),
+    });
+
+    await updateCall(oldDevice(), deps);
+
+    expect(deps.installPluginHost).not.toHaveBeenCalled();
+  });
+
   it("asks the device afresh, then tells the client to re-list tools once the new one answers", async () => {
     const device = fakeDevice(OLD, VERSION);
 

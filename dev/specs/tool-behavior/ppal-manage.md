@@ -49,17 +49,37 @@ script.
   `add-producer-pal` and `update-producer-pal` use, so the files land where
   `add-producer-pal` later looks. Both files go to the same library.
 - **The script** is replaced whole, whatever is there.
+- **The plug-in host wrappers** (`PPal Plug-in Effect` and
+  `PPal Plug-in Instrument`) go in beside them, in the folders Live files Max
+  audio effects and instruments under, in a build with `ENABLE_HOSTED_PLUGINS`.
+  They are embedded in the bundle like the script. Bytes decide: a wrapper that
+  differs is replaced, one that matches is left (`current`). They are not
+  version-aware and never `kept`. A release build embeds and installs none, and
+  the result has no `pluginHost`.
 - **The device** is version-aware, as the Chat UI's install without `force`: an
   older one is replaced; the same one is left (`current`); a newer one, or one
   that can't be ordered against it, is left (`kept`, with a `detail`). The file
   copied is the running device's own when the device answers, else the one that
   shipped with the portal. A development device (not frozen) can't be copied.
-- **Result:** `{ remoteScript, device, nextSteps }`. Each of the two is one of
+- **Result:** `{ remoteScript, device, pluginHost?, nextSteps }`. Each of the
+  first two is one of
   - `{ status, path, version?, detail? }`, where `status` is `installed`,
     `updated`, `current` or `kept` (`detail` explains an update or a kept copy),
     or
   - `{ ok: false, path?, detail }`, for a file that couldn't be installed:
     `detail` says why and what it left.
+
+  `pluginHost` is one `{ name, status, path, detail? }` or
+  `{ name, ok: false, path, detail }` per wrapper, the same shapes (`status` is
+  `installed`, `updated` or `current`). An update says a Set that's already open
+  keeps the old wrapper until it's reopened. A wrapper that fails (Windows can
+  lock a file Live has open: the `detail` says to close the Sets that use it, or
+  quit Live, then run `install-producer-pal` again) never fails the call and
+  never hides the others: the script or device installed still reports as
+  installed, and `nextSteps` adds that the wrapper is missing and to call
+  `install-producer-pal` again. Two wrappers' outcomes are independent, and
+  independent of the device's: they are tried even when the device was `kept` or
+  failed.
 
   `nextSteps` tells the user to restart Live and choose Producer Pal as a
   Control Surface in Settings → Tempo & MIDI (Input and Output None). When
@@ -75,7 +95,8 @@ script.
   the other says what it did, and `nextSteps` says which half is missing and how
   to retry. It never claims success for the failed half and never hides a
   completed one.
-- **Both fail:** throws, naming both reasons
+- **Both fail:** (the script and the device; the wrappers don't count) throws,
+  naming both reasons
   (`nothing was installed. Remote script: <detail>. Device: <detail>.`), or the
   reason once when it is the same.
 - **No User Library found, none given:** throws, saying nothing was installed
@@ -114,10 +135,11 @@ description tells the model to ask the user first, since it changes their Set.
 - **On the device:** throws `Producer Pal is already running in this Live Set`,
   after the same argument checks as every action.
 - **Result:** `{ track: { path, name }, device, nextSteps }`, where `path` is
-  the track path the tools use (`t3`). `device` says what happened to the file
-  in the User Library (installed, updated, already current, kept because the
-  installed one is newer or can't be ordered, or kept because the update failed,
-  with why). `nextSteps` is `Call ppal-connect next.`
+  the track path the tools use (`t3`), plus `pluginHost` (as above) in a build
+  that hosts plug-ins. `device` says what happened to the file in the User
+  Library (installed, updated, already current, kept because the installed one
+  is newer or can't be ordered, or kept because the update failed, with why).
+  `nextSteps` is `Call ppal-connect next.`
 - **An installed device newer than the bundled one:** it is loaded as it is, and
   `device` adds that this portal is older than it and the user should update the
   portal (the npx package or the Claude Desktop extension).
@@ -136,11 +158,12 @@ description tells the model to ask the user first, since it changes their Set.
   installed, or just restart Live and choose the Control Surface if it is), then
   call `add-producer-pal` again. A call that couldn't do the thing it was made
   for is an error, even when it left a prepared file; the error, not a result,
-  is what stops the model reporting the device as added. With no device bundled,
-  no User Library found, or a copy that fails with no file already there, the
-  error says nothing was added and nothing was copied. If the lookup of the
-  script's state fails after the copy, the error still says where the file is
-  and gives the steps for a script that isn't installed.
+  is what stops the model reporting the device as added. In a build that hosts
+  plug-ins the wrappers are copied too, and the error says what became of each.
+  With no device bundled, no User Library found, or a copy that fails with no
+  file already there, the error says nothing was added and nothing was copied.
+  If the lookup of the script's state fails after the copy, the error still says
+  where the file is and gives the steps for a script that isn't installed.
 
 ## `update-producer-pal`
 
@@ -212,7 +235,10 @@ to ask the user first.
   the never-connected note.
 - **Result:** `{ device: { from, to }, track: { path, name }, nextSteps }`,
   where `path` is `t3`, `rt0` or `mt` as in the tools, plus `note` when the
-  loaded file wasn't the portal's. `nextSteps` is
+  loaded file wasn't the portal's, and `pluginHost` (as under
+  `install-producer-pal`) in a build that hosts plug-ins. The wrappers are
+  copied right after the device and before the swap; a wrapper that fails never
+  refuses the update. `nextSteps` is
   `Now call ppal-connect with versionCheck: true to confirm the update. (Never connected in this chat? Call plain ppal-connect instead.)`
   The check comes first and is worded as the required next step, so the model
   doesn't read it as optional.

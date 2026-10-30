@@ -271,8 +271,13 @@ interface InstallPartResult {
 interface InstallResult {
   remoteScript: InstallPartResult;
   device: InstallPartResult;
+  pluginHost?: (InstallPartResult & { name: string })[];
   nextSteps: string;
 }
+
+// Whether the build under test hosts plug-ins: set it as for the hosted
+// create-device e2e, with the same flag on the build.
+const HOSTING_BUILD = process.env.ENABLE_HOSTED_PLUGINS === "true";
 
 // The install needs no remote script, so these run in every e2e pass.
 describe("ppal-manage install-producer-pal and add-producer-pal", () => {
@@ -316,12 +321,73 @@ describe("ppal-manage install-producer-pal and add-producer-pal", () => {
         expect(result.nextSteps).toContain(
           "Only the remote script was installed; the device was not (see device).",
         );
-        expect(existsSync(join(userLibrary, "Presets"))).toBe(false);
+        expect(existsSync(join(userLibrary, "Presets/MIDI Effects"))).toBe(
+          false,
+        );
       } else {
         expect(result.device.status).toBe("installed");
         expect(existsSync(result.device.path!)).toBe(true);
         expect(result.nextSteps).toContain("restart Live");
       }
+    },
+  );
+
+  it.skipIf(!HOSTING_BUILD)(
+    "installs both plug-in host wrappers into the User Library, and leaves them alone when current",
+    async () => {
+      const userLibrary = scratchLibrary();
+      const first = parseToolResult<InstallResult>(
+        await manageWith(ctx, "install-producer-pal", { userLibrary }),
+      );
+
+      expect(first.pluginHost?.map((part) => part.name)).toStrictEqual([
+        "PPal Plug-in Effect",
+        "PPal Plug-in Instrument",
+      ]);
+      expect(first.pluginHost?.map((part) => part.status)).toStrictEqual([
+        "installed",
+        "installed",
+      ]);
+      expect(
+        existsSync(
+          join(
+            userLibrary,
+            "Presets/Audio Effects/Max Audio Effect/PPal Plug-in Effect.amxd",
+          ),
+        ),
+      ).toBe(true);
+      expect(
+        existsSync(
+          join(
+            userLibrary,
+            "Presets/Instruments/Max Instrument/PPal Plug-in Instrument.amxd",
+          ),
+        ),
+      ).toBe(true);
+
+      const second = parseToolResult<InstallResult>(
+        await manageWith(ctx, "install-producer-pal", { userLibrary }),
+      );
+
+      expect(second.pluginHost?.map((part) => part.status)).toStrictEqual([
+        "current",
+        "current",
+      ]);
+    },
+  );
+
+  it.skipIf(HOSTING_BUILD)(
+    "installs no plug-in host wrappers in a build that doesn't host plug-ins",
+    async () => {
+      const userLibrary = scratchLibrary();
+      const result = parseToolResult<InstallResult>(
+        await manageWith(ctx, "install-producer-pal", { userLibrary }),
+      );
+
+      expect(result).not.toHaveProperty("pluginHost");
+      expect(
+        existsSync(join(userLibrary, "Presets/Audio Effects/Max Audio Effect")),
+      ).toBe(false);
     },
   );
 

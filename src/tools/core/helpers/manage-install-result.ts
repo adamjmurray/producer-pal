@@ -14,6 +14,7 @@ import {
   type InstallPart,
   type InstallReply,
   type ManageInstallResult,
+  type PluginHostPart,
 } from "./manage-contract.ts";
 
 const INSTALL = "install-producer-pal";
@@ -38,7 +39,8 @@ export interface InstallContext {
 /**
  * The result of an install the route answered. Each file reports for itself, so
  * one that installed is never hidden by one that didn't. Only a call that
- * installed neither is an error.
+ * installed neither is an error: a plug-in host wrapper that failed is
+ * reported and never makes the call fail.
  * @param reply - What the install route answered
  * @param context - Where the call was answered
  * @returns Both files' outcomes, and what the user does next
@@ -52,7 +54,7 @@ export function manageInstallResult(
     throw new Error(reply.error);
   }
 
-  const { remoteScript, device } = reply;
+  const { remoteScript, device, pluginHost } = reply;
 
   if (remoteScript.ok === false && device.ok === false) {
     const script = withoutPeriod(remoteScript.detail);
@@ -65,10 +67,15 @@ export function manageInstallResult(
     );
   }
 
+  const steps = nextSteps(remoteScript, device, context);
+
   return {
     remoteScript,
     device,
-    nextSteps: nextSteps(remoteScript, device, context),
+    ...(pluginHost == null ? {} : { pluginHost }),
+    nextSteps: pluginHost?.some((part) => part.ok === false)
+      ? `${steps} ${wrapperRetry(pluginHost)}`
+      : steps,
   };
 }
 
@@ -102,6 +109,19 @@ function nextSteps(
   return context.running
     ? `${finish} Once they have, call ${VERSION_CHECK_CALL}. ${VERSION_CHECK_NEVER_CONNECTED}`
     : `${finish} Then call ${ADD} (ask the user first). ${DRAG_NOW}`;
+}
+
+/**
+ * @param pluginHost - The wrappers' parts, at least one of which failed
+ * @returns What to tell the user about the wrappers that didn't install
+ */
+function wrapperRetry(pluginHost: PluginHostPart[]): string {
+  const names = pluginHost
+    .filter((part) => part.ok === false)
+    .map((part) => part.name)
+    .join(", ");
+
+  return `Plug-in hosting needs ${names} (see pluginHost): tell the user why, and call ${INSTALL} again to retry.`;
 }
 
 /**

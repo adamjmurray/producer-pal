@@ -82,17 +82,30 @@ export type InstallPart =
   | { ok: false; path?: string; detail: string };
 
 /**
+ * What became of one plug-in host wrapper device, the same way. A wrapper that
+ * fails never fails the install: it reports `ok: false` and the rest stands.
+ */
+export type PluginHostPart = InstallPart & { name: string };
+
+/**
  * What the install route answers. `error` is worded for the model and says what
  * state the install was left in. `ran: false` means neither file was tried.
+ * `pluginHost` is left out when the build doesn't host plug-ins.
  */
 export type InstallReply =
   | { ran: false; error: string }
-  | { ran: true; remoteScript: InstallPart; device: InstallPart };
+  | {
+      ran: true;
+      remoteScript: InstallPart;
+      device: InstallPart;
+      pluginHost?: PluginHostPart[];
+    };
 
 /** What an install tells the caller, and what is left for the user to do. */
 export interface ManageInstallResult {
   remoteScript: InstallPart;
   device: InstallPart;
+  pluginHost?: PluginHostPart[];
   nextSteps: string;
 }
 

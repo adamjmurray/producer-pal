@@ -7,6 +7,7 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import {
   type InstallPart,
   type InstallReply,
+  type PluginHostPart,
 } from "#src/tools/core/helpers/manage-contract.ts";
 import {
   resolveUserLibraryFolder,
@@ -22,17 +23,20 @@ export interface ProducerPalInstallSteps {
   installRemoteScript: (library: string) => InstallPart;
   /** Install the device into a User Library; never throws */
   installDevice: (library: string) => InstallPart;
+  /** Install the plug-in host wrappers into a User Library; never throws */
+  installPluginHost: (library: string) => PluginHostPart[];
 }
 
 /**
  * Install the remote script and the device into one User Library: the given
  * one, else the one found. A bad library fails both before either is tried; a
- * failure of one doesn't stop the other, and each reports for itself. Used by
- * the Node route the device calls and by the portal when the device is
- * offline.
+ * failure of one doesn't stop the other, and each reports for itself. The
+ * plug-in host wrappers ride along and report for themselves too: their
+ * failure never fails the install. Used by the Node route the device calls and
+ * by the portal when the device is offline.
  * @param given - Absolute path to the User Library; blank or absent means find it
- * @param steps - The lookup and the two installs
- * @returns Each file's outcome, or why neither was tried
+ * @param steps - The lookup and the installs
+ * @returns Each file's outcome, or why nothing was tried
  */
 export async function installProducerPalReply(
   given: string | undefined,
@@ -57,10 +61,15 @@ export async function installProducerPalReply(
     };
   }
 
+  const remoteScript = steps.installRemoteScript(library);
+  const device = steps.installDevice(library);
+  const pluginHost = steps.installPluginHost(library);
+
   return {
     ran: true,
-    remoteScript: steps.installRemoteScript(library),
-    device: steps.installDevice(library),
+    remoteScript,
+    device,
+    ...(pluginHost.length === 0 ? {} : { pluginHost }),
   };
 }
 

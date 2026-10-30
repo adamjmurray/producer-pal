@@ -19,6 +19,7 @@ import {
   infoReply,
   installWrapper,
 } from "#src/tools/device/tests/helpers/plugin-host-wrapper-fixtures.ts";
+import { pluginHostSetup } from "#src/tools/device/create/helpers/call/plugin-host-setup.ts";
 import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { createDevice } from "../../create-device.ts";
 import {
@@ -278,6 +279,66 @@ describe("createDevice hosted", () => {
     ).rejects.toThrow(
       `can't host "Serum 2 FX": hosting needs the Producer Pal remote script, which isn't answering; ${remoteScriptSetup(true)}`,
     );
+  });
+
+  describe("when Live's browser has no wrapper", () => {
+    const notFound = (wrapper: string): Record<string, unknown> => ({
+      available: true,
+      error: `invalid device "${wrapper}": no native device, plug-in, or Max for Live device has that name`,
+      notFound: true,
+    });
+
+    it("says how to install it, and changes nothing", async () => {
+      answerNode({ resolution: notFound("PPal Plug-in Effect") });
+      wrapperLoads();
+
+      await expect(
+        createDevice({ device: "Serum 2 FX", hosted: true, path: "t0/d+" }),
+      ).rejects.toThrow(
+        `can't host "Serum 2 FX": the "PPal Plug-in Effect" wrapper isn't installed; ${pluginHostSetup(true)}`,
+      );
+      expect(liveSet.call).not.toHaveBeenCalledWith("create_midi_track", -1);
+    });
+
+    it("names the instrument wrapper for an instrument", async () => {
+      answerNode({
+        plugin: SERUM,
+        resolution: notFound("PPal Plug-in Instrument"),
+      });
+
+      await expect(
+        createDevice({ device: "Serum 2", hosted: true, path: "t0/d+" }),
+      ).rejects.toThrow(
+        `can't host "Serum 2": the "PPal Plug-in Instrument" wrapper isn't installed; ${pluginHostSetup(true)}`,
+      );
+    });
+
+    it("points at the chat UI alone for a caller without ppal-manage", async () => {
+      answerNode({ resolution: notFound("PPal Plug-in Effect") });
+
+      const failure = createDevice(
+        { device: "Serum 2 FX", hosted: true, path: "t0/d+" },
+        { manageAvailable: false },
+      );
+
+      await expect(failure).rejects.toThrow(pluginHostSetup(false));
+      await expect(failure).rejects.not.toThrow("ppal-manage");
+      expect(pluginHostSetup(false)).toContain("Settings → Installation");
+      expect(pluginHostSetup(false)).toContain("a few seconds");
+    });
+
+    it("still says other lookup errors as they are", async () => {
+      answerNode({
+        resolution: {
+          available: true,
+          error: 'deviceName "PPal Plug-in Effect" matches 2 items',
+        },
+      });
+
+      await expect(
+        createDevice({ device: "Serum 2 FX", hosted: true, path: "t0/d+" }),
+      ).rejects.toThrow('deviceName "PPal Plug-in Effect" matches 2 items');
+    });
   });
 
   it("says when the remote script is out of date", async () => {
