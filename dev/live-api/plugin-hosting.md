@@ -12,6 +12,9 @@ Release builds leave it out. To use it, build with
 ppal-create-device, the Skills text, hosted reads and writes, and
 ppal-plugin-host.
 
+Run `npm run install:plugin-host` to copy the wrapper devices into the User
+Library (Live's browser must find them by name).
+
 ## How it works
 
 Two generic wrapper devices ship with Producer Pal, in

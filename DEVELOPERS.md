@@ -244,6 +244,9 @@ and installs with a dev switch:
 - `npm run install:device` - copy `release/Producer_Pal.amxd` (from
   `npm run release:amxd`) into the User Library; `-- --force` replaces a newer
   one
+- `npm run install:plugin-host` - copy the plug-in hosting wrappers from
+  `max-for-live-device/plugin-host/` into the User Library (replaces any that
+  differ)
 - `npm run install:status` - show what's installed, plus other `.amxd` copies
 - `npm run uninstall` - remove the device and remote script (also
   `uninstall:device`, `uninstall:remote-script`; `uninstall:device:all` and

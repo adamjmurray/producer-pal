@@ -107,6 +107,7 @@
     "ui:test:dev": "npm run ui:build && playwright test -c config/playwright.ui.config.ts --ui",
     "install:remote-script": "node --env-file-if-exists=.env scripts/live-api/install-remote-script.ts",
     "install:device": "node --env-file-if-exists=.env scripts/live-api/install/install-device.ts",
+    "install:plugin-host": "node --env-file-if-exists=.env scripts/live-api/install/install-plugin-host.ts",
     "install:status": "node --env-file-if-exists=.env scripts/live-api/install/install-status.ts",
     "uninstall": "node --env-file-if-exists=.env scripts/live-api/install/uninstall.ts --device --remote-script",
     "uninstall:all": "node --env-file-if-exists=.env scripts/live-api/install/uninstall.ts --device --other-copies --remote-script",
