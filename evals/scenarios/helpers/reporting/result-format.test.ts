@@ -9,7 +9,11 @@
 
 import { describe, it, expect } from "vitest";
 import { type JsonEvalResult } from "../json-results/types.ts";
-import { scorePercentage, toolErrorPenalty } from "./result-format.ts";
+import {
+  modelWithThinking,
+  scorePercentage,
+  toolErrorPenalty,
+} from "./result-format.ts";
 
 /**
  * Build a minimal result with the given check outcomes and tool-error tally.
@@ -45,6 +49,25 @@ function makeResult(
     totalDurationMs: 1,
   };
 }
+
+describe("modelWithThinking", () => {
+  it("names the model alone when no level was set", () => {
+    expect(modelWithThinking("openai/m", [makeResult([true])])).toBe(
+      "openai/m",
+    );
+  });
+
+  it("adds the level the results ran at", () => {
+    const results = [
+      makeResult([true]),
+      { ...makeResult([true]), thinking: "high" },
+    ];
+
+    expect(modelWithThinking("openai/m", results)).toBe(
+      "openai/m (thinking high)",
+    );
+  });
+});
 
 describe("toolErrorPenalty", () => {
   it("is 0 for a clean run", () => {

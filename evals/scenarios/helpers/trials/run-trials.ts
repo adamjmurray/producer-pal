@@ -9,6 +9,7 @@
  */
 
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
+import { type ThinkingByModel } from "../../run-env/parse-thinking-arg.ts";
 import { type JevSettings } from "../judge/jev-first-judge.ts";
 import { type RunEnv } from "../../run-env/run-env.ts";
 import { runScenario } from "../../run-scenario.ts";
@@ -39,6 +40,8 @@ export interface RunContext {
   /** Set by `--jev`: Jev judges first, the LLM judge handles escalations */
   jev?: JevSettings;
   repeatCount: number;
+  /** `--thinking` level per `provider/model`; a model not in it sends none. */
+  thinking?: ThinkingByModel;
   options: TrialRunOptions;
 }
 
@@ -74,6 +77,7 @@ export async function runTrial(
     runEnv,
     envLabel: label,
     usage: options.usage,
+    thinking: ctx.thinking?.get(modelKey),
     skipJudge: options.skipJudge,
     jev,
     skipReflection: options.skipReflection,

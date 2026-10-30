@@ -15,10 +15,11 @@ import { PROVIDER_CONFIGS } from "#evals/shared/provider-configs.ts";
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 import { connectMcp } from "../mcp.ts";
 import { printStepUsage } from "../shared/formatting.ts";
-import { type TurnResult } from "../shared/types.ts";
+import { type ThinkingLevel, type TurnResult } from "../shared/types.ts";
 import { spawnAgentCli } from "./agent-cli-spawn.ts";
 import { turnTiming } from "./agent-cli-stream.ts";
 import {
+  agentCliEffort,
   type AgentCliTransport,
   DEFAULT_AGENT_CLI_SYSTEM_PROMPT,
 } from "./agent-cli-transport.ts";
@@ -28,6 +29,10 @@ export interface AgentCliSessionOptions {
   instructions?: string;
   mcpUrl?: string;
   model?: string;
+  /** Thinking level to run the eval turns at (never the judge). Throws when the
+   *  CLI can't express it; callers check up front. Absent keeps the CLI's own
+   *  default. */
+  thinking?: ThinkingLevel;
   /** Print per-turn token usage (the CLI's -u/--usage flag). */
   usage?: boolean;
   /**
@@ -57,6 +62,7 @@ export async function createAgentCliSession(
     options.model ?? PROVIDER_CONFIGS[transport.provider].defaultModel;
   const mcpUrl = options.mcpUrl ?? MCP_URL;
   const instructions = options.instructions ?? DEFAULT_AGENT_CLI_SYSTEM_PROMPT;
+  const effort = resolveEffort(transport, options.thinking);
   const sessionDir = await mkdtemp(join(tmpdir(), transport.tmpPrefix));
   const instructionsFile = join(sessionDir, "instructions.md");
 
@@ -88,6 +94,7 @@ export async function createAgentCliSession(
         instructionsFile,
         mcpUrl,
         model,
+        ...(effort != null ? { effort } : {}),
         ...(sessionId != null ? { resumeSessionId: sessionId } : {}),
       });
       const startedAt = performance.now();
@@ -137,4 +144,29 @@ export async function createAgentCliSession(
       }
     },
   };
+}
+
+/**
+ * @param transport - Transport describing the CLI
+ * @param thinking - Requested thinking level, if any
+ * @returns The CLI's effort value, or undefined when no level was requested
+ * @throws Error when the CLI can't express the level
+ */
+function resolveEffort(
+  transport: AgentCliTransport,
+  thinking: ThinkingLevel | undefined,
+): string | undefined {
+  if (thinking == null) {
+    return undefined;
+  }
+
+  const effort = agentCliEffort(transport, thinking);
+
+  if (effort == null) {
+    throw new Error(
+      `${transport.label} can't run at thinking level "${thinking}"`,
+    );
+  }
+
+  return effort;
 }

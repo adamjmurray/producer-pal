@@ -29,6 +29,10 @@ export interface JsonEvalResult {
   model: string;
   /** Run-environment label (e.g. "default", "small-model"). See `envLabel`. */
   configProfileId: string;
+  /** Thinking level the model ran at (`--thinking`). Absent when none was set:
+   *  the provider's own default. Runs at different levels share a
+   *  `configProfileId`, so this is what tells them apart. */
+  thinking?: string;
   /** System instructions used (undefined = none) */
   instructions?: string;
   /** Trial number (1-indexed, present when using -r flag) */

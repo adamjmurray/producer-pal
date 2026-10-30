@@ -130,6 +130,14 @@ describe("toJsonResult", () => {
     expect(result.judge).toBeUndefined();
   });
 
+  it("records the thinking level the model ran at", () => {
+    expect(convert({ thinking: "high" }).thinking).toBe("high");
+  });
+
+  it("leaves thinking out when none was set", () => {
+    expect("thinking" in convert()).toBe(false);
+  });
+
   it("includes turns with aggregated step usage", () => {
     const result = convert({
       turns: [

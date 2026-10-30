@@ -63,6 +63,24 @@ describe("codexTurnArgs", () => {
     expect(args.at(-1)).toBe("-");
   });
 
+  it("sets no reasoning effort unless asked", () => {
+    expect(codexTurnArgs(input).join(" ")).not.toContain("reasoning_effort");
+  });
+
+  it.each(["", "resume"])(
+    "passes the reasoning effort on initial and resumed turns (%s)",
+    (resumeSessionId) => {
+      const args = codexTurnArgs({
+        ...input,
+        effort: "max",
+        ...(resumeSessionId !== "" ? { resumeSessionId } : {}),
+      });
+      const i = args.indexOf('model_reasoning_effort="max"');
+
+      expect(args[i - 1]).toBe("-c");
+    },
+  );
+
   it("pins resumed turns to every restriction through config", () => {
     const args = codexTurnArgs({ ...input, resumeSessionId: "thread-123" });
 
@@ -87,6 +105,7 @@ describe("codexJudgeArgs", () => {
     );
     expectRestrictions(args);
     expect(args.join(" ")).not.toContain("mcp_servers");
+    expect(args.join(" ")).not.toContain("reasoning_effort");
   });
 });
 

@@ -19,7 +19,12 @@ import {
 import { formatTokenLabel } from "../json-results/assertion-label.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { jevJudgeNote, jevJudgeTag } from "./jev-judge-report.ts";
-import { checkTally, judgeVerdict, scorePercentage } from "./result-format.ts";
+import {
+  checkTally,
+  judgeVerdict,
+  modelWithThinking,
+  scorePercentage,
+} from "./result-format.ts";
 
 /**
  * Print result for a single scenario run
@@ -33,7 +38,7 @@ export function printResult(result: JsonEvalResult): void {
 
   console.log(
     formatSectionHeader(
-      `${result.model}: ${result.scenarioId}${configLabel}${kindLabel}`,
+      `${modelWithThinking(result.model, [result])}: ${result.scenarioId}${configLabel}${kindLabel}`,
     ),
   );
 

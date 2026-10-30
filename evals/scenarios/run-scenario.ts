@@ -9,6 +9,7 @@
 
 import { styleText } from "node:util";
 import { formatScenarioHeader, orange } from "#evals/chat/shared/formatting.ts";
+import { type ThinkingLevel } from "#evals/chat/shared/types.ts";
 import { resetConfig, setConfig } from "#evals/shared/config.ts";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { type StatelessMcpServer } from "#src/mcp-server/helpers/http/stateless-mcp.ts";
@@ -54,6 +55,8 @@ export interface RunScenarioOptions {
   /** Label for the run environment (see `envLabel`), used in output/results. */
   envLabel: string;
   usage?: boolean;
+  /** Thinking level for the model's turns; absent keeps the provider default. */
+  thinking?: ThinkingLevel;
   skipJudge?: boolean;
   /** Judge with Jev first, escalating to the LLM judge (see `--jev`). */
   jev?: JevSettings;
@@ -108,7 +111,13 @@ export async function runScenario(
     // 3. Create evaluation session
     const effectiveModel = model ?? getDefaultModel(provider);
 
-    logScenarioHeader(scenario, provider, effectiveModel, options.envLabel);
+    logScenarioHeader(
+      scenario,
+      provider,
+      effectiveModel,
+      options.envLabel,
+      options.thinking,
+    );
 
     if (scenario.toolOverrides != null) {
       proxy = await startToolOverrideProxy(MCP_URL, scenario.toolOverrides);
@@ -119,6 +128,7 @@ export async function runScenario(
       model,
       instructions,
       usage: options.usage,
+      thinking: options.thinking,
       ...(proxy != null && { mcpUrl: proxy.url }),
     });
 
@@ -150,6 +160,7 @@ export async function runScenario(
       scenario,
       configProfileId: options.envLabel,
       instructions,
+      ...thinkingField(options.thinking),
       turns,
       assertions: assertionResults,
       totalDurationMs: Date.now() - startTime,
@@ -160,6 +171,7 @@ export async function runScenario(
       scenario,
       configProfileId: options.envLabel,
       instructions,
+      ...thinkingField(options.thinking),
       turns,
       assertions: [],
       totalDurationMs: Date.now() - startTime,
@@ -207,12 +219,14 @@ export async function runScenario(
  * @param provider - LLM provider being used
  * @param effectiveModel - Resolved model id
  * @param label - Active run-environment label ("default" is hidden)
+ * @param thinking - Thinking level, when one was set
  */
 function logScenarioHeader(
   scenario: EvalScenario,
   provider: EvalProvider,
   effectiveModel: string,
   label: string,
+  thinking: ThinkingLevel | undefined,
 ): void {
   console.log(
     formatScenarioHeader(
@@ -227,6 +241,10 @@ function logScenarioHeader(
     console.log(`${orange("|")} ${styleText("gray", "Environment:")} ${label}`);
   }
 
+  if (thinking != null) {
+    console.log(`${orange("|")} ${styleText("gray", "Thinking:")} ${thinking}`);
+  }
+
   const instructionsLabel =
     scenario.instructions !== undefined
       ? scenario.instructions == null
@@ -237,6 +255,16 @@ function logScenarioHeader(
   console.log(
     `${orange("|")} ${styleText("gray", "Instructions:")} ${instructionsLabel}`,
   );
+}
+
+/**
+ * @param thinking - Thinking level, when one was set
+ * @returns The result field recording it, or nothing
+ */
+function thinkingField(thinking: ThinkingLevel | undefined): {
+  thinking?: string;
+} {
+  return thinking == null ? {} : { thinking };
 }
 
 export { type JudgeOverride };

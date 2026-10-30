@@ -331,6 +331,8 @@ export interface EvalScenarioResult {
   configProfileId?: string;
   /** Resolved system instructions used for this run */
   instructions?: string;
+  /** Thinking level the model ran at; absent when none was set */
+  thinking?: string;
   turns: EvalTurnResult[];
   assertions: EvalAssertionResult[];
   totalDurationMs: number;

@@ -20,6 +20,11 @@ import {
   type ModelSpec,
   parseModelArgOrExit,
 } from "#evals/shared/parse-model-arg.ts";
+import {
+  describeThinking,
+  parseThinkingArgs,
+  type ThinkingByModel,
+} from "./run-env/parse-thinking-arg.ts";
 import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
 import { type JevSettings } from "./helpers/judge/jev-first-judge.ts";
 import { resolveJevSettings } from "./helpers/judge/jev-settings.ts";
@@ -55,6 +60,9 @@ interface CliOptions {
   tools?: string;
   /** Enable the opt-in Direct Live API tool on top of the toolset. */
   liveApi?: boolean;
+  /** Thinking level(s): `<level>` or `<provider/model>=<level>`, repeatable and
+   *  comma-separated. */
+  thinking: string[];
   judge?: string;
   /** Judge with Jev first; the LLM judge handles what Jev won't decide. */
   jev?: boolean;
@@ -148,6 +156,12 @@ program
   .option(
     "--live-api",
     "Enable the Direct Live API tool (ppal-live-api) on top of the toolset",
+  )
+  .option(
+    "--thinking <spec>",
+    "Thinking level (off, low, medium, high, ultra) for every -m model, or <provider/model>=<level> for one (repeatable, comma-separated)",
+    collectValues,
+    [],
   )
   .option(
     "-j, --judge <provider/model>",
@@ -247,6 +261,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
   const modelSpecs = options.model.map((model) =>
     parseModelArgOrExit(program, model),
   );
+  const thinking = parseThinkingOrExit(options.thinking, modelSpecs);
   const judgeOverride = parseModelArgOrExit(
     program,
     options.judge ?? GEMINI_CONFIG.defaultModel,
@@ -301,6 +316,10 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       console.log(styleText("gray", `Environment: ${label}`));
     }
 
+    if (thinking.size > 0) {
+      console.log(styleText("gray", `Thinking: ${describeThinking(thinking)}`));
+    }
+
     if (jev != null) {
       console.log(
         styleText(
@@ -318,6 +337,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       judgeOverride,
       jev,
       repeatCount,
+      thinking,
       options,
     };
 
@@ -333,6 +353,24 @@ async function runEvaluation(options: CliOptions): Promise<void> {
   } catch (error) {
     console.error("Error:", errorMessage(error));
     process.exit(1);
+  }
+}
+
+/**
+ * Parse `--thinking`, reporting a bad spec as a CLI usage error.
+ *
+ * @param values - Collected `--thinking` values
+ * @param modelSpecs - The run's models
+ * @returns Level per model key
+ */
+function parseThinkingOrExit(
+  values: string[],
+  modelSpecs: ModelSpec[],
+): ThinkingByModel {
+  try {
+    return parseThinkingArgs(values, modelSpecs);
+  } catch (error) {
+    return program.error(errorMessage(error));
   }
 }
 

@@ -100,6 +100,7 @@ scripts/eval [options]
 | `--json`               | JSON tool-result output (default: compact)         |
 | `--tools <list>`       | Tool subset, comma-separated (default: all)        |
 | `--live-api`           | Enable the Direct Live API tool (`ppal-live-api`)  |
+| `--thinking <spec>`    | Thinking level, for all models or `model=level`    |
 | `-j, --judge <model>`  | Judge model (default: `gemini-3.8-flash`)          |
 | `--jev`                | Jev judges first; `-j` decides what Jev escalates  |
 | `--jev-via <route>`    | Jev route: typesafe, openrouter, vercel            |
@@ -141,6 +142,27 @@ Only the first `/` splits provider from model, so a model name can contain
 slashes of its own: `local/qwen/qwen3.8-27b` is the `qwen/qwen3.8-27b` model on
 the `local` provider.
 
+### Thinking level
+
+By default no thinking or reasoning effort is sent, so every model runs at its
+own default. `--thinking` sets it for the model's eval turns (never the judge):
+
+- `--thinking high` applies to every `-m` model.
+- `--thinking codex-code/luna=high` applies to that model only and overrides the
+  all-models level. The model must be one of the run's `-m` models.
+- The flag repeats and takes comma lists: `--thinking low,codex-code/luna=high`.
+
+Levels are the chat CLI's: `off`, `low`, `medium`, `high`, `ultra` (a plain
+number is a token budget, Gemini only). A level the model's provider can't take
+is refused before the run starts: `off` for `claude-code` and `codex-code`, and
+any level for `local`. `claude-code` passes `--effort` and `codex-code` passes
+`-c model_reasoning_effort`; `ultra` becomes `max` on both. API providers use
+the same mapping as the chat CLI.
+
+Each saved result carries `thinking` when a level was set, and the run header,
+summary and results table show it. Runs at different levels don't overwrite one
+another: each run saves to its own folder.
+
 ### Examples
 
 ```bash
@@ -165,6 +187,9 @@ scripts/eval --tag paths,clips -m gemini-3.8-flash
 
 # Narrow a family to named scenarios (both filters must match)
 scripts/eval --tag paths -t path-session-slot -m gemini-3.8-flash
+
+# Run Luna at high reasoning effort, the other model at its default
+scripts/eval -m codex-code/luna -m openai/gpt-6.1-sol --thinking codex-code/luna=high -t connect-to-ableton
 
 # Skip Live Set reopening (reuse current MCP connection)
 scripts/eval -t connect-to-ableton -s

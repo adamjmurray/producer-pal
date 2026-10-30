@@ -57,6 +57,9 @@ export const CLAUDE_CODE_TRANSPORT: AgentCliTransport = {
   ],
   models: CLAUDE_CODE_MODELS,
   judgeModel: "haiku",
+  // `claude --effort` takes low, medium, high, xhigh or max and has no off, so
+  // `off` is refused up front.
+  efforts: { low: "low", medium: "medium", high: "high", ultra: "max" },
   buildTurnArgs: claudeCodeTurnArgs,
   buildJudgeArgs: claudeCodeJudgeArgs,
   parseStream: parseClaudeCodeStream,
@@ -75,6 +78,7 @@ export function claudeCodeTurnArgs(input: AgentCliTurnArgsInput): string[] {
 
   return [
     ...buildRestrictedArgs(input),
+    ...(input.effort != null ? ["--effort", input.effort] : []),
     "--strict-mcp-config",
     "--mcp-config",
     JSON.stringify(mcpConfig),

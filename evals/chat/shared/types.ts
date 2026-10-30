@@ -21,6 +21,9 @@ export type ThinkingLevel =
   | "none"
   | (string & {});
 
+/** The named levels the CLIs share. Numeric budgets are Gemini-only. */
+export type NamedThinkingLevel = "off" | "low" | "medium" | "high" | "ultra";
+
 export interface ChatOptions {
   provider: EvalProvider;
   model: string;

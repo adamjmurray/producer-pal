@@ -14,6 +14,8 @@ import { createAgentCliSession } from "#evals/chat/agent-cli/agent-cli-session.t
 import { createMcpTools } from "#evals/chat/mcp.ts";
 import { createProviderModel } from "#evals/chat/provider.ts";
 import { runModelTurn } from "#evals/chat/shared/model-turn.ts";
+import { type ThinkingLevel } from "#evals/chat/shared/types.ts";
+import { buildProviderOptions } from "#evals/chat/thinking-provider-options.ts";
 import { PROVIDER_CONFIGS } from "#evals/shared/provider-configs.ts";
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 import { logTurnStart } from "./helpers/turn-logging.ts";
@@ -63,6 +65,10 @@ interface EvalSessionOptions {
   model?: string;
   instructions?: string;
   usage?: boolean;
+  /** Thinking level for the model's turns; absent sends nothing. Never applies
+   *  to the seeded connect turn (written into history, not generated) or to
+   *  the judge. */
+  thinking?: ThinkingLevel;
   /** MCP endpoint to use instead of the real one (a tool-override proxy). */
   mcpUrl?: string;
 }
@@ -86,12 +92,16 @@ export async function createEvalSession(
         ? { instructions: options.instructions }
         : {}),
       ...(options.usage != null ? { usage: options.usage } : {}),
+      ...(options.thinking != null ? { thinking: options.thinking } : {}),
     });
   }
 
-  const model = createProviderModel(
+  const modelId = options.model ?? getDefaultModel(options.provider);
+  const model = createProviderModel(options.provider, modelId);
+  const providerOptions = buildProviderOptions(
     options.provider,
-    options.model ?? getDefaultModel(options.provider),
+    options.thinking,
+    modelId,
   );
   const { tools, mcpClient, erroredToolCallIds } = await createMcpTools(
     options.mcpUrl,
@@ -123,6 +133,7 @@ export async function createEvalSession(
         prevUsage,
         showUsage: options.usage,
         instructions: options.instructions,
+        providerOptions,
       });
 
       prevUsage = turn.lastUsage;

@@ -92,6 +92,33 @@ describe("runTrial", () => {
     });
   });
 
+  it("hands the model's thinking level to the run, and none to a model without one", async () => {
+    const thinking = new Map([["openai/m", "high"]]);
+    const other = { provider: "openai", model: "other" } as ModelSpec;
+
+    await runTrial(
+      scenario(),
+      SPEC,
+      RUN_ENV,
+      "default",
+      { ...ctx(1), thinking },
+      1,
+      false,
+    );
+    await runTrial(
+      scenario(),
+      other,
+      RUN_ENV,
+      "default",
+      { ...ctx(1), thinking },
+      1,
+      false,
+    );
+
+    expect(vi.mocked(runScenario).mock.calls[0]?.[1].thinking).toBe("high");
+    expect(vi.mocked(runScenario).mock.calls[1]?.[1].thinking).toBeUndefined();
+  });
+
   it("numbers the trial when repeating", async () => {
     await runTrial(scenario(), SPEC, RUN_ENV, "default", ctx(3), 2, false);
 

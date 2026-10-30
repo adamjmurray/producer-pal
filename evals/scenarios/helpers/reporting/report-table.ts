@@ -11,7 +11,7 @@ import { type InspectColor, styleText } from "node:util";
 import { pctColor } from "#evals/chat/shared/formatting.ts";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
-import { scorePercentage } from "./result-format.ts";
+import { modelWithThinking, scorePercentage } from "./result-format.ts";
 
 /** A column in the results table (one per model). `configId` is the run-env
  *  label used to look up the cell's results. */
@@ -50,7 +50,7 @@ export function printResultsTable(
   options: ResultsTableOptions = {},
 ): void {
   const passes = options.passes === true;
-  const columns = buildColumnKeys(modelSpecs, label);
+  const columns = buildColumnKeys(modelSpecs, label, resultsByScenario);
   const scenarioIds = [...resultsByScenario.keys()];
 
   // Calculate column widths
@@ -145,15 +145,27 @@ export function printResultsTable(
  *
  * @param modelSpecs - Model specs
  * @param label - The run-environment label (see `envLabel`)
+ * @param resultsByScenario - 3D results map, for each model's thinking level
  * @returns Array of column keys
  */
-function buildColumnKeys(modelSpecs: ModelSpec[], label: string): ColumnKey[] {
+function buildColumnKeys(
+  modelSpecs: ModelSpec[],
+  label: string,
+  resultsByScenario: ResultsByScenario,
+): ColumnKey[] {
   return modelSpecs.map((spec) => {
     const modelKey = spec.model
       ? `${spec.provider}/${spec.model}`
       : spec.provider;
+    const results = [...resultsByScenario.values()].flatMap(
+      (byModel) => byModel.get(modelKey)?.get(label) ?? [],
+    );
 
-    return { modelKey, configId: label, label: modelKey };
+    return {
+      modelKey,
+      configId: label,
+      label: modelWithThinking(modelKey, results),
+    };
   });
 }
 

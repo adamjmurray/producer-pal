@@ -81,6 +81,23 @@ describe("claudeCodeTurnArgs", () => {
     expect(args).not.toContain("--resume");
   });
 
+  it("sets no effort unless asked", () => {
+    expect(claudeCodeTurnArgs(input)).not.toContain("--effort");
+  });
+
+  it("passes the effort on initial and resumed turns, clear of the variadic flags", () => {
+    for (const resumeSessionId of [undefined, "session-123"]) {
+      const args = claudeCodeTurnArgs({
+        ...input,
+        effort: "max",
+        ...(resumeSessionId != null ? { resumeSessionId } : {}),
+      });
+
+      expect(args[args.indexOf("--effort") + 1]).toBe("max");
+      expect(args[args.indexOf("--tools") + 2]).toBe("--effort");
+    }
+  });
+
   it("resumes by session id while keeping every restriction", () => {
     const args = claudeCodeTurnArgs({
       ...input,
@@ -105,6 +122,7 @@ describe("claudeCodeJudgeArgs", () => {
     expect(args).toStrictEqual(expect.arrayContaining(["--model", "haiku"]));
     expect(mcpConfig(args).mcpServers).toStrictEqual({});
     expect(args).toContain("--no-session-persistence");
+    expect(args).not.toContain("--effort");
   });
 });
 

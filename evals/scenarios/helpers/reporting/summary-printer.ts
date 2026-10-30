@@ -21,7 +21,12 @@ import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { printResultsTable, type ResultsByScenario } from "./report-table.ts";
 import { jevSummaryLines } from "./jev-judge-report.ts";
-import { checkTally, judgeVerdict, scorePercentage } from "./result-format.ts";
+import {
+  checkTally,
+  judgeVerdict,
+  modelWithThinking,
+  scorePercentage,
+} from "./result-format.ts";
 import {
   buildMultiTrialParts,
   formatParts,
@@ -62,7 +67,12 @@ export function printSummary(
   const waveform = WAVEFORM_UNIT.repeat(Math.ceil(72 / WAVEFORM_UNIT.length));
 
   console.log("\n" + styleText("gray", waveform) + "\n");
-  console.log(styleText("bold", `Summary: ${modelLabel}`) + "\n");
+  console.log(
+    styleText(
+      "bold",
+      `Summary: ${modelWithThinking(modelLabel, allResultGroups.flat())}`,
+    ) + "\n",
+  );
 
   let passCount = 0;
   let failCount = 0;

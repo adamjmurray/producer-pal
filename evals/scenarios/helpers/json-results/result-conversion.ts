@@ -73,6 +73,7 @@ export function toJsonResult(
     }),
     model,
     configProfileId,
+    ...(result.thinking != null && { thinking: result.thinking }),
     ...(result.instructions && { instructions: result.instructions }),
     result: deriveOutcome(result, checks, judge),
     turns: result.turns.map(convertTurn),

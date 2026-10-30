@@ -41,6 +41,9 @@ export const CODEX_CLI_TRANSPORT: AgentCliTransport = {
   // can't advertise a name the CLI can't resolve.
   models: Object.keys(CODEX_MODEL_ALIASES).toSorted(),
   judgeModel: "luna",
+  // Codex lists low..max for its models (~/.codex/models_cache.json) and has no
+  // off, so `off` is refused up front.
+  efforts: { low: "low", medium: "medium", high: "high", ultra: "max" },
   buildTurnArgs: codexTurnArgs,
   buildJudgeArgs: codexJudgeArgs,
   parseStream: parseCodexStream,
@@ -61,6 +64,9 @@ export function codexTurnArgs(input: AgentCliTurnArgsInput): string[] {
     `mcp_servers.${MCP_SERVER_NAME}.required=true`,
     "-c",
     `mcp_servers.${MCP_SERVER_NAME}.default_tools_approval_mode="approve"`,
+    ...(input.effort != null
+      ? ["-c", `model_reasoning_effort=${JSON.stringify(input.effort)}`]
+      : []),
   ];
 
   if (input.resumeSessionId != null) {
