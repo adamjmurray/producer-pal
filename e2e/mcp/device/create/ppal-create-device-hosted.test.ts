@@ -170,4 +170,19 @@ describe.skipIf(
       name: "My FX",
     });
   });
+
+  it("keeps the plug-in's settings after a reload", async () => {
+    const { track, path } = await hostOnNewTrack("Serum 2");
+
+    await call("ppal-update-device", {
+      path,
+      params: [{ name: "Main Vol", value: "25%" }],
+    });
+
+    const copy = await duplicateTrack(track);
+    const devicePath = `${copy}/${path.split("/").at(-1)}`;
+    const [param] = (await readDevice(devicePath, "Main Vol")).parameters ?? [];
+
+    expect(param?.value).toMatch(/^25%/);
+  });
 });

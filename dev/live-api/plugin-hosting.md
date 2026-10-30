@@ -150,6 +150,10 @@ Live saves the plug-in's state in a hidden blob parameter, not through `vst~`.
   only when the state changed, by comparing state strings:
   - at the end of each request, before it replies, so the tool call's own undo
     step covers it (one `ppal-update-device` call is 1 step)
+  - (`set` and `write` first wait for the state to change, for at most 100 ms: a
+    plug-in applies a written value 1–5 ms after the request. Saving sooner
+    found nothing new and left the write to the poll, so a duplicate made just
+    after the call lost it.)
   - (`load` first waits until two reads of the state, 250 ms apart, agree, for
     at most 3 s: a fresh u-he plug-in's state changes once just after loading,
     which would leave a second write outside the call's undo step. That adds
