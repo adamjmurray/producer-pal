@@ -122,11 +122,12 @@ After a Set reload or duplicate, `vst~` restores the plug-in but the wrapper has
 only its file, as `C74_VST3:/Serum2 -125317540` (the number, when there is one,
 is a hash of the class UID, not stored in Live's plug-in database as such). The
 name must come from somewhere the Set keeps. Tried and dropped: a Max `dict`
-with `@embed 1` (the contents don't reach a duplicated device). Used: on load
-the wrapper renames its own Live device to the plug-in's name, which is plain
-Set data. After a reload it trusts that name only while it still fits the loaded
-file (so a name the user typed over it doesn't pass for the plug-in), else it
-falls back to the bundle name.
+with `@embed 1` (the contents don't reach a duplicated device), and the Live
+device's name (a user or `name` may rename it). Used: `vstname`, a stored-only
+blob `pattr` like `vststate`, which holds `{name, file}` from the last load. The
+wrapper trusts the name only while the same file is loaded, else it falls back
+to the bundle name. It still renames its Live device to the plug-in's name on
+load, for display.
 
 ### Saving state
 
