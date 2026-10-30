@@ -3,11 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { useEffect, useState } from "preact/hooks";
 import { type Widget } from "#src/shared/gen-ui-types";
 import {
   useGenUiStream,
   type LiveTick,
 } from "#webui/hooks/connection/use-gen-ui-stream";
+import { usePreviewAppSource } from "#webui/components/gen/use-preview-app-source";
+import { AppHost } from "./AppHost";
 import { ClipWidgetCard } from "./ClipWidgetCard";
 import { TextWidgetCard } from "./TextWidgetCard";
 
@@ -19,6 +22,16 @@ import { TextWidgetCard } from "./TextWidgetCard";
  */
 export function GenPanel(): preact.JSX.Element {
   const { widgets, sync, status, live } = useGenUiStream();
+  const previewSource = usePreviewAppSource();
+  // Mount the app only once the server has answered, and keep it through
+  // reconnects (it keeps state).
+  const [hasBeenLive, setHasBeenLive] = useState(false);
+
+  useEffect(() => {
+    if (status === "live") {
+      setHasBeenLive(true);
+    }
+  }, [status]);
 
   return (
     <aside className="flex h-screen w-96 shrink-0 flex-col border-l border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
@@ -43,21 +56,52 @@ export function GenPanel(): preact.JSX.Element {
           <p className="text-sm text-zinc-500">
             Not available in this build. Build with ENABLE_GEN_UI=true.
           </p>
-        ) : widgets.length === 0 ? (
-          <p className="text-sm text-zinc-500">
-            No widgets yet. Ask the AI to show something here.
-          </p>
         ) : (
-          widgets.map((widget) => (
-            <WidgetCard
-              key={`${widget.id}:${widget.kind === "clip" ? widget.ref : ""}`}
-              widget={widget}
-              live={live}
-            />
-          ))
+          <>
+            {previewSource != null && hasBeenLive && (
+              <section className="h-96 shrink-0 overflow-hidden rounded-lg border border-zinc-300 dark:border-zinc-700">
+                <AppHost source={previewSource} />
+              </section>
+            )}
+            <Widgets widgets={widgets} live={live} />
+          </>
         )}
       </div>
     </aside>
+  );
+}
+
+/**
+ * @param props - Component props
+ * @param props.widgets - The widgets to draw
+ * @param props.live - The latest "Live changed" tick
+ * @returns The widget cards, or a hint when there are none
+ */
+function Widgets({
+  widgets,
+  live,
+}: {
+  widgets: Widget[];
+  live: LiveTick | null;
+}): preact.JSX.Element {
+  if (widgets.length === 0) {
+    return (
+      <p className="text-sm text-zinc-500">
+        No widgets yet. Ask the AI to show something here.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      {widgets.map((widget) => (
+        <WidgetCard
+          key={`${widget.id}:${widget.kind === "clip" ? widget.ref : ""}`}
+          widget={widget}
+          live={live}
+        />
+      ))}
+    </>
   );
 }
 

@@ -10,7 +10,7 @@ import {
   makeConversation,
   setupConsoleCapture,
   setupUiTest,
-} from "./ui-test-helpers";
+} from "../ui-test-helpers";
 
 const captured = setupConsoleCapture();
 

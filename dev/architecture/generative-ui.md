@@ -36,8 +36,22 @@ to a component kit: ordinary DOM, CSS and JS must just work.
   credentials.
 - A restrictive CSP blocks network access (`connect-src 'none'` and the like).
   The design leaves room for an opt-in allowlist later, with user consent.
+- CSP doesn't cover WebRTC, whose ICE traffic can reach any host. The host
+  deletes the WebRTC constructors from the app's window.
 - The app never calls Producer Pal's REST endpoints itself. Everything goes
   through the bridge, which the host controls.
+
+#### Known limits
+
+- **WebRTC through a fresh frame.** An app can still create a frame (for example
+  an iframe with `srcdoc`) whose new window has WebRTC, so it can send data out.
+  Close this before the bridge gives apps any data.
+- An app shares the chat page's thread, so an endless loop freezes the whole
+  chat. A real fix needs apps on a different site (their own process); decide
+  before apps ship to users.
+- `dns-prefetch` and `preconnect` link hints may not be covered by the CSP
+  (unproven).
+- The automated tests for these protections run only in Chromium.
 
 ### The bridge
 
@@ -132,6 +146,12 @@ What exists today, to be reused or replaced as the MVP needs:
 - A hidden panel at `/chat?view=gen` with two fixed widget kinds (`clip`,
   `text`) and the `ppal-ui` tool. Fixed widgets don't fit the target; expect to
   replace them with the app host.
+- A sandboxed app host (`webui/src/components/gen/AppHost.tsx`, policy in
+  `webui/src/lib/utils/gen-ui/app-document.ts`): `allow-scripts` only, no
+  network, own opaque origin. The host page's `frame-src about:` (in
+  `webui/index.html`) stops an app from leaking data by navigating its own
+  frame. No bridge yet; nothing creates apps, so the panel runs only source put
+  in session storage.
 - SSE at `/api/ui/events` (`src/mcp-server/rpc/gen-ui/`).
 - Remote-script clip listeners and Node's watcher (`live-watcher.ts`): a widget
   follows its clip through moves, goes "missing" for good when the clip is
