@@ -131,7 +131,8 @@ ops.
   so `params` hides the longest run of MIDI-looking names, and only when it's at
   least 128 long. Checked on 11 plug-ins. Real counts after hiding: Colour Copy
   31, Pianoteq 9 217, Diva 282, Hive 341, Supermodal 384, Serum 2 543, Organteq
-  2 560, Pro-Q 4 605, VCV Rack 2 1025, Zebra3 2194.
+  2 560, Pro-Q 4 605, VCV Rack 2 1025, Zebra3 2194. Serum 2's AU has the same
+  2080-param block and comes to 542.
 - `open` / `wclose` open and close the plug-in's own editor window.
 - `valuemode 2` makes `get` return the value and the display text together.
 
@@ -220,6 +221,9 @@ Live saves the plug-in's state in a hidden blob parameter, not through `vst~`.
 - Audio passes through in stereo. `plugin~`/`plugout~` arguments are channel
   numbers, not a count: `plugout~ 2` outputs only the right channel. Use them
   with no arguments.
+- Only one stereo pair each way: the wrappers use `vst~ 2 2`. A multi-output
+  instrument (Organteq 2 has 8 outputs) sends Live only its first two, and an
+  effect gets no sidechain input.
 - `midiparse`'s last outlet emits every MIDI message as `midievent b1 b2 b3`,
   which `vst~` takes directly. Notes verified; CC, bend and aftertouch take the
   same path but are untested.
@@ -229,7 +233,7 @@ Live saves the plug-in's state in a hidden blob parameter, not through `vst~`.
   polls `get -10` each second and updates it. Verified through the Live API's
   `latency_in_samples`, not by a null test: Pro-Q 4 switching from zero latency
   to natural and linear phase moved it 0 → 320 → 5120 samples within a second
-  each.
+  each, and a duplicated copy came back at 5120.
 
 ### Automation
 
@@ -327,7 +331,6 @@ code box instead, `npm run plugin-host:build -- --extract` copies it back into
 - CC, pitch bend and aftertouch reaching the plug-in: the Live API can't write
   MIDI CC or pitch bend clip envelopes, so this needs a keyboard.
 - CPU cost against the same plug-in loaded natively.
-- Multi-output instruments and sidechain inputs.
 - Windows, and VST2 shell plug-ins.
 - Sharing Sets: the wrapper must travel with the Set (Collect All and Save), and
   the other user needs Max for Live.
