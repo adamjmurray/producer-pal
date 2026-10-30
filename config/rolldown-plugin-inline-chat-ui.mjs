@@ -35,11 +35,21 @@ function getFilesRecursively(dir) {
 }
 
 /**
+ * Where the Vite build writes the chat UI. The build-contents test points it
+ * at a scratch folder (see config/vite.config.ts) so it can build both the
+ * release and hosting UIs without touching the device's folder.
+ * @returns Absolute path of the folder
+ */
+function chatUIDir() {
+  return process.env.CHAT_UI_OUT_DIR ?? join(rootDir, "max-for-live-device");
+}
+
+/**
  * Path to the chat UI that the Vite build produces.
  * @returns Absolute path to chat-ui.html
  */
 function chatUIPath() {
-  return join(rootDir, "max-for-live-device/chat-ui.html");
+  return join(chatUIDir(), "chat-ui.html");
 }
 
 /**
@@ -53,9 +63,7 @@ function recordedBuild() {
   let record;
 
   try {
-    record = JSON.parse(
-      readFileSync(join(rootDir, "max-for-live-device/chat-ui.inputs.json")),
-    );
+    record = JSON.parse(readFileSync(join(chatUIDir(), "chat-ui.inputs.json")));
   } catch {
     return null;
   }
@@ -65,7 +73,13 @@ function recordedBuild() {
   // passes down to the Vite build) rather than a freshly-computed one: in watch
   // mode ours is frozen at config load, and a commit would otherwise leave the
   // two disagreeing for good — every rebuild a cache miss.
-  return record.buildSha === BUILD_SHA ? record : null;
+  // The hosted-plug-ins flag is baked in the same way: a UI built with it must
+  // never be reused by a build without it (or the reverse).
+  const hostedPlugins = process.env.ENABLE_HOSTED_PLUGINS === "true";
+
+  return record.buildSha === BUILD_SHA && record.hostedPlugins === hostedPlugins
+    ? record
+    : null;
 }
 
 /**

@@ -8,8 +8,10 @@
 
 import { type Express, type Request, type Response } from "express";
 import {
+  UI_RETRY,
   describePluginHostParts,
   installPluginHostParts,
+  pluginHostStates,
 } from "#src/portal/setup/plugin-host/plugin-host-part.ts";
 import { installRunningDevice } from "../rpc/device-install/device-install.ts";
 import { deviceInstallStatus } from "../rpc/device-install/device-install-status.ts";
@@ -24,7 +26,8 @@ import {
 const ROUTE = "/device-install";
 
 /**
- * Register GET /device-install (status), POST /device-install/install, and
+ * Register GET /device-install (status, plus each plug-in host wrapper's state
+ * in a build that hosts plug-ins), POST /device-install/install, and
  * POST /device-install/swap.
  *
  * The install is a same-origin write, like the remote script's. A refused
@@ -50,7 +53,14 @@ export function registerDeviceInstallRoutes(app: Express): void {
     const status = await deviceInstallStatus();
     const { allowed, reason } = await deviceSwapCheck(status, remoteScriptPing);
 
-    res.json({ ...status, swap: { allowed, reason } });
+    // Only a build that hosts plug-ins says anything about the wrappers.
+    const pluginHost = pluginHostStates(status.userLibrary);
+
+    res.json({
+      ...status,
+      swap: { allowed, reason },
+      ...(pluginHost == null ? {} : { pluginHost }),
+    });
   });
 
   app.post("/device-install/install", (req: Request, res: Response): void => {
@@ -67,7 +77,7 @@ export function registerDeviceInstallRoutes(app: Express): void {
       );
 
       if (install.status === "done") {
-        const pluginHost = installPluginHostParts(install.library);
+        const pluginHost = installPluginHostParts(install.library, UI_RETRY);
         const { result } = install;
 
         res.json(

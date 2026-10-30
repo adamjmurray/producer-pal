@@ -12,7 +12,7 @@
 // So this builds the release bundles for real and inspects which modules went
 // in — the artifact, not the config text.
 
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { rolldown, type InputOptions, type RolldownOutput } from "rolldown";
@@ -74,6 +74,10 @@ const chunkCode: Record<string, string> = {};
 let portalWithInstaller = "";
 let bundleCount = 0;
 let scratchDir = "";
+// Where the chat UI is built, so a test run never touches the device's folder:
+// one folder per variant, since the UI is baked in at build time.
+let releaseUiDir = "";
+let hostingUiDir = "";
 
 beforeAll(async () => {
   // The config reads these at import time; a shell that happens to export one
@@ -84,6 +88,9 @@ beforeAll(async () => {
   }
 
   scratchDir = mkdtempSync(join(tmpdir(), "ppal-bundle-contents-"));
+  releaseUiDir = join(scratchDir, "chat-ui-release");
+  hostingUiDir = join(scratchDir, "chat-ui-hosting");
+  process.env.CHAT_UI_OUT_DIR = releaseUiDir;
 
   const fakeDevice = join(scratchDir, "Producer_Pal.amxd");
 
@@ -123,6 +130,7 @@ beforeAll(async () => {
 
 afterAll(() => {
   delete process.env.PRODUCER_PAL_DEVICE_FILE;
+  delete process.env.CHAT_UI_OUT_DIR;
   rmSync(scratchDir, { recursive: true, force: true });
 });
 
@@ -300,6 +308,7 @@ describe("plug-in host wrappers", () => {
   beforeAll(async () => {
     vi.resetModules();
     process.env.ENABLE_HOSTED_PLUGINS = "true";
+    process.env.CHAT_UI_OUT_DIR = hostingUiDir;
 
     try {
       const config = await import("../../../../config/rolldown.config.mjs");
@@ -314,6 +323,7 @@ describe("plug-in host wrappers", () => {
       }
     } finally {
       delete process.env.ENABLE_HOSTED_PLUGINS;
+      process.env.CHAT_UI_OUT_DIR = releaseUiDir;
     }
   }, 120_000);
 
@@ -332,6 +342,8 @@ describe("plug-in host wrappers", () => {
     "%s: a release build drops the install code",
     (name) => {
       expect(chunkCode[name]).not.toContain("installPluginHostWrappers");
+      // What the status route reads the wrappers with.
+      expect(chunkCode[name]).not.toContain("pluginHostStatus");
     },
   );
 
@@ -345,10 +357,45 @@ describe("plug-in host wrappers", () => {
     expect(hostingCode[name]).toContain("installPluginHostWrappers");
   });
 
+  it("mcp-server: a hosting build inlines the hosting chat UI", () => {
+    expect(hostingCode["mcp-server"]).toContain("Plug-in host devices:");
+  });
+
   it("keeps the bytes out of the V8 bundle, hosting or not", () => {
     for (const bytes of wrapperBytes) {
       expect(chunkCode["live-api-adapter"]).not.toContain(bytes);
     }
+  });
+});
+
+// The Installation tab's wrapper strings, which a release chat UI must not
+// carry: a user could otherwise see hosting in a build that doesn't ship it. The
+// chat UI is also inlined in the device bundle, so that is checked too.
+describe("plug-in host chat UI", () => {
+  const UI_TEXT = ["Install the plug-in host devices", "Plug-in host devices:"];
+  // The chat UI is minified, so a name or a flag read left in it is real code.
+  const UI_CODE = ["ENABLE_HOSTED_PLUGINS", "pluginHost"];
+  const readUi = (dir: string): string =>
+    readFileSync(join(dir, "chat-ui.html"), "utf-8");
+
+  it("finds a built chat UI for each variant", () => {
+    expect(readUi(releaseUiDir).length).toBeGreaterThan(1_000_000);
+    expect(readUi(hostingUiDir).length).toBeGreaterThan(1_000_000);
+  });
+
+  it.each([...UI_TEXT, ...UI_CODE])(
+    "a release chat-ui.html has no %s",
+    (text) => {
+      expect(readUi(releaseUiDir)).not.toContain(text);
+    },
+  );
+
+  it.each(UI_TEXT)("the release device bundle has no %s", (text) => {
+    expect(chunkCode["mcp-server"]).not.toContain(text);
+  });
+
+  it.each(UI_TEXT)("a hosting chat-ui.html has %s", (text) => {
+    expect(readUi(hostingUiDir)).toContain(text);
   });
 });
 

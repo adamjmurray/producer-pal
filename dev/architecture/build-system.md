@@ -49,6 +49,12 @@ Four separate bundles built with rolldown (MCP server, V8, Portal) and Vite
 - **Target:** Browser (served at `http://localhost:3350/chat`, opened via Max)
 - **Build Tool:** Vite with custom plugins
 - **Dependencies:** Bundled into single self-contained HTML file
+- **Plug-in host wrappers:** `config/vite.config.ts` inlines
+  `process.env.ENABLE_HOSTED_PLUGINS`, so the Installation tab's wrapper UI
+  (`webui/src/hooks/settings/installation/helpers/plugin-host-wrappers.ts`)
+  exists only in a hosting build. `CHAT_UI_OUT_DIR` moves the output (the
+  build-contents test uses it); the UI is also inlined in the device bundle, so
+  the rolldown plugin treats a UI built with another flag value as stale.
 - **Purpose:** Preact-based chat interface with multi-provider AI + MCP
   integration
 - **Features:**

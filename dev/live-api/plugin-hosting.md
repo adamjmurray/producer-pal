@@ -343,6 +343,12 @@ Live's browser must find the wrappers by name, so they go in the User Library:
   portal's offline `add-producer-pal`, and the chat UI's Settings → Installation
   copy. The copy is temp-file-and-rename, the same step the device uses
   (`src/portal/setup/replace-via-temp.ts`).
+- **Chat UI button.** In a hosting build, `GET /device-install` also reports
+  each wrapper (`pluginHost`: missing, current or differs), and the Installation
+  tab offers Install when the device or any wrapper needs it, even with the
+  device current. A failed wrapper's message says "click Install", not
+  `install-producer-pal`. A release build's response and `chat-ui.html` carry
+  none of this (`release-bundle-contents.test.ts`).
 - **Bytes decide.** A wrapper that differs from the embedded one is replaced; no
   version is compared. A Set that's already open keeps the old wrapper until
   it's reopened.

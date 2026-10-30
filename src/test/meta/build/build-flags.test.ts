@@ -182,6 +182,16 @@ describe("build flags", () => {
   });
 });
 
+// webui/ reads process.env too, which the src/ scan above doesn't see. The
+// browser has no `process`, so an unreplaced read would throw there.
+describe("chat UI build flags", () => {
+  it("substitutes ENABLE_HOSTED_PLUGINS in the chat UI bundle", () => {
+    expect(readRepoFile("config/vite.config.ts")).toContain(
+      '"process.env.ENABLE_HOSTED_PLUGINS"',
+    );
+  });
+});
+
 describe("build identity", () => {
   // BUILD_SHA is not a feature flag — it's the build's identity, read in
   // src/shared/config.ts so the update check can tell two builds of the same

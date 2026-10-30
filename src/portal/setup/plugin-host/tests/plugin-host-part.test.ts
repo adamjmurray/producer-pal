@@ -9,6 +9,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -19,6 +20,8 @@ import {
   describePluginHostParts,
   installPluginHostParts,
   pluginHostPartsOf,
+  pluginHostStates,
+  UI_RETRY,
 } from "../plugin-host-part.ts";
 import {
   PLUGIN_HOST_WRAPPERS,
@@ -144,6 +147,64 @@ describe("pluginHostPartsOf", () => {
       detail:
         "Couldn't install the wrapper (ENOSPC). The wrapper file was not changed. Try again: run install-producer-pal again. A temp file couldn't be deleted: /p.tmp-1.",
     });
+  });
+});
+
+describe("pluginHostPartsOf for the chat UI", () => {
+  const base = { name: "PPal Plug-in Effect", fileName: "x.amxd", path: "/p" };
+
+  it("tells the user to click Install, never to run a tool", () => {
+    const [inUse, other] = pluginHostPartsOf(
+      [
+        { ...base, outcome: "failed", error: "EBUSY", inUse: true },
+        { ...base, outcome: "failed", error: "ENOSPC", inUse: false },
+      ],
+      UI_RETRY,
+    );
+
+    expect(inUse).toHaveProperty(
+      "detail",
+      expect.stringContaining(
+        "close any Set that uses it, or quit Live, then click Install.",
+      ),
+    );
+    expect(other).toHaveProperty(
+      "detail",
+      expect.stringContaining("Try again: click Install."),
+    );
+    expect(JSON.stringify([inUse, other])).not.toContain(
+      "install-producer-pal",
+    );
+  });
+});
+
+describe("pluginHostStates", () => {
+  it("reports missing, differing and current wrappers", () => {
+    installPluginHostParts(library);
+    writeFileSync(pluginHostPath(library, PLUGIN_HOST_WRAPPERS[0]), "other");
+    rmSync(pluginHostPath(library, PLUGIN_HOST_WRAPPERS[1]));
+
+    expect(pluginHostStates(library)?.map((w) => w.state)).toStrictEqual([
+      "differs",
+      "missing",
+    ]);
+
+    installPluginHostParts(library);
+
+    expect(pluginHostStates(library)?.map((w) => w.state)).toStrictEqual([
+      "current",
+      "current",
+    ]);
+  });
+
+  it("reports nothing without ENABLE_HOSTED_PLUGINS", () => {
+    vi.stubEnv("ENABLE_HOSTED_PLUGINS", "");
+
+    expect(pluginHostStates(library)).toBeNull();
+  });
+
+  it("reports nothing without a User Library", () => {
+    expect(pluginHostStates(null)).toBeNull();
   });
 });
 

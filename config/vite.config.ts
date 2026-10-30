@@ -16,10 +16,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 const licensePath = join(rootDir, "LICENSE");
 const licenseText = readFileSync(licensePath, "utf-8");
-const buildInputsPath = join(
-  rootDir,
-  "max-for-live-device/chat-ui.inputs.json",
-);
+// Where the chat UI is written. Only the build-contents test points it away
+// from the device's folder, so it can build both variants without touching it.
+const outDir =
+  process.env.CHAT_UI_OUT_DIR ?? join(rootDir, "max-for-live-device");
+const buildInputsPath = join(outDir, "chat-ui.inputs.json");
+// Hosted plug-ins are build-flagged like in the rolldown bundles; a release UI
+// must carry none of the wrapper code or text.
+const hostedPlugins = process.env.ENABLE_HOSTED_PLUGINS === "true";
 
 let buildInputs: string[] = [];
 let buildStartedAt = 0;
@@ -29,6 +33,7 @@ export default defineConfig({
   // no `process`, so this must always substitute to a literal.
   define: {
     "process.env.BUILD_SHA": JSON.stringify(BUILD_SHA),
+    "process.env.ENABLE_HOSTED_PLUGINS": JSON.stringify(String(hostedPlugins)),
   },
   resolve: {
     alias: {
@@ -43,7 +48,6 @@ export default defineConfig({
     {
       name: "rename-output",
       closeBundle() {
-        const outDir = join(rootDir, "max-for-live-device");
         const oldPath = join(outDir, "index.html");
         const newPath = join(outDir, "chat-ui.html");
 
@@ -62,7 +66,6 @@ export default defineConfig({
     {
       name: "add-license-header",
       closeBundle() {
-        const outDir = join(rootDir, "max-for-live-device");
         const filePath = join(outDir, "chat-ui.html");
 
         try {
@@ -130,11 +133,12 @@ See https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-par
       closeBundle() {
         writeFileSync(
           buildInputsPath,
-          // The SHA is baked in by `define`, and a commit moves it without
-          // touching any file, so mtimes alone can't spot that change.
+          // The SHA and the flag are baked in by `define`, and neither changes
+          // a file, so mtimes alone can't spot that change.
           `${JSON.stringify(
             {
               buildSha: BUILD_SHA,
+              hostedPlugins,
               startedAt: buildStartedAt,
               inputs: [...new Set(buildInputs)].toSorted(),
             },
@@ -149,7 +153,7 @@ See https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-par
   root: "webui",
   server: { port: 5173 },
   build: {
-    outDir: "../max-for-live-device",
+    outDir,
     emptyOutDir: false,
     cssCodeSplit: false,
     assetsInlineLimit: 100000000,

@@ -3,10 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import Max from "max-api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { installPluginHostParts } from "#src/portal/setup/plugin-host/plugin-host-part.ts";
 import {
   PLUGIN_HOST_WRAPPERS,
   pluginHostPath,
@@ -103,7 +110,10 @@ describe("device-install routes", () => {
   });
 
   describe("GET /device-install", () => {
+    // A release build answers exactly as it did before wrappers existed.
     it("reports the status and never caches it", async () => {
+      vi.stubEnv("ENABLE_HOSTED_PLUGINS", "");
+
       const { library, installed, runFromDownloads } = scratch();
       const source = runFromDownloads(frozenDevice(VERSION));
       const res = await fetch(`${server.baseUrl}/device-install`);
@@ -126,6 +136,41 @@ describe("device-install routes", () => {
             "There is no copy of this device in your User Library yet. Install it first.",
         },
       });
+    });
+
+    it("reports each wrapper's state in a build that hosts plug-ins", async () => {
+      const { library, runFromDownloads } = scratch();
+
+      runFromDownloads(frozenDevice(VERSION));
+      installPluginHostParts(library);
+      writeFileSync(pluginHostPath(library, PLUGIN_HOST_WRAPPERS[1]), "other");
+      rmSync(pluginHostPath(library, PLUGIN_HOST_WRAPPERS[0]));
+
+      const res = await fetch(`${server.baseUrl}/device-install`);
+      const body = (await res.json()) as { pluginHost: unknown };
+
+      expect(body.pluginHost).toStrictEqual([
+        {
+          name: "PPal Plug-in Effect",
+          path: pluginHostPath(library, PLUGIN_HOST_WRAPPERS[0]),
+          state: "missing",
+        },
+        {
+          name: "PPal Plug-in Instrument",
+          path: pluginHostPath(library, PLUGIN_HOST_WRAPPERS[1]),
+          state: "differs",
+        },
+      ]);
+    });
+
+    it("has no wrapper field without a User Library to look in", async () => {
+      vi.mocked(findUserLibraryPath).mockResolvedValue(null);
+      scratch().runFromDownloads(frozenDevice(VERSION));
+
+      const res = await fetch(`${server.baseUrl}/device-install`);
+      const body: unknown = await res.json();
+
+      expect(body).not.toHaveProperty("pluginHost");
     });
 
     it("says why a development device can't be installed", async () => {
@@ -207,6 +252,25 @@ describe("device-install routes", () => {
         undefined,
       ]);
       expect(existsSync(installed)).toBe(true);
+    });
+
+    it("words a wrapper's failure for the Install button, not for a tool", async () => {
+      const { library, runFromDownloads } = scratch();
+
+      runFromDownloads(frozenDevice(VERSION));
+      mkdirSync(pluginHostPath(library, PLUGIN_HOST_WRAPPERS[0]), {
+        recursive: true,
+      });
+
+      const res = await postInstall({ userLibrary: library });
+      const body = (await res.json()) as {
+        detail: string;
+        pluginHost: { detail?: string }[];
+      };
+      const text = [body.detail, body.pluginHost[0]?.detail].join(" ");
+
+      expect(text).toContain("click Install");
+      expect(text).not.toContain("install-producer-pal");
     });
 
     it("installs no wrappers in a build without hosting", async () => {
