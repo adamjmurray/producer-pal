@@ -5,7 +5,8 @@ most 128). To reach all of them, Producer Pal hosts the plug-in itself, inside a
 Max for Live device built around Max's `vst~` object.
 
 **Status: spike, working end to end on macOS with VST3** (Live 12, Colour Copy
-and Serum 2). AU, VST2 and Windows are untested.
+and Serum 2). AU and VST2 load too (probed on Live 12). Windows and VST2 shell
+plug-ins are untested.
 
 Release builds leave it out. To use it, build with
 `ENABLE_HOSTED_PLUGINS=true npm run build:debug`: that adds `hosted` to
@@ -49,7 +50,7 @@ No sockets or ports: named Max `send`/`receive` inside Live's one Max instance.
 - An absent wrapper just never answers: the request times out (3 s, or 20 s for
   `load`).
 
-Ops: `info`, `load {file, sub?, name, synth}` (see Loading),
+Ops: `info`, `load {format, file, sub?, name, synth}` (see Loading),
 `params {names | search, offset, limit}`,
 `set {params: [{index | name, value}]}`,
 `write {params: [{index | name, text?, number?}]}` (see Setting by display
@@ -78,19 +79,49 @@ ops.
   other (`plugins` joined to `plugin_modules`), so Producer Pal looks the name
   up there first. Unverified on Live 11 and 12.0–12.1, which keep these tables
   in the files database; a failure there is an error.
-- **Loading.** The wrapper sends `unplug`, `plug_vst3 <file>`, then
-  `subname <name>` when the file holds several plug-ins. `subname` only matches
-  in files that list their plug-ins in `Contents/Resources/moduleinfo.json`
-  (Pro-Q 4 and Pianoteq 9 don't), so it's skipped for single-plug-in files. The
-  choice survives duplicate. Plug-ins in `~/Library/Audio/Plug-Ins/VST3` load
-  too.
+- **Formats.** A name installed in several formats loads as VST3, else AU, else
+  VST2, chosen automatically (the order `browser-device-lookup.ts` uses for
+  native devices). Several plug-ins of one name in the chosen format are
+  refused, naming the vendors. The load request carries `format`
+  (`VST3`/`AU`/`VST2`) and the `file` that format loads by, and the wrapper
+  sends `plug_vst3 <bundle>`, `plug_au <AU name>` or `plug_vst <bundle>` (bundle
+  names without the extension). `currentplug` then reads `C74_VST3:/Serum2`,
+  `C74_AU:/Serum 2 FX` or `C74_VST:/Kaivo`, each with a number after it that
+  varies and can be missing right after a load. `plug_au "Apple: AUDelay"` (with
+  the vendor) loads nothing, and a bundle holding two AUs needs nothing extra,
+  because the name picks one. `subname` is VST3 only. Saving state works
+  unchanged for all three, and survives a track duplicate.
+- **VST2.** Live's plug-in database has VST2 rows (`device:vst:instr:…?n=Kaivo`,
+  path `…/VST/Kaivo.vst`), so VST2 resolves like VST3. A VST2 _shell_ plug-in
+  (several in one module, like Waves' WaveShell) is refused: `subname` can't
+  pick one.
+- **AU.** The database has no AU rows: Live asks macOS for AUs. Candidates are
+  the AUs Live's browser lists, which honors Live's "Use Audio Units v2"
+  setting; if the remote script can't answer, there are none. The browser
+  doesn't say instrument or effect, so Producer Pal reads it from the bundles'
+  `Contents/Info.plist` (`read-au-components.ts`, a small XML reader). Each
+  `AudioComponents` entry has a `name` ("Xfer Records: Serum 2 FX": vendor, then
+  the AU name) and a `type`: `aumu` is an instrument, `aufx` and `aumf` are
+  effects, anything else (`aumi`, …) is refused. Folders:
+  `/Library/Audio/Plug-Ins/Components`, the same under `~`, and
+  `/System/Library/Components` (Apple's AUs, e.g. `CoreAudio.component`). A
+  binary plist, or an AU with no matching entry, is "can't tell". Plists are
+  read only when no VST3 matched. AU presets aren't supported.
+- **Loading.** The wrapper sends `unplug`, then `plug_vst3 <file>`,
+  `plug_au <name>` or `plug_vst <file>`, then `subname <name>` when the VST3
+  file holds several plug-ins. `subname` only matches in files that list their
+  plug-ins in `Contents/Resources/moduleinfo.json` (Pro-Q 4 and Pianoteq 9
+  don't), so it's skipped for single-plug-in files. The choice survives
+  duplicate. Plug-ins in `~/Library/Audio/Plug-Ins/VST3` load too.
 - **Verify every load.** Loading by name goes wrong silently:
-  `plug_vst3 "Serum 2 FX"` loads the AU, a failed load keeps the old plug-in,
-  and a wrong `subname` keeps the file's first one. So `currentplug` must start
-  `C74_VST3:/<file>`, must end in a numeric id after a `subname` (no id means
-  the first plug-in stayed), and `isSynth` (`get -7`) must match the kind. If
-  not, the wrapper unplugs and errors. `load` refuses an instrument in the
-  Effect wrapper, and the reverse, before sending anything.
+  `plug_vst3 "Serum 2 FX"` loads the AU, `plug_au Serum2` loads the VST3, a
+  failed load keeps the old plug-in or loads nothing, and a wrong `subname`
+  keeps the file's first one. So `currentplug` must start with the prefix of the
+  format asked for (`C74_VST3:/`, `C74_AU:/` or `C74_VST:/`) then the file, then
+  at most a numeric id; after a `subname` the id must be there (no id means the
+  first plug-in stayed); and `isSynth` (`get -7`) must match the kind. If not,
+  the wrapper unplugs and errors. `load` refuses an instrument in the Effect
+  wrapper, and the reverse, before sending anything.
 - `vst~` answers `params` and `get <n>` synchronously, so one request can list
   and read every parameter. Listing all of Serum 2 is well under a second.
 - VST3 plug-ins expose a stand-in parameter for every MIDI CC, pitch bend and
@@ -297,6 +328,6 @@ code box instead, `npm run plugin-host:build -- --extract` copies it back into
   MIDI CC or pitch bend clip envelopes, so this needs a keyboard.
 - CPU cost against the same plug-in loaded natively.
 - Multi-output instruments and sidechain inputs.
-- AU, VST2 and Windows.
+- Windows, and VST2 shell plug-ins.
 - Sharing Sets: the wrapper must travel with the Set (Collect All and Save), and
   the other user needs Max for Live.

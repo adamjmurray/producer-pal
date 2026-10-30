@@ -27,7 +27,7 @@ export interface HostedPlan {
  * @param deadline - The request deadline
  * @param manage - Whether the caller can use ppal-manage
  * @returns The plan for each name, in the order given
- * @throws Error when a name isn't an installed VST3 plug-in, or the wrapper it
+ * @throws Error when a name isn't an installed plug-in, or the wrapper it
  *   needs can't be found in Live's browser
  */
 export async function planHostedPlugins(

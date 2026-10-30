@@ -3,20 +3,21 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
 import {
-  afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
   vi,
 } from "vitest";
 import { resolvePlugin } from "../../../query/plugins/resolve-plugin.ts";
+import {
+  buildPluginDb,
+  type PluginSeed,
+  useTempDir,
+} from "./plugin-db-fixture.ts";
 
 vi.mock(import("../../../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),
@@ -24,14 +25,18 @@ vi.mock(import("../../../live-db-path.ts"), () => ({
   liveDatabaseDir: vi.fn(),
 }));
 
+vi.mock(
+  import("../../../../rpc/remote-script/browser/browser-plugins.ts"),
+  () => ({ listBrowserPlugins: vi.fn() }),
+);
+
 const dbPathMod = await import("../../../live-db-path.ts");
+const browserMod =
+  await import("../../../../rpc/remote-script/browser/browser-plugins.ts");
 
 const DIR = "/Library/Audio/Plug-Ins";
 
-// [name, vendor, enabled, dev_identifier, module path]
-type Seed = [string, string, number, string, string];
-
-const SEEDS: Seed[] = [
+const SEEDS: PluginSeed[] = [
   ["Repro-1", "u-he", 1, "device:vst3:instr:a", `${DIR}/VST3/Repro-1.vst3`],
   ["Repro-5", "u-he", 1, "device:vst3:instr:b", `${DIR}/VST3/Repro-1.vst3`],
   [
@@ -83,65 +88,22 @@ const SEEDS: Seed[] = [
   ["Mystery", "Nobody", 1, "device:vst3:", `${DIR}/VST3/Mystery.vst3`],
 ];
 
-/**
- * Build a plug-in database with the plugins and plugin_modules tables.
- *
- * @param dir - Folder to put it in
- * @param withModules - false leaves out plugin_modules (older Live layouts)
- * @returns The database path
- */
-function buildDb(dir: string, withModules: boolean): string {
-  const dbPath = join(dir, withModules ? "Live-plugins-1.db" : "Live-old.db");
-  const db = new DatabaseSync(dbPath);
-
-  db.exec(
-    `CREATE TABLE plugins (name TEXT, vendor TEXT, enabled INTEGER,
-       dev_identifier TEXT, module_id INTEGER);
-     CREATE TABLE ${withModules ? "plugin_modules" : "other"}
-       (module_id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT);`,
-  );
-
-  if (withModules) {
-    const addModule = db.prepare(
-      "INSERT INTO plugin_modules (path) VALUES (?)",
-    );
-    const addPlugin = db.prepare("INSERT INTO plugins VALUES (?, ?, ?, ?, ?)");
-    const ids = new Map<string, number>();
-
-    for (const [name, vendor, enabled, devId, path] of SEEDS) {
-      let id = ids.get(path);
-
-      if (id == null) {
-        id = Number(addModule.run(path).lastInsertRowid);
-        ids.set(path, id);
-      }
-
-      addPlugin.run(name, vendor, enabled, devId, id);
-    }
-  }
-
-  db.close();
-
-  return dbPath;
-}
-
 describe("resolvePlugin", () => {
-  let dir: string;
+  const tempDir = useTempDir("ppal-resolve-plugin-");
   let goodDb: string;
   let oldDb: string;
 
   beforeAll(() => {
-    dir = mkdtempSync(join(tmpdir(), "ppal-resolve-plugin-"));
-    goodDb = buildDb(dir, true);
-    oldDb = buildDb(dir, false);
+    goodDb = buildPluginDb(tempDir(), SEEDS, true);
+    oldDb = buildPluginDb(tempDir(), SEEDS, false);
+  });
+
+  beforeEach(() => {
+    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([]);
   });
 
   afterEach(() => {
     vi.clearAllMocks();
-  });
-
-  afterAll(() => {
-    rmSync(dir, { recursive: true, force: true });
   });
 
   /**
@@ -161,6 +123,7 @@ describe("resolvePlugin", () => {
       name: "Serum 2",
       vendor: "Xfer Records",
       category: "instrument",
+      format: "VST3",
       file: `${DIR}/VST3/Serum2.vst3`,
       shared: true,
     });
@@ -210,22 +173,14 @@ describe("resolvePlugin", () => {
     );
   });
 
-  it("says only VST3 can be hosted when the plug-in is another format", async () => {
-    useDb(goodDb);
-
-    await expect(resolvePlugin({ name: "Valhalla Room" })).rejects.toThrow(
-      '"Valhalla Room" is installed as AU, not VST3. Only VST3 plug-ins can be hosted for now',
-    );
-  });
-
-  it("suggests up to 5 installed VST3 names that contain the input", async () => {
+  it("suggests up to 5 installed names that contain the input", async () => {
     useDb(goodDb);
 
     await expect(resolvePlugin({ name: "pro-q" })).rejects.toThrow(
-      'No plug-in named "pro-q". Similar VST3 plug-ins: Pro-Q 4, Pro-Q 3',
+      'No plug-in named "pro-q". Similar plug-ins: Pro-Q 4, Pro-Q 3',
     );
     await expect(resolvePlugin({ name: "r" })).rejects.toThrow(
-      /Similar VST3 plug-ins: (?:[^,]+, ){4}[^,]+$/,
+      /Similar plug-ins: (?:[^,]+, ){4}[^,]+$/,
     );
   });
 

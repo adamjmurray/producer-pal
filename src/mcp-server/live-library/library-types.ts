@@ -363,6 +363,8 @@ export interface ResolvedPlugin {
   name: string;
   vendor: string | null;
   category: PluginCategory;
+  /** The format to host it as ("VST" is VST2) */
+  format: PluginFormat;
   /** Path of the plug-in's bundle (one bundle can hold several plug-ins). */
   file: string;
   /** Whether other plug-ins live in the same bundle. */

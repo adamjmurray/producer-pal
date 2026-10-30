@@ -49,16 +49,18 @@ function useWrapper(type: number): void {
  * @param category - Plug-in category
  * @param file - Bundle path
  * @param shared - Whether the bundle holds other plug-ins
+ * @param format - The format the resolver picked
  */
 function resolvesTo(
   name: string,
   category: string,
   file: string,
   shared = true,
+  format = "VST3",
 ): void {
   vi.mocked(protocolMock.requestNode).mockResolvedValue({
     success: true,
-    result: { name, vendor: "Xfer Records", category, file, shared },
+    result: { name, vendor: "Xfer Records", category, format, file, shared },
   });
 }
 
@@ -90,6 +92,7 @@ describe("ppal-plugin-host load", () => {
     expect(sent().payload).toStrictEqual({
       deviceId: "9",
       op: "load",
+      format: "VST3",
       file: "Serum2",
       sub: "Serum 2 FX",
       name: "Serum 2 FX",
@@ -148,9 +151,68 @@ describe("ppal-plugin-host load", () => {
     expect(sent().payload).toStrictEqual({
       deviceId: "9",
       op: "load",
+      format: "VST3",
       file: "FabFilter Pro-Q 4",
       name: "Pro-Q 4",
       synth: false,
+    });
+    plugin_host_response(sent().requestId, '{"success":true}');
+    await pending;
+  });
+
+  it("loads an AU by its name, with no sub", async () => {
+    useWrapper(AUDIO_EFFECT);
+    resolvesTo(
+      "AUDelay",
+      "audiofx",
+      "/System/Library/Components/CoreAudio.component",
+      false,
+      "AU",
+    );
+
+    const pending = pluginHost({
+      deviceId: "9",
+      action: "load",
+      plugin: "AUDelay",
+    });
+
+    await vi.waitFor(() => expect(globalThis.messnamed).toHaveBeenCalled());
+    expect(sent().payload).toStrictEqual({
+      deviceId: "9",
+      op: "load",
+      format: "AU",
+      file: "AUDelay",
+      name: "AUDelay",
+      synth: false,
+    });
+    plugin_host_response(sent().requestId, '{"success":true}');
+    await pending;
+  });
+
+  it("loads a VST2 by its bundle name without .vst, as VST2", async () => {
+    useWrapper(INSTRUMENT);
+    resolvesTo(
+      "Kaivo",
+      "instrument",
+      "/Library/Audio/Plug-Ins/VST/Kaivo.vst",
+      false,
+      "VST",
+    );
+
+    const pending = pluginHost({
+      deviceId: "9",
+      action: "load",
+      plugin: "Kaivo",
+    });
+
+    await vi.waitFor(() => expect(globalThis.messnamed).toHaveBeenCalled());
+    expect(sent().payload).toStrictEqual({
+      deviceId: "9",
+      op: "load",
+      format: "VST2",
+      file: "Kaivo",
+      name: "Kaivo",
+      synth: true,
     });
     plugin_host_response(sent().requestId, '{"success":true}');
     await pending;

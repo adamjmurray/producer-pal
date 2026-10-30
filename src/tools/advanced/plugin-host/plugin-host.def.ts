@@ -9,7 +9,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 export const toolDefPluginHost = defineTool("ppal-plugin-host", {
   title: "Plug-in Host",
   description:
-    "Spike: read and set VST3 plug-in parameters through a plug-in host wrapper device. " +
+    "Spike: read and set VST3, AU and VST2 plug-in parameters through a plug-in host wrapper device. " +
     "`info` shows the loaded plug-in, `load` loads one by the name Live's browser shows, " +
     "`params` lists parameters (value 0..1 plus the plug-in's own display text), " +
     "`set` sets some and reads them back, `raw` sends vst~ a message. " +

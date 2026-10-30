@@ -79,7 +79,7 @@ function validateListModeArgs(args: {
  * @param args.path - Device path(s), comma-separated for multiple (required when deviceName provided)
  * @param args.name - Name for all, or comma-separated for each
  * @param args.params - {name, value} entries applied to each created device (e.g. Simpler: {name:"sample", value:"<file path>"})
- * @param args.hosted - `device` names VST3 plug-ins to host in a wrapper, not
+ * @param args.hosted - `device` names plug-ins to host in a wrapper, not
  *   devices to load
  * @param args.focus - Select the device and show device detail view
  * @param context - Internal context object, for the request deadline

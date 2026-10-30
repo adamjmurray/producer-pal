@@ -208,26 +208,47 @@ function handle(req) {
   }
 }
 
-// vst~ loads by bundle file name. Neither step fails loudly: a bad bundle name
-// leaves the old plug-in (or the AU of that name) loaded, and a bad subname
-// keeps the bundle's first plug-in. So check what actually loaded.
-// "sub" picks a plug-in inside a bundle that holds several; it is sent only
-// then, because bundles without a moduleinfo.json can't be searched by
-// subname. "name" is the plug-in's name, for messages.
-function load({ file, sub, name, synth }) {
+// How each format is loaded: the message `vst~` takes, and the start of the
+// `currentplug` it then reads. VST3 and VST2 load by bundle name without the
+// extension; AU loads by the AU's name without its vendor.
+const FORMATS = {
+  VST3: { message: "plug_vst3", prefix: "C74_VST3:/" },
+  AU: { message: "plug_au", prefix: "C74_AU:/" },
+  VST2: { message: "plug_vst", prefix: "C74_VST:/" },
+};
+
+// None of this fails loudly: a bad name leaves the old plug-in loaded or loads
+// another format's (plug_au "Serum2" loads the VST3), and a bad subname keeps
+// the bundle's first plug-in. So check what actually loaded.
+// "sub" picks a plug-in inside a VST3 bundle that holds several; it is sent
+// only then, because bundles without a moduleinfo.json can't be searched by
+// subname, and only VST3 has it. "name" is the plug-in's name, for messages.
+function load({ format, file, sub, name, synth }) {
   if (!file) throw new Error("load needs file");
 
+  const kind = FORMATS[format ?? "VST3"];
+
+  if (!kind) throw new Error(`unknown plug-in format: ${format}`);
+
   const label = String(name ?? sub ?? file);
+  const picked = !!sub && kind === FORMATS.VST3;
 
   state.plugin = null;
   state.names = [];
   state.info = {};
   outlet(0, "unplug");
-  outlet(0, "plug_vst3", String(file));
-  if (sub) outlet(0, "subname", String(sub));
+  outlet(0, kind.message, String(file));
+  if (picked) outlet(0, "subname", String(sub));
 
   const result = info();
-  const problem = loadProblem(String(file), !!sub, label, !!synth, result);
+  const problem = loadProblem(
+    kind,
+    String(file),
+    picked,
+    label,
+    !!synth,
+    result,
+  );
 
   if (problem) {
     outlet(0, "unplug");
@@ -248,23 +269,24 @@ function load({ file, sub, name, synth }) {
   return { ...result, plugin: state.plugin };
 }
 
-// A good load reads "C74_VST3:/<bundle> <numeric id>". With a subname, the id
-// is missing when subname found nothing. Without one, a bundle may read with
-// or without the id.
-function loadProblem(file, picked, label, synth, result) {
+// A good load reads "<prefix><file> <numeric id>" (the id can be missing right
+// after a load). With a VST3 subname, the id is missing when subname found
+// nothing. Without one, a bundle may read with or without the id.
+function loadProblem(kind, file, picked, label, synth, result) {
   const loaded = result.loaded;
-  const prefix = `C74_VST3:/${file}`;
+  const prefix = `${kind.prefix}${file}`;
+  const format = Object.keys(FORMATS).find((key) => FORMATS[key] === kind);
   const fail = (why) => `could not load "${label}": ${why}`;
 
   if (!loaded) return fail(`nothing loaded from "${file}"`);
   if (!loaded.startsWith(prefix)) {
-    return fail(`loaded ${loaded} instead of VST3 "${file}"`);
+    return fail(`loaded ${loaded} instead of ${format} "${file}"`);
   }
 
   const rest = loaded.slice(prefix.length);
 
   if (rest !== "" && !/^ -?\d+$/.test(rest)) {
-    return fail(`loaded ${loaded} instead of VST3 "${file}"`);
+    return fail(`loaded ${loaded} instead of ${format} "${file}"`);
   }
   if (picked && rest === "") {
     return fail(
@@ -273,9 +295,12 @@ function loadProblem(file, picked, label, synth, result) {
   }
   if (result.numParams == null) return fail("no parameters");
   if (result.isSynth !== synth) {
-    const kind = (isSynth) => (isSynth ? "an instrument" : "an audio effect");
+    const describe = (isSynth) =>
+      isSynth ? "an instrument" : "an audio effect";
 
-    return fail(`it loaded as ${kind(result.isSynth)}, not ${kind(synth)}`);
+    return fail(
+      `it loaded as ${describe(result.isSynth)}, not ${describe(synth)}`,
+    );
   }
 
   return null;

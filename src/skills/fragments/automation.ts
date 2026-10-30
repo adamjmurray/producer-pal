@@ -16,11 +16,11 @@
 const hostedEnabled = process.env.ENABLE_HOSTED_PLUGINS === "true";
 
 const hostedRead = hostedEnabled
-  ? ` A hosted VST3 param's entry names the plug-in's param, with a \`slot\` ("Automation 002") and an \`id\` like \`t0/d0/h56\` that works as a write target.`
+  ? ` A hosted plug-in param's entry names the plug-in's param, with a \`slot\` ("Automation 002") and an \`id\` like \`t0/d0/h56\` that works as a write target.`
   : "";
 
 const hostedWrite = hostedEnabled
-  ? ` A hosted VST3 param's target is its device path and \`h\` id (\`t0/d0/h56\`); it takes one of the plug-in's automation slots (the result says which; a device read shows \`slot\`). When every slot has automation the line is skipped: delete a slot's automation to free it.`
+  ? ` A hosted plug-in param's target is its device path and \`h\` id (\`t0/d0/h56\`); it takes one of the plug-in's automation slots (the result says which; a device read shows \`slot\`). When every slot has automation the line is skipped: delete a slot's automation to free it.`
   : "";
 
 export const automation = `## Clip Automation

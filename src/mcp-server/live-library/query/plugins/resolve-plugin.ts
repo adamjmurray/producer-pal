@@ -4,12 +4,17 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Turn a plug-in name as Live's browser shows it ("Serum 2 FX") into the VST3
- * bundle that holds it, from Live's plug-in database. Only VST3 can be hosted
- * for now. Read-only.
+ * Turn a plug-in name as Live's browser shows it ("Serum 2 FX") into what the
+ * plug-in host loads. A name installed in several formats resolves in the order
+ * VST3, AU, VST2. VST3 and VST2 come from Live's plug-in database; AUs come
+ * from Live's browser, because the database has none. Read-only.
  */
 
 import { errorMessage } from "#src/shared/error-message.ts";
+import {
+  type BrowserPlugin,
+  listBrowserPlugins,
+} from "../../../rpc/remote-script/browser/browser-plugins.ts";
 import { type ResolvedPlugin } from "../../library-types.ts";
 import {
   deriveCategory,
@@ -17,6 +22,8 @@ import {
   selectPluginDb,
 } from "../../list-plugins.ts";
 import { openLiveDb } from "../../live-db.ts";
+import { resolveAuPlugin } from "./resolve-au-plugin.ts";
+import { samePluginName } from "./same-plugin-name.ts";
 
 export interface ResolvePluginArgs {
   name?: string;
@@ -32,23 +39,48 @@ interface PluginModuleRow {
 const MAX_SUGGESTIONS = 5;
 
 /**
- * Find the installed VST3 plug-in with this name.
+ * Find the installed plug-in with this name.
  *
  * @param args - The request
  * @param args.name - Plug-in name; case does not matter
- * @returns The plug-in's name, vendor, category and bundle path
- * @throws When the database can't be read, or no single VST3 plug-in matches
+ * @param auDirs - Folders to read AU bundles from (the system's by default)
+ * @returns The plug-in's name, vendor, category, format and bundle path
+ * @throws When the database can't be read, or no single plug-in matches
  */
-export async function resolvePlugin({
-  name,
-}: ResolvePluginArgs): Promise<ResolvedPlugin> {
+export async function resolvePlugin(
+  { name }: ResolvePluginArgs,
+  auDirs?: string[],
+): Promise<ResolvedPlugin> {
   const wanted = name?.trim() ?? "";
 
   if (wanted === "") {
     throw new Error("A plug-in name is required");
   }
 
-  return pickPlugin(await readPluginRows(), wanted);
+  const rows = await readPluginRows();
+  const vst3 = resolveDbPlugin(rows, wanted, "VST3");
+
+  if (vst3 != null) {
+    return vst3;
+  }
+
+  // The browser is only asked once VST3 has missed, and the AU bundles only
+  // when it lists an AU of that name. An unanswering remote script means no AUs.
+  const browserPlugins = (await listBrowserPlugins()) ?? [];
+  const au = await resolveAuPlugin(
+    browserPlugins.filter(
+      (item) => item.format === "AU" && samePluginName(item.name, wanted),
+    ),
+    wanted,
+    auDirs,
+  );
+  const found = au ?? resolveDbPlugin(rows, wanted, "VST");
+
+  if (found == null) {
+    throw new Error(notFoundMessage(rows, browserPlugins, wanted));
+  }
+
+  return found;
 }
 
 /**
@@ -89,81 +121,97 @@ async function readPluginRows(): Promise<PluginModuleRow[]> {
 }
 
 /**
- * Choose the one VST3 plug-in named `wanted`, or explain why there isn't one.
+ * Choose the one plug-in of a format named `wanted`, or say why there isn't one.
  *
  * @param rows - Every enabled plug-in
  * @param wanted - The name asked for
- * @returns The match
+ * @param format - VST3 or VST (VST2)
+ * @returns The match, or null when none has this name in this format
+ * @throws When several do, its kind is unknown, or it is a VST2 shell plug-in
  */
-function pickPlugin(rows: PluginModuleRow[], wanted: string): ResolvedPlugin {
-  const lower = wanted.toLowerCase();
-  const named = rows.filter((row) => row.name.toLowerCase() === lower);
-  const vst3 = named.filter(
-    (row) => deriveFormat(row.dev_identifier) === "VST3" && row.path != null,
+function resolveDbPlugin(
+  rows: PluginModuleRow[],
+  wanted: string,
+  format: "VST3" | "VST",
+): ResolvedPlugin | null {
+  const label = format === "VST" ? "VST2" : format;
+  const named = rows.filter(
+    (row) =>
+      deriveFormat(row.dev_identifier) === format &&
+      row.path != null &&
+      samePluginName(row.name, wanted),
   );
-  const [match] = vst3;
+  const [match] = named;
 
-  if (match?.path != null && vst3.length === 1) {
-    const category = deriveCategory(match.dev_identifier);
-
-    if (category == null) {
-      throw new Error(
-        `Can't tell whether "${match.name}" is an instrument or an audio effect`,
-      );
-    }
-
-    return {
-      name: match.name,
-      vendor: match.vendor,
-      category,
-      file: match.path,
-      shared: rows.some((row) => row !== match && row.path === match.path),
-    };
+  if (match?.path == null) {
+    return null;
   }
 
-  if (vst3.length > 1) {
-    const vendors = [...new Set(vst3.map((row) => row.vendor ?? "unknown"))];
+  if (named.length > 1) {
+    const vendors = [...new Set(named.map((row) => row.vendor ?? "unknown"))];
 
     throw new Error(
-      `More than one VST3 plug-in is named "${wanted}" (vendors: ${vendors.join(", ")})`,
+      `More than one ${label} plug-in is named "${wanted}" (vendors: ${vendors.join(", ")})`,
     );
   }
 
-  if (named.length > 0) {
-    const formats = [
-      ...new Set(named.map((row) => deriveFormat(row.dev_identifier) ?? "?")),
-    ];
+  const category = deriveCategory(match.dev_identifier);
 
+  if (category == null) {
     throw new Error(
-      `"${wanted}" is installed as ${formats.join("/")}, not VST3. Only VST3 plug-ins can be hosted for now`,
+      `Can't tell whether "${match.name}" is an instrument or an audio effect`,
     );
   }
 
-  throw new Error(notFoundMessage(rows, wanted));
+  const shared = rows.some((row) => row !== match && row.path === match.path);
+
+  if (shared && format === "VST") {
+    throw new Error(
+      `"${match.name}" is a VST2 shell plug-in (it shares its file with other plug-ins), and those can't be hosted yet`,
+    );
+  }
+
+  return {
+    name: match.name,
+    vendor: match.vendor,
+    category,
+    format,
+    file: match.path,
+    shared,
+  };
 }
 
 /**
- * Say the plug-in wasn't found, with similar VST3 names when there are any.
+ * Say the plug-in wasn't found, with similar names when there are any.
  *
  * @param rows - Every enabled plug-in
+ * @param browserPlugins - The plug-ins Live's browser lists
  * @param wanted - The name asked for
  * @returns The error message
  */
-function notFoundMessage(rows: PluginModuleRow[], wanted: string): string {
+function notFoundMessage(
+  rows: PluginModuleRow[],
+  browserPlugins: BrowserPlugin[],
+  wanted: string,
+): string {
   const lower = wanted.toLowerCase();
+  const names = [
+    ...rows
+      .filter((row) => {
+        const format = deriveFormat(row.dev_identifier);
+
+        return (format === "VST3" || format === "VST") && row.path != null;
+      })
+      .map((row) => row.name),
+    ...browserPlugins
+      .filter((item) => item.format === "AU")
+      .map((item) => item.name),
+  ];
   const similar = [
-    ...new Set(
-      rows
-        .filter(
-          (row) =>
-            deriveFormat(row.dev_identifier) === "VST3" &&
-            row.name.toLowerCase().includes(lower),
-        )
-        .map((row) => row.name),
-    ),
+    ...new Set(names.filter((item) => item.toLowerCase().includes(lower))),
   ].slice(0, MAX_SUGGESTIONS);
 
   return similar.length > 0
-    ? `No plug-in named "${wanted}". Similar VST3 plug-ins: ${similar.join(", ")}`
+    ? `No plug-in named "${wanted}". Similar plug-ins: ${similar.join(", ")}`
     : `No plug-in named "${wanted}"`;
 }

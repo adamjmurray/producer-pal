@@ -49,6 +49,7 @@ const SERUM_FX = {
   name: "Serum 2 FX",
   vendor: "Xfer Records",
   category: "audio effect",
+  format: "VST3",
   file: "/Library/Audio/Plug-Ins/VST3/Serum2.vst3",
   shared: true,
 };
@@ -164,6 +165,7 @@ describe("createDevice hosted", () => {
       {
         deviceId: "loaded-1",
         op: "load",
+        format: "VST3",
         file: "Serum2",
         sub: "Serum 2 FX",
         name: "Serum 2 FX",

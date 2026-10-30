@@ -20,11 +20,16 @@ import { WRAPPER_NAMES } from "#src/tools/shared/device/helpers/params/hosted-pl
 
 /** What the wrapper's `load` op takes. */
 export interface PluginLoadRequest {
-  /** Bundle name without `.vst3`, as `vst~` loads it. */
+  /** The format `vst~` loads it as */
+  format: "VST3" | "AU" | "VST2";
+  /**
+   * What `vst~` loads by: the bundle name without its extension (VST3, VST2),
+   * or the AU's name without its vendor.
+   */
   file: string;
   /**
-   * The plug-in inside a bundle that holds several. Left out otherwise: Max
-   * can't search a bundle that has no moduleinfo.json.
+   * The plug-in inside a VST3 bundle that holds several. Left out otherwise:
+   * Max can't search a bundle that has no moduleinfo.json.
    */
   sub?: string;
   /** The plug-in's name, for the wrapper's messages. */
@@ -53,8 +58,9 @@ export async function resolvePluginPlan(name: string): Promise<PluginPlan> {
 
   return {
     request: {
-      file: bundleName(plugin.file),
-      ...(plugin.shared && { sub: plugin.name }),
+      format: plugin.format === "VST" ? "VST2" : plugin.format,
+      file: loadFile(plugin),
+      ...(plugin.format === "VST3" && plugin.shared && { sub: plugin.name }),
       name: plugin.name,
       synth: plugin.category === "instrument",
     },
@@ -187,11 +193,15 @@ function wrapperType(category: PluginCategory): {
 }
 
 /**
- * @param path - Path of a VST3 bundle
- * @returns The bundle's name without folders or `.vst3`
+ * @param plugin - The plug-in to load
+ * @returns What `vst~` loads it by
  */
-function bundleName(path: string): string {
-  const leaf = path.split(/[\\/]/).at(-1) ?? path;
+function loadFile(plugin: ResolvedPlugin): string {
+  if (plugin.format === "AU") {
+    return plugin.name;
+  }
 
-  return leaf.replace(/\.vst3$/i, "");
+  const leaf = plugin.file.replace(/^.*[\\/]/, "");
+
+  return leaf.replace(plugin.format === "VST3" ? /\.vst3$/i : /\.vst$/i, "");
 }

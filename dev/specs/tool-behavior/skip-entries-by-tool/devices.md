@@ -63,11 +63,16 @@ Part of [Skip entries, tool by tool](README.md).
   `arrangement automation unknown while the track plays from Session` detail,
   while the track plays from Session. Params no slot drives read as before, and
   so does a wrapper whose slots can't be read.
-- **create-device's `hosted: true` loads each `device` as a VST3 plug-in in a
-  wrapper.** Every name is looked up in Live's plug-in database, and the wrapper
-  that suits its kind (instrument or effect) in Live's browser, before anything
-  is made; a name that isn't an installed VST3 plug-in, or a remote script that
-  isn't answering, fails the call with nothing changed. `hosted` with `preset`,
+- **create-device's `hosted: true` loads each `device` as a VST3, AU or VST2
+  plug-in in a wrapper.** Every name is looked up in Live's plug-in database,
+  and the wrapper that suits its kind (instrument or effect) in Live's browser,
+  before anything is made; a name that isn't an installed plug-in, or a remote
+  script that isn't answering, fails the call with nothing changed. A name
+  installed in several formats loads as VST3, else AU, else VST2. Several
+  plug-ins of that name in the chosen format, a VST2 shell plug-in, an AU that
+  is neither an instrument nor an audio effect, and a plug-in whose kind can't
+  be told, are refused the same way. An AU counts only if Live's browser lists
+  it; with the remote script unanswering there are none. `hosted` with `preset`,
   or with no `device`, is refused. The wrapper is loaded and placed like any
   browser device (same path, misfit and chain rules), then told to load the
   plug-in; the target only counts as created once that worked, then takes its
