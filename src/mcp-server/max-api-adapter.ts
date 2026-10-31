@@ -10,6 +10,7 @@ import Max from "max-api";
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
   formatErrorResponse,
+  MAX_NODE_TO_V8_BYTES,
   oversizedSingleMessageError,
   reassembleChunks,
   WARNING_PREFIX,
@@ -123,13 +124,20 @@ function sendToolCall(
 
   // mcp_request isn't chunked, and Max would cut a long atom short.
   const advice = "Not run. Send less in one call. Nothing changed.";
-  const tooLarge =
-    oversizedSingleMessageError(argsJSON, `Tool call '${tool}' args`, advice) ??
-    oversizedSingleMessageError(
-      contextJSON,
-      `Tool call '${tool}' context`,
-      advice,
-    );
+  const parts: Array<[string, string]> = [
+    ["args", argsJSON],
+    ["context", contextJSON],
+  ];
+  const tooLarge = parts
+    .map(([part, json]) =>
+      oversizedSingleMessageError(
+        json,
+        `Tool call '${tool}' ${part}`,
+        advice,
+        MAX_NODE_TO_V8_BYTES,
+      ),
+    )
+    .find((error) => error != null);
 
   if (tooLarge != null) {
     const response = formatErrorResponse(tooLarge);

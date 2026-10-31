@@ -51,8 +51,18 @@ export const END_OF_CHUNKS = "$$___END_OF_CHUNKS___$$";
  */
 export const MAX_CHUNK_SIZE = 10000;
 export const MAX_CHUNKS = 300; // Allows for ~3MB responses
-/** Largest single (unchunked) message, in UTF-8 bytes, kept under Max's limit. */
+/**
+ * Largest single (unchunked) V8-to-Node message, in UTF-8 bytes. Max cuts each
+ * atom at 32,767 (measured Node to V8); this direction keeps 30,000 until
+ * measured.
+ */
 export const MAX_SINGLE_MESSAGE_BYTES = 30000;
+/**
+ * Largest single (unchunked) Node-to-V8 message, in UTF-8 bytes: tool-call args
+ * and context, code-exec results. Max cuts each atom at 32,767 (measured); a
+ * message can carry several.
+ */
+export const MAX_NODE_TO_V8_BYTES = 32000;
 
 export interface ChunkPlan {
   chunks: string[];
@@ -145,26 +155,28 @@ export const CODE_EXEC_TOO_LARGE_ADVICE =
 /**
  * Guard for a payload sent as a SINGLE unchunked Max IPC string (code-exec and
  * node_request, unlike responses, which split with planChunks). Max silently
- * truncates a message past ~32,767 UTF-8 bytes, so reject past
- * MAX_SINGLE_MESSAGE_BYTES and fail loudly instead.
+ * truncates a message past ~32,767 UTF-8 bytes, so reject past the cap and fail
+ * loudly instead.
  *
  * @param jsonString - The stringified payload about to be sent
  * @param label - Human label for the payload (e.g. "code-exec request")
  * @param advice - What the caller can do about it
+ * @param maxBytes - The cap for this direction
  * @returns An error message when too large, or null when it fits
  */
 export function oversizedSingleMessageError(
   jsonString: string,
   label: string,
   advice: string,
+  maxBytes: number,
 ): string | null {
   const bytes = utf8ByteLength(jsonString);
 
-  if (bytes <= MAX_SINGLE_MESSAGE_BYTES) {
+  if (bytes <= maxBytes) {
     return null;
   }
 
-  return `${label} too large for a single Max IPC message: ${bytes} bytes exceeds ${MAX_SINGLE_MESSAGE_BYTES}. ${advice}`;
+  return `${label} too large for a single Max IPC message: ${bytes} bytes exceeds ${maxBytes}. ${advice}`;
 }
 
 interface McpTextContent {

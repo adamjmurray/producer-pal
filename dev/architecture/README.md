@@ -265,7 +265,9 @@ collapses and appends as `WARNING:` content items).
 `node_request` / `node_response` is the V8→Node RPC going the other way. Its
 `node_response` uses the same chunking and terminator, but `mcp_request` and
 `node_request` go as one message: the sender measures UTF-8 bytes and refuses
-one over 30,000 rather than let Max cut it short.
+one over 32,000 (Node to V8: tool-call args and context, code-exec results) or
+30,000 (V8 to Node: `node_request`, code-exec requests) rather than let Max cut
+it short.
 
 ### Write calls run one at a time
 

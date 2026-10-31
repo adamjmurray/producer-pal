@@ -7,6 +7,7 @@
 
 import {
   CODE_EXEC_TOO_LARGE_ADVICE,
+  MAX_SINGLE_MESSAGE_BYTES,
   oversizedSingleMessageError,
 } from "#src/shared/mcp-responses.ts";
 import {
@@ -49,6 +50,7 @@ export function requestCodeExecution(
       request,
       "code-exec request",
       CODE_EXEC_TOO_LARGE_ADVICE,
+      MAX_SINGLE_MESSAGE_BYTES,
     ),
   );
 }

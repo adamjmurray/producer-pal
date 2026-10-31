@@ -12,6 +12,7 @@ import Max from "max-api";
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
   CODE_EXEC_TOO_LARGE_ADVICE,
+  MAX_NODE_TO_V8_BYTES,
   oversizedSingleMessageError,
 } from "#src/shared/mcp-responses.ts";
 import { executeSandboxedCode } from "./code-executor.ts";
@@ -96,6 +97,7 @@ async function sendCodeExecResult(
       json,
       "code-exec result",
       CODE_EXEC_TOO_LARGE_ADVICE,
+      MAX_NODE_TO_V8_BYTES,
     );
     const payload = tooLarge
       ? JSON.stringify({ success: false, error: tooLarge })

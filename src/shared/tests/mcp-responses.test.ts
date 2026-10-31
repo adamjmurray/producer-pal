@@ -12,6 +12,7 @@ import {
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
   MAX_SINGLE_MESSAGE_BYTES,
+  MAX_NODE_TO_V8_BYTES,
   END_OF_CHUNKS,
   oversizedSingleMessageError,
   planChunks,
@@ -288,31 +289,30 @@ describe("mcp-responses", () => {
   });
 
   describe("oversizedSingleMessageError", () => {
+    const cap = MAX_SINGLE_MESSAGE_BYTES;
+
     it("returns null when the payload fits in one IPC message", () => {
       expect(
-        oversizedSingleMessageError("x".repeat(100), "x", "Send less."),
+        oversizedSingleMessageError("x".repeat(100), "x", "Send less.", cap),
       ).toBeNull();
       // Exactly the limit is the boundary and still allowed.
       expect(
-        oversizedSingleMessageError(
-          "x".repeat(MAX_SINGLE_MESSAGE_BYTES),
-          "x",
-          "Send less.",
-        ),
+        oversizedSingleMessageError("x".repeat(cap), "x", "Send less.", cap),
       ).toBeNull();
     });
 
     it("returns a labeled error when the payload exceeds the limit", () => {
       const error = oversizedSingleMessageError(
-        "x".repeat(MAX_SINGLE_MESSAGE_BYTES + 1),
+        "x".repeat(cap + 1),
         "code-exec request",
         "Send less.",
+        cap,
       );
 
       expect(error).toContain("code-exec request too large");
       expect(error).toMatch(/\. Send less\.$/);
-      expect(error).toContain(String(MAX_SINGLE_MESSAGE_BYTES + 1));
-      expect(error).toContain(String(MAX_SINGLE_MESSAGE_BYTES));
+      expect(error).toContain(String(cap + 1));
+      expect(error).toContain(`exceeds ${cap}`);
     });
 
     it("measures UTF-8 bytes, not characters", () => {
@@ -321,12 +321,42 @@ describe("mcp-responses", () => {
         "あ".repeat(10_001),
         "x",
         "Send less.",
+        cap,
       );
 
       expect(error).toContain("30003 bytes");
       expect(
-        oversizedSingleMessageError("あ".repeat(10_000), "x", "Send less."),
+        oversizedSingleMessageError(
+          "あ".repeat(10_000),
+          "x",
+          "Send less.",
+          cap,
+        ),
       ).toBeNull();
+    });
+
+    it("applies the cap it is given", () => {
+      const text = "x".repeat(MAX_NODE_TO_V8_BYTES);
+
+      expect(
+        oversizedSingleMessageError(text, "x", "Send less.", cap),
+      ).toContain(`exceeds ${cap}`);
+      expect(
+        oversizedSingleMessageError(
+          text,
+          "x",
+          "Send less.",
+          MAX_NODE_TO_V8_BYTES,
+        ),
+      ).toBeNull();
+      expect(
+        oversizedSingleMessageError(
+          text + "x",
+          "x",
+          "Send less.",
+          MAX_NODE_TO_V8_BYTES,
+        ),
+      ).toContain(`exceeds ${MAX_NODE_TO_V8_BYTES}`);
     });
   });
 });

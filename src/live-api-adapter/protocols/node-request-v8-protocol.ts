@@ -6,7 +6,10 @@
 // V8 asks Node to run a named route and awaits the answer. Same channel as
 // code-exec, dispatching by route name instead of eval.
 
-import { oversizedSingleMessageError } from "#src/shared/mcp-responses.ts";
+import {
+  MAX_SINGLE_MESSAGE_BYTES,
+  oversizedSingleMessageError,
+} from "#src/shared/mcp-responses.ts";
 import { REQUEST_TIMEOUT_MS, requestChannel } from "./request-channel.ts";
 
 export interface NodeResponse<T = unknown> {
@@ -53,6 +56,7 @@ export function requestNode<T = unknown>(
     payload,
     subject,
     "Send less in one call.",
+    MAX_SINGLE_MESSAGE_BYTES,
   );
   const sent = channel.send<NodeResponse<T>>(
     payload,
