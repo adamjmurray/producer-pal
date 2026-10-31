@@ -1,7 +1,7 @@
 # Skill wording changes
 
-Text changes to the skills and tool descriptions that were measured, what moved
-and what did not. The index is [README.md](README.md).
+Text changes to the skills, tool descriptions and results that were measured,
+what moved and what did not. The index is [README.md](README.md).
 
 ## Wording changes that were measured and did not work
 
@@ -81,6 +81,17 @@ prompt's "unless the user gives specific notes" became "unless the user names a
 key, scale or specific notes": `middle-c-scale-stark` 2/4. The Stark run example
 `G A B C'`, which ends like the wrong answer, became `G B D'`: 4/8. Baseline was
 3/5; neither kept. Raising Codex's reasoning effort fixed it (6/6).
+
+**Echoing the written pitches as names doesn't catch a midi-json octave slip.**
+midi-json is the one notation where the model turns note names into numbers, and
+models slip an octave there: luna writes the whole melody with C3 = 48, and
+haiku writes one note (B3 as 59) while its reply still says B3. A prototype
+added the written pitches as names to the create-clip result
+(`pitches:"C2 E2 G2 C3 …"`). `melody-pitch-midi-json`, luna 1/3 (baseline 2/3):
+one miss ignored the echo, the other said it would fix the octave and ended the
+turn without a call. Haiku went 3/3, but every trial was right on its first
+write, so it never met a slip. Not kept: the result costs bytes on every write
+and corrected nothing. The Skill already names the convention.
 
 ## Wording changes that did work
 
