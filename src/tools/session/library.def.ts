@@ -183,5 +183,12 @@ export const toolDefLibrary = defineTool("ppal-library", {
       smallModel:
         "max results; defaults to 50 (search, at most 200) or 200 (list-tags)",
     }),
+
+    offset: param(z.coerce.number().optional(), {
+      default:
+        "search only: matches to skip. A cut-off search returns `more` (matches left) and `nextOffset`; pass nextOffset for the next page. Works per searches entry too.",
+      smallModel:
+        "matches to skip. If the result has `nextOffset`, pass it for the next page",
+    }),
   },
 });

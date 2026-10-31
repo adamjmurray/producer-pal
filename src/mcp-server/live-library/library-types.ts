@@ -50,6 +50,21 @@ export function clampLibraryLimit(
   return Math.min(Math.floor(requested), max);
 }
 
+/**
+ * Clamp a requested offset to a non-negative integer. Anything missing,
+ * non-finite or negative means the first page.
+ *
+ * @param requested - User-supplied offset
+ * @returns Integer of 0 or more
+ */
+export function clampLibraryOffset(requested: number | undefined): number {
+  if (requested == null || !Number.isFinite(requested) || requested <= 0) {
+    return 0;
+  }
+
+  return Math.floor(requested);
+}
+
 /** Content kinds supported by `library.search` and the ppal-library tool */
 export type LibraryKind =
   | "audio"
@@ -108,6 +123,8 @@ export interface LibrarySearchArgs {
   inFolder?: string;
   sort?: LibrarySort;
   limit?: number;
+  /** Matches to skip before the first one returned (search paging). */
+  offset?: number;
   /**
    * When true, stat each result's reconstructed path and report whether the
    * file still exists on disk via LibraryItem.pathExists. Off by default
@@ -177,13 +194,20 @@ export type LibraryToolItem = Omit<
 > &
   Partial<Pick<LibraryItem, "name" | "useCount" | "kind" | "source">>;
 
-/** What the tool returns for a search: the route's result with trimmed items. */
+/**
+ * What the tool returns for a search: the route's result with trimmed items.
+ * `more` is then how many matches lie beyond this page, and `nextOffset` where
+ * the next page starts; both are left out when nothing lies beyond.
+ */
 export type LibraryToolSearchResult = Omit<LibrarySearchResult, "items"> & {
   items: LibraryToolItem[];
+  nextOffset?: number;
 };
 
 export interface LibrarySearchResult {
   items: LibraryItem[];
+  /** How many matches lie beyond the returned window. Omitted when none do. */
+  more?: number;
   /** Present when the Live DB was consulted. False if the DB couldn't be
    * found (Live not installed). Omitted when the request bypassed the DB
    * entirely (e.g. source=sampleFolder). */
@@ -263,6 +287,10 @@ export interface LibraryBatchEntry {
   /** Provided label, or the query's index as a string when none was given. */
   label: string;
   items: LibraryToolItem[];
+  /** How many matches lie beyond this page, and where the next page starts.
+   * Omitted when nothing lies beyond. */
+  more?: number;
+  nextOffset?: number;
   /** Set when items is empty due to a discoverable failure (e.g. DB missing). */
   detail?: string;
   /** Set when matching files in plug-in preset folders were left out. */

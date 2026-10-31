@@ -14,6 +14,9 @@
  * sample folder (deterministic) and on the parts we control — labels, entry
  * order, entry count — rather than on which items come back.
  *
+ * It also covers search paging (`more`, `nextOffset`, `offset`), here because
+ * the sample folder gives a result set we control.
+ *
  * Run with: npm run e2e:mcp -- ppal-library-searches
  */
 import { dirname, resolve } from "node:path";
@@ -43,6 +46,8 @@ type BatchQuery = Record<string, string | number | boolean>;
 interface BatchEntry {
   label: string;
   items: Array<{ path: string; source?: string | null }>;
+  more?: number;
+  nextOffset?: number;
   detail?: string;
 }
 
@@ -225,5 +230,98 @@ describe("ppal-library searches", () => {
     expect(warnings.join("\n")).toContain(
       `${MAX_QUERIES + 1} queries exceeds cap of ${MAX_QUERIES}`,
     );
+  });
+  describe("paging", () => {
+    /**
+     * Run a plain search and parse it.
+     * @param args - The search args
+     * @returns The parsed result
+     */
+    async function search(
+      args: Record<string, string | number>,
+    ): Promise<BatchEntry> {
+      return parseToolResult<BatchEntry>(
+        await ctx.client!.callTool({ name: "ppal-library", arguments: args }),
+      );
+    }
+
+    it("reports what lies beyond a cut-off search, and leaves the fields off when nothing does", async () => {
+      await setConfig({ sampleFolder: SAMPLE_FOLDER });
+
+      const cut = await search({ source: "sample-folder", limit: 1 });
+      const whole = await search({ source: "sample-folder", limit: 2 });
+
+      expect(names(cut)).toStrictEqual(["kick.aiff"]);
+      expect(cut.more).toBe(1);
+      expect(cut.nextOffset).toBe(1);
+      expect(whole).not.toHaveProperty("more");
+      expect(whole).not.toHaveProperty("nextOffset");
+    });
+
+    it("reads the second page from nextOffset, and the last page has no marker", async () => {
+      await setConfig({ sampleFolder: SAMPLE_FOLDER });
+
+      const first = await search({ source: "sample-folder", limit: 1 });
+      const second = await search({
+        source: "sample-folder",
+        limit: 1,
+        offset: first.nextOffset ?? -1,
+      });
+
+      expect(names(second)).toStrictEqual(["sample.aiff"]);
+      expect(second).not.toHaveProperty("more");
+      expect(second).not.toHaveProperty("nextOffset");
+    });
+
+    it("pages across the sample folder into Live's library", async () => {
+      await setConfig({ sampleFolder: SAMPLE_FOLDER });
+
+      // Both folder files match, so a page of one leaves the other, plus
+      // whatever Live's library holds, still to come.
+      const first = await search({ query: "aiff", limit: 1 });
+      const second = await search({ query: "aiff", limit: 1, offset: 1 });
+
+      expect(names(first)).toStrictEqual(["kick.aiff"]);
+      expect(first.more).toBeGreaterThanOrEqual(1);
+      expect(first.nextOffset).toBe(1);
+      expect(names(second)).toStrictEqual(["sample.aiff"]);
+    });
+
+    it("says so when the offset is past the last match", async () => {
+      await setConfig({ sampleFolder: SAMPLE_FOLDER });
+
+      const result = await search({ source: "sample-folder", offset: 50 });
+
+      expect(result.items).toStrictEqual([]);
+      expect(result.detail).toBe("offset 50 is past the last match");
+    });
+
+    it("pages each searches entry on its own", async () => {
+      await setConfig({ sampleFolder: SAMPLE_FOLDER });
+
+      const result = await batch([
+        { label: "First", source: "sample-folder", limit: 1 },
+        { label: "Second", source: "sample-folder", limit: 1, offset: 1 },
+      ]);
+
+      expect(names(result.results[0])).toStrictEqual(["kick.aiff"]);
+      expect(result.results[0]).toStrictEqual(
+        expect.objectContaining({ more: 1, nextOffset: 1 }),
+      );
+      expect(names(result.results[1])).toStrictEqual(["sample.aiff"]);
+      expect(result.results[1]).not.toHaveProperty("more");
+    });
+
+    it("refuses offset beside searches", async () => {
+      const result = await ctx.client!.callTool({
+        name: "ppal-library",
+        arguments: { searches: [{ query: "kick" }], offset: 1 },
+      });
+
+      expect(isToolError(result)).toBe(true);
+      expect(getToolErrorMessage(result)).toContain(
+        "offset can't be sent beside searches",
+      );
+    });
   });
 });

@@ -8,18 +8,50 @@ date. The refusal rules are in
 
 - **A search needs a query or a filter.** `query`, `tags`, `type`, `deviceKind`,
   `source`, `inFolder` or a `kind` other than `audio` count; blank strings,
-  `sort`, `verifyPaths`, `limit` and `label` do not. The schema fills in
-  `kind: "audio"`, and every audio file in the library is no narrower a set, so
-  the default counts for nothing. Without one the call would list the library's
-  first files, which can fill a small model's context. A bare search, or any
-  bare `searches` entry, refuses the whole call before any search runs, naming
-  the entries by label (or position) and what to add. `find-similar` and
+  `sort`, `verifyPaths`, `limit`, `offset` and `label` do not. The schema fills
+  in `kind: "audio"`, and every audio file in the library is no narrower a set,
+  so the default counts for nothing. Without one the call would list the
+  library's first files, which can fill a small model's context. A bare search,
+  or any bare `searches` entry, refuses the whole call before any search runs,
+  naming the entries by label (or position) and what to add. `find-similar` and
   `find-duplicates` are not searches in this sense: the seed or the whole
   library is what they ask for.
 - **`limit` is capped at 200 for `search`** (default 50). A larger value is
   clamped to 200 without a note. The other actions keep the 1000 cap
   (`list-tags` defaults to 200): they have no paging, so a long plug-in list
   must still fit.
+- **A search that hit its limit says so, and the next page is one call away.**
+  `offset` (default 0) skips that many matches. When more matched than the page
+  holds, the result carries `more` (how many matches lie beyond this page) and
+  `nextOffset` (where the next page starts). Both are left off when nothing lies
+  beyond: a search that fits, and a last page, look as they did before paging.
+  `searches` entries take their own `offset` and answer with their own `more`
+  and `nextOffset`, also when a lone entry is unwrapped into a plain answer.
+  - A count, not a flag: `more: 3` and `more: 3000` call for different next
+    steps (page on, or narrow the search), and the number costs the same tokens
+    as `true`. The count is exact except for the overlap below.
+  - The search reads one row past its page, and only finding one runs a
+    `COUNT(*)` over the same filters (milliseconds). A search that fits its page
+    never counts.
+  - Pages are windows on one list: the sample folder's matches first, then the
+    database's, each in its own sort order (the order a search always had).
+    Every order ends on the file's id, so a file can't land on two pages or
+    none. A page of folder items alone still asks the database for one row, to
+    learn whether any follow.
+  - A file both the sample folder and Live's database list shows once, as the
+    folder's. The database's copy is dropped from its page, which can leave that
+    page short, and is still counted in `more`, which is then one too high per
+    such file beyond the page. `nextOffset` stays right: it is the position
+    after this page, not the number of items shown.
+  - An `offset` past the last match returns no items, no `more`, and a `detail`
+    saying so, so it isn't read as a search with no matches. A negative,
+    fractional or non-numeric `offset` is treated as a whole number from 0,
+    without a note, as `limit` is.
+  - `offset` is for `search` only: other actions refuse it (see
+    [up-front-refusals-by-tool.md](up-front-refusals-by-tool.md)), and it can't
+    sit beside `searches`.
+  - The rack note for an empty `preset` search counts the offset, so a page past
+    the last preset doesn't claim there were none.
 - **An item leaves out what the request or its own `path` already says.** The
   items are sorted on their full fields first, then trimmed:
   - `name` goes when it is the last segment of `path`. A name with a `/` in it

@@ -107,6 +107,7 @@ export const batchQuerySchema = z.object(
     sort: aliasedEnum(LIBRARY_SORT_VALUES, LIBRARY_SORT_ALIASES).optional(),
     verifyPaths: z.boolean().optional(),
     limit: z.coerce.number().optional(),
+    offset: z.coerce.number().optional(),
   }),
 );
 

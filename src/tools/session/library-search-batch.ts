@@ -98,6 +98,7 @@ export async function runSearchBatch(
 
     results.push({
       ...entry,
+      ...paging(searchResult),
       ...(searchResult.detail != null && { detail: searchResult.detail }),
       ...(searchResult.note != null && { note: searchResult.note }),
     });
@@ -111,17 +112,32 @@ export async function runSearchBatch(
   // One search needs no grouping, so it answers in the shape a plain search
   // does. An array where the caller asked for one thing confuses small models.
   if (results.length === 1) {
-    const [{ items, detail, note }] = results as [LibraryBatchEntry];
+    const [{ items, more, nextOffset, detail, note }] = results as [
+      LibraryBatchEntry,
+    ];
 
     return {
       ...envelope,
       items,
+      ...(more != null && { more, nextOffset }),
       ...(detail != null && { detail }),
       ...(note != null && { note }),
     };
   }
 
   return { ...envelope, results };
+}
+
+/**
+ * @param result - One search's result
+ * @returns Its paging fields, when matches lie beyond its page
+ */
+function paging(
+  result: LibraryToolSearchResult,
+): Pick<LibraryBatchEntry, "more" | "nextOffset"> {
+  return result.more == null
+    ? {}
+    : { more: result.more, nextOffset: result.nextOffset };
 }
 
 /**

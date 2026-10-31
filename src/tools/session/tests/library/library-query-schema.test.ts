@@ -41,6 +41,12 @@ describe("searchesInputSchema (searches fan-out input)", () => {
     ).toStrictEqual([{ query: "808", limit: 3, kind: "audio" }]);
   });
 
+  it("accepts a numeric offset per query so each entry pages on its own", () => {
+    expect(
+      searchesInputSchema.parse([{ query: "kick", limit: 2, offset: "4" }]),
+    ).toStrictEqual([{ query: "kick", limit: 2, offset: 4, kind: "audio" }]);
+  });
+
   it("accepts verifyPaths per query so a batch can verify each query's results independently", () => {
     expect(
       searchesInputSchema.parse([

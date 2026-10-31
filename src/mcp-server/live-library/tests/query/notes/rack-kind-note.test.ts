@@ -52,6 +52,35 @@ describe("librarySearch rack note, several racks", () => {
   });
 });
 
+describe("librarySearch rack note, past the last preset", () => {
+  setupLibraryFixtureLifecycle(dbPathMod, addPreset);
+
+  it("says nothing on a later page: the search did find presets", async () => {
+    const first = await librarySearch({ kind: "preset", query: "chain" });
+    const past = await librarySearch({
+      kind: "preset",
+      query: "chain",
+      offset: 1,
+    });
+
+    expect(first.items).toHaveLength(1);
+    expect(first.note).toBeUndefined();
+    expect(past.items).toStrictEqual([]);
+    expect(past.note).toBeUndefined();
+  });
+});
+
+/**
+ * @param db - Open writable DB
+ */
+function addPreset(db: DatabaseSync): void {
+  db.prepare(
+    `INSERT INTO files
+     (file_id, parent_id, file_type, file_kind, name, use_count, mod_date, device_type, place_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(2060, 200, fourCC("adv-"), 32, "chain_lead.adv", 1, 0, 0, 200);
+}
+
 /**
  * @param db - Open writable DB
  */

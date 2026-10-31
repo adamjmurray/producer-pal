@@ -29,6 +29,7 @@ const LIBRARY_PARAM_HOMES: Record<string, ParamHome> = {
   inFolder: FILTER,
   sort: SEARCH,
   verifyPaths: SEARCH,
+  offset: SEARCH,
   searches: SEARCH,
   queries: SEARCH,
   similarTo: { action: ["find-similar"] },
@@ -55,6 +56,7 @@ const SINGLE_SEARCH_FILTERS = [
   "sort",
   "verifyPaths",
   "limit",
+  "offset",
 ];
 
 /**

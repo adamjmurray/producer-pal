@@ -156,11 +156,12 @@ The tables sit next to each tool's code and feed one helper,
 
 - **`ppal-library`** (`library-action-params.ts`): `similarTo` is for
   `find-similar`; `category` for `list-categories`; `vendor`, `format` and
-  `subcategory` for `list-plugins`; `sort`, `verifyPaths` and `searches` (and
-  its old name `queries`) for `search`. `tags`, `type`, `source`, `inFolder` and
-  a `kind` other than `audio` are for `search`, `find-similar` and
-  `find-duplicates`; `query` and `deviceKind` also for `list-plugins`. `limit`
-  is read by all. `deviceKind: "midifx"` on `list-plugins` is refused too.
+  `subcategory` for `list-plugins`; `sort`, `verifyPaths`, `offset` and
+  `searches` (and its old name `queries`) for `search`. `tags`, `type`,
+  `source`, `inFolder` and a `kind` other than `audio` are for `search`,
+  `find-similar` and `find-duplicates`; `query` and `deviceKind` also for
+  `list-plugins`. `limit` is read by all. `deviceKind: "midifx"` on
+  `list-plugins` is refused too.
 - **`ppal-playback`** (`playback-action-params.ts`): `startTime`, `loop`,
   `loopStart`, `loopEnd` and the retired `*Locator` params are for
   `play-arrangement`, `update-arrangement` and `stop`. `id`, `path`, `slots` and
