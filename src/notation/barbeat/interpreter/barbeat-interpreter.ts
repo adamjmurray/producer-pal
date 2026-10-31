@@ -134,6 +134,7 @@ function processStreamElement(
         stream.values,
         beatsPerBar,
         timeSigDenominator,
+        state.currentDuration,
       );
       state.durationStreamCursor = 0;
       break;

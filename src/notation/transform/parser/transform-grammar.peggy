@@ -734,12 +734,16 @@ valueToken "expression"
   / number
 
 // A leading `-` on a note value or bar count (`-n/1`, `-2bar`), so a backwards
-// waveform cycle can be written in musical units like a forward one. Desugars
-// to `0 - value` so the evaluator needs no new node type. A bare number carries
-// its own sign (see `number`), and binary `-` is handled by `additive`.
+// waveform cycle can be written in musical units like a forward one. The result
+// is the same node with a negative size (`wholeNoteFraction` or `bars`), so
+// the evaluators need no new node type and a note op can tell a negative note
+// value from an arithmetic expression. A bare number carries its own sign (see
+// `number`), and binary `-` is handled by `additive`.
 negatedDuration
   = "-" value:(nDuration / barDuration) {
-    return { type: "subtract", left: 0, right: value };
+    return value.type === "nDuration"
+      ? { type: "nDuration", wholeNoteFraction: -value.wholeNoteFraction }
+      : { type: "barDuration", bars: -value.bars };
   }
 
 // ratchet()/repeat()/merge() are note-count operations (whole statements), not

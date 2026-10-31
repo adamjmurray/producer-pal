@@ -6,6 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import * as maxConsole from "#src/shared/max/v8-max-console.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)", () => {
   describe("velocity streams", () => {
@@ -100,6 +101,27 @@ describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)"
         [0, 4],
         [1, 1],
       ]);
+    });
+
+    it("warns and keeps the previous duration for a stream value that resolves to zero or less", () => {
+      // 1bar-n5/4 is -1 beat and 1bar-n4/4 is 0 in 4/4; the previous duration is
+      // the default quarter.
+      const result = interpretNotation(
+        "[1bar-n5/4 n/8 1bar-n4/4] C3 1|1x3@n/4",
+      );
+
+      expect(result.map((n) => n.duration)).toStrictEqual([1, 0.5, 1]);
+      expect(capturedWarnings()).toStrictEqual([
+        "duration resolves to -1 musical beats (non-positive); keeping the previous duration",
+        "duration resolves to 0 musical beats (non-positive); keeping the previous duration",
+      ]);
+    });
+
+    it("falls back to the duration set before the stream", () => {
+      const result = interpretNotation("n/8 [1bar-n5/4 n/16] C3 1|1x2@n/4");
+
+      expect(result.map((n) => n.duration)).toStrictEqual([0.5, 0.25]);
+      expect(capturedWarnings()).toHaveLength(1);
     });
   });
 

@@ -150,6 +150,14 @@ function checkMerge(args: ExpressionNode[]): void {
   }
 
   if (
+    typeof tolerance === "object" &&
+    tolerance.type === "nDuration" &&
+    tolerance.wholeNoteFraction < 0
+  ) {
+    throw new Error("merge() gap tolerance can't be negative");
+  }
+
+  if (
     tolerance != null &&
     tolerance !== 0 &&
     !(typeof tolerance === "object" && tolerance.type === "nDuration")

@@ -24,6 +24,8 @@ describe("note op arguments that are wrong for every clip", () => {
     ["ratchet(n/16 - n/8)", "ratchet() needs a count of 2 or more"],
     ["ratchet(n/8 * 2)", "ratchet() needs a count of 2 or more"],
     ["ratchet(n0/4)", "ratchet() grid must be greater than 0"],
+    ["ratchet(-n/16)", "ratchet() grid must be greater than 0"],
+    ["ratchet(-1bar)", "ratchet() grid must be greater than 0"],
     ["ratchet(3 - 3)", "ratchet() needs a count of 2 or more"],
     ["ratchet(pow(0, -1))", "ratchet() argument could not be evaluated"],
     [
@@ -38,6 +40,8 @@ describe("note op arguments that are wrong for every clip", () => {
     ["repeat(2)", "repeat() offset must be a note value like n/8"],
     ["repeat(rand(1, 2))", "repeat() offset must be a note value like n/8"],
     ["repeat(n0/4)", "repeat() offset must be greater than 0"],
+    ["repeat(-n/16)", "repeat() offset must be greater than 0"],
+    ["repeat(-1bar)", "repeat() offset must be greater than 0"],
     [
       "repeat(n/8, C3)",
       'repeat() takes a copy count like repeat(n/8, 3), not the pitch name "C3"',
@@ -46,6 +50,7 @@ describe("note op arguments that are wrong for every clip", () => {
     ["repeat(n/8, 1 - 4)", "repeat() needs a copy count of 1 or more"],
     ["repeat(n/8, pow(0, -1))", "repeat() copy count could not be evaluated"],
     ["merge(n/16, n/8)", "merge() takes a single gap tolerance"],
+    ["merge(-n/16)", "merge() gap tolerance can't be negative"],
     ["merge(2)", "merge() gap tolerance must be a note value like n/16"],
     ["merge(1bar)", "merge() gap tolerance must be a note value like n/16"],
     ["merge(C3)", "merge() gap tolerance must be a note value like n/16"],
@@ -76,10 +81,13 @@ describe("note op arguments that are wrong for every clip", () => {
     "repeat(n/8, 0)",
     "repeat(n/8, 1 - 4)",
     "repeat(n0/4)",
+    "repeat(-n/16)",
     "repeat(2)",
     "merge(2)",
+    "merge(-n/16)",
     "velocity = curve(0, 100, 0)",
     "ratchet(-n/8)",
+    "ratchet(0 - n/8)",
     "ratchet(-1bar)",
     "repeat(n/8, -1bar)",
     "velocity = curve(0, 100, -1bar)",
@@ -154,6 +162,8 @@ describe("note op arguments that are wrong for every clip", () => {
     "merge()",
     "merge(0)",
     "merge(n/16)",
+    // A negated zero is 0, which merge() takes as touching notes only.
+    "merge(-n0/4)",
   ])("accepts %s", (transform) => {
     expect(() => tryParseTransform(transform, 4, 4)).not.toThrow();
   });

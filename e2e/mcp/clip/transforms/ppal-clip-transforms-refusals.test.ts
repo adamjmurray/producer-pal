@@ -102,6 +102,20 @@ describe("ppal-clip-transforms (bad argument refused up front)", () => {
     await expectNoClip(toPath);
   });
 
+  it("ppal-update-clip says a negative note value grid must be above 0", async () => {
+    const clipId = await createMidiClip(91, "v80 C3 1|1");
+
+    expectRefused(
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { id: clipId, transforms: "ratchet(-n/16)" },
+      }),
+      "ratchet() grid must be greater than 0",
+    );
+    // Still the one note, not ratcheted
+    expect((await readClipNotes(clipId)).match(/C3/g)).toHaveLength(1);
+  });
+
   it("ppal-update-clip points a syntax error at the failing token", async () => {
     const clipId = await createMidiClip(96, "v80 C3 1|1");
     const result = await ctx.client!.callTool({

@@ -21,11 +21,15 @@
 import { describe, expect, it } from "vitest";
 import {
   parseToolResult,
+  parseToolResultWithWarnings,
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
-import { createClipInSlot } from "../helpers/ppal-clip-transforms-test-helpers.ts";
+import {
+  createClipInSlot,
+  readClipNotes,
+} from "../helpers/ppal-clip-transforms-test-helpers.ts";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
@@ -118,5 +122,30 @@ describe("clip duration round-trips (absolute note values)", () => {
     await sleep(200);
 
     expect(await readClipTiming(clip.id, "arrangementLength")).toBe("4bar");
+  });
+
+  // 1bar-n5/4 is -1 beat in 4/4, so that stream value keeps the previous (quarter)
+  // duration and warns, as a single non-positive duration does.
+  it("warns and keeps the previous duration for a non-positive stream value", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s1`,
+        notes: "[1bar-n5/4 n/8] C3 1|1x2@n/4",
+        length: "1bar",
+      },
+    });
+    const { data: clip, warnings } = parseToolResultWithWarnings<{
+      id: string;
+    }>(result);
+
+    expect(warnings).toStrictEqual([
+      "WARNING: duration resolves to -1 musical beats (non-positive); keeping the previous duration",
+    ]);
+
+    const notes = await readClipNotes(ctx, clip.id);
+
+    expect(notes).toContain("C3");
+    expect(notes).toContain("1|2");
   });
 });

@@ -51,6 +51,7 @@ describe("updateClip - a bad transform argument is refused before any clip is to
 
   it.each([
     ["ratchet(1)", "ratchet() needs a count of 2 or more"],
+    ["ratchet(-n/16)", "ratchet() grid must be greater than 0"],
     ["velocity = C3", `note name "C3" isn't a value for velocity`],
     ["velocity = rand(1, 2, 3)", "rand() needs 0-2 arguments"],
     ["C3: E3: velocity = 1", "duplicate pitch selector"],

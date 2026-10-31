@@ -111,7 +111,7 @@ function isMeterIndependent(arg: ExpressionNode): boolean {
   return "value" in result && result.value <= 0;
 }
 
-// One duration, negated (`-n/8` is `0 - n/8`) or multiplied or divided by a
+// One duration, possibly negated (`0 - n/8`), multiplied or divided by a
 // constant: no other duration, no added terms.
 function isScaledDuration(node: ExpressionNode): boolean {
   if (typeof node !== "object") {
