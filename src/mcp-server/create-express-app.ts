@@ -38,6 +38,7 @@ import {
   resolveRequestProfile,
   type RequestProfile,
 } from "./helpers/http/request-profile.ts";
+import { rejectNonLocalTestSwitches } from "./helpers/http/test-switch-guard.ts";
 import { getUpdate } from "./helpers/http/update-check.ts";
 import { dismissUpdate } from "./helpers/http/update-dismissal.ts";
 import { registerProjectContextBackupNodeRoutes } from "./helpers/project-context-backup/project-context-backup-node-routes.ts";
@@ -438,9 +439,18 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
 
   // requestBody normalizes a missing/non-object body to {}, so a bodyless POST
   // /config is a benign no-op update instead of a TypeError → 500.
+  const body = requestBody(req);
+
+  // The remote script test switches are loopback-only (the Origin check above
+  // lets Origin-less LAN and tunnel clients through). Refused before anything
+  // is applied.
+  if (rejectNonLocalTestSwitches(req, res, body)) {
+    return;
+  }
+
   // Check every field first: a bad one refuses the whole request, so a 400
   // never leaves config half-applied (or Node and the device out of step).
-  const parsed = parseConfigBody(requestBody(req), config.liveApiEnabled);
+  const parsed = parseConfigBody(body, config.liveApiEnabled);
 
   if (!parsed.ok) {
     res.status(400).json(parsed.error);

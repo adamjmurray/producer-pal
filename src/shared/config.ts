@@ -34,6 +34,20 @@ export const DEFAULT_MCP_PORT = 3350;
 export const DEFAULT_MCP_ORIGIN = `http://localhost:${DEFAULT_MCP_PORT}`;
 export const DEFAULT_MCP_URL = `${DEFAULT_MCP_ORIGIN}/mcp`;
 
+const LOOPBACK_HOST = /^(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i;
+
+/**
+ * Whether a `host[:port]` string (a Host header or a URL's `host`) names this
+ * machine. Strict on purpose: not parsed as a URL, so `evil.com@localhost` and
+ * `localhost/x` are refused.
+ *
+ * @param host - Host with an optional port
+ * @returns true for localhost, 127.0.0.1 or [::1]
+ */
+export function isLoopbackHost(host: string): boolean {
+  return LOOPBACK_HOST.test(host);
+}
+
 // Minimum required Ableton Live version (no "v" prefix)
 export const MIN_LIVE_VERSION = "12.3.0";
 
@@ -384,9 +398,10 @@ export interface ProducerPalConfig {
   sampleFolder: string;
   liveApiEnabled: boolean;
   liveApiForcedOn: boolean;
-  // Undocumented test switch (evals and e2e): false makes the remote script
-  // look uninstalled. POST /config only; not a device setting, so it is never
-  // sent to Max. A debug build lists it from the start, a release build once set.
+  // Undocumented test switch (evals and e2e, same-machine requests only): false
+  // makes the remote script look uninstalled. POST /config only; not a device
+  // setting, so it is never sent to Max. A debug build lists it from the start,
+  // a release build once set.
   remoteScriptEnabled?: boolean;
   // Test switch, like remoteScriptEnabled: a version string replaces the
   // minimum remote script version, so a running script can look out of date.

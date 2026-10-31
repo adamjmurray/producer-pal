@@ -143,6 +143,9 @@ Set the `MCP_URL` environment variable to use a different server:
 MCP_URL=http://192.168.1.100:3350/mcp npm run e2e:mcp
 ```
 
+A server on another machine refuses the remote script switches, so
+`resetConfig()` skips them there.
+
 ## Testing another Live version
 
 `ABLETON_APP` names the app bundle the tests open Sets with, so a Live installed

@@ -10,6 +10,7 @@
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
 import {
+  isLoopbackHost,
   type ProducerPalConfig,
   type ProducerPalConfigUpdate,
 } from "#src/shared/config.ts";
@@ -34,7 +35,9 @@ export async function setConfig(options: ConfigOptions): Promise<void> {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to set config: ${response.status}`);
+    throw new Error(
+      `Failed to set config: ${response.status}${await errorText(response)}`,
+    );
   }
 
   await assertTestSwitchesApplied(options, response);
@@ -105,8 +108,12 @@ export async function resetConfig(): Promise<void> {
     projectContext: "",
     jsonOutput: true,
     sampleFolder: "",
-    remoteScriptEnabled: true,
-    remoteScriptMinVersion: null,
+    // Only a same-machine client may send these; a remote server refuses the
+    // whole request (403) if they are present.
+    ...(isLoopbackUrl(CONFIG_URL) && {
+      remoteScriptEnabled: true,
+      remoteScriptMinVersion: null,
+    }),
     tools: [...TOOL_NAMES],
     notation: DEFAULT_NOTATION,
   });
@@ -129,6 +136,20 @@ export function siblingUrl(mcpUrl: string, endpoint: string): string {
 }
 
 // --- Helpers below main exports ---
+
+async function errorText(response: Response): Promise<string> {
+  try {
+    const { error } = (await response.json()) as { error?: unknown };
+
+    return typeof error === "string" ? `: ${error}` : "";
+  } catch {
+    return "";
+  }
+}
+
+function isLoopbackUrl(url: string): boolean {
+  return isLoopbackHost(new URL(url).host);
+}
 
 /**
  * A device built before it accepted `remoteScriptEnabled` and

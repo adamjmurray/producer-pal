@@ -72,8 +72,11 @@ script is missing, it says it is out of date when that is the case
 - `POST /config` can fake either state on any build:
   `remoteScriptEnabled: false`, or a `remoteScriptMinVersion`. These are
   undocumented test switches, open in release builds so evals and e2e test what
-  ships. Each only changes this server, resets on restart, and only localhost
-  can send it.
+  ships. Each only changes this server, resets on restart, and the server
+  refuses them (403, nothing changed) unless the request looks like it comes
+  from the same machine: a loopback peer address, no proxy headers, a loopback
+  `Host`. Best-effort: it stops LAN clients and HTTP tunnels, not a raw TCP
+  forwarder (`ssh -R`, socat).
 
 How each tool words this to the model: the
 [tool-behavior spec](../specs/tool-behavior/refusals.md#a-remote-script-that-is-out-of-date).

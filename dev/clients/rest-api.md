@@ -29,7 +29,11 @@ Fields (all optional; unknown keys are ignored):
 - `remoteScriptEnabled`, `remoteScriptMinVersion`: test switches for evals and
   e2e, left out of the user docs. `false` makes the remote script look
   uninstalled; a version string replaces the minimum version so a running script
-  looks out of date, `null` clears it
+  looks out of date, `null` clears it. Only a client on the same machine may
+  send them: a request from a LAN address, or through an HTTP tunnel (proxy
+  headers or a non-loopback `Host`), gets a 403 and nothing in the body is
+  applied. Best-effort: a raw TCP forwarder (`ssh -R`, socat) can't be told
+  apart
 
 A bad body is refused whole: every field is checked first, a `400` returns
 `{error, fields, validToolNames?}` naming each bad field, and nothing is
