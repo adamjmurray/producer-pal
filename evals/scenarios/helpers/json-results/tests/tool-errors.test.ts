@@ -80,4 +80,31 @@ describe("collectToolErrors", () => {
 
     expect(collectToolErrors(turns)?.errors[0]?.message).toHaveLength(200);
   });
+
+  it("ignores failures of tools that are not Producer Pal's", () => {
+    const turns = [
+      makeTurn(0, [
+        {
+          name: "list_mcp_resources",
+          args: {},
+          result: "Error: unknown MCP server 'producer_pal'",
+        },
+        { name: "ppal-connect", args: {}, result: "{}" },
+      ]),
+    ];
+
+    expect(collectToolErrors(turns)).toStrictEqual({
+      count: 0,
+      total: 1,
+      errors: [],
+    });
+  });
+
+  it("returns undefined when only other tools were called", () => {
+    const turns = [
+      makeTurn(0, [{ name: "list_mcp_resources", args: {}, result: "Error" }]),
+    ];
+
+    expect(collectToolErrors(turns)).toBeUndefined();
+  });
 });
