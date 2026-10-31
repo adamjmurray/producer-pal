@@ -3,10 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { execSync } from "node:child_process";
+import { execFile, execSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { BUILD_SHA } from "./build-sha.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -112,6 +113,20 @@ function isChatUIStale(htmlPath, sources, startedAt) {
  */
 function mtimeOf(file) {
   return statSync(file, { throwIfNoEntry: false })?.mtimeMs ?? null;
+}
+
+/**
+ * Build the chat UI without blocking, the way the plugin would, so a later
+ * build finds it fresh and reuses it. Lets a caller build variants in parallel.
+ * @param {Record<string, string>} env - Out folder and build flags to set
+ * @returns {Promise<void>} Resolves when the build is done
+ */
+export async function buildChatUI(env) {
+  await promisify(execFile)("npm", ["run", "ui:build"], {
+    cwd: rootDir,
+    env: { ...process.env, ...env, BUILD_SHA },
+    maxBuffer: 64 * 1024 * 1024,
+  });
 }
 
 /**

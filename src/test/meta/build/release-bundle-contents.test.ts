@@ -27,6 +27,7 @@ import {
   DEV_BUILD_MARKER,
   GUARDED_BUILD_FLAGS,
 } from "../../../../scripts/build-and-release/helpers/build-flag-guard.ts";
+import { buildChatUI } from "../../../../config/rolldown-plugin-inline-chat-ui.mjs";
 import {
   BUILD_STATS_STUBS,
   CODE_EXEC_STUBS,
@@ -99,6 +100,17 @@ beforeAll(async () => {
 
   writeFileSync(fakeDevice, FAKE_DEVICE_TEXT);
   process.env.PRODUCER_PAL_DEVICE_FILE = fakeDevice;
+
+  // Each device build would otherwise build its chat UI in turn, blocking.
+  // Built up front, in parallel, the bundler finds them fresh and reuses them.
+  await Promise.all([
+    buildChatUI({ CHAT_UI_OUT_DIR: releaseUiDir }),
+    buildChatUI({
+      CHAT_UI_OUT_DIR: hostingUiDir,
+      ENABLE_HOSTED_PLUGINS: "true",
+    }),
+    buildChatUI({ CHAT_UI_OUT_DIR: genUiDir, ENABLE_GEN_UI: "true" }),
+  ]);
 
   const config = await import("../../../../config/rolldown.config.mjs");
   const configs = config.default as (InputOptions & { output: unknown })[];
@@ -250,8 +262,8 @@ describe("gen-UI remote script files", () => {
   beforeAll(async () => {
     vi.resetModules();
     process.env.ENABLE_GEN_UI = "true";
-    // Its chat UI goes to a scratch folder, not over the release one.
-    process.env.CHAT_UI_OUT_DIR = join(scratchDir, "chat-ui-gen-remote-script");
+    // Also inlines the gen-UI chat UI the flagged chat UI checks read.
+    process.env.CHAT_UI_OUT_DIR = genUiDir;
 
     try {
       const config = await import("../../../../config/rolldown.config.mjs");
@@ -405,28 +417,6 @@ const FLAGGED_CHAT_UIS = [
 
 describe.each(FLAGGED_CHAT_UIS)("$feature", ({ variant, text, code }) => {
   const flagDir = (): string => (variant === "gen" ? genUiDir : hostingUiDir);
-
-  // The hosting UI is built by the plug-in host wrappers suite above. Building
-  // the device bundle builds the chat UI it inlines.
-  beforeAll(async () => {
-    if (variant !== "gen") {
-      return;
-    }
-
-    vi.resetModules();
-    process.env.ENABLE_GEN_UI = "true";
-    process.env.CHAT_UI_OUT_DIR = genUiDir;
-
-    try {
-      const config = await import("../../../../config/rolldown.config.mjs");
-      const configs = config.default as (InputOptions & { output: unknown })[];
-
-      await buildChunks(configs[1] as InputOptions);
-    } finally {
-      delete process.env.ENABLE_GEN_UI;
-      process.env.CHAT_UI_OUT_DIR = releaseUiDir;
-    }
-  }, 120_000);
 
   it.each([...text, ...code])("a release chat-ui.html has no %s", (str) => {
     expect(readUi(releaseUiDir)).not.toContain(str);
