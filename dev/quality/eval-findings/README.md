@@ -150,3 +150,29 @@ restores.
 The general rule: a scenario that reads user state must control **all** of it,
 not just what the run itself added. Diff-based teardown can't remove residue
 that predates the run.
+
+## Reasoning effort moves luna more than wording does
+
+Many of luna's failures share one habit: it says it will act ("correcting it
+now") and ends the turn with no tool call. Codex's high reasoning effort fixes a
+lot of that. On the 7 scenarios luna failed most (Oct 2026, ×3 each):
+
+| scenario                              | default | high      |
+| ------------------------------------- | ------- | --------- |
+| `bar-beat-gallop`                     | 1/3     | 3/3       |
+| `context-memory-update-not-duplicate` | 1/3     | 3/3       |
+| `scene-copy-back-to-back`             | 1/3     | 3/3       |
+| `context-write-layer-memory`          | 3/3     | 2/3       |
+| `automation-arrangement-direct`       | 3/3     | 3/3       |
+| `middle-c-scale-barbeat`              | 3/3     | 3/3       |
+| `drum-transforms`                     | 0/3     | 0/3       |
+| **total**                             | 12/21   | **17/21** |
+
+High costs 2-3× the output tokens and about 1.8× the time; input is about the
+same. These scenarios were picked because luna fails them, so the gain shows the
+direction, not a suite-wide number. The full suite agrees: run 29 (high) passed
+379/390 against run 26's 343/390 at default.
+
+**Evals still send no effort by default,** so each model runs at its provider's
+default, the setting most users get. `--thinking` opts in per model. Compare a
+high-effort run only with another at the same effort.
