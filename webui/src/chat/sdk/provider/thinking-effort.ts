@@ -165,6 +165,16 @@ export interface AnthropicOptionsRoute {
   summarized: boolean;
 }
 
+/**
+ * Checks if a model requires legacy enabled thinking (budgetTokens) instead of adaptive.
+ * Only Haiku 4.5: it lacks adaptive thinking, and Haiku 5.5+ rejects budgetTokens.
+ * @param model - Model identifier
+ * @returns True if model needs legacy thinking config
+ */
+export function isLegacyThinkingModel(model: string): boolean {
+  return model.includes("haiku-4");
+}
+
 // Fable and Mythos stay listed by name so a newer id the SDK table doesn't know
 // yet still omits `thinking` rather than 400ing.
 const ALWAYS_ON_THINKING_MODEL = /fable|mythos/;
@@ -229,7 +239,11 @@ export function isLegacyNonThinkingModel(model: string): boolean {
 export function getThinkingOffType(
   model: string,
 ): "disabled" | "between_tools" | undefined {
-  if (isLegacyNonThinkingModel(model) || isAlwaysOnThinkingModel(model)) {
+  if (
+    isLegacyThinkingModel(model) ||
+    isLegacyNonThinkingModel(model) ||
+    isAlwaysOnThinkingModel(model)
+  ) {
     return undefined;
   }
 
@@ -240,7 +254,8 @@ export function getThinkingOffType(
 
 /**
  * Build Anthropic provider options for a thinking setting. Uses adaptive
- * thinking, with an effort unless the setting is auto, and omits the
+ * thinking, with an effort unless the setting is auto; falls back to legacy
+ * enabled+budgetTokens for Haiku 4.5, which 400s on adaptive; and omits the
  * `thinking` field entirely for pre-3.7 models that don't support it.
  * @param level - Thinking setting
  * @param model - Anthropic model id, without any gateway prefix
@@ -258,6 +273,10 @@ export function buildAnthropicProviderOptions(
     return undefined;
   }
 
+  if (isLegacyThinkingModel(model)) {
+    return buildLegacyThinking(level);
+  }
+
   if (level === "off") {
     return buildOffOptions(model, route.explicitOff);
   }
@@ -269,6 +288,28 @@ export function buildAnthropicProviderOptions(
         ...(route.summarized ? { display: "summarized" } : {}),
       },
       ...(level === "auto" ? {} : { effort: level }),
+    },
+  };
+}
+
+/**
+ * Haiku 4.5 takes a token budget, not an effort.
+ * @param level - Thinking setting
+ * @returns Anthropic provider options or undefined
+ */
+function buildLegacyThinking(
+  level: ThinkingEffort,
+): ProviderOptions | undefined {
+  if (level === "off") {
+    return undefined;
+  }
+
+  return {
+    anthropic: {
+      thinking: {
+        type: "enabled",
+        budgetTokens: level === "max" ? 16384 : 10240,
+      },
     },
   };
 }

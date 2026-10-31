@@ -9,6 +9,7 @@ import {
   getThinkingOffType,
   isAlwaysOnThinkingModel,
   isLegacyNonThinkingModel,
+  isLegacyThinkingModel,
 } from "#webui/chat/sdk/provider/thinking-effort";
 
 describe("getThinkingOffType", () => {
@@ -16,6 +17,7 @@ describe("getThinkingOffType", () => {
     ["claude-sonnet-5-5", "between_tools"],
     ["claude-sonnet-5.5", "between_tools"],
     ["claude-haiku-5-5", "disabled"],
+    ["claude-haiku-4-5", undefined],
     ["claude-sonnet-4-6", "disabled"],
     ["claude-opus-5-5", undefined],
     ["claude-opus-5.5", undefined],
@@ -62,6 +64,19 @@ describe("isLegacyNonThinkingModel", () => {
   });
 });
 
+describe("isLegacyThinkingModel", () => {
+  it("is true for Haiku 4.5 ids", () => {
+    expect(isLegacyThinkingModel("claude-haiku-4-5")).toBe(true);
+    expect(isLegacyThinkingModel("claude-haiku-4-5-20251001")).toBe(true);
+    expect(isLegacyThinkingModel("anthropic/claude-haiku-4.5")).toBe(true);
+  });
+
+  it("is false for Haiku 5.5, which rejects budget thinking", () => {
+    expect(isLegacyThinkingModel("claude-haiku-5-5")).toBe(false);
+    expect(isLegacyThinkingModel("anthropic/claude-haiku-5.5")).toBe(false);
+  });
+});
+
 describe("buildAnthropicProviderOptions", () => {
   const direct = { explicitOff: false, summarized: false };
   const gateway = { explicitOff: true, summarized: true };
@@ -83,6 +98,22 @@ describe("buildAnthropicProviderOptions", () => {
     expect(
       buildAnthropicProviderOptions("auto", "claude-sonnet-5-5", direct),
     ).toStrictEqual({ anthropic: { thinking: { type: "adaptive" } } });
+  });
+
+  it("uses a token budget on Haiku 4.5, which 400s on adaptive", () => {
+    const enabled = (budgetTokens: number): object => ({
+      anthropic: { thinking: { type: "enabled", budgetTokens } },
+    });
+
+    expect(
+      buildAnthropicProviderOptions("auto", "claude-haiku-4-5", direct),
+    ).toStrictEqual(enabled(10240));
+    expect(
+      buildAnthropicProviderOptions("max", "claude-haiku-4-5", gateway),
+    ).toStrictEqual(enabled(16384));
+    expect(
+      buildAnthropicProviderOptions("off", "claude-haiku-4-5", gateway),
+    ).toBeUndefined();
   });
 
   it("asks for summarized thinking when the route can't rewrite the request", () => {

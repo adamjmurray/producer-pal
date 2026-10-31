@@ -153,8 +153,8 @@ function applyAnthropicRewrites(body: AnthropicRequestBody): boolean {
     // On adaptive-by-default models (Sonnet 5+), an omitted `thinking` field
     // runs adaptive thinking. The app omits `thinking` only for the "Off"
     // level, so inject what the model accepts for off: `between_tools` on
-    // Sonnet 5.5 (400s on `disabled`), `disabled` elsewhere. Always-on models
-    // keep the omitted-thinking body.
+    // Sonnet 5.5 (400s on `disabled`), `disabled` elsewhere. Legacy (Haiku
+    // 4.5) and always-on models keep the omitted-thinking body.
     body.thinking = { type: offType };
     modified = true;
   }
@@ -168,9 +168,9 @@ function applyAnthropicRewrites(body: AnthropicRequestBody): boolean {
 
 /**
  * The `thinking` type to inject for a request that omits it (the app's "Off"),
- * or undefined to leave it omitted: always-on models (Opus 5.5 / Fable /
- * Mythos) and pre-3.7 models (via the free-text "Other..." input) all 400 on
- * an injected field.
+ * or undefined to leave it omitted: legacy enabled-thinking models (Haiku 4.5),
+ * always-on models (Opus 5.5 / Fable / Mythos) and pre-3.7 models (via the
+ * free-text "Other..." input) all 400 on an injected field.
  * @param body - Parsed Anthropic request body
  * @returns The thinking type to inject, or undefined
  */

@@ -421,6 +421,36 @@ describe("chatAdapter", () => {
       });
     });
 
+    it("uses legacy enabled thinking for haiku model", () => {
+      const config = buildForProvider("anthropic", "Max", "claude-haiku-4-5");
+
+      expect(config.providerOptions).toStrictEqual({
+        anthropic: {
+          thinking: { type: "enabled", budgetTokens: 16384 },
+        },
+      });
+    });
+
+    it("omits legacy thinking for a haiku model with Off thinking", () => {
+      const config = buildForProvider("anthropic", "Off", "claude-haiku-4-5");
+
+      expect(config.providerOptions).toBeUndefined();
+    });
+
+    it("gives a haiku model a concrete budget for Default thinking", () => {
+      // The legacy `enabled` payload can't leave the budget to the API, so
+      // Default has to name one.
+      const config = buildForProvider(
+        "anthropic",
+        "Default",
+        "claude-haiku-4-5",
+      );
+
+      expect(config.providerOptions).toStrictEqual({
+        anthropic: { thinking: { type: "enabled", budgetTokens: 10240 } },
+      });
+    });
+
     it("returns undefined provider options for anthropic with Off thinking", () => {
       const config = buildForProvider("anthropic", "Off");
 
