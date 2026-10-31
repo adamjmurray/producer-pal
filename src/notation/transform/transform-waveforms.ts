@@ -64,14 +64,16 @@ export function tri(phase: number): number {
 /**
  * Sawtooth wave generator
  * @param phase - Phase in cycles (0.0-1.0)
+ * @param edgeTolerance - Cycles of float noise to forgive at the jump
  * @returns Value in range [-1.0, 1.0]
  */
-export function saw(phase: number): number {
+export function saw(phase: number, edgeTolerance = 0): number {
   // Wrap into [0, 1) so a negative phase stays in [-1, 1] (see normalizePhase).
   const normalizedPhase = normalizePhase(phase);
 
-  // Starts at 0.0, rises to 1.0 at ~0.5, jumps to -1.0, rises back to 0.0
-  if (normalizedPhase < 0.5) {
+  // Starts at 0.0, rises to 1.0 at ~0.5, jumps to -1.0, rises back to 0.0.
+  // A phase within the tolerance below 0.5 is on the jump, so it takes the low side.
+  if (normalizedPhase < 0.5 - edgeTolerance) {
     return 2.0 * normalizedPhase;
   }
 
@@ -82,14 +84,25 @@ export function saw(phase: number): number {
  * Square wave generator
  * @param phase - Phase in cycles (0.0-1.0)
  * @param pulseWidth - Duty cycle (0.0-1.0), default 50%
+ * @param edgeTolerance - Cycles of float noise to forgive at the edges
  * @returns Value in range [-1.0, 1.0]
  */
-export function square(phase: number, pulseWidth = 0.5): number {
+export function square(
+  phase: number,
+  pulseWidth = 0.5,
+  edgeTolerance = 0,
+): number {
   // Wrap into [0, 1) so a negative phase picks the correct half (see normalizePhase).
-  const normalizedPhase = normalizePhase(phase);
+  let normalizedPhase = normalizePhase(phase);
 
-  // Starts high (1.0) for first pulseWidth fraction, then low (-1.0)
-  return normalizedPhase < pulseWidth ? 1.0 : -1.0;
+  // A phase just short of a whole cycle is the start of the next one.
+  if (1 - normalizedPhase <= edgeTolerance) {
+    normalizedPhase = 0;
+  }
+
+  // Starts high (1.0) for first pulseWidth fraction, then low (-1.0). A phase
+  // within the tolerance below the edge is on the edge, so it reads low.
+  return normalizedPhase < pulseWidth - edgeTolerance ? 1.0 : -1.0;
 }
 
 /**
