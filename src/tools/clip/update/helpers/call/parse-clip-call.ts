@@ -106,7 +106,7 @@ export function parseClipCall(args: ClipUpdateArgs): ClipCall {
   const named = namedTargets(folded);
 
   if (named.length === 0) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("clip"));
   }
 
   refuseNoWrite(args, "clips");

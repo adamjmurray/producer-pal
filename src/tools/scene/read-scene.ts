@@ -121,7 +121,7 @@ export function readOneScene(
 
   // Validate parameters
   if (sceneId == null && scenePath == null && sceneIndex == null) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("scene"));
   }
 
   const { includeClips, includeColor } = parseIncludeArray(

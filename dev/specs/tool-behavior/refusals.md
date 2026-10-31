@@ -12,6 +12,10 @@ How the tool answers depends on what is wrong:
   names nothing, lists that can't be paired, a call naming no target, an entry
   that can't be parsed, an update call that names targets and sends no param to
   write (every update tool uses `refuseNoWrite`, so they all word it the same).
+  A call naming no target says `id or path is required` and teaches the address:
+  an example path for what the tool takes (`delete` and `duplicate` by their
+  `type`) and the read that lists real ones. The words are `idOrPathRequired`'s.
+  It never falls back to a default target.
 - **A whole-call param the tool can't read → throw**, in update tools too: a
   half `sendGainDb`/`sendReturn` pair, a tempo outside Live's range, a note name
   that parses as nothing, a `params` entry with no name or value. Warning per

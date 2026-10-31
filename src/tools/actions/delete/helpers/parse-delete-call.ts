@@ -56,7 +56,7 @@ export function parseDeleteCall(args: DeleteArgs): DeleteCall {
   const path = namedPathParam(args.path, args.paths);
 
   if (ids == null && path == null) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired(type));
   }
 
   return {

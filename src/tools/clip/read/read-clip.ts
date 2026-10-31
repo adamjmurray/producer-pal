@@ -258,7 +258,7 @@ export function readOneClip(
   } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
   if (clipId == null && (trackIndex == null || sceneIndex == null)) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("clip"));
   }
 
   const resolved = resolveClip(

@@ -81,7 +81,7 @@ export function parseTrackCall(args: UpdateTrackArgs): TrackCall {
   const targets = foldTargetParams({ id, ids, path, paths });
 
   if (targetCount(targets) === 0) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("track"));
   }
 
   const named = namedTargets(targets);

@@ -265,7 +265,7 @@ function playbackTargets(call: PlaybackCall): Array<Target<SlotPayload>> {
   }
 
   if (call.clips.length === 0) {
-    throw new Error(idOrPathRequired(call.action));
+    throw new Error(idOrPathRequired("clip", call.action));
   }
 
   if (call.action !== PLAY_SESSION_CLIPS) {

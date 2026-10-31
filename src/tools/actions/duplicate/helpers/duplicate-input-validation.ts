@@ -37,7 +37,7 @@ export function validateBasicInputs(
   // `id` and `path` name different objects and add up, so either will do and
   // both together are a longer source list, not a conflict.
   if (id == null && path == null) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired(type));
   }
 
   validateCount(count);

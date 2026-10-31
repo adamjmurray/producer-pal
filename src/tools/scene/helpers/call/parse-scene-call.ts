@@ -84,7 +84,7 @@ export function parseSceneCall(args: UpdateSceneArgs): SceneCall {
   const targets = foldTargetParams({ id, ids, path, paths });
 
   if (targetCount(targets) === 0) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("scene"));
   }
 
   // Before the no-write refusal: a list with a hole is the first thing wrong.

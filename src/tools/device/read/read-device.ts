@@ -127,7 +127,7 @@ export function readOneDevice(
   path = namedParam(path, "path");
 
   if (deviceId == null && path == null) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("device"));
   }
 
   const includeAll = include.includes("*");

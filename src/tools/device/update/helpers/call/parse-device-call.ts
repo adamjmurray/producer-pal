@@ -56,7 +56,7 @@ export function parseDeviceCall(args: UpdateDeviceArgs): DeviceCall {
   const namedPaths = namedPathParam(path, paths);
 
   if (namedIds == null && namedPaths == null) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("device"));
   }
 
   refuseNoWrite(args, "targets");
