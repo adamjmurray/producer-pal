@@ -831,12 +831,12 @@ views, quantize grids, device names) keep Live's spelling.
 
 **`ppal-context` reads and deletes memories by list, and one name answers like
 any lone target.** On `read` and `delete`, `name` takes a comma-separated list
-(write `\,` for a comma inside a name) and returns one entry per name. With one
-name, a read returns `{name, content}` (was `{content}`), and a missing memory
-is an error (was a "No memory found" note). A delete returns `{name}`, or
-`{name, detail: "nothing to delete"}` when there's no such memory, and no longer
-appends the memory index; call `read` with no `name` for it. A `write` name is
-capped at 200 characters and can't contain a comma.
+and returns one entry per name. With one name, a read returns `{name, content}`
+(was `{content}`), and a missing memory is an error (was a "No memory found"
+note). A delete returns `{name}`, or `{name, detail: "nothing to delete"}` when
+there's no such memory, and no longer appends the memory index; call `read` with
+no `name` for it. A `write` name is capped at 200 characters and can't contain a
+comma.
 
 ## Deprecated params
 
