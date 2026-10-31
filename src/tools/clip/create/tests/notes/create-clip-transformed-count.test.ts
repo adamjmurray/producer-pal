@@ -133,13 +133,13 @@ describe("createClip - transform counts", () => {
       expect(result).toStrictEqual(expect.objectContaining({ transformed: 0 }));
     });
 
-    it("says the expression left the matched notes as they were", async () => {
+    it("says the transforms left the matched notes as they were", async () => {
       const result = await create("v100 C3 1|1 D3 1|2", "velocity += 0");
 
       expect(result).toStrictEqual(
         expect.objectContaining({
           transformed: 0,
-          detail: "the expression changed none of the 2 matched notes",
+          detail: "the transforms changed none of the 2 matched notes",
         }),
       );
     });

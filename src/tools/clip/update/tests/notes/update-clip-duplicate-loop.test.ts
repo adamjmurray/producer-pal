@@ -387,7 +387,7 @@ describe("updateClip - duplicateLoop", () => {
     });
   });
 
-  const NO_CHANGE_8 = "the expression changed none of the 8 matched notes";
+  const NO_CHANGE_8 = "the transforms changed none of the 8 matched notes";
 
   // The stages count as one, so "nothing changed" is judged on both.
   it.each([

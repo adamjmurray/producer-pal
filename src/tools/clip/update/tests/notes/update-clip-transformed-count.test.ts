@@ -156,7 +156,7 @@ describe("updateClip - transform counts", () => {
   ])(
     "what a transform that changes nothing says: %s",
     (_scenario, extraArgs, noteCount) => {
-      it("says the expression left the matched notes as they were", async () => {
+      it("says the transforms left the matched notes as they were", async () => {
         const result = await updateClip({
           id: "123",
           ...extraArgs,
@@ -166,10 +166,34 @@ describe("updateClip - transform counts", () => {
         expect(result).toStrictEqual(
           expect.objectContaining({
             transformed: 0,
-            detail: `the expression changed none of the ${noteCount} matched notes`,
+            detail: `the transforms changed none of the ${noteCount} matched notes`,
           }),
         );
       });
+
+      it.each([
+        ["merge", "D3: merge()"],
+        ["split", "D3: split(9|1)"],
+        ["ratchet", "D3: ratchet(n/4)"],
+      ])(
+        "doesn't call a %s that changed nothing an expression",
+        async (_name, transforms) => {
+          const result = await updateClip({
+            id: "123",
+            ...extraArgs,
+            transforms,
+          });
+
+          expect(result).toStrictEqual(
+            expect.objectContaining({
+              transformed: 0,
+              detail: expect.stringContaining(
+                "the transforms didn't change the 1 matched note",
+              ),
+            }),
+          );
+        },
+      );
 
       it("says when the selector matched no notes", async () => {
         const result = await updateClip({
@@ -195,7 +219,7 @@ describe("updateClip - transform counts", () => {
 
         expect(result).toStrictEqual(
           expect.objectContaining({
-            detail: "the expression didn't change the 1 matched note",
+            detail: "the transforms didn't change the 1 matched note",
           }),
         );
       });
@@ -265,7 +289,7 @@ describe("updateClip - transform counts", () => {
     expect(neitherChanged).toStrictEqual(
       expect.objectContaining({
         transformed: 0,
-        detail: "the expression changed none of the 3 matched notes",
+        detail: "the transforms changed none of the 3 matched notes",
       }),
     );
   });

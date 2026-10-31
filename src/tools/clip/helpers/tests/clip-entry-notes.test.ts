@@ -77,10 +77,10 @@ describe("clip entry notes", () => {
         "no notes matched the selector",
       );
       expect(transformsChangedNothingNote(outcome(1), { transformed: 0 })).toBe(
-        "the expression didn't change the 1 matched note",
+        "the transforms didn't change the 1 matched note",
       );
       expect(transformsChangedNothingNote(outcome(5), { transformed: 0 })).toBe(
-        "the expression changed none of the 5 matched notes",
+        "the transforms changed none of the 5 matched notes",
       );
     });
 

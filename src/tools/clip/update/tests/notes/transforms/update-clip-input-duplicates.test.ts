@@ -167,7 +167,7 @@ describe("updateClip - duplicates inside the new notes", () => {
       // Absent, or only the note that a transform changed nothing
       expect(
         result.detail === undefined ||
-          /^the expression changed none of the \d+ matched notes$/.test(
+          /^the transforms changed none of the \d+ matched notes$/.test(
             result.detail,
           ),
       ).toBe(true);

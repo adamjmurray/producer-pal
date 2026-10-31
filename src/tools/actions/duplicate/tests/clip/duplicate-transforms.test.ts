@@ -178,7 +178,7 @@ describe("duplicate - transforms/code", () => {
 
     // The copies are edited by updateClip, which says why nothing changed.
     it.each([
-      "the expression changed none of the 4 matched notes",
+      "the transforms changed none of the 4 matched notes",
       "no notes matched the selector",
     ])('carries the update\'s "%s" onto the copy', async (detail) => {
       registerSessionClipDuplication({ destClipProperties: {} });

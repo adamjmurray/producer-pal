@@ -27,8 +27,8 @@ after:
   ran.
 - When transforms ran and changed and deleted nothing, the clip's entry says why
   in `detail`, because the two causes need different fixes: "no notes matched
-  the selector", or "the expression changed none of the N matched notes" ("the
-  expression didn't change the 1 matched note" for one). `preTransforms` and
+  the selector", or "the transforms changed none of the N matched notes" ("the
+  transforms didn't change the 1 matched note" for one). `preTransforms` and
   `transforms` are judged together. Neither is said when a statement failed or
   was skipped (an expression error, a failed `where()`, a skipped note op),
   since that has its own detail, nor when every statement was an audio-only

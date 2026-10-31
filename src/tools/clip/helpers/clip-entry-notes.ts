@@ -74,7 +74,7 @@ export function transformsIgnoredNoNotesNote(
 /**
  * What to say when transforms ran and changed nothing, so `transformed: 0`
  * isn't read as a failure. The two causes need different fixes: a selector that
- * matched nothing, or an expression that left what it matched as it was. Says
+ * matched nothing, or transforms that left what they matched as it was. Says
  * nothing when a statement failed or was skipped: that has its own detail.
  * @param outcome - What the transforms did, or undefined when none ran
  * @param counts - The counts reported for them
@@ -100,8 +100,8 @@ export function transformsChangedNothingNote(
   }
 
   return matched === 1
-    ? "the expression didn't change the 1 matched note"
-    : `the expression changed none of the ${matched} matched notes`;
+    ? "the transforms didn't change the 1 matched note"
+    : `the transforms changed none of the ${matched} matched notes`;
 }
 
 /**
