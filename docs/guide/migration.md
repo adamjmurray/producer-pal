@@ -836,7 +836,7 @@ name, a read returns `{name, content}` (was `{content}`), and a missing memory
 is an error (was a "No memory found" note). A delete returns `{name}`, or
 `{name, detail: "nothing to delete"}` when there's no such memory, and no longer
 appends the memory index; call `read` with no `name` for it. A `write` name is
-capped at 200 characters.
+capped at 200 characters and can't contain a comma.
 
 ## Deprecated params
 
