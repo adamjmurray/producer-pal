@@ -103,14 +103,26 @@ describe("buildModelMessages", () => {
   it.each([
     [
       "the error text the SDK sent within the turn",
+      "boom",
       "Error: boom",
       "Error: boom",
     ],
-    ["the plain message for a result recorded without it", undefined, "boom"],
+    [
+      "the plain message for a result recorded without it",
+      "boom",
+      undefined,
+      "boom",
+    ],
+    [
+      "a structured result as JSON for a result recorded without it",
+      { code: 1 },
+      undefined,
+      '{"code":1}',
+    ],
   ])(
     "sends a failed tool call as error-text with %s",
-    (_name, errorText, value) => {
-      const failed = { id: "1", name: "t", args: {}, result: "boom" };
+    (_name, result, errorText, value) => {
+      const failed = { id: "1", name: "t", args: {}, result };
       const [, tool] = buildModelMessages([
         {
           role: "assistant",
@@ -274,6 +286,30 @@ describe("buildModelMessages", () => {
           type: "reasoning",
           text: "",
           providerOptions: { anthropic: { redactedData: "redacted-blob" } },
+        },
+        { type: "text", text: "answer" },
+      ]);
+    });
+
+    it("replays OpenRouter details with empty text when the step kept no reasoning text", () => {
+      const details = [{ type: "reasoning.encrypted", data: "enc" }];
+      const result = buildModelMessages(
+        [
+          {
+            role: "assistant",
+            content: "answer",
+            openrouterReasoningDetails: details,
+            responseModel: "anthropic/claude-sonnet-5.5",
+          },
+        ],
+        { openrouter: "anthropic/claude-sonnet-5.5" },
+      );
+
+      expect(result[0]!.content).toStrictEqual([
+        {
+          type: "reasoning",
+          text: "",
+          providerOptions: { openrouter: { reasoning_details: details } },
         },
         { type: "text", text: "answer" },
       ]);

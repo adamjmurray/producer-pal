@@ -44,6 +44,7 @@ describe("listBrowserPlugins", () => {
       { name: "AUDelay", path: "Audio Units/Apple/AUDelay" },
       { name: "Odd", path: "Mystery/Co/Odd" },
       { name: "Loose", path: "VST3/Loose" },
+      { name: "Bare", path: "Bare" },
     ]);
 
     expect(await listBrowserPlugins()).toStrictEqual([
@@ -52,6 +53,7 @@ describe("listBrowserPlugins", () => {
       { name: "AUDelay", vendor: "Apple", format: "AU" },
       { name: "Odd", vendor: "Co", format: null },
       { name: "Loose", vendor: null, format: "VST3" },
+      { name: "Bare", vendor: null, format: null },
     ]);
   });
 

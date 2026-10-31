@@ -216,6 +216,18 @@ Run ${INSTALL} now (it installs the remote script and the device, and works with
     expect(deps.deviceFileStatus).not.toHaveBeenCalled();
   });
 
+  it("sends the user to the install guide when the script is current and no device shipped", async () => {
+    const { text } = await guide(true, NOT_RUNNING, {
+      installedRemoteScript: vi.fn(() => script(VERSION)),
+      findBundledDevice: vi.fn(() => null),
+    });
+
+    expect(text).toContain(
+      `but not running. Ask the user to restart Live if they installed it since Live started, and to choose Producer Pal as a Control Surface in Settings → Tempo & MIDI. ppal-manage can't add the device from this install; tell the user to install it by hand: ${SETUP_URL}.`,
+    );
+    expect(text).not.toContain("add-producer-pal");
+  });
+
   it("looks nothing up for a portal without ppal-manage", async () => {
     const { text, deps } = await guide(false, NOT_RUNNING);
 

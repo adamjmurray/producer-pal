@@ -48,6 +48,17 @@ describe("a build without ENABLE_HOSTED_PLUGINS", () => {
     );
   });
 
+  it("keeps hosted plug-in params out of the automation Skill", async () => {
+    const { automation, automationWrite } =
+      await import("#src/skills/fragments/automation.ts");
+
+    expect(automation).not.toContain("hosted");
+    expect(automationWrite).not.toContain("hosted");
+    expect(automationWrite).toContain(
+      "never a display name; a session clip's `pan:` with nothing after clears just that one. Mixer `volume`",
+    );
+  });
+
   it("leaves ppal-plugin-host out of the opt-in tools", async () => {
     const { OPT_IN_TOOL_DEFS } =
       await import("#src/mcp-server/create-mcp-server.ts");

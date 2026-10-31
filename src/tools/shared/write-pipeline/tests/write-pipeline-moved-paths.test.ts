@@ -4,13 +4,20 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  deleteMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { namedTargets } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import {
   beginWarningCapture,
   endWarningCapture,
 } from "#src/shared/max/v8-warning-capture.ts";
 import { runWrite } from "../write-pipeline.ts";
 import { type Locate, type WriteSpec } from "../write-pipeline-types.ts";
+import { whereObjectIs } from "../where-object-is.ts";
 
 /** What a toy call finds in the Set, by path, at the start and by the end. */
 interface World {
@@ -230,5 +237,46 @@ describe("runWrite: a lookup that fails after the writes", () => {
       { path: "b", ok: false, detail: "refused; that chain is now x (id id2)" },
       { path: "c", ok: false, detail: "refused" },
     ]);
+  });
+});
+
+describe("whereObjectIs", () => {
+  it.each<[LiveObjectType, unknown, string, string]>([
+    ["Track", livePath.track(1), "t1", "track"],
+    ["Scene", livePath.scene(2), "s2", "scene"],
+    ["PluginDevice", livePath.track(0).device(1), "t0/d1", "device"],
+    ["Chain", livePath.track(0).device(0).chain(2), "t0/d0/c2", "chain"],
+    ["TakeLane", livePath.track(0).takeLane(1), "t0/l1", "take lane"],
+  ])("names a %s by its path and noun", (type, path, spelled, noun) => {
+    registerMockObject("50", { path: String(path), type });
+
+    expect(whereObjectIs("50")).toStrictEqual({ path: spelled, noun });
+  });
+
+  it("calls a drum pad a pad", () => {
+    registerMockObject("51", {
+      path: livePath.track(0).device(0).drumPad(36),
+      type: "DrumPad",
+      properties: { note: 36 },
+    });
+
+    expect(whereObjectIs("51")?.noun).toBe("pad");
+  });
+
+  it("finds nothing for an object whose path has cleared", () => {
+    // Live clears a destroyed object's path.
+    registerMockObject("52", { returnPath: "", type: "Track" });
+
+    expect(whereObjectIs("52")).toBeUndefined();
+  });
+
+  it("finds nothing for an id the registry has dropped", () => {
+    registerMockObject("53", {
+      path: String(livePath.track(3)),
+      type: "Track",
+    });
+    deleteMockObject("53");
+
+    expect(whereObjectIs("53")).toBeUndefined();
   });
 });
