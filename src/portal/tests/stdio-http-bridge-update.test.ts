@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // The bridge's own answers for ppal-manage update-producer-pal, and the update
@@ -138,7 +138,8 @@ function serverReports(...versions: string[]): void {
   });
 }
 
-describe("StdioHttpBridge update-producer-pal", () => {
+/** Before each test, reset the SDK stand-ins and quiet the console. */
+function useBridgeStandIns(): void {
   beforeEach(() => {
     vi.clearAllMocks();
     mockServer.connect.mockResolvedValue(undefined);
@@ -150,6 +151,10 @@ describe("StdioHttpBridge update-producer-pal", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
+}
+
+describe("StdioHttpBridge update-producer-pal", () => {
+  useBridgeStandIns();
 
   it("updates the device itself, reconnects to the new one and tells the client to re-list tools", async () => {
     serverReports(OLD, OLD, VERSION);
@@ -276,16 +281,7 @@ describe("StdioHttpBridge install-producer-pal", () => {
     userLibrary: tmpdir(),
   });
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockServer.connect.mockResolvedValue(undefined);
-    mockClient.connect.mockResolvedValue(undefined);
-    vi.spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+  useBridgeStandIns();
 
   /**
    * Make one call so the bridge is connected and knows the device's version.
@@ -320,56 +316,39 @@ describe("StdioHttpBridge install-producer-pal", () => {
     expect(mockClient.callTool).not.toHaveBeenCalled();
   });
 
-  it("forwards to the device when it is the same version", async () => {
-    serverReports(VERSION);
+  it.each([
+    ["it is the same version", () => serverReports(VERSION), true],
+    [
+      "its version is unknown",
+      () => mockClient.getServerVersion.mockReturnValue(undefined),
+      true,
+    ],
+    ["the portal doesn't offer ppal-manage", () => serverReports(OLD), false],
+  ])(
+    "forwards to the device when %s",
+    async (_case, arrange: () => void, offersManage: boolean) => {
+      arrange();
 
-    const forwarded = { content: [{ type: "text", text: "from the device" }] };
-    const handler = await startAndGetCallHandler(bridgeOver(true));
+      const forwarded = {
+        content: [{ type: "text", text: "from the device" }],
+      };
+      const handler = await startAndGetCallHandler(bridgeOver(offersManage));
 
-    await connect(handler);
-    mockClient.callTool.mockResolvedValue(forwarded);
+      await connect(handler);
+      mockClient.callTool.mockResolvedValue(forwarded);
 
-    expect(await handler(INSTALL)).toBe(forwarded);
-  });
-
-  it("forwards to the device when its version is unknown", async () => {
-    mockClient.getServerVersion.mockReturnValue(undefined);
-
-    const forwarded = { content: [{ type: "text", text: "from the device" }] };
-    const handler = await startAndGetCallHandler(bridgeOver(true));
-
-    await connect(handler);
-    mockClient.callTool.mockResolvedValue(forwarded);
-
-    expect(await handler(INSTALL)).toBe(forwarded);
-  });
-
-  it("forwards to the device when the portal doesn't offer ppal-manage", async () => {
-    serverReports(OLD);
-
-    const forwarded = { content: [{ type: "text", text: "from the device" }] };
-    const handler = await startAndGetCallHandler(bridgeOver(false));
-
-    await connect(handler);
-    mockClient.callTool.mockResolvedValue(forwarded);
-
-    expect(await handler(INSTALL)).toBe(forwarded);
-  });
+      expect(await handler(INSTALL)).toBe(forwarded);
+    },
+  );
 });
 
 describe("StdioHttpBridge ppal-connect update hint", () => {
+  useBridgeStandIns();
+
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockServer.connect.mockResolvedValue(undefined);
-    mockClient.connect.mockResolvedValue(undefined);
     mockClient.callTool.mockImplementation(() =>
       Promise.resolve({ content: [{ type: "text", text: "connected" }] }),
     );
-    vi.spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it("tells the model to ask, then update, when the device has ppal-manage", async () => {

@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import {
@@ -38,6 +38,7 @@ import {
 } from "../../tests/config-dir-test-helpers.ts";
 import { registerDeviceInstallRoutes } from "../device-install-route.ts";
 import { findUserLibraryPath } from "../../live-library/query/user-library-path.ts";
+import { expectBlankUserLibraryRejected } from "./user-library-route-test-helpers.ts";
 
 // The real lookup reads Live's browser database off the developer's machine.
 vi.mock(import("../../live-library/query/user-library-path.ts"), () => ({
@@ -88,6 +89,18 @@ describe("device-install routes", () => {
 
   const postInstall = (body: unknown, origin?: string): Promise<Response> =>
     postJson(`${server.baseUrl}/device-install/install`, body, origin);
+
+  // Installs with a folder squatting where the first wrapper goes.
+  const installWithBlockedWrapper = (): Promise<Response> => {
+    const { library, runFromDownloads } = scratch();
+
+    runFromDownloads(frozenDevice(VERSION));
+    mkdirSync(pluginHostPath(library, PLUGIN_HOST_WRAPPERS[0]), {
+      recursive: true,
+    });
+
+    return postInstall({ userLibrary: library });
+  };
 
   beforeEach(async () => {
     fault.copy = false;
@@ -230,14 +243,7 @@ describe("device-install routes", () => {
     });
 
     it("installs the device and reports a wrapper that can't be installed", async () => {
-      const { library, installed, runFromDownloads } = scratch();
-
-      runFromDownloads(frozenDevice(VERSION));
-      mkdirSync(pluginHostPath(library, PLUGIN_HOST_WRAPPERS[0]), {
-        recursive: true,
-      });
-
-      const res = await postInstall({ userLibrary: library });
+      const res = await installWithBlockedWrapper();
       const body = (await res.json()) as {
         outcome: string;
         detail: string;
@@ -251,18 +257,11 @@ describe("device-install routes", () => {
         false,
         undefined,
       ]);
-      expect(existsSync(installed)).toBe(true);
+      expect(existsSync(scratch().installed)).toBe(true);
     });
 
     it("words a wrapper's failure for the Install button, not for a tool", async () => {
-      const { library, runFromDownloads } = scratch();
-
-      runFromDownloads(frozenDevice(VERSION));
-      mkdirSync(pluginHostPath(library, PLUGIN_HOST_WRAPPERS[0]), {
-        recursive: true,
-      });
-
-      const res = await postInstall({ userLibrary: library });
+      const res = await installWithBlockedWrapper();
       const body = (await res.json()) as {
         detail: string;
         pluginHost: { detail?: string }[];
@@ -306,14 +305,7 @@ describe("device-install routes", () => {
     it("rejects a missing or blank userLibrary", async () => {
       scratch().runFromDownloads(frozenDevice(VERSION));
 
-      for (const body of [{}, { userLibrary: "  " }, { userLibrary: 7 }]) {
-        const res = await postInstall(body);
-
-        expect(res.status).toBe(400);
-        expect(await errorOf(res)).toBe(
-          "userLibrary must be a non-empty string",
-        );
-      }
+      await expectBlankUserLibraryRejected(postInstall);
     });
 
     it("rejects a body that isn't JSON", async () => {

@@ -1,18 +1,17 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { type PresetScope } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { lookUpBrowserPreset } from "../browser-preset-lookup.ts";
 import { findPresetFiles } from "../../../../live-library/query/preset-files.ts";
 import {
   type FakeAnswer,
-  type FakeRemoteScript,
   type ReceivedRequest,
-  startFakeRemoteScript,
 } from "../../tests/remote-script-test-helpers.ts";
+import { usePresetLookupStandIn } from "./preset-lookup-test-helpers.ts";
 
 // The browser lists one "Transmission", under Shifter; the library has another
 // in a pack, which the browser doesn't list.
@@ -60,17 +59,7 @@ const MAX_DEVICE: PresetScope = {
   device: "Foo",
 };
 
-let fake: FakeRemoteScript | undefined;
-
-beforeEach(() => {
-  vi.mocked(findPresetFiles).mockReset();
-  vi.mocked(findPresetFiles).mockResolvedValue(null);
-});
-
-afterEach(async () => {
-  await fake?.close();
-  fake = undefined;
-});
+const standIn = usePresetLookupStandIn();
 
 /**
  * Answer /list: Transmission is listed under Shifter only.
@@ -104,7 +93,9 @@ async function lookUp(
   scope?: PresetScope,
   endsAt = Date.now() + 60_000,
 ): Promise<Awaited<ReturnType<typeof lookUpBrowserPreset>>> {
-  fake ??= await startFakeRemoteScript(browserAnswer);
+  if (standIn.current() == null) {
+    await standIn.start(browserAnswer);
+  }
 
   return await lookUpBrowserPreset("Transmission", scope, endsAt);
 }
@@ -172,7 +163,7 @@ describe("lookUpBrowserPreset — a name the browser lists once", () => {
 
   it("skips the library for a Max device, whose presets can't be told apart", async () => {
     vi.mocked(findPresetFiles).mockResolvedValue([SHIFTER_FILE, PACK_FILE]);
-    fake = await startFakeRemoteScript(() => ({
+    await standIn.start(() => ({
       body: {
         items: [{ name: "Transmission.adv", path: "Foo/Transmission.adv" }],
       },
@@ -194,7 +185,7 @@ describe("lookUpBrowserPreset — a name the browser lists once", () => {
     // allows, so its search succeeds.
     let waited = false;
 
-    fake = await startFakeRemoteScript((request) => {
+    await standIn.start((request) => {
       const until = waited ? 0 : Date.now() + 250;
 
       waited = true;

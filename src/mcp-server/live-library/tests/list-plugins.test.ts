@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { utimesSync, writeFileSync } from "node:fs";
@@ -14,6 +14,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { type BrowserPlugin } from "../../rpc/remote-script/browser/browser-plugins.ts";
 import { type PluginItem } from "../library-types.ts";
 import { listPlugins } from "../list-plugins.ts";
 import {
@@ -469,6 +470,12 @@ async function pluginsByName(dbPath: string): Promise<Map<string, PluginItem>> {
   return new Map(result.plugins.map((p) => [p.name, p]));
 }
 
+/** One plug-in the DB knows, one it doesn't. */
+const BROWSER_PAIR: BrowserPlugin[] = [
+  { name: "ValhallaRoom", vendor: "Valhalla DSP", format: "AU" },
+  { name: "Brand New", vendor: "New Co", format: "VST3" },
+];
+
 describe("listPlugins — with the remote script's browser list", () => {
   let fixture: PluginsFixture;
 
@@ -486,10 +493,7 @@ describe("listPlugins — with the remote script's browser list", () => {
   });
 
   it("lists the browser's plug-ins, with DB detail on the ones it knows", async () => {
-    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([
-      { name: "ValhallaRoom", vendor: "Valhalla DSP", format: "AU" },
-      { name: "Brand New", vendor: "New Co", format: "VST3" },
-    ]);
+    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue(BROWSER_PAIR);
 
     const result = await listPlugins();
 
@@ -525,10 +529,7 @@ describe("listPlugins — with the remote script's browser list", () => {
   });
 
   it("filters the merged list", async () => {
-    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([
-      { name: "ValhallaRoom", vendor: "Valhalla DSP", format: "AU" },
-      { name: "Brand New", vendor: "New Co", format: "VST3" },
-    ]);
+    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue(BROWSER_PAIR);
 
     const byVendor = await listPlugins({ vendor: "new co" });
     const byCategory = await listPlugins({ category: "audiofx" });
@@ -541,8 +542,7 @@ describe("listPlugins — with the remote script's browser list", () => {
 
   it("notes how many plug-ins with an unknown category a filter left out", async () => {
     vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([
-      { name: "ValhallaRoom", vendor: "Valhalla DSP", format: "AU" },
-      { name: "Brand New", vendor: "New Co", format: "VST3" },
+      ...BROWSER_PAIR,
       { name: "Newer", vendor: "New Co", format: "VST3" },
     ]);
 
@@ -555,10 +555,7 @@ describe("listPlugins — with the remote script's browser list", () => {
   });
 
   it("has no note when the filter left out no unknown-category plug-ins", async () => {
-    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([
-      { name: "ValhallaRoom", vendor: "Valhalla DSP", format: "AU" },
-      { name: "Brand New", vendor: "New Co", format: "VST3" },
-    ]);
+    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue(BROWSER_PAIR);
 
     const unfiltered = await listPlugins();
     const byVendor = await listPlugins({ vendor: "valhalla" });
