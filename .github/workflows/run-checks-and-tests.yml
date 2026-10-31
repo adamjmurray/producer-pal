@@ -158,11 +158,15 @@ jobs:
           --coverage.thresholds.functions=0 --coverage.thresholds.lines=0
           --reporter=default --reporter=blob --silent=true
 
+      # overwrite: "Re-run failed jobs" uploads a second artifact under the same
+      # name, and download-artifact picks the one with the higher ID, which is
+      # not always the newer one. Replacing it leaves only one to pick.
       - name: Upload shard report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: unit-test-shard-${{ matrix.shard }}
+          overwrite: true
           path: |
             .vitest/blob/
             test-reports/remote-script.log
@@ -373,11 +377,13 @@ jobs:
         run: npm run e2e:portal
 
       # Uploaded even when a suite fails, so the summary can report it.
+      # overwrite: same reason as the unit-test shard reports.
       - name: Upload test reports
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: e2e-report-${{ matrix.suite }}
+          overwrite: true
           path: test-reports/*.json
           if-no-files-found: ignore
           retention-days: 1
