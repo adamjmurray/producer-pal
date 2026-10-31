@@ -227,6 +227,11 @@ export const trackNameCommaPairing: EvalScenario = {
     "Rename the Chords track to 'Keys, Wet' and the Lead track to 'Pad, Dry'.",
   ],
 
+  // An unescaped comma makes the list the wrong length, and that is refused.
+  expectedRefusals: [
+    { tool: TOOL_UPDATE_TRACK, message: /names \d+ entries but/ },
+  ],
+
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
     { type: "tool_called", tool: TOOL_UPDATE_TRACK, turn: WRITE_TURN },

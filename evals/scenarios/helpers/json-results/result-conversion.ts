@@ -54,7 +54,10 @@ export function toJsonResult(
 ): JsonEvalResult {
   const checks = buildChecks(result.assertions);
   const signals = buildSignals(result.assertions);
-  const toolErrors = collectToolErrors(result.turns);
+  const toolErrors = collectToolErrors(
+    result.turns,
+    result.scenario.expectedRefusals,
+  );
   const efficiency = buildEfficiency(result.assertions);
   const advisory = result.scenario.judgeAdvisory ?? false;
   const judge = buildJudge(result.assertions, advisory);

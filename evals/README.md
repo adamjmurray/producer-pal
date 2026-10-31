@@ -474,6 +474,10 @@ padding a run with extra successful calls. Grading reads successful calls only:
 `getAllToolCalls` when the attempt itself is what's graded ("did it reach for a
 tool it shouldn't have").
 
+A scenario that provokes a refusal on purpose lists it under `expectedRefusals`
+(tool name plus text the error must contain). Matching failures are left out of
+the **Tool errors** count and the penalty; any other failure still counts.
+
 The **Score** shown per scenario and in the comparison table is the check pass
 rate (or the trial pass rate under `-r N`), discounted by that penalty. A clean
 run outranks a recovered one without either being marked a failure.

@@ -521,6 +521,29 @@ describe("toJsonResult", () => {
       expect(json.result).toBe("pass");
     });
 
+    it("leaves out a refusal the scenario expects", () => {
+      const base = makeResult();
+      const json = convert({
+        scenario: {
+          ...base.scenario,
+          expectedRefusals: [{ tool: "ppal-create-clip", message: "bad" }],
+        },
+        turns: [
+          makeTurn({
+            toolCalls: [
+              {
+                name: "ppal-create-clip",
+                args: {},
+                result: "Error: bad notes",
+              },
+            ],
+          }),
+        ],
+      });
+
+      expect(json.toolErrors).toStrictEqual({ count: 0, total: 1, errors: [] });
+    });
+
     it("omits toolErrors when the run made no tool calls", () => {
       expect(
         convert({ turns: [makeTurn({ toolCalls: [] })] }).toolErrors,

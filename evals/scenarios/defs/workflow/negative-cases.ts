@@ -25,6 +25,11 @@ export const negativeCases: EvalScenario = {
 
   messages: ["Connect to Ableton Live", "Set the tempo to -50 BPM"],
 
+  // The refusal is the behavior under test, not a model mistake.
+  expectedRefusals: [
+    { tool: TOOLS.updateLiveSet, message: "tempo range is 20-999" },
+  ],
+
   assertions: [
     // Turn 0: Connection
     { type: "tool_called", tool: TOOLS.connect, turn: 0 },

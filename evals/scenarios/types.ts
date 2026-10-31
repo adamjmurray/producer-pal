@@ -31,6 +31,14 @@ export type EvalProvider =
   | "openrouter"
   | "vercel";
 
+/** A refusal a scenario expects: the tool, and text its error must contain. */
+export interface ExpectedRefusal {
+  /** Full tool name, e.g. "ppal-update-live-set" */
+  tool: string;
+  /** Substring (or pattern) of the call's result text */
+  message: string | RegExp;
+}
+
 /**
  * A test scenario that runs against Ableton Live
  */
@@ -80,6 +88,10 @@ export interface EvalScenario {
    * the exact outcome — there the judge adds qualitative commentary but is an
    * unreliable gate (LLM judges miscount bar|beat notation). Default: false. */
   judgeAdvisory?: boolean;
+
+  /** Refusals this scenario provokes on purpose. A failed call that matches one
+   *  is left out of the run's `toolErrors`; any other failure still counts. */
+  expectedRefusals?: ExpectedRefusal[];
 
   /** System instructions override. Default: SYSTEM_INSTRUCTION from
    *  #src/shared. Set to null for no instructions. */
