@@ -136,6 +136,10 @@ Everything is behind the `ENABLE_GEN_UI` build flag until 3.0.0:
   `watches.py` and `ui_widgets.py`; `routes.py` imports them only if present.
   The version bump ignores those files. The list lives in
   `src/mcp-server/rpc/remote-script/bundle/gen-ui-remote-script-files.ts`.
+- Chat UI: `main.tsx` reads `process.env.ENABLE_GEN_UI` (a Vite `define`), so a
+  release `chat-ui.html` drops the panel and `?view=gen` opens the normal chat.
+  `npm run ui:dev` needs `ENABLE_GEN_UI=true` for `?view=gen`. Build the
+  browser-test UI with `npm run ui:build:gen`.
 - Tests check the built release bundle has the gate compiled to `false`, and
   that a flag-off app starts no watcher, sync or remote-script request.
 

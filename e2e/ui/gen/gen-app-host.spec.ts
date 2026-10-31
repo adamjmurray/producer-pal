@@ -7,7 +7,7 @@
 // its own opaque origin and no network. Only a real browser enforces either, so
 // the app probes its own limits and reports them by writing to its own DOM.
 import { type Page, expect, test } from "@playwright/test";
-import { installStubs } from "../ui-test-helpers";
+import { installStubs, serveGenUi } from "../ui-test-helpers";
 
 const SOURCE_KEY = "producer_pal_gen_app_source";
 
@@ -67,6 +67,7 @@ async function openGenPanelWithApp(
   const remoteRequests: number[] = [];
 
   await installStubs(page);
+  await serveGenUi(page);
 
   await page.route("**/api/ui/widgets", (route) =>
     route.fulfill({

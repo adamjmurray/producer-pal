@@ -5,7 +5,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockRender = vi.fn();
 
@@ -62,6 +62,10 @@ describe("main", () => {
     window.history.replaceState({}, "", "/chat");
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("calls render with App component when #app element exists", async () => {
     // Create #app element before importing main
     const appElement = document.createElement("div");
@@ -112,23 +116,23 @@ describe("main", () => {
     expect(mockRender).toHaveBeenCalled();
   });
 
-  it("renders the hidden generative-UI view only for ?view=gen", async () => {
+  it.each([
+    ["true", "/chat?view=gen", "GenLayout"],
+    ["true", "/chat?view=other", "App"],
+    // A release build has no panel to show.
+    ["false", "/chat?view=gen", "App"],
+  ])("with ENABLE_GEN_UI=%s, %s renders %s", async (flag, url, expected) => {
+    vi.stubEnv("ENABLE_GEN_UI", flag);
+
     const appElement = document.createElement("div");
 
     appElement.id = "app";
     document.body.appendChild(appElement);
 
-    window.history.replaceState({}, "", "/chat?view=gen");
+    window.history.replaceState({}, "", url);
     await import("./main.js");
 
-    expect(rootName()).toBe("GenLayout");
-
-    vi.resetModules();
-    mockRender.mockClear();
-    window.history.replaceState({}, "", "/chat?view=other");
-    await import("./main.js");
-
-    expect(rootName()).toBe("App");
+    expect(rootName()).toBe(expected);
   });
 
   it("throws error when #app element does not exist", async () => {

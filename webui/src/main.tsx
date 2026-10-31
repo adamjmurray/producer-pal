@@ -19,8 +19,10 @@ if (!appElement) {
 const params = new URLSearchParams(window.location.search);
 const isDemo = params.has("demo");
 const isContext = window.location.pathname.startsWith("/context");
-// Hidden and experimental: reached only by typing /chat?view=gen.
-const isGen = params.get("view") === "gen";
+// Hidden and experimental: reached only by typing /chat?view=gen, and only in a
+// gen-UI build. The flag is a build-time constant, so a release drops the panel.
+const isGen =
+  process.env.ENABLE_GEN_UI === "true" && params.get("view") === "gen";
 
 const root = isDemo ? (
   <DemoMode />

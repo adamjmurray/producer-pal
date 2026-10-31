@@ -75,9 +75,11 @@ let portalWithInstaller = "";
 let bundleCount = 0;
 let scratchDir = "";
 // Where the chat UI is built, so a test run never touches the device's folder:
-// one folder per variant, since the UI is baked in at build time.
+// one folder per variant (release, hosting, gen UI), since the flags are baked
+// in at build time. A build with a flag on must never write to the release one.
 let releaseUiDir = "";
 let hostingUiDir = "";
+let genUiDir = "";
 
 beforeAll(async () => {
   // The config reads these at import time; a shell that happens to export one
@@ -90,6 +92,7 @@ beforeAll(async () => {
   scratchDir = mkdtempSync(join(tmpdir(), "ppal-bundle-contents-"));
   releaseUiDir = join(scratchDir, "chat-ui-release");
   hostingUiDir = join(scratchDir, "chat-ui-hosting");
+  genUiDir = join(scratchDir, "chat-ui-gen");
   process.env.CHAT_UI_OUT_DIR = releaseUiDir;
 
   const fakeDevice = join(scratchDir, "Producer_Pal.amxd");
@@ -247,6 +250,8 @@ describe("gen-UI remote script files", () => {
   beforeAll(async () => {
     vi.resetModules();
     process.env.ENABLE_GEN_UI = "true";
+    // Its chat UI goes to a scratch folder, not over the release one.
+    process.env.CHAT_UI_OUT_DIR = join(scratchDir, "chat-ui-gen-remote-script");
 
     try {
       const config = await import("../../../../config/rolldown.config.mjs");
@@ -257,6 +262,7 @@ describe("gen-UI remote script files", () => {
       genUiCode = built.code;
     } finally {
       delete process.env.ENABLE_GEN_UI;
+      process.env.CHAT_UI_OUT_DIR = releaseUiDir;
     }
   }, 120_000);
 
@@ -368,35 +374,78 @@ describe("plug-in host wrappers", () => {
   });
 });
 
-// The Installation tab's wrapper strings, which a release chat UI must not
-// carry: a user could otherwise see hosting in a build that doesn't ship it. The
-// chat UI is also inlined in the device bundle, so that is checked too.
-describe("plug-in host chat UI", () => {
-  const UI_TEXT = ["Install the plug-in host devices", "Plug-in host devices:"];
-  // The chat UI is minified, so a name or a flag read left in it is real code.
-  const UI_CODE = ["ENABLE_HOSTED_PLUGINS", "pluginHost"];
-  const readUi = (dir: string): string =>
-    readFileSync(join(dir, "chat-ui.html"), "utf-8");
+const readUi = (dir: string): string =>
+  readFileSync(join(dir, "chat-ui.html"), "utf-8");
 
-  it("finds a built chat UI for each variant", () => {
-    expect(readUi(releaseUiDir).length).toBeGreaterThan(1_000_000);
-    expect(readUi(hostingUiDir).length).toBeGreaterThan(1_000_000);
+// A release chat UI must carry none of a flagged feature's text or code. The
+// device bundle inlines the chat UI, so that is checked too. The UI is
+// minified, so a name or a flag read left in it is real code. `variant` names
+// the folder holding a build with the flag on.
+const FLAGGED_CHAT_UIS = [
+  {
+    feature: "plug-in host chat UI",
+    variant: "hosting",
+    text: ["Install the plug-in host devices", "Plug-in host devices:"],
+    code: ["ENABLE_HOSTED_PLUGINS", "pluginHost"],
+  },
+  // Unfinished: a user could otherwise reach it by typing a URL.
+  {
+    feature: "generative-UI chat panel",
+    variant: "gen",
+    text: [
+      "Generative UI",
+      "No widgets yet",
+      "gen-app-frame",
+      "producer_pal_gen_app_source",
+      "Not available in this build",
+    ],
+    code: ["ENABLE_GEN_UI"],
+  },
+] as const;
+
+describe.each(FLAGGED_CHAT_UIS)("$feature", ({ variant, text, code }) => {
+  const flagDir = (): string => (variant === "gen" ? genUiDir : hostingUiDir);
+
+  // The hosting UI is built by the plug-in host wrappers suite above. Building
+  // the device bundle builds the chat UI it inlines.
+  beforeAll(async () => {
+    if (variant !== "gen") {
+      return;
+    }
+
+    vi.resetModules();
+    process.env.ENABLE_GEN_UI = "true";
+    process.env.CHAT_UI_OUT_DIR = genUiDir;
+
+    try {
+      const config = await import("../../../../config/rolldown.config.mjs");
+      const configs = config.default as (InputOptions & { output: unknown })[];
+
+      await buildChunks(configs[1] as InputOptions);
+    } finally {
+      delete process.env.ENABLE_GEN_UI;
+      process.env.CHAT_UI_OUT_DIR = releaseUiDir;
+    }
+  }, 120_000);
+
+  it.each([...text, ...code])("a release chat-ui.html has no %s", (str) => {
+    expect(readUi(releaseUiDir)).not.toContain(str);
   });
 
-  it.each([...UI_TEXT, ...UI_CODE])(
-    "a release chat-ui.html has no %s",
-    (text) => {
-      expect(readUi(releaseUiDir)).not.toContain(text);
-    },
-  );
-
-  it.each(UI_TEXT)("the release device bundle has no %s", (text) => {
-    expect(chunkCode["mcp-server"]).not.toContain(text);
+  it.each(text)("the release device bundle has no %s", (str) => {
+    expect(chunkCode["mcp-server"]).not.toContain(str);
   });
 
-  it.each(UI_TEXT)("a hosting chat-ui.html has %s", (text) => {
-    expect(readUi(hostingUiDir)).toContain(text);
+  // Text only: the flag name itself is replaced by its value in that build.
+  it.each(text)("a flagged chat-ui.html has %s", (str) => {
+    expect(readUi(flagDir())).toContain(str);
   });
+});
+
+it("finds a built chat UI for each variant", () => {
+  for (const dir of [releaseUiDir, hostingUiDir, genUiDir]) {
+    expect(readUi(dir).length).toBeGreaterThan(1_000_000);
+  }
 });
 
 /**

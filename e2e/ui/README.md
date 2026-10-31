@@ -52,7 +52,8 @@ Chat UI (`ui-test-helpers.ts`, IndexedDB-backed):
   transcript, a closed history panel stays out of the tab path, and the composer
   still renders below the transcript.
 
-Generative UI (hidden `?view=gen` panel):
+Generative UI (hidden `?view=gen` panel; served from the `ENABLE_GEN_UI` build
+that `ui:test` makes with `ui:build:gen`):
 
 - `gen/gen-app-host.spec.ts` — an app runs in the sandboxed frame, can't reach
   the host page or the network, and can't leak data by navigating its frame.

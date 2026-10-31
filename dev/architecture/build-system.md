@@ -55,6 +55,10 @@ Four separate bundles built with rolldown (MCP server, V8, Portal) and Vite
   exists only in a hosting build. `CHAT_UI_OUT_DIR` moves the output (the
   build-contents test uses it); the UI is also inlined in the device bundle, so
   the rolldown plugin treats a UI built with another flag value as stale.
+- **Generative-UI panel:** same mechanism with `process.env.ENABLE_GEN_UI`:
+  `main.tsx` renders the `/chat?view=gen` panel only in a gen-UI build. In
+  `npm run ui:dev`, set `ENABLE_GEN_UI=true` or `?view=gen` opens the normal
+  chat. `npm run ui:build:gen` builds the variant the browser specs use.
 - **Purpose:** Preact-based chat interface with multi-provider AI + MCP
   integration
 - **Features:**

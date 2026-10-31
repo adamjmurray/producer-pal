@@ -190,6 +190,12 @@ describe("chat UI build flags", () => {
       '"process.env.ENABLE_HOSTED_PLUGINS"',
     );
   });
+
+  it("substitutes ENABLE_GEN_UI in the chat UI bundle", () => {
+    expect(readRepoFile("config/vite.config.ts")).toContain(
+      '"process.env.ENABLE_GEN_UI"',
+    );
+  });
 });
 
 describe("build identity", () => {

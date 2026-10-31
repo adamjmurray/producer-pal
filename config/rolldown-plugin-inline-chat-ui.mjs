@@ -5,7 +5,7 @@
 
 import { execSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUILD_SHA } from "./build-sha.mjs";
 
@@ -36,12 +36,13 @@ function getFilesRecursively(dir) {
 
 /**
  * Where the Vite build writes the chat UI. The build-contents test points it
- * at a scratch folder (see config/vite.config.ts) so it can build both the
- * release and hosting UIs without touching the device's folder.
+ * at a scratch folder (see config/vite.config.ts) so it can build the release,
+ * hosting and gen-UI variants without touching the device's folder. A relative
+ * path is from the repo root, as in vite.config.ts.
  * @returns Absolute path of the folder
  */
 function chatUIDir() {
-  return process.env.CHAT_UI_OUT_DIR ?? join(rootDir, "max-for-live-device");
+  return resolve(rootDir, process.env.CHAT_UI_OUT_DIR ?? "max-for-live-device");
 }
 
 /**
@@ -73,11 +74,14 @@ function recordedBuild() {
   // passes down to the Vite build) rather than a freshly-computed one: in watch
   // mode ours is frozen at config load, and a commit would otherwise leave the
   // two disagreeing for good — every rebuild a cache miss.
-  // The hosted-plug-ins flag is baked in the same way: a UI built with it must
-  // never be reused by a build without it (or the reverse).
+  // The hosted-plug-ins and gen-UI flags are baked in the same way: a UI built
+  // with one must never be reused by a build without it (or the reverse).
   const hostedPlugins = process.env.ENABLE_HOSTED_PLUGINS === "true";
+  const genUi = process.env.ENABLE_GEN_UI === "true";
 
-  return record.buildSha === BUILD_SHA && record.hostedPlugins === hostedPlugins
+  return record.buildSha === BUILD_SHA &&
+    record.hostedPlugins === hostedPlugins &&
+    record.genUi === genUi
     ? record
     : null;
 }

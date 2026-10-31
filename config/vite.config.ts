@@ -16,14 +16,19 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 const licensePath = join(rootDir, "LICENSE");
 const licenseText = readFileSync(licensePath, "utf-8");
-// Where the chat UI is written. Only the build-contents test points it away
-// from the device's folder, so it can build both variants without touching it.
-const outDir =
-  process.env.CHAT_UI_OUT_DIR ?? join(rootDir, "max-for-live-device");
+// Where the chat UI is written. The build-contents test and the gen-UI browser
+// test point it away from the device's folder so they never touch it. A
+// relative path is from the repo root.
+const outDir = resolve(
+  rootDir,
+  process.env.CHAT_UI_OUT_DIR ?? "max-for-live-device",
+);
 const buildInputsPath = join(outDir, "chat-ui.inputs.json");
 // Hosted plug-ins are build-flagged like in the rolldown bundles; a release UI
 // must carry none of the wrapper code or text.
 const hostedPlugins = process.env.ENABLE_HOSTED_PLUGINS === "true";
+// Same for the unfinished generative-UI panel.
+const genUi = process.env.ENABLE_GEN_UI === "true";
 
 let buildInputs: string[] = [];
 let buildStartedAt = 0;
@@ -34,6 +39,7 @@ export default defineConfig({
   define: {
     "process.env.BUILD_SHA": JSON.stringify(BUILD_SHA),
     "process.env.ENABLE_HOSTED_PLUGINS": JSON.stringify(String(hostedPlugins)),
+    "process.env.ENABLE_GEN_UI": JSON.stringify(String(genUi)),
   },
   resolve: {
     alias: {
@@ -133,12 +139,13 @@ See https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-par
       closeBundle() {
         writeFileSync(
           buildInputsPath,
-          // The SHA and the flag are baked in by `define`, and neither changes
+          // The SHA and the flags are baked in by `define`, and none changes
           // a file, so mtimes alone can't spot that change.
           `${JSON.stringify(
             {
               buildSha: BUILD_SHA,
               hostedPlugins,
+              genUi,
               startedAt: buildStartedAt,
               inputs: [...new Set(buildInputs)].toSorted(),
             },
