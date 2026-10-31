@@ -22,6 +22,11 @@ import { type JsonEvalResult } from "../json-results/types.ts";
 import { printResultsTable, type ResultsByScenario } from "./report-table.ts";
 import { jevSummaryLines } from "./jev-judge-report.ts";
 import {
+  OUTPUT_CAP_HINT,
+  outputCapCount,
+  outputCapTurns,
+} from "./output-cap.ts";
+import {
   checkTally,
   judgeVerdict,
   modelWithThinking,
@@ -109,7 +114,27 @@ export function printSummary(
   console.log(
     `\n  ${totalRuns} run(s): ${passCount} pass, ${failCount} fail${skipText}${errorText}`,
   );
+  printOutputCapSummary(allResultGroups.flat());
   printJevSummary(allResultGroups.flat());
+}
+
+/**
+ * Print the total of turns that hit the output cap, when any did.
+ *
+ * @param results - Every result in the run
+ */
+function printOutputCapSummary(results: JsonEvalResult[]): void {
+  const capped = outputCapCount(results);
+
+  if (capped > 0) {
+    console.log(
+      "\n  " +
+        styleText(
+          "yellow",
+          `${capped} turn(s) hit the output cap and may be cut off; ${OUTPUT_CAP_HINT}`,
+        ),
+    );
+  }
 }
 
 /**
@@ -182,6 +207,12 @@ function formatSingleTrialLine(result: JsonEvalResult): string {
     parts.push(
       "tool errors " + styleText("yellow", String(result.toolErrors.count)),
     );
+  }
+
+  const capped = outputCapTurns(result).length;
+
+  if (capped > 0) {
+    parts.push("output cap " + styleText("yellow", String(capped)));
   }
 
   const score = scorePercentage([result]);

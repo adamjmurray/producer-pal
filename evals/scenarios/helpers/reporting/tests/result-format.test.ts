@@ -8,12 +8,12 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { type JsonEvalResult } from "../json-results/types.ts";
+import { type JsonEvalResult } from "../../json-results/types.ts";
 import {
   modelWithThinking,
   scorePercentage,
   toolErrorPenalty,
-} from "./result-format.ts";
+} from "../result-format.ts";
 
 /**
  * Build a minimal result with the given check outcomes and tool-error tally.

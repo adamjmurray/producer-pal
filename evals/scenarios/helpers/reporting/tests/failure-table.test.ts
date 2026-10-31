@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { type JsonEvalResult } from "../json-results/types.ts";
-import { buildFailureTable } from "./failure-table.ts";
+import { type JsonEvalResult } from "../../json-results/types.ts";
+import { buildFailureTable } from "../failure-table.ts";
 
 function trial(
   scenarioId: string,

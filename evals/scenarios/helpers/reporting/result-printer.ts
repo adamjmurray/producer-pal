@@ -19,6 +19,7 @@ import {
 import { formatTokenLabel } from "../json-results/assertion-label.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { jevJudgeNote, jevJudgeTag } from "./jev-judge-report.ts";
+import { OUTPUT_CAP_HINT, outputCapTurns } from "./output-cap.ts";
 import {
   checkTally,
   judgeVerdict,
@@ -61,6 +62,8 @@ export function printResult(result: JsonEvalResult): void {
 
   // Tool errors section (non-gating)
   printToolErrorsSection(result);
+
+  printOutputCapSection(result);
 
   // Efficiency section
   if (result.efficiency) {
@@ -154,6 +157,29 @@ function printToolErrorsSection(result: JsonEvalResult): void {
         styleText("yellow", `\u2022 ${where}: ${firstLine(error.message)}`),
     );
   }
+}
+
+/**
+ * Print the Output cap section — turns cut off by the max-output-tokens limit
+ *
+ * @param result - The eval result
+ */
+function printOutputCapSection(result: JsonEvalResult): void {
+  const turns = outputCapTurns(result);
+
+  if (turns.length === 0) {
+    return;
+  }
+
+  console.log("\n" + formatSubsectionHeader(`Output cap (${turns.length})`));
+  console.log("");
+  console.log(
+    "  " +
+      styleText(
+        "yellow",
+        `\u2022 turn ${turns.join(", ")} hit the output cap and may be cut off; ${OUTPUT_CAP_HINT}`,
+      ),
+  );
 }
 
 /**
@@ -341,6 +367,14 @@ function printNonGatingLines(result: JsonEvalResult): void {
     const text = `${tally.count} of ${tally.total} calls`;
 
     console.log(`  Tool errs:  ${styleText("yellow", text)}`);
+  }
+
+  const capped = outputCapTurns(result).length;
+
+  if (capped > 0) {
+    const text = `${capped} turn(s) hit it`;
+
+    console.log(`  Output cap: ${styleText("yellow", text)}`);
   }
 
   const score = scorePercentage([result]);

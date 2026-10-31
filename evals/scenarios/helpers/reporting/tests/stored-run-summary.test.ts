@@ -8,8 +8,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { stripVTControlCharacters } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type JsonEvalResult } from "../json-results/types.ts";
-import { printStoredRunSummary } from "./stored-run-summary.ts";
+import { type JsonEvalResult } from "../../json-results/types.ts";
+import { printStoredRunSummary } from "../stored-run-summary.ts";
 
 let dir: string;
 

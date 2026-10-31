@@ -55,6 +55,8 @@ export interface RunScenarioOptions {
   /** Label for the run environment (see `envLabel`), used in output/results. */
   envLabel: string;
   usage?: boolean;
+  /** Max output tokens per model call; absent uses the provider's default. */
+  outputTokens?: number;
   /** Thinking level for the model's turns; absent keeps the provider default. */
   thinking?: ThinkingLevel;
   skipJudge?: boolean;
@@ -129,6 +131,7 @@ export async function runScenario(
       instructions,
       usage: options.usage,
       thinking: options.thinking,
+      outputTokens: options.outputTokens,
       ...(proxy != null && { mcpUrl: proxy.url }),
     });
 

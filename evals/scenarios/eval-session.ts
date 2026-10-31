@@ -69,6 +69,9 @@ interface EvalSessionOptions {
    *  to the seeded connect turn (written into history, not generated) or to
    *  the judge. */
   thinking?: ThinkingLevel;
+  /** Max output tokens per model call (AI SDK providers; the agent CLIs have
+   *  no such knob). Absent uses the provider's default. */
+  outputTokens?: number;
   /** MCP endpoint to use instead of the real one (a tool-override proxy). */
   mcpUrl?: string;
 }
@@ -134,6 +137,8 @@ export async function createEvalSession(
         showUsage: options.usage,
         instructions: options.instructions,
         providerOptions,
+        maxOutputTokens: options.outputTokens,
+        provider: options.provider,
       });
 
       prevUsage = turn.lastUsage;

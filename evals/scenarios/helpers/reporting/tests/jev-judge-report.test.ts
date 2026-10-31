@@ -9,8 +9,8 @@ import {
   type JsonJevAnswer,
   type JsonJevJudgment,
   type JsonJudge,
-} from "../json-results/types.ts";
-import { jevJudgeNote, jevSummaryLines } from "./jev-judge-report.ts";
+} from "../../json-results/types.ts";
+import { jevJudgeNote, jevSummaryLines } from "../jev-judge-report.ts";
 
 const answer = (over: Partial<JsonJevAnswer> = {}): JsonJevAnswer => ({
   route: "typesafe",

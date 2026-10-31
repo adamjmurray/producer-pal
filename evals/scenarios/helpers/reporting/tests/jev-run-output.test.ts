@@ -9,12 +9,12 @@ import {
   type JsonEvalResult,
   type JsonJevAnswer,
   type JsonJudge,
-} from "../json-results/types.ts";
-import { printResult, printResultBlock } from "./result-printer.ts";
-import { type ResultsByScenario } from "./report-table.ts";
-import { printSummary } from "./summary-printer.ts";
+} from "../../json-results/types.ts";
+import { printResult, printResultBlock } from "../result-printer.ts";
+import { type ResultsByScenario } from "../report-table.ts";
+import { printSummary } from "../summary-printer.ts";
 
-vi.mock(import("./report-table.ts"), () => ({ printResultsTable: vi.fn() }));
+vi.mock(import("../report-table.ts"), () => ({ printResultsTable: vi.fn() }));
 
 const jevAnswer: JsonJevAnswer = {
   route: "typesafe",

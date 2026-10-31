@@ -17,6 +17,7 @@ import {
   streamText,
 } from "ai";
 import { MAX_TOOL_STEPS } from "#evals/shared/step-budget.ts";
+import { type EvalProvider } from "#evals/scenarios/types.ts";
 import {
   type StepTiming,
   type TokenUsage,
@@ -27,6 +28,28 @@ import { processCliStream } from "../stream.ts";
 import { type TurnResult } from "./types.ts";
 
 export const DEFAULT_MAX_TOKENS = 8192;
+
+/**
+ * Local models (LM Studio, Ollama) can think for tens of thousands of tokens,
+ * and reasoning counts against the cap, so 8192 cuts replies off mid tool call.
+ * A local server has no model limit to reject on: it stops at its context
+ * window. Hosted APIs reject a cap above the model's own maximum (Anthropic,
+ * OpenAI, Google) or reserve credit for the whole cap (OpenRouter), so they
+ * keep the lower default; use `--output-tokens` to raise it.
+ */
+export const LOCAL_MAX_TOKENS = 32768;
+
+/**
+ * The output cap to use when none was given.
+ *
+ * @param provider - The provider the turn runs on
+ * @returns The default max output tokens for that provider
+ */
+export function defaultMaxOutputTokens(
+  provider: EvalProvider | undefined,
+): number {
+  return provider === "local" ? LOCAL_MAX_TOKENS : DEFAULT_MAX_TOKENS;
+}
 
 export interface ModelTurnParams {
   model: LanguageModel;
@@ -41,7 +64,10 @@ export interface ModelTurnParams {
   instructions?: string | undefined;
   providerOptions?: Parameters<typeof streamText>[0]["providerOptions"];
   temperature?: number | undefined;
+  /** Output cap for each model call; absent uses the provider's default. */
   maxOutputTokens?: number | undefined;
+  /** Picks the default output cap when `maxOutputTokens` is absent. */
+  provider?: EvalProvider | undefined;
 }
 
 export interface ModelTurn {
@@ -77,7 +103,8 @@ export async function runModelTurn(
     stopWhen: stepCountIs(MAX_TOOL_STEPS),
     providerOptions: params.providerOptions,
     temperature: params.temperature,
-    maxOutputTokens: params.maxOutputTokens ?? DEFAULT_MAX_TOKENS,
+    maxOutputTokens:
+      params.maxOutputTokens ?? defaultMaxOutputTokens(params.provider),
     instructions: params.instructions,
     // Errors are rendered (in red) by processCliStream via the stream's
     // "error" part; suppress the SDK's default raw dump.

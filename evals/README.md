@@ -90,32 +90,33 @@ scripts/eval [options]
 
 ### Options
 
-| Flag                   | Description                                        |
-| ---------------------- | -------------------------------------------------- |
-| `-m, --model <model>`  | Model to test (required, repeatable)               |
-| `-t, --test <id>`      | Run specific scenario by ID (repeatable)           |
-| `--tag <name>`         | Run scenarios by tag (repeatable, comma-separated) |
-| `-a, --all`            | Run all scenarios                                  |
-| `--small-model`        | Enable small-model mode (basic skills + schemas)   |
-| `--json`               | JSON tool-result output (default: compact)         |
-| `--tools <list>`       | Tool subset, comma-separated (default: all)        |
-| `--live-api`           | Enable the Direct Live API tool (`ppal-live-api`)  |
-| `--thinking <spec>`    | Thinking level, for all models or `model=level`    |
-| `-j, --judge <model>`  | Judge model (default: `gemini-3.8-flash`)          |
-| `--jev`                | Jev judges first; `-j` decides what Jev escalates  |
-| `--jev-via <route>`    | Jev route: typesafe, openrouter, vercel            |
-| `-s, --skip-setup`     | Skip Live Set setup (reuse existing connection)    |
-| `--skip-judge`         | Skip the LLM-as-judge step (checks only)           |
-| `--skip-reflection`    | Skip the self-reflection turn after a failure      |
-| `--no-seed-connect`    | Let the model run the opening connect turn         |
-| `-q, --quiet`          | Suppress detailed AI and judge responses           |
-| `-r, --repeat <N>`     | Run every scenario N times, one round at a time    |
-| `--resume <runId>`     | Finish a stopped run (takes only `-r`, `-q`, `-u`) |
-| `-u, --usage`          | Show token usage per turn                          |
-| `--no-save`            | Skip writing JSON result files to disk             |
-| `-b, --base-url <url>` | Base URL for the `local` provider                  |
-| `-l, --list`           | List available scenarios                           |
-| `--list-tags`          | List scenario tags with their counts               |
+| Flag                      | Description                                                  |
+| ------------------------- | ------------------------------------------------------------ |
+| `-m, --model <model>`     | Model to test (required, repeatable)                         |
+| `-t, --test <id>`         | Run specific scenario by ID (repeatable)                     |
+| `--tag <name>`            | Run scenarios by tag (repeatable, comma-separated)           |
+| `-a, --all`               | Run all scenarios                                            |
+| `--small-model`           | Enable small-model mode (basic skills + schemas)             |
+| `--json`                  | JSON tool-result output (default: compact)                   |
+| `--tools <list>`          | Tool subset, comma-separated (default: all)                  |
+| `--live-api`              | Enable the Direct Live API tool (`ppal-live-api`)            |
+| `--thinking <spec>`       | Thinking level, for all models or `model=level`              |
+| `-o, --output-tokens <n>` | Max output tokens per call (default 8192; 32768 for `local`) |
+| `-j, --judge <model>`     | Judge model (default: `gemini-3.8-flash`)                    |
+| `--jev`                   | Jev judges first; `-j` decides what Jev escalates            |
+| `--jev-via <route>`       | Jev route: typesafe, openrouter, vercel                      |
+| `-s, --skip-setup`        | Skip Live Set setup (reuse existing connection)              |
+| `--skip-judge`            | Skip the LLM-as-judge step (checks only)                     |
+| `--skip-reflection`       | Skip the self-reflection turn after a failure                |
+| `--no-seed-connect`       | Let the model run the opening connect turn                   |
+| `-q, --quiet`             | Suppress detailed AI and judge responses                     |
+| `-r, --repeat <N>`        | Run every scenario N times, one round at a time              |
+| `--resume <runId>`        | Finish a stopped run (takes only `-r`, `-q`, `-u`)           |
+| `-u, --usage`             | Show token usage per turn                                    |
+| `--no-save`               | Skip writing JSON result files to disk                       |
+| `-b, --base-url <url>`    | Base URL for the `local` provider                            |
+| `-l, --list`              | List available scenarios                                     |
+| `--list-tags`             | List scenario tags with their counts                         |
 
 ### Model format
 

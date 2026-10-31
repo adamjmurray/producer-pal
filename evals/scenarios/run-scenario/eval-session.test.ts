@@ -68,3 +68,33 @@ describe("createEvalSession thinking", () => {
     expect(await providerOptionsFor()).toBeUndefined();
   });
 });
+
+describe("createEvalSession output cap", () => {
+  beforeEach(() => {
+    vi.mocked(runModelTurn).mockClear();
+  });
+
+  it("passes the cap and provider to the model turn", async () => {
+    const session = await createEvalSession({
+      provider: "local",
+      model: "m",
+      outputTokens: 4096,
+    });
+
+    await session.sendMessage("hi", 1);
+
+    expect(vi.mocked(runModelTurn).mock.calls.at(-1)?.[0]).toStrictEqual(
+      expect.objectContaining({ maxOutputTokens: 4096, provider: "local" }),
+    );
+  });
+
+  it("leaves the cap unset so the provider default applies", async () => {
+    const session = await createEvalSession({ provider: "local", model: "m" });
+
+    await session.sendMessage("hi", 1);
+
+    expect(
+      vi.mocked(runModelTurn).mock.calls.at(-1)?.[0].maxOutputTokens,
+    ).toBeUndefined();
+  });
+});

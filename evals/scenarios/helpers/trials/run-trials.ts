@@ -31,6 +31,7 @@ export interface TrialRunOptions {
   skipReflection?: boolean;
   seedConnect?: boolean;
   usage?: boolean;
+  outputTokens?: number;
   save?: boolean;
 }
 
@@ -80,6 +81,7 @@ export async function runTrial(
     runEnv,
     envLabel: label,
     usage: options.usage,
+    outputTokens: options.outputTokens,
     thinking: ctx.thinking?.get(modelKey),
     skipJudge: options.skipJudge,
     jev,

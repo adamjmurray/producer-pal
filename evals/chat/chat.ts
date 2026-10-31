@@ -89,6 +89,7 @@ export async function runChat(
               ? undefined
               : sess.options.randomness,
             maxOutputTokens: sess.options.outputTokens,
+            provider: sess.options.provider,
           });
 
           prevUsage = turn.lastUsage;

@@ -6,7 +6,12 @@
 import { type LanguageModel, type ModelMessage, streamText } from "ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { processCliStream } from "../stream.ts";
-import { DEFAULT_MAX_TOKENS, runModelTurn } from "./model-turn.ts";
+import {
+  DEFAULT_MAX_TOKENS,
+  LOCAL_MAX_TOKENS,
+  defaultMaxOutputTokens,
+  runModelTurn,
+} from "./model-turn.ts";
 
 vi.mock(import("ai"), async (importOriginal) => ({
   ...(await importOriginal()),
@@ -89,6 +94,43 @@ describe("runModelTurn", () => {
     expect(turn.lastUsage).toBe(prevUsage);
   });
 
+  it.each([
+    ["local", LOCAL_MAX_TOKENS],
+    ["anthropic", DEFAULT_MAX_TOKENS],
+    [undefined, DEFAULT_MAX_TOKENS],
+  ] as const)("defaults the cap for provider %s", async (provider, cap) => {
+    vi.mocked(processCliStream).mockResolvedValue({ text: "" } as never);
+
+    await runModelTurn({
+      model,
+      messages: [],
+      tools: {},
+      erroredToolCallIds: new Set(),
+      provider,
+    });
+
+    expect(vi.mocked(streamText).mock.calls[0]?.[0]).toStrictEqual(
+      expect.objectContaining({ maxOutputTokens: cap }),
+    );
+  });
+
+  it("lets an explicit cap override the local default", async () => {
+    vi.mocked(processCliStream).mockResolvedValue({ text: "" } as never);
+
+    await runModelTurn({
+      model,
+      messages: [],
+      tools: {},
+      erroredToolCallIds: new Set(),
+      provider: "local",
+      maxOutputTokens: 500,
+    });
+
+    expect(vi.mocked(streamText).mock.calls[0]?.[0]).toStrictEqual(
+      expect.objectContaining({ maxOutputTokens: 500 }),
+    );
+  });
+
   it("returns no messages after a stream error", async () => {
     vi.mocked(processCliStream).mockResolvedValue({
       text: "",
@@ -104,5 +146,24 @@ describe("runModelTurn", () => {
 
     expect(turn.responseMessages).toStrictEqual([]);
     expect(turn.turnResult.error).toBe("boom");
+  });
+});
+
+describe("defaultMaxOutputTokens", () => {
+  it("raises the cap only for local models", () => {
+    expect(defaultMaxOutputTokens("local")).toBeGreaterThan(DEFAULT_MAX_TOKENS);
+    expect(
+      (
+        [
+          "anthropic",
+          "claude-code",
+          "codex-code",
+          "google",
+          "openai",
+          "openrouter",
+          "vercel",
+        ] as const
+      ).map(defaultMaxOutputTokens),
+    ).toStrictEqual(Array(7).fill(DEFAULT_MAX_TOKENS));
   });
 });

@@ -11,6 +11,7 @@
 import { type InspectColor, styleText } from "node:util";
 import { efficiencyColor, pctColor } from "#evals/chat/shared/formatting.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
+import { outputCapCount } from "../reporting/output-cap.ts";
 import { checkTally, scorePercentage } from "../reporting/result-format.ts";
 
 /**
@@ -126,6 +127,16 @@ export function buildMultiTrialParts(trials: JsonEvalResult[]): SummaryPart[] {
     parts.push({
       label: "tool errors",
       value: String(toolErrors),
+      color: "yellow",
+    });
+  }
+
+  const capped = outputCapCount(trials);
+
+  if (capped > 0) {
+    parts.push({
+      label: "output cap",
+      value: String(capped),
       color: "yellow",
     });
   }

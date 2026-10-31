@@ -20,6 +20,7 @@ import {
   type ModelSpec,
   parseModelArgOrExit,
 } from "#evals/shared/parse-model-arg.ts";
+import { parseOutputTokens } from "./run-env/parse-output-tokens.ts";
 import {
   describeThinking,
   parseThinkingArgs,
@@ -87,6 +88,8 @@ interface CliOptions {
   seedConnect?: boolean;
   quiet?: boolean;
   usage?: boolean;
+  /** Max output tokens per model call (default depends on the provider). */
+  outputTokens?: number;
   /** Whether to write JSON result files to disk (--no-save sets false). */
   save?: boolean;
   baseUrl?: string;
@@ -167,6 +170,11 @@ program
     "Thinking level (off, low, medium, high, ultra) for every -m model, or <provider/model>=<level> for one (repeatable, comma-separated)",
     collectValues,
     [],
+  )
+  .option(
+    "-o, --output-tokens <number>",
+    "Max output tokens per model call, reasoning included (AI SDK providers; default 8192, 32768 for local)",
+    parseOutputTokens,
   )
   .option(
     "-j, --judge <provider/model>",
