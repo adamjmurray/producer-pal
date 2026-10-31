@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Model-aware thinking settings for OpenAI, OpenRouter and Anthropic. The chat
- * UI and the evals CLI each map their own thinking setting onto
- * `ThinkingEffort` first. No imports of our own: the evals typecheck webui
+ * Model-aware thinking settings for OpenAI, OpenRouter, Anthropic, Gemini and
+ * Ollama. The chat UI and the evals CLI each map their own thinking setting
+ * onto `ThinkingEffort` first. No imports of our own: the evals typecheck webui
  * files without webui's path aliases.
  */
 
@@ -150,6 +150,51 @@ export function mapThinkingToOpenRouterEffort(
     default:
       return level;
   }
+}
+
+/**
+ * Maps a thinking setting to Ollama's `reasoning_effort`. Ollama's OpenAI
+ * endpoint ignores `think`; `none` turns reasoning off. Max sends nothing:
+ * models that can't think refuse any other effort with a 400.
+ * @param level - Thinking setting
+ * @returns effort, or undefined to let the model decide
+ */
+export function mapThinkingToOllamaEffort(
+  level: ThinkingEffort,
+): ReasoningEffort | undefined {
+  return level === "off" ? "none" : undefined;
+}
+
+/**
+ * The `thinkingConfig` that turns Gemini thinking down for "Off", by model
+ * version. Gemini 3+ can't fully switch off and some models refuse a zero
+ * budget, so it gets its lowest level (3.8 Flash still thinks a little). Gemini
+ * 2.5 takes a zero budget, except the Pro models, which can't disable thinking.
+ * Unknown or older ids get nothing, as before.
+ * @param model - Gemini model id (`gemini-3.8-flash`)
+ * @returns thinkingConfig, or undefined to omit it
+ */
+export function getGeminiOffThinkingConfig(
+  model: string,
+): { thinkingLevel: "low" } | { thinkingBudget: 0 } | undefined {
+  const match = model.match(/^gemini-(\d+)(?:\.(\d+))?/);
+
+  if (!match?.[1]) {
+    return undefined;
+  }
+
+  const major = Number(match[1]);
+  const minor = Number(match[2] ?? 0);
+
+  if (major >= 3) {
+    return { thinkingLevel: "low" };
+  }
+
+  if (major === 2 && minor >= 5 && !model.includes("-pro")) {
+    return { thinkingBudget: 0 };
+  }
+
+  return undefined;
 }
 
 export interface AnthropicOptionsRoute {

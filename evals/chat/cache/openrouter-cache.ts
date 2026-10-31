@@ -8,7 +8,8 @@
  * breakpoints (system message and conversation tail), mark the connect turn's
  * result on Claude models: it holds the Skills and is byte-identical across
  * scenarios on the same Live Set, so every scenario after the first reads it
- * from cache. Unlike the chat UI, this leaves reasoning alone.
+ * from cache. Reasoning Off is settled per model, as in the chat UI; unlike the
+ * chat UI, earlier Claude reasoning is left alone.
  */
 
 import {
@@ -16,18 +17,24 @@ import {
   markMessageContent,
   type OpenRouterRequestBody,
 } from "#webui/chat/sdk/provider/openrouter-cache-control.ts";
+import { settleOpenRouterReasoningOff } from "#webui/chat/sdk/provider/openrouter-reasoning.ts";
 import {
   rewritingFetch,
   type RewritingFetch,
 } from "#webui/chat/sdk/provider/rewriting-fetch.ts";
 
 /** The fetch to hand `createOpenRouter` so eval requests are cached. */
-export const cacheOpenRouterRequest: RewritingFetch = rewritingFetch((body) => {
-  const request = body as OpenRouterRequestBody;
-  const connectMarked = markOpenRouterConnectResult(request);
+export const cacheOpenRouterRequest: RewritingFetch = rewritingFetch(
+  async (body) => {
+    const request = body as OpenRouterRequestBody;
+    // Every step runs: `||` would skip the later ones once an earlier one changed.
+    const settled = await settleOpenRouterReasoningOff(request);
+    const connectMarked = markOpenRouterConnectResult(request);
+    const cached = addOpenRouterCacheControl(request);
 
-  return addOpenRouterCacheControl(request) || connectMarked;
-});
+    return settled || connectMarked || cached;
+  },
+);
 
 /**
  * Mark the first tool message: the connect turn's result, since every scenario

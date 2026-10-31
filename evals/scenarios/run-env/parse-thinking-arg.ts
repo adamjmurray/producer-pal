@@ -166,9 +166,9 @@ function assertExpressible(spec: ModelSpec, level: string): void {
     return;
   }
 
-  if (spec.provider === "local") {
+  if (spec.provider === "local" && level !== "off") {
     throw new Error(
-      `--thinking can't be set for ${key}: local models have no thinking setting.`,
+      `--thinking ${level} can't be set for ${key}: local models take off only.`,
     );
   }
 

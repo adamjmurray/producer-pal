@@ -137,3 +137,72 @@ describe("buildProviderOptions for OpenAI", () => {
     });
   });
 });
+
+describe("buildProviderOptions for Gemini", () => {
+  it("sends a low thinking level for off on Gemini 3+", () => {
+    const low = { google: { thinkingConfig: { thinkingLevel: "low" } } };
+
+    expect(
+      buildProviderOptions("google", "off", "gemini-3.8-flash"),
+    ).toStrictEqual(low);
+    expect(
+      buildProviderOptions("vercel", "off", "google/gemini-3.8-flash"),
+    ).toStrictEqual(low);
+  });
+
+  it("sends a zero budget for off on Gemini 2.5 except Pro", () => {
+    expect(
+      buildProviderOptions("google", "off", "gemini-2.5-flash"),
+    ).toStrictEqual({ google: { thinkingConfig: { thinkingBudget: 0 } } });
+    expect(
+      buildProviderOptions("google", "off", "gemini-2.5-pro"),
+    ).toBeUndefined();
+  });
+
+  it("treats a zero token budget like off", () => {
+    expect(
+      buildProviderOptions("google", "0", "gemini-3.8-flash"),
+    ).toStrictEqual({ google: { thinkingConfig: { thinkingLevel: "low" } } });
+  });
+
+  it("still sends a budget for other levels", () => {
+    expect(
+      buildProviderOptions("google", "medium", "gemini-2.5-pro"),
+    ).toStrictEqual({
+      google: {
+        thinkingConfig: { thinkingBudget: 4096, includeThoughts: true },
+      },
+    });
+  });
+});
+
+describe("buildProviderOptions for OpenRouter", () => {
+  it("sends effort none for off", () => {
+    expect(
+      buildProviderOptions("openrouter", "off", "deepseek/deepseek-v4.1-flash"),
+    ).toStrictEqual({ openrouter: { reasoning: { effort: "none" } } });
+  });
+
+  it("sends the named effort for other levels", () => {
+    expect(
+      buildProviderOptions(
+        "openrouter",
+        "ultra",
+        "deepseek/deepseek-v4.1-flash",
+      ),
+    ).toStrictEqual({ openrouter: { reasoning: { effort: "xhigh" } } });
+  });
+});
+
+describe("buildProviderOptions for the local provider", () => {
+  it("sends reasoning effort none for off", () => {
+    expect(buildProviderOptions("local", "off", "qwen3.8")).toStrictEqual({
+      local: { reasoningEffort: "none" },
+    });
+  });
+
+  it("sends nothing for other levels or when unset", () => {
+    expect(buildProviderOptions("local", "ultra", "qwen3.8")).toBeUndefined();
+    expect(buildProviderOptions("local", undefined, "qwen3.8")).toBeUndefined();
+  });
+});

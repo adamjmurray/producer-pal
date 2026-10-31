@@ -6,14 +6,12 @@
 import { type ProviderOptions } from "@ai-sdk/provider-utils";
 import {
   buildAnthropicProviderOptions,
+  getGeminiOffThinkingConfig,
   isOpenAIReasoningModel,
+  mapThinkingToOllamaEffort,
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
 } from "#webui/chat/sdk/provider/thinking-effort";
-import {
-  getGeminiOffThinkingConfig,
-  mapThinkingToOllamaEffort,
-} from "#webui/hooks/settings/config-builders";
 import { getThinkingBudget, toThinkingEffort } from "#webui/lib/config";
 import { type Provider } from "#webui/types/settings";
 
@@ -35,7 +33,9 @@ export function buildProviderOptions(
   }
 
   if (provider === "ollama") {
-    const reasoningEffort = mapThinkingToOllamaEffort(thinking);
+    const reasoningEffort = mapThinkingToOllamaEffort(
+      toThinkingEffort(thinking),
+    );
 
     return reasoningEffort ? { openai: { reasoningEffort } } : undefined;
   }

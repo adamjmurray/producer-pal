@@ -11,6 +11,8 @@
 import { type ProviderOptions } from "@ai-sdk/provider-utils";
 import {
   buildAnthropicProviderOptions,
+  getGeminiOffThinkingConfig,
+  mapThinkingToOllamaEffort,
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
   type ThinkingEffort,
@@ -58,7 +60,7 @@ export function buildProviderOptions(
     case "anthropic":
       return buildAnthropicThinking(level, model, false);
     case "google":
-      return buildGeminiThinking(level);
+      return buildGeminiThinking(level, model);
     case "openai":
       return buildOpenAIThinking(level, model);
     case "openrouter":
@@ -68,7 +70,7 @@ export function buildProviderOptions(
         buildGatewayThinking(level, model) ?? warnGatewayIgnored(level, model)
       );
     case "local":
-      return undefined;
+      return buildLocalThinking(level);
     // The agent CLIs carry their own reasoning configuration.
     case "claude-code":
     case "codex-code":
@@ -110,16 +112,28 @@ function buildAnthropicThinking(
 }
 
 /**
- * Build Gemini thinking provider options. Off leaves the setting out.
+ * Build Gemini thinking provider options. Off (or a zero budget) uses the chat
+ * UI's per-model rule: Gemini 3+ a low level, 2.5 non-Pro a zero budget,
+ * anything else nothing.
  *
  * @param level - Thinking level string
+ * @param model - Gemini model id, without any gateway prefix
  * @returns Provider options with google thinkingConfig
  */
-function buildGeminiThinking(level: string): ProviderOptions | undefined {
+function buildGeminiThinking(
+  level: string,
+  model: string,
+): ProviderOptions | undefined {
   const thinkingBudget = resolveBudget(level, GEMINI_THINKING_MAP);
 
-  if (thinkingBudget == null || thinkingBudget === 0) {
+  if (thinkingBudget == null) {
     return undefined;
+  }
+
+  if (thinkingBudget === 0) {
+    const thinkingConfig = getGeminiOffThinkingConfig(model);
+
+    return thinkingConfig ? { google: { thinkingConfig } } : undefined;
   }
 
   return {
@@ -150,7 +164,9 @@ function buildOpenAIThinking(
 }
 
 /**
- * Build OpenRouter thinking provider options. Off leaves the setting out.
+ * Build OpenRouter thinking provider options. Off sends effort "none"; the
+ * request rewrite in openrouter-cache.ts raises it to "low" for models that
+ * refuse "none".
  *
  * @param level - Thinking level string
  * @returns Provider options with openrouter reasoning
@@ -158,7 +174,7 @@ function buildOpenAIThinking(
 function buildOpenRouterThinking(level: string): ProviderOptions | undefined {
   const thinking = THINKING_EFFORT[level];
 
-  if (thinking == null || thinking === "off") {
+  if (thinking == null) {
     return undefined;
   }
 
@@ -167,6 +183,22 @@ function buildOpenRouterThinking(level: string): ProviderOptions | undefined {
       reasoning: { effort: mapThinkingToOpenRouterEffort(thinking) },
     },
   };
+}
+
+/**
+ * Build thinking options for the local OpenAI-compatible server (Ollama by
+ * default, see LOCAL_DEFAULT_BASE_URL). Only Off is expressible, with the chat
+ * UI's Ollama rule. The `local` key is the provider name in provider.ts.
+ *
+ * @param level - Thinking level string
+ * @returns Provider options with reasoningEffort, or undefined
+ */
+function buildLocalThinking(level: string): ProviderOptions | undefined {
+  const effort = THINKING_EFFORT[level];
+  const reasoningEffort =
+    effort == null ? undefined : mapThinkingToOllamaEffort(effort);
+
+  return reasoningEffort ? { local: { reasoningEffort } } : undefined;
 }
 
 /**
@@ -188,7 +220,7 @@ function buildGatewayThinking(
     case "anthropic":
       return buildAnthropicThinking(level, rest.join("/"), true);
     case "google":
-      return buildGeminiThinking(level);
+      return buildGeminiThinking(level, rest.join("/"));
     case "openai":
       return buildOpenAIThinking(level, model);
     default:

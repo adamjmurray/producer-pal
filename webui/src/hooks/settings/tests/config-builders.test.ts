@@ -5,8 +5,6 @@
 
 import { describe, it, expect } from "vitest";
 import {
-  getGeminiOffThinkingConfig,
-  mapThinkingToOllamaEffort,
   mapThinkingToRealtimeEffort,
   mapTurnDetectionToConfig,
 } from "#webui/hooks/settings/config-builders";
@@ -51,51 +49,6 @@ describe("config-builders", () => {
           .interrupt_response,
       ).toBe(false);
     });
-  });
-
-  describe("mapThinkingToOllamaEffort", () => {
-    it("should return undefined for Default", () => {
-      expect(mapThinkingToOllamaEffort("Default")).toBeUndefined();
-    });
-
-    it("should map Off to none", () => {
-      expect(mapThinkingToOllamaEffort("Off")).toBe("none");
-    });
-
-    it("should send nothing for Max", () => {
-      expect(mapThinkingToOllamaEffort("Max")).toBeUndefined();
-    });
-
-    it("should return undefined for unknown thinking level", () => {
-      expect(mapThinkingToOllamaEffort("UnknownLevel")).toBeUndefined();
-    });
-  });
-
-  describe("getGeminiOffThinkingConfig", () => {
-    it.each(["gemini-3.8-flash", "gemini-4-argon", "gemini-3.5-flash-lite"])(
-      "uses the low thinking level for Gemini 3+ (%s)",
-      (model) => {
-        expect(getGeminiOffThinkingConfig(model)).toStrictEqual({
-          thinkingLevel: "low",
-        });
-      },
-    );
-
-    it.each(["gemini-2.5-flash", "gemini-2.5-flash-lite"])(
-      "uses a zero budget for Gemini 2.5 (%s)",
-      (model) => {
-        expect(getGeminiOffThinkingConfig(model)).toStrictEqual({
-          thinkingBudget: 0,
-        });
-      },
-    );
-
-    it.each(["gemini-2.5-pro", "gemini-2.0-flash", "gemini-pro", "gemma-4"])(
-      "sends nothing for models that can't turn thinking off (%s)",
-      (model) => {
-        expect(getGeminiOffThinkingConfig(model)).toBeUndefined();
-      },
-    );
   });
 
   describe("mapThinkingToRealtimeEffort", () => {

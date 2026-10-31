@@ -157,9 +157,12 @@ own default. `--thinking` sets it for the model's eval turns (never the judge):
 Levels are the chat CLI's: `off`, `low`, `medium`, `high`, `ultra` (a plain
 number is a token budget, Gemini only). A level the model's provider can't take
 is refused before the run starts: `off` for `claude-code` and `codex-code`, and
-any level for `local`. `claude-code` passes `--effort` and `codex-code` passes
-`-c model_reasoning_effort`; `ultra` becomes `max` on both. API providers use
-the same mapping as the chat CLI.
+any level but `off` for `local`. `claude-code` passes `--effort` and
+`codex-code` passes `-c model_reasoning_effort`; `ultra` becomes `max` on both.
+API providers use the same mapping as the chat CLI. `off` follows the chat UI's
+per-model rules: Gemini 3+ gets its lowest level and 2.5 (non-Pro) a zero
+budget, OpenRouter gets effort `none` (raised to `low` for models that can't
+turn reasoning off), and `local` gets `reasoning_effort: none`.
 
 Each saved result carries `thinking` when a level was set, and the run header,
 summary and results table show it. Runs at different levels don't overwrite one

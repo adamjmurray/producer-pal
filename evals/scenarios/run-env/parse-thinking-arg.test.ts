@@ -103,9 +103,12 @@ describe("parseThinkingArgs", () => {
     expect(result.get("openai/gpt-6.1-sol")).toBe("off");
   });
 
-  it("rejects thinking for a local model", () => {
+  it("takes only off for a local model", () => {
+    expect(parseThinkingArgs(["off"], [LOCAL]).get("local/qwen3.8")).toBe(
+      "off",
+    );
     expect(() => parseThinkingArgs(["high"], [LOCAL])).toThrow(
-      /local models have no thinking setting/,
+      /local models take off only/,
     );
   });
 
