@@ -41,11 +41,13 @@ export function buildProviderOptions(
   }
 
   if (provider === "openrouter") {
+    const effort = mapThinkingToOpenRouterEffort(toThinkingEffort(thinking));
+
+    // Default names no effort. `enabled` still turns reasoning on, which
+    // models like Claude need to think (and to keep their replayed reasoning).
     return {
       openrouter: {
-        reasoning: {
-          effort: mapThinkingToOpenRouterEffort(toThinkingEffort(thinking)),
-        },
+        reasoning: effort ? { effort } : { enabled: true },
       },
     };
   }
@@ -138,8 +140,15 @@ function buildGeminiOptions(
     return thinkingConfig ? { google: { thinkingConfig } } : undefined;
   }
 
+  // Default sends no budget (-1), so Gemini picks its own; only the thought
+  // summaries are requested.
   return {
-    google: { thinkingConfig: { thinkingBudget, includeThoughts: true } },
+    google: {
+      thinkingConfig: {
+        ...(thinkingBudget >= 0 ? { thinkingBudget } : {}),
+        includeThoughts: true,
+      },
+    },
   };
 }
 

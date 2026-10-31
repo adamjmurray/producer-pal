@@ -65,27 +65,18 @@ describe("buildProviderOptions for the Vercel gateway", () => {
     });
   });
 
-  it("keeps legacy budget thinking for Haiku 4.5", () => {
-    expect(
-      buildProviderOptions("vercel", "Max", "anthropic/claude-haiku-4.5"),
-    ).toStrictEqual({
-      ...caching,
-      anthropic: { thinking: { type: "enabled", budgetTokens: 16384 } },
-    });
-  });
-
   it("uses the OpenAI and Google options for those upstreams", () => {
     expect(
       buildProviderOptions("vercel", "Default", "openai/gpt-6-luna"),
     ).toStrictEqual({
       ...caching,
-      openai: { reasoningEffort: "medium", reasoningSummary: "auto" },
+      openai: { reasoningSummary: "auto" },
     });
     expect(
       buildProviderOptions("vercel", "Default", "google/gemini-3.8-flash"),
     ).toStrictEqual({
       ...caching,
-      google: { thinkingConfig: { thinkingBudget: -1, includeThoughts: true } },
+      google: { thinkingConfig: { includeThoughts: true } },
     });
   });
 

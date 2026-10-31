@@ -50,8 +50,8 @@ describe("mapThinkingToReasoningEffort", () => {
       expect(mapThinkingToReasoningEffort("max", "o1")).toBe("high");
     });
 
-    it("should map auto to medium", () => {
-      expect(mapThinkingToReasoningEffort("auto", "o1")).toBe("medium");
+    it("should send no effort for auto", () => {
+      expect(mapThinkingToReasoningEffort("auto", "o1")).toBeUndefined();
     });
 
     it("should return undefined for off", () => {
@@ -72,10 +72,10 @@ describe("mapThinkingToReasoningEffort", () => {
       );
     });
 
-    it("should map auto to medium", () => {
-      expect(mapThinkingToReasoningEffort("auto", "gpt-5.1-2025-01-01")).toBe(
-        "medium",
-      );
+    it("should send no effort for auto", () => {
+      expect(
+        mapThinkingToReasoningEffort("auto", "gpt-5.1-2025-01-01"),
+      ).toBeUndefined();
     });
 
     it("should map off to undefined", () => {
@@ -106,8 +106,10 @@ describe("mapThinkingToReasoningEffort", () => {
       expect(mapThinkingToReasoningEffort("off", "gpt-6-sol")).toBe("none");
     });
 
-    it("should map auto to medium", () => {
-      expect(mapThinkingToReasoningEffort("auto", "gpt-6-luna")).toBe("medium");
+    it("should send no effort for auto", () => {
+      expect(
+        mapThinkingToReasoningEffort("auto", "gpt-6-luna"),
+      ).toBeUndefined();
     });
   });
 
@@ -118,10 +120,10 @@ describe("mapThinkingToReasoningEffort", () => {
       );
     });
 
-    it("should map auto to medium", () => {
-      expect(mapThinkingToReasoningEffort("auto", "gpt-5.2-2025-12-11")).toBe(
-        "medium",
-      );
+    it("should send no effort for auto", () => {
+      expect(
+        mapThinkingToReasoningEffort("auto", "gpt-5.2-2025-12-11"),
+      ).toBeUndefined();
     });
   });
 });
@@ -145,8 +147,8 @@ describe("mapThinkingToOpenRouterEffort", () => {
     expect(mapThinkingToOpenRouterEffort("max")).toBe("xhigh");
   });
 
-  it("should map auto to medium", () => {
-    expect(mapThinkingToOpenRouterEffort("auto")).toBe("medium");
+  it("should send no effort for auto", () => {
+    expect(mapThinkingToOpenRouterEffort("auto")).toBeUndefined();
   });
 
   it("should map off to none", () => {

@@ -283,11 +283,11 @@ describe("chatAdapter", () => {
       });
     });
 
-    it("sets reasoningEffort and reasoningSummary for openai reasoning model with Default thinking", () => {
+    it("sends a reasoningSummary but no effort for openai reasoning model with Default thinking", () => {
       const config = buildForProvider("openai", "Default", "gpt-5.2");
 
       expect(config.providerOptions).toStrictEqual({
-        openai: { reasoningEffort: "medium", reasoningSummary: "auto" },
+        openai: { reasoningSummary: "auto" },
       });
     });
 
@@ -338,15 +338,12 @@ describe("chatAdapter", () => {
       });
     });
 
-    it("sets Gemini thinkingConfig with -1 budget for Default thinking", () => {
+    it("asks Gemini for thoughts without a budget for Default thinking", () => {
       const config = buildForProvider("gemini", "Default", "gemini-2.0-flash");
 
       expect(config.providerOptions).toStrictEqual({
         google: {
-          thinkingConfig: {
-            thinkingBudget: -1,
-            includeThoughts: true,
-          },
+          thinkingConfig: { includeThoughts: true },
         },
       });
     });
@@ -389,15 +386,11 @@ describe("chatAdapter", () => {
       expect(config.providerOptions).toBeUndefined();
     });
 
-    it("sets medium reasoning effort for openrouter with Default thinking", () => {
+    it("enables openrouter reasoning without an effort for Default thinking", () => {
       const config = buildForProvider("openrouter", "Default", "some-model");
 
       expect(config.providerOptions).toStrictEqual({
-        openrouter: {
-          reasoning: {
-            effort: "medium",
-          },
-        },
+        openrouter: { reasoning: { enabled: true } },
       });
     });
 
@@ -420,14 +413,11 @@ describe("chatAdapter", () => {
       });
     });
 
-    it("sets anthropic adaptive thinking with high effort for Default thinking", () => {
+    it("sets anthropic adaptive thinking with no effort for Default thinking", () => {
       const config = buildForProvider("anthropic");
 
       expect(config.providerOptions).toStrictEqual({
-        anthropic: {
-          thinking: { type: "adaptive" },
-          effort: "high",
-        },
+        anthropic: { thinking: { type: "adaptive" } },
       });
     });
 
@@ -435,16 +425,6 @@ describe("chatAdapter", () => {
       const config = buildForProvider("anthropic", "Off");
 
       expect(config.providerOptions).toBeUndefined();
-    });
-
-    it("uses legacy enabled thinking for haiku model", () => {
-      const config = buildForProvider("anthropic", "Max", "claude-haiku-4-5");
-
-      expect(config.providerOptions).toStrictEqual({
-        anthropic: {
-          thinking: { type: "enabled", budgetTokens: 16384 },
-        },
-      });
     });
 
     it("omits thinking for a pre-3.7 anthropic model even when thinking is active", () => {
@@ -457,26 +437,6 @@ describe("chatAdapter", () => {
       );
 
       expect(config.providerOptions).toBeUndefined();
-    });
-
-    it("omits legacy thinking for a haiku model with Off thinking", () => {
-      const config = buildForProvider("anthropic", "Off", "claude-haiku-4-5");
-
-      expect(config.providerOptions).toBeUndefined();
-    });
-
-    it("gives a haiku model a concrete budget for Default thinking", () => {
-      // The legacy `enabled` payload has no adaptive equivalent of "let the API
-      // decide" (-1), so Default has to name a budget.
-      const config = buildForProvider(
-        "anthropic",
-        "Default",
-        "claude-haiku-4-5",
-      );
-
-      expect(config.providerOptions).toStrictEqual({
-        anthropic: { thinking: { type: "enabled", budgetTokens: 10240 } },
-      });
     });
 
     it("asks for a reasoning summary without an effort on a pre-5.1 gpt-5", () => {

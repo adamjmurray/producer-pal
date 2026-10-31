@@ -9,7 +9,6 @@ import {
   getThinkingOffType,
   isAlwaysOnThinkingModel,
   isLegacyNonThinkingModel,
-  isLegacyThinkingModel,
 } from "#webui/chat/sdk/provider/thinking-effort";
 
 describe("getThinkingOffType", () => {
@@ -22,7 +21,6 @@ describe("getThinkingOffType", () => {
     ["claude-opus-5.5", undefined],
     ["claude-fable-5-1", undefined],
     ["claude-mythos-5", undefined],
-    ["claude-haiku-4-5", undefined],
     ["claude-3-5-sonnet-20241022", undefined],
   ])("for %s is %s", (model, expected) => {
     expect(getThinkingOffType(model)).toBe(expected);
@@ -43,19 +41,6 @@ describe("isAlwaysOnThinkingModel", () => {
   it("is false for other models", () => {
     expect(isAlwaysOnThinkingModel("claude-sonnet-5-5")).toBe(false);
     expect(isAlwaysOnThinkingModel("claude-haiku-4-5")).toBe(false);
-  });
-});
-
-describe("isLegacyThinkingModel", () => {
-  it("is true for Haiku 4.5 ids", () => {
-    expect(isLegacyThinkingModel("claude-haiku-4-5")).toBe(true);
-    expect(isLegacyThinkingModel("claude-haiku-4-5-20251001")).toBe(true);
-    expect(isLegacyThinkingModel("anthropic/claude-haiku-4.5")).toBe(true);
-  });
-
-  it("is false for Haiku 5.5, which rejects budget thinking", () => {
-    expect(isLegacyThinkingModel("claude-haiku-5-5")).toBe(false);
-    expect(isLegacyThinkingModel("anthropic/claude-haiku-5.5")).toBe(false);
   });
 });
 
@@ -82,7 +67,6 @@ describe("buildAnthropicProviderOptions", () => {
   const gateway = { explicitOff: true, summarized: true };
 
   it.each([
-    ["auto", "high"],
     ["low", "low"],
     ["medium", "medium"],
     ["high", "high"],
@@ -95,13 +79,18 @@ describe("buildAnthropicProviderOptions", () => {
     });
   });
 
+  it("sends adaptive thinking with no effort for auto", () => {
+    expect(
+      buildAnthropicProviderOptions("auto", "claude-sonnet-5-5", direct),
+    ).toStrictEqual({ anthropic: { thinking: { type: "adaptive" } } });
+  });
+
   it("asks for summarized thinking when the route can't rewrite the request", () => {
     expect(
       buildAnthropicProviderOptions("auto", "claude-sonnet-5-5", gateway),
     ).toStrictEqual({
       anthropic: {
         thinking: { type: "adaptive", display: "summarized" },
-        effort: "high",
       },
     });
   });
@@ -130,22 +119,6 @@ describe("buildAnthropicProviderOptions", () => {
     expect(
       buildAnthropicProviderOptions("off", "claude-fable-5-1", gateway),
     ).toStrictEqual(low);
-  });
-
-  it("uses a token budget on Haiku 4.5", () => {
-    const enabled = (budgetTokens: number): object => ({
-      anthropic: { thinking: { type: "enabled", budgetTokens } },
-    });
-
-    expect(
-      buildAnthropicProviderOptions("auto", "claude-haiku-4-5", direct),
-    ).toStrictEqual(enabled(10240));
-    expect(
-      buildAnthropicProviderOptions("max", "claude-haiku-4-5", gateway),
-    ).toStrictEqual(enabled(16384));
-    expect(
-      buildAnthropicProviderOptions("off", "claude-haiku-4-5", gateway),
-    ).toBeUndefined();
   });
 
   it("never sends thinking to models that predate it", () => {

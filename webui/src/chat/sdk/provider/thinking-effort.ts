@@ -14,8 +14,8 @@ import { type ProviderOptions } from "@ai-sdk/provider-utils";
 import { getModelCapabilities } from "@ai-sdk/anthropic/internal";
 
 /**
- * A thinking setting both clients can express. "auto" is the UI default:
- * a mid level, or the API's own choice.
+ * A thinking setting both clients can express. "auto" is the UI default: no
+ * effort is sent, so the provider's own reasoning default applies.
  */
 export type ThinkingEffort = "off" | "auto" | "low" | "medium" | "high" | "max";
 
@@ -84,7 +84,8 @@ function supportsXHigh(model: string): boolean {
 }
 
 /**
- * Maps a thinking setting to OpenAI reasoning_effort based on model.
+ * Maps a thinking setting to OpenAI reasoning_effort based on model. Auto
+ * sends none, so the model reasons at its own default.
  * - o1/o3: low, medium, high
  * - gpt-5.1+: low, medium, high (xhigh for 5.2+ or codex-max)
  * - gpt-6+: none, low, medium, high, xhigh, max. Off must send an explicit
@@ -126,26 +127,26 @@ export function mapThinkingToReasoningEffort(
     return supportsXHigh(model) ? "xhigh" : "high";
   }
 
-  return level === "auto" ? "medium" : level;
+  return level === "auto" ? undefined : level;
 }
 
 /**
  * Maps a thinking setting to reasoning effort for OpenRouter. Off is "none";
  * the chat UI's request rewrite raises it to "low" for models that can't turn
- * reasoning off, and drops it when the model is unknown.
+ * reasoning off, and drops it when the model is unknown. Auto has no effort.
  * @param level - Thinking setting
- * @returns reasoning effort value
+ * @returns reasoning effort value, or undefined for none
  */
 export function mapThinkingToOpenRouterEffort(
   level: ThinkingEffort,
-): ReasoningEffort {
+): ReasoningEffort | undefined {
   switch (level) {
     case "max":
       return "xhigh";
     case "off":
       return "none";
     case "auto":
-      return "medium";
+      return undefined;
     default:
       return level;
   }
@@ -162,16 +163,6 @@ export interface AnthropicOptionsRoute {
    * `display` on the wire instead; the AI SDK has no option for it.
    */
   summarized: boolean;
-}
-
-/**
- * Checks if a model requires legacy enabled thinking (budgetTokens) instead of adaptive.
- * Only Haiku 4.5: it lacks adaptive thinking, and Haiku 5.5+ rejects budgetTokens.
- * @param model - Model identifier
- * @returns True if model needs legacy thinking config
- */
-export function isLegacyThinkingModel(model: string): boolean {
-  return model.includes("haiku-4");
 }
 
 // Fable and Mythos stay listed by name so a newer id the SDK table doesn't know
@@ -238,11 +229,7 @@ export function isLegacyNonThinkingModel(model: string): boolean {
 export function getThinkingOffType(
   model: string,
 ): "disabled" | "between_tools" | undefined {
-  if (
-    isLegacyThinkingModel(model) ||
-    isLegacyNonThinkingModel(model) ||
-    isAlwaysOnThinkingModel(model)
-  ) {
+  if (isLegacyNonThinkingModel(model) || isAlwaysOnThinkingModel(model)) {
     return undefined;
   }
 
@@ -253,9 +240,8 @@ export function getThinkingOffType(
 
 /**
  * Build Anthropic provider options for a thinking setting. Uses adaptive
- * thinking with effort for most models, falls back to legacy
- * enabled+budgetTokens for Haiku 4.5 which doesn't support adaptive yet, and
- * omits the `thinking` field entirely for pre-3.7 models that don't support it.
+ * thinking, with an effort unless the setting is auto, and omits the
+ * `thinking` field entirely for pre-3.7 models that don't support it.
  * @param level - Thinking setting
  * @param model - Anthropic model id, without any gateway prefix
  * @param route - How the request reaches Anthropic
@@ -272,10 +258,6 @@ export function buildAnthropicProviderOptions(
     return undefined;
   }
 
-  if (isLegacyThinkingModel(model)) {
-    return buildLegacyThinking(level);
-  }
-
   if (level === "off") {
     return buildOffOptions(model, route.explicitOff);
   }
@@ -286,39 +268,7 @@ export function buildAnthropicProviderOptions(
         type: "adaptive",
         ...(route.summarized ? { display: "summarized" } : {}),
       },
-      effort: toAnthropicEffort(level),
-    },
-  };
-}
-
-/**
- * @param level - Thinking setting (not off)
- * @returns The effort for adaptive thinking
- */
-function toAnthropicEffort(
-  level: Exclude<ThinkingEffort, "off">,
-): "low" | "medium" | "high" | "max" {
-  return level === "auto" ? "high" : level;
-}
-
-/**
- * Haiku 4.5 takes a token budget, not an effort.
- * @param level - Thinking setting
- * @returns Anthropic provider options or undefined
- */
-function buildLegacyThinking(
-  level: ThinkingEffort,
-): ProviderOptions | undefined {
-  if (level === "off") {
-    return undefined;
-  }
-
-  return {
-    anthropic: {
-      thinking: {
-        type: "enabled",
-        budgetTokens: level === "max" ? 16384 : 10240,
-      },
+      ...(level === "auto" ? {} : { effort: level }),
     },
   };
 }
