@@ -155,4 +155,67 @@ test.describe("chat image attachments", () => {
 
     expectNoConsoleOutput(captured);
   });
+
+  test("New conversation in an empty chat and re-opening the open one keep the draft", async ({
+    page,
+  }) => {
+    await setupUiTest(page, [
+      makeConversation({
+        id: "other",
+        title: "Other chat",
+        updatedAt: 100,
+        messages: [
+          { role: "user", content: "FIXTURE_USER_PROMPT" },
+          { role: "assistant", content: "FIXTURE_ASSISTANT_REPLY" },
+        ],
+      }),
+    ]);
+
+    const composer = page.getByRole("textbox", { name: "Message" });
+    const attach = () =>
+      page.getByTestId("image-file-input").setInputFiles({
+        name: "groove.png",
+        mimeType: "image/png",
+        buffer: PNG_BYTES,
+      });
+
+    // In an empty new chat, "New conversation" has nothing to leave.
+    await composer.fill("half a thought");
+    await attach();
+    await expect(page.getByAltText("Attachment 1")).toBeVisible();
+
+    // The header button and the history panel's both go through the same path.
+    await page
+      .getByRole("button", { name: "New conversation", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "New Conversation", exact: true })
+      .click();
+
+    await expect(composer).toContainText("half a thought");
+    await expect(page.getByAltText("Attachment 1")).toBeVisible();
+
+    // Same for clicking the conversation that is already open.
+    const item = page
+      .getByTestId("conversation-item")
+      .filter({ hasText: "Other chat" });
+
+    await item.click();
+    await expect(page.getByText("FIXTURE_USER_PROMPT")).toBeVisible();
+    await expect(composer).not.toContainText("half a thought");
+
+    await composer.fill("another thought");
+    await attach();
+    await expect(page.getByAltText("Attachment 1")).toBeVisible();
+
+    await item.click();
+    // The reload reads IndexedDB first; give a wrongful reset time to land.
+    await page.waitForTimeout(300);
+
+    await expect(page.getByText("FIXTURE_USER_PROMPT")).toBeVisible();
+    await expect(composer).toContainText("another thought");
+    await expect(page.getByAltText("Attachment 1")).toBeVisible();
+
+    expectNoConsoleOutput(captured);
+  });
 });

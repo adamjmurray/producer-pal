@@ -231,7 +231,7 @@ describe("App conversation management", () => {
     );
   });
 
-  it("clears the composer draft when the conversation is torn down", () => {
+  it("clears the composer draft when the conversation is left", () => {
     mockMatchMedia(false);
     mockConversations({});
     const { container } = render(<App />);
@@ -247,13 +247,32 @@ describe("App conversation management", () => {
     });
     expect(doc()).toBe("draft");
 
-    // Switch, New and Back/Forward all go through this teardown.
+    // useConversations calls this when it leaves the composer's conversation.
+    const reset = (useConversations as ReturnType<typeof vi.fn>).mock
+      .calls[0]![0].resetComposer as () => void;
+
+    void act(() => reset());
+
+    expect(doc()).toBe("");
+  });
+
+  it("keeps the composer draft when the conversation is torn down but not left", () => {
+    mockMatchMedia(false);
+    mockConversations({});
+    const { container } = render(<App />);
+    const view = () =>
+      EditorView.findFromDOM(container.querySelector(".cm-editor")!)!;
+
+    void act(() => {
+      view().dispatch({ changes: { from: 0, insert: "draft" } });
+    });
+
     const teardown = (useConversations as ReturnType<typeof vi.fn>).mock
       .calls[0]![0].clearConversation as () => void;
 
     void act(() => teardown());
 
-    expect(doc()).toBe("");
+    expect(view().state.doc.toString()).toBe("draft");
   });
 
   it("does not auto-save when streaming starts", () => {

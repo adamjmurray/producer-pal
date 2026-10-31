@@ -209,11 +209,13 @@ from Copy Image) is dropped, not pasted
 (`components/chat/controls/composer/stray-paste-text.ts`).
 
 The composer belongs to its conversation: `ChatScreen` keys it on
-`conversationEpoch`, which `useChatModeState` bumps each time the conversation
-is torn down (switch, New, delete, back/forward). Switching clears the draft and
-the attached images, and an image still being read is dropped when it finishes.
-Drafts are not kept per conversation. The active id can't be the key: a first
-send or a fork mints a new one without the user leaving.
+`conversationEpoch`, which `useChatModeState` bumps when `useConversations`
+leaves the conversation the composer belongs to (switch to another one, New from
+a chat that isn't empty, delete). That clears the draft and the attached images,
+and an image still being read is dropped when it finishes. Re-opening the active
+conversation, or New from an empty new chat, keeps them. Drafts are not kept per
+conversation. The active id can't be the key: a first send or a fork mints a new
+one without the user leaving.
 
 Anything over 1568 px on its longest side is scaled down to that in the browser
 (canvas redraw, re-encoded as the same type) before it's read to base64. GIFs

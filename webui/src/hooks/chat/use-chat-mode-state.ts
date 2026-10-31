@@ -241,19 +241,23 @@ export function useChatModeState(params: UseChatModeStateParams) {
     autoSaveRef,
     clearConversation: wrappedClearConversation,
   });
-  // Counts those teardowns. The composer is keyed on it, so its draft and any
+  // Counts composer resets. The composer is keyed on it, so its draft and any
   // image still loading stay with the conversation they were made in. The
-  // active id can't serve: it also changes when a first send or a fork mints one.
+  // active id can't serve: it also changes when a first send or a fork mints
+  // one. useConversations calls this only when it leaves the conversation the
+  // composer belongs to, so re-opening the active one or starting a new chat
+  // from an empty one keeps the draft.
   const [conversationEpoch, setConversationEpoch] = useState(0);
-  const clearConversation = useCallback(() => {
-    endStream();
-    setConversationEpoch((epoch) => epoch + 1);
-  }, [endStream]);
+  const resetComposer = useCallback(
+    () => setConversationEpoch((epoch) => epoch + 1),
+    [],
+  );
 
   const conversationManager = useConversations({
     getChatHistory: chat.getChatHistory,
     restoreChatHistory: chat.restoreChatHistory,
-    clearConversation,
+    clearConversation: endStream,
+    resetComposer,
     activeMeta: {
       activeModel: chat.activeModel,
       activeProvider: chat.activeProvider,

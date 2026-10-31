@@ -15,7 +15,7 @@ import {
   createConversationsProps,
   waitForEffects,
   useConversationsWithUndo,
-} from "./use-conversations-test-helpers";
+} from "#webui/hooks/chat/tests/conversations/use-conversations-test-helpers";
 
 /** Marks the message the concurrent save is carrying, so the invariants can
  * find it wherever it lands. */

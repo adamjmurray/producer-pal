@@ -22,7 +22,7 @@ import {
 import {
   resetConversationsTestState,
   waitForEffects,
-} from "./use-conversations-test-helpers";
+} from "#webui/hooks/chat/tests/conversations/use-conversations-test-helpers";
 
 // The two-turn history each case holds in flight. A fresh array per call, so
 // no test can see another's.

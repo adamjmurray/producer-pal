@@ -19,7 +19,7 @@ import {
   runInterleaving,
   saveHistory,
 } from "./interleaving-test-helpers";
-import { resetConversationsTestState } from "./use-conversations-test-helpers";
+import { resetConversationsTestState } from "#webui/hooks/chat/tests/conversations/use-conversations-test-helpers";
 
 /**
  * Every pairing of a conversation-changing operation with a save already on its
