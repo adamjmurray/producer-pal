@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { createClip } from "../create-clip.ts";
 import {
+  setupArrangementClipMocks,
   setupMultiSessionAudioClipMocks,
   setupSessionAudioClipMocks,
 } from "./create-clip-test-helpers.ts";
@@ -182,6 +183,19 @@ describe("createClip - per-position sampleFile", () => {
     }
   });
 
+  // Pinned: `\\,` is a comma everywhere, so a backslash right before a comma in
+  // a Windows path is read as an escape and dropped.
+  it("drops the backslash before an escaped comma, even with one position", async () => {
+    const { clipSlot } = setupSessionAudioClipMocks();
+
+    await createClip({ path: "t0/s0", sampleFile: "C:\\dir\\,x.wav" });
+
+    expect(clipSlot.call).toHaveBeenCalledWith(
+      "create_audio_clip",
+      "C:\\dir,x.wav",
+    );
+  });
+
   it("pairs a list whose entries hold escaped commas and backslashes", async () => {
     const { clipSlots } = setupMultiSessionAudioClipMocks([0, 1]);
 
@@ -206,5 +220,41 @@ describe("createClip - per-position sampleFile", () => {
     await expect(
       createClip({ path: "t0/s0,t0/s1", sampleFile: "/a.wav,/b.wav,/c.wav" }),
     ).rejects.toThrow("path names 2 entries but sampleFile names 3 entries");
+  });
+});
+
+describe("createClip - commas in text values beside several positions", () => {
+  // Pinned: with several positions an unescaped comma splits the value, so a
+  // name with a comma lands as two names.
+  it("splits a name with a comma into one per position", async () => {
+    const [first, second] = twoSessionSlots();
+
+    await createClip({ path: "t0/s0,t0/s1", name: "Verse, take 2" });
+
+    expect(first.clip.set).toHaveBeenCalledWith("name", "Verse");
+    expect(second.clip.set).toHaveBeenCalledWith("name", "take 2");
+  });
+
+  it("keeps the comma when it is escaped", async () => {
+    const [first, second] = twoSessionSlots();
+
+    await createClip({ path: "t0/s0,t0/s1", name: "Verse\\, take 2" });
+
+    expect(first.clip.set).toHaveBeenCalledWith("name", "Verse, take 2");
+    expect(second.clip.set).toHaveBeenCalledWith("name", "Verse, take 2");
+  });
+
+  // Pinned: a comma-bearing text value that names a different number of
+  // entries than there are positions is refused, whichever param it is.
+  it("refuses text values whose comma counts differ from the positions", async () => {
+    setupArrangementClipMocks();
+
+    await expect(
+      createClip({
+        path: "t0[1|1],t0[5|1]",
+        name: "Verse, part 2",
+        sampleFile: "/a/b, c, d.wav",
+      }),
+    ).rejects.toThrow("path names 2 entries but sampleFile names 3 entries.");
   });
 });
