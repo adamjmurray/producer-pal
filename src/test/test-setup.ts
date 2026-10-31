@@ -14,6 +14,7 @@ import { clearMockRegistry } from "./mocks/mock-registry.ts";
 import { Task } from "./mocks/mock-task.ts";
 
 const g = globalThis as Record<string, unknown>;
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 g.LiveAPI = LiveAPI;
 g.Folder = Folder;
@@ -22,6 +23,27 @@ await import("#src/live-api-adapter/live-api-extensions.ts");
 // Nothing answers on port 0, so no unit test reaches a real Producer Pal
 // remote script, even with Live running on this machine.
 process.env.PPAL_REMOTE_SCRIPT_PORT = "0";
+
+// No unit test reaches a real remote host. Whether such a call succeeds, and
+// how fast, decides which branches run, so the same commit would report
+// different coverage from one CI run to the next. Local servers stay reachable.
+const realFetch = globalThis.fetch;
+
+globalThis.fetch = (input, init) => {
+  // String() also covers a URL from another realm, so it can't pass as local.
+  const url = new URL(
+    input instanceof Request ? input.url : String(input),
+    "http://localhost",
+  );
+
+  if (!LOCAL_HOSTS.has(url.hostname)) {
+    return Promise.reject(
+      new TypeError(`Unit tests must not reach the network: ${url.href}`),
+    );
+  }
+
+  return realFetch(input, init);
+};
 
 g.Task = Task;
 g.outlet = vi.fn();

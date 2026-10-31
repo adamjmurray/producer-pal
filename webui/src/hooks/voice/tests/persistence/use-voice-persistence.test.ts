@@ -16,6 +16,7 @@ import {
   bulkDeleteDuringPendingNewSave,
   continueSavedVoiceSession,
   fireHashChange,
+  leaveBeforeAutosaveFires,
   renderVoicePersistence,
   renderVoicePersistenceWithHistory,
   resetConversationsDb,
@@ -420,12 +421,13 @@ describe("useVoicePersistence", () => {
     await waitForEffects();
     expect(result.current.activeConversationId).toBe(record.id);
 
-    // A new transcript turn schedules the debounced autosave for record.id...
-    rerender([userTextItem("a new turn")]);
-    // ...then the user deletes the active conversation before it fires.
-    await act(() => result.current.deleteConversation(record.id));
-    // Let the debounce fire; the in-flight save must bail, not re-create it.
-    await waitForAutosave();
+    // A new transcript turn schedules the debounced autosave for record.id,
+    // then the user deletes the active conversation before it fires. The save
+    // must bail, not re-create it.
+    await leaveBeforeAutosaveFires(
+      () => rerender([userTextItem("a new turn")]),
+      () => result.current.deleteConversation(record.id),
+    );
 
     expect(await loadConversation(record.id)).toBeUndefined();
     expect(result.current.conversations).toHaveLength(0);
