@@ -199,29 +199,34 @@ export async function startFakeRemoteScript(
  * Run a call against a stand-in that never answers, and let its wait run out
  * only once the stand-in has the request. A wait timed on the real clock could
  * end before the socket connects, which the client counts as not sent.
- * @param remote - The stand-in, which must never answer
- * @param waitMs - The wait to let run out: the call's reply wait
+ * @param remote - The stand-in, which must leave these requests unanswered
+ * @param waitMs - The wait to let run out: the call's reply wait. A list runs
+ *   out one wait per new request, in order.
  * @param call - Makes the call
  * @returns What the call came to
  */
 export async function callUntilItTimesOut<T>(
   remote: FakeRemoteScript,
-  waitMs: number,
+  waitMs: number | number[],
   call: () => Promise<T>,
 ): Promise<T> {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
 
   try {
     const pending = call();
+    let seen = remote.requests.length;
 
-    // A stand-in with the request means the client had connected.
-    while (remote.requests.length === 0) {
-      await new Promise((resolve) => {
-        setImmediate(resolve);
-      });
+    for (const wait of [waitMs].flat()) {
+      // A stand-in with the request means the client had connected.
+      while (remote.requests.length === seen) {
+        await new Promise((resolve) => {
+          setImmediate(resolve);
+        });
+      }
+
+      seen = remote.requests.length;
+      vi.advanceTimersByTime(wait);
     }
-
-    vi.advanceTimersByTime(waitMs);
 
     return await pending;
   } finally {
