@@ -61,3 +61,4 @@ What would reopen it (optional).
 | [0027](0027-setproperty-stays-out-of-ppal-live-api.md)  | `setProperty` stays out of ppal-live-api                            |
 | [0030](0030-leaving-a-conversation-stops-the-turn.md)   | Leaving a conversation stops the turn, with a warning               |
 | [0059](0059-write-calls-run-one-at-a-time.md)           | Write calls run one at a time, queued in Node                       |
+| [0060](0060-cli-parsing-stays-on-commander.md)          | CLI parsing stays on commander, not `util.parseArgs()`              |
