@@ -407,4 +407,7 @@ export interface ListPluginsResult {
   stalenessNote?: string;
   /** Set when plugins is empty due to a discoverable failure (e.g. DB missing). */
   detail?: string;
+  /** Set when a category or subcategory filter left out plug-ins whose
+   * category is unknown. */
+  note?: string;
 }

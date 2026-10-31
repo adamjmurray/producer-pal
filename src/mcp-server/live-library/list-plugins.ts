@@ -47,6 +47,8 @@ import {
 } from "./library-types.ts";
 import { findLiveFilesDbPath, findLivePluginsDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
+import { unknownCategoryNote } from "./query/notes/unknown-category-note.ts";
+import { filterPlugins } from "./query/plugins/filter-plugins.ts";
 import { mergeBrowserPlugins } from "./query/plugins/merge-browser-plugins.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 
@@ -114,18 +116,19 @@ export async function listPlugins(
         .all() as unknown as PluginRow[];
       const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
       const dbPlugins = rows.map(buildPluginItem);
-      const plugins = (
+      const { matches, unknownCategoryLeftOut } = filterPlugins(
         browserPlugins == null
           ? dbPlugins
-          : mergeBrowserPlugins(dbPlugins, browserPlugins)
-      )
-        .filter((item) => matchesFilters(item, args))
-        .slice(0, limit);
+          : mergeBrowserPlugins(dbPlugins, browserPlugins),
+        args,
+      );
+      const note = unknownCategoryNote(unknownCategoryLeftOut);
 
       return {
         dbAvailable: true,
         ...(stale && { stalenessNote: stale }),
-        plugins,
+        plugins: matches.slice(0, limit),
+        ...(note != null && { note }),
       };
     } finally {
       db.close();
@@ -203,54 +206,6 @@ function buildPluginItem(row: PluginRow): PluginItem {
     category: deriveCategory(row.dev_identifier),
     subcategories: parseSubcategories(row.subcategories),
   };
-}
-
-/**
- * Apply the in-memory filters (name/vendor substring, format, category).
- * Substring matches are case-insensitive.
- *
- * @param item - Candidate plugin
- * @param args - Filter parameters
- * @returns true if the item passes every active filter
- */
-function matchesFilters(item: PluginItem, args: ListPluginsArgs): boolean {
-  if (args.query && !includesIgnoreCase(item.name, args.query)) {
-    return false;
-  }
-
-  if (args.vendor && !includesIgnoreCase(item.vendor ?? "", args.vendor)) {
-    return false;
-  }
-
-  if (args.format && item.format !== args.format) {
-    return false;
-  }
-
-  if (args.category && item.category !== args.category) {
-    return false;
-  }
-
-  const subFilter = args.subcategory;
-
-  if (
-    subFilter &&
-    !item.subcategories.some((sub) => includesIgnoreCase(sub, subFilter))
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Case-insensitive substring test.
- *
- * @param haystack - String to search within
- * @param needle - Substring to look for
- * @returns true if haystack contains needle (ignoring case)
- */
-function includesIgnoreCase(haystack: string, needle: string): boolean {
-  return haystack.toLowerCase().includes(needle.toLowerCase());
 }
 
 /**

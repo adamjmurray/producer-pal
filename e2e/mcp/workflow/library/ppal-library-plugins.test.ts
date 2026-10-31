@@ -39,6 +39,7 @@ interface ListPluginsResult {
   dbAvailable?: boolean;
   stalenessNote?: string;
   stalenessRisk?: unknown;
+  note?: string;
   detail?: string;
 }
 
@@ -82,6 +83,30 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-library list-plugins", () => {
     const found = await listPlugins({ query: first.name });
 
     expect(found.plugins.map((p) => p.name)).toContain(first.name);
+  });
+
+  it("filters by deviceKind, noting exactly the plug-ins with an unknown category", async () => {
+    const all = await listPlugins({ limit: 1000 });
+    const expectedLeftOut = all.plugins.filter(
+      (p) => p.category == null && p.subcategories.length === 0,
+    ).length;
+    const result = await listPlugins({ deviceKind: "audiofx", limit: 1000 });
+
+    for (const plugin of result.plugins) {
+      expect(plugin.category).toBe("audiofx");
+    }
+
+    // No unknown-category plug-ins on this machine means no note.
+    if (expectedLeftOut === 0) {
+      expect(result).not.toHaveProperty("note");
+    } else {
+      const noun =
+        expectedLeftOut === 1 ? "1 plug-in" : `${expectedLeftOut} plug-ins`;
+
+      expect(result.note).toMatch(
+        new RegExp(`^${noun} with an unknown category (was|were) left out\\.`),
+      );
+    }
   });
 
   it("falls back to the database alone when the script is switched off", async () => {

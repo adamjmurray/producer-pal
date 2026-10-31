@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { utimesSync, writeFileSync } from "node:fs";
 import {
   afterAll,
   afterEach,
@@ -421,6 +422,21 @@ describe("listPlugins — dev_identifier / vendor branch coverage", () => {
     }
   });
 
+  it("notes unknown-category plug-ins a filter left out, beside stalenessNote, from the DB alone", async () => {
+    usePluginsDb(fixture.dbPath);
+    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue(null);
+    writeFileSync(`${fixture.dbPath}-wal`, "wal");
+    utimesSync(fixture.dbPath, 1000, 1000);
+    utimesSync(`${fixture.dbPath}-wal`, 2000, 2000);
+
+    const result = await listPlugins({ category: "instrument" });
+
+    expect(result.stalenessNote).toBeDefined();
+    expect(result.note).toBe(
+      "4 plug-ins with an unknown category were left out. Drop deviceKind/subcategory to list them.",
+    );
+  });
+
   it("applies the vendor filter across rows with a null vendor", async () => {
     usePluginsDb(fixture.dbPath);
 
@@ -521,6 +537,39 @@ describe("listPlugins — with the remote script's browser list", () => {
     expect(byCategory.plugins.map((p) => p.name)).toStrictEqual([
       "ValhallaRoom",
     ]);
+  });
+
+  it("notes how many plug-ins with an unknown category a filter left out", async () => {
+    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([
+      { name: "ValhallaRoom", vendor: "Valhalla DSP", format: "AU" },
+      { name: "Brand New", vendor: "New Co", format: "VST3" },
+      { name: "Newer", vendor: "New Co", format: "VST3" },
+    ]);
+
+    const result = await listPlugins({ category: "audiofx", limit: 1 });
+
+    expect(result.plugins.map((p) => p.name)).toStrictEqual(["ValhallaRoom"]);
+    expect(result.note).toBe(
+      "2 plug-ins with an unknown category were left out. Drop deviceKind/subcategory to list them.",
+    );
+  });
+
+  it("has no note when the filter left out no unknown-category plug-ins", async () => {
+    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([
+      { name: "ValhallaRoom", vendor: "Valhalla DSP", format: "AU" },
+      { name: "Brand New", vendor: "New Co", format: "VST3" },
+    ]);
+
+    const unfiltered = await listPlugins();
+    const byVendor = await listPlugins({ vendor: "valhalla" });
+    const mismatched = await listPlugins({
+      query: "nope",
+      category: "audiofx",
+    });
+
+    expect(unfiltered).not.toHaveProperty("note");
+    expect(byVendor).not.toHaveProperty("note");
+    expect(mismatched).not.toHaveProperty("note");
   });
 
   it("serves the DB alone when the browser can't answer", async () => {

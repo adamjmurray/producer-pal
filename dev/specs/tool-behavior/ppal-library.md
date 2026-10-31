@@ -87,8 +87,10 @@ quits, so a read can miss them.
   - The browser decides what is listed. Database rows it doesn't list are
     dropped (a format Live has turned off). Plug-ins only the browser lists
     (AUv3, never in the database) are kept with a name, format and vendor only.
-    They carry no category or subcategories, so the `deviceKind`, `category` and
-    `subcategory` filters never match them.
+    They carry no category or subcategories, so the `deviceKind` and
+    `subcategory` filters never match them. When one of those filters left out
+    such plug-ins (and nothing else ruled them out), the result has a short
+    `note`: see "Unknown-category note" below.
   - A plug-in is matched by format and name (ignoring case). The vendor is the
     browser's folder name; version, category and subcategories come from the
     database. When several database rows share the name, the one whose vendor
@@ -99,3 +101,11 @@ quits, so a read can miss them.
 - Without the remote script, or when it doesn't answer in time or is too old to
   know `plugins_only`, the list is the database alone, with `stalenessNote`
   under the rule above.
+- **Unknown-category note.** A plug-in with no category and no subcategories
+  (not in the database) can't match a `deviceKind` or `subcategory` filter, so a
+  filtered call leaves it out. When it does, the result carries a short `note`
+  saying how many were left out and that dropping `deviceKind`/`subcategory`
+  lists them. Only plug-ins that pass the other filters (`query`, `vendor`,
+  `format`) count, once each, and the count is taken before `limit`. No `note`
+  when none were left out that way. It applies with or without the remote
+  script, and sits beside `stalenessNote` when both apply.
