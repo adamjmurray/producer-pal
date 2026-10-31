@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   raiseMinRemoteScriptVersion,
   shippedScriptChanges,
+  staleMinRemoteScriptVersion,
 } from "./min-remote-script-version.ts";
 
 const FILE =
@@ -53,5 +54,49 @@ describe("shippedScriptChanges", () => {
     ]);
 
     expect(raiseMinRemoteScriptVersion(FILE, "2.5.0-rc2", changed)).toBeNull();
+  });
+});
+
+describe("staleMinRemoteScriptVersion", () => {
+  it("passes when the remote script didn't change", () => {
+    expect(
+      staleMinRemoteScriptVersion(FILE, "2.5.0-rc2", "v2.4.0", []),
+    ).toBeNull();
+  });
+
+  it("passes when the minimum is already the version", () => {
+    expect(
+      staleMinRemoteScriptVersion(FILE, "2.5.0-rc1", "v2.4.0", CHANGED),
+    ).toBeNull();
+  });
+
+  it("refuses a minimum behind a changed script, naming the fix", () => {
+    const refusal = staleMinRemoteScriptVersion(
+      FILE,
+      "2.5.0-rc2",
+      "v2.4.0",
+      CHANGED,
+    );
+
+    expect(refusal).toContain("remote-script/Producer_Pal/routes.py");
+    expect(refusal).toContain('MIN_REMOTE_SCRIPT_VERSION is "2.5.0-rc1"');
+    expect(refusal).toContain('Set MIN_REMOTE_SCRIPT_VERSION to "2.5.0-rc2"');
+    expect(refusal).toContain("v2.4.0");
+  });
+
+  it("throws when the constant can't be found", () => {
+    expect(() =>
+      staleMinRemoteScriptVersion("junk", "2.5.0-rc2", "v2.4.0", CHANGED),
+    ).toThrow("No MIN_REMOTE_SCRIPT_VERSION line");
+  });
+
+  it("passes when only gen-UI files changed", () => {
+    const changed = shippedScriptChanges([
+      "remote-script/Producer_Pal/watches.py",
+    ]);
+
+    expect(
+      staleMinRemoteScriptVersion(FILE, "2.5.0-rc2", "v2.4.0", changed),
+    ).toBeNull();
   });
 });

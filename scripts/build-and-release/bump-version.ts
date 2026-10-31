@@ -16,7 +16,7 @@ import {
 import {
   MIN_VERSION_FILE,
   raiseMinRemoteScriptVersion,
-  shippedScriptChanges,
+  scriptChangesSinceLastTag,
 } from "./helpers/version/min-remote-script-version.ts";
 import { replaceVersionLine } from "./helpers/version/replace-version-line.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
@@ -66,18 +66,8 @@ let changedScriptFiles: string[];
 let minVersionContent: string | null;
 
 try {
-  lastTag = execSync("git describe --tags --abbrev=0", {
-    cwd: rootDir,
-    encoding: "utf8",
-  }).trim();
-  changedScriptFiles = shippedScriptChanges(
-    execSync(
-      `git diff --name-only ${lastTag} -- remote-script/Producer_Pal ":!remote-script/Producer_Pal/version.py"`,
-      { cwd: rootDir, encoding: "utf8" },
-    )
-      .split("\n")
-      .filter(Boolean),
-  );
+  ({ lastTag, changedFiles: changedScriptFiles } =
+    scriptChangesSinceLastTag(rootDir));
   minVersionContent = raiseMinRemoteScriptVersion(
     readFileSync(minVersionPath, "utf8"),
     newVersion,

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { MIN_REMOTE_SCRIPT_VERSION } from "#src/mcp-server/rpc/remote-script/port/remote-script-version.ts";
 import Max from "max-api";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -62,7 +63,7 @@ describe("POST /config remote script switches on a release build", () => {
 
   it("make a running remote script look uninstalled, and back again", async () => {
     fake = await startFakeRemoteScript(() => ({
-      body: { ok: true, script_version: "2.5.0" },
+      body: { ok: true, script_version: MIN_REMOTE_SCRIPT_VERSION },
     }));
     expect(await ping()).toBe(true);
 
@@ -79,7 +80,7 @@ describe("POST /config remote script switches on a release build", () => {
 
   it("hold a running script to the minimum version it is sent, until it is cleared", async () => {
     fake = await startFakeRemoteScript(() => ({
-      body: { ok: true, script_version: "2.5.0" },
+      body: { ok: true, script_version: MIN_REMOTE_SCRIPT_VERSION },
     }));
     expect(await heldBackAsOutdated()).toBe(false);
 
@@ -161,7 +162,7 @@ describe("POST /config remote script switches on a debug build", () => {
 
   it("applies remoteScriptEnabled the same as a release build", async () => {
     fake = await startFakeRemoteScript(() => ({
-      body: { ok: true, script_version: "2.5.0" },
+      body: { ok: true, script_version: MIN_REMOTE_SCRIPT_VERSION },
     }));
 
     await appState.postConfig({ remoteScriptEnabled: false });

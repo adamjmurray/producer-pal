@@ -14,10 +14,11 @@ import { isNewerVersion } from "#src/shared/version-check.ts";
 /**
  * The oldest remote script this server works with, so an older script reads as
  * out of date instead of as missing a feature. The version bump raises it to the
- * new release whenever the script changed since the last one. -rcN tags of one
- * x.y.z order by N; other tags don't.
+ * new release whenever the script changed since the last one, and the release
+ * build refuses a stale one. -rcN tags of one x.y.z order by N; other tags
+ * don't.
  */
-export const MIN_REMOTE_SCRIPT_VERSION = "2.5.0";
+export const MIN_REMOTE_SCRIPT_VERSION = "2.5.1-rc1";
 
 /**
  * Dev switch (POST /config `remoteScriptMinVersion`): replaces the minimum, so

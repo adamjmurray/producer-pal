@@ -29,11 +29,11 @@ describe("outdatedScript", () => {
     );
   });
 
-  it.each(["2.4.9", "2.4.1-rc1", "2.4.0"])("refuses %s", (version) => {
+  it.each(["2.5.0", "2.4.9", "2.4.1-rc1", "2.4.0"])("refuses %s", (version) => {
     expect(outdatedScript(version)).not.toBeNull();
   });
 
-  it.each([MIN_REMOTE_SCRIPT_VERSION, "2.5.0", "2.5.1", "2.6.0", "3.0.0"])(
+  it.each([MIN_REMOTE_SCRIPT_VERSION, "2.6.0", "3.0.0"])(
     "accepts %s",
     (version) => {
       expect(outdatedScript(version)).toBeNull();
@@ -50,10 +50,12 @@ describe("outdatedScript", () => {
 
   it("uses the dev override in place of the minimum, until it is cleared", () => {
     setRemoteScriptMinVersion("9.0.0");
-    expect(outdatedScript("2.5.0")).toContain("needs 9.0.0 or later");
+    expect(outdatedScript(MIN_REMOTE_SCRIPT_VERSION)).toContain(
+      "needs 9.0.0 or later",
+    );
 
     setRemoteScriptMinVersion(null);
-    expect(outdatedScript("2.5.0")).toBeNull();
+    expect(outdatedScript(MIN_REMOTE_SCRIPT_VERSION)).toBeNull();
   });
 });
 

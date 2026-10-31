@@ -9,7 +9,10 @@ import {
   withRemoteScriptAnswer,
   withSkills,
 } from "#src/mcp-server/helpers/skills-inject.ts";
-import { setRemoteScriptMinVersion } from "#src/mcp-server/rpc/remote-script/port/remote-script-version.ts";
+import {
+  MIN_REMOTE_SCRIPT_VERSION,
+  setRemoteScriptMinVersion,
+} from "#src/mcp-server/rpc/remote-script/port/remote-script-version.ts";
 import { startFakeRemoteScript } from "#src/mcp-server/rpc/remote-script/tests/remote-script-test-helpers.ts";
 import { writeSkillOverride } from "#src/mcp-server/helpers/skill-overrides-store.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
@@ -155,7 +158,7 @@ describe("withRemoteScriptAnswer", () => {
 
   it("teaches loading plug-ins while the remote script answers its ping", async () => {
     const remote = await startFakeRemoteScript(() => ({
-      body: { ok: true, script_version: "2.5.0" },
+      body: { ok: true, script_version: MIN_REMOTE_SCRIPT_VERSION },
     }));
 
     try {
@@ -193,7 +196,7 @@ describe("withRemoteScriptAnswer", () => {
 
   it("doesn't when the dev override makes the script too old", async () => {
     const remote = await startFakeRemoteScript(() => ({
-      body: { ok: true, script_version: "2.5.0" },
+      body: { ok: true, script_version: MIN_REMOTE_SCRIPT_VERSION },
     }));
 
     setRemoteScriptMinVersion("9.0.0");
@@ -212,7 +215,7 @@ describe("withRemoteScriptAnswer", () => {
     const getPing = vi.fn(async () => ({
       running: true,
       liveVersion: null,
-      scriptVersion: "2.5.0",
+      scriptVersion: MIN_REMOTE_SCRIPT_VERSION,
       scriptBuild: null,
       scriptCommit: null,
       userLibrary: null,

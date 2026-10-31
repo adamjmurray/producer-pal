@@ -46,7 +46,9 @@ separately to redo just one.
    debug flag set (any in `GUARDED_BUILD_FLAGS` in
    `scripts/build-and-release/helpers/build-flag-guard.ts`) — they are
    substituted into the bundles, so a leftover one would ship a dev-only feature
-   to everyone.
+   to everyone. And it refuses when a shipped remote script file changed since
+   the last tag but `MIN_REMOTE_SCRIPT_VERSION` isn't this version: the bump
+   only checks when it runs, so set it by hand after a later script change.
 
    The release tag has to land on the commit it records — see
    [How update detection works](#how-update-detection-works).
