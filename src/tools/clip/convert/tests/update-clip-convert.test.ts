@@ -149,6 +149,28 @@ describe("updateClip - convert", () => {
   }
 
   /**
+   * Put clip 300 first in track 4's arrangement.
+   * @param startTime - Where the clip starts, in beats
+   * @param trackProps - Extra properties for the track
+   */
+  function addArrangementClip(
+    startTime: number,
+    trackProps: Record<string, unknown>,
+  ): void {
+    const clip = registerMockObject("300", {
+      path: livePath.track(4).arrangementClip(0),
+      methods: createNoteTrackingMethods(),
+    });
+
+    setupMidiClipMock(clip, { is_arrangement_clip: 1, start_time: startTime });
+    registerMockObject("200", {
+      path: livePath.track(4),
+      type: "Track",
+      properties: { ...trackProps, arrangement_clips: ["id", "300"] },
+    });
+  }
+
+  /**
    * A MIDI clip on a new track's slot.
    * @param id - The clip's id
    * @param trackIndex - Its track
@@ -266,17 +288,7 @@ describe("updateClip - convert", () => {
     setupArrangementAudioClipMock(mocks.clip789, { start_time: 16 });
     answerRoute(() => {
       addTrack("200", 4);
-      const clip = registerMockObject("300", {
-        path: livePath.track(4).arrangementClip(0),
-        methods: createNoteTrackingMethods(),
-      });
-
-      setupMidiClipMock(clip, { is_arrangement_clip: 1, start_time: 16 });
-      registerMockObject("200", {
-        path: livePath.track(4),
-        type: "Track",
-        properties: { arrangement_clips: ["id", "300"] },
-      });
+      addArrangementClip(16, {});
     });
 
     const result = await updateClip({ id: "789", convert: "harmony" });
@@ -310,16 +322,7 @@ describe("updateClip - convert", () => {
     setupArrangementAudioClipMock(mocks.clip789, { start_time: 16 });
     answerRoute(() => {
       addTrack("200", 4);
-      const clip = registerMockObject("300", {
-        path: livePath.track(4).arrangementClip(0),
-      });
-
-      setupMidiClipMock(clip, { is_arrangement_clip: 1, start_time: 0 });
-      registerMockObject("200", {
-        path: livePath.track(4),
-        type: "Track",
-        properties: { name: TRACK_NAME, arrangement_clips: ["id", "300"] },
-      });
+      addArrangementClip(0, { name: TRACK_NAME });
     });
 
     const result = await updateClip({ id: "789", convert: "harmony" });

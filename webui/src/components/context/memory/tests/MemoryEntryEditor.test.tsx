@@ -13,7 +13,6 @@ import {
   screen,
   waitFor,
 } from "@testing-library/preact";
-import { render as preactRender } from "preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { markdownEditorTestMock } from "#webui/components/markdown-editor/tests/markdown-editor-test-mock";
 import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
@@ -25,7 +24,10 @@ import {
   type UseMemoryCollectionReturn,
 } from "#webui/hooks/context/use-memory-collection";
 import { MemoryEntryEditor } from "#webui/components/context/memory/MemoryEntryEditor";
-import { reloadStaleEntry } from "#webui/components/context/tests/helpers/stale-entry-banner";
+import {
+  reloadAsEntryIsDeleted,
+  reloadStaleEntry,
+} from "#webui/components/context/tests/helpers/stale-entry-banner";
 
 // Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
 vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () =>
@@ -660,12 +662,12 @@ describe("MemoryEntryEditor — external update banner", () => {
       entry: EXISTING,
     });
 
-    rerender(
+    reloadAsEntryIsDeleted(
+      rerender,
+      container,
       editorElement({ collection, entry: { ...EXISTING, body: "Changed." } }),
+      editorElement({ collection, entry: null }),
     );
-    // Commit the deletion without flushing effects, so the banner still shows.
-    preactRender(editorElement({ collection, entry: null }), container);
-    screen.getByRole("button", { name: "Reload" }).click();
 
     expect(screen.getByRole("textbox", { name: /Memory/ })).toHaveProperty(
       "value",

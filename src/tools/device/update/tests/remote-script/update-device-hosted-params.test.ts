@@ -274,6 +274,16 @@ describe("updateDevice hosted plug-in params", () => {
     });
   });
 
+  it("still refuses an ambiguous name when the wrapper lists no matches", async () => {
+    wrapperWrites([
+      { ok: false, kind: "ambiguous", error: "more than one param" },
+    ]);
+
+    await expect(
+      update({ id: "device-123", params: [{ name: "Width", value: "1" }] }),
+    ).rejects.toThrow(/"Width": names 0 params .*so nothing was written/);
+  });
+
   it("says what a param does show when nothing displays as asked", async () => {
     wrapperWrites([
       {

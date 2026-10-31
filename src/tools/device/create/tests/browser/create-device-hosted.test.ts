@@ -407,6 +407,15 @@ describe("createDevice hosted", () => {
     ).rejects.toThrow('could not load "Serum 2 FX": something broke');
   });
 
+  it("says the wrapper gave no answer when it fails without an error", async () => {
+    wrapperLoads({ success: false });
+
+    await expect(
+      createDevice({ device: "Serum 2 FX", hosted: true, path: "t0/d+" }),
+    ).rejects.toThrow('could not load "Serum 2 FX": no answer');
+    expect(track.methods.delete_device).toHaveBeenCalledWith(1);
+  });
+
   it("keeps the other paths when one plug-in won't load", async () => {
     let asked = 0;
 

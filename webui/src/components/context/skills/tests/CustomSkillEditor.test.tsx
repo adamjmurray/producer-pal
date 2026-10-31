@@ -7,7 +7,6 @@
  * @vitest-environment happy-dom
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
-import { render as preactRender } from "preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   type LeaveGuard,
@@ -19,7 +18,10 @@ import {
   type UseCustomSkillsCollectionReturn,
 } from "#webui/hooks/context/use-custom-skills-collection";
 import { CustomSkillEditor } from "#webui/components/context/skills/CustomSkillEditor";
-import { reloadStaleEntry } from "#webui/components/context/tests/helpers/stale-entry-banner";
+import {
+  reloadAsEntryIsDeleted,
+  reloadStaleEntry,
+} from "#webui/components/context/tests/helpers/stale-entry-banner";
 import { makeManualGuard } from "#webui/components/context/collection/leave-guard-test-helpers";
 
 // Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
@@ -306,12 +308,12 @@ describe("CustomSkillEditor external update banner", () => {
     const collection = stubCollection(vi.fn());
     const { container, rerender } = renderEditor({ collection, entry: ENTRY });
 
-    rerender(
+    reloadAsEntryIsDeleted(
+      rerender,
+      container,
       editorElement({ collection, entry: { ...ENTRY, body: "Changed." } }),
+      editorElement({ collection, entry: null }),
     );
-    // Commit the deletion without flushing effects, so the banner still shows.
-    preactRender(editorElement({ collection, entry: null }), container);
-    screen.getByRole("button", { name: "Reload" }).click();
 
     expect(
       screen.getByRole("textbox", { name: /Instructions/ }),
