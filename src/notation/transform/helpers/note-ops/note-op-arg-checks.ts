@@ -114,7 +114,7 @@ function checkRepeat(
 
   if (!isDurationNode(offset)) {
     throw new Error(
-      "repeat() offset must be a note value like n/8 or a bar duration like 1bar",
+      "repeat() offset must be a note value like n/8 or a bar duration like 1bar; the copy count comes second: repeat(n/16, 3) adds three echoes",
     );
   }
 

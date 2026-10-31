@@ -37,7 +37,10 @@ describe("note op arguments that are wrong for every clip", () => {
       "repeat(n/8, 2, 3)",
       "repeat() takes an offset and an optional copy count",
     ],
-    ["repeat(2)", "repeat() offset must be a note value like n/8"],
+    [
+      "repeat(2)",
+      "repeat() offset must be a note value like n/8 or a bar duration like 1bar; the copy count comes second: repeat(n/16, 3) adds three echoes",
+    ],
     ["repeat(rand(1, 2))", "repeat() offset must be a note value like n/8"],
     ["repeat(n0/4)", "repeat() offset must be greater than 0"],
     ["repeat(-n/16)", "repeat() offset must be greater than 0"],
