@@ -821,6 +821,17 @@ warning, but results echo the new ones, so a script comparing a result's
 now `get-property` and `get_property` is `get-field`. Values Live owns (scales,
 views, quantize grids, device names) keep Live's spelling.
 
+## Memory answers changed in 2.5.1
+
+**`ppal-context` reads and deletes memories by list, and one name answers like
+any lone target.** On `read` and `delete`, `name` takes a comma-separated list
+(write `\,` for a comma inside a name) and returns one entry per name. With one
+name, a read returns `{name, content}` (was `{content}`), and a missing memory
+is an error (was a "No memory found" note). A delete returns `{name}`, or
+`{name, detail: "nothing to delete"}` when there's no such memory, and no longer
+appends the memory index; call `read` with no `name` for it. A `write` name is
+capped at 200 characters.
+
 ## Deprecated params
 
 Every param below still works and emits a deprecation warning saying what to use
