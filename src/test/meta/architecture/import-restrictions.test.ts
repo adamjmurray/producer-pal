@@ -44,7 +44,7 @@ const SPECIFIER =
 
 // This file necessarily spells out the constructor call it bans, so scanning it
 // would report its own prose. It has no runtime imports to police either.
-const SELF = "src/test/meta/import-restrictions.test.ts";
+const SELF = "src/test/meta/architecture/import-restrictions.test.ts";
 
 interface Violation {
   file: string;

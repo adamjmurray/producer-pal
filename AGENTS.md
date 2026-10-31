@@ -96,7 +96,7 @@ UI.
   extensions. Use the `#src/`, `#webui/`, `#evals/` aliases to cross between
   top-level modules — a relative import must stay inside its own module
   (`src/notation`, `src/tools`, …), and `webui/` bans `..` entirely. Enforced by
-  `src/test/meta/import-restrictions.test.ts`.
+  `src/test/meta/architecture/import-restrictions.test.ts`.
 
 - **Null checks**: prefer `== null` over `=== null` or `=== undefined`.
 
@@ -112,7 +112,9 @@ UI.
   cache, not in a callback that outlives the call. Objects are released when the
   request ends and reused by the next one, so a stale reference silently points
   at a different Live object. Build them where you use them. See
-  `src/live-api-adapter/live-api-release.ts`.
+  `src/live-api-adapter/live-api-release.ts`. A meta test
+  (`live-api-not-held.test.ts`) catches the module-scope and class-field case
+  only.
 
 - **Tool design follows `dev/PRINCIPLES.md`** — addressing, multi-target,
   relocation, partial completion, observability, warnings, destruction,

@@ -151,12 +151,12 @@ the import zone graph (`import-x/no-restricted-paths`), or
 honor `eslint-disable` directives, so they're no stricter than the rules they
 stand in for:
 
-| Rule                                    | Enforced by                                 |
-| --------------------------------------- | ------------------------------------------- |
-| `no-restricted-syntax` (webui, LiveAPI) | `src/test/meta/import-restrictions.test.ts` |
-| `import-x/no-restricted-paths`          | `src/test/meta/import-restrictions.test.ts` |
-| `no-restricted-imports` regex form      | `src/test/meta/import-restrictions.test.ts` |
-| `jsdoc/require-jsdoc`                   | `src/test/meta/jsdoc-requirements.test.ts`  |
+| Rule                                    | Enforced by                                              |
+| --------------------------------------- | -------------------------------------------------------- |
+| `no-restricted-syntax` (webui, LiveAPI) | `src/test/meta/architecture/import-restrictions.test.ts` |
+| `import-x/no-restricted-paths`          | `src/test/meta/architecture/import-restrictions.test.ts` |
+| `no-restricted-imports` regex form      | `src/test/meta/architecture/import-restrictions.test.ts` |
+| `jsdoc/require-jsdoc`                   | `src/test/meta/jsdoc-requirements.test.ts`               |
 
 **The Max console.** Warnings and logs reach the tool response or the Max
 console only through `v8-max-console.ts` (V8) and `node-for-max-logger.ts`
