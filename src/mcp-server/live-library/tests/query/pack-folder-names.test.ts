@@ -144,6 +144,24 @@ describe("browserNamedPackPath", () => {
     expect(await browserNamedPackPath(folder)).toBe(folder);
   });
 
+  it("leaves a pack whose folder can't be traced to the root", async () => {
+    const db = new DatabaseSync(dbPath);
+
+    // Parent 99 isn't in the table, so the folder resolves to just "/Lost-1".
+    db.prepare("INSERT INTO files VALUES (?, ?, ?, ?)").run(
+      15,
+      99,
+      "Lost-1",
+      FLDR,
+    );
+    db.prepare("INSERT INTO places VALUES (?, ?, ?)").run(15, 0, "Lost");
+    db.close();
+
+    expect(await browserNamedPackPath("/Lost-1/Kit.adg")).toBe(
+      "/Lost-1/Kit.adg",
+    );
+  });
+
   it("returns the path as given when there is no library", async () => {
     findLiveFilesDbPath.mockResolvedValue(null);
 

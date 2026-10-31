@@ -718,6 +718,29 @@ describe("replies with parts missing", () => {
     expect(syncs.at(-1)?.mode).toBe("listening");
     expect(lives()).toStrictEqual([]);
   });
+
+  it("polls from the start after a new epoch with no sequence number", async () => {
+    const odd = oddScript({ ok: true, epoch: "e10" }, { epoch: "e9", seq: 5 });
+    const sinces: unknown[] = [];
+
+    watcher.stop();
+    createWidget(clip("t0/s0"));
+    watcher = new LiveWatcher({
+      ...deps(),
+      request: (request) => {
+        if (request.route === "/events") {
+          sinces.push(request.query?.since);
+        }
+
+        return odd(request);
+      },
+    });
+
+    await watcher.tick();
+
+    // The probe asks without `since`; the poll follows the watch's new epoch.
+    expect(sinces).toStrictEqual([undefined, "0"]);
+  });
 });
 
 describe("status changes", () => {

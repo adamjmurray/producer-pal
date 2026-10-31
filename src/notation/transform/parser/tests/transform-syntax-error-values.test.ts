@@ -89,6 +89,16 @@ describe("sync and raw outside the calls that take them", () => {
     },
   );
 
+  it.each(["velocity = sin(n/4, 0.5 sync)", "velocity = swing(0.05 raw)"])(
+    "%s → doesn't blame the keyword where the call takes it",
+    (source) => {
+      const message = errorFor(source);
+
+      expect(message).not.toContain("goes last");
+      expect(message).toContain('expected ",", ")"');
+    },
+  );
+
   it("leaves the waveform and swing lists as they are", () => {
     expect(errorFor("velocity = cos(n/4, )")).toContain(
       'expected expression, "sync".',

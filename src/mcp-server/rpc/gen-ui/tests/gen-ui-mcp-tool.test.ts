@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { validateTools } from "#src/mcp-server/create-mcp-server.ts";
 import { connectMcpClient } from "../../../tests/server/mcp-client-test-helpers.ts";
 
 const previous = process.env.ENABLE_GEN_UI;
@@ -44,5 +45,9 @@ describe("ppal-ui on the MCP server", () => {
     const { tools } = await client.listTools();
 
     expect(tools.map((t) => t.name)).toStrictEqual(["ppal-connect"]);
+  });
+
+  it("is a valid name for the tools whitelist", () => {
+    expect(validateTools(["ppal-connect", "ppal-ui"], false)).toBeNull();
   });
 });

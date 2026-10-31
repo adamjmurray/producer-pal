@@ -157,6 +157,21 @@ describe("mergeBrowserPlugins", () => {
     expect(merged?.vendor).toBe("Other Co");
   });
 
+  it("gives no vendor when neither the browser nor the DB has one", () => {
+    const [unlisted] = mergeBrowserPlugins(
+      [],
+      [browserPlugin({ vendor: null })],
+    );
+    const [noDbVendor] = mergeBrowserPlugins(
+      [dbPlugin({ vendor: null })],
+      [browserPlugin({ vendor: null })],
+    );
+
+    expect(unlisted?.vendor).toBeNull();
+    expect(noDbVendor?.vendor).toBeNull();
+    expect(noDbVendor?.version).toBe("1.6.1");
+  });
+
   it("joins names ignoring case and surrounding spaces, showing the browser's name", () => {
     const [merged] = mergeBrowserPlugins(
       [dbPlugin({ name: " VALHALLAROOM " })],
