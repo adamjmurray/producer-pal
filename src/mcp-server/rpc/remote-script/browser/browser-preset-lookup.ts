@@ -170,7 +170,7 @@ async function lookUpAtPath(
     prefixed,
     {
       missing: () => nothingNamed(preset, scope),
-      shared: (count) => sharedAtPath(preset, count),
+      shared: (items) => sharedAtPath(preset, items.length),
     },
     endsAt,
   );

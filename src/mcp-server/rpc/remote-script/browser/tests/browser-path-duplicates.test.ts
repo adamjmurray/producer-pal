@@ -68,12 +68,53 @@ describe("a browser path that two items share", () => {
     });
   });
 
-  it("refuses a device name", async () => {
+  it("points a shared rack file at preset", async () => {
     await mallets([ITEM, { ...ITEM }]);
 
     expect(await asDevice()).toStrictEqual({
       available: true,
-      error: `deviceName "${PATH}" matches 2 items at that browser path, so none was loaded`,
+      error: `deviceName "${PATH}" matches 2 items at that browser path, so none was loaded; to load one, pass its absolute path from ppal-library as preset, without deviceName`,
+    });
+  });
+
+  it("gives no hint for a shared Max device", async () => {
+    const device = { name: "Echo Gadget.amxd", path: "Echo Gadget.amxd" };
+
+    fake = await startFakeRemoteScript(() => ({
+      body: { items: [device, { ...device }] },
+    }));
+
+    expect(
+      await lookUpBrowserDevice(
+        "Max for Live/Echo Gadget.amxd",
+        Date.now() + 60_000,
+      ),
+    ).toStrictEqual({
+      available: true,
+      error:
+        'deviceName "Max for Live/Echo Gadget.amxd" matches 2 items at that browser path, so none was loaded',
+    });
+  });
+
+  it("gives no hint when a rack shares a bare name with a Max device", async () => {
+    const bare = PATH.replace(".adg", "");
+
+    await mallets([ITEM, { name: "Vibraphone.amxd", path: ITEM.path }]);
+
+    expect(await lookUpBrowserDevice(bare, Date.now() + 60_000)).toStrictEqual({
+      available: true,
+      error: `deviceName "${bare}" matches 2 items at that browser path, so none was loaded`,
+    });
+  });
+
+  it("points an upper-case extension at preset", async () => {
+    const upper = { ...ITEM, name: "Vibraphone.ADG" };
+
+    await mallets([upper, { ...upper }]);
+
+    expect(await asDevice()).toStrictEqual({
+      available: true,
+      error: `deviceName "${PATH}" matches 2 items at that browser path, so none was loaded; to load one, pass its absolute path from ppal-library as preset, without deviceName`,
     });
   });
 

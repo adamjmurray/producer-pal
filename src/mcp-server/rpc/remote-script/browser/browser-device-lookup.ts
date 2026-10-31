@@ -33,6 +33,9 @@ export type Section = (typeof SECTIONS)[number];
 /** Browser names that are really filenames. */
 const FILE_SUFFIX = /\.(?:amxd|adg|adv)$/;
 
+/** Rack and preset files, which `preset` can load by absolute path. */
+export const PRESET_FILE = /\.(?:adv|adg)$/i;
+
 /** How many candidates an ambiguity error names. */
 const MAX_LISTED = 10;
 
@@ -76,8 +79,7 @@ export async function lookUpBrowserDevice(
         prefixed,
         {
           missing: () => nothingNamed(deviceName),
-          shared: (count) =>
-            `deviceName "${deviceName}" matches ${count} items at that browser path, so none was loaded`,
+          shared: (items) => sharedDevicePath(deviceName, items),
         },
         endsAt,
       );
@@ -147,7 +149,7 @@ export function pathSegments(rest: string): string[] {
  * @param refusals - What to say when the path can't be settled
  * @param refusals.missing - The resolution when nothing is there
  * @param refusals.shared - The error when several loadable items are there,
- *   given how many. Live can list two files at one browser path, and the
+ *   given them. Live can list two files at one browser path, and the
  *   remote script loads the first, so one is never picked.
  * @param endsAt - When the lookup must be done, in epoch ms
  * @returns The resolution
@@ -160,7 +162,7 @@ export async function findAtPath(
     shared,
   }: {
     missing: () => BrowserItemResolution;
-    shared: (count: number) => string;
+    shared: (items: ListedItem[]) => string;
   },
   endsAt: number,
 ): Promise<BrowserItemResolution> {
@@ -204,10 +206,26 @@ export async function findAtPath(
   const items = spelled.length > 0 ? spelled : named;
 
   if (items.length > 1) {
-    return { available: true, error: shared(items.length) };
+    return { available: true, error: shared(items) };
   }
 
   return items[0] == null ? missing() : found({ ...items[0], section });
+}
+
+/**
+ * The refusal for a device path that two items share. Only a rack or preset
+ * file has a way forward: `preset` takes a file's absolute path.
+ * @param deviceName - The name the call used
+ * @param items - The items at that path
+ * @returns The error
+ */
+function sharedDevicePath(deviceName: string, items: ListedItem[]): string {
+  const files = items.every((item) => PRESET_FILE.test(item.name));
+  const next = files
+    ? "; to load one, pass its absolute path from ppal-library as preset, without deviceName"
+    : "";
+
+  return `deviceName "${deviceName}" matches ${items.length} items at that browser path, so none was loaded${next}`;
 }
 
 /**

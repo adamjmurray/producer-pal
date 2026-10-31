@@ -24,14 +24,12 @@ import {
 import { browserNamedPackPath } from "../../../live-library/query/pack-folder-names.ts";
 import {
   type Candidate,
+  PRESET_FILE,
   ambiguity,
   normalizedName,
 } from "./browser-device-lookup.ts";
 import { presetFileIsFor } from "./preset-file-device.ts";
 import { RemoteScriptTimeout } from "../remote-script-errors.ts";
-
-/** The files a preset can be. */
-const PRESET_FILE = /\.(?:adv|adg)$/i;
 
 /** The kind of device each remote script `type` holds presets for. */
 const SCOPE_KINDS: Record<string, LibraryDeviceKind> = {

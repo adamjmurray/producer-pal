@@ -168,13 +168,17 @@ Part of [Skip entries, tool by tool](README.md).
   loadable items at the end is refused with the count: Live can list a Core
   Library file and a pack's at one path, and the remote script would load the
   first. A `preset` refusal says to pass the file's absolute path from
-  ppal-library; `deviceName` has no way to name one. A suffix picks between a
-  rack and a preset of one name (`Foo.adv`); folders don't count. With a device
-  named, the path is checked against it first (trimmed segments, any case),
-  before the folder is listed: a path outside the device's presets is refused
-  "not a preset for <device>" even when two items share it, unless it is a Drum
-  Rack kit (above), where the Drum Rack files of that name settle which file it
-  is. A device already in the Set (update-device) takes a path anywhere.
+  ppal-library. A `deviceName` refusal points to the same fix as a `preset`
+  refusal, adding "without deviceName" (a retry that keeps `deviceName` hits the
+  same refusal first), only when every item is a rack or preset file (`.adg`,
+  `.adv`, any case); a plug-in or Max device has no way to name one, so its
+  refusal gives none. A suffix picks between a rack and a preset of one name
+  (`Foo.adv`); folders don't count. With a device named, the path is checked
+  against it first (trimmed segments, any case), before the folder is listed: a
+  path outside the device's presets is refused "not a preset for <device>" even
+  when two items share it, unless it is a Drum Rack kit (above), where the Drum
+  Rack files of that name settle which file it is. A device already in the Set
+  (update-device) takes a path anywhere.
 - **A preset file is checked against the device a call names.** create-device
   with a `deviceName` and an absolute file path (a Windows drive or network
   share too) reads the gzipped XML and refuses a file for another device, as it
