@@ -5,7 +5,10 @@
 
 import { z } from "zod";
 import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
-import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
+import {
+  deprecatedSendParams,
+  sendsInputSchema,
+} from "#src/tools/shared/sends/sends-schema.ts";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
@@ -137,20 +140,12 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         "works unless the pad has layers, which take a layer path)",
       smallModel: null,
     }),
-    sendGainDb: param(z.coerce.number().min(-70).max(0).optional(), {
-      default: "chain's send level in dB, requires sendReturn (chains only)",
-      smallModel: null,
-    }),
-    sendReturn: param(z.coerce.string().optional(), {
-      default:
-        'rack return chain for sendGainDb: id, exact name (e.g. "a Reverb"), or letter (e.g. "a"), or comma-separated one per target; requires sendGainDb',
-      smallModel: null,
-    }),
     sends: param(sendsInputSchema, {
       default:
-        "several of a chain's sends at once: [{return, gainDb}], return as for sendReturn. Use instead of sendGainDb + sendReturn",
+        '[{return, gainDb}] for a chain (chains only); return is a rack return chain: id, exact name (e.g. "a Reverb"), or letter (e.g. "a")',
       smallModel: null,
     }),
+    ...deprecatedSendParams,
     chokeGroup: param(z.coerce.number().int().min(0).max(16).optional(), {
       default: "choke group 0-16, 0=none (drum chains only)",
       smallModel: null,

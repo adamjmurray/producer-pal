@@ -479,7 +479,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     registerOccupiedDestination();
 
     expect(moveReason("t0/d0/c1")).toBe(
-      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sends',
     );
   });
 
@@ -520,7 +520,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     });
 
     expect(moveReason("t1/d0/c0")).toBe(
-      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sends',
     );
     expect(destinationVolume.set).not.toHaveBeenCalled();
   });

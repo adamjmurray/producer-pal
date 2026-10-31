@@ -17,10 +17,10 @@ How the tool answers depends on what is wrong:
   `type`) and the read that lists real ones. The words are `idOrPathRequired`'s.
   It never falls back to a default target.
 - **A whole-call param the tool can't read → throw**, in update tools too: a
-  half `sendGainDb`/`sendReturn` pair, a tempo outside Live's range, a note name
-  that parses as nothing, a `params` entry with no name or value. Warning per
-  item would repeat one message down the list and still return a success-shaped
-  result.
+  half of the deprecated `sendGainDb`/`sendReturn` pair, a tempo outside Live's
+  range, a note name that parses as nothing, a `params` entry with no name or
+  value. Warning per item would repeat one message down the list and still
+  return a success-shaped result.
 - **Applicability that depends on the target, found while working → skip that
   target** (see [Skips](skips-and-replaced-targets.md)). `quantize` on an audio
   clip is not knowable until that clip is reached, and the earlier targets can't
@@ -39,6 +39,8 @@ How the tool answers depends on what is wrong:
     `slot`, `toPath` and `toSlot`, `arrangementSplit` and `split`, `startTime`
     and `startLocator`, `arrangementStart` and `locator`), or with a position
     spelled in its own coordinate (`toPath: "t0[5|1]"` and `arrangementStart`);
+  - `sends` beside the deprecated `sendGainDb` or `sendReturn` (update-track,
+    update-device), whatever the values: one list or the other, never both;
   - `id` beside `ids` or the tool's own id spelling (`clipId`, `trackId`, ...),
     and `path` beside `paths`, whatever the values: a param and its alias are
     never sent together. Same for create-device's `deviceName` and its `device`

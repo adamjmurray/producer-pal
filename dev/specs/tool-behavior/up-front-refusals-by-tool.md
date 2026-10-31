@@ -83,6 +83,8 @@ code; when it disagrees with a tool, the tool wins.
     `delete`, `duplicate`, `playback`): `id` with `ids` or its own id spelling,
     and `path` with `paths`, whatever the values. This is in
     `namedIdParam`/`namedPathParam`, before the targets are counted.
+  - `sends` with `sendGainDb` or `sendReturn` in `updateTrack`/`updateDevice`,
+    by `refuseNamedTwice` in the send checks.
   - A param with its deprecated spelling, by `refuseDoubledSpelling` (`path` and
     `slot` in `readClip`/`createClip`, `toPath` and `toSlot` in `duplicate` and
     `updateClip`, `arrangementSplit` and `split`), and by hand in `select`

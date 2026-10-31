@@ -230,8 +230,8 @@ Part of [Skip entries, tool by tool](README.md).
   work asked of that target, so a target they were the whole of keeps its slot
   as a skip and a lone one throws.
 - **A rack's return chains are the rack's, so a send that names none is the
-  chain's.** `sends` (and the `sendGainDb`/`sendReturn` pair) on a chain or pad
-  naming no return chain of its rack is that send's own
+  chain's.** `sends` (and the deprecated `sendGainDb`/`sendReturn` pair) on a
+  chain or pad naming no return chain of its rack is that send's own
   `{return, ok: false, detail}` on the chain's entry, the return spelled the way
   the caller wrote it. update-track's own three — no mixer, no sends, no send
   for that return — are facts about the track rather than about the Live Set,

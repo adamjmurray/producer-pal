@@ -29,9 +29,8 @@ interface TrackSend {
 }
 
 /**
- * The Drums track's send to the delay return sits at the asked-for level. Both
- * halves matter: `sendGainDb` without `sendReturn` (or a return name that
- * matches nothing) warns and writes nothing, and the tool still succeeds.
+ * The Drums track's send to the delay return sits at the asked-for level. A
+ * return name that matches nothing writes nothing, and the tool still succeeds.
  *
  * @returns A state assertion over the track's sends
  */
@@ -71,10 +70,10 @@ export const trackAndDeviceWorkflow: EvalScenario = {
     "Create track, add device, update properties, route sends to a new and an existing return",
   kind: "regression",
   liveSet: "basic-midi-4-track",
-  // Both send turns need update-track's `sendGainDb`/`sendReturn`, which
+  // Both send turns need update-track's `sends`, which
   // small-model mode strips from the schema — a send is impossible there, and
   // the scenario used to score a pass for calling update-track at all.
-  requires: { params: ["sendReturn"] },
+  requires: { params: ["sends"] },
   // The checks below pin the outcome. The judge only adds commentary they
   // can't anticipate — hallucinations, misleading prose, extra steps.
   judgeAdvisory: true,

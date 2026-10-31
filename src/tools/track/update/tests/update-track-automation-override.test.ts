@@ -75,8 +75,7 @@ describe("updateTrack - overriding arrangement automation", () => {
 
     const result = updateTrack({
       id: "123",
-      sendGainDb: -12,
-      sendReturn: "A",
+      sends: [{ return: "A", gainDb: -12 }],
     }) as { sends: unknown[] };
 
     expect(result.sends).toStrictEqual([
@@ -115,8 +114,7 @@ describe("updateTrack - overriding arrangement automation", () => {
       id: "123",
       gainDb: -3,
       mute: true,
-      sendGainDb: -12,
-      sendReturn: "A",
+      sends: [{ return: "A", gainDb: -12 }],
     });
 
     expect(result).toStrictEqual({ id: "123", path: "t0" });

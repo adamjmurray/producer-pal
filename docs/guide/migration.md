@@ -145,6 +145,12 @@ routing params, `sendReturn` and `mappedPitch`. Write a comma inside a value as
 `\,` (`"Kick\, Hard.wav"`). `\,` now reads as a plain comma even with one
 target; 2.3 kept the backslash.
 
+`sendGainDb` + `sendReturn` on `ppal-update-track` and `ppal-update-device` are
+deprecated in favor of `sends: [{return, gainDb}]`. They still work and warn.
+`sends` can't give each target its own return, so split a comma list in
+`sendReturn` into one call per return. Sending `sends` together with either of
+them is refused.
+
 **Naming a target twice acts on it once, at the last mention.** `ppal-delete`
 and `ppal-update-live-set` now work like `ppal-update-clip` and `ppal-playback`:
 the earlier mention's entry says `named again as "t8/s0" later in this call`.

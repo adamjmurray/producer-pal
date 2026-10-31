@@ -296,7 +296,7 @@ describe("updateTrack - every send failed", () => {
 
   it("keeps the track's slot as ok:false in a list", () => {
     expect(
-      updateTrack({ id: "123,456", sendGainDb: -6, sendReturn: "A" }),
+      updateTrack({ id: "123,456", sends: [{ return: "A", gainDb: -6 }] }),
     ).toStrictEqual([
       {
         id: "123",
@@ -309,7 +309,11 @@ describe("updateTrack - every send failed", () => {
 
   it("keeps the hit and its failed send when a name landed", () => {
     expect(
-      updateTrack({ id: "123", name: "Bass", sendGainDb: -6, sendReturn: "A" }),
+      updateTrack({
+        id: "123",
+        name: "Bass",
+        sends: [{ return: "A", gainDb: -6 }],
+      }),
     ).toStrictEqual({
       id: "123",
       path: "t0",

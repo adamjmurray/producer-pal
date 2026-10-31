@@ -231,7 +231,7 @@ describe("ppal-read-track", () => {
 
   it("reports each send's return track id alongside its name", async () => {
     // The id is the only thing that tells two same-named returns apart, and
-    // update-track's sends/sendReturn accept it. Only real Live proves the id
+    // update-track's sends accept it. Only real Live proves the id
     // the read reports is the return track's own.
     const liveSet = parseToolResult<LiveSetResult>(
       await ctx.client!.callTool({

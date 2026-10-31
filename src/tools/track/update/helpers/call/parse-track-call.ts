@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
-import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
+import { validateSendParams } from "#src/tools/shared/helpers/send-validation.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { type ListArg } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
@@ -86,7 +86,7 @@ export function parseTrackCall(args: UpdateTrackArgs): TrackCall {
 
   const named = namedTargets(targets);
 
-  validateSendPair(args.sendGainDb, args.sendReturn);
+  validateSendParams(args);
   validateMonitoringState(args.monitoringState);
 
   return { args, targets, sent: { id, ids, path, paths }, named };

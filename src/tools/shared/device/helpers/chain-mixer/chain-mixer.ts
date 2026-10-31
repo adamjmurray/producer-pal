@@ -387,8 +387,8 @@ function applyChainSends(
         )
       : null;
 
-  // After the scalar pair, so a call using both honors both. They only collide
-  // when they name the same return, and then the list is the later word.
+  // A call never carries both (refused up front); the list is the later word
+  // should the two ever name the same return.
   const list: WrittenChainSend[] = [];
 
   for (const send of params.sends ?? []) {

@@ -5,7 +5,7 @@
 
 /**
  * E2E tests for naming a return track by path ("rt0") in ppal-update-track's
- * sendReturn and sends[].return.
+ * sends[].return.
  * Uses: e2e-test-set (two or more return tracks)
  *
  * Run with: npm run e2e:mcp -- ppal-update-track-send-paths
@@ -63,10 +63,13 @@ async function readSends(trackId: string): Promise<ReadTrackResult["sends"]> {
 }
 
 describe("ppal-update-track return tracks by path", () => {
-  it("takes rt<n> as sendReturn", async () => {
+  it("takes rt<n> as a single sends[].return", async () => {
     const { trackId, returnNames } = await readSetup();
 
-    await updateTrack({ id: trackId, sendGainDb: -17, sendReturn: "rt1" });
+    await updateTrack({
+      id: trackId,
+      sends: [{ return: "rt1", gainDb: -17 }],
+    });
 
     const sends = await readSends(trackId);
 

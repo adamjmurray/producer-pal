@@ -441,7 +441,7 @@ describe("moveDeviceToPath - out of a trimmed chain", () => {
 
     expect(move.outcome).toBe("moved");
     expect(capturedWarnings()).toContain(
-      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sends',
     );
   });
 

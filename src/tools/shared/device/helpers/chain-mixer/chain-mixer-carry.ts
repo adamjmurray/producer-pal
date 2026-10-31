@@ -62,7 +62,11 @@ export function carryChainMixer(
       (send) =>
         applyChainMixerAside(
           destination,
-          { sendGainDb: send.gainDb, sendReturn: send.returnId ?? send.return },
+          {
+            sends: [
+              { return: send.returnId ?? send.return, gainDb: send.gainDb },
+            ],
+          },
           notes,
         ).sends ?? [],
     )
@@ -127,7 +131,7 @@ export function noteChainMixerLeftBehind(
 
   noteTarget(
     notes,
-    `${chainLabel(chain)} trim (${summarizeChainMixer(mixer)}) ${verb} — reapply on the ${where} with ${tool} gainDb/pan/sendGainDb+sendReturn${hint}`,
+    `${chainLabel(chain)} trim (${summarizeChainMixer(mixer)}) ${verb} — reapply on the ${where} with ${tool} gainDb/pan/sends${hint}`,
   );
 }
 
