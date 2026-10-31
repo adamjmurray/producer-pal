@@ -77,6 +77,24 @@ re-sends each turn's signed reasoning (`reasoningReplayFor`,
   `reasoning_details` from earlier turns. It runs after the "Off" settle, so a
   model that can't turn reasoning off (Sonnet 5.5) keeps its blocks at "Off".
 
+**Raw stream tests:**
+
+`chat/sdk/tests/stream/` feeds each provider's raw server-sent events through
+the real AI SDK provider and `streamText` loop (only `fetch` is stubbed) into
+`ChatSdkClient`, then checks the history and the next request's wire body. It
+covers Anthropic, OpenAI (Responses), Gemini, and the Chat Completions routes
+(LM Studio, custom, Ollama). The fixtures are built by hand from the documented
+event shapes. `scripts/probes/record-provider-streams.ts` records real ones
+(paid; needs your keys) for checking or refreshing a fixture. OpenRouter's raw
+stream is covered in `tests/provider/openrouter-reasoning-replay.test.ts`.
+
+What the tests pin down: only Anthropic and OpenRouter→Claude reasoning is sent
+back on a later turn. Gemini thought summaries, OpenAI reasoning summaries and
+local models' thinking are display-only. The SDK keeps them within a turn, then
+earlier turns go back as plain text and tool calls. For Gemini 3 the SDK adds a
+`skip_thought_signature_validator` signature to those earlier calls and logs an
+AI SDK warning.
+
 **Response Model Tracking:**
 
 After each stream completes, `ChatSdkClient` (`chat/sdk/client.ts`) captures the
