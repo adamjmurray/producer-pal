@@ -90,6 +90,14 @@ export async function handleWriteMemoryEntry(args: {
     );
   }
 
+  // read and delete split `name` on commas, so a name with one could never be
+  // read back. `\,` counts: the stored slug has no commas either way.
+  if (args.name.includes(",")) {
+    throw new Error(
+      `name "${args.name}" has a comma; memory names can't contain one (read and delete use commas to list several)`,
+    );
+  }
+
   if (!args.content) {
     throw new Error("content required to write a memory entry");
   }

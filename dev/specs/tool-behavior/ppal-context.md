@@ -9,10 +9,11 @@ are one document each.
 
 `name` is a comma-separated list of memory entries on a memory `read` or
 `delete`, split like every target list (`\,` is a comma inside a name; an empty
-entry is refused before anything runs). A memory `write` has one target, so its
-`name` is never split: commas are part of the name, as for any single target.
+entry is refused before anything runs). A memory `write` has one target and
+never splits its `name`, but refuses one with a comma (escaped or not) before
+anything runs: a stored name has no commas, and `read`/`delete` would split it.
 (Each entry needs its own `description` and `content`, so a write can't take a
-list.) A write `name` over 200 characters is refused, since it becomes a
+list.) A write `name` over 200 characters is refused too, since it becomes a
 filename.
 
 - **One name answers with its entry, unwrapped**, the same entry a list would

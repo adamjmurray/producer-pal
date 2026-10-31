@@ -274,24 +274,6 @@ describe("context - memory scope", () => {
       expect(protocolMock.requestNode).not.toHaveBeenCalled();
     });
 
-    it("does not split a write's name", async () => {
-      mockNodeContent("index");
-
-      await context({
-        action: "write",
-        scope: "memory",
-        name: "a,b",
-        description: "d",
-        content: "c",
-      });
-
-      expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.remember", {
-        name: "a,b",
-        description: "d",
-        content: "c",
-      });
-    });
-
     it("refuses a write name over 200 characters", async () => {
       await expect(
         context({
@@ -305,23 +287,23 @@ describe("context - memory scope", () => {
       expect(protocolMock.requestNode).not.toHaveBeenCalled();
     });
 
-    it("still writes a name with an escaped comma", async () => {
-      mockNodeContent("index");
-
-      await context({
-        action: "write",
-        scope: "memory",
-        name: "a\\,b",
-        description: "d",
-        content: "c",
-      });
-
-      expect(protocolMock.requestNode).toHaveBeenCalledWith("memory.remember", {
-        name: "a\\,b",
-        description: "d",
-        content: "c",
-      });
-    });
+    it.each(["jungle, breaks", "a,b", "a\\,b", ","])(
+      "refuses a write name with a comma: %s",
+      async (name) => {
+        await expect(
+          context({
+            action: "write",
+            scope: "memory",
+            name,
+            description: "d",
+            content: "c",
+          }),
+        ).rejects.toThrow(
+          `name "${name}" has a comma; memory names can't contain one (read and delete use commas to list several)`,
+        );
+        expect(protocolMock.requestNode).not.toHaveBeenCalled();
+      },
+    );
 
     it("throws when the node route reports failure", async () => {
       vi.mocked(protocolMock.requestNode).mockResolvedValue({

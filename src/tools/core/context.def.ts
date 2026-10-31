@@ -97,7 +97,7 @@ export const toolDefContext = defineTool("ppal-context", {
     name: param(z.string().max(1000).optional(), {
       default:
         "Memory entry name (scope:memory only). read/delete take a " +
-        "comma-separated list; write takes one. Reuse a name to update, " +
+        "comma-separated list; write takes one, no commas. Reuse a name to update, " +
         "not duplicate.",
       smallModel: null,
     }),

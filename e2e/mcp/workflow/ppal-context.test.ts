@@ -395,6 +395,49 @@ describe("ppal-context (memory scope)", () => {
     }
   });
 
+  it("refuses a write name with a comma and stores nothing", async () => {
+    const id = randomUUID();
+    // Slugifies to this, which is where a write that got through would land.
+    const slug = `e2e-test-${id}-breaks`;
+
+    try {
+      const message = getToolErrorMessage(
+        await callContextTool({
+          action: "write",
+          scope: "memory",
+          name: `e2e-test-${id}, breaks`,
+          description: "e2e refused memory",
+          content: "never stored",
+        }),
+      );
+
+      expect(message).toContain(
+        "has a comma; memory names can't contain one (read and delete use commas to list several)",
+      );
+      expect(
+        getToolErrorMessage(
+          await callContextTool({
+            action: "read",
+            scope: "memory",
+            name: slug,
+          }),
+        ),
+      ).toContain(`No memory found for "${slug}"`);
+    } finally {
+      try {
+        await callContextTool({
+          action: "delete",
+          scope: "memory",
+          name: slug,
+        });
+      } catch {
+        console.warn(
+          `e2e cleanup failed — manually delete ~/.producer-pal/memory/${slug}.md`,
+        );
+      }
+    }
+  });
+
   it("refuses an unusable name without naming the internal route", async () => {
     const message = getToolErrorMessage(
       await callContextTool({
