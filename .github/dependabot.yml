@@ -96,3 +96,8 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+    groups:
+      # CodeQL fails when its init and analyze steps run different versions.
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
