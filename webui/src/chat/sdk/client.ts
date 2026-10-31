@@ -37,6 +37,7 @@ import {
   isSpawnToolResult,
 } from "./subagent/subagent-session";
 import { DEFAULT_MAX_TOOL_STEPS } from "./step-budget";
+import { streamEndNotice } from "./streaming/stream-end-notice";
 import {
   type ChatClientConfig,
   type ChatMessage,
@@ -72,6 +73,8 @@ export class ChatSdkClient {
    * limit (the model still wanted to call tools). Reset on each sendMessage.
    */
   toolLimitReached = false;
+  /** Notice for how the most recent stream ended, if it needs one. */
+  private endNotice: string | undefined;
   private tools: ToolSet = {};
   private config: ChatClientConfig;
   /**
@@ -396,6 +399,19 @@ export class ChatSdkClient {
     shouldInterrupt: (() => boolean) | undefined,
   ): AsyncGenerator<ChatMessage[], void, unknown> {
     yield* this.processStream(providerOptions, abortSignal, shouldInterrupt);
+
+    if (this.endNotice != null) {
+      // The provider cut the reply off (or sent nothing). Say so as an error
+      // entry: it renders for the user, is saved, and is skipped when building
+      // model messages, so no empty assistant turn reaches the next request.
+      // Text sent before the cut stays above it.
+      this.chatHistory.push({
+        role: "assistant",
+        content: this.endNotice,
+        isError: true,
+      });
+    }
+
     // Final yield to ensure last step's usage (attached by onStepEnd) is emitted
     yield [...this.chatHistory];
   }
@@ -446,6 +462,8 @@ export class ChatSdkClient {
   ): AsyncGenerator<ChatMessage[]> {
     let currentMsg: ChatMessage = { role: "assistant", content: "" };
     let addedCurrentMsg = false;
+
+    this.endNotice = undefined;
 
     const historyLengthBefore = this.chatHistory.length;
     let stepIndex = 0;
@@ -586,6 +604,11 @@ export class ChatSdkClient {
       completedSteps,
       finalFinishReason,
       this.maxSteps,
+    );
+
+    this.endNotice = streamEndNotice(
+      finalFinishReason,
+      this.chatHistory.length > historyLengthBefore,
     );
   }
 }
