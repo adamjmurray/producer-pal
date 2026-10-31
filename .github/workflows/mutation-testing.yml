@@ -1,20 +1,30 @@
 name: "Mutation Testing"
 
-# Manually triggered mutation testing. Deliberately off the per-PR hot path — a
-# pass is minutes to hours, far too slow for every commit. Pick a scope or group
-# to mutate; the list lives in config/mutation-scopes.mjs (scopes: notation +
-# each src/tools/ domain; groups: tools, all). The runner validates the input
-# and fast-fails on an unknown name.
+# Weekly full mutation run, plus manual runs for a chosen scope. Never a PR
+# check: a full tree takes ~8-20 hours, so the scopes run in parallel, one job
+# each (GitHub caps a job at 6 hours). Every scope has a `break` floor, and a
+# scope under its floor turns its own job red. That is a signal, not a gate.
+#
+# The scope list comes from config/mutation-scopes.mjs (scopes: notation, the
+# runtime areas, and each src/tools/ domain; groups: tools, all). Nothing is
+# restored from a cache, so every run is a full one (no incremental file).
+#
+# Heads-up: shared runners are slower and noisier than a dev machine. Stryker
+# counts a timed-out mutant as killed, and which ones time out varies from run
+# to run, so a scope sitting near its floor can go red now and then without a
+# real regression. Re-run it, or check the report, before acting on it.
 
 on:
+  schedule:
+    - cron: "0 3 * * 1" # Mondays, 03:00 UTC
   workflow_dispatch:
     inputs:
       scope:
         description:
           "Scope(s)/group(s), space-separated: notation | clip | tools | all |
-          ..."
-        required: true
-        default: "notation"
+          ... (empty = all)"
+        required: false
+        default: "all"
 
 concurrency:
   group: mutation-${{ github.ref_name }}
@@ -24,12 +34,49 @@ env:
   NODE_VERSION: "24.x"
 
 jobs:
-  mutation:
+  scopes:
     runs-on: ubuntu-latest
-    timeout-minutes: 360 # GitHub's hard ceiling; a single scope is minutes, groups can be hours
 
     permissions:
       contents: read
+
+    outputs:
+      scopes: ${{ steps.list.outputs.scopes }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # The runner expands groups and fails on an unknown name. It needs no
+      # dependencies, so there is no `npm ci` here.
+      - name: List scopes
+        id: list
+        # Input goes through env (not inline ${{ }}) to avoid script injection.
+        # $SCOPE is unquoted on purpose so several scopes split into args;
+        # set -f stops a `*` in it from globbing.
+        env:
+          SCOPE: ${{ inputs.scope }}
+        run: |
+          set -f
+          scopes=$(node config/run-mutation.mjs --list ${SCOPE:-all})
+          echo "Scopes: $scopes"
+          echo "scopes=$scopes" >> "$GITHUB_OUTPUT"
+
+  mutation:
+    needs: scopes
+    runs-on: ubuntu-latest
+    timeout-minutes: 350 # under GitHub's 360 ceiling
+
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false # one scope under its floor must not cancel the others
+      matrix:
+        scope: ${{ fromJSON(needs.scopes.outputs.scopes) }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -41,20 +88,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The runner builds the parsers, then runs Stryker, and exits non-zero
+      # when Stryker does (score under the scope's floor). Don't pipe this
+      # command: a pipe would report the pipe's status instead.
       - name: Run mutation testing
-        # Pass the input via env (not inline ${{ }}) to avoid script injection.
-        # $SCOPE is intentionally unquoted so a multi-scope input word-splits
-        # into separate args (e.g. "notation clip" -> two scopes).
         env:
-          SCOPE: ${{ inputs.scope }}
-        run: npm run mutation -- $SCOPE
+          SCOPE: ${{ matrix.scope }}
+        run: npm run mutation -- "$SCOPE"
 
-      - name: Upload mutation reports
-        # always() so the HTML report survives even when a break gate fires
-        # (notation is ratcheted and exits non-zero on a regression).
+      - name: Upload mutation report
+        # always() so the report survives a score under the floor.
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: mutation-reports
-          path: reports/mutation/
+          name: mutation-report-${{ matrix.scope }}
+          path: reports/mutation/${{ matrix.scope }}.html
+          if-no-files-found: warn
           retention-days: 30
