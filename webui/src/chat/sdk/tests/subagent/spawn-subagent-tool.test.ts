@@ -15,6 +15,7 @@ import {
 } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
 import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
+import { streamEndNotice } from "#webui/chat/sdk/streaming/stream-end-notice";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
   type ChatClientConfig,
@@ -265,6 +266,29 @@ describe("extractWorkerResult", () => {
     ];
 
     expect(extractWorkerResult(history)).toBe("the real result");
+  });
+
+  it.each(["content-filter", "other"] as const)(
+    "returns the %s notice when the run ended on it, not earlier text",
+    (finishReason) => {
+      const notice = streamEndNotice(finishReason, false) as string;
+      const history: ChatMessage[] = [
+        { role: "assistant", content: "Starting on the bassline." },
+        { role: "assistant", content: notice, isError: true },
+      ];
+
+      expect(extractWorkerResult(history)).toBe(notice);
+    },
+  );
+
+  it("ignores a notice that is not the run's last entry", () => {
+    const notice = streamEndNotice("content-filter", false) as string;
+    const history: ChatMessage[] = [
+      { role: "assistant", content: notice, isError: true },
+      { role: "assistant", content: "Recovered and finished." },
+    ];
+
+    expect(extractWorkerResult(history)).toBe("Recovered and finished.");
   });
 
   it("falls back when the worker produced no final text", () => {
