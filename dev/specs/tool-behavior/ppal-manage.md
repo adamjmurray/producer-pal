@@ -130,7 +130,8 @@ script.
 Puts the Producer Pal device on a new MIDI track of the open Set. It only works
 while Producer Pal isn't running, so only the portal answers it (see
 [While Producer Pal isn't running](#while-producer-pal-isnt-running)). The tool
-description tells the model to ask the user first, since it changes their Set.
+description tells the model to ask the user first, since it changes their Set,
+unless the user already asked for it.
 
 - **On the device:** throws `Producer Pal is already running in this Live Set`,
   after the same argument checks as every action.
@@ -171,7 +172,7 @@ Replaces the running Producer Pal device with the one this portal ships, in
 place: same track, same position, and the project context (kept in a device
 parameter) survives. Only the portal answers it, online or off, because the
 device being replaced dies with the swap. The tool description tells the model
-to ask the user first.
+to ask the user first, unless the user already asked for it.
 
 - **On the device** (Chat UI, a direct HTTP client, or a portal too old to
   answer it): throws that the update runs through the portal (the npx package or
