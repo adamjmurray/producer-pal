@@ -306,6 +306,32 @@ describe("updateClip - convert", () => {
     );
   });
 
+  it("says the track has no clip where an arrangement clip started", async () => {
+    setupArrangementAudioClipMock(mocks.clip789, { start_time: 16 });
+    answerRoute(() => {
+      addTrack("200", 4);
+      const clip = registerMockObject("300", {
+        path: livePath.track(4).arrangementClip(0),
+      });
+
+      setupMidiClipMock(clip, { is_arrangement_clip: 1, start_time: 0 });
+      registerMockObject("200", {
+        path: livePath.track(4),
+        type: "Track",
+        properties: { name: TRACK_NAME, arrangement_clips: ["id", "300"] },
+      });
+    });
+
+    const result = await updateClip({ id: "789", convert: "harmony" });
+
+    expect(convertedOf(result)).toStrictEqual({ track: NEW_TRACK });
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: "the new track has no MIDI clip where this clip was",
+      }),
+    );
+  });
+
   it("looks for no clip on a new track that has no track index", async () => {
     answerRoute(() => {
       addTrack("200", 4);

@@ -85,3 +85,21 @@ describe("updateClip - a skip whose path an earlier clip's write moved", () => {
     ]);
   });
 });
+
+describe("updateClip - a path that can never name a clip", () => {
+  it("skips its own target with the reason alone", async () => {
+    const mocks = setupUpdateClipMocks();
+
+    setupMidiClipMock(mocks.clip123);
+
+    expect(await updateClip({ path: "t0/s0,t1/d0", name: "A" })).toStrictEqual([
+      { id: "123", path: "t0/s0" },
+      {
+        path: "t1/d0",
+        ok: false,
+        detail:
+          'invalid path "t1/d0" - device paths hold no clips; clips go to a track ("t0"), a take lane on it ("t0/l0"), or a clip slot ("t0/s1")',
+      },
+    ]);
+  });
+});
