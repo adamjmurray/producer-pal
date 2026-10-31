@@ -17,7 +17,11 @@ import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 import { type CommentTree } from "../comment-scan-helpers.ts";
-import { findSourceFiles, projectRoot } from "../meta-test-helpers.ts";
+import {
+  findSourceFiles,
+  projectRoot,
+  repoPath,
+} from "../meta-test-helpers.ts";
 
 /** The exported functions and classes of one module. */
 export interface ModuleExports {
@@ -38,10 +42,7 @@ export function scanMainExports(tree: CommentTree): ModuleExports[] {
   return findSourceFiles(path.join(projectRoot, tree), true)
     .filter((file) => isScannedModule(file))
     .map((file) =>
-      scanModuleSource(
-        path.relative(projectRoot, file),
-        fs.readFileSync(file, "utf8"),
-      ),
+      scanModuleSource(repoPath(file), fs.readFileSync(file, "utf8")),
     )
     .filter((entry) => entry.names.length > 0)
     .toSorted((a, b) => a.file.localeCompare(b.file));
@@ -150,12 +151,10 @@ function sameWord(word: string, fileWord: string): boolean {
  * @returns Exported names
  */
 function exportedNames(filePath: string, source: string): string[] {
-  const parsed = ts.createSourceFile(
-    filePath,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-  );
+  const parsed = ts.createSourceFile(filePath, source, {
+    languageVersion: ts.ScriptTarget.Latest,
+    jsDocParsingMode: ts.JSDocParsingMode.ParseNone,
+  });
   const names: string[] = [];
   const local = new Set<string>();
 
@@ -205,12 +204,11 @@ function declaredNames(statement: ts.Statement): string[] {
     return [];
   }
 
-  return statement.declarationList.declarations
-    .filter(
-      (declaration) =>
-        ts.isIdentifier(declaration.name) && isFunctionValue(declaration),
-    )
-    .map((declaration) => declaration.name.getText());
+  return statement.declarationList.declarations.flatMap((declaration) =>
+    ts.isIdentifier(declaration.name) && isFunctionValue(declaration)
+      ? [declaration.name.text]
+      : [],
+  );
 }
 
 /**

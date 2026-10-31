@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
@@ -144,7 +144,7 @@ describe("readOneClip path param", () => {
   // What results said before 2.2.0, so a model pasting one back made a
   // well-founded guess: honor it, and warn to teach the spelling.
   it("honors the old unprefixed spelling, with a warning", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     setupMidiClipMock({
       trackIndex: 1,
@@ -184,7 +184,7 @@ describe("readOneClip path param", () => {
   // A slot that names nothing is not a second clip, so it can't shadow the
   // fallback. It used to throw on the way to parsing it.
   it("falls back to trackIndex/sceneIndex when slot names nothing", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     setupMidiClipMock({
       trackIndex: 1,
@@ -307,7 +307,7 @@ describe("readOneClip path param", () => {
   it.each(["id", "path"] as const)(
     "reads the clip the other param names when %s is a coerced null",
     (param) => {
-      const warn = vi.spyOn(console, "warn");
+      const warn = vi.spyOn(maxConsole, "emitWarning");
 
       setupMidiClipMock({
         trackIndex: 1,

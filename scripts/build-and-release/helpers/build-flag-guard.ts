@@ -23,10 +23,12 @@
 export const GUARDED_BUILD_FLAGS: string[] = [
   "ENABLE_LIVE_API",
   "ENABLE_CODE_EXEC",
+  "ENABLE_GEN_UI",
   "ENABLE_WARP_MARKERS",
   "ENABLE_REMOTE_CORS",
   "ENABLE_BUILD_STATS",
   "ENABLE_OBJECT_PROBE",
+  "ENABLE_HOSTED_PLUGINS",
 ];
 
 /** Set to "true" alongside the flags to build with them on purpose. */

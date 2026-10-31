@@ -6,6 +6,7 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { CLIENT_TOOL_TIMEOUT_MS } from "#src/shared/config";
 import { extractMcpText } from "#webui/lib/utils/mcp-content";
+import { errorMessage } from "#src/shared/error-message";
 
 /**
  * Call an MCP tool and return its result as a string, never throwing. Shared by
@@ -47,7 +48,7 @@ export async function callMcpToolToString(
 
     return text;
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorMessage(err);
 
     return `Error calling ${name}: ${message}`;
   }

@@ -15,7 +15,7 @@ import {
 import {
   namedAgain,
   replacementFailedDetail,
-} from "#src/tools/shared/validation/lists/named-targets.ts";
+} from "#src/shared/max/named-again-wording.ts";
 import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
 import { roundGainDb } from "#src/tools/shared/helpers/rounding.ts";
 

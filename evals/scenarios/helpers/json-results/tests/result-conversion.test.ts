@@ -90,7 +90,12 @@ function convert(overrides?: Partial<EvalScenarioResult>) {
  * @returns An llm_judge assertion result
  */
 function judgeAssertion(
-  details: { pass: boolean; issues: string[] },
+  details: {
+    pass: boolean;
+    issues: string[];
+    provider?: string;
+    model?: string;
+  },
   message: string,
 ): EvalAssertionResult {
   return makeAssertion({
@@ -123,6 +128,14 @@ describe("toJsonResult", () => {
       results: [expect.objectContaining({ type: "tool_called", pass: true })],
     });
     expect(result.judge).toBeUndefined();
+  });
+
+  it("records the thinking level the model ran at", () => {
+    expect(convert({ thinking: "high" }).thinking).toBe("high");
+  });
+
+  it("leaves thinking out when none was set", () => {
+    expect("thinking" in convert()).toBe(false);
   });
 
   it("includes turns with aggregated step usage", () => {
@@ -169,6 +182,32 @@ describe("toJsonResult", () => {
     // there were zero checks, so the overall result hard-failed even though the
     // judge passed — a judge-only scenario could never report pass.
     expect(result.result).toBe("pass");
+  });
+
+  it("records which provider and model gave the judge verdict", () => {
+    const result = convert({
+      assertions: [
+        judgeAssertion(
+          { ...PASSING_JUDGE, provider: "codex-code", model: "luna" },
+          "LLM judge: pass",
+        ),
+      ],
+    });
+
+    expect(result.judge).toStrictEqual({
+      pass: true,
+      issues: [],
+      provider: "codex-code",
+      model: "luna",
+    });
+  });
+
+  it("omits provider and model when the assertion has none", () => {
+    const result = convert({
+      assertions: [judgeAssertion(PASSING_JUDGE, "LLM judge: pass")],
+    });
+
+    expect(result.judge).toStrictEqual({ pass: true, issues: [] });
   });
 
   it("derives judge from llm_judge assertion (failing)", () => {
@@ -327,6 +366,24 @@ describe("toJsonResult", () => {
     expect(result.turns[0]?.usage).not.toHaveProperty("reasoningTokens");
   });
 
+  it("keeps the turn's reasoning text and finish reason in full", () => {
+    const reasoningText =
+      "step one thought\n\nstep two thought " + "x".repeat(5000);
+    const result = convert({
+      turns: [makeTurn({ reasoningText, finishReason: "length" })],
+    });
+
+    expect(result.turns[0]?.reasoningText).toBe(reasoningText);
+    expect(result.turns[0]?.finishReason).toBe("length");
+  });
+
+  it("omits reasoning text and finish reason when the turn has none", () => {
+    const result = convert();
+
+    expect(result.turns[0]).not.toHaveProperty("reasoningText");
+    expect(result.turns[0]).not.toHaveProperty("finishReason");
+  });
+
   it("sums cache reads and writes across steps, omitting them when zero", () => {
     const result = convert({
       turns: [
@@ -462,6 +519,29 @@ describe("toJsonResult", () => {
       });
       // A recovered error never gates.
       expect(json.result).toBe("pass");
+    });
+
+    it("leaves out a refusal the scenario expects", () => {
+      const base = makeResult();
+      const json = convert({
+        scenario: {
+          ...base.scenario,
+          expectedRefusals: [{ tool: "ppal-create-clip", message: "bad" }],
+        },
+        turns: [
+          makeTurn({
+            toolCalls: [
+              {
+                name: "ppal-create-clip",
+                args: {},
+                result: "Error: bad notes",
+              },
+            ],
+          }),
+        ],
+      });
+
+      expect(json.toolErrors).toStrictEqual({ count: 0, total: 1, errors: [] });
     });
 
     it("omits toolErrors when the run made no tool calls", () => {

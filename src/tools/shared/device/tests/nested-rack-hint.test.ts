@@ -21,8 +21,8 @@ import { resolvePathForType } from "#src/tools/shared/validation/id-per-path.ts"
 import { nestedRackHintForPath } from "../helpers/path/nested-rack-hint.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
-  warnOnce: vi.fn(),
+  emitWarning: vi.fn(),
+  emitWarningOnce: vi.fn(),
 }));
 
 const NESTED = ' — the drum rack is nested; try "t0/d0/c0/d0/pD3';

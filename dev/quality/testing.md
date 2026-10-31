@@ -150,7 +150,8 @@ That failure reads as success: the suite dies while collecting, so vitest
 reports `0 failed` and a total quietly short by the tests that never registered.
 
 The stubbed Playwright suite is `npm run ui:test` (no Ableton or API keys
-needed); `npm run check` doesn't include it, so run it yourself after touching
+needed; it also builds a gen-UI variant of the UI for the `gen/` specs);
+`npm run check` doesn't include it, so run it yourself after touching
 `webui/**`.
 
 ## Coverage

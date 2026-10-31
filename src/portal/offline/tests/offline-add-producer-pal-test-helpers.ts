@@ -153,3 +153,38 @@ export const SENT_TIMEOUT = new RemoteScriptTimeout(
   true,
 );
 export const UNSENT_TIMEOUT = new RemoteScriptTimeout("ran out of time", false);
+
+/**
+ * Dependencies on a clock that each request moves by the time it "takes", as
+ * well as each sleep.
+ * @param takes - How long each request takes, given the time Live may leave it
+ *   queued (`expiresInMs`)
+ * @param answer - What the request answers, given the call number from 1
+ * @param overrides - Other dependencies this test sets up
+ * @returns The dependencies, and how much clock time has passed
+ */
+export function clockedDeps(
+  takes: (expiresInMs: number) => number,
+  answer: (call: number) => RemoteScriptReply,
+  overrides: Partial<OfflineDeps> = {},
+): { deps: OfflineDeps; elapsed: () => number } {
+  let time = 0;
+  let call = 0;
+  const deps = happyDeps({
+    now: () => time,
+    sleep: (ms) => {
+      time += ms;
+
+      return Promise.resolve();
+    },
+    request: vi.fn((request) => {
+      call += 1;
+      time += takes(request.expiresInMs ?? 0);
+
+      return Promise.resolve(answer(call));
+    }),
+    ...overrides,
+  });
+
+  return { deps, elapsed: () => time };
+}

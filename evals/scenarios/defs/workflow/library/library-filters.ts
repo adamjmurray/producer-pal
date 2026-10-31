@@ -23,9 +23,9 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_LIBRARY = "ppal-library";
-const TOOL_CONNECT = "ppal-connect";
+const TOOL_LIBRARY = TOOLS.library;
 /** The turn carrying the request under test; turn 0 is always connect. */
 const ASK_TURN = 1;
 /** Every scenario here opens by connecting. */
@@ -120,7 +120,7 @@ export const libraryKindMidi: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
     { type: "tool_called", tool: TOOL_LIBRARY, turn: ASK_TURN },
     assertLibraryArgs(
       "searched MIDI content instead of the audio default",
@@ -148,7 +148,7 @@ export const libraryTypeOneshot: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
     { type: "tool_called", tool: TOOL_LIBRARY, turn: ASK_TURN },
     assertLibraryArgs(
       "filtered to one-shots rather than searching by name alone",
@@ -175,7 +175,7 @@ export const libraryTagDiscovery: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
     { type: "tool_called", tool: TOOL_LIBRARY, turn: ASK_TURN },
     assertLibraryArgs(
       "enumerated tags instead of running a search",
@@ -207,7 +207,7 @@ export const libraryDiscoveryActions: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
     assertLibraryArgs(
       "browsed the category taxonomy",
       (args) => args.action === "list-categories",

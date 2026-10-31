@@ -15,7 +15,7 @@
  */
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import { detectStalenessRisk } from "./db-staleness.ts";
+import { stalenessNote } from "./db-staleness.ts";
 import {
   clampLibraryLimit,
   DEFAULT_LIST_TAGS_LIMIT,
@@ -54,9 +54,8 @@ export async function listTags(
   }
 
   const limit = clampLibraryLimit(args.limit, DEFAULT_LIST_TAGS_LIMIT);
-  // Best-effort advisory: flag a pending WAL from an unclean Live exit that our
-  // immutable read can't see. Omitted from the response when there's no risk.
-  const stalenessRisk = await detectStalenessRisk(dbPath);
+  // Our immutable read misses what is still in Live's WAL; the note says so.
+  const stale = await stalenessNote(dbPath);
 
   // Guard the open + query: Live's DB schema varies across releases, so a future
   // rename of the keywords/files tables or columns would throw a raw SQLite error
@@ -81,7 +80,7 @@ export async function listTags(
 
       return {
         dbAvailable: true,
-        ...(stalenessRisk && { stalenessRisk }),
+        ...(stale && { stalenessNote: stale }),
         tags,
       };
     } finally {

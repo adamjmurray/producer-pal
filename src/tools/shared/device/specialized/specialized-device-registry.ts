@@ -24,7 +24,7 @@ import {
   skippedParam,
 } from "../helpers/param-reading.ts";
 import { markSuperseded } from "#src/tools/shared/helpers/entry-details.ts";
-import { namedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { namedAgain } from "#src/shared/max/named-again-wording.ts";
 import { failUnreplacedEntries } from "#src/tools/shared/write-pipeline/plans/replaced-entries.ts";
 import { lastWins } from "#src/tools/shared/write-pipeline/plans/last-wins.ts";
 import { parseAction } from "./specialized-device-action-parser.ts";

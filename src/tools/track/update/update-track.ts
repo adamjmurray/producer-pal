@@ -56,9 +56,9 @@ export type UpdateTrackAnswer = PipelineResult<TrackEntry>;
  * @param args.outputRoutingTypeId - Deprecated alias for outputRoutingType
  * @param args.outputRoutingChannelId - Deprecated alias for outputRoutingChannel
  * @param args.monitoringState - Optional monitoring state ('in', 'auto', 'off')
- * @param args.sendGainDb - Optional send gain in dB (-70 to 0), requires sendReturn
- * @param args.sendReturn - Optional return track id, name, or letter prefix, requires sendGainDb
- * @param args.sends - Optional [{return, gainDb}] list, to set several at once
+ * @param args.sendGainDb - Deprecated, use sends; requires sendReturn
+ * @param args.sendReturn - Deprecated, use sends; requires sendGainDb
+ * @param args.sends - Optional [{return, gainDb}] list
  * @param context - Internal context object, for the request deadline
  * @returns The target when one was named, otherwise one entry per target
  */

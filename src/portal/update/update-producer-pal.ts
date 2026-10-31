@@ -11,27 +11,29 @@
 // says what to check.
 
 import { UPDATE_PORTAL_ADVICE, VERSION } from "#src/shared/config.ts";
+import { isNewerVersion } from "#src/shared/version-check.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
   formatSuccessResponse,
   type McpResponse,
 } from "#src/shared/mcp-responses.ts";
-import { isNewerVersion } from "#src/shared/version-check.ts";
 import { type OfflineDeps } from "../offline/offline-deps.ts";
 import { offlineGuidance } from "../offline/offline-guidance.ts";
 import { offlineError, offlineResult } from "../offline/offline-responses.ts";
 import {
   installBundledDevice,
   requireBundledDevice,
-} from "../setup/bundled-device-copy.ts";
+} from "../setup/bundled-device/bundled-device-copy.ts";
 import { type DeviceInstallResult } from "../setup/device-install.ts";
 import { userLibraryFor } from "../setup/library-for-device.ts";
 import { remoteScriptReady } from "../setup/remote-script-ready.ts";
+import { setupDeadline } from "../setup/setup-deadline.ts";
 import { SetupFailed, type SetupPurpose } from "../setup/setup-failure.ts";
 import { waitForNewDevice } from "./new-device-wait.ts";
 import { setUnchanged } from "./set-unchanged.ts";
 import { replaceDevice } from "./replace-device-request.ts";
 import { type RunningDevice } from "./running-device.ts";
+import { updatedNextSteps } from "./full-connect-advice.ts";
 
 const UPDATE: SetupPurpose = {
   action: "update-producer-pal",
@@ -62,6 +64,8 @@ export async function updateProducerPal(
   device: RunningDevice,
   deps: OfflineDeps,
 ): Promise<McpResponse> {
+  const deadline = setupDeadline(deps);
+
   // A fresh handshake: the cached connection may predate a manual update.
   device.reset();
 
@@ -88,11 +92,20 @@ export async function updateProducerPal(
       installBundledDevice(library, bundled, deps, UPDATE),
       from,
     );
-    const track = await replaceDevice(file.path, from, deps, file.written);
+    const pluginHost = deps.installPluginHost(library);
+    const track = await replaceDevice(
+      file.path,
+      from,
+      deps,
+      file.written,
+      deadline,
+      device.fullConnectSeen(),
+    );
     const to = await waitForNewDevice(
       { from, expected: file.version, track },
       device,
       deps,
+      deadline,
     );
 
     device.toolsChanged();
@@ -101,7 +114,8 @@ export async function updateProducerPal(
       device: { from, to },
       ...(track == null ? {} : { track }),
       ...(file.note == null ? {} : { note: file.note }),
-      nextSteps: "Call ppal-connect next.",
+      ...(pluginHost.length === 0 ? {} : { pluginHost }),
+      nextSteps: updatedNextSteps(device.fullConnectSeen()),
     });
   } catch (error) {
     return offlineError(errorMessage(error));

@@ -60,16 +60,34 @@ export function idDoesNotExist(id: string, noun?: string): string {
   return `${what} "${id}" does not exist${pathAsIdHint(id)}`;
 }
 
+/** An example path and where to find paths, for each kind of target. */
+const ADDRESS_HINTS: Record<string, string> = {
+  track: 'path: "t0"; ppal-read-live-set (include tracks) lists them',
+  scene: 'path: "s0"; ppal-read-live-set (include scenes) lists them',
+  clip: 'path: "t0/s0"; ppal-read-track (include session-clips or arrangement-clips) lists them',
+  device: 'path: "t0/d0"; ppal-read-track (include devices) lists them',
+  "drum-pad":
+    'path: "t0/d0/pC1"; ppal-read-track (include drum-map) lists them',
+  chain: 'path: "t0/d0/c0"; ppal-read-device (include chains) lists them',
+};
+
 /**
  * The refusal for a call that names no target. Shared so every tool words it
- * the same way.
+ * the same way, and teaches the address: an example path for what the tool
+ * takes, and which read lists the real ones.
+ * @param target - What the tool takes: track, scene, clip, device, drum-pad or
+ *   chain. Anything else gets no example.
  * @param action - The action that needs a target, for tools with several
  * @returns The reason
  */
-export function idOrPathRequired(action?: string): string {
-  const reason = "id or path is required";
+export function idOrPathRequired(target: string, action?: string): string {
+  const reason =
+    action == null
+      ? "id or path is required"
+      : `id or path is required for action "${action}"`;
+  const hint = ADDRESS_HINTS[target];
 
-  return action == null ? reason : `${reason} for action "${action}"`;
+  return hint == null ? reason : `${reason}, e.g. ${hint}`;
 }
 
 /**

@@ -31,7 +31,7 @@ export function refuseContextParamsOutsideAction(
 ): void {
   if (action === "delete" && scope !== "memory") {
     throw new Error(
-      `action "delete" is only for scope "memory", where it removes one entry by name. ` +
+      `action "delete" is only for scope "memory", where it removes entries by name. ` +
         `scope "${scope}" holds one document: use action "write" to replace it.`,
     );
   }

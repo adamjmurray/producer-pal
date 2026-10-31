@@ -40,3 +40,20 @@ export function optionalString(args: unknown, key: string): string {
 
   return typeof value === "string" ? value : "";
 }
+
+/**
+ * Extract a required array of strings from route args.
+ *
+ * @param args - The raw route args
+ * @param key - The field name
+ * @returns The strings
+ */
+export function requireStringArray(args: unknown, key: string): string[] {
+  const value = (args as Record<string, unknown> | null)?.[key];
+
+  if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) {
+    throw new Error(`${key} must be an array of strings`);
+  }
+
+  return value as string[];
+}

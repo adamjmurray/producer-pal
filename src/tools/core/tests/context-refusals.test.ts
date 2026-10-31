@@ -6,13 +6,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { context } from "../context.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const protocolMock =
-  await import("#src/live-api-adapter/node-request-v8-protocol.ts");
+  await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
 
 describe("context - params the scope or action doesn't read", () => {
   let toolContext: Partial<ToolContext>;
@@ -102,7 +105,7 @@ describe("context - params the scope or action doesn't read", () => {
     "says delete is memory-only on the %s scope",
     async (scope) => {
       await expect(context({ action: "delete", scope })).rejects.toThrow(
-        `action "delete" is only for scope "memory", where it removes one entry by name. scope "${scope}" holds one document: use action "write" to replace it.`,
+        `action "delete" is only for scope "memory", where it removes entries by name. scope "${scope}" holds one document: use action "write" to replace it.`,
       );
       expect(protocolMock.requestNode).not.toHaveBeenCalled();
     },

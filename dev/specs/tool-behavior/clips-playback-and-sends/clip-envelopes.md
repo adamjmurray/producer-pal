@@ -62,6 +62,58 @@ remote script. A line it can't write is a `detail` on that clip's entry
   `envelope "<target>": re-enabled its automation, which was overridden`. A
   parameter that wasn't overridden adds nothing.
 
+## Hosted plug-in params
+
+Mechanics: [plugin-hosting.md](../../../live-api/plugin-hosting.md). Builds with
+hosted plug-ins on only; any other build refuses the spelling as an invalid
+target.
+
+A hosted plug-in's param is an `envelopes` target spelled as its wrapper's
+device path plus its `h` id: `t3/d0/h206`, or `t3/d0/c1/d0/h206` inside a rack.
+Live automates the wrapper's numbered slots ("Automation 001"...), so the line
+is written to a slot's parameter, and the entry reports no slot unless it made
+one. A target that can't be read (`t3/d0/hx`) refuses the call like any other.
+The rest skip that line, as `envelope "<target>": <why>`, and the other lines
+still run:
+
+- **The wrapper must be on the clip's track**, reached by a path that clip
+  automation can walk (devices and rack chains, not drum pads or return chains),
+  and be a hosted plug-in. `h0` is no param id.
+- **The slot** is the one already driving the param; else the lowest unmapped
+  slot without arrangement automation; else a mapped slot whose automation is
+  gone everywhere (no arrangement automation, no envelope in any clip on the
+  track), which is remapped. A slot with automation is never remapped, and
+  nothing is reclaimed while the track plays from Session, where automation
+  can't be told. Each wrapper is asked once per call.
+- **Mapping is reported.** A new mapping adds `mapped to slot "Automation 002"`
+  to the entry's `detail`, and a reclaimed slot adds
+  `(it drove "<param>", which had no automation left)`. If the write then fails,
+  the line's reason ends `; already changed: mapped to slot "Automation 002"`.
+- **No slot to take**:
+  `all 128 automation slots of t3/d0 are in use. Delete the automation of one (a clip's envelope or the arrangement lane; ppal-read-device shows which params have a slot) to free it`.
+  While the track plays from Session the reason says which are in use can't be
+  told, and to stop its session clips.
+- **The wrapper is still loading** (just after a Set opens or a track is
+  duplicated): `the device is still loading; try again in a moment`, nothing
+  mapped. A wrapper that is out of date, or doesn't answer, says so.
+- **A clear** (`t3/d0/h206:`) clears the envelope on the slot driving the param.
+  With no slot it does nothing and is no error: the line counts as written, with
+  `there was no envelope to clear`. It never maps.
+- **Two spellings of one param** (`h206`, `H206`) are the same parameter:
+  nothing is written, as for any pair of lines on one parameter.
+- **Known limits.** A free slot is judged by arrangement automation only, so an
+  unmapped slot that still has session-clip envelopes (possible only after an
+  `unmap` through the debug tool) can be handed out, and those envelopes then
+  drive the new param. A hosted line and a line naming the same slot's raw
+  parameter id aren't caught as one parameter: both are written and the later
+  wins.
+
+On a read, an envelope on a mapped slot names the plug-in's param:
+`{ parameter: "Main Vol", id: "t3/d0/h206", slot: "Automation 002", ... }`, with
+no `device` (the `id` has it), and `id` works as a write target. An envelope on
+an unmapped slot, or on a device that isn't a hosted wrapper, reads as any
+parameter (`parameter: "Automation 002"`, Live's `id`, `device`).
+
 ## Envelopes on an arrangement clip
 
 Mechanics:

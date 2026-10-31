@@ -13,6 +13,7 @@
 //   npm run mutation -- tools        # all tool domains (group)
 //   npm run mutation -- notation clip
 //   npm run mutation -- all          # notation + every tool domain
+//   npm run mutation -- --list all   # print the resolved scopes as JSON, run nothing
 //
 // Plain ESM (not scripts/*.ts) so it needs no build step and can import the
 // .mjs scope table directly.
@@ -56,7 +57,15 @@ function buildParsers() {
   }
 }
 
-const scopes = resolveScopes(process.argv.slice(2));
+const args = process.argv.slice(2);
+const listOnly = args[0] === "--list";
+const scopes = resolveScopes(listOnly ? args.slice(1) : args);
+
+// The scheduled CI run builds its job matrix from this list.
+if (listOnly) {
+  console.log(JSON.stringify(scopes));
+  process.exit(0);
+}
 
 buildParsers();
 

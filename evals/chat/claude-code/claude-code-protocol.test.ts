@@ -81,6 +81,23 @@ describe("claudeCodeTurnArgs", () => {
     expect(args).not.toContain("--resume");
   });
 
+  it("sets no effort unless asked", () => {
+    expect(claudeCodeTurnArgs(input)).not.toContain("--effort");
+  });
+
+  it("passes the effort on initial and resumed turns, clear of the variadic flags", () => {
+    for (const resumeSessionId of [undefined, "session-123"]) {
+      const args = claudeCodeTurnArgs({
+        ...input,
+        effort: "max",
+        ...(resumeSessionId != null ? { resumeSessionId } : {}),
+      });
+
+      expect(args[args.indexOf("--effort") + 1]).toBe("max");
+      expect(args[args.indexOf("--tools") + 2]).toBe("--effort");
+    }
+  });
+
   it("resumes by session id while keeping every restriction", () => {
     const args = claudeCodeTurnArgs({
       ...input,
@@ -105,6 +122,7 @@ describe("claudeCodeJudgeArgs", () => {
     expect(args).toStrictEqual(expect.arrayContaining(["--model", "haiku"]));
     expect(mcpConfig(args).mcpServers).toStrictEqual({});
     expect(args).toContain("--no-session-persistence");
+    expect(args).not.toContain("--effort");
   });
 });
 
@@ -189,6 +207,73 @@ describe("parseClaudeCodeStream", () => {
       cacheReadTokens: 15243,
       cacheWriteTokens: 7895,
     });
+  });
+
+  it("keeps thinking blocks as reasoning text and the result's stop reason", () => {
+    const parsed = parseClaudeCodeStream(
+      jsonl([
+        {
+          type: "assistant",
+          message: {
+            stop_reason: null,
+            content: [
+              { type: "thinking", thinking: "First thought." },
+              { type: "thinking", thinking: "" },
+            ],
+          },
+        },
+        {
+          type: "assistant",
+          message: {
+            stop_reason: "tool_use",
+            content: [{ type: "thinking", thinking: "Second thought." }],
+          },
+        },
+        {
+          type: "result",
+          subtype: "success",
+          is_error: false,
+          stop_reason: "end_turn",
+        },
+      ]),
+    );
+
+    expect(parsed.reasoningText).toBe("First thought.\n\nSecond thought.");
+    expect(parsed.finishReason).toBe("end_turn");
+    // Thinking is not part of the reply.
+    expect(parsed.text).toBe("");
+  });
+
+  it("falls back to the last assistant stop reason when the result has none", () => {
+    const parsed = parseClaudeCodeStream(
+      jsonl([
+        {
+          type: "assistant",
+          message: { stop_reason: "max_tokens", content: [] },
+        },
+        { type: "result", subtype: "success", is_error: false },
+      ]),
+    );
+
+    expect(parsed.finishReason).toBe("max_tokens");
+  });
+
+  it("leaves reasoning text and finish reason unset when the CLI reports none", () => {
+    const parsed = parseClaudeCodeStream(
+      jsonl([
+        {
+          type: "assistant",
+          message: {
+            stop_reason: null,
+            content: [{ type: "text", text: "hi" }],
+          },
+        },
+        { type: "result", subtype: "success", is_error: false },
+      ]),
+    );
+
+    expect(parsed).not.toHaveProperty("reasoningText");
+    expect(parsed).not.toHaveProperty("finishReason");
   });
 
   // The bug this pins: unwrapping to the payload block dropped the relayed

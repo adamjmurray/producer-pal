@@ -19,6 +19,21 @@ because its includes are unique (`params`, `param-values`, `drum-map`,
 | `name`        | `string` | Display name (omitted if same as class name)  |
 | `deactivated` | `true`   | Only present when device is inactive          |
 
+### CC Control
+
+On Live 12.4.15 and later a CC Control reads like any device: `type`, `name`
+(when renamed) and `deactivated` (when off) come from the Live API.
+
+Before 12.4.15, Max's Live API lists no members for CC Control, so its name and
+on/off state can't be read. A read recognizes it by its `type` field and reports
+`type: "midi-effect: CC Control"`. It lists its params by counting and
+addressing each one, so they read, update and take clip envelopes as usual.
+`name` and `deactivated` are left out (an unreadable on/off is not off). With
+the remote script, `/device/basics` (one call for every CC Control in the read,
+at most 3 seconds, skipped when an earlier call stalled) adds `name` when the
+user renamed it and `deactivated` when it is off. `ppal-read-track` has no
+remote-script step, so it never shows either.
+
 ## Include: `"chains"`
 
 Adds chain list for rack devices. Depth-controlled by `maxDepth` arg.
@@ -83,6 +98,24 @@ Adds parameter names, macro variation info, and A/B Compare state. A
 | `variations` | `object`   | Rack only: `{ count, selected }`           |
 | `macros`     | `object`   | Rack only; see below                       |
 | `abCompare`  | `"a"\|"b"` | Current A/B preset (if device supports it) |
+
+A read lists at most 200 `parameters` per device, cutting before it reads any
+values. When more matched, the device gets `paramCount` (how many matched) and a
+`detail` saying to narrow with `paramSearch`. There is no paging.
+
+### Hosted plug-ins
+
+A Producer Pal plug-in wrapper (a Max for Live device around `vst~`; see
+`dev/live-api/plugin-hosting.md`) reads as the plug-in it hosts: `type` carries
+the plug-in's name, `hosted: true` marks it, and `name` appears only when the
+user renamed the device. A wrapper with nothing loaded keeps the Max device's
+type. A Max audio effect or instrument is asked once whether it is a wrapper;
+the wrapper answers inside the same Max call, so any other device costs nothing.
+Its `parameters` are the plug-in's own, with ids `h<number>` (`h56` is the
+plug-in's param 56) and, with `param-values`, `value` as the plug-in's display
+text. The plug-in's MIDI stand-in params are left out, and `paramSearch` filters
+by name. After a Set reload a wrapper knows its plug-in only by file name, so
+`type` shows that.
 
 `macros` is `{ count, mapped }` when the remote script is running: `mapped`
 lists the mapped macros' numbers (macro 1 is the first), and `hiddenMapped`

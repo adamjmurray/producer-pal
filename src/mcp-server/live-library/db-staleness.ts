@@ -4,73 +4,41 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Detect stale-WAL state for Live's browser DB.
+ * Detect a stale snapshot of Live's browser DB.
  *
- * We open Live's `Live-files-*.db` with `mode=ro&immutable=1`, which
- * deliberately ignores the WAL sidecar. After a clean Live exit the WAL is
- * checkpointed into the main `.db` and the `-wal`/`-shm` sidecars are removed,
- * so the immutable read serves current data. But after an UNCLEAN exit (crash,
- * force-quit, power loss) the `-wal` persists on disk holding uncommitted
- * writes, and our immutable read silently serves the stale last-checkpoint
- * snapshot with no signal.
+ * We open `Live-files-*.db` with `mode=ro&immutable=1`, which ignores the WAL
+ * sidecar. While Live runs (and after an unclean exit) new installs and samples
+ * sit in the `-wal` file, so the immutable read serves the last checkpoint and
+ * misses them. A `-wal` newer than the `.db` means that may be happening.
  *
- * This module surfaces that risk as a best-effort advisory: stat the `.db` and
- * its `-wal` sidecar and, if the WAL is newer than the committed `.db`, flag
- * that the served snapshot may be stale. It never throws — any stat error is
- * treated as "no detectable risk".
+ * Never throws: any stat error is treated as "no detectable risk".
  */
 
 import { stat } from "node:fs/promises";
-import { type StalenessRisk } from "./library-types.ts";
+
+/** What a caller is told when the DB snapshot may be out of date. */
+export const STALENESS_NOTE =
+  "Recently installed plug-ins and new samples may be missing until Live restarts. A plug-in can still be loaded by name.";
 
 /**
- * Inspect a resolved DB path for stale-WAL state.
- *
- * Stats the `.db` and its `<dbPath>-wal` sidecar. When the sidecar exists and
- * is newer than the committed `.db`, the immutable read may be serving a stale
- * snapshot, so we return a `wal-pending` risk payload. Any other outcome (no
- * sidecar, sidecar older-or-equal, or any stat error) returns undefined.
+ * The staleness note for a DB we opened immutably, if its snapshot may be out
+ * of date: the `-wal` sidecar exists and is newer than the committed `.db`.
  *
  * @param dbPath - Absolute path to the active `.db` we opened immutably
- * @returns A staleness risk payload, or undefined when there's no detectable risk
+ * @returns The note, or undefined when there's no detectable staleness
  */
-export async function detectStalenessRisk(
+export async function stalenessNote(
   dbPath: string,
-): Promise<StalenessRisk | undefined> {
+): Promise<string | undefined> {
   try {
     const [dbStats, walStats] = await Promise.all([
       stat(dbPath),
       stat(`${dbPath}-wal`),
     ]);
 
-    // Older-or-equal WAL means it was already checkpointed (or there are no
-    // pending writes newer than the committed snapshot) — no risk.
-    if (walStats.mtimeMs <= dbStats.mtimeMs) {
-      return undefined;
-    }
-
-    return {
-      kind: "wal-pending",
-      dbMtime: dbStats.mtimeMs,
-      walMtime: walStats.mtimeMs,
-      walSizeMb: roundMb(walStats.size),
-      // ageSeconds = how stale the served data could be: the gap between the
-      // committed snapshot (db mtime) and the pending writes (wal mtime).
-      ageSeconds: (walStats.mtimeMs - dbStats.mtimeMs) / 1000,
-    };
+    return walStats.mtimeMs > dbStats.mtimeMs ? STALENESS_NOTE : undefined;
   } catch {
-    // Best-effort advisory only: a missing `-wal` sidecar (the clean-exit
-    // case) is the common path here, but any stat error is swallowed.
+    // A missing `-wal` sidecar (clean exit) lands here; any stat error does.
     return undefined;
   }
-}
-
-/**
- * Convert a byte count to megabytes, rounded to 2 decimal places.
- *
- * @param bytes - File size in bytes
- * @returns Size in MB (decimal megabytes), rounded to 2 decimals
- */
-function roundMb(bytes: number): number {
-  return Math.round((bytes / 1_000_000) * 100) / 100;
 }

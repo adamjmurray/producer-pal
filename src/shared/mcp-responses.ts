@@ -10,10 +10,59 @@
  */
 export const WARNING_PREFIX = "WARNING: ";
 
+/**
+ * What a LiveAPI build-stats warning starts with (after `WARNING_PREFIX`).
+ * That counter is instrumentation, not something a tool is telling us.
+ */
+export const BUILD_STATS_WARNING_LABEL = "LiveAPI stats:";
+
+/**
+ * The relayed warning texts in an MCP content array, prefix included, in order.
+ * @param content - The result's content blocks (anything else yields none)
+ * @param options - `excludeBuildStats` drops the build-stats counter
+ * @returns The text of every warning block
+ */
+export function getWarningTexts(
+  content: unknown,
+  options: { excludeBuildStats?: boolean } = {},
+): string[] {
+  if (!Array.isArray(content)) {
+    return [];
+  }
+
+  const skip = `${WARNING_PREFIX}${BUILD_STATS_WARNING_LABEL}`;
+
+  return (content as Array<{ type?: unknown; text?: unknown } | null>)
+    .filter((block) => block?.type == null || block.type === "text")
+    .map((block) => block?.text)
+    .filter(
+      (text): text is string =>
+        typeof text === "string" &&
+        text.startsWith(WARNING_PREFIX) &&
+        !(options.excludeBuildStats && text.startsWith(skip)),
+    );
+}
+
 // Message chunking constants
 export const END_OF_CHUNKS = "$$___END_OF_CHUNKS___$$";
-export const MAX_CHUNK_SIZE = 30000; // ~30KB per chunk, well below the 32,767 limit
-export const MAX_CHUNKS = 100; // Allows for ~3MB responses
+/**
+ * Max caps a message at ~32,767 UTF-8 bytes, but we count UTF-16 units. A unit
+ * is at most 3 bytes, so 10,000 units never pass 30,000 bytes whatever the text.
+ */
+export const MAX_CHUNK_SIZE = 10000;
+export const MAX_CHUNKS = 300; // Allows for ~3MB responses
+/**
+ * Largest single (unchunked) V8-to-Node message, in UTF-8 bytes. Max cuts each
+ * atom at 32,767 (measured Node to V8); this direction keeps 30,000 until
+ * measured.
+ */
+export const MAX_SINGLE_MESSAGE_BYTES = 30000;
+/**
+ * Largest single (unchunked) Node-to-V8 message, in UTF-8 bytes: tool-call args
+ * and context, code-exec results. Max cuts each atom at 32,767 (measured); a
+ * message can carry several.
+ */
+export const MAX_NODE_TO_V8_BYTES = 32000;
 
 export interface ChunkPlan {
   chunks: string[];
@@ -29,22 +78,46 @@ export interface ChunkPlan {
  * @returns Either the chunks or a tooLargeError describing the overflow
  */
 export function planChunks(jsonString: string): ChunkPlan {
-  const totalChunks = Math.ceil(jsonString.length / MAX_CHUNK_SIZE);
+  const estimate = Math.ceil(jsonString.length / MAX_CHUNK_SIZE);
 
-  if (totalChunks > MAX_CHUNKS) {
-    return {
-      chunks: [],
-      tooLargeError: `Response too large: ${jsonString.length} bytes would require ${totalChunks} chunks (max ${MAX_CHUNKS})`,
-    };
+  if (estimate > MAX_CHUNKS) {
+    return tooLarge(jsonString.length, estimate);
   }
 
   const chunks: string[] = [];
+  let start = 0;
 
-  for (let i = 0; i < jsonString.length; i += MAX_CHUNK_SIZE) {
-    chunks.push(jsonString.slice(i, i + MAX_CHUNK_SIZE));
+  while (start < jsonString.length) {
+    let end = Math.min(start + MAX_CHUNK_SIZE, jsonString.length);
+
+    // Don't cut a surrogate pair in two: each half would arrive as U+FFFD.
+    if (
+      end < jsonString.length &&
+      isHighSurrogate(jsonString.charCodeAt(end - 1))
+    ) {
+      end--;
+    }
+
+    chunks.push(jsonString.slice(start, end));
+    start = end;
   }
 
-  return { chunks, tooLargeError: null };
+  // Backing off can add a chunk beyond the estimate.
+  return chunks.length > MAX_CHUNKS
+    ? tooLarge(jsonString.length, chunks.length)
+    : { chunks, tooLargeError: null };
+}
+
+/**
+ * @param length - The payload's length in chars
+ * @param chunkCount - How many chunks it would take
+ * @returns A plan with no chunks and the overflow message
+ */
+function tooLarge(length: number, chunkCount: number): ChunkPlan {
+  return {
+    chunks: [],
+    tooLargeError: `Response too large: ${length} chars would require ${chunkCount} chunks (max ${MAX_CHUNKS})`,
+  };
 }
 
 /**
@@ -82,24 +155,28 @@ export const CODE_EXEC_TOO_LARGE_ADVICE =
 /**
  * Guard for a payload sent as a SINGLE unchunked Max IPC string (code-exec and
  * node_request, unlike responses, which split with planChunks). Max silently
- * truncates a string past ~32,767 chars, so reject at MAX_CHUNK_SIZE and fail
+ * truncates a message past ~32,767 UTF-8 bytes, so reject past the cap and fail
  * loudly instead.
  *
  * @param jsonString - The stringified payload about to be sent
  * @param label - Human label for the payload (e.g. "code-exec request")
  * @param advice - What the caller can do about it
+ * @param maxBytes - The cap for this direction
  * @returns An error message when too large, or null when it fits
  */
 export function oversizedSingleMessageError(
   jsonString: string,
   label: string,
   advice: string,
+  maxBytes: number,
 ): string | null {
-  if (jsonString.length <= MAX_CHUNK_SIZE) {
+  const bytes = utf8ByteLength(jsonString);
+
+  if (bytes <= maxBytes) {
     return null;
   }
 
-  return `${label} too large for a single Max IPC message: ${jsonString.length} chars exceeds ${MAX_CHUNK_SIZE}. ${advice}`;
+  return `${label} too large for a single Max IPC message: ${bytes} bytes exceeds ${maxBytes}. ${advice}`;
 }
 
 interface McpTextContent {
@@ -164,4 +241,52 @@ export function formatErrorResponse(
   }
 
   return response;
+}
+
+/**
+ * How many bytes a string takes in UTF-8, which is what Max's message limit
+ * counts. Hand-rolled because Max's V8 runtime isn't guaranteed a TextEncoder.
+ * A lone surrogate counts as 3 bytes, like the U+FFFD an encoder writes for it.
+ *
+ * @param text - The string to measure
+ * @returns Its size in UTF-8 bytes
+ */
+export function utf8ByteLength(text: string): number {
+  let bytes = 0;
+
+  for (let i = 0; i < text.length; i++) {
+    const unit = text.charCodeAt(i);
+
+    if (unit < 0x80) {
+      bytes += 1;
+    } else if (unit < 0x800) {
+      bytes += 2;
+    } else if (
+      isHighSurrogate(unit) &&
+      isLowSurrogate(text.charCodeAt(i + 1))
+    ) {
+      bytes += 4;
+      i++; // the pair is one character
+    } else {
+      bytes += 3;
+    }
+  }
+
+  return bytes;
+}
+
+/**
+ * @param unit - A UTF-16 code unit (NaN past the end of a string)
+ * @returns Whether it is the first half of a surrogate pair
+ */
+export function isHighSurrogate(unit: number): boolean {
+  return unit >= 0xd800 && unit <= 0xdbff;
+}
+
+/**
+ * @param unit - A UTF-16 code unit (NaN past the end of a string)
+ * @returns Whether it is the second half of a surrogate pair
+ */
+function isLowSurrogate(unit: number): boolean {
+  return unit >= 0xdc00 && unit <= 0xdfff;
 }

@@ -9,6 +9,7 @@ import {
   remoteScriptPing,
   remoteScriptRequest,
 } from "../remote-script-client.ts";
+import { MIN_REMOTE_SCRIPT_VERSION } from "../port/remote-script-version.ts";
 import { RemoteScriptTimeout } from "../remote-script-errors.ts";
 import {
   type FakeAnswer,
@@ -32,7 +33,11 @@ vi.mock(import("../port/remote-script-port-file.ts"), () => ({
 }));
 
 const OURS: FakeAnswer = {
-  body: { ok: true, live_version: "12.4.5", script_version: "2.5.0" },
+  body: {
+    ok: true,
+    live_version: "12.4.5",
+    script_version: MIN_REMOTE_SCRIPT_VERSION,
+  },
 };
 const NOT_OURS: FakeAnswer = { body: { ok: true } };
 
@@ -182,7 +187,7 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
     const ping = await remoteScriptPing();
 
     expect(ping.running).toBe(true);
-    expect(ping.scriptVersion).toBe("2.5.0");
+    expect(ping.scriptVersion).toBe(MIN_REMOTE_SCRIPT_VERSION);
     expect(preferred.requests.map((r) => r.route)).toStrictEqual(["/ping"]);
   });
 

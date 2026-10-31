@@ -12,12 +12,14 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { styleText } from "node:util";
 import { Command } from "commander";
+import { isResultFile } from "./helpers/json-results/result-file.ts";
 import {
   type JsonEvalResult,
   RESULTS_DIR,
 } from "./helpers/json-results/types.ts";
 import { buildFailureTable } from "./helpers/reporting/failure-table.ts";
 import { printResult } from "./helpers/reporting/result-printer.ts";
+import { printStoredRunSummary } from "./helpers/reporting/stored-run-summary.ts";
 
 const program = new Command();
 
@@ -31,8 +33,14 @@ program
     "--failures <runIds...>",
     "Print every failure as a markdown table, stitching runs (newest wins)",
   )
+  .option(
+    "--summarize <runIdOrPath>",
+    "Print passed/trials per scenario and model for a run (id or results folder), e.g. one cancelled before its summary",
+  )
   .action(async (paths: string[], options: ReportOptions) => {
-    if (options.failures) {
+    if (options.summarize) {
+      await summarizeRun(options.summarize);
+    } else if (options.failures) {
       await printFailures(options.failures);
     } else if (options.compare) {
       await compareRuns(options.compare);
@@ -51,6 +59,23 @@ interface ReportOptions {
   run?: string;
   compare?: string[];
   failures?: string[];
+  summarize?: string;
+}
+
+/**
+ * Print the pass table for one run.
+ *
+ * @param runIdOrPath - Run identifier, or the path of its results folder
+ */
+async function summarizeRun(runIdOrPath: string): Promise<void> {
+  const dir = runIdOrPath.includes("/")
+    ? runIdOrPath
+    : join(RESULTS_DIR, runIdOrPath);
+
+  if (!(await printStoredRunSummary(dir))) {
+    console.error(`No results found in: ${dir}`);
+    process.exit(1);
+  }
 }
 
 /**
@@ -107,7 +132,7 @@ async function findResultsInDir(dir: string): Promise<string[]> {
     const files = await readdir(dir);
 
     return files
-      .filter((f) => f.endsWith(".json"))
+      .filter(isResultFile)
       .toSorted()
       .toReversed()
       .map((f) => join(dir, f));

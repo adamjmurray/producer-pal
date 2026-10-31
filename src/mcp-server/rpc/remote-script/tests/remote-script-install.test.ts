@@ -20,6 +20,12 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { platformSupport } from "#src/test/fixtures/platform-support.ts";
+import {
+  GEN_UI_REMOTE_SCRIPT_FILES,
+  isGenUiScriptFile,
+  shippedScriptFiles,
+} from "../bundle/gen-ui-remote-script-files.ts";
 import { EMBEDDED_REMOTE_SCRIPT_FILES } from "../bundle/embedded-remote-script.ts";
 import {
   installRemoteScript,
@@ -124,6 +130,73 @@ describe("the embedded script", () => {
   });
 });
 
+const FILES = {
+  "routes.py": "a",
+  "watches.py": "b",
+  "ui_widgets.py": "c",
+  "gen_ui_routes.py": "d",
+};
+
+describe("shippedScriptFiles", () => {
+  it("drops the gen-UI files from a release build", () => {
+    expect(shippedScriptFiles(FILES, false)).toStrictEqual({
+      "routes.py": "a",
+    });
+  });
+
+  it("keeps everything in a gen-UI build", () => {
+    expect(shippedScriptFiles(FILES, true)).toStrictEqual(FILES);
+  });
+});
+
+describe("isGenUiScriptFile", () => {
+  it.each(GEN_UI_REMOTE_SCRIPT_FILES)("knows %s", (file) => {
+    expect(isGenUiScriptFile(file)).toBe(true);
+    expect(isGenUiScriptFile(`remote-script/Producer_Pal/${file}`)).toBe(true);
+  });
+
+  it("does not match other files or look-alike names", () => {
+    expect(isGenUiScriptFile("remote-script/Producer_Pal/routes.py")).toBe(
+      false,
+    );
+    expect(isGenUiScriptFile("remote-script/Producer_Pal/my_watches.py")).toBe(
+      false,
+    );
+  });
+});
+
+describe("the embedded script and ENABLE_GEN_UI", () => {
+  /** @returns The embedded file names for a build with this flag value */
+  async function embeddedWith(flag: string): Promise<string[]> {
+    vi.stubEnv("ENABLE_GEN_UI", flag);
+    vi.resetModules();
+
+    const fresh = await import("../bundle/embedded-remote-script.ts");
+
+    return Object.keys(fresh.EMBEDDED_REMOTE_SCRIPT_FILES);
+  }
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("leaves out the gen-UI files, which a release never ships", async () => {
+    const names = await embeddedWith("");
+
+    expect(names).toContain("routes.py");
+
+    for (const file of GEN_UI_REMOTE_SCRIPT_FILES) {
+      expect(names).not.toContain(file);
+    }
+  });
+
+  it("has them in a gen-UI build, so the dev installer matches the device", async () => {
+    expect(await embeddedWith("true")).toStrictEqual(
+      expect.arrayContaining([...GEN_UI_REMOTE_SCRIPT_FILES]),
+    );
+  });
+});
+
 describe("installRemoteScript", () => {
   it("writes every embedded file into Remote Scripts/Producer_Pal", () => {
     const { path } = installRemoteScript(scratchDir);
@@ -198,24 +271,27 @@ describe("installRemoteScript", () => {
     expect(installRemoteScript("~").path).toBe(remoteScriptPath(scratchDir));
   });
 
-  it("keeps the working install when the new copy can't be written", () => {
-    const { path } = installRemoteScript(scratchDir);
-    const parent = join(scratchDir, "Remote Scripts");
+  it.skipIf(!platformSupport.fileModes)(
+    "keeps the working install when the new copy can't be written",
+    () => {
+      const { path } = installRemoteScript(scratchDir);
+      const parent = join(scratchDir, "Remote Scripts");
 
-    writeFileSync(join(path, "marker.py"), "old install", "utf8");
-    // Read-only parent: the temp folder can't be created, so the install fails
-    // before anything is deleted.
-    chmodSync(parent, 0o500);
+      writeFileSync(join(path, "marker.py"), "old install", "utf8");
+      // Read-only parent: the temp folder can't be created, so the install fails
+      // before anything is deleted.
+      chmodSync(parent, 0o500);
 
-    expect(() => installRemoteScript(scratchDir)).toThrow(
-      /EACCES|EPERM|ENOTEMPTY/,
-    );
+      expect(() => installRemoteScript(scratchDir)).toThrow(
+        /EACCES|EPERM|ENOTEMPTY/,
+      );
 
-    chmodSync(parent, 0o700);
+      chmodSync(parent, 0o700);
 
-    expect(readFileSync(join(path, "marker.py"), "utf8")).toBe("old install");
-    expect(existsSync(join(path, "__init__.py"))).toBe(true);
-  });
+      expect(readFileSync(join(path, "marker.py"), "utf8")).toBe("old install");
+      expect(existsSync(join(path, "__init__.py"))).toBe(true);
+    },
+  );
 
   it("restores the working install when the new copy can't be moved in", () => {
     const { path } = installRemoteScript(scratchDir);
@@ -325,23 +401,26 @@ describe("installRemoteScript", () => {
     expect(existsSync(young)).toBe(true);
   });
 
-  it("clears a temp leftover it can't read the age of, like a looped link", () => {
-    const looped = join(
-      scratchDir,
-      "Remote Scripts",
-      `Producer_Pal.tmp-${UUID}`,
-    );
+  it.skipIf(!platformSupport.symlinks)(
+    "clears a temp leftover it can't read the age of, like a looped link",
+    () => {
+      const looped = join(
+        scratchDir,
+        "Remote Scripts",
+        `Producer_Pal.tmp-${UUID}`,
+      );
 
-    installRemoteScript(scratchDir);
-    symlinkSync(looped, looped);
+      installRemoteScript(scratchDir);
+      symlinkSync(looped, looped);
 
-    expect(installRemoteScript(scratchDir).path).toBe(
-      remoteScriptPath(scratchDir),
-    );
-    expect(readdirSync(join(scratchDir, "Remote Scripts"))).toStrictEqual([
-      "Producer_Pal",
-    ]);
-  });
+      expect(installRemoteScript(scratchDir).path).toBe(
+        remoteScriptPath(scratchDir),
+      );
+      expect(readdirSync(join(scratchDir, "Remote Scripts"))).toStrictEqual([
+        "Producer_Pal",
+      ]);
+    },
+  );
 
   it("reports the swap failure, not the cleanup's, when the new copy can't be removed", () => {
     const { path } = installRemoteScript(scratchDir);
@@ -376,15 +455,18 @@ describe("installRemoteScript", () => {
     expect(existsSync(backup)).toBe(true);
   });
 
-  it("replaces a broken link at the script folder", () => {
-    const path = remoteScriptPath(scratchDir);
+  it.skipIf(!platformSupport.symlinks)(
+    "replaces a broken link at the script folder",
+    () => {
+      const path = remoteScriptPath(scratchDir);
 
-    mkdirSync(join(scratchDir, "Remote Scripts"));
-    symlinkSync(join(scratchDir, "gone"), path);
+      mkdirSync(join(scratchDir, "Remote Scripts"));
+      symlinkSync(join(scratchDir, "gone"), path);
 
-    expect(installRemoteScript(scratchDir).path).toBe(path);
-    expect(existsSync(join(path, "__init__.py"))).toBe(true);
-  });
+      expect(installRemoteScript(scratchDir).path).toBe(path);
+      expect(existsSync(join(path, "__init__.py"))).toBe(true);
+    },
+  );
 
   it("installs when the Remote Scripts folder can't be listed", () => {
     installRemoteScript(scratchDir);

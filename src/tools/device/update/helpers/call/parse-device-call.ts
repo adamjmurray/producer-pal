@@ -9,7 +9,7 @@ import {
   namedIdParam,
   namedPathParam,
 } from "#src/tools/shared/helpers/param-presence.ts";
-import { validateSendPair } from "#src/tools/shared/helpers/send-validation.ts";
+import { validateSendParams } from "#src/tools/shared/helpers/send-validation.ts";
 import { everyEntry } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { refuseNoWrite } from "#src/tools/shared/validation/lists/refuse-no-write.ts";
 import {
@@ -56,7 +56,7 @@ export function parseDeviceCall(args: UpdateDeviceArgs): DeviceCall {
   const namedPaths = namedPathParam(path, paths);
 
   if (namedIds == null && namedPaths == null) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("device"));
   }
 
   refuseNoWrite(args, "targets");
@@ -68,7 +68,7 @@ export function parseDeviceCall(args: UpdateDeviceArgs): DeviceCall {
   // checked on its own.
   refuseArgsWrapIgnores(wrapInRack, options);
 
-  validateSendPair(options.sendGainDb, options.sendReturn);
+  validateSendParams(options);
   options.params = validateParamEntries(options.params);
 
   // Checked for the whole call, so a per-target skip wouldn't repeat itself

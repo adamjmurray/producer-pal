@@ -304,7 +304,7 @@ describe("transport", () => {
 
   it("should throw error when required parameters are missing for play-session-clips", () => {
     expect(() => playback({ action: "play-session-clips" })).toThrow(
-      'id or path is required for action "play-session-clips"',
+      'id or path is required for action "play-session-clips", e.g. path: "t0/s0"',
     );
   });
 

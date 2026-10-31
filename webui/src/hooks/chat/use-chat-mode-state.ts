@@ -121,6 +121,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
   const resolvedApiKey = resolveProviderApiKey(
     settings.provider,
     settings.apiKey,
+    settings.baseUrl,
   );
 
   // Resolve a provider's connection (key + base URL) from current settings.
@@ -134,7 +135,11 @@ export function useChatModeState(params: UseChatModeStateParams) {
       const conn = getProviderConnection(targetProvider);
 
       return {
-        apiKey: resolveProviderApiKey(targetProvider, conn.apiKey),
+        apiKey: resolveProviderApiKey(
+          targetProvider,
+          conn.apiKey,
+          conn.baseUrl,
+        ),
         baseUrl: getBaseUrl(targetProvider, conn.baseUrl),
       };
     },
@@ -231,16 +236,28 @@ export function useChatModeState(params: UseChatModeStateParams) {
 
   // Every switch/new/delete/back-forward tears the conversation down through
   // this, so it is also where a stream cut short by the user gets saved.
-  const clearConversation = useStreamEndAutosave({
+  const endStream = useStreamEndAutosave({
     isAssistantResponding: chat.isAssistantResponding,
     autoSaveRef,
     clearConversation: wrappedClearConversation,
   });
+  // Counts composer resets. The composer is keyed on it, so its draft and any
+  // image still loading stay with the conversation they were made in. The
+  // active id can't serve: it also changes when a first send or a fork mints
+  // one. useConversations calls this only when it leaves the conversation the
+  // composer belongs to, so re-opening the active one or starting a new chat
+  // from an empty one keeps the draft.
+  const [conversationEpoch, setConversationEpoch] = useState(0);
+  const resetComposer = useCallback(
+    () => setConversationEpoch((epoch) => epoch + 1),
+    [],
+  );
 
   const conversationManager = useConversations({
     getChatHistory: chat.getChatHistory,
     restoreChatHistory: chat.restoreChatHistory,
-    clearConversation,
+    clearConversation: endStream,
+    resetComposer,
     activeMeta: {
       activeModel: chat.activeModel,
       activeProvider: chat.activeProvider,
@@ -317,6 +334,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
 
   return {
     chat,
+    conversationEpoch,
     wrappedHandleSend: gatedHandleSend,
     conversationPanelState,
     headerInfo,

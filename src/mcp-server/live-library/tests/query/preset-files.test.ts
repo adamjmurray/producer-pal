@@ -34,6 +34,8 @@ const FLDR = fourCC("fldr");
 const ADV = fourCC("adv-");
 const ADG = fourCC("adg-");
 const WAV = fourCC("wav-");
+const AMP = fourCC("amp-");
+const DFLD = fourCC("dfld");
 
 const DRUM_RACK = "device:ableton:instr:DrumGroupDevice";
 const WAVETABLE = "device:ableton:instr:InstrumentVector";
@@ -44,6 +46,12 @@ const MELD = "device:ableton:instr:InstrumentMeld";
 const INSTRUMENT_RACK = "device:ableton:instr:InstrumentGroupDevice";
 const REVERB = "device:ableton:audiofx:Reverb";
 const PLUGIN_DEVICE = "device:au:instr:1:2:3";
+const SIMPLER = "device:ableton:instr:OriginalSimpler";
+const TAPE = "device:m4l:audiofx:pack@www.ableton.com/320:Tape/Tape.amxd";
+const HARMONICS =
+  "device:m4l:audiofx:pack@www.ableton.com/322:Harmonics/H.amxd";
+const ECHOES_PACK = "device:m4l:audiofx:pack@www.ableton.com/330:Echoes/E.amxd";
+const ECHOES_USER = "device:m4l:audiofx:user@Echoes/E.amxd";
 
 // More folders than reconstruct-path.ts follows up from a file.
 const TOO_DEEP_FOLDERS = 40;
@@ -173,6 +181,13 @@ function writeDb(): string {
       ADG,
       { place: 20, flags: 0, deviceType: 1, deviceId: DRUM_RACK },
     ],
+    [
+      27,
+      21,
+      "Wrapped Kit.adg",
+      ADG,
+      { place: 20, deviceType: 1, deviceId: INSTRUMENT_RACK },
+    ],
     [70, 3, "Plugin Presets", FLDR],
     [71, 70, "Sample Kit.adg", ADG, { place: 70 }],
     [
@@ -249,6 +264,61 @@ function writeDb(): string {
       { place: 20, deviceType: 1, deviceId: DRUM_RACK },
     ],
     [91, 90, "505 Kit.adg", ADG, { deviceType: 1, deviceId: DRUM_RACK }],
+    // Devices with entries of their own, and presets that sit in no folder
+    // named for them: a pack's Max devices, a user copy of one, a native device.
+    [200, 20, "Tape", DFLD, { place: 20, deviceType: 2, deviceId: TAPE }],
+    [201, 200, "Tape.amxd", AMP, { deviceType: 2, deviceId: TAPE }],
+    [202, 20, "Presets", FLDR],
+    [
+      203,
+      202,
+      "Add Oxide.adv",
+      ADV,
+      { place: 20, deviceType: 2, deviceId: TAPE },
+    ],
+    [210, 20, "Harmonics.amxd", AMP, { deviceType: 2, deviceId: HARMONICS }],
+    [
+      211,
+      202,
+      "Bass Guitar.adv",
+      ADV,
+      { place: 20, deviceType: 2, deviceId: HARMONICS },
+    ],
+    [220, 20, "Echoes.amxd", AMP, { deviceType: 2, deviceId: ECHOES_PACK }],
+    [221, 10, "Echoes.amxd", AMP, { deviceType: 2, deviceId: ECHOES_USER }],
+    [
+      222,
+      202,
+      "Doubles.adv",
+      ADV,
+      { place: 20, deviceType: 2, deviceId: ECHOES_PACK },
+    ],
+    [
+      223,
+      202,
+      "Slap.adv",
+      ADV,
+      { place: 20, deviceType: 2, deviceId: ECHOES_PACK },
+    ],
+    [
+      224,
+      11,
+      "Doubles.adv",
+      ADV,
+      { place: 10, deviceType: 2, deviceId: ECHOES_USER },
+    ],
+    [230, 1, "Simpler", DFLD, { deviceType: 1, deviceId: SIMPLER }],
+    [
+      231,
+      202,
+      "Chopped.adv",
+      ADV,
+      { place: 20, deviceType: 1, deviceId: SIMPLER },
+    ],
+    // Entries that don't identify a device: a rack's, and one with no class.
+    [232, 1, "Boxy", DFLD, { deviceType: 1, deviceId: INSTRUMENT_RACK }],
+    [233, 1, "Void", DFLD, { deviceType: 1, deviceId: "" }],
+    [234, 202, "Void Kit.adv", ADV, { place: 20, deviceType: 1, deviceId: "" }],
     // A file buried deeper than a path can be rebuilt (see TOO_DEEP_FOLDERS).
     ...tooDeepRows(),
   ];
@@ -351,6 +421,25 @@ describe("findPresetFiles", () => {
     expect(none).toStrictEqual([]);
   });
 
+  it("adds Instrument Racks to a Drum Rack's files, for the caller to check", async () => {
+    const drums = await findPresetFiles({
+      name: "wrapped kit",
+      device: { name: " drum rack ", kind: "instrument" },
+    });
+    const instruments = await findPresetFiles({
+      name: "wrapped kit",
+      device: { name: "Instrument Rack", kind: "instrument" },
+    });
+    const other = await findPresetFiles({
+      name: "wrapped kit",
+      device: { name: "Audio Effect Rack", kind: "audiofx" },
+    });
+
+    expect(drums?.map(({ name }) => name)).toStrictEqual(["Wrapped Kit.adg"]);
+    expect(instruments).toHaveLength(1);
+    expect(other).toStrictEqual([]);
+  });
+
   it("keeps to the class of the presets under the device's folder", async () => {
     const files = await findPresetFiles({
       name: "warm pad",
@@ -367,6 +456,91 @@ describe("findPresetFiles", () => {
       await findPresetFiles({
         name: "warm pad",
         device: { name: "Operator", kind: "instrument" },
+      }),
+    ).toStrictEqual([]);
+  });
+
+  it("finds a pack's Max device presets by the device's own entry", async () => {
+    const files = await findPresetFiles({
+      name: "add oxide",
+      device: { name: "Tape", kind: "audiofx" },
+    });
+
+    expect(files?.map(({ path }) => path)).toStrictEqual([
+      "/Users/me/Drum Pack/Presets/Add Oxide.adv",
+    ]);
+  });
+
+  it("matches the device's name in any case", async () => {
+    const files = await findPresetFiles({
+      name: "add oxide",
+      device: { name: " TAPE ", kind: "audiofx" },
+    });
+
+    expect(files).toHaveLength(1);
+  });
+
+  it("finds them when only the .amxd file carries the device's class", async () => {
+    const files = await findPresetFiles({
+      name: "bass guitar",
+      device: { name: "Harmonics", kind: "audiofx" },
+    });
+
+    expect(files).toHaveLength(1);
+  });
+
+  it("takes the name with its .amxd suffix too", async () => {
+    const files = await findPresetFiles({
+      name: "bass guitar",
+      device: { name: "Harmonics.amxd", kind: "audiofx" },
+    });
+
+    expect(files).toHaveLength(1);
+  });
+
+  it("takes the class most presets point to when two devices share a name", async () => {
+    const files = await findPresetFiles({
+      name: "doubles",
+      device: { name: "Echoes", kind: "audiofx" },
+    });
+
+    expect(files?.map(({ path }) => path)).toStrictEqual([
+      "/Users/me/Drum Pack/Presets/Doubles.adv",
+    ]);
+  });
+
+  it("finds a native device's presets by its own entry", async () => {
+    const files = await findPresetFiles({
+      name: "chopped",
+      device: { name: "Simpler", kind: "instrument" },
+    });
+
+    expect(files).toHaveLength(1);
+  });
+
+  it("finds nothing when the device's entry is for another kind of device", async () => {
+    expect(
+      await findPresetFiles({
+        name: "add oxide",
+        device: { name: "Tape", kind: "instrument" },
+      }),
+    ).toStrictEqual([]);
+  });
+
+  it("doesn't read a rack's entry as the device's class", async () => {
+    expect(
+      await findPresetFiles({
+        name: "rack around",
+        device: { name: "Boxy", kind: "instrument" },
+      }),
+    ).toStrictEqual([]);
+  });
+
+  it("doesn't read an entry with no class as one that matches classless presets", async () => {
+    expect(
+      await findPresetFiles({
+        name: "void kit",
+        device: { name: "Void", kind: "instrument" },
       }),
     ).toStrictEqual([]);
   });

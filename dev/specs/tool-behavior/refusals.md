@@ -12,11 +12,15 @@ How the tool answers depends on what is wrong:
   names nothing, lists that can't be paired, a call naming no target, an entry
   that can't be parsed, an update call that names targets and sends no param to
   write (every update tool uses `refuseNoWrite`, so they all word it the same).
+  A call naming no target says `id or path is required` and teaches the address:
+  an example path for what the tool takes (`delete` and `duplicate` by their
+  `type`) and the read that lists real ones. The words are `idOrPathRequired`'s.
+  It never falls back to a default target.
 - **A whole-call param the tool can't read → throw**, in update tools too: a
-  half `sendGainDb`/`sendReturn` pair, a tempo outside Live's range, a note name
-  that parses as nothing, a `params` entry with no name or value. Warning per
-  item would repeat one message down the list and still return a success-shaped
-  result.
+  half of the deprecated `sendGainDb`/`sendReturn` pair, a tempo outside Live's
+  range, a note name that parses as nothing, a `params` entry with no name or
+  value. Warning per item would repeat one message down the list and still
+  return a success-shaped result.
 - **Applicability that depends on the target, found while working → skip that
   target** (see [Skips](skips-and-replaced-targets.md)). `quantize` on an audio
   clip is not knowable until that clip is reached, and the earlier targets can't
@@ -35,6 +39,8 @@ How the tool answers depends on what is wrong:
     `slot`, `toPath` and `toSlot`, `arrangementSplit` and `split`, `startTime`
     and `startLocator`, `arrangementStart` and `locator`), or with a position
     spelled in its own coordinate (`toPath: "t0[5|1]"` and `arrangementStart`);
+  - `sends` beside the deprecated `sendGainDb` or `sendReturn` (update-track,
+    update-device), whatever the values: one list or the other, never both;
   - `id` beside `ids` or the tool's own id spelling (`clipId`, `trackId`, ...),
     and `path` beside `paths`, whatever the values: a param and its alias are
     never sent together. Same for create-device's `deviceName` and its `device`
@@ -54,7 +60,8 @@ How the tool answers depends on what is wrong:
 - **A bad transform arg** is refused when it does not depend on the clip's
   meter, and skipped per clip when it does. A compound assignment of a
   `swing()`/`quant()` call (`timing += swing(...)`) is refused the same way, as
-  is a `swing()` amount at or past its grid (`swing(0.56, n/8)`)
+  is a `swing()` amount at or past its grid (`swing(0.56, n/8)`), and a waveform
+  period that uses a note property (`sin(note.start * 6.28)`)
   ([transform spec](../transforms/README.md)).
 
 ## A param only another action reads
@@ -93,15 +100,31 @@ treated as missing: its requests are held back before they are sent, so nothing
 is asked of Live, and every caller falls back or refuses as it does when no
 script answers. Where the answer tells the model the script is needed or
 missing, it says instead that the script is out of date, with the running and
-needed versions, and to update it with `ppal-manage` or in Settings → Remote
-Script and restart Live. The same goes for a 404 that says the route is unknown;
-any other 404 still means "not found". The Skills teach remote-script features
-only for a current script.
+needed versions, and to update it with `ppal-manage` or in the chat UI's
+Settings → Installation and restart Live. The same goes for a 404 that says the
+route is unknown; any other 404 still means "not found". The Skills teach
+remote-script features only for a current script.
+
+**Only a caller that has `ppal-manage` is pointed at it.** Small-model mode
+never offers the tool, and a toolset can leave it out. Every message that tells
+the caller how to get or update the script (preset and plug-in loads, clip
+conversion, Simpler pitch bend, an out-of-date or different-build script, and
+the same notice in `ppal-connect`) sends such a caller to the chat UI's Settings
+→ Installation, then restart Live and choose Producer Pal as a Control Surface.
+The clip automation message for a script that isn't running names no install
+path, for any caller. The device learns this per request from the caller's own
+settings, never from state held between requests. `ppal-manage`'s own undo and
+redo refusals still name it, and so do the portal's messages for its own
+`ppal-manage`. The chat UI's device swap (a person, over REST) never sees the
+tool name.
 
 ## A write that waits for another
 
 A queued write that runs short of time before its turn doesn't run and answers
 `Not run: waited <N>s for other Producer Pal writes to finish and ran out of time. Nothing changed; retry it.`
+A call whose args or context won't fit in one Max message (over 32,000 bytes of
+UTF-8) isn't sent and answers
+`... too large for a single Max IPC message: <N> bytes exceeds 32000. Not run. Send less in one call. Nothing changed.`
 A write whose caller disconnects while it waits doesn't run either. The queue's
 rules (what counts as a write, the timeout budget) are in
 [write-queue.md](../../architecture/write-queue.md).

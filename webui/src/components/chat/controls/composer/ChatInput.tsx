@@ -35,6 +35,9 @@ interface ChatInputProps extends ThinkingToggleProps {
    * compaction guard, losing the typed message.
    */
   isCompacting?: boolean;
+  /** Chat hasn't been set up (no usable connection), so there is nothing to
+   * send to. Disables the composer; the start screen offers the setup. */
+  setupRequired?: boolean;
   onStop: () => void;
 }
 
@@ -49,6 +52,7 @@ interface ChatInputProps extends ThinkingToggleProps {
  * @param props.isAssistantResponding - Whether assistant is currently responding
  * @param props.hasError - Whether conversation ended with an error
  * @param props.isCompacting - Whether a manual compaction is in progress
+ * @param props.setupRequired - Whether chat still needs to be set up
  * @param props.onStop - Callback to stop assistant response
  * @param props.thinking - Current thinking mode
  * @param props.onThinkingChange - Callback for thinking change
@@ -60,6 +64,7 @@ export function ChatInput({
   isAssistantResponding,
   hasError,
   isCompacting,
+  setupRequired,
   onStop,
   thinking,
   onThinkingChange,
@@ -68,7 +73,7 @@ export function ChatInput({
   const [input, setInput] = useState("");
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const attachments = useImageAttachments();
-  const disabled = hasError || isCompacting === true;
+  const disabled = hasError || isCompacting === true || setupRequired === true;
   // Compaction is genuinely non-cancelable (no abort path), so don't offer Stop
   // while it runs — it would be a no-op against the in-flight summarize().
   const canStop = isAssistantResponding && isCompacting !== true;
@@ -121,11 +126,13 @@ export function ChatInput({
               onSubmit={submitMessage}
               editorRef={editorRef}
               placeholder={
-                hasError
-                  ? "Retry or edit a message to continue..."
-                  : isCompacting
-                    ? "Compacting…"
-                    : "Type a message... (Shift+Enter for new line)"
+                setupRequired
+                  ? "Set up chat in Settings to send messages..."
+                  : hasError
+                    ? "Retry or edit a message to continue..."
+                    : isCompacting
+                      ? "Compacting…"
+                      : "Type a message... (Shift+Enter for new line)"
               }
               disabled={disabled}
               className="flex-1"

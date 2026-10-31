@@ -150,7 +150,9 @@ describe("POST /remote-script/install", () => {
     // the caller's bad input, so it must not read as a 400.
     writeFileSync(join(scratchDir, "Remote Scripts"), "", "utf8");
 
-    const logged = vi.spyOn(maxConsole, "error").mockImplementation(() => {});
+    const logged = vi
+      .spyOn(maxConsole, "nodeError")
+      .mockImplementation(() => {});
     const res = await postInstall({ userLibrary: scratchDir });
 
     expect(res.status).toBe(500);

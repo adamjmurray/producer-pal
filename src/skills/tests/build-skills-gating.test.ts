@@ -9,9 +9,14 @@
 // `suppressed` set in buildSkills) and because build-skills.test.ts is at the
 // test-file line cap.
 
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
 import { assembleSkills, buildSkills } from "#src/skills/build-skills.ts";
+import {
+  contextStandard,
+  contextStandardKnownUser,
+} from "#src/skills/fragments/context.ts";
 import { buildWithWarnings } from "./build-skills-test-helpers.ts";
 
 const HEADER = "# Producer Pal Skills";
@@ -567,6 +572,13 @@ describe("buildSkills - undo and redo gating", () => {
     expect(skills).toContain("one edit the user made in Live");
   });
 
+  it("sends the user to install-producer-pal for the remote script, not the retired name", () => {
+    const skills = buildSkills({ tools: [...TOOL_NAMES] });
+
+    expect(skills).toContain("`install-producer-pal` installs it");
+    expect(skills).not.toContain("install-remote-script");
+  });
+
   it("teaches it when no toolset is given", () => {
     expect(buildSkills({})).toContain(HEADING);
   });
@@ -579,5 +591,68 @@ describe("buildSkills - undo and redo gating", () => {
 
   it("is never in small-model mode", () => {
     expect(buildSkills({ smallModelMode: true })).not.toContain(HEADING);
+  });
+});
+
+describe("buildSkills - new user", () => {
+  const ALL_TOOLS = [...TOOL_NAMES];
+  const PARAGRAPH = "**New user** (connect says";
+
+  // sha256 of context-standard. A new user must get exactly this text: the
+  // paragraph's position inside the guide is load-bearing (moving it cost
+  // onboarding evals). Update it when the guide's wording changes elsewhere.
+  const CONTEXT_STANDARD_SHA256 =
+    "41b89b2777d637700dd57852801f989ca5e897d26b3dc4d9b3d737d4d3309d37";
+
+  it("gives a new user the context guide exactly as pinned", () => {
+    const hash = (text: string): string =>
+      createHash("sha256").update(text).digest("hex");
+
+    expect(hash(contextStandard)).toBe(CONTEXT_STANDARD_SHA256);
+
+    // Omitted counts as new, so callers that can't tell keep the paragraph.
+    for (const newUser of [true, undefined]) {
+      expect(buildSkills({ tools: ALL_TOOLS, newUser })).toContain(
+        contextStandard,
+      );
+    }
+  });
+
+  it("drops only the paragraph for a user who isn't new", () => {
+    const paragraph = contextStandard.slice(
+      contextStandard.indexOf(PARAGRAPH),
+      contextStandard.indexOf("Writing project/global"),
+    );
+    const asNew = buildSkills({ tools: ALL_TOOLS, newUser: true });
+    const asKnown = buildSkills({ tools: ALL_TOOLS, newUser: false });
+
+    expect(paragraph.endsWith("\n\n")).toBe(true);
+    expect(asNew.replace(paragraph, "")).toBe(asKnown);
+    expect(asKnown).not.toContain(PARAGRAPH);
+    expect(contextStandardKnownUser).not.toContain("\n\n\n");
+    expect(asKnown).toContain(contextStandardKnownUser);
+  });
+
+  it("leaves a user's own override of the guide alone", () => {
+    const override = `${PARAGRAPH} my own wording`;
+
+    expect(
+      buildSkills(
+        { tools: ALL_TOOLS, newUser: false },
+        { fragments: { "context-standard": override } },
+      ),
+    ).toContain(override);
+  });
+
+  it("changes nothing in small-model mode", () => {
+    expect(buildSkills({ smallModelMode: true, newUser: false })).toBe(
+      buildSkills({ smallModelMode: true }),
+    );
+  });
+
+  it("is not reported as a fragment the toolset dropped", () => {
+    expect(
+      assembleSkills({ tools: ALL_TOOLS, newUser: false }).dropped,
+    ).toStrictEqual([]);
   });
 });

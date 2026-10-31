@@ -6,6 +6,7 @@
 import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import { DUPLICATE_TYPES } from "#src/tools/constants.ts";
+import { validateCount } from "#src/tools/shared/validation/lists/insertion-plan.ts";
 import { isTakeLaneRequested } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import {
   type ParamHome,
@@ -36,12 +37,10 @@ export function validateBasicInputs(
   // `id` and `path` name different objects and add up, so either will do and
   // both together are a longer source list, not a conflict.
   if (id == null && path == null) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired(type));
   }
 
-  if (count < 1) {
-    throw new Error("count must be at least 1");
-  }
+  validateCount(count);
 }
 
 /**

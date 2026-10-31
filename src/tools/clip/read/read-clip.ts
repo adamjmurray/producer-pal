@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import {
@@ -167,7 +168,7 @@ export async function readClip(
   // them — read-track and read-scene share the per-clip read and stay sync.
   if (parseIncludeArray(args.include, READ_CLIP_DEFAULTS).includeEnvelopes) {
     for (const entry of Array.isArray(result) ? result : [result]) {
-      await addClipEnvelopes(entry, context.deadline);
+      await addClipEnvelopes(entry, context.deadline, manageOffered(context));
     }
   }
 
@@ -179,10 +180,12 @@ export async function readClip(
  * that can't reach the remote script still answers with everything else.
  * @param entry - One clip the read produced, or a target it skipped
  * @param deadline - The request deadline from ToolContext, if any
+ * @param manage - Whether the caller can use ppal-manage
  */
 async function addClipEnvelopes(
   entry: ReadClipResult | TargetSkip,
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<void> {
   if ("ok" in entry || entry.id == null) {
     return;
@@ -196,6 +199,7 @@ async function addClipEnvelopes(
       (clip.getProperty("is_arrangement_clip") as number) > 0,
       clipMeterReader(clip),
       deadline,
+      manage,
     );
   } catch (error) {
     entry.envelopes = errorMessage(error);
@@ -254,7 +258,7 @@ export function readOneClip(
   } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
   if (clipId == null && (trackIndex == null || sceneIndex == null)) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("clip"));
   }
 
   const resolved = resolveClip(

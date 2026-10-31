@@ -3,10 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { liveRunsOtherCopy } from "#src/shared/version-check";
+import { liveRunsOtherCopy, versionText } from "#src/shared/version-check";
 import { type RemoteScriptStatus } from "#webui/hooks/settings/installation/use-remote-script";
 import { goodTextClass, warnTextClass } from "./installation-classes";
-import { versionText } from "./version-text";
 
 /**
  * One-line summary of what is installed and whether Live is running it.

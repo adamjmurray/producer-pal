@@ -23,7 +23,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { interpretNotation } from "#src/notation/stark/stark-interpreter.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 
 /**
  * Run one drum header through the real interpreter.
@@ -85,7 +85,9 @@ describe("drum-header pitch-name parity (Stark grammar ↔ interpreter regex)", 
     // against the regex's `\d+`.
     for (const header of ["C9", "C10", "C-10"]) {
       it(`"${header}" drops its line and warns`, () => {
-        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        const warn = vi
+          .spyOn(maxConsole, "emitWarning")
+          .mockImplementation(() => {});
 
         expect(resolveHeader(header)).toStrictEqual([]);
         expect(warn).toHaveBeenCalledWith(

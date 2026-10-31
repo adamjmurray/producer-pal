@@ -66,7 +66,7 @@ export async function withUpdateHint<T extends object>(
  * @param manageOffered - Whether this portal lists ppal-manage
  * @returns The text to append
  */
-function hintFor(version: string, manageOffered: boolean): string {
+export function hintFor(version: string, manageOffered: boolean): string {
   const older = `The Producer Pal device (${version}) is older than this connector (${VERSION}).`;
 
   // An older device's tool list has no ppal-manage, so the client can't call it.

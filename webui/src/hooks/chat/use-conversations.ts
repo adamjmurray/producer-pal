@@ -12,6 +12,7 @@ import {
 } from "preact/hooks";
 import { reconcileDanglingToolCalls } from "#webui/chat/sdk/build-model-messages";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
+import { isLeavingLive } from "#webui/hooks/chat/helpers/conversations/is-leaving-live";
 import { useBulkDeletes } from "#webui/hooks/chat/helpers/conversations/use-bulk-deletes";
 import { confirmLeavingStream } from "#webui/hooks/chat/helpers/conversations/confirm-leaving-stream";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
@@ -54,6 +55,9 @@ interface UseConversationsProps {
     lockedSettings?: RestoredSettings,
   ) => void;
   clearConversation: () => void;
+  /** Wipes the composer's draft and images. Called when the conversation the
+   * composer belongs to goes away, not on every teardown. */
+  resetComposer: () => void;
   /** The active conversation's locked settings, mirrored into the store and
    * snapshotted onto saved records. */
   activeMeta: SyncActiveMetaParams;
@@ -102,6 +106,7 @@ export interface UseConversationsReturn extends ConversationListActions {
  * @param props.getChatHistory - Returns current chat history for saving
  * @param props.restoreChatHistory - Loads a saved chat history into the chat hook
  * @param props.clearConversation - Clears the current conversation
+ * @param props.resetComposer - Wipes the composer when its conversation is left
  * @param props.activeMeta - Locked conversation metadata (model/provider/etc. + system instruction)
  * @param props.onForeignRecord - Optional callback invoked when a voice record is encountered; parent should switch modes
  * @param props.pendingForkRef - Shared signal consumed on save to branch the conversation into a new record
@@ -113,6 +118,7 @@ export function useConversations({
   getChatHistory,
   restoreChatHistory,
   clearConversation,
+  resetComposer,
   activeMeta,
   onForeignRecord,
   pendingForkRef,
@@ -315,20 +321,42 @@ export function useConversations({
         return;
       }
 
+      // Re-opening the conversation already on screen keeps the draft.
+      const leaving = id !== store.activeId();
+
       clearConversation();
+
+      if (leaving) {
+        resetComposer();
+      }
+
       restoreRecord(record);
       store.adopt(record);
       // Re-collapse with the new active id so its family's row reflects — and
       // highlights — the sibling just switched to (e.g. via the branch arrows).
       await refreshList();
     },
-    [clearConversation, restoreRecord, onForeignRecord, refreshList, store],
+    [
+      clearConversation,
+      resetComposer,
+      restoreRecord,
+      onForeignRecord,
+      refreshList,
+      store,
+    ],
   );
 
   const startNewConversation = useCallback(() => {
+    const leaving = isLeavingLive(store, getChatHistory);
+
     clearConversation();
+
+    if (leaving) {
+      resetComposer();
+    }
+
     store.reset();
-  }, [clearConversation, store]);
+  }, [clearConversation, resetComposer, getChatHistory, store]);
 
   // A fork branches off the active conversation, minting its id inside the save.
   // With that conversation going away there is nothing left to branch from, so
@@ -340,10 +368,18 @@ export function useConversations({
     }
   }, [pendingForkRef]);
 
-  const clearLiveView = useCallback(() => {
-    clearConversation();
-    store.reset();
-  }, [clearConversation, store]);
+  const clearLiveView = useCallback(
+    (leaving = true) => {
+      clearConversation();
+
+      if (leaving) {
+        resetComposer();
+      }
+
+      store.reset();
+    },
+    [clearConversation, resetComposer, store],
+  );
 
   const deleteConversation = useCallback(
     (id: string) =>
@@ -353,7 +389,7 @@ export function useConversations({
         deleteWithUndo: undoDelete.deleteWithUndo,
         refreshList,
         beforeMark: dropPendingFork,
-        onLiveGone: clearLiveView,
+        onLiveGone: () => clearLiveView(),
       }),
     [clearLiveView, refreshList, undoDelete, dropPendingFork, store],
   );
@@ -362,6 +398,7 @@ export function useConversations({
     useBulkDeletes({
       store,
       onLiveRowGone: clearLiveView,
+      getChatHistory,
       refreshList,
       dropPendingFork,
       dropUndoable: undoDelete.dropUndoable,

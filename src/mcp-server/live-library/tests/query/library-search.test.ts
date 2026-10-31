@@ -545,6 +545,85 @@ describe("librarySearch", () => {
     expect(result.items.length).toBeGreaterThan(0);
   });
 
+  describe("paging", () => {
+    // Audio by use-count desc: pack_kick, user_kick, user_snare, pack_clap,
+    // subfolder_x, subfolder_z, subfolder_y.
+    it("counts the matches beyond a page that hit the limit", async () => {
+      const result = await librarySearch({ kind: "audio", limit: 3 });
+
+      expect(result.items.map((i) => i.name)).toStrictEqual([
+        "pack_kick.wav",
+        "user_kick.aif",
+        "user_snare.wav",
+      ]);
+      expect(result.more).toBe(4);
+    });
+
+    it("reads the next page from the offset", async () => {
+      const result = await librarySearch({
+        kind: "audio",
+        limit: 3,
+        offset: 3,
+      });
+
+      expect(result.items.map((i) => i.name)).toStrictEqual([
+        "pack_clap.aif",
+        "subfolder_x.wav",
+        "subfolder_z.wav",
+      ]);
+      expect(result.more).toBe(1);
+    });
+
+    it("leaves `more` off the last page and off a page that fits", async () => {
+      const last = await librarySearch({ kind: "audio", limit: 3, offset: 6 });
+      const fits = await librarySearch({ kind: "audio", limit: 7 });
+
+      expect(last.items).toHaveLength(1);
+      expect(last).not.toHaveProperty("more");
+      expect(fits.items).toHaveLength(7);
+      expect(fits).not.toHaveProperty("more");
+    });
+
+    it("returns nothing, without `more`, past the last match", async () => {
+      const result = await librarySearch({ kind: "audio", offset: 50 });
+
+      expect(result.items).toStrictEqual([]);
+      expect(result).not.toHaveProperty("more");
+    });
+
+    it("treats a negative or fractional offset as a whole number from 0", async () => {
+      const negative = await librarySearch({ kind: "audio", offset: -4 });
+      const fractional = await librarySearch({
+        kind: "audio",
+        limit: 1,
+        offset: 1.9,
+      });
+
+      expect(negative.items[0]?.name).toBe("pack_kick.wav");
+      expect(fractional.items[0]?.name).toBe("user_kick.aif");
+    });
+
+    it("pages every sort without repeating or skipping a file", async () => {
+      for (const sort of ["use-count", "mod-date", "name"] as const) {
+        const seen: string[] = [];
+
+        for (let offset = 0; offset < 7; offset += 2) {
+          const page = await librarySearch({
+            kind: "audio",
+            sort,
+            limit: 2,
+            offset,
+          });
+
+          seen.push(...page.items.map((i) => i.name));
+        }
+
+        expect(new Set(seen).size).toBe(7);
+        expect(seen).toHaveLength(7);
+      }
+    });
+  });
+
   describe("inFolder filter", () => {
     it("returns only immediate children of the resolved folder", async () => {
       // Pack One/SubA contains subfolder_x.wav and subfolder_y.wav (not subfolder_z)

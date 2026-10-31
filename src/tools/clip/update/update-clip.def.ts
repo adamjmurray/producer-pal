@@ -18,6 +18,12 @@ import { aliasedEnum } from "#src/tools/shared/tool-framework/enum-aliases.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
+// Unfinished plug-in hosting: release builds don't mention it.
+const HOSTED_ENVELOPE_TARGET =
+  process.env.ENABLE_HOSTED_PLUGINS === "true"
+    ? ", or a hosted plug-in's param as its device path and h id (t0/d0/h56), which takes an automation slot"
+    : "";
+
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
   title: "Update Clip",
   description: {
@@ -76,7 +82,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     looping: z.boolean().optional().describe("enable looping for the clip"),
     duplicateLoop: param(z.boolean().optional(), {
       default:
-        "double the clip length and copy existing notes (and automation envelopes) into the new half (Live's Duplicate Loop). MIDI clips only. Cannot be combined with start/length - they set the region this doubles, so the clip would end up twice the length you asked for; to double a portion, send start/length in its own call first. preTransforms edit the source before the double; notes/transforms then apply across the full doubled clip",
+        "double the clip length and copy existing notes (and automation envelopes) into the new half (Live's Duplicate Loop). MIDI clips only. Cannot be combined with start/length. preTransforms edit the source before the double; notes/transforms then apply across the full doubled clip",
       smallModel:
         "double the clip length and copy existing notes into the new half (Live's Duplicate Loop). MIDI clips only. Cannot be combined with start/length - send those in their own call first to pick the region. notes merge across the full doubled clip",
     }),
@@ -108,21 +114,26 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     toSlot: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "toPath",
     }),
-    toPath: z.coerce
-      .string()
-      .optional()
-      .describe(
+    toPath: param(z.coerce.string().optional(), {
+      default:
+        "where to move the clip(s): a clip slot 't<track>/s<scene>', a spot on the arrangement 't<track>[<position>]', " +
+        "a take lane 't<track>/l<lane>[<position>]' (scenes and lanes are created up to that index), or '[<position>]' alone to keep the clip's own lane. " +
+        "A position is bar|beat or loc:<locator name or id>. " +
+        "A clip re-created in a slot or on a take lane drops its automation; one moved on the arrangement leaves the track's automation where it was. " +
+        "Comma-separated, one per clip; a lone '[<position>]' moves every clip, each on its own lane",
+      // Small mode ships no arrangement-write skill, so it keeps the full text.
+      smallModel:
         "where to move the clip(s): a clip slot 't<track>/s<scene>' " +
-          "(scenes are created up to that index), " +
-          "a spot on the arrangement 't<track>[<position>]' (a position is bar|beat or " +
-          "loc:<locator name or id>), a take lane 't<track>/l<lane>[<position>]' (lanes are created up to that " +
-          "index), or " +
-          "'[<position>]' alone to keep the clip's own lane (e.g., 't2/s3' or 't2[5|1],[loc:Chorus]'). " +
-          "A lane with no position keeps the clip's own start. A clip re-created in a slot or on a " +
-          "take lane drops its automation; one moved on the arrangement leaves the track's automation " +
-          "where it was. Comma-separated, one per clip; a lone " +
-          "'[<position>]' moves every clip, each on its own lane",
-      ),
+        "(scenes are created up to that index), " +
+        "a spot on the arrangement 't<track>[<position>]' (a position is bar|beat or " +
+        "loc:<locator name or id>), a take lane 't<track>/l<lane>[<position>]' (lanes are created up to that " +
+        "index), or " +
+        "'[<position>]' alone to keep the clip's own lane (e.g., 't2/s3' or 't2[5|1],[loc:Chorus]'). " +
+        "A lane with no position keeps the clip's own start. A clip re-created in a slot or on a " +
+        "take lane drops its automation; one moved on the arrangement leaves the track's automation " +
+        "where it was. Comma-separated, one per clip; a lone " +
+        "'[<position>]' moves every clip, each on its own lane",
+    }),
     // Deprecated because its positions are clip-relative: models reason in song
     // time, so they aimed at the wrong bar every time. Kept working unchanged
     // for callers that scripted against it; arrangementSplit is the published
@@ -165,9 +176,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     preTransforms: param(z.string().optional(), {
       default:
-        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across the clips); clear or edit notes already in the clip. 'delete' (alias 'v0') removes: a whole bar ('3|*: delete', |* wildcard avoids spilling onto the next downbeat), a span ('1|1-2|1: delete'), one pitch ('C1: delete'), a pitch range ('C1-C5: delete'), or all ('delete'); also remap a drum lane ('C1: C4'). Works with or without notes",
+        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across the clips); clear or edit notes already in the clip. 'delete' (alias 'v0') removes: a whole bar ('3|*: delete', |* wildcard avoids spilling onto the next downbeat), a span ('3|2-<3|4: delete' = beats 2-3 of bar 3), one pitch ('C1: delete'), a pitch range ('C1-C5: delete'), or all ('delete'); also remap a drum lane ('C1: C4'). Works with or without notes",
       smallModel:
-        "clear/edit notes already in the clip. Shorthand only (see Skills): `3|*: v0` clears all of bar 3 (|* wildcard = whole bar), `1|1-2|1: v0` clears a span, `v0` clears all, `C1: C4` remaps a drum lane",
+        "clear/edit notes already in the clip. Shorthand only (see Skills): `3|*: v0` clears all of bar 3 (|* wildcard = whole bar), `3|2-<3|4: v0` clears beats 2-3 of bar 3, `v0` clears all, `C1: C4` remaps a drum lane",
     }),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
@@ -181,7 +192,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     envelopes: param(z.string().optional(), {
       default:
         "clip automation, one '<target>: <notation>' line per parameter, broadcast across the clips. On an arrangement clip it writes the track's automation lane over the clip's span: times run from the clip start, once through, and the clip comes back under a new id. " +
-        "target: a device parameter id (from ppal-read-device, or a ppal-read-clip envelopes entry) or a mixer name - volume, pan, send0, send1... " +
+        "target: a device parameter id (from ppal-read-device, or a ppal-read-clip envelopes entry) or a mixer name - volume, pan, send0, send1..." +
+        HOSTED_ENVELOPE_TARGET +
+        " " +
         "notation: bar|beat points in the clip meter, joined by '/' (straight ramp), '_' (hold, then jump) or '~N' (curved ramp, N from -1 to 1, no space; positive bends above the straight line (fast start), negative below (slow start)), e.g. '1|1 0 / 3|1 0.8 _ 4|1 0.2 ~0.5 5|1 1'. " +
         "Values are raw, usually 0..1 - not the display units of ppal-read-device min/max. Mixer volume: 0.85 = 0 dB; pan: -1 = hard left, 1 = hard right. " +
         "Each line REPLACES that parameter's whole envelope; on a session clip a line with nothing after the colon ('472:') clears it (a lane can't be cleared: write a flat line). Needs the remote script (Live 12.4+ to write points). Not on an unwarped session audio clip or a take-lane clip",

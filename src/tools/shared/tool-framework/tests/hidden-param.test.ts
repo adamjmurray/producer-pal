@@ -247,6 +247,24 @@ describe("hiddenParamWarnings", () => {
     ]);
   });
 
+  it("reads a note off the call's args when it is a function", () => {
+    const withNote = collectHiddenParams({
+      split: deprecatedParam(z.string().optional(), {
+        replacedBy: "arrangementSplit",
+        note: (args) => (args.split === "4" ? "Four is a lot." : undefined),
+      }),
+    });
+
+    expect(
+      hiddenParamWarnings(["split"], withNote, { split: "4" }),
+    ).toStrictEqual([
+      'WARNING: param "split" is deprecated and will be removed; use "arrangementSplit" instead. Four is a lot.',
+    ]);
+    expect(hiddenParamWarnings(["split"], withNote, {})).toStrictEqual([
+      'WARNING: param "split" is deprecated and will be removed; use "arrangementSplit" instead',
+    ]);
+  });
+
   it("puts the note after the example when a deprecation has both", () => {
     expect(
       hiddenParamWarnings(

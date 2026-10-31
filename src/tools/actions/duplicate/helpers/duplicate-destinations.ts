@@ -22,7 +22,8 @@ import {
 } from "./clip/clip-destinations.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { validateDestinationParameter } from "./duplicate-input-validation.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { requireTrackIndex } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 
 /**
  * Resolves the comma-separated arrangementStart list to beats. Shared by clip
@@ -104,9 +105,7 @@ export function refuseDuplicatePositionsPastCap(
     ),
   ];
 
-  const liveSet = LiveAPI.from(livePath.liveSet);
-  const numerator = liveSet.getProperty("signature_numerator") as number;
-  const denominator = liveSet.getProperty("signature_denominator") as number;
+  const { numerator, denominator } = songMeter();
 
   for (const { position, param } of named) {
     refuseArrangementPositionPastCap(
@@ -183,13 +182,7 @@ export function resolveDestinationTargets(
   targets: (DuplicateArrangementTarget | null)[],
 ): ResolvedDestinations {
   const ownTrack = (): ArrangementTrack => {
-    const sourceTrackIndex = sourceClip.trackIndex;
-
-    if (sourceTrackIndex == null) {
-      throw new Error(`no track for clip ${targetLabel(sourceClip)}`);
-    }
-
-    return { trackIndex: sourceTrackIndex, takeLane: null };
+    return { trackIndex: requireTrackIndex(sourceClip), takeLane: null };
   };
 
   if (targets.length === 0) {

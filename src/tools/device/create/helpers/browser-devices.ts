@@ -10,7 +10,7 @@
 import {
   type NodeResponse,
   requestNode,
-} from "#src/live-api-adapter/node-request-v8-protocol.ts";
+} from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { waitUntil } from "#src/shared/max/v8-wait-until.ts";
@@ -26,6 +26,7 @@ import {
   type RemoteScriptUnavailable,
   whyUnavailable,
 } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
+import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { errorWithChainsLeft } from "#src/tools/shared/device/helpers/path/chains-left.ts";
 import { moveDeviceIntoContainer } from "#src/tools/device/update/helpers/move-device.ts";
 import {
@@ -70,6 +71,9 @@ export function lookupOutOfTime(nothingDone: string): string {
   return `${REQUEST_OUT_OF_TIME} searching Live's browser; ${nothingDone}, re-run it. If it keeps happening, ask the user to raise the Timeout setting`;
 }
 
+/** A browser lookup found nothing by that name. */
+export class BrowserDeviceNotFoundError extends Error {}
+
 /** How often, and how many times, to look for the loaded device. */
 const ARRIVAL_POLL = { pollingInterval: 50, maxRetries: 40 };
 
@@ -86,10 +90,13 @@ const MIN_LOAD_WAIT_MS = 2 * REMOTE_SCRIPT_EXPIRY_MARGIN_MS;
 const LOAD_STRANDED =
   "Live may still have loaded it, but onto the temp track, which is removed; nothing was added at this path, re-run for it";
 
-/** The request's time limits, from ToolContext. */
+/**
+ * What a browser load reads off the request: its time limits, and who the
+ * caller is, which words a refusal.
+ */
 export type RequestTiming = Pick<
   Partial<ToolContext>,
-  "deadline" | "timeoutMs"
+  "deadline" | "timeoutMs" | "manageAvailable" | "smallModelMode"
 >;
 
 /** What a browser load needs besides the device. */
@@ -148,7 +155,8 @@ export async function createBrowserDevice(
  * @param deadline - The request deadline from ToolContext
  * @returns The item, or `available: false` when the remote script isn't
  *   answering (`outdated` when it is too old)
- * @throws Error when nothing, or more than one thing, goes by that name
+ * @throws BrowserDeviceNotFoundError when nothing goes by that name
+ * @throws Error when more than one thing does, or the lookup fails
  */
 export async function resolveBrowserDevice(
   deviceName: string,
@@ -186,8 +194,12 @@ export async function resolveBrowserDevice(
   }
 
   if ("error" in resolution) {
-    throw "outOfTime" in resolution
-      ? lookUpFailed(lookupOutOfTime("nothing was created"))
+    if ("outOfTime" in resolution) {
+      throw lookUpFailed(lookupOutOfTime("nothing was created"));
+    }
+
+    throw "notFound" in resolution
+      ? new BrowserDeviceNotFoundError(resolution.error)
       : new Error(resolution.error);
   }
 
@@ -415,7 +427,11 @@ async function loadOnto(
     },
     waitMs,
   );
-  const failure = loadFailure(response, Date.now() - started >= waitMs);
+  const failure = loadFailure(
+    response,
+    Date.now() - started >= waitMs,
+    manageOffered(timing),
+  );
 
   if (failure != null) {
     throw new Error(`could not load "${deviceName}": ${failure}`);
@@ -447,11 +463,13 @@ function stranded(why: string, timedOut: boolean): string {
  * so nothing reaches the path.
  * @param response - The load route's response
  * @param gaveUp - Whether V8 stopped waiting for it
+ * @param manage - Whether the caller can use ppal-manage
  * @returns The reason, or undefined when the load succeeded
  */
 function loadFailure(
   response: NodeResponse<BrowserItemLoad>,
   gaveUp: boolean,
+  manage: boolean,
 ): string | undefined {
   if (!response.success) {
     return stranded(response.error ?? "no answer", gaveUp);
@@ -464,7 +482,7 @@ function loadFailure(
   }
 
   if (!result.available) {
-    return whyUnavailable(result, "Live's browser stopped answering");
+    return whyUnavailable(result, "Live's browser stopped answering", manage);
   }
 
   return result.error == null

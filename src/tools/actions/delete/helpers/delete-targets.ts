@@ -66,6 +66,16 @@ export function deleteTargets(call: DeleteCall): Array<Target<DeletePayload>> {
   return named.map((target) => resolveTarget(target, call.type));
 }
 
+/**
+ * The id the path names now, as the first lookup read it.
+ * @param path - One path, as the caller wrote it
+ * @param type - Type of objects to delete
+ * @returns The object's id, or null when the path names no such object
+ */
+export function deletePathId(path: string, type: string): string | null {
+  return pathLookup(path, type).id;
+}
+
 // --- Helpers below main exports ---
 
 /** Why no take lane can be deleted, after the lane's own label. */
@@ -96,6 +106,16 @@ function existingTakeLane(requestPath: string): IdLookup | null {
 }
 
 /**
+ * One path's lookup: a take lane by its own rule, anything else by the type.
+ * @param requestPath - One path, as the caller wrote it
+ * @param type - Type of objects to delete
+ * @returns What the path named
+ */
+function pathLookup(requestPath: string, type: string): IdLookup {
+  return existingTakeLane(requestPath) ?? resolvePathForType(type, requestPath);
+}
+
+/**
  * One named target: the object to delete, or why there is nothing to do.
  * @param named - The target, as the caller named it
  * @param type - Type of objects to delete
@@ -107,10 +127,7 @@ function resolveTarget(
 ): Target<DeletePayload> {
   const requestPath = named.param === "path" ? named.value : undefined;
   const lookup: IdLookup =
-    requestPath == null
-      ? { id: named.value }
-      : (existingTakeLane(requestPath) ??
-        resolvePathForType(type, requestPath));
+    requestPath == null ? { id: named.value } : pathLookup(requestPath, type);
 
   if (lookup.id == null) {
     return lookup.empty
@@ -127,14 +144,18 @@ function resolveTarget(
 
   const refusal = undeletable(object, type);
 
+  // What a path named at the start, for a skip to say if it has moved on.
+  const atStart = requestPath == null ? undefined : id;
+
   if (refusal != null) {
-    return { named, skip: refusal };
+    return { named, atStart, skip: refusal };
   }
 
   // Keyed by the object, so an id and a path naming one object are caught.
   return {
     named,
     key: object.id,
+    atStart,
     data: { kind: "delete", id, object, requestPath },
   };
 }

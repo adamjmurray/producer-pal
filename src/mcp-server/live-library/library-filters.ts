@@ -178,9 +178,12 @@ type DbLibrarySource = Exclude<LibrarySource, "sample-folder">;
  */
 export const PRESET_FOLDER_KIND = 5;
 
+/** folder_kind of a pack's place. */
+export const PACK_FOLDER_KIND = 0;
+
 const SOURCE_TO_FOLDER_KINDS: Record<DbLibrarySource, number[]> = {
   user: [1, 2],
-  pack: [0],
+  pack: [PACK_FOLDER_KIND],
   "preset-folder": [PRESET_FOLDER_KIND],
   builtin: [8],
   cloud: [9],

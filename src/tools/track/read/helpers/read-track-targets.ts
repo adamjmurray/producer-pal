@@ -62,7 +62,7 @@ export function resolveReadTrackTarget(args: ReadTrackArgs): ReadTrackTarget {
     trackIndex == null &&
     category !== "master"
   ) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("track"));
   }
 
   if (trackId != null || path != null) {

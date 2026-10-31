@@ -16,8 +16,8 @@ import {
 import { createDevice } from "#src/tools/device/create/create-device.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
-  warnOnce: vi.fn(),
+  emitWarning: vi.fn(),
+  emitWarningOnce: vi.fn(),
 }));
 
 /** A track holding two devices, ready to take an insert at position 1. */

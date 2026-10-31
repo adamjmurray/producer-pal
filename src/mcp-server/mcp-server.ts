@@ -16,7 +16,7 @@ import { getUpdate } from "./helpers/http/update-check.ts";
 import { registerMemoryNodeRoutes } from "./helpers/memory/memory-node-routes.ts";
 import { registerCustomSkillsNodeRoutes } from "./helpers/skills-custom/custom-skills-node-routes.ts";
 import { registerLibraryRoutes } from "./live-library/library-routes.ts";
-import * as console from "./node-for-max-logger.ts";
+import { nodeLog, nodeWarn } from "./node-for-max-logger.ts";
 import { registerRemoteScriptRoutes } from "./rpc/remote-script/remote-script-routes.ts";
 
 registerLibraryRoutes();
@@ -55,18 +55,17 @@ for (const [index, arg] of args.entries()) {
 // bug report can name the exact artifact it came from.
 const versionLabel = BUILD_SHA ? `${VERSION} (${BUILD_SHA})` : VERSION;
 
-console.log(
-  `Producer Pal ${versionLabel} starting MCP server on port ${port}...`,
-);
+nodeLog(`Producer Pal ${versionLabel} starting MCP server on port ${port}...`);
 
 const devFlags = [
   ["ENABLE_LIVE_API", process.env.ENABLE_LIVE_API],
   ["ENABLE_CODE_EXEC", process.env.ENABLE_CODE_EXEC],
+  ["ENABLE_GEN_UI", process.env.ENABLE_GEN_UI],
   ["ENABLE_REMOTE_CORS", process.env.ENABLE_REMOTE_CORS],
 ].filter(([, value]) => value === "true");
 
 if (devFlags.length > 0) {
-  console.warn(
+  nodeWarn(
     `Producer Pal: dev-only flags enabled — do not use this build in production: ${devFlags
       .map(([name]) => name)
       .join(", ")}`,
@@ -78,7 +77,7 @@ if (devFlags.length > 0) {
 // global context, memory, skill overrides — reads empty and writes vanish,
 // which otherwise looks like a working server with nothing saved.
 if (isConfigDirInert()) {
-  console.warn(
+  nodeWarn(
     "Producer Pal: ~/.producer-pal is disabled (VITEST is set in this " +
       "process). Global context, memory, and skill overrides will read as " +
       "empty and writes will be dropped.",
@@ -91,7 +90,7 @@ appServer
   .listen(port, () => {
     const url = `http://localhost:${port}/mcp`;
 
-    console.log(
+    nodeLog(
       `Producer Pal ${versionLabel} running.\nConnect Claude Desktop or another MCP client to ${url}`,
     );
     void Max.outlet("version", VERSION);
@@ -107,7 +106,7 @@ appServer
     // rather than making its own — see update-check.ts.
     void getUpdate().then((update) => {
       if (update) {
-        console.log(`Producer Pal update available: ${update.version}`);
+        nodeLog(`Producer Pal update available: ${update.version}`);
         // One value only: the patch builds its label from it.
         void Max.outlet("update_available", update.version);
       }

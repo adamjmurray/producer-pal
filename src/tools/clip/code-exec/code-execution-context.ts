@@ -151,9 +151,8 @@ function buildLiveSetContext(): CodeLiveSetContext {
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   const tempo = liveSet.getProperty("tempo") as number;
-  const sigNum = liveSet.getProperty("signature_numerator") as number;
-  const sigDenom = liveSet.getProperty("signature_denominator") as number;
-  const timeSignature = `${sigNum}/${sigDenom}`;
+  const { numerator, denominator } = songMeter();
+  const timeSignature = `${numerator}/${denominator}`;
 
   const context: CodeLiveSetContext = { tempo, timeSignature };
 

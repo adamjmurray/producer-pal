@@ -9,6 +9,7 @@ import {
   resolveContainerWithAutoCreate,
   resolveOrCreateDrumPadChain,
 } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
+import { plural } from "#src/tools/shared/validation/lists/plural.ts";
 import { errorWithChainsLeft } from "#src/tools/shared/device/helpers/path/chains-left.ts";
 import {
   requireDeviceContainer,
@@ -326,5 +327,5 @@ export function pastTheEndReason(
     return null;
   }
 
-  return `"${reportPath}" is past the end of a container holding ${deviceCount} device${deviceCount === 1 ? "" : "s"}`;
+  return `"${reportPath}" is past the end of a container holding ${plural(deviceCount, "device")}`;
 }

@@ -4,11 +4,13 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Running one (scenario, model) combination — every trial of it — and emitting
- * a result for a scenario that was skipped instead.
+ * Running one trial of a (scenario, model) combination, and emitting a result
+ * for a scenario that was skipped instead.
  */
 
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
+import { type ThinkingByModel } from "../../run-env/parse-thinking-arg.ts";
+import { type JevSettings } from "../judge/jev-first-judge.ts";
 import { type RunEnv } from "../../run-env/run-env.ts";
 import { runScenario } from "../../run-scenario.ts";
 import { type EvalScenario } from "../../types.ts";
@@ -20,11 +22,7 @@ import { buildSkippedResult } from "../json-results/skip-scenario.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { writeJsonResult } from "../json-results/writer.ts";
 import { printResultBlock } from "../reporting/result-printer.ts";
-import {
-  liveSetLeftOpen,
-  planTrialLiveSetOpens,
-  printTrialSummary,
-} from "./multi-trial-runs.ts";
+import { type ResumedTrials } from "./resume/resumed-trials.ts";
 
 /** The CLI options a trial run reads. Satisfied by the eval CLI's options. */
 export interface TrialRunOptions {
@@ -33,6 +31,7 @@ export interface TrialRunOptions {
   skipReflection?: boolean;
   seedConnect?: boolean;
   usage?: boolean;
+  outputTokens?: number;
   save?: boolean;
 }
 
@@ -40,80 +39,72 @@ export interface TrialRunOptions {
 export interface RunContext {
   runId: string;
   judgeOverride: ModelSpec;
+  /** Set by `--jev`: Jev judges first, the LLM judge handles escalations */
+  jev?: JevSettings;
   repeatCount: number;
+  /** `--thinking` level per `provider/model`; a model not in it sends none. */
+  thinking?: ThinkingByModel;
   options: TrialRunOptions;
+  /** Set by `--resume`: the trials already done, which don't run again. */
+  resumed?: ResumedTrials;
 }
 
 /**
- * Run N trials for a single (scenario, model) combination in the run environment
+ * Run one trial of a (scenario, model) combination in the run environment: run
+ * it, save its result (unless --no-save) and print it.
  *
  * @param scenario - Scenario to run
  * @param spec - Model spec
  * @param runEnv - The active run environment
  * @param label - Run-environment label (see `envLabel`)
  * @param ctx - Shared run context
+ * @param trial - Trial number, 1-indexed (the round)
  * @param liveSetAlreadyOpened - Whether a clean Live Set is already open
- * @returns Array of JSON results (one per trial)
+ * @returns The trial's JSON result
  */
-export async function runTrials(
+export async function runTrial(
   scenario: EvalScenario,
   spec: ModelSpec,
   runEnv: RunEnv,
   label: string,
   ctx: RunContext,
+  trial: number,
   liveSetAlreadyOpened: boolean,
-): Promise<JsonEvalResult[]> {
-  const { runId, judgeOverride, repeatCount, options } = ctx;
+): Promise<JsonEvalResult> {
+  const { runId, judgeOverride, jev, repeatCount, options } = ctx;
   const modelKey = `${spec.provider}/${spec.model}`;
-  const results: JsonEvalResult[] = [];
-  const skipOpens = planTrialLiveSetOpens(
-    repeatCount,
-    liveSetAlreadyOpened,
-    scenario.reuseLiveSet,
+  const scenarioResult = await runScenario(scenario, {
+    provider: spec.provider,
+    model: spec.model,
+    skipLiveSetOpen: options.skipSetup ?? liveSetAlreadyOpened,
+    judgeOverride,
+    runEnv,
+    envLabel: label,
+    usage: options.usage,
+    outputTokens: options.outputTokens,
+    thinking: ctx.thinking?.get(modelKey),
+    skipJudge: options.skipJudge,
+    jev,
+    skipReflection: options.skipReflection,
+    seedConnect: options.seedConnect,
+  });
+  const trialInfo: TrialInfo | undefined =
+    repeatCount > 1 ? { trial, totalTrials: repeatCount } : undefined;
+  const jsonResult = toJsonResult(
+    scenarioResult,
+    runId,
+    modelKey,
+    label,
+    trialInfo,
   );
 
-  for (const [index, skipOpen] of skipOpens.entries()) {
-    const trial = index + 1;
-    const scenarioResult = await runScenario(scenario, {
-      provider: spec.provider,
-      model: spec.model,
-      // A previous trial that errored may not have opened the Set at all.
-      skipLiveSetOpen:
-        options.skipSetup ??
-        (skipOpen && (index === 0 || liveSetLeftOpen(results))),
-      judgeOverride,
-      runEnv,
-      envLabel: label,
-      usage: options.usage,
-      skipJudge: options.skipJudge,
-      skipReflection: options.skipReflection,
-      seedConnect: options.seedConnect,
-    });
-
-    const trialInfo: TrialInfo | undefined =
-      repeatCount > 1 ? { trial, totalTrials: repeatCount } : undefined;
-
-    const jsonResult = toJsonResult(
-      scenarioResult,
-      runId,
-      modelKey,
-      label,
-      trialInfo,
-    );
-
-    if (options.save !== false) {
-      await writeJsonResult(jsonResult);
-    }
-
-    printResultBlock(jsonResult);
-    results.push(jsonResult);
+  if (options.save !== false) {
+    await writeJsonResult(jsonResult);
   }
 
-  if (repeatCount > 1) {
-    printTrialSummary(results);
-  }
+  printResultBlock(jsonResult);
 
-  return results;
+  return jsonResult;
 }
 
 /**

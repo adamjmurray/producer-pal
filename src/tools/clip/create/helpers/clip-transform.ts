@@ -12,6 +12,7 @@ import {
 } from "#src/notation/transform/transformed-count.ts";
 import {
   droppedDuplicatesNote,
+  transformsChangedNothingNote,
   transformsIgnoredAudioNote,
   transformsIgnoredNoNotesNote,
 } from "#src/tools/clip/helpers/clip-entry-notes.ts";
@@ -117,6 +118,9 @@ export function resolveClipTransform(
   // survive). Mirrors the update and merge write paths.
   const { notes: sorted, collisions } = dedupeAndSortNotes(clipNotes);
 
+  // Counted on the deduped notes, so collapsed duplicates don't inflate it.
+  const transformCounts = countTransforms(outcome, sorted);
+
   return {
     notes: sorted,
     clipLength: calculateClipLength(
@@ -125,9 +129,11 @@ export function resolveClipTransform(
       inputs.timeSigNumerator,
       inputs.timeSigDenominator,
     ),
-    // Counted on the deduped notes, so collapsed duplicates don't inflate it.
-    transformCounts: countTransforms(outcome, sorted),
-    details: factsFor(droppedDuplicatesNote(collisions)),
+    transformCounts,
+    details: [
+      ...factsFor(droppedDuplicatesNote(collisions)),
+      ...factsFor(transformsChangedNothingNote(outcome, transformCounts)),
+    ],
   };
 }
 

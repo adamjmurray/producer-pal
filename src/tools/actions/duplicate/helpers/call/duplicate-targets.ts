@@ -125,7 +125,7 @@ export function duplicateTargets(
   );
   const targets = drafts.map((draft, index): DuplicateTarget => {
     if (draft.skip != null) {
-      return { named: draft.named, skip: draft.skip };
+      return { named: draft.named, atStart: draft.atStart, skip: draft.skip };
     }
 
     const label = labelFor(index);
@@ -133,6 +133,8 @@ export function duplicateTargets(
 
     return {
       named: made.named ?? draft.named,
+      // A copy the label renamed is addressed by its destination instead.
+      atStart: made.named == null ? draft.atStart : undefined,
       // One copy has no other to go over.
       covers: drafts.length > 1 ? readCovers(made.covers) : undefined,
       data: { body: made.body, label },

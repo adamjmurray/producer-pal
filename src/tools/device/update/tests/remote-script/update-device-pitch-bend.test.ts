@@ -8,13 +8,13 @@
 // pseudo-param: its value when it landed, `ok: false` and why when it didn't.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
-import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
+import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { REMOTE_SCRIPT_ROUTES } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { writePitchBendParams } from "#src/tools/device/update/helpers/call/simpler-pitch-bend.ts";
 import { SIMPLER_SETTINGS_ROUTES } from "#src/tools/shared/remote-script/simpler-settings-contract.ts";
-import { namedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { namedAgain } from "#src/shared/max/named-again-wording.ts";
 import {
   bend,
   remoteScriptWrites,
@@ -36,17 +36,20 @@ import {
 const OUTDATED =
   "the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0 or later)";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const FIRST = String(livePath.track(0).device(0));
 const SECOND = String(livePath.track(0).device(1));
 const PITCH = { name: "pitchBendRange", value: "12" };
 const NOTE = { name: "notePitchBendRange", value: "24" };
 const HIT = { id: "simpler-1", path: "t0/d0" };
-const NEEDS_IT = `needs the Producer Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`;
+const NEEDS_IT = `needs the Producer Pal remote script, which isn't answering; ${remoteScriptSetup(true)}`;
 const NO_ANSWER = "the Producer Pal remote script did not answer in time";
 
 /** Register a second Simpler beside the first. */
@@ -62,12 +65,14 @@ function registerSecondSimpler(): void {
  * Update a device. A call that writes pitch bend params answers as a promise
  * whatever the type says, so this takes either and never throws synchronously.
  * @param args - The update-device args
+ * @param ctx - The request context
  * @returns What the call answered
  */
 async function update(
   args: Parameters<typeof updateDevice>[0],
+  ctx?: Partial<ToolContext>,
 ): Promise<unknown> {
-  return await Promise.resolve().then(() => updateDevice(args));
+  return await Promise.resolve().then(() => updateDevice(args, ctx));
 }
 
 /**
@@ -255,6 +260,20 @@ describe("updateDevice pitch bend params without a good answer", () => {
     );
   });
 
+  it("sends a caller without ppal-manage to the chat UI", async () => {
+    remoteScriptAnswers({ success: true, result: { available: false } });
+
+    const refused = update(
+      { id: "simpler-1", params: [PITCH] },
+      { manageAvailable: false },
+    );
+
+    await expect(refused).rejects.toThrow(
+      `needs the Producer Pal remote script, which isn't answering; ${remoteScriptSetup(false)}`,
+    );
+    await expect(refused).rejects.not.toThrow("ppal-manage");
+  });
+
   it("says when the remote script is out of date", async () => {
     remoteScriptAnswers({
       success: true,
@@ -365,6 +384,7 @@ describe("writePitchBendParams out of time", () => {
     const entry = { name: "pitchBendRange", value: "12" };
     const settled = await writePitchBendParams(simpler, [entry], stall, {
       deadline: Date.now() - 1,
+      manage: true,
       landed: vi.fn(),
     });
 

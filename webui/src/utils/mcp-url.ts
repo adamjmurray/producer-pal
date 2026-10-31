@@ -243,6 +243,31 @@ export function getSubagentBriefingUrl(mcpUrl?: string): string {
 }
 
 /**
+ * Gets the REST endpoint for one tool (POST its arguments as JSON).
+ * @param toolName - The tool's name, e.g. "ppal-read-clip"
+ * @returns {string} The tool endpoint URL
+ */
+export function getToolUrl(toolName: string): string {
+  return serverUrl(`/api/tools/${encodeURIComponent(toolName)}`);
+}
+
+/**
+ * Gets the generative-UI widgets endpoint (the experimental side panel).
+ * @returns {string} The widgets endpoint URL
+ */
+export function getUiWidgetsUrl(): string {
+  return serverUrl("/api/ui/widgets");
+}
+
+/**
+ * Gets the generative-UI server-sent events endpoint.
+ * @returns {string} The events endpoint URL
+ */
+export function getUiEventsUrl(): string {
+  return serverUrl("/api/ui/events");
+}
+
+/**
  * Gets the MCP server URL based on the current page origin.
  * In dev mode (Vite on port 5173), falls back to localhost:3350.
  * @returns {string} The MCP server URL

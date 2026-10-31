@@ -11,6 +11,7 @@
 import { lastSuccessfulToolCall } from "../../assertions/index.ts";
 import { parseToolResult } from "#evals/chat/mcp.ts";
 import { type EvalTurnResult } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** basic-midi-4-track has five tracks (t0-t4), so a new one lands at t5. */
 const FIRST_NEW_TRACK = "t5";
@@ -23,7 +24,7 @@ const FIRST_NEW_TRACK = "t5";
  * @returns A track path, e.g. "t5"
  */
 export function newTrackPath(turns: EvalTurnResult[]): string {
-  const call = lastSuccessfulToolCall(turns, "any", "ppal-create-track");
+  const call = lastSuccessfulToolCall(turns, "any", TOOLS.createTrack);
 
   return firstResultPath(call?.result) ?? FIRST_NEW_TRACK;
 }

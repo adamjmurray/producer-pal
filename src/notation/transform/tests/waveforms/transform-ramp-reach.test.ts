@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 
 /**
  * 16th-note hats on a quarter-note grid starting at bar 2 beat 3.
@@ -34,7 +34,7 @@ function reachWarnings(
   transform: string,
   notes = hats(7),
 ): { warnings: string[]; notes: NoteEvent[] } {
-  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const warn = vi.spyOn(maxConsole, "emitWarning").mockImplementation(() => {});
 
   try {
     applyTransforms(notes, transform, 4, 4);

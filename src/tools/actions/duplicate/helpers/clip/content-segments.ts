@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { EPSILON } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 /** A session clip's markers, in beats. */
 export interface ClipMarkers {
@@ -49,7 +49,7 @@ export function* contentSegments(
   const loopLength = loopEnd - loopStart;
 
   // No loop to wrap around: there is nothing playback could repeat.
-  if (loopLength <= EPSILON) {
+  if (loopLength <= SAME_TIME_EPSILON) {
     return;
   }
 
@@ -57,11 +57,11 @@ export function* contentSegments(
 
   // The first pass starts at the start marker; every later one at the loop
   // start. A start marker at or past the loop end leaves nothing of the first.
-  for (let first = true; lengthBeats - at > EPSILON; first = false) {
+  for (let first = true; lengthBeats - at > SAME_TIME_EPSILON; first = false) {
     const from = first ? startMarker : loopStart;
     const length = Math.min(loopEnd - from, lengthBeats - at);
 
-    if (length > EPSILON) {
+    if (length > SAME_TIME_EPSILON) {
       const segment = {
         from,
         to: length === loopEnd - from ? loopEnd : from + length,

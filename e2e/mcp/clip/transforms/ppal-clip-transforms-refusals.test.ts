@@ -102,6 +102,20 @@ describe("ppal-clip-transforms (bad argument refused up front)", () => {
     await expectNoClip(toPath);
   });
 
+  it("ppal-update-clip says a negative note value grid must be above 0", async () => {
+    const clipId = await createMidiClip(91, "v80 C3 1|1");
+
+    expectRefused(
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { id: clipId, transforms: "ratchet(-n/16)" },
+      }),
+      "ratchet() grid must be greater than 0",
+    );
+    // Still the one note, not ratcheted
+    expect((await readClipNotes(clipId)).match(/C3/g)).toHaveLength(1);
+  });
+
   it("ppal-update-clip points a syntax error at the failing token", async () => {
     const clipId = await createMidiClip(96, "v80 C3 1|1");
     const result = await ctx.client!.callTool({
@@ -182,6 +196,32 @@ describe("ppal-clip-transforms (bad argument refused up front)", () => {
       );
       // Still on the off-beat, not moved
       expect(await readClipNotes(clipId)).toContain("1|1.5");
+    },
+  );
+
+  it.each([
+    [
+      "velocity = 80 + 30*sin(note.start * 6.28318530718)",
+      "sin() period is a cycle length (e.g. sin(n/4) or sin(1bar)), not radians, so it can't use note.start; put per-note variation in the phase (2nd argument)",
+    ],
+    [
+      "velocity = 90 + 20 * cos(note.pitch + 0.5)",
+      "cos() period is a cycle length (e.g. cos(n/4) or cos(1bar)), not radians, so it can't use note.pitch; put per-note variation in the phase (2nd argument)",
+    ],
+  ])(
+    "ppal-update-clip refuses a waveform period that uses a note property: %s",
+    async (transforms, message) => {
+      const clipId = await createMidiClip(99, "v80 C3 1|1");
+
+      expectRefused(
+        await ctx.client!.callTool({
+          name: "ppal-update-clip",
+          arguments: { id: clipId, transforms },
+        }),
+        message,
+      );
+      // Velocity untouched
+      expect(await readClipNotes(clipId)).toContain("v80");
     },
   );
 });

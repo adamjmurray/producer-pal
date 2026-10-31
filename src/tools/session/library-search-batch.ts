@@ -8,11 +8,10 @@ import {
   type LibraryBatchQuery,
   type LibraryBatchResult,
   type LibrarySearchArgs,
-  type LibrarySearchResult,
-  type StalenessRisk,
+  type LibraryToolSearchResult,
 } from "#src/mcp-server/live-library/library-types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 /** Hard cap on queries per `searches` fan-out. Internal — not a user param.
  * Extra queries beyond this are dropped (warn-and-truncate) so a runaway
@@ -42,12 +41,12 @@ export async function runSearchBatch(
   runSearch: (
     args: LibrarySearchArgs,
     ctx: Partial<ToolContext>,
-  ) => Promise<LibrarySearchResult>,
-): Promise<LibraryBatchResult | LibrarySearchResult> {
+  ) => Promise<LibraryToolSearchResult>,
+): Promise<LibraryBatchResult | LibraryToolSearchResult> {
   const capped = queries.slice(0, MAX_BATCH_QUERIES);
 
   if (queries.length > MAX_BATCH_QUERIES) {
-    console.warn(
+    emitWarning(
       `searches: ${queries.length} queries exceeds cap of ${MAX_BATCH_QUERIES}; ignoring the extra ${queries.length - MAX_BATCH_QUERIES}`,
     );
   }
@@ -55,10 +54,9 @@ export async function runSearchBatch(
   const results: LibraryBatchEntry[] = [];
   let dbConsulted = false;
   let dbAvailable = true;
-  // Staleness is a single global property of the DB at request time. Capture
-  // the first non-null reading; subsequent queries within the same batch
-  // would re-observe the same WAL state.
-  let stalenessRisk: StalenessRisk | undefined;
+  // Staleness is one property of the DB at request time: keep the first note,
+  // since every query in the batch sees the same state.
+  let stalenessNote: string | undefined;
   // Labels group results in the response, so duplicates (two queries both
   // labeled "Kicks", or a provided label colliding with an index fallback)
   // would make entries indistinguishable. Suffix collisions with #2, #3, … so
@@ -73,7 +71,7 @@ export async function runSearchBatch(
     // contract, etc.) must not discard the entries that already succeeded. The
     // promise on this function — every query yields an entry, never dropped —
     // is the load-bearing one for the LLM's batch-results contract.
-    let searchResult: LibrarySearchResult;
+    let searchResult: LibraryToolSearchResult;
 
     try {
       searchResult = await runSearch(filters, ctx);
@@ -91,9 +89,7 @@ export async function runSearchBatch(
       dbAvailable &&= searchResult.dbAvailable;
     }
 
-    if (stalenessRisk == null && searchResult.stalenessRisk != null) {
-      stalenessRisk = searchResult.stalenessRisk;
-    }
+    stalenessNote ??= searchResult.stalenessNote;
 
     const entry: LibraryBatchEntry = {
       label: resolvedLabel,
@@ -102,6 +98,7 @@ export async function runSearchBatch(
 
     results.push({
       ...entry,
+      ...paging(searchResult),
       ...(searchResult.detail != null && { detail: searchResult.detail }),
       ...(searchResult.note != null && { note: searchResult.note }),
     });
@@ -109,23 +106,38 @@ export async function runSearchBatch(
 
   const envelope = {
     ...(dbConsulted && { dbAvailable }),
-    ...(dbConsulted && stalenessRisk != null && { stalenessRisk }),
+    ...(dbConsulted && stalenessNote != null && { stalenessNote }),
   };
 
   // One search needs no grouping, so it answers in the shape a plain search
   // does. An array where the caller asked for one thing confuses small models.
   if (results.length === 1) {
-    const [{ items, detail, note }] = results as [LibraryBatchEntry];
+    const [{ items, more, nextOffset, detail, note }] = results as [
+      LibraryBatchEntry,
+    ];
 
     return {
       ...envelope,
       items,
+      ...(more != null && { more, nextOffset }),
       ...(detail != null && { detail }),
       ...(note != null && { note }),
     };
   }
 
   return { ...envelope, results };
+}
+
+/**
+ * @param result - One search's result
+ * @returns Its paging fields, when matches lie beyond its page
+ */
+function paging(
+  result: LibraryToolSearchResult,
+): Pick<LibraryBatchEntry, "more" | "nextOffset"> {
+  return result.more == null
+    ? {}
+    : { more: result.more, nextOffset: result.nextOffset };
 }
 
 /**

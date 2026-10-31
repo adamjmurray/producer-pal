@@ -16,6 +16,9 @@ Four separate bundles built with rolldown (MCP server, V8, Portal) and Vite
   (`config/rolldown-plugin-embed-remote-script.mjs`) inlines `remote-script/`'s
   Python files, so the device can install them. See
   [runtime-boundary.md](runtime-boundary.md#the-embedded-remote-script)
+- **Plug-in host wrappers:** `embedPluginHost()`
+  (`config/rolldown-plugin-embed-plugin-host.mjs`) inlines the two wrapper
+  `.amxd` files, only with `ENABLE_HOSTED_PLUGINS=true`.
 
 ## V8 Bundle
 
@@ -31,8 +34,8 @@ Four separate bundles built with rolldown (MCP server, V8, Portal) and Vite
   `npm/producer-pal-portal.js`
 - **Target:** Node.js (standalone process)
 - **Dependencies:** Bundled for distribution (zero runtime dependencies)
-- **Remote script:** embedded the same way, so the portal can install it while
-  the device is offline
+- **Remote script and plug-in host wrappers:** embedded the same way, so the
+  portal can install them while the device is offline
 - **Purpose:** stdio-to-HTTP adapter for Claude Desktop Extension
 - **Features:**
   - Converts MCP stdio transport to streamable HTTP
@@ -46,6 +49,16 @@ Four separate bundles built with rolldown (MCP server, V8, Portal) and Vite
 - **Target:** Browser (served at `http://localhost:3350/chat`, opened via Max)
 - **Build Tool:** Vite with custom plugins
 - **Dependencies:** Bundled into single self-contained HTML file
+- **Plug-in host wrappers:** `config/vite.config.ts` inlines
+  `process.env.ENABLE_HOSTED_PLUGINS`, so the Installation tab's wrapper UI
+  (`webui/src/hooks/settings/installation/helpers/plugin-host-wrappers.ts`)
+  exists only in a hosting build. `CHAT_UI_OUT_DIR` moves the output (the
+  build-contents test uses it); the UI is also inlined in the device bundle, so
+  the rolldown plugin treats a UI built with another flag value as stale.
+- **Generative-UI panel:** same mechanism with `process.env.ENABLE_GEN_UI`:
+  `main.tsx` renders the `/chat?view=gen` panel only in a gen-UI build. In
+  `npm run ui:dev`, set `ENABLE_GEN_UI=true` or `?view=gen` opens the normal
+  chat. `npm run ui:build:gen` builds the variant the browser specs use.
 - **Purpose:** Preact-based chat interface with multi-provider AI + MCP
   integration
 - **Features:**

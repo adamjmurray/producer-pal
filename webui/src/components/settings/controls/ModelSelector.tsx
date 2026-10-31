@@ -63,8 +63,19 @@ export function ModelSelector({
   const customInputRef = useRef<HTMLInputElement>(null);
   const previousShowCustomInputRef = useRef(showCustomInput);
 
+  // What the user typed in the custom input. Typing through a preset name
+  // (gpt-5 on the way to gpt-5-mini) must not close the input.
+  const typedRef = useRef<{ provider: Provider; value: string } | null>(null);
+
   // Sync showCustomInput when model or provider changes
   useEffect(() => {
+    if (
+      typedRef.current?.provider === provider &&
+      typedRef.current.value === model
+    ) {
+      return;
+    }
+
     if (provider === "custom" || presetModels.length === 0) {
       setShowCustomInput(false);
 
@@ -104,7 +115,7 @@ export function ModelSelector({
         <input
           type="text"
           value={model}
-          onChange={(e) => setModel((e.target as HTMLInputElement).value)}
+          onInput={(e) => setModel((e.target as HTMLInputElement).value)}
           placeholder={placeholder}
           className="w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
         />
@@ -148,7 +159,12 @@ export function ModelSelector({
           ref={customInputRef}
           type="text"
           value={model}
-          onChange={(e) => setModel((e.target as HTMLInputElement).value)}
+          onInput={(e) => {
+            const value = (e.target as HTMLInputElement).value;
+
+            typedRef.current = { provider, value };
+            setModel(value);
+          }}
           placeholder={OTHER_MODEL_PLACEHOLDERS[provider]}
           className="mt-2 w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
         />

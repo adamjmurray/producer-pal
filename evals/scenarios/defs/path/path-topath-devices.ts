@@ -20,8 +20,9 @@ import {
   TOOL_CONNECT,
 } from "../clip/helpers/clip-tool-constants.ts";
 import { assertPathArg } from "./path-assertions.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_DUPLICATE = "ppal-duplicate";
+const TOOL_DUPLICATE = TOOLS.duplicate;
 
 /** Lead carries a Pitch MIDI effect; Bass has none, so the copy is visible. */
 const BASS_TRACK_INDEX = 1;
@@ -44,7 +45,7 @@ const PAD_DESTINATION = "t0/d0/c0/d0/pC3";
 function assertDeviceCopied(): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-track",
+    tool: TOOLS.readTrack,
     args: { trackIndex: BASS_TRACK_INDEX, include: ["devices"] },
     expect: (result) => deviceTypes(result).some((type) => /Pitch/i.test(type)),
     explain: (result) =>
@@ -70,7 +71,7 @@ function deviceTypes(result: unknown): string[] {
 function assertPadCreated(): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-track",
+    tool: TOOLS.readTrack,
     args: { trackIndex: DRUMS_TRACK_INDEX, include: ["drum-map"] },
     expect: (result) =>
       "C3" in ((result as { drumMap?: Record<string, string> }).drumMap ?? {}),

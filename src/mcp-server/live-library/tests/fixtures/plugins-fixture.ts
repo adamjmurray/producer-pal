@@ -239,6 +239,10 @@ function insertPlugins(
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
         );
 
+  // One transaction: an autocommit per row syncs to disk each time, and a
+  // thousand-row fixture then takes seconds.
+  db.exec("BEGIN");
+
   for (const p of plugins) {
     if (schema === "v2") {
       insert.run(
@@ -264,4 +268,6 @@ function insertPlugins(
       );
     }
   }
+
+  db.exec("COMMIT");
 }

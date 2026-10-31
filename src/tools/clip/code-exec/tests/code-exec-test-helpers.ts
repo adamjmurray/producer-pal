@@ -16,7 +16,7 @@ const EMPTY_NOTES = JSON.stringify({ notes: [] });
 /**
  * Create a clip mock whose getProperty returns the same value for every
  * property (both `signature_denominator` and `length` in these tests), except
- * the region, which runs from 0 to that value.
+ * the region, which runs from 0 to that value, and `looping`, which is off.
  * @param propertyValue - Value returned by getProperty, and the region's end
  * @param callReturn - Optional value returned by every call() (e.g. notes JSON).
  *   Without it, get_notes_extended answers an empty clip
@@ -28,7 +28,9 @@ export function createMockClip(
 ): MockClip {
   return {
     getProperty: vi.fn((prop: string) =>
-      prop === "start_marker" || prop === "loop_start" ? 0 : propertyValue,
+      prop === "start_marker" || prop === "loop_start" || prop === "looping"
+        ? 0
+        : propertyValue,
     ),
     call:
       callReturn == null

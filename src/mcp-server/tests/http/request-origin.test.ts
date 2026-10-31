@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { type Request, type Response } from "express";
+import { type Request } from "express";
 import { describe, expect, it } from "vitest";
 import {
   isLocalOrigin,
@@ -11,6 +11,7 @@ import {
   rejectCrossOriginWrite,
   rejectForeignOriginWrite,
 } from "../../helpers/http/request-origin.ts";
+import { mockRes } from "./mock-express-response-test-helpers.ts";
 
 /**
  * A minimal Express request exposing only the `Origin`/`Host` headers the
@@ -36,34 +37,6 @@ function mockReq(headers: { origin?: string; host?: string }): Request {
       return undefined;
     },
   } as unknown as Request;
-}
-
-/**
- * A Response stub capturing the status + JSON body a rejection writes.
- * @returns The stub response plus the captured status/body state
- */
-function mockRes(): {
-  res: Response;
-  state: { status: number | null; body: unknown };
-} {
-  const state: { status: number | null; body: unknown } = {
-    status: null,
-    body: undefined,
-  };
-  const res = {
-    status(code: number): Response {
-      state.status = code;
-
-      return res;
-    },
-    json(payload: unknown): Response {
-      state.body = payload;
-
-      return res;
-    },
-  } as unknown as Response;
-
-  return { res, state };
 }
 
 describe("isLocalOrigin", () => {

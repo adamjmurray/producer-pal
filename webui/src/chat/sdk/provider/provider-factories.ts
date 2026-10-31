@@ -10,15 +10,21 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createGateway, type LanguageModel } from "ai";
-import { settleOpenRouterReasoningOff } from "#webui/chat/sdk/provider/openrouter-reasoning";
-import { getThinkingOffType } from "#webui/hooks/settings/config-builders";
+import { summarizeAdaptiveThinking } from "#webui/chat/sdk/provider/anthropic-thinking-display";
+import {
+  dropUnusableClaudeReasoning,
+  settleOpenRouterReasoningOff,
+} from "#webui/chat/sdk/provider/openrouter-reasoning";
+import { getThinkingOffType } from "#webui/chat/sdk/provider/thinking-effort";
 import { type Provider } from "#webui/types/settings";
 import {
   addCacheControl,
   type AnthropicRequestBody,
-  ephemeral,
-  markLastBlock,
 } from "#webui/chat/sdk/provider/anthropic-cache-control";
+import {
+  addOpenRouterCacheControl,
+  type OpenRouterRequestBody,
+} from "#webui/chat/sdk/provider/openrouter-cache-control";
 import {
   rewritingFetch,
   type RewritingFetch,
@@ -142,19 +148,7 @@ export const transformAnthropicRequest: RewritingFetch = rewritingFetch(
  * @returns True when anything changed
  */
 function applyAnthropicRewrites(body: AnthropicRequestBody): boolean {
-  let modified = false;
-
-  if (body.thinking?.type === "adaptive" && !body.thinking.display) {
-    // "summarized" returns a human-readable summary of the thinking, but the
-    // block's signature still covers the full underlying reasoning. The
-    // signature — not the visible summary text — is Anthropic's source of
-    // truth, so replaying a captured summarized block verbatim with its
-    // original signature on later turns is supported (see build-model-messages
-    // buildAssistantContent, which re-emits the signed block as-is).
-    body.thinking.display = "summarized";
-    modified = true;
-  }
-
+  let modified = summarizeAdaptiveThinking(body);
   const offType = omittedThinkingOffType(body);
 
   if (offType != null) {
@@ -190,110 +184,24 @@ function omittedThinkingOffType(
     : undefined;
 }
 
-/** Minimal shape of one OpenAI/OpenRouter chat message we mutate. */
-interface OpenRouterMessage {
-  role?: string;
-  content?: string | Array<Record<string, unknown>>;
-}
-
-/** Minimal shape of the OpenAI/OpenRouter chat-completions body we mutate. */
-interface OpenRouterRequestBody {
-  model?: string;
-  reasoning?: { effort?: string };
-  messages?: OpenRouterMessage[];
-}
-
 /**
  * Rewrites the outgoing OpenRouter request: settles the "Off" reasoning effort
- * for the model, and adds `cache_control` breakpoints for Anthropic and Gemini
+ * for the model, takes Claude's signed reasoning off earlier turns when the
+ * request can't use it, and adds `cache_control` breakpoints for Anthropic and Gemini
  * models, which don't cache without them. The body is OpenAI-chat-shaped, so
  * breakpoints land inside message content blocks rather than on separate
  * system/tools fields.
  */
 export const transformOpenRouterRequest: RewritingFetch = rewritingFetch(
   async (body) => {
-    // Both steps run: `||` would skip the cache breakpoints once Off changed.
+    // Every step runs: `||` would skip the later ones once an earlier one changed.
+    // The drop comes after the Off settle, which decides whether reasoning stays.
     const settled = await settleOpenRouterReasoningOff(
       body as OpenRouterRequestBody,
     );
+    const dropped = dropUnusableClaudeReasoning(body as OpenRouterRequestBody);
     const cached = addOpenRouterCacheControl(body as OpenRouterRequestBody);
 
-    return settled || cached;
+    return settled || dropped || cached;
   },
 );
-
-/**
- * Add `cache_control` breakpoints to an OpenRouter (OpenAI-shaped) request body
- * for Anthropic/Gemini models only. OpenAI/Grok/DeepSeek auto-cache, and Gemma
- * (an open model, not hosted Gemini) does not take these breakpoints — so gate
- * narrowly on the `anthropic/` and `google/gemini` model-id prefixes.
- *
- * Two breakpoints, both on message content:
- * 1. Static head — the system-role message (caches the system prefix; on
- *    Anthropic the upstream tool definitions render before it and are covered).
- * 2. Rolling tail — the last message (caches the full conversation prefix,
- *    including the ~9k-token ppal-connect skills tool result). For Gemini only
- *    this final breakpoint is used; for Anthropic both apply.
- *
- * @param body - Parsed OpenRouter request body (mutated in place)
- * @returns True if any breakpoint was added
- */
-function addOpenRouterCacheControl(body: OpenRouterRequestBody): boolean {
-  const model = body.model ?? "";
-  const cacheable =
-    model.startsWith("anthropic/") || model.startsWith("google/gemini");
-
-  if (
-    !cacheable ||
-    !Array.isArray(body.messages) ||
-    body.messages.length === 0
-  ) {
-    return false;
-  }
-
-  let changed = false;
-
-  // 1. Static head: the system message.
-  const systemMessage = body.messages.find((m) => m.role === "system");
-
-  if (systemMessage && markMessageContent(systemMessage)) {
-    changed = true;
-  }
-
-  // 2. Rolling tail: the last message (may also be the system message — marking
-  // the same content twice is idempotent).
-  const lastMessage = body.messages.at(-1);
-
-  if (lastMessage && markMessageContent(lastMessage)) {
-    changed = true;
-  }
-
-  return changed;
-}
-
-/**
- * Add a cache_control breakpoint to a chat message's content: promote a non-empty
- * string to a single cached text block, or mark the last block of a non-empty
- * content array. No-op (returns false) for empty/absent content.
- * @param message - Chat message whose content is marked in place
- * @returns True if a breakpoint was added
- */
-function markMessageContent(message: OpenRouterMessage): boolean {
-  const content = message.content;
-
-  if (typeof content === "string" && content.length > 0) {
-    message.content = [
-      { type: "text", text: content, cache_control: ephemeral() },
-    ];
-
-    return true;
-  }
-
-  if (Array.isArray(content) && content.length > 0) {
-    markLastBlock(content);
-
-    return true;
-  }
-
-  return false;
-}

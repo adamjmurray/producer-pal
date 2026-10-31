@@ -32,6 +32,7 @@ export function createConversationsProps() {
       getChatHistory: vi.fn(() => state.chatHistory),
       restoreChatHistory: vi.fn(),
       clearConversation: vi.fn(),
+      resetComposer: vi.fn(),
       activeMeta: {
         activeModel: null as string | null,
         activeProvider: null as Provider | null,

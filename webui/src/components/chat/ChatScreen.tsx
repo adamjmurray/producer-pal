@@ -35,6 +35,9 @@ interface ChatScreenProps extends MessageActions {
   isCompacting?: boolean;
   rateLimitState: RateLimitState | null;
   toolLimitReached: boolean;
+  /** Whether chat has been set up. Until it has, sending is blocked and the
+   * start screen asks for setup. */
+  chatSetUp: boolean;
   handleSend: SendMessageHandler;
   enqueueMessage: EnqueueMessageHandler;
   queuedMessages: QueuedMessage[];
@@ -58,6 +61,12 @@ interface ChatScreenProps extends MessageActions {
   showTimestamps: boolean;
   showTokenUsage: boolean;
   conversationPanel: ConversationPanelState;
+  /**
+   * Changes whenever the conversation is switched away from, started anew or
+   * deleted. The composer remounts on it, dropping the draft and any image
+   * still loading so neither lands in the next conversation.
+   */
+  conversationEpoch?: number;
   branchNav?: BranchNavState;
   /** System instruction shown as a collapsible notice atop the transcript. */
   systemInstruction?: string;
@@ -104,37 +113,23 @@ export function ChatScreen(props: ChatScreenProps) {
     isCompacting,
     rateLimitState,
     toolLimitReached,
+    chatSetUp,
+    conversationEpoch,
     handleSend,
     enqueueMessage,
-    queuedMessages,
-    onRemoveQueued,
-    handleRetry,
-    handleEdit,
-    handleCompact,
-    onUndoCompaction,
-    canUndoCompaction,
     headerInfo,
     mcpStatus,
-    mcpError,
-    checkMcpConnection,
+    conversationPanel,
     onOpenSettings,
     onOpenToolsSettings,
     onOpenConnectionSettings,
+    onOpenInstallationSettings,
     onOpenContext,
-    onOpenInstructions,
     onStop,
-    showTimestamps,
-    showTokenUsage,
-    conversationPanel,
-    branchNav,
-    systemInstruction,
-    importedPromptDiffers,
   } = props;
   const [thinking, setThinking] = useThinkingOverride(props);
 
-  const currentOverrides: MessageOverrides = {
-    thinking,
-  };
+  const currentOverrides: MessageOverrides = { thinking };
 
   return (
     <AppShell
@@ -144,7 +139,7 @@ export function ChatScreen(props: ChatScreenProps) {
       onOpenSettings={onOpenSettings}
       onOpenToolsSettings={onOpenToolsSettings}
       onOpenConnectionSettings={onOpenConnectionSettings}
-      onOpenInstallationSettings={props.onOpenInstallationSettings}
+      onOpenInstallationSettings={onOpenInstallationSettings}
       onOpenContext={onOpenContext}
     >
       {/* The composer is first in the DOM so Tab reaches the input, Send and
@@ -174,11 +169,13 @@ export function ChatScreen(props: ChatScreenProps) {
         )}
 
         <ChatInput
+          key={conversationEpoch}
           handleSend={handleSend}
           onEnqueue={enqueueMessage}
           isAssistantResponding={isAssistantResponding}
           hasError={conversationHasError(messages)}
           isCompacting={isCompacting}
+          setupRequired={!chatSetUp}
           onStop={onStop}
           thinking={thinking}
           onThinkingChange={setThinking}
@@ -186,37 +183,81 @@ export function ChatScreen(props: ChatScreenProps) {
       </div>
 
       <div className="order-1 flex-1 overflow-y-auto">
-        {messages.length === 0 ? (
-          <ChatStart
-            mcpStatus={mcpStatus}
-            mcpError={mcpError}
-            checkMcpConnection={checkMcpConnection}
-            handleSend={handleSend}
-            overrides={currentOverrides}
-          />
-        ) : (
-          <MessageList
-            messages={messages}
-            queuedMessages={queuedMessages}
-            onRemoveQueued={onRemoveQueued}
-            isAssistantResponding={isAssistantResponding}
-            isCompacting={isCompacting}
-            handleRetry={handleRetry}
-            handleEdit={handleEdit}
-            handleCompact={handleCompact}
-            onUndoCompaction={onUndoCompaction}
-            canUndoCompaction={canUndoCompaction}
-            showTimestamps={showTimestamps}
-            showTokenUsage={showTokenUsage}
-            requestedModel={headerInfo.activeModel}
-            branchNav={branchNav}
-            systemInstruction={systemInstruction}
-            importedPromptDiffers={importedPromptDiffers}
-            onOpenInstructions={onOpenInstructions}
-          />
-        )}
+        <Transcript {...props} overrides={currentOverrides} />
       </div>
     </AppShell>
+  );
+}
+
+/**
+ * The transcript pane: the start screen for an empty conversation, otherwise
+ * the message list.
+ * @param props - The chat screen's props, plus the per-message overrides
+ * @param props.overrides - Overrides the start screen's Quick Connect sends with
+ * @returns Start screen or message list
+ */
+function Transcript(props: ChatScreenProps & { overrides: MessageOverrides }) {
+  const {
+    messages,
+    mcpStatus,
+    mcpError,
+    chatSetUp,
+    onOpenConnectionSettings,
+    checkMcpConnection,
+    handleSend,
+    overrides,
+    headerInfo,
+    branchNav,
+    canUndoCompaction,
+    handleCompact,
+    handleEdit,
+    handleRetry,
+    importedPromptDiffers,
+    isAssistantResponding,
+    isCompacting,
+    onOpenInstructions,
+    onRemoveQueued,
+    onUndoCompaction,
+    queuedMessages,
+    showTimestamps,
+    showTokenUsage,
+    systemInstruction,
+  } = props;
+
+  if (messages.length === 0) {
+    return (
+      <ChatStart
+        mcpStatus={mcpStatus}
+        mcpError={mcpError}
+        chatSetUp={chatSetUp}
+        onSetUpChat={onOpenConnectionSettings}
+        checkMcpConnection={checkMcpConnection}
+        handleSend={handleSend}
+        overrides={overrides}
+      />
+    );
+  }
+
+  return (
+    <MessageList
+      messages={messages}
+      queuedMessages={queuedMessages}
+      onRemoveQueued={onRemoveQueued}
+      isAssistantResponding={isAssistantResponding}
+      isCompacting={isCompacting}
+      handleRetry={handleRetry}
+      handleEdit={handleEdit}
+      handleCompact={handleCompact}
+      onUndoCompaction={onUndoCompaction}
+      canUndoCompaction={canUndoCompaction}
+      showTimestamps={showTimestamps}
+      showTokenUsage={showTokenUsage}
+      requestedModel={headerInfo.activeModel}
+      branchNav={branchNav}
+      systemInstruction={systemInstruction}
+      importedPromptDiffers={importedPromptDiffers}
+      onOpenInstructions={onOpenInstructions}
+    />
   );
 }
 

@@ -6,30 +6,37 @@
 // ppal-manage add-producer-pal while the device is offline: copy the bundled
 // device into the User Library, have the remote script load it onto a new MIDI
 // track, and wait for its server to answer. Each failure says what it left
-// behind, since the Set may have changed.
+// behind, since the Set may have changed. Without a running remote script it
+// stops after the copy: nothing is added, and the answer is an error.
 
 import {
   replyError,
   type RemoteScriptAnswer,
+  type RemoteScriptPing,
 } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { RemoteScriptTimeout } from "#src/mcp-server/rpc/remote-script/remote-script-errors.ts";
 import { UPDATE_PORTAL_ADVICE } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { type McpResponse } from "#src/shared/mcp-responses.ts";
+import { describePluginHostParts } from "../setup/plugin-host/plugin-host-part.ts";
 import {
   installBundledDevice,
   requireBundledDevice,
-} from "../setup/bundled-device-copy.ts";
+} from "../setup/bundled-device/bundled-device-copy.ts";
 import { requestWithBrowserRetry } from "../setup/browser-retry-request.ts";
 import { type DeviceInstallResult } from "../setup/device-install.ts";
 import { userLibraryFor } from "../setup/library-for-device.ts";
 import { pollUntil } from "../setup/poll-until.ts";
-import { remoteScriptReady } from "../setup/remote-script-ready.ts";
+import {
+  RemoteScriptNotRunning,
+  remoteScriptReady,
+} from "../setup/remote-script-ready.ts";
+import { setupDeadline } from "../setup/setup-deadline.ts";
 import { SetupFailed, type SetupPurpose } from "../setup/setup-failure.ts";
 import { type OfflineDeps } from "./offline-deps.ts";
 import { offlineError, offlineResult } from "./offline-responses.ts";
-import { SETUP_URL } from "./offline-setup-hints.ts";
+import { SETUP_URL, scriptSetupSteps } from "./offline-setup-hints.ts";
 
 const ADD: SetupPurpose = {
   action: "add-producer-pal",
@@ -58,22 +65,81 @@ export async function addProducerPal(
   connect: () => Promise<void>,
   deps: OfflineDeps,
 ): Promise<McpResponse> {
+  const deadline = setupDeadline(deps);
+
   try {
     const bundled = requireBundledDevice(deps, ADD);
-    const ping = await remoteScriptReady(deps, ADD);
+    let ping: RemoteScriptPing;
+
+    try {
+      ping = await remoteScriptReady(deps, ADD);
+    } catch (error) {
+      if (error instanceof RemoteScriptNotRunning) {
+        return await deviceFileOnly(userLibrary, error.ping, bundled, deps);
+      }
+
+      throw error;
+    }
+
     const library = await userLibraryFor(userLibrary, ping, deps, ADD);
     const device = copyDevice(library, bundled, deps);
-    const track = await loadDevice(device.path, deps);
+    const pluginHost = deps.installPluginHost(library);
+    const track = await loadDevice(device.path, deps, deadline);
 
-    await waitForServer(track, connect, deps);
+    await waitForServer(track, connect, deps, deadline);
 
     return offlineResult({
       ...(track == null ? {} : { track }),
       device: device.note,
+      ...(pluginHost.length === 0 ? {} : { pluginHost }),
       nextSteps: "Call ppal-connect next.",
     });
   } catch (error) {
     return offlineError(errorMessage(error));
+  }
+}
+
+/**
+ * Without a running remote script nothing can be added to the Set. Put the
+ * device file in the User Library anyway, so the user can drag it onto a track
+ * or finish the script setup. Still an error: what the call was for didn't
+ * happen.
+ * @param userLibrary - The User Library the call gave, if any
+ * @param ping - The remote script's answer, which found it not running
+ * @param bundled - The device file that shipped with the portal
+ * @param deps - What the steps reach out to
+ * @returns An error saying nothing was added, where the file is, and what next
+ * @throws SetupFailed when no library is known or the copy failed with no file there
+ */
+async function deviceFileOnly(
+  userLibrary: string | undefined,
+  ping: RemoteScriptPing,
+  bundled: string,
+  deps: OfflineDeps,
+): Promise<McpResponse> {
+  const library = await userLibraryFor(userLibrary, ping, deps, ADD);
+  const device = copyDevice(library, bundled, deps);
+  const wrappers = describePluginHostParts(deps.installPluginHost(library));
+  const wrapperNote = wrappers === "" ? "" : ` ${wrappers}`;
+
+  // The file is in place from here on: nothing below may fail the answer.
+  return offlineError(
+    `nothing was added to the Live Set: adding the device needs the Producer Pal remote script, and it isn't running. The device file is at ${device.path}. Device: ${device.note}.${wrapperNote} ` +
+      `Two ways forward. (1) Tell the user to open Live and drag the file from the browser (User Library) onto a MIDI track. (2) Finish the remote script setup. ${scriptSteps(library, deps)} Then call add-producer-pal again.`,
+  );
+}
+
+/**
+ * @param library - Absolute path to the User Library
+ * @param deps - The remote script lookup
+ * @returns The steps that get the remote script running
+ */
+function scriptSteps(library: string, deps: OfflineDeps): string {
+  try {
+    return scriptSetupSteps(deps.installedRemoteScript(library));
+  } catch {
+    // The steps for a script that isn't installed hold either way.
+    return scriptSetupSteps(undefined);
   }
 }
 
@@ -143,12 +209,14 @@ function copyNote(result: DeviceInstallResult): string {
  * Ask the remote script to load the device onto a new MIDI track.
  * @param path - Absolute path of the device file
  * @param deps - The remote script, and the clock
+ * @param deadline - When the whole call must be done, as a `now()` time
  * @returns The track it landed on, when the remote script said
  * @throws SetupFailed when it didn't load, or may have
  */
 async function loadDevice(
   path: string,
   deps: OfflineDeps,
+  deadline: number,
 ): Promise<LoadedTrack | undefined> {
   const reply = await requestWithBrowserRetry(
     {
@@ -161,6 +229,7 @@ async function loadDevice(
         ),
     },
     deps,
+    deadline,
   );
 
   if (reply.status === 200) {
@@ -254,22 +323,28 @@ function trackOf(body: Record<string, unknown>): LoadedTrack | undefined {
  * @param track - Where the device was added, for the failure message
  * @param connect - Connect to the device's server; throws until it answers
  * @param deps - The clock
+ * @param deadline - When the whole call must be done, as a `now()` time
  * @throws SetupFailed when it never answers
  */
 async function waitForServer(
   track: LoadedTrack | undefined,
   connect: () => Promise<void>,
   deps: OfflineDeps,
+  deadline: number,
 ): Promise<void> {
-  const answered = await pollUntil(async () => {
-    try {
-      await connect();
+  const answered = await pollUntil(
+    async () => {
+      try {
+        await connect();
 
-      return true;
-    } catch {
-      return false;
-    }
-  }, deps);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    deps,
+    deadline,
+  );
 
   if (answered) {
     return;

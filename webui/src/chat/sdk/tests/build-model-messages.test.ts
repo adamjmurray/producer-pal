@@ -74,9 +74,9 @@ describe("buildModelMessages", () => {
     expect(result.at(-1)).toStrictEqual({ role: "user", content: "u2" });
   });
 
-  it("JSON-stringifies a non-string tool result", () => {
-    // Tool results are usually structured objects, not strings; they must be
-    // serialized into the text output part the provider expects.
+  it("sends a non-string tool result as JSON, as the SDK does within a turn", () => {
+    // Gemini sends JSON and text results differently, so replaying a structured
+    // result as a string would break its cache on the next turn.
     const result = buildModelMessages([
       {
         role: "assistant",
@@ -95,10 +95,35 @@ describe("buildModelMessages", () => {
         type: "tool-result",
         toolCallId: "1",
         toolName: "read-song",
-        output: { type: "text", value: JSON.stringify({ bpm: 120 }) },
+        output: { type: "json", value: { bpm: 120 } },
       },
     ]);
   });
+
+  it.each([
+    [
+      "the error text the SDK sent within the turn",
+      "Error: boom",
+      "Error: boom",
+    ],
+    ["the plain message for a result recorded without it", undefined, "boom"],
+  ])(
+    "sends a failed tool call as error-text with %s",
+    (_name, errorText, value) => {
+      const failed = { id: "1", name: "t", args: {}, result: "boom" };
+      const [, tool] = buildModelMessages([
+        {
+          role: "assistant",
+          content: "",
+          toolCalls: [{ id: "1", name: "t", args: {} }],
+          toolResults: [{ ...failed, isError: true, errorText }],
+        },
+      ]);
+      const parts = tool?.content as Array<{ output: unknown }>;
+
+      expect(parts[0]?.output).toStrictEqual({ type: "error-text", value });
+    },
+  );
 
   it("never sends a subagent transcript to the model, only the compact result", () => {
     // The worker transcript rides on the tool-result for the UI, but the model

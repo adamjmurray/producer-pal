@@ -22,8 +22,8 @@ import {
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
-  warnOnce: vi.fn(),
+  emitWarning: vi.fn(),
+  emitWarningOnce: vi.fn(),
 }));
 
 /** Clips already on the lane, well clear of where the call writes. */

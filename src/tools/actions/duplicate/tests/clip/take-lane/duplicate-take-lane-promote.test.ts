@@ -20,9 +20,9 @@ import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpe
 
 // Capture take lane warnings
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
@@ -104,7 +104,7 @@ describe("promoting a take-lane clip", () => {
           "(automation envelopes aren't copied)",
       ),
     );
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   // Promoting re-creates the clip, which an audio clip with no sample file has
@@ -123,7 +123,7 @@ describe("promoting a take-lane clip", () => {
 
     // Nothing warns: every destination still keeps its slot, each saying why it
     // got no copy.
-    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).not.toHaveBeenCalledWith(
       expect.stringContaining("can't be promoted off its take lane"),
     );
     expect(result).toStrictEqual(

@@ -5,13 +5,19 @@
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { MANAGE_ACTIONS, MAX_STEPS } from "./helpers/manage-contract.ts";
+import { aliasedEnum } from "#src/tools/shared/tool-framework/enum-aliases.ts";
+import {
+  MANAGE_ACTION_ALIASES,
+  MANAGE_ACTIONS,
+  MAX_STEPS,
+} from "./helpers/manage-contract.ts";
 
 export const toolDefManage = defineTool("ppal-manage", {
   title: "Manage",
   description:
-    "Act on Live itself: install the Producer Pal remote script, add or " +
-    "update Producer Pal in the open Live Set, or undo and redo in Live's history. " +
+    "Act on Live itself: install Producer Pal (remote script and device), " +
+    "add or update Producer Pal in the open Live Set, or undo and redo in " +
+    "Live's history. " +
     "That history includes the user's own edits in Live, so an undo may " +
     "revert something they did.",
 
@@ -25,20 +31,21 @@ export const toolDefManage = defineTool("ppal-manage", {
   },
 
   inputSchema: {
-    action: z
-      .enum(MANAGE_ACTIONS)
-      .describe(
-        "install-remote-script: put the remote script in the User Library " +
-          "(adds clip automation, plug-in/preset loading, audio-to-MIDI and " +
-          "undo/redo); the user must then restart Live. " +
-          "add-producer-pal: put the Producer Pal device on a new MIDI track " +
-          "in the open Live Set, while Producer Pal isn't running yet; needs " +
-          "the remote script. Ask the user first: it changes their Set. " +
-          "update-producer-pal: replace the running Producer Pal device with " +
-          "the newer one this connector ships, in place; only works through that " +
-          "connector (npx or Claude Desktop); needs the remote script. Ask the user first. " +
-          "undo, redo: step back or forward; needs the remote script",
-      ),
+    action: aliasedEnum(MANAGE_ACTIONS, MANAGE_ACTION_ALIASES).describe(
+      "install-producer-pal: put the remote script (adds clip automation, " +
+        "plug-in/preset loading, audio-to-MIDI and undo/redo) and the " +
+        "device in the User Library; the user must then restart Live. " +
+        "add-producer-pal: put the Producer Pal device on a new MIDI track " +
+        "in the open Live Set, while Producer Pal isn't running yet; needs " +
+        "the remote script; without it, the call errors after installing the " +
+        "device file, adding nothing. Unless the user asked for it, ask first: " +
+        "it changes their Set. " +
+        "update-producer-pal: replace the running Producer Pal device with " +
+        "the newer one this connector ships, in place; only works through that " +
+        "connector (npx or Claude Desktop); needs the remote script. Unless the " +
+        "user asked for it, ask first. " +
+        "undo, redo: step back or forward; needs the remote script",
+    ),
 
     steps: z.coerce
       .number()
@@ -55,7 +62,7 @@ export const toolDefManage = defineTool("ppal-manage", {
       .string()
       .optional()
       .describe(
-        "install-remote-script, add-producer-pal, update-producer-pal only: absolute path to Live's User Library, " +
+        "install-producer-pal, add-producer-pal, update-producer-pal only: absolute path to Live's User Library, " +
           "for when it can't be found automatically. Ask the user " +
           "(Live: Settings → Library → Location of User Library).",
       ),

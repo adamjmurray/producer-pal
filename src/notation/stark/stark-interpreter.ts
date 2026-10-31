@@ -56,7 +56,7 @@ import {
 } from "#src/notation/stark/stark-config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { assertDefined } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 export interface StarkInterpretOptions {
   /** Time signature numerator (beats per bar). Accepted for parity; unused (timing is explicit). */
@@ -84,7 +84,7 @@ export function interpretNotation(
   const hasPitched = ast.some((s) => !("midi" in s));
 
   if (hasDrums && hasPitched) {
-    console.warn("Stark: mixed drum and pitched sections in one clip");
+    emitWarning("Stark: mixed drum and pitched sections in one clip");
   }
 
   const notes: NoteEvent[] = [];
@@ -142,7 +142,7 @@ function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
     drumHeaderPitch(assertDefined(section.noteName, "drum header note name"));
 
   if (pitch == null) {
-    console.warn(
+    emitWarning(
       `Stark: drum line "${section.type}" has no resolvable pitch — skipping`,
     );
 
@@ -318,7 +318,7 @@ function processItem(
 
     // Time still advances, so one bad token can't desync the rest of the line.
     if (midi == null) {
-      console.warn(
+      emitWarning(
         `Stark: note "${noteLabel(item)}" is out of MIDI range — skipping`,
       );
 
@@ -357,7 +357,7 @@ function pushBracketChord(
     const pitch = notePitch(chordNote, registerDefault);
 
     if (pitch == null) {
-      console.warn(
+      emitWarning(
         `Stark: note "${noteLabel(chordNote)}" is out of MIDI range — skipping`,
       );
 

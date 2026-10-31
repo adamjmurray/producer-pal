@@ -16,8 +16,7 @@ import {
   type ClipReasons,
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
 import { type ClipIdResult } from "./arrangement-length-changes.ts";
-
-const EPSILON = 0.001;
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 /** An unlooped audio clip can only show what its file holds. */
 const NO_MORE_CONTENT = "the audio file has no more content to show";
@@ -83,7 +82,7 @@ export function handleUnloopedLengthening({
   const contentLength = clipEndMarkerBeats - clipStartMarker;
 
   // Zero-content clips have nothing to tile
-  if (contentLength <= EPSILON) {
+  if (contentLength <= SAME_TIME_EPSILON) {
     refuseClipWork(
       reasons,
       clip.id,
@@ -159,7 +158,7 @@ function lengthenWarpedUnloopedAudio(
   const totalContentFromStart = fileContentBoundary - clipStartMarker;
 
   // No additional content beyond what's already shown — skip entirely
-  if (totalContentFromStart <= currentArrangementLength + EPSILON) {
+  if (totalContentFromStart <= currentArrangementLength + SAME_TIME_EPSILON) {
     noteNothingToShow(reasons, clip.id);
 
     return false;
@@ -171,7 +170,7 @@ function lengthenWarpedUnloopedAudio(
     totalContentFromStart,
   );
 
-  if (effectiveTarget < arrangementLengthBeats - EPSILON) {
+  if (effectiveTarget < arrangementLengthBeats - SAME_TIME_EPSILON) {
     noteCappedAt(reasons, clip.id, effectiveTarget);
   }
 
@@ -225,13 +224,13 @@ function lengthenUnwarpedAudio(
   const clipStartTime = currentEndTime - currentArrangementLength;
   const actualArrangementLength = newEndTime - clipStartTime;
 
-  if (actualArrangementLength <= currentArrangementLength + EPSILON) {
+  if (actualArrangementLength <= currentArrangementLength + SAME_TIME_EPSILON) {
     noteNothingToShow(reasons, clip.id);
 
     return false;
   }
 
-  if (actualArrangementLength < arrangementLengthBeats - EPSILON) {
+  if (actualArrangementLength < arrangementLengthBeats - SAME_TIME_EPSILON) {
     noteCappedAt(reasons, clip.id, actualArrangementLength);
   }
 

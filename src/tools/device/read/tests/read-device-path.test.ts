@@ -11,7 +11,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { readOneDevice } from "../read-device.ts";
 import {
   setupBasicDeviceMock,
@@ -62,7 +62,7 @@ describe("readOneDevice with path parameter", () => {
   // z.coerce.string() renders that as "null" — counting it as sent refused the
   // read over a param the caller deliberately left empty.
   it("reads by path when id is a coerced null", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     setupBasicDeviceMock({
       id: "device-456",
@@ -320,7 +320,7 @@ describe("readOneDevice with path parameter", () => {
   // The miss carries what the track does hold, so nothing warns about the same
   // target beside it.
   it("says what the track holds when a type segment names nothing", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     mockNonExistentObjects();
     registerMockObject("track-0", {

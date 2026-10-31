@@ -102,19 +102,15 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     toPath: param(z.coerce.string().optional(), {
       default:
         "destination(s). Clips: 't2/s1' = a clip slot, third track and second scene (both count from 0, and scenes are created up to that index); " +
-        "'t2[5|1]' or 't2[loc:Chorus]' = that spot (bar|beat, or loc:<locator name or id>) on that track's arrangement, " +
-        "and '[5|1]' the same spot on the source clip's own track " +
-        "(an arrangement track must match the clip's MIDI/audio type; copying an arrangement clip leaves the track's automation behind, while a session clip's envelopes are written to the track's lane over the copy's span); 't2/l0' = its first take lane, and lanes are created up to that " +
-        "index; " +
-        "'t2' alone needs a position, and omitting toPath uses the source clip's own track. Devices: 't1/d+' appends, 't1/d0' inserts at 0. " +
-        "Chains: 't1/d0/c+' appends the copy to that rack (any rack of the same kind); omitting toPath appends to the chain's own rack. " +
+        "'t2[5|1]' or 't2[loc:Chorus]' = that spot on the track's arrangement (bar|beat, or loc:<locator name or id> - use loc: when the user names a section, so the clip still lands right if they move it); " +
+        "'t2/l0' = its first take lane (created if missing). '[5|1]' alone = that spot on the source clip's own track; 't2' alone needs a position; no toPath = the source's own track. " +
+        "The track must match the clip's MIDI/audio type. An arrangement clip's automation stays behind; a session clip's envelopes are written to the track's lane over the copy's span. " +
+        "Devices: 't1/d+' appends, 't1/d0' inserts at 0. " +
+        "Chains: 't1/d0/c+' appends the copy to that rack (any rack of the same kind); no toPath = the chain's own rack. " +
         "Scenes: '[5|1]' = that spot on the arrangement, across every track. " +
-        "Tracks: 't2/l0' (or 't2/l+') copies the source's arrangement clips onto that take lane, " +
-        "at the positions they already have. A track source copies its main lane, a 't2/l0' source that lane. " +
-        "A 't2/l0' source onto a bare 't2' promotes the lane's clips to the main lane, over the clips already there. " +
-        "Clips only, and the two tracks must match MIDI/audio type; name/color label the copies. " +
-        "A track copy needs no toPath otherwise. " +
-        "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +
+        "Tracks: 't2/l0' (or 't2/l+') copies the source's arrangement clips onto that take lane at their own positions; " +
+        "a 't2/l0' source copies that lane, and onto a bare 't2' it promotes the lane's clips to the main lane, over what's there. No toPath otherwise. " +
+        "Drum pads: 't0/d0/pD1', required, in the same rack as the source. " +
         "Comma-separated, one per copy; several sources need one each, except a bare '[5|1]' for clips",
       smallModel:
         "destination(s): clip slot 't2/s1', clip arrangement spot 't2[5|1]' (a session clip's automation goes to the track's lane; an arrangement clip's isn't copied), device 't1/d0', drum pad 't0/d0/pD1'",

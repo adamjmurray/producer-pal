@@ -14,6 +14,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  PLUGIN_HOST_WRAPPERS,
+  pluginHostPath,
+} from "#src/portal/setup/plugin-host/plugin-host-wrappers.ts";
+import {
   type UninstallOptions,
   describeUninstall,
   uninstallFromLibrary,
@@ -53,6 +57,7 @@ function options(overrides: Partial<UninstallOptions>): UninstallOptions {
     device: false,
     remoteScript: false,
     otherCopies: false,
+    pluginHost: false,
     ...overrides,
   };
 }
@@ -104,6 +109,36 @@ describe("uninstallFromLibrary", () => {
     expect(existsSync(OTHER_SCRIPT())).toBe(true);
     expect(existsSync(DEVICE())).toBe(true);
     expect(existsSync(COPY())).toBe(true);
+  });
+
+  it("--plugin-host removes both wrappers and nothing else", () => {
+    fillLibrary();
+
+    const wrappers = PLUGIN_HOST_WRAPPERS.map((wrapper) =>
+      pluginHostPath(library, wrapper),
+    );
+
+    for (const path of wrappers) {
+      touch(path);
+    }
+
+    const result = uninstallFromLibrary(library, options({ pluginHost: true }));
+
+    expect(result.removed).toStrictEqual(wrappers);
+    expect(wrappers.some((path) => existsSync(path))).toBe(false);
+    expect(existsSync(DEVICE())).toBe(true);
+    expect(existsSync(SCRIPT())).toBe(true);
+  });
+
+  it("--plugin-host names a wrapper that isn't there", () => {
+    touch(pluginHostPath(library, PLUGIN_HOST_WRAPPERS[0]));
+
+    const result = uninstallFromLibrary(library, options({ pluginHost: true }));
+
+    expect(result.removed).toHaveLength(1);
+    expect(result.absent).toStrictEqual([
+      pluginHostPath(library, PLUGIN_HOST_WRAPPERS[1]),
+    ]);
   });
 
   it("removes leftovers even when the script itself isn't installed", () => {

@@ -19,6 +19,7 @@
  */
 
 import { execFile } from "node:child_process";
+import { sleep } from "#evals/shared/sleep.ts";
 
 /** System Events' name for Ableton Live. */
 export const LIVE_PROCESS = "Live";
@@ -171,7 +172,7 @@ const realDeps: WatcherDeps = {
   run: runOsascript,
   restartSystemEvents,
   now: () => Date.now(),
-  sleep: async (ms) => await new Promise((resolve) => setTimeout(resolve, ms)),
+  sleep,
 };
 
 /**

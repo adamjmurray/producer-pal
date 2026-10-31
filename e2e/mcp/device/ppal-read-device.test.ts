@@ -375,6 +375,16 @@ describe("ppal-read-device over a list of targets", () => {
 
     expect(device.parameters!.length).toBeGreaterThan(0);
   });
+
+  it("leaves params off for a blank paramSearch", async () => {
+    for (const paramSearch of ["", "  "]) {
+      const device = parseToolResult<ReadDeviceResult>(
+        await readDevices({ path: "t3/d1", paramSearch }),
+      );
+
+      expect(device.parameters).toBeUndefined();
+    }
+  });
 });
 
 interface ReadDeviceResult {

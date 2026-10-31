@@ -55,7 +55,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "../../node-for-max-logger.ts";
+import { nodeError } from "../../node-for-max-logger.ts";
 
 /** Filename of the project-context backup, dropped beside the Live Set. */
 const SIDECAR_FILENAME = "Producer Pal Project Context.md";
@@ -100,9 +100,7 @@ export function readProjectContextSidecar(liveSetPath: string): SidecarRead {
   try {
     return { status: "found", content: readFileSync(path, "utf8") };
   } catch (error) {
-    console.error(
-      `Failed to read project context backup: ${errorMessage(error)}`,
-    );
+    nodeError(`Failed to read project context backup: ${errorMessage(error)}`);
 
     return { status: "unreadable" };
   }
@@ -130,9 +128,7 @@ export function writeProjectContextSidecar(
 
     return true;
   } catch (error) {
-    console.error(
-      `Failed to write project context backup: ${errorMessage(error)}`,
-    );
+    nodeError(`Failed to write project context backup: ${errorMessage(error)}`);
 
     // A half-finished write leaves the temp file sitting in the user's Ableton
     // project folder next to their Sets. Clear it, and swallow whatever stopped
@@ -178,7 +174,7 @@ export function deleteProjectContextSidecar(
 
     return "deleted";
   } catch (error) {
-    console.error(
+    nodeError(
       `Failed to delete project context backup: ${errorMessage(error)}`,
     );
 

@@ -19,7 +19,7 @@ import {
 } from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import { parseBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../types.ts";
 import {
   clearCarriedStreams,
@@ -134,6 +134,7 @@ function processStreamElement(
         stream.values,
         beatsPerBar,
         timeSigDenominator,
+        state.currentDuration,
       );
       state.durationStreamCursor = 0;
       break;
@@ -376,7 +377,7 @@ export function interpretNotation(
   const buffered = countBufferedPitches(state);
 
   if (buffered > 0 && !state.pitchesEmitted) {
-    console.warn(
+    emitWarning(
       `${buffered} pitch(es) buffered but no time position to emit them`,
     );
   }

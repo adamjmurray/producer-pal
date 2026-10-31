@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
@@ -69,7 +69,7 @@ describe("next.* variables", () => {
   });
 
   it("skips last note with warning when using next.*", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const notes = createTestNotes([
       { start_time: 0, velocity: 80 },
       { start_time: 1, velocity: 100 },
@@ -105,7 +105,7 @@ describe("next.* variables", () => {
     // picks the notes at starts 4 and 5; the note at 8 is outside it. The note
     // at 5 is the last selected one — it has no next-in-selection and is
     // skipped, rather than reaching past the window to the note at 8.
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const notes = createTestNotes([
       { start_time: 4 },
       { start_time: 5 },
@@ -175,7 +175,7 @@ describe("legato()", () => {
   });
 
   it("keeps last note's current duration without clip context, with a warning", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const notes = createTestNotes([{ start_time: 0 }, { start_time: 2 }]);
 
     applyTransforms(notes, "duration = legato()", 4, 4);

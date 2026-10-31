@@ -23,6 +23,7 @@ import {
 } from "../../../assertions/index.ts";
 import { type EvalTurnResult, type ToolCall } from "../../../types.ts";
 import { TOOL_CREATE_CLIP } from "./clip-tool-constants.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /**
  * Extract the transforms the model wrote in the given turn: those of every
@@ -276,7 +277,7 @@ export async function clearClipSlots(
 
   for (const slot of slots) {
     const result = await mcpClient.callTool({
-      name: "ppal-read-clip",
+      name: TOOLS.readClip,
       arguments: { path: slotToPath(slot), include: [] },
     });
 
@@ -296,7 +297,7 @@ export async function clearClipSlots(
 
   if (ids.length > 0) {
     await mcpClient.callTool({
-      name: "ppal-delete",
+      name: TOOLS.delete,
       arguments: { id: ids.join(","), type: "clip" },
     });
   }

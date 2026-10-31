@@ -49,6 +49,9 @@ export interface LlmCall {
 export type LlmReply =
   | { text: string }
   | { spawn: { task: string; resumeFrom?: number } }
+  // No content, just a finish reason as it appears on the wire (e.g.
+  // "content_filter", or any unmapped value for the SDK's "other").
+  | { finishReason: string }
   | { rateLimited: true };
 
 /** What the specs read back after driving the UI. */
@@ -267,25 +270,7 @@ function streamBody(
   reply: Exclude<LlmReply, { rateLimited: true }>,
   call: LlmCall,
 ): string {
-  const [delta, finish] =
-    "text" in reply
-      ? [{ content: reply.text }, "stop"]
-      : [
-          {
-            tool_calls: [
-              {
-                index: 0,
-                id: `call_${call.n}`,
-                type: "function",
-                function: {
-                  name: SPAWN_TOOL,
-                  arguments: JSON.stringify(reply.spawn),
-                },
-              },
-            ],
-          },
-          "tool_calls",
-        ];
+  const [delta, finish] = replyDelta(reply, call);
 
   return (
     [
@@ -305,6 +290,34 @@ function streamBody(
       .map((c) => `data: ${JSON.stringify(c)}\n\n`)
       .join("") + "data: [DONE]\n\n"
   );
+}
+
+/**
+ * The delta and finish reason that carry a reply.
+ * @param reply - Text, a spawn tool call, or a bare finish reason
+ * @param call - The request being answered; its number keys the tool-call id
+ * @returns The delta payload and the wire finish reason
+ */
+function replyDelta(
+  reply: Exclude<LlmReply, { rateLimited: true }>,
+  call: LlmCall,
+): [object, string] {
+  if ("finishReason" in reply) {
+    return [{}, reply.finishReason];
+  }
+
+  if ("text" in reply) {
+    return [{ content: reply.text }, "stop"];
+  }
+
+  const toolCall = {
+    index: 0,
+    id: `call_${call.n}`,
+    type: "function",
+    function: { name: SPAWN_TOOL, arguments: JSON.stringify(reply.spawn) },
+  };
+
+  return [{ tool_calls: [toolCall] }, "tool_calls"];
 }
 
 /**

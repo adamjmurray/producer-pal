@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { parseObjectPath, type ObjectPath } from "../object-path.ts";
 import {
   namedHiddenPath,
@@ -63,7 +63,7 @@ describe("parseObjectPathList", () => {
   // What a JSON null arrives as. The caller named no destination, so read it as
   // omitted — but say so, since the schema turned a non-answer into a value.
   it("reads a coerced null as omitted, and says so", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     expect(parseObjectPathList("null", "toPath")).toStrictEqual([]);
     expect(warn).toHaveBeenCalledWith('toPath "null" names nothing');
@@ -72,7 +72,7 @@ describe("parseObjectPathList", () => {
   // The list is cycled against a position list, so a dropped entry moves every
   // later copy onto the wrong track instead of just making one fewer.
   it("refuses a hole rather than shifting every later entry", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     expect(() => parseObjectPathList("t1,,t2", "toPath")).toThrow(
       'invalid toPath "t1,,t2" - it has an empty entry.',
@@ -274,7 +274,7 @@ describe("namedHiddenPath", () => {
   });
 
   it("says nothing about a param the caller left unset", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     namedHiddenPath("null", "toSlot");
     namedHiddenPath("", "toSlot");
@@ -294,7 +294,7 @@ describe("namedHiddenPath", () => {
   });
 
   it("says so, since a comma is something the caller typed", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     namedHiddenPath(",", "toSlot");
 
@@ -317,7 +317,7 @@ describe("pathNamesSomething", () => {
   });
 
   it("says nothing, so a second read does not repeat the warning", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     pathNamesSomething(",");
 

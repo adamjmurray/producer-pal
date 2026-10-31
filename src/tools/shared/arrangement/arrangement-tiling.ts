@@ -8,11 +8,10 @@
  * Creates partial tiles and tiles clips across ranges.
  */
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { createFullTiles, outOfTime } from "./arrangement-tiling-full-tiles.ts";
 import {
   type CreatedClip,
-  EPSILON,
   type TilingContext,
 } from "./helpers/arrangement-tiling-clips.ts";
 import {
@@ -26,6 +25,7 @@ import {
   moveClipFromHolding,
   sourceOverlapsTarget,
 } from "./arrangement-tiling-workaround.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 interface TileClipOptions {
   /** Whether to adjust pre-roll on subsequent tiles */
@@ -120,6 +120,11 @@ export function createPartialTile(
   const clipLength = clipLoopEnd - clipLoopStart;
   const tileStartMarker = clipLoopStart + (contentOffset % clipLength);
 
+  context.pieces?.push({
+    start: targetPosition,
+    length: partialLength,
+    startMarker: tileStartMarker,
+  });
   partialTile.set("start_marker", tileStartMarker);
 
   // Optionally adjust pre-roll
@@ -187,7 +192,9 @@ export function tileClipToRange(
 
   // Tolerance and subtraction, not floor and %: for a tile like 4/3 the two
   // disagree, giving a whole tile as remainder after the last full tile.
-  const fullTiles = Math.floor((totalLength + EPSILON) / arrangementTileLength);
+  const fullTiles = Math.floor(
+    (totalLength + SAME_TIME_EPSILON) / arrangementTileLength,
+  );
   const remainder = totalLength - fullTiles * arrangementTileLength;
 
   // Check the deadline BEFORE clearing anything. A clear empties its span before
@@ -236,7 +243,7 @@ export function tileClipToRange(
   }
 
   // Handle partial final tile if remainder exists
-  if (remainder > EPSILON) {
+  if (remainder > SAME_TIME_EPSILON) {
     // The partial tile routes through the holding area, where
     // clearClipAtDuplicateTarget runs against the holding clip (not the source)
     // and would trim the source if it overlapped this position. Today every
@@ -244,13 +251,13 @@ export function tileClipToRange(
     // guard it so a future caller tiling over the source can't corrupt it
     // (mirrors the full-tile loop's self-overlap skip above).
     if (sourceOverlapsTarget(sourceClipId, currentPosition, remainder)) {
-      console.warn(
+      emitWarning(
         `Source clip overlaps the partial tile at ${currentPosition}; skipping it to avoid corrupting the source`,
       );
     } else {
       // The last window stops at the last full tile when the tiles divide
       // evenly into windows, leaving the partial tile's span uncleared.
-      if (clearAhead && clearedThrough < tileTarget - EPSILON) {
+      if (clearAhead && clearedThrough < tileTarget - SAME_TIME_EPSILON) {
         clearArrangementRange(
           track,
           currentPosition,

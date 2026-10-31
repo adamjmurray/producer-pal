@@ -71,7 +71,7 @@ describe("readOneClip - include flag gating", () => {
   });
 
   it("answers an empty slot with the null shape, and says nothing", () => {
-    const consoleSpy = vi.spyOn(consoleModule, "warn");
+    const consoleSpy = vi.spyOn(consoleModule, "emitWarning");
 
     // Track and scene exist, clip slot is empty (clip id "0" => !exists()).
     registerMockObject("track4", { path: livePath.track(4), type: "Track" });

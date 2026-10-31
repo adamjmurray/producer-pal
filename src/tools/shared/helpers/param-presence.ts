@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 // A model writing the word instead of leaving the param out: "null" or
 // "undefined" as a param's whole value. (A JSON null never gets this far — it
@@ -63,7 +63,7 @@ export function namedParam(
     return trimmed;
   }
 
-  console.warn(`${label} "${trimmed}" names nothing`);
+  emitWarning(`${label} "${trimmed}" names nothing`);
 
   return undefined;
 }

@@ -21,6 +21,7 @@ import {
   remoteScriptLook,
   summarize,
 } from "./helpers/remote-script-summary";
+import { NewChatHint } from "./NewChatHint";
 import { RemoteScriptSteps } from "./RemoteScriptSteps";
 import { SectionCard } from "./SectionCard";
 
@@ -182,9 +183,12 @@ function InstallMessages({ remote }: { remote: Remote }) {
 
   if (remote.installedPath != null) {
     return (
-      <p className={goodTextClass} data-testid="remote-script-installed-path">
-        Installed to {remote.installedPath}
-      </p>
+      <>
+        <p className={goodTextClass} data-testid="remote-script-installed-path">
+          Installed to {remote.installedPath}
+        </p>
+        <NewChatHint testId="remote-script-new-chat-hint" afterRestart />
+      </>
     );
   }
 

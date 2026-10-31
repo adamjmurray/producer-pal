@@ -36,7 +36,7 @@ import {
   roundPan,
 } from "#src/tools/shared/helpers/rounding.ts";
 import { findReturnIndex } from "#src/tools/shared/helpers/send-validation.ts";
-import { replacementFailedDetail } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { replacementFailedDetail } from "#src/shared/max/named-again-wording.ts";
 import {
   type MixerApplied,
   PARAM_DISABLED_REASON,
@@ -387,8 +387,8 @@ function applyChainSends(
         )
       : null;
 
-  // After the scalar pair, so a call using both honors both. They only collide
-  // when they name the same return, and then the list is the later word.
+  // A call never carries both (refused up front); the list is the later word
+  // should the two ever name the same return.
   const list: WrittenChainSend[] = [];
 
   for (const send of params.sends ?? []) {

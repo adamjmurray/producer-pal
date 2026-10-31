@@ -123,6 +123,8 @@ describe("InstallationTab device section", () => {
     );
 
     expect(done.textContent).toBe(`Installed the device. (${DEVICE_PATH})`);
+    // The new version isn't running until the device is swapped.
+    expect(screen.queryByText(/new chat/i)).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/device-install/install"),
       expect.objectContaining({

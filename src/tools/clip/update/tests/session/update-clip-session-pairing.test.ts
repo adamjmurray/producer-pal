@@ -175,13 +175,13 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     const result = await updateClip({
       path: "t0/s0,t9/s9,t1/s1",
       name: "a,b,c",
-      color: "#FF0000,#00FF00,#0000FF",
+      color: "#FF3636,#1AFF2F,#1A2F96",
     });
 
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "a");
-    expect(mocks.clip123.set).toHaveBeenCalledWith("color", 16711680);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("color", 16725558);
     expect(mocks.clip456.set).toHaveBeenCalledWith("name", "c");
-    expect(mocks.clip456.set).toHaveBeenCalledWith("color", 255);
+    expect(mocks.clip456.set).toHaveBeenCalledWith("color", 1716118);
     expect(result).toStrictEqual([
       { id: "123", path: "t0/s0" },
       { path: "t9/s9", ok: false, detail: 'no clip at path "t9/s9"' },

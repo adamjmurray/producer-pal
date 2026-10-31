@@ -13,6 +13,7 @@ import { type OfflineDeps } from "../offline/offline-deps.ts";
 import { requestWithBrowserRetry } from "../setup/browser-retry-request.ts";
 import { SetupFailed } from "../setup/setup-failure.ts";
 import { setUnchanged } from "./set-unchanged.ts";
+import { versionCheckSentence } from "./full-connect-advice.ts";
 
 /** The track the replaced device sits on, as the remote script reports it. */
 export interface ReplacedTrack {
@@ -30,6 +31,9 @@ export interface ReplacedTrack {
  * @param deps - The remote script, and the clock
  * @param libraryUpdated - Whether this update just wrote the device file into
  *   the User Library, which a refusal then says
+ * @param deadline - When the whole update must be done, as a `now()` time
+ * @param fullConnectSeen - Whether a plain ppal-connect has worked on this
+ *   portal, which decides how a failure says to re-check
  * @returns The track it sits on, when the remote script said
  * @throws SetupFailed when it didn't swap, or may have
  */
@@ -38,33 +42,38 @@ export async function replaceDevice(
   from: string,
   deps: Pick<OfflineDeps, "request" | "now" | "sleep">,
   libraryUpdated: boolean,
+  deadline: number,
+  fullConnectSeen: boolean,
 ): Promise<ReplacedTrack | undefined> {
   const reply = await requestWithBrowserRetry(
     {
       route: "/replace-producer-pal",
       body: { path },
-      thrown: (error) => requestThrew(error, from, libraryUpdated),
+      thrown: (error) =>
+        requestThrew(error, from, libraryUpdated, fullConnectSeen),
       unavailable: (unavailable) =>
         new SetupFailed(
           `${unavailable.outdated ?? "the remote script stopped answering"}. ${setUnchanged(libraryUpdated)}`,
         ),
     },
     deps,
+    deadline,
   );
 
   if (reply.status === 200) {
     return trackOf(reply.body);
   }
 
-  throw replyFailure(reply, from, libraryUpdated);
+  throw replyFailure(reply, from, libraryUpdated, fullConnectSeen);
 }
 
 /**
  * @param from - The version that was running before the swap
+ * @param fullConnectSeen - Whether a plain ppal-connect has worked on this portal
  * @returns What to do to learn which device is running now
  */
-function checkWhichRuns(from: string): string {
-  return `Wait a few seconds, then call ppal-connect to see which version is running (it was ${from}). If it is still ${from}, call update-producer-pal again.`;
+function checkWhichRuns(from: string, fullConnectSeen: boolean): string {
+  return `Wait a few seconds, then check which version is running (it was ${from}): ${versionCheckSentence(fullConnectSeen)} If it is still ${from}, call update-producer-pal again.`;
 }
 
 /**
@@ -72,18 +81,20 @@ function checkWhichRuns(from: string): string {
  * @param from - The version being replaced
  * @param libraryUpdated - Whether the device file was just written to the User
  *   Library
+ * @param fullConnectSeen - Whether a plain ppal-connect has worked on this portal
  * @returns The failure to report, with what that means for the Set
  */
 function requestThrew(
   error: unknown,
   from: string,
   libraryUpdated: boolean,
+  fullConnectSeen: boolean,
 ): SetupFailed {
   const sent = !(error instanceof RemoteScriptTimeout) || error.sent;
 
   return new SetupFailed(
     sent
-      ? `Live didn't answer the request to replace Producer Pal (${errorMessage(error)}), so it may have been replaced. ${checkWhichRuns(from)}`
+      ? `Live didn't answer the request to replace Producer Pal (${errorMessage(error)}), so it may have been replaced. ${checkWhichRuns(from, fullConnectSeen)}`
       : `ran out of time before the request reached Live. ${setUnchanged(libraryUpdated)} Call update-producer-pal again.`,
     { cause: error },
   );
@@ -94,18 +105,20 @@ function requestThrew(
  * @param from - The version being replaced
  * @param libraryUpdated - Whether the device file was just written to the User
  *   Library
+ * @param fullConnectSeen - Whether a plain ppal-connect has worked on this portal
  * @returns The failure to report
  */
 function replyFailure(
   reply: RemoteScriptAnswer,
   from: string,
   libraryUpdated: boolean,
+  fullConnectSeen: boolean,
 ): SetupFailed {
   const text = replyError(reply);
 
   if (mayHaveSwapped(reply)) {
     return new SetupFailed(
-      `Live reported a problem while replacing Producer Pal (${text}), so it may have been replaced. ${checkWhichRuns(from)}`,
+      `Live reported a problem while replacing Producer Pal (${text}), so it may have been replaced. ${checkWhichRuns(from, fullConnectSeen)}`,
     );
   }
 

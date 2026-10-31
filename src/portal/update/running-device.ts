@@ -11,6 +11,11 @@ export interface RunningDevice {
   version: () => string | undefined;
   /** Drop the connection, so the next connect asks whatever answers now */
   reset: () => void;
+  /**
+   * Whether a plain ppal-connect (no versionCheck) has worked on this portal.
+   * Without one, no chat on it can have loaded the Skills.
+   */
+  fullConnectSeen: () => boolean;
   /** Tell the client to re-list tools, which may differ between versions */
   toolsChanged: () => void;
 }

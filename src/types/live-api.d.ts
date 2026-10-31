@@ -152,8 +152,11 @@ declare global {
     /** Get the color as a CSS hex string (e.g., "#FF0000") */
     getColor(): string | null;
 
-    /** Set the color from a CSS hex string (e.g., "#FF0000") */
-    setColor(cssColor: string): void;
+    /**
+     * Set the color from a CSS hex string (e.g., "#FF0000"). Writes the nearest
+     * palette entry, or the exact color when `raw` is true.
+     */
+    setColor(cssColor: string, raw?: boolean): void;
 
     /** Get the object's name, always as a string. See the implementation. */
     getName(): string;

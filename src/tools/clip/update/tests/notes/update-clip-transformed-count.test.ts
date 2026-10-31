@@ -148,4 +148,163 @@ describe("updateClip - transform counts", () => {
       expect(result).toHaveProperty("noteCount");
     });
   });
+
+  describe.each([
+    ["transforms only", {}, 3],
+    // The new note joins the notes the transforms see
+    ["notes and transforms", { notes: "E3 1|4" }, 4],
+  ])(
+    "what a transform that changes nothing says: %s",
+    (_scenario, extraArgs, noteCount) => {
+      it("says the transforms left the matched notes as they were", async () => {
+        const result = await updateClip({
+          id: "123",
+          ...extraArgs,
+          transforms: "velocity += 0",
+        });
+
+        expect(result).toStrictEqual(
+          expect.objectContaining({
+            transformed: 0,
+            detail: `the transforms changed none of the ${noteCount} matched notes`,
+          }),
+        );
+      });
+
+      it.each([
+        ["merge", "D3: merge()"],
+        ["split", "D3: split(9|1)"],
+        ["ratchet", "D3: ratchet(n/4)"],
+      ])(
+        "doesn't call a %s that changed nothing an expression",
+        async (_name, transforms) => {
+          const result = await updateClip({
+            id: "123",
+            ...extraArgs,
+            transforms,
+          });
+
+          expect(result).toStrictEqual(
+            expect.objectContaining({
+              transformed: 0,
+              detail: expect.stringContaining(
+                "the transforms didn't change the 1 matched note",
+              ),
+            }),
+          );
+        },
+      );
+
+      it("says when the selector matched no notes", async () => {
+        const result = await updateClip({
+          id: "123",
+          ...extraArgs,
+          transforms: "G5: velocity += 10",
+        });
+
+        expect(result).toStrictEqual(
+          expect.objectContaining({
+            transformed: 0,
+            detail: "no notes matched the selector",
+          }),
+        );
+      });
+
+      it("counts only the notes the selector matched", async () => {
+        const result = await updateClip({
+          id: "123",
+          ...extraArgs,
+          transforms: "D3: velocity += 0",
+        });
+
+        expect(result).toStrictEqual(
+          expect.objectContaining({
+            detail: "the transforms didn't change the 1 matched note",
+          }),
+        );
+      });
+
+      // The failure has its own detail; neither claim would be true
+      it.each([
+        ["an expression that fails", "velocity = audio.gain"],
+        ["a skipped note op", "G5: velocity += 10\nC3: ratchet(rand(0, 0))"],
+      ])("doesn't call %s a no-op or a miss", async (_name, transforms) => {
+        const result = (await updateClip({
+          id: "123",
+          ...extraArgs,
+          transforms,
+        })) as { detail?: string };
+
+        expect(result.detail ?? "").not.toMatch(
+          /changed none|no notes matched/,
+        );
+      });
+
+      it("says nothing when a note changed", async () => {
+        const result = await updateClip({
+          id: "123",
+          ...extraArgs,
+          transforms: "D3: velocity += 10",
+        });
+
+        expect(result).toStrictEqual(
+          expect.objectContaining({ transformed: 1 }),
+        );
+        expect(result).not.toHaveProperty("detail");
+      });
+
+      it("says nothing when the matched notes were deleted", async () => {
+        const result = await updateClip({
+          id: "123",
+          ...extraArgs,
+          transforms: "C3: velocity = 0",
+        });
+
+        expect(result).toStrictEqual(
+          expect.objectContaining({ transformed: 0, deletedNotes: 2 }),
+        );
+        expect(result).not.toHaveProperty("detail");
+      });
+    },
+  );
+
+  it("judges preTransforms and transforms together", async () => {
+    const changedByPre = await updateClip({
+      id: "123",
+      preTransforms: "D3: velocity += 10",
+      transforms: "velocity += 0",
+    });
+
+    expect(changedByPre).toStrictEqual(
+      expect.objectContaining({ transformed: 1 }),
+    );
+    expect(changedByPre).not.toHaveProperty("detail");
+
+    const neitherChanged = await updateClip({
+      id: "123",
+      preTransforms: "velocity += 0",
+      transforms: "G5: velocity += 10",
+    });
+
+    expect(neitherChanged).toStrictEqual(
+      expect.objectContaining({
+        transformed: 0,
+        detail: "the transforms changed none of the 3 matched notes",
+      }),
+    );
+  });
+
+  it("reports on preTransforms alone", async () => {
+    const result = await updateClip({
+      id: "123",
+      preTransforms: "G5: velocity += 10",
+    });
+
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        transformed: 0,
+        detail: "no notes matched the selector",
+      }),
+    );
+  });
 });

@@ -16,8 +16,8 @@ npm run e2e:portal
 ```
 
 The suite fails with a clear message if the bundle isn't built. In CI it runs in
-the playwright-tests job after `npm run build:bundles`, so its results join the
-other end-to-end suites in the CI summary.
+the docs-and-portal e2e job after `npm run build:bundles`, so its results join
+the other end-to-end suites in the CI summary.
 
 ## Test Files
 
@@ -32,9 +32,9 @@ other end-to-end suites in the CI summary.
 - `tests/portal-offline-manage.test.ts` — what the portal answers itself while
   the device is down: the setup guidance (by whether the remote script answers,
   and what is installed in the User Library) and `ppal-manage`
-  `install-remote-script`. The portal's HOME points at a temp folder so its User
-  Library lookup is repeatable; finding one there works on macOS and Windows
-  only.
+  `install-producer-pal` (the retired `install-remote-script` name too). The
+  portal's HOME points at a temp folder so its User Library lookup is
+  repeatable; finding one there works on macOS and Windows only.
 - `tests/portal-add-producer-pal.test.ts` — `ppal-manage` `add-producer-pal`
   against the stub remote script, which starts the stub device on `/load`. It
   runs a copy of the portal with a stand-in `Producer_Pal.amxd` beside it.
@@ -45,9 +45,9 @@ other end-to-end suites in the CI summary.
   version. Covers the swap, already current, a device newer than the portal, a
   refused swap, a remote script without the route, and a device that isn't
   running. A second group covers a device older than the portal: the pre-2.5
-  connect hint, `install-remote-script` answered by the portal (and forwarded
-  for a same-version device). Those give the stub device `ppal-connect` and
-  `ppal-manage`.
+  connect hint, `install-producer-pal` and the retired `install-remote-script`
+  answered by the portal (and forwarded for a same-version device). Those give
+  the stub device `ppal-connect` and `ppal-manage`.
 
 Unit tests in `src/portal/tests/` already cover how tool names and group aliases
 resolve. These cover what only a real process can show: argv parsed by the

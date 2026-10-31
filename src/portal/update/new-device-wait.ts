@@ -9,6 +9,7 @@ import { pollUntil } from "../setup/poll-until.ts";
 import { SetupFailed } from "../setup/setup-failure.ts";
 import { type ReplacedTrack } from "./replace-device-request.ts";
 import { type RunningDevice } from "./running-device.ts";
+import { versionCheckSentence } from "./full-connect-advice.ts";
 
 /** What is known about the device that replaced the old one. */
 export interface Replacement {
@@ -26,6 +27,7 @@ export interface Replacement {
  * @param replacement - What was replaced, and by what
  * @param device - The bridge's connection to the device
  * @param deps - The clock
+ * @param deadline - When the whole call must be done, as a `now()` time
  * @returns The version the new device reports
  * @throws SetupFailed when no new server answers in time
  */
@@ -33,23 +35,28 @@ export async function waitForNewDevice(
   replacement: Replacement,
   device: RunningDevice,
   deps: Pick<OfflineDeps, "now" | "sleep">,
+  deadline: number,
 ): Promise<string> {
   const { from, expected, track } = replacement;
   let seen: string | undefined;
 
-  const answered = await pollUntil(async () => {
-    device.reset();
+  const answered = await pollUntil(
+    async () => {
+      device.reset();
 
-    try {
-      await device.connect();
-    } catch {
-      return false;
-    }
+      try {
+        await device.connect();
+      } catch {
+        return false;
+      }
 
-    seen = device.version();
+      seen = device.version();
 
-    return seen != null && isNew(seen, from, expected);
-  }, deps);
+      return seen != null && isNew(seen, from, expected);
+    },
+    deps,
+    deadline,
+  );
 
   if (answered && seen != null) {
     return seen;
@@ -57,7 +64,7 @@ export async function waitForNewDevice(
 
   device.reset();
 
-  throw new SetupFailed(notAnsweringYet(seen, track));
+  throw new SetupFailed(notAnsweringYet(seen, track, device.fullConnectSeen()));
 }
 
 /**
@@ -73,16 +80,18 @@ function isNew(seen: string, from: string, expected?: string): boolean {
 /**
  * @param seen - The last version a server reported, if any answered
  * @param track - Where the device is, if known
+ * @param fullConnectSeen - Whether a plain ppal-connect has worked on this portal
  * @returns What state Live is in and what to do
  */
 function notAnsweringYet(
   seen: string | undefined,
   track: ReplacedTrack | undefined,
+  fullConnectSeen: boolean,
 ): string {
   const where = track == null ? "" : ` on ${track.path} "${track.name}"`;
   const replaced = `Live replaced the Producer Pal device${where}`;
 
   return seen == null
-    ? `${replaced}, but the new one hasn't answered yet. Wait a few seconds, then call ppal-connect. Don't call update-producer-pal again.`
-    : `${replaced}, but the old version (${seen}) is still answering. Ask the user to check the Producer Pal device in Live, then call ppal-connect.`;
+    ? `${replaced}, but the new one hasn't answered yet. Wait a few seconds, then ${versionCheckSentence(fullConnectSeen)} Don't call update-producer-pal again.`
+    : `${replaced}, but the old version (${seen}) is still answering. Ask the user to check the Producer Pal device in Live, then ${versionCheckSentence(fullConnectSeen)}`;
 }

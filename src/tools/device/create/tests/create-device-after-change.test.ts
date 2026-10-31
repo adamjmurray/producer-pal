@@ -8,7 +8,7 @@
 // went in keeps the device's entry, with a detail for what didn't happen.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   beginWarningCapture,
@@ -35,14 +35,17 @@ import {
   TEMP_TRACK,
 } from "./browser/temp-track-test-helpers.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
-  warnOnce: vi.fn(),
+  emitWarning: vi.fn(),
+  emitWarningOnce: vi.fn(),
 }));
 
 const APPENDS = "t0/d+,t0/d+,t0/d+";
@@ -85,16 +88,16 @@ describe("createDevice — a path that can't be parsed", () => {
 
 describe("createDevice — a legacy path spelling", () => {
   it("warns as often as the write parses it, not once more for the check", async () => {
-    const { warn } = await import("#src/shared/max/v8-max-console.ts");
+    const { emitWarning } = await import("#src/shared/max/v8-max-console.ts");
 
     registerTracks(1);
-    vi.mocked(warn).mockClear();
+    vi.mocked(emitWarning).mockClear();
 
     await createDevice({ device: "Reverb", path: "0" });
 
     expect(
       vi
-        .mocked(warn)
+        .mocked(emitWarning)
         .mock.calls.filter(([message]) =>
           String(message).includes("bare track index"),
         ),

@@ -11,6 +11,7 @@ import {
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { splitEntries } from "#src/tools/shared/validation/lists/split-entries.ts";
 import { resolveLocatorRefToBeats } from "./locators.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 
 // The published prefix and its undocumented spelling, longest first so
 // "locator:" isn't read as "loc:" plus a stray "ator:". Matched
@@ -97,7 +98,7 @@ export function songPositionToBeats(
  *
  * A comma inside a locator name is written `\,`. An empty entry is refused
  * before any locator is looked up. Any other entry keeps its commas as written.
- * @param liveSet - The live_set LiveAPI object, for the meter and the lookups
+ * @param liveSet - The live_set LiveAPI object, for the lookups
  * @param value - The position list as the caller wrote it
  * @param labels - How to name this in errors
  * @returns The list with every locator resolved to a bar|beat
@@ -115,10 +116,11 @@ export function resolveLocatorPositions(
     return value;
   }
 
+  const { numerator, denominator } = songMeter();
   const options: SongPositionOptions = {
     ...labels,
-    timeSigNumerator: liveSet.getProperty("signature_numerator") as number,
-    timeSigDenominator: liveSet.getProperty("signature_denominator") as number,
+    timeSigNumerator: numerator,
+    timeSigDenominator: denominator,
   };
 
   return entries

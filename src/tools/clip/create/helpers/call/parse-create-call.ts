@@ -90,7 +90,7 @@ export function parseCreateCall(
   validateCreateClipParams(args.notes ?? null, args.sampleFile ?? null);
   refuseUnknownAuto(args.auto ?? null);
 
-  const song = readSongMeter(liveSet);
+  const song = readSongMeter();
   // sampleFile, timeSignature, start, length and firstStart pair 1:1 with the
   // clips, so each gets its own sample, meter and region.
   const plans = buildClipPlans({

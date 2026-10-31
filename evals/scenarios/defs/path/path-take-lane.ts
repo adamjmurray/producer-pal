@@ -20,6 +20,7 @@ import {
   MSG_CONNECT,
   TOOL_CONNECT,
 } from "../clip/helpers/clip-tool-constants.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** Bass is track 1 in basic-midi-4-track. */
 const BASS_TRACK_INDEX = 1;
@@ -50,7 +51,7 @@ function describeLanes(result: unknown): string {
 function assertClipOnFirstLane(): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-track",
+    tool: TOOLS.readTrack,
     args: {
       trackIndex: BASS_TRACK_INDEX,
       include: ["arrangement-clips"],

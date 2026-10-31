@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { DEVICE_BASICS_ROUTE } from "#src/tools/shared/remote-script/device-basics/device-basics-contract.ts";
 import {
   RACK_MACROS_ROUTE,
   REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
@@ -16,13 +17,19 @@ import { forwardRemoteScriptRequest } from "./remote-script-forward.ts";
 
 /**
  * Register the routes V8 uses to ask the remote script which rack macros are
- * mapped (`/device/macros`) and to read and write a Simpler's pitch bend ranges
+ * mapped (`/device/macros`), for a device's name and on/off state
+ * (`/device/basics`), and to read and write a Simpler's pitch bend ranges
  * (`/device/simpler/*`).
  */
 export function registerRemoteScriptDeviceRoutes(): void {
   registerNodeRoute(
     RACK_MACROS_ROUTE,
     forwardRackMacrosRequest,
+    REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
+  );
+  registerNodeRoute(
+    DEVICE_BASICS_ROUTE,
+    forwardDeviceBasicsRequest,
     REMOTE_SCRIPT_ROUTE_TIMEOUT_MS,
   );
   registerNodeRoute(
@@ -51,6 +58,22 @@ async function forwardRackMacrosRequest(
   args: unknown,
 ): Promise<RouteReply<Record<string, unknown>>> {
   return await forwardRemoteScriptRequest("/device/macros", {
+    device_paths: devicePathsOf(args),
+  });
+}
+
+/**
+ * Forward one device name and on/off state request to the remote script.
+ * @param args - `{ devicePaths }`, in V8's spelling
+ * @returns The remote script's JSON, an error worded for the model, or
+ *   `available: false` when nothing answered
+ * @throws Error when `devicePaths` isn't a list of strings, or the remote
+ *   script took the request but never answered
+ */
+async function forwardDeviceBasicsRequest(
+  args: unknown,
+): Promise<RouteReply<Record<string, unknown>>> {
+  return await forwardRemoteScriptRequest("/device/basics", {
     device_paths: devicePathsOf(args),
   });
 }

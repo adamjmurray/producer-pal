@@ -7,6 +7,7 @@ import {
   type DeviceInstallStatus,
   type DeviceState,
 } from "#webui/hooks/settings/installation/use-device-install";
+import { wrapperInstallLabel } from "#webui/hooks/settings/installation/helpers/plugin-host-wrappers";
 
 /** What the card's actions need to know beyond the server's status. */
 export interface DeviceActionsContext {
@@ -75,7 +76,8 @@ export function installReplaces(
  * @param status - The server's device-install status
  * @param ctx - The shared path field and in-flight work
  * @returns The install button; off for a development build, or null when the
- *   copy is already this device or the device can't be read
+ *   copy is already this device (and any plug-in host devices are in) or the
+ *   device can't be read
  */
 function installAction(
   status: DeviceInstallStatus,
@@ -92,12 +94,17 @@ function installAction(
   // a plain copy that never replaces a newer one.
   const state = ctx.isDetected ? status.state : null;
 
-  if (!canInstall || state === "same") {
+  // With the device current, only plug-in host devices left to install is
+  // worth a button. Only a hosting build ever has any.
+  const label =
+    state === "same" ? wrapperInstallLabel(status) : copyLabel(state);
+
+  if (!canInstall || label == null) {
     return null;
   }
 
   return {
-    label: ctx.installing ? "Installing…" : copyLabel(state),
+    label: ctx.installing ? "Installing…" : label,
     disabled: ctx.installing || ctx.path === "",
   };
 }

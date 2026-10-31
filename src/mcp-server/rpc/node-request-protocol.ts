@@ -13,7 +13,7 @@
 import Max from "max-api";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { END_OF_CHUNKS, planChunks } from "#src/shared/mcp-responses.ts";
-import * as console from "../node-for-max-logger.ts";
+import { nodeError } from "../node-for-max-logger.ts";
 
 export type NodeRouteHandler = (args: unknown) => unknown;
 
@@ -84,13 +84,14 @@ export async function handleNodeRequest(
   } catch (error) {
     const message = errorMessage(error);
 
-    console.error(
+    nodeError(
       `Failed to parse node_request: ${message} [requestId=${requestId}]`,
     );
 
     await sendNodeResponse(requestId, {
       success: false,
       error: `Failed to parse request: ${message}`,
+      notRun: true,
     });
 
     return;
@@ -102,6 +103,7 @@ export async function handleNodeRequest(
     await sendNodeResponse(requestId, {
       success: false,
       error: `Unknown route: ${route}`,
+      notRun: true,
     });
 
     return;
@@ -117,7 +119,7 @@ export async function handleNodeRequest(
 
     await sendNodeResponse(requestId, { success: true, result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
 
     await sendNodeResponse(requestId, {
       success: false,
@@ -149,7 +151,7 @@ async function runWithTimeout(
     timer = setTimeout(() => {
       const message = `Route '${route}' timed out after ${timeoutMs}ms`;
 
-      console.error(`${message} [requestId=${requestId}]`);
+      nodeError(`${message} [requestId=${requestId}]`);
       reject(new Error(message));
     }, timeoutMs);
   });
@@ -172,10 +174,17 @@ async function runWithTimeout(
  * @param response.success - Whether the route succeeded
  * @param response.result - The route's return value (on success)
  * @param response.error - Error message (on failure)
+ * @param response.notRun - The route never ran (an unknown route or an
+ *   unreadable request)
  */
 async function sendNodeResponse(
   requestId: string,
-  response: { success: boolean; result?: unknown; error?: string },
+  response: {
+    success: boolean;
+    result?: unknown;
+    error?: string;
+    notRun?: true;
+  },
 ): Promise<void> {
   const jsonString = JSON.stringify(response);
   const plan = planChunks(jsonString);
@@ -187,7 +196,7 @@ async function sendNodeResponse(
   try {
     await Max.outlet("node_response", requestId, ...chunks, END_OF_CHUNKS);
   } catch (error) {
-    console.error(
+    nodeError(
       `Failed to send node_response: ${String(error)} [requestId=${requestId}]`,
     );
   }

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { requireCreatedClip } from "#src/tools/clip/helpers/clip-results.ts";
 import { clipFromDuplicateResult } from "#src/tools/shared/arrangement/helpers/arrangement-duplicate-result.ts";
 import {
@@ -146,7 +146,7 @@ export function cleanupTempClip(
   }
 
   const { track, clipId, isMidiTrack, slot, sceneId } = tempClipInfo;
-  const say = report ?? ((message: string) => console.warn(message));
+  const say = report ?? ((message: string) => emitWarning(message));
 
   removeTempArrangementClip(track, clipId, say);
 

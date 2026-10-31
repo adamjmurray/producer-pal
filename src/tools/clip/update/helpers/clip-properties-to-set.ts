@@ -19,9 +19,9 @@ export interface ClipPropsToSet {
 }
 
 interface RegionProps {
-  /** Write loop_end before loop_start (see endMovesFirst) */
+  /** Write loop_end before the starts: it isn't shrinking (see endMovesFirst) */
   loopEndFirst: boolean;
-  /** Write end_marker before start_marker (see endMovesFirst) */
+  /** Write end_marker before the starts: it isn't shrinking (see endMovesFirst) */
   markerEndFirst: boolean;
   /** Start position in marker units */
   start: number | null;
@@ -36,12 +36,13 @@ interface RegionProps {
 }
 
 /**
- * Add the region properties in an order Live accepts: each pair's end goes
- * first only when endMovesFirst says so, then the starts, then the other ends.
+ * Add the region properties in an order Live accepts: the ends that aren't
+ * shrinking go first, then both starts, then the ends that shrink (see
+ * clipRegionWrites for why the pairs can't be ordered apart).
  * @param propsToSet - Properties object to modify
  * @param region - Which properties to write, and where
- * @param region.loopEndFirst - Write loop_end before loop_start
- * @param region.markerEndFirst - Write end_marker before start_marker
+ * @param region.loopEndFirst - Write loop_end before the starts
+ * @param region.markerEndFirst - Write end_marker before the starts
  * @param region.start - Start position in marker units
  * @param region.end - End position in marker units
  * @param region.startMarker - Start marker position in marker units
@@ -161,10 +162,11 @@ export function buildClipPropertiesToSet({
     signature_denominator: timeSignature != null ? timeSigDenominator : null,
   };
 
-  const markerEndFirst = endMovesFirst(startMarkerBeats, currentEndMarker);
+  const startMarkerPastEnd =
+    startMarkerBeats != null && startMarkerBeats >= currentEndMarker;
   const region: RegionProps = {
-    loopEndFirst: endMovesFirst(startBeats, currentLoopEnd),
-    markerEndFirst,
+    loopEndFirst: endMovesFirst(endBeats, currentLoopEnd),
+    markerEndFirst: endMovesFirst(endBeats, currentEndMarker),
     start,
     end,
     startMarker,
@@ -172,7 +174,8 @@ export function buildClipPropertiesToSet({
     // A looping clip still has to move end_marker when its start_marker is
     // going past it, or Live drops the start and playback begins at the old one.
     writesEndMarker:
-      (!isLooping || regionLooping === false || markerEndFirst) && end != null,
+      (!isLooping || regionLooping === false || startMarkerPastEnd) &&
+      end != null,
   };
 
   // The loop brace needs `looping` already on, and Live ignores a start_marker

@@ -12,7 +12,7 @@ import { filesContaining } from "#src/test/helpers/meta-test-helpers.ts";
 // place for the suspend/resume bookkeeping to stay honest.
 const PENDING_RAILS = /for unknown request: |new Map<string, Pending>/;
 
-const HOME = "src/live-api-adapter/request-channel.ts";
+const HOME = "src/live-api-adapter/protocols/request-channel.ts";
 
 describe("the V8 request rails have one home", () => {
   it("holds pending Node requests in requestChannel only", () => {

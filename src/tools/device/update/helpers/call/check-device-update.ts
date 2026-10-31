@@ -42,6 +42,7 @@ import {
   racksHidingMappings,
 } from "./look-up-macro-mappings.ts";
 import { type MappedMacros } from "#src/tools/shared/device/rack-macro-mappings.ts";
+import { type HostedStall } from "./hosted-params.ts";
 import { type PitchBendStall } from "./simpler-pitch-bend.ts";
 import { type DeviceCall } from "./parse-device-call.ts";
 import { type ResolvedTarget } from "./resolve-device-target.ts";
@@ -86,6 +87,8 @@ export interface DeviceChecked {
   focus?: boolean;
   /** Whether a Simpler pitch bend write stalled, so later ones aren't tried */
   pitchBend: PitchBendStall;
+  /** Whether a hosted plug-in's write stalled, so later ones aren't tried */
+  hosted: HostedStall;
   /** The call's spelling of each written entry's container, where it is kept */
   written: Map<object, WrittenContainer | undefined>;
   /** Each target's move of drum chains to another pad, by position */
@@ -148,6 +151,7 @@ export function deviceListArgs(call: DeviceCall): ListArg[] {
  * @param call - The update-device call
  * @param targets - The call's targets
  * @param deadline - The request deadline
+ * @param manage - Whether the caller can use ppal-manage
  * @returns The call, checked; a promise when it has presets or mapped macros
  *   to look up
  */
@@ -155,6 +159,7 @@ export function checkDeviceUpdate(
   call: DeviceCall,
   targets: Array<Target<DevicePayload>>,
   deadline: number | null | undefined,
+  manage: boolean,
 ): MaybePromise<DeviceChecked> {
   const { name, color, sendReturn, mappedPitch, preset } = call.options;
   const { sent, focus, options } = call;
@@ -179,6 +184,7 @@ export function checkDeviceUpdate(
       named,
       focus,
       pitchBend: {},
+      hosted: {},
       written,
       padMoves: [],
     };
@@ -215,6 +221,7 @@ export function checkDeviceUpdate(
     named,
     focus,
     pitchBend: {},
+    hosted: {},
     written,
     padMoves: padMoves(targets, lists.destinations),
   };
@@ -230,7 +237,7 @@ export function checkDeviceUpdate(
   // Only a call with something to look up waits on the remote script.
   return preset == null && racks.every((rack) => rack == null)
     ? { ...checked, presets: [], macros: [] }
-    : lookUpThenCheck({ checked, targets, racks, deadline });
+    : lookUpThenCheck({ checked, targets, racks, deadline, manage });
 }
 
 // --- Helpers below main exports ---
@@ -243,6 +250,7 @@ export function checkDeviceUpdate(
  * @param lookups.targets - The call's targets
  * @param lookups.racks - The racks a macroCount would hide mapped macros of
  * @param lookups.deadline - The request deadline
+ * @param lookups.manage - Whether the caller can use ppal-manage
  * @returns The call, checked
  */
 async function lookUpThenCheck({
@@ -250,16 +258,18 @@ async function lookUpThenCheck({
   targets,
   racks,
   deadline,
+  manage,
 }: {
   checked: Omit<DeviceChecked, "presets" | "macros">;
   targets: Array<Target<DevicePayload>>;
   racks: Array<LiveAPI | null>;
   deadline: number | null | undefined;
+  manage: boolean;
 }): Promise<DeviceChecked> {
   const presets =
     checked.options.preset == null
       ? []
-      : await presetsFor(targets, checked.lists, deadline);
+      : await presetsFor(targets, checked.lists, deadline, manage);
   const macros = await lookUpHiddenMacroMappings(racks, deadline);
 
   return { ...checked, presets, macros };
@@ -270,12 +280,14 @@ async function lookUpThenCheck({
  * @param targets - The call's targets
  * @param lists - The call's per-target values
  * @param deadline - The request deadline
+ * @param manage - Whether the caller can use ppal-manage
  * @returns Each target's browser item, undefined where it gets none
  */
 async function presetsFor(
   targets: Array<Target<DevicePayload>>,
   lists: TargetLists,
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<Array<BrowserItem | undefined>> {
   const devices = targets.map((target) =>
     target.data != null && "resolved" in target.data
@@ -284,7 +296,7 @@ async function presetsFor(
   );
   const presets = targets.map((_target, i) => lists.valuesAt(i).preset);
 
-  return await lookUpPresets(devices, presets, deadline);
+  return await lookUpPresets(devices, presets, deadline, manage);
 }
 
 /**

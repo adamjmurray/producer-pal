@@ -14,7 +14,7 @@ import {
   featureBlob,
   KICK_VECTOR,
   setupLibraryFixtureLifecycle,
-  STALENESS_RISK,
+  STALENESS_NOTE,
 } from "../fixtures/library-fixture.ts";
 
 vi.mock(import("../../live-db-path.ts"), () => ({
@@ -23,7 +23,7 @@ vi.mock(import("../../live-db-path.ts"), () => ({
   liveDatabaseDir: vi.fn(),
 }));
 vi.mock(import("../../db-staleness.ts"), () => ({
-  detectStalenessRisk: vi.fn(),
+  stalenessNote: vi.fn(),
 }));
 
 const dbPathMod = await import("../../live-db-path.ts");
@@ -92,7 +92,7 @@ describe("findSimilar", () => {
   setupLibraryFixtureLifecycle(dbPathMod, addSimilarityCandidates);
 
   beforeEach(() => {
-    vi.mocked(stalenessMod.detectStalenessRisk).mockResolvedValue(undefined);
+    vi.mocked(stalenessMod.stalenessNote).mockResolvedValue(undefined);
   });
 
   it("ranks by Euclidean distance, nearest first", async () => {
@@ -162,13 +162,11 @@ describe("findSimilar", () => {
   });
 
   it("surfaces a staleness advisory from the DB layer", async () => {
-    vi.mocked(stalenessMod.detectStalenessRisk).mockResolvedValue(
-      STALENESS_RISK,
-    );
+    vi.mocked(stalenessMod.stalenessNote).mockResolvedValue(STALENESS_NOTE);
 
     const result = await findSimilar({ similarTo: SEED_KICK });
 
-    expect(result.stalenessRisk).toStrictEqual(STALENESS_RISK);
+    expect(result.stalenessNote).toBe(STALENESS_NOTE);
   });
 
   it("reports a missing similarTo arg without throwing", async () => {

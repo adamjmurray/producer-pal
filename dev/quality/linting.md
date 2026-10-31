@@ -151,12 +151,21 @@ the import zone graph (`import-x/no-restricted-paths`), or
 honor `eslint-disable` directives, so they're no stricter than the rules they
 stand in for:
 
-| Rule                                    | Enforced by                                 |
-| --------------------------------------- | ------------------------------------------- |
-| `no-restricted-syntax` (webui, LiveAPI) | `src/test/meta/import-restrictions.test.ts` |
-| `import-x/no-restricted-paths`          | `src/test/meta/import-restrictions.test.ts` |
-| `no-restricted-imports` regex form      | `src/test/meta/import-restrictions.test.ts` |
-| `jsdoc/require-jsdoc`                   | `src/test/meta/jsdoc-requirements.test.ts`  |
+| Rule                                    | Enforced by                                              |
+| --------------------------------------- | -------------------------------------------------------- |
+| `no-restricted-syntax` (webui, LiveAPI) | `src/test/meta/architecture/import-restrictions.test.ts` |
+| `import-x/no-restricted-paths`          | `src/test/meta/architecture/import-restrictions.test.ts` |
+| `no-restricted-imports` regex form      | `src/test/meta/architecture/import-restrictions.test.ts` |
+| `jsdoc/require-jsdoc`                   | `src/test/meta/jsdoc-requirements.test.ts`               |
+
+**The Max console.** Warnings and logs reach the tool response or the Max
+console only through `v8-max-console.ts` (V8) and `node-for-max-logger.ts`
+(Node); a native `console` would swallow them silently. Three layers keep that
+from happening: the global `console` is banned in `src/`
+(`no-restricted-globals`), a namespace import of either module is banned outside
+tests (`no-restricted-imports`), and a meta test in
+`import-restrictions.test.ts` (not a stand-in for a lint rule, so it has no row
+above) bans `import * as console` anywhere in `src/`.
 
 **Relative imports.** A relative import must stay inside its own top-level
 `src/` module. `src/` holds hundreds of parent-relative specifiers, nearly all

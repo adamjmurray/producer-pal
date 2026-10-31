@@ -7,7 +7,7 @@
 // comparing track lists since Live makes it after the route has answered.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import {
@@ -34,10 +34,13 @@ import { createNoteTrackingMethods } from "#src/test/helpers/mock-registry-test-
 const OUTDATED =
   "the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0 or later)";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 /** The name Live gives a new track. */
 const TRACK_NAME = "5-Drums to MIDI";
@@ -626,6 +629,20 @@ describe("updateClip - convert", () => {
       await expect(updateClip({ id: "123", convert: "drums" })).rejects.toThrow(
         /converting a clip needs the Producer Pal remote script.*Settings/,
       );
+    });
+
+    it("sends a caller without ppal-manage to the chat UI instead", async () => {
+      answerRoute(undefined, { available: false });
+
+      const refused = updateClip(
+        { id: "123", convert: "drums" },
+        { manageAvailable: false },
+      );
+
+      await expect(refused).rejects.toThrow(
+        /converting a clip needs the Producer Pal remote script.*Settings → Installation/,
+      );
+      await expect(refused).rejects.not.toThrow("ppal-manage");
     });
 
     it("says so when the remote script is out of date", async () => {

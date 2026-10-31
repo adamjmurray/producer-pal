@@ -8,18 +8,40 @@ export const LOCAL_PROVIDER_API_KEY = "not-needed";
 
 /**
  * Resolve the API key to send for a provider, substituting the placeholder key
- * for local providers (lmstudio/ollama) that don't require authentication.
+ * for providers that may not need authentication: local ones (lmstudio/ollama)
+ * and a custom endpoint once it has a URL. This is the one place that decides
+ * which providers can go without a key.
  * @param provider - Provider identifier
- * @param apiKey - The stored API key (may be empty for local providers)
- * @returns The API key to use for requests
+ * @param apiKey - The stored API key (may be empty for keyless providers)
+ * @param baseUrl - The provider's base URL (decides the custom provider)
+ * @returns The API key to use for requests; "" when the provider needs one
  */
 export function resolveProviderApiKey(
   provider: string,
   apiKey: string,
+  baseUrl?: string,
 ): string {
-  return provider === "lmstudio" || provider === "ollama"
-    ? apiKey || LOCAL_PROVIDER_API_KEY
-    : apiKey;
+  const keyless =
+    provider === "lmstudio" ||
+    provider === "ollama" ||
+    (provider === "custom" && Boolean(baseUrl?.trim()));
+
+  return keyless ? apiKey || LOCAL_PROVIDER_API_KEY : apiKey;
+}
+
+/**
+ * Whether a provider has what it needs to chat: an API key, or none needed.
+ * @param provider - Provider identifier
+ * @param apiKey - The decrypted API key
+ * @param baseUrl - The provider's base URL
+ * @returns True when requests can be sent
+ */
+export function isProviderReady(
+  provider: string,
+  apiKey: string,
+  baseUrl?: string,
+): boolean {
+  return resolveProviderApiKey(provider, apiKey, baseUrl) !== "";
 }
 
 /** Base URLs for each provider */

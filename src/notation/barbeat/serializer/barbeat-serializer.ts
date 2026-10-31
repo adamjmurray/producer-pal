@@ -6,7 +6,7 @@
 import { sortNotes } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { isValidMidi } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { formatDrumNotation } from "./helpers/barbeat-serializer-drum.ts";
 import { formatBeatPosition } from "./helpers/barbeat-serializer-fractions.ts";
 import {
@@ -96,7 +96,7 @@ function dropUnserializableNotes(clipNotes: NoteEvent[]): NoteEvent[] {
   const named = clipNotes.filter((note) => isValidMidi(note.pitch));
 
   if (named.length < clipNotes.length) {
-    console.warn(
+    emitWarning(
       `${clipNotes.length - named.length} note(s) skipped: MIDI pitch outside valid range 0-127`,
     );
   }
@@ -104,7 +104,7 @@ function dropUnserializableNotes(clipNotes: NoteEvent[]): NoteEvent[] {
   const notes = named.filter((note) => note.duration > 0);
 
   if (notes.length < named.length) {
-    console.warn(
+    emitWarning(
       `${named.length - notes.length} note(s) skipped: duration must be greater than 0`,
     );
   }

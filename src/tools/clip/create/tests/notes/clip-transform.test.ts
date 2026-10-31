@@ -23,6 +23,9 @@ vi.mock(
       changed: new Set<NoteEvent>(),
       original: new Map<NoteEvent, NoteEvent>(),
       roots: new Map(),
+      matched: new Set<NoteEvent>(),
+      selected: true,
+      failed: false,
       deleted: [60, 61, 62].map((pitch) => ({
         pitch,
         start_time: 0,
@@ -79,6 +82,9 @@ describe("resolveClipTransform", () => {
       changed: new Set<NoteEvent>(),
       original: new Map<NoteEvent, NoteEvent>(),
       roots: new Map(),
+      matched: new Set<NoteEvent>(),
+      selected: true,
+      failed: false,
       deleted: [60, 61, 62].map((pitch) => ({
         pitch,
         start_time: 0,

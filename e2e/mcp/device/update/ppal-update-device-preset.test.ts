@@ -37,6 +37,7 @@ import {
   requireRemoteScript,
   type StagedPreset,
   stagePpalPreset,
+  wastedSpaceTransmissionOrSkip,
 } from "../helpers/remote-script-test-helpers";
 import { PPAL_TRACK } from "../../e2e-test-set.ts";
 import {
@@ -237,6 +238,24 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
     expect(device.type).toBe("drum-rack");
   });
 
+  // The Core Library's one "Beard Kit" is an Instrument Rack holding a Drum
+  // Rack, which the browser doesn't list under Drum Rack.
+  it("swaps a Drum Rack for a drum kit saved as an Instrument Rack, by name", async ({
+    skip,
+  }) => {
+    await skipTestBeforeLive(ctx.client!, skip, "12.4", LIBRARY_NEEDS);
+
+    const rack = await createOnFreshTrack("Drum Rack");
+    const updated = parseToolResult<UpdateResult>(
+      await call("ppal-update-device", { path: rack, preset: "Beard Kit" }),
+    );
+    const device = await readDevice(ctx.client!, rack);
+
+    expect(updated.path).toBe(rack);
+    expect(device.type).toBe("instrument-rack");
+    expect(device.name).toBe("Beard Kit");
+  });
+
   it("loads nothing for a preset of another kind", async () => {
     const drift = await createDrift();
     const result = await call("ppal-update-device", {
@@ -272,6 +291,59 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-update-device — presets", () => {
 
     expect((await readDevice(ctx.client!, drift.path)).name).toBe(
       presetName(adv.name),
+    );
+  });
+
+  /**
+   * A device of the given name on a fresh MIDI track.
+   * @param deviceName - The device
+   * @returns Its path
+   */
+  async function createOnFreshTrack(deviceName: string): Promise<string> {
+    const track = parseToolResult<{ path: string }>(
+      await call("ppal-create-track", { type: "midi" }),
+    );
+
+    return await createTestDeviceAt(
+      ctx.client!,
+      deviceName,
+      `t${trackIndexFromPath(track.path)}`,
+    );
+  }
+
+  // Shifter's browser presets include a "Transmission"; the Wasted Space pack
+  // files another that the browser doesn't list.
+  it("refuses a name filed under another device and elsewhere", async ({
+    skip,
+  }) => {
+    const packFile = await wastedSpaceTransmissionOrSkip(ctx.client!, skip);
+    const reverbPath = await createOnFreshTrack("Reverb");
+    const result = await call("ppal-update-device", {
+      path: reverbPath,
+      preset: "Transmission",
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'preset "Transmission" matches',
+    );
+    expect(getToolErrorMessage(result)).toContain(packFile);
+  });
+
+  it("loads a Shifter's own preset when another device files the name too", async ({
+    skip,
+  }) => {
+    await wastedSpaceTransmissionOrSkip(ctx.client!, skip);
+
+    const shifterPath = await createOnFreshTrack("Shifter");
+
+    await call("ppal-update-device", {
+      path: shifterPath,
+      preset: "Transmission",
+    });
+
+    expect((await readDevice(ctx.client!, shifterPath)).name).toBe(
+      "Transmission",
     );
   });
 

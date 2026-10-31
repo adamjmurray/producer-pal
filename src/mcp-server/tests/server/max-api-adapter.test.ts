@@ -6,8 +6,11 @@
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
-import { END_OF_CHUNKS } from "#src/shared/mcp-responses.ts";
-import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
+import {
+  END_OF_CHUNKS,
+  MAX_NODE_TO_V8_BYTES,
+} from "#src/shared/mcp-responses.ts";
+import { ensureSilenceWav } from "../../rpc/silent-wav-generator.ts";
 import {
   callLiveApi,
   handleLiveApiResult,
@@ -168,6 +171,88 @@ describe("Max API Adapter", () => {
       const result = await promise;
 
       expect(result.content[0]!.text).toBe("test response");
+    });
+
+    /**
+     * Args whose JSON is exactly `bytes` long.
+     * @param bytes - Wanted JSON size
+     * @returns The args
+     */
+    function argsOfBytes(bytes: number): { text: string } {
+      return { text: "x".repeat(bytes - JSON.stringify({ text: "" }).length) };
+    }
+
+    it("sends args of exactly the Node-to-V8 cap", async () => {
+      const args = argsOfBytes(MAX_NODE_TO_V8_BYTES);
+      const { promise, requestId } = setupPendingRequest("test-tool", args);
+
+      expect(Max.outlet).toHaveBeenCalledTimes(1);
+      handleLiveApiResult(
+        requestId,
+        JSON.stringify({ content: [{ type: "text", text: "ok" }] }),
+        END_OF_CHUNKS,
+      );
+      const result = await promise;
+
+      expect(result.isError).toBeUndefined();
+    });
+
+    it("sends multibyte args between 30,000 and the cap", async () => {
+      // 10,500 chars, 31,500 bytes: Max passes it intact.
+      const { promise, requestId } = setupPendingRequest("test-tool", {
+        text: "あ".repeat(10_500),
+      });
+
+      expect(Max.outlet).toHaveBeenCalledTimes(1);
+      handleLiveApiResult(
+        requestId,
+        JSON.stringify({ content: [{ type: "text", text: "ok" }] }),
+        END_OF_CHUNKS,
+      );
+      await promise;
+    });
+
+    it("refuses args one byte over the Node-to-V8 cap", async () => {
+      const result = await callLiveApi(
+        "test-tool",
+        argsOfBytes(MAX_NODE_TO_V8_BYTES + 1),
+      );
+
+      expect(Max.outlet).not.toHaveBeenCalled();
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain(
+        `args too large for a single Max IPC message: ${MAX_NODE_TO_V8_BYTES + 1} bytes exceeds ${MAX_NODE_TO_V8_BYTES}`,
+      );
+    });
+
+    it("refuses a context over the Node-to-V8 cap", async () => {
+      const overrides = {
+        notation: "x".repeat(MAX_NODE_TO_V8_BYTES),
+      } as unknown as RequestOverrides;
+      const result = await callLiveApi("test-tool", {}, overrides);
+
+      expect(Max.outlet).not.toHaveBeenCalled();
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain(
+        "Tool call 'test-tool' context too large for a single Max IPC message",
+      );
+      expect(isChangedNothing(result)).toBe(true);
+    });
+
+    it("refuses an oversized request without sending it", async () => {
+      // 15,000 chars but 45,000 bytes: only a byte count catches it.
+      const result = await callLiveApi("test-tool", {
+        text: "あ".repeat(15_000),
+      });
+
+      expect(Max.outlet).not.toHaveBeenCalled();
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain(
+        "Tool call 'test-tool' args too large for a single Max IPC message",
+      );
+      expect(result.content[0]!.text).toMatch(/Nothing changed\.$/);
+      // Not run, so the undo-step wrapper must not treat it as a change.
+      expect(isChangedNothing(result)).toBe(true);
     });
 
     it("should timeout after specified timeout period", async () => {

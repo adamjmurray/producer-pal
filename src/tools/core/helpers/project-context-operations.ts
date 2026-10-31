@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { backupProjectContextOnEdit } from "#src/live-api-adapter/project-context-sync.ts";
 import { detachWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -323,11 +323,11 @@ function normalizeForContainment(line: string): string {
  * @param args - Arguments to pass to the route
  * @returns The route's success payload
  */
-export async function callNodeContentRoute(
+export async function callNodeContentRoute<T = ContentResult>(
   route: string,
   args: object,
-): Promise<ContentResult> {
-  const response = await requestNode<ContentResult>(route, args);
+): Promise<T> {
+  const response = await requestNode<T>(route, args);
 
   if (!response.success || !response.result) {
     throw new Error(response.error ?? "unknown error");

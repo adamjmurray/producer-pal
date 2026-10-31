@@ -43,8 +43,7 @@ describe("updateTrack - send properties", () => {
   it("should set send gain with exact return name", () => {
     updateTrack({
       id: "123",
-      sendGainDb: -12,
-      sendReturn: "A-Reverb",
+      sends: [{ return: "A-Reverb", gainDb: -12 }],
     });
 
     expect(send1.set).toHaveBeenCalledWith("display_value", -12);
@@ -64,8 +63,7 @@ describe("updateTrack - send properties", () => {
   it("should set send gain with letter prefix", () => {
     updateTrack({
       id: "123",
-      sendGainDb: -6,
-      sendReturn: "A",
+      sends: [{ return: "A", gainDb: -6 }],
     });
 
     expect(send1.set).toHaveBeenCalledWith("display_value", -6);
@@ -74,8 +72,7 @@ describe("updateTrack - send properties", () => {
   it("should set second send with letter prefix", () => {
     updateTrack({
       id: "123",
-      sendGainDb: -3,
-      sendReturn: "B",
+      sends: [{ return: "B", gainDb: -3 }],
     });
 
     expect(send2.set).toHaveBeenCalledWith("display_value", -3);
@@ -84,8 +81,7 @@ describe("updateTrack - send properties", () => {
   it("should match a return track letter in lower case", () => {
     updateTrack({
       id: "123",
-      sendGainDb: -6,
-      sendReturn: "a",
+      sends: [{ return: "a", gainDb: -6 }],
     });
 
     expect(send1.set).toHaveBeenCalledWith("display_value", -6);
@@ -94,8 +90,7 @@ describe("updateTrack - send properties", () => {
   it("should set send gain to minimum value", () => {
     updateTrack({
       id: "123",
-      sendGainDb: -70,
-      sendReturn: "A",
+      sends: [{ return: "A", gainDb: -70 }],
     });
 
     expect(send1.set).toHaveBeenCalledWith("display_value", -70);
@@ -104,8 +99,7 @@ describe("updateTrack - send properties", () => {
   it("should set send gain to maximum value (0 dB)", () => {
     updateTrack({
       id: "123",
-      sendGainDb: 0,
-      sendReturn: "A",
+      sends: [{ return: "A", gainDb: 0 }],
     });
 
     expect(send1.set).toHaveBeenCalledWith("display_value", 0);
@@ -125,8 +119,7 @@ describe("updateTrack - send properties", () => {
 
     updateTrack({
       id: "123",
-      sendGainDb: -6,
-      sendReturn: "return_B",
+      sends: [{ return: "return_B", gainDb: -6 }],
     });
 
     expect(send1.set).not.toHaveBeenCalled();
@@ -138,8 +131,7 @@ describe("updateTrack - send properties", () => {
       () =>
         updateTrack({
           id: "123",
-          sendGainDb: -12,
-          sendReturn: "123",
+          sends: [{ return: "123", gainDb: -12 }],
         }),
       [send1, send2],
       "123",
@@ -159,6 +151,47 @@ describe("updateTrack - send properties", () => {
     expect(send2.set).not.toHaveBeenCalled();
   });
 
+  describe("deprecated sendGainDb + sendReturn", () => {
+    it("still sets the send", () => {
+      updateTrack({ id: "123", sendGainDb: -6, sendReturn: "A" });
+
+      expect(send1.set).toHaveBeenCalledWith("display_value", -6);
+    });
+
+    it.each([
+      ["both", { sendGainDb: -6, sendReturn: "A" }],
+      ["sendGainDb", { sendGainDb: -6 }],
+      ["sendReturn", { sendReturn: "A" }],
+    ])("refuses sends sent with %s, writing nothing", (_label, args) => {
+      expect(() =>
+        updateTrack({
+          id: "123",
+          name: "Bass",
+          sends: [{ return: "B", gainDb: -12 }],
+          ...args,
+        }),
+      ).toThrow(
+        /^sends names the send on its own - don't send .* with it \(sendGainDb and sendReturn are deprecated\)$/,
+      );
+      expect(send1.set).not.toHaveBeenCalled();
+      expect(send2.set).not.toHaveBeenCalled();
+      expect(track123.set).not.toHaveBeenCalled();
+    });
+
+    it("refuses sends sent with the pair whatever the values", () => {
+      expect(() =>
+        updateTrack({
+          id: "123",
+          sends: [{ return: "A", gainDb: -6 }],
+          sendGainDb: -6,
+          sendReturn: "A",
+        }),
+      ).toThrow(
+        "sends names the send on its own - don't send sendGainDb or sendReturn with it (sendGainDb and sendReturn are deprecated)",
+      );
+    });
+  });
+
   it("should skip when return track not found", () => {
     // Crucially, no send is touched — a mis-initialized "not found" sentinel would silently
     // write the wrong send instead of skipping.
@@ -166,8 +199,7 @@ describe("updateTrack - send properties", () => {
       () =>
         updateTrack({
           id: "123",
-          sendGainDb: -12,
-          sendReturn: "C",
+          sends: [{ return: "C", gainDb: -12 }],
         }),
       [send1, send2],
       "C",
@@ -187,8 +219,7 @@ describe("updateTrack - send properties", () => {
       () =>
         updateTrack({
           id: "123",
-          sendGainDb: -9,
-          sendReturn: "A",
+          sends: [{ return: "A", gainDb: -9 }],
         }),
       [send1, send2],
       "A",
@@ -206,8 +237,7 @@ describe("updateTrack - send properties", () => {
       () =>
         updateTrack({
           id: "123",
-          sendGainDb: -12,
-          sendReturn: "A",
+          sends: [{ return: "A", gainDb: -12 }],
         }),
       [send1, send2],
       "the track has no sends",
@@ -217,7 +247,7 @@ describe("updateTrack - send properties", () => {
   it("lists the returns it could have named instead", () => {
     // The model has to be able to tell what it could have said instead.
     expect(() =>
-      updateTrack({ id: "123", sendGainDb: -12, sendReturn: "ZZZ" }),
+      updateTrack({ id: "123", sends: [{ return: "ZZZ", gainDb: -12 }] }),
     ).toThrow(
       'no send landed — "ZZZ": no return track matching "ZZZ" (Available: A-Reverb, B-Delay)',
     );
@@ -231,7 +261,7 @@ describe("updateTrack - send properties", () => {
     });
 
     expect(() =>
-      updateTrack({ id: "123", sendGainDb: -12, sendReturn: "A" }),
+      updateTrack({ id: "123", sends: [{ return: "A", gainDb: -12 }] }),
     ).toThrow(
       'no send landed — "A": no return track matching "A" (the Live Set has no return tracks)',
     );
@@ -242,8 +272,7 @@ describe("updateTrack - send properties", () => {
     // no track named by the call is left without an answer.
     const result = updateTrack({
       id: "123,456",
-      sendGainDb: -12,
-      sendReturn: "ZZZ",
+      sends: [{ return: "ZZZ", gainDb: -12 }],
     });
 
     expect(capturedWarnings()).toStrictEqual([]);
@@ -260,8 +289,7 @@ describe("updateTrack - send properties", () => {
   it("should set sends on multiple tracks", () => {
     updateTrack({
       id: "123,456",
-      sendGainDb: -6,
-      sendReturn: "A",
+      sends: [{ return: "A", gainDb: -6 }],
     });
 
     expect(send1.set).toHaveBeenCalledWith("display_value", -6);
@@ -341,33 +369,6 @@ describe("updateTrack - send properties", () => {
           },
         ],
       });
-    });
-
-    it("honors the scalar pair alongside a list naming another return", () => {
-      updateTrack({
-        id: "123",
-        sendGainDb: -6,
-        sendReturn: "A",
-        sends: [{ return: "B", gainDb: -12 }],
-      });
-
-      expect(send1.set).toHaveBeenCalledWith("display_value", -6);
-      expect(send2.set).toHaveBeenCalledWith("display_value", -12);
-    });
-
-    it("says on the pair's entry that the list replaced it", () => {
-      // A send holds one value, so the caller has to be told which one held.
-      const result = updateTrack({
-        id: "123",
-        sendGainDb: -6,
-        sendReturn: "A",
-        sends: [{ return: "A-Reverb", gainDb: -12 }],
-      });
-
-      expect(sendsOf(result)).toStrictEqual([REPLACED]);
-      expect(capturedWarnings()).toStrictEqual([]);
-      expect(send1.set).toHaveBeenCalledWith("display_value", -12);
-      expect(send1.set).not.toHaveBeenCalledWith("display_value", -6);
     });
 
     it("says on the earlier entry that a later one replaced it", () => {
@@ -517,8 +518,7 @@ describe("updateTrack - send properties", () => {
 
       const result = updateTrack({
         id: "123",
-        sendGainDb: -6,
-        sendReturn: "A",
+        sends: [{ return: "A", gainDb: -6 }],
       });
 
       // One send has one shape, whichever param spelled it.
@@ -630,8 +630,7 @@ describe("updateTrack - send properties", () => {
     updateTrack({
       id: "123",
       name: "Test Track",
-      sendGainDb: -12,
-      sendReturn: "B",
+      sends: [{ return: "B", gainDb: -12 }],
     });
 
     expect(track123.set).toHaveBeenCalledWith("name", "Test Track");
@@ -670,8 +669,7 @@ describe("updateTrack - send properties", () => {
       () =>
         updateTrack({
           id: "123",
-          sendGainDb: -12,
-          sendReturn: "A",
+          sends: [{ return: "A", gainDb: -12 }],
         }),
       [send1, send2],
       "the track has no mixer",
@@ -695,8 +693,7 @@ describe("updateTrack - send properties", () => {
       () =>
         updateTrack({
           id: "123",
-          sendGainDb: -12,
-          sendReturn: "C", // Matches return track at index 2
+          sends: [{ return: "C", gainDb: -12 }], // Matches return track at index 2
         }),
       [send1, send2],
       "the track has no send for this return",
