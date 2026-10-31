@@ -13,6 +13,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/preact";
+import { render as preactRender } from "preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { markdownEditorTestMock } from "#webui/components/markdown-editor/tests/markdown-editor-test-mock";
 import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
@@ -649,6 +650,26 @@ describe("MemoryEntryEditor — external update banner", () => {
     expect(screen.getByRole("textbox", { name: /Memory/ })).toHaveProperty(
       "value",
       "Composes in D minor now.",
+    );
+  });
+
+  it("keeps the draft when Reload is clicked in the frame the memory disappears", () => {
+    const collection = fakeCollection();
+    const { container, rerender } = renderEditor({
+      collection,
+      entry: EXISTING,
+    });
+
+    rerender(
+      editorElement({ collection, entry: { ...EXISTING, body: "Changed." } }),
+    );
+    // Commit the deletion without flushing effects, so the banner still shows.
+    preactRender(editorElement({ collection, entry: null }), container);
+    screen.getByRole("button", { name: "Reload" }).click();
+
+    expect(screen.getByRole("textbox", { name: /Memory/ })).toHaveProperty(
+      "value",
+      EXISTING.body,
     );
   });
 

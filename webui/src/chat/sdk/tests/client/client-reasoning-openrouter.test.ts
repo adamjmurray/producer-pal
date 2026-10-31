@@ -57,17 +57,19 @@ const THINKING_ON = { openrouter: { reasoning: { effort: "medium" } } };
  * model messages streamText was called with.
  * @param chatHistory - Pre-seeded chat history
  * @param providerOptions - Provider options forwarded to the client config
+ * @param overrides - Other client config overrides
  * @returns The messages passed to streamText
  */
 async function sentMessages(
   chatHistory: ChatMessage[],
   providerOptions?: ChatClientConfig["providerOptions"],
+  overrides: Partial<ChatClientConfig> = {},
 ): Promise<Array<{ content: unknown }>> {
   mockStreamParts([]);
 
   const client = new ChatSdkClient(
     "key",
-    createConfig({ chatHistory, providerOptions }),
+    createConfig({ chatHistory, providerOptions, ...overrides }),
   );
 
   for await (const _ of client.sendMessage("Next")) {
@@ -295,6 +297,17 @@ describe("ChatSdkClient OpenRouter reasoning", () => {
       const messages = await sentMessages(
         withDetails({ responseModel: "test-20260101" }),
         THINKING_ON,
+      );
+
+      expect(messages[1]!.content).toHaveLength(2);
+    });
+
+    it("matches the step's model when the config names its model by id", async () => {
+      const model = "anthropic/claude-sonnet-5.5";
+      const messages = await sentMessages(
+        withDetails({ responseModel: model }),
+        THINKING_ON,
+        { model },
       );
 
       expect(messages[1]!.content).toHaveLength(2);

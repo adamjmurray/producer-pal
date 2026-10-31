@@ -266,6 +266,29 @@ describe("turn invalidation during setup", () => {
     });
   });
 
+  describe("restore without a switch while parked in the connect", () => {
+    it("fails the send instead of streaming with no client", async () => {
+      // A conversation loaded from the URL on mount restores without
+      // clearConversation, so a send already connecting stays live but loses
+      // its client.
+      const { result, releaseInit, sent, send } = parkFirstSendInConnect();
+
+      await tick();
+      await restoreHistory(result, OTHER_CONVERSATION);
+
+      releaseInit();
+      await send;
+      await tick();
+
+      expect(sent).toStrictEqual([]);
+      expect(result.current.getChatHistory().at(-1)).toStrictEqual({
+        role: "assistant",
+        content: expect.stringContaining("Failed to initialize chat client"),
+        isError: true,
+      });
+    });
+  });
+
   describe("locked settings follow the client, not the turn", () => {
     it("locks the adopting turn to the settings its client connected with", async () => {
       // The superseded init must not apply its own lock, but it is also the only

@@ -85,6 +85,18 @@ describe("useSettingsDismiss", () => {
     await expectShakeInsteadOfDismiss({ blockDismiss: true });
   });
 
+  it("ignores a dismiss while the dialog is already closing", async () => {
+    const { result, handleCancel } = renderDismiss({
+      settingsClosing: true,
+      hasUnsavedChanges: true,
+    });
+
+    await act(() => result.current.handleSettingsDismiss());
+
+    expect(handleCancel).not.toHaveBeenCalled();
+    expect(result.current.shake).toBe(false);
+  });
+
   it("clears shake state", async () => {
     const { result } = renderDismiss({ hasUnsavedChanges: true });
 

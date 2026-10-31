@@ -7,6 +7,7 @@
  * @vitest-environment happy-dom
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
+import { render as preactRender } from "preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   type LeaveGuard,
@@ -299,6 +300,22 @@ describe("CustomSkillEditor external update banner", () => {
       "checked",
       false,
     );
+  });
+
+  it("keeps the draft when Reload is clicked in the frame the skill disappears", () => {
+    const collection = stubCollection(vi.fn());
+    const { container, rerender } = renderEditor({ collection, entry: ENTRY });
+
+    rerender(
+      editorElement({ collection, entry: { ...ENTRY, body: "Changed." } }),
+    );
+    // Commit the deletion without flushing effects, so the banner still shows.
+    preactRender(editorElement({ collection, entry: null }), container);
+    screen.getByRole("button", { name: "Reload" }).click();
+
+    expect(
+      screen.getByRole("textbox", { name: /Instructions/ }),
+    ).toHaveProperty("value", ENTRY.body);
   });
 
   it("stays suppressed while the user is typing (dirty draft)", () => {
