@@ -211,9 +211,9 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update chain color by path", () => {
-      const result = updateDevice({ path: "t1/d0/c0", color: "#FF0000" });
+      const result = updateDevice({ path: "t1/d0/c0", color: "#FF3636" });
 
-      expect(chain123.set).toHaveBeenCalledWith("color", 16711680);
+      expect(chain123.set).toHaveBeenCalledWith("color", 16725558);
       expect(result).toStrictEqual({ id: "chain-123", path: "t1/d0/c0" });
     });
 

@@ -259,7 +259,7 @@ describe("createClip - arrangement view", () => {
       trackIndex: 0,
       arrangementStart: "1|1,2|1",
       name: "Alpha,Beta",
-      color: "#FF0000,#00FF00",
+      color: "#FF3636,#1AFF2F",
     });
 
     const second = lookupMockObject(
@@ -268,8 +268,8 @@ describe("createClip - arrangement view", () => {
 
     expect(clip.set).toHaveBeenCalledWith("name", "Alpha");
     expect(second.set).toHaveBeenCalledWith("name", "Beta");
-    expect(clip.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
-    expect(second.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+    expect(clip.set).toHaveBeenCalledWith("color", 16725558); // #FF3636
+    expect(second.set).toHaveBeenCalledWith("color", 1769263); // #1AFF2F
   });
 
   it("refuses more names than positions, naming both counts", async () => {
@@ -434,7 +434,7 @@ describe("createClip - arrangement clip Live does not make", () => {
       path: "t0[1|1]",
       sampleFile: "/samples/loop.wav",
       name: "",
-      color: "#FF0000",
+      color: "#FF3636",
     });
 
     expect(clip.set).not.toHaveBeenCalledWith("name", expect.anything());

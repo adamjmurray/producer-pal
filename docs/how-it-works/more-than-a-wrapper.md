@@ -40,11 +40,12 @@ this.set("color", (r << 16) | (g << 8) | b);
 
 So you can ask for _"make the drums dark purple"_ and it just works.
 
-There's a wrinkle. Live snaps colors to a **fixed palette of about 70
-swatches**, so the color you ask for isn't always the color you get. A thin
-wrapper hands back a different number and leaves the AI confused. Producer Pal
-reads the color back after setting it, and when Live has snapped it, puts the
-color it landed on in that clip's own result
+There's a wrinkle. Live only has a **fixed palette of 70 swatches**, so the
+color you ask for isn't always the color you get. Live's own snapping picks odd
+swatches (a purple can land as pink-red), so Producer Pal picks the swatch that
+looks closest before writing. A thin wrapper hands back a different number and
+leaves the AI confused. Producer Pal puts the color it landed on in that clip's
+own result
 ([`landed-color.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/helpers/landed-color.ts)):
 
 ```json

@@ -126,7 +126,7 @@ describe("updateClip - Properties and ID handling", () => {
 
     const result = await updateClip({
       id: " 123 , 456 , 789 ",
-      color: "#0000FF",
+      color: "#1A2F96",
     });
 
     expect(result).toStrictEqual([

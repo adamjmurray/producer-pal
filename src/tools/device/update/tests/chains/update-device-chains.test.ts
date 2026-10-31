@@ -110,22 +110,22 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it("should set color on a Chain", () => {
       const result = updateDevice({
         id: "456",
-        color: "#3B82F6",
+        color: "#5480E4",
       });
 
-      // setColor converts #3B82F6 to (0x3B << 16) | (0x82 << 8) | 0xF6 = 3900150
-      expect(chain.set).toHaveBeenCalledWith("color", 3900150);
+      // #5480E4 is a palette entry, so it is written as is
+      expect(chain.set).toHaveBeenCalledWith("color", 0x5480e4);
       expect(result).toStrictEqual({ id: "456" });
     });
 
     it("should set color on a DrumChain", () => {
       const result = updateDevice({
         id: "789",
-        color: "#FF0000",
+        color: "#FF3636",
       });
 
-      // setColor converts #FF0000 to (0xFF << 16) | (0x00 << 8) | 0x00 = 16711680
-      expect(drumChain.set).toHaveBeenCalledWith("color", 16711680);
+      // setColor converts #FF3636 to (0xFF << 16) | (0x00 << 8) | 0x00 = 16711680
+      expect(drumChain.set).toHaveBeenCalledWith("color", 16725558);
       expect(result).toStrictEqual({ id: "789" });
     });
 
@@ -142,7 +142,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     });
 
     it("should refuse color on a Device", () => {
-      expect(() => updateDevice({ id: "123", color: "#FF0000" })).toThrow(
+      expect(() => updateDevice({ id: "123", color: "#FF3636" })).toThrow(
         "color ignored: can't be set on a device",
       );
       expect(capturedWarnings()).toStrictEqual([]);
@@ -304,7 +304,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
 
   describe("unset property guards", () => {
     it("does not touch mute/solo on a Chain when only color is set", () => {
-      updateDevice({ id: "456", color: "#FF0000" });
+      updateDevice({ id: "456", color: "#FF3636" });
 
       expect(chain.set).not.toHaveBeenCalledWith("mute", expect.anything());
       expect(chain.set).not.toHaveBeenCalledWith("solo", expect.anything());

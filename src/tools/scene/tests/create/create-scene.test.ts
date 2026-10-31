@@ -53,7 +53,7 @@ describe("createScene", () => {
     const result = createScene({
       sceneIndex: 1,
       name: "New Scene",
-      color: "#FF0000",
+      color: "#FF3636",
       tempo: 120,
       timeSignature: "3/4",
     });
@@ -71,7 +71,7 @@ describe("createScene", () => {
       sceneIndex: 0,
       count: 3,
       name: "Verse",
-      color: "#00FF00",
+      color: "#1AFF2F",
     });
 
     expect(liveSet.call).toHaveBeenNthCalledWith(1, "create_scene", 0);
@@ -328,7 +328,7 @@ describe("createScene", () => {
       registerMockObject("live_set/scenes/3", { path: livePath.scene(3) });
 
       expect(() =>
-        createScene({ sceneIndex: 0, count: 4, color: "#FF0000,#00FF00" }),
+        createScene({ sceneIndex: 0, count: 4, color: "#FF3636,#1AFF2F" }),
       ).toThrow("count names 4 scenes but color names 2 entries");
     });
 
@@ -336,23 +336,23 @@ describe("createScene", () => {
       createScene({
         sceneIndex: 0,
         count: 3,
-        color: "#FF0000,#00FF00,#0000FF",
+        color: "#FF3636,#1AFF2F,#1A2F96",
       });
 
-      expect(scene0.set).toHaveBeenCalledWith("color", 16711680);
-      expect(scene1.set).toHaveBeenCalledWith("color", 65280);
-      expect(scene2.set).toHaveBeenCalledWith("color", 255);
+      expect(scene0.set).toHaveBeenCalledWith("color", 16725558);
+      expect(scene1.set).toHaveBeenCalledWith("color", 1769263);
+      expect(scene2.set).toHaveBeenCalledWith("color", 1716118);
     });
 
     it("should trim whitespace around comma-separated colors", () => {
       createScene({
         sceneIndex: 0,
         count: 2,
-        color: " #FF0000 , #00FF00 ",
+        color: " #FF3636 , #1AFF2F ",
       });
 
-      expect(scene0.set).toHaveBeenCalledWith("color", 16711680);
-      expect(scene1.set).toHaveBeenCalledWith("color", 65280);
+      expect(scene0.set).toHaveBeenCalledWith("color", 16725558);
+      expect(scene1.set).toHaveBeenCalledWith("color", 1769263);
     });
   });
 
@@ -371,7 +371,7 @@ describe("createScene", () => {
     });
 
     it("says nothing when the color lands as asked", () => {
-      expect(createScene({ sceneIndex: 1, color: "#FF0000" })).toStrictEqual({
+      expect(createScene({ sceneIndex: 1, color: "#FF3636" })).toStrictEqual({
         id: "live_set/scenes/1",
         path: "s1",
       });
@@ -466,12 +466,12 @@ describe("createScene", () => {
       const result = createScene({
         capture: true,
         name: "Captured with Props",
-        color: "#FF0000",
+        color: "#FF3636",
         tempo: 140,
         timeSignature: "3/4",
       });
 
-      expect(capturedScene.set).toHaveBeenCalledWith("color", 16711680);
+      expect(capturedScene.set).toHaveBeenCalledWith("color", 16725558);
       expect(capturedScene.set).toHaveBeenCalledWith("tempo", 140);
       expect(capturedScene.set).toHaveBeenCalledWith("tempo_enabled", true);
 
@@ -483,7 +483,7 @@ describe("createScene", () => {
     });
 
     it.each([
-      ["color only", { color: "#FF0000" }, "color", 16711680],
+      ["color only", { color: "#FF3636" }, "color", 16725558],
       ["tempo only", { tempo: 140 }, "tempo", 140],
       [
         "timeSignature only",

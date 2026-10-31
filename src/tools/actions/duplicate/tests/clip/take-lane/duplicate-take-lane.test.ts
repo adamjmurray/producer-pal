@@ -197,12 +197,12 @@ describe("duplicate take lane", () => {
   it("applies explicit name and color overrides to the take-lane copy", async () => {
     const newClip = await duplicateToFreshLane({
       name: "Variation A",
-      color: "#FF0000",
+      color: "#FF3636",
     });
 
     expect(newClip?.set).toHaveBeenCalledWith("name", "Variation A");
-    // setColor("#FF0000") converts to Live's 0x00RRGGBB int
-    expect(newClip?.set).toHaveBeenCalledWith("color", 0xff0000);
+    // setColor("#FF3636") converts to Live's 0x00RRGGBB int
+    expect(newClip?.set).toHaveBeenCalledWith("color", 0xff3636);
   });
 
   it("skips add_new_notes when the source clip is empty", async () => {

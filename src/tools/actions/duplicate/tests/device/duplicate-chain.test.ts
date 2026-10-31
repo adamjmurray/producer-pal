@@ -453,14 +453,14 @@ describe("duplicate - chain", () => {
         name: "Source",
         mute: 0,
         solo: 0,
-        color: 0xff0000,
+        color: 0xff3636,
         devices: [],
       },
     });
 
     await duplicate({ type: "chain", id: "chain-0" });
 
-    expect(created.set).toHaveBeenCalledWith("color", 0xff0000);
+    expect(created.set).toHaveBeenCalledWith("color", 0xff3636);
   });
 
   it("copies into a rack nested under a drum pad", async () => {

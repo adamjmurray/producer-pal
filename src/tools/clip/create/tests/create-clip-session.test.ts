@@ -223,14 +223,14 @@ describe("createClip - session view", () => {
       slot: "0/0",
       notes: "C3 D3 E3 1|1",
       name: "New Clip",
-      color: "#FF0000",
+      color: "#FF3636",
       looping: true,
       auto: "play-clip",
     });
 
     expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
     expect(clip.set).toHaveBeenCalledWith("name", "New Clip");
-    expect(clip.set).toHaveBeenCalledWith("color", 16711680);
+    expect(clip.set).toHaveBeenCalledWith("color", 16725558);
     expect(clip.set).toHaveBeenCalledWith("looping", 1);
     expect(clip.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [
@@ -269,7 +269,7 @@ describe("createClip - session view", () => {
   it("says nothing about color when the clip took the one asked for", async () => {
     setupDefaultSessionClip();
 
-    expect(await createClip({ slot: "0/0", color: "#FF0000" })).toStrictEqual({
+    expect(await createClip({ slot: "0/0", color: "#FF3636" })).toStrictEqual({
       id: "clip_0_0",
       path: "t0/s0",
     });
@@ -400,7 +400,7 @@ describe("createClip - session view", () => {
     const result = await createClip({
       slot: "0/1,0/2,0/3", // Create clips at scenes 1, 2, and 3
       name: "Loop",
-      color: "#00FF00",
+      color: "#1AFF2F",
     });
 
     const createSceneCalls = liveSet.call.mock.calls.filter(

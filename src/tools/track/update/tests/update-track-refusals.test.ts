@@ -143,14 +143,14 @@ describe("updateTrack - refused mute, solo and arm", () => {
   });
 
   it("keeps the hit and says why mute didn't land beside a color that did", () => {
-    const result = updateTrack({ id: "main", color: "#FF0000", mute: true });
+    const result = updateTrack({ id: "main", color: "#FF3636", mute: true });
 
     expect(result).toStrictEqual({
       id: "main",
       path: "mt",
       detail: `mute had no effect: ${NO_MAIN_SWITCH}`,
     });
-    expect(mainTrack.set).toHaveBeenCalledWith("color", 16711680);
+    expect(mainTrack.set).toHaveBeenCalledWith("color", 16725558);
     expect(mainTrack.set).not.toHaveBeenCalledWith("mute", expect.anything());
   });
 

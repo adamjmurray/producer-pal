@@ -400,13 +400,13 @@ describe("createClip - advanced features", () => {
       await createClip({
         path: "t0[1|1],t0/s0",
         name: "Arr,Session",
-        color: "#FF0000,#00FF00",
+        color: "#FF3636,#1AFF2F",
       });
 
       expect(arrangementClip.set).toHaveBeenCalledWith("name", "Arr");
-      expect(arrangementClip.set).toHaveBeenCalledWith("color", 16711680);
+      expect(arrangementClip.set).toHaveBeenCalledWith("color", 16725558);
       expect(sessionClip.set).toHaveBeenCalledWith("name", "Session");
-      expect(sessionClip.set).toHaveBeenCalledWith("color", 65280);
+      expect(sessionClip.set).toHaveBeenCalledWith("color", 1769263);
     });
 
     it("spans clip.index/clip.count across the full session+arrangement batch", async () => {
@@ -622,9 +622,9 @@ describe("buildClipProperties (unit)", () => {
 
   it("includes color only when color is non-null", () => {
     expect(
-      buildClipProperties(0, 4, null, null, undefined, "#FF0000", 4, 4, 4)
+      buildClipProperties(0, 4, null, null, undefined, "#FF3636", 4, 4, 4)
         .color,
-    ).toBe("#FF0000");
+    ).toBe("#FF3636");
     expect(
       buildClipProperties(0, 4, null, null, undefined, null, 4, 4, 4).color,
     ).toBeUndefined();

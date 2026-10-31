@@ -105,12 +105,12 @@ describe("createClip - audio clips", () => {
         slot: "0/0",
         sampleFile: "/path/to/kick.wav",
         name: "Kick Sample",
-        color: "#FF0000",
+        color: "#FF3636",
       });
 
       // Verify name and color are set
       expect(clip.set).toHaveBeenCalledWith("name", "Kick Sample");
-      expect(clip.set).toHaveBeenCalledWith("color", 16711680); // #FF0000 converted to integer
+      expect(clip.set).toHaveBeenCalledWith("color", 16725558); // #FF3636 converted to integer
 
       expectNoTimingProperties(clip);
 
@@ -283,11 +283,11 @@ describe("createClip - audio clips", () => {
         arrangementStart: "5|1",
         sampleFile: "/path/to/vocals.wav",
         name: "Vocals",
-        color: "#00FF00",
+        color: "#1AFF2F",
       });
 
       expect(clip.set).toHaveBeenCalledWith("name", "Vocals");
-      expect(clip.set).toHaveBeenCalledWith("color", 65280); // #00FF00 converted to integer
+      expect(clip.set).toHaveBeenCalledWith("color", 1769263); // #1AFF2F converted to integer
 
       expect(result).toStrictEqual({
         id: "arrangement_audio_clip",

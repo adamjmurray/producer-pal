@@ -35,6 +35,14 @@ A call that names N targets gets N entries back, in the order named.
   count is refused before any work runs. Nothing cycles: a cycled destination
   overwrites, and a caller who miscounted gets a plausible result. An old schema
   line saying "cycles if fewer" made models write short lists.
+- **A color is written as the nearest palette entry.** Live keeps a fixed
+  70-entry palette and snaps anything else by raw RGB distance, which picks odd
+  entries (`#800080` landed pink-red). Every color write goes through
+  `setColor`, which picks the closest entry by OKLab distance (near-grays only
+  to the palette's grays) and writes that, so Live has nothing left to snap. A
+  request off the palette still comes back on its entry as `color` and a
+  `detail` (`landedColor`). The raw `ppal-live-api` tool's `set-color` is the
+  exception: it writes the color as given, to probe Live's own snap.
 - **A destination never broadcasts**, because a slot, lane, device or pad holds
   one object. With several sources the destinations pair one per source
   (`requireDestinationPerSource`). One source may take any number of
