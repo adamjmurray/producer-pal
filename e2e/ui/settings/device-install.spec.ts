@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // The Installation tab's device section against stubbed /device-install
@@ -21,6 +21,17 @@ import {
 
 const USER_LIBRARY = "/Users/me/Music/Ableton/User Library";
 const DEVICE_PATH = `${USER_LIBRARY}/Presets/MIDI Effects/Max MIDI Effect/Producer_Pal.amxd`;
+
+/** An install POST that copies the device into the User Library. */
+const INSTALLS: InstallStub<DeviceStatus> = {
+  status: 200,
+  body: {
+    outcome: "installed",
+    path: DEVICE_PATH,
+    detail: "Installed the device.",
+  },
+  after: { state: "same", installedVersion: "1.2.0" },
+};
 
 /** The `GET /device-install` body. */
 interface DeviceStatus {
@@ -83,15 +94,7 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
     page,
   }) => {
     await installStubs(page);
-    const posted = await stubDevice(page, status(), {
-      status: 200,
-      body: {
-        outcome: "installed",
-        path: DEVICE_PATH,
-        detail: "Installed the device.",
-      },
-      after: { state: "same", installedVersion: "1.2.0" },
-    });
+    const posted = await stubDevice(page, status(), INSTALLS);
 
     await loadSettings(page);
     await openInstallationTab(page);
@@ -372,15 +375,7 @@ test.describe("Settings — installation: attention dot (stubbed backend)", () =
     page,
   }) => {
     await installStubs(page);
-    await stubDevice(page, status(), {
-      status: 200,
-      body: {
-        outcome: "installed",
-        path: DEVICE_PATH,
-        detail: "Installed the device.",
-      },
-      after: { state: "same", installedVersion: "1.2.0" },
-    });
+    await stubDevice(page, status(), INSTALLS);
     await loadSettings(page);
 
     // Still on the first tab: the dot is on the tab button, not the tab.

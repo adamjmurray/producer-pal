@@ -1,9 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import {
   expectNoConsoleOutput,
   installStubs,
@@ -32,11 +32,7 @@ test.describe("chat image attachments", () => {
 
     await expect(thumbnail).toBeHidden();
 
-    await page.getByTestId("image-file-input").setInputFiles({
-      name: "groove.png",
-      mimeType: "image/png",
-      buffer: PNG_BYTES,
-    });
+    await attachPng(page);
 
     await expect(thumbnail).toBeVisible();
     // An image alone is a sendable message, even with no text typed.
@@ -122,24 +118,10 @@ test.describe("chat image attachments", () => {
   test("switching conversations leaves the draft and image behind", async ({
     page,
   }) => {
-    await setupUiTest(page, [
-      makeConversation({
-        id: "other",
-        title: "Other chat",
-        updatedAt: 100,
-        messages: [
-          { role: "user", content: "FIXTURE_USER_PROMPT" },
-          { role: "assistant", content: "FIXTURE_ASSISTANT_REPLY" },
-        ],
-      }),
-    ]);
+    await setupWithOtherChat(page);
 
     await page.getByRole("textbox", { name: "Message" }).fill("half a thought");
-    await page.getByTestId("image-file-input").setInputFiles({
-      name: "groove.png",
-      mimeType: "image/png",
-      buffer: PNG_BYTES,
-    });
+    await attachPng(page);
     await expect(page.getByAltText("Attachment 1")).toBeVisible();
 
     await page
@@ -159,29 +141,13 @@ test.describe("chat image attachments", () => {
   test("New conversation in an empty chat and re-opening the open one keep the draft", async ({
     page,
   }) => {
-    await setupUiTest(page, [
-      makeConversation({
-        id: "other",
-        title: "Other chat",
-        updatedAt: 100,
-        messages: [
-          { role: "user", content: "FIXTURE_USER_PROMPT" },
-          { role: "assistant", content: "FIXTURE_ASSISTANT_REPLY" },
-        ],
-      }),
-    ]);
+    await setupWithOtherChat(page);
 
     const composer = page.getByRole("textbox", { name: "Message" });
-    const attach = () =>
-      page.getByTestId("image-file-input").setInputFiles({
-        name: "groove.png",
-        mimeType: "image/png",
-        buffer: PNG_BYTES,
-      });
 
     // In an empty new chat, "New conversation" has nothing to leave.
     await composer.fill("half a thought");
-    await attach();
+    await attachPng(page);
     await expect(page.getByAltText("Attachment 1")).toBeVisible();
 
     // The header button and the history panel's both go through the same path.
@@ -205,7 +171,7 @@ test.describe("chat image attachments", () => {
     await expect(composer).not.toContainText("half a thought");
 
     await composer.fill("another thought");
-    await attach();
+    await attachPng(page);
     await expect(page.getByAltText("Attachment 1")).toBeVisible();
 
     await item.click();
@@ -219,3 +185,33 @@ test.describe("chat image attachments", () => {
     expectNoConsoleOutput(captured);
   });
 });
+
+/**
+ * Open the chat UI with one other saved conversation in the history.
+ * @param page - Playwright page
+ */
+async function setupWithOtherChat(page: Page): Promise<void> {
+  await setupUiTest(page, [
+    makeConversation({
+      id: "other",
+      title: "Other chat",
+      updatedAt: 100,
+      messages: [
+        { role: "user", content: "FIXTURE_USER_PROMPT" },
+        { role: "assistant", content: "FIXTURE_ASSISTANT_REPLY" },
+      ],
+    }),
+  ]);
+}
+
+/**
+ * Attach the 1x1 PNG with the composer's file picker.
+ * @param page - Playwright page
+ */
+async function attachPng(page: Page): Promise<void> {
+  await page.getByTestId("image-file-input").setInputFiles({
+    name: "groove.png",
+    mimeType: "image/png",
+    buffer: PNG_BYTES,
+  });
+}
