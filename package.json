@@ -187,7 +187,7 @@
     "jscpd": "5.4.2",
     "oxfmt": "0.74.0",
     "oxlint": "1.89.0",
-    "oxlint-tsgolint": "7.0.2004",
+    "oxlint-tsgolint": "7.0.2005",
     "peggy": "5.1.1",
     "rolldown": "1.2.15",
     "typescript": "npm:@typescript/typescript6@6.0.2",
