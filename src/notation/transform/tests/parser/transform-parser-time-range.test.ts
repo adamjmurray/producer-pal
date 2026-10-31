@@ -1,10 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { loopBorrow } from "#src/notation/barbeat/parser/tests/barbeat-parser-test-helpers.ts";
+import { sweepBorrows } from "#src/notation/barbeat/parser/tests/barbeat-parser-test-helpers.ts";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
 import { expectTimeRangeBounds } from "./parse-test-helpers.ts";
 
@@ -216,26 +216,18 @@ describe("Transform Parser - time range selectors", () => {
   });
 
   it("matches the bar-at-a-time loop across offsets and meters", () => {
-    for (const bpb of [2, 3, 4, 5, 6, 7, 12]) {
-      for (let den = 1; den <= 24; den++) {
-        for (let num = 0; num <= 3 * den; num += Math.max(1, den >> 2)) {
-          const bar = 1 + ((num + den) % 5);
-          const raw = 2.5 - (num / den) * 4;
-          const [result] = parser.parse(
-            `${bar}|2.5-n${num}/${den}: velocity += 1`,
-            { beatsPerBar: bpb },
-          );
-          const expected = loopBorrow(bar, raw, bpb);
+    sweepBorrows(24, (point, beatsPerBar, expected) => {
+      const [result] = parser.parse(`${point}: velocity += 1`, {
+        beatsPerBar,
+      });
 
-          expect((result as { timeRange: unknown }).timeRange).toStrictEqual({
-            startBar: expected.bar,
-            startBeat: expected.beat,
-            endBar: expected.bar,
-            endBeat: expected.beat,
-          });
-        }
-      }
-    }
+      expect((result as { timeRange: unknown }).timeRange).toStrictEqual({
+        startBar: expected.bar,
+        startBeat: expected.beat,
+        endBar: expected.bar,
+        endBeat: expected.beat,
+      });
+    });
   });
 
   it("returns for a huge negative offset", () => {

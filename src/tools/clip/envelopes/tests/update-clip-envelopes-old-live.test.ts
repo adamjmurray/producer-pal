@@ -1,17 +1,17 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // update-clip's `envelopes` on Live before 12.4, whose Python API can't write
 // envelope points. Clearing still works there.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   answerEnvelopeRoutes,
   envelopeRoutesCalled,
+  expectVolumeRefused,
 } from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import {
@@ -53,18 +53,7 @@ describe("updateClip - envelopes by Live version", () => {
   it("refuses points on Live 12.3, saying what still works", async () => {
     liveVersion("12.3.8");
 
-    const result = await updateClip({
-      id: "123",
-      envelopes: `volume: ${NOTATION}`,
-    });
-
-    expect(requestNode).not.toHaveBeenCalled();
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        envelopes: 0,
-        detail: `envelope "volume": ${REFUSAL}`,
-      }),
-    );
+    await expectVolumeRefused(NOTATION, REFUSAL);
   });
 
   it("still clears on Live 12.3", async () => {

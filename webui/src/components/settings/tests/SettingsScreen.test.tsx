@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 /**
@@ -645,6 +645,22 @@ describe("SettingsScreen", () => {
     });
   });
   describe("dialog chrome and the remaining tabs", () => {
+    /**
+     * Answer each Installation status read with a body of its own shape.
+     * @param device - The device status
+     * @param remote - The remote script status
+     */
+    function stubStatuses(
+      device = deviceStatusBody(),
+      remote = statusBody(),
+    ): void {
+      (fetchMock as unknown as Mock<FetchStub>).mockImplementation((url) =>
+        Promise.resolve(
+          jsonResponse(url.includes("/device-install") ? device : remote),
+        ),
+      );
+    }
+
     it("shakes the dialog when a blocked close asks for attention", () => {
       const { container } = render(
         <SettingsScreen {...defaultProps} shake={true} />,
@@ -672,14 +688,7 @@ describe("SettingsScreen", () => {
     });
 
     it("renders the installation tab", async () => {
-      // The tab's two status reads need bodies of their own shape.
-      (fetchMock as unknown as Mock<FetchStub>).mockImplementation((url) =>
-        Promise.resolve(
-          jsonResponse(
-            url.includes("/device-install") ? deviceStatusBody() : statusBody(),
-          ),
-        ),
-      );
+      stubStatuses();
       render(<SettingsScreen {...defaultProps} activeTab="installation" />);
 
       expect(await screen.findByTestId("installation-tab")).toBeDefined();
@@ -687,13 +696,7 @@ describe("SettingsScreen", () => {
 
     it("marks the Installation tab when the install is incomplete, on any tab, with one read each", async () => {
       // No copy in the User Library: the install is unfinished.
-      (fetchMock as unknown as Mock<FetchStub>).mockImplementation((url) =>
-        Promise.resolve(
-          jsonResponse(
-            url.includes("/device-install") ? deviceStatusBody() : statusBody(),
-          ),
-        ),
-      );
+      stubStatuses();
       render(<SettingsScreen {...defaultProps} />);
 
       expect(await screen.findByLabelText("needs attention")).toBeDefined();
@@ -708,14 +711,9 @@ describe("SettingsScreen", () => {
     });
 
     it("shows no dot once the device and remote script are current", async () => {
-      (fetchMock as unknown as Mock<FetchStub>).mockImplementation((url) =>
-        Promise.resolve(
-          jsonResponse(
-            url.includes("/device-install")
-              ? deviceStatusBody({ state: "same", installedVersion: "1.2.0" })
-              : statusBody({ installed: true, installedVersion: "1.2.0" }),
-          ),
-        ),
+      stubStatuses(
+        deviceStatusBody({ state: "same", installedVersion: "1.2.0" }),
+        statusBody({ installed: true, installedVersion: "1.2.0" }),
       );
       render(<SettingsScreen {...defaultProps} activeTab="installation" />);
       await screen.findByTestId("device-status");

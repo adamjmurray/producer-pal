@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 /**
@@ -118,16 +118,7 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
   it("says on the clip's entry what the tiles ran over", async () => {
     const id = await createLoopingArrClip("161|1");
     const buried = await createLoopingArrClip("163|1");
-
-    const result = await callTool(ctx.client!, "ppal-update-clip", {
-      id,
-      arrangementLength: "4bar",
-    });
-
-    await sleep(200);
-
-    const { data, warnings } =
-      parseToolResultWithWarnings<LengthenedClip[]>(result);
+    const { data, warnings } = await tileClip(id, "4bar");
 
     // The clip the call named is the first entry; the rest are its tiles.
     expect(data[0]?.id).toBe(id);
@@ -161,15 +152,7 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
     });
     await sleep(200);
 
-    const result = await callTool(ctx.client!, "ppal-update-clip", {
-      id,
-      arrangementLength: "4bar",
-    });
-
-    await sleep(200);
-
-    const { data, warnings } =
-      parseToolResultWithWarnings<LengthenedClip[]>(result);
+    const { data, warnings } = await tileClip(id, "4bar");
 
     // Counted once, though the note crosses the boundaries at 172|1 and 174|1.
     expect(data[0]?.id).toBe(id);
@@ -226,15 +209,7 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
     expect(before[0]!.firstStart).toBe("3|1");
     expect(lengthBeats(before[0])).toBeGreaterThan(beats("3bar"));
 
-    const result = await callTool(ctx.client!, "ppal-update-clip", {
-      id: copy.id,
-      arrangementLength: "10bar",
-    });
-
-    await sleep(200);
-
-    const { data, warnings } =
-      parseToolResultWithWarnings<LengthenedClip[]>(result);
+    const { data, warnings } = await tileClip(copy.id, "10bar");
     const clips = clipsInBarRange(await readArrClips(), 351, 360);
 
     // The first piece plays from beat 8 to the loop end, then 4 to 8, and stops
@@ -252,14 +227,7 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
 
   it("says nothing when no note crosses a tile boundary", async () => {
     const id = await createLoopingArrClip("181|1");
-    const result = await callTool(ctx.client!, "ppal-update-clip", {
-      id,
-      arrangementLength: "4bar",
-    });
-
-    await sleep(200);
-
-    const { data } = parseToolResultWithWarnings<LengthenedClip[]>(result);
+    const { data } = await tileClip(id, "4bar");
 
     expect(data[0]?.detail).toBeUndefined();
   });
@@ -322,6 +290,26 @@ async function lengthenTo4Bars(
   await sleep(200);
 
   return parseToolResultWithWarnings<LengthenedClip>(result);
+}
+
+/**
+ * Lengthen a looping arrangement clip by tiling it, keeping any warnings.
+ * @param id - The clip to lengthen
+ * @param arrangementLength - Target length, e.g. "4bar"
+ * @returns The named clip followed by its tiles, and any warnings
+ */
+async function tileClip(
+  id: string,
+  arrangementLength: string,
+): Promise<{ data: LengthenedClip[]; warnings: string[] }> {
+  const result = await callTool(ctx.client!, "ppal-update-clip", {
+    id,
+    arrangementLength,
+  });
+
+  await sleep(200);
+
+  return parseToolResultWithWarnings<LengthenedClip[]>(result);
 }
 
 /**

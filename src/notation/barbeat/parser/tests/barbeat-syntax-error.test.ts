@@ -1,25 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import { parseNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
-import { errorMessage } from "#src/shared/error-message.ts";
-
-/**
- * @param notes - bar|beat text that must fail to parse
- * @returns The error message a model would read
- */
-function errorFor(notes: string): string {
-  try {
-    parseNotation(notes);
-  } catch (error) {
-    return errorMessage(error);
-  }
-
-  throw new Error(`"${notes}" parsed`);
-}
+import { errorFor } from "./barbeat-parser-test-helpers.ts";
 
 describe("bar|beat syntax errors", () => {
   it("names where the parse stopped and the text there", () => {

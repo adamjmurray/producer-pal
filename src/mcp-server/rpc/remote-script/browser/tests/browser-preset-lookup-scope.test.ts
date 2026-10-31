@@ -1,30 +1,19 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { gzipSync } from "node:zlib";
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { type PresetScope } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { findPresetFiles } from "../../../../live-library/query/preset-files.ts";
 import { lookUpBrowserPreset } from "../browser-preset-lookup.ts";
 import { RemoteScriptTimeout } from "../../remote-script-errors.ts";
-import {
-  type FakeRemoteScript,
-  startFakeRemoteScript,
-} from "../../tests/remote-script-test-helpers.ts";
+import { type FakeRemoteScript } from "../../tests/remote-script-test-helpers.ts";
+import { usePresetLookupStandIn } from "./preset-lookup-test-helpers.ts";
 
 vi.mock(import("../../../../live-library/query/preset-files.ts"), () => ({
   findPresetFiles: vi.fn(),
@@ -46,21 +35,11 @@ const DRUM_RACK: PresetScope = {
 const VIBRAPHONE = "Instruments/Instrument Rack/Mallets/Vibraphone.adg";
 const KIT = "Instruments/Instrument Rack/Sampled/Beard Kit.adg";
 
-let fake: FakeRemoteScript | undefined;
+const standIn = usePresetLookupStandIn();
 let dir = "";
 
 beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), "ppal-preset-scope-"));
-});
-
-beforeEach(() => {
-  vi.mocked(findPresetFiles).mockReset();
-  vi.mocked(findPresetFiles).mockResolvedValue(null);
-});
-
-afterEach(async () => {
-  await fake?.close();
-  fake = undefined;
 });
 
 afterAll(() => {
@@ -92,9 +71,7 @@ function loads(path: string): unknown {
  * @returns The stand-in, to read the requests it got
  */
 async function browserListing(items: object[]): Promise<FakeRemoteScript> {
-  fake = await startFakeRemoteScript(() => ({ body: { items } }));
-
-  return fake;
+  return await standIn.start(() => ({ body: { items } }));
 }
 
 /**

@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 /**
@@ -64,6 +64,22 @@ function marksNewUser(result: unknown): boolean {
   return (
     typed?.content?.some((c) => c.text?.includes(NEW_USER_MARKER)) ?? false
   );
+}
+
+/**
+ * Write a throwaway memory entry over REST. The caller deletes it.
+ * @param url - The memory entry's REST URL
+ * @returns The PUT response
+ */
+async function putProbeMemory(url: string): Promise<Response> {
+  return fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      content: "e2e probe body",
+      description: "e2e probe — safe to delete",
+    }),
+  });
 }
 
 /**
@@ -222,14 +238,7 @@ describe("ppal-connect", () => {
       // Seed a transient memory so the standard-mode presence is real, not
       // vacuous. Localhost write — a node fetch sends no Origin, so it passes
       // the collection route's foreign-origin gate.
-      const putRes = await fetch(MEMORY_URL, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: "e2e probe body",
-          description: "e2e probe — safe to delete",
-        }),
-      });
+      const putRes = await putProbeMemory(MEMORY_URL);
 
       try {
         expect(putRes.ok).toBe(true);
@@ -270,14 +279,7 @@ describe("ppal-connect", () => {
         marksNewUser(before),
       );
 
-      const putRes = await fetch(MEMORY_URL, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: "e2e probe body",
-          description: "e2e probe — safe to delete",
-        }),
-      });
+      const putRes = await putProbeMemory(MEMORY_URL);
 
       try {
         expect(putRes.ok).toBe(true);

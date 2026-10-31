@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { existsSync, rmSync, writeFileSync } from "node:fs";
@@ -11,6 +11,7 @@ import { VERSION } from "#src/shared/config.ts";
 import { syncDeviceInstallNotice } from "../../rpc/device-install/device-install-notice.ts";
 import { errorHandlerMiddleware } from "../../helpers/http/error-handler-middleware.ts";
 import { remoteScriptPath } from "../../rpc/remote-script/install/remote-script-install.ts";
+import { absentRemoteScriptStatus } from "./absent-remote-script-test-helpers.ts";
 import { makeScratchUserLibrary } from "../../rpc/remote-script/tests/remote-script-test-helpers.ts";
 import {
   type MarkdownRouteServer,
@@ -18,6 +19,7 @@ import {
   startMarkdownRouteServer,
 } from "../../tests/config-dir-test-helpers.ts";
 import { registerRemoteScriptSetupRoutes } from "../remote-script-setup-route.ts";
+import { expectBlankUserLibraryRejected } from "./user-library-route-test-helpers.ts";
 
 const { findUserLibraryPath } = vi.hoisted(() => ({
   findUserLibraryPath: vi.fn<() => Promise<string | null>>(),
@@ -80,20 +82,9 @@ describe("GET /remote-script", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
-    expect(await res.json()).toStrictEqual({
-      userLibrary: scratchDir,
-      installed: false,
-      installedVersion: null,
-      installedBuild: null,
-      bundledVersion: VERSION,
-      running: false,
-      runningVersion: null,
-      runningBuild: null,
-      liveVersion: null,
-      otherOnPort: null,
-      updateAvailable: false,
-      installedNewer: false,
-    });
+    expect(await res.json()).toStrictEqual(
+      absentRemoteScriptStatus(scratchDir),
+    );
   });
 });
 
@@ -114,12 +105,7 @@ describe("POST /remote-script/install", () => {
   });
 
   it("rejects a missing or blank userLibrary", async () => {
-    for (const body of [{}, { userLibrary: "  " }, { userLibrary: 7 }]) {
-      const res = await postInstall(body);
-
-      expect(res.status).toBe(400);
-      expect(await errorOf(res)).toBe("userLibrary must be a non-empty string");
-    }
+    await expectBlankUserLibraryRejected(postInstall);
   });
 
   it("rejects a folder that isn't there", async () => {

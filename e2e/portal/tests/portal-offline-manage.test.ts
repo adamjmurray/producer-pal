@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // What the portal answers on its own while the device is down: the setup
@@ -142,10 +142,7 @@ describe("the offline guidance", () => {
     const portal = await portalWithDeviceDown(false, NO_MANAGE);
     const library = scratchLibrary();
 
-    const { text } = await callToolText(portal, "ppal-manage", {
-      action: "install-producer-pal",
-      userLibrary: library,
-    });
+    const { text } = await installProducerPal(portal, library);
 
     expect(text).toContain("Cannot connect to Ableton Live.");
     expect(existsSync(join(library, "Remote Scripts"))).toBe(false);
@@ -187,6 +184,22 @@ function installScript(library: string, version: string): void {
 function installDevice(library: string, contents: string): void {
   mkdirSync(join(library, ...DEVICE_DIR), { recursive: true });
   writeFileSync(join(library, ...DEVICE_DIR, "Producer_Pal.amxd"), contents);
+}
+
+/**
+ * Call ppal-manage install-producer-pal.
+ * @param portal - The portal
+ * @param userLibrary - The User Library to install into, if given
+ * @returns The result's text and error flag
+ */
+function installProducerPal(
+  portal: PortalSession,
+  userLibrary?: string,
+): Promise<{ text: string; isError: boolean | undefined }> {
+  return callToolText(portal, "ppal-manage", {
+    action: "install-producer-pal",
+    ...(userLibrary != null && { userLibrary }),
+  });
 }
 
 describe("the offline guidance names what is installed", () => {
@@ -308,10 +321,7 @@ describe("ppal-manage while the device is down", () => {
     const folder = join(library, "Remote Scripts", "Producer_Pal");
     const device = join(library, ...DEVICE_DIR, "Producer_Pal.amxd");
 
-    const { text, isError } = await callToolText(portal, "ppal-manage", {
-      action: "install-producer-pal",
-      userLibrary: library,
-    });
+    const { text, isError } = await installProducerPal(portal, library);
 
     expect(isError).toBeFalsy();
     expect(text).toContain(`remoteScript:{status:"installed"`);
@@ -331,9 +341,7 @@ describe("ppal-manage while the device is down", () => {
     const library = scratchLibrary();
     const portal = await portalDown({ scriptRunning: true, library });
 
-    const { text, isError } = await callToolText(portal, "ppal-manage", {
-      action: "install-producer-pal",
-    });
+    const { text, isError } = await installProducerPal(portal);
 
     expect(isError).toBeFalsy();
     expect(text).toContain(
@@ -367,10 +375,7 @@ describe("ppal-manage while the device is down", () => {
 
     installDevice(library, "another device");
 
-    const { text, isError } = await callToolText(portal, "ppal-manage", {
-      action: "install-producer-pal",
-      userLibrary: library,
-    });
+    const { text, isError } = await installProducerPal(portal, library);
 
     expect(isError).toBeFalsy();
     expect(text).toContain(`device:{status:"kept"`);
@@ -384,10 +389,7 @@ describe("ppal-manage while the device is down", () => {
     const portal = await portalDown({ scriptRunning: false, bundled: false });
     const library = scratchLibrary();
 
-    const { text, isError } = await callToolText(portal, "ppal-manage", {
-      action: "install-producer-pal",
-      userLibrary: library,
-    });
+    const { text, isError } = await installProducerPal(portal, library);
 
     expect(isError).toBeFalsy();
     expect(text).toContain(`remoteScript:{status:"installed"`);
@@ -405,10 +407,10 @@ describe("ppal-manage while the device is down", () => {
   it("installs nothing and says so for a User Library that isn't a folder", async () => {
     const portal = await portalWithDeviceDown(false);
 
-    const { text, isError } = await callToolText(portal, "ppal-manage", {
-      action: "install-producer-pal",
-      userLibrary: join(scratchLibrary(), "missing"),
-    });
+    const { text, isError } = await installProducerPal(
+      portal,
+      join(scratchLibrary(), "missing"),
+    );
 
     expect(isError).toBe(true);
     expect(text).toContain("nothing was installed");

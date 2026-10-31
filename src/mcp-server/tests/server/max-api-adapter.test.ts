@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import Max from "max-api";
@@ -130,6 +130,26 @@ function captureContextJSON(
   const contextJSON = callArgs[4] as string;
 
   return JSON.parse(contextJSON) as Record<string, unknown>;
+}
+
+/**
+ * Start two writes, the second queued behind the first.
+ * @param overrides - The second write's overrides
+ * @returns The outlet mock and both writes' results
+ */
+function startTwoWrites(overrides?: RequestOverrides): {
+  outlet: ReturnType<typeof vi.mocked<typeof Max.outlet>>;
+  first: ReturnType<typeof callLiveApi>;
+  second: ReturnType<typeof callLiveApi>;
+} {
+  setTimeoutForTesting(MAX_TIMEOUT_MS);
+  Max.outlet = vi.fn().mockResolvedValue(undefined);
+
+  return {
+    outlet: vi.mocked(Max.outlet),
+    first: callLiveApi("ppal-create-track", {}),
+    second: callLiveApi("ppal-update-clip", {}, overrides),
+  };
 }
 
 describe("Max API Adapter", () => {
@@ -418,11 +438,7 @@ describe("Max API Adapter", () => {
     });
 
     it("should send write calls to V8 one at a time", async () => {
-      setTimeoutForTesting(MAX_TIMEOUT_MS);
-      Max.outlet = vi.fn().mockResolvedValue(undefined);
-      const outlet = vi.mocked(Max.outlet);
-      const first = callLiveApi("ppal-create-track", {});
-      const second = callLiveApi("ppal-update-clip", {});
+      const { outlet, first, second } = startTwoWrites();
 
       await vi.waitFor(() => expect(outlet).toHaveBeenCalledTimes(1));
       handleLiveApiResult(outlet.mock.calls[0]![1], "{}", END_OF_CHUNKS);
@@ -437,11 +453,7 @@ describe("Max API Adapter", () => {
       vi.useFakeTimers();
 
       try {
-        setTimeoutForTesting(MAX_TIMEOUT_MS);
-        Max.outlet = vi.fn().mockResolvedValue(undefined);
-        const outlet = vi.mocked(Max.outlet);
-        const first = callLiveApi("ppal-create-track", {});
-        const second = callLiveApi("ppal-update-clip", {}, { timeoutMs: 400 });
+        const { outlet, first, second } = startTwoWrites({ timeoutMs: 400 });
 
         await vi.advanceTimersByTimeAsync(150);
         handleLiveApiResult(outlet.mock.calls[0]![1], "{}", END_OF_CHUNKS);

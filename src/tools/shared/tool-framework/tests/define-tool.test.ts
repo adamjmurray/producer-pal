@@ -1,13 +1,16 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi, type Mock } from "vitest";
 import { z, type ZodRawShape } from "zod";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type Notation } from "#src/shared/notation.ts";
-import { registeredShape } from "./registered-shape-test-helpers.ts";
+import {
+  registeredHandler,
+  registeredShape,
+} from "./registered-shape-test-helpers.ts";
 import {
   defineTool,
   filterExcludedEnumValues,
@@ -88,21 +91,6 @@ function getRegisteredDescriptions(mockServer: MockServer) {
   >;
 }
 
-/**
- * Get the tool handler from a mock server's registered tool
- * @param mockServer - mock MCP server
- * @returns async tool handler function
- */
-function getRegisteredHandler(mockServer: MockServer) {
-  const handler = mockServer.registerTool.mock.calls[0]![2] as (
-    args: Record<string, unknown>,
-    extra: { signal: AbortSignal },
-  ) => Promise<{ content: Array<{ type: string; text: string }> }>;
-
-  return (args: Record<string, unknown>) =>
-    handler(args, { signal: new AbortController().signal });
-}
-
 describe("defineTool", () => {
   it("should expose toolName on the returned function", () => {
     const toolRegistrar = defineTool("my-custom-tool", {
@@ -150,7 +138,7 @@ describe("defineTool", () => {
       { successMock: true },
     );
 
-    const toolHandler = getRegisteredHandler(mockServer);
+    const toolHandler = registeredHandler(mockServer);
 
     // Test valid input
     const validArgs = { param: "valid" };
@@ -246,7 +234,7 @@ describe("defineTool", () => {
       { smallModelMode: true, successMock: true },
     );
 
-    const toolHandler = getRegisteredHandler(mockServer);
+    const toolHandler = registeredHandler(mockServer);
 
     // Try to use filtered parameter - Zod will strip it from validated data
     const args = {
@@ -385,7 +373,7 @@ describe("defineTool", () => {
       { successMock: true },
     );
 
-    const toolHandler = getRegisteredHandler(mockServer);
+    const toolHandler = registeredHandler(mockServer);
 
     // Pass extra arguments that aren't in the schema
     const result = await toolHandler({
@@ -418,7 +406,7 @@ describe("defineTool", () => {
       { smallModelMode: true, successMock: true },
     );
 
-    const toolHandler = getRegisteredHandler(mockServer);
+    const toolHandler = registeredHandler(mockServer);
 
     // Send valid values — runtime filter runs but nothing to remove
     await toolHandler({ include: ["notes", "sample"] });
@@ -438,7 +426,7 @@ describe("defineTool", () => {
       successMock: true,
     });
 
-    const toolHandler = getRegisteredHandler(mockServer);
+    const toolHandler = registeredHandler(mockServer);
 
     // Model hallucinated "timing" — Zod rejects it (primary gate)
     // Zod's message lands inside a JSON dump, so the quotes around each value
@@ -466,7 +454,7 @@ describe("defineTool", () => {
 
     toolRegistrar(mockServer, mockCallLiveApi);
 
-    const toolHandler = getRegisteredHandler(mockServer);
+    const toolHandler = registeredHandler(mockServer);
     const result = (await toolHandler({ param: "x" })) as {
       content: Array<{ type: string; text: string }>;
       isError?: boolean;
@@ -492,7 +480,7 @@ describe("defineTool", () => {
       { successMock: true },
     );
 
-    const toolHandler = getRegisteredHandler(mockServer);
+    const toolHandler = registeredHandler(mockServer);
 
     // LLM sends number instead of string - Zod coerces it
     const result = await toolHandler({ sceneIndex: 0 });

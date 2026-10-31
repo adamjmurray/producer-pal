@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,27 +8,26 @@ import {
   connectResponse,
   fakeInnerCall,
 } from "#src/mcp-server/tests/config-dir-test-helpers.ts";
-import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
+import {
+  remoteScriptPing as pingFn,
+  type RemoteScriptPing,
+} from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { currentRemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/tests/remote-script-test-helpers.ts";
-import { type RemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
+import { remoteScriptStatus as statusFn } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { shareConnectPing } from "../connect-ping.ts";
-
-const { remoteScriptPing, remoteScriptStatus } = vi.hoisted(() => ({
-  remoteScriptPing: vi.fn<() => Promise<RemoteScriptPing>>(),
-  remoteScriptStatus: vi.fn<() => Promise<RemoteScriptStatus>>(),
-}));
 
 vi.mock(
   import("#src/mcp-server/rpc/remote-script/remote-script-status.ts"),
-  () => ({ remoteScriptStatus }),
+  () => ({ remoteScriptStatus: vi.fn() }),
 );
 
 vi.mock(
   import("#src/mcp-server/rpc/remote-script/remote-script-client.ts"),
-  () => ({
-    remoteScriptPing,
-  }),
+  () => ({ remoteScriptPing: vi.fn() }),
 );
+
+const remoteScriptPing = vi.mocked(pingFn);
+const remoteScriptStatus = vi.mocked(statusFn);
 
 const PING: RemoteScriptPing = {
   running: true,

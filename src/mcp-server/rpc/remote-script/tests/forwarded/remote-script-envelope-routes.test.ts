@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
@@ -11,10 +11,10 @@ import {
   CONNECTION_LOST_ANSWER,
   EXPIRED_UNSENT_ANSWER,
   OUTDATED_ANSWER,
-  callUntilItTimesOut,
   unknownRouteAnswer,
   useFakeRemoteScriptRoutes,
 } from "../remote-script-test-helpers.ts";
+import { expectUnansweredWriteTimesOut } from "./unanswered-write-test-helpers.ts";
 
 const PARAMETER = {
   name: "Volume",
@@ -132,19 +132,11 @@ describe("remoteScript.envelope failures", () => {
   });
 
   it("calls a write the remote script never answered a timeout", async () => {
-    const remote = await answerWith(null);
-
-    expect(
-      await callUntilItTimesOut(remote, 60, () =>
-        dispatchNodeRoute(ENVELOPE_ROUTES.write, {
-          ...WRITE,
-          expiresInMs: 40,
-        }),
-      ),
-    ).toStrictEqual({
-      success: false,
-      error: "the Producer Pal remote script did not answer in time",
-    });
+    await expectUnansweredWriteTimesOut(
+      answerWith,
+      ENVELOPE_ROUTES.write,
+      WRITE,
+    );
   });
 
   it("names the remote script when a failed reply gives no error", async () => {

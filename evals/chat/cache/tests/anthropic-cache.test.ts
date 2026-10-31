@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -59,23 +59,29 @@ describe("markConnectResult", () => {
   });
 });
 
+// Returns the body that reached fetch.
+async function sendThroughCache(body: object): Promise<AnthropicRequestBody> {
+  const fetchSpy = vi.fn<typeof fetch>(async () => new Response("{}"));
+
+  vi.stubGlobal("fetch", fetchSpy);
+
+  await cacheAnthropicRequest("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+  return JSON.parse(
+    fetchSpy.mock.calls[0]?.[1]?.body as string,
+  ) as AnthropicRequestBody;
+}
+
 describe("cacheAnthropicRequest", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
   it("sends the head, connect, and tail breakpoints", async () => {
-    const fetchSpy = vi.fn<typeof fetch>(async () => new Response("{}"));
-
-    vi.stubGlobal("fetch", fetchSpy);
-
-    await cacheAnthropicRequest("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      body: JSON.stringify(scenarioBody()),
-    });
-
-    const sentBody = fetchSpy.mock.calls[0]?.[1]?.body as string;
-    const sent = JSON.parse(sentBody) as AnthropicRequestBody;
+    const sent = await sendThroughCache(scenarioBody());
     const marks = JSON.stringify(sent).split('"cache_control"').length - 1;
 
     expect(marks).toBe(3);
@@ -88,20 +94,10 @@ describe("cacheAnthropicRequest", () => {
   });
 
   it("asks for summarized thinking on adaptive requests", async () => {
-    const fetchSpy = vi.fn<typeof fetch>(async () => new Response("{}"));
-
-    vi.stubGlobal("fetch", fetchSpy);
-
-    await cacheAnthropicRequest("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      body: JSON.stringify({
-        ...scenarioBody(),
-        thinking: { type: "adaptive" },
-      }),
+    const sent = await sendThroughCache({
+      ...scenarioBody(),
+      thinking: { type: "adaptive" },
     });
-
-    const sentBody = fetchSpy.mock.calls[0]?.[1]?.body as string;
-    const sent = JSON.parse(sentBody) as AnthropicRequestBody;
 
     expect(sent.thinking).toStrictEqual({
       type: "adaptive",

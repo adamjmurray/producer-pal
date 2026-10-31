@@ -1,11 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
 import * as parser from "../barbeat-parser.ts";
-import { loopBorrow } from "./barbeat-parser-test-helpers.ts";
+import { loopBorrow, sweepBorrows } from "./barbeat-parser-test-helpers.ts";
 
 // [label, bar, base beat, offset numerator, offset denominator, beats per bar]
 const cases: [string, number, number, number, number, number][] = [
@@ -34,18 +34,12 @@ describe("BarBeatScript Parser - borrowing across bar lines", () => {
   );
 
   it("matches the loop across a sweep of offsets and meters", () => {
-    for (const bpb of [2, 3, 4, 5, 6, 7, 12]) {
-      for (let den = 1; den <= 32; den++) {
-        for (let num = 0; num <= 3 * den; num += Math.max(1, den >> 2)) {
-          const bar = 1 + ((num + den) % 5);
-          const raw = 2.5 - (num / den) * 4;
-
-          expect(
-            parser.parse(`${bar}|2.5-n${num}/${den} C3`, { beatsPerBar: bpb }),
-          ).toStrictEqual([loopBorrow(bar, raw, bpb), { pitch: 60 }]);
-        }
-      }
-    }
+    sweepBorrows(32, (point, beatsPerBar, expected) => {
+      expect(parser.parse(`${point} C3`, { beatsPerBar })).toStrictEqual([
+        expected,
+        { pitch: 60 },
+      ]);
+    });
   });
 
   it("borrows a repeat's start the same way", () => {

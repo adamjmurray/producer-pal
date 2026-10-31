@@ -1,9 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
@@ -43,10 +43,6 @@ describe("playback clip entries", () => {
 
   beforeEach(() => {
     liveSet = setupPlaybackLiveSet();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it("keeps a bad id's slot and fires the rest", () => {

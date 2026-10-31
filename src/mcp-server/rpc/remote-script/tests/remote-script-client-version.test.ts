@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,6 +37,12 @@ vi.mock(import("../port/remote-script-port-file.ts"), () => ({
 const OUTDATED_2_4 = `the Producer Pal remote script is out of date (running 2.4.0, needs ${MIN_REMOTE_SCRIPT_VERSION} or later); update it with ppal-manage action "install-producer-pal" or in the Producer Pal chat UI's Settings → Installation, then restart Live`;
 
 const OUTDATED_2_4_NO_MANAGE = `the Producer Pal remote script is out of date (running 2.4.0, needs ${MIN_REMOTE_SCRIPT_VERSION} or later); have the user update it in the Producer Pal chat UI's Settings → Installation, then restart Live`;
+
+const OUTDATED_2_4_REPLY = {
+  available: false,
+  outdated: OUTDATED_2_4,
+  outdatedWithoutManage: OUTDATED_2_4_NO_MANAGE,
+};
 
 let fake: FakeRemoteScript | undefined;
 let version = "2.4.0";
@@ -89,6 +95,19 @@ function routesAsked(remote: FakeRemoteScript): string[] {
   return remote.requests.map((request) => request.route);
 }
 
+/**
+ * Expects a request with 300ms left to come back out of date after one ping.
+ * @param remote - The stand-in
+ */
+async function expectOutdatedWithNoTimeLeft(
+  remote: FakeRemoteScript,
+): Promise<void> {
+  expect(
+    await remoteScriptRequest({ route: "/list", expiresInMs: 300 }),
+  ).toStrictEqual(OUTDATED_2_4_REPLY);
+  expect(routesAsked(remote)).toStrictEqual(["/ping"]);
+}
+
 beforeEach(() => {
   savedEnv = process.env.PPAL_REMOTE_SCRIPT_PORT;
   ports.preferred = 1;
@@ -116,11 +135,7 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
 
     expect(
       await remoteScriptRequest({ method: "POST", route: "/list", body: {} }),
-    ).toStrictEqual({
-      available: false,
-      outdated: OUTDATED_2_4,
-      outdatedWithoutManage: OUTDATED_2_4_NO_MANAGE,
-    });
+    ).toStrictEqual(OUTDATED_2_4_REPLY);
     expect(routesAsked(remote)).toStrictEqual(["/ping"]);
   });
 
@@ -203,11 +218,9 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
     const moved = await standIn(undefined, true);
     const started = Date.now();
 
-    expect(await remoteScriptRequest({ route: "/list" })).toStrictEqual({
-      available: false,
-      outdated: OUTDATED_2_4,
-      outdatedWithoutManage: OUTDATED_2_4_NO_MANAGE,
-    });
+    expect(await remoteScriptRequest({ route: "/list" })).toStrictEqual(
+      OUTDATED_2_4_REPLY,
+    );
     expect(Date.now() - started).toBeLessThan(800);
     expect(routesAsked(moved)).toStrictEqual(["/ping"]);
 
@@ -242,14 +255,7 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
 
     // The probe of the preferred port takes the time; the version it
     // reports is old, and there is none left to ask for it again.
-    expect(
-      await remoteScriptRequest({ route: "/list", expiresInMs: 300 }),
-    ).toStrictEqual({
-      available: false,
-      outdated: OUTDATED_2_4,
-      outdatedWithoutManage: OUTDATED_2_4_NO_MANAGE,
-    });
-    expect(routesAsked(remote)).toStrictEqual(["/ping"]);
+    await expectOutdatedWithNoTimeLeft(remote);
     vi.restoreAllMocks();
   });
 
@@ -262,14 +268,7 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
 
     vi.spyOn(Date, "now").mockImplementation(() => (clock += 400));
 
-    expect(
-      await remoteScriptRequest({ route: "/list", expiresInMs: 300 }),
-    ).toStrictEqual({
-      available: false,
-      outdated: OUTDATED_2_4,
-      outdatedWithoutManage: OUTDATED_2_4_NO_MANAGE,
-    });
-    expect(routesAsked(remote)).toStrictEqual(["/ping"]);
+    await expectOutdatedWithNoTimeLeft(remote);
     vi.restoreAllMocks();
   });
 

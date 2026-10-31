@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -51,6 +51,15 @@ const scenario = (
   id: string,
   extra: Partial<EvalScenario> = {},
 ): EvalScenario => ({ id, liveSet: "set-1", ...extra }) as EvalScenario;
+
+const reuse = (id: string, liveSet = "set-1"): EvalScenario =>
+  scenario(id, { reuseLiveSet: true, liveSet });
+
+/** One round of every scenario on model A. */
+const runOneRound = (
+  scenarios: EvalScenario[],
+): ReturnType<typeof runAllScenarios> =>
+  runAllScenarios(scenarios, [A], RUN_ENV, "default", ctx(1));
 
 const result = (value: JsonEvalResult["result"]): JsonEvalResult =>
   ({ result: value }) as JsonEvalResult;
@@ -208,17 +217,7 @@ describe("runAllScenarios skipped scenarios", () => {
       s.id === "skipped" ? "nope" : null,
     );
 
-    await runAllScenarios(
-      [
-        scenario("r1", { reuseLiveSet: true }),
-        scenario("skipped"),
-        scenario("r2", { reuseLiveSet: true }),
-      ],
-      [A],
-      RUN_ENV,
-      "default",
-      ctx(1),
-    );
+    await runOneRound([reuse("r1"), scenario("skipped"), reuse("r2")]);
 
     expect(skipFlags()).toStrictEqual([false, true]);
   });
@@ -226,45 +225,24 @@ describe("runAllScenarios skipped scenarios", () => {
 
 describe("runAllScenarios Live Set reuse", () => {
   it("hands a clean Set to the next reuse scenario on the same Set", async () => {
-    await runAllScenarios(
-      [
-        scenario("r1", { reuseLiveSet: true }),
-        scenario("r2", { reuseLiveSet: true }),
-      ],
-      [A],
-      RUN_ENV,
-      "default",
-      ctx(1),
-    );
+    await runOneRound([reuse("r1"), reuse("r2")]);
 
     expect(skipFlags()).toStrictEqual([false, true]);
   });
 
   it("carries the hand-off from the last scenario into the next round", async () => {
-    await runAllScenarios(
-      [scenario("r1", { reuseLiveSet: true })],
-      [A, B],
-      RUN_ENV,
-      "default",
-      ctx(2),
-    );
+    await runAllScenarios([reuse("r1")], [A, B], RUN_ENV, "default", ctx(2));
 
     expect(skipFlags()).toStrictEqual([false, true, true, true]);
   });
 
   it("reopens for a different Set, or after a scenario that does not reset", async () => {
-    await runAllScenarios(
-      [
-        scenario("r1", { reuseLiveSet: true }),
-        scenario("other", { reuseLiveSet: true, liveSet: "set-2" }),
-        scenario("plain"),
-        scenario("r2", { reuseLiveSet: true, liveSet: "set-2" }),
-      ],
-      [A],
-      RUN_ENV,
-      "default",
-      ctx(1),
-    );
+    await runOneRound([
+      reuse("r1"),
+      reuse("other", "set-2"),
+      scenario("plain"),
+      reuse("r2", "set-2"),
+    ]);
 
     expect(skipFlags()).toStrictEqual([false, false, false, false]);
   });
@@ -272,16 +250,7 @@ describe("runAllScenarios Live Set reuse", () => {
   it("never reuses a Set the previous run did not leave clean", async () => {
     outcomes = { "r1/a/1": "error" };
 
-    await runAllScenarios(
-      [
-        scenario("r1", { reuseLiveSet: true }),
-        scenario("r2", { reuseLiveSet: true }),
-      ],
-      [A],
-      RUN_ENV,
-      "default",
-      ctx(1),
-    );
+    await runOneRound([reuse("r1"), reuse("r2")]);
 
     expect(skipFlags()).toStrictEqual([false, false]);
   });

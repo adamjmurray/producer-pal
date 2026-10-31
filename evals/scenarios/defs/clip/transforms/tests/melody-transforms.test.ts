@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
@@ -10,26 +10,18 @@ import {
   type ToolCall,
 } from "../../../../types.ts";
 import { melodyTransforms } from "../melody-transforms.ts";
+import {
+  turnsWithCalls as turnsOf,
+  updateClipCall as update,
+} from "./transform-grader-test-helpers.ts";
 
 const grader = (description: string): CustomAssertion =>
   melodyTransforms.assertions.find(
     (a) => a.type === "custom" && a.description === description,
   ) as CustomAssertion;
 
-const update = (args: Record<string, unknown>, noteCount = 24): ToolCall => ({
-  name: "ppal-update-clip",
-  args,
-  result: `{id:"1",noteCount:${noteCount}}`,
-});
-
 const turnsWithCalls = (turn: number, calls: ToolCall[]): EvalTurnResult[] =>
-  Array.from({ length: 7 }, (_, i) => ({
-    turnIndex: i,
-    userMessage: "u",
-    assistantResponse: "a",
-    toolCalls: i === turn ? calls : [],
-    durationMs: 1,
-  }));
+  turnsOf(7, turn, calls);
 
 describe("melodyTransforms graders", () => {
   const extended = "melody extended with notes copied into 8 bars";

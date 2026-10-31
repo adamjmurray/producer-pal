@@ -1,32 +1,22 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
  */
 import { render, screen, within } from "@testing-library/preact";
-import { beforeEach, describe, expect, it } from "vitest";
-import {
-  installFetchMock,
-  jsonResponse,
-} from "#webui/hooks/context/tests/doc-transport-test-helpers";
-import { waitForHookState } from "#webui/test-utils/async-test-helpers";
+import { describe, expect, it } from "vitest";
 import { InstallationTabHarness } from "#webui/components/settings/installation/tests/helpers/InstallationTabHarness";
 import { type DeviceInstallStatus } from "#webui/hooks/settings/installation/use-device-install";
 import {
-  deviceStatusBody,
-  routeInstallationFetch,
-} from "#webui/components/settings/installation/tests/helpers/installation-fetch-test-helpers";
+  renderDeviceTab,
+  setupInstallationTab,
+} from "#webui/components/settings/installation/tests/helpers/installation-tab-test-helpers";
 
 describe("InstallationTab device card", () => {
-  const fetchMock = installFetchMock();
-  let routes: ReturnType<typeof routeInstallationFetch>;
-
-  beforeEach(() => {
-    routes = routeInstallationFetch(fetchMock);
-  });
+  const { routes } = setupInstallationTab();
 
   /**
    * Render the tab past the device's mount read.
@@ -36,11 +26,7 @@ describe("InstallationTab device card", () => {
   async function renderCard(
     overrides: Partial<DeviceInstallStatus> = {},
   ): Promise<HTMLElement> {
-    routes.device(jsonResponse(deviceStatusBody(overrides)));
-    render(<InstallationTabHarness />);
-    await waitForHookState(() => {
-      expect(screen.queryByTestId("device-loading")).toBeNull();
-    });
+    await renderDeviceTab(routes, overrides);
 
     return screen.getByTestId("device-section");
   }
