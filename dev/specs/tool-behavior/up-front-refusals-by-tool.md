@@ -169,7 +169,9 @@ The tables sit next to each tool's code and feed one helper,
 - **`ppal-context`** (`context-action-params.ts`): `name` is for scope `memory`,
   `description` for a memory `write`, `content` for `write`, `force` for a
   project or global `write`. `delete` outside `memory` is refused as
-  memory-only. The clobber guard throws.
+  memory-only. A memory `read` or `delete` `name` list with an empty entry is
+  refused, and so is a memory `write` whose `name` is over 200 characters. The
+  clobber guard throws.
 - **`ppal-duplicate`** (`duplicate-input-validation.ts`), by `type`: `count` and
   `withoutClips` are for `track` and `scene`, `withoutDevices` and
   `routeToSource` for `track`, `transforms`, `code`, `toSlot` and `takeLane` for

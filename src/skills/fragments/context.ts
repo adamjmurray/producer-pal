@@ -42,7 +42,7 @@ Three layers, chosen by \`scope\`:
 
 - **global** — who this user is: musical style, preferences, how they want you to work, high-level goals that outlive any one project. Always in your context.
 - **project** — THIS Live Set: its genre, structure, the goals for this track. Always in your context.
-- **memory** — durable facts and rules that only matter in CERTAIN situations (e.g. the sample folder they raid for jungle). Yours to manage freely. Only the INDEX (each entry's name + description) stays in context; load a full body on demand with action:read, name:<name>.
+- **memory** — durable facts and rules that only matter in CERTAIN situations (e.g. the sample folder they raid for jungle). Yours to manage freely. Only the INDEX (each entry's name + description) stays in context; load full bodies on demand with action:read, name:<name> (several: comma-separated).
 
 If a fact should ALWAYS apply, it belongs in context — never divert it into memory just because memory is easier to write.
 
@@ -59,7 +59,7 @@ ${NEW_USER_PARAGRAPH}Writing project/global (the user's own documents — an act
 Managing memory:
 - The description is all you see until you read an entry — make it a precise recall hook (what's inside, when it's relevant), not a vague label.
 - One fact per memory.
-- **delete** (scope:memory) anything wrong or outdated — don't leave stale entries. Convert relative dates ("next week") to absolute before storing.
+- **delete** (scope:memory; several names at once, comma-separated) anything wrong or outdated — don't leave stale entries. Convert relative dates ("next week") to absolute before storing.
 - Save MEMORIES quietly as facts emerge; don't announce each one.`;
 
 /**

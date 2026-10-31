@@ -36,7 +36,7 @@ import {
   roundPan,
 } from "#src/tools/shared/helpers/rounding.ts";
 import { findReturnIndex } from "#src/tools/shared/helpers/send-validation.ts";
-import { replacementFailedDetail } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { replacementFailedDetail } from "#src/shared/max/named-again-wording.ts";
 import {
   type MixerApplied,
   PARAM_DISABLED_REASON,

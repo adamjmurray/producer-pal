@@ -9,6 +9,7 @@
 // Holds the one wording a target the request's deadline never reached gets.
 
 import { errorMessage } from "#src/shared/error-message.ts";
+import { namedAgain } from "#src/shared/max/named-again-wording.ts";
 import { isDeadlineExceeded } from "#src/shared/max/v8-request-deadline.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import {
@@ -135,16 +136,6 @@ export function namedLaterReason(later: NamedTarget): string {
 }
 
 /**
- * How an entry says the later one meant to replace it failed, so nothing of it
- * was written: the one wording for every tool.
- * @param by - The later mention, as the caller spelled it ("t0", id 12)
- * @returns The reason
- */
-export function replacementFailedDetail(by: string): string {
-  return `not written: ${by} was meant to replace it, but failed`;
-}
-
-/**
  * A target in the caller's own words: `id 12` or `"t0/s1"`.
  * @param target - The target, as the caller named it
  * @returns How an entry says which target it means
@@ -185,17 +176,6 @@ export function unreachedDetailAfter(
   return isDeadlineExceeded(deadline ?? null)
     ? unreachedDetail(rerunFor)
     : null;
-}
-
-/**
- * The stem every named-twice reason shares.
- * @param address - How the later mention spelled it, when that differs
- * @returns The stem
- */
-export function namedAgain(address?: string): string {
-  return address == null
-    ? "named again later in this call"
-    : `named again as ${address} later in this call`;
 }
 
 // --- Helpers below main exports ---

@@ -8,11 +8,11 @@ The action verbs are uniform across scopes — `read` / `write` / `delete` — a
 their meaning is driven by `scope`, so there is one verb set to learn rather
 than scope-specific verbs:
 
-| Scope     | Storage                                       | Actions                                                                                         |
-| --------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `project` | one blob, held by the Max device (no `fs`)    | `read`, `write` (replace, guarded)                                                              |
-| `global`  | one pinned blob, `~/.producer-pal/context.md` | `read`, `write` (replace, guarded)                                                              |
-| `memory`  | indexed collection, `~/.producer-pal/memory/` | `read` (entry by `name`, or the index if no `name`), `write` (upsert `name`), `delete` (`name`) |
+| Scope     | Storage                                       | Actions                                                                                                         |
+| --------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `project` | one blob, held by the Max device (no `fs`)    | `read`, `write` (replace, guarded)                                                                              |
+| `global`  | one pinned blob, `~/.producer-pal/context.md` | `read`, `write` (replace, guarded)                                                                              |
+| `memory`  | indexed collection, `~/.producer-pal/memory/` | `read` (entries by `name` list, or the index if no `name`), `write` (upsert one `name`), `delete` (`name` list) |
 
 `scope` defaults to `project`; `action` defaults to `read`. `read` on `memory`
 with no `name` returns the whole index (there is no separate `list` action).
@@ -210,9 +210,14 @@ folder using a path the Live API supplied.
 `helpers/memory/memory-store.ts`. The wire route names still read
 `remember`/`forget`/`list` — internal identifiers that predate the verb
 unification and never reach the AI; the tool's `write`/`delete`/`read`(no-name)
-actions map onto them. Every mutating route echoes back the freshly regenerated
-index, so the tool result always reflects the current memory list even for a
-client that never re-connects.
+actions map onto them (read and delete use the `Many` routes below). A write
+echoes back the freshly regenerated index, so the tool result reflects the
+current memory list even for a client that never re-connects.
+
+A read or delete of named entries goes through `memory.readMany` and
+`memory.forgetMany` (one name or several), which answer one entry per name and
+echo no index (see
+[specs/tool-behavior/ppal-context.md](../../specs/tool-behavior/ppal-context.md)).
 
 ## Small-model mode
 

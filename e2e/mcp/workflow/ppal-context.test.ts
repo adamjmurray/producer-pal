@@ -273,11 +273,11 @@ describe("ppal-context (memory scope)", () => {
 
       expect(written.content).toContain(`Saved memory "${name}"`);
 
-      const readBack = parseToolResult<ContentResult>(
+      const readBack = parseToolResult<MemoryNameEntry>(
         await callContextTool({ action: "read", scope: "memory", name }),
       );
 
-      expect(readBack.content).toBe(content);
+      expect(readBack).toStrictEqual({ name, content });
 
       // read with no name returns the whole index (folds in the old list action)
       const listed = parseToolResult<ContentResult>(
@@ -287,11 +287,29 @@ describe("ppal-context (memory scope)", () => {
       expect(listed.content).toContain(name);
       expect(listed.content).toContain(description);
 
-      const deleted = parseToolResult<ContentResult>(
+      // One name answers with its entry, unwrapped, and echoes no index.
+      const deleted = parseToolResult<MemoryNameEntry>(
         await callContextTool({ action: "delete", scope: "memory", name }),
       );
 
-      expect(deleted.content).toContain(`Deleted memory "${name}"`);
+      expect(deleted).toStrictEqual({ name });
+
+      // Deleting it again has nothing to do, which is not an error.
+      const deletedAgain = parseToolResult<MemoryNameEntry>(
+        await callContextTool({ action: "delete", scope: "memory", name }),
+      );
+
+      expect(deletedAgain).toStrictEqual({
+        name,
+        detail: "nothing to delete",
+      });
+
+      // A lone read of a missing entry is an error.
+      expect(
+        getToolErrorMessage(
+          await callContextTool({ action: "read", scope: "memory", name }),
+        ),
+      ).toContain(`No memory found for "${name}"`);
 
       const listedAfter = parseToolResult<ContentResult>(
         await callContextTool({ action: "read", scope: "memory" }),
@@ -304,6 +322,74 @@ describe("ppal-context (memory scope)", () => {
       } catch {
         console.warn(
           `e2e cleanup failed — manually delete ~/.producer-pal/memory/${name}.md`,
+        );
+      }
+    }
+  });
+
+  it("reads and deletes several entries by a comma-separated name list", async () => {
+    const id = randomUUID();
+    const names = [`e2e-test-${id}-a`, `e2e-test-${id}-b`];
+    const ghost = `e2e-test-${id}-ghost`;
+
+    try {
+      for (const name of names) {
+        await callContextTool({
+          action: "write",
+          scope: "memory",
+          name,
+          description: "e2e temporary memory (safe to delete)",
+          content: `body of ${name}`,
+        });
+      }
+
+      const read = parseToolResult<MemoryNameEntry[]>(
+        await callContextTool({
+          action: "read",
+          scope: "memory",
+          name: `${names[0]},${ghost},${names[1]}`,
+        }),
+      );
+
+      expect(read).toStrictEqual([
+        { name: names[0], content: `body of ${names[0]}` },
+        {
+          name: ghost,
+          ok: false,
+          detail: `No memory found for "${ghost}".`,
+        },
+        { name: names[1], content: `body of ${names[1]}` },
+      ]);
+
+      const deleted = parseToolResult<MemoryNameEntry[]>(
+        await callContextTool({
+          action: "delete",
+          scope: "memory",
+          name: `${names[0]},${ghost},${names[1]}`,
+        }),
+      );
+
+      expect(deleted).toStrictEqual([
+        { name: names[0] },
+        { name: ghost, detail: "nothing to delete" },
+        { name: names[1] },
+      ]);
+
+      const listedAfter = parseToolResult<ContentResult>(
+        await callContextTool({ action: "read", scope: "memory" }),
+      );
+
+      expect(listedAfter.content).not.toContain(id);
+    } finally {
+      try {
+        await callContextTool({
+          action: "delete",
+          scope: "memory",
+          name: names.join(","),
+        });
+      } catch {
+        console.warn(
+          `e2e cleanup failed — manually delete ~/.producer-pal/memory/e2e-test-${id}-*.md`,
         );
       }
     }
@@ -324,6 +410,14 @@ describe("ppal-context (memory scope)", () => {
     expect(message).not.toContain("memory.remember");
   });
 });
+
+/** Matches MemoryNameEntry from memory-entry-operations.ts */
+interface MemoryNameEntry {
+  name: string;
+  content?: string;
+  ok?: false;
+  detail?: string;
+}
 
 /** Matches ContentResult from project-context-operations.ts */
 interface ContentResult {

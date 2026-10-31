@@ -323,11 +323,11 @@ function normalizeForContainment(line: string): string {
  * @param args - Arguments to pass to the route
  * @returns The route's success payload
  */
-export async function callNodeContentRoute(
+export async function callNodeContentRoute<T = ContentResult>(
   route: string,
   args: object,
-): Promise<ContentResult> {
-  const response = await requestNode<ContentResult>(route, args);
+): Promise<T> {
+  const response = await requestNode<T>(route, args);
 
   if (!response.success || !response.result) {
     throw new Error(response.error ?? "unknown error");

@@ -20,6 +20,7 @@ apply it to every tool at once.
 | [ppal-connect.md](ppal-connect.md)                              | How `ppal-connect` answers: the full connect, the version check, the new-chat line |
 | [ppal-manage.md](ppal-manage.md)                                | How `ppal-manage` answers: install, add Producer Pal, undo, redo, refusals         |
 | [ppal-library.md](ppal-library.md)                              | How `ppal-library` answers when Live's library data may be out of date             |
+| [ppal-context.md](ppal-context.md)                              | How `ppal-context` answers when a call names several memory entries                |
 | [dev/tools/tool-schemas.md](../../tools/tool-schemas.md)        | How to build the schema and the helpers that enforce these rules                   |
 
 ## Lists and pairing

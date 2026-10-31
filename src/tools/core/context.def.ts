@@ -94,10 +94,11 @@ export const toolDefContext = defineTool("ppal-context", {
       smallModel: `The full document text to write. Max ${MAX_CONTENT_LENGTH} chars.`,
     }),
 
-    name: param(z.string().max(200).optional(), {
+    name: param(z.string().max(1000).optional(), {
       default:
-        "Memory entry name (read/write/delete on scope:memory only), one entry per " +
-        "call. Reuse a name to update, not duplicate.",
+        "Memory entry name (scope:memory only). read/delete take a " +
+        "comma-separated list; write takes one. Reuse a name to update, " +
+        "not duplicate.",
       smallModel: null,
     }),
 

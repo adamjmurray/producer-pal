@@ -598,17 +598,17 @@ describe("buildSkills - new user", () => {
   const ALL_TOOLS = [...TOOL_NAMES];
   const PARAGRAPH = "**New user** (connect says";
 
-  // sha256 of context-standard as it shipped before the paragraph became
-  // droppable. A new user must get exactly this text: its position inside the
-  // guide is load-bearing (moving it cost onboarding evals).
-  const PRE_CHANGE_SHA256 =
-    "4563349cc067c5062299980ce57c189a6b07cded72f11ebecae6f8e1f4541e4e";
+  // sha256 of context-standard. A new user must get exactly this text: the
+  // paragraph's position inside the guide is load-bearing (moving it cost
+  // onboarding evals). Update it when the guide's wording changes elsewhere.
+  const CONTEXT_STANDARD_SHA256 =
+    "41b89b2777d637700dd57852801f989ca5e897d26b3dc4d9b3d737d4d3309d37";
 
-  it("gives a new user the context guide byte for byte as before", () => {
+  it("gives a new user the context guide exactly as pinned", () => {
     const hash = (text: string): string =>
       createHash("sha256").update(text).digest("hex");
 
-    expect(hash(contextStandard)).toBe(PRE_CHANGE_SHA256);
+    expect(hash(contextStandard)).toBe(CONTEXT_STANDARD_SHA256);
 
     // Omitted counts as new, so callers that can't tell keep the paragraph.
     for (const newUser of [true, undefined]) {

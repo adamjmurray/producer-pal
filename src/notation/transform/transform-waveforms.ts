@@ -169,7 +169,7 @@ export function curve(
  * and return a value outside [-1, 1] (e.g. tri(-0.5) = -2.0). That out-of-range
  * value can drive a velocity negative, after which the note is silently dropped
  * by the survivor filter. cos/sin are immune (Math.cos/sin are periodic) and
- * keep the bare modulo.
+ * keep the bare modulo. swing() uses it too, so pickup notes get the right half.
  * @param phase - Phase in cycles (any real number)
  * @returns Phase wrapped into [0, 1)
  */

@@ -67,53 +67,6 @@ describe("skills.remember route", () => {
   });
 });
 
-describe("skills.read route", () => {
-  it("returns the stored body", async () => {
-    rememberCustomSkill({
-      name: "jazz-voicings",
-      description: "rich",
-      body: "Voice with 3rds and 7ths.",
-    });
-
-    const response = await dispatchNodeRoute("skills.read", {
-      name: "jazz-voicings",
-    });
-
-    expect(response.result).toStrictEqual({
-      content: "Voice with 3rds and 7ths.",
-    });
-  });
-
-  it("returns a not-found note for a missing skill", async () => {
-    const response = await dispatchNodeRoute("skills.read", { name: "ghost" });
-
-    expect(response.result).toStrictEqual({
-      content: 'No custom skill found for "ghost".',
-    });
-  });
-});
-
-describe("skills.forget route", () => {
-  it("removes an existing skill", async () => {
-    rememberCustomSkill({ name: "temp", description: "", body: "b" });
-
-    const response = await dispatchNodeRoute("skills.forget", { name: "temp" });
-
-    expect(response.result?.content).toContain('Deleted custom skill "temp".');
-    expect(response.result?.content).toContain("(no custom skills)");
-  });
-
-  it("reports when there was nothing to delete", async () => {
-    const response = await dispatchNodeRoute("skills.forget", {
-      name: "ghost",
-    });
-
-    expect(response.result?.content).toContain(
-      'No custom skill to delete for "ghost".',
-    );
-  });
-});
-
 describe("skills.list route", () => {
   it("returns a placeholder when empty", async () => {
     const response = await dispatchNodeRoute("skills.list", {});

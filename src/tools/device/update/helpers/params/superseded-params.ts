@@ -13,7 +13,7 @@ import {
 } from "#src/tools/shared/device/helpers/param-reading.ts";
 import { linkReplacer } from "#src/tools/shared/helpers/entry-details.ts";
 import { isSpecializedParamKey } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
-import { namedAgain } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { namedAgain } from "#src/shared/max/named-again-wording.ts";
 import { lastWins } from "#src/tools/shared/write-pipeline/plans/last-wins.ts";
 import { matchParamsByName } from "./param-name-resolution.ts";
 

@@ -105,7 +105,7 @@ describe("context - params the scope or action doesn't read", () => {
     "says delete is memory-only on the %s scope",
     async (scope) => {
       await expect(context({ action: "delete", scope })).rejects.toThrow(
-        `action "delete" is only for scope "memory", where it removes one entry by name. scope "${scope}" holds one document: use action "write" to replace it.`,
+        `action "delete" is only for scope "memory", where it removes entries by name. scope "${scope}" holds one document: use action "write" to replace it.`,
       );
       expect(protocolMock.requestNode).not.toHaveBeenCalled();
     },

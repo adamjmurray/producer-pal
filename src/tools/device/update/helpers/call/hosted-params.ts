@@ -41,10 +41,8 @@ import {
   type PluginHostResponse,
   requestPluginHost,
 } from "#src/live-api-adapter/protocols/plugin-host-v8-protocol.ts";
-import {
-  namedAgain,
-  unreachedDetail,
-} from "#src/tools/shared/validation/lists/named-targets.ts";
+import { namedAgain } from "#src/shared/max/named-again-wording.ts";
+import { unreachedDetail } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** Set once a write gets no answer, so the targets after it aren't tried. */

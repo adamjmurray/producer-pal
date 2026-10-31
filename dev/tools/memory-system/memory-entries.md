@@ -71,12 +71,17 @@ directly and then issuing a no-name `read` (or reconnecting) re-derives it.
 
 `ppal-context` `scope:"memory"`:
 
-- `read` — with a `name`, returns that entry's body (or a not-found note); with
-  no `name`, returns the whole index.
+- `read` — with `name` (a comma-separated list for several), returns
+  `{name, content}` per entry, unwrapped for one; a missing entry is an error
+  when alone and `{name, ok: false, detail}` in a list. With no `name`, returns
+  the whole index.
 - `write` — `name` + `content` + `description` required; creates or overwrites
   `memory/<name>.md` (same slug ⇒ update) and re-derives the index.
-- `delete` — `name` required; deletes the file (if present) and re-derives the
-  index.
+- `delete` — `name` (a comma-separated list for several); deletes the file if
+  present and re-derives the index. Returns `{name}` per entry; one that isn't
+  there is `{name, detail: "nothing to delete"}`. See
+  [specs/tool-behavior/ppal-context.md](../../specs/tool-behavior/ppal-context.md).
 
-`write`/`delete` responses append the freshly regenerated index so the model's
-view of what's stored never goes stale mid-conversation.
+`write` appends the freshly regenerated index to its response so the model's
+view of what's stored never goes stale mid-conversation. A delete doesn't: read
+with no `name` for the index.

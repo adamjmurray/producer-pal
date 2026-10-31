@@ -5,7 +5,10 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerMemoryNodeRoutes } from "#src/mcp-server/helpers/memory/memory-node-routes.ts";
-import { rememberMemory } from "#src/mcp-server/helpers/memory/memory-store.ts";
+import {
+  readMemoryEntry,
+  rememberMemory,
+} from "#src/mcp-server/helpers/memory/memory-store.ts";
 import { clearNodeRoutes } from "#src/mcp-server/rpc/node-request-protocol.ts";
 import {
   dispatchNodeRoute,
@@ -67,48 +70,112 @@ describe("memory.remember route", () => {
   });
 });
 
-describe("memory.read route", () => {
-  it("returns the stored body", async () => {
-    rememberMemory({
-      name: "kick-samples",
-      description: "analog",
-      body: "In ~/Samples/Analog.",
+describe("memory.readMany route", () => {
+  it("answers each name in order, a missing one with ok: false", async () => {
+    rememberMemory({ name: "a", description: "d", body: "body a" });
+    rememberMemory({ name: "b", description: "d", body: "body b" });
+
+    const response = await dispatchNodeRoute("memory.readMany", {
+      names: ["b", "ghost", "A", "b"],
     });
-
-    const response = await dispatchNodeRoute("memory.read", {
-      name: "kick-samples",
-    });
-
-    expect(response.result).toStrictEqual({ content: "In ~/Samples/Analog." });
-  });
-
-  it("returns a not-found note for a missing memory", async () => {
-    const response = await dispatchNodeRoute("memory.read", { name: "ghost" });
 
     expect(response.result).toStrictEqual({
-      content: 'No memory found for "ghost".',
+      entries: [
+        { name: "b", content: "body b" },
+        { name: "ghost", ok: false, detail: 'No memory found for "ghost".' },
+        { name: "A", content: "body a" },
+        { name: "b", content: "body b" },
+      ],
     });
+  });
+
+  it("reports every name missing when none exists", async () => {
+    const response = await dispatchNodeRoute("memory.readMany", {
+      names: ["x", "y"],
+    });
+
+    expect(response.result).toStrictEqual({
+      entries: [
+        { name: "x", ok: false, detail: 'No memory found for "x".' },
+        { name: "y", ok: false, detail: 'No memory found for "y".' },
+      ],
+    });
+  });
+
+  it("fails when names is not an array of strings", async () => {
+    const response = await dispatchNodeRoute("memory.readMany", { names: "a" });
+
+    expect(response.success).toBe(false);
+    expect(response.error).toContain("names must be an array of strings");
   });
 });
 
-describe("memory.forget route", () => {
-  it("removes an existing memory", async () => {
-    rememberMemory({ name: "temp", description: "d", body: "b" });
+describe("memory.forgetMany route", () => {
+  it("deletes each name and leaves the rest", async () => {
+    rememberMemory({ name: "a", description: "d", body: "x" });
+    rememberMemory({ name: "b", description: "d", body: "x" });
+    rememberMemory({ name: "keep", description: "d", body: "x" });
 
-    const response = await dispatchNodeRoute("memory.forget", { name: "temp" });
-
-    expect(response.result?.content).toContain('Deleted memory "temp".');
-    expect(response.result?.content).toContain("(no memories stored)");
-  });
-
-  it("reports when there was nothing to delete", async () => {
-    const response = await dispatchNodeRoute("memory.forget", {
-      name: "ghost",
+    const response = await dispatchNodeRoute("memory.forgetMany", {
+      names: ["a", "ghost", "b"],
     });
 
-    expect(response.result?.content).toContain(
-      'No memory named "ghost" to delete.',
-    );
+    expect(response.result).toStrictEqual({
+      entries: [
+        { name: "a" },
+        { name: "ghost", detail: "nothing to delete" },
+        { name: "b" },
+      ],
+    });
+
+    expect(readMemoryEntry("keep")).not.toBeNull();
+    expect(readMemoryEntry("a")).toBeNull();
+    expect(readMemoryEntry("b")).toBeNull();
+  });
+
+  it("deletes a name given twice once, by its last mention", async () => {
+    rememberMemory({ name: "dup", description: "d", body: "x" });
+
+    const response = await dispatchNodeRoute("memory.forgetMany", {
+      names: ["dup", "Dup", "other"],
+    });
+
+    expect(response.result).toStrictEqual({
+      entries: [
+        { name: "dup", detail: 'named again as "Dup" later in this call' },
+        { name: "Dup" },
+        { name: "other", detail: "nothing to delete" },
+      ],
+    });
+  });
+
+  it("treats the reserved index name as nothing to delete", async () => {
+    const response = await dispatchNodeRoute("memory.forgetMany", {
+      names: ["memory", "MEMORY"],
+    });
+
+    expect(response.result).toStrictEqual({
+      entries: [
+        {
+          name: "memory",
+          detail: 'named again as "MEMORY" later in this call',
+        },
+        { name: "MEMORY", detail: "nothing to delete" },
+      ],
+    });
+  });
+
+  it("reports every name as nothing to delete when none exists", async () => {
+    const response = await dispatchNodeRoute("memory.forgetMany", {
+      names: ["!!!", "ghost"],
+    });
+
+    expect(response.result).toStrictEqual({
+      entries: [
+        { name: "!!!", detail: "nothing to delete" },
+        { name: "ghost", detail: "nothing to delete" },
+      ],
+    });
   });
 });
 
