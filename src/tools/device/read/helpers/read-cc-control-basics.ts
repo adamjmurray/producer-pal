@@ -47,7 +47,7 @@ export async function addCcControlBasics(
 
   if (
     controls.length === 0 ||
-    liveVersionAtLeast(CC_CONTROL_READABLE_MIN_VERSION)
+    liveVersionAtLeast(CC_CONTROL_READABLE_MIN_VERSION, { release: true })
   ) {
     return false;
   }

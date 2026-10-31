@@ -98,7 +98,11 @@ describe("CC Control without the remote script", () => {
   it("reads as a MIDI effect with its params, and no name or on/off state, before Live 12.4.15", async ({
     skip,
   }) => {
-    if (await liveVersionAtLeast(ctx.client!, CC_CONTROL_READABLE)) {
+    if (
+      await liveVersionAtLeast(ctx.client!, CC_CONTROL_READABLE, {
+        release: true,
+      })
+    ) {
       skip("12.4.15 and later read the name and on/off state natively");
     }
 
@@ -133,6 +137,7 @@ describe("CC Control on Live 12.4.15 and later", () => {
     ctx,
     CC_CONTROL_READABLE,
     "a CC Control's name and on/off state read natively",
+    { release: true },
   );
 
   it("reads a renamed, switched-off CC Control's name and deactivated without the remote script", async () => {

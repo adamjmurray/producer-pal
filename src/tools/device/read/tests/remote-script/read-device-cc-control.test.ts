@@ -104,6 +104,22 @@ describe("readDevice of a CC Control", () => {
   });
 
   describe("on Live 12.4.15 and later", () => {
+    it.each(["12.4.16b1", "13.0b"])(
+      "makes no remote-script request on %s",
+      async (version) => {
+        registerLiveApp(version);
+        remoteScriptSays({ name: "Wheel lane", is_active: false });
+
+        await readDevice({ id: "cc-1" });
+
+        expect(requestNode).not.toHaveBeenCalledWith(
+          DEVICE_BASICS_ROUTE,
+          expect.anything(),
+          expect.anything(),
+        );
+      },
+    );
+
     it("makes no remote-script request and leaves the read as it is", async () => {
       registerLiveApp("12.4.15");
       remoteScriptSays({ name: "Wheel lane", is_active: false });
@@ -122,14 +138,18 @@ describe("readDevice of a CC Control", () => {
   });
 
   describe("with the remote script", () => {
-    it("still asks on a Live just before 12.4.15", async () => {
-      registerLiveApp("12.4.14");
-      remoteScriptSays({ name: "Wheel lane", is_active: false });
+    // A beta of 12.4.15 may not have the fix yet, so it still asks.
+    it.each(["12.4.14", "12.4", "12.4.15b1", "12.4.15b7"])(
+      "still asks on Live %s, before the 12.4.15 release",
+      async (version) => {
+        registerLiveApp(version);
+        remoteScriptSays({ name: "Wheel lane", is_active: false });
 
-      expect(await readDevice({ id: "cc-1" })).toStrictEqual(
-        expect.objectContaining({ name: "Wheel lane", deactivated: true }),
-      );
-    });
+        expect(await readDevice({ id: "cc-1" })).toStrictEqual(
+          expect.objectContaining({ name: "Wheel lane", deactivated: true }),
+        );
+      },
+    );
 
     it("adds a name the user gave it, and that it is off, right after its type", async () => {
       remoteScriptSays({ name: "Wheel lane", is_active: false });

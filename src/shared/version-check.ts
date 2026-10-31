@@ -109,6 +109,27 @@ export function isNewerVersion(current: string, latest: string): boolean {
 }
 
 /**
+ * Whether a running Live is at least a version. Live labels betas without a
+ * dash ("12.4.15b7"), which `isNewerVersion` doesn't see as pre-release. Any
+ * letter suffix ("b", "rc", "d") marks one. Here a pre-release of `min` itself
+ * counts as older than `min`, since it may not have what the release does; a
+ * pre-release of any later version counts as at least `min`.
+ * @param version - The Live version string, like "12.4.15b7"
+ * @param min - The oldest version that has the feature, like "12.4.15"
+ * @returns True when the running Live is `min` or later
+ */
+export function isLiveVersionAtLeast(version: string, min: string): boolean {
+  if (isNewerVersion(version, min)) {
+    return false;
+  }
+
+  const release = version.trim().replace(/[a-z]+\d*$/i, "");
+
+  // Same numbers as `min` but a pre-release: the release is still to come.
+  return release === version.trim() || isNewerVersion(min, release);
+}
+
+/**
  * Whether an installed copy is behind a build: different from it, and not newer.
  * An unreadable version counts as behind. Differs-from is the test, not
  * `isNewerVersion`, which can't order every pair of pre-release tags (beta vs
