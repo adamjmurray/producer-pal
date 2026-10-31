@@ -14,15 +14,17 @@
  * option, so this grades only the options the device ends up on.
  *
  * `setup` adds an EQ Eight to the Lead track (`t3/d4`, after its four devices)
- * and an Operator to the 5-MIDI track (`t4/d1`, after Producer Pal). Operator's
- * start state is set explicitly, since a new one may load with other settings.
- * It throws if any option the user will ask for is already set. Every option
- * param the user did not ask about must still read as it did after setup.
+ * and an Operator to the 5-MIDI track (`t4/d1`, after Producer Pal). Both get
+ * an explicit start state: Live applies the user's default device preset, so a
+ * new device can start with an asked-for option already set. Setup throws if
+ * one still is. Every option param the user did not ask about must still read
+ * as it did after setup.
  *
  * The prompts say what the sound should do ("a notch", "a shelf that lifts the
- * highs"), not the exact option text. A new EQ Eight has bands 1-4 on and 5-8
- * off, and has no "Low Cut": that is "High Pass". Only bands 1-4 are used, so a
- * model that also switches a band on is not penalized.
+ * highs"), not the exact option text. EQ Eight has no "Low Cut": that is "High
+ * Pass". Only bands 1-4 are used, so a model that also switches a band on is
+ * not penalized. Each band has an A and a B side; a model that also gives the B
+ * side the option it was asked for is not penalized either.
  */
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -61,6 +63,12 @@ const EQ_EIGHT: Target = {
   appendPath: "t3/d+",
   path: "t3/d4",
   type: "EQ Eight",
+  seed: [
+    { name: "1 Filter Type A", value: "Low Shelf" },
+    { name: "2 Filter Type A", value: "Bell" },
+    { name: "3 Filter Type A", value: "Bell" },
+    { name: "4 Filter On A", value: "On" },
+  ],
   wanted: [
     { name: "3 Filter Type A", option: /notch/i },
     { name: "2 Filter Type A", option: /high shelf/i },
@@ -144,12 +152,35 @@ function optionProblems(
   }
 
   for (const [name, text] of Object.entries(optionValues(result))) {
-    if (!asked.has(name) && before?.[name] != null && before[name] !== text) {
+    if (
+      !asked.has(name) &&
+      !isMirrorOfWanted(target, name, text) &&
+      before?.[name] != null &&
+      before[name] !== text
+    ) {
       problems.push(`${name} changed from "${before[name]}" to "${text}"`);
     }
   }
 
   return problems.length === 0 ? null : problems.join("; ");
+}
+
+/**
+ * Whether a param is the B side of an asked-for A-side param, set to the same
+ * option the user asked for.
+ *
+ * @param target - The device and what was asked of it
+ * @param name - The param's name
+ * @param text - What it reads as
+ * @returns True for a B side that mirrors a wanted change
+ */
+function isMirrorOfWanted(target: Target, name: string, text: string): boolean {
+  return target.wanted.some(
+    ({ name: wantedName, option }) =>
+      wantedName.endsWith(" A") &&
+      name === `${wantedName.slice(0, -1)}B` &&
+      option.test(text),
+  );
 }
 
 /**
