@@ -151,12 +151,10 @@ function sameWord(word: string, fileWord: string): boolean {
  * @returns Exported names
  */
 function exportedNames(filePath: string, source: string): string[] {
-  const parsed = ts.createSourceFile(
-    filePath,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-  );
+  const parsed = ts.createSourceFile(filePath, source, {
+    languageVersion: ts.ScriptTarget.Latest,
+    jsDocParsingMode: ts.JSDocParsingMode.ParseNone,
+  });
   const names: string[] = [];
   const local = new Set<string>();
 
@@ -206,12 +204,11 @@ function declaredNames(statement: ts.Statement): string[] {
     return [];
   }
 
-  return statement.declarationList.declarations
-    .filter(
-      (declaration) =>
-        ts.isIdentifier(declaration.name) && isFunctionValue(declaration),
-    )
-    .map((declaration) => declaration.name.getText());
+  return statement.declarationList.declarations.flatMap((declaration) =>
+    ts.isIdentifier(declaration.name) && isFunctionValue(declaration)
+      ? [declaration.name.text]
+      : [],
+  );
 }
 
 /**

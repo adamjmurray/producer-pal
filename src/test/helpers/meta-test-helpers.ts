@@ -256,9 +256,15 @@ export function countPatternOccurrences(
   pattern: RegExp,
 ): PatternMatch[] {
   const matches: PatternMatch[] = [];
+  const wholeFile = wholeFilePattern(pattern);
 
   for (const file of files) {
     const content = fs.readFileSync(file, "utf8");
+
+    if (wholeFile != null && !wholeFile.test(content)) {
+      continue;
+    }
+
     const lines = content.split("\n");
 
     for (let i = 0; i < lines.length; i++) {
@@ -275,6 +281,25 @@ export function countPatternOccurrences(
   }
 
   return matches;
+}
+
+/**
+ * A line pattern run over a whole file, to skip files with no matching line.
+ * Multiline mode keeps `^`/`$` at line edges, so any line match is also a
+ * whole-file match. A negative lookaround breaks that (it can see past the
+ * line's edge), so those get no shortcut.
+ * @param pattern - Pattern matched against single lines
+ * @returns The whole-file pattern, or null when there is no safe one
+ */
+function wholeFilePattern(pattern: RegExp): RegExp | null {
+  if (/\(\?<?!/.test(pattern.source)) {
+    return null;
+  }
+
+  return new RegExp(
+    pattern.source,
+    `${pattern.flags.replaceAll(/[gmy]/g, "")}m`,
+  );
 }
 
 /** Source file extensions */
@@ -306,9 +331,10 @@ const TEXT_EXTENSIONS: Set<string> = new Set([
  */
 export function findRepoTextFiles(rootDir: string = projectRoot): string[] {
   const results: string[] = [];
-  const items = fs.readdirSync(rootDir);
 
-  for (const item of items) {
+  for (const entry of fs.readdirSync(rootDir, { withFileTypes: true })) {
+    const item = entry.name;
+
     if (item === "node_modules" || item === ".git") {
       continue;
     }
@@ -319,7 +345,7 @@ export function findRepoTextFiles(rootDir: string = projectRoot): string[] {
 
     const fullPath = path.join(rootDir, item);
 
-    if (fs.statSync(fullPath).isDirectory()) {
+    if (isDirectory(entry, fullPath)) {
       results.push(...findRepoTextFiles(fullPath));
     } else if (TEXT_EXTENSIONS.has(path.extname(item))) {
       results.push(fullPath);
@@ -327,6 +353,18 @@ export function findRepoTextFiles(rootDir: string = projectRoot): string[] {
   }
 
   return results;
+}
+
+/**
+ * @param entry - A directory entry
+ * @param fullPath - Its absolute path
+ * @returns True for a directory, or a symlink to one
+ */
+function isDirectory(entry: fs.Dirent, fullPath: string): boolean {
+  return (
+    entry.isDirectory() ||
+    (entry.isSymbolicLink() && fs.statSync(fullPath).isDirectory())
+  );
 }
 
 /**
@@ -339,25 +377,44 @@ function findFilesRecursive(
   dirPath: string,
   filter: (relPath: string) => boolean,
 ): string[] {
+  let files = filesUnder.get(dirPath);
+
+  if (files == null) {
+    files = listFiles(dirPath).map((file) => [file, repoPath(file)]);
+    filesUnder.set(dirPath, files);
+  }
+
+  return files.filter(([, relPath]) => filter(relPath)).map(([file]) => file);
+}
+
+/**
+ * Each directory's files as [absolute, repo-relative] pairs. The scan tests
+ * walk the same trees many times, and the tree doesn't change during a run.
+ */
+const filesUnder = new Map<string, [string, string][]>();
+
+/**
+ * Every file under a directory, outside node_modules
+ * @param dirPath - Directory to scan
+ * @returns Absolute paths, in directory order
+ */
+function listFiles(dirPath: string): string[] {
   const results: string[] = [];
 
   if (!fs.existsSync(dirPath)) {
     return results;
   }
 
-  const items = fs.readdirSync(dirPath);
-
-  for (const item of items) {
-    if (item === "node_modules") {
+  for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+    if (entry.name === "node_modules") {
       continue;
     }
 
-    const fullPath = path.join(dirPath, item);
-    const stat = fs.statSync(fullPath);
+    const fullPath = path.join(dirPath, entry.name);
 
-    if (stat.isDirectory()) {
-      results.push(...findFilesRecursive(fullPath, filter));
-    } else if (filter(repoPath(fullPath))) {
+    if (isDirectory(entry, fullPath)) {
+      results.push(...listFiles(fullPath));
+    } else {
       results.push(fullPath);
     }
   }

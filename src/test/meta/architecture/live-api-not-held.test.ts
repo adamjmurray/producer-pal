@@ -139,8 +139,11 @@ function findLiveApiHolds(file: string, source: string): Hold[] {
   const sf = ts.createSourceFile(
     file,
     source,
-    ts.ScriptTarget.Latest,
-    true,
+    {
+      languageVersion: ts.ScriptTarget.Latest,
+      jsDocParsingMode: ts.JSDocParsingMode.ParseNone,
+    },
+    false,
     kind,
   );
   const holds: Hold[] = [];
