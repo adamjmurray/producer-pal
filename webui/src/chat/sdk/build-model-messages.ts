@@ -463,9 +463,34 @@ function buildToolResultContent(msg: ChatMessage): ToolResultPart[] {
       type: "tool-result" as const,
       toolCallId: tc.id,
       toolName: tc.name,
-      output: toolOutput(tr == null ? FAILED_TOOL_RESULT_TEXT : tr.result),
+      output:
+        tr == null ? toolOutput(FAILED_TOOL_RESULT_TEXT) : resultOutput(tr),
     };
   });
+}
+
+/**
+ * A recorded result as the SDK sent it within a turn. A failure is `error-text`:
+ * plain text would change the request (Anthropic `is_error`, OpenAI and Gemini
+ * wrap it) and miss the prompt cache.
+ * @param entry - Recorded tool result
+ * @returns The tool-result output
+ */
+function resultOutput(
+  entry: NonNullable<ChatMessage["toolResults"]>[number],
+): ToolResultPart["output"] {
+  if (!entry.isError) {
+    return toolOutput(entry.result);
+  }
+
+  const { result, errorText } = entry;
+
+  return {
+    type: "error-text",
+    value:
+      errorText ??
+      (typeof result === "string" ? result : JSON.stringify(result)),
+  };
 }
 
 /**

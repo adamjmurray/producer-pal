@@ -11,6 +11,7 @@
  * accumulating onto one ChatMessage.
  */
 
+import { getErrorMessage } from "@ai-sdk/provider-utils";
 import { CLAUDE_REASONING_FORMAT } from "#webui/chat/sdk/provider/openrouter-reasoning";
 import { type ChatMessage } from "#webui/chat/sdk/types";
 import { errorMessage } from "#src/shared/error-message";
@@ -139,6 +140,7 @@ function applyStreamPart(
       args: part.input as Record<string, unknown>,
       result: errorMessage(part.error),
       isError: true,
+      errorText: getErrorMessage(part.error),
     });
 
     return true;

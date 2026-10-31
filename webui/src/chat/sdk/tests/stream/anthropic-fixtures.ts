@@ -159,6 +159,13 @@ export const THINKING_THEN_CALL: RawEvent[] = [
   ...end("tool_use", 25, 12),
 ];
 
+/** A call to a tool that fails. */
+export const FAILING_CALL: RawEvent[] = [
+  start,
+  ...toolUse(0, "toolu_x", "ppal-update-clip", ["", '{"id":"7"}']),
+  ...end("tool_use", 25),
+];
+
 /** The answer once the tool result is in. */
 export const ANSWER_AFTER_TOOL: RawEvent[] = [
   start,

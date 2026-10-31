@@ -227,6 +227,7 @@ export function expectFailedToolRun(history: ChatMessage[]): void {
     args: { id: "7" },
     result: "clip 7 not found",
     isError: true,
+    errorText: "Error: clip 7 not found",
   });
   expect(answer?.content).toBe("Tempo is 120.");
 }

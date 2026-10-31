@@ -209,6 +209,32 @@ describe("Anthropic stream to history", () => {
       ]);
     });
 
+    it("re-sends a failed tool call's result exactly as it went within its turn", async () => {
+      const seen = stubProviderFetch(
+        [F.FAILING_CALL, F.ANSWER_AFTER_TOOL, F.ANSWER_AFTER_TOOL],
+        true,
+      );
+      const client = await claude();
+
+      await say(client, "Edit");
+      await say(client, "Again");
+
+      const wire = (body: Record<string, unknown> | undefined): WireMessage[] =>
+        JSON.parse(
+          JSON.stringify(messagesOf(body ?? {})),
+          (key, value: unknown) =>
+            key === "cache_control" ? undefined : value,
+        ) as WireMessage[];
+      const withinTurn = wire(seen[1]?.body);
+
+      expect(withinTurn.at(-1)?.content[0]).toStrictEqual(
+        expect.objectContaining({ is_error: true }),
+      );
+      expect(wire(seen[2]?.body).slice(0, withinTurn.length)).toStrictEqual(
+        withinTurn,
+      );
+    });
+
     it("sends no thinking blocks once thinking is off", async () => {
       const seen = stubProviderFetch(
         [F.THINKING_THEN_TEXT, F.ANSWER_AFTER_TOOL],

@@ -84,6 +84,8 @@ export interface ChatMessage {
     args: Record<string, unknown>;
     result: unknown;
     isError?: boolean;
+    /** A failure as the SDK sent it within the turn (`Error: <message>`). */
+    errorText?: string;
 
     /**
      * For a spawn_subagent result: the worker's chat history, kept for the UI

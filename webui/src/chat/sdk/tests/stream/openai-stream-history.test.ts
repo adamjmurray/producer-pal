@@ -273,6 +273,25 @@ describe("OpenAI Responses stream to history", () => {
       expect(wire[2]?.call_id).toBe("call_1");
       expect(JSON.stringify(wire)).not.toContain("rs_2");
     });
+
+    it("re-sends a failed tool call's result exactly as it went within its turn", async () => {
+      const seen = stubResponses([
+        F.FAILING_CALL,
+        F.ANSWER_AFTER_TOOL,
+        F.ANSWER_AFTER_TOOL,
+      ]);
+      const client = await gpt();
+
+      await say(client, "Edit");
+      await say(client, "Again");
+
+      const withinTurn = inputOf(seen[1]?.body ?? {});
+
+      expect(JSON.stringify(withinTurn.at(-1))).toContain("clip 7 not found");
+      expect(
+        inputOf(seen[2]?.body ?? {}).slice(0, withinTurn.length),
+      ).toStrictEqual(withinTurn);
+    });
   });
 
   describe("stops and failures", () => {

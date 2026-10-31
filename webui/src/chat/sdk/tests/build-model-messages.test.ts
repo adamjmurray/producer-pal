@@ -100,6 +100,31 @@ describe("buildModelMessages", () => {
     ]);
   });
 
+  it.each([
+    [
+      "the error text the SDK sent within the turn",
+      "Error: boom",
+      "Error: boom",
+    ],
+    ["the plain message for a result recorded without it", undefined, "boom"],
+  ])(
+    "sends a failed tool call as error-text with %s",
+    (_name, errorText, value) => {
+      const failed = { id: "1", name: "t", args: {}, result: "boom" };
+      const [, tool] = buildModelMessages([
+        {
+          role: "assistant",
+          content: "",
+          toolCalls: [{ id: "1", name: "t", args: {} }],
+          toolResults: [{ ...failed, isError: true, errorText }],
+        },
+      ]);
+      const parts = tool?.content as Array<{ output: unknown }>;
+
+      expect(parts[0]?.output).toStrictEqual({ type: "error-text", value });
+    },
+  );
+
   it("never sends a subagent transcript to the model, only the compact result", () => {
     // The worker transcript rides on the tool-result for the UI, but the model
     // must see only the compact result — else the orchestrator context blows up.

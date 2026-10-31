@@ -333,6 +333,26 @@ describe("Gemini stream to history", () => {
       },
     );
 
+    it("re-sends a failed tool call's result exactly as it went within its turn", async () => {
+      const seen = stubProviderFetch([
+        F.FAILING_CALL,
+        F.ANSWER_AFTER_TOOL,
+        F.THINKING_THEN_TEXT,
+      ]);
+      const client = await gemini();
+
+      await say(client, "Edit");
+      await say(client, "Again");
+
+      const withinTurn = contentsOf(seen[1]?.body ?? {});
+      const nextTurn = contentsOf(seen[2]?.body ?? {});
+
+      expect(JSON.stringify(withinTurn.at(-1))).toContain(
+        "Error: clip 7 not found",
+      );
+      expect(nextTurn.slice(0, withinTurn.length)).toStrictEqual(withinTurn);
+    });
+
     it("sends a turn from another Gemini model back as plain content", async () => {
       const seen = stubProviderFetch([F.THINKING_THEN_TEXT]);
       const client = await startChat({
