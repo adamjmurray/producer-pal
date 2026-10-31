@@ -118,6 +118,29 @@ describe("ChatSdkClient reasoning (adaptive thinking)", () => {
       ]);
     });
 
+    it("puts a blank line between reasoning blocks in the display text", async () => {
+      const last = await sendWithParts(
+        [
+          { type: "reasoning-start" },
+          { type: "reasoning-delta", text: "Checking the tempo." },
+          { type: "reasoning-end" },
+          { type: "reasoning-start" },
+          { type: "reasoning-delta", text: "**Writing it up**" },
+          { type: "reasoning-end" },
+          { type: "text-delta", text: "Answer" },
+        ],
+        createConfig(),
+      );
+
+      expect(last[1]!.reasoning).toBe(
+        "Checking the tempo.\n\n**Writing it up**",
+      );
+      expect(last[1]!.reasoningParts).toStrictEqual([
+        { text: "Checking the tempo." },
+        { text: "**Writing it up**" },
+      ]);
+    });
+
     it("captures redactedData from a reasoning-start part", async () => {
       const last = await sendWithParts(
         [

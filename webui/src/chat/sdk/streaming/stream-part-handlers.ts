@@ -50,19 +50,7 @@ export function handleStreamPart(
   }
 
   if (type === "reasoning-delta") {
-    const text = part.text as string;
-
-    msg.reasoning = (msg.reasoning ?? "") + text;
-    msg.reasoningParts ??= [];
-
-    if (msg.reasoningParts.length === 0) {
-      msg.reasoningParts.push({ text: "" });
-    }
-
-    const last = msg.reasoningParts.at(-1) as { text: string };
-
-    last.text += text;
-    captureReasoningSignature(part, msg);
+    appendReasoningDelta(part, msg);
 
     return true;
   }
@@ -136,6 +124,36 @@ export function handleStreamPart(
   }
 
   return false;
+}
+
+/**
+ * Add a reasoning delta to the message: its display text and the current block.
+ * @param part - The `reasoning-delta` stream part
+ * @param msg - Message that receives the text
+ */
+function appendReasoningDelta(
+  part: Record<string, unknown>,
+  msg: ChatMessage,
+): void {
+  const text = part.text as string;
+
+  msg.reasoningParts ??= [];
+
+  if (msg.reasoningParts.length === 0) {
+    msg.reasoningParts.push({ text: "" });
+  }
+
+  const last = msg.reasoningParts.at(-1) as { text: string };
+
+  // Each reasoning block (OpenAI summary part, Anthropic thinking block) is a
+  // new paragraph; without a break its bold title glues onto the previous
+  // sentence. An empty `last` means a block just started.
+  const startsBlock =
+    text !== "" && last.text === "" && (msg.reasoning ?? "") !== "";
+
+  msg.reasoning = (msg.reasoning ?? "") + (startsBlock ? "\n\n" : "") + text;
+  last.text += text;
+  captureReasoningSignature(part, msg);
 }
 
 /**
