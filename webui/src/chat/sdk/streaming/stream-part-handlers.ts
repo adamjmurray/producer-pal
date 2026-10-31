@@ -14,6 +14,7 @@
 import { CLAUDE_REASONING_FORMAT } from "#webui/chat/sdk/provider/openrouter-reasoning";
 import { type ChatMessage } from "#webui/chat/sdk/types";
 import { errorMessage } from "#src/shared/error-message";
+import { captureThoughtSignature } from "./gemini-thought-signatures";
 
 /**
  * Handle a single stream part, updating the current message.
@@ -23,6 +24,26 @@ import { errorMessage } from "#src/shared/error-message";
  * @returns True if content was added (should yield)
  */
 export function handleStreamPart(
+  type: string,
+  part: Record<string, unknown>,
+  msg: ChatMessage,
+): boolean {
+  const added = applyStreamPart(type, part, msg);
+
+  // After applying, so the thought summary or tool call it signs exists.
+  captureThoughtSignature(type, part, msg);
+
+  return added;
+}
+
+/**
+ * Apply one stream part's content to the message.
+ * @param type - Stream part type
+ * @param part - The full stream part object
+ * @param msg - Current assistant message to update
+ * @returns True if content was added (should yield)
+ */
+function applyStreamPart(
   type: string,
   part: Record<string, unknown>,
   msg: ChatMessage,

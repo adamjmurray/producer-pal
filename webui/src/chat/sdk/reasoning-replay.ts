@@ -9,29 +9,39 @@ type ProviderOptions = Parameters<typeof streamText>[0]["providerOptions"];
 
 /**
  * Which signed reasoning to re-send with earlier assistant turns: none (false),
- * Anthropic's own blocks (true), or OpenRouter's `reasoning_details` saved from
- * the same model as this request (`openrouter` is the request's model id).
+ * Anthropic's own blocks (true), or OpenRouter's or Gemini's, only to turns from
+ * the same model as this request (the value is the request's model id).
  */
-export type ReasoningReplay = boolean | { openrouter: string };
+export type ReasoningReplay =
+  | boolean
+  | { openrouter: string }
+  | { google: string };
 
 /**
  * Pick the reasoning to re-send for a request. Anthropic's blocks are only
  * valid while its thinking is on. OpenRouter's are always offered; the request
  * rewrite drops them when its final body has reasoning off or isn't Claude (it
- * alone knows what the "Off" level really sends).
+ * alone knows what the "Off" level really sends). Gemini's go out at every level.
  * @param providerOptions - Provider options passed to streamText
  * @param modelId - The request's model id
+ * @param provider - The model's AI SDK provider id, when known
  * @returns What to re-send
  */
 export function reasoningReplayFor(
   providerOptions: ProviderOptions,
   modelId: string,
+  provider?: string,
 ): ReasoningReplay {
   if (isAnthropicThinkingEnabled(providerOptions)) {
     return true;
   }
 
-  return providerOptions?.openrouter != null ? { openrouter: modelId } : false;
+  if (providerOptions?.openrouter != null) {
+    return { openrouter: modelId };
+  }
+
+  // Direct @ai-sdk/google only ("google.generative-ai"), not the gateway.
+  return provider?.startsWith("google.") === true ? { google: modelId } : false;
 }
 
 /**

@@ -73,6 +73,12 @@ export const THINKING_THEN_CALL: RawEvent[] = [
   ),
 ];
 
+/** A signed thought summary, then the answer. */
+export const SIGNED_THOUGHT: RawEvent[] = [
+  chunk([{ text: "Checking.", thought: true, thoughtSignature: SIGNATURE }]),
+  chunk([{ text: "120 BPM." }], { finishReason: "STOP" }, usage(3, 9)),
+];
+
 /** The answer once the tool result is in. */
 export const ANSWER_AFTER_TOOL: RawEvent[] = [
   chunk([{ text: "Tempo is 120." }], { finishReason: "STOP" }, usage(4, 0)),

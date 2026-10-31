@@ -75,6 +75,8 @@ export interface ChatMessage {
     id: string;
     name: string;
     args: Record<string, unknown>;
+    /** Gemini's signature on this call, re-sent with it. */
+    thoughtSignature?: string;
   }>;
   toolResults?: Array<{
     id: string;
@@ -120,7 +122,11 @@ export interface ChatMessage {
     text: string;
     signature?: string;
     redactedData?: string;
+    /** Gemini's signature on this thought summary. */
+    thoughtSignature?: string;
   }>;
+  /** Gemini's signature on this step's text, re-sent with it. */
+  textThoughtSignature?: string;
   /**
    * OpenRouter's `reasoning_details` for this step, kept only when they are
    * Claude's signed blocks. Re-sent verbatim to the model that signed them

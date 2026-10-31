@@ -426,10 +426,9 @@ export class ChatSdkClient {
   ): ReasoningReplay {
     const model = this.config.model;
 
-    return reasoningReplayFor(
-      providerOptions,
-      typeof model === "string" ? model : model.modelId,
-    );
+    return typeof model === "string"
+      ? reasoningReplayFor(providerOptions, model)
+      : reasoningReplayFor(providerOptions, model.modelId, model.provider);
   }
 
   /**

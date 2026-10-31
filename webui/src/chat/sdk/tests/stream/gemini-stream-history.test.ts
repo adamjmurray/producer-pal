@@ -75,18 +75,30 @@ describe("Gemini stream to history", () => {
         reasoningParts: [
           { text: "**Reading the set**\n\nChecking the tempo." },
         ],
+        textThoughtSignature: F.SIGNATURE,
         usage: { inputTokens: 100, outputTokens: 50, reasoningTokens: 42 },
         responseModel: F.GEMINI_3,
       });
     });
 
-    it("keeps the thought summary as one block and does not capture Gemini's signature", async () => {
+    it("keeps the thought summary as one block, with the signature on the text it came with", async () => {
       stubProviderFetch([F.THINKING_THEN_TEXT]);
 
       const turn = assistantTurns(await say(await gemini(), "Tempo?"))[0];
 
       expect(turn?.reasoningParts).toStrictEqual([
         { text: "**Reading the set**\n\nChecking the tempo." },
+      ]);
+      expect(turn?.textThoughtSignature).toBe(F.SIGNATURE);
+    });
+
+    it("keeps a signature that arrives on a thought summary", async () => {
+      stubProviderFetch([F.SIGNED_THOUGHT]);
+
+      const turn = assistantTurns(await say(await gemini(), "Tempo?"))[0];
+
+      expect(turn?.reasoningParts).toStrictEqual([
+        { text: "Checking.", thoughtSignature: F.SIGNATURE },
       ]);
     });
 
@@ -124,13 +136,16 @@ describe("Gemini stream to history", () => {
       });
     });
 
-    it("ignores an empty text part that only carries a signature", async () => {
+    it("adds no text for an empty part that only carries a signature, but keeps the signature", async () => {
       stubProviderFetch([F.TRAILING_SIGNATURE]);
 
       const history = await say(await gemini(), "Done?");
 
       expect(assistantTurns(history)).toHaveLength(1);
       expect(assistantTurns(history)[0]?.content).toBe("All set.");
+      expect(assistantTurns(history)[0]?.textThoughtSignature).toBe(
+        F.SIGNATURE,
+      );
     });
   });
 
@@ -153,6 +168,7 @@ describe("Gemini stream to history", () => {
             id: expect.any(String),
             name: "ppal-read-live-set",
             args: { include: "t" },
+            thoughtSignature: F.SIGNATURE,
           },
         ],
         toolResults: [
@@ -209,6 +225,10 @@ describe("Gemini stream to history", () => {
         { include: "a" },
         { include: "b" },
       ]);
+      expect(step?.toolCalls?.map((c) => c.thoughtSignature)).toStrictEqual([
+        F.SIGNATURE,
+        undefined,
+      ]);
       expect(step?.toolResults?.map((r) => r.id)).toStrictEqual(
         step?.toolCalls?.map((c) => c.id),
       );
@@ -257,7 +277,7 @@ describe("Gemini stream to history", () => {
   });
 
   describe("replay on the next turn", () => {
-    it("does not send thought summaries back, only the answer", async () => {
+    it("sends the thought summaries and the text's signature back with the answer", async () => {
       const seen = stubProviderFetch([
         F.THINKING_THEN_TEXT,
         F.ANSWER_AFTER_TOOL,
@@ -269,65 +289,74 @@ describe("Gemini stream to history", () => {
 
       expect(contentsOf(seen[1]?.body ?? {})).toStrictEqual([
         { role: "user", parts: [{ text: "Tempo?" }] },
-        { role: "model", parts: [{ text: "The set runs at 120 BPM." }] },
+        {
+          role: "model",
+          parts: [
+            {
+              text: "**Reading the set**\n\nChecking the tempo.",
+              thought: true,
+            },
+            { text: "The set runs at 120 BPM.", thoughtSignature: F.SIGNATURE },
+          ],
+        },
         { role: "user", parts: [{ text: "Again" }] },
       ]);
     });
 
-    it("replays an earlier tool step with the skip-validator signature on Gemini 3", async () => {
-      const warnings = collectSdkWarnings();
-      const seen = stubProviderFetch([
-        F.THINKING_THEN_CALL,
-        F.ANSWER_AFTER_TOOL,
-        F.THINKING_THEN_TEXT,
-      ]);
-      const client = await gemini();
+    // Gemini's implicit cache needs each request to start with the last one.
+    it.each([
+      ["Gemini 3", F.GEMINI_3],
+      ["Gemini 2.5", F.GEMINI_25],
+    ])(
+      "re-sends an earlier tool step on %s exactly as it went within its turn",
+      async (_name, model) => {
+        const warnings = collectSdkWarnings();
+        const seen = stubProviderFetch([
+          F.THINKING_THEN_CALL,
+          F.ANSWER_AFTER_TOOL,
+          F.THINKING_THEN_TEXT,
+        ]);
+        const client = await gemini(model);
 
-      await say(client, "Tracks?");
+        await say(client, "Tracks?");
+        await say(client, "Again");
+
+        const withinTurn = contentsOf(seen[1]?.body ?? {});
+        const nextTurn = contentsOf(seen[2]?.body ?? {});
+
+        expect(nextTurn.slice(0, withinTurn.length)).toStrictEqual(withinTurn);
+        expect(nextTurn[1]?.parts[1]).toHaveProperty(
+          "thoughtSignature",
+          F.SIGNATURE,
+        );
+        expect(warnings).toStrictEqual([]);
+      },
+    );
+
+    it("sends a turn from another Gemini model back as plain content", async () => {
+      const seen = stubProviderFetch([F.THINKING_THEN_TEXT]);
+      const client = await startChat({
+        provider: "gemini",
+        model: F.GEMINI_3,
+        providerOptions: THINKING,
+        chatHistory: [
+          { role: "user", content: "Tempo?" },
+          {
+            role: "assistant",
+            content: "120 BPM.",
+            reasoningParts: [{ text: "Checking." }],
+            textThoughtSignature: F.SIGNATURE,
+            responseModel: F.GEMINI_25,
+          },
+        ],
+      });
+
       await say(client, "Again");
 
-      const wire = contentsOf(seen[2]?.body ?? {});
-      const stepCall = wire[1]?.parts[0] as {
-        functionCall: { id: string; name: string };
-        thoughtSignature: string;
-      };
-      const reply = wire[2]?.parts[0] as {
-        functionResponse: { id: string; response: { content: string } };
-      };
-
-      expect(wire.map((c) => c.role)).toStrictEqual([
-        "user",
-        "model",
-        "user",
-        "model",
-        "user",
-      ]);
-      expect(stepCall.functionCall.name).toBe("ppal-read-live-set");
-      expect(stepCall.thoughtSignature).toBe(
-        "skip_thought_signature_validator",
-      );
-      expect(reply.functionResponse.id).toBe(stepCall.functionCall.id);
-      expect(reply.functionResponse.response.content).toContain("tempo 120");
-      expect(warnings).toHaveLength(1);
-      expect(warnings[0]).toContain("skip_thought_signature_validator");
-    });
-
-    it("sends no signature at all for an earlier tool step on Gemini 2.5", async () => {
-      const warnings = collectSdkWarnings();
-      const seen = stubProviderFetch([
-        F.THINKING_THEN_CALL,
-        F.ANSWER_AFTER_TOOL,
-        F.THINKING_THEN_TEXT,
-      ]);
-      const client = await gemini(F.GEMINI_25);
-
-      await say(client, "Tracks?");
-      await say(client, "Again");
-
-      const stepCall = contentsOf(seen[2]?.body ?? {})[1]?.parts[0];
-
-      expect(stepCall).not.toHaveProperty("thoughtSignature");
-      expect(warnings).toStrictEqual([]);
+      expect(contentsOf(seen[0]?.body ?? {})[1]).toStrictEqual({
+        role: "model",
+        parts: [{ text: "120 BPM." }],
+      });
     });
   });
 

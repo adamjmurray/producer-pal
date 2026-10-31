@@ -6,6 +6,7 @@
 import { type ReasoningPart } from "@ai-sdk/provider-utils";
 import {
   type FilePart,
+  type JSONValue,
   type ModelMessage,
   type TextPart,
   type ToolCallPart,
@@ -14,6 +15,7 @@ import {
 } from "ai";
 import { isModelMismatch } from "#webui/chat/helpers/model-identity";
 import { type ReasoningReplay } from "./reasoning-replay";
+import { withThoughtSignature } from "./streaming/gemini-thought-signatures";
 import { type ChatImage, type ChatMessage } from "./types";
 
 /**
@@ -332,14 +334,17 @@ function reasoningToEmit(
     // assistant message is rejected. Signed blocks only mean something to the
     // model that signed them, so a message from another model (or one whose
     // model is unknown) goes back as plain content.
+    const google = "google" in includeReasoning;
     const hasContent = msg.content !== "" || (msg.toolCalls?.length ?? 0) > 0;
     const sameModel =
       msg.responseModel != null &&
-      !isModelMismatch(includeReasoning.openrouter, msg.responseModel);
+      !isModelMismatch(
+        google ? includeReasoning.google : includeReasoning.openrouter,
+        msg.responseModel,
+      );
+    const hasReasoning = google || msg.openrouterReasoningDetails != null;
 
-    return msg.openrouterReasoningDetails != null && hasContent && sameModel
-      ? includeReasoning
-      : false;
+    return hasReasoning && hasContent && sameModel ? includeReasoning : false;
   }
 
   const reasoningParts = msg.reasoningParts ?? [];
@@ -453,20 +458,26 @@ function buildToolResultContent(msg: ChatMessage): ToolResultPart[] {
 
   return (msg.toolCalls ?? []).map((tc) => {
     const tr = resultsById.get(tc.id);
-    const value =
-      tr == null
-        ? FAILED_TOOL_RESULT_TEXT
-        : typeof tr.result === "string"
-          ? tr.result
-          : JSON.stringify(tr.result);
 
     return {
       type: "tool-result" as const,
       toolCallId: tc.id,
       toolName: tc.name,
-      output: { type: "text" as const, value },
+      output: toolOutput(tr == null ? FAILED_TOOL_RESULT_TEXT : tr.result),
     };
   });
+}
+
+/**
+ * A tool result as the SDK sends it within a turn. Gemini words text and JSON
+ * differently, so anything else breaks its cache on the next turn.
+ * @param result - Recorded tool result
+ * @returns The tool-result output
+ */
+function toolOutput(result: unknown): ToolResultPart["output"] {
+  return typeof result === "string"
+    ? { type: "text", value: result }
+    : { type: "json", value: result as JSONValue };
 }
 
 /**
@@ -483,8 +494,20 @@ function buildAssistantContent(
   includeReasoning: ReasoningReplay,
 ): Array<ReasoningPart | TextPart | ToolCallPart> {
   const parts: Array<ReasoningPart | TextPart | ToolCallPart> = [];
+  const google =
+    typeof includeReasoning === "object" && "google" in includeReasoning;
+  // Gemini's signatures go only to the Gemini model that made them.
+  const signed = <T extends object>(part: T, signature?: string): T =>
+    google ? withThoughtSignature(part, signature) : part;
 
-  if (typeof includeReasoning === "object") {
+  if (google) {
+    // Thought summaries go back as the SDK sends them within a turn.
+    for (const rp of msg.reasoningParts ?? []) {
+      parts.push(
+        signed({ type: "reasoning", text: rp.text }, rp.thoughtSignature),
+      );
+    }
+  } else if (typeof includeReasoning === "object") {
     // One part carrying the whole step's details, as OpenRouter's own stream
     // hands them to the SDK within a turn.
     if (msg.openrouterReasoningDetails != null) {
@@ -515,16 +538,23 @@ function buildAssistantContent(
   }
 
   if (msg.content) {
-    parts.push({ type: "text", text: msg.content });
+    parts.push(
+      signed({ type: "text", text: msg.content }, msg.textThoughtSignature),
+    );
   }
 
   for (const tc of msg.toolCalls ?? []) {
-    parts.push({
-      type: "tool-call",
-      toolCallId: tc.id,
-      toolName: tc.name,
-      input: tc.args,
-    });
+    parts.push(
+      signed(
+        {
+          type: "tool-call",
+          toolCallId: tc.id,
+          toolName: tc.name,
+          input: tc.args,
+        },
+        tc.thoughtSignature,
+      ),
+    );
   }
 
   return parts;

@@ -74,9 +74,9 @@ describe("buildModelMessages", () => {
     expect(result.at(-1)).toStrictEqual({ role: "user", content: "u2" });
   });
 
-  it("JSON-stringifies a non-string tool result", () => {
-    // Tool results are usually structured objects, not strings; they must be
-    // serialized into the text output part the provider expects.
+  it("sends a non-string tool result as JSON, as the SDK does within a turn", () => {
+    // Gemini sends JSON and text results differently, so replaying a structured
+    // result as a string would break its cache on the next turn.
     const result = buildModelMessages([
       {
         role: "assistant",
@@ -95,7 +95,7 @@ describe("buildModelMessages", () => {
         type: "tool-result",
         toolCallId: "1",
         toolName: "read-song",
-        output: { type: "text", value: JSON.stringify({ bpm: 120 }) },
+        output: { type: "json", value: { bpm: 120 } },
       },
     ]);
   });

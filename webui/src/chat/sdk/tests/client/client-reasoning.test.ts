@@ -356,4 +356,42 @@ describe("ChatSdkClient reasoning (adaptive thinking)", () => {
       expect(assistants[1]!.responseModel).toBe("m2");
     });
   });
+
+  describe("Gemini thought signatures", () => {
+    const signed = (signature: string) => ({
+      providerMetadata: { google: { thoughtSignature: signature } },
+    });
+
+    it("signs only the tool call the signature came with", async () => {
+      const last = await sendWithParts(
+        [
+          { type: "tool-call", toolCallId: "a", toolName: "t", input: {} },
+          {
+            type: "tool-call",
+            toolCallId: "b",
+            toolName: "t",
+            input: {},
+            ...signed("sig-b"),
+          },
+        ],
+        createConfig(),
+      );
+
+      expect(
+        last[1]!.toolCalls?.map((tc) => tc.thoughtSignature),
+      ).toStrictEqual([undefined, "sig-b"]);
+    });
+
+    it("drops a signature with no thought summary to attach it to", async () => {
+      const last = await sendWithParts(
+        [
+          { type: "reasoning-end", ...signed("sig-1") },
+          { type: "text-delta", text: "Answer" },
+        ],
+        createConfig(),
+      );
+
+      expect(last[1]!.reasoningParts).toBeUndefined();
+    });
+  });
 });
