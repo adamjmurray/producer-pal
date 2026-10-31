@@ -235,12 +235,17 @@ other thread. So the HTTP server runs on its own thread and only queues jobs;
 the queue and runs them. Live holds Python's lock between those calls, so while
 a request is in flight `update_display()` keeps looping with short sleeps (at
 most 20ms a call) to let the HTTP threads queue the next job; it doesn't sleep
-when idle. Each connection carries one request, since a Set reload replaces the
-script and a kept-alive connection would still reach the old one. With
-`expires_in_ms`, the HTTP thread waits for Live to start the job until then (a
-job still queued is skipped), and a started job gets its own 30s to finish, so
-time queued behind other jobs doesn't count against it. Without it, the thread
-waits 30s for the reply, and 30s more if the job started in that time.
+when idle. Without that loop, a thread got time only once per tick (one asking
+to sleep 10ms woke every 100ms), and a request crosses about 5 thread handoffs,
+so each took about 600ms. Polling non-blocking sockets on the main thread
+instead (AbletonOSC's design) was passed over: it means our own HTTP parsing and
+buffering across ticks, and a blocking bug would freeze Live's UI. Each
+connection carries one request, since a Set reload replaces the script and a
+kept-alive connection would still reach the old one. With `expires_in_ms`, the
+HTTP thread waits for Live to start the job until then (a job still queued is
+skipped), and a started job gets its own 30s to finish, so time queued behind
+other jobs doesn't count against it. Without it, the thread waits 30s for the
+reply, and 30s more if the job started in that time.
 
 - `http_server.py`: the HTTP server and the port file; never touches Live
 - `bridge.py`: the main-thread pump and the methods Live calls on a control

@@ -172,9 +172,11 @@ be awaited, adding a round trip to every write) and doesn't wait for the answer.
 So calls sent closer together than one round trip can still share a step: the
 end lands after the next call started. No end follows a timeout, since V8 may
 still be changing the Set. A Live without the remote script keeps one merged
-step. Checked on Live 12.3 and 12.4. A tool that is not read-only
-(`readOnlyHint`) gets this with no code of its own, except `ppal-manage`: an end
-clears the guard that stops its next undo from removing Producer Pal.
+step. Checked on Live 12.3 and 12.4. How Live groups steps is in
+[Undo steps](../live-api/python-remote-script-api/README.md#undo-steps). A tool
+that is not read-only (`readOnlyHint`) gets this with no code of its own, except
+`ppal-manage`: an end clears the guard that stops its next undo from removing
+Producer Pal.
 
 A call that changes nothing gets no end, because an end also clears the undo
 guard that `ppal-manage` keeps (see

@@ -77,6 +77,10 @@ Returns the copy's `name` and `index`. Live puts it right after the original
 for a rack, its chains and macros. Works on tracks, rack chains and drum chains,
 including return and main tracks.
 
+Before Live 12.4.15, Max reads no name or class for a CC Control, so when one of
+two adjacent CC Controls is copied, Producer Pal's check of the copy can't tell
+them apart and may match the neighbour.
+
 - **Instruments are a 409**: Live raises `Can not duplicate instrument.` for an
   instrument, an instrument rack, a drum rack, and an instrument inside a chain.
   The client copies those another way.

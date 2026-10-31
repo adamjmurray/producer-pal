@@ -101,6 +101,12 @@ still run:
   `there was no envelope to clear`. It never maps.
 - **Two spellings of one param** (`h206`, `H206`) are the same parameter:
   nothing is written, as for any pair of lines on one parameter.
+- **Known limits.** A free slot is judged by arrangement automation only, so an
+  unmapped slot that still has session-clip envelopes (possible only after an
+  `unmap` through the debug tool) can be handed out, and those envelopes then
+  drive the new param. A hosted line and a line naming the same slot's raw
+  parameter id aren't caught as one parameter: both are written and the later
+  wins.
 
 On a read, an envelope on a mapped slot names the plug-in's param:
 `{ parameter: "Main Vol", id: "t3/d0/h206", slot: "Automation 002", ... }`, with

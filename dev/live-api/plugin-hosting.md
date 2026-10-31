@@ -26,10 +26,11 @@ Two generic wrapper devices ship with Producer Pal, in
 | `PPal Plug-in Effect.amxd`     | audio effect | `plugin~` → `vst~` → `plugout~`              |
 | `PPal Plug-in Instrument.amxd` | instrument   | `midiin` → `midiparse` → `vst~` → `plugout~` |
 
-Nothing is generated per plug-in. Producer Pal inserts a wrapper with the remote
-script's browser load, then tells it which plug-in to load. The control logic is
-`wrapper.js` beside the devices, embedded in a `v8.codebox` in each patch, so
-the devices need no external files. See
+Nothing is generated per plug-in (see
+[ADR-0061](../decisions/0061-one-generic-plugin-wrapper.md) for why). Producer
+Pal inserts a wrapper with the remote script's browser load, then tells it which
+plug-in to load. The control logic is `wrapper.js` beside the devices, embedded
+in a `v8.codebox` in each patch, so the devices need no external files. See
 [Building the devices](#building-the-devices).
 
 ### Messaging

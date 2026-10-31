@@ -15,6 +15,8 @@ const GRAY_CHROMA = 0.02;
  * The palette entry closest to a color as the eye sees it. Live snaps any other
  * color by raw RGB distance, which picks odd entries (a purple landed on a
  * pink-red), so we choose the entry and write it, leaving Live nothing to snap.
+ * Plain OKLab distance, not tuned: pink #FFC0CB lands on the pale #E5DCE1, not
+ * the rose #FF94A6.
  * @param hex - The color, as #RRGGBB
  * @returns The nearest palette entry, as upper-case #RRGGBB
  */

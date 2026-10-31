@@ -62,3 +62,5 @@ What would reopen it (optional).
 | [0030](0030-leaving-a-conversation-stops-the-turn.md)   | Leaving a conversation stops the turn, with a warning               |
 | [0059](0059-write-calls-run-one-at-a-time.md)           | Write calls run one at a time, queued in Node                       |
 | [0060](0060-cli-parsing-stays-on-commander.md)          | CLI parsing stays on commander, not `util.parseArgs()`              |
+| [0061](0061-one-generic-plugin-wrapper.md)              | One generic wrapper hosts every plug-in                             |
+| [0062](0062-jev-judges-evals-only.md)                   | Jev judges evals only, asked with scores                            |
