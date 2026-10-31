@@ -239,9 +239,12 @@ to ask the user first.
   `install-producer-pal`) in a build that hosts plug-ins. The wrappers are
   copied right after the device and before the swap; a wrapper that fails never
   refuses the update. `nextSteps` is
-  `Now call ppal-connect with versionCheck: true to confirm the update. (Never connected in this chat? Call plain ppal-connect instead.)`
-  The check comes first and is worded as the required next step, so the model
-  doesn't read it as optional.
+  `Now call ppal-connect to load the Skills and confirm the update.` until a
+  plain `ppal-connect` has worked through this portal (the chat can't have
+  connected yet), and after that
+  `Now call ppal-connect with versionCheck: true to confirm the update. (If this chat hasn't called ppal-connect yet, call it without versionCheck.)`
+  It is worded as the required next step, so the model doesn't read it as
+  optional.
 - **The `ppal-connect` hint** comes from the portal, since old devices can't
   learn new wording: when a successful `ppal-connect` finds a device older than
   the portal, the portal appends a block telling the model to ask the user, then

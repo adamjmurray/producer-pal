@@ -3,16 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import {
-  VERSION_CHECK_CALL,
-  VERSION_CHECK_NEVER_CONNECTED,
-  isNewerVersion,
-} from "#src/shared/version-check.ts";
+import { isNewerVersion } from "#src/shared/version-check.ts";
 import { type OfflineDeps } from "../offline/offline-deps.ts";
 import { pollUntil } from "../setup/poll-until.ts";
 import { SetupFailed } from "../setup/setup-failure.ts";
 import { type ReplacedTrack } from "./replace-device-request.ts";
 import { type RunningDevice } from "./running-device.ts";
+import { versionCheckSentence } from "./full-connect-advice.ts";
 
 /** What is known about the device that replaced the old one. */
 export interface Replacement {
@@ -67,7 +64,7 @@ export async function waitForNewDevice(
 
   device.reset();
 
-  throw new SetupFailed(notAnsweringYet(seen, track));
+  throw new SetupFailed(notAnsweringYet(seen, track, device.fullConnectSeen()));
 }
 
 /**
@@ -83,16 +80,18 @@ function isNew(seen: string, from: string, expected?: string): boolean {
 /**
  * @param seen - The last version a server reported, if any answered
  * @param track - Where the device is, if known
+ * @param fullConnectSeen - Whether a plain ppal-connect has worked on this portal
  * @returns What state Live is in and what to do
  */
 function notAnsweringYet(
   seen: string | undefined,
   track: ReplacedTrack | undefined,
+  fullConnectSeen: boolean,
 ): string {
   const where = track == null ? "" : ` on ${track.path} "${track.name}"`;
   const replaced = `Live replaced the Producer Pal device${where}`;
 
   return seen == null
-    ? `${replaced}, but the new one hasn't answered yet. Wait a few seconds, then call ${VERSION_CHECK_CALL}. Don't call update-producer-pal again. ${VERSION_CHECK_NEVER_CONNECTED}`
-    : `${replaced}, but the old version (${seen}) is still answering. Ask the user to check the Producer Pal device in Live, then call ${VERSION_CHECK_CALL}. ${VERSION_CHECK_NEVER_CONNECTED}`;
+    ? `${replaced}, but the new one hasn't answered yet. Wait a few seconds, then ${versionCheckSentence(fullConnectSeen)} Don't call update-producer-pal again.`
+    : `${replaced}, but the old version (${seen}) is still answering. Ask the user to check the Producer Pal device in Live, then ${versionCheckSentence(fullConnectSeen)}`;
 }

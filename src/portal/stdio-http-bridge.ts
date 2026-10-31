@@ -18,6 +18,7 @@ import { formatErrorResponse } from "#src/shared/mcp-responses.ts";
 import { buildFallbackTools, type FallbackTool } from "./fallback-tools.ts";
 import { logger } from "./file-logger.ts";
 import { InFlightClients } from "./update/in-flight-clients.ts";
+import { isFullConnect } from "./update/full-connect-advice.ts";
 import { answerOfflineCall, MANAGE_TOOL } from "./offline/offline-call.ts";
 import { type OfflineDeps, realOfflineDeps } from "./offline/offline-deps.ts";
 import { SETUP_URL } from "./offline/offline-setup-hints.ts";
@@ -55,6 +56,9 @@ export class StdioHttpBridge {
   private httpClient: Client | null = null;
   private inFlight = new InFlightClients();
   private isConnected = false;
+  // Whether a plain ppal-connect has worked here; ppal-manage's update words
+  // its next step by it.
+  private fullConnectSeen = false;
   private connectionPromise: Promise<void> | null = null;
   private fallbackTools: { tools: FallbackTool[] };
   // Whether the client may be holding a cached offline fallback list. Set when
@@ -127,6 +131,7 @@ export class StdioHttpBridge {
     return {
       connect: () => this._ensureHttpConnection(),
       version: () => this.httpClient?.getServerVersion()?.version,
+      fullConnectSeen: () => this.fullConnectSeen,
       // The next connect replaces the client and handshakes again; calls still
       // on the old one finish first.
       reset: () => {
@@ -364,6 +369,11 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
           logger.debug(
             `[Bridge] Tool call successful for ${request.params.name}`,
+          );
+
+          this.fullConnectSeen ||= isFullConnect(
+            { name: request.params.name, args: toolRequest.arguments },
+            result,
           );
 
           return await withUpdateHint(

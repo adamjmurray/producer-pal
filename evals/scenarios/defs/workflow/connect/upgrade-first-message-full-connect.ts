@@ -7,7 +7,8 @@
  * Scenario: asked to update as the chat's very first message, the model does a
  * full connect, not only a version check, since this chat has no Skills yet.
  *
- * The update is canned (see `connect-manage-overrides.ts`); a plain connect is real. If the
+ * The update is canned, worded as when no connect has gone through the portal
+ * yet (see `connect-manage-overrides.ts`); a plain connect is real. If the
  * model calls `versionCheck: true` anyway, that is canned too so the run goes on.
  */
 
@@ -38,7 +39,7 @@ export const upgradeFirstMessageFullConnect: EvalScenario = {
   seedConnect: false,
   toolOverrides: {
     [TOOLS.connect]: connectOverride(),
-    [TOOLS.manage]: manageOverride(UPDATE, updateSuccess),
+    [TOOLS.manage]: manageOverride(UPDATE, () => updateSuccess(false)),
   },
 
   messages: ["Update the Producer Pal device in Live to the latest version."],

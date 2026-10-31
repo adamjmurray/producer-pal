@@ -47,6 +47,15 @@ describe("canned results", () => {
     expect(block).toContain(`to:"${VERSION}"`);
   });
 
+  it("update, when the chat has not connected, asks for the plain connect", () => {
+    const [block] = texts(updateSuccess(false));
+
+    expect(block).toContain(
+      "Now call ppal-connect to load the Skills and confirm the update.",
+    );
+    expect(block).not.toContain("versionCheck");
+  });
+
   it("install reports the files and asks for a restart", () => {
     const [block] = texts(installSuccess());
 

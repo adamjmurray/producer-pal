@@ -193,6 +193,81 @@ describe("StdioHttpBridge update-producer-pal", () => {
     expect(await handler(UPDATE)).toBe(forwarded);
     expect(mockClient.callTool).toHaveBeenCalledTimes(1);
   });
+
+  describe("next step", () => {
+    const UNSEEN = "Now call ppal-connect to load the Skills and confirm";
+    const SEEN = "Now call ppal-connect with versionCheck: true to confirm";
+
+    /**
+     * Make these ppal-connect calls through a bridge, then update. The device
+     * reports the old version until the swap, then the new one.
+     * @param connects - The connect calls: their arguments and what the device answers
+     * @returns The text of the update's answer
+     */
+    async function updateAfter(
+      ...connects: Array<{ args?: Record<string, unknown>; answer: unknown }>
+    ): Promise<string> {
+      let swapped = false;
+      const deps = updateDeps({
+        request: vi.fn(() => {
+          swapped = true;
+
+          return Promise.resolve({
+            available: true as const,
+            status: 200,
+            body: {},
+          });
+        }),
+      });
+
+      mockClient.getServerVersion.mockImplementation(() => ({
+        name: "d",
+        version: swapped ? VERSION : OLD,
+      }));
+
+      const handler = await startAndGetCallHandler(bridgeOver(true, deps));
+
+      for (const { args, answer } of connects) {
+        if (answer instanceof Error) {
+          mockClient.callTool.mockRejectedValueOnce(answer);
+        } else {
+          mockClient.callTool.mockResolvedValueOnce(answer);
+        }
+
+        await handler(callToolRequest("ppal-connect", args));
+      }
+
+      return responseText((await handler(UPDATE)) as never);
+    }
+
+    const OK = { content: [{ type: "text", text: "connected" }] };
+
+    it("says only the plain connect when nothing has connected through the portal", async () => {
+      expect(await updateAfter()).toContain(UNSEEN);
+    });
+
+    it("offers the version check once a plain connect has worked", async () => {
+      expect(await updateAfter({ answer: OK })).toContain(SEEN);
+    });
+
+    it("is not set by a version check", async () => {
+      expect(
+        await updateAfter({ args: { versionCheck: true }, answer: OK }),
+      ).toContain(UNSEEN);
+    });
+
+    it("is not set by a connect that came back as an error", async () => {
+      const answer = { ...OK, isError: true };
+
+      expect(await updateAfter({ answer })).toContain(UNSEEN);
+    });
+
+    it("is not set by the offline answer", async () => {
+      expect(await updateAfter({ answer: new Error("down") })).toContain(
+        UNSEEN,
+      );
+    });
+  });
 });
 
 describe("StdioHttpBridge install-producer-pal", () => {

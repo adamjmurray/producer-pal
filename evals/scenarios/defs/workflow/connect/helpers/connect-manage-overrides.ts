@@ -16,13 +16,10 @@ import {
 import { remoteScriptLine } from "#src/mcp-server/helpers/connect/remote-script-line.ts";
 import { type RemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { hintFor } from "#src/portal/update/update-connect-hint.ts";
+import { updatedNextSteps } from "#src/portal/update/full-connect-advice.ts";
 import { toCompactJSLiteral } from "#src/shared/compact/compact-serializer.ts";
 import { VERSION } from "#src/shared/config.ts";
-import {
-  UP_TO_DATE_NEW_CHAT,
-  VERSION_CHECK_CALL,
-  VERSION_CHECK_NEVER_CONNECTED,
-} from "#src/shared/version-check.ts";
+import { UP_TO_DATE_NEW_CHAT } from "#src/shared/version-check.ts";
 import { manageInstallResult } from "#src/tools/core/helpers/manage-install-result.ts";
 
 /** The version the scenarios pretend was installed before the upgrade. */
@@ -124,14 +121,16 @@ export function manageOverride(
 }
 
 /**
+ * @param fullConnectSeen - Whether the portal has seen a plain ppal-connect
+ *   (a mid-chat update); false when the update is the chat's first action
  * @returns What `ppal-manage update-producer-pal` answers on success
  */
-export function updateSuccess(): McpContent {
+export function updateSuccess(fullConnectSeen = true): McpContent {
   return textContent(
     toCompactJSLiteral({
       device: { from: OLD_VERSION, to: VERSION },
       track: { path: "t1", name: "Producer Pal" },
-      nextSteps: `Now call ${VERSION_CHECK_CALL} to confirm the update. ${VERSION_CHECK_NEVER_CONNECTED}`,
+      nextSteps: updatedNextSteps(fullConnectSeen),
     }),
   );
 }

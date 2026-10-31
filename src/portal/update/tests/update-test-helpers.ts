@@ -35,6 +35,7 @@ export interface FakeDevice extends RunningDevice {
   connect: Mock<() => Promise<void>>;
   version: Mock<() => string | undefined>;
   reset: Mock<() => void>;
+  fullConnectSeen: Mock<() => boolean>;
   toolsChanged: Mock<() => void>;
 }
 
@@ -45,6 +46,20 @@ export interface FakeDevice extends RunningDevice {
  * @returns The device
  */
 export function fakeDevice(...answers: Answer[]): FakeDevice {
+  return fakeDeviceWith({ fullConnectSeen: false }, ...answers);
+}
+
+/**
+ * Like `fakeDevice`, with the portal's connect history set.
+ * @param portal - What the portal has seen
+ * @param portal.fullConnectSeen - Whether a plain ppal-connect has worked
+ * @param answers - What successive connects find
+ * @returns The device
+ */
+export function fakeDeviceWith(
+  portal: { fullConnectSeen: boolean },
+  ...answers: Answer[]
+): FakeDevice {
   let call = 0;
   let current: string | undefined;
 
@@ -64,6 +79,7 @@ export function fakeDevice(...answers: Answer[]): FakeDevice {
     }),
     version: vi.fn(() => current),
     reset: vi.fn(),
+    fullConnectSeen: vi.fn(() => portal.fullConnectSeen),
     toolsChanged: vi.fn(),
   };
 }

@@ -11,11 +11,7 @@
 // says what to check.
 
 import { UPDATE_PORTAL_ADVICE, VERSION } from "#src/shared/config.ts";
-import {
-  VERSION_CHECK_CALL,
-  VERSION_CHECK_NEVER_CONNECTED,
-  isNewerVersion,
-} from "#src/shared/version-check.ts";
+import { isNewerVersion } from "#src/shared/version-check.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
   formatSuccessResponse,
@@ -37,6 +33,7 @@ import { waitForNewDevice } from "./new-device-wait.ts";
 import { setUnchanged } from "./set-unchanged.ts";
 import { replaceDevice } from "./replace-device-request.ts";
 import { type RunningDevice } from "./running-device.ts";
+import { updatedNextSteps } from "./full-connect-advice.ts";
 
 const UPDATE: SetupPurpose = {
   action: "update-producer-pal",
@@ -102,6 +99,7 @@ export async function updateProducerPal(
       deps,
       file.written,
       deadline,
+      device.fullConnectSeen(),
     );
     const to = await waitForNewDevice(
       { from, expected: file.version, track },
@@ -117,7 +115,7 @@ export async function updateProducerPal(
       ...(track == null ? {} : { track }),
       ...(file.note == null ? {} : { note: file.note }),
       ...(pluginHost.length === 0 ? {} : { pluginHost }),
-      nextSteps: `Now call ${VERSION_CHECK_CALL} to confirm the update. ${VERSION_CHECK_NEVER_CONNECTED}`,
+      nextSteps: updatedNextSteps(device.fullConnectSeen()),
     });
   } catch (error) {
     return offlineError(errorMessage(error));

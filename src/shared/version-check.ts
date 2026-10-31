@@ -293,9 +293,9 @@ export function versionText(version: string | null): string {
 /** The call that re-checks versions without re-sending the Skills and context. */
 export const VERSION_CHECK_CALL = "ppal-connect with versionCheck: true";
 
-/** Follows the check where the chat may never have connected (it needs Skills). */
+/** Follows the check where the chat may not have called ppal-connect yet (it needs Skills). */
 export const VERSION_CHECK_NEVER_CONNECTED =
-  "(Never connected in this chat? Call plain ppal-connect instead.)";
+  "(If this chat hasn't called ppal-connect yet, call it without versionCheck.)";
 
 /** Added where a connect result tells the user to restart Live. */
 export const AFTER_RESTART_CHECK = `Once they have, call ${VERSION_CHECK_CALL}.`;
