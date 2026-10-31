@@ -1,29 +1,29 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
-import { beforeEach, describe, expect, it } from "vitest";
-import {
-  installFetchMock,
-  jsonResponse,
-} from "#webui/hooks/context/tests/doc-transport-test-helpers";
+import { describe, expect, it } from "vitest";
+import { jsonResponse } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { InstallationTabHarness } from "#webui/components/settings/installation/tests/helpers/InstallationTabHarness";
 import { type DeviceInstallStatus } from "#webui/hooks/settings/installation/use-device-install";
 import {
   DEVICE_PATH,
   deviceStatusBody,
-  routeInstallationFetch,
 } from "#webui/components/settings/installation/tests/helpers/installation-fetch-test-helpers";
 import {
   statusBody,
   USER_LIBRARY,
 } from "#webui/components/settings/installation/tests/helpers/remote-script-status-test-helpers";
+import {
+  renderDeviceTab,
+  setupInstallationTab,
+} from "#webui/components/settings/installation/tests/helpers/installation-tab-test-helpers";
 
 const INSTALL_DONE = {
   outcome: "installed",
@@ -32,12 +32,7 @@ const INSTALL_DONE = {
 };
 
 describe("InstallationTab device section", () => {
-  const fetchMock = installFetchMock();
-  let routes: ReturnType<typeof routeInstallationFetch>;
-
-  beforeEach(() => {
-    routes = routeInstallationFetch(fetchMock);
-  });
+  const { fetchMock, routes } = setupInstallationTab();
 
   /**
    * Render the tab past the device's mount read.
@@ -47,12 +42,7 @@ describe("InstallationTab device section", () => {
   async function renderDevice(
     overrides: Partial<DeviceInstallStatus> = {},
   ): Promise<string | undefined> {
-    routes.device(jsonResponse(deviceStatusBody(overrides)));
-    render(<InstallationTabHarness />);
-
-    await waitForHookState(() => {
-      expect(screen.queryByTestId("device-loading")).toBeNull();
-    });
+    await renderDeviceTab(routes, overrides);
 
     return screen.queryByTestId("device-status")?.textContent ?? undefined;
   }

@@ -1,36 +1,29 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 /**
  * @vitest-environment happy-dom
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
-import { beforeEach, describe, expect, it } from "vitest";
-import {
-  installFetchMock,
-  jsonResponse,
-} from "#webui/hooks/context/tests/doc-transport-test-helpers";
+import { describe, expect, it } from "vitest";
+import { jsonResponse } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { InstallationTabHarness } from "#webui/components/settings/installation/tests/helpers/InstallationTabHarness";
 import { type RemoteScriptStatus } from "#webui/hooks/settings/installation/use-remote-script";
-import {
-  deviceStatusBody,
-  routeInstallationFetch,
-} from "#webui/components/settings/installation/tests/helpers/installation-fetch-test-helpers";
+import { deviceStatusBody } from "#webui/components/settings/installation/tests/helpers/installation-fetch-test-helpers";
 import {
   statusBody,
   USER_LIBRARY,
 } from "#webui/components/settings/installation/tests/helpers/remote-script-status-test-helpers";
+import {
+  renderRemoteScriptTab,
+  setupInstallationTab,
+} from "#webui/components/settings/installation/tests/helpers/installation-tab-test-helpers";
 
 describe("InstallationTab remote script section", () => {
-  const fetchMock = installFetchMock();
-  let routes: ReturnType<typeof routeInstallationFetch>;
-
-  beforeEach(() => {
-    routes = routeInstallationFetch(fetchMock);
-  });
+  const { fetchMock, routes } = setupInstallationTab();
 
   /**
    * Render the tab past its mount read.
@@ -40,19 +33,13 @@ describe("InstallationTab remote script section", () => {
   async function renderTab(
     overrides: Partial<RemoteScriptStatus> = {},
   ): Promise<string | null> {
-    routes.remote(jsonResponse(statusBody(overrides)));
-
     // Either status can find the User Library, so a test about not finding it
     // needs the device to fail too.
     if (overrides.userLibrary === null) {
       routes.device(jsonResponse(deviceStatusBody({ userLibrary: null })));
     }
 
-    render(<InstallationTabHarness />);
-
-    const summary = await waitForHookState(() =>
-      screen.getByTestId("remote-script-status"),
-    );
+    const summary = await renderRemoteScriptTab(routes, overrides);
 
     return summary.textContent;
   }
