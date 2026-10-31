@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic), Claude Code (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Code (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // `envelopes` on an arrangement clip: the lines go into a scratch clip,
@@ -105,6 +105,24 @@ describe("applyClipEnvelopes - arrangement clip", () => {
     await applyClipEnvelopes(entry, linesOf(lines), context);
 
     return entry;
+  }
+
+  /**
+   * Expect an entry that wrote nothing, with the clip and its lane left as
+   * they were.
+   * @param entry - The clip's entry
+   * @param reason - Why, ahead of "the clip and its lane are unchanged"
+   */
+  function expectUnchanged(entry: ClipResult, reason: string): void {
+    expect(entry).toStrictEqual({
+      id: CLIP_ID,
+      path: "t0[5|1]",
+      envelopes: 0,
+      detail: `${reason}; the clip and its lane are unchanged`,
+    });
+    expect(world.copies).toStrictEqual([]);
+    expect(world.scratchClipLeft()).toBe(false);
+    expect(world.sceneCount()).toBe(1);
   }
 
   it("writes the lane over the clip's span and puts the clip back under a new id", async () => {
@@ -239,16 +257,10 @@ describe("applyClipEnvelopes - arrangement clip", () => {
   it("changes nothing when no line could be written", async () => {
     const entry = await apply(["pan:"]);
 
-    expect(entry).toStrictEqual({
-      id: CLIP_ID,
-      path: "t0[5|1]",
-      envelopes: 0,
-      detail:
-        'envelope "pan": not cleared: an arrangement lane can\'t be cleared; write a flat line instead; the clip and its lane are unchanged',
-    });
-    expect(world.copies).toStrictEqual([]);
-    expect(world.scratchClipLeft()).toBe(false);
-    expect(world.sceneCount()).toBe(1);
+    expectUnchanged(
+      entry,
+      'envelope "pan": not cleared: an arrangement lane can\'t be cleared; write a flat line instead',
+    );
   });
 
   it("changes nothing when the remote script refuses every line", async () => {
@@ -371,16 +383,10 @@ describe("applyClipEnvelopes - arrangement clip", () => {
 
     const entry = await apply([RAMP], { deadline: 1_100_000 });
 
-    expect(entry).toStrictEqual({
-      id: CLIP_ID,
-      path: "t0[5|1]",
-      envelopes: 0,
-      detail:
-        "not written to the lane: the request ran out of time; re-run for this clip; the clip and its lane are unchanged",
-    });
-    expect(world.copies).toStrictEqual([]);
-    expect(world.scratchClipLeft()).toBe(false);
-    expect(world.sceneCount()).toBe(1);
+    expectUnchanged(
+      entry,
+      "not written to the lane: the request ran out of time; re-run for this clip",
+    );
   });
 
   it("changes nothing when Live makes no scratch clip", async () => {

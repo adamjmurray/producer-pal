@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -18,6 +18,7 @@ import { getParamModes, param } from "../modal-config.ts";
 import { resolveToolSchema } from "../resolve-tool-schema.ts";
 import { toolDefReadScene } from "#src/tools/scene/read-scene.def.ts";
 import { trackPathFromIndex } from "#src/tools/shared/validation/helpers/path-from-index.ts";
+import { registeredHandler } from "./registered-shape-test-helpers.ts";
 
 /** The client abort signal define-tool forwards on every call. */
 const WITH_SIGNAL = { signal: expect.any(AbortSignal) };
@@ -378,7 +379,7 @@ describe("defineTool with hidden params", () => {
     // the silent-destination-drop this whole mechanism exists to prevent.
     const { mockServer, mockCallLiveApi } = register();
 
-    return handler(mockServer)({ id: "1", toSlot: 3 }).then(() => {
+    return registeredHandler(mockServer)({ id: "1", toSlot: 3 }).then(() => {
       expect(mockCallLiveApi).toHaveBeenCalledWith(
         "test-tool",
         {
@@ -394,24 +395,28 @@ describe("defineTool with hidden params", () => {
   it("warns that the param is deprecated, not that it was ignored", () => {
     const { mockServer } = register();
 
-    return handler(mockServer)({ id: "1", toSlot: "2/0" }).then((result) => {
-      const texts = result.content.map((c) => c.text);
+    return registeredHandler(mockServer)({ id: "1", toSlot: "2/0" }).then(
+      (result) => {
+        const texts = result.content.map((c) => c.text);
 
-      expect(texts).toContain(
-        'WARNING: param "toSlot" is deprecated and will be removed; use "toPath" instead',
-      );
-      expect(texts.join("\n")).not.toContain("ignored unexpected argument");
-    });
+        expect(texts).toContain(
+          'WARNING: param "toSlot" is deprecated and will be removed; use "toPath" instead',
+        );
+        expect(texts.join("\n")).not.toContain("ignored unexpected argument");
+      },
+    );
   });
 
   it("warns an alias caller which param is the real one", () => {
     const { mockServer } = register();
 
-    return handler(mockServer)({ id: "1", toTrack: 2 }).then((result) => {
-      expect(result.content.map((c) => c.text)).toContain(
-        'WARNING: "toTrack" accepted as a fallback; the parameter is "toPath" (e.g. toPath: "t0/s1")',
-      );
-    });
+    return registeredHandler(mockServer)({ id: "1", toTrack: 2 }).then(
+      (result) => {
+        expect(result.content.map((c) => c.text)).toContain(
+          'WARNING: "toTrack" accepted as a fallback; the parameter is "toPath" (e.g. toPath: "t0/s1")',
+        );
+      },
+    );
   });
 
   // Models often send numbers as strings, and the example is read off the
@@ -423,7 +428,7 @@ describe("defineTool with hidden params", () => {
       .mockResolvedValue({ content: [{ type: "text", text: "success" }] });
 
     toolDefReadScene(mockServer, mockCallLiveApi);
-    const result = await handler(mockServer)({ sceneIndex: "3" });
+    const result = await registeredHandler(mockServer)({ sceneIndex: "3" });
 
     expect(result.content.map((c) => c.text)).toContain(
       'WARNING: param "sceneIndex" is deprecated and will be removed; use "path" instead (e.g. path: "s3")',
@@ -433,9 +438,11 @@ describe("defineTool with hidden params", () => {
   it("stays quiet when no hidden param is sent", () => {
     const { mockServer } = register();
 
-    return handler(mockServer)({ id: "1", toPath: "t7" }).then((result) => {
-      expect(result.content.map((c) => c.text)).toStrictEqual(["success"]);
-    });
+    return registeredHandler(mockServer)({ id: "1", toPath: "t7" }).then(
+      (result) => {
+        expect(result.content.map((c) => c.text)).toStrictEqual(["success"]);
+      },
+    );
   });
 
   // The warning points the caller at the real name. Firing it for a value the
@@ -449,7 +456,7 @@ describe("defineTool with hidden params", () => {
   ])("stays quiet when the hidden param is %s", (_label, toSlot) => {
     const { mockServer } = register();
 
-    return handler(mockServer)({ id: "1", toSlot }).then((result) => {
+    return registeredHandler(mockServer)({ id: "1", toSlot }).then((result) => {
       expect(result.content.map((c) => c.text)).toStrictEqual(["success"]);
     });
   });
@@ -457,11 +464,13 @@ describe("defineTool with hidden params", () => {
   it("still reports genuinely unknown params as ignored", () => {
     const { mockServer } = register();
 
-    return handler(mockServer)({ id: "1", bogus: 1 }).then((result) => {
-      expect(result.content.map((c) => c.text)).toContain(
-        "WARNING: ignored unexpected argument(s): bogus",
-      );
-    });
+    return registeredHandler(mockServer)({ id: "1", bogus: 1 }).then(
+      (result) => {
+        expect(result.content.map((c) => c.text)).toContain(
+          "WARNING: ignored unexpected argument(s): bogus",
+        );
+      },
+    );
   });
 });
 
@@ -506,22 +515,4 @@ function publishedShape(mockServer: MockServer): ZodRawShape {
   >;
 
   return (config.inputSchema as { shape: ZodRawShape }).shape;
-}
-
-/**
- * Read the registered tool handler.
- * @param mockServer - Mock MCP server
- * @returns The tool's async handler
- */
-function handler(mockServer: MockServer): (
-  args: Record<string, unknown>,
-) => Promise<{
-  content: Array<{ type: string; text: string }>;
-}> {
-  const registered = mockServer.registerTool.mock.calls[0]![2] as (
-    args: Record<string, unknown>,
-    extra: { signal: AbortSignal },
-  ) => Promise<{ content: Array<{ type: string; text: string }> }>;
-
-  return (args) => registered(args, { signal: new AbortController().signal });
 }

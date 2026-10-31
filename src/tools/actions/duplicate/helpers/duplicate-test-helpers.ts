@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic)
+// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { expect } from "vitest";
@@ -11,6 +11,7 @@ import {
   registerMockObject,
   registerPendingMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { duplicate } from "../duplicate.ts";
 
 const NEW_TRACK_ID = "live_set/tracks/1";
 
@@ -491,4 +492,9 @@ export function registerLiveSetWithThreeTracks(
     path: livePath.liveSet,
     properties: { tracks: children("10", "11", "12"), ...properties },
   });
+}
+
+/** @returns The answer to copying the kick (pad36) onto D1 of the rack at t1/d0 */
+export function copyKickToTrack1(): ReturnType<typeof duplicate> {
+  return duplicate({ type: "drum-pad", id: "pad36", toPath: "t1/d0/pD1" });
 }
