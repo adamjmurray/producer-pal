@@ -372,4 +372,4 @@ export function restoreSdkWarnings(): void {
 
 /** The notice the chat adds when a content filter ends a reply. */
 export const FILTER_NOTICE =
-  "The provider stopped this reply because of its content filter. Try rephrasing your message.";
+  "The provider stopped this reply because of its content filter. Use Retry, or edit your message and rephrase it.";

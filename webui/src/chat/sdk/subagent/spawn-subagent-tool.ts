@@ -5,7 +5,7 @@
 
 import { type Tool, jsonSchema } from "ai";
 import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
-import { STREAM_END_NOTICES } from "#webui/chat/sdk/streaming/stream-end-notice";
+import { streamEndReason } from "#webui/chat/sdk/streaming/stream-end-notice";
 import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
 import {
   isToolEnabled,
@@ -369,7 +369,7 @@ function withInheritedLiveApi(
  * answer to the new task — success claimed for work that never happened.
  *
  * A run the provider cut off ends on a notice entry (content filter, empty
- * reply). That notice is the answer: the orchestrator learns why the worker
+ * reply). Its reason is the answer: the orchestrator learns why the worker
  * stopped instead of reading earlier text as a finished result.
  *
  * @param messages - What this run added to the worker's history (oldest first)
@@ -382,8 +382,11 @@ export function extractWorkerResult(
 ): string {
   const last = messages.at(-1);
 
-  if (last?.isError === true && STREAM_END_NOTICES.includes(last.content)) {
-    return last.content;
+  const reason =
+    last?.isError === true ? streamEndReason(last.content) : undefined;
+
+  if (reason != null) {
+    return reason;
   }
 
   for (let i = messages.length - 1; i >= 0; i--) {

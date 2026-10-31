@@ -268,16 +268,22 @@ describe("extractWorkerResult", () => {
     expect(extractWorkerResult(history)).toBe("the real result");
   });
 
-  it.each(["content-filter", "other"] as const)(
-    "returns the %s notice when the run ended on it, not earlier text",
-    (finishReason) => {
+  it.each([
+    [
+      "content-filter",
+      "The provider stopped this reply because of its content filter.",
+    ],
+    ["other", "The provider ended this reply without any content."],
+  ] as const)(
+    "returns the %s reason without UI advice when the run ended on a notice, not earlier text",
+    (finishReason, reason) => {
       const notice = streamEndNotice(finishReason, false) as string;
       const history: ChatMessage[] = [
         { role: "assistant", content: "Starting on the bassline." },
         { role: "assistant", content: notice, isError: true },
       ];
 
-      expect(extractWorkerResult(history)).toBe(notice);
+      expect(extractWorkerResult(history)).toBe(reason);
     },
   );
 

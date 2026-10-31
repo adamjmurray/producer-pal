@@ -10,6 +10,8 @@ import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { type UIMessage } from "#webui/types/messages";
 import { ChatScreen } from "#webui/components/chat/ChatScreen";
+import { formatChatMessages } from "#webui/chat/sdk/formatter";
+import { streamEndNotice } from "#webui/chat/sdk/streaming/stream-end-notice";
 import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderActions";
 import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
 import { conversationPanelProps } from "#webui/components/chat/tests/conversation-panel-props";
@@ -133,6 +135,28 @@ describe("ChatScreen", () => {
           .disabled,
       ).toBe(true);
     });
+
+    it.each([
+      ["content-filter", true],
+      ["other", false],
+    ] as const)(
+      "locks the composer, so the %s notice points at Retry or edit",
+      (finishReason, producedContent) => {
+        const notice = streamEndNotice(finishReason, producedContent) as string;
+        const messages = formatChatMessages([
+          { role: "user", content: "Hello" },
+          { role: "assistant", content: notice, isError: true },
+        ]);
+
+        render(<ChatScreen {...defaultProps} messages={messages} />);
+
+        expect(
+          (screen.getByRole("button", { name: "Send" }) as HTMLButtonElement)
+            .disabled,
+        ).toBe(true);
+        expect(notice).toMatch(/Use Retry, or edit your message/);
+      },
+    );
 
     it("shows MessageList when messages exist", () => {
       const messages: UIMessage[] = [

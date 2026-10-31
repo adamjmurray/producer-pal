@@ -5,17 +5,27 @@
 
 import { type FinishReason } from "ai";
 
-const CONTENT_FILTER_NOTICE =
-  "The provider stopped this reply because of its content filter. Try rephrasing your message.";
+// Notice = reason + UI advice. A subagent's orchestrator gets only the reason.
+const CONTENT_FILTER_REASON =
+  "The provider stopped this reply because of its content filter.";
+const CONTENT_FILTER_NOTICE = `${CONTENT_FILTER_REASON} Use Retry, or edit your message and rephrase it.`;
 
-const EMPTY_REPLY_NOTICE =
-  "The provider ended this reply without any content. Try sending your message again.";
+const EMPTY_REPLY_REASON = "The provider ended this reply without any content.";
+const EMPTY_REPLY_NOTICE = `${EMPTY_REPLY_REASON} Use Retry, or edit your message.`;
 
-/** Every notice {@link streamEndNotice} can return. */
-export const STREAM_END_NOTICES: readonly string[] = [
-  CONTENT_FILTER_NOTICE,
-  EMPTY_REPLY_NOTICE,
-];
+const REASON_BY_NOTICE: ReadonlyMap<string, string> = new Map([
+  [CONTENT_FILTER_NOTICE, CONTENT_FILTER_REASON],
+  [EMPTY_REPLY_NOTICE, EMPTY_REPLY_REASON],
+]);
+
+/**
+ * The model-facing reason behind a notice, without the UI advice.
+ * @param content - A chat entry's text
+ * @returns The reason if the text is exactly one of the notices, else undefined
+ */
+export function streamEndReason(content: string): string | undefined {
+  return REASON_BY_NOTICE.get(content);
+}
 
 /**
  * The notice a turn needs when the provider ended it and the chat would

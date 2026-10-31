@@ -24,7 +24,7 @@ test.describe("Stream end notice", () => {
 
     await expect(
       page.getByText(
-        "The provider stopped this reply because of its content filter. Try rephrasing your message.",
+        "The provider stopped this reply because of its content filter. Use Retry, or edit your message and rephrase it.",
       ),
     ).toBeVisible();
 
@@ -39,7 +39,7 @@ test.describe("Stream end notice", () => {
 
     await expect(
       page.getByText(
-        "The provider ended this reply without any content. Try sending your message again.",
+        "The provider ended this reply without any content. Use Retry, or edit your message.",
       ),
     ).toBeVisible();
 
