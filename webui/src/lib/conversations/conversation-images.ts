@@ -12,6 +12,9 @@ import { type ChatImage, type ChatMessage } from "#webui/chat/sdk/types";
  */
 export const IMAGE_STORE = "images";
 
+/** Ref per in-memory image, so a save skips the hash. Images never change. */
+const knownRefs = new WeakMap<object, string>();
+
 /** The parts of an idb object store this module reads. */
 interface ImageStore {
   get: (key: string) => Promise<unknown>;
@@ -52,8 +55,10 @@ export function storeConversationImages<T extends WithMessages>(
       return image;
     }
 
-    const ref = hashImageData(image.data);
+    const ref = knownRefs.get(image) ?? hashImageData(image.data);
 
+    knownRefs.set(image, ref);
+    // Put anyway: a delete elsewhere may have swept the bytes.
     void store.put(image.data, ref);
 
     return { mediaType: image.mediaType, ref };
@@ -84,7 +89,15 @@ export async function loadConversationImages<T extends WithMessages>(
 
     const data = bytes.get(image.ref);
 
-    return data == null ? null : { mediaType: image.mediaType, data };
+    if (data == null) {
+      return null;
+    }
+
+    const inline = { mediaType: image.mediaType, data };
+
+    knownRefs.set(inline, image.ref);
+
+    return inline;
   });
 }
 

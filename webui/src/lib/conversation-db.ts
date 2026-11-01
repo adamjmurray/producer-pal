@@ -10,7 +10,12 @@ import {
   branchFamilyIds,
   collapseBranchFamilies,
 } from "#webui/lib/conversation-branches";
-import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-open";
+import {
+  STORE_NAME,
+  resetDbRetired,
+  retiredDbError,
+  tryOpenDb,
+} from "#webui/lib/conversation-db-open";
 import {
   IMAGE_STORE,
   loadConversationImages,
@@ -110,6 +115,12 @@ let dbPromise: Promise<IDBPDatabase> | null = null;
  * @returns IndexedDB database instance
  */
 export function getConversationDb(): Promise<IDBPDatabase> {
+  const retired = retiredDbError();
+
+  if (retired) {
+    return Promise.reject(retired);
+  }
+
   dbPromise ??= tryOpenDb();
 
   return dbPromise;
@@ -395,6 +406,7 @@ export async function resetDbCache(): Promise<void> {
   const cached = dbPromise;
 
   dbPromise = null;
+  resetDbRetired();
 
   if (cached) {
     const db = await cached;

@@ -371,6 +371,16 @@ export async function readConversationsFromDb(
   return page.evaluate(async () => {
     return new Promise<SeedConversation[]>((resolve, reject) => {
       const req = indexedDB.open("producer-pal-conversations");
+      let missing = false;
+
+      // No version asked for, so a missing DB would be created empty (at v1,
+      // which the app's upgrade would then have to repair). Abort instead.
+      req.onupgradeneeded = (event) => {
+        if (event.oldVersion === 0) {
+          missing = true;
+          req.transaction?.abort();
+        }
+      };
 
       req.onsuccess = () => {
         const db = req.result;
@@ -385,7 +395,7 @@ export async function readConversationsFromDb(
         getAll.onerror = () => reject(getAll.error);
       };
 
-      req.onerror = () => reject(req.error);
+      req.onerror = () => (missing ? resolve([]) : reject(req.error));
     });
   });
 }

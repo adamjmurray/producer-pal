@@ -209,6 +209,47 @@ describe("conversation images", () => {
 
     expect(await storedImageKeys()).toHaveLength(1);
   });
+
+  it("reuses a loaded image's ref instead of hashing it again", async () => {
+    await saveConversation(withImages("a", [PNG]));
+
+    const [key] = await storedImageKeys();
+    const loaded = await loadConversation("a");
+    const image = loaded?.messages[0]?.images?.[0];
+
+    // Different bytes can only keep the old ref if the save skipped hashing.
+    // (Images are never edited in the app; this is how a test sees the cache.)
+    image!.data = "changed";
+    await saveConversation(loaded!);
+
+    expect(await storedImageKeys()).toStrictEqual([key]);
+  });
+
+  it("writes a known image's bytes again if another save swept them", async () => {
+    await saveConversation(withImages("a", [PNG]));
+
+    const loaded = await loadConversation("a");
+    const db = await getConversationDb();
+
+    await db.clear("images");
+    await saveConversation(loaded!);
+
+    expect(await imagesOf("a")).toStrictEqual([PNG]);
+  });
+
+  it("reuses the ref of a newly saved image on its next save", async () => {
+    const record = withImages("a", [{ ...PNG }]);
+    const image = record.messages[0]!.images![0]!;
+
+    await saveConversation(record);
+
+    const [key] = await storedImageKeys();
+
+    image.data = "changed";
+    await saveConversation(record);
+
+    expect(await storedImageKeys()).toStrictEqual([key]);
+  });
 });
 
 describe("upgrade from version 1", () => {
@@ -265,5 +306,80 @@ describe("upgrade from version 1", () => {
     const db = await opening;
 
     expect(db.version).toBe(2);
+  });
+
+  it("creates both stores in a version 1 database that has none", async () => {
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME);
+
+      request.onsuccess = () => {
+        request.result.close();
+        resolve();
+      };
+
+      request.onerror = () => reject(request.error);
+    });
+
+    const db = await getConversationDb();
+
+    expect([...db.objectStoreNames].toSorted()).toStrictEqual([
+      "conversations",
+      "images",
+    ]);
+
+    await saveConversation(withImages("a", [PNG]));
+    expect(await imagesOf("a")).toStrictEqual([PNG]);
+  });
+});
+
+describe("a newer build upgrading the database", () => {
+  beforeEach(async () => {
+    await resetDbCache();
+    await deleteIndexedDb(DB_NAME);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * Open the DB at a newer version, as another tab on a newer build would.
+   * @returns The open connection
+   */
+  function openNewerVersion(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, 3);
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  it("closes this tab's connection, tells the user, and never reopens", async () => {
+    const alertSpy = vi.fn();
+    const confirmSpy = vi.fn(() => true);
+
+    vi.stubGlobal("alert", alertSpy);
+    vi.stubGlobal("confirm", confirmSpy);
+    await saveConversation(withImages("a", [PNG]));
+
+    // Resolves only if this tab let go of its connection.
+    const newer = await openNewerVersion();
+
+    expect(alertSpy).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining("Reload"),
+    );
+
+    await expect(loadConversation("a")).rejects.toThrow("reload this one");
+    await expect(saveConversation(withImages("b", []))).rejects.toThrow(
+      "reload this one",
+    );
+
+    // No reset prompt, and the data is untouched.
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(newer.version).toBe(3);
+    expect(newer.objectStoreNames).toContain("conversations");
+    newer.close();
   });
 });
