@@ -126,7 +126,7 @@ export function Tooltip({ text }: TooltipProps) {
         <div
           ref={tooltipRef}
           role="tooltip"
-          style={{ top: position.top, left: position.left }}
+          style={{ top: `${position.top}px`, left: `${position.left}px` }}
           className="tooltip-fade-in fixed z-50 max-h-60 max-w-80 overflow-y-auto rounded border border-zinc-600 bg-zinc-800 px-2.5 py-1.5 text-xs wrap-break-word whitespace-normal text-white shadow-md dark:border-zinc-500 dark:bg-zinc-700"
         >
           {normalizedText}

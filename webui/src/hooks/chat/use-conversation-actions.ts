@@ -3,7 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { type MutableRef, useCallback } from "preact/hooks";
+import { type RefObject } from "preact";
+import { useCallback } from "preact/hooks";
 import { formatUserContent } from "#webui/chat/helpers/message-formatting";
 import { type UserMessage, toSentMessage } from "#webui/chat/sdk/types";
 import { type ExecuteWithRetryArgs } from "#webui/hooks/chat/helpers/use-execute-with-retry";
@@ -24,9 +25,9 @@ interface ConversationActionsDeps<
   apiKey: string;
   messages: UIMessage[];
   adapter: ChatAdapter<TClient, TMessage, TConfig>;
-  clientRef: MutableRef<TClient | null>;
-  pendingHistoryRef: MutableRef<TMessage[] | null>;
-  abortControllerRef: MutableRef<AbortController | null>;
+  clientRef: RefObject<TClient | null>;
+  pendingHistoryRef: RefObject<TMessage[] | null>;
+  abortControllerRef: RefObject<AbortController | null>;
   initializeChat: (
     chatHistory?: TMessage[],
     overrides?: MessageOverrides,
