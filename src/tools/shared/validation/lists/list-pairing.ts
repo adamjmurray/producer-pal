@@ -9,8 +9,9 @@
 // hole is refused here. Nothing cycles — a caller can't predict where a cycled
 // value lands. A comma splits only when the call names more than one item:
 // with one item every comma is part of the value (dev/PRINCIPLES.md,
-// Multi-target). With any count, `\,` is a comma inside a value, so a file
-// path or routing name can hold one in a list. No other backslash is touched
+// Multi-target). A whole value is trimmed the same as a list entry. With any
+// count, `\,` is a comma inside a value, so a file path or routing name can
+// hold one in a list. No other backslash is touched
 // (Windows paths come through as-is), so a value can't end in a backslash
 // right before a separating comma.
 //
@@ -103,7 +104,7 @@ export function everyEntry(
     return [];
   }
 
-  return splitList(value, count, param) ?? [unescapeCommas(value)];
+  return splitList(value, count, param) ?? [wholeValue(value)];
 }
 
 /**
@@ -125,7 +126,16 @@ export function valueForIndex(
 
   // A list too short for the items is refused up front, so past the last entry
   // only happens where nothing checked — and there the item keeps what it had.
-  return parsed == null ? unescapeCommas(value) : parsed[index];
+  return parsed == null ? wholeValue(value) : parsed[index];
+}
+
+/**
+ * A value that covers every item, read the way a list entry is.
+ * @param value - The raw param
+ * @returns The value, unescaped and trimmed
+ */
+function wholeValue(value: string): string {
+  return unescapeCommas(value).trim();
 }
 
 /**
