@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { request } from "node:http";
+import { networkInterfaces } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 import { setupExpressAppServer } from "../express-app-test-helpers.ts";
 
@@ -14,6 +15,10 @@ function post(url: string, body: object, headers = {}): Promise<Response> {
     body: JSON.stringify(body),
   });
 }
+
+const hasIpv6Loopback = Object.values(networkInterfaces()).some((addrs) =>
+  addrs?.some((addr) => addr.address === "::1"),
+);
 
 async function getConfig(url: string): Promise<Record<string, unknown>> {
   const response = await fetch(url);
@@ -34,17 +39,24 @@ describe("POST /config remote script switches from outside this machine", () => 
     });
   });
 
-  it.each(["localhost", "127.0.0.1", "[::1]"])(
-    "are accepted over %s",
-    async (host) => {
-      const port = new URL(appState.baseUrl).port;
-      const response = await post(`http://${host}:${port}/config`, {
-        remoteScriptMinVersion: "9.0.0",
-      });
+  async function expectAcceptedOver(host: string): Promise<void> {
+    const port = new URL(appState.baseUrl).port;
+    const response = await post(`http://${host}:${port}/config`, {
+      remoteScriptMinVersion: "9.0.0",
+    });
 
-      expect(response.status).toBe(200);
-    },
+    expect(response.status).toBe(200);
+  }
+
+  it.each(["localhost", "127.0.0.1"])(
+    "are accepted over %s",
+    expectAcceptedOver,
   );
+
+  // Some machines (e.g. cloud containers) have no IPv6 stack, so ::1 is unreachable.
+  it.skipIf(!hasIpv6Loopback)("are accepted over [::1]", async () => {
+    await expectAcceptedOver("[::1]");
+  });
 
   it("are refused with 403 when a tunnel forwards them, and nothing in the body is applied", async () => {
     const response = await post(
