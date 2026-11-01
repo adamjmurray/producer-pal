@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude (Anthropic), Claude Opus 5.5 (Anthropic)
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
 // The test file must `vi.mock` node-request-v8-protocol.ts for these to work.
