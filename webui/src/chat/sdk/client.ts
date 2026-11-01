@@ -14,6 +14,7 @@ import {
 } from "./build-model-messages";
 import { summarizeHistory } from "./compaction";
 import { createMcpTools } from "./mcp-tools";
+import { withMistralCacheKey } from "./provider/mistral-cache-key";
 import { type ReasoningReplay, reasoningReplayFor } from "./reasoning-replay";
 import { handleStreamPart } from "./streaming/stream-part-handlers";
 import { createStreamErrorSignal } from "./streaming/stream-with-error-signal";
@@ -124,6 +125,8 @@ export class ChatSdkClient {
    * lifetime and only close when the client is discarded — see dispose().
    */
   private mcpClient: Client | null = null;
+  /** Mistral prompt-cache key for all this client's requests; workers get their own. */
+  private readonly promptCacheKey = crypto.randomUUID();
 
   /**
    * @param _apiKey - API key (handled by the model instance in config)
@@ -433,16 +436,23 @@ export class ChatSdkClient {
 
   /**
    * Resolve the providerOptions for one request: a per-message thinking override
-   * when the config can build one, else the config's own.
+   * when the config can build one, else the config's own, plus the Mistral key.
    * @param overrides - Per-message overrides for thinking
    * @returns providerOptions to pass to streamText
    */
   private providerOptionsFor(
     overrides?: MessageOverrides,
   ): Parameters<typeof streamText>[0]["providerOptions"] {
-    return overrides?.thinking != null && this.config.buildProviderOptions
-      ? this.config.buildProviderOptions(overrides.thinking)
-      : this.config.providerOptions;
+    const providerOptions =
+      overrides?.thinking != null && this.config.buildProviderOptions
+        ? this.config.buildProviderOptions(overrides.thinking)
+        : this.config.providerOptions;
+
+    return withMistralCacheKey(
+      providerOptions,
+      this.config.model,
+      this.promptCacheKey,
+    );
   }
 
   /**
