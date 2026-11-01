@@ -8,6 +8,7 @@ import {
   DEFAULT_VELOCITY_DEVIATION,
   wholeNoteFractionToMusicalBeats,
 } from "#src/notation/barbeat/barbeat-config.ts";
+import { checkNotationLimit } from "#src/notation/helpers/notation-limit.ts";
 import { assertDefined } from "#src/shared/error-message.ts";
 import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../../types.ts";
@@ -158,6 +159,7 @@ function emitPitchAtPosition(
     velocity_deviation: pitchState.velocityDeviation,
   };
 
+  checkNotationLimit(events.length + 1, "Note count");
   events.push(noteEvent);
   trackForBarCopy(noteEvent, beatsPerBar, timeSigDenominator, notesByBar);
 }

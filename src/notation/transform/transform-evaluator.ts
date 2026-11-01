@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { dedupeNotesKeepingLast } from "#src/notation/note-sort.ts";
+import { dedupeNotesKeepingLast } from "#src/notation/helpers/note-sort.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { clipDetail } from "./transform-warning-label.ts";

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { isSameSlot } from "./note-sort.ts";
-import { type NoteEvent } from "./types.ts";
+import { type NoteEvent } from "../types.ts";
 
 /**
  * Apply v0 (velocity 0) deletions to notes in serial order.

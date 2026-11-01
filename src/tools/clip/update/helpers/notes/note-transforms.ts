@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
+import { dedupeAndSortNotes } from "#src/notation/helpers/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { isSameSlot } from "#src/notation/note-sort.ts";
+import { isSameSlot } from "#src/notation/helpers/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import {

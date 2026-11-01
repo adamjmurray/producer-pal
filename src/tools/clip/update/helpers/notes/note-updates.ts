@@ -3,13 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
+import { applyV0Deletions } from "#src/notation/helpers/apply-v0-deletions.ts";
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { interpretNotation, resolveNotation } from "#src/notation/notation.ts";
 import {
   countSlotCollisions,
   dedupeAndSortNotes,
-} from "#src/notation/note-sort.ts";
+} from "#src/notation/helpers/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {

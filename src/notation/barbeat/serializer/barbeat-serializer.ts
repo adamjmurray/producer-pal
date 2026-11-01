@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { sortNotes } from "#src/notation/note-sort.ts";
+import { sortNotes } from "#src/notation/helpers/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { isValidMidi } from "#src/shared/pitch.ts";
 import { emitWarning } from "#src/shared/max/v8-max-console.ts";

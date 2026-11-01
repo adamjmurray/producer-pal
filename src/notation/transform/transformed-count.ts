@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { dedupeNotesKeepingLast } from "#src/notation/note-sort.ts";
+import { dedupeNotesKeepingLast } from "#src/notation/helpers/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { isChanged } from "./helpers/note-ops/transform-outcome.ts";
 
