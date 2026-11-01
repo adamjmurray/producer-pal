@@ -14,7 +14,10 @@ import {
   refuseNamedTwice,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
-import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
+import {
+  locatorPosition,
+  resolveLocatorPositions,
+} from "#src/tools/shared/locator/song-position.ts";
 import {
   parseClipDestinationList,
   pathCarriesPosition,
@@ -234,6 +237,6 @@ function foldLocatorParam(
   const names = targetEntries(locator, "locator");
 
   return (names.length === 0 ? [""] : names)
-    .map((name) => `loc:${name.replaceAll(",", "\\,")}`)
+    .map((name) => locatorPosition(name.replaceAll(",", "\\,")))
     .join(",");
 }

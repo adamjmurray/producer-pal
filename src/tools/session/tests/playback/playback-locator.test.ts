@@ -173,22 +173,25 @@ describe("playback - song positions", () => {
       liveSet = setupLoopedCuePoints();
     });
 
-    it("should fold startLocator into startTime", () => {
-      const result = playback({
-        action: "play-arrangement",
-        startLocator: "26",
-      });
+    it.each(["26", "loc:26"])(
+      "should fold startLocator %j into startTime",
+      (startLocator) => {
+        const result = playback({
+          action: "play-arrangement",
+          startLocator,
+        });
 
-      expectLiveSetProperty(liveSet, "start_time", 16);
-      // play-arrangement reports the loop it will obey, set here or not.
-      expect(result).toStrictEqual({
-        playing: true,
-        startTime: "5|1",
-        loop: true,
-        loopStart: "5|1",
-        loopEnd: "9|1",
-      });
-    });
+        expectLiveSetProperty(liveSet, "start_time", 16);
+        // play-arrangement reports the loop it will obey, set here or not.
+        expect(result).toStrictEqual({
+          playing: true,
+          startTime: "5|1",
+          loop: true,
+          loopStart: "5|1",
+          loopEnd: "9|1",
+        });
+      },
+    );
 
     it("should fold loopStartLocator and loopEndLocator into the loop", () => {
       const result = playback({

@@ -15,6 +15,7 @@ import {
   writeArrangementLoop,
 } from "./arrangement-loop.ts";
 import {
+  locatorPosition,
   locatorRef,
   songPositionToBeats,
 } from "#src/tools/shared/locator/song-position.ts";
@@ -275,7 +276,7 @@ export function foldLocatorParams(
       hint: `${legacy} is deprecated`,
     });
 
-    folded[position] = `loc:${locator}`;
+    folded[position] = locatorPosition(String(locator));
     // A refusal names the locator param the caller sent, not this one.
     folded.sentAs = { ...folded.sentAs, [position]: legacy };
   }

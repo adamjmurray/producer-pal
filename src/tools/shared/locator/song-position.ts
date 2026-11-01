@@ -55,6 +55,17 @@ export function locatorRef(value: string): string | undefined {
 }
 
 /**
+ * Spells a retired locator param's value as a song position. A value that
+ * already has the prefix keeps it, so "loc:Verse" doesn't become a lookup for
+ * a locator named "loc:Verse".
+ * @param locator - A locator id or name, as the caller sent it
+ * @returns The position, as `loc:<id or name>`
+ */
+export function locatorPosition(locator: string): string {
+  return locatorRef(locator) == null ? `loc:${locator}` : locator;
+}
+
+/**
  * A point on the song timeline, in Ableton beats. One spelling covers both:
  * a bar|beat position in the song meter, or `loc:<name>` naming a locator.
  * @param liveSet - The live_set LiveAPI object, for the locator lookup

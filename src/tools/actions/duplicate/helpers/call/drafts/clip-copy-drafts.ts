@@ -185,7 +185,11 @@ function arrangementDrafts(
     clip == null
       ? unresolvedDestinations(where.arrangementTargets)
       : resolveDestinationTargets(clip, where.arrangementTargets);
-  const requested = aliasTakeLane(resolved.destinations, params.takeLane);
+  const requested = aliasTakeLane(
+    resolved.destinations,
+    params.takeLane,
+    "toPath",
+  );
 
   // Decided from what toPath named, not from what could be resolved: a lane
   // on a blocked destination is still a lane the caller named.

@@ -229,10 +229,12 @@ export function isTakeLaneRequested(
  * Everything {@link isTakeLaneRequested} calls unset means the main lane.
  * The param is 1-based and the target is 0-based, so `N` becomes lane `N - 1`.
  * @param takeLane - Raw takeLane value from a tool argument
+ * @param pathParam - The tool's destination path param, for the fix
  * @returns A TakeLaneTarget, or null to target the main lane
  */
 export function normalizeTakeLaneTarget(
   takeLane: number | string | null | undefined,
+  pathParam = "path",
 ): TakeLaneTarget | null {
   if (!isTakeLaneRequested(takeLane)) {
     return null;
@@ -243,7 +245,7 @@ export function normalizeTakeLaneTarget(
   if (!Number.isInteger(n) || n < 1) {
     throw new Error(
       `takeLane must be 0 or a positive integer (got "${takeLane}"); ` +
-        `name the lane by index, e.g. path "t0/l0"`,
+        `name the lane by index, e.g. ${pathParam} "t0/l0"`,
     );
   }
 
@@ -255,11 +257,13 @@ export function normalizeTakeLaneTarget(
  * for the whole call, so it only applies when no destination names its own.
  * @param targets - Destinations, null where one can't be used
  * @param takeLane - Raw takeLane value from a tool argument
+ * @param pathParam - The tool's destination path param, for an error
  * @returns The destinations, with the lane applied when it applies
  */
 export function aliasTakeLane<T extends { takeLane: TakeLaneTarget | null }>(
   targets: (T | null)[],
   takeLane: number | string | null | undefined,
+  pathParam: string,
 ): (T | null)[] {
   if (
     !isTakeLaneRequested(takeLane) ||
@@ -268,7 +272,7 @@ export function aliasTakeLane<T extends { takeLane: TakeLaneTarget | null }>(
     return targets;
   }
 
-  const lane = normalizeTakeLaneTarget(takeLane);
+  const lane = normalizeTakeLaneTarget(takeLane, pathParam);
 
   return targets.map((target) =>
     target == null ? null : { ...target, takeLane: lane },

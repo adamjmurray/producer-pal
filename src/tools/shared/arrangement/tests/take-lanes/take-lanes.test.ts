@@ -155,6 +155,9 @@ describe("normalizeTakeLaneTarget", () => {
     expect(() => normalizeTakeLaneTarget(-1)).toThrow(/takeLane must be/);
     expect(() => normalizeTakeLaneTarget(1.5)).toThrow(/takeLane must be/);
     expect(() => normalizeTakeLaneTarget("abc")).toThrow(/takeLane must be/);
+    expect(() => normalizeTakeLaneTarget("abc", "toPath")).toThrow(
+      'e.g. toPath "t0/l0"',
+    );
   });
 });
 

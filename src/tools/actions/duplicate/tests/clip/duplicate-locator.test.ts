@@ -291,6 +291,7 @@ describe("duplicate - locators as arrangement positions", () => {
       ["one name", "Drop", [8]],
       ["one id", "27", [8]],
       ["a list, one loc: per entry", "Start, Drop", [0, 8]],
+      ["a name already prefixed", "loc:Drop", [8]],
     ])("folds %s onto arrangementStart", async (_label, locator, beats) => {
       const track0 = setupClipWithLocators(standardCuePoints);
 
