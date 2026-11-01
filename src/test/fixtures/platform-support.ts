@@ -11,8 +11,8 @@ import { join } from "node:path";
 export const platformSupport = {
   /** Windows refuses symlinks without Developer Mode or admin */
   symlinks: probeSymlinks(),
-  /** Windows ignores chmod on folders, so a test can't make one unreadable */
-  fileModes: process.platform !== "win32",
+  /** Windows and root ignore chmod, so a test can't make a folder unreadable */
+  fileModes: process.platform !== "win32" && process.getuid?.() !== 0,
 };
 
 /**
