@@ -9,6 +9,7 @@ import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response } from "express";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 export interface JsonRpcError {
   jsonrpc: string;
@@ -27,6 +28,21 @@ export const methodNotAllowed: JsonRpcError = {
   },
   id: null,
 };
+
+/**
+ * @param message - What went wrong
+ * @returns The JSON-RPC body for a 500 on /mcp
+ */
+export function internalError(message: string): JsonRpcError {
+  return {
+    jsonrpc: "2.0",
+    error: {
+      code: ErrorCode.InternalError,
+      message: `Internal server error: ${message}`,
+    },
+    id: null,
+  };
+}
 
 /** A running stateless MCP server. */
 export interface StatelessMcpServer {
@@ -53,9 +69,12 @@ export async function serveStatelessMcp(
     sessionIdGenerator: undefined, // Stateless mode
   });
 
+  // A failed close has nowhere to go: the response is done, and the logger
+  // needs Max, which probes and test harnesses don't have. Swallow it, or the
+  // unhandled rejection takes down the process.
   res.on("close", () => {
-    void transport.close();
-    void server.close();
+    transport.close().catch(() => {});
+    server.close().catch(() => {});
   });
 
   await server.connect(transport);
@@ -89,7 +108,17 @@ export async function startStatelessMcpServer(
 
   app.use(express.json());
   app.post("/mcp", (req: Request, res: Response) => {
-    void serveStatelessMcp(createServer(), req, res, req.body);
+    // Answer like the device's /mcp route does; an unhandled rejection here
+    // would crash the process and leave the request hanging.
+    serveStatelessMcp(createServer(), req, res, req.body).catch(
+      (error: unknown) => {
+        if (res.headersSent) {
+          res.end();
+        } else {
+          res.status(500).json(internalError(errorMessage(error)));
+        }
+      },
+    );
   });
   rejectStatelessMcpMethods(app);
 

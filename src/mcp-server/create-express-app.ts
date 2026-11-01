@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response, type Express } from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
@@ -22,7 +21,7 @@ import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { type WrappedCallLiveApi } from "./helpers/connect/connect-append.ts";
 import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
 import {
-  type JsonRpcError,
+  internalError,
   rejectStatelessMcpMethods,
   serveStatelessMcp,
 } from "./helpers/http/stateless-mcp.ts";
@@ -239,15 +238,6 @@ function buildRestCall(profile: RequestProfile): WrappedCallLiveApi {
     () => profile.notation,
   );
 }
-
-const internalError = (message: string): JsonRpcError => ({
-  jsonrpc: "2.0",
-  error: {
-    code: ErrorCode.InternalError,
-    message: `Internal server error: ${message}`,
-  },
-  id: null,
-});
 
 /**
  * Mark a response as never-cache. Used for the UI bundle and config so the
