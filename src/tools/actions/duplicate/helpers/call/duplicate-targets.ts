@@ -107,6 +107,7 @@ export function duplicateTargets(
     takeLaneName: args.takeLaneName,
     laneCopy: parsed.laneCopy,
     toTakeLane: parsed.toTakeLane,
+    startParam: parsed.startParam,
   });
 
   run.destination = destination;

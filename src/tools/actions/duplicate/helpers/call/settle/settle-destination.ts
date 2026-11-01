@@ -66,12 +66,18 @@ export function settleDestination(
     scene.arrangementStart,
     locator,
     startParam,
+    scene.fromToPath ? "toPath" : "arrangementStart",
   );
 
   return {
     toPath,
     arrangementStart,
-    onArrangement: namesArrangementPosition(type, toPath, arrangementStart),
+    onArrangement: namesArrangementPosition(
+      type,
+      toPath,
+      arrangementStart,
+      startParam,
+    ),
     startParam,
   };
 }
@@ -90,6 +96,8 @@ export function settleDestination(
  * @param arrangementStart - Position list as the caller wrote it
  * @param locator - Deprecated locator ref list, if sent
  * @param startParam - The param the caller wrote the positions in
+ * @param positionParam - The param the position list was sent in, before any
+ * locator folded onto it
  * @returns The positions, in bar|beat, or undefined when none were named
  */
 function resolveArrangementStart(
@@ -97,16 +105,17 @@ function resolveArrangementStart(
   arrangementStart: string | undefined,
   locator: string | undefined,
   startParam: string,
+  positionParam: string,
 ): string | undefined {
   if (type === "device" || type === "drum-pad") {
     return arrangementStart;
   }
 
-  const positions = foldLocatorParam(arrangementStart, locator);
+  const positions = foldLocatorParam(arrangementStart, locator, positionParam);
 
   // Here, not in resolveArrangementPositions, which runs once per source: one
   // mistake in the list gets one word for the call.
-  targetEntries(positions, "arrangementStart");
+  targetEntries(positions, startParam);
 
   if (positions == null) {
     return undefined;
@@ -187,19 +196,21 @@ function foldSceneDestination(
  * @param type - What is being duplicated
  * @param toPath - Destination path(s) as the caller wrote them
  * @param arrangementStart - Position list, already resolved to bar|beat
+ * @param startParam - The param the caller wrote the positions in
  * @returns True when the copies land on the arrangement
  */
 function namesArrangementPosition(
   type: string | undefined,
   toPath: string | undefined,
   arrangementStart: string | undefined,
+  startParam: string,
 ): boolean {
   // No other type lands copies on the timeline.
   if (type !== "clip") {
     return type === "scene" && hasArrangementPosition(arrangementStart);
   }
 
-  refuseDoubledPosition(toPath, arrangementStart, "toPath");
+  refuseDoubledPosition(toPath, arrangementStart, "toPath", startParam);
 
   return (
     hasArrangementPosition(arrangementStart) || pathCarriesPosition(toPath)
@@ -211,11 +222,13 @@ function namesArrangementPosition(
  * entry so a list keeps naming a list.
  * @param arrangementStart - Position list as the caller wrote it
  * @param locator - Deprecated locator ref list, if sent
+ * @param positionParam - The param the position list was sent in
  * @returns The one position list
  */
 function foldLocatorParam(
   arrangementStart: string | undefined,
   locator: string | undefined,
+  positionParam: string,
 ): string | undefined {
   // A blank, or the word "null", is a param left out.
   if (!paramNamesSomething(locator)) {
@@ -225,7 +238,7 @@ function foldLocatorParam(
   // Never pick one: the two params name the same position, so a caller who sent
   // both told us two different things about it.
   refuseNamedTwice({
-    param: "arrangementStart",
+    param: positionParam,
     value: arrangementStart,
     noun: "position",
     also: { locator },

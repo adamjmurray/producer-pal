@@ -357,6 +357,39 @@ describe("duplicate - locators as arrangement positions", () => {
       );
     });
 
+    // The refusal names the params the caller sent, not the one the position
+    // was folded onto.
+    it("names toPath when a scene's coordinate comes with a locator", async () => {
+      registerMockObject("scene1", { path: livePath.scene(0) });
+
+      await expect(
+        duplicate({
+          type: "scene",
+          id: "scene1",
+          toPath: "[5|1]",
+          locator: "Verse",
+        }),
+      ).rejects.toThrow(
+        "toPath names the position on its own - don't send locator with it",
+      );
+    });
+
+    it("names locator when a clip's coordinate comes with one", async () => {
+      const track0 = setupClipWithLocators(standardCuePoints);
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          toPath: "t0[5|1]",
+          locator: "Drop",
+        }),
+      ).rejects.toThrow(
+        "toPath names the song position on its own - don't send locator with it",
+      );
+      expect(track0.call).not.toHaveBeenCalled();
+    });
+
     // A device has no arrangement position, so neither param is read and there
     // is nothing to refuse — the same rule that lets a session playback action
     // carry a conflicting startTime/startLocator pair. They are reported as

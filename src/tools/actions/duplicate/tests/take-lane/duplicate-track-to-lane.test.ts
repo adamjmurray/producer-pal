@@ -381,6 +381,25 @@ describe("duplicate track to take lane - destinations it can't use", () => {
     expect(destination.call).not.toHaveBeenCalled();
   });
 
+  it("names locator when that is what sat beside a lane destination", async () => {
+    registerMainLaneSource([0]);
+    registerTakeLaneTrack({ trackIndex: 1 });
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: {
+        tracks: children("track0", "track1"),
+        cue_points: children("cue0"),
+      },
+    });
+    registerMockObject("cue0", { properties: { time: 16, name: "Verse" } });
+
+    await expect(
+      copyToLanes({ toPath: "t1/l0", locator: "Verse" }),
+    ).rejects.toThrow(
+      "locator doesn't apply to a lane copy: every clip keeps its own position; drop it",
+    );
+  });
+
   it("refuses a source with nothing on its main lane", async () => {
     registerMainLaneSource([]);
     registerTakeLaneTrack({ trackIndex: 1 });

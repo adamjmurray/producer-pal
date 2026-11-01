@@ -251,6 +251,8 @@ interface DestinationParams {
   laneCopy: boolean;
   /** Whether a destination names a take lane, which the call may create. */
   toTakeLane: boolean;
+  /** The param the caller wrote the positions in */
+  startParam?: string;
 }
 
 /**
@@ -272,7 +274,12 @@ export function resolveDestinationAndWarn(
   const destination =
     clipDestinations?.destination ?? inferDestination(type, arrangementStart);
 
-  validateDestinationParameter(type, destination, params.laneCopy);
+  validateDestinationParameter(
+    type,
+    destination,
+    params.laneCopy,
+    params.startParam,
+  );
   warnUnusedArrangementLength(type, destination, arrangementLength);
 
   // takeLane and takeLaneName only apply to arrangement-destination clips (and

@@ -134,7 +134,7 @@ export function valueForIndex(
  * @param value - The raw param
  * @returns The value, unescaped and trimmed
  */
-function wholeValue(value: string): string {
+export function wholeValue(value: string): string {
   return unescapeCommas(value).trim();
 }
 
