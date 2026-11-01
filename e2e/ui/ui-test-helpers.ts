@@ -303,6 +303,9 @@ export async function openHistoryPanel(page: Page): Promise<void> {
   await expect(page.getByTestId("conversation-item").first()).toBeVisible();
 }
 
+// Keep in step with DB_VERSION in webui/src/lib/conversation-db-open.ts.
+const CONVERSATIONS_DB_VERSION = 2;
+
 /**
  * Seed the conversations IndexedDB with the given records. Creates the object
  * store if the app hasn't already (idempotent with the app's own open).
@@ -313,41 +316,48 @@ export async function seedConversations(
   page: Page,
   conversations: SeedConversation[],
 ): Promise<void> {
-  await page.evaluate(async (records) => {
-    await new Promise<void>((resolve, reject) => {
-      const req = indexedDB.open("producer-pal-conversations", 1);
+  await page.evaluate(
+    async ({ records, version }) => {
+      await new Promise<void>((resolve, reject) => {
+        const req = indexedDB.open("producer-pal-conversations", version);
 
-      req.onupgradeneeded = () => {
-        const db = req.result;
+        req.onupgradeneeded = () => {
+          const db = req.result;
 
-        if (!db.objectStoreNames.contains("conversations")) {
-          const store = db.createObjectStore("conversations", {
-            keyPath: "id",
-          });
+          if (!db.objectStoreNames.contains("conversations")) {
+            const store = db.createObjectStore("conversations", {
+              keyPath: "id",
+            });
 
-          store.createIndex("updatedAt", "updatedAt");
-        }
-      };
+            store.createIndex("updatedAt", "updatedAt");
+          }
 
-      req.onsuccess = () => {
-        const db = req.result;
-        const tx = db.transaction("conversations", "readwrite");
-
-        for (const record of records) {
-          tx.objectStore("conversations").put(record);
-        }
-
-        tx.oncomplete = () => {
-          db.close();
-          resolve();
+          if (!db.objectStoreNames.contains("images")) {
+            db.createObjectStore("images");
+          }
         };
 
-        tx.onerror = () => reject(tx.error);
-      };
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("conversations", "readwrite");
 
-      req.onerror = () => reject(req.error);
-    });
-  }, conversations);
+          for (const record of records) {
+            tx.objectStore("conversations").put(record);
+          }
+
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+
+          tx.onerror = () => reject(tx.error);
+        };
+
+        req.onerror = () => reject(req.error);
+      });
+    },
+    { records: conversations, version: CONVERSATIONS_DB_VERSION },
+  );
 }
 
 /**
@@ -360,7 +370,7 @@ export async function readConversationsFromDb(
 ): Promise<SeedConversation[]> {
   return page.evaluate(async () => {
     return new Promise<SeedConversation[]>((resolve, reject) => {
-      const req = indexedDB.open("producer-pal-conversations", 1);
+      const req = indexedDB.open("producer-pal-conversations");
 
       req.onsuccess = () => {
         const db = req.result;

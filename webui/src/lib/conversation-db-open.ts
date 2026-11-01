@@ -4,10 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 import { openDB, type IDBPDatabase } from "idb";
+import { IMAGE_STORE } from "#webui/lib/conversations/conversation-images";
 import { downloadTextFile } from "#webui/utils/text-file-io";
 
 const DB_NAME = "producer-pal-conversations";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export const STORE_NAME = "conversations";
 
@@ -34,10 +35,20 @@ export async function tryOpenDb(): Promise<IDBPDatabase> {
  */
 function openDb(): Promise<IDBPDatabase> {
   return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
+    upgrade(db, oldVersion) {
+      if (oldVersion < 1) {
+        const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
 
-      store.createIndex("updatedAt", "updatedAt");
+        store.createIndex("updatedAt", "updatedAt");
+      }
+
+      if (oldVersion < 2) {
+        db.createObjectStore(IMAGE_STORE);
+      }
+    },
+    // A tab still open on the old version holds the upgrade until it closes.
+    blocked() {
+      alert("Close other Producer Pal tabs to finish updating.");
     },
   });
 }

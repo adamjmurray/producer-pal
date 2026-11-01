@@ -12,9 +12,19 @@ truth for the full field list (the snippet below is illustrative, not
 exhaustive).
 
 **Storage**: IndexedDB via `idb` library. Database:
-`producer-pal-conversations`, single `conversations` object store with
-`updatedAt` index. Max 200 conversations (`MAX_CONVERSATIONS`); oldest
-non-bookmarked conversations are auto-deleted on save when the limit is reached.
+`producer-pal-conversations`: a `conversations` object store with an `updatedAt`
+index, and an `images` store. Max 200 conversations (`MAX_CONVERSATIONS`);
+oldest non-bookmarked conversations are auto-deleted on save when the limit is
+reached.
+
+**Images** (`lib/conversations/conversation-images.ts`): image bytes live in the
+`images` store, keyed by a hash of their content, so an edit/retry fork shares
+them instead of storing another copy. A stored message holds
+`{ mediaType, ref }`; `loadConversation` puts the bytes back, so callers only
+ever see inline images. There are no reference counts: every save and delete
+sweeps the images no remaining record uses, in the same transaction. Images
+saved before the store existed stay inline until their record is next saved.
+Export writes images inline, so an export file stays self-contained.
 
 **Versioning**: IndexedDB is schemaless for record data, so adding a field to a
 stored record needs no version bump — just default it when it's missing on read.
@@ -45,6 +55,7 @@ interface ConversationRecord {
 | -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | `lib/conversation-db.ts`                                       | Pure async DB functions + types (`ConversationRecord`, `ConversationSummary`) |
 | `lib/conversation-db-open.ts`                                  | DB open/upgrade, version mismatch handling, JSON export                       |
+| `lib/conversations/conversation-images.ts`                     | Shared image store: move bytes out on save, back in on load, sweep orphans    |
 | `lib/conversations/`                                           | Live-conversation store + the delete/rename/sweep steps chat and voice share  |
 | `hooks/chat/use-conversations.ts`                              | Orchestration hook (save/load/switch/new/delete/rename)                       |
 | `hooks/chat/helpers/conversations/conversation-save-record.ts` | Title derivation, save/fork record builders, locked settings                  |
