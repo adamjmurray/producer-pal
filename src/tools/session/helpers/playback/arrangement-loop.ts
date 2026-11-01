@@ -43,6 +43,8 @@ export function planArrangementLoop(
   timeline: ArrangementParams,
 ): LoopWrite | null {
   const { loop, loopStart, loopEnd } = timeline;
+  const startParam = timeline.sentAs?.loopStart ?? "loopStart";
+  const endParam = timeline.sentAs?.loopEnd ?? "loopEnd";
 
   if (loop == null && loopStart == null && loopEnd == null) {
     return null;
@@ -66,8 +68,10 @@ export function planArrangementLoop(
       timeSigDenominator,
     });
   const planned = planLoop({
-    startBeats: loopStart == null ? null : toBeats(loopStart, "loopStart"),
-    endBeats: loopEnd == null ? null : toBeats(loopEnd, "loopEnd"),
+    startBeats: loopStart == null ? null : toBeats(loopStart, startParam),
+    endBeats: loopEnd == null ? null : toBeats(loopEnd, endParam),
+    startParam,
+    endParam,
     currentLengthBeats: liveSet.getProperty("loop_length") as number,
     timeSigNumerator,
     timeSigDenominator,
@@ -117,6 +121,8 @@ export function writeArrangementLoop(
  * @param params.currentLengthBeats - The loop's length before this call
  * @param params.timeSigNumerator - Time signature numerator
  * @param params.timeSigDenominator - Time signature denominator
+ * @param params.startParam - The param the caller wrote the start in
+ * @param params.endParam - The param the caller wrote the end in
  * @returns The plan, or the reason the loop can't go there
  */
 function planLoop({
@@ -125,12 +131,16 @@ function planLoop({
   currentLengthBeats,
   timeSigNumerator,
   timeSigDenominator,
+  startParam,
+  endParam,
 }: {
   startBeats: number | null;
   endBeats: number | null;
   currentLengthBeats: number;
   timeSigNumerator: number;
   timeSigDenominator: number;
+  startParam: string;
+  endParam: string;
 }): PlannedLoop {
   const barBeat = (beats: number): string =>
     abletonBeatsToBarBeat(beats, timeSigNumerator, timeSigDenominator);
@@ -141,7 +151,7 @@ function planLoop({
     if (lengthBeats <= 0) {
       return {
         refusal:
-          `loopEnd ${barBeat(endBeats)} is not after loopStart ` +
+          `${endParam} ${barBeat(endBeats)} is not after ${startParam} ` +
           `${barBeat(startBeats)} — leaving the loop as it was`,
       };
     }
@@ -156,8 +166,8 @@ function planLoop({
   if (slid < 0) {
     const refusal =
       startBeats != null
-        ? `loopStart ${barBeat(startBeats)} is before 1|1 — leaving the loop as it was`
-        : `loopEnd ${barBeat(endBeats as number)} would set the loop start before ` +
+        ? `${startParam} ${barBeat(startBeats)} is before 1|1 — leaving the loop as it was`
+        : `${endParam} ${barBeat(endBeats as number)} would set the loop start before ` +
           `1|1 — leaving the loop as it was`;
 
     return { refusal };

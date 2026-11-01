@@ -116,12 +116,14 @@ export function readSongMeter(): SongMeter {
  * @param arrangementPositions - Resolved arrangement destinations
  * @param songTimeSigNumerator - Song time signature numerator
  * @param songTimeSigDenominator - Song time signature denominator
+ * @param param - The param the caller wrote the positions in
  * @throws When a position isn't a usable bar|beat, or is past Live's last
  */
 export function validateArrangementPositions(
   arrangementPositions: ArrangementPosition[],
   songTimeSigNumerator: number,
   songTimeSigDenominator: number,
+  param: string,
 ): void {
   for (const { arrangementStart } of arrangementPositions) {
     // The 1-indexing steer first, then the format error the conversion raises.
@@ -134,6 +136,7 @@ export function validateArrangementPositions(
       ),
       songTimeSigNumerator,
       songTimeSigDenominator,
+      param,
     );
   }
 }

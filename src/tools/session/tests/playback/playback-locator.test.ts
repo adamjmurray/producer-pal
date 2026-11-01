@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/session/playback.ts";
 import {
@@ -200,6 +201,27 @@ describe("playback - song positions", () => {
       expectLiveSetProperty(liveSet, "loop_start", 16);
       expectLiveSetProperty(liveSet, "loop_length", 16);
       expect(result).toStrictEqual({ playing: false });
+    });
+
+    // A refusal names the param the caller sent, not the one it folds onto.
+    it("names startLocator when its locator is not found", () => {
+      expect(() =>
+        playback({ action: "play-arrangement", startLocator: "Nope" }),
+      ).toThrow('no locator found with name "Nope" for startLocator');
+    });
+
+    it("names the *Locator params in a loop refusal", () => {
+      playback({
+        action: "update-arrangement",
+        loopStartLocator: "Chorus",
+        loopEndLocator: "Verse",
+      });
+
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining(
+          "loopEndLocator 5|1 is not after loopStartLocator 9|1",
+        ),
+      );
     });
 
     // A blank, or the word "null", is a param left out.

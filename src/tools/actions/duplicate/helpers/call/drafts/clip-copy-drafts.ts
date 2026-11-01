@@ -52,6 +52,8 @@ import {
 /** What the clip copies are told about the call. */
 export interface ClipDraftParams {
   takeLane: number | string | undefined;
+  /** The param the caller wrote the positions in */
+  startParam: string;
   /** Looks a source up, once for the call */
   objectOf: (id: string) => LiveAPI;
   /** Looks a destination track up, once for the call */
@@ -204,7 +206,7 @@ function arrangementDrafts(
 
   const meter = params.meter();
   const positions = positionsInBeats(share.arrangementStart, where, meter);
-  const plan = planCopies(requested, positions);
+  const plan = planCopies(requested, positions, params.startParam);
   const dropped = takeLaneTargetsThatFit(
     plan.targets.filter((target) => target.takeLane != null),
   ).dropped;

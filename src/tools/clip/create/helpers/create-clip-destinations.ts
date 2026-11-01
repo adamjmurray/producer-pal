@@ -171,7 +171,7 @@ export function resolveCreateClipDestinations(
     {
       param: path != null ? "path" : "trackIndex",
       takeLane: isTakeLaneRequested(params.takeLane)
-        ? (params.takeLane ?? null)
+        ? (params.takeLane as number | string)
         : null,
     },
   );

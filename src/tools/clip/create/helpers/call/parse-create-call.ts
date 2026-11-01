@@ -11,6 +11,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
+import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import { refuseDoubledPosition } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
@@ -118,6 +119,9 @@ export function parseCreateCall(
     destinations.arrangementPositions,
     song.songTimeSigNumerator,
     song.songTimeSigDenominator,
+    // A coordinate beside arrangementStart was refused, so one of them named
+    // every position.
+    paramNamesSomething(args.arrangementStart) ? "arrangementStart" : "path",
   );
 
   return {
