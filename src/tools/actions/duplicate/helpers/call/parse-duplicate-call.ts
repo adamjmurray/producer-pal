@@ -26,6 +26,12 @@ import {
 } from "./duplicate-call-types.ts";
 import { settleDestination } from "./settle/settle-destination.ts";
 
+/** An example list for each param a scene's positions can be written in. */
+const COUNT_EXAMPLES: Readonly<Record<string, string>> = {
+  toPath: "[5|1],[9|1]",
+  locator: "Verse,Chorus",
+};
+
 /**
  * Read a duplicate call once: refuse what is malformed, and settle where the
  * copies go. Nothing here writes.
@@ -137,7 +143,7 @@ function refuseCountWithSceneDestinations(
     count,
     targetEntries(dest.arrangementStart, "arrangementStart").length,
     "scene",
-    dest.startParam === "toPath" ? "[5|1],[9|1]" : "5|1,9|1",
+    COUNT_EXAMPLES[dest.startParam] ?? "5|1,9|1",
     dest.startParam,
   );
 }

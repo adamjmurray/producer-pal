@@ -257,6 +257,15 @@ describe("duplicate - locators as arrangement positions", () => {
       ).rejects.toThrow(msg);
     });
 
+    // The deprecated param is named back as itself, not as arrangementStart.
+    it("names the locator param when that is what the caller sent", async () => {
+      setupErrorHandlingMocks();
+
+      await expect(
+        duplicate({ type: "scene", id: "scene1", locator: "NonExistent" }),
+      ).rejects.toThrow('no locator found with name "NonExistent" for locator');
+    });
+
     // A prefix with nothing after it named a position the call can't place, so
     // it is refused before any copy lands rather than duplicating to beat 0.
     it.each([
@@ -282,6 +291,7 @@ describe("duplicate - locators as arrangement positions", () => {
       ["one name", "Drop", [8]],
       ["one id", "27", [8]],
       ["a list, one loc: per entry", "Start, Drop", [0, 8]],
+      ["a name already prefixed", "loc:Drop", [8]],
     ])("folds %s onto arrangementStart", async (_label, locator, beats) => {
       const track0 = setupClipWithLocators(standardCuePoints);
 

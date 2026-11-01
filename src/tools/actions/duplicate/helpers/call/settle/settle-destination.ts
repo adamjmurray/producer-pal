@@ -14,7 +14,10 @@ import {
   refuseNamedTwice,
 } from "#src/tools/shared/helpers/param-presence.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
-import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
+import {
+  locatorPosition,
+  resolveLocatorPositions,
+} from "#src/tools/shared/locator/song-position.ts";
 import {
   parseClipDestinationList,
   pathCarriesPosition,
@@ -51,17 +54,25 @@ export function settleDestination(
 ): SettledDestination {
   const scene = foldSceneDestination(type, rawToPath, rawStart);
   const toPath = scene.toPath;
+  // A locator the caller sent is named back as itself, not as the position it
+  // folds onto.
+  const startParam = scene.fromToPath
+    ? "toPath"
+    : paramNamesSomething(locator)
+      ? "locator"
+      : "arrangementStart";
   const arrangementStart = resolveArrangementStart(
     type,
     scene.arrangementStart,
     locator,
+    startParam,
   );
 
   return {
     toPath,
     arrangementStart,
     onArrangement: namesArrangementPosition(type, toPath, arrangementStart),
-    startParam: scene.fromToPath ? "toPath" : "arrangementStart",
+    startParam,
   };
 }
 
@@ -78,12 +89,14 @@ export function settleDestination(
  * @param type - What is being duplicated, which decides whether these apply
  * @param arrangementStart - Position list as the caller wrote it
  * @param locator - Deprecated locator ref list, if sent
+ * @param startParam - The param the caller wrote the positions in
  * @returns The positions, in bar|beat, or undefined when none were named
  */
 function resolveArrangementStart(
   type: string | undefined,
   arrangementStart: string | undefined,
   locator: string | undefined,
+  startParam: string,
 ): string | undefined {
   if (type === "device" || type === "drum-pad") {
     return arrangementStart;
@@ -100,7 +113,7 @@ function resolveArrangementStart(
   }
 
   return resolveLocatorPositions(LiveAPI.from(livePath.liveSet), positions, {
-    paramName: "arrangementStart",
+    paramName: startParam,
   });
 }
 
@@ -224,6 +237,6 @@ function foldLocatorParam(
   const names = targetEntries(locator, "locator");
 
   return (names.length === 0 ? [""] : names)
-    .map((name) => `loc:${name.replaceAll(",", "\\,")}`)
+    .map((name) => locatorPosition(name.replaceAll(",", "\\,")))
     .join(",");
 }

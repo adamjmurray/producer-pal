@@ -80,7 +80,10 @@ export function duplicateTargets(
   // is created. Other types have no destination path.
   const clipDestinations =
     type === "clip"
-      ? resolveSourceClipDestinations(sources, parsed.onArrangement)
+      ? resolveSourceClipDestinations(
+          sources,
+          parsed.onArrangement ? parsed.startParam : null,
+        )
       : null;
 
   run.clipDestinations = clipDestinations;
@@ -171,6 +174,7 @@ function copyDrafts(
   if (clipDestinations != null) {
     return clipCopyDrafts(sources, clipDestinations, {
       takeLane: parsed.args.takeLane,
+      startParam: parsed.startParam,
       objectOf: (id) => liveObject(run, id),
       trackOf: (trackIndex) => trackFor(run, trackIndex),
       meter: () => meterOf(run),

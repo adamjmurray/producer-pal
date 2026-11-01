@@ -15,6 +15,7 @@ import {
   writeArrangementLoop,
 } from "./arrangement-loop.ts";
 import {
+  locatorPosition,
   locatorRef,
   songPositionToBeats,
 } from "#src/tools/shared/locator/song-position.ts";
@@ -42,7 +43,12 @@ export interface ArrangementParams {
   loop?: boolean;
   loopStart?: string;
   loopEnd?: string;
+  /** The param the caller wrote each position in, where it wasn't its own */
+  sentAs?: Partial<Record<TimelinePosition, string>>;
 }
+
+/** A song position param. */
+export type TimelinePosition = "startTime" | "loopStart" | "loopEnd";
 
 /** The retired params that spelled a position's locator half on its own. */
 export interface LegacyLocatorParams {
@@ -270,7 +276,9 @@ export function foldLocatorParams(
       hint: `${legacy} is deprecated`,
     });
 
-    folded[position] = `loc:${locator}`;
+    folded[position] = locatorPosition(String(locator));
+    // A refusal names the locator param the caller sent, not this one.
+    folded.sentAs = { ...folded.sentAs, [position]: legacy };
   }
 
   return folded;
@@ -281,11 +289,12 @@ export function foldLocatorParams(
  * @param liveSet - The live_set LiveAPI object
  * @param params - The timeline params
  * @param params.startTime - Song position, bar|beat or `loc:<name>`
+ * @param params.sentAs - The param the caller wrote it in, if not startTime
  * @returns The start position in beats, or undefined when none was given
  */
 function resolveStartTime(
   liveSet: LiveAPI,
-  { startTime }: ArrangementParams,
+  { startTime, sentAs }: ArrangementParams,
 ): number | undefined {
   if (startTime == null) {
     return undefined;
@@ -295,7 +304,7 @@ function resolveStartTime(
     songMeter();
 
   return songPositionToBeats(liveSet, startTime, {
-    paramName: "startTime",
+    paramName: sentAs?.startTime ?? "startTime",
     timeSigNumerator,
     timeSigDenominator,
   });

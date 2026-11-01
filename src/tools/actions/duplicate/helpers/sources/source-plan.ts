@@ -172,12 +172,12 @@ export function planSources({
  * Sources naming the same destination share one resolution, so the warnings it
  * raises are raised once for the call rather than once per source.
  * @param sources - The shares to resolve, in order
- * @param hasArrangementParams - Whether arrangementStart was given
+ * @param startParam - The param that named positions, or null when none did
  * @returns One destination set per source, in the same order
  */
 export function resolveSourceClipDestinations(
   sources: SourceShare[],
-  hasArrangementParams: boolean,
+  startParam: string | null,
 ): ClipDestinations[] {
   const first = sources[0] as SourceShare;
   const same = sources.every(
@@ -189,7 +189,7 @@ export function resolveSourceClipDestinations(
     const shared = resolveClipDestinations(
       first.toPath,
       first.toSlot,
-      hasArrangementParams,
+      startParam,
     );
 
     return sources.map(() => shared);
@@ -200,18 +200,13 @@ export function resolveSourceClipDestinations(
   // positioned entry needs its own position.
   const beside = {
     arrangement:
-      hasArrangementParams &&
+      startParam != null &&
       sources.some((source) => namesArrangementEntry(source.toPath)),
     position: sources.some((source) => pathCarriesPosition(source.toPath)),
   };
 
   return sources.map((source) =>
-    resolveClipDestinations(
-      source.toPath,
-      source.toSlot,
-      hasArrangementParams,
-      beside,
-    ),
+    resolveClipDestinations(source.toPath, source.toSlot, startParam, beside),
   );
 }
 

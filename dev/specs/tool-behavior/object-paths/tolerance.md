@@ -24,6 +24,9 @@ Four tiers, in order of preference.
    migration: models reach for them unprompted, and a call that uses them alone
    still works. Sent beside a `path` they are refused (tier 4). See
    [hidden-param.ts](../../../../src/tools/shared/tool-framework/hidden-param.ts).
+   An error or warning about a hidden param names it as sent
+   (`trackIndex 0 names no position`, `... for startLocator`), never as the
+   param it folds onto; only the fix teaches the published spelling.
 2. **Tolerant values.** `"0/3"` is honored as `t0/s3` with a warning — it is
    what results said before 2.2.0, so it is a well-founded guess, not a typo. A
    bare `"0"` is honored only where the tool has exactly one legal
