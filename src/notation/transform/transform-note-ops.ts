@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { sortNotes } from "#src/notation/note-sort.ts";
+import { sortNotes } from "#src/notation/helpers/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { clipDetail, emitTransformWarning } from "./transform-warning-label.ts";

@@ -16,7 +16,7 @@
  * Both are the MIDI JSON counterparts to barbeat's interpret/format seams.
  */
 
-import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
+import { applyV0Deletions } from "#src/notation/helpers/apply-v0-deletions.ts";
 import { NOTE_VALUE_DENOMINATORS } from "#src/notation/barbeat/barbeat-config.ts";
 import {
   codeNoteToNoteEvent,

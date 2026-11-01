@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { checkNotationLimit } from "#src/notation/helpers/notation-limit.ts";
 import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../../types.ts";
 
@@ -29,6 +30,7 @@ export function copyNoteToDestination(
     start_time: destinationBarStart + relativeTime,
   };
 
+  checkNotationLimit(events.length + 1, "Note count");
   events.push(copiedNote);
 
   // Track in notesByBar cache

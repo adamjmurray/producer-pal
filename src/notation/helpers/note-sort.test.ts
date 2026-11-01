@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { seededRandom } from "#src/test/test-data-builders.ts";
-import { dedupeNotesKeepingLast, isSameSlot } from "../note-sort.ts";
+import { dedupeNotesKeepingLast, isSameSlot } from "./note-sort.ts";
 
 // SAME_TIME_EPSILON is 0.001. The boundary is what the three callers must agree
 // on, so it is pinned here rather than in each of them.
