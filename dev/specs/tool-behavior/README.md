@@ -67,6 +67,9 @@ A call that names N targets gets N entries back, in the order named.
   nothing, so nothing is guessed. One trailing comma is not an entry.
 - **A comma splits a value only when the call names more than one target.** With
   one target, commas are part of the value. `\,` is a literal comma either way.
+- **Every string value is trimmed, whole or as a list entry.** `name: " A "` and
+  `name: " A , B "` over two targets both store plain names. A value of only
+  spaces reads as `""`. A value can't start or end with a space.
 - **Two or more args with commas must name the same number of entries.** A count
   the tool works out itself (`count: 3`) is one of them. An arg is a list when
   it has a comma, even if a trailing one leaves one entry.

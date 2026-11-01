@@ -116,6 +116,13 @@ describe("list-pairing", () => {
     it("returns undefined when the call named nothing", () => {
       expect(valueForIndex(undefined, 0, ["A"])).toBeUndefined();
     });
+
+    it("trims a whole value the way it trims a list entry", () => {
+      expect(valueForIndex(" A ", 0, null)).toBe("A");
+      expect(valueForIndex(" A , B ", 0, null)).toBe("A , B");
+      expect(valueForIndex("   ", 0, null)).toBe("");
+      expect(everyEntry(" A ", 3, "name")).toStrictEqual(["A"]);
+    });
   });
 
   describe("pairValues", () => {
