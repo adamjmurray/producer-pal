@@ -381,6 +381,29 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
     );
   });
 
+  // The refusal quotes what the caller sent, not a path they never wrote.
+  it.each([
+    [
+      { trackIndex: 0 },
+      'trackIndex 0 names no position; use path "t0[5|1]" for the arrangement, or "t0/s<scene>" for a clip slot',
+    ],
+    [
+      { trackIndex: 0, takeLane: 2 },
+      'trackIndex 0 with takeLane 2 names no position; use path "t0/l1[5|1]"; take lanes hold arrangement clips',
+    ],
+    [
+      { path: "t0", takeLane: 2 },
+      'path "t0" with takeLane 2 names no position; use path "t0/l1[5|1]"; take lanes hold arrangement clips',
+    ],
+  ])(
+    "quotes the params sent for a lane with no position: %o",
+    async (args, message) => {
+      await expect(createClip({ ...args, notes: "C3 1|1" })).rejects.toThrow(
+        message,
+      );
+    },
+  );
+
   it("refuses a path sent with trackIndex or sceneIndex", async () => {
     const { clipSlot } = setupSessionMocks({
       liveSet: { signature_numerator: 4, signature_denominator: 4 },
