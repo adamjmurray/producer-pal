@@ -56,6 +56,16 @@ g.setoutletassist = vi.fn();
 // eslint-disable-next-line vitest/prefer-import-in-mock -- max-api is an external module with strict types that would require comprehensive mock
 vi.mock("max-api", () => ({ default: Max }));
 
+// Preact 11 runs useEffect cleanups after paint; unmount inside act() so they
+// run before the test asserts. Our wrapper does the per-test cleanup instead.
+process.env.PTL_SKIP_AUTO_CLEANUP = "true";
+vi.mock(import("@testing-library/preact"), async (importOriginal) => {
+  const { withTestingLibraryAct } =
+    await import("#webui/test-utils/testing-library-act.ts");
+
+  return withTestingLibraryAct(await importOriginal());
+});
+
 beforeEach(() => {
   // Restore the default mcp_response handler and responder, clear recorded requests
   resetMaxMock();
