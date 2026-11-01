@@ -125,6 +125,17 @@ export function libraryModifiedMs(path: string): number | undefined {
 }
 
 /**
+ * @param path - Path to check
+ * @returns A stamp that changes when a different file is put at the path (size,
+ *   modified time and inode), or undefined when it's gone
+ */
+export function libraryFileStamp(path: string): string | undefined {
+  const stats = statSync(path, { throwIfNoEntry: false });
+
+  return stats && `${stats.size}:${stats.mtimeMs}:${stats.ino}`;
+}
+
+/**
  * Make a folder and any missing parents. A folder that's there is fine.
  *
  * @param folder - Folder to make

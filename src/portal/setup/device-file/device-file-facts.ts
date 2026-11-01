@@ -9,7 +9,7 @@
 
 import { createHash } from "node:crypto";
 import {
-  libraryModifiedMs,
+  libraryFileStamp,
   readLibraryBytes,
 } from "#src/mcp-server/rpc/remote-script/user-library/user-library-fs.ts";
 import { readDeviceVersion } from "./device-version.ts";
@@ -27,20 +27,20 @@ export interface DeviceFileFacts {
   digest: string;
 }
 
-const cache = new Map<string, { stamp: number; facts: DeviceFileFacts }>();
+const cache = new Map<string, { stamp: string; facts: DeviceFileFacts }>();
 
 /**
- * Read a device file, or recall what the last read found if its modified time
- * hasn't changed. A copy or rename into place gets a new one, and this
- * process's own installs forget the entry. Nothing is kept for a file that
- * can't be read.
+ * Read a device file, or recall what the last read found if its size, modified
+ * time and inode haven't changed. A copy or rename into place changes at least
+ * the inode, and this process's own installs forget the entry. Nothing is kept
+ * for a file that can't be read.
  * @param path - A device file
  * @returns What its contents are
  * @throws Error when the file can't be read
  */
 export function deviceFileFacts(path: string): DeviceFileFacts {
   // Stamped before the read: a file that changes mid-read is read again next time.
-  const stamp = libraryModifiedMs(path);
+  const stamp = libraryFileStamp(path);
   const hit = cache.get(path);
 
   if (stamp != null && hit?.stamp === stamp) {

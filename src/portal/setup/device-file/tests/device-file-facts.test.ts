@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { rmSync, utimesSync } from "node:fs";
+import { renameSync, rmSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -35,6 +35,9 @@ vi.mock(
     };
   },
 );
+
+// Whole seconds, so the stamp matches exactly between files.
+const SAME_TIME = 1_700_000_000;
 
 let library: string;
 let file: string;
@@ -69,6 +72,34 @@ describe("deviceFileFacts", () => {
 
     put(file, fakeDevice("2.5.0", "b"));
     utimesSync(file, new Date(), new Date(Date.now() + 5000));
+
+    expect(deviceFileFacts(file).digest).not.toBe(before.digest);
+    expect(reads.files).toHaveLength(2);
+  });
+
+  it("reads again when only the size changes", () => {
+    put(file, fakeDevice("2.5.0", "a"));
+    utimesSync(file, SAME_TIME, SAME_TIME);
+
+    const before = deviceFileFacts(file);
+
+    put(file, fakeDevice("2.5.0", "bb"));
+    utimesSync(file, SAME_TIME, SAME_TIME);
+
+    expect(deviceFileFacts(file).digest).not.toBe(before.digest);
+    expect(reads.files).toHaveLength(2);
+  });
+
+  it("reads again when a different file with the same size and modified time replaces it", () => {
+    put(file, fakeDevice("2.5.0", "a"));
+    utimesSync(file, SAME_TIME, SAME_TIME);
+
+    const before = deviceFileFacts(file);
+    const other = join(library, "other.amxd");
+
+    put(other, fakeDevice("2.5.0", "b"));
+    utimesSync(other, SAME_TIME, SAME_TIME);
+    renameSync(other, file);
 
     expect(deviceFileFacts(file).digest).not.toBe(before.digest);
     expect(reads.files).toHaveLength(2);
