@@ -32,7 +32,7 @@ type Answer = string | undefined | typeof DOWN;
 
 /** A running device whose spies the tests read. */
 export interface FakeDevice extends RunningDevice {
-  connect: Mock<() => Promise<void>>;
+  connect: Mock<(timeoutMs?: number) => Promise<void>>;
   version: Mock<() => string | undefined>;
   reset: Mock<() => void>;
   fullConnectSeen: Mock<() => boolean>;

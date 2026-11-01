@@ -20,12 +20,15 @@ import { offlineError } from "./offline-responses.ts";
  * @param args - The call's arguments as sent
  * @param connect - Connect to the device's server; throws until it answers
  * @param deps - What the answers reach out to
+ * @param deadline - When the call must be done, as a `now()` time; defaults to
+ *   the setup budget from now
  * @returns The response, or null when only the device can answer (undo, redo)
  */
 export async function offlineManage(
   args: Record<string, unknown>,
-  connect: () => Promise<void>,
+  connect: (timeoutMs?: number) => Promise<void>,
   deps: OfflineDeps,
+  deadline?: number,
 ): Promise<McpResponse | null> {
   let checked: CheckedManageArgs;
 
@@ -42,7 +45,7 @@ export async function offlineManage(
   }
 
   if (checked.action === "add-producer-pal") {
-    return await addProducerPal(checked.userLibrary, connect, deps);
+    return await addProducerPal(checked.userLibrary, connect, deps, deadline);
   }
 
   return null;

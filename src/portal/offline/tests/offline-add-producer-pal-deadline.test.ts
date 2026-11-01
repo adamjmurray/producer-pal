@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SETUP_BUDGET_MS } from "../../setup/setup-deadline.ts";
 import {
   addProducerPalCall,
@@ -58,5 +58,23 @@ describe("add-producer-pal under a client's 60 s limit", () => {
     expect(responseText(response)).toContain(
       "so it may have been added to a new MIDI track",
     );
+  });
+
+  it("stops waiting on a server whose port accepts and never answers, inside the budget", async () => {
+    const { deps, elapsed } = clockedDeps(
+      () => 25_000,
+      () => LOADED,
+    );
+    // Takes the whole limit it is given, or 60 s without one
+    const connect = vi.fn(async (timeoutMs?: number) => {
+      await deps.sleep(timeoutMs ?? 60_000);
+      throw new Error("Request timed out");
+    });
+    const response = await addProducerPalCall(deps, connect);
+
+    expect(response.isError).toBe(true);
+    expect(responseText(response)).toContain("hasn't answered yet");
+    expect(connect).toHaveBeenCalledWith(SETUP_BUDGET_MS - 25_000);
+    expect(elapsed()).toBeLessThanOrEqual(SETUP_BUDGET_MS);
   });
 });

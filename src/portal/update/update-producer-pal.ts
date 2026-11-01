@@ -27,7 +27,7 @@ import {
 import { type DeviceInstallResult } from "../setup/device-install.ts";
 import { userLibraryFor } from "../setup/library-for-device.ts";
 import { remoteScriptReady } from "../setup/remote-script-ready.ts";
-import { setupDeadline } from "../setup/setup-deadline.ts";
+import { setupDeadline, timeLeft } from "../setup/setup-deadline.ts";
 import { SetupFailed, type SetupPurpose } from "../setup/setup-failure.ts";
 import { waitForNewDevice } from "./new-device-wait.ts";
 import { setUnchanged } from "./set-unchanged.ts";
@@ -70,7 +70,7 @@ export async function updateProducerPal(
   device.reset();
 
   try {
-    await device.connect();
+    await device.connect(timeLeft(deps, deadline));
   } catch {
     return await offlineGuidance(true, deps);
   }

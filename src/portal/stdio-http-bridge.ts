@@ -19,9 +19,14 @@ import { buildFallbackTools, type FallbackTool } from "./fallback-tools.ts";
 import { logger } from "./file-logger.ts";
 import { InFlightClients } from "./update/in-flight-clients.ts";
 import { isFullConnect } from "./update/full-connect-advice.ts";
-import { answerOfflineCall, MANAGE_TOOL } from "./offline/offline-call.ts";
+import {
+  answerOfflineCall,
+  isSetupCall,
+  MANAGE_TOOL,
+} from "./offline/offline-call.ts";
 import { type OfflineDeps, realOfflineDeps } from "./offline/offline-deps.ts";
 import { SETUP_URL } from "./offline/offline-setup-hints.ts";
+import { setupDeadline, timeLeft } from "./setup/setup-deadline.ts";
 import { type RunningDevice } from "./update/running-device.ts";
 import { answerInstallWhenDeviceOlder } from "./update/answer-install-when-device-older.ts";
 import { answerUpdateCall, isUpdateCall } from "./update/update-call.ts";
@@ -81,15 +86,17 @@ export class StdioHttpBridge {
   /**
    * The answer to a call while the device is unreachable.
    * @param request - The tool call
+   * @param deadline - When a setup call must be done, as a `now()` time
    * @returns The response
    */
-  private _answerOffline(request: CallToolRequest) {
+  private _answerOffline(request: CallToolRequest, deadline?: number) {
     return answerOfflineCall(
       {
         name: request.params.name,
         args: request.params.arguments ?? {},
         manageOffered: this._manageOffered(),
-        connect: () => this._ensureHttpConnection(),
+        connect: (timeoutMs) => this._ensureHttpConnection(timeoutMs),
+        deadline,
       },
       this.offlineDeps,
     );
@@ -98,9 +105,10 @@ export class StdioHttpBridge {
   /**
    * The answer to a ppal-manage call the portal gives itself, device up or not.
    * @param request - The tool call
+   * @param deadline - When a setup call must be done, as a `now()` time
    * @returns The response, or null when the device should answer
    */
-  private async _answerInPortal(request: CallToolRequest) {
+  private async _answerInPortal(request: CallToolRequest, deadline?: number) {
     const args = request.params.arguments ?? {};
     const manageOffered = this._manageOffered();
 
@@ -108,7 +116,7 @@ export class StdioHttpBridge {
     if (isUpdateCall(request.params.name, args, manageOffered)) {
       return await answerUpdateCall(
         args,
-        this._runningDevice(),
+        this._runningDevice(deadline),
         this.offlineDeps,
       );
     }
@@ -116,7 +124,7 @@ export class StdioHttpBridge {
     // An older device would install its own older script.
     return await answerInstallWhenDeviceOlder(
       { name: request.params.name, args, manageOffered },
-      this._runningDevice(),
+      this._runningDevice(deadline),
       this.offlineDeps,
     );
   }
@@ -126,10 +134,11 @@ export class StdioHttpBridge {
     return this.fallbackTools.tools.some((tool) => tool.name === MANAGE_TOOL);
   }
 
-  /** @returns The running device, as ppal-manage's update sees it */
-  private _runningDevice(): RunningDevice {
+  // A connect with no limit of its own gets the setup call's time left.
+  private _runningDevice(deadline?: number): RunningDevice {
     return {
-      connect: () => this._ensureHttpConnection(),
+      connect: (timeoutMs) =>
+        this._ensureHttpConnection(timeoutMs ?? this._timeLeft(deadline)),
       version: () => this.httpClient?.getServerVersion()?.version,
       fullConnectSeen: () => this.fullConnectSeen,
       // The next connect replaces the client and handshakes again; calls still
@@ -141,6 +150,19 @@ export class StdioHttpBridge {
     };
   }
 
+  // Install, add and update share one budget from arrival (clients give up at 60 s).
+  private _setupDeadline(request: CallToolRequest): number | undefined {
+    const { name, arguments: args = {} } = request.params;
+
+    return isSetupCall(name, args, this._manageOffered())
+      ? setupDeadline(this.offlineDeps)
+      : undefined;
+  }
+
+  private _timeLeft(deadline?: number): number | undefined {
+    return deadline == null ? undefined : timeLeft(this.offlineDeps, deadline);
+  }
+
   private _createMisconfiguredUrlResponse() {
     return formatErrorResponse(`❌ Invalid MCP server URL: "${this.httpUrl.replace(/\/mcp$/, "")}"
 
@@ -150,7 +172,8 @@ Tell the user to check ${SETUP_URL} for configuration help.
 (Producer Pal ${VERSION})`);
   }
 
-  private async _ensureHttpConnection(): Promise<void> {
+  // Unset timeoutMs (tool calls) keeps the SDK's default.
+  private async _ensureHttpConnection(timeoutMs?: number): Promise<void> {
     // Reuse a live client as-is. The settings ride on every request as headers,
     // so there is no device-side state to re-assert here — a device that
     // restarts under us (a fresh one dragged in with default settings, a
@@ -163,10 +186,11 @@ Tell the user to check ${SETUP_URL} for configuration help.
     // a second one. Prevents duplicate Client instantiations when concurrent
     // tools/list and tools/call requests arrive before the first connect resolves.
     if (this.connectionPromise) {
-      return await this.connectionPromise;
+      // Only this caller stops waiting; the connect in flight keeps its own limit.
+      return await withinTimeout(this.connectionPromise, timeoutMs);
     }
 
-    this.connectionPromise = this._doConnect();
+    this.connectionPromise = this._doConnect(timeoutMs);
 
     try {
       await this.connectionPromise;
@@ -175,7 +199,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
     }
   }
 
-  private async _doConnect(): Promise<void> {
+  private async _doConnect(timeoutMs?: number): Promise<void> {
     // Calls already on the old client finish before it closes.
     if (this.httpClient) {
       const old = this.httpClient;
@@ -202,7 +226,22 @@ Tell the user to check ${SETUP_URL} for configuration help.
         version: VERSION,
       });
 
-      await this.httpClient.connect(httpTransport);
+      // The timeout bounds initialize; closing aborts the rest of the handshake,
+      // whose initialized notification has no timeout of its own.
+      const client = this.httpClient;
+      const timer =
+        timeoutMs == null
+          ? undefined
+          : setTimeout(() => void client.close().catch(() => {}), timeoutMs);
+
+      try {
+        await (timeoutMs == null
+          ? client.connect(httpTransport)
+          : client.connect(httpTransport, { timeout: timeoutMs }));
+      } finally {
+        clearTimeout(timer);
+      }
+
       this.isConnected = true;
       console.error("[Bridge] Connected to HTTP MCP server");
 
@@ -337,7 +376,8 @@ Tell the user to check ${SETUP_URL} for configuration help.
           `[Bridge] Tool call: ${request.params.name} ${JSON.stringify(request.params.arguments)}`,
         );
 
-        const own = await this._answerInPortal(request);
+        const deadline = this._setupDeadline(request);
+        const own = await this._answerInPortal(request, deadline);
 
         if (own != null) {
           return own;
@@ -348,7 +388,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
         // Always try to connect to HTTP server first
         try {
-          await this._ensureHttpConnection();
+          await this._ensureHttpConnection(this._timeLeft(deadline));
           client = this.httpClient as Client;
 
           const toolRequest = {
@@ -439,7 +479,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
           `[Bridge] Connectivity problem detected. Answering offline`,
         );
 
-        return await this._answerOffline(request);
+        return await this._answerOffline(request, deadline);
       },
     );
 
@@ -477,5 +517,35 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
     this.isConnected = false;
     logger.info(`stdio-to-HTTP bridge stopped`);
+  }
+}
+
+/**
+ * Wait for a promise for at most `timeoutMs`, without touching the promise.
+ * @param promise - What to wait for
+ * @param timeoutMs - The longest wait; unset waits as long as it takes
+ * @returns Resolves when the promise does; throws when time runs out first
+ */
+async function withinTimeout(
+  promise: Promise<void>,
+  timeoutMs?: number,
+): Promise<void> {
+  if (timeoutMs == null) {
+    return await promise;
+  }
+
+  let timer: NodeJS.Timeout | undefined;
+
+  try {
+    await Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`Timed out after ${timeoutMs} ms`));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
   }
 }

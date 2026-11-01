@@ -11,7 +11,7 @@ import {
 import { type OfflineDeps } from "../../offline/offline-deps.ts";
 import { requestWithBrowserRetry } from "../browser-retry-request.ts";
 import { pollUntil } from "../poll-until.ts";
-import { SETUP_BUDGET_MS, setupDeadline } from "../setup-deadline.ts";
+import { SETUP_BUDGET_MS, setupDeadline, timeLeft } from "../setup-deadline.ts";
 
 /**
  * @returns Clock dependencies where only sleeping moves time, and the time
@@ -132,5 +132,15 @@ describe("pollUntil deadline", () => {
       .mockResolvedValueOnce(true);
 
     expect(await pollUntil(attempt, deps, 5000)).toBe(true);
+  });
+});
+
+describe("timeLeft", () => {
+  it("is the time until the deadline", () => {
+    expect(timeLeft({ now: () => 1000 }, 31_000)).toBe(30_000);
+  });
+
+  it("is never less than 1 ms, since 0 would mean no limit", () => {
+    expect(timeLeft({ now: () => 1000 }, 500)).toBe(1);
   });
 });

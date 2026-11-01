@@ -19,3 +19,15 @@ export const SETUP_BUDGET_MS = 50_000;
 export function setupDeadline(deps: Pick<OfflineDeps, "now">): number {
   return deps.now() + SETUP_BUDGET_MS;
 }
+
+/**
+ * @param deps - The clock
+ * @param deadline - When the whole call must be done, as a `now()` time
+ * @returns The time left, at least 1 ms (a timeout of 0 would mean none)
+ */
+export function timeLeft(
+  deps: Pick<OfflineDeps, "now">,
+  deadline: number,
+): number {
+  return Math.max(1, deadline - deps.now());
+}

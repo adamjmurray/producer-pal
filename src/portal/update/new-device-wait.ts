@@ -6,6 +6,7 @@
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { type OfflineDeps } from "../offline/offline-deps.ts";
 import { pollUntil } from "../setup/poll-until.ts";
+import { timeLeft } from "../setup/setup-deadline.ts";
 import { SetupFailed } from "../setup/setup-failure.ts";
 import { type ReplacedTrack } from "./replace-device-request.ts";
 import { type RunningDevice } from "./running-device.ts";
@@ -45,7 +46,7 @@ export async function waitForNewDevice(
       device.reset();
 
       try {
-        await device.connect();
+        await device.connect(timeLeft(deps, deadline));
       } catch {
         return false;
       }

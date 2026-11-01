@@ -5,8 +5,11 @@
 
 /** The Producer Pal device the bridge is connected to, as the update sees it. */
 export interface RunningDevice {
-  /** Connect to the device's server; throws until it answers */
-  connect: () => Promise<void>;
+  /**
+   * Connect to the device's server; throws until it answers, or when it
+   * hasn't within `timeoutMs`
+   */
+  connect: (timeoutMs?: number) => Promise<void>;
   /** The version the connected server reported, if it did */
   version: () => string | undefined;
   /** Drop the connection, so the next connect asks whatever answers now */

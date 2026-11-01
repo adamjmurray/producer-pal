@@ -32,7 +32,7 @@ import {
   RemoteScriptNotRunning,
   remoteScriptReady,
 } from "../setup/remote-script-ready.ts";
-import { setupDeadline } from "../setup/setup-deadline.ts";
+import { setupDeadline, timeLeft } from "../setup/setup-deadline.ts";
 import { SetupFailed, type SetupPurpose } from "../setup/setup-failure.ts";
 import { type OfflineDeps } from "./offline-deps.ts";
 import { offlineError, offlineResult } from "./offline-responses.ts";
@@ -58,15 +58,16 @@ interface LoadedTrack {
  * @param userLibrary - The User Library the call gave, if any
  * @param connect - Connect to the device's server; throws until it answers
  * @param deps - What the steps reach out to
+ * @param deadline - When the call must be done, as a `now()` time; defaults to
+ *   the setup budget from now
  * @returns The track and what happened to the device file, or why it failed
  */
 export async function addProducerPal(
   userLibrary: string | undefined,
-  connect: () => Promise<void>,
+  connect: (timeoutMs?: number) => Promise<void>,
   deps: OfflineDeps,
+  deadline = setupDeadline(deps),
 ): Promise<McpResponse> {
-  const deadline = setupDeadline(deps);
-
   try {
     const bundled = requireBundledDevice(deps, ADD);
     let ping: RemoteScriptPing;
@@ -328,14 +329,14 @@ function trackOf(body: Record<string, unknown>): LoadedTrack | undefined {
  */
 async function waitForServer(
   track: LoadedTrack | undefined,
-  connect: () => Promise<void>,
+  connect: (timeoutMs?: number) => Promise<void>,
   deps: OfflineDeps,
   deadline: number,
 ): Promise<void> {
   const answered = await pollUntil(
     async () => {
       try {
-        await connect();
+        await connect(timeLeft(deps, deadline));
 
         return true;
       } catch {

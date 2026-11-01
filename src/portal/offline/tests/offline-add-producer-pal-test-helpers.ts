@@ -124,7 +124,7 @@ export function connectsAfter(failures: number): () => Promise<void> {
  */
 export async function addProducerPalCall(
   deps: OfflineDeps,
-  connect: () => Promise<void> = connectsAfter(0),
+  connect: (timeoutMs?: number) => Promise<void> = connectsAfter(0),
   args: Record<string, unknown> = {},
 ): Promise<McpResponse> {
   const response = await offlineManage(
