@@ -12,7 +12,7 @@ checked-in value is held in step by version-agreement.test.ts.
 
 import os
 
-VERSION = "2.5.1-rc1"
+VERSION = "2.6.0-rc1"
 
 # Written next to this file by the installer: the commit of the device that
 # installed it. Not a .py file, so it stays out of the build hash.

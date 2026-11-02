@@ -3,7 +3,7 @@
   "name": "io.github.adamjmurray/producer-pal",
   "title": "Producer Pal",
   "description": "AI music production assistant for Ableton Live. Edit MIDI clips, tracks, scenes and arrangement.",
-  "version": "2.5.1-rc1",
+  "version": "2.6.0-rc1",
   "websiteUrl": "https://producer-pal.org",
   "repository": {
     "url": "https://github.com/adamjmurray/producer-pal",
@@ -13,7 +13,7 @@
     {
       "registryType": "npm",
       "identifier": "producer-pal",
-      "version": "2.5.1-rc1",
+      "version": "2.6.0-rc1",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"

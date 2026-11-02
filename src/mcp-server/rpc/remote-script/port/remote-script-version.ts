@@ -18,7 +18,7 @@ import { isNewerVersion } from "#src/shared/version-check.ts";
  * build refuses a stale one. -rcN tags of one x.y.z order by N; other tags
  * don't.
  */
-export const MIN_REMOTE_SCRIPT_VERSION = "2.5.1-rc1";
+export const MIN_REMOTE_SCRIPT_VERSION = "2.6.0-rc1";
 
 /**
  * Dev switch (POST /config `remoteScriptMinVersion`): replaces the minimum, so
