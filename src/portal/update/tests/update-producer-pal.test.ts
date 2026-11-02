@@ -85,7 +85,7 @@ describe("update-producer-pal", () => {
     expect(responseText(response)).toContain("ok:false");
   });
 
-  it("leaves pluginHost out of the answer in a build that hosts none", async () => {
+  it("leaves pluginHost out of the answer when none are installed", async () => {
     const response = await updateCall(fakeDevice(OLD, VERSION));
 
     expect(responseText(response)).not.toContain("pluginHost");

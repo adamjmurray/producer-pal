@@ -72,13 +72,13 @@ export const STANDARD_TOOL_DEFS: ToolDefFunction[] = [
 
 /**
  * Tools offered only when the Direct Live API opt-in is on. The plug-in host
- * spike rides on ppal-live-api's gate and whitelist entry: it is on exactly
- * when ppal-live-api is.
+ * debug tool rides on ppal-live-api's gate and whitelist entry: it is on
+ * exactly when ppal-live-api is. It is also compiled in only by a dev build
+ * (ENABLE_LIVE_API), so a release build never carries it.
  */
 export const OPT_IN_TOOL_DEFS: ToolDefFunction[] = [
   toolDefLiveApi,
-  // Unfinished plug-in hosting: release builds leave it out.
-  ...(process.env.ENABLE_HOSTED_PLUGINS === "true" ? [toolDefPluginHost] : []),
+  ...(process.env.ENABLE_LIVE_API === "true" ? [toolDefPluginHost] : []),
 ];
 
 /** All standard tool names (frozen). Opt-in tools like ppal-live-api are not included. */

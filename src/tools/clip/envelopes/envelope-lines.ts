@@ -86,14 +86,8 @@ function readLine(line: string): EnvelopeLine {
     !MIXER_TARGET.test(target) &&
     parseHostedTarget(target) == null
   ) {
-    // Only a build with hosted plug-ins on knows the hosted spelling.
-    const hosted =
-      process.env.ENABLE_HOSTED_PLUGINS === "true"
-        ? ", or a hosted plug-in's param like t0/d0/h56"
-        : "";
-
     throw new Error(
-      `Invalid envelopes target "${target}" in "${line}": expected a parameter id, or volume, pan, send0..${hosted}`,
+      `Invalid envelopes target "${target}" in "${line}": expected a parameter id, or volume, pan, send0.., or a hosted plug-in's param like t0/d0/h56`,
     );
   }
 

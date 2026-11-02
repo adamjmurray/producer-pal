@@ -4,14 +4,9 @@ Live's API only reaches the plug-in parameters a user configured by hand (at
 most 128). To reach all of them, Producer Pal hosts the plug-in itself, inside a
 Max for Live device built around Max's `vst~` object.
 
-**Status: spike, working end to end on macOS with VST3** (Live 12, Colour Copy
-and Serum 2). AU and VST2 load too (probed on Live 12). Windows and VST2 shell
-plug-ins are untested.
-
-Release builds leave it out. To use it, build with
-`ENABLE_HOSTED_PLUGINS=true npm run build:debug`: that adds `hosted` to
-ppal-create-device, the Skills text, hosted reads and writes, and
-ppal-plugin-host.
+**Status: ships in every build, working end to end on macOS with VST3** (Live
+12, Colour Copy and Serum 2). AU and VST2 load too (probed on Live 12). Windows
+and VST2 shell plug-ins are untested.
 
 Run `npm run install:plugin-host` to copy the wrapper devices into the User
 Library (Live's browser must find them by name).
@@ -67,8 +62,9 @@ Producer Pal's device tools use it: `ppal-create-device` with `hosted: true`
 resolves the name, loads the right wrapper through the remote script's browser
 load, tells it to load the plug-in (deleting the wrapper again if that fails),
 and `ppal-read-device` and `ppal-update-device` read and set its params. The
-debug-only `ppal-plugin-host` tool, gated with `ppal-live-api`, reaches the raw
-ops.
+debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
+`ENABLE_LIVE_API` (`npm run build:debug`) carries it, and it is offered when
+`ppal-live-api` is on; a release build leaves its code out.
 
 ## Findings
 
@@ -336,20 +332,16 @@ Live's browser must find the wrappers by name, so they go in the User Library:
 - **Bundles.** The device and portal bundles embed both `.amxd` files as base64
   (`config/rolldown-plugin-embed-plugin-host.mjs` replaces
   `src/portal/setup/plugin-host/embedded-plugin-host-wrappers.ts`). Only a build
-  with `ENABLE_HOSTED_PLUGINS=true` does. Any other build embeds an empty map
-  and the install step returns before touching it, so a release carries no
-  wrapper bytes and installs none.
+  in every build.
 - **Where they install.** Every install path copies them: `ppal-manage`
   `install-producer-pal` (device and portal), `update-producer-pal`, the
   portal's offline `add-producer-pal`, and the chat UI's Settings → Installation
   copy. The copy is temp-file-and-rename, the same step the device uses
   (`src/portal/setup/replace-via-temp.ts`).
-- **Chat UI button.** In a hosting build, `GET /device-install` also reports
-  each wrapper (`pluginHost`: missing, current or differs), and the Installation
-  tab offers Install when the device or any wrapper needs it, even with the
-  device current. A failed wrapper's message says "click Install", not
-  `install-producer-pal`. A release build's response and `chat-ui.html` carry
-  none of this (`release-bundle-contents.test.ts`).
+- **Chat UI button.** `GET /device-install` also reports each wrapper
+  (`pluginHost`: missing, current or differs), and the Installation tab offers
+  Install when the device or any wrapper needs it, even with the device current.
+  A failed wrapper's message says "click Install", not `install-producer-pal`.
 - **Bytes decide.** A wrapper that differs from the embedded one is replaced; no
   version is compared. A Set that's already open keeps the old wrapper until
   it's reopened.

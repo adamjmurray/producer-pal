@@ -8,8 +8,7 @@
 //
 // It replaces src/portal/setup/plugin-host/embedded-plugin-host-wrappers.ts,
 // whose checked-in body reads the same files off disk for tests and the dev
-// installer. Hosting is behind ENABLE_HOSTED_PLUGINS, so without it the plugin
-// embeds nothing and a release build carries no wrapper bytes.
+// installer.
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -38,7 +37,7 @@ export function embedPluginHost() {
         );
       }
 
-      for (const name of Object.keys(shippedWrappers())) {
+      for (const name of Object.keys(readWrapperSource(sourceDir))) {
         this.addWatchFile(join(sourceDir, name));
       }
     },
@@ -47,20 +46,9 @@ export function embedPluginHost() {
         return;
       }
 
-      return `export const EMBEDDED_PLUGIN_HOST_WRAPPERS = ${JSON.stringify(shippedWrappers(), null, 2)};\n`;
+      return `export const EMBEDDED_PLUGIN_HOST_WRAPPERS = ${JSON.stringify(readWrapperSource(sourceDir), null, 2)};\n`;
     },
   };
-}
-
-/**
- * The wrappers this build embeds: all of them with the flag, else none.
- *
- * @returns File name to base64 bytes
- */
-function shippedWrappers() {
-  return process.env.ENABLE_HOSTED_PLUGINS === "true"
-    ? readWrapperSource(sourceDir)
-    : {};
 }
 
 /**

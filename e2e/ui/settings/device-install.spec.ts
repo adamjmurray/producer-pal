@@ -45,7 +45,6 @@ interface DeviceStatus {
   otherCopies: string[];
   inUserLibrary: boolean;
   swap: { allowed: boolean; reason: string | null };
-  /** Only a hosting build's server sends it. */
   pluginHost?: { name: string; path: string; state: string }[];
 }
 
@@ -136,9 +135,7 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
     await expect(page.getByTestId("device-install")).toHaveText("Update copy");
   });
 
-  // This suite serves a release chat UI, which has no plug-in host devices. A
-  // server that reported them anyway must not make it offer an install.
-  test("ignores plug-in host devices in a release chat UI", async ({
+  test("offers to install a missing plug-in host device, with the device current", async ({
     page,
   }) => {
     await installStubs(page);
@@ -155,11 +152,12 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
     await loadSettings(page);
     await openInstallationTab(page);
 
-    await expect(page.getByTestId("device-status")).toHaveText(
-      "In your User Library (v1.2.0)",
+    await expect(page.getByTestId("device-install")).toHaveText(
+      "Install the plug-in host devices",
     );
-    await expect(page.getByTestId("device-install")).toBeHidden();
-    await expect(page.getByTestId("device-plugin-host")).toBeHidden();
+    await expect(page.getByTestId("device-plugin-host")).toContainText(
+      "PPal Plug-in Effect is not installed",
+    );
   });
 
   test("asks before replacing a newer copy, and says so to the server", async ({

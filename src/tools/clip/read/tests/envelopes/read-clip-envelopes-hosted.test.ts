@@ -227,22 +227,4 @@ describe("readClip - envelopes on a hosted plug-in's slots", () => {
     ]);
     expect(heard.filter((request) => request.op === "slots")).toHaveLength(1);
   });
-
-  it("reads a build without hosted plug-ins as any device", async () => {
-    vi.stubEnv("ENABLE_HOSTED_PLUGINS", "");
-
-    try {
-      setup();
-      answerEnvelopeRoutes([slotEnvelope(2)]);
-
-      const heard = installWrapper({ info: () => infoReply("Serum 2") });
-
-      expect(await readEnvelopes()).toStrictEqual([
-        expect.objectContaining({ parameter: "Automation 002", id: "slot-2" }),
-      ]);
-      expect(heard).toStrictEqual([]);
-    } finally {
-      vi.unstubAllEnvs();
-    }
-  });
 });

@@ -33,7 +33,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  vi.unstubAllEnvs();
   vi.resetModules();
   rmSync(scratch, { recursive: true, force: true });
 });
@@ -61,26 +60,13 @@ describe("the wrapper table", () => {
 });
 
 describe("the embedded module", () => {
-  it("reads the repo's wrappers with ENABLE_HOSTED_PLUGINS", async () => {
-    vi.stubEnv("ENABLE_HOSTED_PLUGINS", "true");
-    vi.resetModules();
-
+  it("reads the repo's wrappers", async () => {
     const { EMBEDDED_PLUGIN_HOST_WRAPPERS } =
       await import("../embedded-plugin-host-wrappers.ts");
 
     expect(EMBEDDED_PLUGIN_HOST_WRAPPERS).toStrictEqual(
       readPluginHostSource(pluginHostSourceDir(projectRoot)),
     );
-  });
-
-  it.each(["", "1", "false"])("is empty when the flag is %j", async (value) => {
-    vi.stubEnv("ENABLE_HOSTED_PLUGINS", value);
-    vi.resetModules();
-
-    const { EMBEDDED_PLUGIN_HOST_WRAPPERS } =
-      await import("../embedded-plugin-host-wrappers.ts");
-
-    expect(EMBEDDED_PLUGIN_HOST_WRAPPERS).toStrictEqual({});
   });
 });
 
@@ -107,18 +93,10 @@ describe("the embed plugin", () => {
     return JSON.parse(json) as Record<string, string>;
   }
 
-  it("embeds the repo's wrappers with ENABLE_HOSTED_PLUGINS=true", () => {
-    vi.stubEnv("ENABLE_HOSTED_PLUGINS", "true");
-
+  it("embeds the repo's wrappers", () => {
     expect(embedded()).toStrictEqual(
       readPluginHostSource(pluginHostSourceDir(projectRoot)),
     );
-  });
-
-  it.each(["", "1", "false"])("embeds nothing when the flag is %j", (value) => {
-    vi.stubEnv("ENABLE_HOSTED_PLUGINS", value);
-
-    expect(embedded()).toStrictEqual({});
   });
 
   it("leaves every other module alone", () => {
@@ -128,8 +106,6 @@ describe("the embed plugin", () => {
   });
 
   it("watches the files it embeds, and names the module if it is renamed", () => {
-    vi.stubEnv("ENABLE_HOSTED_PLUGINS", "true");
-
     const watched: string[] = [];
 
     embedPluginHost().buildStart.call({

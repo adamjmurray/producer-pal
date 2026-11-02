@@ -51,11 +51,9 @@ script.
 - **The script** is replaced whole, whatever is there.
 - **The plug-in host wrappers** (`PPal Plug-in Effect` and
   `PPal Plug-in Instrument`) go in beside them, in the folders Live files Max
-  audio effects and instruments under, in a build with `ENABLE_HOSTED_PLUGINS`.
-  They are embedded in the bundle like the script. Bytes decide: a wrapper that
-  differs is replaced, one that matches is left (`current`). They are not
-  version-aware and never `kept`. A release build embeds and installs none, and
-  the result has no `pluginHost`.
+  audio effects and instruments under. They are embedded in the bundle like the
+  script. Bytes decide: a wrapper that differs is replaced, one that matches is
+  left (`current`). They are not version-aware and never `kept`.
 - **The device** is version-aware, as the Chat UI's install without `force`: an
   older one is replaced; the same one is left (`current`); a newer one, or one
   that can't be ordered against it, is left (`kept`, with a `detail`). The file
@@ -159,12 +157,12 @@ unless the user already asked for it.
   installed, or just restart Live and choose the Control Surface if it is), then
   call `add-producer-pal` again. A call that couldn't do the thing it was made
   for is an error, even when it left a prepared file; the error, not a result,
-  is what stops the model reporting the device as added. In a build that hosts
-  plug-ins the wrappers are copied too, and the error says what became of each.
-  With no device bundled, no User Library found, or a copy that fails with no
-  file already there, the error says nothing was added and nothing was copied.
-  If the lookup of the script's state fails after the copy, the error still says
-  where the file is and gives the steps for a script that isn't installed.
+  is what stops the model reporting the device as added. The wrappers are copied
+  too, and the error says what became of each. With no device bundled, no User
+  Library found, or a copy that fails with no file already there, the error says
+  nothing was added and nothing was copied. If the lookup of the script's state
+  fails after the copy, the error still says where the file is and gives the
+  steps for a script that isn't installed.
 
 ## `update-producer-pal`
 
@@ -237,9 +235,8 @@ to ask the user first, unless the user already asked for it.
 - **Result:** `{ device: { from, to }, track: { path, name }, nextSteps }`,
   where `path` is `t3`, `rt0` or `mt` as in the tools, plus `note` when the
   loaded file wasn't the portal's, and `pluginHost` (as under
-  `install-producer-pal`) in a build that hosts plug-ins. The wrappers are
-  copied right after the device and before the swap; a wrapper that fails never
-  refuses the update. `nextSteps` is
+  `install-producer-pal`). The wrappers are copied right after the device and
+  before the swap; a wrapper that fails never refuses the update. `nextSteps` is
   `Now call ppal-connect to load the Skills and confirm the update.` until a
   plain `ppal-connect` has worked through this portal (the chat can't have
   connected yet), and after that

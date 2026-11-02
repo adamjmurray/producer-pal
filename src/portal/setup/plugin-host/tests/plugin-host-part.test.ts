@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: MIT
 
 import {
-  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -13,7 +12,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { EMBEDDED_PLUGIN_HOST_WRAPPERS } from "../embedded-plugin-host-wrappers.ts";
 import { type PluginHostResult } from "../plugin-host-install.ts";
 import {
@@ -35,7 +34,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  vi.unstubAllEnvs();
   rmSync(library, { recursive: true, force: true });
 });
 
@@ -63,13 +61,6 @@ describe("installPluginHostParts", () => {
     expect(
       installPluginHostParts(library).map((p) => "status" in p && p.status),
     ).toStrictEqual(["current", "current"]);
-  });
-
-  it("installs nothing without ENABLE_HOSTED_PLUGINS", () => {
-    vi.stubEnv("ENABLE_HOSTED_PLUGINS", "");
-
-    expect(installPluginHostParts(library)).toStrictEqual([]);
-    expect(existsSync(join(library, "Presets"))).toBe(false);
   });
 
   it("reports a wrapper that fails and still installs the other", () => {
@@ -197,19 +188,13 @@ describe("pluginHostStates", () => {
     ]);
   });
 
-  it("reports nothing without ENABLE_HOSTED_PLUGINS", () => {
-    vi.stubEnv("ENABLE_HOSTED_PLUGINS", "");
-
-    expect(pluginHostStates(library)).toBeNull();
-  });
-
   it("reports nothing without a User Library", () => {
     expect(pluginHostStates(null)).toBeNull();
   });
 });
 
 describe("describePluginHostParts", () => {
-  it("is empty when the build hosts no plug-ins", () => {
+  it("is empty when there are no parts", () => {
     expect(describePluginHostParts([])).toBe("");
   });
 

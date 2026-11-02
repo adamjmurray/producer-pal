@@ -37,6 +37,12 @@ export const BUILD_STATS_STUBS = {
     "src/live-api-adapter/live-api-build-stats-disabled.ts",
 };
 
+/** Same, for the ppal-plugin-host debug tool, which only a dev build carries. */
+export const PLUGIN_HOST_TOOL_STUBS = {
+  "src/tools/advanced/plugin-host/plugin-host.def.ts":
+    "src/tools/advanced/plugin-host/plugin-host-def-disabled.ts",
+};
+
 /**
  * Build the code-execution stub plugin. Only add it when code exec is off.
  *
@@ -53,6 +59,15 @@ export function stubCodeExec() {
  */
 export function stubBuildStats() {
   return stubModules("stub-build-stats", BUILD_STATS_STUBS);
+}
+
+/**
+ * Build the ppal-plugin-host stub plugin. Only add it when ENABLE_LIVE_API is off.
+ *
+ * @returns A rolldown plugin
+ */
+export function stubPluginHostTool() {
+  return stubModules("stub-plugin-host-tool", PLUGIN_HOST_TOOL_STUBS);
 }
 
 /**

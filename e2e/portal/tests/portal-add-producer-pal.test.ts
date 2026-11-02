@@ -92,8 +92,15 @@ describe("ppal-manage add-producer-pal", () => {
     });
 
     expect(isError).toBeFalsy();
-    expect(text).toBe(
-      '{track:{path:"t2",name:"2-MIDI"},device:"installed in the User Library",nextSteps:"Call ppal-connect next."}',
+    expect(
+      text.startsWith(
+        '{track:{path:"t2",name:"2-MIDI"},device:"installed in the User Library",pluginHost:[',
+      ),
+    ).toBe(true);
+    expect(text.endsWith('],nextSteps:"Call ppal-connect next."}')).toBe(true);
+    expect(text).toContain('{name:"PPal Plug-in Effect",status:"installed"');
+    expect(text).toContain(
+      '{name:"PPal Plug-in Instrument",status:"installed"',
     );
     expect(existsSync(join(library, ...AMXD))).toBe(true);
 

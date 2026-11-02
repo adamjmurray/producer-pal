@@ -64,9 +64,7 @@ remote script. A line it can't write is a `detail` on that clip's entry
 
 ## Hosted plug-in params
 
-Mechanics: [plugin-hosting.md](../../../live-api/plugin-hosting.md). Builds with
-hosted plug-ins on only; any other build refuses the spelling as an invalid
-target.
+Mechanics: [plugin-hosting.md](../../../live-api/plugin-hosting.md).
 
 A hosted plug-in's param is an `envelopes` target spelled as its wrapper's
 device path plus its `h` id: `t3/d0/h206`, or `t3/d0/c1/d0/h206` inside a rack.

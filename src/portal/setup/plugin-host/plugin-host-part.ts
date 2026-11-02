@@ -27,22 +27,17 @@ export interface PluginHostWrapperState {
 
 /**
  * Install the plug-in host wrappers that ship with this build, as the install
- * tools report them. A build without ENABLE_HOSTED_PLUGINS installs nothing.
- * A wrapper that fails is reported and never throws, so it can't fail the
- * install it rides on.
+ * tools report them. A wrapper that fails is reported and never throws, so it
+ * can't fail the install it rides on.
  *
  * @param library - Absolute path to the User Library
  * @param retry - How a failure says to try again; the install tools' wording by default
- * @returns One part per wrapper, or none when the build doesn't host plug-ins
+ * @returns One part per wrapper
  */
 export function installPluginHostParts(
   library: string,
   retry = TOOL_RETRY,
 ): PluginHostPart[] {
-  if (process.env.ENABLE_HOSTED_PLUGINS !== "true") {
-    return [];
-  }
-
   return pluginHostPartsOf(
     installPluginHostWrappers(library, EMBEDDED_PLUGIN_HOST_WRAPPERS),
     retry,
@@ -54,13 +49,12 @@ export function installPluginHostParts(
  * nothing.
  *
  * @param library - Absolute path to the User Library, or null when there is none
- * @returns One entry per wrapper, or null when the build doesn't host plug-ins
- *   or there is no User Library
+ * @returns One entry per wrapper, or null when there is no User Library
  */
 export function pluginHostStates(
   library: string | null,
 ): PluginHostWrapperState[] | null {
-  if (process.env.ENABLE_HOSTED_PLUGINS !== "true" || library == null) {
+  if (library == null) {
     return null;
   }
 

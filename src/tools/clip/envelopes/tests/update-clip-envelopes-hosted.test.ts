@@ -487,17 +487,6 @@ describe("updateClip - hosted envelope targets", () => {
     );
   });
 
-  it("knows no hosted spelling in a build without hosted plug-ins", async () => {
-    vi.stubEnv("ENABLE_HOSTED_PLUGINS", "");
-    setupTrack();
-
-    await expect(
-      updateClip({ id: "123", envelopes: `t0/d0/h206: ${NOTATION}` }),
-    ).rejects.toThrow(
-      'Invalid envelopes target "t0/d0/h206" in "t0/d0/h206: 1|1 0.2": expected a parameter id, or volume, pan, send0..',
-    );
-  });
-
   it("clears the envelope on the slot that drives the param", async () => {
     setupTrack();
     answerAsWrapper([{ slot: 3, index: 206, name: "Main Vol" }]);

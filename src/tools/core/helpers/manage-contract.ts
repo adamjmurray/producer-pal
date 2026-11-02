@@ -90,7 +90,7 @@ export type PluginHostPart = InstallPart & { name: string };
 /**
  * What the install route answers. `error` is worded for the model and says what
  * state the install was left in. `ran: false` means neither file was tried.
- * `pluginHost` is left out when the build doesn't host plug-ins.
+ * `pluginHost` is left out when there is no User Library to check.
  */
 export type InstallReply =
   | { ran: false; error: string }

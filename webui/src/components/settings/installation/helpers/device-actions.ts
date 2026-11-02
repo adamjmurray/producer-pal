@@ -95,7 +95,7 @@ function installAction(
   const state = ctx.isDetected ? status.state : null;
 
   // With the device current, only plug-in host devices left to install is
-  // worth a button. Only a hosting build ever has any.
+  // worth a button.
   const label =
     state === "same" ? wrapperInstallLabel(status) : copyLabel(state);
 

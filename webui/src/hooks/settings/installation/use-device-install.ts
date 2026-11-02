@@ -54,7 +54,7 @@ export interface DeviceInstallStatus {
   otherCopies: string[];
   /** Whether the running device can be swapped for the User Library copy. */
   swap: { allowed: boolean; reason: string | null };
-  /** Each plug-in host wrapper's state. Only a hosting build sends it. */
+  /** Each plug-in host wrapper's state. */
   pluginHost?: PluginHostWrapperState[];
 }
 

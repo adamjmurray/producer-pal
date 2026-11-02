@@ -24,10 +24,8 @@ const outDir = resolve(
   process.env.CHAT_UI_OUT_DIR ?? "max-for-live-device",
 );
 const buildInputsPath = join(outDir, "chat-ui.inputs.json");
-// Hosted plug-ins are build-flagged like in the rolldown bundles; a release UI
-// must carry none of the wrapper code or text.
-const hostedPlugins = process.env.ENABLE_HOSTED_PLUGINS === "true";
-// Same for the unfinished generative-UI panel.
+// The unfinished generative-UI panel is build-flagged; a release UI must carry
+// none of its code.
 const genUi = process.env.ENABLE_GEN_UI === "true";
 
 let buildInputs: string[] = [];
@@ -38,7 +36,6 @@ export default defineConfig({
   // no `process`, so this must always substitute to a literal.
   define: {
     "process.env.BUILD_SHA": JSON.stringify(BUILD_SHA),
-    "process.env.ENABLE_HOSTED_PLUGINS": JSON.stringify(String(hostedPlugins)),
     "process.env.ENABLE_GEN_UI": JSON.stringify(String(genUi)),
   },
   resolve: {
@@ -144,7 +141,6 @@ See https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-par
           `${JSON.stringify(
             {
               buildSha: BUILD_SHA,
-              hostedPlugins,
               genUi,
               startedAt: buildStartedAt,
               inputs: [...new Set(buildInputs)].toSorted(),

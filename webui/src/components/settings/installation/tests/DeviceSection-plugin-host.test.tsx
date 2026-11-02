@@ -7,7 +7,7 @@
  * @vitest-environment happy-dom
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   installFetchMock,
   jsonResponse,
@@ -34,10 +34,6 @@ describe("InstallationTab device section: plug-in host devices", () => {
 
   beforeEach(() => {
     routes = routeInstallationFetch(fetchMock);
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
   });
 
   /**
@@ -171,34 +167,5 @@ describe("InstallationTab device section: plug-in host devices", () => {
       expect(screen.queryByTestId("device-plugin-host")).toBeNull();
     });
     expect(installLabel()).toBe("Copy");
-  });
-
-  it("shows nothing about them in a build that doesn't host plug-ins", async () => {
-    vi.stubEnv("ENABLE_HOSTED_PLUGINS", "");
-    await renderDevice({ pluginHost: [...MISSING] });
-
-    expect(installLabel()).toBeNull();
-    expect(screen.queryByTestId("device-plugin-host")).toBeNull();
-  });
-
-  it("doesn't flag a failed wrapper in a build that doesn't host plug-ins", async () => {
-    vi.stubEnv("ENABLE_HOSTED_PLUGINS", "");
-    await renderDevice({ state: "not-installed" });
-    routes.device(
-      jsonResponse({
-        outcome: "installed",
-        path: DEVICE_PATH,
-        detail: "Installed.",
-        pluginHost: [{ name: "PPal Plug-in Effect", ok: false, path: "/p" }],
-      }),
-      jsonResponse(deviceStatusBody({ state: "same" })),
-    );
-    fireEvent.click(screen.getByTestId("device-install"));
-
-    const done = await waitForHookState(() =>
-      screen.getByTestId("device-installed-path"),
-    );
-
-    expect(done.className).not.toContain("amber");
   });
 });

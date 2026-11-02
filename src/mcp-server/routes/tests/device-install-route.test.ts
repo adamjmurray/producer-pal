@@ -118,15 +118,11 @@ describe("device-install routes", () => {
   });
 
   afterEach(async () => {
-    vi.unstubAllEnvs();
     await server.close();
   });
 
   describe("GET /device-install", () => {
-    // A release build answers exactly as it did before wrappers existed.
     it("reports the status and never caches it", async () => {
-      vi.stubEnv("ENABLE_HOSTED_PLUGINS", "");
-
       const { library, installed, runFromDownloads } = scratch();
       const source = runFromDownloads(frozenDevice(VERSION));
       const res = await fetch(`${server.baseUrl}/device-install`);
@@ -148,10 +144,22 @@ describe("device-install routes", () => {
           reason:
             "There is no copy of this device in your User Library yet. Install it first.",
         },
+        pluginHost: [
+          {
+            name: "PPal Plug-in Effect",
+            path: pluginHostPath(library, PLUGIN_HOST_WRAPPERS[0]),
+            state: "missing",
+          },
+          {
+            name: "PPal Plug-in Instrument",
+            path: pluginHostPath(library, PLUGIN_HOST_WRAPPERS[1]),
+            state: "missing",
+          },
+        ],
       });
     });
 
-    it("reports each wrapper's state in a build that hosts plug-ins", async () => {
+    it("reports each wrapper's state", async () => {
       const { library, runFromDownloads } = scratch();
 
       runFromDownloads(frozenDevice(VERSION));
@@ -270,23 +278,6 @@ describe("device-install routes", () => {
 
       expect(text).toContain("click Install");
       expect(text).not.toContain("install-producer-pal");
-    });
-
-    it("installs no wrappers in a build without hosting", async () => {
-      vi.stubEnv("ENABLE_HOSTED_PLUGINS", "");
-
-      const { library, runFromDownloads } = scratch();
-
-      runFromDownloads(frozenDevice(VERSION));
-
-      const res = await postInstall({ userLibrary: library });
-      const body: unknown = await res.json();
-
-      expect(body).toHaveProperty("detail", "Installed the device.");
-      expect(body).not.toHaveProperty("pluginHost");
-      expect(existsSync(pluginHostPath(library, PLUGIN_HOST_WRAPPERS[0]))).toBe(
-        false,
-      );
     });
 
     it("installs no wrappers when the device is refused", async () => {

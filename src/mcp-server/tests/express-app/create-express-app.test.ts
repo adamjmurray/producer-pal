@@ -153,7 +153,6 @@ describe("MCP Express App", () => {
         "ppal-playback",
         "ppal-library",
         "ppal-live-api",
-        "ppal-plugin-host",
       ]);
     });
 

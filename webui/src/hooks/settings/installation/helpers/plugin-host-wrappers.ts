@@ -3,15 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// The Installation tab's plug-in host wrapper devices, which only a hosting
-// build knows about. Every function opens with the build-time check, and every
-// wrapper string lives behind it, so the bundler drops all of it from a release
-// chat UI. Keep wrapper text and logic in this file.
+// The Installation tab's plug-in host wrapper devices: their install label,
+// status line and failure check. Keep wrapper text and logic in this file.
 
 /** How an installed wrapper compares with the one the server carries. */
 export type PluginHostWrapperStatus = "missing" | "current" | "differs";
 
-/** One wrapper as `GET /device-install` reports it in a hosting build. */
+/** One wrapper as `GET /device-install` reports it. */
 export interface PluginHostWrapperState {
   name: string;
   path: string;
@@ -20,16 +18,12 @@ export interface PluginHostWrapperState {
 
 /**
  * @param status - The server's device-install status
- * @param status.pluginHost - Each wrapper's state, in a hosting build
+ * @param status.pluginHost - Each wrapper's state
  * @returns The install button's label, or null when no wrapper needs installing
  */
 export function wrapperInstallLabel(status: {
   pluginHost?: PluginHostWrapperState[];
 }): string | null {
-  if (process.env.ENABLE_HOSTED_PLUGINS !== "true") {
-    return null;
-  }
-
   return needsInstall(status.pluginHost)
     ? "Install the plug-in host devices"
     : null;
@@ -38,16 +32,12 @@ export function wrapperInstallLabel(status: {
 /**
  * The line saying whether the plug-in host devices are in the User Library.
  * @param status - The server's device-install status
- * @param status.pluginHost - Each wrapper's state, in a hosting build
+ * @param status.pluginHost - Each wrapper's state
  * @returns The line, or null when the server reports no wrappers
  */
 export function wrapperStatusLine(status: {
   pluginHost?: PluginHostWrapperState[];
 }): { text: string; tone: "good" | "warn" } | null {
-  if (process.env.ENABLE_HOSTED_PLUGINS !== "true") {
-    return null;
-  }
-
   const { pluginHost } = status;
 
   if (pluginHost == null) {
@@ -74,10 +64,6 @@ export function wrapperStatusLine(status: {
 export function wrapperInstallFailed(body: {
   pluginHost?: { ok?: boolean }[];
 }): boolean {
-  if (process.env.ENABLE_HOSTED_PLUGINS !== "true") {
-    return false;
-  }
-
   return body.pluginHost?.some((part) => part.ok === false) === true;
 }
 

@@ -21,6 +21,7 @@ import { inlineChatUI } from "./rolldown-plugin-inline-chat-ui.mjs";
 import {
   stubBuildStats,
   stubCodeExec,
+  stubPluginHostTool,
 } from "./rolldown-plugin-stub-modules.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -49,9 +50,6 @@ const envVarReplacements = {
   "process.env.ENABLE_OBJECT_PROBE": JSON.stringify(
     process.env.ENABLE_OBJECT_PROBE,
   ),
-  "process.env.ENABLE_HOSTED_PLUGINS": JSON.stringify(
-    process.env.ENABLE_HOSTED_PLUGINS,
-  ),
 };
 
 // Substitute dev-only modules with do-nothing stubs unless the build asked for
@@ -61,6 +59,8 @@ const envVarReplacements = {
 const stubPlugins = [
   ...(process.env.ENABLE_CODE_EXEC !== "true" ? [stubCodeExec()] : []),
   ...(process.env.ENABLE_BUILD_STATS !== "true" ? [stubBuildStats()] : []),
+  // The debug tool rides on the dev build's ENABLE_LIVE_API.
+  ...(process.env.ENABLE_LIVE_API !== "true" ? [stubPluginHostTool()] : []),
 ];
 
 const resolveOptions = {
@@ -152,7 +152,7 @@ export default defineConfig([
       replacePlugin(envVarReplacements, { preventAssignment: true }),
       inlineChatUI(), // Inline chat-ui.html for frozen .amxd builds
       embedRemoteScript(), // Inline the Python remote script, same reason
-      embedPluginHost(), // And the plug-in host wrappers (hosting builds only)
+      embedPluginHost(), // And the plug-in host wrappers
       addLicenseHeader({ includeThirdPartyLicenses: true }),
     ],
   },

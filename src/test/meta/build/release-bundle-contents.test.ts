@@ -15,7 +15,12 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { isAbsolute, join } from "node:path";
-import { rolldown, type InputOptions, type RolldownOutput } from "rolldown";
+import {
+  rolldown,
+  type InputOptions,
+  type OutputOptions,
+  type RolldownOutput,
+} from "rolldown";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { GEN_UI_REMOTE_SCRIPT_FILES } from "#src/mcp-server/rpc/remote-script/bundle/gen-ui-remote-script-files.ts";
 import {
@@ -31,6 +36,7 @@ import { buildChatUI } from "../../../../config/rolldown-plugin-inline-chat-ui.m
 import {
   BUILD_STATS_STUBS,
   CODE_EXEC_STUBS,
+  PLUGIN_HOST_TOOL_STUBS,
 } from "../../../../config/rolldown-plugin-stub-modules.mjs";
 
 // Taken from the plugin's own tables rather than restated. A restated path that
@@ -40,6 +46,7 @@ import {
 const STUB_TABLE: Record<string, string> = {
   ...CODE_EXEC_STUBS,
   ...BUILD_STATS_STUBS,
+  ...PLUGIN_HOST_TOOL_STUBS,
 };
 
 /** Modules that must never reach a build without those flags. */
@@ -76,10 +83,9 @@ let portalWithInstaller = "";
 let bundleCount = 0;
 let scratchDir = "";
 // Where the chat UI is built, so a test run never touches the device's folder:
-// one folder per variant (release, hosting, gen UI), since the flags are baked
-// in at build time. A build with a flag on must never write to the release one.
+// one folder per variant (release, gen UI), since the flags are baked in at
+// build time. A build with a flag on must never write to the release one.
 let releaseUiDir = "";
-let hostingUiDir = "";
 let genUiDir = "";
 
 beforeAll(async () => {
@@ -92,7 +98,6 @@ beforeAll(async () => {
 
   scratchDir = mkdtempSync(join(tmpdir(), "ppal-bundle-contents-"));
   releaseUiDir = join(scratchDir, "chat-ui-release");
-  hostingUiDir = join(scratchDir, "chat-ui-hosting");
   genUiDir = join(scratchDir, "chat-ui-gen");
   process.env.CHAT_UI_OUT_DIR = releaseUiDir;
 
@@ -105,10 +110,6 @@ beforeAll(async () => {
   // Built up front, in parallel, the bundler finds them fresh and reuses them.
   await Promise.all([
     buildChatUI({ CHAT_UI_OUT_DIR: releaseUiDir }),
-    buildChatUI({
-      CHAT_UI_OUT_DIR: hostingUiDir,
-      ENABLE_HOSTED_PLUGINS: "true",
-    }),
     buildChatUI({ CHAT_UI_OUT_DIR: genUiDir, ENABLE_GEN_UI: "true" }),
   ]);
 
@@ -187,10 +188,11 @@ describe.each(BUNDLES)("release bundle: $name", ({ name, stubs }) => {
     expect(chunkCode[name]).not.toContain(DEV_BUILD_MARKER);
   });
 
-  // Unfinished: a model must not be offered it.
-  it("does not offer hosted plug-ins", () => {
-    expect(chunkCode[name]).not.toContain("hosted=true");
-    expect(chunkCode[name]).not.toContain("inside a Producer Pal wrapper");
+  // A dev-only debug tool: ENABLE_LIVE_API picks it, so a release leaves it out.
+  it("does not carry the ppal-plugin-host tool", () => {
+    expect(chunkCode[name]).not.toContain('"ppal-plugin-host"');
+    expect(chunkCode[name]).not.toContain("Spike: read and set VST3");
+    expect(chunkCode[name]).not.toContain("action 'raw' needs");
   });
 
   it("does not import node:vm", () => {
@@ -235,6 +237,13 @@ describe("dev build marker", () => {
   it.each(BUNDLES.map((b) => b.name))("is in the %s bundle", (name) => {
     expect(devCode[name]).toContain(`/* ${DEV_BUILD_MARKER} */`);
   });
+
+  it.each(["live-api-adapter", "mcp-server"])(
+    "has the ppal-plugin-host tool in the %s bundle",
+    (name) => {
+      expect(devCode[name]).toContain('"ppal-plugin-host"');
+    },
+  );
 });
 
 describe("remote script embedding", () => {
@@ -313,73 +322,39 @@ describe("gen-UI remote script files", () => {
   });
 });
 
-// The wrappers ride in the Node bundles only for a hosting build. A release
-// carries neither their bytes nor the code that installs them.
-describe("plug-in host wrappers", () => {
+// Hosting ships in every build: the `hosted` param, the wrappers' bytes and the
+// code that installs them.
+describe("hosted plug-ins", () => {
   const NODE_BUNDLES = ["mcp-server", "portal"] as const;
   // The start of each file, which differs by device type.
   const wrapperBytes = Object.values(
     readPluginHostSource(pluginHostSourceDir(projectRoot)),
   ).map((base64) => base64.slice(0, 200));
-  const hostingCode: Record<string, string> = {};
-
-  beforeAll(async () => {
-    vi.resetModules();
-    process.env.ENABLE_HOSTED_PLUGINS = "true";
-    process.env.CHAT_UI_OUT_DIR = hostingUiDir;
-
-    try {
-      const config = await import("../../../../config/rolldown.config.mjs");
-      const configs = config.default as (InputOptions & { output: unknown })[];
-
-      for (const { name, index } of BUNDLES) {
-        if (NODE_BUNDLES.includes(name as "mcp-server" | "portal")) {
-          const built = await buildChunks(configs[index] as InputOptions);
-
-          hostingCode[name] = built.code;
-        }
-      }
-    } finally {
-      delete process.env.ENABLE_HOSTED_PLUGINS;
-      process.env.CHAT_UI_OUT_DIR = releaseUiDir;
-    }
-  }, 120_000);
 
   it("finds the wrapper files to look for", () => {
     expect(new Set(wrapperBytes).size).toBe(2);
     expect(wrapperBytes.every((bytes) => bytes.length === 200)).toBe(true);
   });
 
-  it.each(NODE_BUNDLES)("%s: a release build embeds none", (name) => {
+  it("mcp-server: offers `hosted` on ppal-create-device", () => {
+    expect(chunkCode["mcp-server"]).toContain("inside a Producer Pal wrapper");
+  });
+
+  it("live-api-adapter: reads hosted plug-ins", () => {
+    expect(chunkCode["live-api-adapter"]).toContain("detectHostedPlugin");
+  });
+
+  it.each(NODE_BUNDLES)("%s: embeds both wrappers", (name) => {
     for (const bytes of wrapperBytes) {
-      expect(chunkCode[name]).not.toContain(bytes);
+      expect(chunkCode[name]).toContain(bytes);
     }
   });
 
-  it.each(NODE_BUNDLES)(
-    "%s: a release build drops the install code",
-    (name) => {
-      expect(chunkCode[name]).not.toContain("installPluginHostWrappers");
-      // What the status route reads the wrappers with.
-      expect(chunkCode[name]).not.toContain("pluginHostStatus");
-    },
-  );
-
-  it.each(NODE_BUNDLES)("%s: a hosting build embeds both", (name) => {
-    for (const bytes of wrapperBytes) {
-      expect(hostingCode[name]).toContain(bytes);
-    }
+  it.each(NODE_BUNDLES)("%s: has the install code", (name) => {
+    expect(chunkCode[name]).toContain("installPluginHostWrappers");
   });
 
-  it.each(NODE_BUNDLES)("%s: a hosting build has the install code", (name) => {
-    expect(hostingCode[name]).toContain("installPluginHostWrappers");
-  });
-
-  it("mcp-server: a hosting build inlines the hosting chat UI", () => {
-    expect(hostingCode["mcp-server"]).toContain("Plug-in host devices:");
-  });
-
-  it("keeps the bytes out of the V8 bundle, hosting or not", () => {
+  it("keeps the bytes out of the V8 bundle", () => {
     for (const bytes of wrapperBytes) {
       expect(chunkCode["live-api-adapter"]).not.toContain(bytes);
     }
@@ -389,34 +364,32 @@ describe("plug-in host wrappers", () => {
 const readUi = (dir: string): string =>
   readFileSync(join(dir, "chat-ui.html"), "utf-8");
 
-// A release chat UI must carry none of a flagged feature's text or code. The
-// device bundle inlines the chat UI, so that is checked too. The UI is
-// minified, so a name or a flag read left in it is real code. `variant` names
-// the folder holding a build with the flag on.
-const FLAGGED_CHAT_UIS = [
-  {
-    feature: "plug-in host chat UI",
-    variant: "hosting",
-    text: ["Install the plug-in host devices", "Plug-in host devices:"],
-    code: ["ENABLE_HOSTED_PLUGINS", "pluginHost"],
-  },
-  // Unfinished: a user could otherwise reach it by typing a URL.
-  {
-    feature: "generative-UI chat panel",
-    variant: "gen",
-    text: [
-      "Generative UI",
-      "No widgets yet",
-      "gen-app-frame",
-      "producer_pal_gen_app_source",
-      "Not available in this build",
-    ],
-    code: ["ENABLE_GEN_UI"],
-  },
-] as const;
+// The chat UI carries the plug-in host install UI in every build. The UI is
+// minified, so a name left in it is real code.
+describe("plug-in host chat UI", () => {
+  const text = ["Install the plug-in host devices", "Plug-in host devices:"];
 
-describe.each(FLAGGED_CHAT_UIS)("$feature", ({ variant, text, code }) => {
-  const flagDir = (): string => (variant === "gen" ? genUiDir : hostingUiDir);
+  it.each([...text, "pluginHost"])("a release chat-ui.html has %s", (str) => {
+    expect(readUi(releaseUiDir)).toContain(str);
+  });
+
+  it.each(text)("the release device bundle has %s", (str) => {
+    expect(chunkCode["mcp-server"]).toContain(str);
+  });
+});
+
+// A release chat UI must carry none of the unfinished generative-UI panel's
+// text or code, or a user could reach it by typing a URL. The device bundle
+// inlines the chat UI, so that is checked too.
+describe("generative-UI chat panel", () => {
+  const text = [
+    "Generative UI",
+    "No widgets yet",
+    "gen-app-frame",
+    "producer_pal_gen_app_source",
+    "Not available in this build",
+  ];
+  const code = ["ENABLE_GEN_UI"];
 
   it.each([...text, ...code])("a release chat-ui.html has no %s", (str) => {
     expect(readUi(releaseUiDir)).not.toContain(str);
@@ -427,13 +400,13 @@ describe.each(FLAGGED_CHAT_UIS)("$feature", ({ variant, text, code }) => {
   });
 
   // Text only: the flag name itself is replaced by its value in that build.
-  it.each(text)("a flagged chat-ui.html has %s", (str) => {
-    expect(readUi(flagDir())).toContain(str);
+  it.each(text)("a gen-UI chat-ui.html has %s", (str) => {
+    expect(readUi(genUiDir)).toContain(str);
   });
 });
 
 it("finds a built chat UI for each variant", () => {
-  for (const dir of [releaseUiDir, hostingUiDir, genUiDir]) {
+  for (const dir of [releaseUiDir, genUiDir]) {
     expect(readUi(dir).length).toBeGreaterThan(1_000_000);
   }
 });
@@ -448,11 +421,18 @@ async function buildChunks(
   input: InputOptions,
 ): Promise<{ ids: string[]; code: string }> {
   const bundle = await rolldown(input);
+  // The config's own output settings, not rolldown's defaults: those give a
+  // device bundle cut down to a few hundred KB with the tools missing, which
+  // would let every absence check pass for nothing.
+  const output: OutputOptions = {
+    ...((input as { output?: OutputOptions }).output ?? { format: "es" }),
+    file: undefined,
+  };
 
   let generated: RolldownOutput;
 
   try {
-    generated = await bundle.generate({ format: "es" });
+    generated = await bundle.generate(output);
   } finally {
     await bundle.close();
   }

@@ -82,7 +82,7 @@ describe("add-producer-pal without a running remote script", () => {
     );
   });
 
-  it("says nothing about wrappers in a build that hosts none", async () => {
+  it("says nothing about wrappers when none are installed", async () => {
     expect(responseText(await addProducerPalCall(stoppedDeps()))).not.toContain(
       "wrappers",
     );

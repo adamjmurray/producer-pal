@@ -78,7 +78,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  vi.unstubAllEnvs();
   clearNodeRoutes();
   rmSync(library, { recursive: true, force: true });
 });
@@ -220,20 +219,6 @@ describe("manage.installProducerPal", () => {
         pluginHost: wrappersInstalled(),
       }),
     );
-  });
-
-  it("installs no wrappers and reports none in a build without hosting", async () => {
-    vi.stubEnv("ENABLE_HOSTED_PLUGINS", "");
-
-    const result = await install();
-
-    expect(result).toHaveProperty("remoteScript.status", "installed");
-    expect(result).not.toHaveProperty("pluginHost");
-    expect(
-      PLUGIN_HOST_WRAPPERS.some((wrapper) =>
-        existsSync(pluginHostPath(library, wrapper)),
-      ),
-    ).toBe(false);
   });
 
   it("refuses, saying to ask for the path, when none is found or given", async () => {

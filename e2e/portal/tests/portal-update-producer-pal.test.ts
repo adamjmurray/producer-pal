@@ -104,8 +104,19 @@ describe("ppal-manage update-producer-pal", () => {
     const { text, isError } = await callToolText(portal, "ppal-manage", UPDATE);
 
     expect(isError).toBeFalsy();
-    expect(text).toBe(
-      `{device:{from:"${OLD}",to:"${PORTAL_VERSION}"},track:{path:"t1",name:"1-MIDI"},nextSteps:"Now call ppal-connect to load the Skills and confirm the update."}`,
+    expect(
+      text.startsWith(
+        `{device:{from:"${OLD}",to:"${PORTAL_VERSION}"},track:{path:"t1",name:"1-MIDI"},pluginHost:[`,
+      ),
+    ).toBe(true);
+    expect(
+      text.endsWith(
+        '],nextSteps:"Now call ppal-connect to load the Skills and confirm the update."}',
+      ),
+    ).toBe(true);
+    expect(text).toContain('{name:"PPal Plug-in Effect",status:"installed"');
+    expect(text).toContain(
+      '{name:"PPal Plug-in Instrument",status:"installed"',
     );
     expect(existsSync(join(library, ...AMXD))).toBe(true);
 

@@ -8,20 +8,19 @@
  * (one VST3 file holding the "Serum 2" instrument and the "Serum 2 FX" effect),
  * so it skips on a machine without it.
  *
- * Opt-in: needs a build with hosting on (`ENABLE_HOSTED_PLUGINS=true npm run
- * build:debug`), the wrappers installed (`npm run install:plugin-host`), and
- * the remote script.
+ * Needs the wrappers installed (`npm run install:plugin-host`) and the remote
+ * script.
  *
  * Duplicating a track stands in for a Set reload: the copy's wrapper starts
  * fresh, with only what Live saved for it.
  *
  * The automation slot tests also use ppal-live-api and ppal-plugin-host, which
- * the suite turns on per test. Hosted params are automated by device path and
+ * the suite turns on per test (a debug build only: `npm run build:debug`). Hosted params are automated by device path and
  * `h` id (`t3/d0/h1`), which maps an automation slot to the param.
  *
  * Uses: e2e-test-set (adds its own MIDI track)
  *
- * Run with: ENABLE_HOSTED_PLUGINS=true npm run e2e:mcp:remote-script -- device/create/ppal-create-device-hosted
+ * Run with: npm run e2e:mcp:remote-script -- device/create/ppal-create-device-hosted
  */
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
@@ -52,11 +51,7 @@ interface EnvelopeEntry {
   slot?: string;
 }
 
-describe.skipIf(
-  !REMOTE_SCRIPT_E2E ||
-    process.env.ENABLE_HOSTED_PLUGINS !== "true" ||
-    !HAS_SERUM,
-)("hosted plug-ins", () => {
+describe.skipIf(!REMOTE_SCRIPT_E2E || !HAS_SERUM)("hosted plug-ins", () => {
   requireRemoteScript();
 
   const ctx = setupMcpTestContext();

@@ -7,10 +7,12 @@ import { vi } from "vitest";
 import { NOTATIONS, type Notation } from "#src/shared/notation.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 
-// The `code` params only exist when this flag is on, and it is read when the
-// tool defs load — so stub it before importing them. Importing this module is
-// what loads them, which is why the defs live here rather than in each suite.
+// The `code` params only exist when this flag is on, and the ppal-plugin-host
+// debug tool only with ENABLE_LIVE_API. Both are read when the tool defs load,
+// so stub them before importing. Importing this module is what loads them,
+// which is why the defs live here rather than in each suite.
 vi.stubEnv("ENABLE_CODE_EXEC", "true");
+vi.stubEnv("ENABLE_LIVE_API", "true");
 const { STANDARD_TOOL_DEFS, OPT_IN_TOOL_DEFS } =
   await import("#src/mcp-server/create-mcp-server.ts");
 

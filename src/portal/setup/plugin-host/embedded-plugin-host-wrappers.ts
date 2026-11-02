@@ -13,13 +13,9 @@ import { type PluginHostSource } from "./plugin-host-wrappers.ts";
 // The device is a frozen .amxd with no repo to read, so
 // config/rolldown-plugin-embed-plugin-host.mjs REPLACES this whole module at
 // bundle time with the same map written out as a literal. Nothing below ships.
-// Plug-in hosting is behind ENABLE_HOSTED_PLUGINS, and the plugin embeds
-// nothing without it, as this module does. Renaming this file without
-// updating that plugin fails the build.
+// Renaming this file without updating that plugin fails the build.
 const ROOT_DIR = join(import.meta.dirname, "../../../..");
 
-/** The wrapper devices as base64, or nothing without ENABLE_HOSTED_PLUGINS. */
+/** The wrapper devices as base64. */
 export const EMBEDDED_PLUGIN_HOST_WRAPPERS: PluginHostSource =
-  process.env.ENABLE_HOSTED_PLUGINS === "true"
-    ? readPluginHostSource(pluginHostSourceDir(ROOT_DIR))
-    : {};
+  readPluginHostSource(pluginHostSourceDir(ROOT_DIR));

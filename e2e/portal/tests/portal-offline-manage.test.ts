@@ -401,7 +401,8 @@ describe("ppal-manage while the device is down", () => {
     expect(existsSync(join(library, "Remote Scripts", "Producer_Pal"))).toBe(
       true,
     );
-    expect(existsSync(join(library, "Presets"))).toBe(false);
+    // The wrappers still go in; only the device is missing.
+    expect(existsSync(join(library, ...DEVICE_DIR))).toBe(false);
   });
 
   it("installs nothing and says so for a User Library that isn't a folder", async () => {

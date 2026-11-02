@@ -41,16 +41,11 @@ export interface HostedTarget {
 }
 
 /**
- * Read a target that names a hosted plug-in's param. Only builds with hosted
- * plug-ins on know the spelling.
+ * Read a target that names a hosted plug-in's param.
  * @param target - An `envelopes` target, as written
  * @returns The device path and param number, or null when it isn't one
  */
 export function parseHostedTarget(target: string): ParsedHostedTarget | null {
-  if (process.env.ENABLE_HOSTED_PLUGINS !== "true") {
-    return null;
-  }
-
   const match = HOSTED_TARGET.exec(target);
 
   return match

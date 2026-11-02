@@ -13,12 +13,6 @@ import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
-// Unfinished plug-in hosting: release builds don't mention it.
-const HOSTED_PARAMS =
-  process.env.ENABLE_HOSTED_PLUGINS === "true"
-    ? "A hosted plug-in's params (read-device shows `hosted`) are addressed as h56; give a number or the text the plug-in shows. "
-    : "";
-
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   title: "Update Device",
   description:
@@ -66,7 +60,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     params: param(paramsInputSchema, {
       default:
         "array of {name, value} or {id, value}. name = a param name; id = a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one. Every param sent comes back as one entry, in order: id and name alone when it took the value asked for, the value it reads as (plus a `detail`) when Live kept a different one, or `ok:false` and why nothing was written. A param named twice is written once, at its last entry; the earlier one comes back with only a `detail`. " +
-        HOSTED_PARAMS +
+        "A hosted plug-in's params (read-device shows `hosted`) are addressed as h56; give a number or the text the plug-in shows. " +
         "Drum Rack pad sample: {name:'pC1/sample', value:'<abs path>'}",
       // Small mode ships no devices skills fragment, so this is the only place
       // saying a value is a display value (not a normalized 0-1) AND the only

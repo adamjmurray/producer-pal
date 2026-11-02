@@ -26,8 +26,7 @@ import {
 const ROUTE = "/device-install";
 
 /**
- * Register GET /device-install (status, plus each plug-in host wrapper's state
- * in a build that hosts plug-ins), POST /device-install/install, and
+ * Register GET /device-install (status, plus each plug-in host wrapper's state), POST /device-install/install, and
  * POST /device-install/swap.
  *
  * The install is a same-origin write, like the remote script's. A refused
@@ -53,7 +52,7 @@ export function registerDeviceInstallRoutes(app: Express): void {
     const status = await deviceInstallStatus();
     const { allowed, reason } = await deviceSwapCheck(status, remoteScriptPing);
 
-    // Only a build that hosts plug-ins says anything about the wrappers.
+    // Null when there is no User Library to check them in.
     const pluginHost = pluginHostStates(status.userLibrary);
 
     res.json({

@@ -36,7 +36,6 @@ const UNGATED_SCHEMA_FLAGS = [
   "ENABLE_CODE_EXEC",
   "ENABLE_GEN_UI",
   "ENABLE_WARP_MARKERS",
-  "ENABLE_HOSTED_PLUGINS",
 ];
 
 const OPT_IN_FLAGS = [
@@ -185,12 +184,6 @@ describe("build flags", () => {
 // webui/ reads process.env too, which the src/ scan above doesn't see. The
 // browser has no `process`, so an unreplaced read would throw there.
 describe("chat UI build flags", () => {
-  it("substitutes ENABLE_HOSTED_PLUGINS in the chat UI bundle", () => {
-    expect(readRepoFile("config/vite.config.ts")).toContain(
-      '"process.env.ENABLE_HOSTED_PLUGINS"',
-    );
-  });
-
   it("substitutes ENABLE_GEN_UI in the chat UI bundle", () => {
     expect(readRepoFile("config/vite.config.ts")).toContain(
       '"process.env.ENABLE_GEN_UI"',

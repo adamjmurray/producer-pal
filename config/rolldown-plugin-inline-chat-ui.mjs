@@ -75,14 +75,11 @@ function recordedBuild() {
   // passes down to the Vite build) rather than a freshly-computed one: in watch
   // mode ours is frozen at config load, and a commit would otherwise leave the
   // two disagreeing for good — every rebuild a cache miss.
-  // The hosted-plug-ins and gen-UI flags are baked in the same way: a UI built
-  // with one must never be reused by a build without it (or the reverse).
-  const hostedPlugins = process.env.ENABLE_HOSTED_PLUGINS === "true";
+  // The gen-UI flag is baked in the same way: a UI built with it must never be
+  // reused by a build without it (or the reverse).
   const genUi = process.env.ENABLE_GEN_UI === "true";
 
-  return record.buildSha === BUILD_SHA &&
-    record.hostedPlugins === hostedPlugins &&
-    record.genUi === genUi
+  return record.buildSha === BUILD_SHA && record.genUi === genUi
     ? record
     : null;
 }

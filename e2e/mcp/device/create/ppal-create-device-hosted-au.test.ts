@@ -8,13 +8,12 @@
  * AUDelay, which every Mac has, as an audio effect. Skips when Live's "Use
  * Audio Units v2" setting is off, because then Live's browser doesn't list it.
  *
- * Opt-in: needs a build with hosting on (`ENABLE_HOSTED_PLUGINS=true npm run
- * build:debug`), the wrappers installed (`npm run install:plugin-host`), and
- * the remote script.
+ * Needs the wrappers installed (`npm run install:plugin-host`) and the remote
+ * script.
  *
  * Uses: e2e-test-set (adds its own MIDI track)
  *
- * Run with: ENABLE_HOSTED_PLUGINS=true npm run e2e:mcp:remote-script -- device/create/ppal-create-device-hosted-au
+ * Run with: npm run e2e:mcp:remote-script -- device/create/ppal-create-device-hosted-au
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { setupMcpTestContext } from "../../mcp-test-helpers";
@@ -27,9 +26,7 @@ import {
   requireRemoteScript,
 } from "../helpers/remote-script-test-helpers";
 
-describe.skipIf(
-  !REMOTE_SCRIPT_E2E || process.env.ENABLE_HOSTED_PLUGINS !== "true",
-)("hosted Audio Units", () => {
+describe.skipIf(!REMOTE_SCRIPT_E2E)("hosted Audio Units", () => {
   requireRemoteScript();
 
   const ctx = setupMcpTestContext();

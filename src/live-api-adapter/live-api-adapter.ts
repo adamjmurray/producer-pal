@@ -176,7 +176,10 @@ const toolDispatch: Record<
   "ppal-manage": (args, ctx) => manage(args as any, ctx),
   "ppal-library": (args, ctx) => library(args as any, ctx),
   "ppal-live-api": (args, ctx) => liveApi(args as any, ctx),
-  "ppal-plugin-host": (args) => pluginHost(args as any),
+  // Debug tool: only a dev build (ENABLE_LIVE_API) carries it.
+  ...(process.env.ENABLE_LIVE_API === "true"
+    ? { "ppal-plugin-host": (args: unknown) => pluginHost(args as any) }
+    : {}),
 };
 /* eslint-enable @typescript-eslint/no-explicit-any -- end of tools dispatch section */
 
