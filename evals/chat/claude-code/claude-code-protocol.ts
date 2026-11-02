@@ -78,7 +78,6 @@ export function claudeCodeTurnArgs(input: AgentCliTurnArgsInput): string[] {
 
   return [
     ...buildRestrictedArgs(input),
-    ...(input.effort != null ? ["--effort", input.effort] : []),
     "--strict-mcp-config",
     "--mcp-config",
     JSON.stringify(mcpConfig),
@@ -164,7 +163,7 @@ function isModelAction(block: Record<string, unknown>): boolean {
  * name. `--setting-sources <sources>` takes a single comma-separated value and
  * has no such hazard; it is last-but-one only for readability.
  *
- * @param input - Model and instructions
+ * @param input - Model, instructions, and optional reasoning effort
  * @returns Restricted Claude Code CLI arguments
  */
 function buildRestrictedArgs(input: AgentCliArgsInput): string[] {
@@ -183,6 +182,7 @@ function buildRestrictedArgs(input: AgentCliArgsInput): string[] {
     "--disable-slash-commands",
     "--tools",
     "",
+    ...(input.effort != null ? ["--effort", input.effort] : []),
   ];
 }
 

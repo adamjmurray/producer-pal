@@ -64,9 +64,6 @@ export function codexTurnArgs(input: AgentCliTurnArgsInput): string[] {
     `mcp_servers.${MCP_SERVER_NAME}.required=true`,
     "-c",
     `mcp_servers.${MCP_SERVER_NAME}.default_tools_approval_mode="approve"`,
-    ...(input.effort != null
-      ? ["-c", `model_reasoning_effort=${JSON.stringify(input.effort)}`]
-      : []),
   ];
 
   if (input.resumeSessionId != null) {
@@ -147,7 +144,7 @@ export function countCodexSteps(event: Record<string, unknown>): number {
 
 /**
  * Build arguments shared by MCP turns and judge calls.
- * @param input - Model and instructions
+ * @param input - Model, instructions, and optional reasoning effort
  * @returns Restricted Codex CLI arguments
  */
 function buildRestrictedArgs(input: AgentCliArgsInput): string[] {
@@ -181,6 +178,9 @@ function buildRestrictedArgs(input: AgentCliArgsInput): string[] {
     'model_reasoning_summary="detailed"',
     "-c",
     `model_instructions_file=${JSON.stringify(input.instructionsFile)}`,
+    ...(input.effort != null
+      ? ["-c", `model_reasoning_effort=${JSON.stringify(input.effort)}`]
+      : []),
   ];
 }
 

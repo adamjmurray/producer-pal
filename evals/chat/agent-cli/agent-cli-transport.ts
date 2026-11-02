@@ -38,6 +38,9 @@ export interface AgentCliArgsInput {
   instructionsFile: string;
   /** Friendly alias or explicit model id. */
   model: string;
+  /** The CLI's own reasoning-effort value (see `agentCliEffort`); absent keeps
+   *  the CLI's default. */
+  effort?: string;
 }
 
 /** Inputs for one turn of an MCP-connected session. */
@@ -45,9 +48,6 @@ export interface AgentCliTurnArgsInput extends AgentCliArgsInput {
   mcpUrl: string;
   /** Session id captured from an earlier turn; absent on the first turn. */
   resumeSessionId?: string;
-  /** The CLI's own reasoning-effort value (see `agentCliEffort`); absent keeps
-   *  the CLI's default. */
-  effort?: string;
 }
 
 /** One parsed turn, in the shape the scenario runner grades. */

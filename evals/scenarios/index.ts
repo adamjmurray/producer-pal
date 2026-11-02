@@ -23,11 +23,13 @@ import {
 import { parseOutputTokens } from "./run-env/parse-output-tokens.ts";
 import {
   describeThinking,
+  parseJudgeThinking,
   parseThinkingArgs,
   type ThinkingByModel,
 } from "./run-env/parse-thinking-arg.ts";
 import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
 import { type JevSettings } from "./helpers/judge/jev-first-judge.ts";
+import { type JudgeOverride } from "./helpers/judge/judge-section.ts";
 import { resolveJevSettings } from "./helpers/judge/jev-settings.ts";
 import { generateRunId } from "./helpers/json-results/run-id.ts";
 import { type RunRecord } from "./helpers/trials/resume/run-record.ts";
@@ -49,7 +51,7 @@ import { errorMessage } from "#src/shared/error-message.ts";
 
 collapseStdoutNewlines();
 
-export type { ModelSpec, ModelSpec as JudgeOverride };
+export type { ModelSpec, JudgeOverride };
 
 interface CliOptions {
   test: string[];
@@ -68,6 +70,8 @@ interface CliOptions {
    *  comma-separated. */
   thinking: string[];
   judge?: string;
+  /** Thinking level for the LLM judge. */
+  judgeThinking?: string;
   /** Judge with Jev first; the LLM judge handles what Jev won't decide. */
   jev?: boolean;
   /** Jev route: typesafe, openrouter or vercel. */
@@ -179,6 +183,10 @@ program
   .option(
     "-j, --judge <provider/model>",
     `Override judge LLM (default: google/${GEMINI_CONFIG.defaultModel})`,
+  )
+  .option(
+    "--judge-thinking <level>",
+    "Thinking level (off, low, medium, high, ultra) for the -j judge",
   )
   .option(
     "--jev",
@@ -304,10 +312,7 @@ async function runEvaluation(
     parseModelArgOrExit(program, model),
   );
   const thinking = parseThinkingOrExit(options.thinking, modelSpecs);
-  const judgeOverride = parseModelArgOrExit(
-    program,
-    options.judge ?? GEMINI_CONFIG.defaultModel,
-  );
+  const judgeOverride = parseJudgeOrExit(options);
 
   let jev: JevSettings | undefined;
 
@@ -362,6 +367,12 @@ async function runEvaluation(
       console.log(styleText("gray", `Thinking: ${describeThinking(thinking)}`));
     }
 
+    if (judgeOverride.thinking != null) {
+      console.log(
+        styleText("gray", `Judge thinking: ${String(judgeOverride.thinking)}`),
+      );
+    }
+
     if (jev != null) {
       console.log(
         styleText(
@@ -413,6 +424,28 @@ function parseThinkingOrExit(
 ): ThinkingByModel {
   try {
     return parseThinkingArgs(values, modelSpecs);
+  } catch (error) {
+    return program.error(errorMessage(error));
+  }
+}
+
+/**
+ * Parse `-j` and `--judge-thinking`, reporting a bad one as a CLI usage error.
+ *
+ * @param options - CLI options
+ * @returns The judge model and its thinking level
+ */
+function parseJudgeOrExit(options: CliOptions): JudgeOverride {
+  const spec = parseModelArgOrExit(
+    program,
+    options.judge ?? GEMINI_CONFIG.defaultModel,
+  );
+
+  try {
+    return {
+      ...spec,
+      thinking: parseJudgeThinking(options.judgeThinking, spec),
+    };
   } catch (error) {
     return program.error(errorMessage(error));
   }

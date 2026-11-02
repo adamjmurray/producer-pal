@@ -5,7 +5,11 @@
 
 import { describe, expect, it } from "vitest";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
-import { describeThinking, parseThinkingArgs } from "./parse-thinking-arg.ts";
+import {
+  describeThinking,
+  parseJudgeThinking,
+  parseThinkingArgs,
+} from "./parse-thinking-arg.ts";
 
 const LUNA: ModelSpec = { provider: "codex-code", model: "luna" };
 const SOL: ModelSpec = { provider: "openai", model: "gpt-6.1-sol" };
@@ -117,6 +121,32 @@ describe("parseThinkingArgs", () => {
       parseThinkingArgs(["4096"], [GEMINI]).get("google/gemini-3.8-flash"),
     ).toBe("4096");
     expect(() => parseThinkingArgs(["4096"], [SOL])).toThrow(
+      /token budget is for google models only/,
+    );
+  });
+});
+
+describe("parseJudgeThinking", () => {
+  it("sends nothing when no --judge-thinking was given", () => {
+    expect(parseJudgeThinking(undefined, LUNA)).toBeUndefined();
+  });
+
+  it("returns a level the judge can express", () => {
+    expect(parseJudgeThinking("high", LUNA)).toBe("high");
+    expect(parseJudgeThinking("4096", GEMINI)).toBe("4096");
+  });
+
+  it("rejects an unknown level, naming the flag", () => {
+    expect(() => parseJudgeThinking("max", LUNA)).toThrow(
+      /--judge-thinking: unknown level "max"/,
+    );
+  });
+
+  it("rejects a level the judge's provider can't express", () => {
+    expect(() => parseJudgeThinking("off", LUNA)).toThrow(
+      /--judge-thinking off can't be set for codex-code\/luna/,
+    );
+    expect(() => parseJudgeThinking("4096", SOL)).toThrow(
       /token budget is for google models only/,
     );
   });

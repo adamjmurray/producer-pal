@@ -9,7 +9,10 @@
 
 import { streamText } from "ai";
 import { getAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.ts";
+import { agentCliEffort } from "#evals/chat/agent-cli/agent-cli-transport.ts";
 import { createProviderModel } from "#evals/chat/provider.ts";
+import { type ThinkingLevel } from "#evals/chat/shared/types.ts";
+import { buildProviderOptions } from "#evals/chat/thinking-provider-options.ts";
 import { getDefaultModel } from "#evals/scenarios/eval-session.ts";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
 import { callAgentCliJudge } from "./agent-cli-judge.ts";
@@ -28,6 +31,7 @@ import {
  * @param provider - LLM provider to use
  * @param model - Optional model override (falls back to provider default)
  * @param criteria - Evaluation criteria for output display
+ * @param thinking - Judge thinking level; absent sends none
  * @returns Raw text response from the judge LLM
  */
 export async function callJudge(
@@ -36,6 +40,7 @@ export async function callJudge(
   provider: EvalProvider,
   model: string | undefined,
   criteria: string,
+  thinking?: ThinkingLevel,
 ): Promise<string> {
   const agentCli = getAgentCliTransport(provider);
   const judgeModel = resolveJudgeModel(provider, model);
@@ -47,6 +52,7 @@ export async function callJudge(
       systemPrompt,
       judgeModel,
       criteria,
+      thinking == null ? undefined : agentCliEffort(agentCli, String(thinking)),
     );
   }
 
@@ -58,6 +64,7 @@ export async function callJudge(
     model: languageModel,
     instructions: systemPrompt,
     messages: [{ role: "user", content: prompt }],
+    providerOptions: buildProviderOptions(provider, thinking, judgeModel),
   });
 
   let text = "";

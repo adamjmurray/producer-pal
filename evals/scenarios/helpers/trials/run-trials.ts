@@ -11,6 +11,7 @@
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type ThinkingByModel } from "../../run-env/parse-thinking-arg.ts";
 import { type JevSettings } from "../judge/jev-first-judge.ts";
+import { type JudgeOverride } from "../judge/judge-section.ts";
 import { type RunEnv } from "../../run-env/run-env.ts";
 import { runScenario } from "../../run-scenario.ts";
 import { type EvalScenario } from "../../types.ts";
@@ -38,7 +39,7 @@ export interface TrialRunOptions {
 /** Shared context for a single eval run */
 export interface RunContext {
   runId: string;
-  judgeOverride: ModelSpec;
+  judgeOverride: JudgeOverride;
   /** Set by `--jev`: Jev judges first, the LLM judge handles escalations */
   jev?: JevSettings;
   repeatCount: number;

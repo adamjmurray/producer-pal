@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Parser for the eval CLI's `--thinking` option.
+ * Parser for the eval CLI's `--thinking` and `--judge-thinking` options.
  *
  * Each value is a comma list of `<level>` (every `-m` model) or
  * `<provider/model>=<level>` (one model, overriding the all-models level).
@@ -25,6 +25,8 @@ import {
 /** Thinking level per model, keyed `provider/model`. A model not in it runs
  *  with nothing sent. */
 export type ThinkingByModel = ReadonlyMap<string, ThinkingLevel>;
+
+const THINKING_FLAG = "--thinking";
 
 const NAMED_LEVELS: readonly NamedThinkingLevel[] = [
   "off",
@@ -60,7 +62,7 @@ export function parseThinkingArgs(
         throw new Error(`--thinking: more than one level for every model`);
       }
 
-      everyModel = validLevel(entry);
+      everyModel = validLevel(entry, THINKING_FLAG);
       continue;
     }
 
@@ -76,7 +78,7 @@ export function parseThinkingArgs(
       throw new Error(`--thinking: more than one level for ${key}`);
     }
 
-    perModel.set(key, validLevel(entry.slice(eq + 1)));
+    perModel.set(key, validLevel(entry.slice(eq + 1), THINKING_FLAG));
   }
 
   const result = new Map<string, ThinkingLevel>();
@@ -86,12 +88,35 @@ export function parseThinkingArgs(
     const level = perModel.get(key) ?? everyModel;
 
     if (level != null) {
-      assertExpressible(spec, level);
+      assertExpressible(spec, level, THINKING_FLAG);
       result.set(key, level);
     }
   }
 
   return result;
+}
+
+/**
+ * Settle the judge's thinking level, refusing one the judge can't express.
+ *
+ * @param value - The `--judge-thinking` value, if given
+ * @param judge - The judge model
+ * @returns The level, or undefined when none was given
+ * @throws Error on a bad level or one the judge's provider can't express
+ */
+export function parseJudgeThinking(
+  value: string | undefined,
+  judge: ModelSpec,
+): ThinkingLevel | undefined {
+  if (value == null) {
+    return undefined;
+  }
+
+  const level = validLevel(value.trim(), "--judge-thinking");
+
+  assertExpressible(judge, level, "--judge-thinking");
+
+  return level;
 }
 
 /**
@@ -125,10 +150,11 @@ function splitEntries(values: string[]): string[] {
 
 /**
  * @param level - A level as typed
+ * @param flag - The option it came from, for the error
  * @returns The level when it's a named level or a token budget
  * @throws Error when it's neither
  */
-function validLevel(level: string): string {
+function validLevel(level: string, flag: string): string {
   if (
     NAMED_LEVELS.includes(level as NamedThinkingLevel) ||
     /^\d+$/.test(level)
@@ -137,7 +163,7 @@ function validLevel(level: string): string {
   }
 
   throw new Error(
-    `--thinking: unknown level "${level}". Use ${NAMED_LEVELS.join(", ")} ` +
+    `${flag}: unknown level "${level}". Use ${NAMED_LEVELS.join(", ")} ` +
       `(or a token budget for google models).`,
   );
 }
@@ -147,9 +173,10 @@ function validLevel(level: string): string {
  *
  * @param spec - The model
  * @param level - A valid level
+ * @param flag - The option it came from, for the error
  * @throws Error when the provider can't express the level
  */
-function assertExpressible(spec: ModelSpec, level: string): void {
+function assertExpressible(spec: ModelSpec, level: string, flag: string): void {
   const key = modelKey(spec);
   const transport = getAgentCliTransport(spec.provider);
 
@@ -158,7 +185,7 @@ function assertExpressible(spec: ModelSpec, level: string): void {
       const supported = Object.keys(transport.efforts).join(", ");
 
       throw new Error(
-        `--thinking ${level} can't be set for ${key}: the ${transport.label} ` +
+        `${flag} ${level} can't be set for ${key}: the ${transport.label} ` +
           `takes ${supported}.`,
       );
     }
@@ -168,13 +195,13 @@ function assertExpressible(spec: ModelSpec, level: string): void {
 
   if (spec.provider === "local" && level !== "off") {
     throw new Error(
-      `--thinking ${level} can't be set for ${key}: local models take off only.`,
+      `${flag} ${level} can't be set for ${key}: local models take off only.`,
     );
   }
 
   if (/^\d+$/.test(level) && spec.provider !== "google") {
     throw new Error(
-      `--thinking ${level} can't be set for ${key}: a token budget is for google models only.`,
+      `${flag} ${level} can't be set for ${key}: a token budget is for google models only.`,
     );
   }
 }

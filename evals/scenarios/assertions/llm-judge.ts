@@ -11,6 +11,7 @@ import {
   parseSimpleJudgeResponse,
   type SimpleJudgeResult,
 } from "../helpers/judge/judge-response-parser.ts";
+import { type ThinkingLevel } from "#evals/chat/shared/types.ts";
 import { callJudge, resolveJudgeModel } from "../helpers/judge/judge.ts";
 import {
   type LlmJudgeAssertion,
@@ -44,6 +45,7 @@ export const LLM_JUDGE_ERROR_PREFIX = "LLM judge error: ";
 interface JudgeOverride {
   provider?: EvalProvider;
   model?: string;
+  thinking?: ThinkingLevel;
 }
 
 /** Judge verdict plus the judge that gave it (unset when no judge was called) */
@@ -117,6 +119,7 @@ export async function assertWithLlmJudge(
       provider,
       judgeModel,
       assertion.prompt,
+      cliOverride?.thinking,
     );
     const verdict = parseSimpleJudgeResponse(result);
 

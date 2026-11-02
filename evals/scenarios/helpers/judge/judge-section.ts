@@ -10,6 +10,7 @@
 
 import { styleText } from "node:util";
 import { formatSubsectionHeader } from "#evals/chat/shared/formatting.ts";
+import { type ThinkingLevel } from "#evals/chat/shared/types.ts";
 import {
   assertWithLlmJudge,
   type CheckSummary,
@@ -32,6 +33,8 @@ import {
 export interface JudgeOverride {
   provider: EvalProvider;
   model?: string;
+  /** Set by `--judge-thinking`; absent sends none. */
+  thinking?: ThinkingLevel;
 }
 
 /**

@@ -33,7 +33,7 @@ const assertion: LlmJudgeAssertion = { type: "llm_judge", prompt: "Be nice" };
 async function run(
   turnList: EvalTurnResult[],
   provider: EvalProvider,
-  override?: { provider: EvalProvider; model?: string },
+  override?: Parameters<typeof assertWithLlmJudge>[3],
 ): Promise<LlmJudgeDetails> {
   const result = await assertWithLlmJudge(
     assertion,
@@ -69,6 +69,16 @@ describe("assertWithLlmJudge", () => {
     expect(details.provider).toBe("codex-code");
     expect(details.model).toBeTruthy();
     expect(vi.mocked(callJudge).mock.calls[0]?.[3]).toBe(details.model);
+  });
+
+  it("passes the CLI override's thinking level to the judge", async () => {
+    await run(turns, "google", {
+      provider: "codex-code",
+      model: "luna",
+      thinking: "high",
+    });
+
+    expect(vi.mocked(callJudge).mock.calls[0]?.[5]).toBe("high");
   });
 
   it("prefers the CLI override over the assertion and scenario", async () => {

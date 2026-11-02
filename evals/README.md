@@ -103,6 +103,7 @@ scripts/eval [options]
 | `--thinking <spec>`       | Thinking level, for all models or `model=level`              |
 | `-o, --output-tokens <n>` | Max output tokens per call (default 8192; 32768 for `local`) |
 | `-j, --judge <model>`     | Judge model (default: `gemini-3.8-flash`)                    |
+| `--judge-thinking <lvl>`  | Thinking level for the judge (default: none sent)            |
 | `--jev`                   | Jev judges first; `-j` decides what Jev escalates            |
 | `--jev-via <route>`       | Jev route: typesafe, openrouter, vercel                      |
 | `-s, --skip-setup`        | Skip Live Set setup (reuse existing connection)              |

@@ -22,6 +22,7 @@ import {
  * @param systemPrompt - Judge instructions
  * @param judgeModel - Friendly alias or explicit model ID
  * @param criteria - Criteria shown in console output
+ * @param effort - The CLI's reasoning-effort value; absent keeps its default
  * @returns Raw judge response
  */
 export async function callAgentCliJudge(
@@ -30,6 +31,7 @@ export async function callAgentCliJudge(
   systemPrompt: string,
   judgeModel: string,
   criteria: string,
+  effort?: string,
 ): Promise<string> {
   const workingDir = await mkdtemp(join(tmpdir(), "producer-pal-judge-"));
   const instructionsFile = join(workingDir, "instructions.md");
@@ -42,6 +44,7 @@ export async function callAgentCliJudge(
       instructions: systemPrompt,
       instructionsFile,
       model: judgeModel,
+      effort,
     });
     const stdout = await spawnAgentCli(transport, args, prompt, {
       cwd: workingDir,

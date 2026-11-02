@@ -124,6 +124,19 @@ describe("claudeCodeJudgeArgs", () => {
     expect(args).toContain("--no-session-persistence");
     expect(args).not.toContain("--effort");
   });
+
+  it("passes the judge's effort, clear of the variadic flags", () => {
+    const args = claudeCodeJudgeArgs({
+      instructions: "You are a judge.",
+      instructionsFile: "/tmp/judge.md",
+      model: "haiku",
+      effort: "high",
+    });
+
+    expect(args[args.indexOf("--effort") + 1]).toBe("high");
+    expect(args[args.indexOf("--tools") + 2]).toBe("--effort");
+    expectRestrictions(args);
+  });
 });
 
 describe("parseClaudeCodeStream", () => {

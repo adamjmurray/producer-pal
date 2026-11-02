@@ -107,6 +107,19 @@ describe("codexJudgeArgs", () => {
     expect(args.join(" ")).not.toContain("mcp_servers");
     expect(args.join(" ")).not.toContain("reasoning_effort");
   });
+
+  it("passes the judge's reasoning effort", () => {
+    const args = codexJudgeArgs({
+      instructions: "You are a judge.",
+      instructionsFile: "/tmp/judge.md",
+      model: "luna",
+      effort: "high",
+    });
+    const i = args.indexOf('model_reasoning_effort="high"');
+
+    expect(args[i - 1]).toBe("-c");
+    expectRestrictions(args);
+  });
 });
 
 describe("resolveCodexModel", () => {
