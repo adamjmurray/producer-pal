@@ -9,14 +9,19 @@ import {
   remoteScriptPing,
   remoteScriptRequest,
 } from "../remote-script-client.ts";
+import { MIN_REMOTE_SCRIPT_VERSION } from "../port/remote-script-version.ts";
 import { RemoteScriptTimeout } from "../remote-script-errors.ts";
 import {
   type FakeAnswer,
   type FakeRemoteScript,
   type ReceivedRequest,
+  callUntilItTimesOut,
   expectUnsentTimeout,
   startFakeRemoteScript,
 } from "./remote-script-test-helpers.ts";
+
+/** How long the client waits for a ping. */
+const PING_WAIT_MS = 1000;
 
 // The "default" port is a stand-in's, so a real Live on 3349 can't interfere.
 const ports = vi.hoisted(() => ({
@@ -32,7 +37,11 @@ vi.mock(import("../port/remote-script-port-file.ts"), () => ({
 }));
 
 const OURS: FakeAnswer = {
-  body: { ok: true, live_version: "12.4.5", script_version: "2.5.0" },
+  body: {
+    ok: true,
+    live_version: "12.4.5",
+    script_version: MIN_REMOTE_SCRIPT_VERSION,
+  },
 };
 const NOT_OURS: FakeAnswer = { body: { ok: true } };
 
@@ -141,10 +150,12 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
   });
 
   it("goes to 3349 when its ping is slow, not to the file's port", async () => {
-    const { other } = await preferredAndFilePorts(null);
+    const { preferred, other } = await preferredAndFilePorts(null);
 
     await expect(
-      remoteScriptRequest({ route: "/list", timeoutMs: 100 }),
+      callUntilItTimesOut(preferred, [PING_WAIT_MS, 100], () =>
+        remoteScriptRequest({ route: "/list", timeoutMs: 100 }),
+      ),
     ).rejects.toBeInstanceOf(RemoteScriptTimeout);
     expect(other.requests).toStrictEqual([]);
   });
@@ -182,7 +193,7 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
     const ping = await remoteScriptPing();
 
     expect(ping.running).toBe(true);
-    expect(ping.scriptVersion).toBe("2.5.0");
+    expect(ping.scriptVersion).toBe(MIN_REMOTE_SCRIPT_VERSION);
     expect(preferred.requests.map((r) => r.route)).toStrictEqual(["/ping"]);
   });
 
@@ -190,7 +201,9 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
     const preferred = await standIn(null);
 
     ports.preferred = preferred.port;
-    const ping = await remoteScriptPing();
+    const ping = await callUntilItTimesOut(preferred, PING_WAIT_MS, () =>
+      remoteScriptPing(),
+    );
 
     expect(ping.running).toBe(false);
     expect(preferred.requests.map((r) => r.route)).toStrictEqual(["/ping"]);
@@ -237,10 +250,12 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
     });
 
     it("still reads as running when a later ping is too slow", async () => {
-      await busyAfterFirstPing();
+      const fake = await busyAfterFirstPing();
 
       const first = await remoteScriptPing();
-      const second = await remoteScriptPing();
+      const second = await callUntilItTimesOut(fake, PING_WAIT_MS, () =>
+        remoteScriptPing(),
+      );
 
       expect(first.running).toBe(true);
       expect(second).toStrictEqual(first);
@@ -252,7 +267,7 @@ describe("remoteScriptRequest without PPAL_REMOTE_SCRIPT_PORT", () => {
 
       await remoteScriptPing();
       ports.file = other.port;
-      await remoteScriptPing();
+      await callUntilItTimesOut(fake, PING_WAIT_MS, () => remoteScriptPing());
       await remoteScriptRequest({ route: "/list" });
 
       expect(other.requests).toStrictEqual([]);

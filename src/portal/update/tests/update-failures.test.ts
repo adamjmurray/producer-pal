@@ -24,7 +24,7 @@ import {
   updateDeps,
 } from "./update-test-helpers.ts";
 
-const CHECK = `Wait a few seconds, then call ppal-connect to see which version is running (it was ${OLD}). If it is still ${OLD}, call update-producer-pal again.`;
+const CHECK = `Wait a few seconds, then check which version is running (it was ${OLD}): call ppal-connect. If it is still ${OLD}, call update-producer-pal again.`;
 
 /**
  * Run an update whose swap request gets these answers, against an old device.

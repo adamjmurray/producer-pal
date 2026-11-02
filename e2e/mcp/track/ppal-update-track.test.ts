@@ -166,6 +166,15 @@ describe("ppal-update-track", () => {
     ]);
   });
 
+  it('warns once when id "null" rides along with a path', async () => {
+    const { data, warnings } = parseToolResultWithWarnings<UpdateTrackResult>(
+      await updateTrack({ id: "null", path: "t0", name: "Null Id" }),
+    );
+
+    expect(data.path).toBe("t0");
+    expect(warnings).toStrictEqual(['WARNING: id "null" names nothing']);
+  });
+
   it("refuses path beside paths with different values, renaming nothing", async () => {
     const readNames = async (): Promise<string[]> =>
       (await readTracks()).tracks!.map((track) => track.name);
@@ -354,7 +363,10 @@ describe("ppal-update-track", () => {
     await sleep(100);
 
     // Now update send level to the return track
-    await updateTrack({ id: trackId, sendGainDb: -12, sendReturn: "A" });
+    await updateTrack({
+      id: trackId,
+      sends: [{ return: "A", gainDb: -12 }],
+    });
 
     const sendTrack = await readTrackMixer(trackId);
 
@@ -373,8 +385,7 @@ describe("ppal-update-track", () => {
     // the read tools report is the one the send lookup matches on.
     await updateTrack({
       id: trackId,
-      sendGainDb: -24,
-      sendReturn: returnTrack.id,
+      sends: [{ return: returnTrack.id, gainDb: -24 }],
     });
 
     const byId = await readTrackMixer(trackId);
@@ -567,23 +578,56 @@ describe("ppal-update-track", () => {
     expect(track.sends![0]!.gainDb).toBe(-6.33);
   });
 
-  it("says nothing about the sendGainDb/sendReturn pair either", async () => {
+  it("still sets a send from the deprecated pair, and says to use sends", async () => {
     const liveSet = await readTracks();
     const trackId = liveSet.tracks![3]!.id;
     const returnTrack = liveSet.returnTracks![1]!;
 
-    const result = await updateTrack({
-      id: trackId,
-      sendGainDb: -18,
-      sendReturn: returnTrack.id,
-    });
+    const { data, warnings } = parseToolResultWithWarnings<UpdateTrackResult>(
+      await updateTrack({
+        id: trackId,
+        sendGainDb: -18,
+        sendReturn: returnTrack.id,
+      }),
+    );
 
-    expect(parseToolResult<UpdateTrackResult>(result).sends).toBeUndefined();
+    // One send has one shape in the result, whichever param spelled it.
+    expect(data.sends).toBeUndefined();
+
+    for (const param of ["sendGainDb", "sendReturn"]) {
+      expect(warnings).toContain(
+        `WARNING: param "${param}" is deprecated and will be removed; use "sends" instead. ` +
+          `Replace sendGainDb and sendReturn with sends: [{"return":"${returnTrack.id}","gainDb":-18}]`,
+      );
+    }
 
     const track = await readTrackMixer(trackId);
     const send = track.sends!.find((s) => s.returnId === returnTrack.id);
 
     expect(send!.gainDb).toBe(-18);
+  });
+
+  it("refuses sends sent with the deprecated pair, before writing anything", async () => {
+    const { trackId, returnTrack } = await trackAndFirstReturn();
+    const before = await readTrackMixer(trackId);
+
+    const result = await updateTrack({
+      id: trackId,
+      name: "Never written",
+      sendGainDb: -30,
+      sendReturn: returnTrack.id,
+      sends: [{ return: returnTrack.name, gainDb: -15 }],
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      "sends names the send on its own - don't send sendGainDb or sendReturn with it",
+    );
+
+    const after = await readTrackMixer(trackId);
+
+    expect(after.name).toBe(before.name);
+    expect(after.sends![0]!.gainDb).toBe(before.sends![0]!.gainDb);
   });
 
   // Which return tracks exist is a fact about the Live Set, so it is resolved
@@ -625,22 +669,6 @@ describe("ppal-update-track", () => {
       ok: false,
       detail: expect.stringContaining('no return track matching "ZZZ"'),
     });
-  });
-
-  it("says on the pair's entry that a sends entry replaced it", async () => {
-    const { trackId, returnTrack } = await trackAndFirstReturn();
-
-    // The pair and the list name one return by two different spellings, so the
-    // collision is only seen if both resolve to the same index.
-    const result = await updateTrack({
-      id: trackId,
-      sendGainDb: -30,
-      sendReturn: returnTrack.id,
-      sends: [{ return: returnTrack.name, gainDb: -15 }],
-    });
-
-    // The list is the later word, so the pair's -30 must not be what stuck.
-    await expectSendReplaced(result, trackId, returnTrack.id, -15);
   });
 
   it("says on the earlier entry that a later sends entry replaced it", async () => {

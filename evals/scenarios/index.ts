@@ -20,23 +20,24 @@ import {
   type ModelSpec,
   parseModelArgOrExit,
 } from "#evals/shared/parse-model-arg.ts";
+import { parseOutputTokens } from "./run-env/parse-output-tokens.ts";
+import {
+  describeThinking,
+  parseThinkingArgs,
+  type ThinkingByModel,
+} from "./run-env/parse-thinking-arg.ts";
 import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
+import { type JevSettings } from "./helpers/judge/jev-first-judge.ts";
+import { resolveJevSettings } from "./helpers/judge/jev-settings.ts";
 import { generateRunId } from "./helpers/json-results/run-id.ts";
-import { shouldSkipScenario } from "./helpers/json-results/skip-scenario.ts";
-import { type JsonEvalResult } from "./helpers/json-results/types.ts";
+import { type RunRecord } from "./helpers/trials/resume/run-record.ts";
 import { setQuietMode } from "./helpers/quiet-mode.ts";
-import { type ResultsByScenario } from "./helpers/reporting/report-table.ts";
-import {
-  emitSkipped,
-  runTrials,
-  type RunContext,
-} from "./helpers/trials/run-trials.ts";
+import { type RunContext } from "./helpers/trials/run-trials.ts";
+import { runAllScenarios } from "./helpers/trials/run-all-scenarios.ts";
 import { printSummary } from "./helpers/reporting/summary-printer.ts";
-import {
-  liveSetLeftClean,
-  parseRepeatCount,
-} from "./helpers/trials/multi-trial-runs.ts";
-import { describeRunAbort, stalledModels } from "./helpers/trials/run-abort.ts";
+import { parseRepeatCount } from "./helpers/trials/multi-trial-runs.ts";
+import { resumeOptions } from "./helpers/trials/resume/resume-options.ts";
+import { startRunFolder } from "./helpers/trials/resume/run-folder.ts";
 import {
   loadScenarios,
   printList,
@@ -44,6 +45,7 @@ import {
 } from "./load-scenarios/load-scenarios.ts";
 import { parseTagArgs } from "./load-scenarios/scenario-tags.ts";
 import { buildRunEnv, envLabel, type RunEnv } from "./run-env/run-env.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 collapseStdoutNewlines();
 
@@ -62,8 +64,17 @@ interface CliOptions {
   tools?: string;
   /** Enable the opt-in Direct Live API tool on top of the toolset. */
   liveApi?: boolean;
+  /** Thinking level(s): `<level>` or `<provider/model>=<level>`, repeatable and
+   *  comma-separated. */
+  thinking: string[];
   judge?: string;
+  /** Judge with Jev first; the LLM judge handles what Jev won't decide. */
+  jev?: boolean;
+  /** Jev route: typesafe, openrouter or vercel. */
+  jevVia?: string;
   repeat?: string;
+  /** Run id of an earlier run to finish, replaying its saved options. */
+  resume?: string;
   list?: boolean;
   listTags?: boolean;
   listModels?: string | boolean;
@@ -77,6 +88,8 @@ interface CliOptions {
   seedConnect?: boolean;
   quiet?: boolean;
   usage?: boolean;
+  /** Max output tokens per model call (default depends on the provider). */
+  outputTokens?: number;
   /** Whether to write JSON result files to disk (--no-save sets false). */
   save?: boolean;
   baseUrl?: string;
@@ -153,12 +166,35 @@ program
     "Enable the Direct Live API tool (ppal-live-api) on top of the toolset",
   )
   .option(
+    "--thinking <spec>",
+    "Thinking level (off, low, medium, high, ultra) for every -m model, or <provider/model>=<level> for one (repeatable, comma-separated)",
+    collectValues,
+    [],
+  )
+  .option(
+    "-o, --output-tokens <number>",
+    "Max output tokens per model call, reasoning included (AI SDK providers; default 8192, 32768 for local)",
+    parseOutputTokens,
+  )
+  .option(
     "-j, --judge <provider/model>",
     `Override judge LLM (default: google/${GEMINI_CONFIG.defaultModel})`,
   )
   .option(
+    "--jev",
+    "Judge with Jev first; the -j LLM judge decides what Jev escalates",
+  )
+  .option(
+    "--jev-via <route>",
+    "Jev route: typesafe, openrouter or vercel (default: first with a key set)",
+  )
+  .option(
     "-r, --repeat <N>",
-    "Run each scenario N times to detect flaky results",
+    "Run each scenario N times to detect flaky results (all scenarios once per round)",
+  )
+  .option(
+    "--resume <runId>",
+    "Finish an earlier run with its own options, skipping trials already done (takes only -r, -q, -u)",
   )
   .option("-l, --list", "List available scenarios")
   .option("--list-tags", "List scenario tags with their counts, then exit")
@@ -194,7 +230,9 @@ program
     "-b, --base-url <url>",
     "Base URL for local provider (default: http://localhost:11434/v1)",
   )
-  .action(async (options: CliOptions) => {
+  .action(async (given: CliOptions) => {
+    const { argv, options } = await resolveResumeOrExit(given);
+
     // Apply --base-url to env so the local provider picks it up
     if (options.baseUrl) {
       process.env.LOCAL_BASE_URL = options.baseUrl;
@@ -218,18 +256,41 @@ program
       return;
     }
 
-    await runEvaluation(options);
+    await runEvaluation(options, argv);
   });
 
 program.parse();
 
 /**
+ * Settle the options to run with, reporting a refused resume as a usage error.
+ *
+ * @param given - Options from the command line
+ * @returns The command-line arguments to record and the options to run with
+ */
+async function resolveResumeOrExit(
+  given: CliOptions,
+): Promise<RunRecord<CliOptions>> {
+  try {
+    return await resumeOptions(program, given);
+  } catch (error) {
+    return program.error(errorMessage(error));
+  }
+}
+
+/**
  * Run the evaluation with given options
  *
  * @param options - CLI options
+ * @param argv - Command-line arguments the run was started with
  */
-async function runEvaluation(options: CliOptions): Promise<void> {
+async function runEvaluation(
+  options: CliOptions,
+  argv: string[],
+): Promise<void> {
   setQuietMode(options.quiet ?? false);
+
+  // Before --canary expands into ids, so a resume replays the flag itself.
+  const recorded: CliOptions = { ...options, resume: undefined };
 
   if (options.model.length === 0) {
     program.error(
@@ -242,17 +303,28 @@ async function runEvaluation(options: CliOptions): Promise<void> {
   const modelSpecs = options.model.map((model) =>
     parseModelArgOrExit(program, model),
   );
+  const thinking = parseThinkingOrExit(options.thinking, modelSpecs);
   const judgeOverride = parseModelArgOrExit(
     program,
     options.judge ?? GEMINI_CONFIG.defaultModel,
   );
+
+  let jev: JevSettings | undefined;
+
+  try {
+    jev = resolveJevSettings(options);
+  } catch (error) {
+    program.error(errorMessage(error));
+
+    return;
+  }
 
   let runEnv: RunEnv;
 
   try {
     runEnv = buildRunEnv(options);
   } catch (error) {
-    program.error(error instanceof Error ? error.message : String(error));
+    program.error(errorMessage(error));
 
     return;
   }
@@ -286,12 +358,31 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       console.log(styleText("gray", `Environment: ${label}`));
     }
 
-    const runId = generateRunId();
+    if (thinking.size > 0) {
+      console.log(styleText("gray", `Thinking: ${describeThinking(thinking)}`));
+    }
+
+    if (jev != null) {
+      console.log(
+        styleText(
+          "gray",
+          `Judge: Jev first (via ${jev.route}); LLM judge for escalations`,
+        ),
+      );
+    } else if (options.jev && options.skipJudge) {
+      console.log(styleText("gray", "--skip-judge: Jev is not used"));
+    }
+
+    const runId = options.resume ?? generateRunId();
+    const resumed = await startRunFolder(runId, options, argv, recorded);
     const runCtx: RunContext = {
       runId,
       judgeOverride,
+      jev,
       repeatCount,
+      thinking,
       options,
+      resumed,
     };
 
     const resultsByScenario = await runAllScenarios(
@@ -304,11 +395,26 @@ async function runEvaluation(options: CliOptions): Promise<void> {
 
     printSummary(resultsByScenario, modelSpecs, label);
   } catch (error) {
-    console.error(
-      "Error:",
-      error instanceof Error ? error.message : String(error),
-    );
+    console.error("Error:", errorMessage(error));
     process.exit(1);
+  }
+}
+
+/**
+ * Parse `--thinking`, reporting a bad spec as a CLI usage error.
+ *
+ * @param values - Collected `--thinking` values
+ * @param modelSpecs - The run's models
+ * @returns Level per model key
+ */
+function parseThinkingOrExit(
+  values: string[],
+  modelSpecs: ModelSpec[],
+): ThinkingByModel {
+  try {
+    return parseThinkingArgs(values, modelSpecs);
+  } catch (error) {
+    return program.error(errorMessage(error));
   }
 }
 
@@ -347,122 +453,8 @@ function resolveSelection(options: CliOptions): string[] {
   try {
     return parseTagArgs(options.tag);
   } catch (error) {
-    program.error(error instanceof Error ? error.message : String(error));
+    program.error(errorMessage(error));
 
     return [];
   }
-}
-
-/**
- * Run all scenarios across models in the active run environment, collecting
- * results. The result map keeps its 3-level shape (scenario → model → label)
- * for the reporting layer; with a single run environment the innermost map has
- * exactly one entry, keyed by `label`.
- *
- * @param scenarios - Scenarios to run
- * @param modelSpecs - Models to test
- * @param runEnv - The active run environment
- * @param label - The run-environment label (see `envLabel`)
- * @param ctx - Shared run context
- * @returns 3D results map
- */
-async function runAllScenarios(
-  scenarios: ReturnType<typeof loadScenarios>,
-  modelSpecs: ModelSpec[],
-  runEnv: RunEnv,
-  label: string,
-  ctx: RunContext,
-): Promise<ResultsByScenario> {
-  const resultsByScenario: ResultsByScenario = new Map();
-  // The Set a `reuseLiveSet` scenario left clean; the next reuse scenario on
-  // the same Set skips the reopen.
-  let lastOpenedLiveSet: string | null = null;
-  // Per model, consecutive scenarios where every trial errored. Live not
-  // coming back or the provider refusing every request won't recover, and a
-  // long unattended run would otherwise fill the results directory with
-  // scenarios nobody ever asked a model about.
-  const errorStreaks = new Map<string, number>();
-  let activeSpecs = modelSpecs;
-
-  for (const scenario of scenarios) {
-    const modelResults = new Map<string, Map<string, JsonEvalResult[]>>();
-    // The skip decision depends only on the scenario + run env, so it is the
-    // same for every model.
-    const skipReason = shouldSkipScenario(scenario, runEnv);
-    let liveSetOpened =
-      scenario.reuseLiveSet === true && lastOpenedLiveSet === scenario.liveSet;
-
-    for (const spec of activeSpecs) {
-      const modelKey = `${spec.provider}/${spec.model}`;
-      let results: JsonEvalResult[];
-
-      if (skipReason != null) {
-        // Skipped before running: no Live Set is opened, so leave
-        // `liveSetOpened` untouched for the next model.
-        results = await emitSkipped(scenario, modelKey, label, skipReason, ctx);
-      } else {
-        results = await runTrials(
-          scenario,
-          spec,
-          runEnv,
-          label,
-          ctx,
-          liveSetOpened,
-        );
-        // Only a scenario that resets what it writes hands the Set on (same
-        // rule as trials 2+). A run that errored may have failed the open.
-        const leftClean = liveSetLeftClean(scenario.reuseLiveSet, results);
-
-        liveSetOpened = leftClean;
-        lastOpenedLiveSet = leftClean ? scenario.liveSet : null;
-      }
-
-      modelResults.set(modelKey, new Map([[label, results]]));
-    }
-
-    resultsByScenario.set(scenario.id, modelResults);
-
-    if (skipReason == null) {
-      activeSpecs = dropStalledModels(activeSpecs, errorStreaks, modelResults);
-    }
-  }
-
-  return resultsByScenario;
-}
-
-/**
- * Drop each model whose last few scenarios all errored, warning about it.
- * Throws when no model is left.
- *
- * @param specs - Models still running
- * @param streaks - Each model's error streak, updated in place
- * @param modelResults - The scenario's results, by model and label
- * @returns The models to keep running
- */
-function dropStalledModels(
-  specs: ModelSpec[],
-  streaks: Map<string, number>,
-  modelResults: Map<string, Map<string, JsonEvalResult[]>>,
-): ModelSpec[] {
-  const stalled = stalledModels(streaks, modelResults);
-  const kept = specs.filter(
-    (spec) => !stalled.has(`${spec.provider}/${spec.model}`),
-  );
-
-  if (kept.length === 0) {
-    const [modelKey, runs] = [...stalled].at(-1) ?? ["", []];
-
-    throw new Error(describeRunAbort(streaks.get(modelKey) ?? 0, runs));
-  }
-
-  for (const [modelKey, runs] of stalled) {
-    console.warn(
-      styleText(
-        "yellow",
-        describeRunAbort(streaks.get(modelKey) ?? 0, runs, modelKey),
-      ),
-    );
-  }
-
-  return kept;
 }

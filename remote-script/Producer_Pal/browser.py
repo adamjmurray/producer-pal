@@ -132,11 +132,17 @@ def list_children(item, path, query=None):
     return found
 
 
-def list_loadable(item, path, devices_only, query=None):
-    """Every loadable item at any depth below `item`."""
+def list_loadable(item, path, devices_only, query=None, stop_at_loadable=False):
+    """Every loadable item at any depth below `item`.
+
+    `stop_at_loadable` doesn't go into the items it lists: for plugins, whose
+    children are presets.
+    """
     return [
         {"name": child.name, "path": child_path}
-        for child, child_path in iter_loadable(item, path, devices_only)
+        for child, child_path in iter_loadable(
+            item, path, devices_only, stop_at_loadable=stop_at_loadable
+        )
         if _matches(child, query)
     ]
 
@@ -224,11 +230,12 @@ def find_file(browser, file_path):
     )
 
 
-def iter_loadable(item, path, devices_only, depth=0):
+def iter_loadable(item, path, devices_only, depth=0, stop_at_loadable=False):
     """(item, path) pairs for every loadable item below `item`.
 
     Descends into anything with children, not only is_folder items, but never
-    into a device: its children are its presets.
+    into a device: its children are its presets. Plugins aren't flagged as
+    devices, so `stop_at_loadable` also keeps out of any loadable item it yields.
     """
     if depth > MAX_DEPTH:
         return
@@ -239,7 +246,11 @@ def iter_loadable(item, path, devices_only, depth=0):
             continue
         if child.is_loadable and not devices_only:
             yield child, child_path
-        yield from iter_loadable(child, child_path, devices_only, depth + 1)
+            if stop_at_loadable:
+                continue
+        yield from iter_loadable(
+            child, child_path, devices_only, depth + 1, stop_at_loadable
+        )
 
 
 def match_items(root, name, devices_only):

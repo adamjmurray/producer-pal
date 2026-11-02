@@ -94,15 +94,6 @@ Delay Sync reads 0 where the plug-in shows "Free".
 **Workaround:** check the plug-in's window after a change, and tell the AI what
 you see so it can adjust.
 
-## CC Control Can't Be Read or Changed
-
-Live doesn't let Max for Live devices see inside CC Control. Producer Pal can
-add CC Control to a track, but afterwards it shows up with no name, as switched
-off, and with no settings, and the AI can't change any of them. The device
-itself works normally in Live.
-
-**Workaround:** set CC Control up by hand in Live.
-
 ## Live's Memory Grows Over Very Long Sessions
 
 Each request uses a tiny bit of Live's memory, which Live gives back only when

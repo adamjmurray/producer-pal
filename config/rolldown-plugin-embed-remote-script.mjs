@@ -9,11 +9,13 @@
 // It replaces src/mcp-server/rpc/remote-script/bundle/embedded-remote-script.ts, whose
 // checked-in body reads the same files off disk for tests and the dev
 // installer. version.py's version is rewritten to package.json's, so an
-// installed script reports the release that installed it.
+// installed script reports the release that installed it. The gen-UI files go in
+// only when the build has ENABLE_GEN_UI=true, read like the rest of the build.
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { shippedScriptFiles } from "../src/mcp-server/rpc/remote-script/bundle/gen-ui-remote-script-files.ts";
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const sourceDir = join(rootDir, "remote-script/Producer_Pal");
@@ -45,7 +47,7 @@ export function embedRemoteScript() {
         );
       }
 
-      for (const relative of Object.keys(readScriptSource(sourceDir))) {
+      for (const relative of Object.keys(shippedSource())) {
         this.addWatchFile(join(sourceDir, relative));
       }
 
@@ -56,13 +58,26 @@ export function embedRemoteScript() {
         return;
       }
 
-      const files = readScriptSource(sourceDir);
+      const files = shippedSource();
 
       files["version.py"] = withVersion(files["version.py"]);
 
       return `export const EMBEDDED_REMOTE_SCRIPT_FILES = ${JSON.stringify(files, null, 2)};\n`;
     },
   };
+}
+
+/**
+ * The script files this build embeds: every .py, minus the gen-UI ones unless
+ * the build has the flag.
+ *
+ * @returns Relative path to file contents
+ */
+function shippedSource() {
+  return shippedScriptFiles(
+    readScriptSource(sourceDir),
+    process.env.ENABLE_GEN_UI === "true",
+  );
 }
 
 /**

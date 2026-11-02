@@ -8,7 +8,7 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import { type UninstallOptions } from "./uninstall-from-library.ts";
 
 export const UNINSTALL_USAGE =
-  "Usage: uninstall.ts [--device [--other-copies]] [--remote-script]";
+  "Usage: uninstall.ts [--device [--other-copies]] [--remote-script] [--plugin-host]";
 
 /**
  * Read the uninstall script's flags.
@@ -26,6 +26,7 @@ export function parseUninstallFlags(args: string[]): UninstallOptions {
       options: {
         device: { type: "boolean" },
         "remote-script": { type: "boolean" },
+        "plugin-host": { type: "boolean" },
         "other-copies": { type: "boolean" },
       },
       strict: true,
@@ -39,6 +40,7 @@ export function parseUninstallFlags(args: string[]): UninstallOptions {
   const options = {
     device: values.device === true,
     remoteScript: values["remote-script"] === true,
+    pluginHost: values["plugin-host"] === true,
     otherCopies: values["other-copies"] === true,
   };
 
@@ -46,7 +48,7 @@ export function parseUninstallFlags(args: string[]): UninstallOptions {
     throw new Error(`--other-copies needs --device.\n${UNINSTALL_USAGE}`);
   }
 
-  if (!options.device && !options.remoteScript) {
+  if (!options.device && !options.remoteScript && !options.pluginHost) {
     throw new Error(`Say what to uninstall.\n${UNINSTALL_USAGE}`);
   }
 

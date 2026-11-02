@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { type InstalledRemoteScript } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
 import { UPDATE_PORTAL_ADVICE, VERSION } from "#src/shared/config.ts";
-import { type DeviceFileStatus } from "../../setup/device-file-status.ts";
+import { type DeviceFileStatus } from "../../setup/device-file/device-file-status.ts";
 import { type OfflineDeps } from "../offline-deps.ts";
 import { offlineGuidance } from "../offline-guidance.ts";
 import { SETUP_URL } from "../offline-setup-hints.ts";
@@ -27,11 +27,12 @@ const HEAD = `❌ Cannot connect to Ableton Live.
 Ensure Ableton Live 12.3+ is running with the Producer Pal Max for Live device loaded.
 Tell the user to check ${SETUP_URL} for setup instructions.`;
 const FOOT = `\n\n(Producer Pal ${VERSION})`;
-const INSTALL = 'ppal-manage action "install-remote-script"';
+const INSTALL = 'ppal-manage action "install-producer-pal"';
 const ADD = 'ppal-manage action "add-producer-pal"';
 const RESTART =
   "ask the user to restart Live and choose Producer Pal as a Control Surface in Settings → Tempo & MIDI";
 const NEW_TRACK = "to a new MIDI track";
+const AFTER_INSTALL = `After that, ${ADD} adds the device ${NEW_TRACK}.`;
 
 /**
  * @param what - What is newer than the portal, e.g. "remote script (99.0.0)"
@@ -107,7 +108,7 @@ describe("offline guidance when the remote script isn't running", () => {
 
     expect(text).toBe(
       `${HEAD}
-Or set it up now: run ${INSTALL} (installs to ${SCRIPT_PATH}), then ${RESTART}. After that, ${ADD} installs the Producer Pal device to ${DEVICE_PATH} and adds it ${NEW_TRACK}.${FOOT}`,
+Run ${INSTALL} (it installs the remote script to ${SCRIPT_PATH} and the device), then ${RESTART}. ${AFTER_INSTALL}${FOOT}`,
     );
   });
 
@@ -154,7 +155,7 @@ Or set it up now: run ${INSTALL} (installs to ${SCRIPT_PATH}), then ${RESTART}. 
       });
 
       expect(text).toContain(
-        `The Producer Pal remote script at ${SCRIPT_PATH} is out of date (${shown}; this is ${VERSION}). Run ${INSTALL} to update it, then ${RESTART}. After that, ${ADD} installs`,
+        `The Producer Pal remote script at ${SCRIPT_PATH} is out of date (${shown}; this is ${VERSION}). Run ${INSTALL} to update it, then ${RESTART}. ${AFTER_INSTALL}`,
       );
     },
   );
@@ -166,7 +167,7 @@ Or set it up now: run ${INSTALL} (installs to ${SCRIPT_PATH}), then ${RESTART}. 
 
     expect(text).toBe(
       `${HEAD}
-Or run ${INSTALL} now. Live's User Library wasn't found, so ask the user for its path (Live: Settings → Library → Location of User Library) and pass it as userLibrary. After that, ${ADD} installs the Producer Pal device and adds it ${NEW_TRACK}.${FOOT}`,
+Run ${INSTALL} now. Live's User Library wasn't found, so ask the user for its path (Live: Settings → Library → Location of User Library) and pass it as userLibrary. ${AFTER_INSTALL}${FOOT}`,
     );
     expect(deps.installedRemoteScript).not.toHaveBeenCalled();
     expect(deps.deviceFileStatus).not.toHaveBeenCalled();
@@ -181,18 +182,19 @@ Or run ${INSTALL} now. Live's User Library wasn't found, so ask the user for its
 
     expect(text).toBe(
       `${HEAD}
-Or run ${INSTALL} now (it works without Producer Pal), then ask the user to restart Live and choose Producer Pal as a Control Surface. After that, ${ADD} adds the device.${FOOT}`,
+Run ${INSTALL} now (it installs the remote script and the device, and works without Producer Pal), then ${RESTART}. ${AFTER_INSTALL}${FOOT}`,
     );
   });
 
   it("drops the device detail when the device lookup throws", async () => {
     const { text } = await guide(true, NOT_RUNNING, {
+      installedRemoteScript: vi.fn(() => script(VERSION)),
       deviceFileStatus: vi.fn(() => {
         throw new Error("unreadable");
       }),
     });
 
-    expect(text).toContain(`Or set it up now: run ${INSTALL}`);
+    expect(text).toContain("but not running.");
     expect(text).toContain(
       `After that, ${ADD} installs the Producer Pal device and adds it ${NEW_TRACK}.`,
     );
@@ -204,12 +206,26 @@ Or run ${INSTALL} now (it works without Producer Pal), then ask the user to rest
       findBundledDevice: vi.fn(() => null),
     });
 
-    expect(text).toContain(`(installs to ${SCRIPT_PATH}), then ${RESTART}.`);
+    expect(text).toContain(
+      `(it installs the remote script to ${SCRIPT_PATH} and the device), then ${RESTART}.`,
+    );
     expect(text).toContain(
       `. ppal-manage can't add the device from this install; tell the user to install it by hand: ${SETUP_URL}.`,
     );
     expect(text).not.toContain("add-producer-pal");
     expect(deps.deviceFileStatus).not.toHaveBeenCalled();
+  });
+
+  it("sends the user to the install guide when the script is current and no device shipped", async () => {
+    const { text } = await guide(true, NOT_RUNNING, {
+      installedRemoteScript: vi.fn(() => script(VERSION)),
+      findBundledDevice: vi.fn(() => null),
+    });
+
+    expect(text).toContain(
+      `but not running. Ask the user to restart Live if they installed it since Live started, and to choose Producer Pal as a Control Surface in Settings → Tempo & MIDI. ppal-manage can't add the device from this install; tell the user to install it by hand: ${SETUP_URL}.`,
+    );
+    expect(text).not.toContain("add-producer-pal");
   });
 
   it("looks nothing up for a portal without ppal-manage", async () => {
@@ -268,7 +284,11 @@ describe("offline guidance for the device file", () => {
   it.each(cases)(
     "says what happens with %s",
     async (_name, status, line, note = "") => {
-      const deps = { deviceFileStatus: vi.fn(() => status) };
+      const deps = {
+        // Current, so the next step is the add and not another install.
+        installedRemoteScript: vi.fn(() => script(VERSION)),
+        deviceFileStatus: vi.fn(() => status),
+      };
       const notRunning = await guide(true, NOT_RUNNING, deps);
       const running = await guide(true, RUNNING, deps);
 
@@ -355,7 +375,7 @@ ppal-manage can't add the device from this install; tell the user to install it 
 
     expect(text).toMatch(
       new RegExp(
-        `^❌ Producer Pal isn't in this Live Set\\.\\n\\nThe Producer Pal remote script is out of date \\(running 1\\.0\\.0, needs \\S+ or later\\); update it with ${INSTALL}, then restart Live\\. After that, ${ADD} installs the Producer Pal device to`,
+        `^❌ Producer Pal isn't in this Live Set\\.\\n\\nThe Producer Pal remote script is out of date \\(running 1\\.0\\.0, needs \\S+ or later\\); update it with ${INSTALL}, then restart Live\\. After that, ${ADD} adds the device ${NEW_TRACK}\\.`,
       ),
     );
   });
@@ -380,7 +400,7 @@ ppal-manage can't add the device from this install; tell the user to install it 
       { findUserLibrary: vi.fn(() => Promise.reject(new Error("x"))) },
     );
 
-    expect(text).toContain(`After that, ${ADD} adds the device.`);
+    expect(text).toContain(AFTER_INSTALL);
   });
 
   it("keeps the plain wording for a portal without ppal-manage", async () => {

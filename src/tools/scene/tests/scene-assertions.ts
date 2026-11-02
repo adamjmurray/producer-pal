@@ -19,7 +19,7 @@ export function expectSceneSetToRed34(
   tempo: number,
 ): void {
   expect(scene.set).toHaveBeenCalledWith("name", name);
-  expect(scene.set).toHaveBeenCalledWith("color", 16711680);
+  expect(scene.set).toHaveBeenCalledWith("color", 16725558);
   expect(scene.set).toHaveBeenCalledWith("tempo", tempo);
   expect(scene.set).toHaveBeenCalledWith("tempo_enabled", true);
   expect(scene.set).toHaveBeenCalledWith("time_signature_numerator", 3);

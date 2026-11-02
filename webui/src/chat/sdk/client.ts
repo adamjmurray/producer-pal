@@ -14,6 +14,8 @@ import {
 } from "./build-model-messages";
 import { summarizeHistory } from "./compaction";
 import { createMcpTools } from "./mcp-tools";
+import { withMistralCacheKey } from "./provider/mistral-cache-key";
+import { type ReasoningReplay, reasoningReplayFor } from "./reasoning-replay";
 import { handleStreamPart } from "./streaming/stream-part-handlers";
 import { createStreamErrorSignal } from "./streaming/stream-with-error-signal";
 import {
@@ -36,6 +38,7 @@ import {
   isSpawnToolResult,
 } from "./subagent/subagent-session";
 import { DEFAULT_MAX_TOOL_STEPS } from "./step-budget";
+import { streamEndNotice } from "./streaming/stream-end-notice";
 import {
   type ChatClientConfig,
   type ChatMessage,
@@ -71,6 +74,8 @@ export class ChatSdkClient {
    * limit (the model still wanted to call tools). Reset on each sendMessage.
    */
   toolLimitReached = false;
+  /** Notice for how the most recent stream ended, if it needs one. */
+  private endNotice: string | undefined;
   private tools: ToolSet = {};
   private config: ChatClientConfig;
   /**
@@ -120,6 +125,8 @@ export class ChatSdkClient {
    * lifetime and only close when the client is discarded — see dispose().
    */
   private mcpClient: Client | null = null;
+  /** Mistral prompt-cache key for all this client's requests; workers get their own. */
+  private readonly promptCacheKey = crypto.randomUUID();
 
   /**
    * @param _apiKey - API key (handled by the model instance in config)
@@ -368,7 +375,7 @@ export class ChatSdkClient {
     if (
       endsOnAssistantTurn(
         this.chatHistory,
-        isAnthropicThinkingEnabled(providerOptions),
+        this.reasoningReplay(providerOptions),
       )
     ) {
       this.chatHistory.push({ role: "user", content: RESUME_MESSAGE });
@@ -395,22 +402,57 @@ export class ChatSdkClient {
     shouldInterrupt: (() => boolean) | undefined,
   ): AsyncGenerator<ChatMessage[], void, unknown> {
     yield* this.processStream(providerOptions, abortSignal, shouldInterrupt);
+
+    if (this.endNotice != null) {
+      // The provider cut the reply off (or sent nothing). Say so as an error
+      // entry: it renders for the user, is saved, and is skipped when building
+      // model messages, so no empty assistant turn reaches the next request.
+      // Text sent before the cut stays above it.
+      this.chatHistory.push({
+        role: "assistant",
+        content: this.endNotice,
+        isError: true,
+      });
+    }
+
     // Final yield to ensure last step's usage (attached by onStepEnd) is emitted
     yield [...this.chatHistory];
   }
 
   /**
+   * Which earlier reasoning this request re-sends (see reasoningReplayFor).
+   * @param providerOptions - Already-resolved providerOptions for this request
+   * @returns The reasoning to re-send
+   */
+  private reasoningReplay(
+    providerOptions: Parameters<typeof streamText>[0]["providerOptions"],
+  ): ReasoningReplay {
+    const model = this.config.model;
+
+    return typeof model === "string"
+      ? reasoningReplayFor(providerOptions, model)
+      : reasoningReplayFor(providerOptions, model.modelId, model.provider);
+  }
+
+  /**
    * Resolve the providerOptions for one request: a per-message thinking override
-   * when the config can build one, else the config's own.
+   * when the config can build one, else the config's own, plus the Mistral key.
    * @param overrides - Per-message overrides for thinking
    * @returns providerOptions to pass to streamText
    */
   private providerOptionsFor(
     overrides?: MessageOverrides,
   ): Parameters<typeof streamText>[0]["providerOptions"] {
-    return overrides?.thinking != null && this.config.buildProviderOptions
-      ? this.config.buildProviderOptions(overrides.thinking)
-      : this.config.providerOptions;
+    const providerOptions =
+      overrides?.thinking != null && this.config.buildProviderOptions
+        ? this.config.buildProviderOptions(overrides.thinking)
+        : this.config.providerOptions;
+
+    return withMistralCacheKey(
+      providerOptions,
+      this.config.model,
+      this.promptCacheKey,
+    );
   }
 
   /**
@@ -430,6 +472,8 @@ export class ChatSdkClient {
     let currentMsg: ChatMessage = { role: "assistant", content: "" };
     let addedCurrentMsg = false;
 
+    this.endNotice = undefined;
+
     const historyLengthBefore = this.chatHistory.length;
     let stepIndex = 0;
 
@@ -441,7 +485,7 @@ export class ChatSdkClient {
       instructions: this.config.systemInstruction,
       messages: buildModelMessages(
         this.chatHistory,
-        isAnthropicThinkingEnabled(providerOptions),
+        this.reasoningReplay(providerOptions),
         this.config.maxRequestImages,
       ),
       tools: Object.keys(this.tools).length > 0 ? this.tools : undefined,
@@ -570,6 +614,11 @@ export class ChatSdkClient {
       finalFinishReason,
       this.maxSteps,
     );
+
+    this.endNotice = streamEndNotice(
+      finalFinishReason,
+      this.chatHistory.length > historyLengthBefore,
+    );
   }
 }
 
@@ -603,33 +652,6 @@ export function detectToolLimitReached(
  */
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
-}
-
-/**
- * Whether the request's provider options enable Anthropic thinking. Only then is
- * it valid to re-send signed reasoning blocks (the API rejects reasoning content
- * when thinking is disabled), and only then does re-sending help caching.
- *
- * Note: this keys off the `anthropic` provider namespace, so it is intentionally
- * false on the OpenRouter→Claude path (those options live under the `openrouter`
- * namespace). Reasoning re-emission therefore does not run for OpenRouter; its
- * cache prefix is stabilized separately by transformOpenRouterRequest. This is an
- * intended asymmetry, not a missed case — don't "fix" it by widening the check.
- * The Vercel gateway forwards `anthropic` options as-is, but its stream carries
- * no signature, so nothing signed is ever captured or re-sent there. That also
- * makes it harmless that `between_tools` (Sonnet 5.5 "Off") counts as thinking
- * on over the gateway but not on the direct route.
- * @param providerOptions - Provider options passed to streamText
- * @returns True when Anthropic thinking is enabled for this request
- */
-function isAnthropicThinkingEnabled(
-  providerOptions: Parameters<typeof streamText>[0]["providerOptions"],
-): boolean {
-  const anthropic = providerOptions?.anthropic as
-    | { thinking?: { type?: string } }
-    | undefined;
-
-  return anthropic?.thinking != null && anthropic.thinking.type !== "disabled";
 }
 
 /**

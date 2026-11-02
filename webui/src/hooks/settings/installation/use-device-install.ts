@@ -10,6 +10,10 @@ import {
 } from "#webui/utils/mcp-url";
 import { postInstallRequest } from "./helpers/post-install-request";
 import {
+  type PluginHostWrapperState,
+  wrapperInstallFailed,
+} from "./helpers/plugin-host-wrappers";
+import {
   useInstallStatus,
   type UseInstallStatusReturn,
 } from "./helpers/use-install-status";
@@ -50,6 +54,16 @@ export interface DeviceInstallStatus {
   otherCopies: string[];
   /** Whether the running device can be swapped for the User Library copy. */
   swap: { allowed: boolean; reason: string | null };
+  /** Each plug-in host wrapper's state. Only a hosting build sends it. */
+  pluginHost?: PluginHostWrapperState[];
+}
+
+/** What a finished install did, as the chat UI shows it. */
+export interface DeviceInstallDone {
+  detail: string;
+  path: string;
+  /** Whether part of the install failed, which the detail says. */
+  failed: boolean;
 }
 
 export interface UseDeviceInstallReturn extends UseInstallStatusReturn<DeviceInstallStatus> {
@@ -58,7 +72,7 @@ export interface UseDeviceInstallReturn extends UseInstallStatusReturn<DeviceIns
   /** Why the install was refused or failed, or null. */
   installError: string | null;
   /** What the last install did and where, or null. */
-  installResult: { detail: string; path: string } | null;
+  installResult: DeviceInstallDone | null;
   /** Copy the device into `userLibrary`, replacing a newer one only with `force`, then re-read the status. */
   install: (userLibrary: string, force: boolean) => void;
 }
@@ -73,8 +87,9 @@ export interface UseDeviceInstallReturn extends UseInstallStatusReturn<DeviceIns
 export function useDeviceInstall(): UseDeviceInstallReturn {
   const [installing, setInstalling] = useState(false);
   const [installError, setInstallError] = useState<string | null>(null);
-  const [installResult, setInstallResult] =
-    useState<UseDeviceInstallReturn["installResult"]>(null);
+  const [installResult, setInstallResult] = useState<DeviceInstallDone | null>(
+    null,
+  );
   // The status is now out of step with an "Installed to X" message.
   const clearInstallResult = useCallback(() => setInstallResult(null), []);
   const read = useInstallStatus<DeviceInstallStatus>({
@@ -108,7 +123,7 @@ export function useDeviceInstall(): UseDeviceInstallReturn {
 
 /** What a POST came back with: what was done, or why it wasn't. */
 interface PostResult {
-  done: { detail: string; path: string } | null;
+  done: DeviceInstallDone | null;
   error: string | null;
 }
 
@@ -122,10 +137,11 @@ async function postInstall(
   userLibrary: string,
   force: boolean,
 ): Promise<PostResult> {
-  const posted = await postInstallRequest<{ detail: string; path: string }>(
-    getDeviceInstallActionUrl(),
-    { userLibrary, force },
-  );
+  const posted = await postInstallRequest<{
+    detail: string;
+    path: string;
+    pluginHost: { ok?: boolean }[];
+  }>(getDeviceInstallActionUrl(), { userLibrary, force });
 
   if (posted.error != null) {
     return { done: null, error: posted.error };
@@ -141,5 +157,12 @@ async function postInstall(
     };
   }
 
-  return { done: { detail: body.detail, path: body.path }, error: null };
+  return {
+    done: {
+      detail: body.detail,
+      path: body.path,
+      failed: wrapperInstallFailed(body),
+    },
+    error: null,
+  };
 }

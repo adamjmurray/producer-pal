@@ -23,7 +23,7 @@ const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
  * path, so it makes no difference whether a caller wrote `./x.ts` or `#src/…`.
  */
 export const CODE_EXEC_STUBS = {
-  "src/live-api-adapter/code-exec-v8-protocol.ts":
+  "src/live-api-adapter/protocols/code-exec-v8-protocol.ts":
     "src/tools/clip/code-exec/code-exec-v8-protocol-disabled.ts",
   "src/mcp-server/code-executor.ts":
     "src/tools/clip/code-exec/code-executor-disabled.ts",

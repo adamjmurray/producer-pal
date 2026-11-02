@@ -3,9 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  clearMockRegistry,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import {
   fromLiveApiView,
+  liveVersionAtLeast,
   parseTimeSignature,
   toLiveApiView,
 } from "#src/tools/shared/helpers/live-api-values.ts";
@@ -191,5 +196,38 @@ describe("parseTimeSignature", () => {
     expect(() => parseTimeSignature("")).toThrow(
       'Time signature must be in format "n/m" (e.g. "4/4")',
     );
+  });
+});
+
+describe("liveVersionAtLeast", () => {
+  beforeEach(() => {
+    clearMockRegistry();
+  });
+
+  function liveIs(version: string): void {
+    registerMockObject("live_app", {
+      path: "live_app",
+      methods: { get_version_string: () => version },
+    });
+  }
+
+  it("lets a beta of the minimum count by default", () => {
+    liveIs("12.4b3");
+
+    expect(liveVersionAtLeast("12.4")).toBe(true);
+    expect(liveVersionAtLeast("12.4.15")).toBe(false);
+  });
+
+  it.each([
+    ["12.4.14", false],
+    ["12.4", false],
+    ["12.4.15b1", false],
+    ["12.4.15", true],
+    ["12.4.16b1", true],
+    ["13.0b", true],
+  ])("with release: true, Live %s is at least 12.4.15: %s", (v, expected) => {
+    liveIs(v);
+
+    expect(liveVersionAtLeast("12.4.15", { release: true })).toBe(expected);
   });
 });

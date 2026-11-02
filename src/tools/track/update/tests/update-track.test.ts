@@ -30,28 +30,34 @@ describe("updateTrack", () => {
     const result = updateTrack({
       id: "123",
       name: "Updated Track",
-      color: "#FF0000",
+      color: "#FF3636",
       mute: true,
       solo: false,
       arm: true,
     });
 
     expect(track123.set).toHaveBeenCalledWith("name", "Updated Track");
-    expect(track123.set).toHaveBeenCalledWith("color", 16711680);
+    expect(track123.set).toHaveBeenCalledWith("color", 16725558);
     expect(track123.set).toHaveBeenCalledWith("mute", true);
     expect(track123.set).toHaveBeenCalledWith("solo", false);
     expect(track123.set).toHaveBeenCalledWith("arm", true);
     expect(result).toStrictEqual({ id: "123", path: "t0" });
   });
 
+  it("writes the nearest palette entry for a color off the palette", () => {
+    updateTrack({ id: "123", color: "#800080" });
+
+    expect(track123.set).toHaveBeenCalledWith("color", 0x624bad);
+  });
+
   it("should update multiple tracks by comma-separated IDs", () => {
     const result = updateTrack({
       id: "123, 456",
-      color: "#00FF00",
+      color: "#1AFF2F",
       mute: true,
     });
 
-    expect(track123.set).toHaveBeenCalledWith("color", 65280);
+    expect(track123.set).toHaveBeenCalledWith("color", 1769263);
     expect(track123.set).toHaveBeenCalledWith("mute", true);
     expect(track123.set).toHaveBeenCalledTimes(2);
     expect(track456.set).toHaveBeenCalledTimes(2);
@@ -149,7 +155,7 @@ describe("updateTrack", () => {
     const result = updateTrack({
       id: "nonexistent,123,456",
       name: "A,B,C",
-      color: "#FF0000,#00FF00,#0000FF",
+      color: "#FF3636,#1AFF2F,#1A2F96",
     });
 
     expect(result).toStrictEqual([
@@ -162,9 +168,9 @@ describe("updateTrack", () => {
       { id: "456", path: "t1" },
     ]);
     expect(track123.set).toHaveBeenCalledWith("name", "B");
-    expect(track123.set).toHaveBeenCalledWith("color", 65280); // #00FF00
+    expect(track123.set).toHaveBeenCalledWith("color", 1769263); // #1AFF2F
     expect(track456.set).toHaveBeenCalledWith("name", "C");
-    expect(track456.set).toHaveBeenCalledWith("color", 255); // #0000FF
+    expect(track456.set).toHaveBeenCalledWith("color", 1716118); // #1A2F96
   });
 
   // A trailing comma is the commonest typo in a hand-written list. Counting it
@@ -231,7 +237,7 @@ describe("updateTrack", () => {
   it("should handle whitespace in comma-separated IDs", () => {
     const result = updateTrack({
       id: " 123 , 456 , 789 ",
-      color: "#0000FF",
+      color: "#1A2F96",
     });
 
     expect(result).toStrictEqual([
@@ -327,14 +333,14 @@ describe("updateTrack", () => {
       const result = updateTrack({
         id: "123",
         name: "Test Track",
-        color: "#FF0000",
+        color: "#FF3636",
         mute: true,
         inputRoutingType: "17",
         monitoringState: MONITORING_STATE.IN,
       });
 
       expect(track123.set).toHaveBeenCalledWith("name", "Test Track");
-      expect(track123.set).toHaveBeenCalledWith("color", 16711680);
+      expect(track123.set).toHaveBeenCalledWith("color", 16725558);
       expect(track123.set).toHaveBeenCalledWith("mute", true);
       expect(track123.set).toHaveBeenCalledWith(
         "input_routing_type",
@@ -577,18 +583,18 @@ describe("updateTrack", () => {
       trackReadsColor(track123, 1768495); // #1AFC2F
       trackReadsColor(track456, 1768495);
 
-      expect(updateTrack({ id: "123,456", color: "#00FF00" })).toStrictEqual([
+      expect(updateTrack({ id: "123,456", color: "#1AFF2F" })).toStrictEqual([
         {
           id: "123",
           path: "t0",
           color: "#1AFC2F",
-          detail: "color #00FF00 is not in Live's palette; landed as #1AFC2F",
+          detail: "color #1AFF2F is not in Live's palette; landed as #1AFC2F",
         },
         {
           id: "456",
           path: "t1",
           color: "#1AFC2F",
-          detail: "color #00FF00 is not in Live's palette; landed as #1AFC2F",
+          detail: "color #1AFF2F is not in Live's palette; landed as #1AFC2F",
         },
       ]);
     });

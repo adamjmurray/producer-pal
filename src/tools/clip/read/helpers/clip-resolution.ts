@@ -5,6 +5,7 @@
 
 import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type TargetNames } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   formatObjectPath,
@@ -41,6 +42,7 @@ interface EmptySlotResponse {
  * @param slotValidated - The caller already knows the slot is real (see ReadClipArgs)
  * @param onEmptySlot - Told the track of a slot that is really empty, for a
  *   caller that refuses some (see ReadClipArgs)
+ * @param idParam - The param the id was sent under, for an error
  * @returns Object with either found clip or empty slot response
  */
 export function resolveClip(
@@ -49,9 +51,10 @@ export function resolveClip(
   sceneIndex: number | null,
   slotValidated = false,
   onEmptySlot?: (track: LiveAPI) => void,
+  idParam?: string,
 ): ResolveClipResult {
   if (clipId != null) {
-    return { found: true, clip: validateIdType(clipId, "clip") };
+    return { found: true, clip: validateIdType(clipId, "clip", idParam) };
   }
 
   // Go straight for the clip. A clip that answers proves its track and scene
@@ -178,6 +181,8 @@ interface ClipLocationArgs {
   clipId?: string | null;
   trackIndex?: number | null;
   sceneIndex?: number | null;
+  /** The names `id` and `path` were sent under, set by read-clip's fan-out */
+  targetNames?: TargetNames;
 }
 
 interface ClipLocation {
@@ -196,8 +201,9 @@ interface ClipLocation {
  */
 export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
   const clipId = namedIdParam(args.id, args.clipId, "clipId") ?? null;
+  const { idParam = "id", pathParam = "path" } = args.targetNames ?? {};
   const { value: path, aliasValue: slot } = refuseDoubledSpelling({
-    param: "path",
+    param: pathParam,
     value: args.path,
     alias: "slot",
     aliasValue: args.slot,
@@ -205,21 +211,21 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
   });
 
   if (path != null) {
-    const parsed = parseObjectPath(path, "path");
+    const parsed = parseObjectPath(path, pathParam);
 
     // An arrangement clip has no slot to report — the path names it outright,
     // so it resolves to an id and read-clip goes on as if one was given.
     if (parsed.kind === "arrangement-position") {
       return {
-        clipId: arrangementClipIdAt(parsed, clipId),
+        clipId: arrangementClipIdAt(parsed, clipId, { idParam, pathParam }),
         trackIndex: null,
         sceneIndex: null,
       };
     }
 
-    const position = requireClipSlotPath(parsed);
+    const position = requireClipSlotPath(parsed, pathParam);
 
-    assertClipIdAtSlot(clipId, position, "path");
+    assertClipIdAtSlot(clipId, position, pathParam, idParam);
 
     return { clipId, ...position };
   }
@@ -227,7 +233,7 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
   if (slot != null) {
     const position = parseSlot(slot, "slot");
 
-    assertClipIdAtSlot(clipId, position, "slot");
+    assertClipIdAtSlot(clipId, position, "slot", idParam);
 
     return { clipId, ...position };
   }
@@ -240,6 +246,7 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
       clipId,
       { trackIndex, sceneIndex },
       "trackIndex/sceneIndex",
+      idParam,
     );
   }
 
@@ -255,11 +262,13 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
  * @param position.trackIndex - Track index
  * @param position.sceneIndex - Scene index
  * @param param - Which location param named it, for the error
+ * @param idParam - The param the id was sent under, for the error
  */
 function assertClipIdAtSlot(
   clipId: string | null,
   { trackIndex, sceneIndex }: { trackIndex: number; sceneIndex: number },
   param: string,
+  idParam: string,
 ): void {
   if (clipId == null) {
     return;
@@ -275,7 +284,7 @@ function assertClipIdAtSlot(
   const atPath = livePath.track(trackIndex).clipSlot(sceneIndex).clip();
 
   if (named.path !== atPath) {
-    throw new Error(`${param} and id name different clips; use one`);
+    throw new Error(`${param} and ${idParam} name different clips; use one`);
   }
 }
 
@@ -284,23 +293,27 @@ function assertClipIdAtSlot(
  * return when the path names none and so throws rather than warning.
  * @param parsed - A parsed `[...]` coordinate
  * @param clipId - The id the caller also sent, if any
+ * @param names - The names the id and path were sent under
+ * @param names.idParam - The name the id was sent under
+ * @param names.pathParam - The name the path was sent under
  * @returns The clip's id
  */
 function arrangementClipIdAt(
   parsed: ArrangementPosition,
   clipId: string | null,
+  { idParam, pathParam }: TargetNames,
 ): string {
-  const source = requireCompletePosition(parsed, "path");
-  const clip = arrangementClipAtPosition(source, "path");
+  const source = requireCompletePosition(parsed, pathParam);
+  const clip = arrangementClipAtPosition(source, pathParam);
 
   if (clip == null) {
-    throw new Error(`no clip at path "${formatObjectPath(parsed)}"`);
+    throw new Error(`no clip at ${pathParam} "${formatObjectPath(parsed)}"`);
   }
 
   // Naming the same clip twice over is not a conflict; naming two is.
   if (clipId != null && clipId !== clip.id) {
     throw new Error(
-      `id "${clipId}" and path "${formatObjectPath(parsed)}" name different clips`,
+      `${idParam} "${clipId}" and ${pathParam} "${formatObjectPath(parsed)}" name different clips`,
     );
   }
 

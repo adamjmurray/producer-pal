@@ -57,6 +57,9 @@ export const CLAUDE_CODE_TRANSPORT: AgentCliTransport = {
   ],
   models: CLAUDE_CODE_MODELS,
   judgeModel: "haiku",
+  // `claude --effort` takes low, medium, high, xhigh or max and has no off, so
+  // `off` is refused up front.
+  efforts: { low: "low", medium: "medium", high: "high", ultra: "max" },
   buildTurnArgs: claudeCodeTurnArgs,
   buildJudgeArgs: claudeCodeJudgeArgs,
   parseStream: parseClaudeCodeStream,
@@ -75,6 +78,7 @@ export function claudeCodeTurnArgs(input: AgentCliTurnArgsInput): string[] {
 
   return [
     ...buildRestrictedArgs(input),
+    ...(input.effort != null ? ["--effort", input.effort] : []),
     "--strict-mcp-config",
     "--mcp-config",
     JSON.stringify(mcpConfig),
@@ -201,6 +205,13 @@ function handleEvent(
     for (const block of messageContent(event)) {
       handleAssistantBlock(block, state);
     }
+
+    // Streamed assistant events usually carry null here; the result event's
+    // value (below) is the one that normally lands.
+    state.finishReason = firstString(
+      (event.message as { stop_reason?: unknown } | undefined)?.stop_reason,
+      state.finishReason,
+    );
   } else if (event.type === "user") {
     for (const block of messageContent(event)) {
       handleToolResult(block, state);
@@ -208,6 +219,7 @@ function handleEvent(
   } else if (event.type === "result") {
     state.usage = mapClaudeUsage(event.usage);
     state.timing = claudeCodeTiming(event, state.usage);
+    state.finishReason = firstString(event.stop_reason, state.finishReason);
     state.error ??= permissionDenialError(event.permission_denials);
     state.error ??= resultError(event);
   }
@@ -235,7 +247,8 @@ function messageContent(
 }
 
 /**
- * Collect assistant text and tool calls, skipping thinking blocks.
+ * Collect assistant text, thinking and tool calls. Thinking stays out of the
+ * reply text.
  * @param block - One assistant content block
  * @param state - Mutable turn accumulator
  */
@@ -246,6 +259,10 @@ function handleAssistantBlock(
   if (block.type === "text" && typeof block.text === "string") {
     if (block.text !== "") {
       state.textParts.push(block.text);
+    }
+  } else if (block.type === "thinking" && typeof block.thinking === "string") {
+    if (block.thinking !== "") {
+      state.reasoningParts.push(block.thinking);
     }
   } else if (block.type === "tool_use" && typeof block.name === "string") {
     const call: ToolCall = {

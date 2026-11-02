@@ -32,6 +32,7 @@ import {
   TOOL_CREATE_CLIP,
 } from "./helpers/clip-tool-constants.ts";
 import { clearClipSlots } from "./helpers/clip-turn-readers.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 const DRUMS = 0;
 const BASS = 1;
@@ -105,7 +106,7 @@ function assertStarts(
 
   return {
     type: "state",
-    tool: "ppal-read-track",
+    tool: TOOLS.readTrack,
     args: { path: `t${track}`, include: ["arrangement-clips"] },
     expect: (result) => problem(result) == null,
     explain: (result) => `t${track}: ${problem(result) ?? "ok"}`,

@@ -79,7 +79,7 @@ function executeOperation(api: LiveAPI, operation: LiveApiOperation): unknown {
       return api.getColor();
 
     case "set-color":
-      return api.setColor(operation.value as string);
+      return api.setColor(operation.value as string, true);
 
     default:
       return executeObjectOperation(api, operation);

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
+import { dedupeAndSortNotes } from "#src/notation/helpers/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {
@@ -39,6 +39,10 @@ import {
   noteClipReason,
   noteLanded,
 } from "../entries/clip-reasons.ts";
+import {
+  reportTransformsChangedNothing,
+  type StagedTransforms,
+} from "./transform-no-change-report.ts";
 import { mutedNotesHit, reportMutedNoteEffects } from "./muted-note-effects.ts";
 
 /**
@@ -56,6 +60,7 @@ import { mutedNotesHit, reportMutedNoteEffects } from "./muted-note-effects.ts";
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Clip-level context for transform variables
+ * @param staged - The hand-over between duplicateLoop's stages, if it is one
  * @returns Note update result with count, transformed and deletedNotes
  */
 export function applyTransformsToExistingNotes(
@@ -66,6 +71,7 @@ export function applyTransformsToExistingNotes(
   timeSigNumerator: number,
   timeSigDenominator: number,
   clipContext?: ClipContext,
+  staged?: StagedTransforms,
 ): NoteUpdateResult {
   // Read the same window as read-clip, so a pickup before the clip start is
   // transformed too — `preTransforms: "v0"` must clear it.
@@ -136,9 +142,14 @@ export function applyTransformsToExistingNotes(
     replaced: mutedNotesHit(notes, mutedNotes).size,
   });
 
+  const outcome = combineOutcomes(preOutcome, postOutcome);
+  const counts = countTransforms(outcome, written);
+
+  reportTransformsChangedNothing(reasons, clip.id, outcome, counts, staged);
+
   return {
     noteCount: getClipNoteCount(clip),
-    ...countTransforms(combineOutcomes(preOutcome, postOutcome), written),
+    ...counts,
     putOutside: countPutOutsideRegion(region, written, mutedNotes, visible),
   };
 }

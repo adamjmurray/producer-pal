@@ -123,7 +123,7 @@ export const noteOpsSplit: EvalScenario = {
   messages: [
     MSG_CONNECT,
     "On the Bass track, create a 4-bar clip in the arrangement starting at bar 5, containing a single note: C2 held for the entire 4 bars.",
-    "Break that one held note into separate notes, cutting it at arrangement bar 7 and arrangement bar 8 — use the arrangement timeline positions, not positions relative to the clip's own start.",
+    "Inside that clip, split the held note into separate notes at arrangement bar 7 and arrangement bar 8 (arrangement timeline positions, not positions relative to the clip's own start). Keep it one clip.",
     "Now on the Lead track (track index 3), create a 2-bar clip in the first clip slot containing a single note: C3 sustained for the entire 2 bars.",
     "Break that one held note into separate notes by cutting it at bar 1 beat 3 and bar 2 beat 1.",
   ],

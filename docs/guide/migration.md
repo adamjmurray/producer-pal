@@ -145,6 +145,12 @@ routing params, `sendReturn` and `mappedPitch`. Write a comma inside a value as
 `\,` (`"Kick\, Hard.wav"`). `\,` now reads as a plain comma even with one
 target; 2.3 kept the backslash.
 
+`sendGainDb` + `sendReturn` on `ppal-update-track` and `ppal-update-device` are
+deprecated in favor of `sends: [{return, gainDb}]`. They still work and warn.
+`sends` can't give each target its own return, so split a comma list in
+`sendReturn` into one call per return. Sending `sends` together with either of
+them is refused.
+
 **Naming a target twice acts on it once, at the last mention.** `ppal-delete`
 and `ppal-update-live-set` now work like `ppal-update-clip` and `ppal-playback`:
 the earlier mention's entry says `named again as "t8/s0" later in this call`.
@@ -820,6 +826,17 @@ warning, but results echo the new ones, so a script comparing a result's
 `source` or an operation's `type` needs them. `ppal-live-api`'s `getProperty` is
 now `get-property` and `get_property` is `get-field`. Values Live owns (scales,
 views, quantize grids, device names) keep Live's spelling.
+
+## Memory answers changed in 2.6.0
+
+**`ppal-context` reads and deletes memories by list, and one name answers like
+any lone target.** On `read` and `delete`, `name` takes a comma-separated list
+and returns one entry per name. With one name, a read returns `{name, content}`
+(was `{content}`), and a missing memory is an error (was a "No memory found"
+note). A delete returns `{name}`, or `{name, detail: "nothing to delete"}` when
+there's no such memory, and no longer appends the memory index; call `read` with
+no `name` for it. A `write` name is capped at 200 characters and can't contain a
+comma.
 
 ## Deprecated params
 

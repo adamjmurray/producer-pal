@@ -3,23 +3,31 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response, type Express } from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
 import { errorMessage } from "#src/shared/error-message.ts";
+import { GEN_UI_TOOL_ID, isGenUiEnabled } from "#src/shared/gen-ui-types.ts";
 import { textEditParamToString } from "#src/shared/max/max-atoms.ts";
 import {
   DEFAULT_NOTATION,
   isNotation,
   type Notation,
 } from "#src/shared/notation.ts";
-import { withLiveApiTool } from "#src/shared/tool-groups.ts";
+import { type ProducerPalConfig } from "#src/shared/config.ts";
+import { manageToolOffered, withLiveApiTool } from "#src/shared/tool-groups.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { type WrappedCallLiveApi } from "./helpers/connect/connect-append.ts";
 import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
+import {
+  internalError,
+  rejectStatelessMcpMethods,
+  serveStatelessMcp,
+} from "./helpers/http/stateless-mcp.ts";
+import { startLiveWatcher } from "./rpc/gen-ui/live-watcher.ts";
+import { connectWidgetsToSet } from "./rpc/gen-ui/set-storage.ts";
+import { withGenUi } from "./rpc/gen-ui/with-gen-ui.ts";
 import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
 import { errorHandlerMiddleware } from "./helpers/http/error-handler-middleware.ts";
 import { parseConfigBody } from "./helpers/http/config-body.ts";
@@ -29,13 +37,14 @@ import {
   resolveRequestProfile,
   type RequestProfile,
 } from "./helpers/http/request-profile.ts";
+import { rejectNonLocalTestSwitches } from "./helpers/http/test-switch-guard.ts";
 import { getUpdate } from "./helpers/http/update-check.ts";
 import { dismissUpdate } from "./helpers/http/update-dismissal.ts";
 import { registerProjectContextBackupNodeRoutes } from "./helpers/project-context-backup/project-context-backup-node-routes.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 import { withDefaultOverrides } from "./helpers/request-overrides/default-overrides.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
-import * as console from "./node-for-max-logger.ts";
+import { nodeError, nodeInfo } from "./node-for-max-logger.ts";
 import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-collection-route.ts";
 import { registerGlobalContextRoutes } from "./routes/config/global-context-route.ts";
 import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
@@ -44,6 +53,7 @@ import { setRemoteScriptEnabled } from "./rpc/remote-script/remote-script-client
 import { setRemoteScriptMinVersion } from "./rpc/remote-script/port/remote-script-version.ts";
 import { withUndoStepEnd } from "./rpc/remote-script/forwarded/with-undo-step-end.ts";
 import { registerDeviceInstallRoutes } from "./routes/device-install-route.ts";
+import { registerGenUiRoutes } from "./rpc/gen-ui/gen-ui-routes.ts";
 import { registerRemoteScriptSetupRoutes } from "./routes/remote-script-setup-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerSkillOverridesRoutes } from "./routes/skill-overrides-route.ts";
@@ -52,25 +62,6 @@ import { registerSubagentBriefingRoute } from "./routes/subagent-briefing-route.
 import { registerSystemPromptRoutes } from "./routes/config/system-prompt-route.ts";
 import { registerGeminiVoiceTokenRoute } from "./routes/voice/gemini-voice-token-route.ts";
 import { registerVoiceTokenRoute } from "./routes/voice/voice-token-route.ts";
-
-interface ProducerPalConfig {
-  projectContext: string;
-  smallModelMode: boolean;
-  notation: Notation;
-  jsonOutput: boolean; // true = JSON, false = compact (default)
-  sampleFolder: string;
-  liveApiEnabled: boolean;
-  liveApiForcedOn: boolean;
-  // Debug builds only: false makes the remote script look uninstalled. POST
-  // /config only (evals and e2e); not a device setting, so it is never sent to
-  // Max. A release build neither lists nor accepts it.
-  remoteScriptEnabled?: boolean;
-  // Debug builds only, like remoteScriptEnabled: a version string replaces the
-  // minimum remote script version, so a running script can look out of date.
-  // Listed only while set.
-  remoteScriptMinVersion?: string;
-  tools: string[];
-}
 
 // ENABLE_LIVE_API=true forces the Live API tool on for dev builds
 // (npm run dev:debug / build:debug). When set, the device Setup-tab toggle
@@ -83,7 +74,7 @@ interface ProducerPalConfig {
 // don't set ENABLE_LIVE_API, so the asymmetry is dev-only.
 const liveApiForcedOn = process.env.ENABLE_LIVE_API === "true";
 
-const config: ProducerPalConfig = {
+const config: ProducerPalConfig & { notation: Notation } = {
   projectContext: "",
   smallModelMode: false,
   notation: DEFAULT_NOTATION,
@@ -92,9 +83,12 @@ const config: ProducerPalConfig = {
   liveApiEnabled: liveApiForcedOn,
   liveApiForcedOn,
   ...(liveApiForcedOn && { remoteScriptEnabled: true }),
-  tools: liveApiForcedOn
-    ? [...TOOL_NAMES, toolDefLiveApi.toolName]
-    : [...TOOL_NAMES],
+  tools: [
+    ...TOOL_NAMES,
+    ...(liveApiForcedOn ? [toolDefLiveApi.toolName] : []),
+    // Experimental, build-flagged (ENABLE_GEN_UI). Absent from release builds.
+    ...(isGenUiEnabled() ? [GEN_UI_TOOL_ID] : []),
+  ],
 };
 
 Max.addHandler("smallModelMode", (enabled: unknown) => {
@@ -199,9 +193,12 @@ function buildEnrichedCall(
   getCompactOutput: () => boolean | undefined = () => undefined,
   getPortalVersion: () => string | undefined = () => undefined,
 ): WrappedCallLiveApi {
-  return enrichConnect(
+  const enriched = enrichConnect(
     withDefaultOverrides(withUndoStepEnd(callLiveApi), () => {
-      const overrides: RequestOverrides = { notation: getNotation() };
+      const overrides: RequestOverrides = {
+        notation: getNotation(),
+        manageAvailable: manageToolOffered(getSmallModelMode(), getTools()),
+      };
       const compactOutput = getCompactOutput();
 
       // Only when a header asked: an absent one must leave V8 on its own
@@ -220,6 +217,9 @@ function buildEnrichedCall(
       portalVersion: getPortalVersion(),
     }),
   );
+
+  // Outermost: serves ppal-ui itself and announces finished writes to the UI.
+  return isGenUiEnabled() ? withGenUi(enriched) : enriched;
 }
 
 /**
@@ -238,33 +238,6 @@ function buildRestCall(profile: RequestProfile): WrappedCallLiveApi {
     () => profile.notation,
   );
 }
-
-interface JsonRpcError {
-  jsonrpc: string;
-  error: {
-    code: number;
-    message: string;
-  };
-  id: null;
-}
-
-const methodNotAllowed: JsonRpcError = {
-  jsonrpc: "2.0",
-  error: {
-    code: ErrorCode.ConnectionClosed,
-    message: "Method not allowed.",
-  },
-  id: null,
-};
-
-const internalError = (message: string): JsonRpcError => ({
-  jsonrpc: "2.0",
-  error: {
-    code: ErrorCode.InternalError,
-    message: `Internal server error: ${message}`,
-  },
-  id: null,
-});
 
 /**
  * Mark a response as never-cache. Used for the UI bundle and config so the
@@ -306,7 +279,7 @@ export function createExpressApp(): Express {
       const method =
         (req.body as { method?: string } | undefined)?.method ?? "unknown";
 
-      console.info(`MCP request: ${method}`);
+      nodeInfo(`MCP request: ${method}`);
 
       // The caller's own profile, off the per-request headers: the
       // built-in chat and each subagent worker send their own values, so one
@@ -335,19 +308,10 @@ export function createExpressApp(): Express {
           tools: profile.tools,
         },
       );
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined, // Stateless mode
-      });
 
-      res.on("close", () => {
-        void transport.close();
-        void server.close();
-      });
-
-      await server.connect(transport);
-      await transport.handleRequest(req, res, req.body);
+      await serveStatelessMcp(server, req, res, req.body);
     } catch (error) {
-      console.error(`Error handling MCP request: ${String(error)}`);
+      nodeError(`Error handling MCP request: ${String(error)}`);
       // Echoed to the caller below: it's the only signal an MCP client gets
       // when this route breaks. That's only safe because nothing on this path
       // touches the filesystem or user data today (mirrors the `expose` note
@@ -357,16 +321,9 @@ export function createExpressApp(): Express {
     }
   });
 
-  // Stateless server doesn't support SSE streams, so GET is not allowed.
-  // Returning 405 tells the MCP SDK not to attempt SSE reconnection.
-  app.get("/mcp", (_req: Request, res: Response): void => {
-    res.status(405).json(methodNotAllowed);
-  });
-
-  // Because we're using a stateless server, DELETE is not needed:
-  app.delete("/mcp", (_req: Request, res: Response): void => {
-    res.status(405).json(methodNotAllowed);
-  });
+  // Stateless server doesn't support SSE streams or sessions: GET and DELETE
+  // get a 405.
+  rejectStatelessMcpMethods(app);
 
   // Serve the chat UI (inlined for frozen .amxd builds).
   // The same bundle handles both /chat and /context — main.tsx reads
@@ -417,6 +374,12 @@ export function createExpressApp(): Express {
 
   registerRestApiRoutes(app, () => config, buildRestCall);
 
+  if (isGenUiEnabled()) {
+    registerGenUiRoutes(app);
+    connectWidgetsToSet();
+    startLiveWatcher();
+  }
+
   registerGlobalContextRoutes(app);
   registerGlobalSettingsRoutes(app);
   registerMemoryCollectionRoutes(app);
@@ -466,13 +429,18 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
 
   // requestBody normalizes a missing/non-object body to {}, so a bodyless POST
   // /config is a benign no-op update instead of a TypeError → 500.
+  const body = requestBody(req);
+
+  // The remote script test switches are loopback-only (the Origin check above
+  // lets Origin-less LAN and tunnel clients through). Refused before anything
+  // is applied.
+  if (rejectNonLocalTestSwitches(req, res, body)) {
+    return;
+  }
+
   // Check every field first: a bad one refuses the whole request, so a 400
   // never leaves config half-applied (or Node and the device out of step).
-  const parsed = parseConfigBody(
-    requestBody(req),
-    config.liveApiEnabled,
-    liveApiForcedOn,
-  );
+  const parsed = parseConfigBody(body, config.liveApiEnabled);
 
   if (!parsed.ok) {
     res.status(400).json(parsed.error);

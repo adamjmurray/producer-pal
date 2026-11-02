@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 // A model writing the word instead of leaving the param out: "null" or
 // "undefined" as a param's whole value. (A JSON null never gets this far — it
@@ -63,9 +63,16 @@ export function namedParam(
     return trimmed;
   }
 
-  console.warn(`${label} "${trimmed}" names nothing`);
+  emitWarning(`${label} "${trimmed}" names nothing`);
 
   return undefined;
+}
+
+/** A target param folded from its spelling(s): the value, and which name it came under. */
+export interface FoldedParam {
+  value: string | undefined;
+  /** The name the caller sent the value under: the canonical, or the alias */
+  param: string;
 }
 
 /**
@@ -84,7 +91,24 @@ export function namedIdParam(
   alias: string | null | undefined,
   aliasLabel: string,
 ): string | undefined {
-  return namedAliasedParam(id, "id", alias, aliasLabel);
+  return foldedIdParam(id, alias, aliasLabel).value;
+}
+
+/**
+ * {@link namedIdParam}, plus the name the value was sent under, for an error
+ * that quotes it.
+ * @param id - The `id` param
+ * @param alias - The alias param
+ * @param aliasLabel - The alias's name
+ * @returns The folded value and the name it came under
+ * @throws Error when both name something
+ */
+export function foldedIdParam(
+  id: string | null | undefined,
+  alias: string | null | undefined,
+  aliasLabel: string,
+): FoldedParam {
+  return foldedParam(id, "id", alias, aliasLabel);
 }
 
 /**
@@ -100,7 +124,21 @@ export function namedPathParam(
   path: string | null | undefined,
   paths: string | null | undefined,
 ): string | undefined {
-  return namedAliasedParam(path, "path", paths, "paths");
+  return foldedPathParam(path, paths).value;
+}
+
+/**
+ * {@link namedPathParam}, plus the name the value was sent under.
+ * @param path - The `path` param
+ * @param paths - The `paths` alias param
+ * @returns The folded value and the name it came under
+ * @throws Error when both name something
+ */
+export function foldedPathParam(
+  path: string | null | undefined,
+  paths: string | null | undefined,
+): FoldedParam {
+  return foldedParam(path, "path", paths, "paths");
 }
 
 /**
@@ -109,20 +147,23 @@ export function namedPathParam(
  * @param canonical - The canonical param's name
  * @param alias - The alias param's value
  * @param aliasLabel - The alias param's name
- * @returns The trimmed value, or undefined when neither names anything
+ * @returns The trimmed value, and the name it was sent under
  * @throws Error when both name something
  */
-function namedAliasedParam(
+function foldedParam(
   value: string | null | undefined,
   canonical: string,
   alias: string | null | undefined,
   aliasLabel: string,
-): string | undefined {
+): FoldedParam {
   const named = namedParam(value, canonical);
   const namedAlias = namedParam(alias, aliasLabel);
 
   if (named == null) {
-    return namedAlias;
+    return {
+      value: namedAlias,
+      param: namedAlias == null ? canonical : aliasLabel,
+    };
   }
 
   // A param and its alias are never sent together, whatever their values: no
@@ -134,7 +175,7 @@ function namedAliasedParam(
     also: { [aliasLabel]: namedAlias },
   });
 
-  return named;
+  return { value: named, param: canonical };
 }
 
 /** The param that names the target, and the params sent beside it. */

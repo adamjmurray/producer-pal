@@ -40,6 +40,23 @@ describe("useDeviceInstall", () => {
     return rendered;
   }
 
+  /**
+   * Run an install and wait for it to fail.
+   * @param result - The rendered hook's result
+   * @param message - The expected install error
+   */
+  async function expectInstallError(
+    result: Awaited<ReturnType<typeof renderPastMountRead>>["result"],
+    message: string,
+  ): Promise<void> {
+    await act(() => {
+      result.current.install(USER_LIBRARY, false);
+    });
+    await waitForHookState(() => {
+      expect(result.current.installError).toBe(message);
+    });
+  }
+
   it("keeps the last status, and drops the install message, when a refresh fails", async () => {
     const { result } = await renderPastMountRead();
 
@@ -63,12 +80,7 @@ describe("useDeviceInstall", () => {
     const { result } = await renderPastMountRead();
 
     fetchMock.mockRejectedValueOnce("EPIPE");
-    await act(() => {
-      result.current.install(USER_LIBRARY, false);
-    });
-    await waitForHookState(() => {
-      expect(result.current.installError).toBe("EPIPE");
-    });
+    await expectInstallError(result, "EPIPE");
   });
 
   it("re-reads the status after a failed install, which may have changed it", async () => {
@@ -82,12 +94,7 @@ describe("useDeviceInstall", () => {
     );
     fetchMock.mockResolvedValueOnce(jsonResponse(deviceStatusBody()));
 
-    await act(() => {
-      result.current.install(USER_LIBRARY, false);
-    });
-    await waitForHookState(() => {
-      expect(result.current.installError).toBe("Couldn't install the device.");
-    });
+    await expectInstallError(result, "Couldn't install the device.");
     await waitForHookState(() => {
       expect(fetchMock).toHaveBeenCalledTimes(3);
     });
@@ -97,12 +104,7 @@ describe("useDeviceInstall", () => {
     const { result } = await renderPastMountRead();
 
     fetchMock.mockRejectedValueOnce(new Error("EPIPE"));
-    await act(() => {
-      result.current.install(USER_LIBRARY, false);
-    });
-    await waitForHookState(() => {
-      expect(result.current.installError).toBe("EPIPE");
-    });
+    await expectInstallError(result, "EPIPE");
 
     fetchMock.mockResolvedValueOnce(
       jsonResponse({ detail: "Installed the device.", path: DEVICE_PATH }),

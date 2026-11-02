@@ -13,6 +13,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -78,7 +79,14 @@ async function portalDown(options: DownOptions): Promise<PortalSession> {
   const copy = track(copyPortal(options.bundled !== false));
   // The user's real Live preferences must not steer the library lookup.
   const home = options.home ?? scratchLibrary();
-  const env = { ...script.env, HOME: home, USERPROFILE: home };
+  const env = {
+    ...script.env,
+    HOME: home,
+    USERPROFILE: home,
+    // Windows finds Live's preferences and database here, not under HOME
+    APPDATA: join(home, "AppData", "Roaming"),
+    LOCALAPPDATA: join(home, "AppData", "Local"),
+  };
 
   return track(await startPortal(device.origin, options.args, env, copy.file));
 }
@@ -103,7 +111,7 @@ describe("the offline guidance", () => {
 
     expect(isError).toBe(true);
     expect(text).toContain("Cannot connect to Ableton Live.");
-    expect(text).toContain('ppal-manage action "install-remote-script"');
+    expect(text).toContain('ppal-manage action "install-producer-pal"');
   });
 
   it("says the device is missing when the remote script is running", async () => {
@@ -134,10 +142,7 @@ describe("the offline guidance", () => {
     const portal = await portalWithDeviceDown(false, NO_MANAGE);
     const library = scratchLibrary();
 
-    const { text } = await callToolText(portal, "ppal-manage", {
-      action: "install-remote-script",
-      userLibrary: library,
-    });
+    const { text } = await installProducerPal(portal, library);
 
     expect(text).toContain("Cannot connect to Ableton Live.");
     expect(existsSync(join(library, "Remote Scripts"))).toBe(false);
@@ -181,6 +186,22 @@ function installDevice(library: string, contents: string): void {
   writeFileSync(join(library, ...DEVICE_DIR, "Producer_Pal.amxd"), contents);
 }
 
+/**
+ * Call ppal-manage install-producer-pal.
+ * @param portal - The portal
+ * @param userLibrary - The User Library to install into, if given
+ * @returns The result's text and error flag
+ */
+function installProducerPal(
+  portal: PortalSession,
+  userLibrary?: string,
+): Promise<{ text: string; isError: boolean | undefined }> {
+  return callToolText(portal, "ppal-manage", {
+    action: "install-producer-pal",
+    ...(userLibrary != null && { userLibrary }),
+  });
+}
+
 describe("the offline guidance names what is installed", () => {
   it("asks for the User Library when none can be found", async () => {
     const portal = await portalDown({ scriptRunning: false });
@@ -201,11 +222,13 @@ describe("the offline guidance names what is installed", () => {
       const { text } = await callToolText(portal, "ppal-connect");
 
       expect(text).toContain(
-        `(installs to ${join(library, "Remote Scripts", "Producer_Pal")})`,
+        `(it installs the remote script to ${join(library, "Remote Scripts", "Producer_Pal")} and the device)`,
       );
+      // The install puts the device in place, so the add only adds it.
       expect(text).toContain(
-        `installs the Producer Pal device to ${join(library, ...DEVICE_DIR, "Producer_Pal.amxd")}`,
+        'After that, ppal-manage action "add-producer-pal" adds the device to a new MIDI track.',
       );
+      expect(text).not.toContain("installs the Producer Pal device to");
     },
   );
 
@@ -292,10 +315,46 @@ describe("the offline guidance names what is installed", () => {
 });
 
 describe("ppal-manage while the device is down", () => {
-  it("installs the remote script into the User Library it is given", async () => {
+  it("installs the remote script and the device into the User Library it is given", async () => {
     const portal = await portalWithDeviceDown(false);
     const library = scratchLibrary();
     const folder = join(library, "Remote Scripts", "Producer_Pal");
+    const device = join(library, ...DEVICE_DIR, "Producer_Pal.amxd");
+
+    const { text, isError } = await installProducerPal(portal, library);
+
+    expect(isError).toBeFalsy();
+    expect(text).toContain(`remoteScript:{status:"installed"`);
+    expect(text).toContain(`path:${JSON.stringify(folder)}`);
+    expect(text).toContain(
+      `device:{status:"installed",path:${JSON.stringify(device)}}`,
+    );
+    expect(text).toContain("nextSteps:");
+    expect(text).toContain("restart Live");
+    expect(text).toContain("Then call add-producer-pal");
+    expect(text).toContain("drag Producer Pal onto a MIDI track in Live");
+    expect(existsSync(join(folder, "__init__.py"))).toBe(true);
+    expect(readFileSync(device, "utf8")).toBe("stand-in device");
+  });
+
+  it("installs into the User Library the running remote script reports, as add does", async () => {
+    const library = scratchLibrary();
+    const portal = await portalDown({ scriptRunning: true, library });
+
+    const { text, isError } = await installProducerPal(portal);
+
+    expect(isError).toBeFalsy();
+    expect(text).toContain(
+      `path:${JSON.stringify(join(library, "Remote Scripts", "Producer_Pal"))}`,
+    );
+    expect(existsSync(join(library, ...DEVICE_DIR, "Producer_Pal.amxd"))).toBe(
+      true,
+    );
+  });
+
+  it("still accepts the retired install-remote-script name", async () => {
+    const portal = await portalWithDeviceDown(false);
+    const library = scratchLibrary();
 
     const { text, isError } = await callToolText(portal, "ppal-manage", {
       action: "install-remote-script",
@@ -303,10 +362,59 @@ describe("ppal-manage while the device is down", () => {
     });
 
     expect(isError).toBeFalsy();
-    expect(text).toContain(`path:"${folder}"`);
-    expect(text).toContain("nextSteps:");
-    expect(text).toContain("restart Live");
-    expect(existsSync(join(folder, "__init__.py"))).toBe(true);
+    expect(text).toContain(`remoteScript:{status:"installed"`);
+    expect(text).toContain(`device:{status:"installed"`);
+    expect(existsSync(join(library, ...DEVICE_DIR, "Producer_Pal.amxd"))).toBe(
+      true,
+    );
+  });
+
+  it("leaves an installed device that is different as it is, saying so", async () => {
+    const portal = await portalWithDeviceDown(false);
+    const library = scratchLibrary();
+
+    installDevice(library, "another device");
+
+    const { text, isError } = await installProducerPal(portal, library);
+
+    expect(isError).toBeFalsy();
+    expect(text).toContain(`device:{status:"kept"`);
+    expect(text).toContain("left the installed device (unknown version)");
+    expect(
+      readFileSync(join(library, ...DEVICE_DIR, "Producer_Pal.amxd"), "utf8"),
+    ).toBe("another device");
+  });
+
+  it("reports the script as installed and the device as failed when none shipped", async () => {
+    const portal = await portalDown({ scriptRunning: false, bundled: false });
+    const library = scratchLibrary();
+
+    const { text, isError } = await installProducerPal(portal, library);
+
+    expect(isError).toBeFalsy();
+    expect(text).toContain(`remoteScript:{status:"installed"`);
+    expect(text).toContain(`device:{ok:false`);
+    expect(text).toContain("no bundled device");
+    expect(text).toContain(
+      "Only the remote script was installed; the device was not (see device).",
+    );
+    expect(existsSync(join(library, "Remote Scripts", "Producer_Pal"))).toBe(
+      true,
+    );
+    expect(existsSync(join(library, "Presets"))).toBe(false);
+  });
+
+  it("installs nothing and says so for a User Library that isn't a folder", async () => {
+    const portal = await portalWithDeviceDown(false);
+
+    const { text, isError } = await installProducerPal(
+      portal,
+      join(scratchLibrary(), "missing"),
+    );
+
+    expect(isError).toBe(true);
+    expect(text).toContain("nothing was installed");
+    expect(text).toContain("pass it as userLibrary");
   });
 
   it("refuses a bad call the way the device does", async () => {

@@ -36,7 +36,7 @@ import { resolveRequestProfile } from "../helpers/http/request-profile.ts";
 import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
 import { withRemoteScriptAnswer } from "../helpers/skills-inject.ts";
 import { type McpResponse } from "../max-api-adapter.ts";
-import * as console from "../node-for-max-logger.ts";
+import { nodeWarn } from "../node-for-max-logger.ts";
 
 /** The live device settings a briefing falls back to when a header is absent. */
 export interface SubagentBriefingConfig {
@@ -136,7 +136,7 @@ export function registerSubagentBriefingRoute(
           audience: "subagent",
         }),
         readSkillOverrides(),
-        (message) => console.warn(`Subagent briefing skills: ${message}`),
+        (message) => nodeWarn(`Subagent briefing skills: ${message}`),
       );
 
       res.json({

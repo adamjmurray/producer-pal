@@ -24,6 +24,8 @@ import {
   findLivePluginsDbPath,
 } from "#src/mcp-server/live-library/live-db-path.ts";
 import { openLiveDb } from "#src/mcp-server/live-library/live-db.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
+import { sleep } from "#evals/shared/sleep.ts";
 
 interface FileState {
   path: string;
@@ -266,9 +268,7 @@ function runOneQuery(
   } catch (error) {
     result.errors += 1;
 
-    console.error(
-      `  ERROR on "${query.label}": ${error instanceof Error ? error.message : String(error)}`,
-    );
+    console.error(`  ERROR on "${query.label}": ${errorMessage(error)}`);
   }
 }
 
@@ -331,14 +331,4 @@ function reportQueryResults(results: QueryResult[]): void {
       }
     }
   }
-}
-
-/**
- * Sleep helper.
- *
- * @param ms - Milliseconds
- * @returns Promise that resolves after ms
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

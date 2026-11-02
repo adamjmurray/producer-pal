@@ -22,6 +22,17 @@ import {
 const USER_LIBRARY = "/Users/me/Music/Ableton/User Library";
 const DEVICE_PATH = `${USER_LIBRARY}/Presets/MIDI Effects/Max MIDI Effect/Producer_Pal.amxd`;
 
+/** An install POST that copies the device into the User Library. */
+const INSTALLS: InstallStub<DeviceStatus> = {
+  status: 200,
+  body: {
+    outcome: "installed",
+    path: DEVICE_PATH,
+    detail: "Installed the device.",
+  },
+  after: { state: "same", installedVersion: "1.2.0" },
+};
+
 /** The `GET /device-install` body. */
 interface DeviceStatus {
   source: string | null;
@@ -34,6 +45,8 @@ interface DeviceStatus {
   otherCopies: string[];
   inUserLibrary: boolean;
   swap: { allowed: boolean; reason: string | null };
+  /** Only a hosting build's server sends it. */
+  pluginHost?: { name: string; path: string; state: string }[];
 }
 
 /**
@@ -81,15 +94,7 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
     page,
   }) => {
     await installStubs(page);
-    const posted = await stubDevice(page, status(), {
-      status: 200,
-      body: {
-        outcome: "installed",
-        path: DEVICE_PATH,
-        detail: "Installed the device.",
-      },
-      after: { state: "same", installedVersion: "1.2.0" },
-    });
+    const posted = await stubDevice(page, status(), INSTALLS);
 
     await loadSettings(page);
     await openInstallationTab(page);
@@ -107,6 +112,8 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
     await expect(page.getByTestId("device-installed-path")).toHaveText(
       `Installed the device. (${DEVICE_PATH})`,
     );
+    // The new version isn't running until the device is swapped.
+    await expect(page.getByText(/new chat/i)).toBeHidden();
     await expect(page.getByTestId("device-status")).toHaveText(
       "In your User Library (v1.2.0)",
     );
@@ -127,6 +134,32 @@ test.describe("Settings — installation: device (stubbed backend)", () => {
       "Update available: v1.1.0 → v1.2.0",
     );
     await expect(page.getByTestId("device-install")).toHaveText("Update copy");
+  });
+
+  // This suite serves a release chat UI, which has no plug-in host devices. A
+  // server that reported them anyway must not make it offer an install.
+  test("ignores plug-in host devices in a release chat UI", async ({
+    page,
+  }) => {
+    await installStubs(page);
+    await stubDevice(
+      page,
+      status({
+        state: "same",
+        installedVersion: "1.2.0",
+        pluginHost: [
+          { name: "PPal Plug-in Effect", path: "/p", state: "missing" },
+        ],
+      }),
+    );
+    await loadSettings(page);
+    await openInstallationTab(page);
+
+    await expect(page.getByTestId("device-status")).toHaveText(
+      "In your User Library (v1.2.0)",
+    );
+    await expect(page.getByTestId("device-install")).toBeHidden();
+    await expect(page.getByTestId("device-plugin-host")).toBeHidden();
   });
 
   test("asks before replacing a newer copy, and says so to the server", async ({
@@ -280,6 +313,9 @@ test.describe("Settings — installation: device swap (stubbed backend)", () => 
       "Save your Live Set",
       { timeout: 15_000 },
     );
+    await expect(page.getByTestId("device-swap-new-chat-hint")).toContainText(
+      "Start a new chat",
+    );
     expect(posted).toStrictEqual([{ userLibrary: USER_LIBRARY }]);
   });
 
@@ -339,15 +375,7 @@ test.describe("Settings — installation: attention dot (stubbed backend)", () =
     page,
   }) => {
     await installStubs(page);
-    await stubDevice(page, status(), {
-      status: 200,
-      body: {
-        outcome: "installed",
-        path: DEVICE_PATH,
-        detail: "Installed the device.",
-      },
-      after: { state: "same", installedVersion: "1.2.0" },
-    });
+    await stubDevice(page, status(), INSTALLS);
     await loadSettings(page);
 
     // Still on the first tab: the dot is on the tab button, not the tab.

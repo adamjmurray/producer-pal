@@ -621,6 +621,34 @@ describe("useGeminiVoiceSession", () => {
     expect(result.current.error).toMatch(/Connection lost/);
   });
 
+  it("ignores a stopped session's late close while the next Talk connects", async () => {
+    const { result } = await renderConnected();
+    const oldOnClose = h.state.callbacks.onclose;
+
+    await act(async () => {
+      await result.current.disconnect();
+    });
+
+    const { gate, release } = makeGate();
+
+    h.fetchGeminiToken.mockReturnValueOnce(
+      gate.then(() => ({ value: "gem-key", ephemeral: false })),
+    );
+
+    let connecting!: Promise<void>;
+
+    await act(async () => {
+      connecting = result.current.connect();
+      await new Promise((r) => setTimeout(r, 0));
+      oldOnClose?.();
+      release();
+      await connecting;
+    });
+
+    expect(result.current.status).toBe("connected");
+    expect(result.current.error).toBeNull();
+  });
+
   it("captures a resumption handle and silently resumes after a drop", async () => {
     const { result } = await renderConnected();
 

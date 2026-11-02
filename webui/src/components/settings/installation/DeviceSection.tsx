@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { wrapperStatusLine } from "#webui/hooks/settings/installation/helpers/plugin-host-wrappers";
 import {
   type DeviceInstallStatus,
   type UseDeviceInstallReturn,
@@ -103,6 +104,7 @@ export function DeviceSection({
           swap={swap}
           status={view.status}
           actions={view.actions}
+          isDetected={isDetected}
           onSwap={() => swap.swap(trimmed)}
         />
       )}
@@ -150,6 +152,7 @@ const toneClass: Record<StatusTone, string> = {
  * @param {UseDeviceSwapReturn} props.swap - The useDeviceSwap state
  * @param {DeviceInstallStatus} props.status - The server's device-install status
  * @param {DeviceActions} props.actions - What the card offers
+ * @param {boolean} props.isDetected - Whether the path is the one the status describes
  * @param {() => void} props.onSwap - Runs the swap
  * @returns {JSX.Element} The lines
  */
@@ -158,15 +161,20 @@ function DeviceLines({
   swap,
   status,
   actions,
+  isDetected,
   onSwap,
 }: {
   device: UseDeviceInstallReturn;
   swap: UseDeviceSwapReturn;
   status: DeviceInstallStatus;
   actions: DeviceActions;
+  isDetected: boolean;
   onSwap: () => void;
 }) {
   const line = deviceStatusLine(status);
+  // The status describes only the detected User Library.
+  const wrappers =
+    isDetected && status.problem == null ? wrapperStatusLine(status) : null;
 
   return (
     <>
@@ -176,6 +184,14 @@ function DeviceLines({
       >
         {line.text}
       </p>
+      {wrappers != null && (
+        <p
+          className={`font-medium ${toneClass[wrappers.tone]}`}
+          data-testid="device-plugin-host"
+        >
+          {wrappers.text}
+        </p>
+      )}
       {actions.swap != null && (
         <DeviceSwapLine action={actions.swap} onSwap={onSwap} />
       )}
@@ -185,7 +201,12 @@ function DeviceLines({
         </p>
       )}
       {device.installResult != null && device.installError == null && (
-        <p className={goodTextClass} data-testid="device-installed-path">
+        <p
+          className={
+            device.installResult.failed ? warnTextClass : goodTextClass
+          }
+          data-testid="device-installed-path"
+        >
           {device.installResult.detail} ({device.installResult.path})
         </p>
       )}

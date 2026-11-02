@@ -13,17 +13,18 @@ import {
 import { installFromTool } from "./helpers/manage-install.ts";
 
 /**
- * Act on Live itself: install the Producer Pal remote script, or undo and redo
- * in Live's history. Adding Producer Pal to a Set only works while it isn't
- * running, and updating it replaces the running device, so here both are
- * refused (the portal answers them).
+ * Act on Live itself: install the Producer Pal remote script and device, or
+ * undo and redo in Live's history. Adding Producer Pal to a Set only works
+ * while it isn't running, and updating it replaces the running device, so here
+ * both are refused (the portal answers them).
  *
  * Not a target-list write, so it doesn't run through the write pipeline. It
  * also gets no undo step of its own: an end clears the guard that stops the
  * next undo from removing Producer Pal.
  * @param args - The action, and `userLibrary` for an install
  * @param ctx - Per-request context carrying the deadline
- * @returns The install's version and path, or what Live can undo and redo now
+ * @returns What the install put in the User Library, or what Live can undo and
+ *   redo now
  * @throws Error for an unknown action, a param the action doesn't read, a
  *   step that can't run, `add-producer-pal` (Producer Pal is running), or
  *   `update-producer-pal` (only the portal runs it)
@@ -34,7 +35,7 @@ export async function manage(
 ): Promise<ManageInstallResult | ManageHistoryResult> {
   const { action, userLibrary, steps } = checkManageArgs(args);
 
-  if (action === "install-remote-script") {
+  if (action === "install-producer-pal") {
     return await installFromTool(userLibrary);
   }
 

@@ -6,6 +6,9 @@
 const MODELS_URL = "https://openrouter.ai/api/v1/models";
 const FETCH_TIMEOUT_MS = 3000;
 
+/** `format` OpenRouter stamps on Claude's reasoning_details entries. */
+export const CLAUDE_REASONING_FORMAT = "anthropic-claude-v1";
+
 /** Model id -> whether reasoning is mandatory (can't be turned off). */
 type ReasoningMandatory = Map<string, boolean>;
 
@@ -17,6 +20,10 @@ let pending: Promise<ReasoningMandatory | null> | null = null;
 interface ReasoningBody {
   model?: string;
   reasoning?: { effort?: string };
+  messages?: Array<{
+    reasoning?: string;
+    reasoning_details?: Array<{ format?: string }>;
+  }>;
 }
 
 /**
@@ -50,6 +57,55 @@ export async function settleOpenRouterReasoningOff(
   }
 
   return false;
+}
+
+/**
+ * Take Claude's signed reasoning back off earlier assistant messages when this
+ * request can't use it: reasoning is off (the API rejects thinking blocks then)
+ * or the model isn't Claude (a signature only means something to its own
+ * model). Run after {@link settleOpenRouterReasoningOff}, so a model that can't
+ * turn reasoning off keeps its blocks. Only Claude-format entries go; another
+ * model's reasoning_details (Gemini signatures, say) are never touched.
+ * @param body - Parsed request body (mutated in place)
+ * @returns True if the body changed
+ */
+export function dropUnusableClaudeReasoning(body: ReasoningBody): boolean {
+  const usable =
+    body.reasoning != null &&
+    body.reasoning.effort !== "none" &&
+    typeof body.model === "string" &&
+    body.model.startsWith("anthropic/");
+
+  if (usable || !Array.isArray(body.messages)) {
+    return false;
+  }
+
+  let changed = false;
+
+  for (const message of body.messages) {
+    const details = message.reasoning_details;
+
+    if (!Array.isArray(details)) {
+      continue;
+    }
+
+    const kept = details.filter((d) => d.format !== CLAUDE_REASONING_FORMAT);
+
+    if (kept.length === details.length) {
+      continue;
+    }
+
+    changed = true;
+
+    if (kept.length > 0) {
+      message.reasoning_details = kept;
+    } else {
+      delete message.reasoning_details;
+      delete message.reasoning;
+    }
+  }
+
+  return changed;
 }
 
 /**

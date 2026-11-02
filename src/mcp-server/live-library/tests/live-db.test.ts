@@ -61,7 +61,11 @@ describe("openLiveDb", () => {
   });
 
   it("encodes ? and # in path so URI parsing does not eat them", async () => {
-    const trickyDir = join(scratchDir, "weird?name#here");
+    // Windows forbids ? in a file name
+    const trickyDir = join(
+      scratchDir,
+      process.platform === "win32" ? "weird#here" : "weird?name#here",
+    );
 
     mkdirSync(trickyDir, { recursive: true });
 

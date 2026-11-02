@@ -75,6 +75,8 @@ export interface ChatMessage {
     id: string;
     name: string;
     args: Record<string, unknown>;
+    /** Gemini's signature on this call, re-sent with it. */
+    thoughtSignature?: string;
   }>;
   toolResults?: Array<{
     id: string;
@@ -82,6 +84,8 @@ export interface ChatMessage {
     args: Record<string, unknown>;
     result: unknown;
     isError?: boolean;
+    /** A failure as the SDK sent it within the turn (`Error: <message>`). */
+    errorText?: string;
 
     /**
      * For a spawn_subagent result: the worker's chat history, kept for the UI
@@ -120,7 +124,18 @@ export interface ChatMessage {
     text: string;
     signature?: string;
     redactedData?: string;
+    /** Gemini's signature on this thought summary. */
+    thoughtSignature?: string;
   }>;
+  /** Gemini's signature on this step's text, re-sent with it. */
+  textThoughtSignature?: string;
+  /**
+   * OpenRouter's `reasoning_details` for this step, kept only when they are
+   * Claude's signed blocks. Re-sent verbatim to the model that signed them
+   * (`responseModel`), so the cached prefix survives the turn boundary (the
+   * OpenRouter counterpart of `reasoningParts`).
+   */
+  openrouterReasoningDetails?: Array<NonNullable<ProviderOptions[string]>>;
   /** Model ID from the API response (assistant messages only) */
   responseModel?: string;
   /** Token usage from the API response (assistant messages only) */

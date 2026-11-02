@@ -42,6 +42,12 @@ describe("codexTurnArgs", () => {
     model: "sol",
   };
 
+  it("asks for a detailed reasoning summary so reasoning items are emitted", () => {
+    expect(codexTurnArgs(input)).toContain(
+      'model_reasoning_summary="detailed"',
+    );
+  });
+
   it("builds a restricted initial MCP turn", () => {
     const args = codexTurnArgs(input);
 
@@ -56,6 +62,24 @@ describe("codexTurnArgs", () => {
     );
     expect(args.at(-1)).toBe("-");
   });
+
+  it("sets no reasoning effort unless asked", () => {
+    expect(codexTurnArgs(input).join(" ")).not.toContain("reasoning_effort");
+  });
+
+  it.each(["", "resume"])(
+    "passes the reasoning effort on initial and resumed turns (%s)",
+    (resumeSessionId) => {
+      const args = codexTurnArgs({
+        ...input,
+        effort: "max",
+        ...(resumeSessionId !== "" ? { resumeSessionId } : {}),
+      });
+      const i = args.indexOf('model_reasoning_effort="max"');
+
+      expect(args[i - 1]).toBe("-c");
+    },
+  );
 
   it("pins resumed turns to every restriction through config", () => {
     const args = codexTurnArgs({ ...input, resumeSessionId: "thread-123" });
@@ -81,6 +105,7 @@ describe("codexJudgeArgs", () => {
     );
     expectRestrictions(args);
     expect(args.join(" ")).not.toContain("mcp_servers");
+    expect(args.join(" ")).not.toContain("reasoning_effort");
   });
 });
 
@@ -168,6 +193,33 @@ describe("parseCodexStream", () => {
     // `turn.completed` carries no duration, so the session falls back to the
     // wall clock rather than the transport reporting a rate.
     expect(parsed.timing).toBeUndefined();
+  });
+
+  it("keeps reasoning items as reasoning text and reports no finish reason", () => {
+    const stdout = [
+      { type: "item.completed", item: { type: "reasoning", text: "Plan A." } },
+      { type: "item.completed", item: { type: "reasoning", text: "" } },
+      { type: "item.completed", item: { type: "reasoning", text: "Plan B." } },
+      { type: "item.completed", item: { type: "agent_message", text: "Ok." } },
+      { type: "turn.completed", usage: { input_tokens: 1, output_tokens: 1 } },
+    ]
+      .map((event) => JSON.stringify(event))
+      .join("\n");
+    const parsed = parseCodexStream(stdout);
+
+    expect(parsed.reasoningText).toBe("Plan A.\n\nPlan B.");
+    expect(parsed.text).toBe("Ok.");
+    // Codex's event stream names no stop reason, so none is invented.
+    expect(parsed).not.toHaveProperty("finishReason");
+  });
+
+  it("leaves reasoning text unset when the turn had no reasoning items", () => {
+    const stdout = JSON.stringify({
+      type: "item.completed",
+      item: { type: "agent_message", text: "Ok." },
+    });
+
+    expect(parseCodexStream(stdout)).not.toHaveProperty("reasoningText");
   });
 
   it("pairs an id-less started/completed item into one call", () => {

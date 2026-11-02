@@ -8,17 +8,20 @@ tool that differs from a rule here is a bug in the tool.
 Changing one of these answers is a rule change: ask first, update this spec, and
 apply it to every tool at once.
 
-| Part                                                            | What is in it                                                                    |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| This file                                                       | Lists and pairing, result entries, overwrites                                    |
-| [refusals.md](refusals.md)                                      | What is refused up front, and how                                                |
-| [skips-and-replaced-targets.md](skips-and-replaced-targets.md)  | Skip entries, no-ops, last wins, replaced targets, locators                      |
-| [object-paths/](object-paths/README.md)                         | The path grammar, creating by path, results and errors                           |
-| [clips-playback-and-sends/](clips-playback-and-sends/README.md) | Looping, `duplicateLoop`, envelopes, audio conversion, muted notes, send returns |
-| [up-front-refusals-by-tool.md](up-front-refusals-by-tool.md)    | Where each tool applies the refusal rules                                        |
-| [skip-entries-by-tool/](skip-entries-by-tool/README.md)         | How each write tool applies the entry rules                                      |
-| [ppal-manage.md](ppal-manage.md)                                | How `ppal-manage` answers: install, add Producer Pal, undo, redo, refusals       |
-| [dev/tools/tool-schemas.md](../../tools/tool-schemas.md)        | How to build the schema and the helpers that enforce these rules                 |
+| Part                                                            | What is in it                                                                      |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| This file                                                       | Lists and pairing, result entries, overwrites                                      |
+| [refusals.md](refusals.md)                                      | What is refused up front, and how                                                  |
+| [skips-and-replaced-targets.md](skips-and-replaced-targets.md)  | Skip entries, no-ops, last wins, replaced targets, locators                        |
+| [object-paths/](object-paths/README.md)                         | The path grammar, creating by path, results and errors                             |
+| [clips-playback-and-sends/](clips-playback-and-sends/README.md) | Looping, `duplicateLoop`, envelopes, audio conversion, muted notes, send returns   |
+| [up-front-refusals-by-tool.md](up-front-refusals-by-tool.md)    | Where each tool applies the refusal rules                                          |
+| [skip-entries-by-tool/](skip-entries-by-tool/README.md)         | How each write tool applies the entry rules                                        |
+| [ppal-connect.md](ppal-connect.md)                              | How `ppal-connect` answers: the full connect, the version check, the new-chat line |
+| [ppal-manage.md](ppal-manage.md)                                | How `ppal-manage` answers: install, add Producer Pal, undo, redo, refusals         |
+| [ppal-library.md](ppal-library.md)                              | How `ppal-library` answers when Live's library data may be out of date             |
+| [ppal-context.md](ppal-context.md)                              | How `ppal-context` answers when a call names several memory entries                |
+| [dev/tools/tool-schemas.md](../../tools/tool-schemas.md)        | How to build the schema and the helpers that enforce these rules                   |
 
 ## Lists and pairing
 
@@ -32,6 +35,14 @@ A call that names N targets gets N entries back, in the order named.
   count is refused before any work runs. Nothing cycles: a cycled destination
   overwrites, and a caller who miscounted gets a plausible result. An old schema
   line saying "cycles if fewer" made models write short lists.
+- **A color is written as the nearest palette entry.** Live keeps a fixed
+  70-entry palette and snaps anything else by raw RGB distance, which picks odd
+  entries (`#800080` landed pink-red). Every color write goes through
+  `setColor`, which picks the closest entry by OKLab distance (near-grays only
+  to the palette's grays) and writes that, so Live has nothing left to snap. A
+  request off the palette still comes back on its entry as `color` and a
+  `detail` (`landedColor`). The raw `ppal-live-api` tool's `set-color` is the
+  exception: it writes the color as given, to probe Live's own snap.
 - **A destination never broadcasts**, because a slot, lane, device or pad holds
   one object. With several sources the destinations pair one per source
   (`requireDestinationPerSource`). One source may take any number of
@@ -56,6 +67,9 @@ A call that names N targets gets N entries back, in the order named.
   nothing, so nothing is guessed. One trailing comma is not an entry.
 - **A comma splits a value only when the call names more than one target.** With
   one target, commas are part of the value. `\,` is a literal comma either way.
+- **Every string value is trimmed, whole or as a list entry.** `name: " A "` and
+  `name: " A , B "` over two targets both store plain names. A value of only
+  spaces reads as `""`. A value can't start or end with a space.
 - **Two or more args with commas must name the same number of entries.** A count
   the tool works out itself (`count: 3`) is one of them. An arg is a list when
   it has a comma, even if a trailing one leaves one entry.
@@ -83,6 +97,10 @@ notes is a real request. On a number, boolean, enum or array param it is
 refused, naming the param: `bpm: ""` must not become a call that sets no tempo
 and says nothing. For the action check below, a null, blank or `"null"` on a
 param counts as not sent.
+
+A blank `id` or `path` beside one that names the targets reads as unset. Every
+tool that takes both warns once (`blank id ignored`) and only when the call ran.
+A `"null"` there warns once as `id "null" names nothing`, not also as blank.
 
 Measured on one model (codex-cli, 128 tool calls): nothing arrived blank or
 null, and an all-optional tool with nothing to say came through as `{}`. The

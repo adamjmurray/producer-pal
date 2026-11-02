@@ -31,6 +31,7 @@ import {
   readFanOut,
   type ReadResult,
 } from "#src/tools/shared/validation/lists/read-fan-out.ts";
+import { type TargetNames } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { sceneApiAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -44,6 +45,8 @@ interface ReadSceneArgs {
   paths?: string;
   /** Hidden alias for id */
   sceneId?: string;
+  /** @internal The names `id` and `path` were sent under, set by the fan-out */
+  targetNames?: TargetNames;
   include?: string[];
   /**
    * Clips in this scene, when the caller already knows. A Live Set read counts
@@ -121,7 +124,7 @@ export function readOneScene(
 
   // Validate parameters
   if (sceneId == null && scenePath == null && sceneIndex == null) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("scene"));
   }
 
   const { includeClips, includeColor } = parseIncludeArray(
@@ -137,8 +140,8 @@ export function readOneScene(
     // Validate an id names a scene; a path says so by its own spelling
     scene =
       sceneId != null
-        ? validateIdType(sceneId, "scene")
-        : sceneApiAtPath(scenePath as string);
+        ? validateIdType(sceneId, "scene", args.targetNames?.idParam)
+        : sceneApiAtPath(scenePath as string, args.targetNames?.pathParam);
 
     // Determine scene index from the scene's Live path
     resolvedSceneIndex = scene.sceneIndex;

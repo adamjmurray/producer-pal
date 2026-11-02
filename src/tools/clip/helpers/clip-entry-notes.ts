@@ -7,6 +7,11 @@
 // the same words.
 
 import { CLIP_IS_AUDIO, ignoredText } from "#src/shared/max/ignored-wording.ts";
+import {
+  type TransformCounts,
+  type TransformOutcome,
+} from "#src/notation/transform/transformed-count.ts";
+import { plural } from "#src/tools/shared/validation/lists/plural.ts";
 
 /**
  * What to say when notes sharing a pitch and start were collapsed into one.
@@ -15,7 +20,7 @@ import { CLIP_IS_AUDIO, ignoredText } from "#src/shared/max/ignored-wording.ts";
  */
 export function droppedDuplicatesNote(count: number): string | null {
   return count > 0
-    ? `dropped ${count} duplicate note${count === 1 ? "" : "s"} at the same pitch and start`
+    ? `dropped ${plural(count, "duplicate note")} at the same pitch and start`
     : null;
 }
 
@@ -24,7 +29,7 @@ export function droppedDuplicatesNote(count: number): string | null {
  * @returns "1 note" or "3 notes"
  */
 function notesCount(count: number): string {
-  return `${count} note${count === 1 ? "" : "s"}`;
+  return plural(count, "note");
 }
 
 /**
@@ -67,6 +72,39 @@ export function transformsIgnoredNoNotesNote(
 }
 
 /**
+ * What to say when transforms ran and changed nothing, so `transformed: 0`
+ * isn't read as a failure. The two causes need different fixes: a selector that
+ * matched nothing, or transforms that left what they matched as it was. Says
+ * nothing when a statement failed or was skipped: that has its own detail.
+ * @param outcome - What the transforms did, or undefined when none ran
+ * @param counts - The counts reported for them
+ * @returns The note for the clip's entry, or null when something changed
+ */
+export function transformsChangedNothingNote(
+  outcome: TransformOutcome | undefined,
+  counts: TransformCounts,
+): string | null {
+  if (
+    outcome?.selected !== true ||
+    outcome.failed ||
+    counts.transformed !== 0 ||
+    counts.deletedNotes
+  ) {
+    return null;
+  }
+
+  const matched = outcome.matched.size;
+
+  if (matched === 0) {
+    return "no notes matched the selector";
+  }
+
+  return matched === 1
+    ? "the transforms didn't change the 1 matched note"
+    : `the transforms changed none of the ${matched} matched notes`;
+}
+
+/**
  * What to say when a transform was sent for an audio clip, which has no notes.
  * @returns The note for the clip's entry
  */
@@ -79,7 +117,7 @@ export function transformsIgnoredAudioNote(): string {
  * @returns "1 muted note" or "3 muted notes"
  */
 function mutedNotes(count: number): string {
-  return `${count} muted note${count === 1 ? "" : "s"}`;
+  return plural(count, "muted note");
 }
 
 /**
@@ -111,7 +149,7 @@ export function mutedOverlapNote(
 
   return mutedWasShortened
     ? `${mutedNotes(count)} shortened by an overlapping note`
-    : `${count} note${count === 1 ? "" : "s"} shortened by an overlapping muted note`;
+    : `${notesCount(count)} shortened by an overlapping muted note`;
 }
 
 /**

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { LiveAPI as MockLiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import {
   mockContext,
@@ -263,7 +263,9 @@ describe("tileClipToRange", () => {
     // arrangement clip; a remainder-2 partial would land at [100,102], inside
     // the source. It must be skipped, not routed through the holding area where
     // it would trim the source.
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warn = vi
+      .spyOn(maxConsole, "emitWarning")
+      .mockImplementation(() => {});
     const sourceClip = setupMidiSourceClip("100", 0, {
       is_arrangement_clip: 1,
       start_time: 100,

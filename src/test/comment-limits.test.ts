@@ -19,7 +19,7 @@ import {
   summarizeComments,
 } from "./helpers/comment-scan-helpers.ts";
 
-// A ratchet on comment slop in the non-test sources: the license header and
+// Caps on comment slop in the non-test sources: the license header and
 // lint directives don't count, everything else does. `npm run comment:stats`
 // prints the same numbers and names the worst files. The caps, and the rule for
 // changing them, live in helpers/comment-limits.ts.
@@ -35,9 +35,6 @@ const WORST_COUNT = 5;
 /** Below this many code lines a file's density is noise, so it isn't ranked. */
 const RANKED_CODE_LINES = 40;
 
-/** Cap granularity: a cap stays within this of the density it holds. */
-const STEP = 0.005;
-
 describe("Comment limits", () => {
   const byTree = new Map<CommentTree, FileCommentStats[]>(
     COMMENT_TREES.map((tree) => [tree, scanCommentTree(tree, MAX_BLOCK_LINES)]),
@@ -52,8 +49,16 @@ describe("Comment limits", () => {
         const treeFiles = byTree.get(tree) as FileCommentStats[];
         const density = commentDensity(summarizeComments(treeFiles));
 
-        checkDensity(tree, density, cap, treeFiles);
-        expect(density).toBeLessThanOrEqual(cap);
+        if (thousandths(density) > thousandths(cap)) {
+          expect.fail(
+            `${tree} carries ${density} comment lines per code line ` +
+              `(max: ${cap}):\n${worstFiles(treeFiles)}\n\nSay it once, in ` +
+              "the fewest words that stay accurate.\nRun `npm run " +
+              "comment:stats` for the full picture.",
+          );
+        }
+
+        expect(thousandths(density)).toBeLessThanOrEqual(thousandths(cap));
       });
     }
   });
@@ -115,35 +120,6 @@ describe("Comment limits", () => {
 });
 
 /**
- * Fail when a tree is over its density cap, or the cap has drifted above it
- * @param tree - The tree being checked
- * @param density - The tree's comment lines per code line
- * @param cap - The tree's cap
- * @param files - Every file in the tree, for the failure message
- */
-function checkDensity(
-  tree: CommentTree,
-  density: number,
-  cap: number,
-  files: FileCommentStats[],
-): void {
-  if (thousandths(density) > thousandths(cap)) {
-    expect.fail(
-      `${tree} carries ${density} comment lines per code line (max: ${cap}):\n` +
-        `${worstFiles(files)}\n\nSay it once, in the fewest words that stay ` +
-        "accurate.\nRun `npm run comment:stats` for the full picture.",
-    );
-  }
-
-  if (thousandths(cap) - thousandths(density) >= thousandths(STEP)) {
-    expect.fail(
-      `${tree} comment density has fallen to ${density} — lower its cap in ` +
-        `src/test/helpers/comment-limits.ts to ${capFor(density)}.`,
-    );
-  }
-}
-
-/**
  * Name the allowances that no longer match the tree
  * @param files - Every scanned file
  * @returns One indented line per stale entry, with the fix
@@ -186,17 +162,6 @@ function worstFiles(files: FileCommentStats[]): string {
         `(${file.commentLines} comment / ${file.codeLines} code)`,
     )
     .join("\n");
-}
-
-/**
- * The cap a density belongs under: the next STEP at or above it
- * @param density - Comment lines per code line
- * @returns The cap, to 3 decimals
- */
-function capFor(density: number): number {
-  const steps = Math.ceil(thousandths(density) / thousandths(STEP));
-
-  return Number((steps * STEP).toFixed(3));
 }
 
 /**

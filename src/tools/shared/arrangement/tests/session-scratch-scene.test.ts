@@ -34,9 +34,9 @@ import {
 import { registerSceneWorld } from "./helpers/session-scene-test-helpers.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 const context = { silenceWavPath: "/tmp/silence.wav" };
@@ -145,7 +145,7 @@ const CALLERS: Array<[string, (report: Report) => void]> = [
       expect(extension).not.toBeNull();
       cleanupTempClip(extension);
 
-      for (const [message] of vi.mocked(consoleMock.warn).mock.calls) {
+      for (const [message] of vi.mocked(consoleMock.emitWarning).mock.calls) {
         report(String(message));
       }
     },
@@ -225,7 +225,7 @@ describe("the scene an audio helper makes for its scratch clip", () => {
 
     run(() => {});
 
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   it("names the scene it made, and no scene when it made none", () => {
@@ -249,7 +249,7 @@ describe("the scene an audio helper makes for its scratch clip", () => {
 
     removeSessionClip({ slot: session.slot, sceneId: "id scene_world_gone" });
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
       expect.stringContaining("left an empty scene behind"),
     );
   });
@@ -426,7 +426,7 @@ describe("a failure while the scratch clip is made", () => {
       "left an empty scene behind: couldn't remove the scratch scene (Live says no)",
     ]);
     expect(world.sceneCount()).toBe(2);
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   it("hands a scene a lengthened clip couldn't remove to that clip's reasons", () => {
@@ -439,7 +439,7 @@ describe("a failure while the scratch clip is made", () => {
     expect(reasons.said.get("scene_world_source")).toStrictEqual([
       "left an empty scene behind: couldn't remove the scratch scene (Live says no)",
     ]);
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
   });
 
   it("still cleans up, and throws Live's error, when the slot can't be read back", () => {

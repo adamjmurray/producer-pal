@@ -9,7 +9,6 @@ import {
   liveSetLeftClean,
   liveSetLeftOpen,
   parseRepeatCount,
-  planTrialLiveSetOpens,
 } from "./multi-trial-runs.ts";
 
 describe("parseRepeatCount", () => {
@@ -26,51 +25,17 @@ describe("parseRepeatCount", () => {
   });
 });
 
-describe("planTrialLiveSetOpens", () => {
-  it("reopens the Live Set for every trial by default", () => {
-    expect(planTrialLiveSetOpens(3, false, undefined)).toStrictEqual([
-      false,
-      false,
-      false,
-    ]);
-  });
-
-  it("reuses the open Set after trial 1 when the scenario resets itself", () => {
-    expect(planTrialLiveSetOpens(3, false, true)).toStrictEqual([
-      false,
-      true,
-      true,
-    ]);
-  });
-
-  it("skips trial 1's open when a clean Set is already open", () => {
-    expect(planTrialLiveSetOpens(2, true, true)).toStrictEqual([true, true]);
-  });
-
-  it("returns one flag per trial", () => {
-    expect(planTrialLiveSetOpens(1, false, true)).toStrictEqual([false]);
-  });
-});
-
 describe("liveSetLeftOpen", () => {
   const run = (result: JsonEvalResult["result"]): JsonEvalResult =>
     ({ result }) as JsonEvalResult;
 
   it("is true after a run that got past the open", () => {
-    expect(liveSetLeftOpen([run("pass")])).toBe(true);
-    expect(liveSetLeftOpen([run("fail")])).toBe(true);
+    expect(liveSetLeftOpen(run("pass"))).toBe(true);
+    expect(liveSetLeftOpen(run("fail"))).toBe(true);
   });
 
-  it("is false when the last run errored", () => {
-    expect(liveSetLeftOpen([run("pass"), run("error")])).toBe(false);
-  });
-
-  it("recovers when a later trial reopened the Set", () => {
-    expect(liveSetLeftOpen([run("error"), run("pass")])).toBe(true);
-  });
-
-  it("is false when nothing ran", () => {
-    expect(liveSetLeftOpen([])).toBe(false);
+  it("is false when the run errored", () => {
+    expect(liveSetLeftOpen(run("error"))).toBe(false);
   });
 });
 
@@ -79,15 +44,15 @@ describe("liveSetLeftClean", () => {
     ({ result }) as JsonEvalResult;
 
   it("is true after a reuseLiveSet scenario that ran", () => {
-    expect(liveSetLeftClean(true, [run("pass")])).toBe(true);
+    expect(liveSetLeftClean(true, run("pass"))).toBe(true);
   });
 
   it("is false after a scenario that does not reset what it writes", () => {
-    expect(liveSetLeftClean(undefined, [run("pass")])).toBe(false);
-    expect(liveSetLeftClean(false, [run("fail")])).toBe(false);
+    expect(liveSetLeftClean(undefined, run("pass"))).toBe(false);
+    expect(liveSetLeftClean(false, run("fail"))).toBe(false);
   });
 
   it("is false after a reuseLiveSet scenario that errored", () => {
-    expect(liveSetLeftClean(true, [run("error")])).toBe(false);
+    expect(liveSetLeftClean(true, run("error"))).toBe(false);
   });
 });

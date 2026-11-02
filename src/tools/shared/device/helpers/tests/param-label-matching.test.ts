@@ -5,9 +5,10 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  isOnOffToggle,
   looseLabelKey,
   resolveEnumIndex,
-} from "#src/tools/shared/device/helpers/param-label-parsing.ts";
+} from "#src/tools/shared/device/helpers/params/param-label-parsing.ts";
 import { normalizeDivisionLabel } from "#src/tools/shared/device/helpers/param-reading.ts";
 
 describe("looseLabelKey", () => {
@@ -148,5 +149,31 @@ describe("resolveEnumIndex refuses text that only looks like an option", () => {
   it("matches a spaced digit label however it is spaced", () => {
     expect(resolveEnumIndex(["1 1/16", "1/16"], "1  1/16")).toBe(0);
     expect(resolveEnumIndex(["11  / 16", "1 / 16"], "11/16")).toBe(0);
+  });
+});
+
+describe("isOnOffToggle", () => {
+  it.each([[["Off", "On"]], [["On", "Off"]], [["off", "ON"]]])(
+    "is true for %j",
+    (options) => {
+      expect(isOnOffToggle(options)).toBe(true);
+    },
+  );
+
+  it.each([
+    [["Off", "On", "Auto"]],
+    [["Off", "Mid"]],
+    [["On"]],
+    [["Low", "High"]],
+    [[0, 1]],
+    [[]],
+  ])("is false for %j", (options) => {
+    expect(isOnOffToggle(options)).toBe(false);
+  });
+
+  it("takes the words a model sends for a toggle the read leaves unlisted", () => {
+    expect(resolveEnumIndex(["Off", "On"], "true")).toBe(1);
+    expect(resolveEnumIndex(["Off", "On"], 0)).toBe(0);
+    expect(resolveEnumIndex(["On", "Off"], "off")).toBe(1);
   });
 });

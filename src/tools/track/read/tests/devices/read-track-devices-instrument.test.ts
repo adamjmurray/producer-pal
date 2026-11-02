@@ -18,6 +18,10 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
+import {
+  infoReply,
+  installWrapper,
+} from "#src/tools/device/tests/helpers/plugin-host-wrapper-fixtures.ts";
 import { setupTrackMock } from "../helpers/read-track-registry-test-helpers.ts";
 import { readOneTrack } from "../../read-track.ts";
 
@@ -25,7 +29,7 @@ type DevicePath = ReturnType<TrackPath["device"]>;
 
 /** One device in a fixture tree. */
 type DeviceSpec =
-  | { kind: "instrument"; name: string }
+  | { kind: "instrument"; name: string; className?: string | undefined }
   | { kind: "midi-effect"; name: string }
   | { kind: "drum-rack" }
   | { kind: "rack"; chains: DeviceSpec[][] };
@@ -33,10 +37,11 @@ type DeviceSpec =
 /**
  * A plain instrument device
  * @param name - Its Live class display name
+ * @param className - Its Live class, when that matters
  * @returns The spec
  */
-function instrument(name: string): DeviceSpec {
-  return { kind: "instrument", name };
+function instrument(name: string, className?: string): DeviceSpec {
+  return { kind: "instrument", name, className };
 }
 
 /**
@@ -122,6 +127,7 @@ function deviceProperties(spec: DeviceSpec): Record<string, unknown> {
     case "instrument":
       return {
         class_display_name: spec.name,
+        ...(spec.className != null && { class_name: spec.className }),
         type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
         can_have_chains: 0,
         can_have_drum_pads: 0,
@@ -193,6 +199,14 @@ function instrumentField(devices: DeviceSpec[]): unknown {
 describe("readOneTrack instrument field", () => {
   it("names a plain instrument", () => {
     expect(instrumentField([instrument("Operator")])).toBe("Operator");
+  });
+
+  it("names the plug-in a wrapper hosts", () => {
+    installWrapper({ info: () => infoReply("Serum 2") });
+
+    expect(
+      instrumentField([instrument("Max Instrument", "MxDeviceInstrument")]),
+    ).toBe("Serum 2");
   });
 
   it("finds the instrument behind a MIDI effect", () => {

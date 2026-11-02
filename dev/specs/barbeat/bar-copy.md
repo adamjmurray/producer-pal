@@ -203,3 +203,8 @@ The parser warns about problematic buffer states:
 - **Previous bar at bar 1**: `"Cannot copy from previous bar when at bar 1"`
 
 These are console warnings, not errors - parsing completes successfully.
+
+### Limits
+
+A source or destination range over 10000 bars is a parse error. Copies count
+toward the string's 10000-note limit.

@@ -7,11 +7,11 @@
 // envelope points. Clearing still works there.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   answerEnvelopeRoutes,
   envelopeRoutesCalled,
+  expectVolumeRefused,
 } from "#src/tools/clip/envelopes/tests/envelope-route-test-helpers.ts";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import {
@@ -20,10 +20,13 @@ import {
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const NOTATION = "1|1 0 / 3|1 0.8";
 
@@ -50,18 +53,7 @@ describe("updateClip - envelopes by Live version", () => {
   it("refuses points on Live 12.3, saying what still works", async () => {
     liveVersion("12.3.8");
 
-    const result = await updateClip({
-      id: "123",
-      envelopes: `volume: ${NOTATION}`,
-    });
-
-    expect(requestNode).not.toHaveBeenCalled();
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        envelopes: 0,
-        detail: `envelope "volume": ${REFUSAL}`,
-      }),
-    );
+    await expectVolumeRefused(NOTATION, REFUSAL);
   });
 
   it("still clears on Live 12.3", async () => {

@@ -29,6 +29,9 @@ const RACK_CLASSES: Array<[string, string]> = [
 
 const RACK_CLASS_NAMES = new Set(RACK_CLASSES.map(([, cls]) => cls));
 
+const DRUM_RACK = "DrumGroupDevice";
+const INSTRUMENT_RACK = "InstrumentGroupDevice";
+
 /**
  * Each device's XML class, for the devices whose presets ship in Live's Core
  * Library. A device not listed (a plug-in, a Max device, one without presets)
@@ -106,6 +109,7 @@ const DEVICE_CLASSES = new Map<string, string>([
  * element names. An .adg is for the rack it holds, or, for any other device, the
  * one it is built around: the first device of its first chain (Live files an
  * Impulse kit under Impulse). A rack that merely holds the device isn't for it.
+ * An Instrument Rack built around a Drum Rack is also for Drum Rack.
  * Anything that can't be told counts as a yes: an unknown device, a file that
  * can't be read or isn't gzipped XML. Live then makes the call when it loads.
  * @param path - The preset file's absolute path
@@ -139,10 +143,18 @@ export async function presetFileIsFor(
     return true;
   }
 
-  // A named rack is for racks of its own class only.
-  return RACK_CLASS_NAMES.has(deviceClass)
-    ? rack === deviceClass
-    : firstDeviceClass(xml) === deviceClass;
+  if (!RACK_CLASS_NAMES.has(deviceClass)) {
+    return firstDeviceClass(xml) === deviceClass;
+  }
+
+  // A named rack is for racks of its own class, and a Drum Rack also for the
+  // Instrument Racks many drum kits are saved as.
+  return (
+    rack === deviceClass ||
+    (deviceClass === DRUM_RACK &&
+      rack === INSTRUMENT_RACK &&
+      firstDeviceClass(xml) === DRUM_RACK)
+  );
 }
 
 // --- Helpers below main export ---

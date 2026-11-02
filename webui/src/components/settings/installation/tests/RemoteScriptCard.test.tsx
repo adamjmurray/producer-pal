@@ -7,16 +7,16 @@
  * @vitest-environment happy-dom
  */
 import { fireEvent, render, screen, within } from "@testing-library/preact";
-import { beforeEach, describe, expect, it } from "vitest";
-import {
-  installFetchMock,
-  jsonResponse,
-} from "#webui/hooks/context/tests/doc-transport-test-helpers";
+import { describe, expect, it } from "vitest";
+import { jsonResponse } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { InstallationTabHarness } from "#webui/components/settings/installation/tests/helpers/InstallationTabHarness";
 import { type RemoteScriptStatus } from "#webui/hooks/settings/installation/use-remote-script";
-import { routeInstallationFetch } from "#webui/components/settings/installation/tests/helpers/installation-fetch-test-helpers";
 import { statusBody } from "#webui/components/settings/installation/tests/helpers/remote-script-status-test-helpers";
+import {
+  renderRemoteScriptTab,
+  setupInstallationTab,
+} from "#webui/components/settings/installation/tests/helpers/installation-tab-test-helpers";
 
 const RUNNING: Partial<RemoteScriptStatus> = {
   installed: true,
@@ -26,12 +26,7 @@ const RUNNING: Partial<RemoteScriptStatus> = {
 };
 
 describe("InstallationTab remote script card", () => {
-  const fetchMock = installFetchMock();
-  let routes: ReturnType<typeof routeInstallationFetch>;
-
-  beforeEach(() => {
-    routes = routeInstallationFetch(fetchMock);
-  });
+  const { routes } = setupInstallationTab();
 
   /**
    * Render the tab past the remote script's mount read.
@@ -41,9 +36,7 @@ describe("InstallationTab remote script card", () => {
   async function renderCard(
     overrides: Partial<RemoteScriptStatus> = {},
   ): Promise<HTMLElement> {
-    routes.remote(jsonResponse(statusBody(overrides)));
-    render(<InstallationTabHarness />);
-    await waitForHookState(() => screen.getByTestId("remote-script-status"));
+    await renderRemoteScriptTab(routes, overrides);
 
     return screen.getByTestId("remote-script-section");
   }

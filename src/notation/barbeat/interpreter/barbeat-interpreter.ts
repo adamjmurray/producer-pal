@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
+import { applyV0Deletions } from "#src/notation/helpers/apply-v0-deletions.ts";
 import {
   DEFAULT_PROBABILITY,
   DEFAULT_TIME,
@@ -18,8 +18,9 @@ import {
   type StreamPitch,
 } from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import { parseBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { checkNotationLimit } from "#src/notation/helpers/notation-limit.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../types.ts";
 import {
   clearCarriedStreams,
@@ -134,6 +135,7 @@ function processStreamElement(
         stream.values,
         beatsPerBar,
         timeSigDenominator,
+        state.currentDuration,
       );
       state.durationStreamCursor = 0;
       break;
@@ -331,7 +333,8 @@ export function interpretNotation(
 
   // Bar copy tracking: Map bar number -> array of note metadata
   const notesByBar = new Map<number, BarCopyNote[]>();
-  const events: NoteEvent[] = [...existingNotes];
+  // The string's own notes only, so the note limit doesn't count the clip's.
+  const events: NoteEvent[] = [];
 
   for (const note of existingNotes) {
     trackForBarCopy(note, beatsPerBar, timeSigDenominator, notesByBar);
@@ -376,13 +379,13 @@ export function interpretNotation(
   const buffered = countBufferedPitches(state);
 
   if (buffered > 0 && !state.pitchesEmitted) {
-    console.warn(
+    emitWarning(
       `${buffered} pitch(es) buffered but no time position to emit them`,
     );
   }
 
   // Apply v0 deletions as final post-processing step
-  return applyV0Deletions(events);
+  return applyV0Deletions([...existingNotes, ...events]);
 }
 
 /**
@@ -399,12 +402,14 @@ export function parseNotation(
     return [];
   }
 
+  let ast: ASTElement[];
+
   try {
     // Pass the denominator so the grammar can resolve `±n` beat offsets
     // (whole-note fractions) into musical beats during the parse, and
     // beatsPerBar so it can borrow across a bar line when a `-n` offset pulls a
     // position earlier than beat 1 (e.g. `2|1-n/12`).
-    return parser.parse(barBeatExpression, {
+    ast = parser.parse(barBeatExpression, {
       timeSigDenominator: options.timeSigDenominator,
       beatsPerBar: parseBeatsPerBar(options),
     });
@@ -417,5 +422,28 @@ export function parseNotation(
     }
 
     throw error;
+  }
+
+  checkExpansionCounts(ast);
+
+  return ast;
+}
+
+// Refuse a repeat or bar range too large to expand, before any note is made.
+function checkExpansionCounts(ast: ASTElement[]): void {
+  for (const { beat, destination, source } of ast) {
+    if (typeof beat === "object") {
+      checkNotationLimit(beat.times, `Repeat x${beat.times}`);
+    }
+
+    const sourceRange = typeof source === "object" ? source.range : undefined;
+
+    for (const range of [destination?.range, sourceRange]) {
+      if (range != null) {
+        const [start, end] = range;
+
+        checkNotationLimit(end - start + 1, `Bar range ${start}-${end}`);
+      }
+    }
   }
 }

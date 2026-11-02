@@ -22,25 +22,47 @@ export const DEFAULT_LIST_TAGS_LIMIT = 200;
 /** Upper bound on `limit` for library queries. */
 export const MAX_LIBRARY_LIMIT = 1_000;
 
+/** Upper bound on `limit` for search. Lower on purpose: search items are big
+ * and a result of 1000 fills a small model's context. The list actions have no
+ * paging, so they keep the higher cap. */
+export const MAX_SEARCH_LIMIT = 200;
+
 /**
  * Clamp a requested limit to safe positive-integer bounds. Shared by
  * library.search, library.listTags, and the tool layer so all three
  * apply the same coercion semantics (non-finite/non-positive → default,
- * cap at MAX_LIBRARY_LIMIT, floor fractional values).
+ * cap at `max`, floor fractional values).
  *
  * @param requested - User-supplied limit
  * @param defaultLimit - Fallback when requested is missing/invalid
- * @returns Integer between 1 and MAX_LIBRARY_LIMIT
+ * @param max - Upper bound (defaults to MAX_LIBRARY_LIMIT)
+ * @returns Integer between 1 and `max`
  */
 export function clampLibraryLimit(
   requested: number | undefined,
   defaultLimit: number,
+  max: number = MAX_LIBRARY_LIMIT,
 ): number {
   if (requested == null || !Number.isFinite(requested) || requested <= 0) {
     return defaultLimit;
   }
 
-  return Math.min(Math.floor(requested), MAX_LIBRARY_LIMIT);
+  return Math.min(Math.floor(requested), max);
+}
+
+/**
+ * Clamp a requested offset to a non-negative integer. Anything missing,
+ * non-finite or negative means the first page.
+ *
+ * @param requested - User-supplied offset
+ * @returns Integer of 0 or more
+ */
+export function clampLibraryOffset(requested: number | undefined): number {
+  if (requested == null || !Number.isFinite(requested) || requested <= 0) {
+    return 0;
+  }
+
+  return Math.floor(requested);
 }
 
 /** Content kinds supported by `library.search` and the ppal-library tool */
@@ -101,6 +123,8 @@ export interface LibrarySearchArgs {
   inFolder?: string;
   sort?: LibrarySort;
   limit?: number;
+  /** Matches to skip before the first one returned (search paging). */
+  offset?: number;
   /**
    * When true, stat each result's reconstructed path and report whether the
    * file still exists on disk via LibraryItem.pathExists. Off by default
@@ -157,34 +181,39 @@ export interface LibraryItem {
 }
 
 /**
- * Advisory that the served DB snapshot may be stale.
- *
- * We open Live's DB with `immutable=1`, which ignores the WAL sidecar. When a
- * `-wal` persists with an mtime newer than the committed `.db` (typical after
- * an unclean Live exit), the immutable read serves the last-checkpoint
- * snapshot — missing whatever the WAL holds. This payload quantifies the gap.
+ * A search result item as the tool returns it: a LibraryItem without what the
+ * caller can already read off the item's `path` or the request.
+ * - `name` and `folder` are left out when they are the last two segments of
+ *   `path`.
+ * - `useCount` is left out when 0.
+ * - `kind` and `source` are left out when they equal the search's own filter.
  */
-export interface StalenessRisk {
-  kind: "wal-pending";
-  /** Committed `.db` modification time (epoch ms). */
-  dbMtime: number;
-  /** `-wal` sidecar modification time (epoch ms). */
-  walMtime: number;
-  /** `-wal` sidecar size in MB (2-decimal rounding). */
-  walSizeMb: number;
-  /** How stale the served data could be: (walMtime - dbMtime) / 1000. */
-  ageSeconds: number;
-}
+export type LibraryToolItem = Omit<
+  LibraryItem,
+  "name" | "useCount" | "kind" | "source"
+> &
+  Partial<Pick<LibraryItem, "name" | "useCount" | "kind" | "source">>;
+
+/**
+ * What the tool returns for a search: the route's result with trimmed items.
+ * `more` is then how many matches lie beyond this page, and `nextOffset` where
+ * the next page starts; both are left out when nothing lies beyond.
+ */
+export type LibraryToolSearchResult = Omit<LibrarySearchResult, "items"> & {
+  items: LibraryToolItem[];
+  nextOffset?: number;
+};
 
 export interface LibrarySearchResult {
   items: LibraryItem[];
+  /** How many matches lie beyond the returned window. Omitted when none do. */
+  more?: number;
   /** Present when the Live DB was consulted. False if the DB couldn't be
    * found (Live not installed). Omitted when the request bypassed the DB
    * entirely (e.g. source=sampleFolder). */
   dbAvailable?: boolean;
-  /** Set when the served snapshot may be stale (unclean Live exit left a
-   * pending WAL). Omitted when there's no detectable risk. */
-  stalenessRisk?: StalenessRisk;
+  /** Set when the DB snapshot may miss what Live added since it last quit. */
+  stalenessNote?: string;
   /** Set when items is empty due to a discoverable failure (e.g. DB missing). */
   detail?: string;
   /** Set when matching files in plug-in preset folders were left out. */
@@ -216,8 +245,8 @@ export interface LibraryFindSimilarResult {
   items: LibrarySimilarItem[];
   /** Present when the Live DB was consulted; false if it couldn't be found. */
   dbAvailable?: boolean;
-  /** Set when the served snapshot may be stale (pending WAL). */
-  stalenessRisk?: StalenessRisk;
+  /** Set when the DB snapshot may miss what Live added since it last quit. */
+  stalenessNote?: string;
   /** Set when items is empty due to a discoverable cause (seed not in the
    * library, seed not analyzed, or DB missing). */
   detail?: string;
@@ -238,8 +267,8 @@ export interface LibraryFindDuplicatesResult {
   groups: LibraryDuplicateGroup[];
   /** Present when the Live DB was consulted; false if it couldn't be found. */
   dbAvailable?: boolean;
-  /** Set when the served snapshot may be stale (pending WAL). */
-  stalenessRisk?: StalenessRisk;
+  /** Set when the DB snapshot may miss what Live added since it last quit. */
+  stalenessNote?: string;
   /** Set when groups is empty due to a discoverable cause (DB missing). */
   detail?: string;
   /** Set when matching files in plug-in preset folders were left out. */
@@ -257,7 +286,11 @@ export interface LibraryBatchQuery extends LibrarySearchArgs {
 export interface LibraryBatchEntry {
   /** Provided label, or the query's index as a string when none was given. */
   label: string;
-  items: LibraryItem[];
+  items: LibraryToolItem[];
+  /** How many matches lie beyond this page, and where the next page starts.
+   * Omitted when nothing lies beyond. */
+  more?: number;
+  nextOffset?: number;
   /** Set when items is empty due to a discoverable failure (e.g. DB missing). */
   detail?: string;
   /** Set when matching files in plug-in preset folders were left out. */
@@ -269,12 +302,10 @@ export interface LibraryBatchResult {
   /** Present when the Live DB was consulted; false if it couldn't be found.
    * Omitted when every query bypassed the DB (e.g. all source=sampleFolder). */
   dbAvailable?: boolean;
-  /** Set when any DB-consulting query saw a pending-WAL snapshot. Surfaced at
-   * the batch level (not per entry) because the staleness measurement is a
-   * single global property of Live's DB at request time — repeating it per
-   * entry would add noise without adding signal. Omitted when no risk
-   * detected or no query consulted the DB. */
-  stalenessRisk?: StalenessRisk;
+  /** Set when any DB-consulting query saw a stale snapshot. Surfaced at the
+   * batch level, not per entry: staleness is one property of Live's DB, so
+   * repeating it per entry adds noise. */
+  stalenessNote?: string;
 }
 
 export interface LibraryTag {
@@ -287,9 +318,8 @@ export interface LibraryListTagsResult {
   tags: LibraryTag[];
   /** Present when the Live DB was consulted; false if it couldn't be found. */
   dbAvailable?: boolean;
-  /** Set when the served snapshot may be stale (unclean Live exit left a
-   * pending WAL). Omitted when there's no detectable risk. */
-  stalenessRisk?: StalenessRisk;
+  /** Set when the DB snapshot may miss what Live added since it last quit. */
+  stalenessNote?: string;
   /** Set when tags is empty due to a discoverable failure (e.g. DB missing). */
   detail?: string;
 }
@@ -308,9 +338,8 @@ export interface LibraryListCategoriesResult {
   tags?: LibraryTag[];
   /** Present when the Live DB was consulted; false if it couldn't be found. */
   dbAvailable?: boolean;
-  /** Set when the served snapshot may be stale (unclean Live exit left a
-   * pending WAL). */
-  stalenessRisk?: StalenessRisk;
+  /** Set when the DB snapshot may miss what Live added since it last quit. */
+  stalenessNote?: string;
   /** Set when the result is empty due to a discoverable failure (DB missing). */
   detail?: string;
 }
@@ -357,13 +386,28 @@ export interface PluginItem {
   subcategories: string[];
 }
 
+/** A plug-in found by name, for hosting (library.resolvePlugin). */
+export interface ResolvedPlugin {
+  name: string;
+  vendor: string | null;
+  category: PluginCategory;
+  /** The format to host it as ("VST" is VST2) */
+  format: PluginFormat;
+  /** Path of the plug-in's bundle (one bundle can hold several plug-ins). */
+  file: string;
+  /** Whether other plug-ins live in the same bundle. */
+  shared: boolean;
+}
+
 export interface ListPluginsResult {
   plugins: PluginItem[];
   /** Present when a plugin source DB was consulted; false if none was found. */
   dbAvailable?: boolean;
-  /** Set when the served snapshot may be stale (unclean Live exit left a
-   * pending WAL). Omitted when there's no detectable risk. */
-  stalenessRisk?: StalenessRisk;
+  /** Set when the DB snapshot may miss what Live added since it last quit. */
+  stalenessNote?: string;
   /** Set when plugins is empty due to a discoverable failure (e.g. DB missing). */
   detail?: string;
+  /** Set when a category or subcategory filter left out plug-ins whose
+   * category is unknown. */
+  note?: string;
 }

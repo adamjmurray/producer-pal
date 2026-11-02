@@ -90,28 +90,33 @@ scripts/eval [options]
 
 ### Options
 
-| Flag                   | Description                                        |
-| ---------------------- | -------------------------------------------------- |
-| `-m, --model <model>`  | Model to test (required, repeatable)               |
-| `-t, --test <id>`      | Run specific scenario by ID (repeatable)           |
-| `--tag <name>`         | Run scenarios by tag (repeatable, comma-separated) |
-| `-a, --all`            | Run all scenarios                                  |
-| `--small-model`        | Enable small-model mode (basic skills + schemas)   |
-| `--json`               | JSON tool-result output (default: compact)         |
-| `--tools <list>`       | Tool subset, comma-separated (default: all)        |
-| `--live-api`           | Enable the Direct Live API tool (`ppal-live-api`)  |
-| `-j, --judge <model>`  | Judge model (default: `gemini-3.8-flash`)          |
-| `-s, --skip-setup`     | Skip Live Set setup (reuse existing connection)    |
-| `--skip-judge`         | Skip the LLM-as-judge step (checks only)           |
-| `--skip-reflection`    | Skip the self-reflection turn after a failure      |
-| `--no-seed-connect`    | Let the model run the opening connect turn         |
-| `-q, --quiet`          | Suppress detailed AI and judge responses           |
-| `-r, --repeat <N>`     | Run each scenario N times (for flakiness)          |
-| `-u, --usage`          | Show token usage per turn                          |
-| `--no-save`            | Skip writing JSON result files to disk             |
-| `-b, --base-url <url>` | Base URL for the `local` provider                  |
-| `-l, --list`           | List available scenarios                           |
-| `--list-tags`          | List scenario tags with their counts               |
+| Flag                      | Description                                                  |
+| ------------------------- | ------------------------------------------------------------ |
+| `-m, --model <model>`     | Model to test (required, repeatable)                         |
+| `-t, --test <id>`         | Run specific scenario by ID (repeatable)                     |
+| `--tag <name>`            | Run scenarios by tag (repeatable, comma-separated)           |
+| `-a, --all`               | Run all scenarios                                            |
+| `--small-model`           | Enable small-model mode (basic skills + schemas)             |
+| `--json`                  | JSON tool-result output (default: compact)                   |
+| `--tools <list>`          | Tool subset, comma-separated (default: all)                  |
+| `--live-api`              | Enable the Direct Live API tool (`ppal-live-api`)            |
+| `--thinking <spec>`       | Thinking level, for all models or `model=level`              |
+| `-o, --output-tokens <n>` | Max output tokens per call (default 8192; 32768 for `local`) |
+| `-j, --judge <model>`     | Judge model (default: `gemini-3.8-flash`)                    |
+| `--jev`                   | Jev judges first; `-j` decides what Jev escalates            |
+| `--jev-via <route>`       | Jev route: typesafe, openrouter, vercel                      |
+| `-s, --skip-setup`        | Skip Live Set setup (reuse existing connection)              |
+| `--skip-judge`            | Skip the LLM-as-judge step (checks only)                     |
+| `--skip-reflection`       | Skip the self-reflection turn after a failure                |
+| `--no-seed-connect`       | Let the model run the opening connect turn                   |
+| `-q, --quiet`             | Suppress detailed AI and judge responses                     |
+| `-r, --repeat <N>`        | Run every scenario N times, one round at a time              |
+| `--resume <runId>`        | Finish a stopped run (takes only `-r`, `-q`, `-u`)           |
+| `-u, --usage`             | Show token usage per turn                                    |
+| `--no-save`               | Skip writing JSON result files to disk                       |
+| `-b, --base-url <url>`    | Base URL for the `local` provider                            |
+| `-l, --list`              | List available scenarios                                     |
+| `--list-tags`             | List scenario tags with their counts                         |
 
 ### Model format
 
@@ -139,6 +144,30 @@ Only the first `/` splits provider from model, so a model name can contain
 slashes of its own: `local/qwen/qwen3.8-27b` is the `qwen/qwen3.8-27b` model on
 the `local` provider.
 
+### Thinking level
+
+By default no thinking or reasoning effort is sent, so every model runs at its
+own default. `--thinking` sets it for the model's eval turns (never the judge):
+
+- `--thinking high` applies to every `-m` model.
+- `--thinking codex-code/luna=high` applies to that model only and overrides the
+  all-models level. The model must be one of the run's `-m` models.
+- The flag repeats and takes comma lists: `--thinking low,codex-code/luna=high`.
+
+Levels are the chat CLI's: `off`, `low`, `medium`, `high`, `ultra` (a plain
+number is a token budget, Gemini only). A level the model's provider can't take
+is refused before the run starts: `off` for `claude-code` and `codex-code`, and
+any level but `off` for `local`. `claude-code` passes `--effort` and
+`codex-code` passes `-c model_reasoning_effort`; `ultra` becomes `max` on both.
+API providers use the same mapping as the chat CLI. `off` follows the chat UI's
+per-model rules: Gemini 3+ gets its lowest level and 2.5 (non-Pro) a zero
+budget, OpenRouter gets effort `none` (raised to `low` for models that can't
+turn reasoning off), and `local` gets `reasoning_effort: none`.
+
+Each saved result carries `thinking` when a level was set, and the run header,
+summary and results table show it. Runs at different levels don't overwrite one
+another: each run saves to its own folder.
+
 ### Examples
 
 ```bash
@@ -163,6 +192,9 @@ scripts/eval --tag paths,clips -m gemini-3.8-flash
 
 # Narrow a family to named scenarios (both filters must match)
 scripts/eval --tag paths -t path-session-slot -m gemini-3.8-flash
+
+# Run Luna at high reasoning effort, the other model at its default
+scripts/eval -m codex-code/luna -m openai/gpt-6.1-sol --thinking codex-code/luna=high -t connect-to-ableton
 
 # Skip Live Set reopening (reuse current MCP connection)
 scripts/eval -t connect-to-ableton -s
@@ -309,9 +341,9 @@ likewise kept out of pass/fail counts and scores: Live would not open the Set,
 the config would not apply, or the provider refused the request (usage limit,
 credits, capacity, rate limit) at any turn. Scoring it would turn an outage into
 a wall of convincing zeros. The harness retries a failed open three times,
-waiting once and then killing Live for a cold launch. After three scenarios in a
-row where every trial of a model errored, that model is dropped from the rest of
-the run; the run stops when no model is left.
+waiting once and then killing Live for a cold launch. After three of a model's
+trials in a row errored, that model is dropped from the rest of the run; the run
+stops when no model is left.
 
 ```bash
 # Default environment
@@ -348,17 +380,26 @@ scripts/eval --list-tags  # every tag, with how many scenarios carry it
 Each scenario is **regression** (should always pass) or **capability**
 (improvement target, may have low pass rates), and carries one or more subset
 tags — `notation`, `transforms`, `paths`, `context`, `clips`, `devices`,
-`workflow`, `pairing`, `results`, `automation`. A whole-suite run costs hours,
-so `--tag` is how most runs are scoped; `-t` and `--tag` together narrow to
-scenarios matching both.
+`workflow`, `pairing`, `results`, `automation`, `upgrade`. A whole-suite run
+costs hours, so `--tag` is how most runs are scoped; `-t` and `--tag` together
+narrow to scenarios matching both.
 
 `automation` scenarios need the Producer Pal remote script running in Live (it
 is the only way to reach clip envelopes), and their `setup` talks to it on its
 port (`PPAL_REMOTE_SCRIPT_PORT` overrides; else 3349 if the script answers
 there, else the port in `~/.producer-pal/remote-script-port.txt`). One scenario,
 `automation-no-remote-script`, sets `config: { remoteScriptEnabled: false }` to
-run as if it weren't installed (debug builds only; a release build ignores the
-field); `resetConfig()` turns it back on after every scenario.
+run as if it weren't installed (a device built before the switch existed ignores
+it, so the run fails at setup instead of using the real script); `resetConfig()`
+turns it back on after every scenario.
+
+A scenario can set `toolOverrides` to change what a tool returns to the model: a
+canned result, or the real one with changes (`callReal()` makes the real call).
+The `upgrade` scenarios use it to fake an older device or a pending install
+without touching the machine. The run starts a local proxy MCP server in front
+of the real one (listing and forwarding unchanged, except the overridden tools)
+and points the session at it, so every provider, the agent CLIs included, sees
+the same results. The proxy stops when the scenario ends.
 
 ### The seeded connect turn
 
@@ -392,12 +433,13 @@ into and they fall back to a real connect turn. Worth remembering when comparing
 one of those runs against any other provider — only one of them paid for that
 turn.
 
-On the `anthropic` provider, requests are prompt-cached: tools + system, the
-conversation tail, and the connect result. The connect result is identical
-across scenarios on the same Live Set, so every scenario after the first reads
-it from cache. Results record `cacheReadTokens` / `cacheWriteTokens` per turn;
-both are part of `inputTokens`. Other providers get no cache markers (OpenAI
-caches automatically).
+On the `anthropic` provider, and on OpenRouter for Claude and Gemini models,
+requests are prompt-cached: tools + system, the conversation tail, and the
+connect result (Claude only on OpenRouter). On `vercel`, the gateway adds the
+breakpoints itself. The connect result is identical across scenarios on the same
+Live Set, so every scenario after the first reads it from cache. Results record
+`cacheReadTokens` / `cacheWriteTokens` per turn; both are part of `inputTokens`.
+Other providers get no cache markers (OpenAI caches automatically).
 
 ### Scoring
 
@@ -435,6 +477,10 @@ padding a run with extra successful calls. Grading reads successful calls only:
 `getAllToolCalls` when the attempt itself is what's graded ("did it reach for a
 tool it shouldn't have").
 
+A scenario that provokes a refusal on purpose lists it under `expectedRefusals`
+(tool name plus text the error must contain). Matching failures are left out of
+the **Tool errors** count and the penalty; any other failure still counts.
+
 The **Score** shown per scenario and in the comparison table is the check pass
 rate (or the trial pass rate under `-r N`), discounted by that penalty. A clean
 run outranks a recovered one without either being marked a failure.
@@ -442,13 +488,132 @@ run outranks a recovered one without either being marked a failure.
 The judge defaults to Gemini 3 Flash. Override with `-j`, or skip it entirely
 with `--skip-judge`.
 
-When using `-r N`, the summary aggregates across trials: checks are totaled,
-tool errors are summed, efficiency is averaged, and judge shows a pass rate.
+With `--jev`, Jev (TypeSafe AI) judges every `llm_judge` assertion first. A
+clear pass or fail stands. When Jev is unsure, or its call fails, the `-j` LLM
+judge decides as usual. `--skip-judge` wins over `--jev`. The route is the first
+one with a key set (`TYPESAFE_KEY`, `OPENROUTER_KEY`, `VERCEL_AI_GATEWAY_KEY`),
+or `--jev-via`; a run with no key stops at startup. Each saved `judge` records
+`decidedBy` (`jev` or `llm`), Jev's per-question probabilities, outcome level
+and verdict (`pass`, `fail`, `escalate`, or `error` with the reason), and the
+LLM verdict when it ran. An escalation caused only by the claims check (below)
+is marked `escalatedBy: "claims"`. Such results are `version: 2`. The summary
+(and `eval-report --summarize`) counts calls Jev decided versus escalated, how
+many of those the claims check caused, and the token cost. The thresholds are in
+`evals/jev/jev-judge.ts`.
 
-Every trial reopens the Live Set, so trial 2 is never graded on trial 1's
+On the Oct 2026 runs, Jev decided about 55–70% of judged results and made no
+wrong passes against a majority of three LLM judges. Its weak spot is a false
+claim in the model's reply (a scene "named" that never was): it trusts the
+reply. A separate narrow question asks whether every action the replies say they
+took appears in the tool calls; a low answer (under 0.7) turns a pass into an
+escalation and never into a fail. It flagged all 12 replies with a made-up
+action added to real passes, and none of the 12 unedited copies, but it also
+escalates passes with loose claims, so it adds about 2–14 points of escalations.
+A broad "no hallucinations" question over-failed, and deciding by Jev's outcome
+score instead of the lowest requirement probability passed 5 failures on a
+second run, so the thresholds stay on the requirements. Jev sees only the
+transcript; it can't inspect Live or hear audio. Re-running Jev on the same
+result flips about 5% of verdicts.
+
+Requirements like "Confirmed each step was completed" sat between the thresholds
+in nearly every result, because Jev can't tell what counts as confirmed. They
+now say "Said in its replies that each step above was done", which roughly
+halved those escalations. Saved judge verdicts for the five scenarios that use
+it (and any older Jev runs) predate the new wording.
+
+Requirements that a reply "claims nothing the tool results did not show" (or
+"does not claim anything else") sat between the thresholds too: Jev can't prove
+a negative. Leave general false claims to the claims question and the judge's
+system prompt, and keep a "does not" requirement only for one specific mistake
+(e.g. "does not say this is impossible"). Dropping them cut escalations on nine
+scenarios from 54 to 35 of 81 results.
+
+For `--jev` runs, `-j anthropic/claude-haiku-5-5` is recommended, not the
+default: escalations are the borderline cases, and Luna is the strictest judge.
+On escalated results Luna agreed with Haiku and Sonnet about 75–80% of the time;
+Haiku and Sonnet agreed with each other 91–93%. Haiku costs API money.
+
+### Re-judging saved results
+
+A run stores one judge's verdict, or none under `--skip-judge`. To judge saved
+results afterwards with another judge, without Live or re-running the model, use
+`npm run probe:rejudge`. It runs the production judge prompt on the saved turns
+with `-j` (same `provider/model` format as above) and writes each verdict to
+`<results>/<run>/judges/<judge-slug>/<result-file>`. Saved results are never
+changed, and re-runs skip results that judge already did (`--force` redoes
+them). Results from before the scenario's judge criteria last changed are left
+out (`--include-stale` keeps them).
+
+```bash
+# Gating-passed results only: that is where the judge decides
+npm run probe:rejudge -- 2026-10-29T07-51-59Z -j anthropic/claude-haiku-5-5 --dry-run
+# An expensive judge: all fails plus 40 random passes (repeatable with --seed)
+npm run probe:rejudge -- 2026-10-29T07-51-59Z -j claude-code/sonnet --sample=fails+40
+```
+
+Other flags: `--scenario=id`, `--limit=N`, `--concurrency=N`,
+`--include-failed-checks`, `--fails-from=<judge-slug>` (count another judge's
+fails as fails for `--sample`), `--results-dir=D`. The header of
+`evals/jev/sidecar-judges/jev-rejudge.ts` lists them all.
+
+`npm run probe:jev` compares Jev with the stored verdict. Results Jev decided in
+a `--jev` run have no LLM verdict, so it leaves them out (and says how many);
+the ones Jev escalated are the hard cases. `probe:rejudge` judges any saved
+result.
+
+To check Jev on a finished `--jev` run in one go, run
+`npm run probe:jev-recheck -- evals/results/<run>`. It has Luna judge any result
+Luna hasn't judged yet (`--judges=codex-code/luna,anthropic/claude-haiku-5-5`
+adds others, which cost money; judges already in the run's `judges/` folder are
+used as is), then reports the Jev answers saved in the run against the majority
+of those judges: wrong passes and fails, the escalation rate, how each judge
+does on the escalated results, which requirements sit between the thresholds
+most often, and the claims-escalated results with the LLM judge's verdict on
+each. It calls no Jev and no model; `--dry-run` only counts. The same report for
+any run is `probe:jev -- <run> --recorded --reference=<judge-slug>`.
+
+`npm run probe:jev -- <run> --reference=<judge-slug>` (repeatable) then compares
+Jev with those sidecar judges instead of the stored verdict. With several, their
+majority is the reference; it also reports pairwise agreement, each judge's
+wrong passes and fails against the others, and lists the results where the LLM
+judges split, for hand-labeling.
+
+When using `-r N`, the run goes in rounds: every scenario once, then every
+scenario again, up to N. Cancelling part-way leaves about the same number of
+trials of every scenario. Each result file is saved as its trial finishes. The
+summary aggregates across trials: checks are totaled, tool errors are summed,
+efficiency is averaged, and judge shows a pass rate.
+
+To get the pass table for a run that was cancelled before its summary printed:
+
+```bash
+scripts/eval-report --summarize <runId|results folder>
+```
+
+It shows passed/graded trials per scenario and model, plus a total. Errored and
+skipped runs are left out of the counts.
+
+To finish a run that broke or was killed, resume it by its run id:
+
+```bash
+scripts/eval --resume <runId>
+scripts/eval --resume <runId> -r 5   # also add rounds
+```
+
+Each run saves its command line and options to `run.json` in its results folder,
+and `--resume` replays them, so the run keeps its own models, scenarios and
+judge. Trials already saved are skipped and still count in the summary. An
+errored trial runs again, and its new result replaces the error's file. The
+trial that was running when the run stopped wasn't saved, so it runs again.
+`--resume` takes only `-r` (never fewer rounds than the run had), `-q` and `-u`;
+any other flag is refused, so one folder never mixes two different runs. A run
+from before `--resume` existed, or one made with `--no-save`, has no `run.json`
+and can't be resumed.
+
+Every run reopens the Live Set, so a trial is never graded on the previous run's
 leftovers. Scenarios that declare `reuseLiveSet` — they reset whatever they
-write — skip the reopen and run faster. Across scenarios, the reopen is skipped
-only right after another `reuseLiveSet` scenario on the same Set.
+write — skip the reopen and run faster, but only right after another
+`reuseLiveSet` scenario on the same Set that ran without erroring.
 
 ### Comparing models
 

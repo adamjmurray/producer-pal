@@ -16,9 +16,9 @@ import { applyTransformsToDuplicatedClips } from "#src/tools/actions/duplicate/h
 
 // Capture warnings emitted for unsupported transforms/code usage
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 // updateClip is mocked via duplicate-mocks-test-helpers.ts -> setup.ts
@@ -72,7 +72,7 @@ describe("duplicate - transforms/code", () => {
       );
       // A clip legitimately supports transforms — the "ignored" warn (gated on
       // type !== "clip") must NOT fire here.
-      expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      expect(consoleMock.emitWarning).not.toHaveBeenCalledWith(
         expect.stringContaining("transforms, code ignored"),
       );
       expect(result).toStrictEqual({
@@ -173,7 +173,35 @@ describe("duplicate - transforms/code", () => {
         },
         { id: dest2, path: "t0/s2", noteCount: 3, transformed: 3 },
       ]);
-      expect(consoleMock.warn).not.toHaveBeenCalled();
+      expect(consoleMock.emitWarning).not.toHaveBeenCalled();
+    });
+
+    // The copies are edited by updateClip, which says why nothing changed.
+    it.each([
+      "the transforms changed none of the 4 matched notes",
+      "no notes matched the selector",
+    ])('carries the update\'s "%s" onto the copy', async (detail) => {
+      registerSessionClipDuplication({ destClipProperties: {} });
+      const destId = "live_set/tracks/0/clip_slots/1/clip";
+
+      updateClipMock.mockReturnValueOnce([
+        { id: destId, noteCount: 4, transformed: 0, detail },
+      ]);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        toSlot: "0/1",
+        transforms: "velocity += 0",
+      });
+
+      expect(result).toStrictEqual({
+        id: destId,
+        path: "t0/s1",
+        noteCount: 4,
+        transformed: 0,
+        detail,
+      });
     });
 
     it("passes the code string through to updateClip", async () => {
@@ -381,6 +409,34 @@ describe("duplicate - transforms/code", () => {
         },
         {},
         { indexes: [0, 1, 2], count: 3 },
+      );
+    });
+
+    // A copy a later one cleared has lost its id but still holds its place, so
+    // the copies after it keep the clip.index their name pairs with.
+    it("numbers copies by their place when an earlier copy was cleared", async () => {
+      const createdObjects: object[] = [
+        {
+          path: "t0[1|1]",
+          detail: "overwritten later in this call by t0[1|1]",
+        },
+        { id: "b", path: "t0[1|1]" },
+        { id: "c", path: "t0[5|1]" },
+      ];
+
+      updateClipMock.mockReturnValueOnce([]);
+
+      await applyTransformsToDuplicatedClips(
+        createdObjects,
+        "pitch += clip.index * 2",
+        undefined,
+        {},
+      );
+
+      expect(updateClipMock).toHaveBeenCalledWith(
+        expect.objectContaining({ ids: "b,c" }),
+        {},
+        { indexes: [1, 2], count: 3 },
       );
     });
 

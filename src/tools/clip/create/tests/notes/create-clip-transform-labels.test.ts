@@ -126,7 +126,7 @@ describe("createClip - transforms name the clip they warn about", () => {
     const result = await createClip({
       slot: "0/0",
       notes: "C3 1|1",
-      transforms: "velocity = 100\ngain = -3",
+      transforms: "velocity = 90\ngain = -3",
     });
 
     expect(result).toStrictEqual(

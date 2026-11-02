@@ -5,7 +5,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockRender = vi.fn();
 
@@ -24,6 +24,11 @@ vi.mock(import("./components/context/ContextApp"), () => ({
   ContextApp: () => <div>ContextApp</div>,
 }));
 
+// Mock GenLayout component
+vi.mock(import("./components/gen/GenLayout"), () => ({
+  GenLayout: () => <div>GenLayout</div>,
+}));
+
 // Mock DemoMode component
 vi.mock(import("./demo/DemoMode"), () => ({
   DemoMode: () => <div>DemoMode</div>,
@@ -31,6 +36,15 @@ vi.mock(import("./demo/DemoMode"), () => ({
 
 // Mock CSS import
 vi.mock(import("./main.css"), () => ({}));
+
+/**
+ * @returns The name of the component main rendered at the root
+ */
+function rootName(): string {
+  const root = mockRender.mock.calls[0]?.[0] as { type: { name: string } };
+
+  return root.type.name;
+}
 
 describe("main", () => {
   beforeEach(() => {
@@ -46,6 +60,10 @@ describe("main", () => {
 
     // Reset pathname between tests
     window.history.replaceState({}, "", "/chat");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("calls render with App component when #app element exists", async () => {
@@ -96,6 +114,25 @@ describe("main", () => {
     await import("./main.js");
 
     expect(mockRender).toHaveBeenCalled();
+  });
+
+  it.each([
+    ["true", "/chat?view=gen", "GenLayout"],
+    ["true", "/chat?view=other", "App"],
+    // A release build has no panel to show.
+    ["false", "/chat?view=gen", "App"],
+  ])("with ENABLE_GEN_UI=%s, %s renders %s", async (flag, url, expected) => {
+    vi.stubEnv("ENABLE_GEN_UI", flag);
+
+    const appElement = document.createElement("div");
+
+    appElement.id = "app";
+    document.body.appendChild(appElement);
+
+    window.history.replaceState({}, "", url);
+    await import("./main.js");
+
+    expect(rootName()).toBe(expected);
   });
 
   it("throws error when #app element does not exist", async () => {

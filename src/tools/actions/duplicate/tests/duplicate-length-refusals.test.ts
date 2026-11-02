@@ -45,7 +45,7 @@ describe("duplicate - arrangementLength refused before any write", () => {
     [
       "a zero entry",
       "2bar,0bar,2bar",
-      'arrangementLength must be positive, got "0bar"',
+      'arrangementLength "0bar" must be longer than zero',
     ],
   ])("refuses %s in a per-copy list", async (_label, length, message) => {
     const track0 = registerSessionSource();
@@ -73,7 +73,7 @@ describe("duplicate - arrangementLength refused before any write", () => {
         arrangementStart: "2|1,4|1",
         arrangementLength: "2bar,1bar-n/2d",
       }),
-    ).rejects.toThrow('arrangementLength must be positive, got "1bar-n/2d"');
+    ).rejects.toThrow('arrangementLength "1bar-n/2d" must be longer than zero');
 
     expectNoCopies(track0);
   });

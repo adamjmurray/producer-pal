@@ -19,18 +19,19 @@ import {
   readMemoryEntry,
   regenerateIndex,
   rememberMemory,
+  slugifyMemoryName,
 } from "./memory-store.ts";
 
 /**
- * Register the `memory.read` / `memory.remember` / `memory.forget` /
- * `memory.list` routes. The underlying registry throws on duplicate
+ * Register the `memory.remember` / `memory.list` / `memory.readMany` /
+ * `memory.forgetMany` routes. The underlying registry throws on duplicate
  * registration, so call once.
  */
 export const registerMemoryNodeRoutes = makeCollectionNodeRoutes({
   namespace: "memory",
   noun: "memory",
   emptyIndex: "(no memories stored)",
-  missingDeleteNote: (name) => `No memory named "${name}" to delete.`,
+  slugify: slugifyMemoryName,
   read: readMemoryEntry,
   remember: rememberMemory,
   forget: forgetMemory,

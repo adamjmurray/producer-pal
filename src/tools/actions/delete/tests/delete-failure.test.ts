@@ -5,49 +5,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "#src/live-api-adapter/live-api-extensions.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
-import {
-  type RegisteredMockObject,
-  deleteMockObject,
-  registerMockObject,
-  simulateMockDeletes,
-} from "#src/test/mocks/mock-registry.ts";
+import { simulateMockDeletes } from "#src/test/mocks/mock-registry.ts";
 import { deleteObject } from "../delete.ts";
+import { setUpTracks } from "./delete-test-helpers.ts";
 
 const LIVE_FAILURE = "Live could not do that";
-
-/**
- * Register tracks t0..., in a Live Set whose `delete_track` runs `onDelete`
- * first for each index, then removes the track.
- * @param count - How many tracks
- * @param onDelete - Runs before each delete; may throw
- * @returns The Live Set
- */
-function setUpTracks(
-  count: number,
-  onDelete: (index: number) => void,
-): RegisteredMockObject {
-  const ids = Array.from({ length: count }, (_, i) => `track_${i}`);
-  const liveSet = registerMockObject("live_set", {
-    path: livePath.liveSet,
-    properties: { tracks: children(...ids) },
-    methods: {
-      delete_track: (index: unknown) => {
-        onDelete(Number(index));
-        deleteMockObject(`live_set tracks ${String(index)}`);
-
-        return null;
-      },
-    },
-  });
-
-  for (const [i, id] of ids.entries()) {
-    registerMockObject(id, { path: livePath.track(i), type: "Track" });
-  }
-
-  return liveSet;
-}
 
 describe("deleteObject when Live fails partway", () => {
   beforeEach(() => {

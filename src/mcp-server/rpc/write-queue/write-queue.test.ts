@@ -53,6 +53,44 @@ function setup(): {
   return { call: withWriteQueue(send, () => TIMEOUT_MS), sent };
 }
 
+/**
+ * Two writes, the second queued behind the first.
+ * @param overrides - The second write's overrides
+ * @returns The setup, plus both writes' answers
+ */
+function queueTwoWrites(overrides?: RequestOverrides): ReturnType<
+  typeof setup
+> & {
+  first: Promise<McpResponse>;
+  second: Promise<McpResponse>;
+} {
+  const { call, sent } = setup();
+
+  return {
+    call,
+    sent,
+    first: call(WRITE, {}),
+    second: call(WRITE, {}, overrides),
+  };
+}
+
+/**
+ * Expects the queue, with one write sent so far, to take the next one at once.
+ * @param call - The queued call function
+ * @param sent - The calls that reached V8
+ */
+async function expectQueueFree(
+  call: ReturnType<typeof withWriteQueue>,
+  sent: Sent[],
+): Promise<void> {
+  const next = call(WRITE, {});
+
+  await settle();
+  expect(sent).toHaveLength(2);
+  sent[1]?.answer();
+  await next;
+}
+
 /** @returns Nothing, once pending promise callbacks have run */
 async function settle(): Promise<void> {
   for (let i = 0; i < 5; i++) {
@@ -66,9 +104,7 @@ afterEach(() => {
 
 describe("withWriteQueue", () => {
   it("runs two parallel writes one after the other", async () => {
-    const { call, sent } = setup();
-    const first = call(WRITE, {});
-    const second = call(WRITE, {});
+    const { sent, first, second } = queueTwoWrites();
 
     await settle();
     expect(sent).toHaveLength(1);
@@ -97,9 +133,7 @@ describe("withWriteQueue", () => {
   });
 
   it("passes the turn on when a write throws", async () => {
-    const { call, sent } = setup();
-    const first = call(WRITE, {});
-    const second = call(WRITE, {});
+    const { sent, first, second } = queueTwoWrites();
 
     await settle();
     sent[0]?.fail(new Error("boom"));
@@ -113,9 +147,7 @@ describe("withWriteQueue", () => {
 
   it("tells V8 how long a queued write waited", async () => {
     vi.useFakeTimers();
-    const { call, sent } = setup();
-    const first = call(WRITE, {});
-    const second = call(WRITE, {});
+    const { sent, first, second } = queueTwoWrites();
 
     await settle();
     vi.advanceTimersByTime(10_000);
@@ -134,9 +166,10 @@ describe("withWriteQueue", () => {
 
   it("keeps a REST timeout override whole beside the wait", async () => {
     vi.useFakeTimers();
-    const { call, sent } = setup();
-    const first = call(WRITE, {});
-    const second = call(WRITE, {}, { timeoutMs: 20_000, compactOutput: true });
+    const { sent, first, second } = queueTwoWrites({
+      timeoutMs: 20_000,
+      compactOutput: true,
+    });
 
     await settle();
     vi.advanceTimersByTime(3000);
@@ -156,9 +189,7 @@ describe("withWriteQueue", () => {
 
   it("gives up on a queued write that runs out of time, and never runs it", async () => {
     vi.useFakeTimers();
-    const { call, sent } = setup();
-    const first = call(WRITE, {});
-    const second = call(WRITE, {});
+    const { call, sent, first, second } = queueTwoWrites();
 
     await settle();
     vi.advanceTimersByTime(TIMEOUT_MS - MIN_RUN_BUDGET_MS);
@@ -178,19 +209,12 @@ describe("withWriteQueue", () => {
     expect(sent).toHaveLength(1);
 
     // The queue is free again.
-    const third = call(WRITE, {});
-
-    await settle();
-    expect(sent).toHaveLength(2);
-    sent[1]?.answer();
-    await third;
+    await expectQueueFree(call, sent);
   });
 
   it("gives up when its turn comes too late, before the timer fires", async () => {
     vi.useFakeTimers();
-    const { call, sent } = setup();
-    const first = call(WRITE, {});
-    const second = call(WRITE, {}, { timeoutMs: 200 });
+    const { call, sent, first, second } = queueTwoWrites({ timeoutMs: 200 });
 
     await settle();
     // Past the give-up point (100ms), but the timer hasn't run yet.
@@ -204,19 +228,12 @@ describe("withWriteQueue", () => {
     expect(sent).toHaveLength(1);
 
     // The turn is free again.
-    const third = call(WRITE, {});
-
-    await settle();
-    expect(sent).toHaveLength(2);
-    sent[1]?.answer();
-    await third;
+    await expectQueueFree(call, sent);
   });
 
   it("gives up at half a short timeout", async () => {
     vi.useFakeTimers();
-    const { call, sent } = setup();
-    const first = call(WRITE, {});
-    const second = call(WRITE, {}, { timeoutMs: 2000 });
+    const { sent, first, second } = queueTwoWrites({ timeoutMs: 2000 });
 
     await settle();
     vi.advanceTimersByTime(999);

@@ -17,8 +17,8 @@ import {
 import { createDevice } from "../create-device.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
-  warnOnce: vi.fn(),
+  emitWarning: vi.fn(),
+  emitWarningOnce: vi.fn(),
 }));
 
 describe("createDevice — drum chain path spelling", () => {

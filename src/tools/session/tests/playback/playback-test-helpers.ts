@@ -5,7 +5,7 @@
 
 import { expect, type MockInstance, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 import {
   type RegisteredMockObject,
@@ -46,10 +46,10 @@ interface MultiClipMockResult {
 
 /**
  * Spy on the warnings a playback call raises.
- * @returns The spy on `console.warn`
+ * @returns The spy on `maxConsole.emitWarning`
  */
-export function spyOnWarn(): MockInstance<typeof console.warn> {
-  return vi.spyOn(console, "warn");
+export function spyOnWarn(): MockInstance<typeof maxConsole.emitWarning> {
+  return vi.spyOn(maxConsole, "emitWarning");
 }
 
 /**

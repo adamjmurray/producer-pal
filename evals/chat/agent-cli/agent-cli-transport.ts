@@ -20,7 +20,7 @@
 
 import { type EvalProvider } from "#evals/scenarios/types.ts";
 import { type StepTiming, type TokenUsage } from "#webui/chat/sdk/types.ts";
-import { type ToolCall } from "../shared/types.ts";
+import { type NamedThinkingLevel, type ToolCall } from "../shared/types.ts";
 
 export const DEFAULT_AGENT_CLI_SYSTEM_PROMPT =
   "You are Producer Pal, an AI assistant for music production in Ableton Live. " +
@@ -45,6 +45,9 @@ export interface AgentCliTurnArgsInput extends AgentCliArgsInput {
   mcpUrl: string;
   /** Session id captured from an earlier turn; absent on the first turn. */
   resumeSessionId?: string;
+  /** The CLI's own reasoning-effort value (see `agentCliEffort`); absent keeps
+   *  the CLI's default. */
+  effort?: string;
 }
 
 /** One parsed turn, in the shape the scenario runner grades. */
@@ -54,6 +57,10 @@ export interface ParsedAgentTurn {
   /** The CLI's own conversation id, replayed to resume the next turn. */
   sessionId?: string;
   usage?: TokenUsage;
+  /** The model's reasoning, when the CLI streams it. */
+  reasoningText?: string;
+  /** Why the turn stopped, when the CLI reports it. */
+  finishReason?: string;
   /**
    * The turn's generation speed, when the CLI reports how long the model took.
    * A transport that reports nothing leaves this unset, and the session times
@@ -82,6 +89,9 @@ export interface AgentCliTransport {
   models: string[];
   /** Model this provider judges with, kept distinct from the one under test. */
   judgeModel: string;
+  /** The CLI's reasoning-effort value for each thinking level it can express.
+   *  A level missing here is refused up front rather than sent. */
+  efforts: Partial<Record<NamedThinkingLevel, string>>;
   /** Build argv for an initial or resumed MCP turn. Each transport resolves
    *  its own friendly aliases, so `model` arrives exactly as the user typed. */
   buildTurnArgs: (input: AgentCliTurnArgsInput) => string[];
@@ -119,4 +129,18 @@ export function scrubAgentCliEnv(
   }
 
   return result;
+}
+
+/**
+ * Translate a thinking level into the CLI's own reasoning-effort value.
+ *
+ * @param transport - Transport describing the CLI
+ * @param level - A thinking level (`off`, `low`, ..., or a token budget)
+ * @returns The CLI's effort value, or undefined when it can't express the level
+ */
+export function agentCliEffort(
+  transport: AgentCliTransport,
+  level: string,
+): string | undefined {
+  return transport.efforts[level as NamedThinkingLevel];
 }

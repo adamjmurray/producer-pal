@@ -90,10 +90,8 @@ describe("useFirstSendGate", () => {
     // settles, but the message must NOT go out: the chat hook it would reach is
     // torn down, so the request would be invisible and would autosave into the
     // conversation the user just left.
-    await act(async () => {
-      unmount();
-      await sendPromise;
-    });
+    unmount();
+    await act(() => sendPromise);
 
     expect(send).not.toHaveBeenCalled();
   });

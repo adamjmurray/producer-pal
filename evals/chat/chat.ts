@@ -8,19 +8,17 @@
  * Replaces all provider-specific run*() functions.
  */
 
-import { type ModelMessage, stepCountIs, streamText } from "ai";
-import { MAX_TOOL_STEPS } from "#evals/shared/step-budget.ts";
-import { type TokenUsage, toTokenUsage } from "#webui/chat/sdk/types.ts";
+import { type ModelMessage } from "ai";
+import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 import { createMcpTools } from "./mcp.ts";
 import { createProviderModel } from "./provider.ts";
 import { formatAssistantLabel } from "./shared/formatting.ts";
 import { createMessageSource } from "./shared/message-source.ts";
+import { runModelTurn } from "./shared/model-turn.ts";
 import { createReadline, runChatLoop } from "./shared/readline.ts";
 import { type ChatOptions, type TurnResult } from "./shared/types.ts";
-import { processCliStream } from "./stream.ts";
 import { buildProviderOptions } from "./thinking-provider-options.ts";
-
-const DEFAULT_MAX_TOKENS = 8192;
+import { errorMessage } from "#src/shared/error-message.ts";
 
 interface ChatSession {
   messages: ModelMessage[];
@@ -59,7 +57,6 @@ export async function runChat(
   console.log("Starting conversation (type 'exit', 'quit', or 'bye' to end)\n");
 
   const session: ChatSession = { messages: [], options };
-  const hasTools = Object.keys(tools).length > 0;
   let prevUsage: TokenUsage | undefined;
 
   try {
@@ -79,61 +76,38 @@ export async function runChat(
             providerOptions?.anthropic?.thinking != null ||
             providerOptions?.openai?.reasoningEffort != null;
 
-          const stepUsages: TokenUsage[] = [];
-
-          const result = streamText({
+          const turn = await runModelTurn({
             model,
             messages: sess.messages,
-            tools: hasTools ? tools : undefined,
-            stopWhen: stepCountIs(MAX_TOOL_STEPS),
+            tools,
+            erroredToolCallIds,
+            prevUsage,
+            showUsage: sess.options.usage,
+            instructions: sess.options.instructions,
             providerOptions,
             temperature: suppressTemperature
               ? undefined
               : sess.options.randomness,
-            maxOutputTokens: sess.options.outputTokens ?? DEFAULT_MAX_TOKENS,
-            instructions: sess.options.instructions,
-            // Errors are rendered (in red) by processCliStream via the
-            // stream's "error" part; suppress the SDK's default raw dump.
-            onError: () => {},
-            // The usage line itself is printed by processCliStream, off the
-            // finish-step part that carries both usage and timings.
-            onStepEnd: (event) => {
-              stepUsages.push(toTokenUsage(event.usage));
-            },
+            maxOutputTokens: sess.options.outputTokens,
+            provider: sess.options.provider,
           });
 
-          const turnResult = await processCliStream(result, {
-            showUsage: sess.options.usage,
-            prevUsage,
-            erroredToolCallIds,
-          });
+          prevUsage = turn.lastUsage;
 
-          // Carry the last step's usage into the next turn so its "new content"
-          // figure counts the user's next message.
-          prevUsage = stepUsages.at(-1) ?? prevUsage;
-
-          // On a stream error, result.responseMessages rejects; the error was
-          // already shown by processCliStream, so flag a non-zero exit and skip
-          // history.
-          if (turnResult.error != null) {
+          // The error was already shown by processCliStream: flag a non-zero
+          // exit and keep the failed turn out of the history.
+          if (turn.turnResult.error != null) {
             process.exitCode = 1;
-
-            return { ...turnResult, stepUsages };
           }
 
-          // Append generated messages to history for multi-turn. Use
-          // responseMessages, which accumulates across every step: as of AI SDK
-          // v7 a step's response.messages holds only that step's messages, so
-          // reading the final step alone would drop the tool calls and results
-          // from earlier steps out of the next turn's history.
-          sess.messages.push(...(await result.responseMessages));
+          sess.messages.push(...turn.responseMessages);
 
-          return { ...turnResult, stepUsages };
+          return { ...turn.turnResult, stepUsages: turn.stepUsages };
         },
       },
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorMessage(error);
 
     console.error("Error:", message);
     process.exit(1);

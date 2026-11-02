@@ -184,7 +184,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
         id: "789",
         arrangementLength: "0bar",
       }),
-    ).rejects.toThrow("arrangementLength must be greater than 0");
+    ).rejects.toThrow('arrangementLength "0bar" must be longer than zero');
   });
 
   it("should handle same length as no-op", async () => {

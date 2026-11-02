@@ -9,8 +9,9 @@
 
 import { type EvalScenario } from "../../types.ts";
 import { assertNamesTarget } from "../path/path-assertions.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_PLAYBACK = "ppal-playback";
+const TOOL_PLAYBACK = TOOLS.playback;
 
 export const sceneAndPlayback: EvalScenario = {
   id: "scene-and-playback",
@@ -32,10 +33,10 @@ export const sceneAndPlayback: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     // Turn 1: Scene creation
-    { type: "tool_called", tool: "ppal-create-scene", turn: 1 },
+    { type: "tool_called", tool: TOOLS.createScene, turn: 1 },
 
     // Turn 2: Play scene
     { type: "tool_called", tool: TOOL_PLAYBACK, turn: 2 },
@@ -69,7 +70,7 @@ export const sceneAndPlayback: EvalScenario = {
 2. Played that scene
 3. Then played the 4th scene instead
 4. Stopped playback
-5. Confirmed each step was completed`,
+5. Said in its replies that each step above was done`,
     },
   ],
 };

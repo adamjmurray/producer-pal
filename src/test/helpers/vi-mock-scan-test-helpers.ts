@@ -17,7 +17,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
-import { findTestFiles, projectRoot } from "./meta-test-helpers.ts";
+import { findTestFiles, projectRoot, repoPath } from "./meta-test-helpers.ts";
 
 /** One offending identifier reference inside a vi.mock() factory. */
 export interface MockImportRefViolation {
@@ -55,14 +55,17 @@ export function findMockImportRefViolations(): MockImportRefViolation[] {
 function scanFile(file: string): MockImportRefViolation[] {
   const text = fs.readFileSync(file, "utf8");
 
-  if (!text.includes("vi.mock(")) {
+  if (!mayHaveAsyncMockFactory(text)) {
     return [];
   }
 
   const source = ts.createSourceFile(
     file,
     text,
-    ts.ScriptTarget.Latest,
+    {
+      languageVersion: ts.ScriptTarget.Latest,
+      jsDocParsingMode: ts.JSDocParsingMode.ParseNone,
+    },
     /* setParentNodes */ true,
     ts.ScriptKind.TSX,
   );
@@ -87,6 +90,77 @@ function scanFile(file: string): MockImportRefViolation[] {
   visit(source);
 
   return out;
+}
+
+/** Whitespace and comments, the only things allowed between two tokens. */
+const TRIVIA = String.raw`(?:\s|//[^\n\r\u2028\u2029]*|/\*[\s\S]*?\*/)*`;
+const TRIVIA_AT = new RegExp(TRIVIA, "y");
+const VI_MOCK = new RegExp(String.raw`\bvi${TRIVIA}\??\.${TRIVIA}mock\b`, "g");
+const STRING = String.raw`(?:"(?:[^"\\\n\r]|\\[\s\S])*"|'(?:[^'\\\n\r]|\\[\s\S])*')`;
+/** A mock path: a string, or `import("...")` around one. */
+const PATH_AT = new RegExp(
+  String.raw`import${TRIVIA}\(${TRIVIA}${STRING}${TRIVIA}\)|${STRING}`,
+  "y",
+);
+const ASYNC_AT = /async\b/y;
+
+/**
+ * Whether a file might hold an async vi.mock() factory, judged from its text so
+ * most files skip the parse. Returns false only when every `vi.mock(` call has
+ * a plain path (a string, or `import()` of one) followed by `)` or a non-`async`
+ * argument, so a skipped file can't hold a violation. Anything else is parsed.
+ * @param text - Test file source
+ * @returns False when the file provably has no async factory
+ */
+function mayHaveAsyncMockFactory(text: string): boolean {
+  for (const match of text.matchAll(VI_MOCK)) {
+    let at = skipTrivia(text, match.index + match[0].length);
+
+    // A call has `(`, `<` (type arguments) or `?.` next; anything else is a mention.
+    if (text[at] !== "(") {
+      if (text[at] === "<" || text[at] === "?") {
+        return true;
+      }
+
+      continue;
+    }
+
+    PATH_AT.lastIndex = skipTrivia(text, at + 1);
+
+    if (PATH_AT.exec(text) == null) {
+      return true;
+    }
+
+    at = skipTrivia(text, PATH_AT.lastIndex);
+
+    if (text[at] === ")") {
+      continue;
+    }
+
+    if (text[at] !== ",") {
+      return true;
+    }
+
+    ASYNC_AT.lastIndex = skipTrivia(text, at + 1);
+
+    if (ASYNC_AT.test(text)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * @param text - Source text
+ * @param from - Index to start at
+ * @returns The index of the next token after any whitespace and comments
+ */
+function skipTrivia(text: string, from: number): number {
+  TRIVIA_AT.lastIndex = from;
+  TRIVIA_AT.exec(text);
+
+  return TRIVIA_AT.lastIndex;
 }
 
 /**
@@ -209,7 +283,7 @@ function factoryViolations(
       );
 
       out.push({
-        file: path.relative(projectRoot, file),
+        file: repoPath(file),
         line: line + 1,
         name: node.text,
       });

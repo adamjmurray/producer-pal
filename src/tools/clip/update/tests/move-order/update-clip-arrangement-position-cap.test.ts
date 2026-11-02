@@ -26,16 +26,25 @@ function touched(track: RegisteredMockObject): boolean {
   return vi.mocked(track.call).mock.calls.length > 0;
 }
 
+/**
+ * A 4/4 Set with clip 100 on track 0 and clip 101 on track 1.
+ * @returns The two track mocks
+ */
+function registerTwoClips(): RegisteredMockObject[] {
+  registerMockObject("live-set", {
+    path: livePath.liveSet,
+    type: "Song",
+    properties: { signature_numerator: 4, signature_denominator: 4 },
+  });
+
+  return [0, 1].map(setupClipOnTrack);
+}
+
 describe("updateClip - arrangement positions past the last Live allows", () => {
   let tracks: RegisteredMockObject[];
 
   beforeEach(() => {
-    registerMockObject("live-set", {
-      path: livePath.liveSet,
-      type: "Song",
-      properties: { signature_numerator: 4, signature_denominator: 4 },
-    });
-    tracks = [0, 1].map(setupClipOnTrack);
+    tracks = registerTwoClips();
   });
 
   it("refuses the call before any clip moves when the last position is past it", async () => {
@@ -72,12 +81,7 @@ describe("updateClip - arrangementLength over Producer Pal's limit", () => {
   let tracks: RegisteredMockObject[];
 
   beforeEach(() => {
-    registerMockObject("live-set", {
-      path: livePath.liveSet,
-      type: "Song",
-      properties: { signature_numerator: 4, signature_denominator: 4 },
-    });
-    tracks = [0, 1].map(setupClipOnTrack);
+    tracks = registerTwoClips();
   });
 
   it("refuses a length that is too long", async () => {

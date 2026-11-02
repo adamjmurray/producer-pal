@@ -131,10 +131,12 @@ describe("request bodies", () => {
     const { response, text } = await postRawBody("ppal-read-track");
 
     expect(response.status).toBe(200);
-    expect(JSON.parse(text)).toStrictEqual({
-      result: "Error: id or path is required",
-      isError: true,
-    });
+    const body = JSON.parse(text) as { result: string; isError: boolean };
+
+    expect(body.isError).toBe(true);
+    expect(body.result).toMatch(
+      /^Error: id or path is required, e\.g\. path: "t0"/,
+    );
   });
 
   it("still answers a normal body", async () => {

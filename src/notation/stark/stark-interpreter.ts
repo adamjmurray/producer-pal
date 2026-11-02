@@ -17,7 +17,8 @@
  */
 
 import { chordSymbolPitches } from "#src/notation/chords/chord-symbols.ts";
-import { sortNotes } from "#src/notation/note-sort.ts";
+import { checkNotationLimit } from "#src/notation/helpers/notation-limit.ts";
+import { sortNotes } from "#src/notation/helpers/note-sort.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import {
   drumHeaderPitch,
@@ -56,7 +57,7 @@ import {
 } from "#src/notation/stark/stark-config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { assertDefined } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 export interface StarkInterpretOptions {
   /** Time signature numerator (beats per bar). Accepted for parity; unused (timing is explicit). */
@@ -84,7 +85,7 @@ export function interpretNotation(
   const hasPitched = ast.some((s) => !("midi" in s));
 
   if (hasDrums && hasPitched) {
-    console.warn("Stark: mixed drum and pitched sections in one clip");
+    emitWarning("Stark: mixed drum and pitched sections in one clip");
   }
 
   const notes: NoteEvent[] = [];
@@ -113,8 +114,10 @@ export function parseNotation(starkExpression: string): StarkSection[] {
     return [];
   }
 
+  let ast: StarkSection[];
+
   try {
-    return parser.parse(starkExpression);
+    ast = parser.parse(starkExpression);
   } catch (error) {
     const message =
       error instanceof Error && error.name === "SyntaxError"
@@ -123,6 +126,17 @@ export function parseNotation(starkExpression: string): StarkSection[] {
 
     throw new Error(message, { cause: error });
   }
+
+  // Refuse a `*N` too large to expand, before any note is made.
+  for (const section of ast) {
+    for (const item of section.content) {
+      if ("repeat" in item && item.repeat != null) {
+        checkNotationLimit(item.repeat, `Repeat *${item.repeat}`);
+      }
+    }
+  }
+
+  return ast;
 }
 
 // Drum sections carry a `midi`/`noteName` header; pitched sections do not.
@@ -142,7 +156,7 @@ function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
     drumHeaderPitch(assertDefined(section.noteName, "drum header note name"));
 
   if (pitch == null) {
-    console.warn(
+    emitWarning(
       `Stark: drum line "${section.type}" has no resolvable pitch — skipping`,
     );
 
@@ -152,7 +166,7 @@ function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
   const lineDefault = section.defaultDuration ?? DRUM_DEFAULT;
 
   // Each copy of a `*N` hit re-rolls its velocity.
-  runLine(section.content, lineDefault, (hit, time) => {
+  runLine(section.content, lineDefault, notes, (hit, time) => {
     const beats = durationBeats(hit.duration ?? lineDefault);
 
     notes.push({
@@ -197,7 +211,7 @@ function processPitchedSection(
 
   const lineDefault = section.defaultDuration ?? LINE_DEFAULT[section.type];
 
-  runLine(section.content, lineDefault, (item, time) =>
+  runLine(section.content, lineDefault, notes, (item, time) =>
     processItem(item, time, registerDefault, lineDefault, notes),
   );
 }
@@ -210,7 +224,7 @@ function processChordsSection(
 ): void {
   const lineDefault = section.defaultDuration ?? LINE_DEFAULT.chords;
 
-  runLine(section.content, lineDefault, (item, time) =>
+  runLine(section.content, lineDefault, notes, (item, time) =>
     processChordItem(item, time, lineDefault, notes),
   );
 }
@@ -221,6 +235,7 @@ function processChordsSection(
 function runLine<T extends BarMarkerItem | { repeat?: number | null }>(
   content: T[],
   lineDefault: StarkDuration,
+  notes: NoteEvent[],
   step: (item: Exclude<T, BarMarkerItem | RestItem>, time: number) => number,
 ): void {
   let time = 0;
@@ -236,6 +251,7 @@ function runLine<T extends BarMarkerItem | { repeat?: number | null }>(
       time = isRest(item)
         ? time + durationBeats(item.duration ?? lineDefault)
         : step(item as Exclude<T, BarMarkerItem | RestItem>, time);
+      checkNotationLimit(notes.length, "Note count");
     }
   }
 }
@@ -318,7 +334,7 @@ function processItem(
 
     // Time still advances, so one bad token can't desync the rest of the line.
     if (midi == null) {
-      console.warn(
+      emitWarning(
         `Stark: note "${noteLabel(item)}" is out of MIDI range — skipping`,
       );
 
@@ -357,7 +373,7 @@ function pushBracketChord(
     const pitch = notePitch(chordNote, registerDefault);
 
     if (pitch == null) {
-      console.warn(
+      emitWarning(
         `Stark: note "${noteLabel(chordNote)}" is out of MIDI range — skipping`,
       );
 

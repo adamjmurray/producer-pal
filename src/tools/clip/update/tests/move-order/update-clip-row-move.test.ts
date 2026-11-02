@@ -298,6 +298,26 @@ describe("updateClip - a move Live turns down at write time", () => {
   }
 
   /**
+   * Move 113 onto 114, and 114 to the audio track, which refuses it.
+   * @param args - More update-clip args
+   * @returns The update-clip result
+   */
+  function moveOntoRefusedClip(
+    args: Parameters<typeof updateClip>[0] = {},
+  ): ReturnType<typeof updateClip> {
+    setupRefusingTrack([
+      { id: "113", start: 0, end: 16 },
+      { id: "114", start: 16, end: 32 },
+    ]);
+
+    return updateClip({
+      id: "113,114",
+      toPath: `t0[5|1],t${AUDIO_TRACK}[9|1]`,
+      ...args,
+    });
+  }
+
+  /**
    * Every position t0 took a move at.
    * @returns The target positions in beats
    */
@@ -315,15 +335,7 @@ describe("updateClip - a move Live turns down at write time", () => {
   // comes free and 113's move has to be called off — or it runs over a clip
   // that is still sitting there and the call reports both as updated.
   it("calls off the move that was waiting on it", async () => {
-    setupRefusingTrack([
-      { id: "113", start: 0, end: 16 },
-      { id: "114", start: 16, end: 32 },
-    ]);
-
-    const result = await updateClip({
-      id: "113,114",
-      toPath: `t0[5|1],t${AUDIO_TRACK}[9|1]`,
-    });
+    const result = await moveOntoRefusedClip();
 
     expect(movedTo()).toStrictEqual([]);
     expect(result).toStrictEqual([
@@ -385,16 +397,7 @@ describe("updateClip - a move Live turns down at write time", () => {
   // The resize clears the span it tiles across just as the move clears its
   // destination, so a called-off move takes its arrangementLength with it.
   it("drops the resize of a called-off move too", async () => {
-    setupRefusingTrack([
-      { id: "113", start: 0, end: 16 },
-      { id: "114", start: 16, end: 32 },
-    ]);
-
-    const result = await updateClip({
-      id: "113,114",
-      toPath: `t0[5|1],t${AUDIO_TRACK}[9|1]`,
-      arrangementLength: "8bar",
-    });
+    const result = await moveOntoRefusedClip({ arrangementLength: "8bar" });
 
     expect(movedTo()).toStrictEqual([]);
     expect(result).toStrictEqual([

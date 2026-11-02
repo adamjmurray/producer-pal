@@ -125,7 +125,10 @@ User Library copy through the remote script's `/replace-producer-pal`, the route
 the portal's update uses (`requestWithBrowserRetry`, `mayHaveSwapped`). The
 server refuses first, with a 409 and a plain reason (`device-swap-check.ts`): no
 copy, an older copy, already running from the copy, or no new-enough remote
-script. `GET /device-install` carries the same check as `swap`.
+script. `GET /device-install` carries the same check as `swap`. It is polled
+every few seconds during a swap, so the device files (~10 MB each) are read once
+and recalled while their size, modified time and identity are unchanged
+(`device-file-facts.ts`); an install here drops what it wrote.
 
 Live unloads the old device inside the swap, so the server that sent the request
 usually dies before the remote script answers. A dropped connection is therefore
@@ -199,6 +202,9 @@ always matches the portal's version:
 - **The remote script** is embedded in the bundle by `embedRemoteScript()`, the
   same plugin the device bundle uses. The portal never reads `remote-script/`
   from disk.
+- **The plug-in host wrappers** (two ~240 KB `.amxd` files) are embedded as
+  base64 by `embedPluginHost()`, only in a build with `ENABLE_HOSTED_PLUGINS`.
+  Any other build embeds nothing.
 - **The frozen device** (`Producer_Pal.amxd`, ~10 MB) is a plain file next to
   `producer-pal-portal.js`, in the npm package and in the mcpb. It is not
   embedded: base64 in the bundle would be parsed on every start for a feature

@@ -11,6 +11,8 @@
 
 import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
 import {
+  foldedIdParam,
+  foldedPathParam,
   namedIdParam,
   namedPathParam,
   paramNamesSomething,
@@ -31,16 +33,45 @@ export interface TargetParams {
 /** Resolves a path list to one id per entry, null where a path named none. */
 export type IdPerPath = (paths: string) => Array<string | null>;
 
+/** The names the caller sent the id and path targets under, for an error. */
+export interface TargetNames {
+  /** `id`, or the alias that carried it (`ids`, `trackId`, ...) */
+  idParam: string;
+  /** `path`, or the alias that carried it (`paths`) */
+  pathParam: string;
+}
+
+/** The targets of a call, folded onto `id` and `path`, with the names sent. */
+export interface FoldedTargets extends TargetNames {
+  id?: string;
+  path?: string;
+}
+
 /**
- * Both plural aliases folded onto `id` and `path`. A param that names nothing
- * warns each time it is read, so a call folds once and passes the result on.
+ * Both plural aliases (and a tool's own id spelling) folded onto `id` and
+ * `path`. A param that names nothing warns each time it is read, so a call folds
+ * once and passes the result on. The result remembers which names carried the
+ * values: an error about a target quotes the param the caller sent.
  * @param targets - The call's id/ids and path/paths params
- * @returns The same targets, named by the canonical params
+ * @param idAlias - A tool's own spelling of `id` ("clipId"), where it has one
+ * @returns The targets, named by the canonical params, and the names sent
  */
-export function foldTargetParams(targets: TargetParams): TargetParams {
+export function foldTargetParams(
+  targets: TargetParams,
+  idAlias?: ParamSpelling,
+): FoldedTargets {
+  const plural = foldedIdParam(targets.id, targets.ids, "ids");
+  const id =
+    idAlias == null
+      ? plural
+      : foldedIdParam(plural.value, idAlias.value, idAlias.name);
+  const path = foldedPathParam(targets.path, targets.paths);
+
   return {
-    id: namedIdParam(targets.id, targets.ids, "ids"),
-    path: namedPathParam(targets.path, targets.paths),
+    id: id.value,
+    idParam: plural.value == null ? id.param : plural.param,
+    path: path.value,
+    pathParam: path.param,
   };
 }
 
@@ -59,27 +90,24 @@ export function targetCount(args: TargetParams): number {
 
 /**
  * The param name to report a target-count mismatch against: whichever of
- * `id`/`ids` or `path`/`paths` the call actually sent, by its canonical name.
- * The alias only ever stands in for its canonical, so a caller never sees it
- * named back.
- * @param args - The call's id/ids and path/paths params
- * @returns "id", "path", or "id and path" when both sides were sent
+ * `id` or `path` the call actually sent, by the name it sent it under.
+ * @param args - The folded targets, with the names they were sent under
+ * @returns The name, or "<id name> and <path name>" when both sides were sent
  */
-export function targetParamLabel(args: TargetParams): string {
-  const named = paramNamesSomething(args.id) || paramNamesSomething(args.ids);
-  const pathed =
-    paramNamesSomething(args.path) || paramNamesSomething(args.paths);
+export function targetParamLabel(args: FoldedTargets): string {
+  const named = paramNamesSomething(args.id);
+  const pathed = paramNamesSomething(args.path);
 
   if (named && pathed) {
-    return "id and path";
+    return `${args.idParam} and ${args.pathParam}`;
   }
 
   if (named) {
-    return "id";
+    return args.idParam;
   }
 
   if (pathed) {
-    return "path";
+    return args.pathParam;
   }
 
   return "id and path";

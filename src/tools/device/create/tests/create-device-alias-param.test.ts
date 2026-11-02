@@ -19,8 +19,8 @@ import { createDevice } from "../create-device.ts";
 import { toolDefCreateDevice } from "../create-device.def.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
-  warnOnce: vi.fn(),
+  emitWarning: vi.fn(),
+  emitWarningOnce: vi.fn(),
 }));
 
 const TRACK = livePath.track(0);

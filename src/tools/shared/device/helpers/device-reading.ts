@@ -5,11 +5,14 @@
 
 import { DEVICE_TYPE } from "#src/tools/constants.ts";
 import {
+  formatParamName,
   readParameter,
   readParameterBasic,
   trimmedParamName,
 } from "./param-reading.ts";
+import { isUnusedHiddenMacro } from "./params/hidden-macros.ts";
 import { processDrumPads } from "./drum-pads-from-chains.ts";
+import { MAX_READ_PARAMS } from "./params/param-read-cap.ts";
 import { buildChainInfo } from "./chain-info.ts";
 import { buildChainPath, buildReturnChainPath } from "./path/insertion-path.ts";
 import {
@@ -46,6 +49,8 @@ export interface ReadDeviceParametersOptions {
   search?: string;
   /** False when the device's track plays from Session; no `automation` flags. */
   showAutomation?: boolean;
+  /** Leave out the macros beyond this number (a rack with nothing mapped). */
+  hideMacrosAbove?: number;
 }
 
 /**
@@ -435,18 +440,29 @@ export function readABCompare(device: LiveAPI): Record<string, unknown> {
 }
 
 /**
- * Read all parameters for a device
+ * Read a device's parameters, at most `MAX_READ_PARAMS` of them
  * @param device - LiveAPI device object
  * @param options - Reading options
- * @returns Array of parameter info objects
+ * @returns The parameter info objects, and how many parameters matched
  */
 export function readDeviceParameters(
   device: LiveAPI,
   options: ReadDeviceParametersOptions = {},
-): Record<string, unknown>[] {
-  const { includeValues = false, search, showAutomation = true } = options;
+): { parameters: Record<string, unknown>[]; total: number } {
+  const {
+    includeValues = false,
+    search,
+    showAutomation = true,
+    hideMacrosAbove,
+  } = options;
 
   let parameters = device.getChildren("parameters");
+
+  if (hideMacrosAbove != null) {
+    parameters = parameters.filter(
+      (p) => !isUnusedHiddenMacro(formatParamName(p), hideMacrosAbove),
+    );
+  }
 
   // Filter by search string if provided
   if (search) {
@@ -457,8 +473,13 @@ export function readDeviceParameters(
     );
   }
 
+  // Cut before the values are read: reading them is the cost.
+  const total = parameters.length;
+
+  parameters = parameters.slice(0, MAX_READ_PARAMS);
+
   if (!includeValues) {
-    return parameters.map(readParameterBasic);
+    return { parameters: parameters.map(readParameterBasic), total };
   }
 
   // Read once per device: it only names the device for the recorded-unit
@@ -466,7 +487,10 @@ export function readDeviceParameters(
   // argument, which readParameter would read as the device name.
   const deviceName = device.getProperty("class_display_name") as string;
 
-  return parameters.map((param) =>
-    readParameter(param, deviceName, showAutomation),
-  );
+  return {
+    parameters: parameters.map((param) =>
+      readParameter(param, deviceName, showAutomation),
+    ),
+    total,
+  };
 }

@@ -14,7 +14,7 @@ import { type SetupFailed } from "./setup-failure.ts";
 const BROWSER_RETRY_MS = 500;
 const BROWSER_RETRY_LIMIT_MS = 15_000;
 
-/** How long Live may leave a device load queued, which is also how long we wait. */
+/** The most Live may leave a device load queued, which is also how long we wait. */
 const DEVICE_LOAD_EXPIRES_MS = 20_000;
 
 /** A route that takes a device file's path, and how to word what goes wrong. */
@@ -31,9 +31,11 @@ export interface BrowserRequest {
 
 /**
  * POST a device file's path to the remote script. A 404 means Live's browser
- * hasn't seen the new file yet, so it is asked again for a while.
+ * hasn't seen the new file yet, so it is asked again for a while. No request
+ * is held open, or retried, past the deadline.
  * @param request - The route, body and failure wording
  * @param deps - The remote script, and the clock
+ * @param deadline - When the whole call must be done, as a `now()` time
  * @returns The answer: a success, or the first failure that isn't a not-found
  *   (or the not-found it still got when the time was up)
  * @throws SetupFailed when the request threw or nothing answered
@@ -41,13 +43,20 @@ export interface BrowserRequest {
 export async function requestWithBrowserRetry(
   request: BrowserRequest,
   deps: Pick<OfflineDeps, "request" | "now" | "sleep">,
+  deadline: number,
 ): Promise<RemoteScriptAnswer> {
   const started = deps.now();
 
   for (;;) {
-    const reply = await send(request, deps);
+    const expiresInMs = Math.min(DEVICE_LOAD_EXPIRES_MS, deadline - deps.now());
+    const reply = await send(request, deps, expiresInMs);
+    const now = deps.now();
 
-    if (reply.status === 404 && deps.now() - started < BROWSER_RETRY_LIMIT_MS) {
+    if (
+      reply.status === 404 &&
+      now - started < BROWSER_RETRY_LIMIT_MS &&
+      now + BROWSER_RETRY_MS < deadline
+    ) {
       await deps.sleep(BROWSER_RETRY_MS);
       continue;
     }
@@ -59,12 +68,15 @@ export async function requestWithBrowserRetry(
 /**
  * @param request - The route, body and failure wording
  * @param deps - The remote script
+ * @param expiresInMs - How long Live may leave the load queued, which is also
+ *   how long we wait
  * @returns The remote script's answer
  * @throws SetupFailed when it threw or didn't answer
  */
 async function send(
   request: BrowserRequest,
   deps: Pick<OfflineDeps, "request">,
+  expiresInMs: number,
 ): Promise<RemoteScriptAnswer> {
   const { route, body, thrown, unavailable } = request;
   let reply: RemoteScriptReply;
@@ -74,7 +86,7 @@ async function send(
       method: "POST",
       route,
       body,
-      expiresInMs: DEVICE_LOAD_EXPIRES_MS,
+      expiresInMs,
     });
   } catch (error) {
     throw thrown(error);

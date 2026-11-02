@@ -12,7 +12,7 @@ import {
   formatOffGridBeats,
   printedWholeBeat,
 } from "#src/notation/barbeat/serializer/helpers/barbeat-serializer-fractions.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 // The note-value regexes here (durationToAbletonBeats, readBarBeat,
 // parseBeatValue) deliberately duplicate the note-value rules in
@@ -151,7 +151,7 @@ export function barBeatToMusicalBeats(
   // beyond that silently overflows multiple beats into a later, meter-dependent
   // bar and is almost certainly a mistake.
   if (beat > beatsPerBar + 1) {
-    console.warn(
+    emitWarning(
       `Beat ${beat} exceeds the bar (beatsPerBar=${beatsPerBar}); it will land in a later bar — did you mean a higher bar number?`,
     );
   }
@@ -364,7 +364,7 @@ export function abletonBeatsToDuration(
   timeSigDenominator: number,
 ): string {
   if (abletonBeats < 0) {
-    console.warn(
+    emitWarning(
       `duration cannot be negative, got ${abletonBeats}; clamped to 0`,
     );
     abletonBeats = 0;

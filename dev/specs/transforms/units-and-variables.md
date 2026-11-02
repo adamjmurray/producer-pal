@@ -114,8 +114,10 @@ A plural `bars` (`2bars`, `2bars+n/4`) is accepted as an input-tolerance alias
 of `<count>bar` everywhere; serialized output is always singular (`2bar`).
 
 A note value or bar count takes a leading `-` wherever a numeric expression is
-accepted (`-n/1`, `-2bar`), the same as a bare number. It parses as `0 - value`,
-so `sin(-1bar)` runs a bar-length cycle backwards.
+accepted (`-n/1`, `-2bar`), the same as a bare number. It parses as one signed
+value (a negative note value or bar count), not as `0 - value`, so `sin(-1bar)`
+runs a bar-length cycle backwards and `ratchet(-n/16)` is refused with "grid
+must be greater than 0".
 
 ### Note Property Units
 

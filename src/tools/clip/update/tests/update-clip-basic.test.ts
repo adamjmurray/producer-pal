@@ -265,15 +265,23 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({
       id: "123",
       name: "Updated Clip",
-      color: "#FF0000",
+      color: "#FF3636",
       looping: true,
     });
 
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Updated Clip");
-    expect(mocks.clip123.set).toHaveBeenCalledWith("color", 16711680);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("color", 16725558);
     expect(mocks.clip123.set).toHaveBeenCalledWith("looping", true);
 
     expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
+  });
+
+  it("writes the nearest palette entry for a color off the palette", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    await updateClip({ id: "123", color: "#800080" });
+
+    expect(mocks.clip123.set).toHaveBeenCalledWith("color", 0x624bad);
   });
 
   it("should update a single arrangement clip by ID", async () => {
@@ -319,15 +327,15 @@ describe("updateClip - Basic operations", () => {
 
     const result = await updateClip({
       id: "123, 456",
-      color: "#00FF00",
+      color: "#1AFF2F",
       looping: false,
     });
 
-    expect(mocks.clip123.set).toHaveBeenCalledWith("color", 65280);
+    expect(mocks.clip123.set).toHaveBeenCalledWith("color", 1769263);
     expect(mocks.clip123.set).toHaveBeenCalledWith("looping", false);
     expect(mocks.clip123.set).toHaveBeenCalledTimes(2);
 
-    expect(mocks.clip456.set).toHaveBeenCalledWith("color", 65280);
+    expect(mocks.clip456.set).toHaveBeenCalledWith("color", 1769263);
     expect(mocks.clip456.set).toHaveBeenCalledWith("looping", false);
     expect(mocks.clip456.set).toHaveBeenCalledTimes(2);
 
@@ -617,7 +625,7 @@ describe("updateClip - Basic operations", () => {
     setupToSlotMocks();
 
     const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-    const warnSpy = vi.spyOn(consoleModule, "warn");
+    const warnSpy = vi.spyOn(consoleModule, "emitWarning");
 
     const result = await updateClip({ id: "123", toSlot: "1/2, 3/4" });
 

@@ -27,7 +27,7 @@ export interface ScenePayload {
 export function sceneTargets(call: SceneCall): Array<Target<ScenePayload>> {
   // Quiet: the lookup below parses each path again and says any legacy
   // spelling.
-  refuseUnparsableEntries(call.targets.path, "path");
+  refuseUnparsableEntries(call.targets.path, call.targets.pathParam);
 
   return call.named.map((named): Target<ScenePayload> => {
     try {
@@ -48,10 +48,11 @@ export function sceneTargets(call: SceneCall): Array<Target<ScenePayload>> {
  * destination — nothing here says what a new scene would be — so it is refused
  * with the tool that does make scenes.
  * @param entry - One scene path, as the caller wrote it
+ * @param label - The param it was sent under
  * @returns The scene's id, or why there isn't one
  */
-function sceneToUpdateAtPath(entry: string): IdLookup {
-  const lookup = sceneIdAtPath(entry);
+function sceneToUpdateAtPath(entry: string, label?: string): IdLookup {
+  const lookup = sceneIdAtPath(entry, label);
 
   if (lookup.id != null || !lookup.empty) {
     return lookup;

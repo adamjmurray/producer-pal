@@ -3,10 +3,10 @@
 // AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { sortNotes } from "#src/notation/note-sort.ts";
+import { sortNotes } from "#src/notation/helpers/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
-import * as console from "./transform-warning-label.ts";
+import { clipDetail, emitTransformWarning } from "./transform-warning-label.ts";
 import {
   GRID_EPSILON,
   MAX_NOTE_PIECES,
@@ -47,7 +47,8 @@ import { type ExpressionNode, type NoteOp } from "./parser/transform-parser.ts";
  * @param arrangementOrigin - Arrangement position of note time 0, in musical beats (used by
  *   a synced `split`), or undefined for session clips
  * @returns The op's output for the matched notes (kept originals included) and
- *   where the notes it made came from; both empty when the op was skipped
+ *   where the notes it made came from (both empty when the op was skipped),
+ *   and whether it was skipped
  */
 export function applyNoteOp(
   op: NoteOp,
@@ -55,7 +56,7 @@ export function applyNoteOp(
   timeSigNumerator: number,
   timeSigDenominator: number,
   arrangementOrigin?: number,
-): Pick<NoteOpResult, "notes" | "parents"> {
+): Pick<NoteOpResult, "notes" | "parents" | "skipped"> {
   const beatScale = timeSigDenominator / 4; // Ableton beats -> musical beats
 
   // Partition by the op's selector (pitch range + time range).
@@ -87,8 +88,8 @@ export function applyNoteOp(
   notes.push(...rebuilt);
 
   return result.skipped
-    ? { notes: [], parents: new Map() }
-    : { notes: result.notes, parents: result.parents };
+    ? { notes: [], parents: new Map(), skipped: true }
+    : { notes: result.notes, parents: result.parents, skipped: false };
 }
 
 /**
@@ -211,13 +212,13 @@ function ratchetNotes(
   }
 
   if (shortNotes > 0) {
-    console.clipDetail(
+    clipDetail(
       `ratchet: ${shortNotes} note(s) spanned no grid line, left unchanged`,
     );
   }
 
   if (clamped > 0) {
-    console.clipDetail(
+    clipDetail(
       `ratchet: ${clamped} note(s) clamped to the max of ${MAX_NOTE_PIECES} pieces`,
     );
   }
@@ -261,7 +262,9 @@ function resolveRatchetPlan(
   const count = Math.round(value);
 
   if (count < 2) {
-    console.warn(`ratchet(${value}) needs a count of 2 or more; skipping`);
+    emitTransformWarning(
+      `ratchet(${value}) needs a count of 2 or more; skipping`,
+    );
 
     return null;
   }

@@ -22,10 +22,20 @@ after:
   `merge()` on a lone note). A `repeat` counts its copies, not the originals.
   Values are compared at 32-bit float resolution, the way Live stores them, so
   writing back the value a note already holds changes nothing.
-- `transformed: 0` is reported when transforms ran and changed nothing: it is
-  the caller's only sign that its selector matched nothing or its edit was a
-  no-op. Only `deletedNotes` is left out at 0, and `transformed` is absent when
-  no transform ran.
+- `transformed: 0` is reported when transforms ran and changed nothing. Only
+  `deletedNotes` is left out at 0, and `transformed` is absent when no transform
+  ran.
+- When transforms ran and changed and deleted nothing, the clip's entry says why
+  in `detail`, because the two causes need different fixes: "no notes matched
+  the selector", or "the transforms changed none of the N matched notes" ("the
+  transforms didn't change the 1 matched note" for one). `preTransforms` and
+  `transforms` are judged together. Neither is said when a statement failed or
+  was skipped (an expression error, a failed `where()`, a skipped note op),
+  since that has its own detail, nor when every statement was an audio-only
+  parameter ignored on a MIDI clip. Every tool that runs transforms says it the
+  same way (update-clip, create-clip, and duplicate through update-clip). With
+  `duplicateLoop`, preTransforms and the later notes/transforms stage are judged
+  together, the stage that matched more notes giving N.
 - `preTransforms` and `transforms` in one call count as one pass running both
   would, against how each note started: a note both changed counts once, and one
   that `transforms` puts back as it was counts as neither. When `transforms`
@@ -39,9 +49,10 @@ after:
 
 Live keeps a note that starts before the clip's region or at or after its end,
 but never plays it. A note far enough out is also past the window every note
-read and rewrite uses, so it drops out of `noteCount` and later reads. No
-refusal, no skip: the write lands as asked, and the clip's entry says so in
-`detail`:
+read and rewrite uses, so it drops out of `noteCount` and later reads. On a
+looping clip the window ends at `loop_end`, so every note at or past it drops
+out, and no edit (replace, transform, delete) touches it. No refusal, no skip:
+the write lands as asked, and the clip's entry says so in `detail`:
 
 - `ppal-create-clip`: `N notes landed outside the region and won't play`, for
   the notes the call wrote (after any transform).

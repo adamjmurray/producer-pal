@@ -23,8 +23,8 @@ import {
 import { writtenContainer } from "#src/tools/device/update/helpers/call/resolve-device-target.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
-  warnOnce: vi.fn(),
+  emitWarning: vi.fn(),
+  emitWarningOnce: vi.fn(),
 }));
 
 /** A plain device on its own track, outside the drum rack. */

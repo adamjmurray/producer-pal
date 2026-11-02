@@ -47,9 +47,10 @@ describe("updateDevice - chain mixer with arrangement automation", () => {
 
     const result = updateDevice({
       id: "chain-0",
-      sendGainDb: -12,
-      sendReturn: "a",
-      sends: [{ return: "a", gainDb: -6 }],
+      sends: [
+        { return: "a", gainDb: -12 },
+        { return: "a", gainDb: -6 },
+      ],
     }) as { sends: Array<{ detail?: string }> };
 
     expect(result.sends.map((entry) => entry.detail)).toStrictEqual([

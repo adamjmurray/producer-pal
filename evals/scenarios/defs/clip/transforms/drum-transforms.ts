@@ -14,8 +14,9 @@ import {
   getLastTransforms,
   getTransforms,
 } from "../helpers/clip-turn-readers.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_UPDATE_CLIP = "ppal-update-clip";
+const TOOL_UPDATE_CLIP = TOOLS.updateClip;
 
 /**
  * Extract the selector portion (before the first ":") of a transforms string
@@ -68,14 +69,16 @@ export const drumTransforms: EvalScenario = {
   messages: [
     "Connect to Ableton Live",
     "Find the drum clip in the first scene and read the notes",
-    "Add a crescendo to the hats in the last two beats of the last bar: very quiet to max volume. Do it in as few tokens as you can.",
+    // Brevity is about the transform (the terse answer, versus velocity-shaping),
+    // not the selector: a whole-bar selector misses the requested range.
+    "Add a crescendo to the hats in the last two beats of the last bar, and only those two beats: very quiet to max volume. Use one short transform.",
     "Apply a velocity LFO to the hats before the crescendo",
     "Use a transform to slightly randomize the snare velocities. Lock a value into each hit so it plays back the same way every time.",
   ],
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     // Turn 1: Clips found and notes read
     assertNotesRead(1),

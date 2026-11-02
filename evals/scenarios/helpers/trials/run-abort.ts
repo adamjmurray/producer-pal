@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Stopping models that keep erroring: after a few scenarios in a row where every
- * trial of a model errored, that model is dropped from the rest of the run. If
+ * Stopping models that keep erroring: after a few trials in a row of a model
+ * that all errored, that model is dropped from the rest of the run. If
  * that leaves no model, the run stops. The cause is either Live failing to come
  * back after a Set swap, or the model provider refusing requests — and the fix
  * is different, so the message says which.
@@ -14,15 +14,15 @@
 import { isProviderRefusal } from "./provider-refusal.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 
-/** Drop a model after this many scenarios in a row where all its trials errored. */
-export const MAX_CONSECUTIVE_SCENARIO_ERRORS = 3;
+/** Drop a model after this many of its trials in a row errored. */
+export const MAX_CONSECUTIVE_ERRORED_TRIALS = 3;
 
 /**
  * Build the message for a model (or the whole run) stopping after `count`
- * scenarios in a row errored.
+ * trials in a row errored.
  *
- * @param count - How many consecutive scenarios errored on every trial
- * @param runs - The trials of the last such scenario
+ * @param count - How many consecutive trials errored
+ * @param runs - The errored trials to quote the cause from
  * @param modelKey - The model being dropped; omit when the whole run stops
  * @returns The message to show or throw
  */
@@ -47,16 +47,16 @@ export function describeRunAbort(
       : `Dropping ${modelKey} from the rest of the run.`;
   const subject = modelKey == null ? "" : `${modelKey}: `;
 
-  return `${subject}${count} scenarios in a row errored — ${cause}. ${action}${sample}`;
+  return `${subject}${count} trials in a row errored — ${cause}. ${action}${sample}`;
 }
 
 /**
- * Count, per model, the scenarios in a row where every trial errored, and
- * return the models that just reached the limit.
+ * Count, per model, the trials in a row that errored, and return the models
+ * that just reached the limit. A trial that did not error resets the count.
  *
  * @param streaks - Each model's current count, updated in place
- * @param modelResults - The scenario's results, by model and label
- * @returns Each model to drop, with the trials of its last errored scenario
+ * @param modelResults - The latest trial's results, by model and label
+ * @returns Each model to drop, with its latest errored trial
  */
 export function stalledModels(
   streaks: Map<string, number>,
@@ -72,7 +72,7 @@ export function stalledModels(
 
     streaks.set(modelKey, streak);
 
-    if (streak >= MAX_CONSECUTIVE_SCENARIO_ERRORS) {
+    if (streak >= MAX_CONSECUTIVE_ERRORED_TRIALS) {
       stalled.set(modelKey, runs);
     }
   }

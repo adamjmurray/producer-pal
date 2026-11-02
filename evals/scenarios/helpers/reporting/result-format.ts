@@ -34,6 +34,22 @@ export function checkTally(checks: JsonCheckResult[]): CheckTally {
   };
 }
 
+/**
+ * Name a model for display, with the thinking level its results ran at.
+ *
+ * @param model - Model key (`provider/model`)
+ * @param results - The model's results
+ * @returns The model key, plus `(thinking <level>)` when one was set
+ */
+export function modelWithThinking(
+  model: string,
+  results: JsonEvalResult[],
+): string {
+  const level = results.find((r) => r.thinking != null)?.thinking;
+
+  return level == null ? model : `${model} (thinking ${level})`;
+}
+
 /** How a judge verdict renders. */
 export interface JudgeVerdict {
   color: "green" | "red" | "yellow";

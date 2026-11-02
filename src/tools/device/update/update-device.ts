@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { type BrowserItem } from "#src/tools/device/create/helpers/remote-script-contract.ts";
@@ -16,6 +17,7 @@ import { blankTargetIgnores } from "#src/tools/shared/validation/lists/target-li
 import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { refuseUnparsableEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { whereObjectIs } from "#src/tools/shared/write-pipeline/where-object-is.ts";
 import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
 import {
   type AppliedTarget,
@@ -43,12 +45,14 @@ import {
   parseDeviceCall,
 } from "./helpers/call/parse-device-call.ts";
 import {
+  NothingThereError,
   type ResolvedTarget,
   resolveNamedTarget,
   resolvedTargetKey,
   targetIsGone,
   writtenContainer,
 } from "./helpers/call/resolve-device-target.ts";
+import { writeHostedParams } from "./helpers/call/hosted-params.ts";
 import {
   type SettledParams,
   writePitchBendParams,
@@ -134,9 +138,14 @@ const DEVICE_WRITE: WriteSpec<
   lists: deviceListArgs,
   targets: deviceTargets,
   check: (call, targets, { ctx }) =>
-    checkDeviceUpdate(call, targets, ctx.deadline),
+    checkDeviceUpdate(call, targets, ctx.deadline, manageOffered(ctx)),
   write: writeDevice,
   settle: settleDeviceUpdate,
+  // A pad move re-indexes the chains on other pads.
+  locate: {
+    idAt: deviceIdAt,
+    whereIs: (id, spelled) => whereObjectIs(id, writtenContainer(spelled)),
+  },
 };
 
 // --- Helpers below main export ---
@@ -150,21 +159,25 @@ const DEVICE_WRITE: WriteSpec<
  * @throws Error when a list has a hole, or a path can't be parsed
  */
 function deviceTargets(call: DeviceCall): Array<Target<DevicePayload>> {
-  const named = namedTargets({ id: call.ids, path: call.path });
+  const named = namedTargets({
+    id: call.ids,
+    path: call.path,
+    ...call.names,
+  });
 
   // A path that doesn't parse is a mistake in the call, so it refuses the
   // call, wrapping or not; one that parses but names nothing skips only its
   // own target.
-  refuseUnparsableEntries(call.path, "path");
+  refuseUnparsableEntries(call.path, call.names.pathParam);
 
   // One rack from every device named, so one target.
   if (call.wrapInRack === true) {
-    const { ids, path, toPath } = call;
+    const { ids, path, names, toPath } = call;
 
     return [
       {
         named: named[0] as Target<DevicePayload>["named"],
-        data: { wrap: { ids, path, toPath, name: call.options.name } },
+        data: { wrap: { ids, path, names, toPath, name: call.options.name } },
       },
     ];
   }
@@ -176,12 +189,37 @@ function deviceTargets(call: DeviceCall): Array<Target<DevicePayload>> {
       return {
         named: target,
         key: resolvedTargetKey(resolved),
+        // A pad is addressed by its note, which no move changes.
+        atStart: resolved.kind === "object" ? resolved.target.id : undefined,
         data: { resolved, before: pathBefore(call, resolved, target) },
       };
     } catch (error) {
-      return { named: target, skip: errorMessage(error) };
+      return {
+        named: target,
+        atStart: error instanceof NothingThereError ? null : undefined,
+        skip: errorMessage(error),
+      };
     }
   });
+}
+
+/**
+ * What a path names now, for a skipped target whose path may have moved on.
+ * @param path - A device, chain or pad path, as the caller wrote it
+ * @returns The object's id, or null when the path names nothing
+ */
+function deviceIdAt(path: string): string | null {
+  try {
+    return resolvedTargetKey(
+      resolveNamedTarget({ param: "path", value: path }),
+    );
+  } catch (error) {
+    if (error instanceof NothingThereError) {
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 /**
@@ -297,7 +335,12 @@ async function loadThenUpdate(
   const { device, item } = preset;
   // Read now: the device may be gone afterwards, and its id means nothing then.
   const where = pathField(device, writtenContainer(writtenPath));
-  const loaded = await loadPreset(device, item, step.call.ctx.deadline);
+  const loaded = await loadPreset(
+    device,
+    item,
+    step.call.ctx.deadline,
+    manageOffered(step.call.ctx),
+  );
 
   // Live changed the device before refusing, so it isn't the one the call
   // named. Throw after landing, so the entry keeps what changed.
@@ -381,16 +424,19 @@ function updateResolved(
     return update.entry;
   };
 
-  // A Simpler's pitch bend params go through the remote script, which the sync
-  // param write can't wait on, so they are settled first. Sync unless one is sent.
-  const pitchBend = writePitchBendParams(
-    target,
-    options.params,
-    step.checked.pitchBend,
-    { deadline: step.call.ctx.deadline, landed },
-  );
+  // A Simpler's pitch bend params go through the remote script, and a hosted
+  // plug-in's through its wrapper. The sync param write can't wait on either,
+  // so they are settled first. Sync unless one is sent.
+  const call = {
+    deadline: step.call.ctx.deadline,
+    manage: manageOffered(step.call.ctx),
+    landed,
+  };
+  const settling =
+    writeHostedParams(target, options.params, step.checked.hosted, call) ??
+    writePitchBendParams(target, options.params, step.checked.pitchBend, call);
 
-  return pitchBend == null ? finish() : pitchBend.then(finish);
+  return settling == null ? finish() : settling.then(finish);
 }
 
 /**

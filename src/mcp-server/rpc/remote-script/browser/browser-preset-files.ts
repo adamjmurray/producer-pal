@@ -10,17 +10,26 @@
 // by its file, which the remote script finds under Packs, User Library or
 // Places.
 
+import { isDrumRackScope } from "../../../live-library/query/drum-rack-scope.ts";
 import { type LibraryDeviceKind } from "../../../live-library/library-types.ts";
-import { findPresetFiles } from "../../../live-library/query/preset-files.ts";
+import {
+  type PresetFile,
+  type PresetFileQuery,
+  findPresetFiles,
+} from "../../../live-library/query/preset-files.ts";
 import {
   type BrowserItemResolution,
   type PresetScope,
 } from "#src/tools/device/create/helpers/remote-script-contract.ts";
-import { ambiguity } from "./browser-device-lookup.ts";
+import { browserNamedPackPath } from "../../../live-library/query/pack-folder-names.ts";
+import {
+  type Candidate,
+  PRESET_FILE,
+  ambiguity,
+  normalizedName,
+} from "./browser-device-lookup.ts";
+import { presetFileIsFor } from "./preset-file-device.ts";
 import { RemoteScriptTimeout } from "../remote-script-errors.ts";
-
-/** The files a preset can be. */
-const PRESET_FILE = /\.(?:adv|adg)$/i;
 
 /** The kind of device each remote script `type` holds presets for. */
 const SCOPE_KINDS: Record<string, LibraryDeviceKind> = {
@@ -47,41 +56,306 @@ export async function lookUpPresetFile(
   scope: PresetScope | undefined,
   endsAt: number,
 ): Promise<BrowserItemResolution | null> {
-  const kind = scope == null ? undefined : SCOPE_KINDS[scope.type];
+  const device = deviceOf(scope);
 
   // A plug-in's or Max device's presets can't be told from other files.
-  if (scope != null && kind == null && scope.orAnywhere !== true) {
+  if (scope != null && device == null && scope.orAnywhere !== true) {
     return null;
   }
 
-  if (Date.now() >= endsAt) {
-    throw new RemoteScriptTimeout(
-      "ran out of time before the library was searched",
-      false,
-    );
-  }
-
-  const device =
-    scope == null || kind == null ? undefined : { name: scope.device, kind };
-  let files = await findPresetFiles({
-    name: key,
-    ...(device == null ? {} : { device }),
-  });
+  let files = await findNamedPresetFiles(key, device, endsAt);
 
   if (device != null && scope?.orAnywhere === true && files?.length === 0) {
-    files = await findPresetFiles({ name: key });
+    files = await findNamedPresetFiles(key, undefined, endsAt);
   }
 
   if (files == null || files.length === 0) {
     return null;
   }
 
+  return await oneOrSeveral(preset, files);
+}
+
+/**
+ * Whether the library has several files for a name the browser lists once.
+ * Live's browser lists only some of the files in its library, so a name it
+ * finds once can still be filed elsewhere too.
+ * @param preset - The preset as the call named it
+ * @param key - The name, normalized
+ * @param searched - The device the browser's match was searched under, or
+ *   undefined when it was found anywhere
+ * @param endsAt - When the lookup must be done, in epoch ms
+ * @returns The error naming the files, or null when there are fewer than two,
+ *   the library can't be read, or the device's presets can't be told apart
+ * @throws RemoteScriptTimeout when `endsAt` passes first
+ */
+export async function duplicatePresetFiles(
+  preset: string,
+  key: string,
+  searched: PresetScope | undefined,
+  endsAt: number,
+): Promise<BrowserItemResolution | null> {
+  if (hasNoClass(searched)) {
+    return null;
+  }
+
+  const files = await findNamedPresetFiles(key, deviceOf(searched), endsAt);
+
+  return files != null && files.length > 1
+    ? severalPresets(preset, files)
+    : null;
+}
+
+/**
+ * Settle a name the browser lists several times by the files the library
+ * holds. Live's browser lists a rack under every device it is built around, so
+ * one file can show up more than once, and two files can share a browser path.
+ * Files for the searched device are kept by reading them (a rack built around
+ * Simpler is recorded in the library as a rack, not as Simpler). A single file
+ * loads only when the browser's matches look like that one file listed under
+ * several devices: the library is read as of Live's last save, so it can lack
+ * a file the browser lists.
+ * @param preset - The preset as the call named it
+ * @param key - The name, normalized
+ * @param matches - The browser's matches, at least two
+ * @param searched - The device the browser's matches were searched under, or
+ *   undefined when they were found anywhere
+ * @param endsAt - When the lookup must be done, in epoch ms
+ * @returns The file, the error naming the files when there are several, or null
+ *   when there are none, the library can't be read, the device's presets can't
+ *   be told apart, or one file doesn't account for the browser's matches
+ * @throws RemoteScriptTimeout when `endsAt` passes first
+ */
+export async function listedPresetFiles(
+  preset: string,
+  key: string,
+  matches: Candidate[],
+  searched: PresetScope | undefined,
+  endsAt: number,
+): Promise<BrowserItemResolution | null> {
+  if (hasNoClass(searched)) {
+    return null;
+  }
+
+  const named = await findNamedPresetFiles(key, undefined, endsAt);
+  const files =
+    named == null || searched == null
+      ? named
+      : await keepFilesFor(named, searched.device, endsAt);
+
+  if (files == null || files.length === 0) {
+    return null;
+  }
+
+  return files.length > 1 ||
+    isListedUnderEachDevice(matches, (files[0] as PresetFile).path)
+    ? await oneOrSeveral(preset, files)
+    : null;
+}
+
+/**
+ * The Drum Rack kits a browser path stands for. Many kits are an Instrument
+ * Rack the browser lists under Instrument Rack, not under Drum Rack, so a
+ * browser path to one is judged by the file behind it: found by name, kept if
+ * it is a Drum Rack preset and its path ends with what the browser path has
+ * below its device folder.
+ * @param type - The browser section's remote script `type`
+ * @param segments - The browser path below the section, name last
+ * @param scope - The device the call named
+ * @param endsAt - When the lookup must be done, in epoch ms
+ * @returns The kits' files: none when the device isn't a Drum Rack, the path
+ *   isn't under Instrument Rack, nothing matches or the library can't be read
+ * @throws RemoteScriptTimeout when `endsAt` passes first
+ */
+export async function drumKitFilesAt(
+  type: string,
+  segments: string[],
+  scope: PresetScope,
+  endsAt: number,
+): Promise<PresetFile[]> {
+  const [folder, ...tail] = segments;
+
+  if (
+    type !== "instrument" ||
+    !isDrumRackScope(scope.device) ||
+    comparable(folder ?? "") !== "instrument rack" ||
+    tail.length === 0
+  ) {
+    return [];
+  }
+
+  const name = normalizedName(tail.at(-1) as string);
+  const wanted = [...tail.slice(0, -1).map(comparable), name].join("/");
+
+  try {
+    const files = await findNamedPresetFiles(name, deviceOf(scope), endsAt);
+
+    return (files ?? []).filter(({ path }) => endsWith(path, wanted));
+  } catch (error) {
+    // Any other failure leaves the caller's refusal standing.
+    if (error instanceof RemoteScriptTimeout) {
+      throw error;
+    }
+
+    return [];
+  }
+}
+
+/**
+ * The refusal for a preset name several presets share.
+ * @param preset - The preset as the call named it
+ * @param matches - The presets, at least two
+ * @returns The error naming them
+ */
+export function severalPresets(
+  preset: string,
+  matches: Parameters<typeof ambiguity>[2],
+): BrowserItemResolution {
+  return {
+    available: true,
+    error: ambiguity({ name: "preset", noun: "presets" }, preset, matches),
+  };
+}
+
+/**
+ * The device a scope names, as the library knows it.
+ * @param scope - The device, if any
+ * @returns The device's name and kind, or undefined when there is none or its
+ *   kind has no presets in the library
+ */
+function deviceOf(scope: PresetScope | undefined): PresetFileQuery["device"] {
+  const kind = scope == null ? undefined : SCOPE_KINDS[scope.type];
+
+  return scope == null || kind == null
+    ? undefined
+    : { name: scope.device, kind };
+}
+
+/**
+ * @param searched - The device a browser search was under, if any
+ * @returns True for a device whose presets can't be told apart in the library
+ *   (a Max device listed under Max for Live, a plug-in)
+ */
+function hasNoClass(searched: PresetScope | undefined): boolean {
+  return searched != null && deviceOf(searched) == null;
+}
+
+/**
+ * @param files - Preset files
+ * @param device - The device as the call named it
+ * @param endsAt - When the lookup must be done, in epoch ms
+ * @returns The files that are for the device, in order
+ * @throws RemoteScriptTimeout when `endsAt` passes while the files are read
+ */
+async function keepFilesFor(
+  files: PresetFile[],
+  device: string,
+  endsAt: number,
+): Promise<PresetFile[]> {
+  const keep = await Promise.all(
+    files.map(({ path }) => presetFileIsFor(path, device)),
+  );
+
+  throwIfLate(endsAt, "ran out of time before the library's files were read");
+
+  return files.filter((_, i) => keep[i]);
+}
+
+/**
+ * Whether the browser's matches are one file listed under several devices:
+ * each device folder lists it once, and below that folder every match has the
+ * same path, which the file's path ends with. The browser gives no file
+ * identity, so two matches at one path, or at different paths, may be
+ * different files.
+ * @param matches - The browser's matches
+ * @param file - The library file's absolute path
+ * @returns True when the file accounts for every match
+ */
+function isListedUnderEachDevice(matches: Candidate[], file: string): boolean {
+  const full = matches.map(({ section, path }) =>
+    comparable(`${section.label}/${path}`),
+  );
+  const tails = matches.map(({ path }) => comparable(path).split("/").slice(1));
+  const tail = (tails[0] ?? []).join("/");
+
+  return (
+    tail !== "" &&
+    new Set(full).size === full.length &&
+    tails.every((parts) => parts.join("/") === tail) &&
+    comparable(file).endsWith(`/${tail}`)
+  );
+}
+
+/**
+ * @param file - A file's absolute path
+ * @param tail - Folders and a name, joined by "/", as `comparable` writes them
+ *   and with no suffix
+ * @returns True when the file's path ends with them
+ */
+function endsWith(file: string, tail: string): boolean {
+  const parts = comparable(file).split("/");
+  const last = normalizedName(parts.pop() as string);
+
+  return [...parts, last].join("/").endsWith(`/${tail}`);
+}
+
+/**
+ * @param path - A browser or file path
+ * @returns The path with forward slashes, in lower case
+ */
+function comparable(path: string): string {
+  return path.replaceAll("\\", "/").toLowerCase();
+}
+
+/**
+ * @param preset - The preset as the call named it
+ * @param files - The library's files, at least one
+ * @returns The file when there is one, else the error naming them
+ */
+async function oneOrSeveral(
+  preset: string,
+  files: PresetFile[],
+): Promise<BrowserItemResolution> {
   return files.length === 1
-    ? presetFile((files[0] as { path: string }).path)
-    : {
-        available: true,
-        error: ambiguity({ name: "preset", noun: "presets" }, preset, files),
-      };
+    ? await loadablePresetFile((files[0] as PresetFile).path)
+    : severalPresets(preset, files);
+}
+
+/**
+ * @param endsAt - When the lookup must be done, in epoch ms
+ * @param message - What ran out of time
+ * @throws RemoteScriptTimeout when `endsAt` has passed
+ */
+function throwIfLate(endsAt: number, message: string): void {
+  if (Date.now() >= endsAt) {
+    throw new RemoteScriptTimeout(message, false);
+  }
+}
+
+/**
+ * Ask the library for the files with a name.
+ * @param key - The name, normalized
+ * @param device - Only presets for this device, if given
+ * @param endsAt - When the lookup must be done, in epoch ms
+ * @returns The files, or null when the library can't be read
+ * @throws RemoteScriptTimeout when `endsAt` has passed
+ */
+async function findNamedPresetFiles(
+  key: string,
+  device: PresetFileQuery["device"],
+  endsAt: number,
+): Promise<PresetFile[] | null> {
+  throwIfLate(endsAt, "ran out of time before the library was searched");
+
+  const files = await findPresetFiles({
+    name: key,
+    ...(device == null ? {} : { device }),
+  });
+
+  // A Drum Rack's files include Instrument Racks, kept if they hold a Drum Rack.
+  return files != null && device != null && isDrumRackScope(device.name)
+    ? await keepFilesFor(files, device.name, endsAt)
+    : files;
 }
 
 /**
@@ -101,4 +375,25 @@ export function presetFile(path: string): BrowserItemResolution {
   const name = path.split(/[\\/]/).at(-1) as string;
 
   return { available: true, item: { type: "file", path, name } };
+}
+
+/**
+ * The resolution for a preset file the remote script is to load. The remote
+ * script finds a file in a pack by the pack's name in Live's library, which can
+ * differ from its folder's name on disk, so the item's path names the pack that
+ * way.
+ * @param path - The absolute path, as on disk
+ * @returns The item, or an error when it isn't a preset file
+ */
+export async function loadablePresetFile(
+  path: string,
+): Promise<BrowserItemResolution> {
+  const file = presetFile(path);
+
+  return "item" in file
+    ? {
+        ...file,
+        item: { ...file.item, path: await browserNamedPackPath(path) },
+      }
+    : file;
 }

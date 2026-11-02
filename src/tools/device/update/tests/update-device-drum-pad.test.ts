@@ -132,10 +132,10 @@ describe("updateDevice - bare drum pad paths", () => {
   it("broadcasts color to every chain on the pad", () => {
     const { chains } = registerDrumRack(2);
 
-    updateDevice({ path: "t0/d0/pC1", color: "#FF0000" });
+    updateDevice({ path: "t0/d0/pC1", color: "#FF3636" });
 
     for (const chain of chains) {
-      expect(chain.set).toHaveBeenCalledWith("color", 0xff0000);
+      expect(chain.set).toHaveBeenCalledWith("color", 0xff3636);
     }
   });
 

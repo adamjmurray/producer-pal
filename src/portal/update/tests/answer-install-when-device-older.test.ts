@@ -3,24 +3,27 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { tmpdir } from "node:os";
 import { describe, expect, it, vi, type Mock } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
+import { ASK_FOR_LIBRARY } from "#src/mcp-server/rpc/remote-script/install/remote-script-install-reply.ts";
 import { type OfflineDeps } from "../../offline/offline-deps.ts";
+import { NOT_RUNNING } from "../../offline/tests/offline-test-helpers.ts";
 import { responseText } from "../../offline/tests/offline-add-producer-pal-test-helpers.ts";
 import { answerInstallWhenDeviceOlder } from "../answer-install-when-device-older.ts";
 import { DOWN, fakeDevice, OLD, updateDeps } from "./update-test-helpers.ts";
 
-const INSTALL = { action: "install-remote-script" };
+const INSTALL = { action: "install-producer-pal" };
+const RETIRED = { action: "install-remote-script" };
+const LIBRARY = tmpdir();
 
 /** @returns An install that succeeds */
 function installs(): Mock<OfflineDeps["installRemoteScript"]> {
-  return vi.fn(() =>
-    Promise.resolve({
-      installed: true as const,
-      version: VERSION,
-      path: "/lib/Remote Scripts/Producer_Pal",
-    }),
-  );
+  return vi.fn(() => ({
+    status: "installed" as const,
+    version: VERSION,
+    path: "/lib/Remote Scripts/Producer_Pal",
+  }));
 }
 
 /**
@@ -40,21 +43,48 @@ async function connectedDevice(
 }
 
 describe("answerInstallWhenDeviceOlder", () => {
-  it("installs the portal's script when the device is older", async () => {
-    const installRemoteScript = installs();
+  it.each([
+    ["the new name", INSTALL],
+    ["the retired name, which an older device advertises", RETIRED],
+  ])(
+    "installs the portal's script and device when the device is older, under %s",
+    async (_name, action) => {
+      const installRemoteScript = installs();
+      const deps = updateDeps({ installRemoteScript });
+      const response = await answerInstallWhenDeviceOlder(
+        {
+          name: "ppal-manage",
+          args: { ...action, userLibrary: LIBRARY },
+          manageOffered: true,
+        },
+        await connectedDevice(OLD),
+        deps,
+      );
+      const text = responseText(response as never);
+
+      expect(response?.isError).toBeUndefined();
+      expect(text).toContain(`version:"${VERSION}"`);
+      expect(text).toContain("device:{status:");
+      expect(installRemoteScript).toHaveBeenCalledWith(LIBRARY);
+      expect(deps.installDevice).toHaveBeenCalledWith(
+        LIBRARY,
+        expect.any(String),
+      );
+    },
+  );
+
+  it("doesn't send the user to add-producer-pal, since Producer Pal is running", async () => {
     const response = await answerInstallWhenDeviceOlder(
       {
         name: "ppal-manage",
-        args: { ...INSTALL, userLibrary: "/lib" },
+        args: { ...INSTALL, userLibrary: LIBRARY },
         manageOffered: true,
       },
       await connectedDevice(OLD),
-      updateDeps({ installRemoteScript }),
+      updateDeps({ installRemoteScript: installs() }),
     );
 
-    expect(response?.isError).toBeUndefined();
-    expect(responseText(response as never)).toContain(`version:"${VERSION}"`);
-    expect(installRemoteScript).toHaveBeenCalledWith("/lib");
+    expect(responseText(response as never)).not.toContain("add-producer-pal");
   });
 
   it("reads the device's version afresh, in case it was updated by hand", async () => {
@@ -77,7 +107,7 @@ describe("answerInstallWhenDeviceOlder", () => {
     const response = await answerInstallWhenDeviceOlder(
       {
         name: "ppal-manage",
-        args: { ...INSTALL, userLibrary: "/lib" },
+        args: { ...INSTALL, userLibrary: LIBRARY },
         manageOffered: true,
       },
       device,
@@ -86,7 +116,7 @@ describe("answerInstallWhenDeviceOlder", () => {
 
     expect(device.connect).toHaveBeenCalled();
     expect(response?.isError).toBeUndefined();
-    expect(installRemoteScript).toHaveBeenCalledWith("/lib");
+    expect(installRemoteScript).toHaveBeenCalledWith(LIBRARY);
   });
 
   it("connects first when the version isn't known yet, and forwards for the same version", async () => {
@@ -136,7 +166,7 @@ describe("answerInstallWhenDeviceOlder", () => {
       "install-remote-script",
       false,
     ],
-    ["another tool", "ppal-connect", "install-remote-script", true],
+    ["another tool", "ppal-connect", "install-producer-pal", true],
     ["another action", "ppal-manage", "update-producer-pal", true],
   ])("leaves the call alone when %s", async (_why, name, action, offered) => {
     const device = await connectedDevice(OLD);
@@ -165,32 +195,37 @@ describe("answerInstallWhenDeviceOlder", () => {
       { name: "ppal-manage", args: INSTALL, manageOffered: true },
       await connectedDevice(OLD),
       updateDeps({
-        installRemoteScript: () =>
-          Promise.resolve({
-            installed: false,
-            error:
-              "couldn't find Live's User Library, so nothing was installed.",
-          }),
+        ping: () => Promise.resolve(NOT_RUNNING),
+        findUserLibrary: () => Promise.resolve(null),
       }),
     );
 
     expect(response?.isError).toBe(true);
     expect(responseText(response as never)).toBe(
-      "Error: couldn't find Live's User Library, so nothing was installed.",
+      `Error: couldn't find Live's User Library, so nothing was installed. ${ASK_FOR_LIBRARY}`,
     );
   });
 
-  it("reports an install that threw", async () => {
+  it("reports both files when one of them fails", async () => {
     const response = await answerInstallWhenDeviceOlder(
-      { name: "ppal-manage", args: INSTALL, manageOffered: true },
+      {
+        name: "ppal-manage",
+        args: { ...INSTALL, userLibrary: LIBRARY },
+        manageOffered: true,
+      },
       await connectedDevice(OLD),
       updateDeps({
-        installRemoteScript: () => Promise.reject(new Error("disk gone")),
+        installRemoteScript: () => ({ ok: false, detail: "EACCES" }),
       }),
     );
 
-    expect(response?.isError).toBe(true);
-    expect(responseText(response as never)).toBe("Error: disk gone");
+    expect(response?.isError).toBeUndefined();
+    expect(responseText(response as never)).toContain(
+      'remoteScript:{ok:false,detail:"EACCES"}',
+    );
+    expect(responseText(response as never)).toContain(
+      "Only the device was installed",
+    );
   });
 
   it("refuses a bad argument as the device would", async () => {

@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
@@ -97,7 +97,7 @@ describe("select path param", () => {
   // The refusal says what the track does hold, and is the only thing said
   // about it.
   it("refuses a device path whose type segment names nothing", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     mockNonExistentObjects();
     registerTrack1WithDevice(2);
@@ -132,7 +132,7 @@ describe("select path param", () => {
   // What results said before 2.2.0, so a model pasting one back made a
   // well-founded guess: honor it, and warn to teach the spelling.
   it("honors the old unprefixed spelling, with a warning", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const songView = setupSongViewMock();
 
     registerMockObject(livePath.track(0).clipSlot(1), {
@@ -434,7 +434,7 @@ describe("select path param", () => {
   // z.coerce.string() renders a JSON null as "null". Counting it as a target
   // refused a call that named exactly one.
   it("selects what slot names when path is a coerced null", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const { clipSlot, songView } = setupClipSlotSelection();
 
     select({ path: "null", slot: "0/1" });
@@ -483,7 +483,7 @@ describe("select path param", () => {
   // The same check, on a deprecated param that named nothing. A comma is not a
   // second target, so refusing reported a conflict the caller never made.
   it("selects what path names when the param it replaced names nothing", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
       path: livePath.track(0).clipSlot(1),
       type: "ClipSlot",
@@ -506,7 +506,7 @@ describe("select path param", () => {
   // That reports the selection Live actually has, so nothing claims a move that
   // didn't happen — the warning is what tells the caller why.
   it("reads the current selection when the only param sent names nothing", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const songView = setupSongViewMock();
 
     setupAppViewMock();
@@ -578,7 +578,7 @@ describe("select by arrangement position", () => {
   // The marker is the point of the call, so an empty spot is a success, not a
   // near miss — there is nothing to warn about.
   it("moves the marker and selects the track when nothing is there", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     const { songView, appView, liveSet } = setupArrangementMocks(0);
 
@@ -601,7 +601,7 @@ describe("select by arrangement position", () => {
   // An explicit view beats the clip's own, the way it does for a clip named by
   // id — and with nothing to say about it, there is no warning.
   it("keeps an explicit session view", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     const { songView, appView, liveSet } = setupArrangementMocks(BAR_5);
 
@@ -667,7 +667,7 @@ describe("select by arrangement position", () => {
   // otherwise read as "nothing recorded there". The spot itself is still a
   // target, so the call lands and the warning says what it couldn't reach.
   it("warns for a take lane that isn't there, and still moves the marker", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     mockNonExistentObjects();
     setupTrackMock();

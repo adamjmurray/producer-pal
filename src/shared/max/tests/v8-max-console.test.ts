@@ -12,7 +12,12 @@ import {
   vi,
   type MockInstance,
 } from "vitest";
-import { error, log, warn, warnOnce } from "#src/shared/max/v8-max-console.ts";
+import {
+  emitWarning,
+  emitWarningOnce,
+  maxError,
+  maxLog,
+} from "#src/shared/max/v8-max-console.ts";
 import {
   beginWarningCapture,
   capturedWarnings,
@@ -48,7 +53,7 @@ describe("v8-max-console", () => {
 
       g.post = mockPost;
 
-      log("test message");
+      maxLog("test message");
       expect(mockPost).toHaveBeenCalledWith("test message", "\n");
       expect(consoleLogSpy).not.toHaveBeenCalled();
     });
@@ -58,50 +63,50 @@ describe("v8-max-console", () => {
 
       g.error = mockError;
 
-      error("error message");
+      maxError("error message");
       expect(mockError).toHaveBeenCalledWith("error message", "\n");
       expect(consoleErrorSpy).not.toHaveBeenCalled();
     });
   });
 
-  describe("log", () => {
+  describe("maxLog", () => {
     it("logs strings", () => {
-      log("test message");
+      maxLog("test message");
       expect(consoleLogSpy).toHaveBeenCalledWith("test message");
     });
 
     it("logs numbers", () => {
-      log(42);
+      maxLog(42);
       expect(consoleLogSpy).toHaveBeenCalledWith("42");
     });
 
     it("logs booleans", () => {
-      log(true);
+      maxLog(true);
       expect(consoleLogSpy).toHaveBeenCalledWith("true");
     });
 
     it("logs arrays", () => {
-      log([1, 2, 3]);
+      maxLog([1, 2, 3]);
       expect(consoleLogSpy).toHaveBeenCalledWith("[1, 2, 3]");
     });
 
     it("logs objects", () => {
-      log({ foo: "bar", count: 42 });
+      maxLog({ foo: "bar", count: 42 });
       expect(consoleLogSpy).toHaveBeenCalledWith("{foo: bar, count: 42}");
     });
 
     it("logs nested objects", () => {
-      log({ a: { b: "c" } });
+      maxLog({ a: { b: "c" } });
       expect(consoleLogSpy).toHaveBeenCalledWith("{a: {b: c}}");
     });
 
     it("logs arrays within objects", () => {
-      log({ items: [1, 2, 3] });
+      maxLog({ items: [1, 2, 3] });
       expect(consoleLogSpy).toHaveBeenCalledWith("{items: [1, 2, 3]}");
     });
 
     it("logs Sets", () => {
-      log(new Set([1, 2, 3]));
+      maxLog(new Set([1, 2, 3]));
       expect(consoleLogSpy).toHaveBeenCalledWith("Set(1, 2, 3)");
     });
 
@@ -110,14 +115,14 @@ describe("v8-max-console", () => {
 
       map.set("key1", "value1");
       map.set("key2", "value2");
-      log(map);
+      maxLog(map);
       expect(consoleLogSpy).toHaveBeenCalledWith(
         "Map(key1 → value1, key2 → value2)",
       );
     });
 
     it("logs multiple arguments", () => {
-      log("test", 42, true);
+      maxLog("test", 42, true);
       expect(consoleLogSpy).toHaveBeenCalledWith("test", "42", "true");
     });
 
@@ -127,7 +132,7 @@ describe("v8-max-console", () => {
       }
       const instance = new CustomClass();
 
-      log(instance);
+      maxLog(instance);
       expect(consoleLogSpy).toHaveBeenCalledWith('CustomClass{"prop":"value"}');
     });
 
@@ -140,7 +145,7 @@ describe("v8-max-console", () => {
       const obj = Object.create(proto) as Record<string, unknown>;
 
       obj.x = 1;
-      log(obj);
+      maxLog(obj);
       // String(obj) → "[object Object]" via toPrimitive, triggers fallback branch
       // constructor is undefined → ?? "Object"
       expect(consoleLogSpy).toHaveBeenCalledWith('Object{"x":1}');
@@ -158,7 +163,7 @@ describe("v8-max-console", () => {
       g.Dict = Dict;
       const dictInstance = new Dict();
 
-      log(dictInstance);
+      maxLog(dictInstance);
       expect(consoleLogSpy).toHaveBeenCalledWith(
         'Dict("testDict") { "key": "value" }',
       );
@@ -175,7 +180,7 @@ describe("v8-max-console", () => {
 
       g.Dict = Dict;
 
-      log(null, undefined);
+      maxLog(null, undefined);
       expect(consoleLogSpy).toHaveBeenCalledWith("null", "undefined");
 
       delete g.Dict;
@@ -190,38 +195,38 @@ describe("v8-max-console", () => {
 
       g.Dict = Dict;
 
-      log(new Dict());
+      maxLog(new Dict());
       expect(consoleLogSpy).toHaveBeenCalledWith('Dict("emptyDict") undefined');
 
       delete g.Dict;
     });
   });
 
-  describe("error", () => {
+  describe("maxError", () => {
     it("logs error strings", () => {
-      error("error message");
+      maxError("error message");
       expect(consoleErrorSpy).toHaveBeenCalledWith("error message");
     });
 
     it("logs error numbers", () => {
-      error(404);
+      maxError(404);
       expect(consoleErrorSpy).toHaveBeenCalledWith("404");
     });
 
     it("logs error objects", () => {
-      error({ code: "ERR_001", message: "Something went wrong" });
+      maxError({ code: "ERR_001", message: "Something went wrong" });
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         "{code: ERR_001, message: Something went wrong}",
       );
     });
 
     it("logs error arrays", () => {
-      error(["error1", "error2"]);
+      maxError(["error1", "error2"]);
       expect(consoleErrorSpy).toHaveBeenCalledWith("[error1, error2]");
     });
 
     it("logs multiple error arguments", () => {
-      error("Error:", 500, { status: "failed" });
+      maxError("Error:", 500, { status: "failed" });
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         "Error:",
         "500",
@@ -230,31 +235,31 @@ describe("v8-max-console", () => {
     });
   });
 
-  describe("warn", () => {
+  describe("emitWarning", () => {
     it("logs warning strings", () => {
-      warn("warning message");
+      emitWarning("warning message");
       expect(consoleWarnSpy).toHaveBeenCalledWith("warning message");
     });
 
     it("logs warning numbers", () => {
-      warn(404);
+      emitWarning(404);
       expect(consoleWarnSpy).toHaveBeenCalledWith("404");
     });
 
     it("logs warning objects", () => {
-      warn({ code: "WARN_001", message: "Something needs attention" });
+      emitWarning({ code: "WARN_001", message: "Something needs attention" });
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         "{code: WARN_001, message: Something needs attention}",
       );
     });
 
     it("logs warning arrays", () => {
-      warn(["warning1", "warning2"]);
+      emitWarning(["warning1", "warning2"]);
       expect(consoleWarnSpy).toHaveBeenCalledWith("[warning1, warning2]");
     });
 
     it("logs multiple warning arguments", () => {
-      warn("Warning:", 500, { status: "pending" });
+      emitWarning("Warning:", 500, { status: "pending" });
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         "Warning:",
         "500",
@@ -267,7 +272,7 @@ describe("v8-max-console", () => {
 
       g.outlet = mockOutlet;
 
-      warn("test warning");
+      emitWarning("test warning");
       // Under Max the warning rides the response, and nothing goes out an
       // outlet of its own.
       expect(mockOutlet).not.toHaveBeenCalled();
@@ -275,29 +280,29 @@ describe("v8-max-console", () => {
     });
 
     it("joins multiple arguments with spaces", () => {
-      warn("first", 42, "third");
+      emitWarning("first", 42, "third");
       // Multiple args are join(" ")-ed into one message, not concatenated.
       expect(capturedWarnings()).toContain("first 42 third");
     });
   });
 
-  describe("warnOnce", () => {
+  describe("emitWarningOnce", () => {
     it("warns on the first call for a key", () => {
-      warnOnce("k", "first warning");
+      emitWarningOnce("k", "first warning");
 
       expect(capturedWarnings()).toStrictEqual(["first warning"]);
     });
 
     it("skips a later call for the same key", () => {
-      warnOnce("k", "first warning");
-      warnOnce("k", "second warning");
+      emitWarningOnce("k", "first warning");
+      emitWarningOnce("k", "second warning");
 
       expect(capturedWarnings()).toStrictEqual(["first warning"]);
     });
 
     it("warns separately for a different key", () => {
-      warnOnce("k1", "first warning");
-      warnOnce("k2", "second warning");
+      emitWarningOnce("k1", "first warning");
+      emitWarningOnce("k2", "second warning");
 
       expect(capturedWarnings()).toStrictEqual([
         "first warning",
@@ -317,7 +322,7 @@ describe("v8-max-console", () => {
       g.outlet = vi.fn();
       resetWarningCapture();
 
-      warn("nobody asked for this");
+      emitWarning("nobody asked for this");
 
       expect(mockError).toHaveBeenCalledWith("nobody asked for this", "\n");
     });
@@ -329,7 +334,7 @@ describe("v8-max-console", () => {
       g.outlet = vi.fn();
       beginWarningCapture();
 
-      warn("belongs to a response");
+      emitWarning("belongs to a response");
 
       expect(mockError).not.toHaveBeenCalled();
     });

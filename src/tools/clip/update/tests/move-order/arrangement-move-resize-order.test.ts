@@ -189,47 +189,32 @@ describe("handleArrangementOperations - move and resize order", () => {
     expect(reasons.landed.has(SOURCE)).toBe(true);
   });
 
-  it("checks the move before it shortens, and leaves the clip as it was when the move would be refused", () => {
-    registerClip(SOURCE);
-    registerMockObject("audio-track", {
-      path: livePath.track(5),
-      type: "Track",
-      properties: { has_midi_input: 0 },
-    });
+  it.each([
+    ["shortens", 8],
+    ["lengthens", 32],
+  ])(
+    "checks the move before it %s, and leaves the clip as it was when the move would be refused",
+    (_, length) => {
+      registerClip(SOURCE);
+      registerMockObject("audio-track", {
+        path: livePath.track(5),
+        type: "Track",
+        properties: { has_midi_input: 0 },
+      });
 
-    const steps = spyOnSteps();
+      const steps = spyOnSteps();
 
-    moveAndResize(8, { trackIndex: 5, takeLane: null });
+      moveAndResize(length, { trackIndex: 5, takeLane: null });
 
-    expect(steps.resize).not.toHaveBeenCalled();
-    expect(steps.place).not.toHaveBeenCalled();
-    expect(updatedClips.map(({ id }) => id)).toStrictEqual([SOURCE]);
-    expect(reasons.refused.has(SOURCE)).toBe(true);
-    expect(joinedClipReason(reasons, SOURCE)).toContain(
-      "not moved or resized: track",
-    );
-  });
-
-  it("checks the move before it lengthens, and leaves the clip as it was when the move would be refused", () => {
-    registerClip(SOURCE);
-    registerMockObject("audio-track", {
-      path: livePath.track(5),
-      type: "Track",
-      properties: { has_midi_input: 0 },
-    });
-
-    const steps = spyOnSteps();
-
-    moveAndResize(32, { trackIndex: 5, takeLane: null });
-
-    expect(steps.resize).not.toHaveBeenCalled();
-    expect(steps.place).not.toHaveBeenCalled();
-    expect(updatedClips.map(({ id }) => id)).toStrictEqual([SOURCE]);
-    expect(reasons.refused.has(SOURCE)).toBe(true);
-    expect(joinedClipReason(reasons, SOURCE)).toContain(
-      "not moved or resized: track",
-    );
-  });
+      expect(steps.resize).not.toHaveBeenCalled();
+      expect(steps.place).not.toHaveBeenCalled();
+      expect(updatedClips.map(({ id }) => id)).toStrictEqual([SOURCE]);
+      expect(reasons.refused.has(SOURCE)).toBe(true);
+      expect(joinedClipReason(reasons, SOURCE)).toContain(
+        "not moved or resized: track",
+      );
+    },
+  );
 
   it("keeps a shortened clip's entry when the move is refused", () => {
     registerClip(SOURCE);

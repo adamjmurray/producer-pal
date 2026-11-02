@@ -15,6 +15,15 @@ const __dirname = path.dirname(__filename);
 /** Project root directory */
 export const projectRoot: string = path.resolve(__dirname, "../../..");
 
+/**
+ * @param file - An absolute path
+ * @param from - The directory to measure from
+ * @returns The path from `from`, with `/` separators on every OS
+ */
+export function repoPath(file: string, from: string = projectRoot): string {
+  return path.relative(from, file).split(path.sep).join("/");
+}
+
 /** Where the test Live Sets and presets live, relative to the project root */
 export const TEST_LIVE_SET_DIRS = ["e2e/live-sets", "evals/live-sets"];
 
@@ -44,7 +53,7 @@ export function findOversizedFolders(
 
   if (items.length > maxItems) {
     results.push({
-      path: path.relative(projectRoot, dirPath),
+      path: repoPath(dirPath),
       count: items.length,
     });
   }
@@ -54,7 +63,7 @@ export function findOversizedFolders(
 
     if (
       excludeDirs.includes(item) ||
-      excludeDirs.includes(path.relative(projectRoot, fullPath))
+      excludeDirs.includes(repoPath(fullPath))
     ) {
       continue;
     }
@@ -88,7 +97,7 @@ const GITIGNORED_DIRS: Set<string> = new Set(
  * @returns True if the item is gitignored
  */
 function isGitIgnored(dirPath: string, item: string): boolean {
-  const relativePath = path.relative(projectRoot, path.join(dirPath, item));
+  const relativePath = repoPath(path.join(dirPath, item));
 
   return GITIGNORED_DIRS.has(item) || GITIGNORED_DIRS.has(relativePath);
 }
@@ -177,7 +186,7 @@ export function findTestHeavyFolders(
         results.push(...findTestHeavyFolders(fullPath, minTestFiles));
       }
     } else if (SOURCE_EXTENSIONS.has(path.extname(item))) {
-      if (isTestFile(path.relative(projectRoot, fullPath))) {
+      if (isTestFile(repoPath(fullPath))) {
         testCount++;
       } else {
         sourceCount++;
@@ -191,7 +200,7 @@ export function findTestHeavyFolders(
     testCount >= 2 * sourceCount
   ) {
     results.push({
-      path: path.relative(projectRoot, dirPath),
+      path: repoPath(dirPath),
       testCount,
       sourceCount,
     });
@@ -247,9 +256,15 @@ export function countPatternOccurrences(
   pattern: RegExp,
 ): PatternMatch[] {
   const matches: PatternMatch[] = [];
+  const wholeFile = wholeFilePattern(pattern);
 
   for (const file of files) {
     const content = fs.readFileSync(file, "utf8");
+
+    if (wholeFile != null && !wholeFile.test(content)) {
+      continue;
+    }
+
     const lines = content.split("\n");
 
     for (let i = 0; i < lines.length; i++) {
@@ -257,7 +272,7 @@ export function countPatternOccurrences(
 
       if (line && pattern.test(line)) {
         matches.push({
-          file: path.relative(projectRoot, file),
+          file: repoPath(file),
           line: i + 1,
           match: line.trim(),
         });
@@ -266,6 +281,25 @@ export function countPatternOccurrences(
   }
 
   return matches;
+}
+
+/**
+ * A line pattern run over a whole file, to skip files with no matching line.
+ * Multiline mode keeps `^`/`$` at line edges, so any line match is also a
+ * whole-file match. A negative lookaround breaks that (it can see past the
+ * line's edge), so those get no shortcut.
+ * @param pattern - Pattern matched against single lines
+ * @returns The whole-file pattern, or null when there is no safe one
+ */
+function wholeFilePattern(pattern: RegExp): RegExp | null {
+  if (/\(\?<?!/.test(pattern.source)) {
+    return null;
+  }
+
+  return new RegExp(
+    pattern.source,
+    `${pattern.flags.replaceAll(/[gmy]/g, "")}m`,
+  );
 }
 
 /** Source file extensions */
@@ -297,9 +331,10 @@ const TEXT_EXTENSIONS: Set<string> = new Set([
  */
 export function findRepoTextFiles(rootDir: string = projectRoot): string[] {
   const results: string[] = [];
-  const items = fs.readdirSync(rootDir);
 
-  for (const item of items) {
+  for (const entry of fs.readdirSync(rootDir, { withFileTypes: true })) {
+    const item = entry.name;
+
     if (item === "node_modules" || item === ".git") {
       continue;
     }
@@ -310,7 +345,7 @@ export function findRepoTextFiles(rootDir: string = projectRoot): string[] {
 
     const fullPath = path.join(rootDir, item);
 
-    if (fs.statSync(fullPath).isDirectory()) {
+    if (isDirectory(entry, fullPath)) {
       results.push(...findRepoTextFiles(fullPath));
     } else if (TEXT_EXTENSIONS.has(path.extname(item))) {
       results.push(fullPath);
@@ -318,6 +353,18 @@ export function findRepoTextFiles(rootDir: string = projectRoot): string[] {
   }
 
   return results;
+}
+
+/**
+ * @param entry - A directory entry
+ * @param fullPath - Its absolute path
+ * @returns True for a directory, or a symlink to one
+ */
+function isDirectory(entry: fs.Dirent, fullPath: string): boolean {
+  return (
+    entry.isDirectory() ||
+    (entry.isSymbolicLink() && fs.statSync(fullPath).isDirectory())
+  );
 }
 
 /**
@@ -330,25 +377,44 @@ function findFilesRecursive(
   dirPath: string,
   filter: (relPath: string) => boolean,
 ): string[] {
+  let files = filesUnder.get(dirPath);
+
+  if (files == null) {
+    files = listFiles(dirPath).map((file) => [file, repoPath(file)]);
+    filesUnder.set(dirPath, files);
+  }
+
+  return files.filter(([, relPath]) => filter(relPath)).map(([file]) => file);
+}
+
+/**
+ * Each directory's files as [absolute, repo-relative] pairs. The scan tests
+ * walk the same trees many times, and the tree doesn't change during a run.
+ */
+const filesUnder = new Map<string, [string, string][]>();
+
+/**
+ * Every file under a directory, outside node_modules
+ * @param dirPath - Directory to scan
+ * @returns Absolute paths, in directory order
+ */
+function listFiles(dirPath: string): string[] {
   const results: string[] = [];
 
   if (!fs.existsSync(dirPath)) {
     return results;
   }
 
-  const items = fs.readdirSync(dirPath);
-
-  for (const item of items) {
-    if (item === "node_modules") {
+  for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+    if (entry.name === "node_modules") {
       continue;
     }
 
-    const fullPath = path.join(dirPath, item);
-    const stat = fs.statSync(fullPath);
+    const fullPath = path.join(dirPath, entry.name);
 
-    if (stat.isDirectory()) {
-      results.push(...findFilesRecursive(fullPath, filter));
-    } else if (filter(path.relative(projectRoot, fullPath))) {
+    if (isDirectory(entry, fullPath)) {
+      results.push(...listFiles(fullPath));
+    } else {
       results.push(fullPath);
     }
   }
@@ -388,7 +454,7 @@ export function forEachSourceFile(
 ): void {
   for (const tree of trees) {
     for (const file of findSourceFiles(path.join(projectRoot, tree))) {
-      const rel = path.relative(projectRoot, file);
+      const rel = repoPath(file);
 
       if (rel !== skip) {
         visit(file, rel, fs.readFileSync(file, "utf8").split("\n"));
@@ -407,7 +473,7 @@ export function forEachSourceFile(
 export function filesContaining(dir: string, pattern: RegExp): string[] {
   return findSourceFiles(path.join(projectRoot, dir), true)
     .filter((file) => pattern.test(fs.readFileSync(file, "utf8")))
-    .map((file) => path.relative(projectRoot, file))
+    .map((file) => repoPath(file))
     .toSorted();
 }
 
@@ -421,7 +487,7 @@ export function filesContaining(dir: string, pattern: RegExp): string[] {
 export function testFilesContaining(dir: string, pattern: RegExp): string[] {
   return findTestFiles(path.join(projectRoot, dir))
     .filter((file) => pattern.test(fs.readFileSync(file, "utf8")))
-    .map((file) => path.relative(projectRoot, file))
+    .map((file) => repoPath(file))
     .toSorted();
 }
 

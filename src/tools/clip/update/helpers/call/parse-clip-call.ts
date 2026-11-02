@@ -9,7 +9,7 @@ import {
   type EnvelopeLine,
   parseEnvelopeLines,
 } from "#src/tools/clip/envelopes/envelope-lines.ts";
-import { readSplitPoints } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
+import { readSplitPoints } from "#src/tools/shared/arrangement/splitting/arrangement-splitting-params.ts";
 import {
   ARRANGEMENT_SPLIT_MODE,
   LEGACY_SPLIT_MODE,
@@ -32,6 +32,7 @@ import {
   foldTargetParams,
   targetCount,
   targetParamLabel,
+  type FoldedTargets,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 import {
   type ArrangementBeats,
@@ -106,7 +107,7 @@ export function parseClipCall(args: ClipUpdateArgs): ClipCall {
   const named = namedTargets(folded);
 
   if (named.length === 0) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("clip"));
   }
 
   refuseNoWrite(args, "clips");
@@ -195,7 +196,7 @@ export function parseClipCall(args: ClipUpdateArgs): ClipCall {
  * @returns The lists to compare
  */
 function listArgs(
-  folded: TargetParams,
+  folded: FoldedTargets,
   args: ClipUpdateArgs,
 ): Parameters<typeof validateListLengths>[0] {
   return [

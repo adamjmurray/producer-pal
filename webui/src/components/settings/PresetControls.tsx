@@ -8,6 +8,7 @@ import { presetMatchesFields } from "#webui/hooks/settings/presets/preset-storag
 import { type PresetSelection } from "#webui/hooks/settings/presets/use-preset-selection";
 import { usePresetDraft } from "#webui/hooks/settings/presets/use-preset-draft";
 import { usePresets } from "#webui/hooks/settings/presets/use-presets";
+import { isProviderReady } from "#webui/utils/provider-url";
 import {
   type ChatPreset,
   type PresetFields,
@@ -204,15 +205,14 @@ export function PresetControls({
  *
  * Reads the DECRYPTED, buffer-live key via getProviderConnection — the exact
  * value the worker will send (use-chat-mode-state's resolveConnection wraps the
- * same call). Deliberately NOT checkHasApiKey, which reads the raw stored
- * envelope: that both misses a just-typed unsaved key AND falsely reports a key
+ * same call). Deliberately NOT the raw stored envelope: that both misses a just-typed unsaved key AND falsely reports a key
  * for an orphaned/undecryptable envelope (the IndexedDB crypto key was reset
  * while the localStorage envelope persisted) — the very case a warning should
  * catch. See the same reasoning on `hasApiKey` in use-settings.
  *
  * Empty until settingsLoaded, since every provider's key is blank until the
  * post-mount decrypt lands (else it would flash "no key" on all of them).
- * lmstudio / ollama need no key, so they're never flagged.
+ * Providers that need no key (see isProviderReady) are never flagged.
  * @param settings - The live settings buffer
  * @param presets - The preset list
  * @returns The set of preset ids missing a usable provider key
@@ -228,11 +228,9 @@ function presetsMissingApiKey(
   return new Set(
     presets
       .filter((p) => {
-        if (p.provider === "lmstudio" || p.provider === "ollama") {
-          return false;
-        }
+        const { apiKey, baseUrl } = settings.getProviderConnection(p.provider);
 
-        return !settings.getProviderConnection(p.provider).apiKey;
+        return !isProviderReady(p.provider, apiKey, baseUrl);
       })
       .map((p) => p.id),
   );

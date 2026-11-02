@@ -1,0 +1,787 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: MIT
+
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { type LibraryToolSearchResult } from "#src/mcp-server/live-library/library-types.ts";
+import { library } from "../../library.ts";
+
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
+
+// Wrap the real readSamples in a spy so existing tests keep their
+// mockFolderStructure-driven behavior, while letting new tests assert
+// the folder scan was skipped entirely (call count = 0).
+vi.mock(import("../../read-samples.ts"), async (importOriginal) => {
+  const actual = await importOriginal();
+
+  return { ...actual, readSamples: vi.fn(actual.readSamples) };
+});
+
+const protocolMock =
+  await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
+const readSamplesMock = await import("../../read-samples.ts");
+
+// A filter that matches every file these tests make, since a search with no
+// query or filter is refused.
+const ANY = { query: ".wav" };
+
+/**
+ * Narrow a library result to the search shape the sample tests read from.
+ * @param result - What the library tool returned
+ */
+function assertItems(
+  result: Awaited<ReturnType<typeof library>>,
+): asserts result is LibraryToolSearchResult {
+  if (!("items" in result)) {
+    throw new Error("expected items");
+  }
+}
+
+/**
+ * The file names of a result's items, read off their paths (the items carry no
+ * `name`).
+ * @param result - A search result
+ * @returns Each item's file name, in order
+ */
+function leaves(result: LibraryToolSearchResult): Array<string | undefined> {
+  return result.items.map((i) => i.path.split("/").at(-1));
+}
+
+/**
+ * Stub the library.search route with the given items.
+ *
+ * @param items - Items the route should return
+ */
+function mockSearchRoute(items: unknown[]): void {
+  vi.mocked(protocolMock.requestNode).mockResolvedValue({
+    success: true,
+    result: { dbAvailable: true, items },
+  });
+}
+
+/**
+ * Build a minimal DB library item with the given name and useCount.
+ *
+ * @param name - Item name (also its leaf path)
+ * @param useCount - Usage count driving the default (use-count desc) sort
+ * @returns A LibraryItem-shaped object sourced from the DB ("user")
+ */
+function dbItem(name: string, useCount: number): Record<string, unknown> {
+  return {
+    name,
+    path: `/L/${name}`,
+    kind: "audio",
+    tags: [],
+    useCount,
+    source: "user",
+  };
+}
+
+/**
+ * Stub the search route with three DB items whose name order, useCount order,
+ * and upstream (array) order all differ, so each sort mode yields a distinct
+ * sequence. This is what pins sortPartition: with coincidentally-aligned data
+ * a wrong sort branch produces the same output and survives mutation.
+ *
+ *   upstream: b(1), a(3), c(2)
+ *   name:     a, b, c
+ *   use-count desc (default): a(3), c(2), b(1)
+ *   mod_date (DB upstream order preserved): b, a, c
+ */
+function mockDiscriminatingSortRoute(): void {
+  mockSearchRoute([dbItem("b.wav", 1), dbItem("a.wav", 3), dbItem("c.wav", 2)]);
+}
+
+/**
+ * Stub the "/samples/" folder with the given top-level .wav file names.
+ *
+ * @param names - File names to place directly under "/samples/"
+ */
+function mockSampleFolder(...names: string[]): void {
+  mockFolderStructure({
+    "/samples/": names.map((name) => ({
+      name,
+      type: "file" as const,
+      extension: ".wav",
+    })),
+  });
+}
+
+/**
+ * Assert a filter bypasses the folder scan entirely: no sampleFolder-sourced
+ * items in the result and readSamples never invoked.
+ *
+ * @param filter - The library filter under test
+ */
+async function expectFolderScanSkipped(
+  filter: Parameters<typeof library>[0],
+): Promise<void> {
+  mockSampleFolder("kick.wav");
+  mockSearchRoute([]);
+
+  const result = await library(filter, { sampleFolder: "/samples/" });
+
+  assertItems(result);
+
+  expect(
+    result.items.find((i) => i.source === "sample-folder"),
+  ).toBeUndefined();
+  expect(readSamplesMock.readSamples).not.toHaveBeenCalled();
+}
+
+/**
+ * Run library() over a sample folder whose scan throws.
+ * @param thrown - What the folder scan throws
+ * @returns The library result, narrowed to the items shape
+ */
+async function libraryWithFailedScan(thrown: unknown) {
+  vi.mocked(readSamplesMock.readSamples).mockImplementationOnce(() => {
+    throw thrown;
+  });
+  mockSearchRoute([]);
+
+  const result = await library(ANY, { sampleFolder: "/samples/" });
+
+  assertItems(result);
+
+  return result;
+}
+
+describe("library tool — action dispatch", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("sends the running Live version with every route call", async () => {
+    // Node has no Live API, so it can only scope its database lookup to the
+    // running major if V8 hands it the version.
+    registerMockObject("live_app", {
+      path: "live_app",
+      methods: { get_version_string: () => "12.4" },
+    });
+    mockSearchRoute([]);
+
+    await library({ query: "kick" });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.objectContaining({ liveVersion: "12.4" }),
+    );
+  });
+
+  it("dispatches search action to library.search route by default", async () => {
+    mockSearchRoute([]);
+
+    await library({ query: "kick", kind: "audio" });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.objectContaining({ query: "kick", kind: "audio" }),
+    );
+  });
+
+  it("passes inFolder through to the library.search route", async () => {
+    mockSearchRoute([]);
+
+    await library({ inFolder: "/some/folder" });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.objectContaining({ inFolder: "/some/folder" }),
+    );
+  });
+
+  it("passes verifyPaths through to the library.search route", async () => {
+    mockSearchRoute([]);
+
+    await library({ query: "kick", verifyPaths: true });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.objectContaining({ verifyPaths: true }),
+    );
+  });
+
+  it("propagates the staleness note from the search route", async () => {
+    const stalenessNote = "snapshot may be out of date";
+
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: true,
+      result: { dbAvailable: true, stalenessNote, items: [] },
+    });
+
+    const result = await library({ query: "kick" });
+
+    assertItems(result);
+
+    expect(result.stalenessNote).toBe(stalenessNote);
+  });
+
+  it("dispatches list-tags action to library.listTags route", async () => {
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: true,
+      result: { dbAvailable: true, tags: [] },
+    });
+
+    await library({ action: "list-tags", limit: 50 });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.listTags",
+      expect.objectContaining({ limit: 50 }),
+    );
+  });
+
+  it("dispatches list-categories action, forwarding category + limit", async () => {
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: true,
+      result: { dbAvailable: true, category: "Drums", tags: [] },
+    });
+
+    await library({ action: "list-categories", category: "Drums", limit: 5 });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.listCategories",
+      expect.objectContaining({ category: "Drums", limit: 5 }),
+    );
+  });
+
+  it("throws with a clean message when the route returns failure", async () => {
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: false,
+      error: "Live database not found",
+    });
+
+    await expect(library({ query: "kick" })).rejects.toThrow(
+      "Live database not found",
+    );
+  });
+
+  it("throws with 'unknown error' when failure has no message", async () => {
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({ success: false });
+
+    await expect(library({ query: "kick" })).rejects.toThrow(/unknown error/);
+  });
+
+  it("throws on unknown action", async () => {
+    await expect(library({ action: "bogus" })).rejects.toThrow(
+      "Unknown action: bogus",
+    );
+  });
+
+  it("throws when a route reports success but omits the result payload", async () => {
+    // callRoute guards on `!success || !result`: a truthy success with a
+    // missing result must still throw, not resolve to an undefined payload.
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({ success: true });
+
+    await expect(library({ action: "list-tags" })).rejects.toThrow(
+      "unknown error",
+    );
+  });
+});
+
+describe("library tool — folder scan integration", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("scans the configured sample folder and merges with DB results", async () => {
+    mockSampleFolder("kick.wav", "snare.wav");
+    mockSearchRoute([
+      {
+        name: "clap.wav",
+        path: "/Library/clap.wav",
+        kind: "audio",
+        tags: [],
+        useCount: 7,
+        source: "user",
+      },
+    ]);
+
+    const result = await library(ANY, { sampleFolder: "/samples/" });
+
+    expect("items" in result).toBe(true);
+
+    if (!("items" in result)) {
+      return;
+    }
+
+    const names = leaves(result);
+
+    expect(names).toContain("kick.wav");
+    expect(names).toContain("snare.wav");
+    expect(names).toContain("clap.wav");
+    // Folder items get source: "sample-folder" and empty tags (the folder scan
+    // carries no tag metadata). Their name, useCount and folder are trimmed.
+    // kind stays: this call sent no kind filter.
+    const kick = result.items.find((i) => i.path === "/samples/kick.wav");
+
+    expect(kick).toStrictEqual({
+      path: "/samples/kick.wav",
+      kind: "audio",
+      tags: [],
+      source: "sample-folder",
+    });
+  });
+
+  it("marks sampleFolder items pathExists: true when verifyPaths is set", async () => {
+    mockSampleFolder("kick.wav");
+    mockSearchRoute([]);
+
+    const result = await library(
+      { ...ANY, verifyPaths: true },
+      { sampleFolder: "/samples/" },
+    );
+
+    assertItems(result);
+
+    const kick = result.items.find((i) => i.source === "sample-folder");
+
+    // Folder-scan items came from a live filesystem enumeration, so they're
+    // reported as existing without a redundant re-stat.
+    expect(kick?.pathExists).toBe(true);
+  });
+
+  it("dedupes folder hits against DB hits by absolute path", async () => {
+    mockSampleFolder("kick.wav");
+    mockSearchRoute([
+      {
+        name: "kick.wav",
+        path: "/samples/kick.wav",
+        kind: "audio",
+        tags: [],
+        useCount: 99,
+        source: "user",
+      },
+    ]);
+
+    const result = await library(ANY, { sampleFolder: "/samples/" });
+
+    assertItems(result);
+
+    const kicks = result.items.filter((i) => i.path === "/samples/kick.wav");
+
+    expect(kicks).toHaveLength(1);
+    // Folder wins (it's user-explicit)
+    expect(kicks[0]?.source).toBe("sample-folder");
+  });
+
+  it("skips folder scan when source is a DB-only category", async () => {
+    mockSampleFolder("kick.wav");
+    mockSearchRoute([]);
+
+    const result = await library(
+      { source: "pack" },
+      { sampleFolder: "/samples/" },
+    );
+
+    assertItems(result);
+
+    expect(
+      result.items.find((i) => i.source === "sample-folder"),
+    ).toBeUndefined();
+  });
+
+  it("source: 'sample-folder' returns folder items only and skips DB call", async () => {
+    mockSampleFolder("kick.wav");
+
+    const result = await library(
+      { source: "sample-folder" },
+      { sampleFolder: "/samples/" },
+    );
+
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
+
+    assertItems(result);
+
+    expect(leaves(result)).toStrictEqual(["kick.wav"]);
+    // Folder-only requests bypass the DB; dbAvailable should be absent
+    // rather than fabricated.
+    expect("dbAvailable" in result).toBe(false);
+    // No diagnostic cause here, so the reason key must be omitted entirely
+    // (not present-but-undefined).
+    expect("detail" in result).toBe(false);
+  });
+
+  it("merged requests propagate dbAvailable from the DB call", async () => {
+    mockSampleFolder("kick.wav");
+    mockSearchRoute([]);
+
+    const result = await library(ANY, { sampleFolder: "/samples/" });
+
+    assertItems(result);
+
+    expect(result.dbAvailable).toBe(true);
+    // Neither the folder scan nor the DB supplied a reason, so the merged
+    // result must omit the key rather than carry detail: undefined.
+    expect("detail" in result).toBe(false);
+  });
+
+  it("skips folder scan when tags filter is set (folder has no tag info)", async () => {
+    // Tags only live in the DB; readSamples must not be invoked at all
+    // (skipping the scan beats filtering its results post-hoc).
+    await expectFolderScanSkipped({ tags: "Kick" });
+  });
+
+  it("skips folder scan when type filter is set (folder has no tag info)", async () => {
+    // Playback type derives from DB Type-tags; the folder scan has none.
+    await expectFolderScanSkipped({ type: "loop" });
+  });
+
+  it("skips folder scan when kind is non-audio", async () => {
+    // Folder scan only knows about audio; any non-audio kind must bypass it.
+    await expectFolderScanSkipped({ kind: "plugin" });
+  });
+
+  it("skips folder scan when deviceKind is set", async () => {
+    // deviceKind is DB-only metadata; the scan can't satisfy it.
+    await expectFolderScanSkipped({ deviceKind: "instrument" });
+  });
+
+  it("skips folder scan when inFolder is set (DB-only path resolution)", async () => {
+    // inFolder resolves against the DB's file hierarchy, not the filesystem.
+    await expectFolderScanSkipped({ inFolder: "/some/folder" });
+  });
+
+  it("invokes the folder scan for audio-compatible filters (positive control)", async () => {
+    // Sanity check that the spy actually fires when it should — otherwise
+    // the three "not.toHaveBeenCalled" assertions above would pass trivially
+    // if the mock were broken.
+    mockSampleFolder("kick.wav");
+    mockSearchRoute([]);
+
+    await library(ANY, { sampleFolder: "/samples/" });
+
+    expect(readSamplesMock.readSamples).toHaveBeenCalledTimes(1);
+  });
+
+  it("works without a configured sampleFolder (DB-only)", async () => {
+    mockSearchRoute([
+      {
+        name: "clap.wav",
+        path: "/L/clap.wav",
+        kind: "audio",
+        tags: [],
+        useCount: 1,
+        source: "user",
+      },
+    ]);
+
+    const result = await library(ANY, {});
+
+    assertItems(result);
+
+    expect(result.items).toHaveLength(1);
+  });
+
+  it("respects limit after merging", async () => {
+    mockSampleFolder("a.wav", "b.wav");
+    mockSearchRoute([
+      {
+        name: "c.wav",
+        path: "/L/c.wav",
+        kind: "audio",
+        tags: [],
+        useCount: 5,
+        source: "user",
+      },
+    ]);
+
+    const result = await library(
+      { ...ANY, limit: 2 },
+      { sampleFolder: "/samples/" },
+    );
+
+    assertItems(result);
+
+    expect(result.items).toHaveLength(2);
+  });
+
+  it("default sort places folder items before DB items, each ordered internally", async () => {
+    mockSampleFolder("folder_a.wav", "folder_z.wav");
+    mockSearchRoute([
+      {
+        name: "high_use.wav",
+        path: "/L/high_use.wav",
+        kind: "audio",
+        tags: [],
+        useCount: 99,
+        source: "user",
+      },
+      {
+        name: "low_use.wav",
+        path: "/L/low_use.wav",
+        kind: "audio",
+        tags: [],
+        useCount: 1,
+        source: "user",
+      },
+    ]);
+
+    const result = await library(ANY, { sampleFolder: "/samples/" });
+
+    assertItems(result);
+
+    // Folder partition first (alphabetical tiebreaker at useCount=0),
+    // then DB partition (useCount desc).
+    expect(leaves(result)).toStrictEqual([
+      "folder_a.wav",
+      "folder_z.wav",
+      "high_use.wav",
+      "low_use.wav",
+    ]);
+  });
+
+  it("folder scan query is case-insensitive", async () => {
+    mockSampleFolder("kick.wav", "snare.wav");
+    mockSearchRoute([]);
+
+    const result = await library(
+      { query: "KICK" },
+      { sampleFolder: "/samples/" },
+    );
+
+    assertItems(result);
+
+    expect(leaves(result)).toStrictEqual(["kick.wav"]);
+  });
+
+  it("limit=0 falls back to the default cap rather than returning an empty list", async () => {
+    mockSampleFolder("a.wav", "b.wav");
+    mockSearchRoute([]);
+
+    const result = await library(
+      { ...ANY, limit: 0 },
+      { sampleFolder: "/samples/" },
+    );
+
+    assertItems(result);
+
+    expect(result.items).toHaveLength(2);
+  });
+
+  it("sort=name keeps folder items first, each partition sorted alphabetically", async () => {
+    mockSampleFolder("z_kick.wav", "m_snare.wav");
+    mockSearchRoute([
+      {
+        name: "b_hat.wav",
+        path: "/L/b_hat.wav",
+        kind: "audio",
+        tags: [],
+        useCount: 0,
+        source: "user",
+      },
+      {
+        name: "a_clap.wav",
+        path: "/L/a_clap.wav",
+        kind: "audio",
+        tags: [],
+        useCount: 0,
+        source: "user",
+      },
+    ]);
+
+    const result = await library(
+      { ...ANY, sort: "name" },
+      { sampleFolder: "/samples/" },
+    );
+
+    assertItems(result);
+
+    // Folder partition first, each partition sorted alphabetically.
+    expect(leaves(result)).toStrictEqual([
+      "m_snare.wav",
+      "z_kick.wav",
+      "a_clap.wav",
+      "b_hat.wav",
+    ]);
+  });
+
+  it("sort=mod_date keeps folder items first then DB items in upstream order", async () => {
+    mockSampleFolder("z_folder.wav", "a_folder.wav");
+    mockSearchRoute([
+      {
+        name: "newer.wav",
+        path: "/L/newer.wav",
+        kind: "audio",
+        tags: [],
+        useCount: 0,
+        source: "user",
+      },
+      {
+        name: "older.wav",
+        path: "/L/older.wav",
+        kind: "audio",
+        tags: [],
+        useCount: 0,
+        source: "user",
+      },
+    ]);
+
+    const result = await library(
+      { ...ANY, sort: "mod-date" },
+      { sampleFolder: "/samples/" },
+    );
+
+    assertItems(result);
+
+    // Folder partition sorted by name (no mod_date metadata), then DB
+    // partition in upstream mod_date order.
+    expect(leaves(result)).toStrictEqual([
+      "a_folder.wav",
+      "z_folder.wav",
+      "newer.wav",
+      "older.wav",
+    ]);
+  });
+
+  it("query filter applies to folder scan", async () => {
+    mockSampleFolder("kick.wav", "snare.wav");
+    mockSearchRoute([]);
+
+    const result = await library(
+      { query: "kick" },
+      { sampleFolder: "/samples/" },
+    );
+
+    assertItems(result);
+
+    expect(leaves(result)).toStrictEqual(["kick.wav"]);
+  });
+
+  it("surfaces a reason when source=sample-folder is requested with no sampleFolder", async () => {
+    // Regression vs the old ppal-context search: silently returning [] makes
+    // the LLM tell the user "no samples found"; the reason field lets it say
+    // "you need to configure a sample folder".
+    const result = await library({ source: "sample-folder" }, {});
+
+    assertItems(result);
+
+    expect(result.items).toHaveLength(0);
+    expect(result.detail).toMatch(/sample folder not configured/i);
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
+  });
+
+  it("preserves the DB-side reason when the merged DB call returns one", async () => {
+    mockSampleFolder("kick.wav");
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: true,
+      result: {
+        dbAvailable: false,
+        items: [],
+        detail: "Live database not found",
+      },
+    });
+
+    const result = await library(ANY, { sampleFolder: "/samples/" });
+
+    assertItems(result);
+
+    expect(result.dbAvailable).toBe(false);
+    expect(result.detail).toBe("Live database not found");
+    // Folder items should still come through alongside the diagnostic.
+    expect(leaves(result)).toStrictEqual(["kick.wav"]);
+  });
+
+  it("surfaces a reason when the folder scan throws", async () => {
+    const result = await libraryWithFailedScan(
+      new Error("EACCES: permission denied"),
+    );
+
+    expect(result.detail).toMatch(/sample folder scan failed.*EACCES/);
+    // DB results should still flow through.
+    expect(result.dbAvailable).toBe(true);
+  });
+
+  it("surfaces a reason when the folder scan throws a non-Error", async () => {
+    // Not an Error: the reason has to survive String() instead.
+    const result = await libraryWithFailedScan("no folder for you");
+
+    expect(result.detail).toBe("sample folder scan failed: no folder for you");
+  });
+
+  it("extracts the leaf filename from nested folder paths", async () => {
+    mockFolderStructure({
+      "/samples/": [{ name: "drums", type: "fold" }],
+      "/samples/drums/": [
+        { name: "snare.wav", type: "file", extension: ".wav" },
+      ],
+    });
+    mockSearchRoute([]);
+
+    const result = await library(ANY, { sampleFolder: "/samples/" });
+
+    assertItems(result);
+
+    const item = result.items.find((i) => i.path.endsWith("snare.wav"));
+
+    expect(item?.path).toBe("/samples/drums/snare.wav");
+    // The file name and parent folder are the path's last two segments, so
+    // neither is repeated on the item.
+    expect(item).not.toHaveProperty("name");
+    expect(item).not.toHaveProperty("folder");
+  });
+
+  it("leaves a top-level sample's name and folder off too", async () => {
+    mockSampleFolder("kick.wav");
+    mockSearchRoute([]);
+
+    const result = await library(ANY, { sampleFolder: "/samples/" });
+
+    assertItems(result);
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).not.toHaveProperty("name");
+    expect(result.items[0]).not.toHaveProperty("folder");
+  });
+});
+
+describe("library tool — sort ordering (DB partition)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("default sort orders the DB partition by use-count desc (name tiebreak)", async () => {
+    mockDiscriminatingSortRoute();
+
+    const result = await library(ANY, {});
+
+    assertItems(result);
+
+    expect(leaves(result)).toStrictEqual([
+      "a.wav", // useCount 3
+      "c.wav", // useCount 2
+      "b.wav", // useCount 1
+    ]);
+  });
+
+  it("sort=name orders the DB partition alphabetically, ignoring use_count", async () => {
+    mockDiscriminatingSortRoute();
+
+    const result = await library({ ...ANY, sort: "name" }, {});
+
+    assertItems(result);
+
+    expect(leaves(result)).toStrictEqual(["a.wav", "b.wav", "c.wav"]);
+  });
+
+  it("sort=mod_date preserves the DB's upstream order for mixed-source items", async () => {
+    mockDiscriminatingSortRoute();
+
+    const result = await library({ ...ANY, sort: "mod-date" }, {});
+
+    assertItems(result);
+
+    // The DB partition is not all-sampleFolder, so mod_date keeps the upstream
+    // (SQL-provided) order rather than re-sorting by name or use_count.
+    expect(leaves(result)).toStrictEqual(["b.wav", "a.wav", "c.wav"]);
+  });
+});

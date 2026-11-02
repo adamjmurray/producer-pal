@@ -5,8 +5,9 @@
 
 // The test file must `vi.mock` node-request-v8-protocol.ts for these to work.
 
-import { vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { expect, vi } from "vitest";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
+import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 /**
  * Reset the remote script mock so every envelope route call succeeds.
@@ -26,4 +27,27 @@ export function answerEnvelopeRoutes(result: unknown = {}): void {
  */
 export function envelopeRoutesCalled(): unknown[] {
   return vi.mocked(requestNode).mock.calls.map((call) => call[0]);
+}
+
+/**
+ * Write a volume line to clip 123 and expect it refused before any request.
+ * @param notation - The line's points
+ * @param refusal - What the entry says after `envelope "volume": `
+ */
+export async function expectVolumeRefused(
+  notation: string,
+  refusal: string,
+): Promise<void> {
+  const result = await updateClip({
+    id: "123",
+    envelopes: `volume: ${notation}`,
+  });
+
+  expect(requestNode).not.toHaveBeenCalled();
+  expect(result).toStrictEqual(
+    expect.objectContaining({
+      envelopes: 0,
+      detail: `envelope "volume": ${refusal}`,
+    }),
+  );
 }

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { select, type SelectArgs } from "#src/tools/session/select.ts";
 
 /**
@@ -20,6 +20,6 @@ export function focusSelect(args: SelectArgs): void {
   try {
     select(args);
   } catch (error) {
-    console.warn(`Could not move the focus: ${errorMessage(error)}`);
+    emitWarning(`Could not move the focus: ${errorMessage(error)}`);
   }
 }

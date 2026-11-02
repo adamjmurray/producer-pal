@@ -4,12 +4,33 @@
 // SPDX-License-Identifier: MIT
 
 import { openDB, type IDBPDatabase } from "idb";
+import { IMAGE_STORE } from "#webui/lib/conversations/conversation-images";
 import { downloadTextFile } from "#webui/utils/text-file-io";
 
 const DB_NAME = "producer-pal-conversations";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export const STORE_NAME = "conversations";
+
+/** Set once a newer Producer Pal needs the DB and this tab has stepped aside. */
+let retired = false;
+
+/**
+ * The error to throw when this tab gave up its connection for a newer build.
+ * @returns The error, or undefined while the connection is usable
+ */
+export function retiredDbError(): Error | undefined {
+  return retired
+    ? new Error("Producer Pal was updated in another tab — reload this one")
+    : undefined;
+}
+
+/**
+ * Forget that this tab stepped aside. Used in tests.
+ */
+export function resetDbRetired(): void {
+  retired = false;
+}
 
 /**
  * Try to open the DB, handling version mismatch from downgrades.
@@ -34,10 +55,27 @@ export async function tryOpenDb(): Promise<IDBPDatabase> {
  */
 function openDb(): Promise<IDBPDatabase> {
   return openDB(DB_NAME, DB_VERSION, {
+    // By store, not version: a v1 DB can exist with no stores.
     upgrade(db) {
-      const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
 
-      store.createIndex("updatedAt", "updatedAt");
+        store.createIndex("updatedAt", "updatedAt");
+      }
+
+      if (!db.objectStoreNames.contains(IMAGE_STORE)) {
+        db.createObjectStore(IMAGE_STORE);
+      }
+    },
+    // A tab still open on the old version holds the upgrade until it closes.
+    blocked() {
+      alert("Close other Producer Pal tabs to finish updating.");
+    },
+    // Step aside for a newer build, and never reopen: that offers a data wipe.
+    blocking(_current, _blocked, event) {
+      retired = true;
+      (event.target as IDBDatabase).close();
+      alert("Producer Pal was updated in another tab. Reload this one.");
     },
   });
 }

@@ -9,7 +9,7 @@ import {
   codeNoteToNoteEvent,
   noteEventToCodeNote,
 } from "#src/notation/midi-json/midi-json-note.ts";
-import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
+import { dedupeAndSortNotes } from "#src/notation/helpers/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import {
   type CopiedNote,

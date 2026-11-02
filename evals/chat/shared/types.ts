@@ -21,6 +21,9 @@ export type ThinkingLevel =
   | "none"
   | (string & {});
 
+/** The named levels the CLIs share. Numeric budgets are Gemini-only. */
+export type NamedThinkingLevel = "off" | "low" | "medium" | "high" | "ultra";
+
 export interface ChatOptions {
   provider: EvalProvider;
   model: string;
@@ -47,6 +50,14 @@ export interface TurnResult {
    *  rate can be weighted by the tokens it produced. A step the SDK could not
    *  measure holds an empty entry. */
   stepTimings?: StepTiming[];
+  /** The reasoning text the transport exposes for the whole turn, blocks
+   *  separated by a blank line. That is the raw reasoning on the AI SDK and
+   *  Claude Code paths (when the provider sends it) but only a summary on
+   *  Codex. Unset when the turn had none or the transport doesn't expose it. */
+  reasoningText?: string;
+  /** Why the turn's last model call stopped (`stop`, `length`, `tool-calls`,
+   *  `end_turn`, ...), as the transport words it. Unset when not exposed. */
+  finishReason?: string;
   /** Error message if the stream emitted an "error" part during the turn */
   error?: string;
 }

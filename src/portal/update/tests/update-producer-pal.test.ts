@@ -39,7 +39,7 @@ describe("update-producer-pal", () => {
 
     expect(response.isError).toBeUndefined();
     expect(responseText(response)).toBe(
-      `{device:{from:"${OLD}",to:"${VERSION}"},track:{path:"t3",name:"3-MIDI"},nextSteps:"Call ppal-connect next."}`,
+      `{device:{from:"${OLD}",to:"${VERSION}"},track:{path:"t3",name:"3-MIDI"},nextSteps:"Now call ppal-connect to load the Skills and confirm the update."}`,
     );
     expect(deps.installDevice).toHaveBeenCalledWith(
       LIBRARY,
@@ -51,6 +51,54 @@ describe("update-producer-pal", () => {
       body: { path: DEVICE_PATH },
       expiresInMs: 20_000,
     });
+  });
+
+  it("installs the plug-in host wrappers with the device and reports them", async () => {
+    const parts = [
+      { name: "PPal Plug-in Effect", status: "updated" as const, path: "/e" },
+    ];
+    const deps = updateDeps({ installPluginHost: vi.fn(() => parts) });
+    const response = await updateCall(fakeDevice(OLD, VERSION), deps);
+
+    expect(response.isError).toBeUndefined();
+    expect(deps.installPluginHost).toHaveBeenCalledWith(LIBRARY);
+    expect(responseText(response)).toContain(
+      'pluginHost:[{name:"PPal Plug-in Effect",status:"updated",path:"/e"}]',
+    );
+  });
+
+  it("still updates the device when a wrapper can't be installed", async () => {
+    const deps = updateDeps({
+      installPluginHost: () => [
+        {
+          name: "PPal Plug-in Effect",
+          ok: false,
+          path: "/e",
+          detail: "In use.",
+        },
+      ],
+    });
+    const response = await updateCall(fakeDevice(OLD, VERSION), deps);
+
+    expect(response.isError).toBeUndefined();
+    expect(responseText(response)).toContain(`to:"${VERSION}"`);
+    expect(responseText(response)).toContain("ok:false");
+  });
+
+  it("leaves pluginHost out of the answer in a build that hosts none", async () => {
+    const response = await updateCall(fakeDevice(OLD, VERSION));
+
+    expect(responseText(response)).not.toContain("pluginHost");
+  });
+
+  it("installs no wrappers when the update is refused before the swap", async () => {
+    const deps = updateDeps({
+      installDevice: () => copied("failed", { error: "EBUSY", changed: false }),
+    });
+
+    await updateCall(oldDevice(), deps);
+
+    expect(deps.installPluginHost).not.toHaveBeenCalled();
   });
 
   it("asks the device afresh, then tells the client to re-list tools once the new one answers", async () => {
@@ -85,7 +133,7 @@ describe("update-producer-pal", () => {
     const response = await updateCall(fakeDevice(OLD, VERSION), deps);
 
     expect(responseText(response)).toBe(
-      `{device:{from:"${OLD}",to:"${VERSION}"},nextSteps:"Call ppal-connect next."}`,
+      `{device:{from:"${OLD}",to:"${VERSION}"},nextSteps:"Now call ppal-connect to load the Skills and confirm the update."}`,
     );
   });
 
@@ -302,7 +350,7 @@ describe("update-producer-pal when the User Library holds another device", () =>
 
     expect(response.isError).toBeUndefined();
     expect(responseText(response)).toBe(
-      `{device:{from:"${OLD}",to:"9.0.0"},track:{path:"t3",name:"3-MIDI"},note:"loaded the device already in the User Library (9.0.0), which is newer than this portal's (${VERSION}). ${UPDATE_PORTAL_ADVICE}",nextSteps:"Call ppal-connect next."}`,
+      `{device:{from:"${OLD}",to:"9.0.0"},track:{path:"t3",name:"3-MIDI"},note:"loaded the device already in the User Library (9.0.0), which is newer than this portal's (${VERSION}). ${UPDATE_PORTAL_ADVICE}",nextSteps:"Now call ppal-connect to load the Skills and confirm the update."}`,
     );
     expect(deps.request).toHaveBeenCalledTimes(1);
   });

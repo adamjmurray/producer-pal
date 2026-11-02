@@ -15,6 +15,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import { moveDeviceToPath } from "../../helpers/move-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -33,6 +34,45 @@ function registerDestination(trackIndex: number, ...deviceIds: string[]): void {
     type: "Track",
     properties: { devices: children(...deviceIds) },
   });
+}
+
+const ONE_INSTRUMENT = {
+  outcome: "refused",
+  reason: "the destination already has an instrument, and only one is allowed",
+};
+
+/**
+ * Move an instrument from t0/d0 to t1, which already holds an instrument.
+ * @param residentType - The mock type of the instrument already there
+ * @param residentProperties - More properties for it
+ * @returns The move's answer
+ */
+function moveInstrumentOnto(
+  residentType: LiveObjectType,
+  residentProperties: Record<string, unknown> = {},
+): ReturnType<typeof moveDeviceToPath> {
+  registerMockObject("live_set", { path: livePath.liveSet });
+  const device = registerMockObject("device-0", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
+  });
+
+  registerMockObject("resident", {
+    path: livePath.track(1).device(0),
+    type: residentType,
+    properties: {
+      type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+      ...residentProperties,
+    },
+  });
+  registerMockObject("track-1", {
+    path: livePath.track(1),
+    type: "Track",
+    properties: { devices: children("resident") },
+  });
+
+  return moveDeviceToPath(LiveAPI.from(device.path), "t1/d0");
 }
 
 describe("moveDeviceToPath", () => {
@@ -143,58 +183,14 @@ describe("moveDeviceToPath", () => {
   });
 
   it("names the one refusal Live's own state explains", () => {
-    registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("device-0", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
-    });
-    registerMockObject("resident", {
-      path: livePath.track(1).device(0),
-      type: "Device",
-      properties: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
-    });
-    registerMockObject("track-1", {
-      path: livePath.track(1),
-      type: "Track",
-      properties: { devices: children("resident") },
-    });
-
-    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toStrictEqual({
-      outcome: "refused",
-      reason:
-        "the destination already has an instrument, and only one is allowed",
-    });
+    expect(moveInstrumentOnto("Device")).toStrictEqual(ONE_INSTRUMENT);
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("counts an empty rack as the destination's instrument", () => {
-    registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("device-0", {
-      path: livePath.track(0).device(0),
-      type: "Device",
-      properties: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
-    });
-    registerMockObject("resident", {
-      path: livePath.track(1).device(0),
-      type: "RackDevice",
-      properties: {
-        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-        can_have_chains: 1,
-        chains: [],
-      },
-    });
-    registerMockObject("track-1", {
-      path: livePath.track(1),
-      type: "Track",
-      properties: { devices: children("resident") },
-    });
-
-    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toStrictEqual({
-      outcome: "refused",
-      reason:
-        "the destination already has an instrument, and only one is allowed",
-    });
+    expect(
+      moveInstrumentOnto("RackDevice", { can_have_chains: 1, chains: [] }),
+    ).toStrictEqual(ONE_INSTRUMENT);
   });
 
   // Live drops these with no reason, so the refusal names it.
@@ -441,7 +437,7 @@ describe("moveDeviceToPath - out of a trimmed chain", () => {
 
     expect(move.outcome).toBe("moved");
     expect(capturedWarnings()).toContain(
-      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sends',
     );
   });
 

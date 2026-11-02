@@ -61,16 +61,20 @@ the note's start to itself; the message says to use `timing = swing(...)`), a
 percent-looking amount gets the delay it should have been), a built-in with the
 wrong argument count, and a constant argument that can't be evaluated, isn't
 finite or is out of range (a ratchet count below 2 or grid of 0, a repeat offset
-of 0 or count below 1, a `curve()` exponent of 0 or less). Argument counts count
-only positional args — the trailing `sync`/`raw` keywords are not arguments.
+of 0 or count below 1, a `curve()` exponent of 0 or less), and a waveform period
+that uses a note property (`sin(note.start * 6.28)`; the message says the period
+is a cycle length and points per-note variation at the phase). Argument counts
+count only positional args — the trailing `sync`/`raw` keywords are not
+arguments.
 
 Two kinds of argument can't be judged up front, and are reported on the clip as
 the transform runs:
 
-- One that uses a note or clip variable or a random function (`rand()`, `cos()`)
-  — it has no value until a note exists. So are facts that exist only per note
-  or clip: a ratchet that spans no grid line, `repeat` collisions, `sync` on a
-  session clip.
+- One that uses a clip variable or a random function (`rand()`, `seq()`) — it
+  has no value until a note exists. (A waveform period that uses a note property
+  is refused up front instead.) So are facts that exist only per note or clip: a
+  ratchet that spans no grid line, `repeat` collisions, `sync` on a session
+  clip.
 - A constant that mixes note values or bar lengths with other terms (`1bar - 4`,
   `1bar - n/4`): `1bar` is 4 beats in 4/4 and 6 in 6/4, and one call can target
   clips with different meters. Only the clips it is bad for fail (`ok: false`,
@@ -130,9 +134,15 @@ taught it the feature was unsupported, so it hand-wrote the result instead.
     note durations — it parses to the same value (count ≥ 1, no leading zero:
     `n0bar`, `n04bar` fail). Fraction forms (`n/1bar`, `n3/4bar`) stay rejected:
     no bar count can be guessed from a fraction.
-  - **Expressions**: Any numeric expression (including variables)
-    - Examples: `note.duration`, `note.start / 4`, `2.5`
+  - **Expressions**: Any numeric expression, except one that uses a note
+    property (`note.*`, `next.*`)
+    - Examples: `clip.barDuration`, `2.5`, `rand(1, 4)`
     - A bare number is treated as a period in beats
+    - **A note property in the period is refused**, up front, for every waveform
+      (`sin`, `cos`, `tri`, `saw`, `square`), including inside `where()` and
+      nested calls: `sin(note.start * 6.28)` is the radians habit, not a cycle
+      length. The message shows `sin(n/4)`. Clip values and random functions
+      stay allowed.
     - Any sign is accepted. A negative period runs the cycle backwards; a zero
       period is phase 0 for every note (`sin(0)` = 0, `cos(0)` = 1), never a
       division by zero. A note value or bar count takes a leading `-` too

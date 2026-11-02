@@ -10,7 +10,7 @@
 import { parseEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { MAX_CHUNK_SIZE } from "#src/shared/mcp-responses.ts";
+import { MAX_SINGLE_MESSAGE_BYTES } from "#src/shared/mcp-responses.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   appendDetail,
@@ -18,6 +18,7 @@ import {
 } from "#src/tools/shared/helpers/entry-details.ts";
 import { liveVersionAtLeast } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type EnvelopeLine } from "./envelope-lines.ts";
+import { hostedSlots, type HostedSlots } from "./hosted/hosted-slots.ts";
 import { envelopeWritePoints } from "./envelope-write-points.ts";
 import { envelopeChange, type RouteOutcome } from "./envelope-route.ts";
 import {
@@ -65,6 +66,9 @@ const OLD_LIVE_REFUSAL = `not written: writing envelope points requires Live ${W
 const LANE_CLEAR_REFUSAL =
   "not cleared: an arrangement lane can't be cleared; write a flat line instead";
 
+/** What a clear says when the parameter had no envelope. */
+const NOTHING_TO_CLEAR = "there was no envelope to clear";
+
 /** The user had moved the parameter, which mutes its automation until re-enabled. */
 const REENABLED_NOTE = "re-enabled its automation, which was overridden";
 
@@ -87,6 +91,7 @@ export function canWriteEnvelopePoints(): boolean {
  * @param lines - The `envelopes` param, already read into lines
  * @param address - The clip the lines write to, and its meter
  * @param deadline - The request deadline, if any
+ * @param manage - Whether the caller can use ppal-manage
  * @returns How many lines were written
  */
 export async function writeEachLine(
@@ -94,6 +99,7 @@ export async function writeEachLine(
   lines: readonly EnvelopeLine[],
   address: ClipAddress,
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<number> {
   const resolved = resolveEnvelopeLines(lines, address.trackIndex);
   const clash = findSameParameter(resolved);
@@ -107,12 +113,17 @@ export async function writeEachLine(
   }
 
   let written = 0;
+  const slots = hostedSlots({
+    trackIndex: address.trackIndex,
+    deadline,
+    manage,
+  });
 
   for (const [index, line] of lines.entries()) {
     const outcome = await writeOneLine(
       resolved[index] as ResolvedEnvelopeLine,
       address,
-      deadline,
+      { deadline, manage, slots },
     );
 
     if (outcome.ok) {
@@ -230,68 +241,168 @@ function named(lines: readonly EnvelopeLine[]): string {
   return lines.map(({ target }) => `"${target}"`).join(", ");
 }
 
+/** What one line's write needs from the call. */
+interface LineCall {
+  deadline: number | null | undefined;
+  manage: boolean;
+  /** Finds or makes the slots hosted params are automated through */
+  slots: HostedSlots;
+}
+
 /**
  * Write or clear one parameter's envelope.
  * @param resolved - The line to apply, with the parameter it reaches
  * @param address - The clip it writes to, and its meter
- * @param deadline - The request deadline, if any
+ * @param call - The deadline, who is calling, and the hosted slots
  * @returns Whether it landed, and why it didn't when it didn't
  */
 async function writeOneLine(
   resolved: ResolvedEnvelopeLine,
   address: ClipAddress,
-  deadline: number | null | undefined,
+  call: LineCall,
 ): Promise<RouteOutcome<unknown> & { note?: string }> {
   if ("error" in resolved) {
     return { ok: false, reason: resolved.error, available: true };
   }
 
-  const { line, target } = resolved;
-  const request = {
-    track: `t${String(address.trackIndex)}`,
-    slot: address.slot,
-    ...target,
-  };
+  const { line } = resolved;
+  // Refuse and parse before placing: placing a hosted param maps a slot, which
+  // changes the Set, so it waits until the line is sure to be written.
+  const refusal = refusalFor(line, address);
 
-  if (line.notation === "" && address.carrier === true) {
-    return { ok: false, reason: LANE_CLEAR_REFUSAL, available: true };
-  }
-
-  // A clear still runs: removing an envelope that can't play does no harm.
-  if (line.notation !== "" && address.unwarped) {
-    return { ok: false, reason: UNWARPED_CLIP_REFUSAL, available: true };
-  }
-
-  if (line.notation !== "" && !address.canWritePoints) {
-    return { ok: false, reason: OLD_LIVE_REFUSAL, available: true };
-  }
-
-  if (line.notation === "") {
-    const cleared = await envelopeChange<EnvelopeClearResult>(
-      ENVELOPE_ROUTES.clear,
-      request,
-      deadline,
-    );
-
-    return cleared.ok && !cleared.result.cleared
-      ? { ...cleared, note: "there was no envelope to clear" }
-      : cleared;
+  if (refusal != null) {
+    return { ok: false, reason: refusal, available: true };
   }
 
   let points;
 
   try {
     // The up-front check read only the syntax; times need this clip's meter.
-    points = parseEnvelopeNotation(line.notation, address);
+    points =
+      line.notation === ""
+        ? undefined
+        : parseEnvelopeNotation(line.notation, address);
   } catch (error) {
     return { ok: false, reason: errorMessage(error), available: true };
   }
 
+  // A clear only looks for the slot a hosted param has; it never makes one.
+  const placed =
+    "hosted" in resolved
+      ? await call.slots.place(resolved.hosted, points == null)
+      : { ok: true as const, target: resolved.target };
+
+  if (!placed.ok) {
+    return { ok: false, reason: placed.reason, available: true };
+  }
+
+  // A hosted param with no slot has no envelope to clear.
+  if (placed.target == null) {
+    return {
+      ok: true,
+      result: { cleared: false },
+      note: NOTHING_TO_CLEAR,
+    };
+  }
+
+  const request = {
+    track: `t${String(address.trackIndex)}`,
+    slot: address.slot,
+    ...placed.target,
+  };
+  const outcome =
+    points == null
+      ? await clearEnvelope(request, call)
+      : await writeEnvelope(request, { points, address }, call);
+
+  return placed.mapped == null ? outcome : afterMapping(outcome, placed.mapped);
+}
+
+/**
+ * Why a line can't be written on this clip, before anything is touched.
+ * @param line - The line
+ * @param address - The clip it writes to
+ * @returns The reason, or undefined when it can be written
+ */
+function refusalFor(
+  line: EnvelopeLine,
+  address: ClipAddress,
+): string | undefined {
+  if (line.notation === "") {
+    return address.carrier === true ? LANE_CLEAR_REFUSAL : undefined;
+  }
+
+  // A clear still runs on an unwarped clip: removing an envelope that can't
+  // play does no harm.
+  if (address.unwarped) {
+    return UNWARPED_CLIP_REFUSAL;
+  }
+
+  return address.canWritePoints ? undefined : OLD_LIVE_REFUSAL;
+}
+
+/**
+ * Say that a hosted param was mapped to a slot on the way to its line, whether
+ * the line then landed or not.
+ * @param outcome - What the line came to
+ * @param mapped - What was mapped
+ * @returns The outcome, saying so
+ */
+function afterMapping(
+  outcome: RouteOutcome<unknown> & { note?: string },
+  mapped: string,
+): RouteOutcome<unknown> & { note?: string } {
+  return outcome.ok
+    ? { ...outcome, note: joinDetails([mapped, outcome.note]) }
+    : { ...outcome, reason: `${outcome.reason}; already changed: ${mapped}` };
+}
+
+/**
+ * Clear one parameter's envelope.
+ * @param request - Which clip and parameter
+ * @param call - The deadline and who is calling
+ * @returns Whether it was cleared
+ */
+async function clearEnvelope(
+  request: object,
+  call: LineCall,
+): Promise<RouteOutcome<unknown> & { note?: string }> {
+  const cleared = await envelopeChange<EnvelopeClearResult>(
+    ENVELOPE_ROUTES.clear,
+    request,
+    call.deadline,
+    call.manage,
+  );
+
+  return cleared.ok && !cleared.result.cleared
+    ? { ...cleared, note: NOTHING_TO_CLEAR }
+    : cleared;
+}
+
+/**
+ * Write one parameter's envelope.
+ * @param request - Which clip and parameter
+ * @param what - The points, and the clip they are spelled for
+ * @param what.points - The parsed points
+ * @param what.address - The clip it writes to, and its meter
+ * @param call - The deadline and who is calling
+ * @returns Whether it was written
+ */
+async function writeEnvelope(
+  request: object,
+  what: {
+    points: ReturnType<typeof parseEnvelopeNotation>;
+    address: ClipAddress;
+  },
+  call: LineCall,
+): Promise<RouteOutcome<unknown> & { note?: string }> {
+  const { points, address } = what;
   const writePoints = envelopeWritePoints(points);
   const outcome = await envelopeChange<EnvelopeWriteResult>(
     ENVELOPE_ROUTES.write,
     { ...request, points: writePoints },
-    deadline,
+    call.deadline,
+    call.manage,
   );
 
   if (!outcome.ok && outcome.tooLarge === true) {
@@ -321,7 +432,7 @@ function tooManyPoints(
 ): string {
   // Room left once the route, the clip and the longest expiry are in.
   const room =
-    MAX_CHUNK_SIZE -
+    MAX_SINGLE_MESSAGE_BYTES -
     JSON.stringify({
       route: ENVELOPE_ROUTES.write,
       args: { ...request, points: [], expiresInMs: Number.MAX_SAFE_INTEGER },

@@ -18,7 +18,6 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, vi } from "vitest";
 import { fourCC } from "../../library-filters.ts";
-import { type StalenessRisk } from "../../library-types.ts";
 
 export interface LibraryFixture {
   dir: string;
@@ -157,17 +156,8 @@ export function createPartialSchemaDb(
   };
 }
 
-/**
- * A representative staleness advisory the DB layer can surface, for asserting
- * that a query forwards `stalenessRisk` from `detectStalenessRisk`.
- */
-export const STALENESS_RISK: StalenessRisk = {
-  kind: "wal-pending",
-  dbMtime: 1,
-  walMtime: 2,
-  walSizeMb: 1,
-  ageSeconds: 1,
-};
+/** A staleness note the DB layer can surface, for asserting a query forwards it. */
+export const STALENESS_NOTE = "snapshot may be out of date";
 
 /**
  * Force a DB read failure and assert the query degrades to

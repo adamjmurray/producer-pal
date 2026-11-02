@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 import {
   findSourceFiles,
   projectRoot,
+  repoPath,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 
@@ -37,7 +38,7 @@ describe("transform evaluation context", () => {
     const violations: { file: string; reason: string }[] = [];
 
     for (const file of findSourceFiles(TRANSFORM_DIR)) {
-      const rel = path.relative(projectRoot, file);
+      const rel = repoPath(file);
 
       for (const found of findLooseContextParams(file)) {
         violations.push({

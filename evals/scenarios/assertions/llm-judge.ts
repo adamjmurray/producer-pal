@@ -11,13 +11,15 @@ import {
   parseSimpleJudgeResponse,
   type SimpleJudgeResult,
 } from "../helpers/judge/judge-response-parser.ts";
-import { callJudge } from "../helpers/judge/judge.ts";
+import { callJudge, resolveJudgeModel } from "../helpers/judge/judge.ts";
 import {
   type LlmJudgeAssertion,
   type EvalTurnResult,
   type EvalAssertionResult,
   type EvalProvider,
 } from "../types.ts";
+import { injectedBlockLines } from "./helpers/injected-blocks-transcript.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 export const JUDGE_SYSTEM_PROMPT = `You are reviewing an AI assistant's performance in a music production task.
 
@@ -36,9 +38,32 @@ If everything looks good and all checks passed, respond with:
 
 Do not include any other text before or after the JSON.`;
 
+/** Starts the message of a result whose judge call failed (no real verdict). */
+export const LLM_JUDGE_ERROR_PREFIX = "LLM judge error: ";
+
 interface JudgeOverride {
-  provider: EvalProvider;
+  provider?: EvalProvider;
   model?: string;
+}
+
+/** Judge verdict plus the judge that gave it (unset when no judge was called) */
+export interface LlmJudgeDetails extends SimpleJudgeResult {
+  provider?: EvalProvider;
+  model?: string;
+}
+
+/** The parts of a turn the transcript shows; live and saved turns both fit. */
+export interface TranscriptTurn {
+  userMessage: string;
+  assistantResponse: string;
+  toolCalls: Array<{
+    name: string;
+    args: Record<string, unknown>;
+    result?: string;
+    warnings?: string[];
+    /** Extra result blocks as text (not hashes); see `injectedBlockLines` */
+    injectedBlocks?: string[];
+  }>;
 }
 
 /** Lightweight check summary passed to the judge prompt */
@@ -65,45 +90,51 @@ export async function assertWithLlmJudge(
   cliOverride?: JudgeOverride,
   checkSummaries?: CheckSummary[],
 ): Promise<EvalAssertionResult> {
-  if (turns.length === 0) {
-    return noScoreResult(
-      assertion,
-      "No turns available for LLM judge evaluation",
-      {
-        pass: false,
-        issues: ["No turns found"],
-      },
-    );
-  }
-
-  const judgePrompt = buildJudgePrompt(assertion, turns, checkSummaries ?? []);
-
   // CLI override > assertion-level > scenario default
   const provider =
     cliOverride?.provider ?? assertion.judgeProvider ?? defaultProvider;
   const model = cliOverride?.model ?? assertion.judgeModel;
 
+  if (turns.length === 0) {
+    return noScoreResult(
+      assertion,
+      "No turns available for LLM judge evaluation",
+      { pass: false, issues: ["No turns found"] },
+    );
+  }
+
+  const judgePrompt = buildJudgePrompt(assertion, turns, checkSummaries ?? []);
+
+  let judgeModel = model;
+
   try {
-    const result = await callSimpleJudge(
+    assertJudgeProviderAllowed(provider);
+    judgeModel = resolveJudgeModel(provider, model);
+
+    const result = await callJudge(
       judgePrompt,
+      JUDGE_SYSTEM_PROMPT,
       provider,
-      model,
+      judgeModel,
       assertion.prompt,
     );
+    const verdict = parseSimpleJudgeResponse(result);
 
     return noScoreResult(
       assertion,
-      result.pass
+      verdict.pass
         ? "LLM judge: pass"
-        : `LLM judge: fail (${result.issues.length} issue(s))`,
-      result,
+        : `LLM judge: fail (${verdict.issues.length} issue(s))`,
+      { ...verdict, provider, model: judgeModel },
     );
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
+    const msg = errorMessage(error);
 
-    return noScoreResult(assertion, `LLM judge error: ${msg}`, {
+    return noScoreResult(assertion, `${LLM_JUDGE_ERROR_PREFIX}${msg}`, {
       pass: false,
       issues: [msg],
+      provider,
+      model: judgeModel,
     });
   }
 }
@@ -143,7 +174,7 @@ ${assertion.prompt}`;
  * @param turns - All conversation turns
  * @returns Formatted transcript string
  */
-function formatTranscript(turns: EvalTurnResult[]): string {
+export function formatTranscript(turns: TranscriptTurn[]): string {
   return turns
     .map((turn, i) => {
       const toolCallsSummary =
@@ -156,7 +187,13 @@ function formatTranscript(turns: EvalTurnResult[]): string {
                 // judge reads a refused operation as a successful one.
                 const warnings = (tc.warnings ?? []).map((w) => `    ${w}`);
 
-                return [call, result, ...warnings].filter(Boolean).join("\n");
+                // The model sees these blocks too (ppal-connect's context, version
+                // notes); without them the judge calls true claims unsupported.
+                const blocks = injectedBlockLines(tc.injectedBlocks);
+
+                return [call, result, ...blocks, ...warnings]
+                  .filter(Boolean)
+                  .join("\n");
               })
               .join("\n")
           : "  (no tool calls)";
@@ -176,7 +213,7 @@ ${toolCallsSummary}`;
  * @param summaries - Check summaries
  * @returns Formatted check results string
  */
-function formatCheckResults(summaries: CheckSummary[]): string {
+export function formatCheckResults(summaries: CheckSummary[]): string {
   return summaries
     .map((s) => {
       const icon = s.pass ? "✓" : "✗";
@@ -193,45 +230,26 @@ function formatCheckResults(summaries: CheckSummary[]): string {
  *
  * @param assertion - The judge assertion
  * @param message - Human-readable status
- * @param details - SimpleJudgeResult with pass/issues
+ * @param details - Judge verdict and the judge that gave it
  * @returns Assertion result with earned=0, maxScore=0
  */
 function noScoreResult(
   assertion: LlmJudgeAssertion,
   message: string,
-  details: SimpleJudgeResult,
+  details: LlmJudgeDetails,
 ): EvalAssertionResult {
   return { assertion, earned: 0, maxScore: 0, message, details };
 }
 
 /**
- * Call the judge LLM with the simplified prompt
+ * Refuse providers that can't judge.
  *
- * @param prompt - The evaluation prompt
- * @param provider - LLM provider to use
- * @param model - Optional model override
- * @param criteria - Evaluation criteria for output display
- * @returns Simple judge result with pass/fail and issues
+ * @param provider - LLM provider chosen for the judge
  */
-async function callSimpleJudge(
-  prompt: string,
-  provider: EvalProvider,
-  model: string | undefined,
-  criteria: string,
-): Promise<SimpleJudgeResult> {
+function assertJudgeProviderAllowed(provider: EvalProvider): void {
   if (provider === "local") {
     throw new Error(
       "Local provider cannot be used as LLM judge. Set judgeProvider to a cloud provider.",
     );
   }
-
-  const text = await callJudge(
-    prompt,
-    JUDGE_SYSTEM_PROMPT,
-    provider,
-    model,
-    criteria,
-  );
-
-  return parseSimpleJudgeResponse(text);
 }

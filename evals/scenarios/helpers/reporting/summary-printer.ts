@@ -20,7 +20,18 @@ import {
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { printResultsTable, type ResultsByScenario } from "./report-table.ts";
-import { checkTally, judgeVerdict, scorePercentage } from "./result-format.ts";
+import { jevSummaryLines } from "./jev-judge-report.ts";
+import {
+  OUTPUT_CAP_HINT,
+  outputCapCount,
+  outputCapTurns,
+} from "./output-cap.ts";
+import {
+  checkTally,
+  judgeVerdict,
+  modelWithThinking,
+  scorePercentage,
+} from "./result-format.ts";
 import {
   buildMultiTrialParts,
   formatParts,
@@ -38,17 +49,19 @@ export function printSummary(
   modelSpecs: ModelSpec[],
   label: string,
 ): void {
+  const allResultGroups = [...resultsByScenario.values()].flatMap((modelMap) =>
+    [...modelMap.values()].flatMap((configMap) => [...configMap.values()]),
+  );
+
   // Use the table for multi-model runs (a single run environment per run).
   if (modelSpecs.length > 1) {
     printResultsTable(resultsByScenario, modelSpecs, label);
+    printJevSummary(allResultGroups.flat());
 
     return;
   }
 
   // Single model + single config - use simple summary
-  const allResultGroups = [...resultsByScenario.values()].flatMap((modelMap) =>
-    [...modelMap.values()].flatMap((configMap) => [...configMap.values()]),
-  );
 
   const modelLabel = modelSpecs[0]
     ? modelSpecs[0].model
@@ -59,7 +72,12 @@ export function printSummary(
   const waveform = WAVEFORM_UNIT.repeat(Math.ceil(72 / WAVEFORM_UNIT.length));
 
   console.log("\n" + styleText("gray", waveform) + "\n");
-  console.log(styleText("bold", `Summary: ${modelLabel}`) + "\n");
+  console.log(
+    styleText(
+      "bold",
+      `Summary: ${modelWithThinking(modelLabel, allResultGroups.flat())}`,
+    ) + "\n",
+  );
 
   let passCount = 0;
   let failCount = 0;
@@ -96,6 +114,40 @@ export function printSummary(
   console.log(
     `\n  ${totalRuns} run(s): ${passCount} pass, ${failCount} fail${skipText}${errorText}`,
   );
+  printOutputCapSummary(allResultGroups.flat());
+  printJevSummary(allResultGroups.flat());
+}
+
+/**
+ * Print the total of turns that hit the output cap, when any did.
+ *
+ * @param results - Every result in the run
+ */
+function printOutputCapSummary(results: JsonEvalResult[]): void {
+  const capped = outputCapCount(results);
+
+  if (capped > 0) {
+    console.log(
+      "\n  " +
+        styleText(
+          "yellow",
+          `${capped} turn(s) hit the output cap and may be cut off; ${OUTPUT_CAP_HINT}`,
+        ),
+    );
+  }
+}
+
+/**
+ * Print the Jev judge totals, when the run used Jev.
+ *
+ * @param results - Every result in the run
+ */
+function printJevSummary(results: JsonEvalResult[]): void {
+  const lines = jevSummaryLines(results);
+
+  if (lines.length > 0) {
+    console.log("\n" + lines.map((l) => "  " + l).join("\n"));
+  }
 }
 
 /**
@@ -155,6 +207,12 @@ function formatSingleTrialLine(result: JsonEvalResult): string {
     parts.push(
       "tool errors " + styleText("yellow", String(result.toolErrors.count)),
     );
+  }
+
+  const capped = outputCapTurns(result).length;
+
+  if (capped > 0) {
+    parts.push("output cap " + styleText("yellow", String(capped)));
   }
 
   const score = scorePercentage([result]);

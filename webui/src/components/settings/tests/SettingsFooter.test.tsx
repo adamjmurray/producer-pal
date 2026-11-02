@@ -12,7 +12,8 @@ import { SettingsFooter } from "#webui/components/settings/SettingsFooter";
 
 describe("SettingsFooter", () => {
   const defaultProps = {
-    settingsConfigured: true,
+    chatSetUp: true,
+    installationTab: false,
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
     pulse: false,
@@ -58,14 +59,80 @@ describe("SettingsFooter", () => {
     expect(screen.getByText("Cancel")).toBeTruthy();
   });
 
-  it("hides Cancel button when settings are not configured", () => {
-    render(<SettingsFooter {...defaultProps} settingsConfigured={false} />);
+  it("shows Close instead of Cancel before chat is set up", () => {
+    const cancelSettings = vi.fn();
+
+    render(
+      <SettingsFooter
+        {...defaultProps}
+        chatSetUp={false}
+        cancelSettings={cancelSettings}
+      />,
+    );
 
     expect(screen.queryByText("Cancel")).toBeNull();
+
+    fireEvent.click(screen.getByText("Close"));
+    expect(cancelSettings).toHaveBeenCalledOnce();
+  });
+
+  it("shows Cancel again before setup once there are unsaved changes", () => {
+    render(
+      <SettingsFooter
+        {...defaultProps}
+        chatSetUp={false}
+        hasUnsavedChanges={true}
+      />,
+    );
+
+    expect(screen.getByText("Cancel")).toBeTruthy();
+    expect(screen.queryByText("Close")).toBeNull();
+  });
+
+  describe("on the Installation tab", () => {
+    it("disables Save and offers Close when nothing is unsaved", () => {
+      const cancelSettings = vi.fn();
+
+      render(
+        <SettingsFooter
+          {...defaultProps}
+          installationTab={true}
+          cancelSettings={cancelSettings}
+        />,
+      );
+
+      expect((screen.getByText("Save") as HTMLButtonElement).disabled).toBe(
+        true,
+      );
+      expect(screen.queryByText("Cancel")).toBeNull();
+
+      fireEvent.click(screen.getByText("Close"));
+      expect(cancelSettings).toHaveBeenCalledOnce();
+    });
+
+    it("enables Save and Cancel for unsaved changes from another tab", () => {
+      render(
+        <SettingsFooter
+          {...defaultProps}
+          installationTab={true}
+          hasUnsavedChanges={true}
+        />,
+      );
+
+      expect((screen.getByText("Save") as HTMLButtonElement).disabled).toBe(
+        false,
+      );
+      expect(screen.getByText("Cancel")).toBeTruthy();
+      expect(
+        screen.getByText(
+          "You have unsaved changes. Save or cancel to dismiss.",
+        ),
+      ).toBeTruthy();
+    });
   });
 
   it("shows storage message when settings are not configured", () => {
-    render(<SettingsFooter {...defaultProps} settingsConfigured={false} />);
+    render(<SettingsFooter {...defaultProps} chatSetUp={false} />);
 
     expect(
       screen.getByText("Settings will be stored in this web browser."),

@@ -9,8 +9,6 @@
 // the request's deadline arrives before is skipped, as a write tool would.
 
 import {
-  namedIdParam,
-  namedPathParam,
   paramNamesSomething,
   refuseNamedTwice,
 } from "#src/tools/shared/helpers/param-presence.ts";
@@ -23,9 +21,17 @@ import {
   type TargetSkip,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
+  foldTargetParams,
   warnBlankTarget,
+  type FoldedTargets,
+  type TargetNames,
   type TargetParams,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
+
+/** A read's target params, plus the names they were sent under (set by the fan-out). */
+export interface ReadTargetParams extends TargetParams {
+  targetNames?: TargetNames;
+}
 
 /** What a read tool returns: one object, or one entry per target named. */
 export type ReadResult<T> = T | Array<T | TargetSkip>;
@@ -63,7 +69,7 @@ interface FanOutOptions {
  *   nothing: a lone target answers with that error, a listed one with its entry
  * @returns The object when one target was named, otherwise one entry per target
  */
-export function readFanOut<A extends TargetParams, T>(
+export function readFanOut<A extends ReadTargetParams, T>(
   args: A,
   options: FanOutOptions,
   readOne: (args: A) => T,
@@ -71,15 +77,18 @@ export function readFanOut<A extends TargetParams, T>(
   const alias = paramValue(args, options.idAlias) as string | null | undefined;
   // Every target param is read once, here, so a value that names nothing says
   // so once rather than once more inside each target's own read.
-  const call = foldTargets(args, options.idAlias, alias);
+  const folded = foldTargetParams(args, {
+    name: options.idAlias,
+    value: alias,
+  });
 
-  refuseIndexBesideTarget(args, call.path, options);
+  refuseIndexBesideTarget(args, folded.path, options);
 
-  const targets = namedTargets(call);
+  const targets = namedTargets(folded);
   const first = targets[0];
 
   if (targets.length < 2) {
-    const one = readOne(first == null ? call : withTarget(call, first));
+    const one = readOne(withTarget(args, folded, first, options.idAlias));
 
     warnBlank(args, options, alias, 1);
 
@@ -92,7 +101,9 @@ export function readFanOut<A extends TargetParams, T>(
     const late = unreachedDetailAfter(options.deadline, options.object);
 
     return late == null
-      ? attemptTarget(target, () => readOne(withTarget(call, target)))
+      ? attemptTarget(target, () =>
+          readOne(withTarget(args, folded, target, options.idAlias)),
+        )
       : skipEntry(target, late);
   });
 
@@ -185,42 +196,30 @@ function warnBlank(
 }
 
 /**
- * Folds every spelling of a target onto `id` and `path`: the plural aliases and
- * the tool's own id spelling, each read once. Left where they were they would
- * ride along into every per-target read and quietly name a target there.
+ * The call's args aimed at one target, or at none: the param that named it
+ * carries just that entry, and the other one is gone, so the single-target read
+ * sees the same call it would have got on its own. The names the caller sent
+ * the targets under ride along, for an error that quotes them.
  * @param args - The call's args
- * @param aliasName - This tool's id alias param name
- * @param alias - That param's value
- * @returns The args with both sides folded
+ * @param folded - The call's targets, folded, with the names sent
+ * @param target - The target to aim them at, if any
+ * @param idAlias - This tool's own id spelling
+ * @returns The args for that one read
  */
-function foldTargets<A extends TargetParams>(
+function withTarget<A extends ReadTargetParams>(
   args: A,
-  aliasName: string,
-  alias: string | null | undefined,
+  folded: FoldedTargets,
+  target: NamedTarget | undefined,
+  idAlias: string,
 ): A {
   return {
     ...args,
-    id: namedIdParam(namedIdParam(args.id, args.ids, "ids"), alias, aliasName),
     ids: undefined,
-    [aliasName]: undefined,
-    path: namedPathParam(args.path, args.paths),
+    [idAlias]: undefined,
     paths: undefined,
-  };
-}
-
-/**
- * The call's args aimed at one target: the param that named it carries just
- * that entry, and the other one is gone, so the single-target read sees the
- * same call it would have got on its own.
- * @param args - The call's args
- * @param target - The target to aim them at
- * @returns The args for that one read
- */
-function withTarget<A extends TargetParams>(args: A, target: NamedTarget): A {
-  return {
-    ...args,
-    id: target.param === "id" ? target.value : undefined,
-    path: target.param === "path" ? target.value : undefined,
+    id: target?.param === "id" ? target.value : undefined,
+    path: target?.param === "path" ? target.value : undefined,
+    targetNames: { idParam: folded.idParam, pathParam: folded.pathParam },
   };
 }
 

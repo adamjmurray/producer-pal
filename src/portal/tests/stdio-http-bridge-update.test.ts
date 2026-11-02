@@ -6,6 +6,7 @@
 // The bridge's own answers for ppal-manage update-producer-pal, and the update
 // hint it adds to ppal-connect.
 
+import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
 import {
@@ -137,7 +138,8 @@ function serverReports(...versions: string[]): void {
   });
 }
 
-describe("StdioHttpBridge update-producer-pal", () => {
+/** Before each test, reset the SDK stand-ins and quiet the console. */
+function useBridgeStandIns(): void {
   beforeEach(() => {
     vi.clearAllMocks();
     mockServer.connect.mockResolvedValue(undefined);
@@ -149,6 +151,10 @@ describe("StdioHttpBridge update-producer-pal", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
+}
+
+describe("StdioHttpBridge update-producer-pal", () => {
+  useBridgeStandIns();
 
   it("updates the device itself, reconnects to the new one and tells the client to re-list tools", async () => {
     serverReports(OLD, OLD, VERSION);
@@ -192,23 +198,90 @@ describe("StdioHttpBridge update-producer-pal", () => {
     expect(await handler(UPDATE)).toBe(forwarded);
     expect(mockClient.callTool).toHaveBeenCalledTimes(1);
   });
+
+  describe("next step", () => {
+    const UNSEEN = "Now call ppal-connect to load the Skills and confirm";
+    const SEEN = "Now call ppal-connect with versionCheck: true to confirm";
+
+    /**
+     * Make these ppal-connect calls through a bridge, then update. The device
+     * reports the old version until the swap, then the new one.
+     * @param connects - The connect calls: their arguments and what the device answers
+     * @returns The text of the update's answer
+     */
+    async function updateAfter(
+      ...connects: Array<{ args?: Record<string, unknown>; answer: unknown }>
+    ): Promise<string> {
+      let swapped = false;
+      const deps = updateDeps({
+        request: vi.fn(() => {
+          swapped = true;
+
+          return Promise.resolve({
+            available: true as const,
+            status: 200,
+            body: {},
+          });
+        }),
+      });
+
+      mockClient.getServerVersion.mockImplementation(() => ({
+        name: "d",
+        version: swapped ? VERSION : OLD,
+      }));
+
+      const handler = await startAndGetCallHandler(bridgeOver(true, deps));
+
+      for (const { args, answer } of connects) {
+        if (answer instanceof Error) {
+          mockClient.callTool.mockRejectedValueOnce(answer);
+        } else {
+          mockClient.callTool.mockResolvedValueOnce(answer);
+        }
+
+        await handler(callToolRequest("ppal-connect", args));
+      }
+
+      return responseText((await handler(UPDATE)) as never);
+    }
+
+    const OK = { content: [{ type: "text", text: "connected" }] };
+
+    it("says only the plain connect when nothing has connected through the portal", async () => {
+      expect(await updateAfter()).toContain(UNSEEN);
+    });
+
+    it("offers the version check once a plain connect has worked", async () => {
+      expect(await updateAfter({ answer: OK })).toContain(SEEN);
+    });
+
+    it("is not set by a version check", async () => {
+      expect(
+        await updateAfter({ args: { versionCheck: true }, answer: OK }),
+      ).toContain(UNSEEN);
+    });
+
+    it("is not set by a connect that came back as an error", async () => {
+      const answer = { ...OK, isError: true };
+
+      expect(await updateAfter({ answer })).toContain(UNSEEN);
+    });
+
+    it("is not set by the offline answer", async () => {
+      expect(await updateAfter({ answer: new Error("down") })).toContain(
+        UNSEEN,
+      );
+    });
+  });
 });
 
-describe("StdioHttpBridge install-remote-script", () => {
+describe("StdioHttpBridge install-producer-pal", () => {
   const INSTALL = callToolRequest("ppal-manage", {
-    action: "install-remote-script",
+    action: "install-producer-pal",
+    userLibrary: tmpdir(),
   });
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockServer.connect.mockResolvedValue(undefined);
-    mockClient.connect.mockResolvedValue(undefined);
-    vi.spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+  useBridgeStandIns();
 
   /**
    * Make one call so the bridge is connected and knows the device's version.
@@ -225,13 +298,11 @@ describe("StdioHttpBridge install-remote-script", () => {
   it("installs the portal's script itself when the device is older", async () => {
     serverReports(OLD);
 
-    const installRemoteScript = vi.fn(() =>
-      Promise.resolve({
-        installed: true as const,
-        version: VERSION,
-        path: "/lib/Remote Scripts/Producer_Pal",
-      }),
-    );
+    const installRemoteScript = vi.fn(() => ({
+      status: "installed" as const,
+      version: VERSION,
+      path: "/lib/Remote Scripts/Producer_Pal",
+    }));
     const handler = await startAndGetCallHandler(
       bridgeOver(true, updateDeps({ installRemoteScript })),
     );
@@ -245,56 +316,39 @@ describe("StdioHttpBridge install-remote-script", () => {
     expect(mockClient.callTool).not.toHaveBeenCalled();
   });
 
-  it("forwards to the device when it is the same version", async () => {
-    serverReports(VERSION);
+  it.each([
+    ["it is the same version", () => serverReports(VERSION), true],
+    [
+      "its version is unknown",
+      () => mockClient.getServerVersion.mockReturnValue(undefined),
+      true,
+    ],
+    ["the portal doesn't offer ppal-manage", () => serverReports(OLD), false],
+  ])(
+    "forwards to the device when %s",
+    async (_case, arrange: () => void, offersManage: boolean) => {
+      arrange();
 
-    const forwarded = { content: [{ type: "text", text: "from the device" }] };
-    const handler = await startAndGetCallHandler(bridgeOver(true));
+      const forwarded = {
+        content: [{ type: "text", text: "from the device" }],
+      };
+      const handler = await startAndGetCallHandler(bridgeOver(offersManage));
 
-    await connect(handler);
-    mockClient.callTool.mockResolvedValue(forwarded);
+      await connect(handler);
+      mockClient.callTool.mockResolvedValue(forwarded);
 
-    expect(await handler(INSTALL)).toBe(forwarded);
-  });
-
-  it("forwards to the device when its version is unknown", async () => {
-    mockClient.getServerVersion.mockReturnValue(undefined);
-
-    const forwarded = { content: [{ type: "text", text: "from the device" }] };
-    const handler = await startAndGetCallHandler(bridgeOver(true));
-
-    await connect(handler);
-    mockClient.callTool.mockResolvedValue(forwarded);
-
-    expect(await handler(INSTALL)).toBe(forwarded);
-  });
-
-  it("forwards to the device when the portal doesn't offer ppal-manage", async () => {
-    serverReports(OLD);
-
-    const forwarded = { content: [{ type: "text", text: "from the device" }] };
-    const handler = await startAndGetCallHandler(bridgeOver(false));
-
-    await connect(handler);
-    mockClient.callTool.mockResolvedValue(forwarded);
-
-    expect(await handler(INSTALL)).toBe(forwarded);
-  });
+      expect(await handler(INSTALL)).toBe(forwarded);
+    },
+  );
 });
 
 describe("StdioHttpBridge ppal-connect update hint", () => {
+  useBridgeStandIns();
+
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockServer.connect.mockResolvedValue(undefined);
-    mockClient.connect.mockResolvedValue(undefined);
     mockClient.callTool.mockImplementation(() =>
       Promise.resolve({ content: [{ type: "text", text: "connected" }] }),
     );
-    vi.spyOn(console, "error").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it("tells the model to ask, then update, when the device has ppal-manage", async () => {

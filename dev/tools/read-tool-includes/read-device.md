@@ -19,6 +19,21 @@ because its includes are unique (`params`, `param-values`, `drum-map`,
 | `name`        | `string` | Display name (omitted if same as class name)  |
 | `deactivated` | `true`   | Only present when device is inactive          |
 
+### CC Control
+
+On Live 12.4.15 and later a CC Control reads like any device: `type`, `name`
+(when renamed) and `deactivated` (when off) come from the Live API.
+
+Before 12.4.15, Max's Live API lists no members for CC Control, so its name and
+on/off state can't be read. A read recognizes it by its `type` field and reports
+`type: "midi-effect: CC Control"`. It lists its params by counting and
+addressing each one, so they read, update and take clip envelopes as usual.
+`name` and `deactivated` are left out (an unreadable on/off is not off). With
+the remote script, `/device/basics` (one call for every CC Control in the read,
+at most 3 seconds, skipped when an earlier call stalled) adds `name` when the
+user renamed it and `deactivated` when it is off. `ppal-read-track` has no
+remote-script step, so it never shows either.
+
 ## Include: `"chains"`
 
 Adds chain list for rack devices. Depth-controlled by `maxDepth` arg.
@@ -32,6 +47,12 @@ their layers, as `drum-pads` does.
 | Field    | Type      | Description                               |
 | -------- | --------- | ----------------------------------------- |
 | `chains` | `Chain[]` | Chain objects with devices or deviceCount |
+
+A chain lists `gainDb`, `pan` and `sends` only when non-default (0 dB, center,
+off), except when the read targets a single pad: its drum chains always carry
+`gainDb` and `pan`, so the pad's fader is visible and the instrument's own
+volume isn't reached for. That covers a pad path or id read with `chains`, and a
+read of one of its chains by path or id. Whole-rack reads still omit defaults.
 
 A chain whose mixer has an arrangement lane lists the fields in `automation`,
 named as the chain names them: `["gainDb", "pan (overridden)", "send A-Echo"]`
@@ -84,6 +105,32 @@ Adds parameter names, macro variation info, and A/B Compare state. A
 | `macros`     | `object`   | Rack only; see below                       |
 | `abCompare`  | `"a"\|"b"` | Current A/B preset (if device supports it) |
 
+A read lists at most 200 `parameters` per device, cutting before it reads any
+values. When more matched, the device gets `paramCount` (how many matched) and a
+`detail` saying to narrow with `paramSearch`. There is no paging.
+
+### Hosted plug-ins
+
+A Producer Pal plug-in wrapper (a Max for Live device around `vst~`; see
+`dev/live-api/plugin-hosting.md`) reads as the plug-in it hosts: `type` carries
+the plug-in's name, `hosted: true` marks it, and `name` appears only when the
+user renamed the device. A wrapper with nothing loaded keeps the Max device's
+type. A Max audio effect or instrument is asked once whether it is a wrapper;
+the wrapper answers inside the same Max call, so any other device costs nothing.
+Its `parameters` are the plug-in's own, with ids `h<number>` (`h56` is the
+plug-in's param 56) and, with `param-values`, `value` as the plug-in's display
+text. The plug-in's MIDI stand-in params are left out, and `paramSearch` filters
+by name. After a Set reload a wrapper knows its plug-in only by file name, so
+`type` shows that.
+
+A rack has 16 macro params however many it shows. `parameters` leaves out those
+beyond `count` that nothing maps to. With no mappings (`has_macro_mappings`
+false) that needs nothing more; a rack with mappings keeps them all until the
+remote script says which are mapped, and then keeps only the mapped ones. A
+macro hidden by `macroCount` that is still mapped stays listed (it is in
+`hiddenMapped`). Writes are unaffected: any macro can still be addressed by
+name.
+
 `macros` is `{ count, mapped }` when the remote script is running: `mapped`
 lists the mapped macros' numbers (macro 1 is the first), and `hiddenMapped`
 lists any beyond `count`, since lowering the count hides macros but keeps their
@@ -105,6 +152,26 @@ out without the remote script, or when it can't answer for a Simpler. A
 
 Superset of `params` — includes full parameter details (value, min, max, state,
 display value, value items for quantized params).
+
+A quantized param's choices are listed as little as the model can still use:
+
+- **Off/On toggles list no `options`.** Their `value` is `"On"` or `"Off"`,
+  which says both choices, and update-device takes On/Off, true/false or 1/0 for
+  them (`isOnOffToggle`, the same rule the write uses). Any other two-option
+  list keeps its `options`.
+- **A list that two or more params share is said once.** The device gets
+  `optionLists` (`{ L1: [...], L2: [...] }`, in order of first use, before
+  `parameters`), and each of those params carries `optionList: "L1"` in place of
+  `options`. A list used by one param, or with fewer than 3 options, stays
+  inline as `options`. Sharing is decided over the params the read returns, so a
+  `paramSearch` can leave a list inline. Pseudo-params are included.
+- **`state` stays on each param.** `inactive` means the param does nothing right
+  now because a switch or mode makes it irrelevant (Operator's Osc-C params
+  while Osc-C is off; a synced LFO's free-running Hz rate); the model must not
+  edit it expecting an effect, or report its value as meaningful. `disabled`
+  means Live won't take a write. Both sit next to the value the model is about
+  to act on; moving them to a device-level list would save about 3% of an
+  Operator read and cost that locality.
 
 `min`/`max` are the range the parameter can actually display. When one end of
 that range is a word rather than a number — Glue Compressor's `Release` reads

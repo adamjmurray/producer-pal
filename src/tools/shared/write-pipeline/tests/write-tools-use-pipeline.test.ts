@@ -13,6 +13,7 @@ import {
 import {
   findSourceFiles,
   projectRoot,
+  repoPath,
 } from "#src/test/helpers/meta-test-helpers.ts";
 import { ADAPTERS } from "#src/tools/shared/tests/write-conformance/write-conformance-adapters.ts";
 import {
@@ -54,6 +55,8 @@ const READ_ONLY: Record<string, string | null> = {
     "acts on Live's undo history and the remote script install, not on targets",
   "ppal-live-api":
     "a raw Live API escape hatch the model opts into; not a target-list write",
+  "ppal-plugin-host":
+    "spike: talks to a separate wrapper device, never touches the Live Set's targets",
 };
 
 /** Tools whose empty call is not a write at all, so they need a call that is. */
@@ -93,7 +96,7 @@ describe("write tools use the pipeline", () => {
     const violations: string[] = [];
 
     for (const file of findSourceFiles(path.join(projectRoot, "src"))) {
-      const rel = path.relative(projectRoot, file);
+      const rel = repoPath(file);
 
       if (rel.startsWith(`${WRITE_PIPELINE}/`)) {
         continue;

@@ -98,6 +98,6 @@ place the bare rack path names.
 
 ## Naming a return in a send
 
-`sendReturn` and `sends[].return` take an id, name, path (`rt0`) or letter
-prefix. The order and clash rules are in
+`sends[].return` (and the deprecated `sendReturn`) take an id, name, path
+(`rt0`) or letter prefix. The order and clash rules are in
 [Sends](../clips-playback-and-sends/playback-and-sends.md#sends).

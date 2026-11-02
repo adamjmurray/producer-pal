@@ -14,7 +14,6 @@ type DismissOptions = Parameters<typeof useSettingsDismiss>[0];
 
 const defaultOptions = {
   showSettings: true,
-  settingsConfigured: true,
   settingsClosing: false,
   hasUnsavedChanges: false,
   handleCancelSettings: vi.fn(),
@@ -86,6 +85,18 @@ describe("useSettingsDismiss", () => {
     await expectShakeInsteadOfDismiss({ blockDismiss: true });
   });
 
+  it("ignores a dismiss while the dialog is already closing", async () => {
+    const { result, handleCancel } = renderDismiss({
+      settingsClosing: true,
+      hasUnsavedChanges: true,
+    });
+
+    await act(() => result.current.handleSettingsDismiss());
+
+    expect(handleCancel).not.toHaveBeenCalled();
+    expect(result.current.shake).toBe(false);
+  });
+
   it("clears shake state", async () => {
     const { result } = renderDismiss({ hasUnsavedChanges: true });
 
@@ -93,17 +104,6 @@ describe("useSettingsDismiss", () => {
     expect(result.current.shake).toBe(true);
 
     await act(() => result.current.clearShake());
-    expect(result.current.shake).toBe(false);
-  });
-
-  it("does nothing when settings not configured", async () => {
-    const { result, handleCancel } = renderDismiss({
-      settingsConfigured: false,
-    });
-
-    await act(() => result.current.handleSettingsDismiss());
-
-    expect(handleCancel).not.toHaveBeenCalled();
     expect(result.current.shake).toBe(false);
   });
 

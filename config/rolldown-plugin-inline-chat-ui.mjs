@@ -3,10 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { execSync } from "node:child_process";
+import { execFile, execSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { BUILD_SHA } from "./build-sha.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -35,11 +36,22 @@ function getFilesRecursively(dir) {
 }
 
 /**
+ * Where the Vite build writes the chat UI. The build-contents test points it
+ * at a scratch folder (see config/vite.config.ts) so it can build the release,
+ * hosting and gen-UI variants without touching the device's folder. A relative
+ * path is from the repo root, as in vite.config.ts.
+ * @returns Absolute path of the folder
+ */
+function chatUIDir() {
+  return resolve(rootDir, process.env.CHAT_UI_OUT_DIR ?? "max-for-live-device");
+}
+
+/**
  * Path to the chat UI that the Vite build produces.
  * @returns Absolute path to chat-ui.html
  */
 function chatUIPath() {
-  return join(rootDir, "max-for-live-device/chat-ui.html");
+  return join(chatUIDir(), "chat-ui.html");
 }
 
 /**
@@ -53,9 +65,7 @@ function recordedBuild() {
   let record;
 
   try {
-    record = JSON.parse(
-      readFileSync(join(rootDir, "max-for-live-device/chat-ui.inputs.json")),
-    );
+    record = JSON.parse(readFileSync(join(chatUIDir(), "chat-ui.inputs.json")));
   } catch {
     return null;
   }
@@ -65,7 +75,16 @@ function recordedBuild() {
   // passes down to the Vite build) rather than a freshly-computed one: in watch
   // mode ours is frozen at config load, and a commit would otherwise leave the
   // two disagreeing for good — every rebuild a cache miss.
-  return record.buildSha === BUILD_SHA ? record : null;
+  // The hosted-plug-ins and gen-UI flags are baked in the same way: a UI built
+  // with one must never be reused by a build without it (or the reverse).
+  const hostedPlugins = process.env.ENABLE_HOSTED_PLUGINS === "true";
+  const genUi = process.env.ENABLE_GEN_UI === "true";
+
+  return record.buildSha === BUILD_SHA &&
+    record.hostedPlugins === hostedPlugins &&
+    record.genUi === genUi
+    ? record
+    : null;
 }
 
 /**
@@ -94,6 +113,20 @@ function isChatUIStale(htmlPath, sources, startedAt) {
  */
 function mtimeOf(file) {
   return statSync(file, { throwIfNoEntry: false })?.mtimeMs ?? null;
+}
+
+/**
+ * Build the chat UI without blocking, the way the plugin would, so a later
+ * build finds it fresh and reuses it. Lets a caller build variants in parallel.
+ * @param {Record<string, string>} env - Out folder and build flags to set
+ * @returns {Promise<void>} Resolves when the build is done
+ */
+export async function buildChatUI(env) {
+  await promisify(execFile)("npm", ["run", "ui:build"], {
+    cwd: rootDir,
+    env: { ...process.env, ...env, BUILD_SHA },
+    maxBuffer: 64 * 1024 * 1024,
+  });
 }
 
 /**

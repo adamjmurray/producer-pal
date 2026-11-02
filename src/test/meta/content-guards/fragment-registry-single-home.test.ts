@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   findSourceFiles,
   projectRoot,
+  repoPath,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 
@@ -65,8 +66,6 @@ function fragmentImporters(): { file: string; count: number }[] {
     const count = (fs.readFileSync(file, "utf8").match(FRAGMENT_MODULE) ?? [])
       .length;
 
-    return count === 0
-      ? []
-      : [{ file: path.relative(projectRoot, file), count }];
+    return count === 0 ? [] : [{ file: repoPath(file), count }];
   });
 }

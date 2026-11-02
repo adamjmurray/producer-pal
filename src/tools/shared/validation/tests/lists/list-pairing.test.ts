@@ -11,11 +11,12 @@ import {
   pairValues,
   splitList,
   valueForIndex,
+  requirePairing,
   warnPairingMismatch,
 } from "../../lists/list-pairing.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 const LABELS: PairLabels = {
@@ -26,10 +27,10 @@ const LABELS: PairLabels = {
 };
 
 /**
- * The warn mock, cleared and ready for one call's worth of assertions.
+ * The emitWarning mock, cleared and ready for one call's worth of assertions.
  * @returns The mocked console module
  */
-async function freshConsole(): Promise<{ warn: unknown }> {
+async function freshConsole(): Promise<{ emitWarning: unknown }> {
   vi.clearAllMocks();
 
   return await import("#src/shared/max/v8-max-console.ts");
@@ -115,28 +116,35 @@ describe("list-pairing", () => {
     it("returns undefined when the call named nothing", () => {
       expect(valueForIndex(undefined, 0, ["A"])).toBeUndefined();
     });
+
+    it("trims a whole value the way it trims a list entry", () => {
+      expect(valueForIndex(" A ", 0, null)).toBe("A");
+      expect(valueForIndex(" A , B ", 0, null)).toBe("A , B");
+      expect(valueForIndex("   ", 0, null)).toBe("");
+      expect(everyEntry(" A ", 3, "name")).toStrictEqual(["A"]);
+    });
   });
 
   describe("pairValues", () => {
     it("broadcasts a lone value to every item without warning", async () => {
-      const console = await freshConsole();
+      const maxConsole = await freshConsole();
 
       expect(pairValues([5], 3, LABELS)).toStrictEqual([5, 5, 5]);
-      expect(console.warn).not.toHaveBeenCalled();
+      expect(maxConsole.emitWarning).not.toHaveBeenCalled();
     });
 
     it("pairs an exact list 1:1 without warning", async () => {
-      const console = await freshConsole();
+      const maxConsole = await freshConsole();
 
       expect(pairValues([1, 2, 3], 3, LABELS)).toStrictEqual([1, 2, 3]);
-      expect(console.warn).not.toHaveBeenCalled();
+      expect(maxConsole.emitWarning).not.toHaveBeenCalled();
     });
 
     it("does not cycle a mismatched list", async () => {
-      const console = await freshConsole();
+      const maxConsole = await freshConsole();
 
       expect(pairValues([1, 2], 3, LABELS)).toStrictEqual([1, 2, null]);
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(maxConsole.emitWarning).toHaveBeenCalledWith(
         "toPath: 2 destinations for 3 clips; the clips past the last destination were not moved",
       );
     });
@@ -144,23 +152,23 @@ describe("list-pairing", () => {
     // A lone value that didn't parse is still one value for every item, so the
     // count was never wrong and a count warning would be a second, false story.
     it("broadcasts a lone null without warning", async () => {
-      const console = await freshConsole();
+      const maxConsole = await freshConsole();
 
       expect(pairValues([null], 2, LABELS)).toStrictEqual([null, null]);
-      expect(console.warn).not.toHaveBeenCalled();
+      expect(maxConsole.emitWarning).not.toHaveBeenCalled();
     });
 
     // Only the length decides: two entries are a list even when neither parsed,
     // and a list of two for three items really is the wrong length.
     it("still warns for a wrong-length list of nulls", async () => {
-      const console = await freshConsole();
+      const maxConsole = await freshConsole();
 
       expect(pairValues([null, null], 3, LABELS)).toStrictEqual([
         null,
         null,
         null,
       ]);
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(maxConsole.emitWarning).toHaveBeenCalledWith(
         "toPath: 2 destinations for 3 clips; the clips past the last destination were not moved",
       );
     });
@@ -168,19 +176,19 @@ describe("list-pairing", () => {
 
   describe("pairExact", () => {
     it("refuses to broadcast, so one destination reaches one item", async () => {
-      const console = await freshConsole();
+      const maxConsole = await freshConsole();
 
       expect(pairExact(["a"], 3, LABELS)).toStrictEqual(["a", null, null]);
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(maxConsole.emitWarning).toHaveBeenCalledWith(
         "toPath: 1 destination for 3 clips; the clips past the last destination were not moved",
       );
     });
 
     it("drops the extras and says so", async () => {
-      const console = await freshConsole();
+      const maxConsole = await freshConsole();
 
       expect(pairExact(["a", "b", "c"], 2, LABELS)).toStrictEqual(["a", "b"]);
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(maxConsole.emitWarning).toHaveBeenCalledWith(
         "toPath: 3 destinations for 2 clips; the extra destinations went unused",
       );
     });
@@ -188,12 +196,28 @@ describe("list-pairing", () => {
 
   describe("warnPairingMismatch", () => {
     it("stays quiet when the counts match or nothing was named", async () => {
-      const console = await freshConsole();
+      const maxConsole = await freshConsole();
 
       warnPairingMismatch(3, 3, LABELS);
       warnPairingMismatch(0, 3, LABELS);
 
-      expect(console.warn).not.toHaveBeenCalled();
+      expect(maxConsole.emitWarning).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("requirePairing", () => {
+    it("stays quiet when the counts match or nothing was named", () => {
+      expect(() => requirePairing(3, 3, LABELS)).not.toThrow();
+      expect(() => requirePairing(0, 3, LABELS)).not.toThrow();
+    });
+
+    it("refuses a short or long list", () => {
+      expect(() => requirePairing(2, 3, LABELS)).toThrow(
+        "toPath names 2 destinations but the call acts on 3 clips",
+      );
+      expect(() => requirePairing(4, 3, LABELS)).toThrow(
+        "toPath names 4 destinations but the call acts on 3 clips",
+      );
     });
   });
 });

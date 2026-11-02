@@ -55,11 +55,13 @@
   // bar(s) using beatsPerBar. A pull before `1|1` is allowed: the bar goes to
   // 0 / negative and the bound resolves to negative time. Never throws.
   function borrowBars(bar, beat, beatsPerBar) {
-    while (beat < 1) {
-      beat += beatsPerBar;
-      bar -= 1;
-    }
-    return { bar, beat };
+    if (!(beat < 1)) return { bar, beat };
+    // Closed form of "add a bar until beat >= 1", so a huge offset stays fast.
+    // The ceil can land one off from float rounding, so nudge.
+    let bars = Math.ceil((1 - beat) / beatsPerBar);
+    if (beat + bars * beatsPerBar < 1) bars += 1;
+    else if (bars > 1 && beat + (bars - 1) * beatsPerBar >= 1) bars -= 1;
+    return { bar: bar - bars, beat: beat + bars * beatsPerBar };
   }
 
   // Targeted error for the removed synced-period syntax (Nt, N:Nt).
@@ -732,12 +734,16 @@ valueToken "expression"
   / number
 
 // A leading `-` on a note value or bar count (`-n/1`, `-2bar`), so a backwards
-// waveform cycle can be written in musical units like a forward one. Desugars
-// to `0 - value` so the evaluator needs no new node type. A bare number carries
-// its own sign (see `number`), and binary `-` is handled by `additive`.
+// waveform cycle can be written in musical units like a forward one. The result
+// is the same node with a negative size (`wholeNoteFraction` or `bars`), so
+// the evaluators need no new node type and a note op can tell a negative note
+// value from an arithmetic expression. A bare number carries its own sign (see
+// `number`), and binary `-` is handled by `additive`.
 negatedDuration
   = "-" value:(nDuration / barDuration) {
-    return { type: "subtract", left: 0, right: value };
+    return value.type === "nDuration"
+      ? { type: "nDuration", wholeNoteFraction: -value.wholeNoteFraction }
+      : { type: "barDuration", bars: -value.bars };
   }
 
 // ratchet()/repeat()/merge() are note-count operations (whole statements), not

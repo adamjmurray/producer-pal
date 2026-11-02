@@ -57,6 +57,49 @@ individual messages. When used, the overridden value is stamped on the assistant
 `ChatMessage` as `thinkingOverride` — only when it differs from the conversation
 default.
 
+**Signed reasoning and prompt caching:**
+
+Claude checks its prompt cache against the exact earlier assistant messages. A
+dropped thinking block changes the prefix, so the cache read stops there and the
+earlier tool results are billed again on the next turn. So `buildModelMessages`
+re-sends each turn's signed reasoning (`reasoningReplayFor`,
+`chat/sdk/reasoning-replay.ts`):
+
+- Direct Anthropic: `reasoningParts`, only while the `anthropic` thinking option
+  is on. Never widen that check; the API rejects reasoning when thinking is
+  disabled.
+- OpenRouter→Claude: `openrouterReasoningDetails` (Claude's complete, signed
+  `reasoning_details` only), always offered, but only for a step whose
+  `responseModel` is the request's model. A signature means nothing to another
+  model, so after a model switch those steps go back as plain content.
+  `transformOpenRouterRequest` is the last check: if the final body has no
+  reasoning, effort `none`, or a non-`anthropic/` model, it strips Claude's
+  `reasoning_details` from earlier turns. It runs after the "Off" settle, so a
+  model that can't turn reasoning off (Sonnet 5.5) keeps its blocks at "Off".
+
+**Raw stream tests:**
+
+`chat/sdk/tests/stream/` feeds each provider's raw server-sent events through
+the real AI SDK provider and `streamText` loop (only `fetch` is stubbed) into
+`ChatSdkClient`, then checks the history and the next request's wire body. It
+covers Anthropic, OpenAI (Responses), Gemini, and the Chat Completions routes
+(LM Studio, custom, Ollama). The main fixtures (reasoning, tool calls, text,
+cut-off) were checked against real recordings in 2026-11: Anthropic (Haiku and
+Sonnet), OpenAI (GPT luna), Gemini (3.8 flash) and LM Studio (Qwen). Mid-stream
+errors, content-filter stops and blocked prompts are still built by hand: none
+can be triggered with harmless input (Anthropic's documented refusal string did
+not fire on Haiku). `scripts/probes/record-provider-streams.ts` records real
+streams (paid; needs your keys) to check or refresh a fixture; `--max-output`
+caps the answer and `--prompt` swaps the prompt. OpenRouter's raw stream is
+covered in `tests/provider/openrouter-reasoning-replay.test.ts`.
+
+What the tests pin down: only Anthropic and OpenRouter→Claude reasoning is sent
+back on a later turn. Gemini thought summaries, OpenAI reasoning summaries and
+local models' thinking are display-only. The SDK keeps them within a turn, then
+earlier turns go back as plain text and tool calls. For Gemini 3 the SDK adds a
+`skip_thought_signature_validator` signature to those earlier calls and logs an
+AI SDK warning.
+
 **Response Model Tracking:**
 
 After each stream completes, `ChatSdkClient` (`chat/sdk/client.ts`) captures the

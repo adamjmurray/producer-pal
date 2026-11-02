@@ -17,8 +17,9 @@ import {
   type EvalScenario,
   type EvalTurnResult,
 } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_DELETE = "ppal-delete";
+const TOOL_DELETE = TOOLS.delete;
 
 /** Drums is the first track of the basic-midi-4-track Live Set. */
 const DRUMS_TRACK_INDEX = 0;
@@ -114,14 +115,14 @@ export const deleteTargets: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     // Turn 1: a device
     { type: "tool_called", tool: TOOL_DELETE, turn: 1 },
     assertDeleteType(1, "device"),
     {
       type: "state",
-      tool: "ppal-read-track",
+      tool: TOOLS.readTrack,
       args: { trackIndex: DRUMS_TRACK_INDEX, include: ["devices"] },
       expect: (result) =>
         !deviceNames(result).some((name) => /utility/i.test(name)),
@@ -134,7 +135,7 @@ export const deleteTargets: EvalScenario = {
     assertDeleteType(2, "scene"),
     {
       type: "state",
-      tool: "ppal-read-live-set",
+      tool: TOOLS.readLiveSet,
       args: { include: ["scenes"] },
       expect: (result) =>
         ((result as SetScenes).scenes ?? []).length === SCENES_AFTER_DELETE,
@@ -147,7 +148,7 @@ export const deleteTargets: EvalScenario = {
     assertDeleteType(3, "drum-pad"),
     {
       type: "state",
-      tool: "ppal-read-device",
+      tool: TOOLS.readDevice,
       // drum-map, not drum-pads: small-model mode strips drum-pads from the
       // enum, so the read is rejected and the empty result reads as a deleted
       // rack. drum-map carries the same names and exists in both modes.

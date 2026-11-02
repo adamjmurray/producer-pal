@@ -87,12 +87,12 @@ export interface PresetScope {
 /**
  * What remoteScript.resolve answers. `error` is worded for the model;
  * `outOfTime` marks a search that ran out of its time, not one that found a
- * problem.
+ * problem. `notFound` marks a name nothing in the browser has.
  */
 export type BrowserItemResolution =
   | RemoteScriptUnavailable
   | { available: true; item: BrowserItem }
-  | { available: true; error: string; outOfTime?: true };
+  | { available: true; error: string; outOfTime?: true; notFound?: true };
 
 /**
  * What remoteScript.load answers. `error` is worded for the model; `unfinished`

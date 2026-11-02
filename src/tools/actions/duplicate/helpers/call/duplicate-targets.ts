@@ -62,6 +62,7 @@ export function duplicateTargets(
     type,
     id: parsed.id,
     path: parsed.path,
+    names: parsed.names,
     toPath: parsed.toPath,
     toSlot: args.toSlot,
     arrangementStart: parsed.arrangementStart,
@@ -80,7 +81,10 @@ export function duplicateTargets(
   // is created. Other types have no destination path.
   const clipDestinations =
     type === "clip"
-      ? resolveSourceClipDestinations(sources, parsed.onArrangement)
+      ? resolveSourceClipDestinations(
+          sources,
+          parsed.onArrangement ? parsed.startParam : null,
+        )
       : null;
 
   run.clipDestinations = clipDestinations;
@@ -104,6 +108,7 @@ export function duplicateTargets(
     takeLaneName: args.takeLaneName,
     laneCopy: parsed.laneCopy,
     toTakeLane: parsed.toTakeLane,
+    startParam: parsed.startParam,
   });
 
   run.destination = destination;
@@ -125,7 +130,7 @@ export function duplicateTargets(
   );
   const targets = drafts.map((draft, index): DuplicateTarget => {
     if (draft.skip != null) {
-      return { named: draft.named, skip: draft.skip };
+      return { named: draft.named, atStart: draft.atStart, skip: draft.skip };
     }
 
     const label = labelFor(index);
@@ -133,6 +138,8 @@ export function duplicateTargets(
 
     return {
       named: made.named ?? draft.named,
+      // A copy the label renamed is addressed by its destination instead.
+      atStart: made.named == null ? draft.atStart : undefined,
       // One copy has no other to go over.
       covers: drafts.length > 1 ? readCovers(made.covers) : undefined,
       data: { body: made.body, label },
@@ -169,6 +176,7 @@ function copyDrafts(
   if (clipDestinations != null) {
     return clipCopyDrafts(sources, clipDestinations, {
       takeLane: parsed.args.takeLane,
+      startParam: parsed.startParam,
       objectOf: (id) => liveObject(run, id),
       trackOf: (trackIndex) => trackFor(run, trackIndex),
       meter: () => meterOf(run),

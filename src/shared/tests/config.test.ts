@@ -13,6 +13,7 @@ import {
   SAME_TIME_EPSILON,
   SMALL_MODEL_MODE_HEADER,
   VERSION,
+  isLoopbackHost,
   PORTAL_VERSION_HEADER,
   resolveEnabledTools,
   resolvePortalVersion,
@@ -180,5 +181,33 @@ describe("default MCP port", () => {
     expect(
       initial?.saved_attribute_attributes.valueof.parameter_initial,
     ).toStrictEqual([DEFAULT_MCP_PORT]);
+  });
+});
+
+describe("isLoopbackHost", () => {
+  it.each([
+    "localhost",
+    "LOCALHOST:3350",
+    "127.0.0.1",
+    "127.0.0.1:3350",
+    "[::1]",
+    "[::1]:3350",
+  ])("accepts %s", (host) => {
+    expect(isLoopbackHost(host)).toBe(true);
+  });
+
+  it.each([
+    "",
+    "evil.com@localhost",
+    "localhost/x",
+    "localhost:",
+    "localhost:abc",
+    "localhost.evil.com",
+    "127.0.0.2",
+    "::1",
+    "192.168.1.5:3350",
+    "http://localhost",
+  ])("refuses %j", (host) => {
+    expect(isLoopbackHost(host)).toBe(false);
   });
 });

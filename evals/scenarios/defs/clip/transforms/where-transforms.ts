@@ -27,6 +27,7 @@ import {
   TOOL_UPDATE_CLIP,
 } from "../helpers/clip-tool-constants.ts";
 import { clearClipSlots } from "../helpers/clip-turn-readers.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 const LIVE_SET = "basic-midi-4-track";
 const SLOT = "0/0";
@@ -44,7 +45,7 @@ const TEST_NOTES =
 async function setupWhereClip(mcpClient: Client): Promise<void> {
   await clearClipSlots(mcpClient, [SLOT]);
   await mcpClient.callTool({
-    name: "ppal-create-clip",
+    name: TOOLS.createClip,
     arguments: {
       path: SLOT_PATH,
       length: "2bar",

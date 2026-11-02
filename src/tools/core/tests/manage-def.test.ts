@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { z } from "zod";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -71,6 +72,26 @@ describe("ppal-manage definition", () => {
 
     expect(names(false)).toContain("ppal-manage");
     expect(names(true)).not.toContain("ppal-manage");
+  });
+
+  it("publishes the new install name only, and still accepts the retired one", () => {
+    const { inputSchema } = registered(false) as { inputSchema: z.ZodType };
+    const published = JSON.stringify(z.toJSONSchema(inputSchema));
+    const description = String(registered(false)?.description);
+
+    expect(published).toContain("install-producer-pal");
+    expect(published).not.toContain("install-remote-script");
+    expect(description).not.toContain("install-remote-script");
+    expect(
+      inputSchema.safeParse({ action: "install-producer-pal" }).success,
+    ).toBe(true);
+    // The SDK validates against this before the handler runs, and the handler
+    // gets the new name.
+    expect(
+      inputSchema.parse({ action: "install-remote-script" }),
+    ).toStrictEqual({
+      action: "install-producer-pal",
+    });
   });
 
   it("does not count its params as ones small models lose", () => {

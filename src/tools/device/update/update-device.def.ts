@@ -5,10 +5,19 @@
 
 import { z } from "zod";
 import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
-import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
+import {
+  deprecatedSendParams,
+  sendsInputSchema,
+} from "#src/tools/shared/sends/sends-schema.ts";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+
+// Unfinished plug-in hosting: release builds don't mention it.
+const HOSTED_PARAMS =
+  process.env.ENABLE_HOSTED_PLUGINS === "true"
+    ? "A hosted plug-in's params (read-device shows `hosted`) are addressed as h56; give a number or the text the plug-in shows. "
+    : "";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   title: "Update Device",
@@ -37,7 +46,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
 
     toPath: param(z.coerce.string().optional(), {
       default:
-        "move to path ('t2/d+' appends, 't2/d1' inserts at 1, 't0/d0/c1/d+'; 't0/d0/c+' appends a new chain to that rack and moves the device into it). Comma-separated, one per target. To move a whole drum pad, target the pad path (path 't0/d0/pC1', toPath 't0/d0/pD1'); it stays in its rack and layers onto an occupied pad. A device moved alone keeps its chain's trim only into an empty, untouched chain",
+        "move to path ('t2/d+' appends, 't2/d1' inserts at 1, 't0/d0/c1/d+'; 't0/d0/c+' appends a new chain to that rack and moves the device into it). Comma-separated, one per target. A pad moves by its pad path ('t0/d0/pC1' to 't0/d0/pD1'), same rack. A device moved alone keeps its chain's trim only into an empty, untouched chain",
       smallModel: "destination path to move device to",
     }),
     name: param(z.string().optional(), {
@@ -56,7 +65,9 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
     params: param(paramsInputSchema, {
       default:
-        "array of {name, value} or {id, value}. name = a param name; id = a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one. Every param sent comes back as one entry, in order: id and name alone when it took the value asked for, the value it reads as (plus a `detail`) when Live kept a different one, or `ok:false` and why nothing was written. A param named twice is written once, at its last entry; the earlier one comes back with only a `detail`. For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
+        "array of {name, value} or {id, value}. name = a param name; id = a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one. Every param sent comes back as one entry, in order: id and name alone when it took the value asked for, the value it reads as (plus a `detail`) when Live kept a different one, or `ok:false` and why nothing was written. A param named twice is written once, at its last entry; the earlier one comes back with only a `detail`. " +
+        HOSTED_PARAMS +
+        "Drum Rack pad sample: {name:'pC1/sample', value:'<abs path>'}",
       // Small mode ships no devices skills fragment, so this is the only place
       // saying a value is a display value (not a normalized 0-1) AND the only
       // place teaching the sample write. getting-help-basic promises samples on
@@ -129,20 +140,12 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         "works unless the pad has layers, which take a layer path)",
       smallModel: null,
     }),
-    sendGainDb: param(z.coerce.number().min(-70).max(0).optional(), {
-      default: "chain's send level in dB, requires sendReturn (chains only)",
-      smallModel: null,
-    }),
-    sendReturn: param(z.coerce.string().optional(), {
-      default:
-        'rack return chain for sendGainDb: id, exact name (e.g. "a Reverb"), or letter (e.g. "a"), or comma-separated one per target; requires sendGainDb',
-      smallModel: null,
-    }),
     sends: param(sendsInputSchema, {
       default:
-        "several of a chain's sends at once: [{return, gainDb}], return as for sendReturn. Use instead of sendGainDb + sendReturn",
+        '[{return, gainDb}] for a chain (chains only); return is a rack return chain: id, exact name (e.g. "a Reverb"), or letter (e.g. "a")',
       smallModel: null,
     }),
+    ...deprecatedSendParams,
     chokeGroup: param(z.coerce.number().int().min(0).max(16).optional(), {
       default: "choke group 0-16, 0=none (drum chains only)",
       smallModel: null,

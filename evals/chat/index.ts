@@ -12,6 +12,7 @@ import {
 } from "#evals/chat/agent-cli/agent-cli-chat.ts";
 import { getAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.ts";
 import { listModels } from "#evals/shared/list-models.ts";
+import { LOCAL_DEFAULT_BASE_URL } from "#evals/shared/provider-configs.ts";
 import {
   LIST_MODELS_HINT,
   parseModelArgOrExit,
@@ -71,7 +72,7 @@ program
   .option("-u, --usage", "Show per-step token usage")
   .option(
     "-b, --base-url <url>",
-    "Base URL for local provider (default: http://localhost:11434/v1)",
+    `Base URL for local provider (default: ${LOCAL_DEFAULT_BASE_URL})`,
   )
   .argument("[text...]", "Initial text to start conversation")
   .action(async (textArray: string[], rawOptions: RawChatOptions) => {

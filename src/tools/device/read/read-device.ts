@@ -19,6 +19,7 @@ import { buildAddressedChainInfo } from "#src/tools/shared/device/helpers/chain-
 import { drumPadPath } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/insertion-path.ts";
+import { type TargetNames } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   namedIdParam,
@@ -36,6 +37,7 @@ import {
   buildDrumPadInfo,
   readDrumPadByPath,
 } from "./helpers/drum-pad-reading.ts";
+import { addCcControlBasics } from "./helpers/read-cc-control-basics.ts";
 import { addMappedMacros } from "./helpers/read-mapped-macros.ts";
 import { addSimplerSettings } from "./helpers/read-simpler-settings.ts";
 import { type ReadOptions } from "./helpers/read-device-options.ts";
@@ -53,6 +55,8 @@ interface ReadDeviceArgs {
   path?: string;
   /** Hidden alias for path */
   paths?: string;
+  /** @internal The names `id` and `path` were sent under, set by the fan-out */
+  targetNames?: TargetNames;
   include?: string[];
   maxDepth?: number;
   paramSearch?: string;
@@ -67,8 +71,8 @@ interface ReadDeviceArgs {
  * @param args.paths - Hidden alias for path
  * @param context - Internal context object (supplies the active notation)
  * @returns One device, or one entry per target named; a promise, because a
- *   rack's mapped macros and a Simpler's pitch bend ranges come from the remote
- *   script
+ *   rack's mapped macros, a CC Control's name and on/off state (before Live
+ *   12.4.15), and a Simpler's pitch bend ranges come from the remote script
  */
 export async function readDevice(
   args: ReadDeviceArgs,
@@ -80,12 +84,15 @@ export async function readDevice(
     (one) => readOneDevice(one, context),
   );
 
-  // Which macros are mapped, and a Simpler's pitch bend ranges, are the parts of
-  // a device read that wait on the remote script, so each is added after the
-  // fan-out, once, for every device read. One after the other: awaits never
-  // overlap. A remote script that stalled on the first would stall on the second.
+  // Which macros are mapped, a CC Control's name and on/off state (before Live
+  // 12.4.15), and a Simpler's pitch bend ranges, are the parts of a device read
+  // that wait on the remote script, so each is added after the fan-out, once,
+  // for every device read. One after the other: awaits never overlap. A remote
+  // script that stalled on one would stall on the next.
   const results = Array.isArray(result) ? result : [result];
-  const stalled = await addMappedMacros(results, context.deadline);
+  const stalled =
+    (await addMappedMacros(results, context.deadline)) ||
+    (await addCcControlBasics(results, context.deadline));
 
   if (!stalled) {
     await addSimplerSettings(results, context.deadline, args.paramSearch);
@@ -103,6 +110,7 @@ export async function readDevice(
  * @param args.include - Array of data to include in the response
  * @param args.maxDepth - Device tree depth for chains/drum-pads
  * @param args.paramSearch - Filter parameters by substring match on name
+ * @param args.targetNames - The names the id and path were sent under
  * @param context - Internal context object (supplies the active notation)
  * @returns Device, chain, or drum pad information
  */
@@ -111,6 +119,7 @@ export function readOneDevice(
     id,
     deviceId,
     path,
+    targetNames,
     include = [],
     maxDepth = 0,
     paramSearch,
@@ -123,7 +132,7 @@ export function readOneDevice(
   path = namedParam(path, "path");
 
   if (deviceId == null && path == null) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("device"));
   }
 
   const includeAll = include.includes("*");
@@ -137,7 +146,7 @@ export function readOneDevice(
   const includeParamValues = includeAll || include.includes("param-values");
   // A search names the params to show, so it needs them on.
   const includeParams =
-    includeParamValues || include.includes("params") || paramSearch != null;
+    includeParamValues || include.includes("params") || isSearch(paramSearch);
   const includeSample = includeAll || include.includes("sample");
   const includeOptions = includeAll || include.includes("options");
   const includeActions = includeAll || include.includes("actions");
@@ -160,7 +169,7 @@ export function readOneDevice(
     paramSearch,
   };
 
-  const result = readDeviceTarget(deviceId, path, readOptions);
+  const result = readDeviceTarget(deviceId, path, readOptions, targetNames);
   const processed = postProcessDrumMap(result, {
     includeDrumMap,
     drumMapExplicit: include.includes("drum-map"),
@@ -178,35 +187,43 @@ export function readOneDevice(
  * @param deviceId - Device ID to read
  * @param path - Device/chain/drum-pad path
  * @param options - Read options
+ * @param names - The names the id and path were sent under
  * @returns Device, chain, or drum pad information
  */
 function readDeviceTarget(
   deviceId: string | undefined,
   path: string | undefined,
   options: ReadOptions,
+  names?: TargetNames,
 ): Record<string, unknown> {
   if (deviceId) {
-    return readDeviceById(deviceId, options);
+    return readDeviceById(deviceId, options, names?.idParam ?? "id");
   }
 
   // readOneDevice already refused a call naming neither, so a missing deviceId
   // means the path is present.
   const devicePath = path as string;
-  const resolved = resolvePathToLiveApi(devicePath);
+  const label = names?.pathParam ?? "path";
+  const resolved = resolvePathToLiveApi(devicePath, label);
 
   // A type segment that named no device says what the container holds instead,
   // whatever the substituted position would have resolved to.
   if (resolved.namesNothing != null) {
-    throw new Error(nothingAtPath(devicePath, resolved.namesNothing));
+    throw new Error(nothingAtPath(devicePath, resolved.namesNothing, label));
   }
 
   switch (resolved.targetType) {
     case "device":
-      return readDeviceByLiveApiPath(resolved.liveApiPath, devicePath, options);
+      return readDeviceByLiveApiPath(
+        resolved.liveApiPath,
+        devicePath,
+        options,
+        label,
+      );
 
     case "chain":
     case "return-chain":
-      return readChain(resolved.liveApiPath, resolved.path, options);
+      return readChain(resolved.liveApiPath, resolved.path, options, label);
 
     case "drum-pad":
       return readDrumPadByPath(
@@ -215,6 +232,7 @@ function readDeviceTarget(
         resolved.remainingSegments,
         resolved.path,
         options,
+        label,
       );
 
     // Unreachable: every TargetType is handled above, and the `never` keeps it
@@ -233,16 +251,18 @@ function readDeviceTarget(
  * Read a device, chain, or drum pad by ID
  * @param deviceId - Device, chain or DrumPad ID to read
  * @param options - Read options
+ * @param label - The param the id was sent under
  * @returns Device or drum pad information
  */
 function readDeviceById(
   deviceId: string,
   options: ReadOptions,
+  label: string,
 ): Record<string, unknown> {
   const device = LiveAPI.from(`id ${deviceId}`);
 
   if (!device.exists()) {
-    throw new Error(idDoesNotExist(deviceId));
+    throw new Error(idDoesNotExist(deviceId, undefined, label));
   }
 
   // duplicate and delete both hand back pad ids, so reading one has to answer
@@ -269,17 +289,19 @@ function readDeviceById(
  * @param liveApiPath - Live API canonical path
  * @param path - The path as the caller wrote it, for the error
  * @param options - Read options
+ * @param label - The param the path was sent under, for the error
  * @returns Device information
  */
 function readDeviceByLiveApiPath(
   liveApiPath: string,
   path: string,
   options: ReadOptions,
+  label: string,
 ): Record<string, unknown> {
   const device = LiveAPI.from(liveApiPath);
 
   if (!device.exists()) {
-    throw new Error(nothingAtPath(path));
+    throw new Error(nothingAtPath(path, undefined, label));
   }
 
   return readDeviceShared(device, options);
@@ -290,17 +312,19 @@ function readDeviceByLiveApiPath(
  * @param liveApiPath - Live API canonical path to the chain
  * @param path - Simplified path for response
  * @param options - Read options
+ * @param label - The param the path was sent under, for the error
  * @returns Chain information
  */
 function readChain(
   liveApiPath: string,
   path: string,
   options: ReadOptions,
+  label: string,
 ): Record<string, unknown> {
   const chain = LiveAPI.from(liveApiPath);
 
   if (!chain.exists()) {
-    throw new Error(`Chain not found at path: ${path}`);
+    throw new Error(`Chain not found at ${label}: ${path}`);
   }
 
   return readChainObject(chain, path, options);
@@ -325,4 +349,14 @@ function readChainObject(
         readDeviceShared(device, { ...options, chainAutomation }),
       ),
   );
+}
+
+/**
+ * Whether a param search names anything. A blank one is ignored by the filter,
+ * so it must not switch the params on either.
+ * @param paramSearch - The search as sent
+ * @returns True when there is something to search for
+ */
+function isSearch(paramSearch: string | undefined): boolean {
+  return (paramSearch?.trim() ?? "") !== "";
 }

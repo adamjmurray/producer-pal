@@ -18,7 +18,10 @@ import {
   type UseCustomSkillsCollectionReturn,
 } from "#webui/hooks/context/use-custom-skills-collection";
 import { CustomSkillEditor } from "#webui/components/context/skills/CustomSkillEditor";
-import { reloadStaleEntry } from "#webui/components/context/tests/helpers/stale-entry-banner";
+import {
+  reloadAsEntryIsDeleted,
+  reloadStaleEntry,
+} from "#webui/components/context/tests/helpers/stale-entry-banner";
 import { makeManualGuard } from "#webui/components/context/collection/leave-guard-test-helpers";
 
 // Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
@@ -299,6 +302,22 @@ describe("CustomSkillEditor external update banner", () => {
       "checked",
       false,
     );
+  });
+
+  it("keeps the draft when Reload is clicked in the frame the skill disappears", () => {
+    const collection = stubCollection(vi.fn());
+    const { container, rerender } = renderEditor({ collection, entry: ENTRY });
+
+    reloadAsEntryIsDeleted(
+      rerender,
+      container,
+      editorElement({ collection, entry: { ...ENTRY, body: "Changed." } }),
+      editorElement({ collection, entry: null }),
+    );
+
+    expect(
+      screen.getByRole("textbox", { name: /Instructions/ }),
+    ).toHaveProperty("value", ENTRY.body);
   });
 
   it("stays suppressed while the user is typing (dirty draft)", () => {

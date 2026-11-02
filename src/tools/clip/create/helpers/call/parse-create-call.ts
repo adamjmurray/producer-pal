@@ -11,6 +11,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
+import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import { refuseDoubledPosition } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
@@ -90,7 +91,7 @@ export function parseCreateCall(
   validateCreateClipParams(args.notes ?? null, args.sampleFile ?? null);
   refuseUnknownAuto(args.auto ?? null);
 
-  const song = readSongMeter(liveSet);
+  const song = readSongMeter();
   // sampleFile, timeSignature, start, length and firstStart pair 1:1 with the
   // clips, so each gets its own sample, meter and region.
   const plans = buildClipPlans({
@@ -118,6 +119,9 @@ export function parseCreateCall(
     destinations.arrangementPositions,
     song.songTimeSigNumerator,
     song.songTimeSigDenominator,
+    // A coordinate beside arrangementStart was refused, so one of them named
+    // every position.
+    paramNamesSomething(args.arrangementStart) ? "arrangementStart" : "path",
   );
 
   return {

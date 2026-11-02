@@ -10,33 +10,38 @@ the model for a fix that landed in between: `duplicate-loop` read as "luna
 fails, gemma passes" until run 2 turned out to predate the refusal of
 `start`/`length` beside `duplicateLoop`.
 
-| #   | model             | mode            | commit       | trials | ran | pass      | input  | wall  |
-| --- | ----------------- | --------------- | ------------ | ------ | --- | --------- | ------ | ----- |
-| 1   | gpt-5.6-luna      | default         | not recorded | 3      | 231 | 186 (81%) | 84.4M  | 2h05m |
-| 2   | gpt-5.6-luna      | default         | `c3a8484fb`  | 3      | 276 | 249 (90%) | 115.4M | 3h23m |
-| 3   | gemma-4-26b-a4b   | `--small-model` | `90ead3407`  | 1      | 59  | 41 (69%)  | 3.4M   | 33m   |
-| 4   | gemma-4-26b-a4b   | `--small-model` | `90ead3407`  | 1      | 59  | 40 (68%)  | 3.1M   | 35m   |
-| 5   | gemma-4-26b-a4b   | default         | `90ead3407`  | 1      | 92  | 74 (80%)  | 17.0M  | 1h04m |
-| 6   | gpt-5.6-luna      | default         | `b2e472eb0`  | 3      | 64  | 45 (70%)  | 51.6M  | 1h12m |
-| 7   | gpt-5.6-luna      | default         | `92c6e7f06`  | 3      | 301 | 264 (88%) | 129.7M | 4h00m |
-| 8   | gpt-5.6-luna      | default         | `47adbc056`  | 3      | 301 | 270 (90%) | 124.6M | 2h56m |
-| 9   | gpt-5.6-luna      | default         | `d5971a5bd`  | 3      | 301 | 273 (91%) | 130.7M | 4h11m |
-| 10  | gpt-5.6-luna      | default         | `ba97d9173`  | 3      | 300 | 268 (89%) | 131.0M | 2h52m |
-| 11  | qwen3.8-27b       | `--small-model` | `ba97d9173`  | 1      | 65  | 55 (85%)  | 4.1M   | 1h31m |
-| 12  | qwen3.8-27b       | `--small-model` | `ba97d9173`  | 1      | 65  | 54 (83%)  | 3.8M   | 1h17m |
-| 13  | qwen3.8-27b       | `--small-model` | `ba97d9173`  | 1      | 65  | 56 (86%)  | 4.4M   | 1h39m |
-| 14  | gpt-6-luna        | default         | `3a468481c`  | 2      | 198 | 173 (87%) | 98.4M  | 1h58m |
-| 15  | gpt-6-luna        | default         | `144eead60`  | 3      | 355 | 317 (89%) | 167.1M | 4h15m |
-| 16  | gemma-4-31b       | `--small-model` | `144eead60`  | 1      | 74  | 66 (89%)  | 4.0M   | 2h06m |
-| 17  | gemma-4-31b       | `--small-model` | `144eead60`  | 1      | 75  | 63 (84%)  | 4.4M   | 2h08m |
-| 18  | gpt-6-luna        | default         | `4852e3680`+ | 3      | 381 | 341 (90%) | 174.2M | 3h24m |
-| 19  | claude-haiku-5-5  | default         | `4852e3680`+ | 3      | 381 | 375 (98%) | 102.2M | 1h14m |
-| 20  | gpt-6-luna        | default         | `6f48b19be`  | 3      | 381 | 343 (90%) | 174.0M | 2h49m |
-| 21  | claude-haiku-5-5  | default         | `6f48b19be`  | 3      | 381 | 369 (97%) | 99.3M  | 1h45m |
-| 22  | gpt-6-luna        | default         | `37c11203b`  | 3      | 381 | 340 (89%) | 175.0M | 2h34m |
-| 23  | claude-haiku-5-5  | default         | `37c11203b`  | 3      | 381 | 370 (97%) | 100.4M | 1h19m |
-| 24  | claude-sonnet-5-5 | default         | `e90a887ba`+ | 3      | 381 | 377 (99%) | 91.4M  | 1h26m |
-| 25  | gpt-6.1-terra     | default         | `e90a887ba`+ | 3      | 381 | 371 (97%) | 139.3M | 4h20m |
+| #   | model             | mode            | commit       | trials | ran | pass      | input  | wall   |
+| --- | ----------------- | --------------- | ------------ | ------ | --- | --------- | ------ | ------ |
+| 1   | gpt-5.6-luna      | default         | not recorded | 3      | 231 | 186 (81%) | 84.4M  | 2h05m  |
+| 2   | gpt-5.6-luna      | default         | `c3a8484fb`  | 3      | 276 | 249 (90%) | 115.4M | 3h23m  |
+| 3   | gemma-4-26b-a4b   | `--small-model` | `90ead3407`  | 1      | 59  | 41 (69%)  | 3.4M   | 33m    |
+| 4   | gemma-4-26b-a4b   | `--small-model` | `90ead3407`  | 1      | 59  | 40 (68%)  | 3.1M   | 35m    |
+| 5   | gemma-4-26b-a4b   | default         | `90ead3407`  | 1      | 92  | 74 (80%)  | 17.0M  | 1h04m  |
+| 6   | gpt-5.6-luna      | default         | `b2e472eb0`  | 3      | 64  | 45 (70%)  | 51.6M  | 1h12m  |
+| 7   | gpt-5.6-luna      | default         | `92c6e7f06`  | 3      | 301 | 264 (88%) | 129.7M | 4h00m  |
+| 8   | gpt-5.6-luna      | default         | `47adbc056`  | 3      | 301 | 270 (90%) | 124.6M | 2h56m  |
+| 9   | gpt-5.6-luna      | default         | `d5971a5bd`  | 3      | 301 | 273 (91%) | 130.7M | 4h11m  |
+| 10  | gpt-5.6-luna      | default         | `ba97d9173`  | 3      | 300 | 268 (89%) | 131.0M | 2h52m  |
+| 11  | qwen3.8-27b       | `--small-model` | `ba97d9173`  | 1      | 65  | 55 (85%)  | 4.1M   | 1h31m  |
+| 12  | qwen3.8-27b       | `--small-model` | `ba97d9173`  | 1      | 65  | 54 (83%)  | 3.8M   | 1h17m  |
+| 13  | qwen3.8-27b       | `--small-model` | `ba97d9173`  | 1      | 65  | 56 (86%)  | 4.4M   | 1h39m  |
+| 14  | gpt-6-luna        | default         | `3a468481c`  | 2      | 198 | 173 (87%) | 98.4M  | 1h58m  |
+| 15  | gpt-6-luna        | default         | `144eead60`  | 3      | 355 | 317 (89%) | 167.1M | 4h15m  |
+| 16  | gemma-4-31b       | `--small-model` | `144eead60`  | 1      | 74  | 66 (89%)  | 4.0M   | 2h06m  |
+| 17  | gemma-4-31b       | `--small-model` | `144eead60`  | 1      | 75  | 63 (84%)  | 4.4M   | 2h08m  |
+| 18  | gpt-6-luna        | default         | `4852e3680`+ | 3      | 381 | 341 (90%) | 174.2M | 3h24m  |
+| 19  | claude-haiku-5-5  | default         | `4852e3680`+ | 3      | 381 | 375 (98%) | 102.2M | 1h14m  |
+| 20  | gpt-6-luna        | default         | `6f48b19be`  | 3      | 381 | 343 (90%) | 174.0M | 2h49m  |
+| 21  | claude-haiku-5-5  | default         | `6f48b19be`  | 3      | 381 | 369 (97%) | 99.3M  | 1h45m  |
+| 22  | gpt-6-luna        | default         | `37c11203b`  | 3      | 381 | 340 (89%) | 175.0M | 2h34m  |
+| 23  | claude-haiku-5-5  | default         | `37c11203b`  | 3      | 381 | 370 (97%) | 100.4M | 1h19m  |
+| 24  | claude-sonnet-5-5 | default         | `e90a887ba`+ | 3      | 381 | 377 (99%) | 91.4M  | 1h26m  |
+| 25  | gpt-6.1-terra     | default         | `e90a887ba`+ | 3      | 381 | 371 (97%) | 139.3M | 4h20m  |
+| 26  | gpt-6-luna        | default         | not recorded | 3      | 390 | 343 (88%) | 177.0M | 3h14m  |
+| 27  | claude-haiku-5-5  | default         | not recorded | 3      | 390 | 376 (96%) | 97.3M  | 1h35m  |
+| 28  | qwen3.8-27b       | default         | `49eea231d`  | 3      | 392 | 371 (95%) | 79.4M  | 12h07m |
+| 29  | gpt-6-luna        | `thinking:high` | `49eea231d`? | 3      | 390 | 379 (97%) | 173.3M | 5h05m  |
+| 30  | claude-haiku-5-5  | default         | `49eea231d`? | 3      | 390 | 383 (98%) | 98.2M  | 1h33m  |
 
 **Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
 70% is over the scenarios it reached, which are the expensive front of the list.
@@ -72,7 +77,7 @@ models interleaved, so wall is scenario time. They are graded with the old
 `locator-navigation` check, which failed a copy placed by bar number; the grader
 now checks only where the copy landed.
 
-Runs 1-9, 14 and 18-23 are `--skip-judge`, so they are deterministic checks
+Runs 1-9, 14 and 18-27 are `--skip-judge`, so they are deterministic checks
 only. Runs 10-13 and 15-17 ran the judge, but no trial failed on the judge
 alone, so their numbers compare. Gemma and qwen run local (LM Studio,
 `-b http://localhost:1234/v1`) and cost nothing, but their token totals measure
@@ -108,3 +113,20 @@ twice. The commits in between touched only the eval harness, the chat UI and
 docs, so the device code is `e90a887ba`'s throughout. Sonnet's re-runs were the
 first with prompt caching; 88.7M of its 91.4M input was uncached. Wall is
 scenario time.
+
+**Runs 26 and 27 have no commit.** They ran together, `--skip-judge`, early on
+2026-10-29, before that day's commits; dev's tip at the start was `7ab0d197b`,
+but which build was in Live wasn't recorded. Wall is scenario time.
+
+**Runs 28-30 ran the judge** (`--jev`, with Haiku deciding when Jev was unsure),
+so unlike runs 18-27 a trial can fail on the reply alone. Runs 29 and 30 ran
+together; their folder has no `run.json`, so `49eea231d` (dev's tip at the
+start) is a guess. Run 28 is qwen's first default-mode run, on a release build.
+Its one errored trial (`automation-no-remote-script`, which needed a debug-only
+switch) passed on a re-run and is not in the total. Wall is scenario time.
+
+**Run 29 is a settings change, not a code change.** Luna ran at `thinking:high`:
+7× run 26's reasoning tokens and 1.8× its output. Most of its gain over run 26
+comes from that, so compare it with runs 26 and 30, not as a code result. Haiku
+ran at the same effort in runs 27 and 30, so its moves are the ones that track
+code.

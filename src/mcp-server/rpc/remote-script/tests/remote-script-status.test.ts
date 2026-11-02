@@ -13,6 +13,7 @@ import {
 } from "../install/remote-script-install.ts";
 import { bundledRemoteScriptBuild } from "../bundle/remote-script-build.ts";
 import { remoteScriptStatus } from "../remote-script-status.ts";
+import { absentRemoteScriptStatus } from "../../../routes/tests/absent-remote-script-test-helpers.ts";
 import {
   type FakeRemoteScript,
   makeScratchUserLibrary,
@@ -65,20 +66,9 @@ describe("remoteScriptStatus", () => {
   it("reports nothing installed when the User Library can't be found", async () => {
     findUserLibraryPath.mockResolvedValue(null);
 
-    expect(await remoteScriptStatus()).toStrictEqual({
-      userLibrary: null,
-      installed: false,
-      installedVersion: null,
-      installedBuild: null,
-      bundledVersion: VERSION,
-      running: false,
-      runningVersion: null,
-      runningBuild: null,
-      liveVersion: null,
-      otherOnPort: null,
-      updateAvailable: false,
-      installedNewer: false,
-    });
+    expect(await remoteScriptStatus()).toStrictEqual(
+      absentRemoteScriptStatus(null),
+    );
   });
 
   it("reports an empty User Library as not installed", async () => {
