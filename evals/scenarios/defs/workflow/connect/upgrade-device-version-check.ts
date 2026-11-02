@@ -77,8 +77,7 @@ export const upgradeDeviceVersionCheck: EvalScenario = {
 
 Evaluate the assistant's final reply:
 1. It says the update worked (the device is now on the newer version).
-2. It suggests the user start a new chat so it loads the new version's skills and tools.
-3. It claims nothing the tool results did not show.`,
+2. It suggests the user start a new chat so it loads the new version's skills and tools.`,
     },
   ],
 };

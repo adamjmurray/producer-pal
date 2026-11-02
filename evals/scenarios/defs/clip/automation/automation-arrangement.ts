@@ -152,11 +152,14 @@ export const automationArrangementViaSession: EvalScenario = {
     {
       type: "llm_judge",
       prompt: `The user asked for the Lead clip on the arrangement at bar 5 with a volume
-fade-in. Clip automation can only be written on a session clip; the way into the
-arrangement is to write it there and copy the clip over, which puts it in the
-track's automation lane. Evaluate the final reply: it says the clip is at bar 5
-with the volume fade-in, and does not claim automation it didn't write. It may
-mention the automation lane or that the session clip was used to carry it.`,
+fade-in. Two routes work: write the fade on the session clip and copy it to bar
+5, or copy the clip first and write the fade on the arrangement clip (that
+writes the track's automation lane over the clip's span, and the clip gets a new
+id).
+
+Evaluate the final reply:
+1. It says the Lead clip is on the arrangement at bar 5.
+2. It says the volume fade-in was written.`,
     },
   ],
 };
@@ -199,7 +202,7 @@ clip is re-created under a new id). Copying an automated session clip over bar
 
 Evaluate the final reply to the request to automate that clip's pan:
 1. It reports pan automation from hard left to hard right as written at bar 5.
-2. It does not claim work that wasn't done, and does not say this is impossible.`,
+2. It does not say this is impossible.`,
     },
   ],
 };

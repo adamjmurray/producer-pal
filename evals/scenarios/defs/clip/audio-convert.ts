@@ -115,8 +115,7 @@ export const audioConvertToMidi: EvalScenario = {
       prompt: `The user asked for the audio clip on the Melody Sample track to be turned into
 MIDI notes on a new track. Evaluate the final reply: it says a new MIDI track
 with a clip of the notes Live detected was made, and if Live found no notes it
-says so rather than claiming notes. It does not claim to have changed anything
-else.`,
+says so rather than claiming notes.`,
     },
   ],
 };

@@ -521,6 +521,13 @@ now say "Said in its replies that each step above was done", which roughly
 halved those escalations. Saved judge verdicts for the five scenarios that use
 it (and any older Jev runs) predate the new wording.
 
+Requirements that a reply "claims nothing the tool results did not show" (or
+"does not claim anything else") sat between the thresholds too: Jev can't prove
+a negative. Leave general false claims to the claims question and the judge's
+system prompt, and keep a "does not" requirement only for one specific mistake
+(e.g. "does not say this is impossible"). Dropping them cut escalations on nine
+scenarios from 54 to 35 of 81 results.
+
 For `--jev` runs, `-j anthropic/claude-haiku-5-5` is recommended, not the
 default: escalations are the borderline cases, and Luna is the strictest judge.
 On escalated results Luna agreed with Haiku and Sonnet about 75–80% of the time;
