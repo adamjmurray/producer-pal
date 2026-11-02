@@ -553,6 +553,7 @@ npm run probe:rejudge -- 2026-10-29T07-51-59Z -j claude-code/sonnet --sample=fai
 ```
 
 Other flags: `--scenario=id`, `--limit=N`, `--concurrency=N`,
+`--judge-thinking=<level>`, `--escalated` (only results Jev escalated),
 `--include-failed-checks`, `--fails-from=<judge-slug>` (count another judge's
 fails as fails for `--sample`), `--results-dir=D`. The header of
 `evals/jev/sidecar-judges/jev-rejudge.ts` lists them all.

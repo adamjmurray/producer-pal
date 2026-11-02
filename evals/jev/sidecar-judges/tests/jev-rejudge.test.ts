@@ -122,6 +122,9 @@ describe("runRejudge", () => {
     expect(checks).toStrictEqual([
       { type: "t", label: "L", pass: true, message: "m" },
     ]);
+    expect(override).toStrictEqual(
+      expect.objectContaining({ thinking: undefined }),
+    );
 
     const fail = await readSidecar(
       dir,
@@ -145,6 +148,16 @@ describe("runRejudge", () => {
       }),
     );
     expect(fail?.durationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("passes --judge-thinking to the judge", async () => {
+    const judge = fakeJudge();
+
+    await runRejudge([...base(), "--judge-thinking=high"], deps(judge));
+
+    expect(judge.mock.calls[0]?.[3]).toStrictEqual(
+      expect.objectContaining({ thinking: "high" }),
+    );
   });
 
   it("re-judges results from a --jev run, whoever decided them", async () => {
@@ -512,10 +525,21 @@ describe("parseRejudgeArgs", () => {
     expect(parseRejudgeArgs(["-j", "a/b"]).runIds).toBeUndefined();
   });
 
+  it("reads the judge's thinking level and refuses a bad one", () => {
+    expect(
+      parseRejudgeArgs(["-j", "codex-code/luna", "--judge-thinking=high"])
+        .judgeThinking,
+    ).toBe("high");
+    expect(() =>
+      parseRejudgeArgs(["-j", "codex-code/luna", "--judge-thinking=loud"]),
+    ).toThrow("--judge-thinking");
+  });
+
   it("has defaults", () => {
     expect(parseRejudgeArgs(["-j", "a/b"])).toStrictEqual({
       runIds: undefined,
       judge: "a/b",
+      judgeThinking: undefined,
       scenarioIds: [],
       limit: undefined,
       concurrency: 4,
@@ -523,6 +547,7 @@ describe("parseRejudgeArgs", () => {
       seed: 1,
       failsFrom: [],
       includeFailedChecks: false,
+      escalatedOnly: false,
       includeStale: false,
       force: false,
       dryRun: false,
@@ -544,6 +569,7 @@ describe("parseRejudgeArgs", () => {
         "--fails-from=h",
         "--fails-from=l",
         "--include-failed-checks",
+        "--escalated",
         "--include-stale",
         "--force",
         "--dry-run",
@@ -558,6 +584,7 @@ describe("parseRejudgeArgs", () => {
         seed: 9,
         failsFrom: ["h", "l"],
         includeFailedChecks: true,
+        escalatedOnly: true,
         includeStale: true,
         force: true,
         dryRun: true,

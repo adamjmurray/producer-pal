@@ -11,10 +11,9 @@
  * changed. Re-runs skip results the judge already did on the current criteria.
  * A failed judge call saves nothing, so the next run retries it.
  *
- * Run: node --env-file=.env evals/jev/sidecar-judges/jev-rejudge.ts \
- *        [run-ids...] -j <provider/model> [flags]
+ * Run: npm run probe:rejudge -- [run-ids...] -j <provider/model> [flags]
  *   -j, --judge <provider/model>  same format as the eval CLI's -j
- * Flags:
+ *   --judge-thinking=level  the judge's thinking level, as in the eval CLI
  *   --scenario=id  only this scenario (repeatable)
  *   --limit=N      judge at most N results now (after skipping done ones)
  *   --concurrency=N  parallel judge calls (default 4)
@@ -22,6 +21,7 @@
  *                  passes; --seed=S makes the pick repeatable (default 1)
  *   --fails-from=slug  also count what this sidecar judge failed as a fail
  *                  for --sample (repeatable)
+ *   --escalated    only results Jev escalated in a `--jev` run
  *   --include-failed-checks  also judge results whose gating checks failed
  *                  (default: gating-passed only, where the judge decides)
  *   --include-stale  keep results recorded before the criteria last changed
@@ -31,7 +31,9 @@
  */
 
 import { performance } from "node:perf_hooks";
+import { type ThinkingLevel } from "#evals/chat/shared/types.ts";
 import { parseModelArg } from "#evals/shared/parse-model-arg.ts";
+import { parseJudgeThinking } from "#evals/scenarios/run-env/parse-thinking-arg.ts";
 import {
   assertWithLlmJudge,
   LLM_JUDGE_ERROR_PREFIX,
@@ -45,6 +47,7 @@ import {
 } from "../jev-results.ts";
 import {
   selectEligible,
+  selectEscalated,
   parseSample,
   sampleResults,
 } from "./jev-rejudge-select.ts";
@@ -62,6 +65,7 @@ const DEFAULT_SEED = 1;
 export interface RejudgeArgs {
   runIds?: string[];
   judge: string;
+  judgeThinking?: ThinkingLevel;
   scenarioIds: string[];
   limit?: number;
   concurrency: number;
@@ -70,6 +74,7 @@ export interface RejudgeArgs {
   seed: number;
   failsFrom: string[];
   includeFailedChecks: boolean;
+  escalatedOnly: boolean;
   includeStale: boolean;
   force: boolean;
   dryRun: boolean;
@@ -120,9 +125,10 @@ export async function runRejudge(
     includeUnjudged: true,
     resultsDir: args.resultsDir,
   });
-  const eligible = selectEligible(items, args.includeFailedChecks).filter(
+  const decided = selectEligible(items, args.includeFailedChecks).filter(
     (i) => i.result.turns.length > 0,
   );
+  const eligible = args.escalatedOnly ? selectEscalated(decided) : decided;
   const sampled = await applySample(eligible, args);
   const todo = await dropJudged(sampled, args, slug);
   const selected = args.limit == null ? todo : todo.slice(0, args.limit);
@@ -143,7 +149,7 @@ export async function runRejudge(
       `(left out: ${skipped.notScored} skipped/error, ${skipped.noScenario} unknown scenario, ${skipped.noLlmJudge} no llm_judge, ${skipped.unreadable} unreadable, ${skipped.staleCriteria} stale criteria).`,
   );
   log(
-    `${eligible.length} eligible${args.includeFailedChecks ? "" : " (gating checks passed)"}; ` +
+    `${eligible.length} eligible${args.includeFailedChecks ? "" : " (gating checks passed)"}${args.escalatedOnly ? " and escalated by Jev" : ""}; ` +
       `${sampled.length} after sampling; ${summary.alreadyJudged} already judged by ${slug}; ` +
       `${selected.length} to judge now.`,
   );
@@ -207,7 +213,7 @@ async function judgeOne(
       { type: "llm_judge", prompt: criteria },
       result.turns,
       spec.provider,
-      spec,
+      { ...spec, thinking: args.judgeThinking },
       result.checks.results,
     );
   } catch {
@@ -359,6 +365,7 @@ export function parseRejudgeArgs(argv: string[]): RejudgeArgs {
   return {
     runIds: positional.length > 0 ? positional.map(runIdOf) : undefined,
     judge,
+    judgeThinking: judgeThinkingOf(flags.get("judge-thinking"), judge),
     scenarioIds: flags.get("scenario") ?? [],
     limit: num("limit"),
     concurrency: num("concurrency") ?? DEFAULT_CONCURRENCY,
@@ -366,11 +373,31 @@ export function parseRejudgeArgs(argv: string[]): RejudgeArgs {
     seed: Number(flags.get("seed")?.at(-1) ?? DEFAULT_SEED),
     failsFrom: flags.get("fails-from") ?? [],
     includeFailedChecks: has("include-failed-checks"),
+    escalatedOnly: has("escalated"),
     includeStale: has("include-stale"),
     force: has("force"),
     dryRun: has("dry-run"),
     resultsDir: flags.get("results-dir")?.at(-1) ?? RESULTS_DIR,
   };
+}
+
+/**
+ * The judge's thinking level, when `--judge-thinking` was given.
+ *
+ * @param values - The flag's values, last one wins
+ * @param judge - The judge's provider/model
+ * @returns The level, or undefined when not given
+ * @throws On a level the judge can't take
+ */
+function judgeThinkingOf(
+  values: string[] | undefined,
+  judge: string,
+): ThinkingLevel | undefined {
+  const value = values?.at(-1);
+
+  return value == null
+    ? undefined
+    : parseJudgeThinking(value, parseModelArg(judge));
 }
 
 /**

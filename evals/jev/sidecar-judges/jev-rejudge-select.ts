@@ -36,6 +36,18 @@ export function parseSample(text: string): number {
 }
 
 /**
+ * Keep the results Jev handed to the LLM judge: it ran, but did not decide.
+ *
+ * @param items - Loaded results
+ * @returns The escalated results
+ */
+export function selectEscalated(items: JudgedResult[]): JudgedResult[] {
+  return items.filter(
+    (i) => i.result.judge?.jev != null && i.result.judge.decidedBy !== "jev",
+  );
+}
+
+/**
  * Keep the results the judge decides: gating checks passed, unless asked for
  * all.
  *

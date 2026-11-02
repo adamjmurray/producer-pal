@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
   selectEligible,
+  selectEscalated,
   parseSample,
   sampleResults,
   seededShuffle,
@@ -52,6 +53,26 @@ describe("selectEligible", () => {
 
   it("keeps everything when asked", () => {
     expect(selectEligible(items, true)).toHaveLength(2);
+  });
+});
+
+describe("selectEscalated", () => {
+  const judged = (file: string, judge?: object): JudgedResult =>
+    ({ file, result: { judge } }) as unknown as JudgedResult;
+
+  it("keeps only results Jev ran on and the LLM decided", () => {
+    const items = [
+      judged("escalated", { decidedBy: "llm", jev: { verdict: "escalate" } }),
+      judged("jev-failed", { decidedBy: "llm", jev: { verdict: "error" } }),
+      judged("jev-decided", { decidedBy: "jev", jev: { verdict: "pass" } }),
+      judged("no-jev", { pass: true }),
+      judged("unjudged"),
+    ];
+
+    expect(selectEscalated(items).map((i) => i.file)).toStrictEqual([
+      "escalated",
+      "jev-failed",
+    ]);
   });
 });
 
