@@ -17,6 +17,7 @@ import { connectMcp } from "../mcp.ts";
 import { printStepUsage } from "../shared/formatting.ts";
 import { type ThinkingLevel, type TurnResult } from "../shared/types.ts";
 import { spawnAgentCli } from "./agent-cli-spawn.ts";
+import { StepBudgetError, StoppedTurnError } from "./agent-cli-step-budget.ts";
 import { turnTiming } from "./agent-cli-stream.ts";
 import {
   agentCliEffort,
@@ -98,9 +99,7 @@ export async function createAgentCliSession(
         ...(sessionId != null ? { resumeSessionId: sessionId } : {}),
       });
       const startedAt = performance.now();
-      const stdout = await spawnAgentCli(transport, args, message, {
-        cwd: sessionDir,
-      });
+      const stdout = await spawnTurn(transport, args, message, sessionDir);
       const elapsedMs = performance.now() - startedAt;
       const parsed = transport.parseStream(stdout);
       // A transport that reports its own model time wins. Otherwise fall back
@@ -169,4 +168,37 @@ function resolveEffort(
   }
 
   return effort;
+}
+
+/**
+ * Run one turn's CLI. When the step budget stops it, throw the turn as far as
+ * it got, so the result shows what the model was doing.
+ *
+ * @param transport - Transport describing the CLI
+ * @param args - CLI arguments for the turn
+ * @param message - The user message
+ * @param cwd - The session's working directory
+ * @returns The CLI's JSONL stdout
+ */
+async function spawnTurn(
+  transport: AgentCliTransport,
+  args: string[],
+  message: string,
+  cwd: string,
+): Promise<string> {
+  try {
+    return await spawnAgentCli(transport, args, message, { cwd });
+  } catch (error) {
+    if (!(error instanceof StepBudgetError)) {
+      throw error;
+    }
+
+    const partial = transport.parseStream(error.stdout);
+
+    throw new StoppedTurnError(error.message, {
+      text: partial.text,
+      toolCalls: partial.toolCalls,
+      ...reasoningFields(partial),
+    });
+  }
 }

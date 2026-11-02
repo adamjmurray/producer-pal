@@ -13,6 +13,7 @@
  * budget in seconds instead of burning the whole wall-clock timeout.
  */
 
+import { type TurnResult } from "#evals/chat/shared/types.ts";
 import { parseJsonlLine } from "./agent-cli-stream.ts";
 import { type AgentCliTransport } from "./agent-cli-transport.ts";
 
@@ -61,4 +62,26 @@ export function createStepBudgetWatcher(
       return steps > budget;
     },
   };
+}
+
+/** The budget stopped the CLI. Keeps what it printed, so the turn isn't lost. */
+export class StepBudgetError extends Error {
+  readonly stdout: string;
+
+  constructor(message: string, stdout: string) {
+    super(message);
+    this.name = "StepBudgetError";
+    this.stdout = stdout;
+  }
+}
+
+/** A stopped turn, parsed: what the model did before the budget stopped it. */
+export class StoppedTurnError extends Error {
+  readonly turn: TurnResult;
+
+  constructor(message: string, turn: TurnResult) {
+    super(message);
+    this.name = "StoppedTurnError";
+    this.turn = turn;
+  }
 }

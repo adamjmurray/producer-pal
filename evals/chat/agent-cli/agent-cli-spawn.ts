@@ -6,7 +6,10 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { MAX_TOOL_STEPS } from "#evals/shared/step-budget.ts";
 import { agentCliCommand } from "./agent-cli-command.ts";
-import { createStepBudgetWatcher } from "./agent-cli-step-budget.ts";
+import {
+  createStepBudgetWatcher,
+  StepBudgetError,
+} from "./agent-cli-step-budget.ts";
 import {
   type AgentCliTransport,
   scrubAgentCliEnv,
@@ -117,9 +120,10 @@ export function spawnAgentCli(
 
       if (overBudget) {
         reject(
-          new Error(
+          new StepBudgetError(
             `${transport.label} hit the step budget of ${stepBudget} steps ` +
               `and was stopped. The model was probably looping.`,
+            stdout,
           ),
         );
       } else if (timedOut) {

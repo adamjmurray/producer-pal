@@ -14,6 +14,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CODEX_CLI_TRANSPORT } from "../../codex/codex-cli-protocol.ts";
 import { spawnAgentCli } from "../agent-cli-spawn.ts";
+import { StepBudgetError } from "../agent-cli-step-budget.ts";
 import {
   codexTurnStdout,
   FIXTURE_BIN,
@@ -169,12 +170,22 @@ describe("spawnAgentCli", () => {
     });
 
     try {
-      await expect(
-        spawnAgentCli(CODEX_CLI_TRANSPORT, [], "hi", {
+      const error: unknown = await spawnAgentCli(
+        CODEX_CLI_TRANSPORT,
+        [],
+        "hi",
+        {
           cwd: dir,
           stepBudget: 2,
-        }),
-      ).rejects.toThrow("codex CLI hit the step budget of 2 steps");
+        },
+      ).catch((thrown: unknown) => thrown);
+
+      expect(error).toBeInstanceOf(StepBudgetError);
+      expect((error as StepBudgetError).message).toContain(
+        "codex CLI hit the step budget of 2 steps",
+      );
+      // Kept so the session can save what the turn did before the stop.
+      expect((error as StepBudgetError).stdout).toContain("call-3");
     } finally {
       await cleanup();
     }

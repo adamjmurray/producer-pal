@@ -5,6 +5,7 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { describe, expect, it, vi } from "vitest";
+import { StoppedTurnError } from "#evals/chat/agent-cli/agent-cli-step-budget.ts";
 import { type TurnResult } from "#evals/chat/shared/types.ts";
 import { type EvalSession } from "../eval-session.ts";
 import {
@@ -54,6 +55,42 @@ describe("runMessageTurns", () => {
     await expect(run).rejects.toThrow(error);
     expect(turns).toHaveLength(1);
     expect(sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the calls of a turn the step budget stopped, then stops", async () => {
+    const sendMessage = vi
+      .fn<EvalSession["sendMessage"]>()
+      .mockRejectedValueOnce(
+        new StoppedTurnError("hit the step budget", {
+          text: "",
+          toolCalls: [{ name: "ppal-read-song", args: {} }],
+        }),
+      );
+    const session = { sendMessage } as unknown as EvalSession;
+    const turns: EvalTurnResult[] = [];
+    const scenario = { messages: ["one", "two"] } as EvalScenario;
+
+    await expect(
+      runMessageTurns(scenario, session, turns, false),
+    ).rejects.toThrow("hit the step budget");
+    expect(turns.map((turn) => turn.toolCalls)).toStrictEqual([
+      [{ name: "ppal-read-song", args: {} }],
+    ]);
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves no turn for any other thrown error", async () => {
+    const sendMessage = vi
+      .fn<EvalSession["sendMessage"]>()
+      .mockRejectedValueOnce(new Error("spawn failed"));
+    const session = { sendMessage } as unknown as EvalSession;
+    const turns: EvalTurnResult[] = [];
+    const scenario = { messages: ["one"] } as EvalScenario;
+
+    await expect(
+      runMessageTurns(scenario, session, turns, false),
+    ).rejects.toThrow("spawn failed");
+    expect(turns).toHaveLength(0);
   });
 
   it("keeps each turn's reasoning text and finish reason", async () => {

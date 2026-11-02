@@ -29,6 +29,7 @@ import { setQuietMode } from "#evals/scenarios/helpers/quiet-mode.ts";
 import { CLAUDE_CODE_TRANSPORT } from "../../claude-code/claude-code-protocol.ts";
 import { CODEX_CLI_TRANSPORT } from "../../codex/codex-cli-protocol.ts";
 import { createAgentCliSession } from "../agent-cli-session.ts";
+import { StoppedTurnError } from "../agent-cli-step-budget.ts";
 import { type AgentCliTransport } from "../agent-cli-transport.ts";
 import {
   claudeTurnStdout,
@@ -209,6 +210,32 @@ describe.each(CASES)(
         await session.close();
       }
     });
+
+    it("throws a turn the step budget stopped, with the calls it made", async () => {
+      // 26 turns' worth of calls, then a hang: past the default budget of 25.
+      vi.stubEnv("PPAL_FIXTURE_MODE", "hang");
+      vi.stubEnv(
+        "PPAL_FIXTURE_STDOUT",
+        Array.from({ length: 26 }, () => stdout(SESSION_ID, "Again.")).join(""),
+      );
+      const session = await openSession();
+
+      try {
+        const error: unknown = await session
+          .sendMessage("Connect to Ableton Live", 1)
+          .catch((thrown: unknown) => thrown);
+
+        expect(error).toBeInstanceOf(StoppedTurnError);
+        expect((error as StoppedTurnError).message).toContain("step budget");
+        expect((error as StoppedTurnError).turn.toolCalls[0]).toStrictEqual({
+          name: "ppal-connect",
+          args: {},
+          result: "connected",
+        });
+      } finally {
+        await session.close();
+      }
+    }, 15_000);
 
     it("returns the turn's reasoning text and finish reason when its CLI has them", async () => {
       const session = await openSession();
