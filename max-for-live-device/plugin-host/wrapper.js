@@ -10,6 +10,7 @@
 //      pname <names...>      vst~ parameter names (params)
 //      pval <index> <value> <display>   vst~ get/changed output (valuemode 2)
 //      slot <n> <value>      automation dial n (0-1), forwarded to its param
+//      openeditor <n>        the Open button; a press opens the plug-in's window
 // Out: messages to vst~
 //
 // The plug-in's state lives in two pattrs: "vstmirror" is bound to vst~ and
@@ -254,12 +255,14 @@ function load({ format, file, sub, name, synth }) {
     outlet(0, "unplug");
     state.names = [];
     state.info = {};
+    showName(null);
     throw new Error(problem);
   }
 
   state.plugin = label;
   nameDevice(label);
   saveName(label);
+  showName(label);
   // A mapping stored before this load was for another plug-in, so there is
   // nothing left to wait for.
   slotsReady = true;
@@ -486,6 +489,7 @@ function adoptStored() {
   slotsReady = true;
   slotCache = null;
   sendDialValues();
+  showName(state.plugin ?? storedName() ?? loadedFile());
 }
 
 function stateOf() {
@@ -1042,6 +1046,8 @@ function noMatch(samples, wanted) {
   return `nothing displays as "${wanted}"; it shows values like ${seen.join(", ")}`;
 }
 
+let nameShown = null; // the text last put in the name row
+
 // vst~ restores the plug-in after a Set reload or duplicate, but not its name.
 // The device is named after the plug-in when it loads, and the Set keeps that.
 // The name counts as the plug-in's only while it still fits the file vst~
@@ -1074,6 +1080,21 @@ function storedName() {
   const name = stored.get("name");
 
   return name && stored.get("file") === loadedFile() ? String(name) : null;
+}
+
+// The Open button: opens the plug-in's own window.
+function openeditor(value) {
+  if (Number(value)) outlet(0, "open");
+}
+
+// The name row in the device panel; no name means no plug-in.
+function showName(name) {
+  const text = name || "No plug-in loaded";
+
+  if (text === nameShown) return;
+
+  nameShown = text;
+  this.patcher.getnamed("pluginname")?.message("set", text);
 }
 
 function loadedFile() {

@@ -66,6 +66,17 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
 `ENABLE_LIVE_API` (`npm run build:debug`) carries it, and it is offered when
 `ppal-live-api` is on; a release build leaves its code out.
 
+### Device panel
+
+Presentation mode shows three things; `vst~` is not in it. A name row: the
+`pluginname` comment ("No plug-in loaded" until a plug-in is there) and an
+**Open** button (`openeditor`, a `live.text` button with `parameter_enable` 0,
+so no automation and no undo step). Below it, the `slotlist` comment. A press
+goes `openeditor` → `prepend openeditor` → code box, and `wrapper.js` sends
+`open` to `vst~`, which opens the plug-in's own window (`wclose` closes it). The
+name is set after a load, a failed load ("No plug-in loaded"), and once the
+Set's restore has run, from the same sources as `info`'s `plugin`.
+
 ## Findings
 
 ### Loading and parameters
@@ -315,13 +326,14 @@ fields Max expects (such as `searchpath`) crashes Live on load**, inside
 `npm run plugin-host:build` rebuilds both devices in place
 (`scripts/live-api/plugin-host/build-plugin-host.ts`). It puts `wrapper.js` into
 each `v8.codebox` and regenerates the 128 automation dials, their
-`prepend slot N` boxes and cords, the `vstslots` pattr and the slot list. It
-leaves every other box, and the `project` block, alone. Edit `wrapper.js` and
-the generated boxes through the script; edit the rest of the patch in Max, then
-run the script so the files match what a rebuild gives. A test fails while a
-device is out of date with `wrapper.js`. After editing the code inside Max's
-code box instead, `npm run plugin-host:build -- --extract` copies it back into
-`wrapper.js` first.
+`prepend slot N` boxes and cords, the `vstslots` pattr, the slot list, the name
+comment, the Open button with its prepend and cords, and takes `vst~` out of the
+panel. It leaves every other box, and the `project` block, alone. Edit
+`wrapper.js` and the generated boxes through the script; edit the rest of the
+patch in Max, then run the script so the files match what a rebuild gives. A
+test fails while a device is out of date with `wrapper.js`. After editing the
+code inside Max's code box instead, `npm run plugin-host:build -- --extract`
+copies it back into `wrapper.js` first.
 
 ### Installing the devices
 

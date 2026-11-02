@@ -9,6 +9,7 @@ const NAME_WIDTH = Math.max(2, String(SLOTS).length);
 const COLUMNS = 8;
 const HEADER_SIZE = 32;
 const SLOT_BOX = /^slot(dial|prep)\d+$/;
+const PANEL_BOXES = new Set(["pluginname", "openeditor", "openprep"]);
 
 type Json = Record<string, unknown>;
 
@@ -44,7 +45,8 @@ const RawJson = JSON as unknown as {
 /**
  * Rebuild one plug-in host .amxd: put the wrapper code into its v8.codebox and
  * replace the automation-slot dials, their prepends and cords, the vstslots
- * pattr and the slot list. Never touches the patcher's "project" block (one
+ * pattr, the slot list and the name and Open button, and take vst~ out of the
+ * panel. Never touches the patcher's "project" block (one
  * missing fields crashes Live). Running it twice gives the same bytes.
  *
  * @param amxd - The device file
@@ -63,6 +65,11 @@ export function buildPluginHostDevice(
   for (const b of boxes) {
     if (b.box.maxclass === "v8.codebox") {
       b.box.code = code;
+    }
+
+    if (b.box.id === "vst") {
+      delete b.box.presentation;
+      delete b.box.presentation_rect;
     }
   }
 
@@ -125,7 +132,10 @@ function setSlotCount(code: string): string {
 function isOurs(id: unknown): boolean {
   return (
     typeof id === "string" &&
-    (id === "vstslots" || id === "slotlist" || SLOT_BOX.test(id))
+    (id === "vstslots" ||
+      id === "slotlist" ||
+      PANEL_BOXES.has(id) ||
+      SLOT_BOX.test(id))
   );
 }
 
@@ -138,14 +148,28 @@ function touchesOurs(line: Patchline): boolean {
 function ownedBoxes(): Json[] {
   const slots = Array.from({ length: SLOTS }, (_, i) => i + 1);
 
-  return [...slots.map(dial), ...slots.map(prepend), vstslots(), slotlist()];
+  return [
+    ...slots.map(dial),
+    ...slots.map(prepend),
+    vstslots(),
+    slotlist(),
+    pluginName(),
+    openButton(),
+    openPrepend(),
+  ];
 }
 
 function ownedLines(): Patchline[] {
-  return Array.from({ length: SLOTS }, (_, i) => [
+  const slotCords = Array.from({ length: SLOTS }, (_, i) => [
     cord(`slotdial${i + 1}`, `slotprep${i + 1}`),
     cord(`slotprep${i + 1}`, "code"),
   ]).flat();
+
+  return [
+    ...slotCords,
+    cord("openeditor", "openprep"),
+    cord("openprep", "code"),
+  ];
 }
 
 function cord(from: string, to: string): Patchline {
@@ -225,8 +249,52 @@ function slotlist(): Json {
     numoutlets: 0,
     patching_rect: [300, 140, 300, 40],
     presentation: 1,
-    presentation_rect: [4, 48, 220, 117],
+    presentation_rect: [4, 28, 220, 137],
     text: "No automation slots mapped",
+  };
+}
+
+function pluginName(): Json {
+  return {
+    id: "pluginname",
+    maxclass: "live.comment",
+    varname: "pluginname",
+    numinlets: 1,
+    numoutlets: 0,
+    patching_rect: [1300, 20, 150, 20],
+    presentation: 1,
+    presentation_rect: [4, 4, 150, 18],
+    text: "No plug-in loaded",
+  };
+}
+
+// A button, not a Live parameter: no automation, no undo step.
+function openButton(): Json {
+  return {
+    id: "openeditor",
+    maxclass: "live.text",
+    varname: "openeditor",
+    mode: 0, // button; live.text defaults to a toggle
+    numinlets: 1,
+    numoutlets: 2,
+    outlettype: ["", ""],
+    parameter_enable: 0,
+    patching_rect: [1300, 50, 50, 20],
+    presentation: 1,
+    presentation_rect: [160, 4, 60, 18],
+    text: "Open",
+  };
+}
+
+function openPrepend(): Json {
+  return {
+    id: "openprep",
+    maxclass: "newobj",
+    text: "prepend openeditor",
+    numinlets: 1,
+    numoutlets: 1,
+    outlettype: [""],
+    patching_rect: [1300, 80, 120, 22],
   };
 }
 

@@ -30,8 +30,10 @@ function amxd(patcher: string): Buffer {
 
 function parse(file: Buffer): {
   patcher: {
-    boxes: { box: { id: string; code?: string } }[];
-    lines: unknown[];
+    boxes: { box: Record<string, unknown> & { id: string; code?: string } }[];
+    lines: {
+      patchline: { source: [string, number]; destination: [string, number] };
+    }[];
     project: unknown;
   };
 } {
@@ -43,10 +45,13 @@ const stale = amxd(`{
   "boxes": [
     { "box": { "id": "code", "maxclass": "v8.codebox", "code": "old" } },
     { "box": { "id": "slotdial999", "maxclass": "live.dial" } },
+    { "box": { "id": "pluginname", "maxclass": "live.comment", "text": "old" } },
+    { "box": { "id": "vst", "maxclass": "newobj", "presentation": 1, "presentation_rect": [4, 4, 220, 40] } },
     { "box": { "id": "other", "maxclass": "newobj", "patching_rect": [20.0, 1.5] } }
   ],
   "lines": [
     { "patchline": { "source": ["slotdial999", 0], "destination": ["code", 0] } },
+    { "patchline": { "source": ["openprep", 0], "destination": ["code", 0] } },
     { "patchline": { "source": ["other", 0], "destination": ["code", 0] } }
   ],
   "project": { "searchpath": {} }
@@ -72,7 +77,7 @@ describe("buildPluginHostDevice", () => {
     expect(ids).not.toContain("slotdial999");
     expect(ids).toContain("slotdial128");
     expect(ids.filter((id) => id === "vstslots")).toHaveLength(1);
-    expect(patcher.lines).toHaveLength(1 + 128 * 2);
+    expect(patcher.lines).toHaveLength(1 + 128 * 2 + 2);
     expect(patcher.project).toStrictEqual({ searchpath: {} });
     expect(built.readUInt32LE(28)).toBe(built.length - 32);
     expect(built.toString()).toMatch(/\[\s+20\.0,\s+1\.5\s+\]/);
@@ -80,6 +85,34 @@ describe("buildPluginHostDevice", () => {
       '"parameter_longname": "Automation 001"',
     );
     expect(buildPluginHostDevice(built, CODE).equals(built)).toBe(true);
+  });
+
+  it("owns the name, the Open button and its cords, and hides vst~", () => {
+    const { patcher } = parse(buildPluginHostDevice(stale, CODE));
+    const box = (id: string) => patcher.boxes.find((b) => b.box.id === id)?.box;
+    const cords = patcher.lines.map(
+      (l) => `${l.patchline.source[0]}>${l.patchline.destination[0]}`,
+    );
+
+    expect(box("pluginname")?.text).toBe("No plug-in loaded");
+    expect(box("pluginname")?.presentation).toBe(1);
+    expect(box("openeditor")).toStrictEqual(
+      expect.objectContaining({
+        maxclass: "live.text",
+        mode: 0,
+        parameter_enable: 0,
+        text: "Open",
+        presentation: 1,
+      }),
+    );
+    expect(box("openprep")?.text).toBe("prepend openeditor");
+    expect(patcher.boxes.filter((b) => b.box.id === "openprep")).toHaveLength(
+      1,
+    );
+    expect(cords.filter((c) => c === "openprep>code")).toHaveLength(1);
+    expect(cords).toContain("openeditor>openprep");
+    expect(box("vst")).not.toHaveProperty("presentation");
+    expect(box("vst")).not.toHaveProperty("presentation_rect");
   });
 
   it("refuses wrapper code without one SLOT_COUNT line", () => {
