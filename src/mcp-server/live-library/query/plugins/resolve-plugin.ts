@@ -44,12 +44,14 @@ const MAX_SUGGESTIONS = 5;
  * @param args - The request
  * @param args.name - Plug-in name; case does not matter
  * @param auDirs - Folders to read AU bundles from (the system's by default)
+ * @param appDirs - Folders to read apps' AUv3 plug-ins from (the system's by default)
  * @returns The plug-in's name, vendor, category, format and bundle path
  * @throws When the database can't be read, or no single plug-in matches
  */
 export async function resolvePlugin(
   { name }: ResolvePluginArgs,
   auDirs?: string[],
+  appDirs?: string[],
 ): Promise<ResolvedPlugin> {
   const wanted = name?.trim() ?? "";
 
@@ -73,6 +75,7 @@ export async function resolvePlugin(
     ),
     wanted,
     auDirs,
+    appDirs,
   );
   const found = au ?? resolveDbPlugin(rows, wanted, "VST");
 

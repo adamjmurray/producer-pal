@@ -95,15 +95,15 @@ Part of [Skip entries, tool by tool](README.md).
   file. The lookup says "nothing by that name" with a typed flag, never by its
   message text. A name installed in several formats loads as VST3, else AU, else
   VST2. Several plug-ins of that name in the chosen format, a VST2 shell
-  plug-in, an AU that is neither an instrument nor an audio effect, and a
-  plug-in whose kind can't be told, are refused the same way. An AU counts only
-  if Live's browser lists it; with the remote script unanswering there are none.
-  `hosted` with `preset`, or with no `device`, is refused. The wrapper is loaded
-  and placed like any browser device (same path, misfit and chain rules), then
-  told to load the plug-in; the target only counts as created once that worked,
-  then takes its `name` and `params` (routed to the plug-in as update-device's
-  are). A plug-in that won't load, or that doesn't answer in time, deletes the
-  wrapper again and skips the target with the reason
+  plug-in, an AU that is neither an instrument nor an audio effect, an AUv3, and
+  a plug-in whose kind can't be told, are refused the same way. An AU counts
+  only if Live's browser lists it; with the remote script unanswering there are
+  none. `hosted` with `preset`, or with no `device`, is refused. The wrapper is
+  loaded and placed like any browser device (same path, misfit and chain rules),
+  then told to load the plug-in; the target only counts as created once that
+  worked, then takes its `name` and `params` (routed to the plug-in as
+  update-device's are). A plug-in that won't load, or that doesn't answer in
+  time, deletes the wrapper again and skips the target with the reason
   (`could not load "<plug-in>": ...`), leaving the other paths alone. A wrapper
   that can't be deleted stays: the entry keeps its `id` and `path`, and the
   detail says so.

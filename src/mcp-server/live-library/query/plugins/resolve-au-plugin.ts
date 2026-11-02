@@ -14,7 +14,11 @@ import {
   type PluginCategory,
   type ResolvedPlugin,
 } from "../../library-types.ts";
-import { type AuComponent, readAuComponents } from "./read-au-components.ts";
+import {
+  type AuComponent,
+  readAppAuComponents,
+  readAuComponents,
+} from "./read-au-components.ts";
 import { samePluginName } from "./same-plugin-name.ts";
 
 /** Apple's AU types for the two kinds we can host. */
@@ -30,13 +34,16 @@ const AU_CATEGORIES: Record<string, PluginCategory> = {
  * @param browserAus - The AUs Live's browser lists with this name
  * @param wanted - The name asked for
  * @param auDirs - Folders to read the AU bundles from
+ * @param appDirs - Folders to read apps' AUv3 plug-ins from
  * @returns The match, or null when the browser lists none
- * @throws When several vendors have one, or its kind can't be told or hosted
+ * @throws When several vendors have one, it's an AUv3, or its kind can't be
+ *   told or hosted
  */
 export async function resolveAuPlugin(
   browserAus: BrowserPlugin[],
   wanted: string,
   auDirs?: string[],
+  appDirs?: string[],
 ): Promise<ResolvedPlugin | null> {
   const [listed] = browserAus;
 
@@ -63,6 +70,15 @@ export async function resolveAuPlugin(
   );
 
   if (component == null) {
+    // vst~ loads nothing for an AUv3, under any name (Max 9.1.5)
+    const auv3s = await readAppAuComponents(appDirs);
+
+    if (auv3s.some((item) => samePluginName(item.name, listed.name))) {
+      throw new Error(
+        `"${listed.name}" is an AUv3 plug-in, and those can't be hosted`,
+      );
+    }
+
     throw new Error(
       `Can't tell whether "${listed.name}" is an instrument or an audio effect`,
     );

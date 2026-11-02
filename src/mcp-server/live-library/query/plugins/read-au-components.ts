@@ -23,7 +23,7 @@ export interface AuComponent {
   vendor: string | null;
   /** Apple's four-letter type: aumu (instrument), aufx or aumf (effect) */
   type: string;
-  /** The `.component` bundle's path */
+  /** The `.component` (AU v2) or `.appex` (AUv3) bundle's path */
   bundle: string;
 }
 
@@ -39,6 +39,13 @@ export function auComponentDirs(): string[] {
 }
 
 /**
+ * @returns The folders apps are installed in, where AUv3 plug-ins live
+ */
+export function auAppDirs(): string[] {
+  return ["/Applications", join(homedir(), "Applications")];
+}
+
+/**
  * Read the Audio Units in some folders. A folder that can't be read, a bundle
  * without a readable Info.plist (binary ones included) and an entry without a
  * name or type are left out.
@@ -49,22 +56,53 @@ export function auComponentDirs(): string[] {
 export async function readAuComponents(
   dirs: string[] = auComponentDirs(),
 ): Promise<AuComponent[]> {
-  const perDir = await Promise.all(
-    dirs.map(async (dir) => {
-      const entries = await readdir(dir).catch(() => []);
-
-      return entries
-        .filter((entry) => entry.toLowerCase().endsWith(".component"))
-        .map((entry) => join(dir, entry));
-    }),
-  );
-  const found = await Promise.all(perDir.flat().map(readBundle));
+  const bundles = await bundlesIn(dirs, ".component");
+  const found = await Promise.all(bundles.map(readBundle));
 
   return found.flat();
 }
 
 /**
- * @param bundle - Path of a `.component` bundle
+ * Read the AUv3 plug-ins inside apps: each is an app extension at
+ * `<app>.app/Contents/PlugIns/<name>.appex`. Left out as in readAuComponents.
+ *
+ * @param dirs - Folders holding `.app` bundles
+ * @returns Every AUv3 found
+ */
+export async function readAppAuComponents(
+  dirs: string[] = auAppDirs(),
+): Promise<AuComponent[]> {
+  const apps = await bundlesIn(dirs, ".app");
+  const extensions = await bundlesIn(
+    apps.map((app) => join(app, "Contents", "PlugIns")),
+    ".appex",
+  );
+  const found = await Promise.all(extensions.map(readBundle));
+
+  return found.flat();
+}
+
+/**
+ * @param dirs - Folders to look in; one that can't be read holds nothing
+ * @param extension - Bundle extension, with its dot
+ * @returns The paths of the bundles with that extension
+ */
+async function bundlesIn(dirs: string[], extension: string): Promise<string[]> {
+  const perDir = await Promise.all(
+    dirs.map(async (dir) => {
+      const entries = await readdir(dir).catch(() => []);
+
+      return entries
+        .filter((entry) => entry.toLowerCase().endsWith(extension))
+        .map((entry) => join(dir, entry));
+    }),
+  );
+
+  return perDir.flat();
+}
+
+/**
+ * @param bundle - Path of a `.component` or `.appex` bundle
  * @returns The Audio Units its Info.plist lists
  */
 async function readBundle(bundle: string): Promise<AuComponent[]> {
@@ -72,8 +110,7 @@ async function readBundle(bundle: string): Promise<AuComponent[]> {
     join(bundle, "Contents", "Info.plist"),
     "utf8",
   ).catch(() => "");
-  const root = parseXmlPlist(xml);
-  const entries = isDict(root) ? root.AudioComponents : null;
+  const entries = audioComponents(parseXmlPlist(xml));
 
   if (!Array.isArray(entries)) {
     return [];
@@ -99,6 +136,29 @@ async function readBundle(bundle: string): Promise<AuComponent[]> {
       },
     ];
   });
+}
+
+/**
+ * @param root - A parsed Info.plist
+ * @returns Its AudioComponents list: top level for AU v2, under
+ *   NSExtension.NSExtensionAttributes for AUv3
+ */
+function audioComponents(
+  root: PlistValue | null | undefined,
+): PlistValue | undefined {
+  if (!isDict(root)) {
+    return undefined;
+  }
+
+  const extension = root.NSExtension;
+  const attributes = isDict(extension)
+    ? extension.NSExtensionAttributes
+    : undefined;
+
+  return (
+    root.AudioComponents ??
+    (isDict(attributes) ? attributes.AudioComponents : undefined)
+  );
 }
 
 /**

@@ -97,6 +97,7 @@ describe("resolvePlugin by format", () => {
   const tempDir = useTempDir("ppal-resolve-formats-");
   let dir: string;
   let auDir: string;
+  let appDir: string;
   let db: string;
 
   /**
@@ -130,6 +131,18 @@ describe("resolvePlugin by format", () => {
     );
     addBundle("Serum2", plist([["Xfer Records: Serum 2 FX", "aufx"]]));
     addBundle("Binary", Buffer.from("bplist00\u0000"));
+
+    appDir = join(dir, "Applications");
+    const appex = join(appDir, "Synth.app/Contents/PlugIns/Synth.appex");
+
+    mkdirSync(join(appex, "Contents"), { recursive: true });
+    writeFileSync(
+      join(appex, "Contents", "Info.plist"),
+      `<plist><dict><key>NSExtension</key><dict><key>NSExtensionAttributes</key><dict>
+        <key>AudioComponents</key><array><dict>
+          <key>name</key><string>Synth Co: Synth FX</string><key>type</key><string>aumf</string>
+        </dict></array></dict></dict></dict></plist>`,
+    );
   });
 
   beforeEach(() => {
@@ -214,8 +227,20 @@ describe("resolvePlugin by format", () => {
     it("says it can't tell the kind when no bundle names the AU", async () => {
       browserLists(au("Ghost"));
 
-      await expect(resolvePlugin({ name: "Ghost" }, [auDir])).rejects.toThrow(
+      await expect(
+        resolvePlugin({ name: "Ghost" }, [auDir], [appDir]),
+      ).rejects.toThrow(
         'Can\'t tell whether "Ghost" is an instrument or an audio effect',
+      );
+    });
+
+    it("says an AUv3 can't be hosted", async () => {
+      browserLists(au("Synth FX", "Synth Co"));
+
+      await expect(
+        resolvePlugin({ name: "Synth FX" }, [auDir], [appDir]),
+      ).rejects.toThrow(
+        '"Synth FX" is an AUv3 plug-in, and those can\'t be hosted',
       );
     });
 
@@ -230,7 +255,7 @@ describe("resolvePlugin by format", () => {
       browserLists(au("AUDelay"));
 
       await expect(
-        resolvePlugin({ name: "AUDelay" }, [lonely]),
+        resolvePlugin({ name: "AUDelay" }, [lonely], [appDir]),
       ).rejects.toThrow("instrument or an audio effect");
     });
 

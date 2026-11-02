@@ -5,8 +5,8 @@ most 128). To reach all of them, Producer Pal hosts the plug-in itself, inside a
 Max for Live device built around Max's `vst~` object.
 
 **Status: ships in every build, working end to end on macOS with VST3** (Live
-12, Colour Copy and Serum 2). AU and VST2 load too (probed on Live 12). Windows
-and VST2 shell plug-ins are untested.
+12, Colour Copy and Serum 2). AU and VST2 load too (probed on Live 12). AUv3
+can't be hosted. Windows and VST2 shell plug-ins are untested.
 
 Run `npm run install:plugin-host` to copy the wrapper devices into the User
 Library (Live's browser must find them by name).
@@ -117,6 +117,17 @@ Set's restore has run, from the same sources as `info`'s `plugin`.
   `/System/Library/Components` (Apple's AUs, e.g. `CoreAudio.component`). A
   binary plist, or an AU with no matching entry, is "can't tell". Plists are
   read only when no VST3 matched. AU presets aren't supported.
+- **AUv3 can't be hosted.** `vst~` loads nothing for one, under any name
+  (`plug_au "Audulus 4 FX"`, with the vendor, `C74_AU:/…`, the `juce_id`
+  `AudioUnit:/aumf,adfx,ADLS`), even after `scan 2` and seconds of waiting,
+  though Max's scan writes an `.auinfo` for it and Live loads it natively (Live
+  12, Max 9.1.5). Cycling '74 says nothing either way. An AUv3 is an app
+  extension, `<app>.app/Contents/PlugIns/<name>.appex`, listing its AUs under
+  `NSExtension` → `NSExtensionAttributes` → `AudioComponents`. When no
+  `.component` names the AU, the apps in `/Applications` and `~/Applications`
+  are checked, and a match is refused as AUv3 instead of "can't tell". The one
+  workaround found is a young third-party Max external
+  (`Ars-Tools/Max-Ext-mc.auv3-` on GitHub, no releases); untried.
 - **Loading.** The wrapper sends `unplug`, then `plug_vst3 <file>`,
   `plug_au <name>` or `plug_vst <file>`, then `subname <name>` when the VST3
   file holds several plug-ins. `subname` only matches in files that list their
