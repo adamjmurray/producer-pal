@@ -5,6 +5,7 @@
 
 const MODELS_URL = "https://openrouter.ai/api/v1/models";
 const FETCH_TIMEOUT_MS = 3000;
+const RETRY_AFTER_MS = 60_000;
 
 /** `format` OpenRouter stamps on Claude's reasoning_details entries. */
 export const CLAUDE_REASONING_FORMAT = "anthropic-claude-v1";
@@ -12,9 +13,11 @@ export const CLAUDE_REASONING_FORMAT = "anthropic-claude-v1";
 /** Model id -> whether reasoning is mandatory (can't be turned off). */
 type ReasoningMandatory = Map<string, boolean>;
 
-// One fetch per session, shared by concurrent callers. A failure clears it so
-// a later send retries.
+// One fetch per session, shared by concurrent callers. A failure is retried
+// after RETRY_AFTER_MS, not on every step of a send (each could wait out the
+// timeout).
 let pending: Promise<ReasoningMandatory | null> | null = null;
+let failedAt = Number.NEGATIVE_INFINITY;
 
 /** Minimal shape of the OpenRouter chat body fields this module touches. */
 interface ReasoningBody {
@@ -42,7 +45,9 @@ export async function settleOpenRouterReasoningOff(
   }
 
   const models = await loadReasoningMandatory();
-  const mandatory = models?.get(body.model);
+  // A routing variant (":nitro", ":floor") isn't listed on its own.
+  const mandatory =
+    models?.get(body.model) ?? models?.get(body.model.replace(/:[^/]*$/, ""));
 
   if (mandatory == null) {
     delete body.reasoning;
@@ -113,6 +118,7 @@ export function dropUnusableClaudeReasoning(body: ReasoningBody): boolean {
  */
 export function resetOpenRouterReasoningCache(): void {
   pending = null;
+  failedAt = Number.NEGATIVE_INFINITY;
 }
 
 /**
@@ -121,12 +127,17 @@ export function resetOpenRouterReasoningCache(): void {
  */
 function loadReasoningMandatory(): Promise<ReasoningMandatory | null> {
   if (pending == null) {
+    if (Date.now() - failedAt < RETRY_AFTER_MS) {
+      return Promise.resolve(null);
+    }
+
     const request = fetchReasoningMandatory();
 
     pending = request;
     void request.then((result) => {
       if (result == null && pending === request) {
         pending = null;
+        failedAt = Date.now();
       }
     });
   }
