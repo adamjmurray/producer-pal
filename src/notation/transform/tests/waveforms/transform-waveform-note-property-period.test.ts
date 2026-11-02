@@ -21,8 +21,13 @@ describe("a waveform period that uses a note property", () => {
     ["velocity = sin(abs(rand() + note.velocity))", "sin", "note.velocity"],
     ["velocity = 1 + min(10, sin(note.count))", "sin", "note.count"],
   ])("is refused: %s", (transform, fn, property) => {
+    const fix =
+      property === "note.start"
+        ? "the wave already follows each note's start, so leave note.start out, phase included"
+        : `for per-note variation, put it in the phase (2nd argument) as a fraction of a cycle, e.g. ${fn}(1bar, ${property} / 12): a whole number shifts nothing`;
+
     expect(() => tryParseTransform(transform, 4, 4)).toThrow(
-      `${fn}() period is a cycle length (e.g. ${fn}(n/4) or ${fn}(1bar)), not radians, so it can't use ${property}; put per-note variation in the phase (2nd argument)`,
+      `${fn}() period is a cycle length (e.g. ${fn}(n/4) or ${fn}(1bar)), not radians, so it can't use ${property}; ${fix}`,
     );
   });
 

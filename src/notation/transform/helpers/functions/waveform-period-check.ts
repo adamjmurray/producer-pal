@@ -24,11 +24,20 @@ export function checkWaveformPeriods(node: ArityNode | undefined): void {
       : null;
 
     if (property != null) {
-      throw new Error(
-        `${call.name}() period is a cycle length (e.g. ${call.name}(n/4) or ${call.name}(1bar)), not radians, so it can't use ${property}; put per-note variation in the phase (2nd argument)`,
-      );
+      throw new Error(periodError(call.name, property));
     }
   }
+}
+
+// Models fix this by moving the property into the phase, which is wrong for
+// note.start (the wave already follows it, so off-beat notes shift) and a no-op
+// for a whole number (the phase is a fraction of a cycle).
+function periodError(name: string, property: string): string {
+  const head = `${name}() period is a cycle length (e.g. ${name}(n/4) or ${name}(1bar)), not radians, so it can't use ${property}`;
+
+  return property === "note.start"
+    ? `${head}; the wave already follows each note's start, so leave note.start out, phase included`
+    : `${head}; for per-note variation, put it in the phase (2nd argument) as a fraction of a cycle, e.g. ${name}(1bar, ${property} / 12): a whole number shifts nothing`;
 }
 
 // Every function call in the tree, outermost first.

@@ -202,11 +202,11 @@ describe("ppal-clip-transforms (bad argument refused up front)", () => {
   it.each([
     [
       "velocity = 80 + 30*sin(note.start * 6.28318530718)",
-      "sin() period is a cycle length (e.g. sin(n/4) or sin(1bar)), not radians, so it can't use note.start; put per-note variation in the phase (2nd argument)",
+      "sin() period is a cycle length (e.g. sin(n/4) or sin(1bar)), not radians, so it can't use note.start; the wave already follows each note's start, so leave note.start out, phase included",
     ],
     [
       "velocity = 90 + 20 * cos(note.pitch + 0.5)",
-      "cos() period is a cycle length (e.g. cos(n/4) or cos(1bar)), not radians, so it can't use note.pitch; put per-note variation in the phase (2nd argument)",
+      "cos() period is a cycle length (e.g. cos(n/4) or cos(1bar)), not radians, so it can't use note.pitch; for per-note variation, put it in the phase (2nd argument) as a fraction of a cycle, e.g. cos(1bar, note.pitch / 12): a whole number shifts nothing",
     ],
   ])(
     "ppal-update-clip refuses a waveform period that uses a note property: %s",
