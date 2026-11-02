@@ -4,9 +4,13 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Chat Completions `chat.completion.chunk` streams, built by hand from the
- * documented shape, not recorded. This is what Ollama, LM Studio and custom
- * OpenAI-compatible servers send. Re-record with
+ * Chat Completions `chat.completion.chunk` streams, as Ollama, LM Studio and
+ * custom OpenAI-compatible servers send. The thinking, tool-call and answer
+ * streams are checked against recordings of LM Studio running qwen3.8-27b
+ * (2026-11): `finish_reason` arrives on its own empty-delta chunk, then a usage
+ * chunk with no choices, then `[DONE]`. The cut-off stream follows the same shape
+ * (recorded with a 5-token cap). The error and missing-`[DONE]` streams are
+ * built by hand. Re-record with
  * `scripts/probes/record-provider-streams.ts`.
  */
 import { LIVE_SET_TOOL } from "./fake-mcp-tools";
@@ -45,11 +49,13 @@ export const USAGE: RawEvent = {
   usage: {
     prompt_tokens: 100,
     completion_tokens: 50,
+    total_tokens: 150,
     completion_tokens_details: { reasoning_tokens: 42 },
   },
 };
 
 const start = chunk({ role: "assistant", content: "" });
+const finish = (reason: string): RawEvent => chunk({}, reason);
 const TOOL_CALLS = "tool_calls";
 
 const call = (
@@ -74,11 +80,11 @@ const argPiece = (index: number, args: string): Delta => ({
  */
 export function thinkingThenText(field: string): RawEvent[] {
   return [
-    start,
-    chunk({ [field]: "Checking " }),
+    chunk({ role: "assistant", [field]: "Checking " }),
     chunk({ [field]: "the tempo." }),
     chunk({ content: "The set runs at " }),
-    chunk({ content: "120 BPM." }, "stop"),
+    chunk({ content: "120 BPM." }),
+    finish("stop"),
     USAGE,
     "[DONE]",
   ];
@@ -89,7 +95,8 @@ export const CALL: RawEvent[] = [
   start,
   chunk(call(0, "call_1", LIVE_SET_TOOL, "")),
   chunk(argPiece(0, '{"incl')),
-  chunk(argPiece(0, 'ude":"t"}'), TOOL_CALLS),
+  chunk(argPiece(0, 'ude":"t"}')),
+  finish(TOOL_CALLS),
   USAGE,
   "[DONE]",
 ];
@@ -97,14 +104,15 @@ export const CALL: RawEvent[] = [
 /** The same call after some thinking. */
 export const THINKING_THEN_CALL: RawEvent[] = [
   start,
-  chunk({ reasoning_content: "Need the tracks." }),
+  chunk({ role: "assistant", reasoning_content: "Need the tracks." }),
   ...CALL.slice(1),
 ];
 
 /** The answer once the tool result is in. */
 export const ANSWER_AFTER_TOOL: RawEvent[] = [
   start,
-  chunk({ content: "Tempo is 120." }, "stop"),
+  chunk({ content: "Tempo is 120." }),
+  finish("stop"),
   USAGE,
   "[DONE]",
 ];
@@ -129,7 +137,8 @@ export const FAILING_CALL: RawEvent[] = [
 /** Text cut off by the output limit. */
 export const CUT_OFF: RawEvent[] = [
   start,
-  chunk({ content: "Tracks: Drums, Ba" }, "length"),
+  chunk({ content: "Tracks: Drums, Ba" }),
+  finish("length"),
   USAGE,
   "[DONE]",
 ];

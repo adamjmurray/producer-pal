@@ -21,6 +21,8 @@
  * Flags: --route anthropic,openai,gemini,mistral,openrouter,vercel,ollama,lmstudio
  *   (required)  --model <id> (default: the route's default model)
  *   --scenario text,tool (default both)  --level Default,Max,Off (default Default)
+ *   --prompt <text> (replaces the scenario's prompt, e.g. a provider's test trigger)
+ *   --max-output <tokens> (cap the answer, to bound the cost of a Max run)
  *   --out <dir> (default scratchpad/recorded-streams)
  *
  * Each file holds one HTTP response: `{ route, model, scenario, url, request,
@@ -63,6 +65,17 @@ function flagValue(argv: string[], flag: string): string | null {
   const i = argv.indexOf(flag);
 
   return i >= 0 ? (argv[i + 1] ?? null) : null;
+}
+
+/**
+ * Read a comma-separated flag.
+ * @param argv - Arguments after the script name
+ * @param flag - Flag name, such as `--scenario`
+ * @param fallback - Value when the flag is absent
+ * @returns The listed values
+ */
+function listFlag(argv: string[], flag: string, fallback: string[]): string[] {
+  return flagValue(argv, flag)?.split(",") ?? fallback;
 }
 
 /**
@@ -161,16 +174,21 @@ function installRecorder(
  * @param model - Language model
  * @param providerOptions - Options from the webui builder
  * @param scenario - `text` or `tool`
+ * @param maxOutputTokens - Cap on the answer, or undefined for the default
+ * @param prompt - Replaces the scenario's prompt
  */
 async function runScenario(
   model: LanguageModel,
   providerOptions: unknown,
   scenario: string,
+  maxOutputTokens?: number,
+  prompt?: string,
 ): Promise<void> {
   const result = streamText({
     model,
     maxRetries: 0,
-    messages: [{ role: "user", content: PROMPTS[scenario] ?? "" }],
+    maxOutputTokens,
+    messages: [{ role: "user", content: prompt ?? PROMPTS[scenario] ?? "" }],
     tools:
       scenario === "tool"
         ? {
@@ -206,11 +224,10 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const scenarios = flagValue(argv, "--scenario")?.split(",") ?? [
-    "text",
-    "tool",
-  ];
-  const levels = flagValue(argv, "--level")?.split(",") ?? ["Default"];
+  const scenarios = listFlag(argv, "--scenario", ["text", "tool"]);
+  const levels = listFlag(argv, "--level", ["Default"]);
+  const maxOutput = Number(flagValue(argv, "--max-output")) || undefined;
+  const prompt = flagValue(argv, "--prompt") ?? undefined;
   const out =
     flagValue(argv, "--out") ?? join(ROOT, "scratchpad/recorded-streams");
   const { server, load } = await startModuleLoader();
@@ -248,6 +265,8 @@ async function main(): Promise<void> {
           model,
           buildProviderOptions(route, level, modelId),
           scenario,
+          maxOutput,
+          prompt,
         ).catch((error: unknown) => {
           console.error(`  ${route} ${scenario} failed: ${String(error)}`);
         });

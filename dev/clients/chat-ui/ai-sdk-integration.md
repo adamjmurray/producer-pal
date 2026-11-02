@@ -83,10 +83,15 @@ re-sends each turn's signed reasoning (`reasoningReplayFor`,
 the real AI SDK provider and `streamText` loop (only `fetch` is stubbed) into
 `ChatSdkClient`, then checks the history and the next request's wire body. It
 covers Anthropic, OpenAI (Responses), Gemini, and the Chat Completions routes
-(LM Studio, custom, Ollama). The fixtures are built by hand from the documented
-event shapes. `scripts/probes/record-provider-streams.ts` records real ones
-(paid; needs your keys) for checking or refreshing a fixture. OpenRouter's raw
-stream is covered in `tests/provider/openrouter-reasoning-replay.test.ts`.
+(LM Studio, custom, Ollama). The main fixtures (reasoning, tool calls, text,
+cut-off) were checked against real recordings in 2026-11: Anthropic (Haiku and
+Sonnet), OpenAI (GPT luna), Gemini (3.8 flash) and LM Studio (Qwen). Mid-stream
+errors, content-filter stops and blocked prompts are still built by hand: none
+can be triggered with harmless input (Anthropic's documented refusal string did
+not fire on Haiku). `scripts/probes/record-provider-streams.ts` records real
+streams (paid; needs your keys) to check or refresh a fixture; `--max-output`
+caps the answer and `--prompt` swaps the prompt. OpenRouter's raw stream is
+covered in `tests/provider/openrouter-reasoning-replay.test.ts`.
 
 What the tests pin down: only Anthropic and OpenRouter→Claude reasoning is sent
 back on a later turn. Gemini thought summaries, OpenAI reasoning summaries and

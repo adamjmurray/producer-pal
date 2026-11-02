@@ -4,9 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Gemini `streamGenerateContent?alt=sse` chunks, built by hand from the API's
- * documented shape (and the fields `@ai-sdk/google` validates), not recorded.
- * Re-record with `scripts/probes/record-provider-streams.ts`.
+ * Gemini `streamGenerateContent?alt=sse` chunks. The thinking-then-text,
+ * thinking-then-call and cut-off fixtures are checked against a recording of
+ * gemini-3.8-flash (2026-11); the rest are built by hand from the documented
+ * shape and the fields `@ai-sdk/google` validates. Re-record with
+ * `scripts/probes/record-provider-streams.ts`.
  */
 import { LIVE_SET_TOOL } from "./fake-mcp-tools";
 import { type RawEvent } from "./raw-stream-harness";
@@ -50,27 +52,47 @@ export function chunk(
   };
 }
 
-/** Thought summaries, then signed text, then STOP with usage. */
+/**
+ * Thought summaries, then the text, then the signature on a trailing empty text
+ * part with STOP. Every chunk carries the running usage.
+ */
 export const THINKING_THEN_TEXT: RawEvent[] = [
-  chunk([{ text: "**Reading the set**\n\nChecking ", thought: true }]),
-  chunk([{ text: "the tempo.", thought: true }]),
-  chunk([{ text: "The set runs at ", thoughtSignature: SIGNATURE }]),
-  chunk([{ text: "120 BPM." }], { finishReason: "STOP" }, usage(8, 42)),
+  chunk(
+    [{ text: "**Reading the set**\n\nChecking ", thought: true }],
+    {},
+    usage(0, 42),
+  ),
+  chunk([{ text: "the tempo.", thought: true }], {}, usage(0, 42)),
+  chunk([{ text: "The set runs at " }], {}, usage(4, 42)),
+  chunk([{ text: "120 BPM." }], {}, usage(8, 42)),
+  chunk(
+    [{ text: "", thoughtSignature: SIGNATURE }],
+    { finishReason: "STOP" },
+    usage(8, 42),
+  ),
 ];
 
-/** A thought summary and a signed function call, as one tool step. */
+/**
+ * A thought summary, then a signed function call with an id. STOP arrives in a
+ * separate empty-text chunk after the call.
+ */
 export const THINKING_THEN_CALL: RawEvent[] = [
-  chunk([{ text: "Need the tracks.", thought: true }]),
+  chunk([{ text: "Need the tracks.", thought: true }], {}, usage(0, 20)),
   chunk(
     [
       {
-        functionCall: { name: LIVE_SET_TOOL, args: { include: "t" } },
+        functionCall: {
+          name: LIVE_SET_TOOL,
+          args: { include: "t" },
+          id: "call_1",
+        },
         thoughtSignature: SIGNATURE,
       },
     ],
-    { finishReason: "STOP" },
+    {},
     usage(5, 20),
   ),
+  chunk([{ text: "" }], { finishReason: "STOP" }, usage(5, 20)),
 ];
 
 /** A signed thought summary, then the answer. */
@@ -121,7 +143,11 @@ export const NO_ARGS_CALL: RawEvent[] = [
 /** Text cut off by the output limit. */
 export const CUT_OFF: RawEvent[] = [
   chunk([{ text: "Tracks: Drums, Ba" }]),
-  chunk([{ text: "" }], { finishReason: "MAX_TOKENS" }, usage(16, 0)),
+  chunk(
+    [{ text: "", thoughtSignature: SIGNATURE }],
+    { finishReason: "MAX_TOKENS" },
+    usage(16, 0),
+  ),
 ];
 
 /** An empty signature-only text part after the answer, as Gemini 3 sends. */

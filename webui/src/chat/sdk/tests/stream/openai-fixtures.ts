@@ -4,9 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * OpenAI Responses API stream events, built by hand from the documented event
- * names and the fields `@ai-sdk/openai` validates, not recorded. Re-record with
- * `scripts/probes/record-provider-streams.ts`.
+ * OpenAI Responses API stream events. Checked against recordings of gpt-6-luna
+ * (2026-11): reasoning summaries, a streamed text answer and a function call,
+ * with the `in_progress`, `content_part` and `.done` events the real stream
+ * sends, and the `response.incomplete` cut-off. The filtered and error streams
+ * are built by hand from the documented shapes. Re-record with `scripts/probes/record-provider-streams.ts`.
  */
 import { LIVE_SET_TOOL } from "./fake-mcp-tools";
 import { type RawEvent } from "./raw-stream-harness";
@@ -27,9 +29,12 @@ const ev = (type: string, fields: Record<string, unknown>): RawEvent => ({
   ...fields,
 });
 
-const created = ev("response.created", {
-  response: { id: "resp_1", created_at: 1_700_000_000, model: GPT },
-});
+const response = { id: "resp_1", created_at: 1_700_000_000, model: GPT };
+
+const created: RawEvent[] = [
+  ev("response.created", { response }),
+  ev("response.in_progress", { response }),
+];
 
 const completed = (
   output: number,
@@ -72,6 +77,7 @@ export function reasoningItem(
         item_id: id,
         output_index: index,
         summary_index: i,
+        part: { type: "summary_text", text: "" },
       }),
       ...deltas.map((delta) =>
         ev("response.reasoning_summary_text.delta", {
@@ -81,10 +87,17 @@ export function reasoningItem(
           delta,
         }),
       ),
+      ev("response.reasoning_summary_text.done", {
+        item_id: id,
+        output_index: index,
+        summary_index: i,
+        text: deltas.join(""),
+      }),
       ev("response.reasoning_summary_part.done", {
         item_id: id,
         output_index: index,
         summary_index: i,
+        part: { type: "summary_text", text: deltas.join("") },
       }),
     ]),
     ev(ITEM_DONE, {
@@ -106,21 +119,53 @@ export function messageItem(
   index: number,
   deltas: string[],
 ): RawEvent[] {
+  const text = deltas.join("");
+  const part = { type: "output_text", annotations: [], text: "" };
+  const item = {
+    type: "message",
+    id,
+    phase: "final_answer",
+    role: "assistant",
+  };
+
   return [
     ev(ITEM_ADDED, {
       output_index: index,
-      item: { type: "message", id, phase: "final_answer" },
+      item: { ...item, status: "in_progress", content: [] },
+    }),
+    ev("response.content_part.added", {
+      item_id: id,
+      output_index: index,
+      content_index: 0,
+      part,
     }),
     ...deltas.map((delta) =>
       ev("response.output_text.delta", {
         item_id: id,
         output_index: index,
+        content_index: 0,
         delta,
       }),
     ),
+    ev("response.output_text.done", {
+      item_id: id,
+      output_index: index,
+      content_index: 0,
+      text,
+    }),
+    ev("response.content_part.done", {
+      item_id: id,
+      output_index: index,
+      content_index: 0,
+      part: { ...part, text },
+    }),
     ev(ITEM_DONE, {
       output_index: index,
-      item: { type: "message", id, phase: "final_answer" },
+      item: {
+        ...item,
+        status: "completed",
+        content: [{ ...part, text }],
+      },
     }),
   ];
 }
@@ -147,7 +192,7 @@ export function callItem(
   return [
     ev(ITEM_ADDED, {
       output_index: index,
-      item: { ...item, arguments: "" },
+      item: { ...item, arguments: "", status: "in_progress" },
     }),
     ...pieces.map((delta) =>
       ev("response.function_call_arguments.delta", {
@@ -170,7 +215,7 @@ export function callItem(
 
 /** Summarized reasoning, then the answer. */
 export const THINKING_THEN_TEXT: RawEvent[] = [
-  created,
+  ...created,
   ...reasoningItem("rs_1", 0, [
     ["**Reading the set**\n\n", "Checking the tempo."],
   ]),
@@ -180,7 +225,7 @@ export const THINKING_THEN_TEXT: RawEvent[] = [
 
 /** Reasoning in two summary parts, then the answer. */
 export const TWO_SUMMARY_PARTS: RawEvent[] = [
-  created,
+  ...created,
   ...reasoningItem("rs_1", 0, [
     ["**Reading the set**\n\nChecking the tempo."],
     ["**Writing it up**\n\nKeeping it short."],
@@ -191,7 +236,7 @@ export const TWO_SUMMARY_PARTS: RawEvent[] = [
 
 /** Reasoning that arrives encrypted, with no summary text. */
 export const ENCRYPTED_REASONING: RawEvent[] = [
-  created,
+  ...created,
   ...reasoningItem("rs_1", 0, [], ENCRYPTED),
   ...messageItem("msg_1", 1, ["120 BPM."]),
   completed(4, 30),
@@ -199,7 +244,7 @@ export const ENCRYPTED_REASONING: RawEvent[] = [
 
 /** Reasoning, then a tool call whose arguments stream in pieces. */
 export const THINKING_THEN_CALL: RawEvent[] = [
-  created,
+  ...created,
   ...reasoningItem("rs_2", 0, [["Need the tracks."]]),
   ...callItem("fc_1", "call_1", LIVE_SET_TOOL, 1, ['{"incl', 'ude":"t"}']),
   completed(5, 20),
@@ -207,14 +252,14 @@ export const THINKING_THEN_CALL: RawEvent[] = [
 
 /** The answer once the tool result is in. */
 export const ANSWER_AFTER_TOOL: RawEvent[] = [
-  created,
+  ...created,
   ...messageItem("msg_3", 0, ["Tempo is 120."]),
   completed(4, 0),
 ];
 
 /** Two calls in one response. */
 export const PARALLEL_CALLS: RawEvent[] = [
-  created,
+  ...created,
   ...callItem("fc_a", "call_a", LIVE_SET_TOOL, 0, ['{"include":"a"}']),
   ...callItem("fc_b", "call_b", LIVE_SET_TOOL, 1, ['{"include":"b"}']),
   completed(6, 0),
@@ -222,35 +267,35 @@ export const PARALLEL_CALLS: RawEvent[] = [
 
 /** A call to a tool that fails. */
 export const FAILING_CALL: RawEvent[] = [
-  created,
+  ...created,
   ...callItem("fc_x", "call_x", "ppal-update-clip", 0, ['{"id":"7"}']),
   completed(3, 0),
 ];
 
 /** A call with an empty argument string. */
 export const NO_ARGS_CALL: RawEvent[] = [
-  created,
+  ...created,
   ...callItem("fc_n", "call_n", LIVE_SET_TOOL, 0, []),
   completed(3, 0),
 ];
 
 /** Text cut off by the output limit. */
 export const CUT_OFF: RawEvent[] = [
-  created,
+  ...created,
   ...messageItem("msg_1", 0, ["Tracks: Drums, Ba"]),
   completed(16, 0, { reason: "max_output_tokens" }),
 ];
 
 /** The content filter ends the response with no output. */
 export const FILTERED: RawEvent[] = [
-  created,
+  ...created,
   completed(0, 0, { reason: "content_filter" }),
 ];
 
 /** Some text, then the response fails. */
 export const FAILED_MID_STREAM: RawEvent[] = [
-  created,
-  ...messageItem("msg_1", 0, ["The set has "]).slice(0, 2),
+  ...created,
+  ...messageItem("msg_1", 0, ["The set has "]).slice(0, 3),
   ev("response.failed", {
     response: {
       error: { code: "server_error", message: "The server had an error." },
@@ -260,8 +305,8 @@ export const FAILED_MID_STREAM: RawEvent[] = [
 
 /** Some text, then a bare `error` event. */
 export const ERROR_EVENT: RawEvent[] = [
-  created,
-  ...messageItem("msg_1", 0, ["The set has "]).slice(0, 2),
+  ...created,
+  ...messageItem("msg_1", 0, ["The set has "]).slice(0, 3),
   ev("error", {
     code: "rate_limit_exceeded",
     message: "Rate limit reached for this model.",

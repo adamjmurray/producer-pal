@@ -4,8 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Anthropic Messages API stream events, built by hand from the documented event
- * names and the fields `@ai-sdk/anthropic` validates, not recorded. Re-record
+ * Anthropic Messages API stream events. Checked against recordings of
+ * claude-haiku-5-5 and claude-sonnet-5-5 (2026-11): signed thinking, a streamed tool call, redacted
+ * thinking, `ping` after the first block, and `message_delta` repeating
+ * `input_tokens`. Overload and rate-limit errors are built by hand. Re-record
  * with `scripts/probes/record-provider-streams.ts`.
  */
 import { type RawEvent } from "./raw-stream-harness";
@@ -26,11 +28,17 @@ const start: RawEvent = {
   },
 };
 
+const ping: RawEvent = { type: "ping" };
+
+/** Real streams send one `ping` right after the first block opens. */
+const afterStart = (index: number): RawEvent[] => (index === 0 ? [ping] : []);
+
 const end = (stopReason: string, output: number, thinking = 0): RawEvent[] => [
   {
     type: "message_delta",
     delta: { stop_reason: stopReason, stop_sequence: null },
     usage: {
+      input_tokens: 100,
       output_tokens: output,
       output_tokens_details: { thinking_tokens: thinking },
     },
@@ -56,6 +64,7 @@ function thinkingBlock(
       index,
       content_block: { type: "thinking", thinking: "", signature: "" },
     },
+    ...afterStart(index),
     ...deltas.map((delta): RawEvent => ({
       type: "content_block_delta",
       index,
@@ -83,6 +92,7 @@ function textBlock(index: number, deltas: string[]): RawEvent[] {
       index,
       content_block: { type: "text", text: "" },
     },
+    ...afterStart(index),
     ...deltas.map((delta): RawEvent => ({
       type: "content_block_delta",
       index,
@@ -112,6 +122,7 @@ function toolUse(
       index,
       content_block: { type: "tool_use", id, name, input: {} },
     },
+    ...afterStart(index),
     ...pieces.map((partial_json): RawEvent => ({
       type: "content_block_delta",
       index,
@@ -146,6 +157,7 @@ export const REDACTED_THEN_TEXT: RawEvent[] = [
     index: 0,
     content_block: { type: "redacted_thinking", data: REDACTED },
   },
+  ping,
   { type: "content_block_stop", index: 0 },
   ...textBlock(1, ["120 BPM."]),
   ...end("end_turn", 10),
@@ -176,7 +188,7 @@ export const ANSWER_AFTER_TOOL: RawEvent[] = [
 /** Some text, then the server reports an overload. */
 export const OVERLOADED_MID_STREAM: RawEvent[] = [
   start,
-  ...textBlock(0, ["The set has "]).slice(0, 2),
+  ...textBlock(0, ["The set has "]).slice(0, 3),
   { type: "error", error: { type: "overloaded_error", message: "Overloaded" } },
 ];
 
