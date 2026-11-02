@@ -153,7 +153,7 @@ export const automationWriteMixer: EvalScenario = {
       prompt: `The user asked for three automation envelopes on the Lead clip: volume
 fading in from silence to full, pan sweeping hard left to hard right, and send A
 rising from nothing to about half. Evaluate the final reply: it says all three
-were written.`,
+were written. Envelope values are raw: mixer volume 0.85 is 0 dB (unity).`,
     },
   ],
 };

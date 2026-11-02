@@ -48,10 +48,13 @@ describe("judgeSlug", () => {
 });
 
 describe("criteriaHash", () => {
-  it("differs for different text and repeats for the same", () => {
+  it("differs for different text or system prompt and repeats for the same", () => {
     expect(criteriaHash("a")).toBe(criteriaHash("a"));
     expect(criteriaHash("a")).not.toBe(criteriaHash("b"));
     expect(criteriaHash("a")).toHaveLength(12);
+    expect(criteriaHash("a", "old prompt")).not.toBe(
+      criteriaHash("a", "new prompt"),
+    );
   });
 });
 

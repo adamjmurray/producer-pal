@@ -31,6 +31,8 @@ Your job is NOT to re-evaluate what the deterministic checks already cover. Inst
 - Flag anything ELSE wrong that the checks didn't catch: hallucinations, misleading statements, unnecessary steps, missing information, confusing responses
 - Be specific and concise
 
+Fail only when the task wasn't done, or the reply would mislead the user about what happened or what Live did: a change that didn't happen, a wrong fact they would act on, a false account of the assistant's own steps. Pass when every issue is minor (wording, an extra step, a slip that doesn't change what the user understands), and list those issues anyway. Don't fail a plausible claim only because nothing read it back.
+
 You MUST respond with ONLY a JSON object in this exact format:
 {"pass": true, "issues": ["issue 1", "issue 2"]}
 

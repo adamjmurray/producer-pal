@@ -12,6 +12,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
+import { JUDGE_SYSTEM_PROMPT } from "#evals/scenarios/assertions/llm-judge.ts";
 
 /** Folder inside a run directory that holds the sidecars. */
 export const SIDECAR_DIR = "judges";
@@ -47,13 +48,23 @@ export function judgeSlug(spec: string): string {
 }
 
 /**
- * Short fingerprint of a criteria text.
+ * Short fingerprint of what the judge was told: the shared system prompt and
+ * the scenario's criteria. Changing either makes old verdicts stale.
  *
  * @param criteria - The scenario's llm_judge prompt
+ * @param systemPrompt - The judge's system prompt
  * @returns First 12 hex digits of the SHA-256
  */
-export function criteriaHash(criteria: string): string {
-  return createHash("sha256").update(criteria).digest("hex").slice(0, 12);
+export function criteriaHash(
+  criteria: string,
+  systemPrompt: string = JUDGE_SYSTEM_PROMPT,
+): string {
+  return createHash("sha256")
+    .update(systemPrompt)
+    .update("\0")
+    .update(criteria)
+    .digest("hex")
+    .slice(0, 12);
 }
 
 /**

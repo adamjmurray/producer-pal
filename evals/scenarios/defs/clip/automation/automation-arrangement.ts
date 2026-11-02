@@ -157,6 +157,8 @@ fade-in. Two routes work: write the fade on the session clip and copy it to bar
 writes the track's automation lane over the clip's span, and the clip gets a new
 id).
 
+Envelope values are raw: mixer volume 0.85 is 0 dB (unity).
+
 Evaluate the final reply:
 1. It says the Lead clip is on the arrangement at bar 5.
 2. It says the volume fade-in was written.`,
@@ -197,12 +199,16 @@ export const automationArrangementDirect: EvalScenario = {
       type: "llm_judge",
       prompt: `The Lead clip sits on the arrangement at bar 5. Writing envelopes on an
 arrangement clip writes the track's automation lane over that clip's span (the
-clip is re-created under a new id). Copying an automated session clip over bar
-5 works too.
+clip is re-created under a new id, with its content and settings kept, so a
+reply may say they are unchanged). Copying an automated session clip over bar 5
+works too.
 
 Evaluate the final reply to the request to automate that clip's pan:
 1. It reports pan automation from hard left to hard right as written at bar 5.
-2. It does not say this is impossible.`,
+2. It does not say this is impossible.
+
+Don't grade remarks on what moving the clip later would do to the automation:
+that depends on how it is moved.`,
     },
   ],
 };

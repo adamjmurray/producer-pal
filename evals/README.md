@@ -529,10 +529,16 @@ system prompt, and keep a "does not" requirement only for one specific mistake
 (e.g. "does not say this is impossible"). Dropping them cut escalations on nine
 scenarios from 54 to 35 of 81 results.
 
-For `--jev` runs, `-j anthropic/claude-haiku-5-5` is recommended, not the
-default: escalations are the borderline cases, and Luna is the strictest judge.
-On escalated results Luna agreed with Haiku and Sonnet about 75–80% of the time;
-Haiku and Sonnet agreed with each other 91–93%. Haiku costs API money.
+The judge's system prompt sets the pass bar: fail only when the task wasn't done
+or the reply would mislead the user; list minor flaws but pass. Without it,
+judges split on borderline replies. On 51 escalated results from the Nov 2026
+runs, Luna (high effort) failed 16 and Haiku none, listing the same flaws; a
+Haiku and Sonnet majority sided against Luna on 14 of 15. With the bar, Luna
+agreed with the three-judge majority on 49 of 50 and still failed a false
+account of the model's own steps, so `-j codex-code/luna` works for `--jev`
+runs. Haiku is too lenient to judge alone. The judge sees only the transcript
+and the criteria, so a Live fact a reply relies on (mixer volume 0.85 is 0 dB)
+goes in the criteria.
 
 ### Re-judging saved results
 
@@ -542,7 +548,8 @@ results afterwards with another judge, without Live or re-running the model, use
 with `-j` (same `provider/model` format as above) and writes each verdict to
 `<results>/<run>/judges/<judge-slug>/<result-file>`. Saved results are never
 changed, and re-runs skip results that judge already did (`--force` redoes
-them). Results from before the scenario's judge criteria last changed are left
+them). A saved verdict is redone once the criteria or the judge's system prompt
+change. Results from before the scenario's judge criteria last changed are left
 out (`--include-stale` keeps them).
 
 ```bash
