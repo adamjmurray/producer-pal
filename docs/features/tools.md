@@ -438,6 +438,8 @@ sounding.
 - Add VST/AU plug-ins and Max for Live devices by name (needs the
   [remote script](/guide/remote-script)). The AI finds them with
   [Library](#ppal-library)
+- Add a VST3, AU or VST2 plug-in as a [hosted plug-in](/guide/plugins), so every
+  parameter can be read and set (needs the remote script and Live 12.4+)
 - Place devices on any track type: MIDI, audio, return, or the main track
 - Position devices at a specific index in the device chain
 - Create devices inside rack chains or drum pads using path notation
