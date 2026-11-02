@@ -142,10 +142,16 @@ describe("context - params the scope or action doesn't read", () => {
   it("lets a project or global write take force, and counts force:false as not sent", async () => {
     await expect(
       context(
-        { action: "write", content: "- Key: A minor.", force: true },
+        {
+          action: "write",
+          content: "- Genre: deep house.\n- Key: A minor.",
+          force: true,
+        },
         toolContext,
       ),
-    ).resolves.toStrictEqual({ content: "- Key: A minor." });
+    ).resolves.toStrictEqual({
+      content: "- Genre: deep house.\n- Key: A minor.",
+    });
     await expect(
       context({ action: "read", force: false }, toolContext),
     ).resolves.toBeDefined();

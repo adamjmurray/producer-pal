@@ -6,6 +6,7 @@
 import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { backupProjectContextOnEdit } from "#src/live-api-adapter/project-context-sync.ts";
 import { detachWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
+import { forceGuardMessage } from "#src/tools/shared/write-pipeline/force-guard.ts";
 
 export interface ContentResult {
   content: string;
@@ -27,6 +28,7 @@ export function handleReadProjectContext(
  * @param content - Project context content to write
  * @param context - The context object
  * @param force - Replace the document even when the write keeps none of it
+ *   (only after a refusal of this scope)
  * @returns Content result with the updated project context
  */
 export function handleWriteProjectContext(
@@ -41,13 +43,10 @@ export function handleWriteProjectContext(
   }
 
   const existing = context.projectContext?.content ?? "";
+  const refusal = clobberRefusal("project", existing, content);
 
-  if (!force) {
-    const refusal = clobberRefusal("project", existing, content);
-
-    if (refusal != null) {
-      throw new Error(refusal);
-    }
+  if (refusal != null) {
+    refuseUnlessForced("project", force, refusal);
   }
 
   const projectContext = context.projectContext;
@@ -92,6 +91,7 @@ export async function handleReadGlobalContext(): Promise<ContentResult> {
  *
  * @param content - Global context content to write ("" clears it)
  * @param force - Replace the document even when the write keeps none of it
+ *   (only after a refusal of this scope)
  * @returns Content result with the stored content
  */
 export async function handleWriteGlobalContext(
@@ -102,26 +102,37 @@ export async function handleWriteGlobalContext(
     throw new Error("Content required for write action");
   }
 
-  if (!force) {
-    // The guard compares against the CURRENT document, which lives on the Node
-    // side — one extra round-trip on the (rare) write path, and the freshest
-    // possible baseline: the copy injected at connect may be stale.
-    //
-    // Read-then-write is check-then-act, so a webui PUT or a second MCP session
-    // can land between the two RPCs and be overwritten. Accepted, not overlooked:
-    // there is no transactional isolation across the V8→Node boundary to close
-    // it with, and the only alternative — guarding against the stale connect-time
-    // copy — trades a narrow race for a guard that is wrong whenever the document
-    // changed during the session. A fresh baseline is the point.
-    const existing = await handleReadGlobalContext();
-    const refusal = clobberRefusal("global", existing.content, content);
+  // Compared against the current document, read from the Node side: the copy
+  // injected at connect may be stale. A webui PUT or a second session can still
+  // land between the read and the write; nothing across the V8-to-Node
+  // boundary can close that.
+  const existing = await handleReadGlobalContext();
+  const refusal = clobberRefusal("global", existing.content, content);
 
-    if (refusal != null) {
-      throw new Error(refusal);
-    }
+  if (refusal != null) {
+    refuseUnlessForced("global", force, refusal);
   }
 
   return await callNodeContentRoute("globalContext.write", { content });
+}
+
+/**
+ * Throw the clobber refusal, unless `force` follows an earlier refusal of this
+ * scope.
+ * @param scope - The layer being written (project | global)
+ * @param force - Whether the caller sent force:true
+ * @param refusal - The clobber refusal message
+ */
+function refuseUnlessForced(
+  scope: string,
+  force: boolean,
+  refusal: string,
+): void {
+  const blocked = forceGuardMessage("context", scope, force, refusal);
+
+  if (blocked != null) {
+    throw new Error(blocked);
+  }
 }
 
 /**

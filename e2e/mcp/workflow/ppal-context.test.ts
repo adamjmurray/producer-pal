@@ -68,14 +68,14 @@ describe("ppal-context (project scope)", () => {
 
   it("writes content and round-trips through read", async () => {
     const INITIAL_CONTENT = "Initial content for write test";
-    const UPDATED_CONTENT = "Updated content from e2e test";
+    const UPDATED_CONTENT = `${INITIAL_CONTENT}\nUpdated content from e2e test`;
 
     await setConfig({ projectContext: INITIAL_CONTENT });
 
-    // A total replacement of a non-empty document needs `force` — see the
-    // clobber-guard test below.
+    // Keeps a line of the document, so the clobber guard (tested below) stays
+    // quiet.
     const writeResult = parseToolResult<ContentResult>(
-      await callProjectContextTool("write", UPDATED_CONTENT, true),
+      await callProjectContextTool("write", UPDATED_CONTENT),
     );
 
     expect(writeResult.content).toBe(UPDATED_CONTENT);
@@ -106,6 +106,38 @@ describe("ppal-context (project scope)", () => {
     );
 
     expect(verifyResult.content).toBe(INITIAL_CONTENT);
+
+    // The refusal left a record on the device. Spend it, so the next test
+    // starts with none.
+    await callProjectContextTool("write", "- Key: A minor.", true);
+  });
+
+  it("ignores force before any refusal, then honors it once one has warned", async () => {
+    const INITIAL_CONTENT = "- Genre: deep house.\n- Drop at bar 33.";
+
+    await setConfig({ projectContext: INITIAL_CONTENT });
+
+    const message = getToolErrorMessage(
+      await callProjectContextTool("write", "- Key: A minor.", true),
+    );
+
+    expect(message).toContain(
+      "force:true ignored — nothing had warned about this yet.",
+    );
+    expect(message).toContain('write refused for scope "project"');
+
+    const kept = parseToolResult<ContentResult>(
+      await callProjectContextTool("read"),
+    );
+
+    expect(kept.content).toBe(INITIAL_CONTENT);
+
+    // That refusal warned, so force now replaces the document.
+    const written = parseToolResult<ContentResult>(
+      await callProjectContextTool("write", "- Key: A minor.", true),
+    );
+
+    expect(written.content).toBe("- Key: A minor.");
   });
 
   it("refuses name and description on a project write and leaves the document", async () => {
@@ -216,15 +248,16 @@ describe("ppal-context (global scope)", () => {
     try {
       const testContent = `e2e global context ${randomUUID()}`;
 
-      // `force` because this replaces whatever the developer already had — the
-      // clobber guard (see the project-scope test above) would otherwise refuse
-      // both this write and the restore below.
+      // The clobber guard refuses a replacement that keeps nothing of the
+      // developer's document, and `force` only works after a refusal. An empty
+      // write is never refused, so clear first.
+      await replaceGlobal("");
+
       const written = parseToolResult<ContentResult>(
         await callContextTool({
           action: "write",
           scope: "global",
           content: testContent,
-          force: true,
         }),
       );
 
@@ -236,12 +269,7 @@ describe("ppal-context (global scope)", () => {
 
       expect(readBack.content).toBe(testContent);
     } finally {
-      await callContextTool({
-        action: "write",
-        scope: "global",
-        content: original,
-        force: true,
-      });
+      await replaceGlobal(original);
     }
 
     const restored = parseToolResult<ContentResult>(
@@ -250,7 +278,61 @@ describe("ppal-context (global scope)", () => {
 
     expect(restored.content).toBe(original);
   });
+
+  it("ignores force before any refusal, then honors it once one has warned", async () => {
+    const original = parseToolResult<ContentResult>(
+      await callContextTool({ action: "read", scope: "global" }),
+    ).content;
+    const initial = `- e2e global line ${randomUUID()}`;
+
+    try {
+      await replaceGlobal(initial);
+
+      const message = getToolErrorMessage(
+        await callContextTool({
+          action: "write",
+          scope: "global",
+          content: "- Prefers 90 BPM.",
+          force: true,
+        }),
+      );
+
+      expect(message).toContain(
+        "force:true ignored — nothing had warned about this yet.",
+      );
+      expect(message).toContain('write refused for scope "global"');
+
+      const kept = parseToolResult<ContentResult>(
+        await callContextTool({ action: "read", scope: "global" }),
+      );
+
+      expect(kept.content).toBe(initial);
+
+      // That refusal warned, so force now replaces the document.
+      const written = parseToolResult<ContentResult>(
+        await callContextTool({
+          action: "write",
+          scope: "global",
+          content: "- Prefers 90 BPM.",
+          force: true,
+        }),
+      );
+
+      expect(written.content).toBe("- Prefers 90 BPM.");
+    } finally {
+      await replaceGlobal(original);
+    }
+  });
 });
+
+/** Replace the whole global document: clear it, which is never refused, then write. */
+async function replaceGlobal(content: string): Promise<void> {
+  await callContextTool({ action: "write", scope: "global", content: "" });
+
+  if (content !== "") {
+    await callContextTool({ action: "write", scope: "global", content });
+  }
+}
 
 describe("ppal-context (memory scope)", () => {
   it("writes, reads, reads the index, then deletes a uniquely-named entry", async () => {

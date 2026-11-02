@@ -37,7 +37,7 @@ meet `force` through the clobber warning "at the moment it is relevant, so it
 never reaches for it casually". Runs called `ppal-context` with `force: true` on
 a **first** write, with no skipped write to justify it. Harmless in those runs —
 the content preserved the existing text — but the assumption behind the design
-does not hold.
+does not hold. `force` now only works after a guard has fired for that target.
 
 ## Design assumptions the runs confirmed
 

@@ -5,6 +5,7 @@
 
 // Drum Racks whose pads take a `sample` write, for the update-device tests.
 
+import { expect } from "vitest";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { registerC1PadRack } from "#src/tools/device/tests/helpers/device-rack-fixtures.ts";
 import {
@@ -12,6 +13,7 @@ import {
   children,
   livePath,
   registerMockObject,
+  updateDevice,
 } from "../../update-device-test-helpers.ts";
 
 /** The id Live hands back for the Simpler a pad chain auto-creates. */
@@ -62,6 +64,18 @@ export function registerDrumRackWithDrumSamplerOnC1(): RegisteredMockObject {
 }
 
 export const KICK = "/Library/kick.wav";
+
+/**
+ * Send a sample write the pad swap guard skips, so a `force` after it is
+ * earned. Nothing is written.
+ * @param path - What the call addresses
+ * @param name - The param name the call sends
+ */
+export function skipSampleWrite(path: string, name: string): void {
+  expect(() => updateDevice({ path, params: [{ name, value: KICK }] })).toThrow(
+    "SKIPPED",
+  );
+}
 
 /**
  * Register a Drum Rack on t0/d0 whose C1 pad holds `layers` chains, each

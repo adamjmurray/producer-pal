@@ -8,10 +8,12 @@ Instructions are not a mechanism, so the destructive case is also blocked in
 code: a `project`/`global` write whose content keeps NONE of the existing
 document is refused with an error, so the model can re-send a merged write. It
 throws rather than returning the document beside a warning, because that reply
-has the same shape as a successful write. `force: true` overrides it — declared
-in `context.def.ts` in every mode (a guard whose escape hatch is invisible to
-the tier that hits it would deadlock the write) but deliberately absent from the
-skills, so the model meets it in the warning rather than reaching for it.
+has the same shape as a successful write. `force: true` overrides it, but only
+after a refusal of that scope (a first `force` is refused like an unforced
+write) — declared in `context.def.ts` in every mode (a guard whose escape hatch
+is invisible to the tier that hits it would deadlock the write) but deliberately
+absent from the skills, so the model meets it in the warning rather than
+reaching for it.
 
 Detection is line containment, both sides normalized (list marker stripped,
 whitespace collapsed, trailing punctuation dropped) so a reformat _of a line_
@@ -39,4 +41,5 @@ It applies to the TOOL path only. The webui/REST editors write through their own
 routes, so the user may select-all-and-replace their own document freely; this
 guards an LLM discarding content it never meant to touch, not the user's
 editing. Automation that legitimately replaces a whole document through the tool
-(the e2e round-trip, the eval seed/restore) passes `force`.
+(the e2e round-trip, the eval seed/restore) writes `""` first, which is never
+refused, then the new content.

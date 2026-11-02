@@ -24,6 +24,20 @@ const { backupProjectContextOnEdit } =
   await import("#src/live-api-adapter/project-context-sync.ts");
 const mockBackup = vi.mocked(backupProjectContextOnEdit);
 
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
+
+const { requestNode } =
+  await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
+
+const UNEARNED_FORCE =
+  /^force:true ignored — nothing had warned about this yet\. /;
+
 describe("context - project scope (default)", () => {
   let toolContext: Partial<ToolContext>;
 
@@ -108,18 +122,11 @@ describe("context - project scope (default)", () => {
       expect(outlet).toHaveBeenCalledWith(0, "update_project_context", "");
     });
 
-    // A total replacement of a NON-EMPTY document now needs `force` — see the
+    // A total replacement of a NON-EMPTY document needs `force` — see the
     // clobber-guard block below.
-    it.each([
-      ["updates content when project context is present", "", false],
-      ["overwrites existing content when forced", "old content", true],
-    ])("%s", async (_, initialContent, force) => {
-      if (initialContent) {
-        toolContext.projectContext!.content = initialContent;
-      }
-
+    it("updates content when project context is present", async () => {
       const result = await context(
-        { action: "write", content: "new content", force },
+        { action: "write", content: "new content" },
         toolContext,
       );
 
@@ -219,13 +226,15 @@ describe("context - project scope (default)", () => {
       );
     });
 
-    it("writes when force is true", async () => {
+    it("writes on force after a refusal, and clears the record", async () => {
       toolContext.projectContext!.content = EXISTING;
+      const write = { action: "write", content: "- Key: A minor." } as const;
 
-      const result = await context(
-        { action: "write", content: "- Key: A minor.", force: true },
-        toolContext,
+      await expect(context(write, toolContext)).rejects.toThrow(
+        /^write refused for scope "project"/,
       );
+
+      const result = await context({ ...write, force: true }, toolContext);
 
       expect(toolContext.projectContext!.content).toBe("- Key: A minor.");
       expect(result).toStrictEqual({ content: "- Key: A minor." });
@@ -234,6 +243,78 @@ describe("context - project scope (default)", () => {
         "update_project_context",
         "- Key: A minor.",
       );
+
+      // The record is spent: a second force on the same scope is unearned.
+      toolContext.projectContext!.content = EXISTING;
+      await expect(
+        context({ ...write, force: true }, toolContext),
+      ).rejects.toThrow(UNEARNED_FORCE);
+    });
+
+    it("refuses force before any refusal, with a note, and records the scope", async () => {
+      toolContext.projectContext!.content = EXISTING;
+      const write = { action: "write", content: "- Key: A minor." } as const;
+
+      await expect(
+        context({ ...write, force: true }, toolContext),
+      ).rejects.toThrow(
+        /^force:true ignored — nothing had warned about this yet\. write refused for scope "project".*force:true/,
+      );
+      expect(toolContext.projectContext!.content).toBe(EXISTING);
+      expect(outlet).not.toHaveBeenCalledWith(
+        0,
+        "update_project_context",
+        expect.anything(),
+      );
+
+      // That refusal warned, so force now goes ahead.
+      await expect(
+        context({ ...write, force: true }, toolContext),
+      ).resolves.toStrictEqual({ content: "- Key: A minor." });
+    });
+
+    it("does not earn force from a refusal of the other scope", async () => {
+      toolContext.projectContext!.content = EXISTING;
+      vi.mocked(requestNode).mockResolvedValue({
+        success: true,
+        result: { content: EXISTING },
+      });
+      const content = "- Key: A minor.";
+
+      await expect(
+        context({ action: "write", scope: "global", content }, toolContext),
+      ).rejects.toThrow(/^write refused for scope "global"/);
+      await expect(
+        context({ action: "write", content, force: true }, toolContext),
+      ).rejects.toThrow(UNEARNED_FORCE);
+    });
+
+    it("lets force write where the guard would not fire, and records nothing", async () => {
+      const write = { action: "write", content: "- Key: A minor." } as const;
+
+      // Empty document: nothing to lose.
+      await expect(
+        context({ ...write, force: true }, toolContext),
+      ).resolves.toStrictEqual({ content: "- Key: A minor." });
+
+      // An append keeps a line, so the guard is quiet there too.
+      toolContext.projectContext!.content = EXISTING;
+      await expect(
+        context(
+          {
+            action: "write",
+            content: `${EXISTING}\n- Key: A minor.`,
+            force: true,
+          },
+          toolContext,
+        ),
+      ).resolves.toBeDefined();
+
+      // Neither left a record behind.
+      toolContext.projectContext!.content = EXISTING;
+      await expect(
+        context({ ...write, force: true }, toolContext),
+      ).rejects.toThrow(UNEARNED_FORCE);
     });
 
     it("is inert when the document is empty (nothing to destroy)", async () => {

@@ -153,20 +153,61 @@ describe("context - global scope", () => {
       );
     });
 
-    it("writes when force is true, without reading first", async () => {
+    const REPLACE = {
+      action: "write",
+      scope: "global",
+      content: "- Prefers 90 BPM.",
+    } as const;
+    const UNEARNED_FORCE =
+      /^force:true ignored — nothing had warned about this yet\. write refused for scope "global"/;
+
+    it("writes on force after a refusal, and clears the record", async () => {
       mockGlobalStore();
 
-      const result = await context({
-        action: "write",
-        scope: "global",
-        content: "- Prefers 90 BPM.",
-        force: true,
-      });
+      await expect(context(REPLACE)).rejects.toThrow(/^write refused/);
+
+      const result = await context({ ...REPLACE, force: true });
 
       expect(result).toStrictEqual({ content: "- Prefers 90 BPM." });
-      expect(protocolMock.requestNode).toHaveBeenCalledExactlyOnceWith(
+      expect(protocolMock.requestNode).toHaveBeenCalledWith(
         "globalContext.write",
         { content: "- Prefers 90 BPM." },
+      );
+
+      // The record is spent: a second force is unearned.
+      await expect(context({ ...REPLACE, force: true })).rejects.toThrow(
+        UNEARNED_FORCE,
+      );
+    });
+
+    it("refuses force before any refusal, with a note, and records the scope", async () => {
+      mockGlobalStore();
+
+      await expect(context({ ...REPLACE, force: true })).rejects.toThrow(
+        UNEARNED_FORCE,
+      );
+      expect(protocolMock.requestNode).not.toHaveBeenCalledWith(
+        "globalContext.write",
+        expect.anything(),
+      );
+
+      // That refusal warned, so force now goes ahead.
+      await expect(context({ ...REPLACE, force: true })).resolves.toStrictEqual(
+        { content: "- Prefers 90 BPM." },
+      );
+    });
+
+    it("lets force write where the guard would not fire, and records nothing", async () => {
+      mockGlobalStore();
+      const merged = `${EXISTING}\n- Prefers 90 BPM.`;
+
+      await expect(
+        context({ ...REPLACE, content: merged, force: true }),
+      ).resolves.toStrictEqual({ content: merged });
+
+      // It left no record behind.
+      await expect(context({ ...REPLACE, force: true })).rejects.toThrow(
+        UNEARNED_FORCE,
       );
     });
 

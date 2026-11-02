@@ -429,6 +429,7 @@ describe("resolveDrumChainSampleTarget", () => {
 
     registerDevice("ds-1", "DrumSampler");
     registerCreatedSimpler();
+    resolveDrumChainSampleTarget(LiveAPI.from("id chain-c1"), false);
 
     const target = resolveDrumChainSampleTarget(
       LiveAPI.from("id chain-c1"),
@@ -498,6 +499,7 @@ describe("resolveNestedParamTarget", () => {
 
       registerDevice("ds-1", "DrumSampler");
       registerCreatedSimpler();
+      resolveSampleTarget("pC1/d0");
 
       const target = resolveSampleTarget("pC1/d0", true);
 
@@ -561,6 +563,7 @@ describe("resolveNestedParamTarget", () => {
       registerMidiEffect("arp-1", "Arpeggiator");
       registerDevice("op-1", "Operator");
       registerCreatedSimpler();
+      resolveSampleTarget("pC1");
 
       expect(deviceOf(resolveSampleTarget("pC1", true))?.id).toBe(
         "new-simpler",

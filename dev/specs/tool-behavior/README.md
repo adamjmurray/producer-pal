@@ -200,3 +200,23 @@ the caller wouldn't expect (replacing a drum pad's sample throws away the device
 on the pad). Refusing arrangement overwrites unless `force` would make every
 write need it, so callers would always pass it. A `displaced` array of ids was
 rejected too: the ids are dead the moment they are reported.
+
+`force` takes effect only on a target an earlier call was skipped or refused
+for. Models send `force: true` before any guard has fired, so the guard, not the
+caller, decides when the loss has been shown:
+
+- A guard that would destroy something records the target when it skips (the
+  pad, by its chain id; the context scope, `project` or `global`).
+- `force` on a recorded target goes ahead and clears the record.
+- `force` on a target nothing has recorded is answered as if it were absent: the
+  same skip or refusal, which records the target, with
+  `force:true ignored — nothing had warned about this yet` in front. So the
+  caller always sees what would be lost before it can lose it.
+- Where the guard wouldn't fire, `force` does nothing either way.
+- Records live in device memory, so they last until used or until the Live Set
+  (and with it the device) reloads. A skip seen by any client counts.
+
+This covers every guard that takes `force`: the pad sample swap in
+ppal-update-device and the clobber guard in ppal-context. A replacement the
+caller means wholesale (eval setup restoring a document) writes `""` first,
+which no guard refuses, then the new content.

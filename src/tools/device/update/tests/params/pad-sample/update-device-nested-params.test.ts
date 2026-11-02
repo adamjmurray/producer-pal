@@ -25,6 +25,7 @@ import {
   registerDrumSamplerOn,
   registerPadRack,
   registerUnbuiltPadChain,
+  skipSampleWrite,
 } from "./pad-sample-fixtures.ts";
 
 // A pad's sample has three addresses: the rack plus a "pC1/sample" param name,
@@ -256,6 +257,8 @@ describe("updateDevice - pad instrument guard", () => {
   it("swaps the instrument for a Simpler and loads the sample under force", () => {
     const chain = registerDrumRackWithDrumSamplerOnC1();
 
+    skipSampleWrite("t0/d0", "pC1/sample");
+
     updateDevice({
       path: "t0/d0",
       params: [{ name: "pC1/sample", value: "/snare.wav" }],
@@ -274,6 +277,7 @@ describe("updateDevice - pad instrument guard", () => {
     const chain = registerDrumRackWithDrumSamplerOnC1();
 
     registerCreatedSimpler().call.mockImplementation(() => undefined);
+    skipSampleWrite("t0/d0", "pC1/sample");
 
     const result = updateDevice({
       path: "t0/d0",
@@ -398,6 +402,7 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
 
     registerDrumSamplerOn(chain as RegisteredMockObject);
     registerCreatedSimpler();
+    skipSampleWrite("t0/d0/pC1", "sample");
 
     const result = updateDevice({
       path: "t0/d0/pC1",

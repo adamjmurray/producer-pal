@@ -125,16 +125,7 @@ export function seedContext(seed: {
       // "whatever this developer happens to have". Global context is injected on
       // every connect and instructs behavior directly, so inheriting the real
       // one makes results depend on the machine the eval ran on.
-      // `force` on both the seed and the restore below: these REPLACE the
-      // document wholesale, which is exactly what the tool's clobber guard
-      // skips for a model. Setup/teardown are the deliberate case it exists to
-      // let through.
-      await callContext(mcpClient, {
-        action: "write",
-        scope: "global",
-        content: seed.global ?? "",
-        force: true,
-      });
+      await replaceGlobal(mcpClient, seed.global ?? "");
 
       for (const memory of memories) {
         await callContext(mcpClient, {
@@ -168,17 +159,39 @@ export function seedContext(seed: {
       const originalGlobal = saved.get("global");
 
       if (originalGlobal != null) {
-        await callContext(mcpClient, {
-          action: "write",
-          scope: "global",
-          content: originalGlobal,
-          force: true,
-        });
+        await replaceGlobal(mcpClient, originalGlobal);
       }
 
       saved.clear();
     },
   };
+}
+
+/**
+ * Replace the whole global document. The clobber guard skips a model's
+ * wholesale rewrite but never a write over an empty document, so clear first,
+ * then write.
+ *
+ * @param mcpClient - The scenario's MCP client
+ * @param content - The new document
+ */
+async function replaceGlobal(
+  mcpClient: Client,
+  content: string,
+): Promise<void> {
+  await callContext(mcpClient, {
+    action: "write",
+    scope: "global",
+    content: "",
+  });
+
+  if (content !== "") {
+    await callContext(mcpClient, {
+      action: "write",
+      scope: "global",
+      content,
+    });
+  }
 }
 
 /**

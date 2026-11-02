@@ -112,18 +112,14 @@ export const toolDefContext = defineTool("ppal-context", {
     // The escape hatch for the clobber guard (project-context-operations.ts's
     // clobberRefusal), and deliberately NOT taught in the skills: the model
     // learns of it from the refused write's message, at the moment it is
-    // relevant, so it never reaches for it casually. Declared in EVERY mode — including small-model,
-    // where it costs a few tokens — because a guard whose only way out is hidden
-    // from the tier that hits it would deadlock the write, which is worse than
-    // the clobber it prevents.
+    // relevant. It works only after a refusal of that scope; before one it is
+    // ignored and the write is refused, so the model always sees what would be
+    // lost. Declared in EVERY mode, small-model included: a guard whose only
+    // way out is hidden from the tier that hits it would deadlock the write.
     //
-    // Refused outside a project or global write, which are the only calls with
-    // a guard to get past. But don't refuse a `force` that had nothing to get
-    // past on one of those. It also means "I mean to replace this wholesale" — which is how the eval harness seeds and
-    // restores the global document — and a caller can't predict whether the
-    // guard would have fired, since that turns on whether its new content
-    // happens to share a line. Refusing would break deliberate replacement at
-    // random, an empty document always included.
+    // Refused outside a project or global write, which have no guard to get
+    // past. Not refused on one of those where the guard wouldn't fire: a
+    // caller can't predict that, so it just does nothing there.
     force: z
       .boolean()
       .optional()

@@ -13,6 +13,7 @@ import {
   registerCreatedSimpler,
   registerDrumSamplerOn,
   registerPadRack,
+  skipSampleWrite,
 } from "./pad-sample-fixtures.ts";
 
 /**
@@ -25,6 +26,7 @@ function swapWith(naming: Record<string, string>): unknown {
   const sampler = registerDrumSamplerOn(chain as RegisteredMockObject);
 
   registerCreatedSimpler();
+  skipSampleWrite("t0/d0/pC1", "sample");
 
   // Live drops the deleted device's address.
   (chain as RegisteredMockObject).methods.delete_device = () => {
