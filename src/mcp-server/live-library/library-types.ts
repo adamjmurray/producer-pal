@@ -43,11 +43,15 @@ export function clampLibraryLimit(
   defaultLimit: number,
   max: number = MAX_LIBRARY_LIMIT,
 ): number {
-  if (requested == null || !Number.isFinite(requested) || requested <= 0) {
+  // Floor first: a limit of 0.5 must not become a page of 0, which never moves
+  // the cursor.
+  const whole = requested == null ? Number.NaN : Math.floor(requested);
+
+  if (!Number.isFinite(whole) || whole <= 0) {
     return defaultLimit;
   }
 
-  return Math.min(Math.floor(requested), max);
+  return Math.min(whole, max);
 }
 
 /**
@@ -62,7 +66,8 @@ export function clampLibraryOffset(requested: number | undefined): number {
     return 0;
   }
 
-  return Math.floor(requested);
+  // SQLite binds a number past ~9.2e18 as REAL, and OFFSET then fails.
+  return Math.min(Math.floor(requested), Number.MAX_SAFE_INTEGER);
 }
 
 /** Content kinds supported by `library.search` and the ppal-library tool */

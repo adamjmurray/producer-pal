@@ -296,6 +296,27 @@ describe("ppal-library searches", () => {
       expect(result.detail).toBe("offset 50 is past the last match");
     });
 
+    it("takes a limit below 1 as the default, not a page of 0", async () => {
+      await setConfig({ sampleFolder: SAMPLE_FOLDER });
+
+      const result = await search({ source: "sample-folder", limit: 0.5 });
+
+      expect(names(result)).toStrictEqual(["kick.aiff", "sample.aiff"]);
+      expect(result).not.toHaveProperty("nextOffset");
+    });
+
+    it("answers an offset too big for SQLite as past the last match", async () => {
+      const result = parseToolResult<BatchEntry & { dbAvailable?: boolean }>(
+        await ctx.client!.callTool({
+          name: "ppal-library",
+          arguments: { source: "builtin", offset: 1e19 },
+        }),
+      );
+
+      expect(result.dbAvailable).toBe(true);
+      expect(result.items).toStrictEqual([]);
+    });
+
     it("pages each searches entry on its own", async () => {
       await setConfig({ sampleFolder: SAMPLE_FOLDER });
 

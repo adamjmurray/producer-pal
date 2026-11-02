@@ -603,6 +603,14 @@ describe("librarySearch", () => {
       expect(fractional.items[0]?.name).toBe("user_kick.aif");
     });
 
+    it("returns nothing past the last match for an offset too big for SQLite", async () => {
+      const result = await librarySearch({ kind: "audio", offset: 1e19 });
+
+      expect(result).toStrictEqual(
+        expect.objectContaining({ dbAvailable: true, items: [] }),
+      );
+    });
+
     it("pages every sort without repeating or skipping a file", async () => {
       for (const sort of ["use-count", "mod-date", "name"] as const) {
         const seen: string[] = [];

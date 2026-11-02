@@ -15,11 +15,12 @@ import {
   resolveKind,
   resolveSource,
 } from "../library-filters.ts";
-// clampLibraryLimit lives in the sibling library-types.ts (the same pure
+// clampLibraryLimit and clampLibraryOffset live in the sibling library-types.ts (the same pure
 // library-DB coercion layer); its tests live here rather than in a separate file
 // to stay under the tests/ folder-item cap.
 import {
   clampLibraryLimit,
+  clampLibraryOffset,
   MAX_LIBRARY_LIMIT,
   MAX_SEARCH_LIMIT,
 } from "../library-types.ts";
@@ -327,5 +328,15 @@ describe("clampLibraryLimit", () => {
     // limits, so they coerce to the default rather than to 0 rows.
     expect(clampLibraryLimit(0, DEFAULT)).toBe(DEFAULT);
     expect(clampLibraryLimit(-5, DEFAULT)).toBe(DEFAULT);
+  });
+
+  it("falls back to the default for a fraction below 1, not a page of 0", () => {
+    expect(clampLibraryLimit(0.5, DEFAULT)).toBe(DEFAULT);
+  });
+});
+
+describe("clampLibraryOffset", () => {
+  it("caps a huge offset at the largest safe integer", () => {
+    expect(clampLibraryOffset(1e19)).toBe(Number.MAX_SAFE_INTEGER);
   });
 });
