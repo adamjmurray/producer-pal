@@ -6,7 +6,7 @@
 import {
   notesLandedOutsideNote,
   notesOutsideRegionNote,
-} from "#src/tools/clip/helpers/clip-entry-notes.ts";
+} from "#src/tools/clip/helpers/notes/clip-entry-notes.ts";
 import {
   clipPlayRegion,
   readVisibleClipNotesInSpan,

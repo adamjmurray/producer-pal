@@ -15,7 +15,7 @@ import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import {
   droppedDuplicatesNote,
   transformsIgnoredNoNotesNote,
-} from "#src/tools/clip/helpers/clip-entry-notes.ts";
+} from "#src/tools/clip/helpers/notes/clip-entry-notes.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   buildTransformClipContext,
@@ -43,7 +43,7 @@ import {
   reportTransformsChangedNothing,
   type StagedTransforms,
 } from "./transform-no-change-report.ts";
-import { mutedNotesHit, reportMutedNoteEffects } from "./muted-note-effects.ts";
+import { mutedNotesHit, reportNoteWriteEffects } from "./muted-note-effects.ts";
 
 /**
  * Apply transforms to existing notes without merging new notes.
@@ -136,7 +136,7 @@ export function applyTransformsToExistingNotes(
 
   // No visible note shared a slot with a muted one before, so every muted note
   // a transform landed on was replaced by it.
-  reportMutedNoteEffects(clip, reasons, {
+  reportNoteWriteEffects(clip, reasons, {
     written,
     muted: mutedNotes,
     replaced: mutedNotesHit(notes, mutedNotes).size,

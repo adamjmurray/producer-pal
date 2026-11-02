@@ -5,13 +5,17 @@
 
 import { isSameSlot } from "#src/notation/helpers/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import {
   mutedNativeOpNote,
   mutedOnlyQuantizeNote,
   mutedOverlapNote,
   mutedReplacedNote,
-} from "#src/tools/clip/helpers/clip-entry-notes.ts";
+  notesShortenedNote,
+} from "#src/tools/clip/helpers/notes/clip-entry-notes.ts";
+import {
+  hasSamePitchOverlap,
+  overlapEffects,
+} from "#src/tools/clip/helpers/notes/same-pitch-overlap.ts";
 import { type AppliedNotes } from "#src/tools/clip/code-exec/clip-notes-exchange.ts";
 import {
   type ClipNotes,
@@ -38,9 +42,9 @@ export function mutedNotesHit(
 }
 
 /**
- * Say on the clip's entry what a note write did to muted notes the model can't
- * see: replaced one, or changed a length through an overlap. Live, not the
- * write, decides the lengths, so they are read back.
+ * Say on the clip's entry what a note write did to notes beside it: replaced a
+ * muted note, or Live cut a note short through an overlap at its pitch. Live,
+ * not the write, decides the lengths, so they are read back.
  * @param clip - The clip that was just written
  * @param reasons - What each clip has to say beyond its result, added to
  * @param effects - What was written and what it landed on
@@ -50,7 +54,7 @@ export function mutedNotesHit(
  * @param reasonId - The id the clip's reasons are kept under, when that isn't
  *   the clip's own (a re-created clip has a new id)
  */
-export function reportMutedNoteEffects(
+export function reportNoteWriteEffects(
   clip: LiveAPI,
   reasons: ClipReasons,
   {
@@ -60,15 +64,12 @@ export function reportMutedNoteEffects(
   }: { written: NoteEvent[]; muted: CopiedNote[]; replaced: number },
   reasonId = clip.id,
 ): void {
-  if (muted.length === 0) {
-    return;
-  }
+  const overlap = hasSamePitchOverlap(written)
+    ? overlapEffects(written, new Set(muted), readAllClipNotes(clip))
+    : { shortened: 0, shortenedByMuted: 0, mutedShortened: 0 };
 
-  const overlap =
-    written.length > 0
-      ? overlapEffects(written, new Set(muted), readAllClipNotes(clip))
-      : { shortenedByMuted: 0, mutedShortened: 0 };
-
+  // Counted apart, so a note a muted one cut is never also a plain cut
+  addCountedReason(reasons, reasonId, notesShortenedNote, overlap.shortened);
   addCountedReason(reasons, reasonId, mutedReplacedNote, replaced);
   addCountedReason(
     reasons,
@@ -85,7 +86,7 @@ export function reportMutedNoteEffects(
 }
 
 /**
- * Say what a code write did to muted notes, the same way a note write does.
+ * Say what a code write did to the clip's notes, the same way a note write does.
  * Code never sees muted notes, so a muted note is replaced exactly when it is
  * missing from what was written.
  * @param clip - The clip the code just wrote
@@ -95,7 +96,7 @@ export function reportMutedNoteEffects(
  * @param applied.written - Every note written, muted ones kept included
  * @param applied.muted - The clip's muted notes from before the write
  */
-export function reportMutedCodeWrite(
+export function reportCodeWriteEffects(
   clip: LiveAPI,
   reasons: ClipReasons,
   reasonId: string,
@@ -104,7 +105,7 @@ export function reportMutedCodeWrite(
   const kept = new Set<NoteEvent>(written);
   const replaced = muted.filter((note) => !kept.has(note)).length;
 
-  reportMutedNoteEffects(clip, reasons, { written, muted, replaced }, reasonId);
+  reportNoteWriteEffects(clip, reasons, { written, muted, replaced }, reasonId);
 }
 
 /**
@@ -219,86 +220,6 @@ function addCountedReason(
   const earlier = Number(/\d+/.exec(said[index] as string)?.[0]);
 
   said[index] = make(earlier + count) as string;
-}
-
-/**
- * Find the notes Live shortened because a muted note overlapped them, or that
- * they shortened. Live cuts the earlier of two same-pitch notes at the later
- * one's start, so a note that came back shorter than written was cut by the
- * next note at its pitch.
- * @param written - Every note written
- * @param muted - The muted ones among them
- * @param landed - The clip's notes as Live kept them
- * @returns How many visible notes a muted one cut, and how many muted notes a visible one cut
- */
-function overlapEffects(
-  written: readonly NoteEvent[],
-  muted: ReadonlySet<NoteEvent>,
-  landed: Record<string, unknown>[],
-): { shortenedByMuted: number; mutedShortened: number } {
-  const landedByPitch = groupByPitch(
-    landed.map((note) => ({
-      pitch: note.pitch as number,
-      start: note.start_time as number,
-      duration: note.duration as number,
-    })),
-    (note) => note.pitch,
-  );
-  let shortenedByMuted = 0;
-  let mutedShortened = 0;
-
-  for (const notes of groupByPitch(written, (n) => n.pitch).values()) {
-    const sorted = notes.toSorted((a, b) => a.start_time - b.start_time);
-
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const note = sorted[i] as NoteEvent;
-      const next = sorted[i + 1] as NoteEvent;
-      const kept = landedByPitch
-        .get(note.pitch)
-        ?.find((n) => Math.abs(n.start - note.start_time) < SAME_TIME_EPSILON);
-
-      if (
-        kept == null ||
-        muted.has(note) === muted.has(next) ||
-        kept.duration > note.duration - SAME_TIME_EPSILON
-      ) {
-        continue;
-      }
-
-      if (muted.has(note)) {
-        mutedShortened++;
-      } else {
-        shortenedByMuted++;
-      }
-    }
-  }
-
-  return { shortenedByMuted, mutedShortened };
-}
-
-/**
- * @param items - Items to group
- * @param pitchOf - Reads an item's pitch
- * @returns The items by pitch, in their original order
- */
-function groupByPitch<T>(
-  items: readonly T[],
-  pitchOf: (item: T) => number,
-): Map<number, T[]> {
-  const groups = new Map<number, T[]>();
-
-  for (const item of items) {
-    const pitch = pitchOf(item);
-    const group = groups.get(pitch);
-
-    if (group == null) {
-      groups.set(pitch, [item]);
-    } else {
-      group.push(item);
-    }
-  }
-
-  return groups;
 }
 
 /**

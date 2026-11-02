@@ -52,7 +52,7 @@ import { QUANTIZE_GRID, QUANTIZE_GRID_ALIASES } from "./quantize-grid.ts";
 import {
   mutedNotesHit,
   reportMutedCopies,
-  reportMutedNoteEffects,
+  reportNoteWriteEffects,
   reportMutedQuantize,
 } from "./muted-note-effects.ts";
 import { CLIP_IS_AUDIO, ignoredText } from "#src/shared/max/ignored-wording.ts";
@@ -195,7 +195,7 @@ export function handleNoteUpdates(
     (note) => !mutedHitBefore.has(note),
   ).length;
 
-  reportMutedNoteEffects(clip, reasons, {
+  reportNoteWriteEffects(clip, reasons, {
     written: mergedNotes,
     muted: mutedNotes,
     replaced: mutedReplaced,

@@ -15,7 +15,7 @@ import {
   transformsChangedNothingNote,
   transformsIgnoredAudioNote,
   transformsIgnoredNoNotesNote,
-} from "#src/tools/clip/helpers/clip-entry-notes.ts";
+} from "#src/tools/clip/helpers/notes/clip-entry-notes.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import { buildTransformClipContext } from "#src/tools/clip/helpers/transform-clip-context.ts";
 import { createdClipLength } from "./created-clip-result.ts";

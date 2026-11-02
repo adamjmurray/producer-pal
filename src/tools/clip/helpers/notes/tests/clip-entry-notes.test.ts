@@ -11,7 +11,7 @@ import {
   mutedNativeOpNote,
   mutedOverlapNote,
   mutedReplacedNote,
-} from "#src/tools/clip/helpers/clip-entry-notes.ts";
+} from "#src/tools/clip/helpers/notes/clip-entry-notes.ts";
 
 describe("clip entry notes", () => {
   it("counts dropped duplicates, and says nothing for none", () => {

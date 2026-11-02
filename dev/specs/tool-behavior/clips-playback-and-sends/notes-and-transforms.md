@@ -67,6 +67,25 @@ the write lands as asked, and the clip's entry says so in `detail`:
   can change the region after the notes are written.
 - Muted notes are never counted. `code` rewrites are not checked yet.
 
+## Notes cut short by an overlap
+
+Live holds no two overlapping notes at one pitch: it cuts the earlier one at the
+later one's start. A write that overlaps notes this way (a quarter note on every
+eighth beat in 6/8, say) lands shorter than written, and the clip's entry says
+so in `detail`: `N notes shortened by the next note at the same pitch`.
+
+- Every path that writes notes checks it: `ppal-create-clip` (notes, and `code`
+  as its own write), and `ppal-update-clip` notes, transform-only edits and
+  `code` rewrites. A notes write in any notation counts: the cause is Live's
+  rule, not the spelling.
+- The clip is read back and compared with what was written, and only when two
+  written notes at one pitch overlap, so a write with no overlap costs no read.
+  A note already restated from the clip counts too when a new note cuts it.
+- Counted apart from the muted variants below, so a note is never reported
+  twice. A muted note cut by a muted note is not counted: neither is visible.
+- A create-clip call with `code` reports the code's overlaps, not those of the
+  `notes` it replaced.
+
 ## Muted notes
 
 No note notation can spell a muted note, so a muted note read back as an
@@ -89,11 +108,11 @@ ordinary one and the model took it for a note that plays. Muted notes (Live's
   the model never asked for that note's slot.
 - **Overlaps follow Live**: Live cuts whichever same-pitch note starts earlier
   at the next one's start, muted or not. After a note write the clip is read
-  back (only when it has muted notes), and `detail` says when a muted note
-  shortened a note, or a note shortened a muted one. A `code` rewrite is a note
-  write too, so update-clip says the same of it (once, on the target's first
-  clip when tiling made copies). A clip create-clip just made holds no muted
-  notes, so its `code` has nothing to report.
+  back (when it has muted notes or same-pitch overlaps), and `detail` says when
+  a muted note shortened a note, or a note shortened a muted one. A `code`
+  rewrite is a note write too, so update-clip says the same of it (once, on the
+  target's first clip when tiling made copies). A clip create-clip just made
+  holds no muted notes, so its `code` has nothing to report.
 - **Bar copy skips them**: they aren't in the source bar the model sees.
 - **Copying a whole clip keeps them** (duplicate to a new place, take lanes);
   that isn't an edit of notes the model sees. Replacing, emptying or moving a

@@ -133,6 +133,18 @@ export function mutedReplacedNote(count: number): string | null {
 }
 
 /**
+ * What to say when Live cut notes short because the next note at their pitch
+ * starts before they end.
+ * @param count - How many notes were shortened
+ * @returns The note for the clip's entry, or null when none were
+ */
+export function notesShortenedNote(count: number): string | null {
+  return count > 0
+    ? `${notesCount(count)} shortened by the next note at the same pitch`
+    : null;
+}
+
+/**
  * What to say when overlapping muted notes changed a note's length: Live cuts
  * whichever same-pitch note starts earlier at the next one's start.
  * @param count - How many notes were shortened

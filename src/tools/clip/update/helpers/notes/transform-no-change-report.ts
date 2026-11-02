@@ -8,7 +8,7 @@ import {
   type TransformCounts,
   type TransformOutcome,
 } from "#src/notation/transform/transformed-count.ts";
-import { transformsChangedNothingNote } from "#src/tools/clip/helpers/clip-entry-notes.ts";
+import { transformsChangedNothingNote } from "#src/tools/clip/helpers/notes/clip-entry-notes.ts";
 import { type ClipReasons, noteClipReason } from "../entries/clip-reasons.ts";
 
 /**

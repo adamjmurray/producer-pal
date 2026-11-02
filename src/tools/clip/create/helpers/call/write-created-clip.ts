@@ -8,7 +8,11 @@
 // a throw partway keeps the entry for the clip that exists by then.
 
 import { type AudioReadBack } from "#src/tools/clip/helpers/audio-clip-properties.ts";
-import { notesLandedOutsideNote } from "#src/tools/clip/helpers/clip-entry-notes.ts";
+import {
+  notesLandedOutsideNote,
+  notesShortenedNote,
+} from "#src/tools/clip/helpers/notes/clip-entry-notes.ts";
+import { countShortenedNotes } from "#src/tools/clip/helpers/notes/same-pitch-overlap.ts";
 import { countStartingOutside } from "#src/tools/shared/clip/clip-notes.ts";
 import { ignoredParamsNote } from "#src/tools/clip/helpers/ignored-params-note.ts";
 import { type SlotWork } from "#src/tools/clip/helpers/clip-results.ts";
@@ -78,6 +82,10 @@ export async function writeCreatedClip(
   for (const note of [
     ...payload.transform.details,
     notesLandedOutsideNote(outsideRegion(made.clip, payload)),
+    // Code replaces these notes, and says what it did to its own
+    args.code == null
+      ? notesShortenedNote(shortenedCount(made.clip, payload))
+      : null,
     ...payload.skippedTransforms,
     ignoredParamsNote(...unusableParams(step.checked, payload)),
   ]) {
@@ -123,6 +131,18 @@ function outsideRegion(clip: LiveAPI, payload: CreatePayload): number {
   return payload.plan.sampleFile
     ? 0
     : countStartingOutside(clip, payload.transform.notes);
+}
+
+/**
+ * How many of the notes written to a new MIDI clip Live cut short.
+ * @param clip - The clip, with its notes written
+ * @param payload - The target's payload
+ * @returns The count, 0 for an audio clip
+ */
+function shortenedCount(clip: LiveAPI, payload: CreatePayload): number {
+  return payload.plan.sampleFile
+    ? 0
+    : countShortenedNotes(clip, payload.transform.notes);
 }
 
 /**

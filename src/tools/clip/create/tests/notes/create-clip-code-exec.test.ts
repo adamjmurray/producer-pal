@@ -79,8 +79,13 @@ function setupSessionCodeExecMocks(
 /**
  * Track added notes per clip handle for get_notes_extended responses.
  * @param clips - Clip handles to track
+ * @param cutsOverlaps - Whether to cut an earlier note at the next same-pitch
+ *   note's start, as Live does
  */
-function setupNoteTrackingMock(clips: RegisteredMockObject[]): void {
+function setupNoteTrackingMock(
+  clips: RegisteredMockObject[],
+  cutsOverlaps = false,
+): void {
   const addedNotes = new Map<string, unknown[]>();
 
   for (const handle of clips) {
@@ -98,7 +103,25 @@ function setupNoteTrackingMock(clips: RegisteredMockObject[]): void {
       if (method === "add_new_notes") {
         const firstArg = args[0] as { notes?: unknown[] } | undefined;
 
-        addedNotes.set(handle.id, [...existing, ...(firstArg?.notes ?? [])]);
+        const added = (firstArg?.notes ?? []) as Array<{
+          pitch: number;
+          start_time: number;
+          duration: number;
+        }>;
+        const sorted = added.toSorted(
+          (a, b) => a.pitch - b.pitch || a.start_time - b.start_time,
+        );
+        const kept = sorted.map((note, i) => {
+          const next = sorted[i + 1];
+
+          return cutsOverlaps &&
+            next?.pitch === note.pitch &&
+            next.start_time < note.start_time + note.duration
+            ? { ...note, duration: next.start_time - note.start_time }
+            : note;
+        });
+
+        addedNotes.set(handle.id, [...existing, ...kept]);
 
         return null;
       }
@@ -208,6 +231,44 @@ describe("createClip - code execution", () => {
       noteCount: 1,
       detail: "dropped 1 duplicate note at the same pitch and start",
     });
+  });
+
+  it("should report notes Live cut short from the code's overlaps", async () => {
+    const { clipsByScene } = setupSessionCodeExecMocks([0]);
+
+    setupNoteTrackingMock([clipsByScene.get(0) as RegisteredMockObject], true);
+    vi.mocked(executeNoteCode).mockResolvedValue(
+      codeExecSuccess([
+        codeNote(60, 0, { duration: 2 }),
+        codeNote(60, 1, { duration: 2 }),
+      ]),
+    );
+
+    const result = await createClip({ slot: "0/0", code: "return notes" });
+
+    expect(result).toStrictEqual({
+      id: expect.any(String),
+      path: "t0/s0",
+      noteCount: 2,
+      detail: "1 note shortened by the next note at the same pitch",
+    });
+  });
+
+  it("should leave overlaps in notes the code replaced unsaid", async () => {
+    const { clipsByScene } = setupSessionCodeExecMocks([0]);
+
+    setupNoteTrackingMock([clipsByScene.get(0) as RegisteredMockObject], true);
+    vi.mocked(executeNoteCode).mockResolvedValue(
+      codeExecSuccess([codeNote(60, 0), codeNote(64, 1)]),
+    );
+
+    const result = await createClip({
+      slot: "0/0",
+      notes: "n/2 C3 1|1,2",
+      code: "return notes",
+    });
+
+    expect((result as { detail?: string }).detail).toBeUndefined();
   });
 
   it("should apply code to multiple created clips", async () => {

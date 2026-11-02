@@ -4,14 +4,14 @@
 // SPDX-License-Identifier: MIT
 
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
-import { droppedDuplicatesNote } from "#src/tools/clip/helpers/clip-entry-notes.ts";
+import { droppedDuplicatesNote } from "#src/tools/clip/helpers/notes/clip-entry-notes.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import {
   type ClipReasons,
   ignoreClipParams,
   noteClipReason,
 } from "../entries/clip-reasons.ts";
-import { reportMutedCodeWrite } from "../notes/muted-note-effects.ts";
+import { reportCodeWriteEffects } from "../notes/muted-note-effects.ts";
 
 /**
  * Run the call's `code` on the clips an update just wrote, and say how it went
@@ -64,7 +64,7 @@ export async function applyCodeToWrittenClips(
       // Muted notes are the first clip's to report: its copies carry the same
       // ones, and counting them again would multiply what the code did.
       if (clipResult === updatedClips[0]) {
-        reportMutedCodeWrite(
+        reportCodeWriteEffects(
           LiveAPI.from(["id", clipResult.id]),
           reasons,
           sourceId,
