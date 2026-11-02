@@ -18,6 +18,7 @@ import { type EvalTurnResult, type LlmJudgeAssertion } from "../../types.ts";
 import {
   type CheckSummary,
   type LlmJudgeDetails,
+  type LlmJudgeOverride,
 } from "../../assertions/llm-judge.ts";
 
 const assertion: LlmJudgeAssertion = { type: "llm_judge", prompt: "Do it" };
@@ -72,9 +73,13 @@ const llmDetails: LlmJudgeDetails = {
  * Run the assertion with fake Jev and LLM judges.
  *
  * @param jev - The fake Jev call
+ * @param override - CLI judge override
  * @returns The result and both fakes
  */
-async function run(jev: NonNullable<JevFirstDeps["jev"]>) {
+async function run(
+  jev: NonNullable<JevFirstDeps["jev"]>,
+  override?: LlmJudgeOverride,
+) {
   const llm = vi.fn<NonNullable<JevFirstDeps["llm"]>>(async () => ({
     assertion,
     earned: 0,
@@ -86,7 +91,7 @@ async function run(jev: NonNullable<JevFirstDeps["jev"]>) {
     assertion,
     turns,
     "google",
-    undefined,
+    override,
     checks,
     { route: "openrouter", model: "jev-x" },
     { jev, llm },
@@ -201,6 +206,17 @@ describe("assertWithJevFirst", () => {
     expect(result.message).toBe(
       "Jev escalated (lowest answer 0.50 (req2) is between 0.3 and 0.85); LLM judge: fail (1 issue(s))",
     );
+  });
+
+  it("hands an escalation the CLI judge override, thinking included", async () => {
+    const override: LlmJudgeOverride = {
+      provider: "codex-code",
+      model: "luna",
+      thinking: "high",
+    };
+    const { llm } = await run(async () => answer(0.5, "escalate"), override);
+
+    expect(llm.mock.calls[0]?.[3]).toStrictEqual(override);
   });
 
   it("records that the claims check alone caused an escalation", async () => {

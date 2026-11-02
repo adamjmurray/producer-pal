@@ -32,6 +32,7 @@ import {
   assertWithLlmJudge,
   type CheckSummary,
   type LlmJudgeDetails,
+  type LlmJudgeOverride,
 } from "../../assertions/llm-judge.ts";
 
 /** Which Jev route and model the judge calls use. */
@@ -71,7 +72,7 @@ export async function assertWithJevFirst(
   assertion: LlmJudgeAssertion,
   turns: EvalTurnResult[],
   defaultProvider: EvalProvider,
-  cliOverride: { provider?: EvalProvider; model?: string } | undefined,
+  cliOverride: LlmJudgeOverride | undefined,
   checkSummaries: CheckSummary[] | undefined,
   settings: JevSettings,
   deps: JevFirstDeps = {},

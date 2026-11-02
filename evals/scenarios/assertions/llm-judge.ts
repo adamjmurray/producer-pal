@@ -42,7 +42,8 @@ Do not include any other text before or after the JSON.`;
 /** Starts the message of a result whose judge call failed (no real verdict). */
 export const LLM_JUDGE_ERROR_PREFIX = "LLM judge error: ";
 
-interface JudgeOverride {
+/** CLI choice of judge; each field left out falls back to the scenario's. */
+export interface LlmJudgeOverride {
   provider?: EvalProvider;
   model?: string;
   thinking?: ThinkingLevel;
@@ -89,7 +90,7 @@ export async function assertWithLlmJudge(
   assertion: LlmJudgeAssertion,
   turns: EvalTurnResult[],
   defaultProvider: EvalProvider,
-  cliOverride?: JudgeOverride,
+  cliOverride?: LlmJudgeOverride,
   checkSummaries?: CheckSummary[],
 ): Promise<EvalAssertionResult> {
   // CLI override > assertion-level > scenario default
