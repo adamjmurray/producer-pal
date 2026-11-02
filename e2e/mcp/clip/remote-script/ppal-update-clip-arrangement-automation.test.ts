@@ -182,6 +182,22 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)(
       ]).toStrictEqual(neighbors);
     });
 
+    it("leaves the lane where it was when the clip moves on the arrangement", async () => {
+      const clip = await clipOn(MIDI_TRACK, "9|1");
+      const baseline = await lane(MIDI_TRACK, MIDI_CLIP_START - 8);
+      const written = await update({ id: clip.id, envelopes: "pan: 1|1 0.6" });
+      const moved = await update({ id: written.id, toPath: "t3[41|1]" });
+      const movedStart = 160;
+
+      expect(moved).toStrictEqual(
+        expect.objectContaining({ path: "t3[41|1]" }),
+      );
+      await expectLane(MIDI_TRACK, [
+        [MIDI_CLIP_START + 4, 0.6],
+        [movedStart + 4, baseline],
+      ]);
+    });
+
     it("refuses an empty line, since a lane can't be cleared, and changes nothing", async () => {
       const before = await clipOn(MIDI_TRACK, "9|1");
       const baseline = await lane(MIDI_TRACK, MIDI_CLIP_START + 8);
