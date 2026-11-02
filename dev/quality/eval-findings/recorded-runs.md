@@ -42,6 +42,9 @@ fails, gemma passes" until run 2 turned out to predate the refusal of
 | 28  | qwen3.8-27b       | default         | `49eea231d`  | 3      | 392 | 371 (95%) | 79.4M  | 12h07m |
 | 29  | gpt-6-luna        | `thinking:high` | `49eea231d`? | 3      | 390 | 379 (97%) | 173.3M | 5h05m  |
 | 30  | claude-haiku-5-5  | default         | `49eea231d`? | 3      | 390 | 383 (98%) | 98.2M  | 1h33m  |
+| 31  | gpt-6-luna        | `thinking:high` | `6c1b9b427`? | 3      | 393 | 380 (97%) | 180.5M | 5h44m  |
+| 32  | claude-haiku-5-5  | default         | `6c1b9b427`? | 3      | 393 | 381 (97%) | 101.8M | 2h16m  |
+| 33  | qwen3.8-27b       | `--small-model` | `6c1b9b427`? | 3      | 231 | 214 (93%) | 15.4M  | 4h05m  |
 
 **Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
 70% is over the scenarios it reached, which are the expensive front of the list.
@@ -130,3 +133,14 @@ switch) passed on a re-run and is not in the total. Wall is scenario time.
 comes from that, so compare it with runs 26 and 30, not as a code result. Haiku
 ran at the same effort in runs 27 and 30, so its moves are the ones that track
 code.
+
+**Runs 31-33 are the 2.6.0-rc1 check** (Live 12.4.16). None has a recorded
+commit: `6c1b9b427` was dev's tip when they started, and the harness needed at
+least `3909bb23e` for `--judge-thinking`. Runs 31 and 32 ran together on another
+machine; run 33 ran alongside on this one. All three ran `--jev` with Luna at
+high effort judging escalations, where runs 28-30 used Haiku, so a judge-decided
+fail doesn't compare across that line. Run 33's 17 fails include 9 that could
+never pass: the three `upgrade-*` scenarios need `ppal-manage`, which
+small-model mode hides, and now skip there (214/222, 96%, without them). Luna's
+one trial stopped by Codex's 25-step budget counts as a fail. Wall is scenario
+time.
