@@ -145,6 +145,14 @@ client is measured (`evals/schema-compat`, `unset-optionals`).
     (`live_set loop`) can't use this: a stale read would report the old value as
     a change.
   - `ppal-select` reports the selection the call produced, not an echo.
+- **A write to an inactive device param says so.** A param that has no effect in
+  the device's current mode (EQ Eight's B side in stereo, a Notch band's Gain, a
+  synced LFO's Hz rate) still takes the write, since setting it before switching
+  modes is valid. Its entry gets the `detail`
+  `inactive in the device's current mode, so it has no effect until that changes`,
+  joined after any other detail. Inactive means what read-device marks
+  `state: "inactive"`: Live's own `state`, plus the specialized-device
+  `inactiveWhen` rules, read after the whole call has run.
 - **A write that overrides arrangement automation says so.** Writing a parameter
   that has an arrangement lane makes Live ignore the whole lane until the user
   presses Re-Enable Automation (`automation_state` becomes 2). The write still

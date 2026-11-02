@@ -12,6 +12,7 @@ import {
   differsAtPublishedResolution,
   readBackDetail,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
+import { isParamInactiveBySpecialized } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import {
   failUnreplacedEntries,
   type ReplacerAt,
@@ -29,6 +30,10 @@ import {
   skippedParam,
   type UnresolvedParam,
 } from "#src/tools/shared/device/helpers/param-reading.ts";
+
+/** What a written param's entry says when it has no effect in the device's mode. */
+export const INACTIVE_PARAM_DETAIL =
+  "inactive in the device's current mode, so it has no effect until that changes";
 
 /** Why a pseudo-param a write landed on still has nothing to report. */
 const NO_VALUE_AFTER_WRITE = "written, but no value reads back";
@@ -53,10 +58,7 @@ const NO_VALUE_AFTER_WRITE = "written, but no value reads back";
 export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
   const read = outcomes.map((entry): ParamResult => {
     if (paramWritten(entry)) {
-      return (
-        entry.reported ??
-        writtenResult(entry, readParameter(LiveAPI.from(entry.id)).value)
-      );
+      return entry.reported ?? readWrittenParam(entry);
     }
 
     // A pseudo-param brings its own read; the read itself is not reported. A
@@ -87,6 +89,45 @@ export function refreshParamValues(outcomes: ParamOutcome[]): ParamResult[] {
   });
 
   return failUnreplacedParams(outcomes, read);
+}
+
+/**
+ * One written param's entry, read after the whole call has run. A param that
+ * reads as inactive (Live's own state, or a specialized-device rule) still took
+ * the write, so the entry says it has no effect for now.
+ * @param entry - The param the write landed on
+ * @returns The result entry
+ */
+function readWrittenParam(entry: WrittenParam): ParamValueResult | LandedParam {
+  const param = LiveAPI.from(entry.id);
+  const read = readParameter(param);
+  const result = writtenResult(entry, read.value);
+
+  return inactiveInMode(param, read)
+    ? withDetail(result, INACTIVE_PARAM_DETAIL)
+    : result;
+}
+
+/**
+ * Whether a param just read has no effect in its device's current mode.
+ * @param param - The param
+ * @param read - What readParameter returned for it
+ * @returns True for Live's inactive state or a specialized inactiveWhen rule
+ */
+function inactiveInMode(
+  param: LiveAPI,
+  read: Record<string, unknown>,
+): boolean {
+  if (read.state === "inactive") {
+    return true;
+  }
+
+  const deviceId = param.getChildIds("canonical_parent")[0];
+
+  return (
+    deviceId != null &&
+    isParamInactiveBySpecialized(LiveAPI.from(deviceId), String(read.name))
+  );
 }
 
 /**
@@ -190,13 +231,24 @@ function withOverride<T extends LandedParam | ParamValueResult>(
   result: T,
   entry: WrittenParam,
 ): T {
-  if (entry.overrode !== true) {
-    return result;
-  }
+  return entry.overrode === true
+    ? withDetail(result, AUTOMATION_OVERRIDDEN)
+    : result;
+}
 
+/**
+ * Join a detail onto a written param's entry, after any it already has.
+ * @param result - The entry
+ * @param added - What to add
+ * @returns The entry with the joined detail
+ */
+function withDetail<T extends LandedParam | ParamValueResult>(
+  result: T,
+  added: string,
+): T {
   const detail = joinDetails([
     "detail" in result ? result.detail : undefined,
-    AUTOMATION_OVERRIDDEN,
+    added,
   ]);
 
   return { ...result, detail };

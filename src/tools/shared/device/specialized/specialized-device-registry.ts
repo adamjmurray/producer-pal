@@ -21,6 +21,8 @@ import { wavetableSpec } from "./devices/wavetable.ts";
 import {
   type UnresolvedParam,
   type WrittenPseudoParam,
+  formatParamName,
+  readParameter,
   skippedParam,
 } from "../helpers/param-reading.ts";
 import { markSuperseded } from "#src/tools/shared/helpers/entry-details.ts";
@@ -28,7 +30,10 @@ import { namedAgain } from "#src/shared/max/named-again-wording.ts";
 import { failUnreplacedEntries } from "#src/tools/shared/write-pipeline/plans/replaced-entries.ts";
 import { lastWins } from "#src/tools/shared/write-pipeline/plans/last-wins.ts";
 import { parseAction } from "./specialized-device-action-parser.ts";
-import { applyInactiveStates } from "./specialized-device-inactive.ts";
+import {
+  applyInactiveStates,
+  ruleMarksInactive,
+} from "./specialized-device-inactive.ts";
 import {
   type ActionDef,
   type ActionResult,
@@ -357,6 +362,50 @@ export function applySpecializedInactiveStates(
   if (spec?.inactiveWhen) {
     applyInactiveStates(spec.inactiveWhen, parameters);
   }
+}
+
+/**
+ * Whether a device's specialized `inactiveWhen` rules mark one of its params
+ * inactive right now. Reads a controller param only when a rule names the
+ * param, so a generic device costs no Live API calls.
+ * @param device - LiveAPI device object
+ * @param paramName - Display name of the param, as read-device reports it
+ * @returns True when a rule makes the param inactive
+ */
+export function isParamInactiveBySpecialized(
+  device: LiveAPI,
+  paramName: string,
+): boolean {
+  const rules = getSpecForDevice(device)?.inactiveWhen;
+
+  return (
+    rules != null &&
+    ruleMarksInactive(rules, paramName, (controller) =>
+      controllerValue(device, controller),
+    )
+  );
+}
+
+/**
+ * A device param's current display value, as read-device reports it.
+ * @param device - LiveAPI device object
+ * @param name - Display name of the param
+ * @returns The value, or undefined when the device has no such param
+ */
+function controllerValue(device: LiveAPI, name: string): unknown {
+  let value: unknown;
+
+  device.someChild("parameters", (param) => {
+    if (formatParamName(param) !== name) {
+      return false;
+    }
+
+    value = readParameter(param).value;
+
+    return true;
+  });
+
+  return value;
 }
 
 /**

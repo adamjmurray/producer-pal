@@ -15,8 +15,8 @@ import {
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { createDevice } from "../create-device.ts";
-import { toolDefCreateDevice } from "../create-device.def.ts";
+import { createDevice } from "../../create-device.ts";
+import { toolDefCreateDevice } from "../../create-device.def.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   emitWarning: vi.fn(),

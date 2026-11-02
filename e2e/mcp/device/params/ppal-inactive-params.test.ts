@@ -6,10 +6,14 @@
 /**
  * E2E tests for params that have no effect in the device's current mode.
  *
- * Live leaves every rate param of a mode-switched LFO active, so our
+ * Reads: Live leaves every rate param of a mode-switched LFO active, so our
  * `inactiveWhen` rules mark the ones the mode doesn't use. The rules match
  * Live's param names, which change between Live versions, so only a real Live
  * can tell whether they still fire.
+ *
+ * Writes: a write to an inactive param still goes in (setting it before
+ * switching modes is valid), and its entry says it has no effect. EQ Eight's B
+ * side in stereo mode and a Notch band's Gain are Live's own inactive params.
  * Uses: e2e-test-set
  *
  * Run with: npm run e2e:mcp -- device/params/ppal-inactive-params
@@ -25,11 +29,15 @@ import {
 
 const ctx = setupMcpTestContext({ once: true });
 
+const INACTIVE =
+  "inactive in the device's current mode, so it has no effect until that changes";
+
 interface ParamEntry {
   id: string;
   name: string;
   value?: unknown;
   state?: string;
+  detail?: string;
 }
 
 /**
@@ -143,5 +151,46 @@ describe("read-device marks mode-gated rate params inactive", () => {
       "LFO 1 Freq",
       "LFO 2 Synced",
     ]);
+  });
+});
+
+describe("ppal-update-device: writes to inactive params", () => {
+  it("writes EQ Eight's B side in stereo mode and says it has no effect", async () => {
+    const id = await createOnNewTrack("EQ Eight");
+    const entries = await write(id, {
+      "2 Filter Type B": "High Shelf",
+      "2 Gain A": "3",
+    });
+
+    expect(entries["2 Filter Type B"]).toStrictEqual({
+      id: expect.any(String),
+      name: "2 Filter Type B",
+      value: "High Shelf",
+      detail: INACTIVE,
+    });
+    expect(entries["2 Gain A"]?.detail).toBeUndefined();
+  });
+
+  it("judges the mode after the whole call: Gain on a band the call made a Notch", async () => {
+    const id = await createOnNewTrack("EQ Eight");
+    const entries = await write(id, {
+      "3 Filter Type A": "Notch",
+      "3 Gain A": "3",
+    });
+
+    expect(entries["3 Filter Type A"]?.detail).toBeUndefined();
+    expect(entries["3 Gain A"]?.detail).toBe(INACTIVE);
+  });
+
+  it("marks a param our inactiveWhen rules make inactive", async () => {
+    const id = await createOnNewTrack("Wavetable");
+    const entries = await write(id, {
+      "LFO 1 Sync": "Tempo",
+      "LFO 1 Freq": "2",
+      "LFO 1 Synced": "1/4",
+    });
+
+    expect(entries["LFO 1 Freq"]?.detail).toBe(INACTIVE);
+    expect(entries["LFO 1 Synced"]?.detail).toBeUndefined();
   });
 });
