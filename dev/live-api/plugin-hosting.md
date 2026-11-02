@@ -222,11 +222,38 @@ Live saves the plug-in's state in a hidden blob parameter, not through `vst~`.
 - A new wrapper has an empty `vststate`, so nothing is restored over a plug-in
   loaded right after it. It writes nothing until a plug-in is loaded. The first
   poll after a load adopts what's stored instead of writing it back.
-- Swapping a user's existing native plug-in for a wrapped one loses its
-  settings: the Live API can't read a plug-in's state. The clean case is
-  plug-ins Producer Pal inserts itself.
 - Changes made through the wrapper are no longer undone one parameter at a time:
   Live's undo covers the blob, so one undo puts back the whole previous state.
+
+### Taking over a native plug-in's state
+
+The Live API can't read a natively loaded plug-in's state, but the saved Set
+can: `live_set file_path` gives the `.als` (gzipped XML), which stores each
+plug-in's state as hex. Probed on Live 12.4 by loading that state into a wrapper
+with `vst~`'s `read <path>`:
+
+| Format | In the `.als`                                      | What `read` takes                      | Result |
+| ------ | -------------------------------------------------- | -------------------------------------- | ------ |
+| VST3   | `Vst3Preset`: `ProcessorState`, `ControllerState`  | JUCE's preset file (below)             | works  |
+| VST2   | `VstPreset` `Buffer`: the chunk (`Type` is `FPCh`) | a standard big-endian `.fxp` around it | works  |
+| AU     | `AuPreset` `Buffer`: an `.aupreset` plist          | nothing found                          | fails  |
+
+- JUCE's file: `VC2!`, a uint32 LE length, then
+  `<VST3PluginState><IComponent>…</IComponent><IEditController>…</IEditController></VST3PluginState>`.
+  Each state is JUCE base64: `<byte count>.`, then 6-bit groups taken low bit
+  first, alphabet `.A-Za-z0-9+`. A Steinberg `.vstpreset` of the same state is
+  ignored without an error.
+- AU: `read` with the file's path or its preset name changed nothing, and
+  `write` made no file. AU user presets go in
+  `~/Library/Audio/Presets/<maker>/<plug-in>/`, which was root-owned on the
+  probe machine, so the by-name test proves nothing. Untried: putting the AU
+  state into `vstmirror`'s `C74Snapshot` directly.
+- Only the last save carries over: edits since then are lost, and a Set never
+  saved has nothing. No way found to tell whether the Set has unsaved changes.
+- The device has to be found in the XML by track and device position, which is
+  wrong if devices moved since the save.
+- Configured params (at most 128) can be read through the Live API and set on
+  the wrapper: a partial fallback.
 
 ### Audio, MIDI and latency
 
