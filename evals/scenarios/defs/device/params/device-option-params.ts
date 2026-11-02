@@ -22,9 +22,10 @@
  *
  * The prompts say what the sound should do ("a notch", "a shelf that lifts the
  * highs"), not the exact option text. EQ Eight has no "Low Cut": that is "High
- * Pass". Only bands 1-4 are used, so a model that also switches a band on is
- * not penalized. Each band has an A and a B side; a model that also gives the B
- * side the option it was asked for is not penalized either.
+ * Pass". The seed leaves bands 2 and 3 off, so a model that switches on a band
+ * it was asked to change is not penalized. Each band has an A and a B side; a
+ * model that also gives the B side the option it was asked for is not
+ * penalized either.
  */
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -155,6 +156,7 @@ function optionProblems(
     if (
       !asked.has(name) &&
       !isMirrorOfWanted(target, name, text) &&
+      !isAskedBandSwitchedOn(target, name, text) &&
       before?.[name] != null &&
       before[name] !== text
     ) {
@@ -180,6 +182,31 @@ function isMirrorOfWanted(target: Target, name: string, text: string): boolean {
       wantedName.endsWith(" A") &&
       name === `${wantedName.slice(0, -1)}B` &&
       option.test(text),
+  );
+}
+
+/**
+ * Whether a param is the on switch of a band the user asked to change, turned
+ * on. An off band does nothing, so switching it on is the right move.
+ *
+ * @param target - The device and what was asked of it
+ * @param name - The param's name
+ * @param text - What it reads as
+ * @returns True for an asked-for band's switch reading On
+ */
+function isAskedBandSwitchedOn(
+  target: Target,
+  name: string,
+  text: string,
+): boolean {
+  const band = /^(\d+) Filter On [AB]$/.exec(name)?.[1];
+
+  return (
+    band != null &&
+    /^on$/i.test(text) &&
+    target.wanted.some(({ name: wantedName }) =>
+      wantedName.startsWith(`${band} Filter Type`),
+    )
   );
 }
 
