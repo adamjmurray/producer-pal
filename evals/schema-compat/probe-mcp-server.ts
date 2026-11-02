@@ -79,7 +79,9 @@ function buildServer(variant: Variant, calls: Args[]): McpServer {
     tools: [
       {
         name: variant.toolName,
-        description: `Probe tool for ${variant.id}. ${variant.tests}`,
+        description:
+          variant.description ??
+          `Probe tool for ${variant.id}. ${variant.tests}`,
         inputSchema: toolInputSchema(variant),
       },
     ],

@@ -117,7 +117,7 @@ async function probe(
     prompt: variant.prompt,
     tools: {
       [variant.toolName]: tool({
-        description: `Probe tool for ${variant.id}`,
+        description: variant.description ?? `Probe tool for ${variant.id}`,
         inputSchema: jsonSchema(variant.schema),
       }),
     },
