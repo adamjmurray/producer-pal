@@ -5,8 +5,8 @@
 
 import { clipDetail } from "../../transform-warning-label.ts";
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
-import { normalizePhase } from "../../transform-waveforms.ts";
 import { type EvalContext } from "../transform-context.ts";
+import { GRID_EPSILON } from "../note-ops/note-cuts.ts";
 import { DEFAULT_SWING_GRID, swingAmountError } from "./swing-amount.ts";
 
 /**
@@ -41,25 +41,27 @@ export function evaluateSwing(
     throw new Error(refusal);
   }
 
-  const period = grid * 2;
-
   // Auto-quantize: snap to grid/4 before applying swing (unless raw).
   // Uses grid/4 (not grid) to preserve notes at finer subdivisions
   // (e.g. 16th notes during 8th-note swing).
   let effectivePosition = ctx.position;
 
   if (!raw) {
+    // Round, don't floor, in the off-beat half: flooring pulls a slightly early
+    // on-beat back a full step and breaks swinging humanized notes.
     const quantGrid = grid / 4;
 
     effectivePosition = Math.round(ctx.position / quantGrid) * quantGrid;
   }
 
-  // Phase within the period cycle (0-1). Wrapped so a pickup note before the
-  // clip start (negative position) lands in the right half.
-  const phase = normalizePhase(effectivePosition / period);
+  // Count whole grid steps, not a float phase: an exact n/12 step divided by the
+  // period can land at 0.4999... and put an off-beat in the on-beat half.
+  // The modulo keeps a pickup note before the clip start (negative) in the
+  // right half.
+  const step = Math.floor((effectivePosition + GRID_EPSILON) / grid);
 
-  // On-beat (first half): no offset. Off-beat (second half): full offset.
-  const offset = phase < 0.5 ? 0 : amount;
+  // On-beat (even step): no offset. Off-beat (odd step): full offset.
+  const offset = Math.abs(step % 2) === 1 ? amount : 0;
 
   return effectivePosition + offset;
 }
