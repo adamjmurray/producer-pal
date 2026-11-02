@@ -294,6 +294,32 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !HAS_SERUM)("hosted plug-ins", () => {
       );
     });
 
+    it("keeps a mapped param's later value on a duplicated track", async () => {
+      const { track, path } = await hostOnNewTrack("Serum 2");
+      const deviceId = (await readDevice(path)).id;
+
+      // map sets the dial to Main Vol's current value; the write after it
+      // leaves the dial behind, and the copy must not take the dial's value.
+      await call("ppal-plugin-host", {
+        deviceId,
+        action: "map",
+        slot: 3,
+        name: "Main Vol",
+      });
+      await call("ppal-update-device", {
+        path,
+        params: [{ name: "Main Vol", value: "37%" }],
+      });
+
+      const copy = await duplicateTrack(track);
+      const devicePath = `${copy}/${path.split("/").at(-1)}`;
+
+      const [param] =
+        (await readDevice(devicePath, "Main Vol")).parameters ?? [];
+
+      expect(param?.value).toMatch(/^37%/);
+    });
+
     /**
      * Read a session clip's envelopes.
      * @param clipId - The clip's id

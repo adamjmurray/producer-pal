@@ -266,8 +266,10 @@ slot in the patcher, and `SLOT_COUNT` in the code box. Change both together.
 - **Running**: a dial change reaches the code box as `slot <n> <value>`, which
   writes the mapped param. `vst~` echoes a write straight back, while the script
   is still busy, so the echo isn't taken for an edit in the plug-in's window.
-- **After load**: once the restored plug-in is ready, the wrapper sends each
-  mapped dial's value to the plug-in, so a reopened Set matches its dials.
+- **After load**: the restored plug-in state wins. The wrapper doesn't send the
+  dials' values to the plug-in: a dial is only synced by `map`, so a value set
+  later (a write, or the plug-in window) would be overwritten by the dial's
+  older one. An automated param catches up when its automation next moves.
 - **`map`** sets the dial to the param's current value, so dial and plug-in
   agree. It leaves the dial alone when the slot already drives that param (it
   changes nothing and saves nothing) or when the dial has arrangement automation

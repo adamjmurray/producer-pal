@@ -488,7 +488,8 @@ function adoptStored() {
 
   slotsReady = true;
   slotCache = null;
-  sendDialValues();
+  // Don't push the dials into the plug-in here: a dial is synced only when
+  // mapped, so its saved value can be older than the restored state.
   showName(state.plugin ?? storedName() ?? loadedFile());
 }
 
@@ -624,17 +625,6 @@ function slot(n, value) {
   } finally {
     busy--;
   }
-}
-
-// After a load, the plug-in gets the dials' restored values.
-function sendDialValues() {
-  for (const n of Object.keys(readSlots())) slot(Number(n), dialValue(n));
-}
-
-function dialValue(n) {
-  const value = this.patcher.getnamed(`slotdial${n}`)?.getvalueof();
-
-  return Number(Array.isArray(value) ? value[0] : value);
 }
 
 function setDial(n, value) {
