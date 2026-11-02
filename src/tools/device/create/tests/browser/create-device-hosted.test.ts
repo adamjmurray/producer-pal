@@ -271,6 +271,20 @@ describe("createDevice hosted", () => {
     expect(liveSet.call).not.toHaveBeenCalledWith("create_midi_track", -1);
   });
 
+  it("refuses before Live 12.4, before looking anything up", async () => {
+    registerMockObject("live_app", {
+      path: "live_app",
+      methods: { get_version_string: () => "12.3.2" },
+    });
+    answerNode();
+
+    await expect(
+      createDevice({ device: "Serum 2 FX", hosted: true, path: "t0/d+" }),
+    ).rejects.toThrow("can't host a plug-in: hosting needs Live 12.4 or later");
+    expect(requestNode).not.toHaveBeenCalled();
+    expect(liveSet.call).not.toHaveBeenCalledWith("create_midi_track", -1);
+  });
+
   it("says the remote script is needed when it isn't answering", async () => {
     answerNode({ resolution: { available: false } });
 

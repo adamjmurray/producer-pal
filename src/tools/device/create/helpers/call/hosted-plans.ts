@@ -8,6 +8,7 @@
 // anything is made. A name that matches nothing fails the call with nothing
 // changed.
 
+import { liveVersionAtLeast } from "#src/tools/shared/helpers/live-api-values.ts";
 import { outdatedFor } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import { pluginHostSetup } from "./plugin-host-setup.ts";
 import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
@@ -17,6 +18,9 @@ import {
 } from "../browser-devices.ts";
 import { type PluginPlan, resolvePluginPlan } from "../plugin-host-load.ts";
 import { type BrowserItem } from "../remote-script-contract.ts";
+
+/** The oldest Live that hosting supports. */
+const HOSTING_MIN_VERSION = "12.4";
 
 /** A plug-in to host, and the wrapper device that loads it. */
 export interface HostedPlan {
@@ -31,14 +35,21 @@ export interface HostedPlan {
  * @param deadline - The request deadline
  * @param manage - Whether the caller can use ppal-manage
  * @returns The plan for each name, in the order given
- * @throws Error when a name isn't an installed plug-in, or the wrapper it
- *   needs isn't in Live's browser or can't be looked up
+ * @throws Error when Live is older than 12.4, a name isn't an installed
+ *   plug-in, or the wrapper it needs isn't in Live's browser or can't be
+ *   looked up
  */
 export async function planHostedPlugins(
   names: string[],
   deadline: number | null | undefined,
   manage: boolean,
 ): Promise<HostedPlan[]> {
+  if (!liveVersionAtLeast(HOSTING_MIN_VERSION)) {
+    throw new Error(
+      `can't host a plug-in: hosting needs Live ${HOSTING_MIN_VERSION} or later`,
+    );
+  }
+
   const plans = new Map<string, HostedPlan>();
 
   for (const name of names) {
