@@ -13,6 +13,8 @@ import {
 import { reconcileDanglingToolCalls } from "#webui/chat/sdk/build-model-messages";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import { isLeavingLive } from "#webui/hooks/chat/helpers/conversations/is-leaving-live";
+import { useRestoreFromHash } from "#webui/hooks/chat/helpers/conversations/view/use-restore-from-hash";
+import { useViewSequence } from "#webui/hooks/chat/helpers/conversations/view/use-view-sequence";
 import { useBulkDeletes } from "#webui/hooks/chat/helpers/conversations/use-bulk-deletes";
 import { confirmLeavingStream } from "#webui/hooks/chat/helpers/conversations/confirm-leaving-stream";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
@@ -23,7 +25,7 @@ import {
   getHashConversationId,
   setLocationHash,
   useHashNavigation,
-} from "#webui/hooks/chat/helpers/conversations/use-hash-navigation";
+} from "#webui/hooks/chat/helpers/conversations/view/use-hash-navigation";
 import { writeConversation } from "#webui/hooks/chat/helpers/conversations/write-conversation";
 import {
   type SyncActiveMetaParams,
@@ -139,6 +141,7 @@ export function useConversations({
   // save queued behind the same failed fork so writeConversation's retry bound
   // holds across all of them, not just within one.
   const deadForkAttempts = useRef<Map<string, number>>(new Map());
+  const view = useViewSequence();
 
   const publishActiveId = useCallback((id: string | null) => {
     setActiveConversationId(id);
@@ -200,39 +203,13 @@ export function useConversations({
     [restoreChatHistory],
   );
 
-  // Load conversation from URL hash and conversation list on mount
-  useEffect(() => {
-    const init = async () => {
-      await refreshList();
-      const hashId = getHashConversationId();
-
-      if (!hashId) {
-        return;
-      }
-
-      const record = await loadConversation(hashId);
-
-      if (record?.sessionType === "voice") {
-        if (onForeignRecord) {
-          onForeignRecord(record);
-        } else {
-          store.reset();
-        }
-
-        return;
-      }
-
-      if (record && record.messages.length > 0) {
-        store.adopt(record);
-        restoreRecord(record);
-      } else {
-        // Hash ID no longer exists in DB
-        store.reset();
-      }
-    };
-
-    void init();
-  }, [refreshList, restoreRecord, onForeignRecord, store]);
+  useRestoreFromHash({
+    refreshList,
+    restoreRecord,
+    onForeignRecord,
+    store,
+    view,
+  });
 
   const saveCurrentConversation = useCallback(
     (updatedAt?: number): Promise<void> => {
@@ -298,7 +275,12 @@ export function useConversations({
 
   const switchConversation = useCallback(
     async (id: string) => {
+      const seq = view.next();
       const record = await loadConversation(id);
+
+      if (seq !== view.current()) {
+        return;
+      }
 
       if (!record) {
         store.reset();
@@ -343,20 +325,28 @@ export function useConversations({
       onForeignRecord,
       refreshList,
       store,
+      view,
     ],
   );
 
-  const startNewConversation = useCallback(() => {
-    const leaving = isLeavingLive(store, getChatHistory);
+  const clearLiveView = useCallback(
+    (leaving = true) => {
+      view.next();
+      clearConversation();
 
-    clearConversation();
+      if (leaving) {
+        resetComposer();
+      }
 
-    if (leaving) {
-      resetComposer();
-    }
+      store.reset();
+    },
+    [clearConversation, resetComposer, store, view],
+  );
 
-    store.reset();
-  }, [clearConversation, resetComposer, getChatHistory, store]);
+  const startNewConversation = useCallback(
+    () => clearLiveView(isLeavingLive(store, getChatHistory)),
+    [clearLiveView, getChatHistory, store],
+  );
 
   // A fork branches off the active conversation, minting its id inside the save.
   // With that conversation going away there is nothing left to branch from, so
@@ -367,19 +357,6 @@ export function useConversations({
       pendingForkRef.current = null;
     }
   }, [pendingForkRef]);
-
-  const clearLiveView = useCallback(
-    (leaving = true) => {
-      clearConversation();
-
-      if (leaving) {
-        resetComposer();
-      }
-
-      store.reset();
-    },
-    [clearConversation, resetComposer, store],
-  );
 
   const deleteConversation = useCallback(
     (id: string) =>
