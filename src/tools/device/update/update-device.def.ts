@@ -46,7 +46,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
 
     toPath: param(z.coerce.string().optional(), {
       default:
-        "move to path ('t2/d+' appends, 't2/d1' inserts at 1, 't0/d0/c1/d+'; 't0/d0/c+' appends a new chain to that rack and moves the device into it). Comma-separated, one per target. A drum pad moves by its pad path ('t0/d0/pC1' to 't0/d0/pD1'), within its rack; onto an occupied pad it layers. A device moved alone keeps its chain's trim only into an empty, untouched chain",
+        "move to path ('t2/d+' appends, 't2/d1' inserts at 1, 't0/d0/c1/d+'; 't0/d0/c+' appends a new chain to that rack and moves the device into it). Comma-separated, one per target. A pad moves by its pad path ('t0/d0/pC1' to 't0/d0/pD1'), same rack. A device moved alone keeps its chain's trim only into an empty, untouched chain",
       smallModel: "destination path to move device to",
     }),
     name: param(z.string().optional(), {
@@ -67,7 +67,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       default:
         "array of {name, value} or {id, value}. name = a param name; id = a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one. Every param sent comes back as one entry, in order: id and name alone when it took the value asked for, the value it reads as (plus a `detail`) when Live kept a different one, or `ok:false` and why nothing was written. A param named twice is written once, at its last entry; the earlier one comes back with only a `detail`. " +
         HOSTED_PARAMS +
-        "For a Drum Rack, prefix the name with a pad path: {name:'pC1/sample', value:'<abs path>'}",
+        "Drum Rack pad sample: {name:'pC1/sample', value:'<abs path>'}",
       // Small mode ships no devices skills fragment, so this is the only place
       // saying a value is a display value (not a normalized 0-1) AND the only
       // place teaching the sample write. getting-help-basic promises samples on

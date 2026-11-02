@@ -34,7 +34,7 @@ describe("a build without ENABLE_HOSTED_PLUGINS", () => {
 
     expect(params?.description).not.toContain("hosted");
     expect(params?.description).toContain(
-      "earlier one comes back with only a `detail`. For a Drum Rack,",
+      "earlier one comes back with only a `detail`. Drum Rack pad sample:",
     );
   });
 

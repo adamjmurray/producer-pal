@@ -59,7 +59,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       : {}),
     params: param(paramsInputSchema, {
       default:
-        "applied after creation — array of {name, value}; value in the `unit` read-device reports, or none. For a Drum Rack, prefix the name with a pad path: {name:'pC1/sample', value:'<abs path>'}",
+        "applied after creation — array of {name, value}; value in the `unit` read-device reports, or none. Drum Rack pad sample: {name:'pC1/sample', value:'<abs path>'}",
       // See update-device: small mode has no devices fragment, so the value
       // format and the sample write both have to survive the trim.
       smallModel:

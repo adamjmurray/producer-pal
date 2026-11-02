@@ -110,7 +110,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "Scenes: '[5|1]' = that spot on the arrangement, across every track. " +
         "Tracks: 't2/l0' (or 't2/l+') copies the source's arrangement clips onto that take lane at their own positions; " +
         "a 't2/l0' source copies that lane, and onto a bare 't2' it promotes the lane's clips to the main lane, over what's there. No toPath otherwise. " +
-        "Drum pads: 't0/d0/pD1', required, in the same rack as the source. " +
+        "Pads: 't0/d0/pD1', required, same rack. " +
         "Comma-separated, one per copy; several sources need one each, except a bare '[5|1]' for clips",
       smallModel:
         "destination(s): clip slot 't2/s1', clip arrangement spot 't2[5|1]' (a session clip's automation goes to the track's lane; an arrangement clip's isn't copied), device 't1/d0', drum pad 't0/d0/pD1'",
