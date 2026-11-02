@@ -346,6 +346,8 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
   Live warps it with `warping` (see [Audio Clips](#audio-clips))
 - Create the scenes up to a clip slot past the last one, reporting them as
   `created`
+- Give a MIDI clip its own scale with `scale` (Live 12.4.15 or later). A new
+  clip starts with the Live Set's scale otherwise
 
 <!--@include: ../_generated/ppal-create-clip-schema.md-->
 
@@ -357,6 +359,8 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Read MIDI notes in [custom notation](/features#custom-music-notation) (C3,
   D#4, etc.)
 - Get audio clip gain, pitch, warp settings, and sample info
+- See a MIDI clip's own `scale` when it differs from the Live Set's (Live
+  12.4.15 or later)
 - Read a session clip's automation envelopes with `include: ["envelopes"]`
   (needs the [remote script](/guide/remote-script)). A clip read shows
   `envs: true` when it has some. An arrangement clip's automation is the track's
@@ -369,6 +373,8 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 ### Update Clip (`ppal-update-clip`) {#ppal-update-clip}
 
 - Change clip name, color, and loop settings
+- Set a MIDI clip's own scale with `scale`, or `""` to turn it off (Live 12.4.15
+  or later). [Transforms](/features#transforms) like `snap` use it
 - Add/remove MIDI notes using [custom notation](/features#custom-music-notation)
 - Apply [transforms](/features#transforms) to modify existing notes and audio
   properties (use `clip.index`/`clipseq()` for per-clip variation when updating

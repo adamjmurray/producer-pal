@@ -7,6 +7,14 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
+import {
+  type CallScale,
+  newCallScale,
+} from "#src/tools/shared/schema/scale/call-scale.ts";
+import {
+  formatScale,
+  readScaleState,
+} from "#src/tools/shared/schema/scale/scale-reading.ts";
 import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
@@ -36,7 +44,13 @@ export function buildCodeExecutionContext(
   sceneIndex?: number,
 ): CodeExecutionContext {
   const track = buildTrackContext(clip);
-  const clipContext = buildClipContext(clip, clipIndex, clipCount);
+  // One run asks Live for its version at most once, and not at all for audio.
+  const clipContext = buildClipContext(
+    clip,
+    clipIndex,
+    clipCount,
+    newCallScale(),
+  );
   const location = buildLocationContext(clip, view, sceneIndex);
   const liveSet = buildLiveSetContext();
   const beatsPerBar = getBeatsPerBar(clip);
@@ -98,6 +112,7 @@ function buildClipContext(
   clip: LiveAPI,
   index: number,
   count: number,
+  callScale: CallScale,
 ): CodeClipContext {
   const id = clip.id;
   const name = clip.getProperty("name") as string | null;
@@ -108,12 +123,18 @@ function buildClipContext(
   const length = (clip.getProperty("length") as number) * (sigDenom / 4);
   const looping = (clip.getProperty("looping") as number) > 0;
 
+  // Audio clips take no scale, and where Live gives clips none only the Live
+  // Set's is there to read.
+  const isAudio = (clip.getProperty("is_audio_clip") as number) > 0;
+  const scale = !isAudio && callScale.supported() ? readScaleState(clip) : null;
+
   return {
     id,
     name,
     length,
     timeSignature: `${sigNum}/${sigDenom}`,
     looping,
+    ...(scale?.enabled === true && { scale: formatScale(scale) }),
     index,
     count,
   };

@@ -39,6 +39,7 @@ import {
 import { type DestinationRef } from "../create-clip-destinations.ts";
 import { createClipBlocker } from "../create-clip-validation.ts";
 import { createdClipLength } from "../created-clip-result.ts";
+import { newClipScaleMask } from "../new-clip-scale-mask.ts";
 import {
   type ClipPosition,
   clipPositionLabel,
@@ -185,7 +186,10 @@ function targetFor(
           startBeats: plan.timing.startBeats,
           timeSigNumerator: plan.timing.timeSigNumerator,
           timeSigDenominator: plan.timing.timeSigDenominator,
-          scaleMask: call.scaleMask,
+          scaleMask:
+            args.transforms == null || plan.sampleFile
+              ? undefined
+              : newClipScaleMask(call.callScale, call.scales[index]),
         },
         index,
         total,

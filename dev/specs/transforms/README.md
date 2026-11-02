@@ -21,7 +21,8 @@ swing(amount, [grid], [raw]) // swing: delay off-beat notes (grid default: half 
 quant(grid) // quantize: snap to nearest grid point
 legato([tolerance]) // set duration to reach the next note's start time
 
-// Scale functions (use the Live Set scale; pass-through if no scale is set)
+// Scale functions (use the clip's own scale, or the Live Set's on Live before
+// 12.4.15; pass-through if no scale is set)
 snap(pitch) // snap pitch to the nearest in-scale pitch
 step(basePitch, offset) // move basePitch by offset scale steps
 

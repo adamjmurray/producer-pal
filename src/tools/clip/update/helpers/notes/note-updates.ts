@@ -23,7 +23,7 @@ import { type NoteEvent } from "#src/notation/types.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-results.ts";
-import { type ScaleMaskReader } from "#src/tools/clip/helpers/scale-mask.ts";
+import { type CallScale } from "#src/tools/shared/schema/scale/call-scale.ts";
 import {
   clipNoteScanWindow,
   clipPlayRegion,
@@ -356,7 +356,7 @@ export function handleDuplicateLoop(
  * @param params.clipIndex - 0-based index in the multi-clip batch
  * @param params.clipCount - Total clips in the batch
  * @param params.notation - Global notation setting the notes string is written in (or undefined)
- * @param params.scaleMask - The call's shared scale mask reader, when it has one
+ * @param params.callScale - What the call asked Live about scales
  * @returns Note update result with the final post-edit note count
  */
 export function handleDuplicateLoopWithEdits({
@@ -370,7 +370,7 @@ export function handleDuplicateLoopWithEdits({
   clipIndex,
   clipCount,
   notation,
-  scaleMask,
+  callScale,
 }: {
   clip: LiveAPI;
   reasons: ClipReasons;
@@ -382,7 +382,7 @@ export function handleDuplicateLoopWithEdits({
   clipIndex: number;
   clipCount: number;
   notation: Notation | undefined;
-  scaleMask?: ScaleMaskReader;
+  callScale: CallScale;
 }): NoteUpdateResult | null {
   // Stage 1: flush preTransforms onto the existing notes before doubling. With
   // a stage 3 it hands its results over, so "nothing changed" is judged on both.
@@ -398,7 +398,7 @@ export function handleDuplicateLoopWithEdits({
       clipCount,
       timeSigNumerator,
       timeSigDenominator,
-      scaleMask,
+      callScale,
     );
     const preResult = applyTransformsToExistingNotes(
       clip,
@@ -435,7 +435,7 @@ export function handleDuplicateLoopWithEdits({
     clipCount,
     timeSigNumerator,
     timeSigDenominator,
-    scaleMask,
+    callScale,
   );
   const mergeResult = handleNoteUpdates(
     freshClip,

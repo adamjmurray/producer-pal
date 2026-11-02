@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { calculateBeatPositions } from "../helpers/clip-beat-positions.ts";
+import { calculateBeatPositions } from "../../helpers/clip-beat-positions.ts";
 import {
   capturedWarnings,
   clearCapturedWarnings,
@@ -12,7 +12,7 @@ import {
 import {
   type ClipReasons,
   newClipReasons,
-} from "../helpers/entries/clip-reasons.ts";
+} from "../../helpers/entries/clip-reasons.ts";
 
 describe("clip-beat-positions", () => {
   let reasons: ClipReasons;

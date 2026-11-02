@@ -8,6 +8,7 @@
 // a throw partway keeps the entry for the clip that exists by then.
 
 import { type AudioReadBack } from "#src/tools/clip/helpers/audio-clip-properties.ts";
+import { clipScaleIgnoredText } from "#src/tools/shared/schema/scale/call-scale.ts";
 import {
   notesLandedOutsideNote,
   notesShortenedNote,
@@ -33,6 +34,7 @@ import {
 import {
   configureAudioClip,
   configureMidiClip,
+  type ScaleOutcome,
 } from "./configure-created-clip.ts";
 import { type CreatePayload } from "./create-clip-targets.ts";
 import { type CreateRun } from "./create-run.ts";
@@ -88,6 +90,7 @@ export async function writeCreatedClip(
       : null,
     ...payload.skippedTransforms,
     ignoredParamsNote(...unusableParams(step.checked, payload)),
+    scaleIgnoredNote(step.checked, payload),
   ]) {
     if (note != null) {
       appendDetail(entry, note);
@@ -162,11 +165,12 @@ function fillClip(
   const { timing } = plan;
 
   let audioKept: AudioReadBack = {};
+  let scale: ScaleOutcome = {};
 
   if (plan.sampleFile) {
     audioKept = configureAudioClip(step, made.clip, payload);
   } else {
-    configureMidiClip(step, made.clip, payload);
+    scale = configureMidiClip(step, made.clip, payload);
   }
 
   const entry = buildClipResult(
@@ -205,6 +209,14 @@ function fillClip(
 
   if (keptDetail != null) {
     appendDetail(entry, keptDetail);
+  }
+
+  if (scale.scale != null) {
+    entry.scale = scale.scale;
+  }
+
+  if (scale.detail != null) {
+    appendDetail(entry, scale.detail);
   }
 
   if (made.slotWork != null) {
@@ -339,4 +351,22 @@ function unusableParams(
         },
         CLIP_IS_MIDI,
       ];
+}
+
+/**
+ * Why the clip didn't take the `scale` it was asked for, when it didn't.
+ * @param call - The create-clip call
+ * @param payload - The target's payload
+ * @returns The note for the clip's entry, or null
+ */
+function scaleIgnoredNote(
+  call: CreateClipCall,
+  payload: CreatePayload,
+): string | null {
+  return call.scales[payload.index] == null
+    ? null
+    : clipScaleIgnoredText(
+        Boolean(payload.plan.sampleFile),
+        call.callScale.supported(),
+      );
 }

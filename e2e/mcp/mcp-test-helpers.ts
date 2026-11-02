@@ -598,6 +598,8 @@ export interface CreateClipResult {
   warping?: boolean;
   /** The scenes the destination had to make ("s8-s9"), when it made any */
   created?: string;
+  /** The scale Live stores, when it isn't the one asked for */
+  scale?: string;
   /** What the call asked for that the clip didn't get */
   detail?: string;
 }
@@ -613,6 +615,8 @@ export interface UpdateClipResult {
   created?: string;
   /** How many `envelopes` lines landed, or why none could */
   envelopes?: number | string;
+  /** The scale Live stores, when it isn't the one asked for */
+  scale?: string;
   /** What the call asked for that the clip didn't get */
   detail?: string;
 }
@@ -641,6 +645,10 @@ export interface ReadClipResult {
   /** Where the clip is: "t0/s3", "t0[5|1]", or "t0/l1[5|1]" */
   path?: string;
   arrangementLength?: string;
+  /** A MIDI clip's own scale, when it differs from the Live Set's ("" = off) */
+  scale?: string;
+  /** The notes of `scale`, like "D,E,F,G,A,B,C" */
+  scalePitches?: string;
   /** Why the update didn't go as asked, when something landed anyway */
   detail?: string;
   noteCount?: number;

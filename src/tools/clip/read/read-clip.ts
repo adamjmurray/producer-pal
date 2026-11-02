@@ -32,7 +32,13 @@ import {
   type ReadResult,
   type ReadTargetParams,
 } from "#src/tools/shared/validation/lists/read-fan-out.ts";
+import {
+  type CallScale,
+  newCallScale,
+} from "#src/tools/shared/schema/scale/call-scale.ts";
 import { type ClipEnvelope, clipEnvelopes } from "./helpers/clip-envelopes.ts";
+import { addClipScale } from "./helpers/clip-scale-fields.ts";
+import { addBooleanStateProperties } from "./helpers/clip-state-flags.ts";
 import {
   clipRegionBeats,
   processWarpMarkers,
@@ -66,6 +72,9 @@ export interface ReadClipArgs extends ReadTargetParams {
   /** @internal Told the track of a slot that is really empty; may throw to
    * say why that slot holds no clip */
   onEmptySlot?: (track: LiveAPI) => void;
+  /** @internal The call's scale questions, shared across its clips. Only
+   * read-clip passes it, and only it shows a MIDI clip's own scale. */
+  callScale?: CallScale;
 }
 
 interface WarpMarker {
@@ -111,6 +120,11 @@ export interface ReadClipResult {
   arrangementLength?: string;
 
   // MIDI clip properties
+  /** The clip's own scale ("C Major"), only when it differs from the Live Set's;
+   * "" when the clip's scale is off and the Live Set's is on. */
+  scale?: string;
+  /** The notes of `scale`, like "C,D,E,F,G,A,B"; left out with `scale: ""`. */
+  scalePitches?: string;
   notes?: string;
   /** How many muted notes are hidden from `notes`; edits leave them alone. */
   mutedNotes?: number;
@@ -147,6 +161,8 @@ export async function readClip(
   args: ReadClipArgs = {},
   context: Partial<ToolContext> = {},
 ): Promise<ReadResult<ReadClipResult>> {
+  // Asked once for the whole call, however many clips it reads.
+  const callScale = newCallScale();
   const result = readFanOut(
     args,
     {
@@ -157,7 +173,7 @@ export async function readClip(
       pathSpellings: ["slot"],
       deadline: context.deadline,
     },
-    (one) => readNamedClip(one, context),
+    (one) => readNamedClip({ ...one, callScale }, context),
   );
 
   // Envelopes are read after the fan-out, not inside it: they are the one part
@@ -296,6 +312,10 @@ export function readOneClip(
   }
 
   if (result.type === "midi") {
+    if (args.callScale != null) {
+      addClipScale(result, clip, args.callScale);
+    }
+
     processMidiClip(
       result,
       clip,
@@ -311,44 +331,6 @@ export function readOneClip(
   }
 
   return result;
-}
-
-/**
- * Add boolean state properties (playing, triggered, recording, overdubbing,
- * muted, envs). Only includes properties that are true
- * @param result - Result object to add properties to
- * @param clip - LiveAPI clip object
- * @param isArrangementClip - Arrangement clips never get `envs`: their
- *   envelopes can't be read or written
- */
-function addBooleanStateProperties(
-  result: ReadClipResult,
-  clip: LiveAPI,
-  isArrangementClip: boolean,
-): void {
-  if ((clip.getProperty("is_playing") as number) > 0) {
-    result.playing = true;
-  }
-
-  if ((clip.getProperty("is_triggered") as number) > 0) {
-    result.triggered = true;
-  }
-
-  if ((clip.getProperty("is_recording") as number) > 0) {
-    result.recording = true;
-  }
-
-  if ((clip.getProperty("is_overdubbing") as number) > 0) {
-    result.overdubbing = true;
-  }
-
-  if ((clip.getProperty("muted") as number) > 0) {
-    result.muted = true;
-  }
-
-  if (!isArrangementClip && (clip.getProperty("has_envelopes") as number) > 0) {
-    result.envs = true;
-  }
 }
 
 /**

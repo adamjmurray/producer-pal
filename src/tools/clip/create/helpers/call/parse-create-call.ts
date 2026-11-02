@@ -9,7 +9,14 @@
 // while there is still nothing to report.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
+import {
+  type CallScale,
+  newCallScale,
+} from "#src/tools/shared/schema/scale/call-scale.ts";
+import {
+  type ScaleRequest,
+  parseScaleRequests,
+} from "#src/tools/shared/schema/scale/scale-parsing.ts";
 import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import { refuseDoubledPosition } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
@@ -46,8 +53,10 @@ export interface CreateClipCall {
   plans: ClipPlan[];
   /** The call's name and color lists, paired with its destinations */
   labels: PairedLabels;
-  /** The Live Set's scale, read once when a transform needs it */
-  scaleMask: number | undefined;
+  /** The scale each destination's clip is asked to take, already read */
+  scales: Array<ScaleRequest | undefined>;
+  /** What the call asked Live about scales, each asked the first time it's needed */
+  callScale: CallScale;
 }
 
 /**
@@ -91,6 +100,15 @@ export function parseCreateCall(
   validateCreateClipParams(args.notes ?? null, args.sampleFile ?? null);
   refuseUnknownAuto(args.auto ?? null);
 
+  // Read now, so a scale Live can't hold refuses the call with nothing written.
+  const scales = parseScaleRequests(args.scale, order.length);
+  const callScale = newCallScale();
+
+  // Asked now, so a version Live can't answer stops the call before any write.
+  if (scales.some((request) => request != null)) {
+    callScale.supported();
+  }
+
   const song = readSongMeter();
   // sampleFile, timeSignature, start, length and firstStart pair 1:1 with the
   // clips, so each gets its own sample, meter and region.
@@ -130,7 +148,8 @@ export function parseCreateCall(
     song,
     plans,
     labels,
-    scaleMask: transforms == null ? undefined : readLiveSetScaleMask(),
+    scales,
+    callScale,
   };
 }
 
@@ -177,6 +196,7 @@ function refuseListsOffCount(
     start: args.start,
     length: args.length,
     firstStart: args.firstStart,
+    scale: args.scale,
   };
 
   validateListLengths([

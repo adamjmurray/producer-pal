@@ -37,7 +37,7 @@ export interface ClipTransformInputs {
   startBeats: number | null;
   timeSigNumerator: number;
   timeSigDenominator: number;
-  /** Live Set scale mask for the `scale:mask` variable, or undefined */
+  /** The new clip's scale mask for the `scale:mask` variable, or undefined */
   scaleMask: number | undefined;
 }
 

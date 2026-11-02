@@ -105,6 +105,29 @@ Part of [Skip entries, tool by tool](README.md).
   clip) is a whole-call warning, `auto ignored: …`. A clip meter Live changed (a
   numerator it clamps) is reported as read back, but the clip's region is still
   laid out in the meter asked for.
+- **A clip's own scale (`scale`) is MIDI-only and needs Live 12.4.15.** Each
+  clip keeps its own scale; writing one changes that clip alone, and a clip made
+  without one starts with the Live Set's. update-clip and create-clip take a
+  `scale` (`"C Major"`, `""` for none) with a list form, one per clip. It is
+  written before the clip's notes and transforms. The entry reports `scale` only
+  when Live stores a different spelling than the one asked for, with a `detail`
+  (a sharp root comes back flat), like update-live-set. A param the clip can't
+  take is a `detail` on its entry, never a warning, and a skip when it was all
+  update-clip was asked of that clip:
+  - `scale ignored: the clip is audio`, on an audio clip.
+  - `scale ignored: requires Live 12.4.15 or later`, on every clip of a call run
+    on older Live, where clips have no scale. Everything else in the call goes
+    ahead. The version is asked once per call.
+  - Live fails partway: the clip keeps its entry with `already changed: scale`
+    once its scale has begun to change.
+- **read-clip shows a MIDI clip's `scale` (and `scalePitches`) only when it
+  differs from the Live Set's.** Both off is the same. A clip with its scale off
+  while the Live Set's is on reads `scale: ""` (no `scalePitches`). A clip with
+  its scale on while the Live Set's is off, or with another root or name, reads
+  `"Root Name"` in the format read-live-set uses. Nothing is shown for an audio
+  clip, or on Live older than 12.4.15. There is no include for it. The version
+  and the Live Set's scale are read once per call, not per clip. read-track and
+  read-scene clip entries don't show it.
 - **A clip slot past the last scene is a destination, so it is created.**
   create-clip, update-clip's `toPath` and duplicate's `toPath` all make the
   scenes up to a slot that isn't there yet, sharing one helper, and the entry

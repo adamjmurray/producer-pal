@@ -2,6 +2,17 @@
 
 Part of [Clips, Playback and Sends](README.md).
 
+## The scale transforms snap to
+
+`snap()` and `step()` use the scale of the clip being edited, the `scale:mask`
+variable. update-clip reads it after writing any `scale` of the same call. A
+clip with its scale off, or on chromatic, has no mask, so they pass notes
+through, even while the Live Set has a scale. create-clip has no clip to read
+yet, so it uses the scale it was asked for, or else the Live Set's, which a new
+clip starts with. On Live older than 12.4.15, clips have no scale and every
+transform uses the Live Set's. An audio clip's transforms use the Live Set's
+too.
+
 ## Transform counts
 
 `ppal-create-clip` and `ppal-update-clip` (transforms alone, or with `notes`)

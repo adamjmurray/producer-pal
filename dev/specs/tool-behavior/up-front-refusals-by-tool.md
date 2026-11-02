@@ -66,6 +66,12 @@ code; when it disagrees with a tool, the tool wins.
   refuse a `timeSignature`** that isn't `N/D` (or `disabled`, on scenes) or
   whose denominator isn't a power of two, since Live would change it. One check
   serves all five (`live-api-values.ts`).
+- **`createClip` and `updateClip` refuse a `scale` they can't read** before
+  anything is made or written: a name or root Live doesn't have (the same check
+  as `updateLiveSet`), a list with a hole, or a list that doesn't name one scale
+  per clip. A blank `scale` is not a bad one: it switches the clip's scale off,
+  for every clip of the call. Older Live is not a refusal (see
+  [clips](skip-entries-by-tool/clips.md)).
 - **A target named twice is refused**
   (`<param> names the <noun> on its own - don't send <params> with it`) by every
   tool that takes both params:

@@ -58,6 +58,11 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe("N/D (4/4), or comma-separated one per clip"),
+    scale: param(z.string().optional(), {
+      default:
+        '"Root ScaleName" ("C Major") for this clip alone; "" for none; or comma-separated one per clip. MIDI only; transforms snap to it',
+      smallModel: null,
+    }),
 
     // Clip region and loop settings
     start: z

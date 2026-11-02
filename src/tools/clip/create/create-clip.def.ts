@@ -75,6 +75,12 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         "N/D (4/4), default: global time signature; or comma-separated one per path",
       ),
 
+    scale: param(z.string().optional(), {
+      default:
+        '"Root ScaleName" ("C Major"), default: the Live Set\'s scale; "" for none; or comma-separated one per path. MIDI only; transforms snap to it',
+      smallModel: null,
+    }),
+
     start: z
       .string()
       .optional()

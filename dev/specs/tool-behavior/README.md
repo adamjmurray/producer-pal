@@ -135,8 +135,9 @@ client is measured (`evals/schema-compat`, `unset-optionals`).
   - Not comparable: always report. A value written as a display string (a unit,
     an enum label, a note name, `loc:Verse`) is a spelling, not a number; so is
     a read-back that isn't a number (`-inf`). `scale` always reports, since Live
-    spells the root its own way. Positions compare as beats, so `5|1.0` landing
-    at `5|1` is silent.
+    spells the root its own way (the Live Set's, and a clip's in update-clip and
+    create-clip). Positions compare as beats, so `5|1.0` landing at `5|1` is
+    silent.
   - State that governs what the call did still reports, since the caller may
     never have read it: `panningMode` when a pan param went in under split mode
     the call didn't name, and playback's `startTime`.

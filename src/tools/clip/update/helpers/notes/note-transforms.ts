@@ -21,10 +21,7 @@ import {
   buildTransformClipContext,
   type TransformClipContextInput,
 } from "#src/tools/clip/helpers/transform-clip-context.ts";
-import {
-  readLiveSetScaleMask,
-  type ScaleMaskReader,
-} from "#src/tools/clip/helpers/scale-mask.ts";
+import { type CallScale } from "#src/tools/shared/schema/scale/call-scale.ts";
 import {
   type ClipPlayRegion,
   clipPlayRegion,
@@ -204,8 +201,8 @@ export function noteDroppedDuplicates(
  * @param clipCount - Total number of clips in the operation
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @param readScaleMask - Reads the scale mask; pass a reader shared across the
- *   call so a batch asks Live once
+ * @param scale - What the call asked Live about scales, shared across the call
+ *   so a batch asks Live once
  * @returns ClipContext with clip-level metadata
  */
 export function buildClipContext(
@@ -214,7 +211,7 @@ export function buildClipContext(
   clipCount: number,
   timeSigNumerator: number,
   timeSigDenominator: number,
-  readScaleMask: ScaleMaskReader = readLiveSetScaleMask,
+  scale: CallScale,
 ): ClipContext {
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
@@ -230,7 +227,7 @@ export function buildClipContext(
     ...noteTimeRegion(clip),
     timeSigNumerator,
     timeSigDenominator,
-    scalePitchClassMask: readScaleMask(),
+    scalePitchClassMask: scale.clipMask(clip),
   });
 }
 
@@ -261,7 +258,7 @@ function noteTimeRegion(
 /**
  * Whether the update edits the clip's notes: any of notes, transforms, or
  * preTransforms. These are also the only reason to build the clip context, and
- * building it reads the Live Set's scale — so a batch that only renames clips
+ * building it reads the clip's scale — so a batch that only renames clips
  * skips that read instead of paying it once per clip.
  * @param notationString - New notes to merge, or undefined
  * @param transformString - Transforms applied after the merge, or undefined

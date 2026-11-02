@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import { buildClipContext } from "#src/tools/clip/update/helpers/notes/note-transforms.ts";
+import { newCallScale } from "#src/tools/shared/schema/scale/call-scale.ts";
 import {
   type ClipTransformInputs,
   resolveClipTransform,
@@ -205,7 +206,6 @@ describe("resolveClipTransform", () => {
         timeSigDenominator: 8,
         startBeats: 16,
         clipLength: 20,
-        scaleMask: 0, // what update reads from an unmocked Live Set
       });
 
       resolveClipTransform(inputs, 0, 1, null);
@@ -228,6 +228,7 @@ describe("resolveClipTransform", () => {
         1,
         4,
         8,
+        newCallScale(),
       );
 
       expect(capturedContext()).toStrictEqual(updated);

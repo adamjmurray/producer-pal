@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { newCallScale } from "#src/tools/shared/schema/scale/call-scale.ts";
 import {
   handleDuplicateLoopWithEdits,
   handleNoteUpdates,
@@ -234,6 +235,7 @@ describe("note-updates", () => {
       return handleDuplicateLoopWithEdits({
         clip,
         reasons,
+        callScale: newCallScale(),
         notationString: overrides.notationString,
         transformString: overrides.transformString,
         preTransformString: overrides.preTransformString,
