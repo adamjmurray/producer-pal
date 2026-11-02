@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { ASK_FOR_LIBRARY } from "#src/mcp-server/rpc/remote-script/install/remote-script-install-reply.ts";
 import { UserLibraryFolderError } from "#src/mcp-server/rpc/remote-script/user-library/user-library-folder.ts";
@@ -146,6 +148,19 @@ describe("update-producer-pal", () => {
       "/given",
       expect.any(String),
     );
+  });
+
+  it("expands a leading ~ for the device and the wrappers", async () => {
+    const deps = updateDeps();
+    const library = join(homedir(), "Music/Lib");
+
+    await updateCall(fakeDevice(OLD, VERSION), deps, "~/Music/Lib");
+
+    expect(deps.installDevice).toHaveBeenCalledWith(
+      library,
+      expect.any(String),
+    );
+    expect(deps.installPluginHost).toHaveBeenCalledWith(library);
   });
 });
 

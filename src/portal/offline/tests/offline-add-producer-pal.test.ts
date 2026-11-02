@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { UPDATE_PORTAL_ADVICE } from "#src/shared/config.ts";
 import { UserLibraryFolderError } from "#src/mcp-server/rpc/remote-script/user-library/user-library-folder.ts";
@@ -129,6 +131,19 @@ describe("add-producer-pal's User Library", () => {
       "/given",
       expect.any(String),
     );
+  });
+
+  it("expands a leading ~ for the device and the wrappers", async () => {
+    const deps = happyDeps();
+    const library = join(homedir(), "Music/Lib");
+
+    await addProducerPalCall(deps, undefined, { userLibrary: "~/Music/Lib" });
+
+    expect(deps.installDevice).toHaveBeenCalledWith(
+      library,
+      expect.any(String),
+    );
+    expect(deps.installPluginHost).toHaveBeenCalledWith(library);
   });
 
   it("then the one the remote script runs from", async () => {
