@@ -307,6 +307,20 @@ describe("buildSkills - tool gating", () => {
     expect(result).not.toContain("## Writing Notes");
   });
 
+  it("teaches the basic tier non-4/4 meters and repeats to a read-only caller", () => {
+    // Small models wrote n/1 for a bar of 5/4 and 6/8 and misread `x12` in a
+    // read-back. The lines live in the head, so every note tool carries them.
+    const result = buildSkills({
+      notation: "barbeat",
+      smallModelMode: true,
+      tools: ["ppal-read-clip"],
+    });
+
+    expect(result).toContain("`1bar` = one whole bar in any meter");
+    expect(result).toContain("In x/8 meters");
+    expect(result).toContain("`1|1x16` is a repeat");
+  });
+
   it("gates the small-model document the same way", () => {
     const result = buildSkills({
       smallModelMode: true,
