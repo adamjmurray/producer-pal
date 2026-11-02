@@ -36,6 +36,7 @@ export interface FakeDevice extends RunningDevice {
   version: Mock<() => string | undefined>;
   reset: Mock<() => void>;
   fullConnectSeen: Mock<() => boolean>;
+  smallModelMode: Mock<() => Promise<boolean>>;
   toolsChanged: Mock<() => void>;
 }
 
@@ -80,6 +81,7 @@ export function fakeDeviceWith(
     version: vi.fn(() => current),
     reset: vi.fn(),
     fullConnectSeen: vi.fn(() => portal.fullConnectSeen),
+    smallModelMode: vi.fn(() => Promise.resolve(false)),
     toolsChanged: vi.fn(),
   };
 }

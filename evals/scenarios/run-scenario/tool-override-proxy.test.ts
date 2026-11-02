@@ -65,12 +65,14 @@ afterEach(async () => {
 
 /**
  * @param overrides - The proxy's overrides
+ * @param smallModelMode - Whether the run is in small-model mode
  * @returns A client connected to a proxy in front of the fake server
  */
 async function clientFor(
   overrides: ToolOverrides,
+  smallModelMode = false,
 ): Promise<Awaited<ReturnType<typeof connectMcp>>["client"]> {
-  proxy = await startToolOverrideProxy(upstream.url, overrides);
+  proxy = await startToolOverrideProxy(upstream.url, overrides, smallModelMode);
 
   const { client } = await connectMcp(proxy.url);
 
@@ -129,6 +131,30 @@ describe("startToolOverrideProxy", () => {
     expect(received).toStrictEqual([{ versionCheck: true }]);
   });
 
+  it.each([true, false])(
+    "gives an override the run's small-model mode (%s) and the tools the server lists",
+    async (smallModelMode) => {
+      let seen: unknown;
+      const client = await clientFor(
+        {
+          "a-tool": (_args, _callReal, context) => {
+            seen = context;
+
+            return [];
+          },
+        },
+        smallModelMode,
+      );
+
+      await client.callTool({ name: "a-tool", arguments: {} });
+
+      expect(seen).toStrictEqual({
+        smallModelMode,
+        tools: ["a-tool", "b-tool"],
+      });
+    },
+  );
+
   it("keeps the error flag of a real call an override passes through", async () => {
     const client = await clientFor({
       "b-tool": (_args, callReal) => callReal(),
@@ -139,7 +165,7 @@ describe("startToolOverrideProxy", () => {
   });
 
   it("stops serving on close", async () => {
-    const started = await startToolOverrideProxy(upstream.url, {});
+    const started = await startToolOverrideProxy(upstream.url, {}, false);
 
     await started.close();
 

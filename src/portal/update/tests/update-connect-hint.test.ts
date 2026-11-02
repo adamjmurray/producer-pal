@@ -90,6 +90,27 @@ describe("withUpdateHint", () => {
     );
   });
 
+  it.each([
+    ["ppal-manage is offered", true, "2.5.0-rc1"],
+    ["ppal-manage isn't offered", false, "2.5.0-rc1"],
+    ["the device predates ppal-manage", true, OLD],
+  ])(
+    "adds nothing in small-model mode, whether %s",
+    async (_why, manageOffered, version) => {
+      const device = await connectedDevice(version, version);
+
+      device.smallModelMode.mockResolvedValue(true);
+
+      const result = await withUpdateHint(
+        connected(),
+        { name: "ppal-connect", manageOffered },
+        device,
+      );
+
+      expect(result.content).toHaveLength(1);
+    },
+  );
+
   it("asks the device afresh before saying so", async () => {
     const device = await connectedDevice(OLD, OLD);
 

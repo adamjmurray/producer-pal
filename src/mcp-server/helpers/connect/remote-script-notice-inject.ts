@@ -9,7 +9,10 @@ import {
   withConnectAppend,
   type WrappedCallLiveApi,
 } from "./connect-append.ts";
-import { remoteScriptLine } from "./remote-script-line.ts";
+import {
+  remoteScriptLine,
+  type RemoteScriptCaller,
+} from "./remote-script-line.ts";
 
 /**
  * Wrap a callLiveApi so a successful ppal-connect response says where the
@@ -23,16 +26,17 @@ import { remoteScriptLine } from "./remote-script-line.ts";
  *
  * @param inner - The underlying callLiveApi to wrap
  * @param getStatus - Reads the remote script status (shared per connect)
- * @param manageAvailable - Whether the caller can call ppal-manage; when not,
- *   the line points at the Chat UI instead
+ * @param getCaller - Reads what this caller can do: when it can't call
+ *   ppal-manage the line points at the Chat UI, and in small-model mode a copy
+ *   that is only out of date or needs a restart is not mentioned
  * @returns A callLiveApi that appends the status line to connect results
  */
 export function withRemoteScriptNotice(
   inner: CallLiveApiFunction,
   getStatus: () => Promise<RemoteScriptStatus>,
-  manageAvailable: () => boolean,
+  getCaller: () => RemoteScriptCaller,
 ): WrappedCallLiveApi {
   return withConnectAppend(inner, async () =>
-    remoteScriptLine(await getStatus(), manageAvailable()),
+    remoteScriptLine(await getStatus(), getCaller()),
   );
 }

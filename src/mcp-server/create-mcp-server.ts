@@ -112,6 +112,16 @@ export const SMALL_MODEL_EXCLUDED_PARAMS: ReadonlySet<string> = new Set(
   }),
 );
 
+/**
+ * Standard tools small-model mode leaves out entirely (`omitInSmallModel`). The
+ * eval framework skips scenarios that require one, since they can't pass there.
+ */
+export const SMALL_MODEL_HIDDEN_TOOLS: ReadonlySet<string> = new Set(
+  STANDARD_TOOL_DEFS.filter((td) => !isOfferedInMode(td, true)).map(
+    (td) => td.toolName,
+  ),
+);
+
 interface CreateMcpServerOptions {
   smallModelMode?: boolean;
   liveApiEnabled?: boolean;

@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import { type McpContent } from "#evals/scenarios/run-scenario/tool-override-proxy.ts";
+import {
+  type McpContent,
+  type ToolOverrideContext,
+} from "#evals/scenarios/run-scenario/tool-override-proxy.ts";
+import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
 import { VERSION } from "#src/shared/config.ts";
 import {
   AFTER_RESTART_CHECK,
@@ -21,6 +25,22 @@ import {
   updateSuccess,
   versionCheckUpToDate,
 } from "../connect-manage-overrides.ts";
+
+/** A normal run: ppal-manage is offered. */
+const CONTEXT: ToolOverrideContext = {
+  smallModelMode: false,
+  tools: [...TOOL_NAMES],
+};
+/** A run whose tools leave ppal-manage out (`--tools`, or an old device). */
+const NO_MANAGE: ToolOverrideContext = {
+  smallModelMode: false,
+  tools: TOOL_NAMES.filter((name) => name !== "ppal-manage"),
+};
+/** Small-model mode, as the device lists tools there. */
+const SMALL_MODEL: ToolOverrideContext = {
+  smallModelMode: true,
+  tools: TOOL_NAMES.filter((name) => name !== "ppal-manage"),
+};
 
 const REAL: McpContent = [
   { type: "text", text: "{connected:true}" },
@@ -65,7 +85,7 @@ describe("canned results", () => {
   });
 
   it("version check is versions, a running script line, then the new-chat line", () => {
-    const blocks = texts(versionCheckUpToDate("12.4.15"));
+    const blocks = texts(versionCheckUpToDate("12.4.15", CONTEXT));
 
     expect(blocks[0]).toContain(`producerPalVersion:"${VERSION}"`);
     expect(blocks[0]).toContain('abletonLiveVersion:"12.4.15"');
@@ -79,30 +99,39 @@ describe("connect overrides", () => {
     const result = await connectOverride()(
       { versionCheck: true },
       callRealCheck,
+      CONTEXT,
     );
 
-    expect(result).toStrictEqual(versionCheckUpToDate("12.4.15"));
+    expect(result).toStrictEqual(versionCheckUpToDate("12.4.15", CONTEXT));
     expect(texts(result)).not.toContain(REAL_CHECK[1]?.text);
   });
 
   it("fails loudly when the real version check has no Live version", async () => {
     await expect(
-      connectOverride()({ versionCheck: true }, callReal),
+      connectOverride()({ versionCheck: true }, callReal, CONTEXT),
     ).rejects.toThrow("No Live version");
   });
 
   it("an empty real result fails the same way", async () => {
     await expect(
-      connectOverride()({ versionCheck: true }, () => Promise.resolve([])),
+      connectOverride()(
+        { versionCheck: true },
+        () => Promise.resolve([]),
+        CONTEXT,
+      ),
     ).rejects.toThrow("No Live version");
   });
 
   it("passes a plain connect through to the real call", async () => {
-    expect(await connectOverride()({}, callReal)).toStrictEqual(REAL);
+    expect(await connectOverride()({}, callReal, CONTEXT)).toStrictEqual(REAL);
   });
 
   it("hands a plain connect to the given handler", async () => {
-    const result = await connectOverride(connectWithOlderDevice)({}, callReal);
+    const result = await connectOverride(connectWithOlderDevice)(
+      {},
+      callReal,
+      CONTEXT,
+    );
 
     expect(result.slice(0, 2)).toStrictEqual(REAL);
     expect(texts(result).at(-1)).toContain("is older than this connector");
@@ -110,7 +139,7 @@ describe("connect overrides", () => {
   });
 
   it("replaces the real remote script line with the behind line", async () => {
-    const blocks = texts(await connectWithBehindScript({}, callReal));
+    const blocks = texts(await connectWithBehindScript({}, callReal, CONTEXT));
 
     expect(blocks).toHaveLength(2);
     expect(blocks[0]).toBe("{connected:true}");
@@ -120,12 +149,57 @@ describe("connect overrides", () => {
   });
 });
 
+describe("answers as the product would for the run", () => {
+  const olderNote = async (context: ToolOverrideContext): Promise<string> => {
+    const content = await connectWithOlderDevice({}, callReal, context);
+
+    return texts(content).slice(REAL.length).join();
+  };
+
+  const scriptLine = async (context: ToolOverrideContext): Promise<string> => {
+    const content = await connectWithBehindScript({}, callReal, context);
+
+    return texts(content).at(-1) ?? "";
+  };
+
+  it("older device: updates in place when ppal-manage is offered", async () => {
+    const note = await olderNote(CONTEXT);
+
+    expect(note).toContain('call ppal-manage action "update-producer-pal"');
+  });
+
+  it("older device: sends the user to update by hand when ppal-manage is not offered", async () => {
+    const note = await olderNote(NO_MANAGE);
+
+    expect(note).toContain("update the Producer Pal device by hand");
+    expect(note).not.toContain("ppal-manage");
+  });
+
+  it("older device: says nothing in small-model mode", async () => {
+    expect(await olderNote(SMALL_MODEL)).toBe("");
+  });
+
+  it("behind script: names ppal-manage only when it is offered", async () => {
+    const noManage = await scriptLine(NO_MANAGE);
+
+    expect(await scriptLine(CONTEXT)).toContain("ppal-manage");
+    expect(noManage).toContain("Chat UI");
+    expect(noManage).not.toContain("ppal-manage");
+  });
+
+  it("behind script: reads as a running script in small-model mode", async () => {
+    expect(await scriptLine(SMALL_MODEL)).toMatch(
+      /^remoteScript: v\S+ running$/,
+    );
+  });
+});
+
 describe("manageOverride", () => {
   const override = manageOverride("update-producer-pal", updateSuccess);
 
   it("answers its action with the canned result", async () => {
     expect(
-      await override({ action: "update-producer-pal" }, callReal),
+      await override({ action: "update-producer-pal" }, callReal, CONTEXT),
     ).toStrictEqual(updateSuccess());
   });
 
@@ -133,7 +207,7 @@ describe("manageOverride", () => {
     callReal.mockClear();
 
     const [block] = texts(
-      await override({ action: "install-producer-pal" }, callReal),
+      await override({ action: "install-producer-pal" }, callReal, CONTEXT),
     );
 
     expect(block).toMatch(/^Error:/);

@@ -419,6 +419,25 @@ describe("ppal-connect", () => {
       expect(blocks.at(-1) === UP_TO_DATE_NEW_CHAT).toBe(current);
     });
 
+    // Whatever state the real script is in, small-model mode never reports a
+    // copy that is only behind or needs a Live restart.
+    it("leaves the version-only remote script lines out in small-model mode", async () => {
+      await setConfig({ smallModelMode: true });
+
+      try {
+        const script = texts(await versionCheck(VERSION)).find((b) =>
+          b.startsWith(SCRIPT_PREFIX),
+        );
+
+        expect(script).toBeDefined();
+        expect(script).not.toMatch(
+          /is installed, but this device ships|different build than this device ships|Live is running|To update it/,
+        );
+      } finally {
+        await setConfig({ smallModelMode: false });
+      }
+    });
+
     it("withholds the new-chat line when the portal and device versions differ", async () => {
       expect(texts(await versionCheck("99.0.0"))).not.toContain(
         UP_TO_DATE_NEW_CHAT,

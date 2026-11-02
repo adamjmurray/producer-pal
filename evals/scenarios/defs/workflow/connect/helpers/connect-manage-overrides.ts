@@ -12,13 +12,19 @@
 import {
   type McpContent,
   type ToolOverride,
+  type ToolOverrideContext,
 } from "#evals/scenarios/run-scenario/tool-override-proxy.ts";
-import { remoteScriptLine } from "#src/mcp-server/helpers/connect/remote-script-line.ts";
+import {
+  remoteScriptLine,
+  type RemoteScriptCaller,
+} from "#src/mcp-server/helpers/connect/remote-script-line.ts";
 import { type RemoteScriptStatus } from "#src/mcp-server/rpc/remote-script/remote-script-status.ts";
-import { hintFor } from "#src/portal/update/update-connect-hint.ts";
+import { type RunningDevice } from "#src/portal/update/running-device.ts";
+import { withUpdateHint } from "#src/portal/update/update-connect-hint.ts";
 import { updatedNextSteps } from "#src/portal/update/full-connect-advice.ts";
 import { toCompactJSLiteral } from "#src/shared/compact/compact-serializer.ts";
 import { VERSION } from "#src/shared/config.ts";
+import { manageToolOffered } from "#src/shared/tool-groups.ts";
 import { UP_TO_DATE_NEW_CHAT } from "#src/shared/version-check.ts";
 import { manageInstallResult } from "#src/tools/core/helpers/manage-install-result.ts";
 
@@ -62,26 +68,33 @@ const BEHIND_SCRIPT: RemoteScriptStatus = {
 export function connectOverride(
   otherwise: ToolOverride = (_args, callReal) => callReal(),
 ): ToolOverride {
-  return async (args, callReal) =>
+  return async (args, callReal, context) =>
     args.versionCheck === true
-      ? versionCheckUpToDate(liveVersionOf(await callReal()))
-      : await otherwise(args, callReal);
+      ? versionCheckUpToDate(liveVersionOf(await callReal()), context)
+      : await otherwise(args, callReal, context);
 }
 
 /**
- * A full connect with the portal's note that the device is older appended.
+ * A full connect with the portal's note that the device is older appended, if
+ * the portal would add one: the real `withUpdateHint` decides, over a device
+ * that reports OLD_VERSION and this run's small-model mode.
  * @param _args - The call's arguments
  * @param callReal - Makes the real call
- * @returns The real result plus the note
+ * @param context - The run's small-model mode and tools
+ * @returns The real result, plus the note when the portal adds it
  */
 export async function connectWithOlderDevice(
   _args: Record<string, unknown>,
   callReal: () => Promise<McpContent>,
+  context: ToolOverrideContext,
 ): Promise<McpContent> {
-  return [
-    ...(await callReal()),
-    { type: "text", text: hintFor(OLD_VERSION, true) },
-  ];
+  const { content } = await withUpdateHint(
+    { content: await callReal() },
+    { name: "ppal-connect", manageOffered: callerOf(context).manage },
+    olderDevice(context),
+  );
+
+  return content;
 }
 
 /**
@@ -89,17 +102,19 @@ export async function connectWithOlderDevice(
  * this device.
  * @param _args - The call's arguments
  * @param callReal - Makes the real call
+ * @param context - The run's small-model mode and tools
  * @returns The real result with its remote script line replaced
  */
 export async function connectWithBehindScript(
   _args: Record<string, unknown>,
   callReal: () => Promise<McpContent>,
+  context: ToolOverrideContext,
 ): Promise<McpContent> {
   const content = await callReal();
 
   return [
     ...content.filter((block) => !block.text?.startsWith(SCRIPT_PREFIX)),
-    { type: "text", text: remoteScriptLine(BEHIND_SCRIPT, true) },
+    { type: "text", text: remoteScriptLine(BEHIND_SCRIPT, callerOf(context)) },
   ];
 }
 
@@ -162,10 +177,14 @@ export function installSuccess(): McpContent {
 
 /**
  * @param abletonLiveVersion - The Live version the real connect reports
+ * @param context - The run's small-model mode and tools
  * @returns What `ppal-connect` with `versionCheck: true` answers when nothing
  *   needs fixing
  */
-export function versionCheckUpToDate(abletonLiveVersion: string): McpContent {
+export function versionCheckUpToDate(
+  abletonLiveVersion: string,
+  context: ToolOverrideContext,
+): McpContent {
   return [
     ...textContent(
       toCompactJSLiteral({
@@ -174,9 +193,36 @@ export function versionCheckUpToDate(abletonLiveVersion: string): McpContent {
         abletonLiveVersion,
       }),
     ),
-    { type: "text", text: remoteScriptLine(CURRENT_SCRIPT, true) },
+    { type: "text", text: remoteScriptLine(CURRENT_SCRIPT, callerOf(context)) },
     { type: "text", text: UP_TO_DATE_NEW_CHAT },
   ];
+}
+
+/**
+ * What the product decides about the caller, from the run.
+ * @param context - The run's small-model mode and tools
+ * @returns Whether ppal-manage is offered, and the mode
+ */
+function callerOf(context: ToolOverrideContext): RemoteScriptCaller {
+  return {
+    manage: manageToolOffered(context.smallModelMode, context.tools),
+    smallModel: context.smallModelMode,
+  };
+}
+
+/**
+ * @param context - The run's small-model mode and tools
+ * @returns A device that reports OLD_VERSION and the run's small-model mode
+ */
+function olderDevice(context: ToolOverrideContext): RunningDevice {
+  return {
+    connect: () => Promise.resolve(),
+    version: () => OLD_VERSION,
+    reset: () => {},
+    fullConnectSeen: () => false,
+    smallModelMode: () => Promise.resolve(context.smallModelMode),
+    toolsChanged: () => {},
+  };
 }
 
 /**

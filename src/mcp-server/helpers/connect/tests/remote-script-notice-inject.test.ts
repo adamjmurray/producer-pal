@@ -52,16 +52,18 @@ const PING: RemoteScriptPing = {
  * Run withRemoteScriptNotice over a ppal-connect call.
  * @param getStatus - Reads the status
  * @param manage - Whether the caller can use ppal-manage
+ * @param smallModel - Whether the caller is in small-model mode
  * @returns The response content blocks
  */
 async function connectThrough(
   getStatus: () => Promise<RemoteScriptStatus> = () => remoteScriptStatus(PING),
   manage = true,
+  smallModel = false,
 ): Promise<Array<{ text?: string }>> {
   const result = await withRemoteScriptNotice(
     fakeInnerCall(connectResponse()),
     getStatus,
-    () => manage,
+    () => ({ manage, smallModel }),
   )("ppal-connect", {});
 
   return result.content;
@@ -311,10 +313,83 @@ describe("withRemoteScriptNotice", () => {
     const result = await withRemoteScriptNotice(
       fakeInnerCall(connectResponse()),
       () => remoteScriptStatus(PING),
-      () => true,
+      () => ({ manage: true, smallModel: false }),
     )("ppal-read-live-set", {});
 
     expect(result.content).toHaveLength(1);
     expect(remoteScriptStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe("withRemoteScriptNotice in small-model mode", () => {
+  /**
+   * @param overrides - What differs from a current, running script
+   * @returns The remote script line a small-model caller gets
+   */
+  async function lineFor(
+    overrides: Parameters<typeof currentRemoteScriptStatus>[0],
+  ): Promise<string | undefined> {
+    remoteScriptStatus.mockResolvedValue(currentRemoteScriptStatus(overrides));
+
+    const content = await connectThrough(undefined, false, true);
+
+    return content[1]?.text;
+  }
+
+  it("calls an installed copy that is behind a running script", async () => {
+    expect(
+      await lineFor({ installedVersion: "2.3.0", updateAvailable: true }),
+    ).toBe(`remoteScript: v${VERSION} running`);
+  });
+
+  it("calls a different build of this version a running script", async () => {
+    expect(await lineFor({ updateAvailable: true })).toBe(
+      `remoteScript: v${VERSION} running`,
+    );
+  });
+
+  it("doesn't ask for a restart when Live runs another copy", async () => {
+    expect(await lineFor({ runningVersion: "2.3.0" })).toBe(
+      "remoteScript: v2.3.0 running",
+    );
+    expect(await lineFor({ runningBuild: "build-0" })).toBe(
+      `remoteScript: v${VERSION} running`,
+    );
+  });
+
+  it("says a behind copy isn't running, rather than that it is behind", async () => {
+    expect(
+      await lineFor({
+        installedVersion: "2.3.0",
+        updateAvailable: true,
+        running: false,
+        runningVersion: null,
+      }),
+    ).toBe(
+      `remoteScript: v2.3.0 is installed but not running. ${ADDS} Tell the user to ${ENABLE_IN_LIVE}.`,
+    );
+  });
+
+  it("still says when the script isn't installed", async () => {
+    expect(
+      await lineFor({
+        installed: false,
+        installedVersion: null,
+        running: false,
+        runningVersion: null,
+      }),
+    ).toBe(
+      `remoteScript: not installed. ${ADDS} Tell the user to install it (Chat UI > Settings > Installation > Install), then ${ENABLE_IN_LIVE}.`,
+    );
+  });
+
+  it("still names another program on the port", async () => {
+    expect(
+      await lineFor({
+        running: false,
+        runningVersion: null,
+        otherOnPort: 3349,
+      }),
+    ).toBe("remoteScript: not running; another program answers on port 3349.");
   });
 });

@@ -17,18 +17,31 @@ import {
 } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { type RemoteScriptStatus } from "../../rpc/remote-script/remote-script-status.ts";
 
+/** What the line depends on about the caller. */
+export interface RemoteScriptCaller {
+  /** Whether the caller can use ppal-manage to install it */
+  manage: boolean;
+  /**
+   * Small-model mode, which doesn't manage versions: a copy that is behind, or
+   * a Live running another copy, reads as a plain running script.
+   */
+  smallModel: boolean;
+}
+
 /**
  * The connect line for a remote script status. A running, current script is
  * just its version; every other state says what to do, and only that.
  *
  * @param status - The remote script status
- * @param manage - Whether the caller can use ppal-manage to install it
+ * @param caller - What the caller can do and which mode it is in
  * @returns The line
  */
 export function remoteScriptLine(
   status: RemoteScriptStatus,
-  manage: boolean,
+  caller: RemoteScriptCaller,
 ): string {
+  const { manage, smallModel } = caller;
+
   if (status.otherOnPort != null && !status.running) {
     return `remoteScript: not running; another program answers on port ${String(status.otherOnPort)}.`;
   }
@@ -44,7 +57,7 @@ export function remoteScriptLine(
       : `remoteScript: not installed. ${REMOTE_SCRIPT_ADDS} Tell the user to install it (Chat UI > Settings > Installation > Install), then ${ENABLE_IN_LIVE}.`;
   }
 
-  if (remoteScriptAttention(status) === "update") {
+  if (!smallModel && remoteScriptAttention(status) === "update") {
     const behind =
       status.installedVersion === VERSION
         ? `remoteScript: the installed v${VERSION} is a different build than this device ships.`
@@ -63,7 +76,7 @@ export function remoteScriptLine(
       : stopped;
   }
 
-  if (liveRunsOtherCopy(status)) {
+  if (!smallModel && liveRunsOtherCopy(status)) {
     const running =
       status.runningVersion === status.installedVersion
         ? `a different build of v${String(status.runningVersion)} than the one installed`

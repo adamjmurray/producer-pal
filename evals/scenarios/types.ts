@@ -145,10 +145,8 @@ export interface EvalScenario {
 export interface ScenarioRequirements {
   /** Tool names that must be available. Checked against the run's `--tools`
    *  subset (short or full names accepted); skipped when the subset excludes
-   *  any of them. NOTE: small-model mode excludes no whole standard tools (only
-   *  the opt-in `ppal-live-api`), so it never trips this — its exclusion surface
-   *  is params, handled by `params` below. This field bites only when the run
-   *  restricts `--tools`. */
+   *  any of them. Also skipped under `smallModelMode` when any is a tool that
+   *  mode hides (`omitInSmallModel`, e.g. `ppal-manage`). */
   tools?: string[];
 
   /** Param names the scenario depends on. Skipped under `smallModelMode` when

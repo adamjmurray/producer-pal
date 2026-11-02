@@ -33,6 +33,7 @@ import { answerUpdateCall, isUpdateCall } from "./update/update-call.ts";
 import { withUpdateHint } from "./update/update-connect-hint.ts";
 import {
   type BridgeOptions,
+  callerSmallModelMode,
   requestHeaderTransportOptions,
 } from "./portal-settings.ts";
 
@@ -141,6 +142,8 @@ export class StdioHttpBridge {
         this._ensureHttpConnection(timeoutMs ?? this._timeLeft(deadline)),
       version: () => this.httpClient?.getServerVersion()?.version,
       fullConnectSeen: () => this.fullConnectSeen,
+      smallModelMode: () =>
+        callerSmallModelMode(this.options.smallModelMode, this.httpUrl),
       // The next connect replaces the client and handshakes again; calls still
       // on the old one finish first.
       reset: () => {

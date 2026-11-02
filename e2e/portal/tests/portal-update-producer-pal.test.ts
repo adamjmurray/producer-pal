@@ -52,12 +52,19 @@ const UPDATE = { action: "update-producer-pal" };
  * @param options - What else differs between tests
  * @param options.deviceOnline - False for a device that isn't running
  * @param options.deviceTools - Give the device ppal-connect and ppal-manage
+ * @param options.portalArgs - Flags for the portal
+ * @param options.deviceSmallModelMode - What the device's GET /config reports
  * @returns The pieces a test looks at
  */
 async function setup(
   running: string,
   swap?: RouteHandler | null,
-  options: { deviceOnline?: boolean; deviceTools?: boolean } = {},
+  options: {
+    deviceOnline?: boolean;
+    deviceTools?: boolean;
+    portalArgs?: string[];
+    deviceSmallModelMode?: boolean;
+  } = {},
 ) {
   const library = newLibrary();
 
@@ -67,6 +74,7 @@ async function setup(
       version: running,
       connectTool: options.deviceTools,
       manageTool: options.deviceTools,
+      smallModelMode: options.deviceSmallModelMode,
     }),
   );
   const script = track(
@@ -92,7 +100,9 @@ async function setup(
   const copy = track(copyPortal(true, PORTAL_VERSION));
   // HOME is a temp folder too, so nothing of the developer's is touched.
   const env = { ...script.env, HOME: library, USERPROFILE: library };
-  const portal = track(await startPortal(device.origin, [], env, copy.file));
+  const portal = track(
+    await startPortal(device.origin, options.portalArgs, env, copy.file),
+  );
 
   return { library, device, script, portal };
 }
@@ -223,6 +233,20 @@ describe("a device older than the portal", () => {
       "https://producer-pal.org/installation/upgrading#update-by-hand",
     );
     expect(hint).not.toContain("update-producer-pal");
+  });
+
+  it.each([
+    ["a portal started in small-model mode", { portalArgs: ["-s"] }],
+    ["a device in small-model mode", { deviceSmallModelMode: true }],
+  ])("adds no update note for %s", async (_name, mode) => {
+    const { portal } = await setup("2.5.0-rc1", undefined, {
+      deviceTools: true,
+      ...mode,
+    });
+
+    expect(await callToolTexts(portal, "ppal-connect")).toStrictEqual([
+      "connected",
+    ]);
   });
 
   it.each([

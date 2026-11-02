@@ -67,7 +67,10 @@ export function enrichConnect(
   const portalVersioned = withRemoteScriptNotice(
     withPortalVersion(connectPing.inner, () => getConfig().portalVersion),
     connectPing.getStatus,
-    () => manageToolOffered(getConfig().smallModelMode, getConfig().tools),
+    () => ({
+      manage: manageToolOffered(getConfig().smallModelMode, getConfig().tools),
+      smallModel: getConfig().smallModelMode,
+    }),
   );
 
   const full = withNextStep(

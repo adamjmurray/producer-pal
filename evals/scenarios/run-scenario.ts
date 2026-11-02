@@ -122,7 +122,11 @@ export async function runScenario(
     );
 
     if (scenario.toolOverrides != null) {
-      proxy = await startToolOverrideProxy(MCP_URL, scenario.toolOverrides);
+      proxy = await startToolOverrideProxy(
+        MCP_URL,
+        scenario.toolOverrides,
+        mergedConfig.smallModelMode === true,
+      );
     }
 
     session = await createEvalSession({

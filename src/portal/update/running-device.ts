@@ -19,6 +19,11 @@ export interface RunningDevice {
    * Without one, no chat on it can have loaded the Skills.
    */
   fullConnectSeen: () => boolean;
+  /**
+   * Whether small-model mode is on for the portal's calls, set on the portal or
+   * on the device. False when the device can't say. Never throws.
+   */
+  smallModelMode: () => Promise<boolean>;
   /** Tell the client to re-list tools, which may differ between versions */
   toolsChanged: () => void;
 }

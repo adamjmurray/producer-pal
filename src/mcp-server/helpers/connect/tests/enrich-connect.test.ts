@@ -184,6 +184,45 @@ describe("enrichConnect", () => {
     });
   });
 
+  describe("version drift in small-model mode", () => {
+    it.each([
+      {
+        name: "the installed copy is behind",
+        status: { installedVersion: "0.0.1", updateAvailable: true },
+      },
+      { name: "Live runs another copy", status: { runningVersion: "0.0.1" } },
+    ])("is not mentioned when $name", async ({ status }) => {
+      remoteScriptStatus.mockResolvedValue(currentRemoteScriptStatus(status));
+
+      const small = await enrichedBlocks({ smallModelMode: true });
+      const standard = await enrichedBlocks({ smallModelMode: false });
+
+      expect(small[1]).toBe(
+        `remoteScript: v${status.runningVersion ?? VERSION} running`,
+      );
+      expect(standard[1]).toContain("versionCheck: true");
+    });
+
+    it("leaves the version check without a new-chat line", async () => {
+      remoteScriptStatus.mockResolvedValue(
+        currentRemoteScriptStatus({
+          installedVersion: "0.0.1",
+          updateAvailable: true,
+        }),
+      );
+
+      const blocks = await enrichedBlocks(
+        { smallModelMode: true },
+        {
+          versionCheck: true,
+        },
+      );
+
+      expect(blocks).toHaveLength(2);
+      expect(blocks).not.toContain(UP_TO_DATE_NEW_CHAT);
+    });
+  });
+
   it("adds no portal line for a request that did not come through a portal", async () => {
     const blocks = await enrichedBlocks();
 

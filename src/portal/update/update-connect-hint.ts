@@ -18,7 +18,8 @@ const UPDATE_BY_HAND_URL =
 /**
  * Add a hint to a successful ppal-connect when the running device is older than
  * this portal. The portal says it, not the device: an old device can't learn
- * new wording. A failure to look just leaves the result as it was.
+ * new wording. A failure to look just leaves the result as it was. Small-model
+ * mode gets no hint: version management confuses local models.
  * @param result - What the device answered
  * @param call - The tool called, and whether this portal lists ppal-manage
  * @param call.name - The tool called
@@ -47,15 +48,17 @@ export async function withUpdateHint<T extends object>(
   try {
     const older = await olderDevice(device);
 
-    return older == null
-      ? result
-      : {
-          ...result,
-          content: [
-            ...(content as unknown[]),
-            { type: "text", text: hintFor(older, call.manageOffered) },
-          ],
-        };
+    if (older == null || (await device.smallModelMode())) {
+      return result;
+    }
+
+    return {
+      ...result,
+      content: [
+        ...(content as unknown[]),
+        { type: "text", text: hintFor(older, call.manageOffered) },
+      ],
+    };
   } catch {
     return result;
   }

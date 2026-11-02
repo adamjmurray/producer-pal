@@ -67,9 +67,11 @@ build, so it is never offered an update.
   `remoteScript:` line after the portal line: not installed, behind this build,
   installed but not running, needing a Live restart, or just the running
   version. It points at `ppal-manage` to install when the caller has it, else at
-  the Chat UI. It shares the skills' `/ping` for the connect
-  (`connect-ping.ts`), reads the installed version off disk, and gives up after
-  1.5 s. A status that fails or times out adds no line.
+  the Chat UI. Small-model mode doesn't manage versions, so a copy that is only
+  behind, or a Live running another copy, reads as the plain running line there.
+  It shares the skills' `/ping` for the connect (`connect-ping.ts`), reads the
+  installed version off disk, and gives up after 1.5 s. A status that fails or
+  times out adds no line.
 
 ## The device install
 

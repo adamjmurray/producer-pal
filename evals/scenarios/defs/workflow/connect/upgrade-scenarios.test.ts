@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
+import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
 import {
   type CustomAssertion,
   type EvalScenario,
@@ -61,6 +62,42 @@ describe("every upgrade scenario", () => {
     expect(scenario.requires?.tools).toStrictEqual(["ppal-manage"]);
     expect(scenario.seedConnect).toBe(false);
   });
+});
+
+describe("the plain connect each upgrade scenario fakes", () => {
+  const real = [{ type: "text", text: "{connected:true}" }];
+  const callReal = (): Promise<typeof real> => Promise.resolve(real);
+  const connect = (
+    scenario: EvalScenario,
+    smallModelMode: boolean,
+  ): Promise<Array<{ text?: string }>> | Array<{ text?: string }> | undefined =>
+    scenario.toolOverrides?.["ppal-connect"]?.({}, callReal, {
+      smallModelMode,
+      tools: TOOL_NAMES.filter(
+        (name) => !smallModelMode || name !== "ppal-manage",
+      ),
+    });
+
+  it.each([
+    [upgradeDeviceVersionCheck, "update-producer-pal"],
+    [upgradeRemoteScriptRestartCheck, "install-producer-pal"],
+  ])(
+    "$id points at ppal-manage when it is offered",
+    async (scenario, action) => {
+      const blocks = (await connect(scenario, false)) ?? [];
+
+      expect(blocks.map((b) => b.text).join("\n")).toContain(action);
+    },
+  );
+
+  it.each([upgradeDeviceVersionCheck, upgradeRemoteScriptRestartCheck])(
+    "$id doesn't point at ppal-manage in small-model mode",
+    async (scenario) => {
+      const blocks = (await connect(scenario, true)) ?? [];
+
+      expect(blocks.map((b) => b.text).join("\n")).not.toContain("ppal-manage");
+    },
+  );
 });
 
 describe("upgrade-device-version-check", () => {

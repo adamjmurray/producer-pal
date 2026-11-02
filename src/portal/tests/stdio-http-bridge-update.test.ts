@@ -92,6 +92,7 @@ vi.mock(import("../file-logger.ts"), () => ({
 // Import the class after mocking
 import { responseText } from "../offline/tests/offline-add-producer-pal-test-helpers.ts";
 import { StdioHttpBridge } from "../stdio-http-bridge.ts";
+import { type BridgeOptions } from "../portal-settings.ts";
 import { type OfflineDeps } from "../offline/offline-deps.ts";
 import { OLD, updateDeps } from "../update/tests/update-test-helpers.ts";
 
@@ -103,15 +104,17 @@ const UPDATE = callToolRequest("ppal-manage", {
 /**
  * @param offersManage - Whether the portal lists ppal-manage
  * @param deps - What the portal's own answers reach out to
+ * @param options - The portal's settings
  * @returns A bridge over the update dependencies
  */
 function bridgeOver(
   offersManage: boolean,
   deps: OfflineDeps = updateDeps(),
+  options: BridgeOptions = {},
 ): TestBridge {
   const bridge = new StdioHttpBridge(
     "http://localhost:3350/mcp",
-    {},
+    options,
     deps,
   ) as unknown as TestBridge;
 
@@ -345,7 +348,13 @@ describe("StdioHttpBridge install-producer-pal", () => {
 describe("StdioHttpBridge ppal-connect update hint", () => {
   useBridgeStandIns();
 
+  let deviceConfig: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
+    // The device's GET /config, which says whether it is in small-model mode.
+    deviceConfig = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(() => Promise.resolve(Response.json({})));
     mockClient.callTool.mockImplementation(() =>
       Promise.resolve({ content: [{ type: "text", text: "connected" }] }),
     );
@@ -387,5 +396,71 @@ describe("StdioHttpBridge ppal-connect update hint", () => {
     };
 
     expect(result.content).toHaveLength(1);
+  });
+
+  describe("in small-model mode", () => {
+    /**
+     * @param bridge - The bridge to connect through
+     * @returns The blocks ppal-connect answered with
+     */
+    async function connectBlocks(bridge: TestBridge): Promise<unknown[]> {
+      const handler = await startAndGetCallHandler(bridge);
+      const result = (await handler(callToolRequest("ppal-connect"))) as {
+        content: unknown[];
+      };
+
+      return result.content;
+    }
+
+    it.each([
+      ["a device with ppal-manage", "2.5.0-rc1"],
+      ["a device from before ppal-manage", OLD],
+    ])(
+      "adds nothing, for %s, when the portal is in it",
+      async (_why, version) => {
+        serverReports(version);
+
+        const content = await connectBlocks(
+          bridgeOver(false, updateDeps(), { smallModelMode: true }),
+        );
+
+        expect(content).toHaveLength(1);
+        expect(deviceConfig).not.toHaveBeenCalled();
+      },
+    );
+
+    it("adds nothing when only the device is in it", async () => {
+      serverReports("2.5.0-rc1");
+      deviceConfig.mockImplementation(() =>
+        Promise.resolve(Response.json({ smallModelMode: true })),
+      );
+
+      // The portal can't see the device's mode, so it lists ppal-manage.
+      expect(await connectBlocks(bridgeOver(true))).toHaveLength(1);
+    });
+
+    it("still hints when the portal turns it off for itself", async () => {
+      serverReports(OLD);
+      deviceConfig.mockImplementation(() =>
+        Promise.resolve(Response.json({ smallModelMode: true })),
+      );
+
+      const content = await connectBlocks(
+        bridgeOver(true, updateDeps(), { smallModelMode: false }),
+      );
+
+      expect(content).toHaveLength(2);
+    });
+
+    it("still hints a caller that lacks ppal-manage for another reason", async () => {
+      serverReports(OLD);
+
+      // The bridge not offering ppal-manage is what `--disable-tools` does.
+      const content = (await connectBlocks(bridgeOver(false))) as Array<{
+        text: string;
+      }>;
+
+      expect(content[1]?.text).toContain("by hand");
+    });
   });
 });

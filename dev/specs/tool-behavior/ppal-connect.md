@@ -24,6 +24,20 @@ because only Node can read files and headers. In this order:
 A block with nothing to say is left out. A block that fails to build is left out
 alone, and the others still arrive.
 
+### The remote script line
+
+It says what to do about the remote script, and only that: not installed,
+installed but not running, another program on the port, the installed copy
+behind this build (or newer, or another build), or Live running another copy
+than the installed one (restart Live). A current, running script is just its
+version.
+
+Small-model mode doesn't manage versions, so it drops the two version-only
+states: a running script with a copy that is behind, newer or another build, or
+that Live hasn't reloaded, reads as the plain running line (the running version,
+no instruction). A copy that is behind and not running says it isn't running.
+Not installed, not running and another program on the port stay.
+
 ## Version check (`versionCheck: true`)
 
 For re-checking after an install, update or Live restart, in a chat that already
@@ -56,11 +70,15 @@ It appears only when all of these hold:
   behind or newer than this build, and Live runs the installed copy. Not
   installed, not running, behind, newer, restart due, or another program on the
   port each leave a remote script line (or a mismatch) to deal with first, and
-  no new-chat line.
+  no new-chat line. In small-model mode a script that is behind or needs a
+  restart is not reported (see above), but it still withholds this line, so the
+  check ends without it rather than claiming everything is current.
 - The portal's version, when there is one, equals the device's. A portal older
   than the device gets its update advice in the portal line. A portal newer than
   the device means the device is older than the portal; the portal appends its
-  own update hint after the result, and the new-chat line stays out.
+  own update hint after the result, and the new-chat line stays out. In
+  small-model mode (set on the portal, or on the device when the portal sets
+  none) the portal appends no hint: version management confuses local models.
 - The remote script status could be read. It is read once per connect and shared
   by the remote script line and this one, so they can't disagree. If it can't be
   read, neither adds a line.
