@@ -15,7 +15,12 @@ describe("foldTargetParams", () => {
   it("says once that an id names nothing, whatever the path carries", () => {
     const folded = foldTargetParams({ id: "null", path: "t0" });
 
-    expect(folded).toStrictEqual({ id: undefined, path: "t0" });
+    expect(folded).toStrictEqual({
+      id: undefined,
+      idParam: "id",
+      path: "t0",
+      pathParam: "path",
+    });
     expect(capturedWarnings()).toStrictEqual(['id "null" names nothing']);
   });
 
@@ -27,28 +32,65 @@ describe("foldTargetParams", () => {
       'paths "null" names nothing',
     ]);
   });
+
+  it("remembers the alias each value was sent under", () => {
+    expect(foldTargetParams({ ids: "1,2", paths: "t0,t1" })).toStrictEqual({
+      id: "1,2",
+      idParam: "ids",
+      path: "t0,t1",
+      pathParam: "paths",
+    });
+  });
+
+  it("remembers a tool's own id spelling", () => {
+    expect(foldTargetParams({}, { name: "trackId", value: "5" }).idParam).toBe(
+      "trackId",
+    );
+    expect(
+      foldTargetParams({ ids: "5" }, { name: "trackId", value: undefined })
+        .idParam,
+    ).toBe("ids");
+  });
+
+  it("refuses an alias beside the param it stands in for", () => {
+    expect(() => foldTargetParams({ id: "1", ids: "2" })).toThrow(
+      "id names the target on its own - don't send ids with it",
+    );
+    expect(() =>
+      foldTargetParams({ id: "1" }, { name: "clipId", value: "2" }),
+    ).toThrow("don't send clipId with it");
+  });
 });
 
 describe("targetParamLabel", () => {
+  const sent = (
+    targets: Parameters<typeof foldTargetParams>[0],
+  ): ReturnType<typeof foldTargetParams> => foldTargetParams(targets);
+
   it("names path when only path was sent", () => {
-    expect(targetParamLabel({ path: "t1,t2,t3" })).toBe("path");
+    expect(targetParamLabel(sent({ path: "t1,t2,t3" }))).toBe("path");
   });
 
   it("names id when only id was sent", () => {
-    expect(targetParamLabel({ id: "1,2,3" })).toBe("id");
+    expect(targetParamLabel(sent({ id: "1,2,3" }))).toBe("id");
   });
 
   it("names both when the call sent both", () => {
-    expect(targetParamLabel({ id: "1,2", path: "t1,t2" })).toBe("id and path");
+    expect(targetParamLabel(sent({ id: "1,2", path: "t1,t2" }))).toBe(
+      "id and path",
+    );
   });
 
-  it("reports the alias's canonical name, not the alias", () => {
-    expect(targetParamLabel({ paths: "t1,t2" })).toBe("path");
-    expect(targetParamLabel({ ids: "1,2" })).toBe("id");
+  it("names the alias the call sent, not the param it stands in for", () => {
+    expect(targetParamLabel(sent({ paths: "t1,t2" }))).toBe("paths");
+    expect(targetParamLabel(sent({ ids: "1,2" }))).toBe("ids");
+    expect(targetParamLabel(sent({ ids: "1,2", path: "t1,t2" }))).toBe(
+      "ids and path",
+    );
   });
 
   it("falls back to both names when neither was sent", () => {
-    expect(targetParamLabel({})).toBe("id and path");
+    expect(targetParamLabel(sent({}))).toBe("id and path");
   });
 });
 

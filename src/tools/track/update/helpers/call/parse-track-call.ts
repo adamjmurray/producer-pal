@@ -16,6 +16,7 @@ import {
   foldTargetParams,
   targetCount,
   targetParamLabel,
+  type FoldedTargets,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { type PanningMode } from "../track-mixer-updates.ts";
 import { validateMonitoringState } from "../track-monitoring-updates.ts";
@@ -60,7 +61,7 @@ export interface UpdateTrackArgs {
 export interface TrackCall {
   args: UpdateTrackArgs;
   /** The target params, folded onto `id` and `path` */
-  targets: TargetParams;
+  targets: FoldedTargets;
   /** The target params as sent, for a blank one to be reported */
   sent: TargetParams;
   /** The targets, ids first, each as the caller wrote it */

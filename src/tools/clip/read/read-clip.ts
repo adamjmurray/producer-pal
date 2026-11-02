@@ -30,6 +30,7 @@ import { type TargetSkip } from "#src/tools/shared/validation/lists/named-target
 import {
   readFanOut,
   type ReadResult,
+  type ReadTargetParams,
 } from "#src/tools/shared/validation/lists/read-fan-out.ts";
 import { type ClipEnvelope, clipEnvelopes } from "./helpers/clip-envelopes.ts";
 import {
@@ -43,16 +44,12 @@ import {
   resolveClipLocation,
 } from "./helpers/clip-resolution.ts";
 
-export interface ReadClipArgs {
+/** The args of a read-clip call; the fan-out adds the names the targets came under. */
+export interface ReadClipArgs extends ReadTargetParams {
   /** Clip slot, "t<track>/s<scene>" */
   path?: string | null;
-  /** Hidden alias for path */
-  paths?: string | null;
   /** Deprecated clip slot, trackIndex/sceneIndex */
   slot?: string | null;
-  id?: string | null;
-  /** Hidden alias for id */
-  ids?: string | null;
   /** Hidden alias for id */
   clipId?: string | null;
   include?: string[];
@@ -267,6 +264,7 @@ export function readOneClip(
     sceneIndex,
     args.slotValidated,
     args.onEmptySlot,
+    args.targetNames?.idParam,
   );
 
   if (!resolved.found) {

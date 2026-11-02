@@ -132,7 +132,11 @@ export function deviceListArgs(call: DeviceCall): ListArg[] {
     ? []
     : [
         {
-          param: targetParamLabel(call),
+          param: targetParamLabel({
+            id: call.ids,
+            path: call.path,
+            ...call.names,
+          }),
           count: targetCount(call),
         },
         { param: "name", value: name },

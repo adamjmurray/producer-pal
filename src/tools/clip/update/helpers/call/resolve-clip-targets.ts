@@ -25,7 +25,10 @@ import {
   arrangementPositionPath,
   slotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
+import {
+  type NamedTarget,
+  sentParam,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
@@ -123,10 +126,10 @@ function findClip(
   if (target.param === "path") {
     // A path that doesn't parse is a mistake in the call, so it refuses the
     // call; one that parses but names no clip skips only its own target.
-    parseObjectPath(target.value, "path");
+    parseObjectPath(target.value, sentParam(target));
 
     const lookup = resolvePathEntry(target.value, (entry) =>
-      clipIdAtPath(entry, "path", lanes),
+      clipIdAtPath(entry, sentParam(target), lanes),
     );
 
     if (lookup.id == null) {
@@ -137,7 +140,13 @@ function findClip(
   }
 
   try {
-    return { clip: validateIdType(id, "clip") };
+    return {
+      clip: validateIdType(
+        id,
+        "clip",
+        target.param === "id" ? sentParam(target) : undefined,
+      ),
+    };
   } catch (error) {
     return {
       skip: errorMessage(error),

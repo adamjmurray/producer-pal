@@ -18,7 +18,10 @@ import {
 } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import { pathEntries } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-import { type TargetParams } from "#src/tools/shared/validation/lists/target-lists.ts";
+import {
+  type TargetNames,
+  type TargetParams,
+} from "#src/tools/shared/validation/lists/target-lists.ts";
 
 /** One object a call names, and which param named it. */
 export interface NamedTarget {
@@ -26,6 +29,9 @@ export interface NamedTarget {
   param: "id" | "path" | "time" | "name";
   /** The entry as the caller wrote it */
   value: string;
+  /** The param the caller sent it under when that isn't `param` (`paths`,
+   * `trackId`), for an error that quotes it. Results still use `param`. */
+  sent?: string;
 }
 
 /** A target a call couldn't act on. `ok` marks only these, never a hit. */
@@ -54,17 +60,44 @@ export interface NoteEntry {
  * @param args - The call's target params, already folded onto id and path
  * @returns One entry per target named, empty when neither param named one
  */
-export function namedTargets(args: TargetParams): NamedTarget[] {
+export function namedTargets(
+  args: TargetParams & Partial<TargetNames>,
+): NamedTarget[] {
+  const idParam = args.idParam ?? "id";
+  const pathParam = args.pathParam ?? "path";
+
   return [
-    ...targetEntries(args.id, "id").map((value): NamedTarget => ({
-      param: "id",
-      value,
-    })),
-    ...pathEntries(args.path).map((value): NamedTarget => ({
-      param: "path",
-      value,
-    })),
+    ...targetEntries(args.id, idParam).map((value) =>
+      targetNamed("id", value, idParam),
+    ),
+    ...pathEntries(args.path, pathParam).map((value) =>
+      targetNamed("path", value, pathParam),
+    ),
   ];
+}
+
+/**
+ * One target, remembering the param it was sent under when that was an alias.
+ * @param param - Whether it is an id or a path
+ * @param value - The entry as the caller wrote it
+ * @param sentAs - The param it was sent under (`ids`, `paths`, `trackId`, ...)
+ * @returns The target
+ */
+export function targetNamed(
+  param: "id" | "path",
+  value: string,
+  sentAs: string = param,
+): NamedTarget {
+  return sentAs === param ? { param, value } : { param, value, sent: sentAs };
+}
+
+/**
+ * The param the caller sent a target under.
+ * @param target - The target, as the caller named it
+ * @returns `sent` when it was an alias, else the target's own param
+ */
+export function sentParam(target: NamedTarget): string {
+  return target.sent ?? target.param;
 }
 
 /**
@@ -96,12 +129,18 @@ export function attemptTarget<T>(
 export function targetObject(
   target: NamedTarget,
   noun: string,
-  idAtPath: (entry: string) => IdLookup,
+  idAtPath: (entry: string, label?: string) => IdLookup,
 ): LiveAPI {
   const id =
-    target.param === "id" ? target.value : foundId(idAtPath(target.value));
+    target.param === "id"
+      ? target.value
+      : foundId(idAtPath(target.value, sentParam(target)));
 
-  return validateIdType(id, noun);
+  return validateIdType(
+    id,
+    noun,
+    target.param === "id" ? sentParam(target) : undefined,
+  );
 }
 
 /**

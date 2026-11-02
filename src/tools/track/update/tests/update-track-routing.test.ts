@@ -216,6 +216,31 @@ describe("updateTrack routing by name", () => {
       );
     });
 
+    // The alias is named as sent in what a refusal says; its fix, the
+    // published name, is for the docs.
+    it.each([
+      "inputRoutingTypeId",
+      "inputRoutingChannelId",
+      "outputRoutingTypeId",
+      "outputRoutingChannelId",
+    ])("names %s as sent when it is refused", (alias) => {
+      expect(() => updateTrack({ id: "123", [alias]: "Nowhere" })).toThrow(
+        `the track has no ${alias} named "Nowhere"`,
+      );
+    });
+
+    it("names the alias in a note about options sharing a name", () => {
+      const result = updateTrack({ id: "123", outputRoutingTypeId: "Bass" });
+
+      expect(result).toStrictEqual({
+        id: "123",
+        path: "t0",
+        detail:
+          '2 outputRoutingTypeId options are named "Bass"; used the first — ' +
+          "send the identifier (30, 31) to pick another",
+      });
+    });
+
     it("loses to the new param when both are sent", () => {
       updateTrack({
         id: "123",

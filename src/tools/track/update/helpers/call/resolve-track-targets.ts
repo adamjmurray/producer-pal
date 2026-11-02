@@ -35,7 +35,7 @@ export function trackTargets(call: TrackCall): Array<Target<TrackPayload>> {
 
   // A path that doesn't parse refuses the call; the lookup below parses it
   // again and says any legacy spelling.
-  refuseUnparsableEntries(call.targets.path, "path");
+  refuseUnparsableEntries(call.targets.path, call.targets.pathParam);
 
   return call.named.map((named, index): Target<TrackPayload> => {
     const spec = lanes.get(index);

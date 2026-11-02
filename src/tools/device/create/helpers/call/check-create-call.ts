@@ -156,7 +156,7 @@ async function refuseMissingPath(
 
 // What each path creates when every device is native: nothing to look up.
 function nativePlans(call: CreateCall, paths: string[]): DevicePlan[] {
-  const devices = perPath(call.device, paths, "deviceName");
+  const devices = perPath(call.device, paths, call.deviceParam);
 
   return paths.map((path, i) => ({
     path,
@@ -174,7 +174,7 @@ async function devicePlans(
   deadline: number | null | undefined,
   manage: boolean,
 ): Promise<DevicePlan[]> {
-  const devices = perPath(call.device, paths, "deviceName");
+  const devices = perPath(call.device, paths, call.deviceParam);
   const presets = perPath(call.preset, paths, "preset");
   const found = new Map<string, BrowserItem | null>();
   const plans: DevicePlan[] = [];
@@ -227,7 +227,7 @@ async function hostedDevicePlans(
   deadline: number | null | undefined,
   manage: boolean,
 ): Promise<DevicePlan[]> {
-  const devices = perPath(call.device, paths, "device") as string[];
+  const devices = perPath(call.device, paths, call.deviceParam) as string[];
   const hosted = await planHostedPlugins(devices, deadline, manage);
 
   return paths.map((path, i) => ({

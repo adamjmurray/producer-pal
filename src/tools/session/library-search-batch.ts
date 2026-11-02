@@ -33,6 +33,7 @@ export const MAX_BATCH_QUERIES = 20;
  * @param queries - Per-query filter sets (optional label each)
  * @param ctx - Per-request context carrying sampleFolder
  * @param runSearch - The single-search implementation to reuse per query
+ * @param param - The name the caller sent the queries under, for a warning
  * @returns One entry per query in order, or a lone query's result unwrapped
  */
 export async function runSearchBatch(
@@ -42,12 +43,13 @@ export async function runSearchBatch(
     args: LibrarySearchArgs,
     ctx: Partial<ToolContext>,
   ) => Promise<LibraryToolSearchResult>,
+  param = "searches",
 ): Promise<LibraryBatchResult | LibraryToolSearchResult> {
   const capped = queries.slice(0, MAX_BATCH_QUERIES);
 
   if (queries.length > MAX_BATCH_QUERIES) {
     emitWarning(
-      `searches: ${queries.length} queries exceeds cap of ${MAX_BATCH_QUERIES}; ignoring the extra ${queries.length - MAX_BATCH_QUERIES}`,
+      `${param}: ${queries.length} queries exceeds cap of ${MAX_BATCH_QUERIES}; ignoring the extra ${queries.length - MAX_BATCH_QUERIES}`,
     );
   }
 

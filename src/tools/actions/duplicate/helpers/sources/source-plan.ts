@@ -21,8 +21,13 @@ import {
 } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   namedTargets,
+  sentParam,
   type NamedTarget,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
+import {
+  type TargetNames,
+  type TargetParams,
+} from "#src/tools/shared/validation/lists/target-lists.ts";
 import { type PathResolution } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import {
   pathEntries,
@@ -59,9 +64,9 @@ export interface SourceShare {
 /** How a source is found and vetted: its path entries, and what an id is. */
 export interface SourceLookup {
   /** What one `path` entry names */
-  resolvePath: (entry: string) => PathResolution;
+  resolvePath: (entry: string, label?: string) => PathResolution;
   /** Why an id can't be a source, or null when it can */
-  problem: (id: string) => string | null;
+  problem: (id: string, label?: string) => string | null;
 }
 
 /** What a call needs to share its destinations out across its sources. */
@@ -69,6 +74,8 @@ interface SourcePlanArgs {
   type: string;
   id: string | undefined;
   path: string | undefined;
+  /** The names `id` and `path` were sent under, for an error */
+  names?: TargetNames;
   toPath: string | undefined;
   toSlot: string | undefined;
   arrangementStart: string | undefined;
@@ -94,6 +101,7 @@ interface SourcePlanArgs {
  * @param args.type - Object type to duplicate, which says how a path resolves
  * @param args.id - Source id(s), comma-separated for multiple
  * @param args.path - Source path(s), comma-separated for multiple
+ * @param args.names - The names the ids and paths were sent under
  * @param args.toPath - Destination path(s)
  * @param args.toSlot - Deprecated destination clip slot(s)
  * @param args.arrangementStart - Position(s), already resolved to bar|beat
@@ -108,6 +116,7 @@ export function planSources({
   type,
   id,
   path,
+  names,
   toPath,
   toSlot,
   arrangementStart,
@@ -116,7 +125,10 @@ export function planSources({
   lookup,
   objectOf,
 }: SourcePlanArgs): SourceShare[] {
-  const sources = sourceTargets(id, path, lookup ?? typeLookup(type, objectOf));
+  const sources = sourceTargets(
+    { id, path, ...names },
+    lookup ?? typeLookup(type, objectOf),
+  );
 
   // One source is the whole call: leave the destinations exactly as they
   // arrived, so nothing re-splits a list that was already going to be split
@@ -128,9 +140,9 @@ export function planSources({
   }
 
   // The params that named the sources, for an error about how many there are.
-  const named = [...new Set(sources.map((source) => source.named.param))].join(
-    "/",
-  );
+  const named = [
+    ...new Set(sources.map((source) => sentParam(source.named))),
+  ].join("/");
 
   // toSlot only ever named a clip slot, so a clip call using it lands in the
   // session however the position params read — and shares its destinations out
@@ -339,26 +351,25 @@ function destinationShares(
  * A path that can't be parsed refuses the call. One that parses but names
  * nothing, or an id that isn't there, keeps its slot as a source nothing can be
  * copied from: each copy it was to make is that copy's own skip.
- * @param id - Source id(s), comma-separated for multiple
- * @param path - Source path(s), comma-separated for multiple
+ * @param sources - The source id(s) and path(s), comma-separated for multiple,
+ *   with the names they were sent under
  * @param lookup - How the sources are found and vetted
  * @returns One entry per source, ids first, then the paths in order
  */
 function sourceTargets(
-  id: string | undefined,
-  path: string | undefined,
+  sources: TargetParams & Partial<TargetNames>,
   lookup: SourceLookup,
 ): SourceTarget[] {
-  return namedTargets({ id, path }).map((named): SourceTarget => {
+  return namedTargets(sources).map((named): SourceTarget => {
     if (named.param === "id") {
       return vetted(named, named.value, lookup);
     }
 
     // A path that doesn't parse is a mistake in the call; one that parses but
     // names nothing skips only its own copies.
-    parseObjectPath(named.value, "path");
+    parseObjectPath(named.value, sentParam(named));
 
-    const resolved = lookup.resolvePath(named.value);
+    const resolved = lookup.resolvePath(named.value, sentParam(named));
 
     // `atStart` lets a skip say where the source went if a copy moved it.
     return resolved.id == null
@@ -384,7 +395,7 @@ function vetted(
   id: string,
   lookup: SourceLookup,
 ): SourceTarget {
-  const skip = lookup.problem(id);
+  const skip = lookup.problem(id, sentParam(named));
 
   return skip == null ? { id, named } : { id, named, skip };
 }
@@ -402,10 +413,10 @@ function typeLookup(
   const find = objectOf ?? ((id: string): LiveAPI => LiveAPI.from(id));
 
   return {
-    resolvePath: (entry) => resolvePathForType(type, entry),
-    problem: (id) => {
+    resolvePath: (entry, label) => resolvePathForType(type, entry, label),
+    problem: (id, label) => {
       try {
-        const object = vetObject(find(id), id, type);
+        const object = vetObject(find(id), id, type, label);
 
         // A return track passes the type check, but Live can't copy it.
         if (type === "track") {
@@ -425,12 +436,18 @@ function typeLookup(
  * @param object - What the id names
  * @param id - The id, for the reason
  * @param type - Object type to duplicate
+ * @param label - The param the id was sent under
  * @returns The object
  * @throws Error saying why it can't be copied
  */
-function vetObject(object: LiveAPI, id: string, type: string): LiveAPI {
+function vetObject(
+  object: LiveAPI,
+  id: string,
+  type: string,
+  label = "id",
+): LiveAPI {
   if (!object.exists()) {
-    throw new Error(idDoesNotExist(id));
+    throw new Error(idDoesNotExist(id, undefined, label));
   }
 
   const mismatch = typeMismatch(object, type);

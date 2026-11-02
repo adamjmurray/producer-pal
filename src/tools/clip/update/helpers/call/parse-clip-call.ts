@@ -32,6 +32,7 @@ import {
   foldTargetParams,
   targetCount,
   targetParamLabel,
+  type FoldedTargets,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 import {
   type ArrangementBeats,
@@ -195,7 +196,7 @@ export function parseClipCall(args: ClipUpdateArgs): ClipCall {
  * @returns The lists to compare
  */
 function listArgs(
-  folded: TargetParams,
+  folded: FoldedTargets,
   args: ClipUpdateArgs,
 ): Parameters<typeof validateListLengths>[0] {
   return [

@@ -93,12 +93,14 @@ export async function library(
 ): Promise<LibraryResult> {
   const action = resolveAction(args.action);
   const searches = args.searches ?? args.queries;
+  // The name the caller sent the list under, for an error that quotes it.
+  const searchesParam = args.searches != null ? "searches" : "queries";
 
   refuseLibraryParamsOutsideAction(action, args);
 
   if (searches?.length === 0) {
     // An empty list names no search at all, so there is nothing to guess at.
-    throw new Error("searches must name at least one search");
+    throw new Error(`${searchesParam} must name at least one search`);
   }
 
   if (action === "list-tags") {
@@ -153,12 +155,17 @@ export async function library(
     throw new Error(`Unknown action: ${action}`);
   }
 
-  refuseUnfilteredSearch(args, searches);
+  refuseUnfilteredSearch(args, searches, searchesParam);
 
   // searches is the fan-out form of a search: each entry carries its own
   // filters, so the top-level ones don't apply.
   if (searches != null) {
-    return await runSearchBatch(searches, toolContext, runSearch);
+    return await runSearchBatch(
+      searches,
+      toolContext,
+      runSearch,
+      searchesParam,
+    );
   }
 
   return await runSearch(args, toolContext);

@@ -160,7 +160,7 @@ function requireDevice(
   devicePath: string,
   devicePathParam: "path" | "devicePath",
 ): LiveAPI {
-  const resolved = resolvePathToLiveApi(devicePath);
+  const resolved = resolvePathToLiveApi(devicePath, devicePathParam);
 
   if (resolved.namesNothing != null) {
     throw new Error(`no device at "${devicePath}": ${resolved.namesNothing}`);

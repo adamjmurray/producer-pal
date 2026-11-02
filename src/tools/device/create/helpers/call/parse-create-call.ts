@@ -33,6 +33,8 @@ export interface CreateCallArgs extends CreateDeviceArgs {
 /** A create-device call, read once. */
 export interface CreateCall {
   device: string | undefined;
+  /** The param the device was sent under, for an error that quotes it */
+  deviceParam: "deviceName" | "device";
   preset: string | undefined;
   /** The path list, or undefined when the call sent none */
   path: string | undefined;
@@ -68,6 +70,7 @@ export function parseCreateCall(args: CreateCallArgs): CreateCall {
 
   return {
     device: args.deviceName ?? args.device,
+    deviceParam: args.deviceName == null ? "device" : "deviceName",
     preset,
     path: sent ? args.path : undefined,
     name,
@@ -109,7 +112,7 @@ export function createListArgs(call: CreateCall): ListArg[] {
     ? []
     : [
         { param: "path", value: call.path, target: true },
-        { param: "deviceName", value: call.device },
+        { param: call.deviceParam, value: call.device },
         { param: "preset", value: call.preset },
         { param: "name", value: call.name },
       ];

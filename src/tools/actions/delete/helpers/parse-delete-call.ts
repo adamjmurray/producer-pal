@@ -6,10 +6,10 @@
 import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { DELETABLE_TYPES } from "#src/tools/constants.ts";
 import {
-  namedIdParam,
-  namedPathParam,
-} from "#src/tools/shared/helpers/param-presence.ts";
-import { type TargetParams } from "#src/tools/shared/validation/lists/target-lists.ts";
+  type TargetNames,
+  type TargetParams,
+  foldTargetParams,
+} from "#src/tools/shared/validation/lists/target-lists.ts";
 
 const DELETABLE_TYPE_LIST = DELETABLE_TYPES.map((type) => `"${type}"`).join(
   ", ",
@@ -31,6 +31,8 @@ export interface DeleteCall {
   /** The targets, folded onto the canonical params */
   ids?: string;
   path?: string;
+  /** The names those were sent under, for an error that quotes them */
+  names: TargetNames;
   /** The target params as sent, for a blank one to be reported */
   sent: TargetParams;
 }
@@ -52,8 +54,7 @@ export function parseDeleteCall(args: DeleteArgs): DeleteCall {
     throw new Error(`type must be one of ${DELETABLE_TYPE_LIST}`);
   }
 
-  const ids = namedIdParam(args.id, args.ids, "ids");
-  const path = namedPathParam(args.path, args.paths);
+  const { id: ids, path, idParam, pathParam } = foldTargetParams(args);
 
   if (ids == null && path == null) {
     throw new Error(idOrPathRequired(type));
@@ -63,6 +64,7 @@ export function parseDeleteCall(args: DeleteArgs): DeleteCall {
     type,
     ids,
     path,
+    names: { idParam, pathParam },
     sent: { id: args.id, ids: args.ids, path: args.path, paths: args.paths },
   };
 }

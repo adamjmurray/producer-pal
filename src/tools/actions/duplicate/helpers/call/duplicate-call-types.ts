@@ -16,6 +16,7 @@ import {
   type Target,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { type TargetNames } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { type ClipDestinations } from "../clip/clip-destinations.ts";
 import { type SlotCopySource } from "../clip/duplicate-clip-slot.ts";
 import { type ScenePass } from "../sources/scene-clips.ts";
@@ -57,6 +58,8 @@ export interface DuplicateCall {
   type: string;
   id?: string;
   path?: string;
+  /** The names those were sent under, for an error that quotes them */
+  names: TargetNames;
   count: number;
   /** Whether the call copies clips lane to lane instead of making a track */
   laneCopy: boolean;

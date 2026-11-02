@@ -23,11 +23,13 @@ const FILTER_NAMES =
  * entry before any of them runs.
  * @param search - The single search's args
  * @param searches - The `searches` entries, when the call sent them
+ * @param param - The name the caller sent them under
  * @throws Error naming the entries that have no query or filter
  */
 export function refuseUnfilteredSearch(
   search: LibrarySearchArgs,
   searches: LibraryBatchQuery[] | undefined,
+  param = "searches",
 ): void {
   if (searches == null) {
     if (!narrowsSearch(search)) {
@@ -46,7 +48,7 @@ export function refuseUnfilteredSearch(
 
   if (bare.length > 0) {
     throw new Error(
-      `searches ${bare.join(", ")} ${verb} no query or filter, so would list the library's first files. Add one of ${FILTER_NAMES} to ${target}.`,
+      `${param} ${bare.join(", ")} ${verb} no query or filter, so would list the library's first files. Add one of ${FILTER_NAMES} to ${target}.`,
     );
   }
 }

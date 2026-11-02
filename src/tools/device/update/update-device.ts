@@ -159,21 +159,25 @@ const DEVICE_WRITE: WriteSpec<
  * @throws Error when a list has a hole, or a path can't be parsed
  */
 function deviceTargets(call: DeviceCall): Array<Target<DevicePayload>> {
-  const named = namedTargets({ id: call.ids, path: call.path });
+  const named = namedTargets({
+    id: call.ids,
+    path: call.path,
+    ...call.names,
+  });
 
   // A path that doesn't parse is a mistake in the call, so it refuses the
   // call, wrapping or not; one that parses but names nothing skips only its
   // own target.
-  refuseUnparsableEntries(call.path, "path");
+  refuseUnparsableEntries(call.path, call.names.pathParam);
 
   // One rack from every device named, so one target.
   if (call.wrapInRack === true) {
-    const { ids, path, toPath } = call;
+    const { ids, path, names, toPath } = call;
 
     return [
       {
         named: named[0] as Target<DevicePayload>["named"],
-        data: { wrap: { ids, path, toPath, name: call.options.name } },
+        data: { wrap: { ids, path, names, toPath, name: call.options.name } },
       },
     ];
   }

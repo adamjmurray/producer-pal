@@ -13,6 +13,7 @@ import {
   idOrPathRequired,
   validateIdType,
 } from "#src/tools/shared/validation/id-validation.ts";
+import { type TargetNames } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { trackApiAtPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 
 export interface ReadTrackArgs {
@@ -26,6 +27,8 @@ export interface ReadTrackArgs {
   /** Hidden alias for id */
   trackId?: string;
   trackType?: string;
+  /** @internal The names `id` and `path` were sent under, set by the fan-out */
+  targetNames?: TargetNames;
   /** The Live Set's return tracks, when the caller already read them */
   returnTracks?: ReturnTrackInfo[];
   include?: string[];
@@ -51,7 +54,7 @@ export interface ReadTrackTarget {
  * @returns The track, plus the category and index it turned out to be
  */
 export function resolveReadTrackTarget(args: ReadTrackArgs): ReadTrackTarget {
-  const { trackIndex, trackType } = args;
+  const { trackIndex, trackType, targetNames } = args;
   const trackId = namedIdParam(args.id, args.trackId, "trackId");
   const path = namedParam(args.path, "path");
   const category = trackType ?? "regular";
@@ -69,8 +72,8 @@ export function resolveReadTrackTarget(args: ReadTrackArgs): ReadTrackTarget {
     // An id has to be checked; a path already said what kind of thing it names
     const track =
       trackId != null
-        ? validateIdType(trackId, "track")
-        : trackApiAtPath(path as string);
+        ? validateIdType(trackId, "track", targetNames?.idParam)
+        : trackApiAtPath(path as string, targetNames?.pathParam);
 
     return {
       track,

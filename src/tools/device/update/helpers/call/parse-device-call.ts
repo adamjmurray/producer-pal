@@ -5,15 +5,13 @@
 
 import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import {
-  namedIdParam,
-  namedPathParam,
-} from "#src/tools/shared/helpers/param-presence.ts";
 import { validateSendParams } from "#src/tools/shared/helpers/send-validation.ts";
 import { everyEntry } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { refuseNoWrite } from "#src/tools/shared/validation/lists/refuse-no-write.ts";
 import {
+  type TargetNames,
   type TargetParams,
+  foldTargetParams,
   targetCount,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { type UpdateDeviceArgs } from "../../update-device.ts";
@@ -26,6 +24,8 @@ export interface DeviceCall {
   /** The targets, folded onto the canonical params */
   ids?: string;
   path?: string;
+  /** The names those were sent under, for an error that quotes them */
+  names: TargetNames;
   /** The target params as sent, for a blank one to be reported */
   sent: TargetParams;
   /** What to apply to each target; `toPath` is paired per target instead */
@@ -52,8 +52,8 @@ export function parseDeviceCall(args: UpdateDeviceArgs): DeviceCall {
 
   // A value the schema coerced from a JSON null names nothing, so it must not
   // count as the caller having sent both addressing params.
-  const namedIds = namedIdParam(id, ids, "ids");
-  const namedPaths = namedPathParam(path, paths);
+  const folded = foldTargetParams({ id, ids, path, paths });
+  const { id: namedIds, path: namedPaths } = folded;
 
   if (namedIds == null && namedPaths == null) {
     throw new Error(idOrPathRequired("device"));
@@ -91,6 +91,7 @@ export function parseDeviceCall(args: UpdateDeviceArgs): DeviceCall {
   return {
     ids: namedIds,
     path: namedPaths,
+    names: { idParam: folded.idParam, pathParam: folded.pathParam },
     sent,
     options,
     toPath,

@@ -62,6 +62,7 @@ export function duplicateTargets(
     type,
     id: parsed.id,
     path: parsed.path,
+    names: parsed.names,
     toPath: parsed.toPath,
     toSlot: args.toSlot,
     arrangementStart: parsed.arrangementStart,

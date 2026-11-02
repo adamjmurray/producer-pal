@@ -28,14 +28,19 @@ const TYPE_WORDS: Partial<Record<LiveObjectType, string>> = {
  * Validates a single ID matches expected type
  * @param id - The ID to validate
  * @param expectedType - Tool-level type (e.g., "track", "device", "drum-pad")
+ * @param label - The param the id was sent under, when not `id` ("trackId")
  * @returns The LiveAPI instance for the validated ID
  * @throws If ID doesn't exist or type doesn't match
  */
-export function validateIdType(id: string, expectedType: string): LiveAPI {
+export function validateIdType(
+  id: string,
+  expectedType: string,
+  label = "id",
+): LiveAPI {
   const object = LiveAPI.from(id);
 
   if (!object.exists()) {
-    throw new Error(idDoesNotExist(id));
+    throw new Error(idDoesNotExist(id, undefined, label));
   }
 
   const mismatch = typeMismatch(object, expectedType);
@@ -52,12 +57,17 @@ export function validateIdType(id: string, expectedType: string): LiveAPI {
  * path ("t0/d1") says to send it as `path` instead.
  * @param id - The id as the caller wrote it
  * @param noun - What the id was meant to name, when the caller knows
+ * @param label - The param the id was sent under, when not `id` ("trackId")
  * @returns The reason
  */
-export function idDoesNotExist(id: string, noun?: string): string {
-  const what = noun == null ? "id" : `${noun} with id`;
+export function idDoesNotExist(
+  id: string,
+  noun?: string,
+  label = "id",
+): string {
+  const what = noun == null ? label : `${noun} with ${label}`;
 
-  return `${what} "${id}" does not exist${pathAsIdHint(id)}`;
+  return `${what} "${id}" does not exist${pathAsIdHint(id, label)}`;
 }
 
 /** An example path and where to find paths, for each kind of target. */
@@ -160,9 +170,10 @@ function isTypeMatch(
 /**
  * The advice for an id that is really a path, or "" for anything else.
  * @param id - The id as the caller wrote it
+ * @param label - The param the id was sent under
  * @returns The advice, or ""
  */
-function pathAsIdHint(id: string): string {
+function pathAsIdHint(id: string, label: string): string {
   // A real id is all digits. The letter test also keeps the legacy numeric
   // path spellings ("2", "2/3") out of the parser.
   if (!/[a-z]/i.test(id)) {
@@ -170,10 +181,10 @@ function pathAsIdHint(id: string): string {
   }
 
   try {
-    parseObjectPath(id, "id", true);
+    parseObjectPath(id, label, true);
   } catch {
     return "";
   }
 
-  return `; "${id.trim()}" is a path, so send it as path, not id`;
+  return `; "${id.trim()}" is a path, so send it as path, not ${label}`;
 }

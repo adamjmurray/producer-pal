@@ -109,7 +109,7 @@ describe("select id aliases", () => {
     setupSongViewMock();
 
     expect(() => select({ clipId: "id missing" })).toThrow(
-      'id "id missing" does not exist',
+      'clipId "id missing" does not exist',
     );
   });
 
