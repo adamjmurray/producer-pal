@@ -121,7 +121,7 @@ describe("ppal-manage update-producer-pal", () => {
     ).toBe(true);
     expect(
       text.endsWith(
-        '],nextSteps:"Now call ppal-connect to load the Skills and confirm the update."}',
+        '],nextSteps:"Now call ppal-connect without versionCheck to load the Skills and confirm the update."}',
       ),
     ).toBe(true);
     expect(text).toContain('{name:"PPal Plug-in Effect",status:"installed"');

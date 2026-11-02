@@ -32,8 +32,11 @@ export function isFullConnect(
 // Where the portal's update flow tells the model to re-check versions. If no
 // plain ppal-connect has gone through this portal, the chat can't have
 // connected, and a version check would leave it without Skills: say only the
-// plain connect. Once one has, it may have been another chat on a shared portal
-// (Claude Desktop), so offer both.
+// plain connect, and say "without versionCheck" — models read a bare
+// "call ppal-connect" here as a version check. Once one has, it may have been
+// another chat on a shared portal (Claude Desktop), so offer both.
+
+const FULL_CONNECT_CALL = "ppal-connect without versionCheck";
 
 /**
  * @param fullConnectSeen - Whether a plain ppal-connect has worked on this portal
@@ -42,7 +45,7 @@ export function isFullConnect(
 export function versionCheckSentence(fullConnectSeen: boolean): string {
   return fullConnectSeen
     ? `call ${VERSION_CHECK_CALL}. ${VERSION_CHECK_NEVER_CONNECTED}`
-    : "call ppal-connect.";
+    : `call ${FULL_CONNECT_CALL}.`;
 }
 
 /**
@@ -52,5 +55,5 @@ export function versionCheckSentence(fullConnectSeen: boolean): string {
 export function updatedNextSteps(fullConnectSeen: boolean): string {
   return fullConnectSeen
     ? `Now call ${VERSION_CHECK_CALL} to confirm the update. ${VERSION_CHECK_NEVER_CONNECTED}`
-    : "Now call ppal-connect to load the Skills and confirm the update.";
+    : `Now call ${FULL_CONNECT_CALL} to load the Skills and confirm the update.`;
 }

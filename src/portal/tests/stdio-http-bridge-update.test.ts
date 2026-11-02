@@ -203,7 +203,8 @@ describe("StdioHttpBridge update-producer-pal", () => {
   });
 
   describe("next step", () => {
-    const UNSEEN = "Now call ppal-connect to load the Skills and confirm";
+    const UNSEEN =
+      "Now call ppal-connect without versionCheck to load the Skills and confirm";
     const SEEN = "Now call ppal-connect with versionCheck: true to confirm";
 
     /**

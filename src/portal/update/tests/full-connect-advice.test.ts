@@ -31,9 +31,11 @@ const CHECK_OR_CONNECT = `call ppal-connect with versionCheck: true. ${VERSION_C
 
 describe("version check advice", () => {
   it("says only the plain connect until one has worked", () => {
-    expect(versionCheckSentence(false)).toBe("call ppal-connect.");
+    expect(versionCheckSentence(false)).toBe(
+      "call ppal-connect without versionCheck.",
+    );
     expect(updatedNextSteps(false)).toBe(
-      "Now call ppal-connect to load the Skills and confirm the update.",
+      "Now call ppal-connect without versionCheck to load the Skills and confirm the update.",
     );
   });
 

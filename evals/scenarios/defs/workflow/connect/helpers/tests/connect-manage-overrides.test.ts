@@ -71,9 +71,9 @@ describe("canned results", () => {
     const [block] = texts(updateSuccess(false));
 
     expect(block).toContain(
-      "Now call ppal-connect to load the Skills and confirm the update.",
+      "Now call ppal-connect without versionCheck to load the Skills and confirm the update.",
     );
-    expect(block).not.toContain("versionCheck");
+    expect(block).not.toContain(VERSION_CHECK_CALL);
   });
 
   it("install reports the files and asks for a restart", () => {
