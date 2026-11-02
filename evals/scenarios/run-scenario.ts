@@ -22,6 +22,7 @@ import {
 import { isQuietMode } from "./helpers/quiet-mode.ts";
 import { openLiveSetWithRecovery } from "./helpers/open-live-set/open-live-set-recovery.ts";
 import { type RunEnv } from "./run-env/run-env.ts";
+import { clearProjectContextBackup } from "./run-scenario/clear-project-context-backup.ts";
 import { startToolOverrideProxy } from "./run-scenario/tool-override-proxy.ts";
 import {
   computeTotalUsage,
@@ -89,12 +90,13 @@ export async function runScenario(
     scenario.instructions === null
       ? undefined
       : (scenario.instructions ?? SYSTEM_INSTRUCTION);
+  const liveSetPath = resolveLiveSetPath(scenario.liveSet);
 
   try {
+    clearProjectContextBackup(liveSetPath);
+
     // 1. Open Live Set and wait for MCP
     if (!skipLiveSetOpen) {
-      const liveSetPath = resolveLiveSetPath(scenario.liveSet);
-
       if (!isQuietMode()) {
         console.log(
           "\n" + styleText("gray", "Opening Live Set: " + liveSetPath),
@@ -204,18 +206,42 @@ export async function runScenario(
       await session.close();
     }
 
-    try {
-      await proxy?.close();
-    } catch {
-      // Nothing left to serve; the scenario result is already determined
-    }
+    await resetAfterScenario(proxy, liveSetPath);
+  }
+}
 
-    // Reset config to defaults after scenario completes
-    try {
-      await resetConfig();
-    } catch {
-      // Ignore reset errors - scenario result is already determined
-    }
+/**
+ * Undo what a scenario changed outside its MCP session. Failures are only
+ * logged: the scenario result is already determined.
+ *
+ * @param proxy - The scenario's tool-override proxy, if it had one
+ * @param liveSetPath - Path to the scenario's .als file
+ */
+async function resetAfterScenario(
+  proxy: StatelessMcpServer | null,
+  liveSetPath: string,
+): Promise<void> {
+  try {
+    await proxy?.close();
+  } catch {
+    // Nothing left to serve
+  }
+
+  try {
+    await resetConfig();
+  } catch {
+    // Ignore reset errors
+  }
+
+  try {
+    clearProjectContextBackup(liveSetPath);
+  } catch (error) {
+    console.warn(
+      styleText(
+        "yellow",
+        `could not delete the project context backup: ${errorMessage(error)}`,
+      ),
+    );
   }
 }
 

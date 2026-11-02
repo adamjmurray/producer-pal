@@ -96,7 +96,7 @@ export const contextFollowProject: EvalScenario = contextFollowScenario({
   id: "context-follow-project",
   description: "Honors the house-style rules in project context",
 
-  // resetConfig() reverts the project layer, so it needs no teardown.
+  // The runner reverts the project layer, so it needs no teardown.
   config: { projectContext: PROJECT_CONTEXT },
   seed: seedContext({ clearSlots: [LEAD_SLOT] }),
 

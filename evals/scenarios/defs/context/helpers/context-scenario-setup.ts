@@ -7,7 +7,8 @@
  * Fixtures and the setup/teardown pair every ppal-context scenario shares.
  *
  * Seeding note: the project layer is a config value (`config.projectContext`),
- * which the runner reverts via resetConfig(). The global and memory layers are
+ * which the runner reverts (resetConfig() plus deleting the backup file the
+ * device writes beside the Set). The global and memory layers are
  * REAL FILES under ~/.producer-pal/ on the machine running Live, and the eval
  * process (which talks to that server over HTTP) cannot redirect them with
  * PRODUCER_PAL_CONFIG_DIR. So they are seeded through the tool itself in

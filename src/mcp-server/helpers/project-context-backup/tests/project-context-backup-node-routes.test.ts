@@ -12,10 +12,10 @@ import { dispatchNodeRoute } from "#src/mcp-server/tests/config-dir-test-helpers
 import { registerProjectContextBackupNodeRoutes } from "../project-context-backup-node-routes.ts";
 import {
   deleteProjectContextSidecar,
-  projectContextSidecarPath,
   readProjectContextSidecar,
   writeProjectContextSidecar,
 } from "../project-context-backup-store.ts";
+import { projectContextSidecarPath } from "../project-context-sidecar-path.ts";
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
   nodeLog: vi.fn(),

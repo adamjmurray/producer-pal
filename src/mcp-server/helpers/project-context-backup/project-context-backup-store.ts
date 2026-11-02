@@ -53,25 +53,9 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { nodeError } from "../../node-for-max-logger.ts";
-
-/** Filename of the project-context backup, dropped beside the Live Set. */
-const SIDECAR_FILENAME = "Producer Pal Project Context.md";
-
-/**
- * Absolute path of the backup sidecar for a given Live Set file. Derived from
- * the .als's DIRECTORY and never its basename, so every Set in a Live Project
- * shares one sidecar and a Set can be renamed without orphaning it. See the
- * file header before changing this — the folder keying is a requirement.
- *
- * @param liveSetPath - Absolute path to the Live Set (.als) file
- * @returns Absolute path to the sidecar markdown file
- */
-export function projectContextSidecarPath(liveSetPath: string): string {
-  return join(dirname(liveSetPath), SIDECAR_FILENAME);
-}
+import { projectContextSidecarPath } from "./project-context-sidecar-path.ts";
 
 /**
  * What a sidecar read found. "absent" and "unreadable" are kept apart because
