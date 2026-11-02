@@ -200,6 +200,26 @@ describe("ppal-read-device", () => {
     expect(padChains.chains!.map((chain) => chain.type)).toStrictEqual([
       "drum-chain",
     ]);
+
+    // Test 5: a single pad's chains always show the pad's fader, even at 0 dB /
+    // center, so the instrument's own volume isn't mistaken for it
+    for (const chain of padChains.chains!) {
+      expect(typeof chain.gainDb).toBe("number");
+      expect(typeof chain.pan).toBe("number");
+    }
+
+    // Test 6: same for one of the pad's chains read by path
+    const padChainResult = await ctx.client!.callTool({
+      name: "ppal-read-device",
+      arguments: { path: "t0/d0/pC1/c0" },
+    });
+    const padChain =
+      parseToolResult<NonNullable<ReadDeviceResult["chains"]>[0]>(
+        padChainResult,
+      );
+
+    expect(typeof padChain.gainDb).toBe("number");
+    expect(typeof padChain.pan).toBe("number");
   });
 
   it("reads nested racks with deep paths", async () => {
@@ -412,6 +432,8 @@ interface ReadDeviceResult {
     name: string;
     type: string;
     path?: string;
+    gainDb?: number;
+    pan?: number;
     devices?: ReadDeviceResult[];
   }>;
   sample?: string;

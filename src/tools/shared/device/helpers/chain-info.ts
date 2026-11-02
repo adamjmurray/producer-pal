@@ -31,6 +31,12 @@ export interface BuildChainInfoOptions {
    * chains, and says so itself when it doesn't. Default false.
    */
   showAutomation?: boolean;
+  /**
+   * True to report gainDb and pan even at 0 dB / center. Set for a drum pad's
+   * chains read on their own, so a model sees the pad's fader and doesn't
+   * reach for the instrument's own volume. Default false.
+   */
+  showFader?: boolean;
 }
 
 /**
@@ -38,14 +44,20 @@ export interface BuildChainInfoOptions {
  * @param chain - Chain Live API object
  * @param options - Build options
  * @returns Chain info object with id, path, type, name, color, mappedPitch,
- *   chokeGroup, non-default mixer settings (gainDb, pan, sends), automation
- *   (when asked for), and state
+ *   chokeGroup, mixer settings (gainDb and pan when non-default or `showFader`;
+ *   sends when turned up), automation (when asked for), and state
  */
 export function buildChainInfo(
   chain: LiveAPI,
   options: BuildChainInfoOptions = {},
 ): Record<string, unknown> {
-  const { path, devices, deviceCount, showAutomation = false } = options;
+  const {
+    path,
+    devices,
+    deviceCount,
+    showAutomation = false,
+    showFader = false,
+  } = options;
 
   const chainInfo: Record<string, unknown> = {
     id: chain.id,
@@ -85,7 +97,7 @@ export function buildChainInfo(
     }
   }
 
-  const { values, automatable } = readChainMixerAndParams(chain);
+  const { values, automatable } = readChainMixerAndParams(chain, showFader);
 
   Object.assign(chainInfo, values);
 
@@ -132,6 +144,8 @@ export function buildAddressedChainInfo(
     path,
     devices: readDevices(follows),
     showAutomation: follows,
+    // A drum chain read on its own is one pad's layer: always show its fader.
+    showFader: chain.type === "DrumChain",
   });
 
   if (!follows) {

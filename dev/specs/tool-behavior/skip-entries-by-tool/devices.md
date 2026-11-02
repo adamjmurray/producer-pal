@@ -63,6 +63,12 @@ Part of [Skip entries, tool by tool](README.md).
   `arrangement automation unknown while the track plays from Session` detail,
   while the track plays from Session. Params no slot drives read as before, and
   so does a wrapper whose slots can't be read.
+- **read-device shows a pad's fader even at its defaults.** A read aimed at one
+  pad (its path or id, or one of its chains by path or id) lists each drum
+  chain's `gainDb` and `pan` even at 0 dB / center, so the pad's own fader is
+  never mistaken for missing and the instrument's volume reached for instead. A
+  rack or pad-list read and any other chain list only the non-default ones.
+  `sends` is listed only when turned up, in every read.
 - **create-device's `hosted: true` loads each `device` as a VST3, AU or VST2
   plug-in in a wrapper.** Every name is looked up in Live's plug-in database,
   and the wrapper that suits its kind (instrument or effect) in Live's browser,

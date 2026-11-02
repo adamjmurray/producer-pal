@@ -48,6 +48,12 @@ their layers, as `drum-pads` does.
 | -------- | --------- | ----------------------------------------- |
 | `chains` | `Chain[]` | Chain objects with devices or deviceCount |
 
+A chain lists `gainDb`, `pan` and `sends` only when non-default (0 dB, center,
+off), except when the read targets a single pad: its drum chains always carry
+`gainDb` and `pan`, so the pad's fader is visible and the instrument's own
+volume isn't reached for. That covers a pad path or id read with `chains`, and a
+read of one of its chains by path or id. Whole-rack reads still omit defaults.
+
 A chain whose mixer has an arrangement lane lists the fields in `automation`,
 named as the chain names them: `["gainDb", "pan (overridden)", "send A-Echo"]`
 (` (overridden)` once the user overrode one). A field at its default value is

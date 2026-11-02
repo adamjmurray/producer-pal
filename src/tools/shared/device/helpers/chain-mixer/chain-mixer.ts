@@ -93,10 +93,15 @@ export type AutomatableField = [name: string | (() => string), param: LiveAPI];
  * Read a chain's mixer as {@link readChainMixer} does, and hand back its
  * parameters, so a caller wanting their automation doesn't build them again.
  * @param chain - Chain or DrumChain LiveAPI object
- * @returns The non-default settings, and every mixer parameter by the name the
- *   chain entry gives it (a send's name is only worked out when asked for)
+ * @param showFader - True to report gainDb and pan even at their defaults
+ * @returns The non-default settings (plus gainDb and pan when `showFader`), and
+ *   every mixer parameter by the name the chain entry gives it (a send's name
+ *   is only worked out when asked for)
  */
-export function readChainMixerAndParams(chain: LiveAPI): {
+export function readChainMixerAndParams(
+  chain: LiveAPI,
+  showFader = false,
+): {
   values: Record<string, unknown>;
   automatable: AutomatableField[];
 } {
@@ -114,17 +119,17 @@ export function readChainMixerAndParams(chain: LiveAPI): {
   // Round before the check, same as pan below.
   const roundedGainDb = roundDisplayValue(gainDb, roundGainDb);
 
-  if (typeof roundedGainDb === "number" && roundedGainDb !== 0) {
+  if (typeof roundedGainDb === "number" && (showFader || roundedGainDb !== 0)) {
     info.gainDb = roundedGainDb;
   }
 
   const pan = panning.getProperty("value");
 
   // Round before the check: sub-1% noise is centered as far as Live is
-  // concerned, and reporting it as `pan: 0` would contradict "non-default only".
+  // concerned, so it counts as the default.
   const roundedPan = roundDisplayValue(pan, roundPan);
 
-  if (typeof roundedPan === "number" && roundedPan !== 0) {
+  if (typeof roundedPan === "number" && (showFader || roundedPan !== 0)) {
     info.pan = roundedPan;
   }
 

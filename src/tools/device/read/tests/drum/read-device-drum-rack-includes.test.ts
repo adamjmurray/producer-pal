@@ -111,6 +111,46 @@ describe("readOneDevice on a Drum Rack", () => {
   });
 });
 
+describe("a drum chain's fader at its defaults", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearMockRegistry();
+    setupKit();
+  });
+
+  const FADER = { gainDb: 0, pan: 0 };
+
+  it("is shown when the read targets one pad, by path or by id", () => {
+    for (const target of [{ path: "t1/d0/pC1" }, { id: "pad-36" }]) {
+      const result = readOneDevice({ ...target, include: ["chains"] });
+      const chains = result.chains as Record<string, unknown>[];
+
+      expect(chains[0]).toStrictEqual(expect.objectContaining(FADER));
+    }
+  });
+
+  it("is shown when the read targets one of the pad's chains", () => {
+    expect(readOneDevice({ path: "t1/d0/pC1/c0" })).toStrictEqual(
+      expect.objectContaining(FADER),
+    );
+    expect(readOneDevice({ id: "chain-1" })).toStrictEqual(
+      expect.objectContaining(FADER),
+    );
+  });
+
+  it("is left out of a whole-rack read", () => {
+    const result = readOneDevice({
+      id: "drum-rack-1",
+      include: ["chains"],
+      maxDepth: 1,
+    });
+    const pads = result.drumPads as { chains: Record<string, unknown>[] }[];
+
+    expect(pads[0]!.chains[0]).not.toHaveProperty("gainDb");
+    expect(pads[0]!.chains[0]).not.toHaveProperty("pan");
+  });
+});
+
 describe("readOneDevice paramSearch", () => {
   beforeEach(() => {
     vi.clearAllMocks();

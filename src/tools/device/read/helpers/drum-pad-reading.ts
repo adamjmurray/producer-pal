@@ -336,6 +336,8 @@ function attachDrumPadChains(
       path: chainPath,
       devices,
       showAutomation: follows,
+      // One pad's chains: always show the fader, even at 0 dB / center.
+      showFader: true,
     });
   });
 
