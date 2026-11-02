@@ -165,7 +165,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     transforms: param(z.string().optional(), {
       default:
-        "transform expressions applied AFTER merging notes (broadcast across the clips); newline-separated for multiple. Use clip.index / clipseq() for per-clip variation. Note-count operations (ratchet()/repeat()/split()/merge() - see Skills) change how many notes exist; prefer them over rewriting notes by hand",
+        "transform expressions applied AFTER merging notes (broadcast across the clips); newline-separated for multiple. Use clip.index / clipseq() for per-clip variation. Note-count operations (ratchet()/repeat()/split()/merge() - see Skills) change how many notes exist; prefer them over rewriting notes by hand; waveform periods are note values (sin(1bar)), never radians",
       smallModel: null,
     }),
     preTransforms: param(z.string().optional(), {
