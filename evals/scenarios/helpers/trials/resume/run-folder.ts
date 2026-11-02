@@ -8,7 +8,6 @@
  */
 
 import { join } from "node:path";
-import { styleText } from "node:util";
 import { RESULTS_DIR } from "../../json-results/types.ts";
 import { writeRunRecord } from "./run-record.ts";
 import { loadResumedTrials, type ResumedTrials } from "./resumed-trials.ts";
@@ -39,15 +38,6 @@ export async function startRunFolder(
 
   if (options.save !== false) {
     await writeRunRecord(dir, { argv, options: recorded });
-  }
-
-  if (resumed != null) {
-    console.log(
-      styleText(
-        "gray",
-        `Resuming ${runId}: ${resumed.done.size} trial(s) already done`,
-      ),
-    );
   }
 
   return resumed;

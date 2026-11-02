@@ -6,7 +6,7 @@
 import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { readRunRecord } from "./run-record.ts";
 import { startRunFolder } from "./run-folder.ts";
 
@@ -14,7 +14,6 @@ let dir: string;
 
 beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), "run-folder-"));
-  vi.spyOn(console, "log").mockImplementation(() => undefined);
 });
 
 afterEach(async () => {
@@ -60,8 +59,5 @@ describe("startRunFolder", () => {
     );
 
     expect(resumed?.done.size).toBe(1);
-    expect(vi.mocked(console.log).mock.calls.join("")).toContain(
-      "Resuming run-1: 1 trial(s) already done",
-    );
   });
 });

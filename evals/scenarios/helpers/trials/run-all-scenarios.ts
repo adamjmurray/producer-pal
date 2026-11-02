@@ -19,6 +19,7 @@ import { type ResultsByScenario } from "../reporting/report-table.ts";
 import { type RunEnv } from "../../run-env/run-env.ts";
 import { type EvalScenario } from "../../types.ts";
 import { liveSetLeftClean, printTrialSummary } from "./multi-trial-runs.ts";
+import { describeResume } from "./resume/resume-plan.ts";
 import { dropReplacedError, trialKey } from "./resume/resumed-trials.ts";
 import { describeRunAbort, stalledModels } from "./run-abort.ts";
 import { emitSkipped, runTrial, type RunContext } from "./run-trials.ts";
@@ -55,6 +56,20 @@ export async function runAllScenarios(
     activeSpecs: modelSpecs,
   };
 
+  if (ctx.resumed != null) {
+    const planned = plannedTrialKeys(
+      scenarios,
+      modelSpecs,
+      runEnv,
+      label,
+      ctx.repeatCount,
+    );
+
+    console.log(
+      styleText("gray", describeResume(ctx.runId, ctx.resumed, planned)),
+    );
+  }
+
   for (let round = 1; round <= ctx.repeatCount; round++) {
     if (ctx.repeatCount > 1) {
       console.log(styleText("bold", `\nRound ${round}/${ctx.repeatCount}\n`));
@@ -74,6 +89,43 @@ export async function runAllScenarios(
   }
 
   return resultsByScenario;
+}
+
+/**
+ * The key of every trial a run plans, by the same rules `runAllScenarios`
+ * follows.
+ *
+ * @param scenarios - Scenarios to run
+ * @param modelSpecs - Models to test
+ * @param runEnv - The active run environment
+ * @param label - The run-environment label (see `envLabel`)
+ * @param repeatCount - Trials per scenario and model
+ * @returns Trial keys (see `trialKey`)
+ */
+export function plannedTrialKeys(
+  scenarios: EvalScenario[],
+  modelSpecs: ModelSpec[],
+  runEnv: RunEnv,
+  label: string,
+  repeatCount: number,
+): string[] {
+  const keys: string[] = [];
+
+  for (let round = 1; round <= repeatCount; round++) {
+    for (const scenario of scenarios) {
+      if (
+        !isRoundPlanned(shouldSkipScenario(scenario, runEnv) != null, round)
+      ) {
+        continue;
+      }
+
+      for (const spec of modelSpecs) {
+        keys.push(trialKey(scenario.id, specKey(spec), label, round));
+      }
+    }
+  }
+
+  return keys;
 }
 
 type ModelResults = Map<string, Map<string, JsonEvalResult[]>>;
@@ -118,14 +170,14 @@ async function runScenarioRound(
   // same for every model and every round.
   const skipReason = shouldSkipScenario(scenario, runEnv);
 
-  if (skipReason != null && round > 1) {
+  if (!isRoundPlanned(skipReason != null, round)) {
     return;
   }
 
   const latest: ModelResults = new Map();
 
   for (const spec of state.activeSpecs) {
-    const modelKey = `${spec.provider}/${spec.model}`;
+    const modelKey = specKey(spec);
     const results = modelResults.get(modelKey)?.get(label) ?? [];
 
     modelResults.set(modelKey, new Map([[label, results]]));
@@ -196,9 +248,7 @@ function dropStalledModels(
   latest: ModelResults,
 ): ModelSpec[] {
   const stalled = stalledModels(streaks, latest);
-  const kept = specs.filter(
-    (spec) => !stalled.has(`${spec.provider}/${spec.model}`),
-  );
+  const kept = specs.filter((spec) => !stalled.has(specKey(spec)));
 
   if (kept.length === 0) {
     const [modelKey, runs] = [...stalled].at(-1) ?? ["", []];
@@ -216,4 +266,26 @@ function dropStalledModels(
   }
 
   return kept;
+}
+
+/**
+ * Whether a round has a trial of a scenario: a skipped scenario is reported
+ * once, in round 1.
+ *
+ * @param skipped - Whether the run environment skips the scenario
+ * @param round - Round number, 1-indexed
+ * @returns True when the round has a trial
+ */
+function isRoundPlanned(skipped: boolean, round: number): boolean {
+  return !skipped || round === 1;
+}
+
+/**
+ * A model's key in results and trial keys.
+ *
+ * @param spec - The model
+ * @returns `provider/model`
+ */
+function specKey(spec: ModelSpec): string {
+  return `${spec.provider}/${spec.model}`;
 }

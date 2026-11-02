@@ -394,6 +394,28 @@ describe("runAllScenarios resume", () => {
     ]);
   });
 
+  it("says what is left, counting a skipped scenario once", async () => {
+    vi.mocked(shouldSkipScenario).mockImplementation((s) =>
+      s.id === "skip" ? "no remote script" : null,
+    );
+
+    await runAllScenarios(
+      [scenario("s1"), scenario("skip")],
+      [A],
+      RUN_ENV,
+      "default",
+      resumedCtx(
+        3,
+        [key("s1", "a", 1), key("skip", "a", 1)],
+        [key("s1", "a", 2)],
+      ),
+    );
+
+    expect(vi.mocked(console.log).mock.calls.join("\n")).toContain(
+      "Resuming r: 2 of 4 done; 2 to run (1 errored, 1 not run)",
+    );
+  });
+
   it("leaves files alone with --no-save", async () => {
     await runAllScenarios([scenario("s1")], [A], RUN_ENV, "default", {
       ...resumedCtx(1, []),
