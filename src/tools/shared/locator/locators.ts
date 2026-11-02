@@ -102,7 +102,8 @@ export function findLocator(
 }
 
 /**
- * Find all locators matching a name
+ * Find all locators matching a name. Both sides are trimmed: callers trim what
+ * they're sent, and Live keeps the spaces a user typed.
  * @param liveSet - The live_set LiveAPI object
  * @param locatorName - Name to match
  * @returns Array of matching locators with their times
@@ -111,9 +112,11 @@ export function findLocatorsByName(
   liveSet: LiveAPI,
   locatorName: string,
 ): LocatorMatchWithTime[] {
+  const wanted = locatorName.trim();
+
   // Every nameless locator reads back "", so without this guard an empty
   // locatorName would match (and could delete) every one of them.
-  if (locatorName === "") {
+  if (wanted === "") {
     return [];
   }
 
@@ -122,9 +125,8 @@ export function findLocatorsByName(
 
   for (let i = 0; i < locatorIds.length; i++) {
     const locator = getLocatorAt(locatorIds, i);
-    const name = locator.getName();
 
-    if (name === locatorName) {
+    if (locator.getName().trim() === wanted) {
       const time = locator.getProperty("time") as number;
 
       matches.push({ locator, index: i, time });
@@ -210,7 +212,7 @@ function locatorPosition(name: string, id: string, names: string[]): string {
     !/[[\],]/.test(name) &&
     !name.endsWith("\\") &&
     !isLocatorId(name) &&
-    names.indexOf(name) === names.lastIndexOf(name);
+    names.filter((other) => other.trim() === name).length === 1;
 
   return `loc:${usable ? name : id}`;
 }
