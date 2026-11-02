@@ -28,6 +28,7 @@ import {
   type ThinkingByModel,
 } from "./run-env/parse-thinking-arg.ts";
 import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
+import { keepDisplayAwake } from "./helpers/open-live-set/keep-display-awake.ts";
 import { type JevSettings } from "./helpers/judge/jev-first-judge.ts";
 import { type JudgeOverride } from "./helpers/judge/judge-section.ts";
 import { resolveJevSettings } from "./helpers/judge/jev-settings.ts";
@@ -383,6 +384,8 @@ async function runEvaluation(
     } else if (options.jev && options.skipJudge) {
       console.log(styleText("gray", "--skip-judge: Jev is not used"));
     }
+
+    keepDisplayAwake();
 
     const runId = options.resume ?? generateRunId();
     const resumed = await startRunFolder(runId, options, argv, recorded);
