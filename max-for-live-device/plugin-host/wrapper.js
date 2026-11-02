@@ -61,8 +61,10 @@ function request(id, json) {
     } else if (before != null) {
       deferred = true;
       changeThenFinish(id, result, before);
+    } else if (isRead(req, result)) {
+      reply(id, { success: true, ...result });
     } else {
-      finish(id, result, isRead(req, result) ? "read" : "request");
+      finish(id, result);
     }
   } catch (error) {
     deferred = false;
@@ -74,8 +76,8 @@ function request(id, json) {
 
 // Inside the request, so the tool call's own undo step covers the write.
 // A failed write must not fail the request: say so in the reply instead.
-function finish(id, result, why = "request") {
-  const stateError = saveState(why);
+function finish(id, result) {
+  const stateError = saveState("request");
 
   reply(id, {
     success: true,
@@ -107,7 +109,8 @@ function settleThenFinish(id, result) {
   });
 }
 
-// Ops that change nothing, so they don't save a state that only slots moved.
+// Ops that change nothing. They never save: a write would add an undo step to
+// a read and mark the Set changed. The poll saves any other change.
 const READ_OPS = new Set(["info", "params", "slots"]);
 
 function isRead(req, result) {
@@ -261,7 +264,7 @@ function load({ format, file, sub, name, synth }) {
 
   state.plugin = label;
   nameDevice(label);
-  saveName(label);
+  saveName(label, String(file));
   showName(label);
   // A mapping stored before this load was for another plug-in, so there is
   // nothing left to wait for.
@@ -521,7 +524,7 @@ function saveState(why) {
     // Slots wrote since the last save and nothing else changed the plug-in:
     // take the new state as saved without writing it, so automation never adds
     // undo steps. (A program change made while slots move is missed too.)
-    if ((why === "read" || why === "poll") && slotWriteAt > savedAt) {
+    if (why === "poll" && slotWriteAt > savedAt) {
       lastSaved = current;
       savedAt = Date.now();
 
@@ -1048,12 +1051,12 @@ function nameDevice(label) {
 
 // After a reload, vst~ knows only the file, so the name loaded with it is
 // saved with the Set. The device name can't hold it: it may be renamed.
-function saveName(name) {
+function saveName(name, file) {
   try {
     const dict = new Dict();
 
     dict.set("name", name);
-    dict.set("file", loadedFile());
+    dict.set("file", file);
     this.patcher.getnamed("vstname").message("dictionary", dict.name);
   } catch (error) {
     post(`ppal-plugin-host: could not save the plug-in name: ${error}\n`);
@@ -1062,14 +1065,17 @@ function saveName(name) {
 
 // Trusted only for the file it was saved with.
 function storedName() {
+  const stored = storedNameDict();
+  const name = stored?.get("name");
+
+  return name && stored.get("file") === loadedFile() ? String(name) : null;
+}
+
+function storedNameDict() {
   const stored = this.patcher.getnamed("vstname")?.getvalueof();
 
   // Nothing stored yet: pattr answers with a number, not a dict.
-  if (stored == null || typeof stored.get !== "function") return null;
-
-  const name = stored.get("name");
-
-  return name && stored.get("file") === loadedFile() ? String(name) : null;
+  return stored != null && typeof stored.get === "function" ? stored : null;
 }
 
 // The Open button (a live.text button, which sends bang): opens the
@@ -1088,8 +1094,17 @@ function showName(name) {
   this.patcher.getnamed("pluginname")?.message("set", text);
 }
 
+// "<prefix><file> <id>", and the id can be missing right after a load. So
+// "Pro-Q 4" with no id reads like file "Pro-Q" with id 4: when the file this
+// device loaded fits either reading, it wins.
 function loadedFile() {
-  return /^C74_\w+:\/(.*?)( -?\d+)?$/.exec(loadedPlugin() ?? "")?.[1] ?? null;
+  const match = /^C74_\w+:\/(.*?)( -?\d+)?$/.exec(loadedPlugin() ?? "");
+
+  if (match == null) return null;
+
+  const known = storedNameDict()?.get("file");
+
+  return known === `${match[1]}${match[2] ?? ""}` ? String(known) : match[1];
 }
 
 // After a Set reload or duplicate, vst~ restores the plug-in on its own.
@@ -1104,15 +1119,24 @@ function ownDeviceId() {
   return String(new LiveAPI("this_device").id);
 }
 
-// Max caps a symbol at 32,767 chars, so long replies go out in chunks.
-const CHUNK_SIZE = 30000;
+// Max cuts a symbol at ~32,767 UTF-8 bytes. A UTF-16 unit is at most 3 bytes,
+// so 10,000 units always fit.
+const CHUNK_SIZE = 10000;
 
 function reply(id, payload) {
   const json = JSON.stringify(payload);
   const chunks = [];
+  let start = 0;
 
-  for (let i = 0; i < json.length; i += CHUNK_SIZE) {
-    chunks.push(json.slice(i, i + CHUNK_SIZE));
+  while (start < json.length) {
+    let end = Math.min(start + CHUNK_SIZE, json.length);
+    const last = json.charCodeAt(end - 1);
+
+    // Don't cut a surrogate pair: each half would arrive as U+FFFD.
+    if (end < json.length && last >= 0xd800 && last <= 0xdbff) end--;
+
+    chunks.push(json.slice(start, end));
+    start = end;
   }
 
   messnamed(REPLY_CHANNEL, "plugin_host_response", id, ...chunks);

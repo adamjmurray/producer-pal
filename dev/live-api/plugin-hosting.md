@@ -41,8 +41,9 @@ No sockets or ports: named Max `send`/`receive` inside Live's one Max instance.
   needed; ids change on Set reload, which Producer Pal re-reads anyway.
 - Reply: the wrapper sends `plugin_host_response id chunk1 … chunkN` on
   `ppal-plugin-host-res`; the Producer Pal patch routes that channel into its
-  v8. Max caps a symbol at 32,767 chars, so replies are split into 30 KB chunks
-  (Serum's full param list is 150 KB).
+  v8. Max cuts a symbol at ~32,767 UTF-8 bytes, so replies are split into
+  10,000-char chunks, never inside a surrogate pair (Serum's full param list is
+  150 KB).
 - An absent wrapper just never answers: the request times out (3 s, or 20 s for
   `load`).
 
@@ -190,8 +191,10 @@ Live saves the plug-in's state in a hidden blob parameter, not through `vst~`.
   it doesn't send the state back to the plug-in.
 - Writing `vststate` is one undo step, whatever the size. The wrapper writes it
   only when the state changed, by comparing state strings:
-  - at the end of each request, before it replies, so the tool call's own undo
-    step covers it (one `ppal-update-device` call is 1 step)
+  - at the end of each request that can change the plug-in, before it replies,
+    so the tool call's own undo step covers it. Reads (`info`, `params`,
+    `slots`) never write: that would add an undo step and mark the Set changed
+    (one `ppal-update-device` call is 1 step)
   - (`set` and `write` first wait for the state to change, for at most 100 ms: a
     plug-in applies a written value 1–5 ms after the request. Saving sooner
     found nothing new and left the write to the poll, so a duplicate made just
@@ -206,8 +209,8 @@ Live saves the plug-in's state in a hidden blob parameter, not through `vst~`.
   - when playback stops, if edits are still pending
   - every 2 s (while playing too) when the state differs, which catches changes
     that send no parameter change, such as a program change
-  - not when slots moved the plug-in: reads and the poll adopt that state
-    without writing (see Automation)
+  - not when slots moved the plug-in: the poll adopts that state without writing
+    (see Automation)
 - **Gotcha:** Live saves only what was last written to `vststate`, never the
   live plug-in state, and a duplicate or a same-file hotswap restores from it
   too. A state change not written yet is lost.
