@@ -10,7 +10,7 @@
 //      pname <names...>      vst~ parameter names (params)
 //      pval <index> <value> <display>   vst~ get/changed output (valuemode 2)
 //      slot <n> <value>      automation dial n (0-1), forwarded to its param
-//      openeditor <n>        the Open button; a press opens the plug-in's window
+//      openeditor bang       the Open button: opens the plug-in's window
 // Out: messages to vst~
 //
 // The plug-in's state lives in two pattrs: "vstmirror" is bound to vst~ and
@@ -1082,9 +1082,10 @@ function storedName() {
   return name && stored.get("file") === loadedFile() ? String(name) : null;
 }
 
-// The Open button: opens the plug-in's own window.
-function openeditor(value) {
-  if (Number(value)) outlet(0, "open");
+// The Open button (a live.text button, which sends bang): opens the
+// plug-in's own window.
+function openeditor() {
+  outlet(0, "open");
 }
 
 // The name row in the device panel; no name means no plug-in.

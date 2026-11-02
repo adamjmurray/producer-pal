@@ -71,8 +71,9 @@ debug-only `ppal-plugin-host` tool reaches the raw ops. Only a build with
 Presentation mode shows three things; `vst~` is not in it. A name row: the
 `pluginname` comment ("No plug-in loaded" until a plug-in is there) and an
 **Open** button (`openeditor`, a `live.text` button with `parameter_enable` 0,
-so no automation and no undo step). Below it, the `slotlist` comment. A press
-goes `openeditor` → `prepend openeditor` → code box, and `wrapper.js` sends
+so no automation and no undo step; it must stay in button mode, `mode` 0, since
+the default is a toggle). Below it, the `slotlist` comment. A press sends `bang`
+and goes `openeditor` → `prepend openeditor` → code box, and `wrapper.js` sends
 `open` to `vst~`, which opens the plug-in's own window (`wclose` closes it). The
 name is set after a load, a failed load ("No plug-in loaded"), and once the
 Set's restore has run, from the same sources as `info`'s `plugin`.
