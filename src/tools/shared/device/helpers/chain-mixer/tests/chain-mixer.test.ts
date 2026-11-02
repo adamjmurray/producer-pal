@@ -320,6 +320,14 @@ describe("applyChainMixer", () => {
       expect(first?.set).toHaveBeenCalledWith("display_value", 0);
     });
 
+    it("trims the return each sends entry names", () => {
+      const [first] = registerChainWithSends();
+
+      applyMixer({ sends: [{ return: " a ", gainDb: -6 }] });
+
+      expect(first?.set).toHaveBeenCalledWith("display_value", -6);
+    });
+
     it("matches a return chain by id", () => {
       // Same name on both: no name or letter tells them apart, so this is the
       // case only an id can address.

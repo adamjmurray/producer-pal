@@ -30,6 +30,17 @@ export const sendsInputSchema = z
 export type SendEntry = NonNullable<z.infer<typeof sendsInputSchema>>[number];
 
 /**
+ * Trim each entry's return, as every other string value is trimmed.
+ * @param sends - The `sends` list, as the caller sent it
+ * @returns The entries with their returns trimmed
+ */
+export function trimSendReturns<T extends { return: string }>(
+  sends: T[] | undefined,
+): T[] {
+  return (sends ?? []).map((send) => ({ ...send, return: send.return.trim() }));
+}
+
+/**
  * The deprecated `sendGainDb` + `sendReturn` pair, for the tools that publish
  * `sends`. Both are still honored and warn, naming the `sends` call this one
  * means. Spread into the tool's input schema.

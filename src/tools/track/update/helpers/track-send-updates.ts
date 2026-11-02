@@ -25,7 +25,10 @@ import {
   AUTOMATION_OVERRIDDEN,
   overridesAutomation,
 } from "#src/tools/shared/arrangement/tracks/automation-override.ts";
-import { type SendEntry } from "#src/tools/shared/sends/sends-schema.ts";
+import {
+  type SendEntry,
+  trimSendReturns,
+} from "#src/tools/shared/sends/sends-schema.ts";
 import {
   findReturnIndex,
   returnTrackPathIndex,
@@ -124,7 +127,7 @@ export function resolveTrackSends(
 
   const list: ResolvedSend[] = [];
 
-  for (const send of sends ?? []) {
+  for (const send of trimSendReturns(sends)) {
     const resolved = matchReturn(returns, send, unresolved);
 
     if (resolved != null) {

@@ -69,6 +69,15 @@ describe("updateTrack - send properties", () => {
     expect(send1.set).toHaveBeenCalledWith("display_value", -6);
   });
 
+  it("trims the return each sends entry names", () => {
+    updateTrack({
+      id: "123",
+      sends: [{ return: " a ", gainDb: -6 }],
+    });
+
+    expect(send1.set).toHaveBeenCalledWith("display_value", -6);
+  });
+
   it("should set second send with letter prefix", () => {
     updateTrack({
       id: "123",

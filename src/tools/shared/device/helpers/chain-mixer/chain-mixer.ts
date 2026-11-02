@@ -36,6 +36,7 @@ import {
   roundPan,
 } from "#src/tools/shared/helpers/rounding.ts";
 import { findReturnIndex } from "#src/tools/shared/helpers/send-validation.ts";
+import { trimSendReturns } from "#src/tools/shared/sends/sends-schema.ts";
 import { replacementFailedDetail } from "#src/shared/max/named-again-wording.ts";
 import {
   type MixerApplied,
@@ -396,7 +397,7 @@ function applyChainSends(
   // should the two ever name the same return.
   const list: WrittenChainSend[] = [];
 
-  for (const send of params.sends ?? []) {
+  for (const send of trimSendReturns(params.sends)) {
     const written = applyChainSend(chain, mixer, send, refused, notes);
 
     if (written != null) {
