@@ -305,8 +305,7 @@ describe("ppal-create-clip", () => {
   });
 
   it("refuses a multi-destination call whose last position is past the last Live allows, leaving no clips or take lanes", async () => {
-    const pastTheEnd =
-      "arrangementStart is past the last position Live allows (";
+    const pastTheEnd = "path is past the last position Live allows (";
 
     // Main lane: the clip at 1|1 must not exist once the second is refused.
     const mainLanes = await ctx.client!.callTool({
