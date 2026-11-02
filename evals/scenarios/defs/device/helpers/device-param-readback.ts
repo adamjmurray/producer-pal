@@ -16,6 +16,7 @@ interface ReadParam {
   min?: unknown;
   max?: unknown;
   options?: unknown;
+  optionList?: unknown;
 }
 
 /** A device read that carries `parameters`. */
@@ -150,7 +151,8 @@ function asText(value: unknown): string {
 
 /**
  * Every option param's current option, by param name. A param is an option
- * param when the read lists its `options`.
+ * param when the read lists its `options` or names a shared `optionList`, or
+ * reads On or Off (the read leaves a toggle's options out).
  *
  * @param result - Parsed ppal-read-device result
  * @returns Param name to the option it reads as
@@ -159,10 +161,22 @@ export function optionValues(result: unknown): Record<string, string> {
   const values: Record<string, string> = {};
 
   for (const param of (result as ParamRead).parameters ?? []) {
-    if (param.name != null && Array.isArray(param.options)) {
+    if (param.name != null && isOptionParam(param)) {
       values[param.name] = asText(param.value);
     }
   }
 
   return values;
+}
+
+/**
+ * @param param - One entry of a read's `parameters`
+ * @returns Whether the param's value is one of a list of options
+ */
+function isOptionParam(param: ReadParam): boolean {
+  return (
+    Array.isArray(param.options) ||
+    typeof param.optionList === "string" ||
+    (typeof param.value === "string" && /^(on|off)$/i.test(param.value))
+  );
 }

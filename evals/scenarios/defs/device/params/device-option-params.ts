@@ -7,11 +7,11 @@
  * Scenario: set option params (filter types, wave shapes, on/off) on big
  * devices by saying what the user wants in plain words.
  *
- * A baseline for the `param-values` read, which lists every option param's
- * choices. EQ Eight repeats the same filter-type list for each of its 16 band
- * slots, and Operator repeats On/Off and wave lists many times. If a change
- * ever shortens that repeated list, the model has to still pick the right
- * option, so this grades only the options the device ends up on.
+ * Checks the `param-values` read still gets the right option picked. That read
+ * says a list shared by several params once (EQ Eight's filter types across its
+ * 16 band slots, Operator's wave lists) and leaves Off/On options out, so the
+ * model has to follow the shared list and write On/Off from the value alone.
+ * This grades only the options the device ends up on.
  *
  * `setup` adds an EQ Eight to the Lead track (`t3/d4`, after its four devices)
  * and an Operator to the 5-MIDI track (`t4/d1`, after Producer Pal). Both get

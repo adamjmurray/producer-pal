@@ -145,6 +145,22 @@ describe("optionValues", () => {
         ],
       }),
     ).toStrictEqual({ "Filter Type": "Bell" });
+  });
+
+  it("counts a param that names a shared list, and an Off/On toggle", () => {
+    expect(
+      optionValues({
+        parameters: [
+          { name: "Wave", value: "Saw", optionList: "L1" },
+          { name: "Osc-B On", value: "Off" },
+          { name: "Retrig", value: "on" },
+          { name: "Gain", value: -6 },
+        ],
+      }),
+    ).toStrictEqual({ Wave: "Saw", "Osc-B On": "Off", Retrig: "on" });
+  });
+
+  it("reads nothing from a read with no params", () => {
     expect(optionValues({})).toStrictEqual({});
   });
 });

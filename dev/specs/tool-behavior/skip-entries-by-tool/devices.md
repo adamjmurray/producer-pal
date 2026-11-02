@@ -69,6 +69,19 @@ Part of [Skip entries, tool by tool](README.md).
   never mistaken for missing and the instrument's volume reached for instead. A
   rack or pad-list read and any other chain list only the non-default ones.
   `sends` is listed only when turned up, in every read.
+- **read-device's `param-values` says each option list as few times as it can.**
+  An Off/On toggle lists no `options`: its `value` is `On` or `Off`, and a write
+  takes On/Off, true/false or 1/0. A list of 3 or more options that two or more
+  of the returned params share is said once in the device's `optionLists`, and
+  each of those params carries `optionList` (its key) in place of `options`.
+  `state` stays on the param (`inactive`: a switch or mode makes it do nothing
+  now; `disabled`: Live won't take a write).
+- **read-device leaves a rack's unused hidden macros out of `parameters`.** A
+  macro beyond the visible count that nothing maps to is not listed. A rack with
+  mappings lists all 16 until the remote script says which are mapped, then only
+  the visible ones and the hidden ones still mapped (`hiddenMapped`). A write
+  can still name any macro.
+
 - **create-device's `hosted: true` loads each `device` as a VST3, AU or VST2
   plug-in in a wrapper.** Every name is looked up in Live's plug-in database,
   and the wrapper that suits its kind (instrument or effect) in Live's browser,

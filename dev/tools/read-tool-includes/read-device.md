@@ -123,6 +123,14 @@ text. The plug-in's MIDI stand-in params are left out, and `paramSearch` filters
 by name. After a Set reload a wrapper knows its plug-in only by file name, so
 `type` shows that.
 
+A rack has 16 macro params however many it shows. `parameters` leaves out those
+beyond `count` that nothing maps to. With no mappings (`has_macro_mappings`
+false) that needs nothing more; a rack with mappings keeps them all until the
+remote script says which are mapped, and then keeps only the mapped ones. A
+macro hidden by `macroCount` that is still mapped stays listed (it is in
+`hiddenMapped`). Writes are unaffected: any macro can still be addressed by
+name.
+
 `macros` is `{ count, mapped }` when the remote script is running: `mapped`
 lists the mapped macros' numbers (macro 1 is the first), and `hiddenMapped`
 lists any beyond `count`, since lowering the count hides macros but keeps their
@@ -144,6 +152,26 @@ out without the remote script, or when it can't answer for a Simpler. A
 
 Superset of `params` — includes full parameter details (value, min, max, state,
 display value, value items for quantized params).
+
+A quantized param's choices are listed as little as the model can still use:
+
+- **Off/On toggles list no `options`.** Their `value` is `"On"` or `"Off"`,
+  which says both choices, and update-device takes On/Off, true/false or 1/0 for
+  them (`isOnOffToggle`, the same rule the write uses). Any other two-option
+  list keeps its `options`.
+- **A list that two or more params share is said once.** The device gets
+  `optionLists` (`{ L1: [...], L2: [...] }`, in order of first use, before
+  `parameters`), and each of those params carries `optionList: "L1"` in place of
+  `options`. A list used by one param, or with fewer than 3 options, stays
+  inline as `options`. Sharing is decided over the params the read returns, so a
+  `paramSearch` can leave a list inline. Pseudo-params are included.
+- **`state` stays on each param.** `inactive` means the param does nothing right
+  now because a switch or mode makes it irrelevant (Operator's Osc-C params
+  while Osc-C is off; a synced LFO's free-running Hz rate); the model must not
+  edit it expecting an effect, or report its value as meaningful. `disabled`
+  means Live won't take a write. Both sit next to the value the model is about
+  to act on; moving them to a device-level list would save about 3% of an
+  Operator read and cost that locality.
 
 `min`/`max` are the range the parameter can actually display. When one end of
 that range is a word rather than a number — Glue Compressor's `Release` reads

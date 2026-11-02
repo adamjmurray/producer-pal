@@ -5,10 +5,12 @@
 
 import { DEVICE_TYPE } from "#src/tools/constants.ts";
 import {
+  formatParamName,
   readParameter,
   readParameterBasic,
   trimmedParamName,
 } from "./param-reading.ts";
+import { isUnusedHiddenMacro } from "./params/hidden-macros.ts";
 import { processDrumPads } from "./drum-pads-from-chains.ts";
 import { MAX_READ_PARAMS } from "./params/param-read-cap.ts";
 import { buildChainInfo } from "./chain-info.ts";
@@ -47,6 +49,8 @@ export interface ReadDeviceParametersOptions {
   search?: string;
   /** False when the device's track plays from Session; no `automation` flags. */
   showAutomation?: boolean;
+  /** Leave out the macros beyond this number (a rack with nothing mapped). */
+  hideMacrosAbove?: number;
 }
 
 /**
@@ -445,9 +449,20 @@ export function readDeviceParameters(
   device: LiveAPI,
   options: ReadDeviceParametersOptions = {},
 ): { parameters: Record<string, unknown>[]; total: number } {
-  const { includeValues = false, search, showAutomation = true } = options;
+  const {
+    includeValues = false,
+    search,
+    showAutomation = true,
+    hideMacrosAbove,
+  } = options;
 
   let parameters = device.getChildren("parameters");
+
+  if (hideMacrosAbove != null) {
+    parameters = parameters.filter(
+      (p) => !isUnusedHiddenMacro(formatParamName(p), hideMacrosAbove),
+    );
+  }
 
   // Filter by search string if provided
   if (search) {

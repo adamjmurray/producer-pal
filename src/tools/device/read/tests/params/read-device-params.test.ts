@@ -35,7 +35,28 @@ describe("readOneDevice param-values include option", () => {
     });
   });
 
-  it("should handle quantized parameters with options array", () => {
+  it("should list a quantized parameter's options", () => {
+    setupDeviceParamMocks({
+      param: {
+        name: "Mode",
+        original_name: "Mode",
+        value: 1,
+        is_quantized: 1,
+        value_items: ["Low", "High", "Sync"],
+      },
+    });
+
+    const { params } = readDeviceParamValues();
+
+    expect(params[0]).toStrictEqual({
+      id: "param-1",
+      name: "Mode",
+      value: "High",
+      options: ["Low", "High", "Sync"],
+    });
+  });
+
+  it("should leave the options off an Off/On toggle", () => {
     setupDeviceParamMocks({
       param: {
         name: "Device On",
@@ -48,12 +69,10 @@ describe("readOneDevice param-values include option", () => {
 
     const { params } = readDeviceParamValues();
 
-    // Quantized params now have value as string and options array
     expect(params[0]).toStrictEqual({
       id: "param-1",
       name: "Device On",
       value: "On",
-      options: ["Off", "On"],
     });
   });
 

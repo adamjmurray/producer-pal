@@ -187,6 +187,19 @@ const OFF_LABELS = new Set(["off", "false", "0"]);
 const ON_LABELS = new Set(["on", "true", "1"]);
 
 /**
+ * Whether a quantized param is a plain Off/On toggle: exactly two options, Off
+ * and On. A read leaves such a param's options out, since the value says it;
+ * `resolveEnumIndex` takes on/off, true/false and 1/0 for it.
+ * @param valueItems - The param's value_items
+ * @returns True for an Off/On pair, in either order
+ */
+export function isOnOffToggle(valueItems: (string | number)[]): boolean {
+  const lower = valueItems.map((item) => String(item).toLowerCase());
+
+  return lower.length === 2 && lower.includes("off") && lower.includes("on");
+}
+
+/**
  * The index an enum (quantized) param's value_items resolves to for an input
  * value, or -1 if none does.
  *
@@ -236,12 +249,12 @@ export function resolveEnumIndex(
     return looseIndex;
   }
 
-  const offIndex = lower.indexOf("off");
-  const onIndex = lower.indexOf("on");
-
-  if (valueItems.length !== 2 || offIndex === -1 || onIndex === -1) {
+  if (!isOnOffToggle(valueItems)) {
     return -1;
   }
+
+  const offIndex = lower.indexOf("off");
+  const onIndex = lower.indexOf("on");
 
   if (wanted.some((candidate) => OFF_LABELS.has(candidate))) {
     return offIndex;

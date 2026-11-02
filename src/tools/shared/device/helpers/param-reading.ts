@@ -15,6 +15,7 @@ import {
   roundParamRaw,
 } from "#src/tools/shared/helpers/rounding.ts";
 import {
+  isOnOffToggle,
   looseLabelKey,
   parseLabel,
   strForValue,
@@ -276,6 +277,35 @@ export function readParameterBasic(paramApi: LiveAPI): {
 }
 
 /**
+ * Read a quantized (choice) parameter: its current option, and the options
+ * unless it is an Off/On toggle, whose value says both.
+ * @param paramApi - LiveAPI parameter object
+ * @param name - Formatted parameter name
+ * @returns Parameter result with value and, for a longer list, options
+ */
+function readQuantizedParameter(
+  paramApi: LiveAPI,
+  name: string,
+): Record<string, unknown> {
+  const valueItems = paramApi.getPropertyList("value_items") as (
+    | string
+    | number
+  )[];
+  const valueIdx = paramApi.getProperty("value") as number;
+  const result: Record<string, unknown> = {
+    id: paramApi.id,
+    name,
+    value: valueItems[valueIdx],
+  };
+
+  if (!isOnOffToggle(valueItems)) {
+    result.options = valueItems;
+  }
+
+  return result;
+}
+
+/**
  * Read a single device parameter with full details.
  * @param paramApi - LiveAPI parameter object
  * @param deviceName - The device's class_display_name, for the recorded-unit
@@ -297,17 +327,7 @@ export function readParameter(
   const automationState = automationOf(paramApi, showAutomation);
 
   if ((paramApi.getProperty("is_quantized") as number) > 0) {
-    const valueItems = paramApi.getPropertyList("value_items") as (
-      | string
-      | number
-    )[];
-    const valueIdx = paramApi.getProperty("value") as number;
-    const result: Record<string, unknown> = {
-      id: paramApi.id,
-      name,
-      value: valueItems[valueIdx],
-      options: valueItems,
-    };
+    const result = readQuantizedParameter(paramApi, name);
 
     addStateFlags(result, paramApi, state, automationState);
 

@@ -15,6 +15,7 @@ import {
   readSpecializedParams,
 } from "../../specialized/specialized-device-registry.ts";
 import { readDeviceParameters } from "../device-reading.ts";
+import { shareOptionLists } from "./param-option-lists.ts";
 import { noteParamsCapped } from "./param-read-cap.ts";
 
 /**
@@ -38,6 +39,7 @@ export function appendParameters(
     includeValues,
     search: paramSearch,
     showAutomation,
+    hideMacrosAbove: macrosToHide(deviceInfo),
   });
 
   if (!showAutomation) {
@@ -52,10 +54,32 @@ export function appendParameters(
   // `state` is value-level.
   if (includeValues) {
     applySpecializedInactiveStates(device, merged);
+
+    // Before `parameters`, so a reader meets the lists first.
+    const optionLists = shareOptionLists(merged);
+
+    if (optionLists != null) {
+      deviceInfo.optionLists = optionLists;
+    }
   }
 
   deviceInfo.parameters = merged;
   noteParamsCapped(deviceInfo, total);
+}
+
+/**
+ * The macro count above which a rack's macros can be left out of its read: when
+ * nothing is mapped, every macro beyond the visible count is noise. A rack with
+ * mappings waits for the remote script to say which ones.
+ * @param deviceInfo - Device info with `macros` set, for a rack
+ * @returns The visible macro count, or undefined to leave every macro in
+ */
+function macrosToHide(deviceInfo: Record<string, unknown>): number | undefined {
+  const macros = deviceInfo.macros as
+    | { count: number; hasMappings?: boolean }
+    | undefined;
+
+  return macros?.hasMappings === false ? macros.count : undefined;
 }
 
 /**

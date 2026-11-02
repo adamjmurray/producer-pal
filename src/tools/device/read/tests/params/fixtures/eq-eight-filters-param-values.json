@@ -1,0 +1,352 @@
+{
+  "id": "7",
+  "path": "t3/d4",
+  "type": "audio-effect: EQ Eight",
+  "abCompare": "a",
+  "parameters": [
+    {
+      "id": "12",
+      "name": "1 Filter On A",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "13",
+      "name": "1 Filter Type A",
+      "value": "Low Shelf",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ]
+    },
+    {
+      "id": "17",
+      "name": "1 Filter On B",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "18",
+      "name": "1 Filter Type B",
+      "value": "High Pass 12dB",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "22",
+      "name": "2 Filter On A",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "23",
+      "name": "2 Filter Type A",
+      "value": "Bell",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ]
+    },
+    {
+      "id": "27",
+      "name": "2 Filter On B",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "28",
+      "name": "2 Filter Type B",
+      "value": "Low Shelf",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "32",
+      "name": "3 Filter On A",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "33",
+      "name": "3 Filter Type A",
+      "value": "Bell",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ]
+    },
+    {
+      "id": "37",
+      "name": "3 Filter On B",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "38",
+      "name": "3 Filter Type B",
+      "value": "Bell",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ]
+    },
+    {
+      "id": "42",
+      "name": "4 Filter On A",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "43",
+      "name": "4 Filter Type A",
+      "value": "High Shelf",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ]
+    },
+    {
+      "id": "47",
+      "name": "4 Filter On B",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "48",
+      "name": "4 Filter Type B",
+      "value": "Bell",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ]
+    },
+    {
+      "id": "52",
+      "name": "5 Filter On A",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "53",
+      "name": "5 Filter Type A",
+      "value": "Bell",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "57",
+      "name": "5 Filter On B",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "58",
+      "name": "5 Filter Type B",
+      "value": "Bell",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ]
+    },
+    {
+      "id": "62",
+      "name": "6 Filter On A",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "63",
+      "name": "6 Filter Type A",
+      "value": "Bell",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "67",
+      "name": "6 Filter On B",
+      "value": "On",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "68",
+      "name": "6 Filter Type B",
+      "value": "Bell",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ]
+    },
+    {
+      "id": "72",
+      "name": "7 Filter On A",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "73",
+      "name": "7 Filter Type A",
+      "value": "Bell",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "77",
+      "name": "7 Filter On B",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "78",
+      "name": "7 Filter Type B",
+      "value": "High Shelf",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "82",
+      "name": "8 Filter On A",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "83",
+      "name": "8 Filter Type A",
+      "value": "Low Pass 12dB",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ],
+      "state": "inactive"
+    },
+    {
+      "id": "87",
+      "name": "8 Filter On B",
+      "value": "Off",
+      "options": ["Off", "On"]
+    },
+    {
+      "id": "88",
+      "name": "8 Filter Type B",
+      "value": "Low Pass 12dB",
+      "options": [
+        "High Pass 48dB",
+        "High Pass 12dB",
+        "Low Shelf",
+        "Bell",
+        "Notch",
+        "High Shelf",
+        "Low Pass 12dB",
+        "Low Pass 48dB"
+      ],
+      "state": "inactive"
+    }
+  ]
+}
