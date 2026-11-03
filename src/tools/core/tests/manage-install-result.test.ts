@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   canonicalManageAction,
   type InstallPart,
+  type PluginHostPart,
 } from "../helpers/manage-contract.ts";
 import { manageInstallResult } from "../helpers/manage-install-result.ts";
 
@@ -62,10 +63,10 @@ describe("manageInstallResult plug-in host wrappers", () => {
     expect(result.nextSteps).toContain("restart Live, then");
   });
 
-  it("is an error only when the script and the device both failed", () => {
+  it("is an error only when nothing landed", () => {
     expect(() =>
       manageInstallResult(
-        { ran: true, remoteScript: BAD, device: BAD, pluginHost: INSTALLED },
+        { ran: true, remoteScript: BAD, device: BAD },
         { running: true },
       ),
     ).toThrow("nothing was installed");
@@ -75,6 +76,62 @@ describe("manageInstallResult plug-in host wrappers", () => {
         { running: true },
       ),
     ).toHaveProperty("remoteScript", OK);
+  });
+
+  it("is still an error when the wrappers changed nothing", () => {
+    const current = INSTALLED.map((part) => ({
+      ...part,
+      status: "current" as const,
+    }));
+
+    expect(() =>
+      manageInstallResult(
+        { ran: true, remoteScript: BAD, device: BAD, pluginHost: current },
+        { running: true },
+      ),
+    ).toThrow("nothing was installed");
+    expect(() =>
+      manageInstallResult(
+        { ran: true, remoteScript: BAD, device: BAD, pluginHost: [STUCK] },
+        { running: true },
+      ),
+    ).toThrow("nothing was installed");
+  });
+
+  it.each(["installed", "updated"] as const)(
+    "reports a wrapper that was %s next to both failures, never as nothing installed",
+    (status) => {
+      const pluginHost = [{ ...(INSTALLED[0] as PluginHostPart), status }];
+      const result = manageInstallResult(
+        { ran: true, remoteScript: BAD, device: BAD, pluginHost },
+        { running: false },
+      );
+
+      expect(result).toStrictEqual({
+        remoteScript: BAD,
+        device: BAD,
+        pluginHost,
+        nextSteps:
+          "Only the plug-in host wrappers were installed; neither the remote script nor the device was (see remoteScript and device). Tell the user why, and call install-producer-pal again to retry.",
+      });
+    },
+  );
+
+  it("also says to retry a wrapper that failed when another landed", () => {
+    const result = manageInstallResult(
+      {
+        ran: true,
+        remoteScript: BAD,
+        device: BAD,
+        pluginHost: [INSTALLED[0] as PluginHostPart, STUCK],
+      },
+      { running: true },
+    );
+
+    expect(result.nextSteps).toContain("Only the plug-in host wrappers");
+    expect(result.nextSteps).toContain(
+      "Plug-in hosting needs PPal Plug-in Instrument (see pluginHost)",
+    );
   });
 });
 

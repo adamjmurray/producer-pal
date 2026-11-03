@@ -93,10 +93,13 @@ script.
   the other says what it did, and `nextSteps` says which half is missing and how
   to retry. It never claims success for the failed half and never hides a
   completed one.
-- **Both fail:** (the script and the device; the wrappers don't count) throws,
-  naming both reasons
+- **Both fail:** (the script and the device) with no wrapper installed or
+  replaced, throws, naming both reasons
   (`nothing was installed. Remote script: <detail>. Device: <detail>.`), or the
-  reason once when it is the same.
+  reason once when it is the same. If a wrapper was installed or replaced, it is
+  a result instead, never "nothing was installed": both failed parts, the
+  wrappers' outcomes, and a `nextSteps` saying only the wrappers were installed
+  and to call `install-producer-pal` again.
 - **No User Library found, none given:** throws, saying nothing was installed
   and to ask the user for the path (Live: Settings → Library → Location of User
   Library) and pass it as `userLibrary`. Neither part was tried.

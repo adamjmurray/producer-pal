@@ -39,8 +39,8 @@ export interface InstallContext {
 /**
  * The result of an install the route answered. Each file reports for itself, so
  * one that installed is never hidden by one that didn't. Only a call that
- * installed neither is an error: a plug-in host wrapper that failed is
- * reported and never makes the call fail.
+ * installed nothing at all is an error: a wrapper that failed is reported and
+ * never makes the call fail, and a wrapper that landed keeps it a result.
  * @param reply - What the install route answered
  * @param context - Where the call was answered
  * @returns Both files' outcomes, and what the user does next
@@ -56,7 +56,11 @@ export function manageInstallResult(
 
   const { remoteScript, device, pluginHost } = reply;
 
-  if (remoteScript.ok === false && device.ok === false) {
+  if (
+    remoteScript.ok === false &&
+    device.ok === false &&
+    !pluginHost?.some(landed)
+  ) {
     const script = withoutPeriod(remoteScript.detail);
     const deviceWhy = withoutPeriod(device.detail);
 
@@ -67,7 +71,10 @@ export function manageInstallResult(
     );
   }
 
-  const steps = nextSteps(remoteScript, device, context);
+  const steps =
+    remoteScript.ok === false && device.ok === false
+      ? `Only the plug-in host wrappers were installed; neither the remote script nor the device was (see remoteScript and device). Tell the user why, and call ${INSTALL} again to retry.`
+      : nextSteps(remoteScript, device, context);
 
   return {
     remoteScript,
@@ -109,6 +116,17 @@ function nextSteps(
   return context.running
     ? `${finish} Once they have, call ${VERSION_CHECK_CALL}. ${VERSION_CHECK_NEVER_CONNECTED}`
     : `${finish} Then call ${ADD} (ask the user first). ${DRAG_NOW}`;
+}
+
+/**
+ * @param part - What became of one wrapper
+ * @returns True when the wrapper file was written
+ */
+function landed(part: PluginHostPart): boolean {
+  return (
+    part.ok == null &&
+    (part.status === "installed" || part.status === "updated")
+  );
 }
 
 /**

@@ -258,6 +258,29 @@ describe("offline install-producer-pal when one install fails", () => {
     );
   });
 
+  it("is not an error when neither file installed but a wrapper did", async () => {
+    const response = await install(
+      installDeps({
+        installRemoteScript: () => ({ ok: false, detail: "no script." }),
+        installDevice: () =>
+          copied("failed", { error: "EBUSY", detail: "No device." }),
+        installPluginHost: vi.fn(() => [
+          {
+            name: "PPal Plug-in Effect",
+            status: "installed" as const,
+            path: "/e",
+          },
+        ]),
+      }),
+    );
+    const text = textOf(response);
+
+    expect(response.isError).toBeUndefined();
+    expect(text).toContain('pluginHost:[{name:"PPal Plug-in Effect"');
+    expect(text).toContain("Only the plug-in host wrappers were installed");
+    expect(text).not.toContain("nothing was installed");
+  });
+
   it("is an error naming both when neither installed", async () => {
     const response = await install(
       installDeps({
