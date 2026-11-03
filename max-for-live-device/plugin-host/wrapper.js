@@ -599,16 +599,20 @@ function storedForm(json) {
 }
 
 // Copy the plug-in's state into the blob if it changed. Returns an error
-// message or null; never throws.
+// message or null; never throws. However it ends (saved, adopted, nothing to
+// save, or failed) the pending edit is cleared, so polling resumes: after a
+// failure the next poll retries.
 function saveState(why) {
+  const previous = lastSaved;
+
   try {
     // A wrapper with no plug-in has nothing to store; don't write an empty one.
-    if (lastSaved == null && !loadedPlugin()) return null;
+    if (lastSaved == null && !loadedPlugin()) return settled();
 
     const current = stateOf();
 
     if (lastSaved == null) lastSaved = storedState();
-    if (current === lastSaved) return null;
+    if (current === lastSaved) return settled();
 
     // Slots wrote since the last save and nothing else changed the plug-in, or
     // a restore is settling (Vital changes its state on its own about a second
@@ -623,7 +627,7 @@ function saveState(why) {
       lastSaved = current;
       savedAt = Date.now();
 
-      return null;
+      return settled();
     }
 
     // Live restored an older or newer stored state (undo, redo): the blob
@@ -631,7 +635,7 @@ function saveState(why) {
     if (current === storedState()) {
       lastSaved = current;
 
-      return null;
+      return settled();
     }
 
     const dict = new Dict();
@@ -640,15 +644,24 @@ function saveState(why) {
     lastSaved = current;
     this.patcher.getnamed("vststate").message("dictionary", dict.name);
     savedAt = Date.now();
+
+    return settled();
+  } catch (error) {
+    // Forget the failed state so the next poll sees it as changed and retries.
+    lastSaved = previous;
     edited = false;
     editTask.cancel();
-
-    return null;
-  } catch (error) {
     post(`ppal-plugin-host: could not save state: ${error}\n`);
 
     return `could not save the plug-in state: ${error?.message ?? error}`;
   }
+}
+
+function settled() {
+  edited = false;
+  editTask.cancel();
+
+  return null;
 }
 
 function markEdited() {
