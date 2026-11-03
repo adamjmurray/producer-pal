@@ -157,7 +157,10 @@ describe("read-device marks mode-gated rate params inactive", () => {
 describe("ppal-update-device: writes to inactive params", () => {
   it("writes EQ Eight's B side in stereo mode and says it has no effect", async () => {
     const id = await createOnNewTrack("EQ Eight");
+    // A band's default on/off and type come from the machine's default preset.
     const entries = await write(id, {
+      "2 Filter On A": "On",
+      "2 Filter Type A": "Bell",
       "2 Filter Type B": "High Shelf",
       "2 Gain A": "3",
     });
@@ -174,6 +177,7 @@ describe("ppal-update-device: writes to inactive params", () => {
   it("judges the mode after the whole call: Gain on a band the call made a Notch", async () => {
     const id = await createOnNewTrack("EQ Eight");
     const entries = await write(id, {
+      "3 Filter On A": "On",
       "3 Filter Type A": "Notch",
       "3 Gain A": "3",
     });
