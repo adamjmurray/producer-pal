@@ -222,6 +222,14 @@ Live saves the plug-in's state in a hidden blob parameter, not through `vst~`.
   the plug-in: Generate's and RANDOM's state never holds the value (it hashes
   the same whatever the setting), and DrumComputer and ShaperBox 3 ignore a
   restored state. Falcon wasn't traced.
+- 19 more keep a write through a duplicate made right after the call: Diva,
+  Hive, Zebra3, Bazille, Repro-1, Tekno, BA-1, Grainferno, Pro-C 3, Pro-L 2,
+  Filterverse, Spaced Out, Transit 2, Gatekeeper, Smooth Operator Pro (and, on
+  an older wrapper, Supermodal, Twangstrom, Pro-R 2, Saturn 2, Timeless 3,
+  Pro-MB, ColourCopy, Satin, Presswerk, Parallel Aggressor, HyperWarp, Comet).
+  Atoms, Comeback Kid, Super VHS and Crystalline lose it, even 2 s later: their
+  state doesn't change with the param, so the write saves nothing (undo takes
+  back nothing either).
 - Writing `vststate` is one undo step, whatever the size. The wrapper writes it
   only when the state changed, by comparing state strings:
   - at the end of each request that can change the plug-in, before it replies,
@@ -297,15 +305,19 @@ with `vst~`'s `read <path>`:
   instrument (Organteq 2 has 8 outputs) sends Live only its first two, and an
   effect gets no sidechain input.
 - `midiparse`'s last outlet emits every MIDI message as `midievent b1 b2 b3`,
-  which `vst~` takes directly. Notes verified; CC, bend and aftertouch take the
-  same path but are untested.
+  which `vst~` takes directly. Notes, CC, pitch bend and aftertouch all arrive:
+  Live's CC Control in front of a wrapper set Serum 2's Mod Wheel, Pitch Bend
+  and the aftertouch stand-in to exactly what it sent. (Serum 2 takes CC1 and
+  bend on its own params at the end of the list, not the stand-ins.)
 - Live compensates for the latency a device declares in its patcher `latency`
   attribute, and `this.patcher.setattr("latency", n)` changes it at runtime. The
   attribute resets on reload and plug-ins can change latency, so the wrapper
-  polls `get -10` each second and updates it. Verified through the Live API's
-  `latency_in_samples`, not by a null test: Pro-Q 4 switching from zero latency
-  to natural and linear phase moved it 0 → 320 → 5120 samples within a second
-  each, and a duplicated copy came back at 5120.
+  polls `get -10` each second and updates it. Pro-Q 4 switching from zero
+  latency to natural and linear phase moved Live's `latency_in_samples` 0 → 320
+  → 5120 samples within a second each, and a duplicated copy came back at 5120.
+  A null test agrees: one loop through hosted Pro-Q 4, the same loop
+  phase-inverted on another track, and Main's meter read exactly 0 in all three
+  modes, switched while playing (0.72 with the inverted track muted).
 
 ### Automation
 
@@ -444,12 +456,14 @@ Live's browser must find the wrappers by name, so they go in the User Library:
   the device at that copy. Only wrappers in use are copied.
 - Two hosted plug-ins crashed Live once each, in their own code: Beat Scholar
   (Modalics, worker thread) and Pigments (main thread, just after a copy of it
-  was deleted).
+  was deleted). Live also quit once loading Pianoteq 9 natively right after a
+  hosted Pianoteq 9 loaded on the same track; the report had no stack.
+- A wrapper whose plug-in is missing (simulated by hiding the bundle, then
+  duplicating) loads nothing and keeps its stored state, so it loads the plug-in
+  again once it's back. But `ppal-read-device` shows it as `hosted: true` with
+  its name and an empty `parameters`, with no sign the plug-in is missing.
 
 ## Not yet tested
 
-- CC, pitch bend and aftertouch reaching the plug-in: the Live API can't write
-  MIDI CC or pitch bend clip envelopes, so this needs a keyboard.
 - Windows, and VST2 shell plug-ins.
-- Opening a shared Set on a machine without the plug-in, or without Max for
-  Live.
+- Opening a shared Set without Max for Live.
