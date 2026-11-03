@@ -94,6 +94,9 @@ still run:
 - **The wrapper is still loading** (just after a Set opens or a track is
   duplicated): `the device is still loading; try again in a moment`, nothing
   mapped. A wrapper that is out of date, or doesn't answer, says so.
+- **No plug-in loaded**: the line skips with read-device's `detail` for the
+  wrapper (the plug-in isn't installed, or there never was one), even for a
+  param a slot drove, since the wrapper can't confirm its mapping.
 - **A clear** (`t3/d0/h206:`) clears the envelope on the slot driving the param.
   With no slot it does nothing and is no error: the line counts as written, with
   `there was no envelope to clear`. It never maps.

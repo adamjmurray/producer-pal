@@ -10,6 +10,11 @@
 
 import { probePluginHost } from "#src/live-api-adapter/protocols/plugin-host-v8-protocol.ts";
 import { trimmedParamName } from "#src/tools/shared/device/helpers/param-reading.ts";
+import {
+  hostedPluginFromInfo,
+  NO_PLUGIN_LOADED,
+  noPluginDetail,
+} from "#src/tools/shared/device/helpers/params/hosted-plugin-reading.ts";
 
 /** A slot's Live parameter name: three digits, since Live sorts names as text. */
 const SLOT_PARAMETER_NAME = /^Automation (\d{3})$/;
@@ -95,9 +100,20 @@ export function mapSlot(
 ): SlotOutcome<{ name: string }> {
   const reply = probePluginHost(deviceId, "map", { slot, index });
 
-  return reply?.success === true
-    ? { ok: true, name: typeof reply.name === "string" ? reply.name : "" }
-    : { ok: false, reason: refusal(reply?.error, "map") };
+  if (reply?.success === true) {
+    return { ok: true, name: typeof reply.name === "string" ? reply.name : "" };
+  }
+
+  // The wrapper refuses with the same words as NO_PLUGIN_LOADED. Say a missing
+  // plug-in the way reads and param writes do.
+  const unloaded =
+    reply?.error === NO_PLUGIN_LOADED ? hostedPluginFromInfo(deviceId) : null;
+
+  return {
+    ok: false,
+    reason:
+      (unloaded && noPluginDetail(unloaded)) ?? refusal(reply?.error, "map"),
+  };
 }
 
 /**

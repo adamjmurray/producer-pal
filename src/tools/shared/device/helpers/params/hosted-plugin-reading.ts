@@ -75,7 +75,16 @@ export function detectHostedPlugin(device: LiveAPI): HostedPlugin | null {
     return null;
   }
 
-  const reply = probePluginHost(device.id, "info");
+  return hostedPluginFromInfo(device.id);
+}
+
+/**
+ * Ask a wrapper which plug-in it hosts.
+ * @param deviceId - Live id of the wrapper device
+ * @returns The hosted plug-in, or null when no wrapper answers
+ */
+export function hostedPluginFromInfo(deviceId: string): HostedPlugin | null {
+  const reply = probePluginHost(deviceId, "info");
 
   if (reply == null) {
     return null;

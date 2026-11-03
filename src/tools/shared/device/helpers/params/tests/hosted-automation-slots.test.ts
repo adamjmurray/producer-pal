@@ -4,7 +4,14 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import { installWrapper } from "#src/tools/device/tests/helpers/plugin-host-wrapper-fixtures.ts";
+import {
+  infoReply,
+  installWrapper,
+} from "#src/tools/device/tests/helpers/plugin-host-wrapper-fixtures.ts";
+import {
+  NO_PLUGIN_LOADED,
+  PLUGIN_NOT_LOADED,
+} from "#src/tools/shared/device/helpers/params/hosted-plugin-reading.ts";
 import {
   mapSlot,
   parseSlotName,
@@ -91,6 +98,21 @@ describe("mapSlot", () => {
       reason: "the device is still loading; try again in a moment",
     });
   });
+
+  it.each([
+    ["missing", "Enstriate", PLUGIN_NOT_LOADED],
+    ["bare", undefined, NO_PLUGIN_LOADED],
+  ])(
+    "says a %s plug-in isn't loaded the way reads do",
+    (_kind, missing, reason) => {
+      installWrapper({
+        map: () => ({ success: false, error: "no plug-in loaded" }),
+        info: () => infoReply(null, missing),
+      });
+
+      expect(mapSlot("9", 2, 5)).toStrictEqual({ ok: false, reason });
+    },
+  );
 
   it("says when nothing answers", () => {
     vi.mocked(globalThis.messnamed).mockReset();
