@@ -3,9 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { type DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
+import { fourCC } from "../library-filters.ts";
+import { MAX_LIBRARY_LIMIT } from "../library-types.ts";
 import { listTags } from "../list-tags.ts";
 import {
+  createLibraryFixture,
   createPartialSchemaDb,
   FILES_ONLY_SCHEMA,
   setupLibraryFixtureLifecycle,
@@ -80,7 +84,60 @@ describe("listTags", () => {
 
     expect(result.tags.length).toBeGreaterThan(0);
   });
+
+  it("says how many tags the limit left out, with no way to page", async () => {
+    // Fixture: 5 tags.
+    const result = await listTags({ limit: 2 });
+
+    expect(result.tags).toHaveLength(2);
+    expect(result.more).toBe(3);
+    expect(result).not.toHaveProperty("nextOffset");
+  });
+
+  it("leaves `more` off when every tag fits", async () => {
+    expect(await listTags({ limit: 5 })).not.toHaveProperty("more");
+    expect(await listTags()).not.toHaveProperty("more");
+  });
 });
+
+describe("listTags - limit cap", () => {
+  it("returns at most 1000 tags and counts the rest", async () => {
+    const fixture = createLibraryFixture(addManyTags);
+
+    try {
+      vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(
+        fixture.dbPath,
+      );
+
+      const result = await listTags({ limit: 5_000 });
+
+      // 1,100 new tags plus the fixture's 5.
+      expect(result.tags).toHaveLength(MAX_LIBRARY_LIMIT);
+      expect(result.more).toBe(105);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+});
+
+/**
+ * Add 1,100 tags, each on one pack file, so the list outgrows the 1000 cap.
+ *
+ * @param db - Writable fixture DB
+ */
+function addManyTags(db: DatabaseSync): void {
+  const file = db.prepare(
+    "INSERT INTO files (file_id, parent_id, file_type, file_kind, name) VALUES (?, 1, ?, 0, ?)",
+  );
+  const tag = db.prepare(
+    "INSERT INTO keywords (file_id, keyw_id, is_auto) VALUES (2001, ?, 0)",
+  );
+
+  for (let i = 0; i < 1_100; i++) {
+    file.run(20_000 + i, fourCC("keyw"), `Tag ${String(i).padStart(4, "0")}`);
+    tag.run(20_000 + i);
+  }
+}
 
 /**
  * Create a temp Live-files DB that omits the `keywords` table the listTags

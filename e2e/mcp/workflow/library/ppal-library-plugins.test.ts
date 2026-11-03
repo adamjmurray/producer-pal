@@ -39,6 +39,7 @@ interface ListPluginsResult {
   dbAvailable?: boolean;
   stalenessNote?: string;
   stalenessRisk?: unknown;
+  more?: number;
   note?: string;
   detail?: string;
 }
@@ -70,6 +71,22 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-library list-plugins", () => {
       expect(typeof plugin.name).toBe("string");
       expect(Array.isArray(plugin.subcategories)).toBe(true);
     }
+  });
+
+  it("says how many plug-ins a small limit left out, with no way to page", async () => {
+    const all = await listPlugins({ limit: 1000 });
+
+    // Needs two or more installed plug-ins to cut one off.
+    if (all.plugins.length < 2) {
+      return;
+    }
+
+    const cut = await listPlugins({ limit: 1 });
+
+    expect(cut.plugins).toHaveLength(1);
+    expect(cut.more).toBe(all.plugins.length - 1);
+    expect(cut).not.toHaveProperty("nextOffset");
+    expect(all).not.toHaveProperty("more");
   });
 
   it("still filters the merged list", async () => {

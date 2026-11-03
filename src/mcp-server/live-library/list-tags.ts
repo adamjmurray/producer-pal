@@ -14,6 +14,7 @@
  * Read-only: SELECT statements only.
  */
 
+import { type DatabaseSync } from "node:sqlite";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { stalenessNote } from "./db-staleness.ts";
 import {
@@ -64,24 +65,28 @@ export async function listTags(
     const db = await openLiveDb(dbPath);
 
     try {
-      const rows = db
-        .prepare(
-          `SELECT kw.name AS name, COUNT(*) AS cnt
+      const grouped = `SELECT kw.name AS name, COUNT(*) AS cnt
            FROM keywords k
            JOIN files kw ON kw.file_id = k.keyw_id
            JOIN files f ON f.file_id = k.file_id
            WHERE ${IN_A_PLACE} AND ${COUNTED_FOR_TAG}
-           GROUP BY k.keyw_id
-           ORDER BY cnt DESC, kw.name ASC
-           LIMIT ?`,
-        )
-        .all(limit) as unknown as TagRow[];
-      const tags = rows.map((r) => ({ name: r.name, count: r.cnt }));
+           GROUP BY k.keyw_id`;
+      // One row past the page tells us whether anything was cut off; only then
+      // is the full tag count worth running (as in search).
+      const rows = db
+        .prepare(`${grouped} ORDER BY cnt DESC, kw.name ASC LIMIT ?`)
+        .all(limit + 1) as unknown as TagRow[];
+      const tags = rows
+        .slice(0, limit)
+        .map((r) => ({ name: r.name, count: r.cnt }));
+      const more =
+        rows.length > limit ? countGroups(db, grouped, []) - limit : 0;
 
       return {
         dbAvailable: true,
         ...(stale && { stalenessNote: stale }),
         tags,
+        ...(more > 0 && { more }),
       };
     } finally {
       db.close();
@@ -93,4 +98,25 @@ export async function listTags(
       detail: `Failed to read Live database: ${errorMessage(error)}`,
     };
   }
+}
+
+/**
+ * Count the rows a GROUP BY query returns, so a list that hit its limit can say
+ * how many it left out.
+ *
+ * @param db - Open database handle
+ * @param groupedSql - The query, without ORDER BY or LIMIT
+ * @param params - Values for the query's placeholders
+ * @returns Number of groups
+ */
+export function countGroups(
+  db: DatabaseSync,
+  groupedSql: string,
+  params: Array<string | number>,
+): number {
+  const row = db
+    .prepare(`SELECT COUNT(*) AS n FROM (${groupedSql})`)
+    .get(...params) as { n: number };
+
+  return row.n;
 }

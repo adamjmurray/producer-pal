@@ -124,10 +124,13 @@ export async function listPlugins(
       );
       const note = unknownCategoryNote(unknownCategoryLeftOut);
 
+      const more = matches.length - limit;
+
       return {
         dbAvailable: true,
         ...(stale && { stalenessNote: stale }),
         plugins: matches.slice(0, limit),
+        ...(more > 0 && { more }),
         ...(note != null && { note }),
       };
     } finally {

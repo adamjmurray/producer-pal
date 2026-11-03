@@ -20,6 +20,13 @@ date. The refusal rules are in
   clamped to 200 without a note. The other actions keep the 1000 cap
   (`list-tags` defaults to 200): they have no paging, so a long plug-in list
   must still fit.
+- **A list that hit its limit says so, but can't be paged.** `list-plugins`,
+  `list-tags` and the `list-categories` drill-down carry `more` (how many were
+  left out) when the limit cut the list off, and no `nextOffset`. The answer to
+  `more` is a higher `limit` (up to 1000) or a filter. `more` is left off when
+  nothing was cut. It is exact: `list-plugins` counts its matches in memory; the
+  two tag lists read one row past the limit and run a `COUNT(*)` only if it
+  exists. The `list-categories` overview is not limited.
 - **A search that hit its limit says so, and the next page is one call away.**
   `offset` (default 0) skips that many matches. When more matched than the page
   holds, the result carries `more` (how many matches lie beyond this page) and

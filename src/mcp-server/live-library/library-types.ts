@@ -321,6 +321,8 @@ export interface LibraryTag {
 
 export interface LibraryListTagsResult {
   tags: LibraryTag[];
+  /** How many tags the limit left out. Omitted when none were. */
+  more?: number;
   /** Present when the Live DB was consulted; false if it couldn't be found. */
   dbAvailable?: boolean;
   /** Set when the DB snapshot may miss what Live added since it last quit. */
@@ -341,6 +343,9 @@ export interface LibraryListCategoriesResult {
    * as listTags). Present in drill-down mode. Pass a name as a `tags` filter to
    * library.search. */
   tags?: LibraryTag[];
+  /** Drill-down only: how many tags the limit left out. Omitted when none
+   * were. */
+  more?: number;
   /** Present when the Live DB was consulted; false if it couldn't be found. */
   dbAvailable?: boolean;
   /** Set when the DB snapshot may miss what Live added since it last quit. */
@@ -406,6 +411,8 @@ export interface ResolvedPlugin {
 
 export interface ListPluginsResult {
   plugins: PluginItem[];
+  /** How many matching plugins the limit left out. Omitted when none were. */
+  more?: number;
   /** Present when a plugin source DB was consulted; false if none was found. */
   dbAvailable?: boolean;
   /** Set when the DB snapshot may miss what Live added since it last quit. */

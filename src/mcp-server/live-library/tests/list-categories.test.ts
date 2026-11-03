@@ -3,9 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { type DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
+import { fourCC } from "../library-filters.ts";
+import { MAX_LIBRARY_LIMIT } from "../library-types.ts";
 import { listCategories } from "../list-categories.ts";
 import {
+  createLibraryFixture,
   createPartialSchemaDb,
   FILES_ONLY_SCHEMA,
   setupLibraryFixtureLifecycle,
@@ -119,8 +123,78 @@ describe("listCategories", () => {
 
       expect(result.tags?.length).toBeGreaterThan(0);
     });
+
+    it("says how many tags the limit left out, with no way to page", async () => {
+      // Drums resolves two tags: Kick and Snare Hit.
+      const result = await listCategories({ category: "Drums", limit: 1 });
+
+      expect(result.tags).toHaveLength(1);
+      expect(result.more).toBe(1);
+      expect(result).not.toHaveProperty("nextOffset");
+    });
+
+    it("leaves `more` off when every tag fits", async () => {
+      const exact = await listCategories({ category: "Drums", limit: 2 });
+      const roomy = await listCategories({ category: "Drums" });
+
+      expect(exact.tags).toHaveLength(2);
+      expect(exact).not.toHaveProperty("more");
+      expect(roomy).not.toHaveProperty("more");
+    });
+  });
+
+  it("has no `more` in the overview", async () => {
+    expect(await listCategories()).not.toHaveProperty("more");
   });
 });
+
+describe("listCategories - limit cap", () => {
+  it("returns at most 1000 tags and counts the rest", async () => {
+    const fixture = createLibraryFixture(addManyTags);
+
+    try {
+      vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(
+        fixture.dbPath,
+      );
+
+      const result = await listCategories({ category: "Big", limit: 5_000 });
+
+      expect(result.tags).toHaveLength(MAX_LIBRARY_LIMIT);
+      expect(result.more).toBe(100);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+});
+
+/**
+ * Add a "Big" category of 1,100 tags, each on one pack file.
+ *
+ * @param db - Writable fixture DB
+ */
+function addManyTags(db: DatabaseSync): void {
+  const file = db.prepare(
+    "INSERT INTO files (file_id, parent_id, file_type, file_kind, name) VALUES (?, 1, ?, 0, ?)",
+  );
+  const tag = db.prepare(
+    "INSERT INTO keywords (file_id, keyw_id, is_auto) VALUES (2001, ?, 0)",
+  );
+  const value = db.prepare(
+    "INSERT INTO metadata_values (id, value) VALUES (?, ?)",
+  );
+  const meta = db.prepare(
+    "INSERT INTO metadata (file_id, key, value_id) VALUES (2001, ?, ?)",
+  );
+
+  for (let i = 0; i < 1_100; i++) {
+    const name = `Tag ${String(i).padStart(4, "0")}`;
+
+    file.run(20_000 + i, fourCC("keyw"), name);
+    tag.run(20_000 + i);
+    value.run(1_000 + i, `Big|${name}`);
+    meta.run(fourCC("CKey"), 1_000 + i);
+  }
+}
 
 /**
  * Create a temp Live-files DB without the `metadata` / `metadata_values` tables

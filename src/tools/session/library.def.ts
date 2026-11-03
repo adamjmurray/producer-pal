@@ -179,9 +179,9 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     limit: param(z.coerce.number().optional(), {
       default:
-        "max results; defaults to 50 (search, at most 200) or 200 (list-tags)",
+        "max results; defaults to 50 (search, at most 200) or 200 (list-tags); lists allow 1000 and report `more` when cut off",
       smallModel:
-        "max results; defaults to 50 (search, at most 200) or 200 (list-tags)",
+        "max results; defaults to 50 (search, at most 200) or 200 (list-tags); a cut-off list reports `more`: raise limit (max 1000) or filter",
     }),
 
     offset: param(z.coerce.number().optional(), {

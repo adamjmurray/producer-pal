@@ -281,6 +281,26 @@ describe("listPlugins — filtering and derivation", () => {
 
     expect(result.plugins).toHaveLength(2);
   });
+
+  it("says how many matches the limit left out, with no way to page", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    const all = await listPlugins();
+    const cut = await listPlugins({ limit: 2 });
+
+    expect(cut.more).toBe(all.plugins.length - 2);
+    expect(cut).not.toHaveProperty("nextOffset");
+  });
+
+  it("leaves `more` off when every match fits", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    const all = await listPlugins();
+    const exact = await listPlugins({ limit: all.plugins.length });
+
+    expect(all).not.toHaveProperty("more");
+    expect(exact).not.toHaveProperty("more");
+  });
 });
 
 describe("listPlugins — limit", () => {
@@ -302,7 +322,9 @@ describe("listPlugins — limit", () => {
       const most = await listPlugins({ limit: 5_000 });
 
       expect(some.plugins).toHaveLength(500);
+      expect(some.more).toBe(600);
       expect(most.plugins).toHaveLength(1_000);
+      expect(most.more).toBe(100);
     } finally {
       fixture.cleanup();
     }
