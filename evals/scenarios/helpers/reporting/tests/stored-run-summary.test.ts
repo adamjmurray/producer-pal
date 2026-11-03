@@ -142,6 +142,17 @@ describe("printStoredRunSummary", () => {
     expect(rowFor("Total")).toMatch(/1\/1/);
   });
 
+  it("leaves out a result file a killed run cut short", async () => {
+    await store("alpha", "openai/m1", 1, "pass");
+    await writeFile(
+      join(dir, "alpha--openai_m1--default--trial-2.json"),
+      '{"sce',
+    );
+
+    expect(await printStoredRunSummary(dir)).toBe(true);
+    expect(rowFor("alpha")).toMatch(/1\/1/);
+  });
+
   it("orders a scenario's trials numerically", async () => {
     for (let trial = 1; trial <= 10; trial++) {
       await store("alpha", "openai/m1", trial, trial === 10 ? "fail" : "pass");

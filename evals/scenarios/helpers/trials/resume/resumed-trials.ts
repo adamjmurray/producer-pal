@@ -9,9 +9,12 @@
  * replaces the error's file.
  */
 
-import { readdir, readFile, rm } from "node:fs/promises";
+import { readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { isResultFile } from "../../json-results/result-file.ts";
+import {
+  isResultFile,
+  readResultFile,
+} from "../../json-results/result-file.ts";
 import { type JsonEvalResult } from "../../json-results/types.ts";
 
 export interface ResumedTrials {
@@ -33,7 +36,7 @@ export async function loadResumedTrials(dir: string): Promise<ResumedTrials> {
 
   for (const file of files.filter(isResultFile)) {
     const path = join(dir, file);
-    const result = await readResult(path);
+    const result = await readResultFile(path);
 
     // A file cut short when the run was killed: the trial runs again.
     if (result == null) {
@@ -55,22 +58,6 @@ export async function loadResumedTrials(dir: string): Promise<ResumedTrials> {
   }
 
   return resumed;
-}
-
-/**
- * Read a result file.
- *
- * @param path - File path
- * @returns The result, or undefined when the file isn't valid JSON
- */
-async function readResult(path: string): Promise<JsonEvalResult | undefined> {
-  const text = await readFile(path, "utf8");
-
-  try {
-    return JSON.parse(text) as JsonEvalResult;
-  } catch {
-    return undefined;
-  }
 }
 
 /**

@@ -8,11 +8,14 @@
  * CLI for viewing and comparing eval results from JSON files
  */
 
-import { readdir, readFile } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { styleText } from "node:util";
 import { Command } from "commander";
-import { isResultFile } from "./helpers/json-results/result-file.ts";
+import {
+  isResultFile,
+  readResultFile,
+} from "./helpers/json-results/result-file.ts";
 import {
   type JsonEvalResult,
   RESULTS_DIR,
@@ -89,24 +92,33 @@ async function printFailures(runIds: string[]): Promise<void> {
   for (const runId of runIds) {
     const files = await findResultsByRunId(runId);
 
-    runs.push(
-      await Promise.all(files.map(async (file) => await loadResult(file))),
-    );
+    runs.push(await loadResults(files));
   }
 
   console.log(buildFailureTable(runs));
 }
 
 /**
- * Load a JsonEvalResult from a file path
+ * Load the readable results among some files, warning about each file a killed
+ * run cut short.
  *
- * @param filePath - Path to JSON result file
- * @returns Parsed result
+ * @param filePaths - Paths to JSON result files
+ * @returns Parsed results, in order
  */
-async function loadResult(filePath: string): Promise<JsonEvalResult> {
-  const text = await readFile(filePath, "utf-8");
+async function loadResults(filePaths: string[]): Promise<JsonEvalResult[]> {
+  const results: JsonEvalResult[] = [];
 
-  return JSON.parse(text) as JsonEvalResult;
+  for (const filePath of filePaths) {
+    const result = await readResultFile(filePath);
+
+    if (result == null) {
+      console.warn(`Skipped ${filePath}: not valid JSON (cut short?)`);
+    } else {
+      results.push(result);
+    }
+  }
+
+  return results;
 }
 
 /**
@@ -148,18 +160,12 @@ async function findResultsInDir(dir: string): Promise<string[]> {
  */
 async function showPaths(paths: string[]): Promise<void> {
   for (const path of paths) {
-    if (path.endsWith(".json")) {
-      const result = await loadResult(path);
+    const files = path.endsWith(".json")
+      ? [path]
+      : await findResultsInDir(path);
 
+    for (const result of await loadResults(files)) {
       printResult(result);
-    } else {
-      const files = await findResultsInDir(path);
-
-      for (const file of files) {
-        const result = await loadResult(file);
-
-        printResult(result);
-      }
     }
   }
 }
@@ -179,9 +185,7 @@ async function showRun(runId: string): Promise<void> {
 
   console.log(styleText("bold", `Eval Run: ${runId}\n`));
 
-  for (const file of files) {
-    const result = await loadResult(file);
-
+  for (const result of await loadResults(files)) {
     printResult(result);
   }
 }
@@ -201,9 +205,7 @@ async function showLatest(): Promise<void> {
       if (files.length > 0) {
         console.log(styleText("bold", `Latest run: ${dir}\n`));
 
-        for (const file of files) {
-          const result = await loadResult(file);
-
+        for (const result of await loadResults(files)) {
           printResult(result);
         }
 
@@ -234,8 +236,7 @@ async function compareRuns(runIds: string[]): Promise<void> {
     const files = await findResultsByRunId(runId);
     const byScenario = new Map<string, JsonEvalResult[]>();
 
-    for (const file of files) {
-      const result = await loadResult(file);
+    for (const result of await loadResults(files)) {
       const trials = byScenario.get(result.scenarioId) ?? [];
 
       trials.push(result);

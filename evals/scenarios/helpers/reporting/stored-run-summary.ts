@@ -8,10 +8,10 @@
  * before its own summary printed, plus the Jev totals when the run used Jev.
  */
 
-import { readdir, readFile } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
-import { isResultFile } from "../json-results/result-file.ts";
+import { isResultFile, readResultFile } from "../json-results/result-file.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { jevSummaryLines } from "./jev-judge-report.ts";
 import { printResultsTable, type ResultsByScenario } from "./report-table.ts";
@@ -58,16 +58,15 @@ async function loadResultsInDir(dir: string): Promise<JsonEvalResult[]> {
     return [];
   }
 
-  return await Promise.all(
+  const results = await Promise.all(
     files
       .filter(isResultFile)
       .toSorted()
-      .map(async (file) => {
-        const text = await readFile(join(dir, file), "utf-8");
-
-        return JSON.parse(text) as JsonEvalResult;
-      }),
+      .map(async (file) => await readResultFile(join(dir, file))),
   );
+
+  // A file cut short when the run was killed is left out.
+  return results.filter((result) => result != null);
 }
 
 /**
