@@ -13,9 +13,13 @@ const CONTENT_FILTER_NOTICE = `${CONTENT_FILTER_REASON} Use Retry, or edit your 
 const EMPTY_REPLY_REASON = "The provider ended this reply without any content.";
 const EMPTY_REPLY_NOTICE = `${EMPTY_REPLY_REASON} Use Retry, or edit your message.`;
 
+const OUTPUT_LIMIT_REASON = "The reply hit the output limit and was cut off.";
+const OUTPUT_LIMIT_NOTICE = `${OUTPUT_LIMIT_REASON} Use Retry, edit your message, or ask the model to continue.`;
+
 const REASON_BY_NOTICE: ReadonlyMap<string, string> = new Map([
   [CONTENT_FILTER_NOTICE, CONTENT_FILTER_REASON],
   [EMPTY_REPLY_NOTICE, EMPTY_REPLY_REASON],
+  [OUTPUT_LIMIT_NOTICE, OUTPUT_LIMIT_REASON],
 ]);
 
 /**
@@ -28,11 +32,23 @@ export function streamEndReason(content: string): string | undefined {
 }
 
 /**
+ * Whether a notice is for a reply cut short, whose partial text is still worth
+ * handing on (unlike a filtered or empty reply).
+ * @param content - A chat entry's text
+ * @returns True if the text is exactly the output-limit notice
+ */
+export function streamEndKeepsPartialText(content: string): boolean {
+  return content === OUTPUT_LIMIT_NOTICE;
+}
+
+/**
  * The notice a turn needs when the provider ended it and the chat would
  * otherwise show nothing (or no reason for a cut-off).
  *
- * A content filter always gets one, since it can cut a reply short. `other` and
- * `error` only get one when the turn produced nothing.
+ * A content filter or the output limit (`length`) always gets one, since each
+ * can cut a reply short. `other` and `error` only get one when the turn
+ * produced nothing. Only the turn's final finish reason counts, so an earlier
+ * step that hit the limit before the loop carried on gets none.
  * @param finishReason - The turn's final finish reason, if the stream sent one
  * @param producedContent - Whether the turn added any assistant message
  * @returns The notice text, or undefined when none is needed
@@ -43,6 +59,10 @@ export function streamEndNotice(
 ): string | undefined {
   if (finishReason === "content-filter") {
     return CONTENT_FILTER_NOTICE;
+  }
+
+  if (finishReason === "length") {
+    return OUTPUT_LIMIT_NOTICE;
   }
 
   if (

@@ -23,6 +23,7 @@ import {
   stubProviderFetch,
   toolLimitReachedAfter,
   FILTER_NOTICE,
+  OUTPUT_LIMIT_NOTICE,
 } from "./raw-stream-harness";
 
 vi.mock(import("#webui/chat/sdk/mcp-tools"), async () => {
@@ -295,12 +296,19 @@ describe("OpenAI Responses stream to history", () => {
   });
 
   describe("stops and failures", () => {
-    it("keeps the text that arrived before the output limit cut the answer off", async () => {
+    it("keeps the text that arrived before the output limit cut the answer off, then adds a notice", async () => {
       stubResponses([F.CUT_OFF]);
 
       const history = await say(await gpt(), "Tracks?");
 
-      expect(assistantTurns(history)[0]?.content).toBe("Tracks: Drums, Ba");
+      const turns = assistantTurns(history);
+
+      expect(turns[0]?.content).toBe("Tracks: Drums, Ba");
+      expect(turns.at(-1)).toStrictEqual({
+        role: "assistant",
+        content: OUTPUT_LIMIT_NOTICE,
+        isError: true,
+      });
     });
 
     it("says the content filter stopped the answer when it ends the response with no output", async () => {

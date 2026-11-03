@@ -185,6 +185,13 @@ export const ANSWER_AFTER_TOOL: RawEvent[] = [
   ...end("end_turn", 8),
 ];
 
+/** Text cut off by the output limit. */
+export const CUT_OFF: RawEvent[] = [
+  start,
+  ...textBlock(0, ["Tracks: Drums, Ba"]),
+  ...end("max_tokens", 16),
+];
+
 /** Some text, then the server reports an overload. */
 export const OVERLOADED_MID_STREAM: RawEvent[] = [
   start,

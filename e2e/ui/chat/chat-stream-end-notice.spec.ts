@@ -45,4 +45,19 @@ test.describe("Stream end notice", () => {
 
     expectNoConsoleOutput(captured);
   });
+
+  test("shows the output-limit notice for a reply cut off by the token limit", async ({
+    page,
+  }) => {
+    await setupSubagentTest(page, () => ({ finishReason: "length" }));
+    await sendChatMessage(page, "write something");
+
+    await expect(
+      page.getByText(
+        "The reply hit the output limit and was cut off. Use Retry, edit your message, or ask the model to continue.",
+      ),
+    ).toBeVisible();
+
+    expectNoConsoleOutput(captured);
+  });
 });

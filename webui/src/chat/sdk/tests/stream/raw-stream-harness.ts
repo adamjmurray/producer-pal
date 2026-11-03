@@ -374,3 +374,7 @@ export function restoreSdkWarnings(): void {
 /** The notice the chat adds when a content filter ends a reply. */
 export const FILTER_NOTICE =
   "The provider stopped this reply because of its content filter. Use Retry, or edit your message and rephrase it.";
+
+/** The notice the chat adds when the output limit cuts a reply off. */
+export const OUTPUT_LIMIT_NOTICE =
+  "The reply hit the output limit and was cut off. Use Retry, edit your message, or ask the model to continue.";

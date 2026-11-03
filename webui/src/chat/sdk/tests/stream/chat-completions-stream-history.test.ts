@@ -13,6 +13,7 @@ import {
   expectParallelCalls,
   expectStreamFailure,
   liveSetStep,
+  OUTPUT_LIMIT_NOTICE,
   restoreSdkWarnings,
   say,
   startChat,
@@ -205,12 +206,19 @@ describe.each(ALL_ROUTES)("%s chat completions stream to history", (route) => {
     expect(await toolLimitReachedAfter(client, "Tracks?")).toBe(true);
   });
 
-  it("keeps the text that arrived before the output limit cut the answer off", async () => {
+  it("keeps the text that arrived before the output limit cut the answer off, then adds a notice", async () => {
     stubProviderFetch([F.CUT_OFF]);
 
     const history = await say(await chat(route), "Tracks?");
 
-    expect(assistantTurns(history)[0]?.content).toBe("Tracks: Drums, Ba");
+    const turns = assistantTurns(history);
+
+    expect(turns[0]?.content).toBe("Tracks: Drums, Ba");
+    expect(turns.at(-1)).toStrictEqual({
+      role: "assistant",
+      content: OUTPUT_LIMIT_NOTICE,
+      isError: true,
+    });
   });
 
   it("finishes a stream that ends without the [DONE] marker", async () => {
