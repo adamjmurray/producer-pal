@@ -186,6 +186,9 @@ function addManyTags(db: DatabaseSync): void {
     "INSERT INTO metadata (file_id, key, value_id) VALUES (2001, ?, ?)",
   );
 
+  // One transaction: thousands of autocommitted inserts are slow on CI runners.
+  db.exec("BEGIN");
+
   for (let i = 0; i < 1_100; i++) {
     const name = `Tag ${String(i).padStart(4, "0")}`;
 
@@ -194,6 +197,8 @@ function addManyTags(db: DatabaseSync): void {
     value.run(1_000 + i, `Big|${name}`);
     meta.run(fourCC("CKey"), 1_000 + i);
   }
+
+  db.exec("COMMIT");
 }
 
 /**

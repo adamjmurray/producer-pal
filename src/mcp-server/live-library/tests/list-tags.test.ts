@@ -133,10 +133,15 @@ function addManyTags(db: DatabaseSync): void {
     "INSERT INTO keywords (file_id, keyw_id, is_auto) VALUES (2001, ?, 0)",
   );
 
+  // One transaction: thousands of autocommitted inserts are slow on CI runners.
+  db.exec("BEGIN");
+
   for (let i = 0; i < 1_100; i++) {
     file.run(20_000 + i, fourCC("keyw"), `Tag ${String(i).padStart(4, "0")}`);
     tag.run(20_000 + i);
   }
+
+  db.exec("COMMIT");
 }
 
 /**
