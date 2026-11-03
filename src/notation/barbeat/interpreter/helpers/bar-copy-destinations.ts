@@ -170,13 +170,14 @@ function handleMultiBarSourceRangeCopy(
   let destBar = destStart;
   let sourceOffset = 0;
   let copiedAny = false;
+  const selfCopies: number[] = [];
 
   while (destBar <= destEnd) {
     const sourceBar = sourceStart + (sourceOffset % sourceCount);
 
     // Skip copying a bar to itself
     if (sourceBar === destBar) {
-      emitWarning(`Skipping copy of bar ${sourceBar} to itself`);
+      selfCopies.push(sourceBar);
       destBar++;
       sourceOffset++;
       continue;
@@ -210,6 +211,8 @@ function handleMultiBarSourceRangeCopy(
     destBar++;
     sourceOffset++;
   }
+
+  warnSelfCopies(selfCopies);
 
   if (copiedAny) {
     return {
@@ -430,4 +433,21 @@ export function handleClearBuffer(
   notesByBar: Map<number, BarCopyNote[]>,
 ): void {
   notesByBar.clear();
+}
+
+/**
+ * One warning for every bar a range copy skipped as a copy onto itself, so a
+ * long range can't flood the response with one line per bar. Those bars are
+ * always one unbroken run: a source bar lands on itself only when the
+ * destination starts a whole number of source lengths from the source.
+ * @param bars - The skipped bars, ascending
+ */
+function warnSelfCopies(bars: number[]): void {
+  if (bars.length === 1) {
+    emitWarning(`Skipping copy of bar ${bars[0]} to itself`);
+  } else if (bars.length > 1) {
+    emitWarning(
+      `Skipping copy of bars ${bars[0]}-${bars.at(-1)} to themselves`,
+    );
+  }
 }

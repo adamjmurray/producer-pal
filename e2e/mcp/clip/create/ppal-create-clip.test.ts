@@ -432,6 +432,24 @@ describe("ppal-create-clip", () => {
     expect(clip.transformed).toBe(70);
   });
 
+  it("warns once for a bar range copied onto itself", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s12`,
+        length: "8bar",
+        notes: "C3 1|1 D3 2|1 @1-8=1-2",
+      },
+    });
+
+    const skips = getToolWarnings(result).filter((w) =>
+      w.includes("Skipping copy"),
+    );
+
+    expect(skips).toHaveLength(1);
+    expect(skips[0]).toContain("Skipping copy of bars 1-2 to themselves");
+  });
+
   it("counts a deleted note once when a bar copy duplicates it", async () => {
     // The same bar copy as above makes 88 hats, of which 64 are distinct. A
     // transform that zeroes them deletes 64 notes, so `deletedNotes` must say 64
