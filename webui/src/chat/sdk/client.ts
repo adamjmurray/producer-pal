@@ -7,6 +7,7 @@ import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type FinishReason, type ToolSet, stepCountIs, streamText } from "ai";
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 import { getMcpUrl } from "#webui/utils/mcp-url";
+import { randomUuid } from "#webui/lib/utils/random-uuid";
 import {
   buildModelMessages,
   endsOnAssistantTurn,
@@ -126,7 +127,7 @@ export class ChatSdkClient {
    */
   private mcpClient: Client | null = null;
   /** Mistral prompt-cache key for all this client's requests; workers get their own. */
-  private readonly promptCacheKey = crypto.randomUUID();
+  private readonly promptCacheKey = randomUuid();
 
   /**
    * @param _apiKey - API key (handled by the model instance in config)

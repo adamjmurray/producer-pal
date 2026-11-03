@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { type RealtimeItem } from "@openai/agents/realtime";
+import { randomUuid } from "#webui/lib/utils/random-uuid";
 
 // Gemini Live streams the conversation as incremental transcript deltas
 // (input = user speech, output = model speech) plus separate tool calls — there
@@ -172,5 +173,5 @@ export class GeminiHistoryBuilder {
  * @returns A unique item id
  */
 function newId(): string {
-  return `gem-${crypto.randomUUID()}`;
+  return `gem-${randomUuid()}`;
 }
