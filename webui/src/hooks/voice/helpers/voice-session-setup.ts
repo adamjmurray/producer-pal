@@ -156,43 +156,6 @@ export function buildSessionOptions(
 }
 
 /**
- * Abort a connect() that went stale across one of its awaits — cleanup() bumped
- * the generation, so this attempt's resources must not be published or opened.
- * cleanup() closes whatever's been stored on the refs; the caller returns before
- * opening (or after re-populating) the session + mic.
- *
- * @param isStale - Whether cleanup() ran since this connect() started
- * @param cleanup - Tears down the stored session + MCP client
- * @param session - The just-opened session, if the await being guarded was
- *   session.connect(). The stale teardown's cleanup() closed the stored ref,
- *   but that close may have been a no-op before the handshake completed, so we
- *   close this resolved session directly to avoid leaking a live peer
- *   connection + mic. Omitted for checks that run before any connection exists.
- * @returns True if stale (caller should return); false to continue
- */
-export async function bailIfStale(
-  isStale: boolean,
-  cleanup: () => Promise<void>,
-  session?: RealtimeSession,
-): Promise<boolean> {
-  if (!isStale) {
-    return false;
-  }
-
-  if (session) {
-    try {
-      session.close();
-    } catch {
-      // swallow — best-effort teardown
-    }
-  }
-
-  await cleanup();
-
-  return true;
-}
-
-/**
  * Seed prior conversation context onto a freshly connected session. The SDK's
  * updateHistory only echoes "message" items back to the server (function/MCP
  * calls are dropped) and rejects audio items without bytes, so the history is
