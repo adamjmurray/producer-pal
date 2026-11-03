@@ -34,18 +34,43 @@ export const DEFAULT_MCP_PORT = 3350;
 export const DEFAULT_MCP_ORIGIN = `http://localhost:${DEFAULT_MCP_PORT}`;
 export const DEFAULT_MCP_URL = `${DEFAULT_MCP_ORIGIN}/mcp`;
 
-const LOOPBACK_HOST = /^(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i;
+const LOOPBACK_NAME =
+  /^(?:[^.:/@\s]+\.)*localhost(?::\d+)?$|^\[::1\](?::\d+)?$/i;
+const IPV4_HOST = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?::\d+)?$/;
+// One character class, no nested or adjacent repeats: linear on a hostile Host.
+const IPV6_HOST = /^\[([0-9a-f:.]+)\](?::\d+)?$/i;
 
 /**
  * Whether a `host[:port]` string (a Host header or a URL's `host`) names this
- * machine. Strict on purpose: not parsed as a URL, so `evil.com@localhost` and
- * `localhost/x` are refused.
+ * machine: localhost, `*.localhost`, 127.0.0.0/8 or [::1]. Strict on purpose:
+ * not parsed as a URL, so `evil.com@localhost` and `localhost/x` are refused.
  *
  * @param host - Host with an optional port
- * @returns true for localhost, 127.0.0.1 or [::1]
+ * @returns true when the host is a loopback name or address
  */
 export function isLoopbackHost(host: string): boolean {
-  return LOOPBACK_HOST.test(host);
+  return (
+    LOOPBACK_NAME.test(host) ||
+    (isIpLiteralHost(host) && host.startsWith("127."))
+  );
+}
+
+/**
+ * Whether a `host[:port]` string is an IP address literal (v4 or bracketed v6)
+ * rather than a DNS name. Unlike a name, a literal can't be rebound to another
+ * address.
+ *
+ * @param host - Host with an optional port
+ * @returns true for a dotted-quad IPv4 or a bracketed IPv6 literal
+ */
+export function isIpLiteralHost(host: string): boolean {
+  const v4 = IPV4_HOST.exec(host);
+
+  if (v4 != null) {
+    return v4.slice(1).every((octet) => Number(octet) <= 255);
+  }
+
+  return IPV6_HOST.exec(host)?.[1]?.includes(":") === true;
 }
 
 // Minimum required Ableton Live version (no "v" prefix)

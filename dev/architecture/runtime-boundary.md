@@ -42,6 +42,14 @@ reports where Live's User Library is (read from its browser database), what is
 installed there, and what `/ping` says is running; `POST /remote-script/install`
 writes the folder.
 
+The install POSTs (here and under `/device-install`) write into the User
+Library, so a browser request must name the server by `localhost` or an IP
+address (`rejectRebindableOriginWrite`). A DNS name can be rebound to this
+machine by another site, which makes its `Origin` and `Host` match; an IP
+literal can't. A chat UI reached through a tunnel's DNS name can read the
+Installation tab but not install. Content writes (memory, skills) keep the
+looser same-origin rule, so a remote chat UI can still save them.
+
 The script updates separately from the device, so it drifts. Both the chat UI
 header and `ppal-connect` flag it, using one rule (`remoteScriptAttention` in
 `src/shared/version-check.ts`): **update** when the installed copy differs from

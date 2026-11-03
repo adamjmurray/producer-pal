@@ -40,7 +40,7 @@ export function registerRemoteScriptSetupRoutes(app: Express): void {
   });
 
   app.post("/remote-script/install", (req: Request, res: Response): void => {
-    const posted = readUserLibraryPost(req, res, "/remote-script");
+    const posted = readUserLibraryPost(req, res);
 
     if (posted == null) {
       return;

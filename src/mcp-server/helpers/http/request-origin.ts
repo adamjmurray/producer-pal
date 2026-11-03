@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { type Request, type Response } from "express";
+import { isIpLiteralHost, isLoopbackHost } from "#src/shared/config.ts";
 
 /**
  * Check whether an Origin header value points to localhost. Used ONLY to gate
@@ -104,6 +105,47 @@ export function rejectForeignOriginWrite(
   const origin = req.get("Origin");
 
   if (!origin || isLocalOrigin(origin) || isSameOriginRequest(origin, req)) {
+    return false;
+  }
+
+  res.status(403).json({ error: message });
+
+  return true;
+}
+
+/**
+ * Gate a browser write that installs files into the User Library, which must
+ * hold even under DNS rebinding. There the attacker controls both `Origin` and
+ * `Host`, so a matching pair proves nothing when the host is a DNS name.
+ * Passing needs a host that can't be rebound: a loopback name, or an IP
+ * literal (so a LAN webui still works). Origin-less (non-browser) clients pass.
+ * A webui reached through a tunnel's DNS name is refused.
+ *
+ * @param req - Express request
+ * @param res - Express response (a 403 is written when rejected)
+ * @param message - Error body for the 403
+ * @returns true if the request was rejected (403 written); false to proceed
+ */
+export function rejectRebindableOriginWrite(
+  req: Request,
+  res: Response,
+  message: string,
+): boolean {
+  const origin = req.get("Origin");
+
+  if (!origin) {
+    return false;
+  }
+
+  const host = req.get("host");
+  const allowed =
+    host != null &&
+    (isLocalOrigin(origin)
+      ? isLoopbackHost(host)
+      : isSameOriginRequest(origin, req) &&
+        (isLoopbackHost(host) || isIpLiteralHost(host)));
+
+  if (allowed) {
     return false;
   }
 

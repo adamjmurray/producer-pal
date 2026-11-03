@@ -63,7 +63,7 @@ export function registerDeviceInstallRoutes(app: Express): void {
   });
 
   app.post("/device-install/install", (req: Request, res: Response): void => {
-    const posted = readUserLibraryPost(req, res, ROUTE);
+    const posted = readUserLibraryPost(req, res);
 
     if (posted == null) {
       return;
@@ -103,7 +103,7 @@ export function registerDeviceInstallRoutes(app: Express): void {
   app.post(
     "/device-install/swap",
     async (req: Request, res: Response): Promise<void> => {
-      const posted = readUserLibraryPost(req, res, ROUTE);
+      const posted = readUserLibraryPost(req, res);
 
       if (posted == null) {
         return;
