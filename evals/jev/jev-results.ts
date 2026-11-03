@@ -11,6 +11,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { lastCriteriaChange } from "./jev-criteria-dates.ts";
+import { type CheckSummary } from "#evals/scenarios/assertions/llm-judge.ts";
 import { allScenarios } from "#evals/scenarios/load-scenarios/all-scenarios.ts";
 import { restoreInjectedBlocks } from "#evals/scenarios/helpers/json-results/injected-blocks.ts";
 import { isResultFile } from "#evals/scenarios/helpers/json-results/result-file.ts";
@@ -64,6 +65,21 @@ export interface LoadOptions {
   llmVerdictOnly?: boolean;
   /** When a prompt last changed (ISO date); default reads git history */
   criteriaDate?: (prompt: string) => string | undefined;
+}
+
+/**
+ * The checks the judge sees for a saved result: gating checks, then signals,
+ * as in the live run.
+ *
+ * @param result - A saved result
+ * @returns Check summaries for the judge prompt
+ */
+export function judgeChecks(result: JsonEvalResult): CheckSummary[] {
+  return [...result.checks.results, ...(result.signals ?? [])].map((c) => ({
+    pass: c.pass,
+    label: c.label,
+    message: c.message,
+  }));
 }
 
 /**

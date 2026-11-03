@@ -165,6 +165,35 @@ describe("runJevCompare", () => {
     expect(output()).toContain("Wrong pass 0, wrong fail 1");
   });
 
+  it("gives Jev the gating checks, then the signals", async () => {
+    const stored = JSON.parse(resultJson({ pass: true, issues: [] })) as {
+      checks: unknown;
+      signals?: unknown;
+    };
+
+    stored.checks = {
+      pass: true,
+      results: [{ type: "t", label: "G", pass: true, message: "gm" }],
+    };
+    stored.signals = [{ type: "s", label: "S", pass: false, message: "sm" }];
+    await rm(join(dir, "run1", "b.json"));
+    await rm(join(dir, "run1", "c.json"));
+    await writeFile(join(dir, "run1", "a.json"), JSON.stringify(stored));
+
+    const jev = vi.fn(async (..._args: unknown[]) => jevAnswer("pass"));
+
+    await run(["run1"], jev);
+
+    expect(jev.mock.calls[0]?.[0]).toStrictEqual(
+      expect.objectContaining({
+        checks: [
+          { pass: true, label: "G", message: "gm" },
+          { pass: false, label: "S", message: "sm" },
+        ],
+      }),
+    );
+  });
+
   it("leaves out results Jev decided in the run, and says so", async () => {
     await writeFile(
       join(dir, "run1", "d.json"),

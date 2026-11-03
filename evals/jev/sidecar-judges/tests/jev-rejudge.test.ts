@@ -119,9 +119,7 @@ describe("runRejudge", () => {
     expect(override).toStrictEqual(
       expect.objectContaining({ provider: "codex-code", model: "luna" }),
     );
-    expect(checks).toStrictEqual([
-      { type: "t", label: "L", pass: true, message: "m" },
-    ]);
+    expect(checks).toStrictEqual([{ pass: true, label: "L", message: "m" }]);
     expect(override).toStrictEqual(
       expect.objectContaining({ thinking: undefined }),
     );
@@ -148,6 +146,28 @@ describe("runRejudge", () => {
       }),
     );
     expect(fail?.durationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("gives the judge the gating checks, then the signals", async () => {
+    await writeFile(
+      join(dir, "run1", "a1.json"),
+      resultJson({
+        signals: [{ type: "s", label: "S", pass: false, message: "sm" }],
+      }),
+    );
+
+    const judge = fakeJudge();
+
+    await runRejudge([...base(), "--scenario=a"], deps(judge));
+
+    const call = judge.mock.calls.find(
+      ([, t]) => t[0]?.assistantResponse === "ok",
+    );
+
+    expect(call?.[4]).toStrictEqual([
+      { pass: true, label: "L", message: "m" },
+      { pass: false, label: "S", message: "sm" },
+    ]);
   });
 
   it("passes --judge-thinking to the judge", async () => {

@@ -7,8 +7,9 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { type JsonEvalResult } from "#evals/scenarios/helpers/json-results/types.ts";
 import { type EvalScenario } from "#evals/scenarios/types.ts";
-import { loadJudgedResults } from "../jev-results.ts";
+import { judgeChecks, loadJudgedResults } from "../jev-results.ts";
 
 const scenario = (id: string, prompt: string): EvalScenario =>
   ({
@@ -189,5 +190,32 @@ describe("loadJudgedResults", () => {
     expect(loaded?.result.turns[0]?.toolCalls[0]?.injectedBlocks).toStrictEqual(
       ["Everything is up to date."],
     );
+  });
+});
+
+describe("judgeChecks", () => {
+  const check = (label: string, pass: boolean) => ({
+    type: "t",
+    label,
+    pass,
+    message: `${label} message`,
+    details: { extra: 1 },
+  });
+  const resultWith = (signals?: ReturnType<typeof check>[]): JsonEvalResult =>
+    ({
+      checks: { pass: true, results: [check("G1", true), check("G2", false)] },
+      ...(signals && { signals }),
+    }) as unknown as JsonEvalResult;
+
+  it("lists gating checks, then signals, as judge summaries", () => {
+    expect(judgeChecks(resultWith([check("S1", false)]))).toStrictEqual([
+      { pass: true, label: "G1", message: "G1 message" },
+      { pass: false, label: "G2", message: "G2 message" },
+      { pass: false, label: "S1", message: "S1 message" },
+    ]);
+  });
+
+  it("is just the gating checks when there are no signals", () => {
+    expect(judgeChecks(resultWith())).toHaveLength(2);
   });
 });

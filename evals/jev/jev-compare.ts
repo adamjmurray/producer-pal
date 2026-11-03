@@ -40,6 +40,7 @@ import { resolveReference, type Vote } from "./sidecar-judges/jev-reference.ts";
 import { referenceLines } from "./sidecar-judges/jev-reference-report.ts";
 import { formatReport, type CompareEntry } from "./report/jev-report.ts";
 import {
+  judgeChecks,
   loadJudgedResults,
   type JudgedResult,
   type LoadOptions,
@@ -214,7 +215,7 @@ async function compareOne(
 
   try {
     const answer = await jev(
-      { turns: result.turns, checks: result.checks.results },
+      { turns: result.turns, checks: judgeChecks(result) },
       criteria,
       { route },
     );

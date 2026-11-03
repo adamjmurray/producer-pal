@@ -41,6 +41,7 @@ import {
 } from "#evals/scenarios/assertions/llm-judge.ts";
 import { RESULTS_DIR } from "#evals/scenarios/helpers/json-results/types.ts";
 import {
+  judgeChecks,
   loadJudgedResults,
   type JudgedResult,
   type LoadOptions,
@@ -214,7 +215,7 @@ async function judgeOne(
       result.turns,
       spec.provider,
       { ...spec, thinking: args.judgeThinking },
-      result.checks.results,
+      judgeChecks(result),
     );
   } catch {
     return "error";
