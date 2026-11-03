@@ -11,7 +11,7 @@
  * Run with: npm run e2e:mcp
  */
 import { randomUUID } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MAX_CONTEXT_CONTENT_LENGTH } from "#src/tools/constants.ts";
 import {
   CONFIG_URL,
@@ -21,6 +21,10 @@ import {
   setConfig,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
+import {
+  backupGlobalContext,
+  restoreGlobalContext,
+} from "./helpers/global-context-backup-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -295,6 +299,10 @@ async function callContextTool(args: {
 }
 
 describe("ppal-context (global scope)", () => {
+  // The per-test restores below don't survive a hard abort; this copy does.
+  beforeAll(backupGlobalContext);
+  afterAll(restoreGlobalContext);
+
   it("round-trips a write through read, then restores the original", async () => {
     // Global context is a real file (~/.producer-pal/context.md), so snapshot
     // the developer's actual content and restore it afterward. An empty

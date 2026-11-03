@@ -27,6 +27,10 @@ import {
   remoteScriptAnswers,
   serverHasCodeExec,
 } from "./helpers/server-capability-test-helpers";
+import {
+  backupGlobalContext,
+  restoreGlobalContext,
+} from "./helpers/global-context-backup-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -464,6 +468,10 @@ describe("ppal-connect", () => {
     const GLOBAL_CONTEXT_URL = `${ROOT_URL}/global-context`;
     const ORDER_MEMORY_NAME = "e2e-connect-order-probe";
     const ORDER_MEMORY_URL = `${ROOT_URL}/memory/${ORDER_MEMORY_NAME}`;
+
+    // The finally below doesn't survive a hard abort; this copy does.
+    beforeAll(backupGlobalContext);
+    afterAll(restoreGlobalContext);
 
     it("appends blocks in skills → project → global → memory order", async () => {
       // Snapshot the dev machine's real global context BEFORE mutating it, so the
