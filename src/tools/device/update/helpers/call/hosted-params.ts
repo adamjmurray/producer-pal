@@ -26,7 +26,9 @@ import {
 import { parseLabel } from "#src/tools/shared/device/helpers/params/param-label-parsing.ts";
 import {
   detectHostedPlugin,
+  type HostedPlugin,
   hostedParamId,
+  noPluginDetail,
   parseHostedParamId,
 } from "#src/tools/shared/device/helpers/params/hosted-plugin-reading.ts";
 import { type SettledParams } from "./simpler-pitch-bend.ts";
@@ -93,16 +95,15 @@ export function writeHostedParams(
   stall: HostedStall,
   call: HostedCall,
 ): Promise<SettledParams> | undefined {
-  if (
-    params == null ||
-    params.length === 0 ||
-    !isDeviceClass(target.type) ||
-    detectHostedPlugin(target) == null
-  ) {
+  if (params == null || params.length === 0 || !isDeviceClass(target.type)) {
     return undefined;
   }
 
-  return settle(target, params, stall, call);
+  const hosted = detectHostedPlugin(target);
+
+  return hosted == null
+    ? undefined
+    : settle(target, hosted, params, stall, call);
 }
 
 // --- Helpers below main exports ---
@@ -110,6 +111,7 @@ export function writeHostedParams(
 /**
  * Send what can be sent and say what each entry came to.
  * @param target - The wrapper device
+ * @param hosted - The plug-in the wrapper hosts
  * @param params - The call's `params`
  * @param stall - What the call has found out about the wrapper so far
  * @param call - The request deadline, and what to tell of a write that may
@@ -118,6 +120,7 @@ export function writeHostedParams(
  */
 async function settle(
   target: LiveAPI,
+  hosted: HostedPlugin,
   params: ParamEntry[],
   stall: HostedStall,
   call: HostedCall,
@@ -144,7 +147,8 @@ async function settle(
     return settled;
   }
 
-  const refused = stall.reason ?? outOfTime(call.deadline);
+  const refused =
+    noPluginDetail(hosted) ?? stall.reason ?? outOfTime(call.deadline);
 
   if (refused != null) {
     return refuseAll(settled, sent, refused);

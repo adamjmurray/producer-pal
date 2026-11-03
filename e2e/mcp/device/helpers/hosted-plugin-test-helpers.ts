@@ -21,6 +21,7 @@ export interface HostedDevice {
   type: string;
   hosted?: boolean;
   name?: string;
+  detail?: string;
   parameters?: { id: string; name: string; value?: string }[];
 }
 

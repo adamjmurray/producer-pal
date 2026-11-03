@@ -460,8 +460,11 @@ Live's browser must find the wrappers by name, so they go in the User Library:
   hosted Pianoteq 9 loaded on the same track; the report had no stack.
 - A wrapper whose plug-in is missing (simulated by hiding the bundle, then
   duplicating) loads nothing and keeps its stored state, so it loads the plug-in
-  again once it's back. But `ppal-read-device` shows it as `hosted: true` with
-  its name and an empty `parameters`, with no sign the plug-in is missing.
+  again once it's back. `ppal-read-device` shows it as the plug-in's name (the
+  wrapper's `info` has it as `missing`), `hosted: true`, no `parameters` and a
+  `detail` saying the plug-in isn't loaded. `ppal-update-device` `params` on it
+  fail per entry with that same `detail`. A bare wrapper says
+  `no plug-in loaded`.
 
 ## Not yet tested
 

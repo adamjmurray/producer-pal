@@ -316,10 +316,14 @@ function info() {
   for (const i of [-1, -2, -4, -7, -10]) outlet(0, "get", i);
 
   const num = (i) => (state.info[i] == null ? null : Number(state.info[i][0]));
+  const loaded = loadedPlugin();
+  // The stored plug-in's name when it didn't load (not installed here).
+  const missing = loaded == null ? storedNameDict()?.get("name") : null;
 
   return {
-    plugin: state.plugin ?? storedName() ?? loadedPlugin(),
-    loaded: loadedPlugin(),
+    plugin: state.plugin ?? storedName() ?? loaded,
+    loaded,
+    ...(missing && { missing: String(missing) }),
     numParams: num(-4),
     numInputs: num(-1),
     numOutputs: num(-2),

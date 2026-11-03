@@ -12,6 +12,10 @@ import {
   installWrapper,
   registerWrapperDevice,
 } from "#src/tools/device/tests/helpers/plugin-host-wrapper-fixtures.ts";
+import {
+  NO_PLUGIN_LOADED,
+  PLUGIN_NOT_LOADED,
+} from "#src/tools/shared/device/helpers/params/hosted-plugin-reading.ts";
 import { readOneDevice } from "../../read-device.ts";
 
 type Reply = WrapperMessage;
@@ -78,16 +82,35 @@ describe("readOneDevice on a plug-in host wrapper", () => {
     expect(readOneDevice({ path: "t0/d0" }).type).toBe("audio-effect: Serum2");
   });
 
-  it("reads a wrapper with nothing loaded as the Max device it is", () => {
+  it("says a bare wrapper has no plug-in loaded, and lists no params", () => {
     registerMaxDevice();
-    installWrapper({ info: () => info(null) });
+    const heard = installWrapper({ info: () => info(null) });
 
-    expect(readOneDevice({ path: "t0/d0" })).toStrictEqual({
-      id: "device-123",
-      path: "t0/d0",
-      type: "audio-effect: Max Audio Effect",
-      hosted: true,
-    });
+    expect(readOneDevice({ path: "t0/d0", include: ["params"] })).toStrictEqual(
+      {
+        id: "device-123",
+        path: "t0/d0",
+        type: "audio-effect: Max Audio Effect",
+        hosted: true,
+        detail: NO_PLUGIN_LOADED,
+      },
+    );
+    expect(heard.some((request) => request.op === "params")).toBe(false);
+  });
+
+  it("reads a wrapper whose plug-in is missing as that plug-in, and says so", () => {
+    registerMaxDevice("Enstriate");
+    installWrapper({ info: () => infoReply(null, "Enstriate") });
+
+    expect(readOneDevice({ path: "t0/d0", include: ["params"] })).toStrictEqual(
+      {
+        id: "device-123",
+        path: "t0/d0",
+        type: "audio-effect: Enstriate",
+        hosted: true,
+        detail: PLUGIN_NOT_LOADED,
+      },
+    );
   });
 
   it("reads a Max device nobody answers for as a plain device", () => {

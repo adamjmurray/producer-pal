@@ -7,10 +7,12 @@ import { isRedundantDeviceClassName } from "./device-reading.ts";
 import {
   type HostedPlugin,
   isDefaultWrapperName,
+  noPluginDetail,
 } from "./params/hosted-plugin-reading.ts";
 
 /**
- * The class a device reads as: a wrapper reads as the plug-in it hosts.
+ * The class a device reads as: a wrapper reads as the plug-in it hosts, or the
+ * one it is saved for when that isn't loaded.
  * @param device - LiveAPI device object
  * @param hosted - The plug-in the device hosts, if it is a wrapper
  * @returns The class name
@@ -19,7 +21,11 @@ export function deviceClassName(
   device: LiveAPI,
   hosted: HostedPlugin | null,
 ): string {
-  return hosted?.label ?? (device.getProperty("class_display_name") as string);
+  return (
+    hosted?.label ??
+    hosted?.missing ??
+    (device.getProperty("class_display_name") as string)
+  );
 }
 
 /**
@@ -30,7 +36,8 @@ export function deviceClassName(
  * @param identity.className - The class it reads as
  * @param identity.path - The device's path, if it has one
  * @param identity.hosted - The plug-in the device hosts, if it is a wrapper
- * @returns The device's id, path, type, hosted marker and custom name
+ * @returns The device's id, path, type, hosted marker, custom name and, for a
+ *   wrapper with no plug-in loaded, why
  */
 export function describeDevice(
   device: LiveAPI,
@@ -53,6 +60,12 @@ export function describeDevice(
 
   if (isCustomName(userDisplayName, className, hosted)) {
     info.name = userDisplayName;
+  }
+
+  const unloaded = hosted && noPluginDetail(hosted);
+
+  if (unloaded) {
+    info.detail = unloaded;
   }
 
   return info;

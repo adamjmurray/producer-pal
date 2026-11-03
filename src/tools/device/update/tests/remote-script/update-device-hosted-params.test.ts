@@ -16,6 +16,10 @@ import {
   installWrapper,
   registerWrapperDevice,
 } from "#src/tools/device/tests/helpers/plugin-host-wrapper-fixtures.ts";
+import {
+  NO_PLUGIN_LOADED,
+  PLUGIN_NOT_LOADED,
+} from "#src/tools/shared/device/helpers/params/hosted-plugin-reading.ts";
 import { writeHostedParams } from "../../helpers/call/hosted-params.ts";
 import { livePath, updateDevice } from "../update-device-test-helpers.ts";
 
@@ -445,6 +449,35 @@ describe("updateDevice hosted plug-in params", () => {
     ]);
     expect(heard.filter((request) => request.op === "write")).toHaveLength(1);
   });
+
+  it.each([
+    ["has no plug-in", infoReply(null), NO_PLUGIN_LOADED],
+    ["has lost its plug-in", infoReply(null, "Enstriate"), PLUGIN_NOT_LOADED],
+  ])(
+    "fails every entry, unsent, for a wrapper that %s",
+    async (_, reply, why) => {
+      const heard = installWrapper({ info: () => reply });
+      const entries = [
+        { name: "Mix", value: "75" },
+        { id: "h5", value: "1/16" },
+      ];
+      const settled = await writeHostedParams(
+        LiveAPI.from("id device-123"),
+        entries,
+        {},
+        { deadline: undefined, landed: vi.fn() },
+      );
+
+      expect(entries.map((entry) => settled?.get(entry))).toStrictEqual([
+        [{ name: "Mix", ok: false, detail: why }],
+        [{ id: "h5", ok: false, detail: why }],
+      ]);
+      expect(heard.some((request) => request.op === "write")).toBe(false);
+      await expect(
+        update({ id: "device-123", params: [entries[0] as never] }),
+      ).rejects.toThrow(`no param landed — "Mix": ${why}`);
+    },
+  );
 
   it("leaves a Max device that isn't a wrapper to the usual write", async () => {
     installWrapper({});

@@ -26,10 +26,19 @@ const DEFAULT_WRAPPER_NAMES: ReadonlySet<string> = new Set(
   Object.values(WRAPPER_NAMES),
 );
 
+/** Why a wrapper with a saved plug-in has none loaded. */
+export const PLUGIN_NOT_LOADED =
+  "plug-in not loaded (not installed on this computer?); its saved state is kept for when it is";
+
+/** Said of a wrapper that never had a plug-in. */
+export const NO_PLUGIN_LOADED = "no plug-in loaded";
+
 /** A device that hosts a plug-in. */
 export interface HostedPlugin {
   /** The plug-in's name, or null when the wrapper has none loaded. */
   label: string | null;
+  /** With no plug-in loaded: the name of the one it was saved with, if any. */
+  missing: string | null;
 }
 
 /** One param of a hosted plug-in, as a read lists it. */
@@ -68,7 +77,26 @@ export function detectHostedPlugin(device: LiveAPI): HostedPlugin | null {
 
   const reply = probePluginHost(device.id, "info");
 
-  return reply == null ? null : { label: pluginLabel(reply) };
+  if (reply == null) {
+    return null;
+  }
+
+  const label = pluginLabel(reply);
+
+  return { label, missing: label == null ? missingName(reply) : null };
+}
+
+/**
+ * Why a wrapper has no plug-in to read or write.
+ * @param hosted - The plug-in the device hosts
+ * @returns The reason, or null when a plug-in is loaded
+ */
+export function noPluginDetail(hosted: HostedPlugin): string | null {
+  if (hosted.label != null) {
+    return null;
+  }
+
+  return hosted.missing == null ? NO_PLUGIN_LOADED : PLUGIN_NOT_LOADED;
 }
 
 /**
@@ -135,6 +163,16 @@ export function readHostedParams(
     })),
     total: Number(reply.total ?? params.length),
   };
+}
+
+/**
+ * @param reply - The wrapper's reply about itself
+ * @returns The name of the plug-in saved in a wrapper that has none loaded
+ */
+function missingName(reply: PluginHostResponse): string | null {
+  return typeof reply.missing === "string" && reply.missing !== ""
+    ? reply.missing
+    : null;
 }
 
 /**

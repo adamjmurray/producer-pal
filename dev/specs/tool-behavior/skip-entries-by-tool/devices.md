@@ -53,8 +53,10 @@ Part of [Skip entries, tool by tool](README.md).
   Two entries reaching one param, by name and by id, write the last. A wrapper
   that doesn't answer may have written: the entries say `may have changed` and
   the hosted devices after it say they weren't tried. A wrapper from before this
-  write existed says to create the hosted plug-in again. A Max device that isn't
-  a wrapper takes `params` as any device does.
+  write existed says to create the hosted plug-in again. A wrapper with no
+  plug-in loaded takes nothing: every entry is `ok: false` with the device's
+  read `detail` as the reason (see read-device below). A Max device that isn't a
+  wrapper takes `params` as any device does.
 - **read-device on a hosted plug-in marks the params a slot drives.** Params
   that one of the wrapper's automation slots drives read with
   `slot: "Automation 002"`, and, with values, `automation` (`active` or
@@ -62,7 +64,11 @@ Part of [Skip entries, tool by tool](README.md).
   left out, with the usual
   `arrangement automation unknown while the track plays from Session` detail,
   while the track plays from Session. Params no slot drives read as before, and
-  so does a wrapper whose slots can't be read.
+  so does a wrapper whose slots can't be read. A wrapper with no plug-in loaded
+  reads as the plug-in it was saved for (`instrument: Enstriate`), with no
+  `parameters` and a `detail`:
+  `plug-in not loaded (not installed on this computer?); its saved state is kept for when it is`,
+  or `no plug-in loaded` for a bare wrapper. Every device listing carries it.
 - **read-device shows a pad's fader even at its defaults.** A read aimed at one
   pad (its path or id, or one of its chains by path or id) lists each drum
   chain's `gainDb` and `pan` even at 0 dB / center, so the pad's own fader is

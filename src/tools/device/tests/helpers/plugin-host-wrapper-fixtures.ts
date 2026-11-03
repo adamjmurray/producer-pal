@@ -87,8 +87,17 @@ export function registerWrapperDevice(options: {
 /**
  * What a wrapper says about itself.
  * @param plugin - The plug-in it hosts, or null for none
+ * @param missing - With none loaded: the name of the plug-in it was saved with
  * @returns The reply to `info`
  */
-export function infoReply(plugin: string | null): WrapperMessage {
-  return { success: true, plugin, loaded: plugin };
+export function infoReply(
+  plugin: string | null,
+  missing?: string,
+): WrapperMessage {
+  return {
+    success: true,
+    plugin,
+    loaded: plugin,
+    ...(missing != null && { missing }),
+  };
 }

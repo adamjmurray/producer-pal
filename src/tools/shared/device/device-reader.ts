@@ -17,7 +17,10 @@ import {
   readABCompare,
   readMacroVariations,
 } from "./helpers/device-reading.ts";
-import { detectHostedPlugin } from "./helpers/params/hosted-plugin-reading.ts";
+import {
+  detectHostedPlugin,
+  type HostedPlugin,
+} from "./helpers/params/hosted-plugin-reading.ts";
 import {
   appendHostedParameters,
   appendParameters,
@@ -370,7 +373,7 @@ export function readDevice(
 
   appendDeviceDetails(device, deviceInfo, {
     className,
-    hosted: hosted != null,
+    hosted,
     includeParams,
     includeParamValues,
     includeSample,
@@ -402,7 +405,7 @@ function addDeactivated(
 
 interface DeviceDetailOptions {
   className: string;
-  hosted: boolean;
+  hosted: HostedPlugin | null;
   includeParams: boolean;
   includeParamValues: boolean;
   includeSample: boolean;
@@ -431,7 +434,10 @@ function appendDeviceDetails(
     Object.assign(deviceInfo, readABCompare(device));
     const append = opts.hosted ? appendHostedParameters : appendParameters;
 
-    append(device, deviceInfo, opts.includeParamValues, opts.paramSearch);
+    // A wrapper with no plug-in has no params to list; its `detail` says why.
+    if (opts.hosted == null || opts.hosted.label != null) {
+      append(device, deviceInfo, opts.includeParamValues, opts.paramSearch);
+    }
   }
 
   if (opts.includeSample) {
