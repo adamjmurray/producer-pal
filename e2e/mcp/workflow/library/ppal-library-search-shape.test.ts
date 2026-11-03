@@ -141,10 +141,14 @@ describe("ppal-library search shape", () => {
       expect(items.every((i) => i.kind === undefined)).toBe(true);
     });
 
-    it("never repeats the file name, the folder, or a zero useCount", async () => {
+    it("never repeats the file name, the folder, or a zero useCount", async ({
+      skip,
+    }) => {
       const { items } = parseToolResult<ShapeResult>(
         await call({ query: "a", limit: 50 }),
       );
+
+      skip(items.length === 0, "no library items match the query");
 
       for (const item of items) {
         const segments = item.path.split("/");

@@ -60,12 +60,16 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-library list-plugins", () => {
     );
   }
 
-  it("lists browser plug-ins with the usual shape and no staleness note", async () => {
+  it("lists browser plug-ins with the usual shape and no staleness note", async ({
+    skip,
+  }) => {
     const result = await listPlugins({ limit: 1000 });
 
     expect(Array.isArray(result.plugins)).toBe(true);
     expect(result).not.toHaveProperty("stalenessNote");
     expect(result).not.toHaveProperty("stalenessRisk");
+
+    skip(result.plugins.length === 0, "no plug-ins are installed");
 
     for (const plugin of result.plugins) {
       expect(typeof plugin.name).toBe("string");
@@ -73,13 +77,12 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-library list-plugins", () => {
     }
   });
 
-  it("says how many plug-ins a small limit left out, with no way to page", async () => {
+  it("says how many plug-ins a small limit left out, with no way to page", async ({
+    skip,
+  }) => {
     const all = await listPlugins({ limit: 1000 });
 
-    // Needs two or more installed plug-ins to cut one off.
-    if (all.plugins.length < 2) {
-      return;
-    }
+    skip(all.plugins.length < 2, "needs two or more installed plug-ins");
 
     const cut = await listPlugins({ limit: 1 });
 
@@ -89,21 +92,23 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-library list-plugins", () => {
     expect(all).not.toHaveProperty("more");
   });
 
-  it("still filters the merged list", async () => {
+  it("still filters the merged list", async ({ skip }) => {
     const all = await listPlugins({ limit: 1000 });
     const [first] = all.plugins;
 
-    if (first == null) {
-      return;
-    }
+    skip(first == null, "no plug-ins are installed");
 
-    const found = await listPlugins({ query: first.name });
+    const found = await listPlugins({ query: first!.name });
 
-    expect(found.plugins.map((p) => p.name)).toContain(first.name);
+    expect(found.plugins.map((p) => p.name)).toContain(first!.name);
   });
 
-  it("filters by deviceKind, noting exactly the plug-ins with an unknown category", async () => {
+  it("filters by deviceKind, noting exactly the plug-ins with an unknown category", async ({
+    skip,
+  }) => {
     const all = await listPlugins({ limit: 1000 });
+
+    skip(all.plugins.length === 0, "no plug-ins are installed");
     const expectedLeftOut = all.plugins.filter(
       (p) => p.category == null && p.subcategories.length === 0,
     ).length;
@@ -134,10 +139,25 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-library list-plugins", () => {
 
       expect(Array.isArray(result.plugins)).toBe(true);
       expect(result).not.toHaveProperty("stalenessRisk");
+    } finally {
+      await setConfig({ remoteScriptEnabled: true });
+    }
+  });
 
-      if (result.stalenessNote != null) {
-        expect(result.stalenessNote).toContain("loaded by name");
+  it("words the staleness note when the database may be out of date", async ({
+    skip,
+  }) => {
+    await setConfig({ remoteScriptEnabled: false });
+
+    try {
+      const result = await listPlugins({ limit: 1000 });
+
+      // Only appears when Live's -wal file is newer than the database.
+      if (result.stalenessNote == null) {
+        skip("the browser database isn't stale on this machine");
       }
+
+      expect(result.stalenessNote).toContain("loaded by name");
     } finally {
       await setConfig({ remoteScriptEnabled: true });
     }

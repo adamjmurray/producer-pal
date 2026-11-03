@@ -324,8 +324,10 @@ describe("ppal-library", () => {
   });
 
   describe("DB filters", () => {
-    it("kind filter only returns items of that kind", async () => {
+    it("kind filter only returns items of that kind", async ({ skip }) => {
       const result = await search({ kind: "midi" });
+
+      skip(result.items.length === 0, "no MIDI items in the library");
 
       // Folder scan suppressed when kind != audio, so all items are DB items.
       // kind:midi covers .mid files (kind "midi") plus MIDI Live clips, which
@@ -341,8 +343,12 @@ describe("ppal-library", () => {
       }
     });
 
-    it("source filter only returns items from that source", async () => {
+    it("source filter only returns items from that source", async ({
+      skip,
+    }) => {
       const result = await search({ source: "user" });
+
+      skip(result.items.length === 0, "no user-library items");
 
       // The filter's own source is left off every item.
       for (const item of result.items) {
@@ -350,21 +356,29 @@ describe("ppal-library", () => {
       }
     });
 
-    it("source preset-folder only returns plug-in preset folder items", async () => {
+    it("source preset-folder only returns plug-in preset folder items", async ({
+      skip,
+    }) => {
       const result = await search({ source: "preset-folder", limit: 20 });
+
+      skip(result.items.length === 0, "no plug-in preset folder items");
 
       for (const item of result.items) {
         expect(item.source).toBeUndefined();
       }
     });
 
-    it("leaves plug-in preset folder items out unless asked, and says so", async () => {
+    it("leaves plug-in preset folder items out unless asked, and says so", async ({
+      skip,
+    }) => {
       const asked = await search({
         ...SOME,
         source: "preset-folder",
         limit: 1,
       });
       const result = await search({ ...SOME, limit: 200 });
+
+      skip(result.items.length === 0, "no library items match the query");
 
       for (const item of result.items) {
         expect(item.source).not.toBe("preset-folder");
@@ -383,40 +397,40 @@ describe("ppal-library", () => {
     });
 
     // A drum kit is an .adg, so a preset search for one finds nothing.
-    it("points an empty preset search at the racks that match", async () => {
+    it("points an empty preset search at the racks that match", async ({
+      skip,
+    }) => {
       const racks = await search({ kind: "device-group", limit: 1 });
       const rack = racks.items[0];
 
-      // Only machines with a rack in the library have one to point at.
-      if (rack == null) {
-        return;
-      }
+      skip(rack == null, "no racks in the library to point at");
 
-      const query = fileName(rack).replace(/\.adg$/i, "");
+      const query = fileName(rack!).replace(/\.adg$/i, "");
       const result = await search({ kind: "preset", query });
 
-      if (result.items.length === 0) {
-        expect(result.note).toMatch(
-          /^\d+ matching racks? \(\.adg\) (is|are) kind device-group$/,
-        );
-      }
+      // A preset named like a rack could exist and make this search non-empty.
+      skip(result.items.length > 0, "a preset shares the rack's name");
+
+      expect(result.note).toMatch(
+        /^\d+ matching racks? \(\.adg\) (is|are) kind device-group$/,
+      );
     });
 
-    it("tags filter returns items containing the requested tag (case-insensitive)", async () => {
+    it("tags filter returns items containing the requested tag (case-insensitive)", async ({
+      skip,
+    }) => {
       const tagsResult = await listTags({ limit: 10 });
 
-      if (!tagsResult.dbAvailable || tagsResult.tags.length === 0) {
-        // No tags on this machine — nothing to assert
-        return;
-      }
+      skip(
+        !tagsResult.dbAvailable || tagsResult.tags.length === 0,
+        "no tags on this machine",
+      );
 
       const tagName = tagsResult.tags[0]!.name;
       const result = await search({ tags: tagName.toUpperCase() });
 
-      if (result.items.length === 0) {
-        // Tag exists but no items match the kind=audio default — acceptable
-        return;
-      }
+      // Items default to kind=audio, so the tag may match none.
+      skip(result.items.length === 0, "no audio items carry the first tag");
 
       const lower = tagName.toLowerCase();
 
@@ -433,12 +447,10 @@ describe("ppal-library", () => {
       expect(result.items.length).toBeLessThanOrEqual(1);
     });
 
-    it("name sort returns items alphabetically", async () => {
+    it("name sort returns items alphabetically", async ({ skip }) => {
       const result = await search({ ...SOME, sort: "name", limit: 50 });
 
-      if (result.items.length < 2) {
-        return;
-      }
+      skip(result.items.length < 2, "needs two or more items to order");
 
       for (let i = 1; i < result.items.length; i++) {
         const prev = fileName(result.items[i - 1]!).toLowerCase();
@@ -478,19 +490,21 @@ describe("ppal-library", () => {
   });
 
   describe("findSimilar (audio similarity)", () => {
-    it("ranks candidates by distance to a fingerprinted seed", async () => {
+    it("ranks candidates by distance to a fingerprinted seed", async ({
+      skip,
+    }) => {
       // Any file in a duplicate group is guaranteed to have a fingerprint, so
       // it's a reliable seed regardless of which Library.db this machine has.
       const dups = await findDuplicates();
       const seedCopies = dups.groups[0]?.items.map((i) => i.path) ?? [];
       const seedPath = seedCopies[0];
 
-      if (seedPath == null) {
-        // No duplicate samples on this machine — nothing to seed from.
-        return;
-      }
+      skip(
+        seedPath == null,
+        "no duplicate samples on this machine to seed from",
+      );
 
-      const result = await findSimilar({ similarTo: seedPath });
+      const result = await findSimilar({ similarTo: seedPath! });
 
       expect(result.dbAvailable).toBe(true);
       expect(result.seed).toStrictEqual({ path: seedPath, found: true });
