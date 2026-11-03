@@ -6,7 +6,10 @@
 import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { backupProjectContextOnEdit } from "#src/live-api-adapter/project-context-sync.ts";
 import { detachWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
-import { forceGuardMessage } from "#src/tools/shared/write-pipeline/force-guard.ts";
+import {
+  forceGuardMessage,
+  textFingerprint,
+} from "#src/tools/shared/write-pipeline/force-guard.ts";
 
 export interface ContentResult {
   content: string;
@@ -46,7 +49,7 @@ export function handleWriteProjectContext(
   const refusal = clobberRefusal("project", existing, content);
 
   if (refusal != null) {
-    refuseUnlessForced("project", force, refusal);
+    refuseUnlessForced("project", existing, force, refusal);
   }
 
   const projectContext = context.projectContext;
@@ -110,25 +113,33 @@ export async function handleWriteGlobalContext(
   const refusal = clobberRefusal("global", existing.content, content);
 
   if (refusal != null) {
-    refuseUnlessForced("global", force, refusal);
+    refuseUnlessForced("global", existing.content, force, refusal);
   }
 
   return await callNodeContentRoute("globalContext.write", { content });
 }
 
 /**
- * Throw the clobber refusal, unless `force` follows an earlier refusal of this
- * scope.
+ * Throw the clobber refusal, unless `force` follows an earlier request's
+ * refusal of this scope for the same stored document.
  * @param scope - The layer being written (project | global)
+ * @param existing - The stored document the write would replace
  * @param force - Whether the caller sent force:true
  * @param refusal - The clobber refusal message
  */
 function refuseUnlessForced(
   scope: string,
+  existing: string,
   force: boolean,
   refusal: string,
 ): void {
-  const blocked = forceGuardMessage("context", scope, force, refusal);
+  const blocked = forceGuardMessage(
+    "context",
+    scope,
+    textFingerprint(existing),
+    force,
+    refusal,
+  );
 
   if (blocked != null) {
     throw new Error(blocked);

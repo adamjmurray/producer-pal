@@ -170,6 +170,55 @@ describe("force before any skip has warned about the pad", () => {
   });
 });
 
+describe("a skip that no longer matches the pad", () => {
+  const IGNORED =
+    "force:true ignored — nothing had warned about this yet. sample write SKIPPED on pad";
+
+  it("does not unlock force after the instrument was replaced", async () => {
+    await writeSample("pAb1");
+
+    await ctx.client!.callTool({
+      name: "ppal-delete",
+      arguments: { type: "device", path: `${KIT}/pAb1/c0/d0` },
+    });
+    await createTestDeviceAt(ctx.client!, "Drum Sampler", `${KIT}/pAb1/c0`);
+
+    const ignored = await writeSample("pAb1", true);
+
+    expect(ignored.refusal).toContain(IGNORED);
+    expect((await padDevices("Drum Sampler"))[0]?.type).toContain(
+      "Drum Sampler",
+    );
+
+    // That skip warned about the new instrument, so force now replaces it.
+    const { detail } = await writeSample("pAb1", true);
+
+    expect(detail).toContain("settings are gone");
+    expect((await padDevices("Drum Sampler"))[0]?.type).toContain("Simpler");
+  });
+
+  it("does not let two spellings of one pad in a call unlock each other", async () => {
+    const { refusal } = await callOrRefusal(ctx.client!, "ppal-update-device", {
+      path: KIT,
+      params: [
+        { name: "pAb1/sample", value: KICK_FILE },
+        { name: "pAb1/c0/sample", value: KICK_FILE },
+      ],
+      force: true,
+    });
+
+    expect(refusal).toContain(IGNORED);
+    expect((await padDevices("Drum Sampler"))[0]?.type).toContain(
+      "Drum Sampler",
+    );
+
+    // The call warned, so force in the next call replaces the instrument.
+    const { detail } = await writeSample("pAb1", true);
+
+    expect(detail).toContain("settings are gone");
+  });
+});
+
 describe("a MIDI effect in front of the pad's instrument", () => {
   // Live keeps a chain sorted by device type, so a pad with any MIDI effect on
   // it has its instrument at d1, not d0. Resolving by index instead of by type

@@ -112,10 +112,11 @@ export const toolDefContext = defineTool("ppal-context", {
     // The escape hatch for the clobber guard (project-context-operations.ts's
     // clobberRefusal), and deliberately NOT taught in the skills: the model
     // learns of it from the refused write's message, at the moment it is
-    // relevant. It works only after a refusal of that scope; before one it is
-    // ignored and the write is refused, so the model always sees what would be
-    // lost. Declared in EVERY mode, small-model included: a guard whose only
-    // way out is hidden from the tier that hits it would deadlock the write.
+    // relevant. It works only after an earlier request's refusal of that scope,
+    // while the document is unchanged; otherwise it is ignored and the write is
+    // refused, so the model always sees what would be lost. Declared in EVERY
+    // mode, small-model included: a guard whose only way out is hidden from the
+    // tier that hits it would deadlock the write.
     //
     // Refused outside a project or global write, which have no guard to get
     // past. Not refused on one of those where the guard wouldn't fire: a

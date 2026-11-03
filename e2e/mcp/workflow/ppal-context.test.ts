@@ -140,6 +140,35 @@ describe("ppal-context (project scope)", () => {
     expect(written.content).toBe("- Key: A minor.");
   });
 
+  it("ignores force when the document changed since the refusal", async () => {
+    const INITIAL_CONTENT = "- Genre: deep house.\n- Drop at bar 33.";
+    const CHANGED_CONTENT = "- Genre: jungle.\n- Drop at bar 17.";
+
+    await setConfig({ projectContext: INITIAL_CONTENT });
+    getToolErrorMessage(
+      await callProjectContextTool("write", "- Key: A minor."),
+    );
+
+    await setConfig({ projectContext: CHANGED_CONTENT });
+
+    const message = getToolErrorMessage(
+      await callProjectContextTool("write", "- Key: A minor.", true),
+    );
+
+    expect(message).toContain(
+      "force:true ignored — nothing had warned about this yet.",
+    );
+
+    const kept = parseToolResult<ContentResult>(
+      await callProjectContextTool("read"),
+    );
+
+    expect(kept.content).toBe(CHANGED_CONTENT);
+
+    // The refusal above warned about the changed document: spend it.
+    await callProjectContextTool("write", "- Key: A minor.", true);
+  });
+
   it("refuses name and description on a project write and leaves the document", async () => {
     const INITIAL_CONTENT = "- Genre: deep house.";
 
@@ -319,6 +348,45 @@ describe("ppal-context (global scope)", () => {
       );
 
       expect(written.content).toBe("- Prefers 90 BPM.");
+    } finally {
+      await replaceGlobal(original);
+    }
+  });
+
+  it("ignores force when the document changed since the refusal", async () => {
+    const original = parseToolResult<ContentResult>(
+      await callContextTool({ action: "read", scope: "global" }),
+    ).content;
+    const write = {
+      action: "write",
+      scope: "global",
+      content: "- Prefers 90 BPM.",
+    } as const;
+
+    try {
+      await replaceGlobal(`- e2e global line ${randomUUID()}`);
+      getToolErrorMessage(await callContextTool(write));
+
+      const changed = `- e2e changed line ${randomUUID()}`;
+
+      await replaceGlobal(changed);
+
+      const message = getToolErrorMessage(
+        await callContextTool({ ...write, force: true }),
+      );
+
+      expect(message).toContain(
+        "force:true ignored — nothing had warned about this yet.",
+      );
+
+      const kept = parseToolResult<ContentResult>(
+        await callContextTool({ action: "read", scope: "global" }),
+      );
+
+      expect(kept.content).toBe(changed);
+
+      // The refusal above warned about the changed document: spend it.
+      await callContextTool({ ...write, force: true });
     } finally {
       await replaceGlobal(original);
     }

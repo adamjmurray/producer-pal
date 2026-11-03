@@ -203,21 +203,29 @@ write need it, so callers would always pass it. A `displaced` array of ids was
 rejected too: the ids are dead the moment they are reported.
 
 `force` takes effect only on a target an earlier call was skipped or refused
-for. Models send `force: true` before any guard has fired, so the guard, not the
-caller, decides when the loss has been shown:
+for, while the same thing is still at risk. Models send `force: true` before any
+guard has fired, so the guard, not the caller, decides when the loss has been
+shown:
 
-- A guard that would destroy something records the target when it skips (the
-  pad, by its chain id; the context scope, `project` or `global`).
-- `force` on a recorded target goes ahead and clears the record.
-- `force` on a target nothing has recorded is answered as if it were absent: the
-  same skip or refusal, which records the target, with
-  `force:true ignored — nothing had warned about this yet` in front. So the
-  caller always sees what would be lost before it can lose it.
+- A guard that would destroy something records the target together with a
+  fingerprint of what is at risk when it skips: the pad by its chain id plus the
+  id of the instrument on it, the context scope plus a hash of the stored
+  document. A newer record of the same target replaces the older one.
+- `force` on a recorded target goes ahead and clears the record, but only if the
+  fingerprint still matches and the record came from an earlier request. A
+  warning raised in a request never unlocks `force` in that same request, so two
+  spellings of one pad in one call can't unlock each other.
+- `force` on a target nothing has recorded, or whose record is for something
+  else now (the instrument was replaced, the document was rewritten), is
+  answered as if it were absent: the same skip or refusal, which records the
+  target afresh, with `force:true ignored — nothing had warned about this yet`
+  in front. So the caller always sees what would be lost before it can lose it.
 - Where the guard wouldn't fire, `force` does nothing either way.
-- Records live in device memory, so they last until used or until the Live Set
-  (and with it the device) reloads. A skip seen by any client counts.
+- Records live in device memory, so they last until used, replaced, or until the
+  Live Set (and with it the device) reloads. A skip seen by any client counts.
 
 This covers every guard that takes `force`: the pad sample swap in
-ppal-update-device and the clobber guard in ppal-context. A replacement the
-caller means wholesale (eval setup restoring a document) writes `""` first,
+ppal-update-device and the clobber guard in ppal-context. A new guard must name
+what is at risk (the fingerprint `forceGuardMessage` requires). A replacement
+the caller means wholesale (eval setup restoring a document) writes `""` first,
 which no guard refuses, then the new content.

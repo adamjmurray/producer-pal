@@ -442,6 +442,9 @@ function applyPadInstrumentPolicy(
   const blocked = forceGuardMessage(
     "pad-swap",
     chain.id,
+    // A replaced instrument gets a new id, so an old warning can't unlock a swap
+    // of whatever the user put on the pad since.
+    instrument.device.id,
     force,
     padSampleSwapReason(padLabel, held),
   );

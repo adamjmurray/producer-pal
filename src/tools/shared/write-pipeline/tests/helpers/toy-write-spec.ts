@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: MIT
 
 import { namedTargets } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { type WithPieces, withPieces } from "../entry-pieces.ts";
-import { runWrite } from "../write-pipeline.ts";
-import { type Cover, type WriteSpec } from "../write-pipeline-types.ts";
+import { type WithPieces, withPieces } from "../../entry-pieces.ts";
+import { runWrite } from "../../write-pipeline.ts";
+import { type Cover, type WriteSpec } from "../../write-pipeline-types.ts";
 
 /** What a toy call does to each of its targets, by id. */
 export interface ToyArgs {

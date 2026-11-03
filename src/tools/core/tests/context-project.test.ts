@@ -233,6 +233,7 @@ describe("context - project scope (default)", () => {
       await expect(context(write, toolContext)).rejects.toThrow(
         /^write refused for scope "project"/,
       );
+      beginWarningCapture();
 
       const result = await context({ ...write, force: true }, toolContext);
 
@@ -251,6 +252,37 @@ describe("context - project scope (default)", () => {
       ).rejects.toThrow(UNEARNED_FORCE);
     });
 
+    it("does not let a refusal unlock force once the document has changed", async () => {
+      toolContext.projectContext!.content = EXISTING;
+      const clobber = { action: "write", content: "- Tempo: 90." } as const;
+      const merged = `${EXISTING}- Key: A minor.`;
+
+      await expect(context(clobber, toolContext)).rejects.toThrow(
+        /^write refused/,
+      );
+      beginWarningCapture();
+      await context({ action: "write", content: merged }, toolContext);
+      beginWarningCapture();
+
+      await expect(
+        context({ ...clobber, force: true }, toolContext),
+      ).rejects.toThrow(UNEARNED_FORCE);
+      expect(toolContext.projectContext!.content).toBe(merged);
+    });
+
+    it("does not unlock force in the request that refused", async () => {
+      toolContext.projectContext!.content = EXISTING;
+      const clobber = { action: "write", content: "- Key: A minor." } as const;
+
+      await expect(context(clobber, toolContext)).rejects.toThrow(
+        /^write refused/,
+      );
+      await expect(
+        context({ ...clobber, force: true }, toolContext),
+      ).rejects.toThrow(UNEARNED_FORCE);
+      expect(toolContext.projectContext!.content).toBe(EXISTING);
+    });
+
     it("refuses force before any refusal, with a note, and records the scope", async () => {
       toolContext.projectContext!.content = EXISTING;
       const write = { action: "write", content: "- Key: A minor." } as const;
@@ -267,7 +299,8 @@ describe("context - project scope (default)", () => {
         expect.anything(),
       );
 
-      // That refusal warned, so force now goes ahead.
+      // That refusal warned, so force in the next request goes ahead.
+      beginWarningCapture();
       await expect(
         context({ ...write, force: true }, toolContext),
       ).resolves.toStrictEqual({ content: "- Key: A minor." });

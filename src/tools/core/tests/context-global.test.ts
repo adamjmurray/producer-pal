@@ -5,7 +5,10 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { context } from "../context.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  beginWarningCapture,
+  capturedWarnings,
+} from "#src/shared/max/v8-warning-capture.ts";
 
 vi.mock(
   import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
@@ -121,18 +124,28 @@ describe("context - global scope", () => {
     const EXISTING = "# How I work\n\n- Call me Adam.\n- Stock devices only.";
 
     /**
-     * Answer globalContext.read with EXISTING and echo whatever a write stores.
+     * Answer globalContext.read with EXISTING and echo whatever a write
+     * stores. With `keep`, a write also replaces what a later read answers.
+     * @param keep - Whether writes change the stored document
      * @returns Nothing; installs the mock implementation
      */
-    function mockGlobalStore(): void {
+    function mockGlobalStore(keep = false): void {
+      let stored = EXISTING;
+
       vi.mocked(protocolMock.requestNode).mockImplementation(
-        async (route: string, args?: object) =>
-          route === "globalContext.read"
-            ? { success: true, result: { content: EXISTING } }
-            : {
-                success: true,
-                result: { content: (args as { content: string }).content },
-              },
+        async (route: string, args?: object) => {
+          if (route === "globalContext.read") {
+            return { success: true, result: { content: stored } };
+          }
+
+          const { content } = args as { content: string };
+
+          if (keep) {
+            stored = content;
+          }
+
+          return { success: true, result: { content } };
+        },
       );
     }
 
@@ -165,6 +178,7 @@ describe("context - global scope", () => {
       mockGlobalStore();
 
       await expect(context(REPLACE)).rejects.toThrow(/^write refused/);
+      beginWarningCapture();
 
       const result = await context({ ...REPLACE, force: true });
 
@@ -175,6 +189,33 @@ describe("context - global scope", () => {
       );
 
       // The record is spent: a second force is unearned.
+      await expect(context({ ...REPLACE, force: true })).rejects.toThrow(
+        UNEARNED_FORCE,
+      );
+    });
+
+    it("does not let a refusal unlock force once the document has changed", async () => {
+      mockGlobalStore(true);
+      const merged = `${EXISTING}\n- Likes sidechain.`;
+
+      await expect(context(REPLACE)).rejects.toThrow(/^write refused/);
+      beginWarningCapture();
+      await context({ ...REPLACE, content: merged });
+      beginWarningCapture();
+
+      await expect(context({ ...REPLACE, force: true })).rejects.toThrow(
+        UNEARNED_FORCE,
+      );
+      expect(protocolMock.requestNode).not.toHaveBeenCalledWith(
+        "globalContext.write",
+        { content: REPLACE.content },
+      );
+    });
+
+    it("does not unlock force in the request that refused", async () => {
+      mockGlobalStore();
+
+      await expect(context(REPLACE)).rejects.toThrow(/^write refused/);
       await expect(context({ ...REPLACE, force: true })).rejects.toThrow(
         UNEARNED_FORCE,
       );
@@ -191,7 +232,8 @@ describe("context - global scope", () => {
         expect.anything(),
       );
 
-      // That refusal warned, so force now goes ahead.
+      // That refusal warned, so force in the next request goes ahead.
+      beginWarningCapture();
       await expect(context({ ...REPLACE, force: true })).resolves.toStrictEqual(
         { content: "- Prefers 90 BPM." },
       );

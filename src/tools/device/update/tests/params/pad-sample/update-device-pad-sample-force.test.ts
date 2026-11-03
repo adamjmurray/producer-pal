@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
+import { beginWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
 import {
   type RegisteredMockObject,
   noParamLanded,
@@ -58,6 +59,7 @@ describe("updateDevice - force on a pad sample swap", () => {
     // Put a Drum Sampler back on the pad.
     chain.call.mockClear();
     registerDrumSamplerOn(chain);
+    beginWarningCapture();
     expect(noParamLanded(() => writeKick(true))).toContain(IGNORED);
     expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
   });
@@ -68,7 +70,8 @@ describe("updateDevice - force on a pad sample swap", () => {
     expect(noParamLanded(() => writeKick(true))).toContain(IGNORED);
     expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
 
-    // That skip warned, so force now works.
+    // That skip warned, so force in the next request works.
+    beginWarningCapture();
     writeKick(true);
     expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
   });
@@ -93,5 +96,42 @@ describe("updateDevice - force on a pad sample swap", () => {
     // The pad now holds a Drum Sampler: the earlier force earned nothing.
     registerDrumSamplerOn(chain as RegisteredMockObject);
     expect(noParamLanded(() => writeKick(true))).toContain(IGNORED);
+  });
+
+  it("does not let a warning about one instrument unlock swapping out another", () => {
+    const chain = padWithDrumSampler();
+
+    skipSampleWrite("t0/d0/pC1", "sample");
+
+    // The user puts a different instrument on the pad.
+    registerDrumSamplerOn(chain, 0, "ds-2");
+    expect(noParamLanded(() => writeKick(true))).toContain(IGNORED);
+    expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
+
+    // That skip warned about the new instrument, so force now works.
+    beginWarningCapture();
+    writeKick(true);
+    expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
+  });
+
+  it("does not let two spellings of one pad in a call unlock each other", () => {
+    const chain = padWithDrumSampler();
+    const swapBoth = (): unknown =>
+      updateDevice({
+        path: "t0/d0",
+        params: [
+          { name: "pC1/sample", value: KICK },
+          { name: "pC1/c0/sample", value: KICK },
+        ],
+        force: true,
+      });
+
+    expect(noParamLanded(swapBoth)).toContain(IGNORED);
+    expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
+
+    // The call warned, so force in the next request goes ahead.
+    beginWarningCapture();
+    writeKick(true);
+    expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
   });
 });

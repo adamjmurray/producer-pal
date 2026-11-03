@@ -6,6 +6,7 @@
 // Drum Racks whose pads take a `sample` write, for the update-device tests.
 
 import { expect } from "vitest";
+import { beginWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { registerC1PadRack } from "#src/tools/device/tests/helpers/device-rack-fixtures.ts";
 import {
@@ -66,8 +67,8 @@ export function registerDrumRackWithDrumSamplerOnC1(): RegisteredMockObject {
 export const KICK = "/Library/kick.wav";
 
 /**
- * Send a sample write the pad swap guard skips, so a `force` after it is
- * earned. Nothing is written.
+ * Send a sample write the pad swap guard skips, so a `force` in the next
+ * request is earned. Nothing is written, and the next request starts here.
  * @param path - What the call addresses
  * @param name - The param name the call sends
  */
@@ -75,6 +76,7 @@ export function skipSampleWrite(path: string, name: string): void {
   expect(() => updateDevice({ path, params: [{ name, value: KICK }] })).toThrow(
     "SKIPPED",
   );
+  beginWarningCapture();
 }
 
 /**
@@ -179,15 +181,17 @@ export function registerCreatedSimpler(chainIndex = 0): RegisteredMockObject {
  * Put an instrument whose sample can't be set on a pad layer.
  * @param chain - The layer's chain mock
  * @param chainIndex - Its index in the rack
+ * @param id - The instrument's Live id
  * @returns The instrument mock
  */
 export function registerDrumSamplerOn(
   chain: RegisteredMockObject,
   chainIndex = 0,
+  id = "ds-1",
 ): RegisteredMockObject {
-  chain.properties.devices = children("ds-1");
+  chain.properties.devices = children(id);
 
-  return registerMockObject("ds-1", {
+  return registerMockObject(id, {
     path: livePath.track(0).device(0).chain(chainIndex).device(0),
     type: "Device",
     properties: {

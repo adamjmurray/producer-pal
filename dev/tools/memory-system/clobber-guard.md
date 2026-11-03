@@ -9,11 +9,12 @@ code: a `project`/`global` write whose content keeps NONE of the existing
 document is refused with an error, so the model can re-send a merged write. It
 throws rather than returning the document beside a warning, because that reply
 has the same shape as a successful write. `force: true` overrides it, but only
-after a refusal of that scope (a first `force` is refused like an unforced
-write) — declared in `context.def.ts` in every mode (a guard whose escape hatch
-is invisible to the tier that hits it would deadlock the write) but deliberately
-absent from the skills, so the model meets it in the warning rather than
-reaching for it.
+after an earlier request's refusal of that scope, for the document as it still
+is (a first `force`, one in the refusing request, or one after the document
+changed is refused like an unforced write) — declared in `context.def.ts` in
+every mode (a guard whose escape hatch is invisible to the tier that hits it
+would deadlock the write) but deliberately absent from the skills, so the model
+meets it in the warning rather than reaching for it.
 
 Detection is line containment, both sides normalized (list marker stripped,
 whitespace collapsed, trailing punctuation dropped) so a reformat _of a line_

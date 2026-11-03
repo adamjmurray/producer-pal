@@ -24,7 +24,10 @@ import {
   splitForAdvice,
 } from "../nested-param-target.ts";
 import { type ParamOutcome } from "../param-reading.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import {
+  beginWarningCapture,
+  capturedWarnings,
+} from "#src/shared/max/v8-warning-capture.ts";
 
 const RACK_PATH = "live_set tracks 0 devices 0";
 
@@ -274,10 +277,15 @@ function rack(): LiveAPI {
  * Resolve a nested param target for a `sample` write, which takes the
  * device-creating path.
  * @param prefix - The path prefix addressing a slot under the rack
- * @param force - Allow the instrument-to-Simpler swap
+ * @param force - Allow the instrument-to-Simpler swap. A forced call is a new
+ *   request, since a warning can't unlock force in its own request.
  * @returns The resolved target, or null when resolution warn-skips
  */
 function resolveSampleTarget(prefix: string, force = false): NestedParamTarget {
+  if (force) {
+    beginWarningCapture();
+  }
+
   return resolveNestedParamTarget(rack(), prefix, "sample", force);
 }
 
@@ -430,6 +438,7 @@ describe("resolveDrumChainSampleTarget", () => {
     registerDevice("ds-1", "DrumSampler");
     registerCreatedSimpler();
     resolveDrumChainSampleTarget(LiveAPI.from("id chain-c1"), false);
+    beginWarningCapture();
 
     const target = resolveDrumChainSampleTarget(
       LiveAPI.from("id chain-c1"),
