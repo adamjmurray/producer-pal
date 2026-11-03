@@ -25,7 +25,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
   title: "Library",
   description: {
     default:
-      "Search Live's browser library by name, tags, kind, or source. Defaults to audio samples; pass kind for anything else. Items from the user's configured sample folder always appear before Live's library items (sample-folder is an explicit user choice); within each group, results sort by use-count desc by default. A search needs a query or a filter. To save space, items leave out what their path or your filters already say: name and folder (the path's last two segments), useCount when 0, kind and source when they match your filter.",
+      "Search Live's browser library by name, tags, kind, or source. Defaults to audio samples; pass kind for anything else. Items from the user's configured sample folder always appear before Live's library items (sample-folder is an explicit user choice); within each group, results sort by use-count desc by default. A search needs a query or a filter. For several sounds at once (e.g. kick, snare, hat), put each in `searches` and make one call. To save space, items leave out what their path or your filters already say: name and folder (the path's last two segments), useCount when 0, kind and source when they match your filter.",
     smallModel:
       "Search Live's library by name/tags. Defaults to audio samples. A search needs a query or a filter. Items from the user's sample folder appear before Live's library items. Items leave out name (it ends the path), useCount when 0, and kind/source when they match your filter.",
   },
