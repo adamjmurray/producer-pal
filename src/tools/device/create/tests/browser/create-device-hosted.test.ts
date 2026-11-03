@@ -261,6 +261,30 @@ describe("createDevice hosted", () => {
     });
   });
 
+  it("keeps the device and refuses params too large for one request", async () => {
+    const heard = wrapperLoads();
+    const params = Array.from({ length: 800 }, (_, i) => ({
+      name: `Param ${i}`,
+      value: "0.5",
+    }));
+    const result = (await createDevice({
+      device: "Serum 2 FX",
+      hosted: true,
+      path: "t0/d+",
+      params,
+    })) as { id: string; params: Array<{ ok: boolean; detail: string }> };
+
+    expect(result.id).toBe("loaded-1");
+    expect(result.params).toHaveLength(800);
+    expect(result.params[0]).toStrictEqual({
+      name: "Param 0",
+      ok: false,
+      detail: "not set: too large for one call; split the params across calls",
+    });
+    expect(JSON.stringify(result)).not.toContain("may have changed");
+    expect(heard.some((request) => request.op === "write")).toBe(false);
+  });
+
   it("changes nothing when the name isn't a plug-in", async () => {
     answerNode({ plugin: null });
     wrapperLoads();

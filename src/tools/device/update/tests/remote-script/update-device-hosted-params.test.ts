@@ -101,6 +101,17 @@ async function writeMix(
   return settled?.get(entry);
 }
 
+const TOO_LARGE =
+  "not set: too large for one call; split the params across calls";
+
+/** @returns Enough entries that one request passes Max's message limit */
+function manyParams(): Array<{ name: string; value: string }> {
+  return Array.from({ length: 800 }, (_, i) => ({
+    name: `Param ${i}`,
+    value: "0.5",
+  }));
+}
+
 describe("updateDevice hosted plug-in params", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -425,6 +436,59 @@ describe("updateDevice hosted plug-in params", () => {
       ...HIT,
       detail: UNANSWERED,
     });
+  });
+
+  it("refuses a write too large for one request, sent to nobody", async () => {
+    const heard = wrapperWrites([]);
+    const params = manyParams();
+    const landedAt = vi.fn();
+    const stall: { reason?: string } = {};
+    const settled = await writeHostedParams(
+      LiveAPI.from("id device-123"),
+      params,
+      stall,
+      { deadline: undefined, landed: landedAt },
+    );
+
+    expect(params.map((entry) => settled?.get(entry))).toStrictEqual(
+      params.map(({ name }) => [{ name, ok: false, detail: TOO_LARGE }]),
+    );
+    expect(heard.filter((request) => request.op === "write")).toStrictEqual([]);
+    expect(
+      landedAt,
+      "nothing changed, so nothing may have",
+    ).not.toHaveBeenCalled();
+    expect(stall, "later targets are still tried").toStrictEqual({});
+  });
+
+  it("says plainly that nothing changed when the write is too large", async () => {
+    wrapperWrites([]);
+
+    const error = await update({ id: "device-123", params: manyParams() }).then(
+      () => "",
+      (thrown: Error) => thrown.message,
+    );
+
+    expect(error).toContain(TOO_LARGE);
+    expect(error).not.toContain("may have changed");
+  });
+
+  it("refuses each target of a call too large for one request", async () => {
+    registerWrapperDevice({
+      id: "device-456",
+      path: String(livePath.track(0).device(1)),
+    });
+    const heard = wrapperWrites([]);
+    const result = JSON.stringify(
+      await update({ id: "device-123,device-456", params: manyParams() }),
+    );
+
+    expect(result).toContain("device-123");
+    expect(result).toContain("device-456");
+    expect(result).toContain(TOO_LARGE);
+    expect(result).not.toContain("earlier device");
+    expect(result).not.toContain("may have changed");
+    expect(heard.filter((request) => request.op === "write")).toStrictEqual([]);
   });
 
   it("tries no later device once one has not answered", async () => {

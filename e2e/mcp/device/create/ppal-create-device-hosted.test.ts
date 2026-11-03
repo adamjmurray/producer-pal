@@ -87,6 +87,28 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !HAS_SERUM)("hosted plug-ins", () => {
     expect(param?.value).toMatch(/^25%/);
   });
 
+  it("refuses a write too large for one request, changing nothing", async () => {
+    const { path } = await hostOnNewTrack("Serum 2");
+    const before = (await readDevice(path, "Main Vol")).parameters?.[0]?.value;
+    // Refused before the wrapper hears it, so the ids needn't all exist.
+    const params = Array.from({ length: 800 }, (_, i) => ({
+      id: `h${i}`,
+      value: "25%",
+    }));
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path, params },
+    });
+    const text = JSON.stringify(result);
+
+    expect(result.isError).toBe(true);
+    expect(text).toContain("too large for one call");
+    expect(text).not.toContain("may have changed");
+    expect((await readDevice(path, "Main Vol")).parameters?.[0]?.value).toBe(
+      before,
+    );
+  });
+
   it("keeps the plug-in's name under a custom name after a reload", async () => {
     const { track } = await hostOnNewTrack("Serum 2 FX", { name: "My FX" });
     const copy = await duplicateTrack(track);

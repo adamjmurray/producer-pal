@@ -343,8 +343,9 @@ function landed(
 }
 
 /**
- * The wrapper never answered, or answered with an error. A timeout may have come
- * after the write, so it says so and stops later targets trying.
+ * The wrapper never answered, or answered with an error, or the request was too
+ * large to send. A timeout may have come after the write, so it says so and
+ * stops later targets trying.
  * @param settled - What is settled so far, added to
  * @param sent - The entries sent
  * @param reply - The failed reply
@@ -359,6 +360,15 @@ function refuseUnanswered(
   stall: HostedStall,
   call: HostedCall,
 ): SettledParams {
+  // Never sent, so nothing changed and later targets can still be tried.
+  if (reply.tooLarge) {
+    return refuseAll(
+      settled,
+      sent,
+      "not set: too large for one call; split the params across calls",
+    );
+  }
+
   if (reply.error?.startsWith(NO_ANSWER)) {
     call.landed("params");
     stall.reason =

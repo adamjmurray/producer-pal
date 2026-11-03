@@ -52,11 +52,17 @@ Part of [Skip entries, tool by tool](README.md).
   as asked (`not set:` plus what it does show), and the param is left as it was.
   Two entries reaching one param, by name and by id, write the last. A wrapper
   that doesn't answer may have written: the entries say `may have changed` and
-  the hosted devices after it say they weren't tried. A wrapper from before this
-  write existed says to create the hosted plug-in again. A wrapper with no
-  plug-in loaded takes nothing: every entry is `ok: false` with the device's
-  read `detail` as the reason (see read-device below). A Max device that isn't a
-  wrapper takes `params` as any device does.
+  the hosted devices after it say they weren't tried. A list too big for one
+  request (a few hundred entries; Max cuts a message near 30 KB) is refused
+  unsent, each entry
+  `not set: too large for one call; split the params across calls`: nothing
+  changed, so it never says `may have changed` and the devices after it are not
+  stopped by it. create-device's `params` follow the same rule: the device is
+  created and its entries say so. A wrapper from before this write existed says
+  to create the hosted plug-in again. A wrapper with no plug-in loaded takes
+  nothing: every entry is `ok: false` with the device's read `detail` as the
+  reason (see read-device below). A Max device that isn't a wrapper takes
+  `params` as any device does.
 - **read-device on a hosted plug-in marks the params a slot drives.** Params
   that one of the wrapper's automation slots drives read with
   `slot: "Automation 002"`, and, with values, `automation` (`active` or

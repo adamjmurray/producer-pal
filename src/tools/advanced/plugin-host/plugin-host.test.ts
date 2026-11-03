@@ -110,6 +110,19 @@ describe("ppal-plugin-host", () => {
     await expect(pending).rejects.toThrow("nothing loaded");
   });
 
+  it("throws without sending when the request is too large for one message", async () => {
+    vi.mocked(globalThis.messnamed).mockClear();
+
+    await expect(
+      pluginHost({
+        deviceId: "9",
+        action: "raw",
+        message: ["x".repeat(40_000)],
+      }),
+    ).rejects.toThrow(/device id 9 \(raw\) too large.*Nothing was sent/);
+    expect(globalThis.messnamed).not.toHaveBeenCalled();
+  });
+
   it("throws a generic error when the wrapper gives none", async () => {
     const pending = pluginHost({ deviceId: "9", action: "info" });
 

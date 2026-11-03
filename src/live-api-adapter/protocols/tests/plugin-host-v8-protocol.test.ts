@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
+import { MAX_SINGLE_MESSAGE_BYTES } from "#src/shared/mcp-responses.ts";
 import { plugin_host_response } from "#src/live-api-adapter/live-api-adapter.ts";
 import {
   probePluginHost,
@@ -116,6 +117,63 @@ describe("plugin-host-v8-protocol", () => {
     } finally {
       restore();
     }
+  });
+
+  describe("a request too large for one Max message", () => {
+    const big = { text: "é".repeat(MAX_SINGLE_MESSAGE_BYTES / 2) };
+
+    it("is refused, not sent, and says so", async () => {
+      vi.mocked(globalThis.messnamed).mockClear();
+      const schedules: number[] = [];
+      const restore = installTrackingTask(schedules);
+
+      try {
+        const result = await requestPluginHost("42", "write", big);
+
+        expect(result).toStrictEqual({
+          success: false,
+          error: expect.stringMatching(
+            /^device id 42 \(write\) too large .*Nothing was sent/,
+          ),
+          tooLarge: true,
+        });
+        expect(globalThis.messnamed).not.toHaveBeenCalled();
+        expect(schedules).toStrictEqual([]);
+      } finally {
+        restore();
+      }
+    });
+
+    it("is measured in bytes, not characters", async () => {
+      // Half the cap in two-byte characters is over it once encoded.
+      expect(big.text.length).toBeLessThan(MAX_SINGLE_MESSAGE_BYTES);
+      const result = await requestPluginHost("42", "set", big);
+
+      expect(result.tooLarge).toBe(true);
+    });
+
+    it("lets a request at the cap through", () => {
+      const fixed = JSON.stringify({ deviceId: "42", op: "set", text: "" });
+      const text = "x".repeat(MAX_SINGLE_MESSAGE_BYTES - fixed.length);
+
+      vi.mocked(globalThis.messnamed).mockClear();
+      void requestPluginHost("42", "set", { text });
+
+      expect(globalThis.messnamed).toHaveBeenCalledTimes(1);
+    });
+
+    it("is refused for a probe too, without asking the bus", () => {
+      vi.mocked(globalThis.messnamed).mockClear();
+
+      expect(
+        probePluginHost("42", "params", { search: big.text }),
+      ).toStrictEqual({
+        success: false,
+        error: expect.stringContaining("device id 42 (params) too large"),
+        tooLarge: true,
+      });
+      expect(globalThis.messnamed).not.toHaveBeenCalled();
+    });
   });
 
   describe("probePluginHost", () => {

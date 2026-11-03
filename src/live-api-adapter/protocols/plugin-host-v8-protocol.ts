@@ -8,6 +8,10 @@
 // the one whose own device id matches `deviceId` answers.
 
 import { requestChannel } from "#src/live-api-adapter/protocols/request-channel.ts";
+import {
+  MAX_SINGLE_MESSAGE_BYTES,
+  oversizedSingleMessageError,
+} from "#src/shared/mcp-responses.ts";
 
 /** Named Max bus the wrapper devices listen on. */
 const REQUEST_BUS = "ppal-plugin-host-req";
@@ -35,6 +39,8 @@ export type PluginHostOp =
 export interface PluginHostResponse {
   success: boolean;
   error?: string;
+  /** The request was too large for one Max message, so nothing was sent. */
+  tooLarge?: true;
   [key: string]: unknown;
 }
 
@@ -66,12 +72,19 @@ export function requestPluginHost(
   const usual =
     op === "load" || op === "write" ? SLOW_TIMEOUT_MS : QUICK_TIMEOUT_MS;
 
-  return channel.send<PluginHostResponse>(
-    JSON.stringify({ deviceId, op, ...args }),
-    `device id ${deviceId} (${op})`,
-    null,
+  const payload = JSON.stringify({ deviceId, op, ...args });
+  const subject = `device id ${deviceId} (${op})`;
+  const tooLarge = tooLargeError(payload, subject);
+  const sent = channel.send<PluginHostResponse>(
+    payload,
+    subject,
+    tooLarge,
     Math.min(usual, maxWaitMs),
   );
+
+  return tooLarge == null
+    ? sent
+    : sent.then((response) => ({ ...response, tooLarge: true }));
 }
 
 /**
@@ -81,16 +94,22 @@ export function requestPluginHost(
  * @param deviceId - Live id of the device
  * @param op - What to ask for
  * @param args - The op's own fields
- * @returns The wrapper's reply, or null when the device is not a wrapper
+ * @returns The wrapper's reply, or null when the device is not a wrapper. A
+ *   request too large for one message is never sent: it fails with `tooLarge`.
  */
 export function probePluginHost(
   deviceId: string,
   op: PluginHostOp,
   args: object = {},
 ): PluginHostResponse | null {
-  return channel.probe(
-    JSON.stringify({ deviceId, op, ...args }),
-  ) as PluginHostResponse | null;
+  const payload = JSON.stringify({ deviceId, op, ...args });
+  const tooLarge = tooLargeError(payload, `device id ${deviceId} (${op})`);
+
+  if (tooLarge != null) {
+    return { success: false, error: tooLarge, tooLarge: true };
+  }
+
+  return channel.probe(payload) as PluginHostResponse | null;
 }
 
 /**
@@ -103,4 +122,20 @@ export function handlePluginHostResponse(
   responseJson: string,
 ): void {
   channel.receive(requestId, responseJson);
+}
+
+/**
+ * Max cuts a message past ~32 KB, and the wrapper then can't read it and says
+ * nothing. So a big request is refused here instead of sent.
+ * @param payload - The request, serialized
+ * @param subject - What the request is, for the error text
+ * @returns Why it can't be sent, or null when it fits
+ */
+function tooLargeError(payload: string, subject: string): string | null {
+  return oversizedSingleMessageError(
+    payload,
+    subject,
+    "Nothing was sent. Send less in one call.",
+    MAX_SINGLE_MESSAGE_BYTES,
+  );
 }
