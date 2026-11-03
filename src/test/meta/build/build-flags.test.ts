@@ -73,6 +73,14 @@ describe("build flags", () => {
     );
   });
 
+  it("names every replaced flag in the startup dev-build warning", () => {
+    const server = readRepoFile("src/mcp-server/mcp-server.ts");
+
+    for (const flag of REPLACED_FLAGS) {
+      expect(server).toContain(`["${flag}", process.env.${flag}]`);
+    }
+  });
+
   it("declares every replaced flag in the rolldown replacements", () => {
     // Unreplaced process.env references would throw in the Max V8 runtime. The
     // quoted form is the replacement key; the bare name also appears in the
