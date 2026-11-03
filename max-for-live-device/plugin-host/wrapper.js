@@ -811,6 +811,11 @@ function unmapSlot({ slot: slotArg }) {
   if (!slotsReady) throw new Error("the device is still loading");
 
   const n = slotNumber(slotArg);
+
+  // Without the plug-in, readSlots() sees none of the stored slots, so saving
+  // would erase every mapping kept for when the plug-in is back.
+  if (loadedFile() == null) throw new Error("no plug-in loaded");
+
   const map = { ...readSlots() };
   const old = map[n];
 
