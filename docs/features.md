@@ -48,8 +48,10 @@ the loop.
   [Scene tools →](/features/tools#scene-tools)
 - **Devices and instruments**: add and control native Live instruments and
   effects, build Drum Racks and Simpler instruments from samples, move devices
-  into racks, and drive macro variations. Third-party VST/AU plug-ins need a
-  mapping step first; see [Limitations](/features/limitations).
+  into racks, and drive macro variations. Third-party VST/AU plug-ins can be
+  [hosted](/guide/plugins) so every parameter is controllable (remote script and
+  Live 12.4+); one Live already loaded needs a mapping step, see
+  [Limitations](/features/limitations).
   [Device tools →](/features/tools#device-tools)
 - **Library**: search Live's browser by name or tag, browse its category
   taxonomy, rank samples by similarity to a seed sample, and list installed

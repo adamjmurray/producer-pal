@@ -115,7 +115,7 @@ them and a real setting becomes unreachable.
 
 So Producer Pal finds where the numbers actually stop, reports that as the
 range, and names the odd one out separately
-([`param-numeric-range.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/device/helpers/param-numeric-range.ts)):
+([`param-numeric-range.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/device/helpers/params/param-numeric-range.ts)):
 
 ```json
 {

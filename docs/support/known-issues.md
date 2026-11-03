@@ -74,10 +74,14 @@ several).
 
 ## Library Search Misses New Plug-ins and Samples
 
-Live saves new library entries, like a plug-in you just installed or a sample
-you just added, in a place Producer Pal can't read until Live quits. Until then,
-`ppal-library` won't find them, even though Live's browser shows them. Asking
-for a plug-in by name still loads it.
+Live saves new library entries, like a sample you just added, in a place
+Producer Pal can't read until Live quits. Until then, `ppal-library` won't find
+them, even though Live's browser shows them. Asking for a plug-in by name still
+loads it.
+
+Plug-ins are different when the [remote script](/guide/remote-script) is
+running: the plug-in list comes from Live's browser and is current. Without the
+remote script, the plug-in list has the same delay as samples.
 
 **Workaround:** quit and reopen Live. Reopening a Set is not enough.
 

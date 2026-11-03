@@ -1,8 +1,7 @@
 # Roadmap
 
-## Next (2.6 - Plug-in Control)
+## Next
 
-- Plug-in control: read and set any VST/AU parameter
 - Improved automation: read and write automation envelopes in the units of the
   underlying parameter
 - Slicing a sample to a drum rack
@@ -17,6 +16,19 @@ In consideration:
 
 See [the list of releases](https://github.com/adamjmurray/producer-pal/releases)
 for more detailed information.
+
+### 2.6 - Plug-in Control
+
+- Hosted plug-ins: add a VST3, AU or VST2 plug-in inside a Producer Pal wrapper
+  and the AI can read and set every parameter, and automate them in clips. Needs
+  the remote script and Live 12.4+. See [Hosted Plug-ins](/guide/plugins)
+- Read and update CC Control
+- Clips have their own MIDI scale (Live 12.4.15+)
+- `ppal-library` pages long search results, and the plug-in list is current with
+  the remote script
+- `ppal-context` reads or deletes several memories in one call
+- `ppal-connect` can re-check versions after an install or update without
+  re-sending the Skills and context
 
 ### 2.5 - Automation (October 2026)
 
