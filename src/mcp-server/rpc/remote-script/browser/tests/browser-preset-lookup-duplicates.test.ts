@@ -181,23 +181,21 @@ describe("lookUpBrowserPreset — a name the browser lists once", () => {
   });
 
   it("stops when the deadline passes before the library is checked", async () => {
-    // The browser answers just after the deadline, within the wait the client
-    // allows, so its search succeeds.
-    let waited = false;
+    // The clock moves past the deadline as the browser answers, which the
+    // client still takes, so the browser's search succeeds.
+    const realNow = Date.now.bind(Date);
+    let late = 0;
 
+    vi.spyOn(Date, "now").mockImplementation(() => realNow() + late);
     await standIn.start((request) => {
-      const until = waited ? 0 : Date.now() + 250;
-
-      waited = true;
-
-      while (Date.now() < until) {
-        // Spin until the lookup's time is up.
+      if (request.route === "/list") {
+        late = 250;
       }
 
       return browserAnswer(request);
     });
 
-    await expect(lookUp(undefined, Date.now() + 200)).rejects.toThrow(
+    await expect(lookUp(undefined, realNow() + 200)).rejects.toThrow(
       "ran out of time before the library was searched",
     );
     expect(findPresetFiles).not.toHaveBeenCalled();

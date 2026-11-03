@@ -96,6 +96,20 @@ function routesAsked(remote: FakeRemoteScript): string[] {
 }
 
 /**
+ * Wait until a stand-in has received some requests, without using timers.
+ * @param remote - The stand-in
+ * @param count - How many requests to wait for
+ */
+async function untilAsked(
+  remote: FakeRemoteScript,
+  count: number,
+): Promise<void> {
+  while (remote.requests.length < count) {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+}
+
+/**
  * Expects a request with 300ms left to come back out of date after one ping.
  * @param remote - The stand-in
  */
@@ -117,6 +131,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  vi.useRealTimers();
   await fake?.close();
   fake = undefined;
   setRemoteScriptMinVersion(null);
@@ -200,6 +215,9 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
   });
 
   it("learns each port's version on its own, not from another port's ping", async () => {
+    // Timers are frozen, so a call stuck behind port A's ping never returns.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+
     // Port A takes the ping and never answers it.
     const slow = await startFakeRemoteScript(() => null);
 
@@ -210,36 +228,47 @@ describe("remoteScriptRequest against a remote script that is too old", () => {
       (error: unknown) => error,
     );
 
-    await vi.waitFor(() => expect(routesAsked(slow)).toStrictEqual(["/ping"]));
+    await untilAsked(slow, 1);
+    expect(routesAsked(slow)).toStrictEqual(["/ping"]);
 
     // The script moves to port B, which is too old.
     forgetRemoteScriptPort();
 
     const moved = await standIn(undefined, true);
-    const started = Date.now();
 
     expect(await remoteScriptRequest({ route: "/list" })).toStrictEqual(
       OUTDATED_2_4_REPLY,
     );
-    expect(Date.now() - started).toBeLessThan(800);
     expect(routesAsked(moved)).toStrictEqual(["/ping"]);
 
-    await first;
+    // Dropping A's connection ends its ping without waiting for a timer.
     await slow.close();
+    await first;
     process.env.PPAL_REMOTE_SCRIPT_PORT = "0";
   });
 
   it("waits for the version no longer than the caller has time", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
     fake = await startFakeRemoteScript(() => null);
     delete process.env.PPAL_REMOTE_SCRIPT_PORT;
     ports.file = fake.port;
 
-    const started = Date.now();
+    let done = false;
+    const request = remoteScriptRequest({ route: "/list", expiresInMs: 300 });
 
-    await expectUnsentTimeout(
-      remoteScriptRequest({ route: "/list", expiresInMs: 300 }),
-    );
-    expect(Date.now() - started).toBeLessThan(800);
+    // Caught now so a rejection before the assertion isn't left unhandled.
+    const outcome = request.finally(() => {
+      done = true;
+    });
+
+    outcome.catch(() => undefined);
+    await untilAsked(fake, 1);
+
+    // The ping waits out the caller's 300ms, not its own 1000ms.
+    await vi.advanceTimersByTimeAsync(300);
+    expect(done).toBe(true);
+    await expectUnsentTimeout(request);
+    expect(routesAsked(fake)).toStrictEqual(["/ping"]);
   });
 
   it("makes no ping for the version once the caller's time is used up", async () => {
