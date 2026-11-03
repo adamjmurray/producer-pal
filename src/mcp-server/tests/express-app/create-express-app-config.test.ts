@@ -10,7 +10,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import Max from "max-api";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { projectContextSidecarPath } from "../../helpers/project-context-backup/project-context-backup-store.ts";
+import { projectContextSidecarPath } from "../../helpers/project-context-backup/project-context-sidecar-path.ts";
 import { TOOL_NAMES } from "../../create-mcp-server.ts";
 import { dispatchNodeRoute } from "../config-dir-test-helpers.ts";
 import { setupExpressAppServer } from "../express-app-test-helpers.ts";

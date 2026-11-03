@@ -8,8 +8,9 @@ import {
   DEFAULT_VELOCITY_DEVIATION,
   wholeNoteFractionToMusicalBeats,
 } from "#src/notation/barbeat/barbeat-config.ts";
+import { checkNotationLimit } from "#src/notation/helpers/notation-limit.ts";
 import { assertDefined } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../../types.ts";
 import {
   type PitchState,
@@ -73,7 +74,7 @@ function expandRepeatPattern(
   }
 
   if (times > 100) {
-    console.warn(
+    emitWarning(
       `Repeat pattern generates ${times} notes, which may be excessive`,
     );
   }
@@ -158,6 +159,7 @@ function emitPitchAtPosition(
     velocity_deviation: pitchState.velocityDeviation,
   };
 
+  checkNotationLimit(events.length + 1, "Note count");
   events.push(noteEvent);
   trackForBarCopy(noteEvent, beatsPerBar, timeSigDenominator, notesByBar);
 }
@@ -346,7 +348,7 @@ export function calculatePositions(
  */
 function warnIfBeforeClipStart(absoluteBeats: number): void {
   if (absoluteBeats < 0) {
-    console.warn(
+    emitWarning(
       "Note position resolves before the clip start (negative time): it sits before 1|1.",
     );
   }
@@ -387,11 +389,11 @@ export function handlePitchEmission(
     if (positions.length === 1) {
       const pos = assertDefined(positions[0], "single position");
 
-      console.warn(`Time position ${pos.bar}|${pos.beat} has no pitches`);
+      emitWarning(`Time position ${pos.bar}|${pos.beat} has no pitches`);
     } else if (positions.length > 0) {
       const pos = assertDefined(positions[0], "first position");
 
-      console.warn(
+      emitWarning(
         `Time position has no pitches (first position: ${pos.bar}|${pos.beat})`,
       );
     }
@@ -400,7 +402,7 @@ export function handlePitchEmission(
   }
 
   if (state.stateChangedSinceLastPitch) {
-    console.warn(
+    emitWarning(
       "velocity/duration/probability set after the note(s) but before the time position has no effect: these apply to the notes that follow, so put the setting before them (v1 C4, not C4 v1)",
     );
   }

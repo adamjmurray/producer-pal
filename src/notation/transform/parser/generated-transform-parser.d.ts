@@ -40,13 +40,13 @@ export interface FunctionNode {
   raw: boolean;
 }
 
-/** Absolute duration value (e.g., n/4 = quarter note). Resolved to musical beats at evaluation time. */
+/** Absolute duration value (e.g., n/4 = quarter note). Resolved to musical beats at evaluation time. Negative when written `-n/4`. */
 export interface NDurationNode {
   type: "nDuration";
   wholeNoteFraction: number;
 }
 
-/** Meter-aware bar duration (e.g., 1bar). Resolves to bars * beats-per-bar musical beats. */
+/** Meter-aware bar duration (e.g., 1bar). Resolves to bars * beats-per-bar musical beats. Negative when written `-1bar`. */
 export interface BarDurationNode {
   type: "barDuration";
   bars: number;

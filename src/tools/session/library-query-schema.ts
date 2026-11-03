@@ -84,53 +84,30 @@ export const LIBRARY_SORT_ALIASES = {
  */
 export const batchQuerySchema = z.object(
   optionalParams({
-    label: z.coerce
-      .string()
-      .optional()
-      .describe("label for this query's result group (defaults to its index)"),
-    query: z.coerce
-      .string()
-      .optional()
-      .describe("name substring; use * as a multi-character wildcard"),
-    tags: z.coerce
-      .string()
-      .optional()
-      .describe(
-        "comma-separated tag names; results must match ALL listed tags",
-      ),
+    label: z.coerce.string().optional(),
+    query: z.coerce.string().optional(),
+    tags: z.coerce.string().optional(),
     kind: z
       .enum(LIBRARY_KIND_VALUES)
       .optional()
       // Default to audio to match the single-search default; without it, the
       // search path falls back to all kinds, so a batch query omitting kind would
       // silently behave differently from the same standalone search.
+      // This description is the only place the model sees the default inside
+      // `searches`, so keep it.
       .default("audio")
-      .describe("content kind filter (default: audio)"),
-    type: z
-      .enum(LIBRARY_TYPE_VALUES)
-      .optional()
-      .describe("playback type: loop | oneshot | impulse-response"),
-    deviceKind: z
-      .enum(LIBRARY_DEVICE_KIND_VALUES)
-      .optional()
-      .describe("device classification filter"),
-    source: aliasedEnum(LIBRARY_SOURCE_VALUES, LIBRARY_SOURCE_ALIASES)
-      .optional()
-      .describe("where the file lives"),
-    inFolder: z.coerce
-      .string()
-      .optional()
-      .describe("absolute folder path; immediate children only"),
-    sort: aliasedEnum(LIBRARY_SORT_VALUES, LIBRARY_SORT_ALIASES)
-      .optional()
-      .describe("sort order; defaults to use-count desc"),
-    verifyPaths: z
-      .boolean()
-      .optional()
-      .describe(
-        "stat each result's path and add pathExists (true/false) so you can skip files moved/deleted since Live last indexed",
-      ),
-    limit: z.coerce.number().optional().describe("max results; defaults to 50"),
+      .describe("default: audio"),
+    type: z.enum(LIBRARY_TYPE_VALUES).optional(),
+    deviceKind: z.enum(LIBRARY_DEVICE_KIND_VALUES).optional(),
+    source: aliasedEnum(
+      LIBRARY_SOURCE_VALUES,
+      LIBRARY_SOURCE_ALIASES,
+    ).optional(),
+    inFolder: z.coerce.string().optional(),
+    sort: aliasedEnum(LIBRARY_SORT_VALUES, LIBRARY_SORT_ALIASES).optional(),
+    verifyPaths: z.boolean().optional(),
+    limit: z.coerce.number().optional(),
+    offset: z.coerce.number().optional(),
   }),
 );
 

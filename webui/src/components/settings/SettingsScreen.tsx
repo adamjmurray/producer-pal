@@ -142,7 +142,8 @@ export function SettingsScreen(props: SettingsScreenProps) {
         </SettingsTabs>
 
         <SettingsFooter
-          settingsConfigured={settings.settingsConfigured}
+          chatSetUp={settings.chatSetUp}
+          installationTab={activeTab === "installation"}
           saveSettings={saveSettings}
           cancelSettings={cancelSettings}
           pulse={shake}
@@ -224,7 +225,6 @@ function SettingsTabContent(
           notation={settings.notation}
           setNotation={settings.setNotation}
           onEditContext={props.onEditContext}
-          settingsConfigured={settings.settingsConfigured}
         />
       )}
 

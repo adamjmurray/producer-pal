@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { requireSceneIndex } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   type AppliedTarget,
   type MaybePromise,
@@ -181,11 +181,7 @@ function writeScene(
   run: DuplicateRun,
 ): object {
   const from = validateIdType(run.lastScene.get(sourceId) ?? sourceId, "scene");
-  const sceneIndex = from.sceneIndex;
-
-  if (sceneIndex == null) {
-    throw new Error(`no scene index for ${targetLabel(from)}`);
-  }
+  const sceneIndex = requireSceneIndex(from);
 
   const copy = duplicateScene(
     sceneIndex,

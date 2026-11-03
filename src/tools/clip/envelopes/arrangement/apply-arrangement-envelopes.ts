@@ -12,6 +12,7 @@
 // silent clip, which is what plays its envelopes (the arrangement clip's own
 // warping doesn't matter, since the lane belongs to the track).
 
+import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { isDeadlineExceeded } from "#src/shared/max/v8-request-deadline.ts";
@@ -57,7 +58,16 @@ const TAKE_LANE_REFUSAL =
 export async function applyArrangementEnvelopes(
   entry: ClipResult,
   lines: readonly EnvelopeLine[],
-  context: Pick<ToolContext, "deadline" | "lanes" | "silenceWavPath">,
+  context: Partial<
+    Pick<
+      ToolContext,
+      | "deadline"
+      | "lanes"
+      | "manageAvailable"
+      | "silenceWavPath"
+      | "smallModelMode"
+    >
+  >,
 ): Promise<void> {
   const clip = LiveAPI.from(entry.id);
   const isAudio = (clip.getProperty("is_audio_clip") as number) > 0;
@@ -166,14 +176,16 @@ interface CarrierRequest {
  * scratch clip has changed when this returns, whatever it returns.
  * @param entry - The clip's result entry, written to
  * @param lines - The `envelopes` param, already read into lines
- * @param context - The call's deadline
+ * @param context - The call's deadline and who the caller is
  * @param request - The scratch slot and the clip it stands in for
  * @returns The scratch clip's id, or undefined when there is nothing to stamp
  */
 async function fillCarrier(
   entry: ClipResult,
   lines: readonly EnvelopeLine[],
-  context: Pick<ToolContext, "deadline">,
+  context: Partial<
+    Pick<ToolContext, "deadline" | "manageAvailable" | "smallModelMode">
+  >,
   request: CarrierRequest,
 ): Promise<string | undefined> {
   const { scratch, isAudio, trackIndex, lengthBeats, meter } = request;
@@ -202,6 +214,7 @@ async function fillCarrier(
       carrier: true,
     },
     context.deadline,
+    manageOffered(context),
   );
 
   // A line's own reason is on the entry; a call that wrote none says the rest.

@@ -18,7 +18,7 @@ import {
   publishedReadBack,
 } from "#src/tools/shared/helpers/read-back-comparison.ts";
 import { roundParamRaw } from "#src/tools/shared/helpers/rounding.ts";
-import { strForValue } from "./param-label-parsing.ts";
+import { strForValue } from "./params/param-label-parsing.ts";
 
 /** What a mixer write landed, read back off the object it was written to. */
 export interface MixerApplied {

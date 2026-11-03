@@ -86,10 +86,10 @@ handles the shape.
 `read-device` reports each param's `state` straight from Live's
 `DeviceParameter.state` (active / inactive / disabled), which already greys out
 section params like an off oscillator. But Live is _inconsistent_: when an LFO
-exposes both a free-running Hz `Rate` and a tempo-synced note-value `S. Rate`,
-it leaves **both** active regardless of the sync mode, so the LLM can't tell
-which one is in effect. (Real failure mode: an AI reported a synced LFO's stale
-`6.0 Hz` Rate and couldn't find the synced rate.)
+exposes both a free-running Hz rate and a tempo-synced note value, it leaves
+**both** active regardless of the sync mode, so the LLM can't tell which one is
+in effect. (Real failure mode: an AI reported a synced LFO's stale `6.0 Hz` Rate
+and couldn't find the synced rate.)
 
 A spec can declare `inactiveWhen` rules to fix this: each rule names a
 _controller_ param and, per controller value, the sibling params that don't
@@ -104,22 +104,28 @@ active, the rest inactive" shape. Several controller values may map to the same
 active param (the builder dedupes the group) — e.g. Auto Filter's
 Synced/Triplet/Dotted modes all drive the one note-value selector.
 
-Current rules:
+Current rules, by Live 12.4.16's param names. Live renamed these params in a
+12.4 update, so each device also keeps a rule with the earlier names (shown in
+brackets); a rule whose controller is missing is skipped, so the extra rule
+costs nothing.
 
-- **Wavetable** LFO 1 / LFO 2 — `Sync` → Free=Hz `Rate` / Tempo=`S. Rate`.
-- **Drift** LFO / Cyclic Envelope — `Time Mode` Freq / Time / Ratio / Sync (four
-  rate params, one active per mode).
-- **Auto Filter** — `LFO T Mode`: Rate=Hz `LFO Freq`, Time=ms `LFO Time`,
-  Synced/Triplet/Dotted=note-value `LFO Rate`, Sixteenth=count-of-16ths
-  `LFO 16th`.
-- **Auto Pan-Tremolo** — `Time Mode`: same shape as Auto Filter (`Frequency` /
-  `Time` / `Rate` / `16th`; the synced-count mode is labelled `16th`, not
-  `Sixteenth`).
-- **Phaser-Flanger** — two independent boolean sections: `Mod Sync` (Off=Hz
-  `Mod Freq` / On=note-value `Mod Rate`) and `Mod Sync 2` (`Mod Freq 2` /
-  `Mod Rate 2`).
+- **Wavetable** LFO 1 / LFO 2 — `LFO 1 Sync` → Free=Hz `LFO 1 Freq` /
+  Tempo=`LFO 1 Synced` [`LFO 1 Rate` / `LFO 1 S. Rate`].
+- **Drift** LFO / Cyclic Envelope — `LFO Mode` / `Cyc Env Mode` [`LFO Time Mode`
+  / `Cyc Env Time Mode`]: Freq / Time / Ratio / Sync, four rate params, one
+  active per mode (`LFO Freq` [`LFO Rate`], `LFO Time`, `LFO Ratio`,
+  `LFO Synced`).
+- **Auto Filter** — `LFO Mode` [`LFO T Mode`]: Rate=Hz `LFO Freq`, Time=ms
+  `LFO Time`, Synced/Triplet/Dotted=note-value `LFO Synced` [`LFO Rate`],
+  Sixteenth=count-of-16ths `LFO 16th`.
+- **Auto Pan-Tremolo** — `LFO Mode` [`Time Mode`]: same shape as Auto Filter
+  [`Frequency` / `Time` / `Rate` / `16th`]; the synced-count mode is labelled
+  `16th`, not `Sixteenth`.
+- **Phaser-Flanger** — two independent boolean sections: `LFO 1 Sync` (Off=Hz
+  `LFO 1 Freq` / On=note-value `LFO 1 Synced`) and `LFO 2 Sync` [`Mod Sync`,
+  `Mod Freq`, `Mod Rate` and their `2` forms].
 
-For the audio FX above, the synced `*Rate` param is a quantized note-value
+For the audio FX above, the synced note-value param is a quantized note-value
 selector (raw `0`–`21`, `str_for_value` → `"1/4"` etc.) — its `value`/min/max
 read oddly out of context, which is exactly why surfacing `state: "inactive"` in
 the wrong modes matters.

@@ -16,9 +16,9 @@ import {
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 /** Register the live_set time signature mock used by createClip. */

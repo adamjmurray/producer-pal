@@ -8,17 +8,20 @@ tool that differs from a rule here is a bug in the tool.
 Changing one of these answers is a rule change: ask first, update this spec, and
 apply it to every tool at once.
 
-| Part                                                            | What is in it                                                                    |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| This file                                                       | Lists and pairing, result entries, overwrites                                    |
-| [refusals.md](refusals.md)                                      | What is refused up front, and how                                                |
-| [skips-and-replaced-targets.md](skips-and-replaced-targets.md)  | Skip entries, no-ops, last wins, replaced targets, locators                      |
-| [object-paths/](object-paths/README.md)                         | The path grammar, creating by path, results and errors                           |
-| [clips-playback-and-sends/](clips-playback-and-sends/README.md) | Looping, `duplicateLoop`, envelopes, audio conversion, muted notes, send returns |
-| [up-front-refusals-by-tool.md](up-front-refusals-by-tool.md)    | Where each tool applies the refusal rules                                        |
-| [skip-entries-by-tool/](skip-entries-by-tool/README.md)         | How each write tool applies the entry rules                                      |
-| [ppal-manage.md](ppal-manage.md)                                | How `ppal-manage` answers: install, add Producer Pal, undo, redo, refusals       |
-| [dev/tools/tool-schemas.md](../../tools/tool-schemas.md)        | How to build the schema and the helpers that enforce these rules                 |
+| Part                                                            | What is in it                                                                      |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| This file                                                       | Lists and pairing, result entries, overwrites                                      |
+| [refusals.md](refusals.md)                                      | What is refused up front, and how                                                  |
+| [skips-and-replaced-targets.md](skips-and-replaced-targets.md)  | Skip entries, no-ops, last wins, replaced targets, locators                        |
+| [object-paths/](object-paths/README.md)                         | The path grammar, creating by path, results and errors                             |
+| [clips-playback-and-sends/](clips-playback-and-sends/README.md) | Looping, `duplicateLoop`, envelopes, audio conversion, muted notes, send returns   |
+| [up-front-refusals-by-tool.md](up-front-refusals-by-tool.md)    | Where each tool applies the refusal rules                                          |
+| [skip-entries-by-tool/](skip-entries-by-tool/README.md)         | How each write tool applies the entry rules                                        |
+| [ppal-connect.md](ppal-connect.md)                              | How `ppal-connect` answers: the full connect, the version check, the new-chat line |
+| [ppal-manage.md](ppal-manage.md)                                | How `ppal-manage` answers: install, add Producer Pal, undo, redo, refusals         |
+| [ppal-library.md](ppal-library.md)                              | How `ppal-library` answers when Live's library data may be out of date             |
+| [ppal-context.md](ppal-context.md)                              | How `ppal-context` answers when a call names several memory entries                |
+| [dev/tools/tool-schemas.md](../../tools/tool-schemas.md)        | How to build the schema and the helpers that enforce these rules                   |
 
 ## Lists and pairing
 
@@ -32,6 +35,14 @@ A call that names N targets gets N entries back, in the order named.
   count is refused before any work runs. Nothing cycles: a cycled destination
   overwrites, and a caller who miscounted gets a plausible result. An old schema
   line saying "cycles if fewer" made models write short lists.
+- **A color is written as the nearest palette entry.** Live keeps a fixed
+  70-entry palette and snaps anything else by raw RGB distance, which picks odd
+  entries (`#800080` landed pink-red). Every color write goes through
+  `setColor`, which picks the closest entry by OKLab distance (near-grays only
+  to the palette's grays) and writes that, so Live has nothing left to snap. A
+  request off the palette still comes back on its entry as `color` and a
+  `detail` (`landedColor`). The raw `ppal-live-api` tool's `set-color` is the
+  exception: it writes the color as given, to probe Live's own snap.
 - **A destination never broadcasts**, because a slot, lane, device or pad holds
   one object. With several sources the destinations pair one per source
   (`requireDestinationPerSource`). One source may take any number of
@@ -56,6 +67,9 @@ A call that names N targets gets N entries back, in the order named.
   nothing, so nothing is guessed. One trailing comma is not an entry.
 - **A comma splits a value only when the call names more than one target.** With
   one target, commas are part of the value. `\,` is a literal comma either way.
+- **Every string value is trimmed, whole or as a list entry.** `name: " A "` and
+  `name: " A , B "` over two targets both store plain names. A value of only
+  spaces reads as `""`. A value can't start or end with a space.
 - **Two or more args with commas must name the same number of entries.** A count
   the tool works out itself (`count: 3`) is one of them. An arg is a list when
   it has a comma, even if a trailing one leaves one entry.
@@ -83,6 +97,10 @@ notes is a real request. On a number, boolean, enum or array param it is
 refused, naming the param: `bpm: ""` must not become a call that sets no tempo
 and says nothing. For the action check below, a null, blank or `"null"` on a
 param counts as not sent.
+
+A blank `id` or `path` beside one that names the targets reads as unset. Every
+tool that takes both warns once (`blank id ignored`) and only when the call ran.
+A `"null"` there warns once as `id "null" names nothing`, not also as blank.
 
 Measured on one model (codex-cli, 128 tool calls): nothing arrived blank or
 null, and an all-optional tool with nothing to say came through as `{}`. The
@@ -117,8 +135,9 @@ client is measured (`evals/schema-compat`, `unset-optionals`).
   - Not comparable: always report. A value written as a display string (a unit,
     an enum label, a note name, `loc:Verse`) is a spelling, not a number; so is
     a read-back that isn't a number (`-inf`). `scale` always reports, since Live
-    spells the root its own way. Positions compare as beats, so `5|1.0` landing
-    at `5|1` is silent.
+    spells the root its own way (the Live Set's, and a clip's in update-clip and
+    create-clip). Positions compare as beats, so `5|1.0` landing at `5|1` is
+    silent.
   - State that governs what the call did still reports, since the caller may
     never have read it: `panningMode` when a pan param went in under split mode
     the call didn't name, and playback's `startTime`.
@@ -127,6 +146,14 @@ client is measured (`evals/schema-compat`, `unset-optionals`).
     (`live_set loop`) can't use this: a stale read would report the old value as
     a change.
   - `ppal-select` reports the selection the call produced, not an echo.
+- **A write to an inactive device param says so.** A param that has no effect in
+  the device's current mode (EQ Eight's B side in stereo, a Notch band's Gain, a
+  synced LFO's Hz rate) still takes the write, since setting it before switching
+  modes is valid. Its entry gets the `detail`
+  `inactive in the device's current mode, so it has no effect until that changes`,
+  joined after any other detail. Inactive means what read-device marks
+  `state: "inactive"`: Live's own `state`, plus the specialized-device
+  `inactiveWhen` rules, read after the whole call has run.
 - **A write that overrides arrangement automation says so.** Writing a parameter
   that has an arrangement lane makes Live ignore the whole lane until the user
   presses Re-Enable Automation (`automation_state` becomes 2). The write still
@@ -174,3 +201,31 @@ the caller wouldn't expect (replacing a drum pad's sample throws away the device
 on the pad). Refusing arrangement overwrites unless `force` would make every
 write need it, so callers would always pass it. A `displaced` array of ids was
 rejected too: the ids are dead the moment they are reported.
+
+`force` takes effect only on a target an earlier call was skipped or refused
+for, while the same thing is still at risk. Models send `force: true` before any
+guard has fired, so the guard, not the caller, decides when the loss has been
+shown:
+
+- A guard that would destroy something records the target together with a
+  fingerprint of what is at risk when it skips: the pad by its chain id plus the
+  id of the instrument on it, the context scope plus a hash of the stored
+  document. A newer record of the same target replaces the older one.
+- `force` on a recorded target goes ahead and clears the record, but only if the
+  fingerprint still matches and the record came from an earlier request. A
+  warning raised in a request never unlocks `force` in that same request, so two
+  spellings of one pad in one call can't unlock each other.
+- `force` on a target nothing has recorded, or whose record is for something
+  else now (the instrument was replaced, the document was rewritten), is
+  answered as if it were absent: the same skip or refusal, which records the
+  target afresh, with `force:true ignored — nothing had warned about this yet`
+  in front. So the caller always sees what would be lost before it can lose it.
+- Where the guard wouldn't fire, `force` does nothing either way.
+- Records live in device memory, so they last until used, replaced, or until the
+  Live Set (and with it the device) reloads. A skip seen by any client counts.
+
+This covers every guard that takes `force`: the pad sample swap in
+ppal-update-device and the clobber guard in ppal-context. A new guard must name
+what is at risk (the fingerprint `forceGuardMessage` requires). A replacement
+the caller means wholesale (eval setup restoring a document) writes `""` first,
+which no guard refuses, then the new content.

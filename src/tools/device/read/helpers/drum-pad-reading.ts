@@ -41,6 +41,7 @@ import { type ReadOptions } from "./read-device-options.ts";
  * @param remainingSegments - Segments after drum pad in path
  * @param fullPath - Full simplified path for response
  * @param options - Read options
+ * @param label - The param the path was sent under, for the error
  * @returns Drum pad, chain, or device information
  */
 export function readDrumPadByPath(
@@ -49,11 +50,12 @@ export function readDrumPadByPath(
   remainingSegments: string[],
   fullPath: string,
   options: ReadOptions,
+  label = "path",
 ): Record<string, unknown> {
   const device = LiveAPI.from(liveApiPath);
 
   if (!device.exists()) {
-    throw new Error(`nothing at path "${fullPath}"`);
+    throw new Error(`nothing at ${label} "${fullPath}"`);
   }
 
   // The grammar already validated the note, so this always converts; the
@@ -334,6 +336,8 @@ function attachDrumPadChains(
       path: chainPath,
       devices,
       showAutomation: follows,
+      // One pad's chains: always show the fader, even at 0 dB / center.
+      showFader: true,
     });
   });
 

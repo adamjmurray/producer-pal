@@ -8,6 +8,7 @@
  * left alone, and which it deleted.
  */
 
+import { splitEntries } from "#src/tools/shared/validation/lists/split-entries.ts";
 import { argText } from "../../arg-text.ts";
 import { type EvalAssertion } from "../../../types.ts";
 import { contextCalls } from "./context-write-assertions.ts";
@@ -29,8 +30,12 @@ export function assertMemoryRead(
     assert: (turns) => {
       const reads = contextCalls(turns, turn, "read", "memory");
 
-      if (!reads.some((args) => args.name === name)) {
-        const seen = reads.map((args) => argText(args.name, "(index)"));
+      if (!reads.some((args) => namesIn(args.name).includes(name))) {
+        const seen = reads.flatMap((args) => {
+          const names = namesIn(args.name);
+
+          return names.length > 0 ? names : ["(index)"];
+        });
         const detail =
           seen.length > 0 ? `read ${seen.join(", ")} instead` : "read nothing";
 
@@ -54,9 +59,9 @@ export function assertNoMemoryRead(turn: number | "any"): EvalAssertion {
     type: "custom",
     description: "did not load any memory bodies",
     assert: (turns) => {
-      const bodies = contextCalls(turns, turn, "read", "memory")
-        .map((args) => argText(args.name))
-        .filter((name) => name !== "");
+      const bodies = contextCalls(turns, turn, "read", "memory").flatMap(
+        (args) => namesIn(args.name),
+      );
 
       if (bodies.length > 0) {
         throw new Error(
@@ -86,11 +91,25 @@ export function assertMemoryDeleted(
     assert: (turns) => {
       const deletes = contextCalls(turns, turn, "delete", "memory");
 
-      if (!deletes.some((args) => args.name === name)) {
+      if (!deletes.some((args) => namesIn(args.name).includes(name))) {
         throw new Error(`did not delete memory "${name}"`);
       }
 
       return true;
     },
   };
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * The memory names a call's `name` arg lists. A read or delete takes a
+ * comma-separated list, with `\,` for a comma inside a name.
+ * @param value - The raw `name` arg
+ * @returns The trimmed, non-empty names
+ */
+function namesIn(value: unknown): string[] {
+  return splitEntries(argText(value))
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== "");
 }

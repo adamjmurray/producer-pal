@@ -46,6 +46,12 @@ export interface AppliedTarget<P> {
   keys?: string[];
   /** What the write goes over, for a later target to replace or cut short */
   covers?: Cover[];
+  /**
+   * What the caller's path named when the call began, for a tool with
+   * `locate`: the object's id, or null when nothing was there. Left out for an
+   * id, or when the tool can't tell.
+   */
+  atStart?: string | null;
   skip?: undefined;
   data: P;
 }
@@ -56,12 +62,36 @@ export interface SkippedTarget {
   key?: undefined;
   keys?: undefined;
   covers?: undefined;
+  /** As on an applied target: what the caller's path named at the start */
+  atStart?: string | null;
   /** Why, in the words a lone target throws */
   skip: string;
   data?: undefined;
 }
 
 export type Target<P> = AppliedTarget<P> | SkippedTarget;
+
+/**
+ * Where a tool's path-named objects sit, for a tool whose targets can move each
+ * other's paths. A skip entry keeps the caller's spelling, so once a path no
+ * longer names the object the target was found at, the pipeline adds where that
+ * object is now.
+ */
+export interface Locate<Checked> {
+  /**
+   * The id of the object a path names now, as the tool's own lookup reads it;
+   * null when it names nothing.
+   */
+  idAt: (path: string, checked: Checked) => string | null;
+  /**
+   * Where an object sits now and what to call it, with the path spelled the way
+   * the caller spelled `spelled`; undefined when it is gone or has no path.
+   */
+  whereIs: (
+    id: string,
+    spelled: string,
+  ) => { path: string; noun: string } | undefined;
+}
 
 /** What every hook of a call shares. */
 export interface Call {
@@ -213,4 +243,11 @@ export interface WriteSpec<
    * the call, naming what `call.landed` recorded.
    */
   settle?: (done: Done<P, Checked, E>, call: Call) => MaybePromise<void>;
+  /**
+   * For a tool whose targets can move each other's paths (an earlier target
+   * deletes, inserts or moves what a later path named). After `settle`, a
+   * skipped target whose path no longer names what it did at the start says
+   * where that object is now. Costs nothing when nothing moved.
+   */
+  locate?: Locate<Checked>;
 }

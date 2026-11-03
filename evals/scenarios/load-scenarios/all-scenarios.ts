@@ -54,6 +54,7 @@ import {
   deviceLibraryPadSamples,
   deviceMappedMacros,
   deviceMovePairing,
+  deviceOptionParams,
   devicePresetSwapByName,
   deviceSoundDesign,
   deviceTypePaths,
@@ -123,6 +124,9 @@ import {
   trackListBatching,
   trackNameCommaPairing,
   updateLiveSet,
+  upgradeDeviceVersionCheck,
+  upgradeFirstMessageFullConnect,
+  upgradeRemoteScriptRestartCheck,
   writeTrustSilentResult,
 } from "../defs/index.ts";
 import { type EvalScenario } from "../types.ts";
@@ -156,6 +160,7 @@ export const allScenarios: EvalScenario[] = [
   deviceMovePairing,
   deviceCopyInPlace,
   deviceMappedMacros,
+  deviceOptionParams,
   projectContextWorkflow,
   // ppal-context behavior. Kept CONTIGUOUS and on one Live Set: each sets
   // `reuseLiveSet`, which only skips the (slow) reopen when the PRECEDING
@@ -191,6 +196,9 @@ export const allScenarios: EvalScenario[] = [
   sceneAndPlayback,
   sceneUpdateAndSelect,
   updateLiveSet,
+  upgradeDeviceVersionCheck,
+  upgradeFirstMessageFullConnect,
+  upgradeRemoteScriptRestartCheck,
   deleteTargets,
   liveApiEscapeHatch,
   librarySearchFanout,

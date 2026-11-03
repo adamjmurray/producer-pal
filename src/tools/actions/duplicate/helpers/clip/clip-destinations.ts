@@ -81,14 +81,14 @@ export interface ClipDestinations {
  * Resolves a clip duplicate's destination from its path params.
  * @param rawToPath - Destination path(s), comma-separated for multiple
  * @param rawToSlot - Deprecated clip slot(s), trackIndex/sceneIndex format
- * @param hasArrangementParams - Whether arrangementStart was given
+ * @param startParam - The param that named positions, or null when none did
  * @param beside - What other sources' toPath entries name
  * @returns Where the copies go
  */
 export function resolveClipDestinations(
   rawToPath: string | undefined,
   rawToSlot: string | undefined,
-  hasArrangementParams: boolean,
+  startParam: string | null,
   beside: BesideEntries = ALONE,
 ): ClipDestinations {
   const { value: toPath, aliasValue: toSlot } = refuseDoubledSpelling({
@@ -100,7 +100,7 @@ export function resolveClipDestinations(
   });
 
   if (toSlot != null) {
-    return legacySlotDestinations(toSlot, hasArrangementParams);
+    return legacySlotDestinations(toSlot, startParam);
   }
 
   const entries = resolveDestinationPositions(
@@ -108,8 +108,8 @@ export function resolveClipDestinations(
     { paramName: "toPath" },
   );
 
-  if (hasArrangementParams) {
-    return arrangementDestinations(entries, beside);
+  if (startParam != null) {
+    return arrangementDestinations(entries, startParam, beside);
   }
 
   if (entries.length === 0) {
@@ -147,12 +147,12 @@ export function warnInapplicableClipParams(
 /**
  * Resolves the deprecated toSlot param, which only ever named clip slots.
  * @param toSlot - Clip slot(s), trackIndex/sceneIndex format
- * @param hasArrangementParams - Whether arrangementStart was given
+ * @param startParam - The param that named positions, or null when none did
  * @returns Clip slot destinations
  */
 function legacySlotDestinations(
   toSlot: string,
-  hasArrangementParams: boolean,
+  startParam: string | null,
 ): ClipDestinations {
   // namedHiddenPath already dropped a toSlot that names nothing, so this always
   // gets at least one entry.
@@ -161,9 +161,9 @@ function legacySlotDestinations(
   // toSlot only ever named clip slots, so it can't be the arrangement
   // destination arrangementStart wants. Drop the weaker of the two rather than
   // failing the call, the way toPath does for the same conflict.
-  if (hasArrangementParams) {
+  if (startParam != null) {
     warnIgnored(
-      "arrangementStart",
+      startParam,
       "toSlot names a clip slot; " +
         'use toPath (e.g. "t2") for that track\'s arrangement',
     );
@@ -190,12 +190,14 @@ function legacySlotDestinations(
  * comma-separated values from splitting at all — Live is then handed the whole
  * string, which fails the call after a copy has already landed.
  * @param entries - Parsed clip destinations, lane and position apart
+ * @param startParam - The param that named positions, for a warning
  * @param beside - What other sources' entries name: these slots are part of a
  *   mixed list, or these tracks need positions of their own
  * @returns Arrangement destinations, or session ones when only slots were named
  */
 function arrangementDestinations(
   entries: ClipDestinationPath[],
+  startParam: string,
   beside: BesideEntries,
 ): ClipDestinations {
   // A coordinate is its own entry's position, so when any entry — this
@@ -258,7 +260,7 @@ function arrangementDestinations(
     arrangementTargets.every((target) => target == null)
   ) {
     warnIgnored(
-      "arrangementStart",
+      startParam,
       `toPath "${named}" names a clip slot; ` +
         'use "t<track>" for that track\'s arrangement',
     );

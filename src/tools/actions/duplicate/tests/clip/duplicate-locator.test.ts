@@ -257,6 +257,15 @@ describe("duplicate - locators as arrangement positions", () => {
       ).rejects.toThrow(msg);
     });
 
+    // The deprecated param is named back as itself, not as arrangementStart.
+    it("names the locator param when that is what the caller sent", async () => {
+      setupErrorHandlingMocks();
+
+      await expect(
+        duplicate({ type: "scene", id: "scene1", locator: "NonExistent" }),
+      ).rejects.toThrow('no locator found with name "NonExistent" for locator');
+    });
+
     // A prefix with nothing after it named a position the call can't place, so
     // it is refused before any copy lands rather than duplicating to beat 0.
     it.each([
@@ -282,6 +291,7 @@ describe("duplicate - locators as arrangement positions", () => {
       ["one name", "Drop", [8]],
       ["one id", "27", [8]],
       ["a list, one loc: per entry", "Start, Drop", [0, 8]],
+      ["a name already prefixed", "loc:Drop", [8]],
     ])("folds %s onto arrangementStart", async (_label, locator, beats) => {
       const track0 = setupClipWithLocators(standardCuePoints);
 
@@ -345,6 +355,39 @@ describe("duplicate - locators as arrangement positions", () => {
       ).rejects.toThrow(
         "arrangementStart names the position on its own - don't send locator with it",
       );
+    });
+
+    // The refusal names the params the caller sent, not the one the position
+    // was folded onto.
+    it("names toPath when a scene's coordinate comes with a locator", async () => {
+      registerMockObject("scene1", { path: livePath.scene(0) });
+
+      await expect(
+        duplicate({
+          type: "scene",
+          id: "scene1",
+          toPath: "[5|1]",
+          locator: "Verse",
+        }),
+      ).rejects.toThrow(
+        "toPath names the position on its own - don't send locator with it",
+      );
+    });
+
+    it("names locator when a clip's coordinate comes with one", async () => {
+      const track0 = setupClipWithLocators(standardCuePoints);
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          toPath: "t0[5|1]",
+          locator: "Drop",
+        }),
+      ).rejects.toThrow(
+        "toPath names the song position on its own - don't send locator with it",
+      );
+      expect(track0.call).not.toHaveBeenCalled();
     });
 
     // A device has no arrangement position, so neither param is read and there

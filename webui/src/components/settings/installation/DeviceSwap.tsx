@@ -11,6 +11,7 @@ import {
   goodTextClass,
   mutedClass,
 } from "./helpers/installation-classes";
+import { NewChatHint } from "./NewChatHint";
 
 /**
  * The line offering to swap the running device for the User Library copy, or
@@ -72,10 +73,13 @@ export function DeviceSwapMessage({ swap }: { swap: UseDeviceSwapReturn }) {
 
   if (swap.phase === "done") {
     return (
-      <p className={goodTextClass} data-testid="device-swap-done">
-        Swapped. Save your Live Set so it keeps using the copy in your User
-        Library.
-      </p>
+      <>
+        <p className={goodTextClass} data-testid="device-swap-done">
+          Swapped. Save your Live Set so it keeps using the copy in your User
+          Library.
+        </p>
+        <NewChatHint testId="device-swap-new-chat-hint" />
+      </>
     );
   }
 

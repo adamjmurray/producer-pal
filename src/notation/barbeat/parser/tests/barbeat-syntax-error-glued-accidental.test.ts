@@ -5,21 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { parseNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
-import { errorMessage } from "#src/shared/error-message.ts";
-
-/**
- * @param notes - bar|beat text that must fail to parse
- * @returns The error message a model would read
- */
-function errorFor(notes: string): string {
-  try {
-    parseNotation(notes);
-  } catch (error) {
-    return errorMessage(error);
-  }
-
-  throw new Error(`"${notes}" parsed`);
-}
+import { errorFor } from "./barbeat-parser-test-helpers.ts";
 
 describe("bar|beat: an accidental glued after the octave", () => {
   it("names the fix in the whole message", () => {

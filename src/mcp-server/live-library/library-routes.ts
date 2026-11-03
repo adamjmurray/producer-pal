@@ -22,6 +22,10 @@ import {
 } from "./library-types.ts";
 import { type ListCategoriesArgs, listCategories } from "./list-categories.ts";
 import { listPlugins } from "./list-plugins.ts";
+import {
+  type ResolvePluginArgs,
+  resolvePlugin,
+} from "./query/plugins/resolve-plugin.ts";
 import { type ListTagsArgs, listTags } from "./list-tags.ts";
 import { setRunningLiveMajor } from "./live-db-path.ts";
 import { ensureSqliteAvailable } from "./live-db.ts";
@@ -71,6 +75,13 @@ export function registerLibraryRoutes(): void {
   registerNodeRoute(
     "library.listPlugins",
     libraryRoute((args) => listPlugins((args as ListPluginsArgs | null) ?? {})),
+  );
+
+  registerNodeRoute(
+    "library.resolvePlugin",
+    libraryRoute((args) =>
+      resolvePlugin((args as ResolvePluginArgs | null) ?? {}),
+    ),
   );
 
   registerNodeRoute(

@@ -14,8 +14,7 @@
  * as their own list rather than concatenated onto the end of it.
  */
 
-/** Prefix `max-api-adapter.ts` puts on every relayed `console.warn`. */
-const WARNING_PREFIX = "WARNING:";
+import { getWarningTexts, WARNING_PREFIX } from "#src/shared/mcp-responses.ts";
 
 /**
  * Extract the payload (first text block) from an MCP tool result.
@@ -44,12 +43,7 @@ export function mcpResultText(value: unknown): string {
  * @returns Every `WARNING:`-prefixed text block, in order; empty when there are none
  */
 export function mcpResultWarnings(value: unknown): string[] {
-  return contentBlocks(value)
-    .map((block) => block.text)
-    .filter(
-      (text): text is string =>
-        typeof text === "string" && text.startsWith(WARNING_PREFIX),
-    );
+  return getWarningTexts(contentBlocks(value));
 }
 
 /**

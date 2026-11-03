@@ -6,6 +6,7 @@
 import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { platformSupport } from "#src/test/fixtures/platform-support.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { type RemoteScriptPing } from "../../remote-script/remote-script-client.ts";
 import { deviceInstallStatus } from "../device-install-status.ts";
@@ -118,18 +119,21 @@ describe("deviceSwapCheck", () => {
     });
   });
 
-  it("sees through a link to the User Library copy", async () => {
-    const { library, installed, downloads, put } = scratch();
-    const link = join(downloads, "link.amxd");
+  it.skipIf(!platformSupport.symlinks)(
+    "sees through a link to the User Library copy",
+    async () => {
+      const { library, installed, downloads, put } = scratch();
+      const link = join(downloads, "link.amxd");
 
-    put(installed, frozenDevice(VERSION));
-    symlinkSync(installed, link);
-    recordDeviceSource(link);
+      put(installed, frozenDevice(VERSION));
+      symlinkSync(installed, link);
+      recordDeviceSource(link);
 
-    const status = await deviceInstallStatus(library);
+      const status = await deviceInstallStatus(library);
 
-    expect(status.inUserLibrary).toBe(true);
-  });
+      expect(status.inUserLibrary).toBe(true);
+    },
+  );
 
   it("refuses when there is no copy", async () => {
     expect(await check()).toStrictEqual({

@@ -3,8 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { unitForLabels } from "#src/tools/shared/device/helpers/param-label-parsing.ts";
-import { type ParamNumericRange } from "#src/tools/shared/device/helpers/param-numeric-range.ts";
+import { unitForLabels } from "#src/tools/shared/device/helpers/params/param-label-parsing.ts";
+import { type ParamNumericRange } from "#src/tools/shared/device/helpers/params/param-numeric-range.ts";
 import { type ParamStep } from "#src/tools/shared/device/helpers/param-writing.ts";
 import { recordedUnitFor } from "#src/tools/shared/device/known-param-units.ts";
 import { findRawValueForDisplay } from "./param-display-search.ts";

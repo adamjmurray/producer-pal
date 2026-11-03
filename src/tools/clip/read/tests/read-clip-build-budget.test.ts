@@ -44,6 +44,9 @@ const CLIP_COUNT = 8;
 /** What one drum-mode walk of the fixture costs: the track, the rack, its chains. */
 const WALK_COST = CHAIN_COUNT + 2;
 
+/** The version check each read-clip call makes once, to know whether clips have a scale. */
+const VERSION_CHECK = 1;
+
 /** Scene index of the one clip in the fixture that holds no notes. */
 const EMPTY_CLIP_SCENE = CLIP_COUNT;
 
@@ -100,8 +103,8 @@ describe("readClip build budget", () => {
     await readClip({ path: "t0/s0" });
 
     // A clip that answers proves its track and its scene are there, so a read
-    // by path costs exactly the clip.
-    expect(liveApiBuildStats().resolved).toBe(1);
+    // by path costs exactly the clip, plus the version check.
+    expect(liveApiBuildStats().resolved).toBe(1 + VERSION_CHECK);
     expect(resolves("live_set tracks *")).toBe(0);
     expect(resolves("live_set scenes *")).toBe(0);
 
@@ -124,7 +127,10 @@ describe("readClip build budget", () => {
     // it is keyed on the track, so the walk is paid before the first clip and
     // never again. Every clip after that costs only itself.
     expect(resolves("id rackChain*")).toBe(CHAIN_COUNT);
-    expect(liveApiBuildStats().resolved).toBe(WALK_COST + CLIP_COUNT);
+    // Each readClip call is a call of its own, so each pays its version check.
+    expect(liveApiBuildStats().resolved).toBe(
+      WALK_COST + CLIP_COUNT * (1 + VERSION_CHECK),
+    );
   });
 
   it("walks again for the next request", async () => {
@@ -141,7 +147,9 @@ describe("readClip build budget", () => {
     // drop a drum rack on the track between two reads. So two requests pay two
     // walks, and this is the cost the batch readers still avoid with drumMode.
     expect(resolves("id rackChain*")).toBe(CHAIN_COUNT * 2);
-    expect(liveApiBuildStats().resolved).toBe((WALK_COST + 1) * 2);
+    expect(liveApiBuildStats().resolved).toBe(
+      (WALK_COST + 1 + VERSION_CHECK) * 2,
+    );
   });
 
   it("skips the walk for a clip with no notes to spell", async () => {
@@ -152,7 +160,7 @@ describe("readClip build budget", () => {
 
     // Drum mode only decides how notes are spelled. An empty clip has none, so
     // the answer is never used and must not be worked out.
-    expect(liveApiBuildStats().resolved).toBe(1);
+    expect(liveApiBuildStats().resolved).toBe(1 + VERSION_CHECK);
     expect(resolves("id rackChain*")).toBe(0);
   });
 
@@ -166,9 +174,9 @@ describe("readClip build budget", () => {
     }
 
     // The same reads as above with the answer handed over: the clip and
-    // nothing else, per clip. Anything above one per clip means some other
-    // shared fact started being worked out per clip.
-    expect(liveApiBuildStats().resolved).toBe(CLIP_COUNT);
+    // nothing else, per clip, and each call's version check. Anything above
+    // that means some other shared fact started being worked out per clip.
+    expect(liveApiBuildStats().resolved).toBe(CLIP_COUNT * (1 + VERSION_CHECK));
     expect(resolves("id rackChain*")).toBe(0);
     expect(resolves("live_set tracks *")).toBe(0);
   });

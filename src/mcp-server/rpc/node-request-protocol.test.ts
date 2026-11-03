@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
+  MAX_SINGLE_MESSAGE_BYTES,
   END_OF_CHUNKS,
 } from "#src/shared/mcp-responses.ts";
 import {
@@ -21,10 +22,10 @@ import {
 } from "../tests/config-dir-test-helpers.ts";
 
 vi.mock(import("../node-for-max-logger.ts"), () => ({
-  log: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  nodeLog: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeWarn: vi.fn(),
+  nodeError: vi.fn(),
 }));
 
 const parseSentResponse = (): ParsedNodeResponse<unknown> =>
@@ -92,6 +93,7 @@ describe("node-request-protocol", () => {
 
     expect(response.success).toBe(false);
     expect(response.error).toContain("Unknown route: missing");
+    expect(response.notRun).toBe(true);
   });
 
   it("returns failure when handler throws", async () => {
@@ -146,6 +148,7 @@ describe("node-request-protocol", () => {
 
     expect(response.success).toBe(false);
     expect(response.error).toContain("Failed to parse request");
+    expect(response.notRun).toBe(true);
   });
 
   it("throws when registering a duplicate route", () => {
@@ -183,6 +186,33 @@ describe("node-request-protocol", () => {
     expect(response.result).toBe(oversized);
   });
 
+  it("chunks a CJK and emoji response under the byte limit and rejoins it intact", async () => {
+    // Emoji at every offset, so some pair straddles each chunk boundary.
+    const text = "あ😀".repeat(MAX_CHUNK_SIZE);
+
+    registerNodeRoute("cjk", () => text);
+
+    await handleNodeRequest(
+      "req-cjk",
+      JSON.stringify({ route: "cjk", args: {} }),
+    );
+
+    const args = vi.mocked(Max.outlet).mock.calls[0]!.slice(2);
+    const chunks = args.slice(0, args.indexOf(END_OF_CHUNKS)) as string[];
+
+    expect(chunks.length).toBeGreaterThan(2);
+
+    for (const chunk of chunks) {
+      expect(new TextEncoder().encode(chunk).length).toBeLessThanOrEqual(
+        MAX_SINGLE_MESSAGE_BYTES,
+      );
+      // Throws on a split surrogate pair.
+      expect(() => encodeURIComponent(chunk)).not.toThrow();
+    }
+
+    expect(parseSentResponse().result).toBe(text);
+  });
+
   it("replaces too-large payloads with a single-chunk error response", async () => {
     // Construct a payload that exceeds MAX_CHUNKS * MAX_CHUNK_SIZE
     const overflow = "y".repeat(MAX_CHUNKS * MAX_CHUNK_SIZE + 1);
@@ -198,6 +228,8 @@ describe("node-request-protocol", () => {
 
     expect(response.success).toBe(false);
     expect(response.error).toMatch(/Response too large/);
+    // The handler ran, so the caller can't claim nothing happened.
+    expect(response.notRun).toBeUndefined();
   });
 
   it("synthesizes a timeout failure when a handler hangs", async () => {
@@ -225,7 +257,7 @@ describe("node-request-protocol", () => {
 
     const consoleMock = await import("../node-for-max-logger.ts");
 
-    expect(consoleMock.error).toHaveBeenCalledWith(
+    expect(consoleMock.nodeError).toHaveBeenCalledWith(
       expect.stringContaining("Route 'hang' timed out"),
     );
   });
@@ -261,10 +293,10 @@ describe("node-request-protocol", () => {
 
     await handleNodeRequest("req-err", request);
 
-    expect(consoleMock.error).toHaveBeenCalledWith(
+    expect(consoleMock.nodeError).toHaveBeenCalledWith(
       expect.stringContaining("Failed to send node_response"),
     );
-    expect(consoleMock.error).toHaveBeenCalledWith(
+    expect(consoleMock.nodeError).toHaveBeenCalledWith(
       expect.stringContaining("req-err"),
     );
   });

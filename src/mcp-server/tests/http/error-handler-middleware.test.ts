@@ -5,14 +5,14 @@
 
 import { type NextFunction, type Request, type Response } from "express";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as console from "#src/mcp-server/node-for-max-logger.ts";
+import { nodeError } from "#src/mcp-server/node-for-max-logger.ts";
 import { errorHandlerMiddleware } from "../../helpers/http/error-handler-middleware.ts";
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
-  log: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  nodeLog: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeWarn: vi.fn(),
+  nodeError: vi.fn(),
 }));
 
 interface FakeResponse {
@@ -154,7 +154,7 @@ describe("errorHandlerMiddleware", () => {
   it("logs a server fault so it is still visible in the Max console", () => {
     handle(new Error("boom"));
 
-    expect(console.error).toHaveBeenCalledWith(
+    expect(nodeError).toHaveBeenCalledWith(
       expect.stringContaining("boom") as unknown as string,
     );
   });
@@ -171,7 +171,7 @@ describe("errorHandlerMiddleware", () => {
   ])("does not log a caller mistake, %s", (_label, error) => {
     handle(error);
 
-    expect(console.error).not.toHaveBeenCalled();
+    expect(nodeError).not.toHaveBeenCalled();
   });
 
   // res.status() throws on a non-integer, which would put the HTML stack trace

@@ -17,7 +17,9 @@ import {
 import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
 
-vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({ warn: vi.fn() }));
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
+  emitWarning: vi.fn(),
+}));
 
 const OUTER_CHAIN = livePath.track(0).device(0).chain(0);
 const NESTED = "t0/d0/c0/d0/c0";

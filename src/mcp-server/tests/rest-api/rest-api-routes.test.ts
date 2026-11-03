@@ -5,7 +5,7 @@
 
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { MAX_TIMEOUT_MS, SMALL_MODEL_MODE_HEADER } from "#src/shared/config.ts";
-import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
+import { ensureSilenceWav } from "../../rpc/silent-wav-generator.ts";
 import {
   lastMcpContext,
   mcpRequests,
@@ -464,6 +464,7 @@ describe("REST API Routes", () => {
       expect(lastMcpContext()).not.toBeNull();
       expect(lastMcpContext()).toStrictEqual({
         notation: "barbeat",
+        manageAvailable: true,
         silenceWavPath: SILENCE_WAV_PATH,
         timeoutMs: 45000,
         compactOutput: false,
@@ -495,6 +496,7 @@ describe("REST API Routes", () => {
       expect(response.status).toBe(200);
       expect(lastMcpContext()).toStrictEqual({
         notation: "barbeat",
+        manageAvailable: true,
         silenceWavPath: SILENCE_WAV_PATH,
         timeoutMs: 45000,
         compactOutput: false,
@@ -645,6 +647,7 @@ describe("REST API Routes", () => {
       expect(response.status).toBe(200);
       expect(lastMcpContext()).toStrictEqual({
         notation: "barbeat",
+        manageAvailable: true,
         silenceWavPath: SILENCE_WAV_PATH,
         timeoutMs: 45000,
         compactOutput: true,
@@ -677,6 +680,7 @@ describe("REST API Routes", () => {
       expect(lastMcpContext()).toStrictEqual({
         compactOutput: false,
         notation: "barbeat",
+        manageAvailable: true,
         silenceWavPath: SILENCE_WAV_PATH,
         timeoutMs: 5000,
       });
@@ -695,6 +699,7 @@ describe("REST API Routes", () => {
       expect(response.status).toBe(200);
       expect(lastMcpContext()).toStrictEqual({
         notation: "barbeat",
+        manageAvailable: true,
         silenceWavPath: SILENCE_WAV_PATH,
         compactOutput: false,
         timeoutMs: 2500,
@@ -727,6 +732,7 @@ describe("REST API Routes", () => {
       expect(lastMcpContext()).toStrictEqual({
         compactOutput: false,
         notation: "barbeat",
+        manageAvailable: true,
         silenceWavPath: SILENCE_WAV_PATH,
         timeoutMs: MAX_TIMEOUT_MS,
       });

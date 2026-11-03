@@ -12,6 +12,9 @@ import {
 } from "preact/hooks";
 import { reconcileDanglingToolCalls } from "#webui/chat/sdk/build-model-messages";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
+import { isLeavingLive } from "#webui/hooks/chat/helpers/conversations/is-leaving-live";
+import { useRestoreFromHash } from "#webui/hooks/chat/helpers/conversations/view/use-restore-from-hash";
+import { useViewSequence } from "#webui/hooks/chat/helpers/conversations/view/use-view-sequence";
 import { useBulkDeletes } from "#webui/hooks/chat/helpers/conversations/use-bulk-deletes";
 import { confirmLeavingStream } from "#webui/hooks/chat/helpers/conversations/confirm-leaving-stream";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
@@ -22,7 +25,7 @@ import {
   getHashConversationId,
   setLocationHash,
   useHashNavigation,
-} from "#webui/hooks/chat/helpers/conversations/use-hash-navigation";
+} from "#webui/hooks/chat/helpers/conversations/view/use-hash-navigation";
 import { writeConversation } from "#webui/hooks/chat/helpers/conversations/write-conversation";
 import {
   type SyncActiveMetaParams,
@@ -54,6 +57,9 @@ interface UseConversationsProps {
     lockedSettings?: RestoredSettings,
   ) => void;
   clearConversation: () => void;
+  /** Wipes the composer's draft and images. Called when the conversation the
+   * composer belongs to goes away, not on every teardown. */
+  resetComposer: () => void;
   /** The active conversation's locked settings, mirrored into the store and
    * snapshotted onto saved records. */
   activeMeta: SyncActiveMetaParams;
@@ -102,6 +108,7 @@ export interface UseConversationsReturn extends ConversationListActions {
  * @param props.getChatHistory - Returns current chat history for saving
  * @param props.restoreChatHistory - Loads a saved chat history into the chat hook
  * @param props.clearConversation - Clears the current conversation
+ * @param props.resetComposer - Wipes the composer when its conversation is left
  * @param props.activeMeta - Locked conversation metadata (model/provider/etc. + system instruction)
  * @param props.onForeignRecord - Optional callback invoked when a voice record is encountered; parent should switch modes
  * @param props.pendingForkRef - Shared signal consumed on save to branch the conversation into a new record
@@ -113,6 +120,7 @@ export function useConversations({
   getChatHistory,
   restoreChatHistory,
   clearConversation,
+  resetComposer,
   activeMeta,
   onForeignRecord,
   pendingForkRef,
@@ -133,6 +141,7 @@ export function useConversations({
   // save queued behind the same failed fork so writeConversation's retry bound
   // holds across all of them, not just within one.
   const deadForkAttempts = useRef<Map<string, number>>(new Map());
+  const view = useViewSequence();
 
   const publishActiveId = useCallback((id: string | null) => {
     setActiveConversationId(id);
@@ -194,39 +203,13 @@ export function useConversations({
     [restoreChatHistory],
   );
 
-  // Load conversation from URL hash and conversation list on mount
-  useEffect(() => {
-    const init = async () => {
-      await refreshList();
-      const hashId = getHashConversationId();
-
-      if (!hashId) {
-        return;
-      }
-
-      const record = await loadConversation(hashId);
-
-      if (record?.sessionType === "voice") {
-        if (onForeignRecord) {
-          onForeignRecord(record);
-        } else {
-          store.reset();
-        }
-
-        return;
-      }
-
-      if (record && record.messages.length > 0) {
-        store.adopt(record);
-        restoreRecord(record);
-      } else {
-        // Hash ID no longer exists in DB
-        store.reset();
-      }
-    };
-
-    void init();
-  }, [refreshList, restoreRecord, onForeignRecord, store]);
+  useRestoreFromHash({
+    refreshList,
+    restoreRecord,
+    onForeignRecord,
+    store,
+    view,
+  });
 
   const saveCurrentConversation = useCallback(
     (updatedAt?: number): Promise<void> => {
@@ -292,7 +275,12 @@ export function useConversations({
 
   const switchConversation = useCallback(
     async (id: string) => {
+      const seq = view.next();
       const record = await loadConversation(id);
+
+      if (seq !== view.current()) {
+        return;
+      }
 
       if (!record) {
         store.reset();
@@ -315,20 +303,50 @@ export function useConversations({
         return;
       }
 
+      // Re-opening the conversation already on screen keeps the draft.
+      const leaving = id !== store.activeId();
+
       clearConversation();
+
+      if (leaving) {
+        resetComposer();
+      }
+
       restoreRecord(record);
       store.adopt(record);
       // Re-collapse with the new active id so its family's row reflects — and
       // highlights — the sibling just switched to (e.g. via the branch arrows).
       await refreshList();
     },
-    [clearConversation, restoreRecord, onForeignRecord, refreshList, store],
+    [
+      clearConversation,
+      resetComposer,
+      restoreRecord,
+      onForeignRecord,
+      refreshList,
+      store,
+      view,
+    ],
   );
 
-  const startNewConversation = useCallback(() => {
-    clearConversation();
-    store.reset();
-  }, [clearConversation, store]);
+  const clearLiveView = useCallback(
+    (leaving = true) => {
+      view.next();
+      clearConversation();
+
+      if (leaving) {
+        resetComposer();
+      }
+
+      store.reset();
+    },
+    [clearConversation, resetComposer, store, view],
+  );
+
+  const startNewConversation = useCallback(
+    () => clearLiveView(isLeavingLive(store, getChatHistory)),
+    [clearLiveView, getChatHistory, store],
+  );
 
   // A fork branches off the active conversation, minting its id inside the save.
   // With that conversation going away there is nothing left to branch from, so
@@ -340,11 +358,6 @@ export function useConversations({
     }
   }, [pendingForkRef]);
 
-  const clearLiveView = useCallback(() => {
-    clearConversation();
-    store.reset();
-  }, [clearConversation, store]);
-
   const deleteConversation = useCallback(
     (id: string) =>
       deleteOneConversation({
@@ -353,7 +366,7 @@ export function useConversations({
         deleteWithUndo: undoDelete.deleteWithUndo,
         refreshList,
         beforeMark: dropPendingFork,
-        onLiveGone: clearLiveView,
+        onLiveGone: () => clearLiveView(),
       }),
     [clearLiveView, refreshList, undoDelete, dropPendingFork, store],
   );
@@ -362,6 +375,7 @@ export function useConversations({
     useBulkDeletes({
       store,
       onLiveRowGone: clearLiveView,
+      getChatHistory,
       refreshList,
       dropPendingFork,
       dropUndoable: undoDelete.dropUndoable,

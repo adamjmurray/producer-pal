@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   findSourceFiles,
   projectRoot,
+  repoPath,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 
@@ -63,7 +64,7 @@ function findParserCalls(): { file: string; reason: string }[] {
         PARSER_CALL.test(line)
           ? [
               {
-                file: `${path.relative(projectRoot, file)}:${lineIndex + 1}`,
+                file: `${repoPath(file)}:${lineIndex + 1}`,
                 reason: line.trim(),
               },
             ]

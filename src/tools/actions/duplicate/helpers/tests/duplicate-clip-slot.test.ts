@@ -155,7 +155,7 @@ describe("duplicateClipSlot", () => {
   it("returns the copy that landed", () => {
     const { sourceClipSlot } = setupSlotDuplication();
 
-    const result = duplicateClipSlot(0, 0, 1, 0, "Copy", "#FF0000");
+    const result = duplicateClipSlot(0, 0, 1, 0, "Copy", "#FF3636");
 
     expect(sourceClipSlot.call).toHaveBeenCalledWith(
       "duplicate_clip_to",

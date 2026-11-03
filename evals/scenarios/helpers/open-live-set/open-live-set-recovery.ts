@@ -17,6 +17,8 @@ import { execFile } from "node:child_process";
 import { styleText } from "node:util";
 import { openLiveSet } from "../../open-live-set.ts";
 import { LiveStuckError } from "./open-live-set-dialogs.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
+import { sleep } from "#evals/shared/sleep.ts";
 
 const ABLETON_PROCESS = "Live";
 
@@ -53,7 +55,7 @@ export async function openLiveSetWithRecovery(
         throw error;
       }
 
-      const message = error instanceof Error ? error.message : String(error);
+      const message = errorMessage(error);
 
       console.warn(
         styleText(
@@ -124,13 +126,4 @@ async function run(command: string, args: string[]): Promise<string | null> {
       resolve(error ? null : stdout.trim());
     });
   });
-}
-
-/**
- * Sleeps for the specified duration.
- * @param ms - Duration in milliseconds
- * @returns A promise that resolves after the specified duration
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -5,7 +5,7 @@
 
 import { formatErrorResponse } from "#src/shared/mcp-responses.ts";
 import { type McpResponse } from "../../max-api-adapter.ts";
-import * as console from "../../node-for-max-logger.ts";
+import { nodeInfo } from "../../node-for-max-logger.ts";
 import { markChangedNothing } from "../remote-script/forwarded/changed-nothing.ts";
 import { type RequestOverrides } from "../../helpers/request-overrides/request-overrides.ts";
 import { isWriteCall } from "./write-calls.ts";
@@ -100,7 +100,7 @@ function takeTurn(
     return Promise.resolve({ waitedMs: 0 });
   }
 
-  console.info(`Queued ${tool} behind ${waiting.length + 1} write call(s)`);
+  nodeInfo(`Queued ${tool} behind ${waiting.length + 1} write call(s)`);
 
   const queuedAt = Date.now();
   const minRunMs = Math.min(MIN_RUN_BUDGET_MS, budgetMs / 2);

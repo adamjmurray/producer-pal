@@ -8,7 +8,7 @@
 // occupy the location, so the rejection names the caller's own concept.
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import {
   livePath,
   type TrackPath,
@@ -161,7 +161,7 @@ export function namedHiddenPath(
   // Unlike a coerced null, a comma is something the caller typed, so say the
   // value went nowhere. Silent otherwise, per the note above.
   if (paramNamesSomething(value)) {
-    console.warn(`${label} "${value?.trim()}" names nothing`);
+    emitWarning(`${label} "${value?.trim()}" names nothing`);
   }
 
   return undefined;

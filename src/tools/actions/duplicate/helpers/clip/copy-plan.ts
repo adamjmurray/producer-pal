@@ -142,11 +142,13 @@ interface CopyPlan {
  * whole comma-separated string as one color.
  * @param requested - Resolved destinations, null where the copy can't be made
  * @param positionsInBeats - Start positions, in Ableton beats
+ * @param startParam - The param the caller wrote the positions in
  * @returns The copies to make, and how many were asked for
  */
 export function planCopies(
   requested: (ArrangementTrack | null)[],
   positionsInBeats: number[],
+  startParam = "arrangementStart",
 ): CopyPlan {
   // toPath and arrangementStart each set a copy count. One value covers every
   // copy; two real lists have to agree, and a call where they don't is refused
@@ -155,7 +157,7 @@ export function planCopies(
   // see `list-pairing.ts`.
   requireSameLength(
     { param: "toPath", count: requested.length },
-    { param: "arrangementStart", count: positionsInBeats.length },
+    { param: startParam, count: positionsInBeats.length },
   );
 
   const copies = Math.max(requested.length, positionsInBeats.length);
@@ -166,7 +168,7 @@ export function planCopies(
     shortfall: "were not made",
   });
   const positions = pairValues(positionsInBeats, copies, {
-    param: "arrangementStart",
+    param: startParam,
     noun: "position",
     item: "copy",
     shortfall: "were not made",

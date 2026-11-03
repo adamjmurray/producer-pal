@@ -4,7 +4,8 @@ An Ableton Live remote script that listens on **http://127.0.0.1:3349** (or the
 next free port, see [Port](#port)). It does what Max for Live's LiveAPI can't:
 list and load devices, plug-ins and presets, hotswap and copy devices, read and
 write clip automation envelopes, convert audio clips to MIDI, read rack macro
-mappings, set Simpler pitch bend ranges, and step Live's undo history.
+mappings, read a CC Control's name and on/off state (Live before 12.4.15), set
+Simpler pitch bend ranges, and step Live's undo history.
 
 Producer Pal installs it with the rest of the setup and uses it from
 `ppal-create-device`, `ppal-update-device`, `ppal-duplicate`, `ppal-read-clip`,
@@ -132,11 +133,11 @@ when unknown and absent from older scripts.
 
 The other routes, by what they work on:
 
-| Part                                                    | Routes                                                                                                                           |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| [list-and-load-routes.md](docs/list-and-load-routes.md) | The `type` values; `GET /list`, `POST /load`                                                                                     |
-| [device-routes.md](docs/device-routes.md)               | `POST /hotswap`, `/replace-producer-pal`, `/device/duplicate`, `/device/macros`, `/device/simpler/read`, `/device/simpler/write` |
-| [clip-routes.md](docs/clip-routes.md)                   | `POST /envelope/list`, `/envelope/read`, `/envelope/write`, `/envelope/clear`; `/clip/convert`                                   |
+| Part                                                    | Routes                                                                                                                                             |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [list-and-load-routes.md](docs/list-and-load-routes.md) | The `type` values; `GET /list`, `POST /load`                                                                                                       |
+| [device-routes.md](docs/device-routes.md)               | `POST /hotswap`, `/replace-producer-pal`, `/device/duplicate`, `/device/macros`, `/device/basics`, `/device/simpler/read`, `/device/simpler/write` |
+| [clip-routes.md](docs/clip-routes.md)                   | `POST /envelope/list`, `/envelope/read`, `/envelope/write`, `/envelope/clear`; `/clip/convert`                                                     |
 
 ### `POST /undo/end`
 
@@ -164,6 +165,68 @@ Set, which gets a new bridge, starts clear): the next step in the same direction
 is a 409 that touches nothing, until `/undo/end` (Producer Pal wrote again) or a
 step the other way clears it.
 
+### `POST /watch`, `POST /unwatch`, `GET /events`, `GET /watches`
+
+Live listeners on Session clips, for the experimental generative UI panel. Only
+in gen-UI builds (see "Generative UI files" below). `/watch` takes `owner` (a
+widget id), `path` (`t0/s3`) and optionally `fingerprint` (`{name, length}`,
+from an earlier session). It binds to the clip object in that slot and follows
+the object, not the slot: when the clip moves (tracks or scenes inserted,
+deleted or reordered, or Live moves it) the watch reports `moved` with the new
+path; when it is deleted or replaced it reports `gone` once, with a `reason`,
+and stays gone. It never re-binds to whatever lands in the slot later. Where a
+clip is comes from its parents (clip, slot, track) and their indices.
+
+Refused (`reason` in the body): `empty` (404, no clip there), `no_slot` (404),
+`mismatch` (409, a `fingerprint` was sent and the clip there differs: this is
+how a watch is picked up again after a restart without binding a wrong clip),
+`limit` (409, at most 32 watches, gone ones included until unwatched).
+`/unwatch` takes `owner`.
+
+`/events?since=N` answers `{epoch, seq, resync, events, watching}`. Without
+`since` it only gives the position. Events are
+`{seq, owner, kind, fields, path?, reason?}` with `kind` `changed`, `moved` or
+`gone`. Live's callbacks only mark a watch; each read checks every watch against
+the Set and turns marks into one event per owner. The last 256 events are kept:
+a reader further behind gets `resync: true` and no events, and must re-read
+everything. A new `epoch` means the registry was reset (Set change, hot reload,
+script restart): watches are gone, register again.
+
+`/watches` lists every watch with its state, path, listener count and, for a
+gone one, whether its old clip object has become valid again (observed only; it
+is never re-bound). The Live log gets a line for each gone and each revival.
+
+Every listener is removed when its watch ends or goes gone, the Set changes,
+Live disconnects the script, or a hot reload starts. Poll rather than hold the
+request open: a request in flight keeps the update loop sleeping, and the HTTP
+threads only run while it does.
+
+### `GET /ui-widgets`, `POST /ui-widgets/save`
+
+Gen-UI builds only. Keep the generative UI's widget list in the Live Set, with
+the song's own data store (`song.set_data` / `song.get_data`). `GET` answers
+`{text}`: the saved string, or `null` when none. `POST` takes `text` (a string,
+at most 24,000 characters; longer is a 413) and answers `{ok: true}`. The list
+is saved in the .als, adds no undo step and survives reopening. It does not mark
+the Set as changed, so a widget-only change is lost if the user quits without
+saving.
+
+## Generative UI files
+
+`gen_ui_routes.py`, `watches.py` and `ui_widgets.py` ship only in a gen-UI build
+(`ENABLE_GEN_UI=true`). A release build leaves them out of the device bundle, so
+a release install has no `/watch`, `/events`, `/ui-widgets` routes, and changing
+these files never forces a remote script version bump. The list lives in
+`src/mcp-server/rpc/remote-script/bundle/gen-ui-remote-script-files.ts`.
+
+`routes.py` imports `gen_ui_routes.py` if it exists. It is the only module that
+imports the other two, and nothing shipped may depend on them
+(`tests/test_gen_ui_optional.py` checks both). A gen-UI device talking to a
+release-installed script gets 404s and falls back to refreshing after AI writes.
+
+To try them from the repo, install with the same flag as the device build:
+`ENABLE_GEN_UI=true npm run install:remote-script -- --probe --reload`.
+
 ## How it works
 
 Live's Python is single-threaded and the Live API breaks if touched from any
@@ -172,12 +235,17 @@ other thread. So the HTTP server runs on its own thread and only queues jobs;
 the queue and runs them. Live holds Python's lock between those calls, so while
 a request is in flight `update_display()` keeps looping with short sleeps (at
 most 20ms a call) to let the HTTP threads queue the next job; it doesn't sleep
-when idle. Each connection carries one request, since a Set reload replaces the
-script and a kept-alive connection would still reach the old one. With
-`expires_in_ms`, the HTTP thread waits for Live to start the job until then (a
-job still queued is skipped), and a started job gets its own 30s to finish, so
-time queued behind other jobs doesn't count against it. Without it, the thread
-waits 30s for the reply, and 30s more if the job started in that time.
+when idle. Without that loop, a thread got time only once per tick (one asking
+to sleep 10ms woke every 100ms), and a request crosses about 5 thread handoffs,
+so each took about 600ms. Polling non-blocking sockets on the main thread
+instead (AbletonOSC's design) was passed over: it means our own HTTP parsing and
+buffering across ticks, and a blocking bug would freeze Live's UI. Each
+connection carries one request, since a Set reload replaces the script and a
+kept-alive connection would still reach the old one. With `expires_in_ms`, the
+HTTP thread waits for Live to start the job until then (a job still queued is
+skipped), and a started job gets its own 30s to finish, so time queued behind
+other jobs doesn't count against it. Without it, the thread waits 30s for the
+reply, and 30s more if the job started in that time.
 
 - `http_server.py`: the HTTP server and the port file; never touches Live
 - `bridge.py`: the main-thread pump and the methods Live calls on a control
@@ -192,10 +260,13 @@ waits 30s for the reply, and 30s more if the job started in that time.
 - `producer_pal_device.py`: recognizing the Producer Pal device
 - `envelopes.py`: clip automation envelopes
 - `rack_macros.py`: which rack macros are mapped
+- `device_basics.py`: a device's name and on/off state (CC Control)
 - `conversions.py`: converting an audio clip to a new track
 - `clip_address.py`: finding the clip a route names
 - `simpler_settings.py`: a Simpler's pitch bend ranges
 - `undo.py`: Live's undo history: closing the pending step, undo and redo
+- `gen_ui_routes.py`, `watches.py`, `ui_widgets.py`: the generative UI (see
+  below)
 - `preset_guard.py`: refusing a loaded preset that holds the Producer Pal device
 - `version.py`: the release the script was built from
 

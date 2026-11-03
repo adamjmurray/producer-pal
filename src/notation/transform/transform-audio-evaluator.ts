@@ -6,7 +6,7 @@
 import { ignoredText } from "#src/shared/max/ignored-wording.ts";
 import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
 import { assertDefined, errorMessage } from "#src/shared/error-message.ts";
-import * as console from "./transform-warning-label.ts";
+import { clipDetail } from "./transform-warning-label.ts";
 import { arrangementOrigin } from "./helpers/note-properties.ts";
 import {
   type ClipContext,
@@ -110,7 +110,7 @@ export function applyAudioTransform(
         pitchShiftModified = true;
       }
     } catch (error) {
-      console.clipDetail(
+      clipDetail(
         `${assignment.parameter} transform failed: ${errorMessage(error)}`,
       );
     }
@@ -152,7 +152,7 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   const assignments = ast.filter((a): a is TransformAssignment => !isNoteOp(a));
 
   for (const reason of wrongClipTypeStatements(ast, true).reasons) {
-    console.clipDetail(reason);
+    clipDetail(reason);
   }
 
   const hasAudioTimeRange = assignments.some(
@@ -162,7 +162,7 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   );
 
   if (hasAudioTimeRange) {
-    console.clipDetail(
+    clipDetail(
       ignoredText(
         "timeRange selector",
         "audio transforms apply to the whole clip",
@@ -177,9 +177,7 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   );
 
   if (hasAudioPitchRange) {
-    console.clipDetail(
-      ignoredText("pitch selector", "audio clips have no pitch"),
-    );
+    clipDetail(ignoredText("pitch selector", "audio clips have no pitch"));
   }
 
   const hasAudioPredicate = assignments.some(
@@ -189,7 +187,7 @@ function warnIncompatibleAudioSelectors(ast: TransformStatement[]): void {
   );
 
   if (hasAudioPredicate) {
-    console.clipDetail(
+    clipDetail(
       ignoredText(
         "where() predicate",
         "audio transforms apply to the whole clip",
@@ -345,9 +343,7 @@ function resolveAudioVariable(
   if (node.name === "position" && clipContext.arrangementStart == null) {
     // Session clips have no arrangement origin; 0 is the neutral position so
     // the transform keeps running instead of failing the clip.
-    console.clipDetail(
-      "clip.position isn't available on a session clip; used 0",
-    );
+    clipDetail("clip.position isn't available on a session clip; used 0");
 
     return 0;
   }

@@ -7,7 +7,8 @@
  * Fixtures and the setup/teardown pair every ppal-context scenario shares.
  *
  * Seeding note: the project layer is a config value (`config.projectContext`),
- * which the runner reverts via resetConfig(). The global and memory layers are
+ * which the runner reverts (resetConfig() plus deleting the backup file the
+ * device writes beside the Set). The global and memory layers are
  * REAL FILES under ~/.producer-pal/ on the machine running Live, and the eval
  * process (which talks to that server over HTTP) cannot redirect them with
  * PRODUCER_PAL_CONFIG_DIR. So they are seeded through the tool itself in
@@ -22,12 +23,13 @@ import {
   type ScenarioRequirements,
 } from "../../../types.ts";
 import { clearClipSlots } from "../../clip/helpers/clip-turn-readers.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** Connect tool name (turn-0 connect assertion). */
-export const TOOL_CONNECT = "ppal-connect";
+export const TOOL_CONNECT = TOOLS.connect;
 
 /** The context/memory tool under evaluation. */
-export const TOOL_CONTEXT = "ppal-context";
+export const TOOL_CONTEXT = TOOLS.context;
 
 /** Standard turn-0 message that opens a connection to Live. */
 export const MSG_CONNECT = CONNECT_MESSAGE;
@@ -123,16 +125,7 @@ export function seedContext(seed: {
       // "whatever this developer happens to have". Global context is injected on
       // every connect and instructs behavior directly, so inheriting the real
       // one makes results depend on the machine the eval ran on.
-      // `force` on both the seed and the restore below: these REPLACE the
-      // document wholesale, which is exactly what the tool's clobber guard
-      // skips for a model. Setup/teardown are the deliberate case it exists to
-      // let through.
-      await callContext(mcpClient, {
-        action: "write",
-        scope: "global",
-        content: seed.global ?? "",
-        force: true,
-      });
+      await replaceGlobal(mcpClient, seed.global ?? "");
 
       for (const memory of memories) {
         await callContext(mcpClient, {
@@ -166,17 +159,39 @@ export function seedContext(seed: {
       const originalGlobal = saved.get("global");
 
       if (originalGlobal != null) {
-        await callContext(mcpClient, {
-          action: "write",
-          scope: "global",
-          content: originalGlobal,
-          force: true,
-        });
+        await replaceGlobal(mcpClient, originalGlobal);
       }
 
       saved.clear();
     },
   };
+}
+
+/**
+ * Replace the whole global document. The clobber guard skips a model's
+ * wholesale rewrite but never a write over an empty document, so clear first,
+ * then write.
+ *
+ * @param mcpClient - The scenario's MCP client
+ * @param content - The new document
+ */
+async function replaceGlobal(
+  mcpClient: Client,
+  content: string,
+): Promise<void> {
+  await callContext(mcpClient, {
+    action: "write",
+    scope: "global",
+    content: "",
+  });
+
+  if (content !== "") {
+    await callContext(mcpClient, {
+      action: "write",
+      scope: "global",
+      content,
+    });
+  }
 }
 
 /**

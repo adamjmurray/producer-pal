@@ -5,13 +5,13 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { formatMidiJson, interpretMidiJson } from "./midi-json-notation.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
-  log: vi.fn(),
-  error: vi.fn(),
+  emitWarning: vi.fn(),
+  maxLog: vi.fn(),
+  maxError: vi.fn(),
 }));
 
 describe("interpretMidiJson", () => {
@@ -187,7 +187,7 @@ describe("v:0 deletes", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]?.pitch).toBe(127);
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(emitWarning).toHaveBeenCalledWith(
       expect.stringContaining("pitch 130 is outside 0-127"),
     );
   });
@@ -333,7 +333,7 @@ describe("ratio durations (tuplets)", () => {
 
 describe("dropped-note warnings", () => {
   beforeEach(() => {
-    vi.mocked(console.warn).mockClear();
+    vi.mocked(emitWarning).mockClear();
   });
 
   it("warns instead of dropping a malformed note in silence", () => {
@@ -341,7 +341,7 @@ describe("dropped-note warnings", () => {
     // nothing to notice, since the tool still reported success.
     interpretMidiJson("[{t:0,d:1,v:100},{p:62,t:1,d:1,v:90}]");
 
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(emitWarning).toHaveBeenCalledWith(
       "ignoring 1 invalid MIDI JSON note: missing or non-numeric p/t",
     );
   });
@@ -349,13 +349,13 @@ describe("dropped-note warnings", () => {
   it("says nothing when every note is valid", () => {
     interpretMidiJson("[{p:60,t:0,d:1,v:100}]");
 
-    expect(console.warn).not.toHaveBeenCalled();
+    expect(emitWarning).not.toHaveBeenCalled();
   });
 
   it("counts repeats of the same reason instead of repeating it", () => {
     interpretMidiJson("[{t:0,d:1,v:100},{t:1,d:1,v:90},{p:64,t:2,d:0,v:90}]");
 
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(emitWarning).toHaveBeenCalledWith(
       "ignoring 3 invalid MIDI JSON notes: missing or non-numeric p/t (2), d must be greater than 0",
     );
   });
@@ -363,7 +363,7 @@ describe("dropped-note warnings", () => {
   it("names the offending pitch on an out-of-range delete marker", () => {
     interpretMidiJson("[{p:127,t:0,d:1,v:100},{p:130,t:0,d:1,v:0}]");
 
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(emitWarning).toHaveBeenCalledWith(
       expect.stringContaining("delete marker pitch 130 is outside 0-127"),
     );
   });
@@ -371,7 +371,7 @@ describe("dropped-note warnings", () => {
   it("reports a non-finite field rather than dropping it in silence", () => {
     interpretMidiJson("[{p:60,t:0,d:5/0,v:100}]");
 
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(emitWarning).toHaveBeenCalledWith(
       "ignoring 1 invalid MIDI JSON note: non-finite d, v, or c",
     );
   });
@@ -383,7 +383,7 @@ describe("dropped-note warnings", () => {
       "[{t:0,d:1,v:100},{p:60,t:0,d:0,v:100},{p:60,t:0,d:0/0,v:100},{p:130,t:0,d:1,v:0}]",
     );
 
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(emitWarning).toHaveBeenCalledWith(
       "ignoring 4 invalid MIDI JSON notes: missing or non-numeric p/t, " +
         "d must be greater than 0, non-finite d, v, or c, and 1 more",
     );
@@ -398,7 +398,7 @@ describe("dropped-note warnings", () => {
         "{p:130,t:0,d:1,v:0},{p:130,t:1,d:1,v:0},{p:130,t:2,d:1,v:0},{p:130,t:3,d:1,v:0}]",
     );
 
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(emitWarning).toHaveBeenCalledWith(
       "ignoring 7 invalid MIDI JSON notes: delete marker pitch 130 is outside 0-127 (4), " +
         "missing or non-numeric p/t, d must be greater than 0, and 1 more",
     );

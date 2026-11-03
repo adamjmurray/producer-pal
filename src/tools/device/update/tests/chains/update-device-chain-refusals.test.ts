@@ -217,8 +217,7 @@ describe("updateDevice - chain sends Live has disabled", () => {
 
     const result = updateDevice({
       id: "chain-0,chain-1",
-      sendGainDb: -12,
-      sendReturn: "a",
+      sends: [{ return: "a", gainDb: -12 }],
     });
 
     expect(result).toStrictEqual([

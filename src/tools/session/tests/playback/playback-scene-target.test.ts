@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
   mockNonExistentObjects,
@@ -278,7 +278,7 @@ describe("playback play-scene from a clip slot", () => {
   });
 
   it("says nothing about dropping the track", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     mockScene(1);
     playback({ action: "play-scene", path: "t0/s1" });
@@ -347,7 +347,7 @@ describe("playback play-scene ids that name no scene", () => {
   });
 
   it("skips an id that does not exist, and says so", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const scene = mockScene(3);
 
     mockNonExistentObjects();
@@ -358,7 +358,7 @@ describe("playback play-scene ids that name no scene", () => {
   });
 
   it("skips an id that sits in no scene, naming its type", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const scene = mockScene(3);
 
     registerMockObject("clip1", {
@@ -375,7 +375,7 @@ describe("playback play-scene ids that name no scene", () => {
   });
 
   it("skips an id of the wrong type entirely", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const scene = mockScene(3);
 
     registerMockObject("track9", { path: livePath.track(5), type: "Track" });
@@ -389,7 +389,7 @@ describe("playback play-scene ids that name no scene", () => {
   });
 
   it("leaves the type out for a class the tools never name", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const scene = mockScene(3);
 
     registerMockObject("groove1", {

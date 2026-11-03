@@ -143,7 +143,7 @@ function writeTrackProperties(
   const mixer = trackMixer(track, args, notes);
   const routing = checked.routingAt(index);
 
-  applyRoutingProperties(track, routing, notes);
+  applyRoutingProperties(track, routing, notes, checked.routingNames);
   applyMonitoringState(track, args.monitoringState, notes);
 
   const sends = writeSends(track, checked.sendsAt(index), notes);

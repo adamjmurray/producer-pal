@@ -6,17 +6,19 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type McpResponse } from "#src/shared/mcp-responses.ts";
 import { type CheckedManageArgs } from "#src/tools/core/helpers/manage-args.ts";
+import { canonicalManageAction } from "#src/tools/core/helpers/manage-contract.ts";
 import { MANAGE_TOOL } from "../offline/offline-call.ts";
 import { type OfflineDeps } from "../offline/offline-deps.ts";
-import { installRemoteScript } from "../offline/offline-manage.ts";
+import { installProducerPal } from "../offline/offline-install-producer-pal.ts";
 import { checkedManageArgs } from "../offline/offline-manage-args.ts";
 import { offlineError } from "../offline/offline-responses.ts";
 import { olderDevice } from "./older-device.ts";
 import { type RunningDevice } from "./running-device.ts";
 
 /**
- * Answer ppal-manage install-remote-script from the portal when the running
- * device is older than it. An older device would install its own older script,
+ * Answer ppal-manage install-producer-pal from the portal when the running
+ * device is older than it, under either name (an older device advertises the
+ * retired one). An older device would install its own older script and device,
  * and an update that needs a newer one would loop.
  * @param call - The tool called
  * @param call.name - The tool called
@@ -34,7 +36,7 @@ export async function answerInstallWhenDeviceOlder(
   if (
     !call.manageOffered ||
     call.name !== MANAGE_TOOL ||
-    call.args.action !== "install-remote-script"
+    canonicalManageAction(call.args.action) !== "install-producer-pal"
   ) {
     return null;
   }
@@ -63,5 +65,5 @@ export async function answerInstallWhenDeviceOlder(
     return offlineError(errorMessage(error));
   }
 
-  return await installRemoteScript(checked.userLibrary, deps);
+  return await installProducerPal(checked.userLibrary, deps, { running: true });
 }

@@ -36,7 +36,7 @@ All times are musical beats (the meter's beat — an eighth in 6/8), matching \`
 
 **Context properties:**
 - \`track\`: { index, name, type, color }
-- \`clip\`: { id, name, length, timeSignature, looping, index, count } (length in musical beats)
+- \`clip\`: { id, name, length, timeSignature, looping, scale?, index, count } (length in musical beats; scale is the clip's own, like "C Major", left out when off)
 - \`location\`: { view, path?, arrangementStartBeats? } - an arrangement path carries where the clip starts, e.g. \`t0[5|1]\`; \`arrangementStartBeats\` is that same position as a number, for arithmetic
 - \`liveSet\`: { tempo, scale?, timeSignature }
 - \`beatsPerBar\`: number (musical beats per bar)

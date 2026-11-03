@@ -65,10 +65,35 @@ guarded() {
 	git config --get-all push-guard.ref 2>/dev/null | grep -qxF "$1"
 }
 
+# The throwaway worktree check_commit is using, if any. Removed on exit, so an
+# interrupt (Ctrl-C) mid-check does not leave it registered with git.
+CHECK_WT=""
+
+cleanup() {
+	[ -n "$CHECK_WT" ] || return 0
+	git worktree remove --force "$CHECK_WT/tree" 2>/dev/null
+	rm -rf "$CHECK_WT"
+	git worktree prune 2>/dev/null
+	CHECK_WT=""
+}
+
+# On the way out, also drop the log an interrupted check left behind.
+on_exit() {
+	[ -n "$CHECK_WT" ] && rm -f "$CHECK_WT.log"
+	cleanup
+}
+
+# Exit statuses stay as they are: the EXIT trap does not change them, and an
+# interrupt exits 128 + the signal number, as an untrapped one would.
+trap on_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 # Run format:check and lint against one commit's own files.
 check_commit() {
 	short=$(printf %.8s "$1")
 	wt=$(mktemp -d) || return 1
+	CHECK_WT=$wt
 	log="$wt.log"
 	root=$(git rev-parse --show-toplevel)
 
@@ -76,7 +101,7 @@ check_commit() {
 
 	if ! git worktree add -q --detach "$wt/tree" "$1" </dev/null 2>"$log"; then
 		cat "$log" >&2
-		rm -rf "$wt" "$log"
+		cleanup
 		return 1
 	fi
 
@@ -86,8 +111,7 @@ check_commit() {
 	(cd "$wt/tree" && npm run format:check --silent && npm run lint --silent) </dev/null >"$log" 2>&1
 	status=$?
 
-	git worktree remove --force "$wt/tree"
-	rm -rf "$wt"
+	cleanup
 
 	if [ "$status" -ne 0 ]; then
 		cat "$log" >&2
@@ -227,13 +251,19 @@ while read -r _local_ref local_sha remote_ref remote_sha; do
 
 	# --- 4. every other check on the remote head -------------------------
 	# CodeQL, the Netlify preview, and anything added later. Check runs come
-	# from Actions and apps; Netlify posts a commit status. Both lists keep only
-	# the latest result per name. Don't use the combined status's own state: it
-	# reads "pending" when there are no statuses at all.
+	# from Actions and apps; Netlify posts a commit status. Don't use the
+	# combined status's own state: it reads "pending" when there are no statuses
+	# at all.
+	#
+	# Skip "Dependabot" runs: they are Dependabot's own update jobs, posted on the
+	# default branch's head (dev's head too, right after a release), and say
+	# nothing about the commit. Each is listed separately, so one failed job
+	# stays red even after a later one passes.
 	checks_err=$(mktemp)
 	checks=$(
 		gh api --paginate "repos/{owner}/{repo}/commits/$remote_sha/check-runs?per_page=100" \
-			--jq '.check_runs[] | (if .status != "completed" then "running"
+			--jq '.check_runs[] | select(.name != "Dependabot")
+				| (if .status != "completed" then "running"
 				elif (.conclusion | IN("success", "neutral", "skipped")) then "green"
 				else .conclusion end) + " " + .name' 2>>"$checks_err"
 		gh api --paginate "repos/{owner}/{repo}/commits/$remote_sha/status?per_page=100" \

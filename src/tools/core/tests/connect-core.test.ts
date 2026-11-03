@@ -10,7 +10,7 @@ import { VERSION } from "#src/shared/config.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/tracks/get-host-track-index.ts";
-import { connect } from "../connect.ts";
+import { connect, connectVersions } from "../connect.ts";
 
 // Mock the getHostTrackIndex function
 vi.mock(
@@ -428,5 +428,29 @@ describe("connect", () => {
     );
 
     expect(result.liveSet.returnTrackCount).toBe(2);
+  });
+
+  describe("connectVersions", () => {
+    it("returns only the connection status and both versions", () => {
+      setupConnectScenario(createLiveSetConfig({ name: "Check" }), "12.5");
+
+      expect(connectVersions()).toStrictEqual({
+        connected: true,
+        producerPalVersion: VERSION,
+        abletonLiveVersion: "12.5",
+      });
+    });
+
+    it("never opens the Live Set", () => {
+      setupConnectScenario(createLiveSetConfig({ name: "Check" }));
+
+      const from = vi.spyOn(LiveAPI, "from");
+
+      connectVersions();
+
+      expect(from.mock.calls.map(([target]) => target)).toStrictEqual([
+        "live_app",
+      ]);
+    });
   });
 });

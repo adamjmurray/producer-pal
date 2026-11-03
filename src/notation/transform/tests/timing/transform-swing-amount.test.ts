@@ -114,8 +114,13 @@ describe("a swing() amount at or past its grid", () => {
     );
   });
 
-  it("leaves a zero or negative grid to swing()'s own message", () => {
-    expect(() => tryParseTransform("timing = swing(1, 0)", 4, 4)).not.toThrow();
+  it("names a zero or negative grid, not the amount", () => {
+    expect(() => tryParseTransform("timing = swing(1, 0)", 4, 4)).toThrow(
+      "swing() grid must be greater than 0",
+    );
+    expect(() => tryParseTransform("timing = swing(0.56, -n/8)", 4, 4)).toThrow(
+      "swing() grid must be greater than 0",
+    );
   });
 
   it("is not judged in an audio transform, which has no swing grid to check", () => {

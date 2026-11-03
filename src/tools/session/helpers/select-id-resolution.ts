@@ -100,7 +100,8 @@ export function resolveNamedIds(args: SelectIdArgs): ResolvedIds {
   const filled: FilledSlots = {};
 
   for (const named of namedSelectIds(args)) {
-    const slot = SLOT_BY_TYPE[resolveIdParam(named.id).detectedType];
+    const slot =
+      SLOT_BY_TYPE[resolveIdParam(named.id, named.label).detectedType];
     const taken = filled[slot];
 
     if (taken == null) {
@@ -124,13 +125,14 @@ export function resolveNamedIds(args: SelectIdArgs): ResolvedIds {
 /**
  * Auto-detect ID type and map to specific param
  * @param id - Live API object ID
+ * @param label - The param the id was sent under
  * @returns Resolved ID with detected type
  */
-export function resolveIdParam(id: string): ResolveIdResult {
+export function resolveIdParam(id: string, label = "id"): ResolveIdResult {
   const object = LiveAPI.from(id);
 
   if (!object.exists()) {
-    throw new Error(idDoesNotExist(id));
+    throw new Error(idDoesNotExist(id, undefined, label));
   }
 
   const type = object.type;
@@ -159,8 +161,8 @@ export function resolveIdParam(id: string): ResolveIdResult {
 
   throw new Error(
     word == null
-      ? `id "${id}" has an unsupported type`
-      : `id "${id}" has unsupported type "${word}"`,
+      ? `${label} "${id}" has an unsupported type`
+      : `${label} "${id}" has unsupported type "${word}"`,
   );
 }
 

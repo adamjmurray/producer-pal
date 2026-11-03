@@ -6,7 +6,7 @@
 // The one wording for a param that did nothing: `X ignored: reason`. A
 // whole-call warning and a target's entry detail read the same.
 
-import * as console from "./v8-max-console.ts";
+import { emitWarning } from "./v8-max-console.ts";
 
 /** Why a clip can't take a MIDI-only param. */
 export const CLIP_IS_AUDIO = "the clip is audio";
@@ -41,5 +41,5 @@ export function warnIgnored(
   params: string | readonly string[],
   why: string,
 ): void {
-  console.warn(ignoredText(params, why));
+  emitWarning(ignoredText(params, why));
 }

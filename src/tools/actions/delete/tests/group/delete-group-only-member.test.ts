@@ -44,7 +44,7 @@ describe("deleteObject of the only track in a group track", () => {
         path: "t2",
         ok: false,
         detail:
-          "Live won't delete the only track in a group track; delete group track t1 (id g) instead, which deletes both",
+          "Live won't delete the only track in a group track; delete group track t1 (id g) instead, which deletes both; that track is now t1 (id a)",
       },
       { id: "w", deletedPath: "t0" },
     ]);

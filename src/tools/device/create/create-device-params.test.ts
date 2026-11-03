@@ -13,7 +13,7 @@ import {
 import { createDevice } from "./create-device.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 /**
@@ -126,7 +126,7 @@ describe("createDevice params", () => {
     it("reports a param that names nothing on the new device", async () => {
       const mockConsole = await import("#src/shared/max/v8-max-console.ts");
 
-      vi.mocked(mockConsole.warn).mockClear();
+      vi.mocked(mockConsole.emitWarning).mockClear();
 
       registerSimplerCreationFixture();
 
@@ -148,7 +148,7 @@ describe("createDevice params", () => {
         ],
       });
       // The entry is the whole report: it warns nowhere.
-      expect(vi.mocked(mockConsole.warn)).not.toHaveBeenCalled();
+      expect(vi.mocked(mockConsole.emitWarning)).not.toHaveBeenCalled();
     });
 
     it("keeps the params the caller sent paired with the list it sent", async () => {

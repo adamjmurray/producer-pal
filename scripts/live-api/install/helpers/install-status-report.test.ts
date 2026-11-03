@@ -7,7 +7,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { PLUGIN_HOST_WRAPPERS } from "#src/portal/setup/plugin-host/plugin-host-wrappers.ts";
 import { installStatusLines } from "./install-status-report.ts";
+
+const NO_WRAPPERS = {};
 
 let root: string;
 let library: string;
@@ -31,11 +34,36 @@ afterEach(() => {
 
 describe("installStatusLines", () => {
   it("reports an empty library", () => {
-    const text = installStatusLines(library, release).join("\n");
+    const text = installStatusLines(library, release, NO_WRAPPERS).join("\n");
 
     expect(text).toContain("Device: not installed");
     expect(text).toContain("Remote script: not installed");
+    expect(text).toContain("PPal Plug-in Effect: not installed");
+    expect(text).toContain("PPal Plug-in Instrument: not installed");
     expect(text).not.toContain("leftovers");
+  });
+
+  it("reports each wrapper as current or differing from the repo's", () => {
+    const [effect, instrument] = PLUGIN_HOST_WRAPPERS;
+    const source = {
+      [effect.fileName]: Buffer.from("repo effect").toString("base64"),
+      [instrument.fileName]: Buffer.from("repo instrument").toString("base64"),
+    };
+
+    write(join(library, ...effect.folder, effect.fileName), "repo effect");
+    write(
+      join(library, ...instrument.folder, instrument.fileName),
+      "an older instrument",
+    );
+
+    const text = installStatusLines(library, release, source).join("\n");
+
+    expect(text).toContain(
+      "PPal Plug-in Effect: installed, identical to the repo's",
+    );
+    expect(text).toContain(
+      "PPal Plug-in Instrument: installed, differs from the repo's",
+    );
   });
 
   it("reports versions, build commit, other copies and leftovers", () => {
@@ -57,7 +85,7 @@ describe("installStatusLines", () => {
       "x",
     );
 
-    const text = installStatusLines(library, release).join("\n");
+    const text = installStatusLines(library, release, NO_WRAPPERS).join("\n");
 
     expect(text).toContain("version 1.0.0, older than the release build");
     expect(text).toContain("Other Producer_Pal .amxd copies (1)");
@@ -71,8 +99,8 @@ describe("installStatusLines", () => {
       "x",
     );
 
-    expect(installStatusLines(library, release).join("\n")).toContain(
-      "version unknown, no release build to compare",
-    );
+    expect(
+      installStatusLines(library, release, NO_WRAPPERS).join("\n"),
+    ).toContain("version unknown, no release build to compare");
   });
 });

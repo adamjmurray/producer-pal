@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "../../transform-warning-label.ts";
+import { emitTransformWarning } from "../../transform-warning-label.ts";
 import { type ExpressionNode } from "../../parser/transform-parser.ts";
 import {
   constantEvalContext,
@@ -111,7 +111,7 @@ function isMeterIndependent(arg: ExpressionNode): boolean {
   return "value" in result && result.value <= 0;
 }
 
-// One duration, negated (`-n/8` is `0 - n/8`) or multiplied or divided by a
+// One duration, possibly negated (`0 - n/8`), multiplied or divided by a
 // constant: no other duration, no added terms.
 function isScaledDuration(node: ExpressionNode): boolean {
   if (typeof node !== "object") {
@@ -200,7 +200,7 @@ export function numericOpArg(
   const result = evaluateNumericArg(arg, numerator, denominator);
 
   if ("problem" in result) {
-    console.warn(`${label} ${result.problem}; skipping`);
+    emitTransformWarning(`${label} ${result.problem}; skipping`);
 
     return null;
   }

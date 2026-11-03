@@ -29,7 +29,8 @@ tool (V8) -> requestNode -> Node route -> remote-script-client -> HTTP -> routes
 Names, request and reply shapes, and timeouts that V8 and Node both need live in
 `*-contract.ts` files beside the feature (`remote-script-envelope-contract.ts`,
 `remote-script-convert-contract.ts`, `rack-macros-contract.ts`,
-`simpler-settings-contract.ts`, `manage-contract.ts`, and the device one in
+`device-basics-contract.ts`, `simpler-settings-contract.ts`,
+`manage-contract.ts`, and the device one in
 `src/tools/device/create/helpers/remote-script-contract.ts`). They hold only
 types and constants, so both runtimes can import them. Python spells fields in
 snake_case; the forwarding route translates.
@@ -68,8 +69,14 @@ script is missing, it says it is out of date when that is the case
   and holds back requests to an older script before sending them.
 - A 404 that lists `routes` means the script lacks the route: a different build
   of the same version, or too old.
-- `POST /config` can fake either state on a debug build:
-  `remoteScriptEnabled: false`, or a `remoteScriptMinVersion`.
+- `POST /config` can fake either state on any build:
+  `remoteScriptEnabled: false`, or a `remoteScriptMinVersion`. These are
+  undocumented test switches, open in release builds so evals and e2e test what
+  ships. Each only changes this server, resets on restart, and the server
+  refuses them (403, nothing changed) unless the request looks like it comes
+  from the same machine: a loopback peer address, no proxy headers, a loopback
+  `Host`. Best-effort: it stops LAN clients and HTTP tunnels, not a raw TCP
+  forwarder (`ssh -R`, socat).
 
 How each tool words this to the model: the
 [tool-behavior spec](../specs/tool-behavior/refusals.md#a-remote-script-that-is-out-of-date).

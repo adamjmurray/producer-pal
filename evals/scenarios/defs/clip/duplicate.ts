@@ -24,8 +24,9 @@ import {
   TOOL_UPDATE_CLIP,
 } from "./helpers/clip-tool-constants.ts";
 import { clearClipSlots } from "./helpers/clip-turn-readers.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_DUPLICATE = "ppal-duplicate";
+const TOOL_DUPLICATE = TOOLS.duplicate;
 
 export const duplicate: EvalScenario = {
   id: "duplicate",
@@ -47,10 +48,10 @@ export const duplicate: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     // Turn 1: Clip creation
-    { type: "tool_called", tool: "ppal-create-clip", turn: 1 },
+    { type: "tool_called", tool: TOOLS.createClip, turn: 1 },
 
     // Turn 2: Track duplication
     { type: "tool_called", tool: TOOL_DUPLICATE, turn: 2 },
@@ -131,7 +132,7 @@ export const duplicate: EvalScenario = {
 1. Created a 2-bar drum clip on the Drums track
 2. Duplicated the Drums track
 3. Duplicated the clip to bar 3 in the arrangement
-4. Confirmed each step was completed`,
+4. Said in its replies that each step above was done`,
     },
   ],
 };
@@ -139,7 +140,6 @@ export const duplicate: EvalScenario = {
 /** Lead is track 3 in basic-midi-4-track — a melodic (non-drum) track. */
 const LEAD_TRACK = 3;
 const LOOP_SLOT = `${LEAD_TRACK}/0`;
-const TOOL_CREATE_CLIP = "ppal-create-clip";
 /** Two bars in 4/4, expressed in Ableton quarter-note beats (the read meter). */
 const HALF_BEATS = 8;
 
@@ -156,7 +156,7 @@ function assertDoubledInPlace(): EvalAssertion {
       "duplicateLoop doubled the clip in place (same id, exactly 2x notes)",
     assert: (turns) => {
       const createCall = getToolCalls(turns, 1).find(
-        (c) => c.name === TOOL_CREATE_CLIP,
+        (c) => c.name === TOOLS.createClip,
       );
       // The LAST update-clip call: start/length alongside duplicateLoop is
       // refused, so a model that reaches for it first is expected to retry.
@@ -267,7 +267,7 @@ export const duplicateLoop: EvalScenario = {
 
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+    { type: "tool_called", tool: TOOLS.createClip, turn: 1 },
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
     assertDoubledInPlace(),
     clipStateAssertion(LOOP_SLOT, "4/4", secondHalfMirrorsFirst),

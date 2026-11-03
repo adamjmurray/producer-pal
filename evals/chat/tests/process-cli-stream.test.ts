@@ -26,6 +26,91 @@ function fakeResult(parts: StreamPart[]): ReturnType<typeof streamText> {
   } as unknown as ReturnType<typeof streamText>;
 }
 
+describe("processCliStream — reasoning text and finish reason", () => {
+  beforeEach(() => setQuietMode(true));
+  afterEach(() => setQuietMode(false));
+
+  it("keeps all reasoning, a blank line between steps, and the last step's finish reason", async () => {
+    const result = await processCliStream(
+      fakeResult([
+        { type: "start-step" },
+        { type: "reasoning-delta", text: "First " },
+        { type: "reasoning-delta", text: "thought." },
+        { type: "reasoning-delta", text: "" },
+        { type: "finish-step", finishReason: "tool-calls" },
+        { type: "start-step" },
+        { type: "reasoning-delta", text: "Second thought." },
+        { type: "finish-step", finishReason: "stop" },
+      ]),
+    );
+
+    expect(result.reasoningText).toBe("First thought.\n\nSecond thought.");
+    expect(result.finishReason).toBe("stop");
+  });
+
+  it("separates reasoning blocks within one step", async () => {
+    const result = await processCliStream(
+      fakeResult([
+        { type: "start-step" },
+        { type: "reasoning-start" },
+        { type: "reasoning-delta", text: "Block one." },
+        { type: "reasoning-end" },
+        { type: "reasoning-start" },
+        { type: "reasoning-delta", text: "Block two." },
+        { type: "reasoning-end" },
+        { type: "finish-step", finishReason: "stop" },
+      ]),
+    );
+
+    expect(result.reasoningText).toBe("Block one.\n\nBlock two.");
+  });
+
+  it("reports an error when a later step dies without a finish-step", async () => {
+    vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+    const result = await processCliStream(
+      fakeResult([
+        { type: "start-step" },
+        { type: "finish-step", finishReason: "tool-calls" },
+        { type: "start-step" },
+        {
+          type: "error",
+          error: new Error("model stream ended without a finish chunk"),
+        },
+      ]),
+    );
+
+    expect(result.finishReason).toBe("error");
+    expect(result.error).toContain("without a finish chunk");
+    vi.restoreAllMocks();
+  });
+
+  it("records a finish reason from a step that reports no usage", async () => {
+    const result = await processCliStream(
+      fakeResult([
+        { type: "start-step" },
+        { type: "reasoning-delta", text: "Out of budget" },
+        { type: "finish-step", finishReason: "length" },
+      ]),
+    );
+
+    expect(result.finishReason).toBe("length");
+  });
+
+  it("leaves both unset when the stream carried neither", async () => {
+    const result = await processCliStream(
+      fakeResult([
+        { type: "start-step" },
+        { type: "text-delta", text: "hi" },
+        { type: "finish-step" },
+      ]),
+    );
+
+    expect(result).not.toHaveProperty("reasoningText");
+    expect(result).not.toHaveProperty("finishReason");
+  });
+});
+
 describe("processCliStream — tool-result matching", () => {
   // Quiet mode suppresses per-part stdout; we only assert on the returned result.
   beforeEach(() => setQuietMode(true));

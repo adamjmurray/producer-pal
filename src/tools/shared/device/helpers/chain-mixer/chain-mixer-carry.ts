@@ -16,6 +16,7 @@ import {
   rackPath,
   readChainMixer,
 } from "./chain-mixer.ts";
+import { plural } from "#src/tools/shared/validation/lists/plural.ts";
 
 export interface ChainMixerCarry {
   /** Mixer values read off the source chain */
@@ -61,7 +62,11 @@ export function carryChainMixer(
       (send) =>
         applyChainMixerAside(
           destination,
-          { sendGainDb: send.gainDb, sendReturn: send.returnId ?? send.return },
+          {
+            sends: [
+              { return: send.returnId ?? send.return, gainDb: send.gainDb },
+            ],
+          },
           notes,
         ).sends ?? [],
     )
@@ -126,7 +131,7 @@ export function noteChainMixerLeftBehind(
 
   noteTarget(
     notes,
-    `${chainLabel(chain)} trim (${summarizeChainMixer(mixer)}) ${verb} — reapply on the ${where} with ${tool} gainDb/pan/sendGainDb+sendReturn${hint}`,
+    `${chainLabel(chain)} trim (${summarizeChainMixer(mixer)}) ${verb} — reapply on the ${where} with ${tool} gainDb/pan/sends${hint}`,
   );
 }
 
@@ -242,7 +247,7 @@ function summarizeChainMixer(mixer: Record<string, unknown>): string {
   const sends = mixer.sends as unknown[] | undefined;
 
   if (sends != null && sends.length > 0) {
-    parts.push(`${sends.length} send${sends.length === 1 ? "" : "s"}`);
+    parts.push(plural(sends.length, "send"));
   }
 
   return parts.join(", ");

@@ -22,19 +22,30 @@ cross-origin browser writes.
 
 Fields (all optional; unknown keys are ignored):
 
-- `projectContext`, `sampleFolder`: string or `null` (`null` clears it)
+- `projectContext`, `sampleFolder`: string or `null` (`null` clears it).
+  `projectContext` is capped at 10,000 characters, like a `ppal-context` write
 - `smallModelMode`, `jsonOutput`, `liveApiEnabled`: boolean
 - `notation`: one of the notations in `src/shared/notation.ts`
 - `tools`: array of tool names; must be valid for the current `liveApiEnabled`
-- `remoteScriptEnabled`, `remoteScriptMinVersion`: **debug builds only** (a
-  release build ignores them). `false` makes the remote script look uninstalled;
-  a version string replaces the minimum version so a running script looks out of
-  date, `null` clears it
+- `remoteScriptEnabled`, `remoteScriptMinVersion`: test switches for evals and
+  e2e, left out of the user docs. `false` makes the remote script look
+  uninstalled; a version string replaces the minimum version so a running script
+  looks out of date, `null` clears it. Only a client on the same machine may
+  send them: a request from a LAN address, or through an HTTP tunnel (proxy
+  headers or a non-loopback `Host`), gets a 403 and nothing in the body is
+  applied. Best-effort: a raw TCP forwarder (`ssh -R`, socat) can't be told
+  apart
 
 A bad body is refused whole: every field is checked first, a `400` returns
 `{error, fields, validToolNames?}` naming each bad field, and nothing is
 applied. Booleans must be real booleans (`"false"` is a `400`, not true). On
-success it returns the new config. Code: `parseConfigBody()` in
+success it returns the new config.
+
+If the device doesn't take a setting (a send to Max fails), the other settings
+are still sent and kept, and the call returns `502` with `{error, fields}`
+naming the fields that failed. Those are rolled back in Node, so `GET /config`
+always matches the device; retry them. Code: `emitConfigOutlets()` in
+`src/mcp-server/helpers/http/config-outlets.ts`, `parseConfigBody()` in
 `src/mcp-server/helpers/http/config-body.ts`, `handleConfigUpdate()` in
 `src/mcp-server/create-express-app.ts`.
 

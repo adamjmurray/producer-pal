@@ -10,8 +10,8 @@ import { registerCreateTrackLiveSet } from "./create-track-test-helpers.ts";
 import { createTrack } from "../create-track.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 const TOO_MANY = (count: number): string =>

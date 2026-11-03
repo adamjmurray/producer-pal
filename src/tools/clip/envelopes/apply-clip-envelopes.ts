@@ -7,6 +7,7 @@
 // rest of it settled on: a move re-creates the clip, and the meter the times
 // are spelled in is the one the same call may just have written.
 
+import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { type EnvelopeLine } from "./envelope-lines.ts";
 import { applyArrangementEnvelopes } from "./arrangement/apply-arrangement-envelopes.ts";
@@ -29,7 +30,16 @@ import {
 export async function applyClipEnvelopes(
   entry: ClipResult | undefined,
   lines: readonly EnvelopeLine[] | undefined,
-  context: Pick<ToolContext, "deadline" | "lanes" | "silenceWavPath"> = {},
+  context: Partial<
+    Pick<
+      ToolContext,
+      | "deadline"
+      | "lanes"
+      | "manageAvailable"
+      | "silenceWavPath"
+      | "smallModelMode"
+    >
+  > = {},
 ): Promise<void> {
   if (entry == null || lines == null) {
     return;
@@ -71,5 +81,6 @@ export async function applyClipEnvelopes(
       canWritePoints: canWriteEnvelopePoints(),
     },
     context.deadline,
+    manageOffered(context),
   );
 }

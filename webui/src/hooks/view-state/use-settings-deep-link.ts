@@ -16,23 +16,29 @@ const SETTINGS_PARAM = "settings";
  * Open the settings on the tab named by `?settings=<tab>` when the page loads
  * (the device's "Finish installation" button links here). The parameter is
  * removed once read, so a reload doesn't reopen settings. The hash holds the
- * conversation id and is left alone. An unknown tab name is ignored.
+ * conversation id and is left alone. With no usable tab name, falls back to
+ * `fallbackTab` (the Connection tab on a visit before chat is set up), or
+ * leaves settings closed when that is null.
  * @param openSettings - Opens the settings on a tab
+ * @param fallbackTab - Tab to open when the URL names none, or null for none
  */
-export function useSettingsDeepLink(openSettings: (tab: TabId) => void): void {
+export function useSettingsDeepLink(
+  openSettings: (tab: TabId) => void,
+  fallbackTab: TabId | null = null,
+): void {
   useEffect(() => {
     const url = new URL(window.location.href);
     const tab = url.searchParams.get(SETTINGS_PARAM);
 
-    if (tab == null) {
-      return;
+    if (tab != null) {
+      url.searchParams.delete(SETTINGS_PARAM);
+      window.history.replaceState(window.history.state, "", url);
     }
 
-    url.searchParams.delete(SETTINGS_PARAM);
-    window.history.replaceState(window.history.state, "", url);
-
-    if (isTabId(tab)) {
+    if (tab != null && isTabId(tab)) {
       openSettings(tab);
+    } else if (fallbackTab != null) {
+      openSettings(fallbackTab);
     }
-  }, [openSettings]);
+  }, [openSettings, fallbackTab]);
 }

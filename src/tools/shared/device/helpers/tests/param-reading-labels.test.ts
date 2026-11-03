@@ -21,7 +21,7 @@ import {
   isBareThousands,
   parseLabel,
   resolveEnumIndex,
-} from "../param-label-parsing.ts";
+} from "../params/param-label-parsing.ts";
 
 // One well-formed label per LABEL_PATTERNS entry.
 const UNIT_LABELS = [

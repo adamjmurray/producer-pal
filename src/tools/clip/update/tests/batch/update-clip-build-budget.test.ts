@@ -25,8 +25,8 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  warn: vi.fn(),
-  warnOnce: vi.fn(),
+  emitWarning: vi.fn(),
+  emitWarningOnce: vi.fn(),
 }));
 
 /** Clips in the batch. */

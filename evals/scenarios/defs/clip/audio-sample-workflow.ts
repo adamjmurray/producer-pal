@@ -12,6 +12,7 @@ import {
   sampleBrowseAssertionHead,
 } from "../helpers/sample-browse-setup.ts";
 import { type EvalScenario } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 export const audioSampleWorkflow: EvalScenario = {
   id: "audio-sample-workflow",
@@ -40,10 +41,10 @@ export const audioSampleWorkflow: EvalScenario = {
     ...sampleBrowseAssertionHead(),
 
     // Turn 2: the audio clip carrying the sample
-    { type: "tool_called", tool: "ppal-create-clip", turn: 2 },
+    { type: "tool_called", tool: TOOLS.createClip, turn: 2 },
 
     // Turn 3: Audio property updates
-    { type: "tool_called", tool: "ppal-update-clip", turn: 3 },
+    { type: "tool_called", tool: TOOLS.updateClip, turn: 3 },
 
     { type: "response_contains", pattern: /kick/i, turn: 1 },
     { type: "response_contains", pattern: /audio|clip/i, turn: 2 },
@@ -64,7 +65,7 @@ export const audioSampleWorkflow: EvalScenario = {
 1. Listed available drum samples including kick
 2. Created a new audio track (the set had only MIDI tracks) and placed the kick sample into an audio clip on that audio track — NOT on the MIDI Drums track
 3. Applied pitch shift of 5 semitones and enabled looping on the audio clip
-4. Confirmed each step was completed`,
+4. Said in its replies that each step above was done`,
     },
   ],
 };

@@ -18,7 +18,14 @@ import {
 } from "#evals/chat/shared/formatting.ts";
 import { formatTokenLabel } from "../json-results/assertion-label.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
-import { checkTally, judgeVerdict, scorePercentage } from "./result-format.ts";
+import { jevJudgeNote, jevJudgeTag } from "./jev-judge-report.ts";
+import { OUTPUT_CAP_HINT, outputCapTurns } from "./output-cap.ts";
+import {
+  checkTally,
+  judgeVerdict,
+  modelWithThinking,
+  scorePercentage,
+} from "./result-format.ts";
 
 /**
  * Print result for a single scenario run
@@ -32,7 +39,7 @@ export function printResult(result: JsonEvalResult): void {
 
   console.log(
     formatSectionHeader(
-      `${result.model}: ${result.scenarioId}${configLabel}${kindLabel}`,
+      `${modelWithThinking(result.model, [result])}: ${result.scenarioId}${configLabel}${kindLabel}`,
     ),
   );
 
@@ -55,6 +62,8 @@ export function printResult(result: JsonEvalResult): void {
 
   // Tool errors section (non-gating)
   printToolErrorsSection(result);
+
+  printOutputCapSection(result);
 
   // Efficiency section
   if (result.efficiency) {
@@ -151,6 +160,29 @@ function printToolErrorsSection(result: JsonEvalResult): void {
 }
 
 /**
+ * Print the Output cap section — turns cut off by the max-output-tokens limit
+ *
+ * @param result - The eval result
+ */
+function printOutputCapSection(result: JsonEvalResult): void {
+  const turns = outputCapTurns(result);
+
+  if (turns.length === 0) {
+    return;
+  }
+
+  console.log("\n" + formatSubsectionHeader(`Output cap (${turns.length})`));
+  console.log("");
+  console.log(
+    "  " +
+      styleText(
+        "yellow",
+        `\u2022 turn ${turns.join(", ")} hit the output cap and may be cut off; ${OUTPUT_CAP_HINT}`,
+      ),
+  );
+}
+
+/**
  * First line of a possibly multi-line error message
  *
  * @param message - The error text
@@ -224,6 +256,12 @@ function printJudgeSection(result: JsonEvalResult): void {
     judge.issues.length > 0 ? ` — ${judge.issues.length} issue(s)` : "";
 
   console.log("\n  " + styleText(color, `${label}${issueSuffix}`));
+
+  const note = jevJudgeNote(judge);
+
+  if (note != null) {
+    console.log("  " + styleText("gray", note));
+  }
 }
 
 /**
@@ -273,7 +311,10 @@ export function printResultBlock(result: JsonEvalResult): void {
     const { color, label, issueCount } = judgeVerdict(result.judge);
     const issueSuffix = issueCount > 0 ? ` — ${issueCount} issue(s)` : "";
 
-    console.log(`  Judge:      ${styleText(color, label + issueSuffix)}`);
+    const tag = jevJudgeTag(result.judge);
+    const by = tag == null ? "" : styleText("gray", ` (${tag})`);
+
+    console.log(`  Judge:      ${styleText(color, label + issueSuffix)}${by}`);
   }
 
   // Duration line
@@ -326,6 +367,14 @@ function printNonGatingLines(result: JsonEvalResult): void {
     const text = `${tally.count} of ${tally.total} calls`;
 
     console.log(`  Tool errs:  ${styleText("yellow", text)}`);
+  }
+
+  const capped = outputCapTurns(result).length;
+
+  if (capped > 0) {
+    const text = `${capped} turn(s) hit it`;
+
+    console.log(`  Output cap: ${styleText("yellow", text)}`);
   }
 
   const score = scorePercentage([result]);

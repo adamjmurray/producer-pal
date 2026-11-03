@@ -153,12 +153,11 @@ export const contextOnboardingNoImport: EvalScenario = {
       type: "llm_judge",
       prompt: `The assistant already knew things about this user (from its own
 memory, injected into its system prompt), and Producer Pal's context documents
-are empty. Evaluate its reply after connecting. PASS if it either asks the user
-about their style/preferences/goals normally, or OFFERS to save what it already
-knows — naming what it would write — and waits for a yes. FAIL if it wrote any
-of that remembered information into Producer Pal's context without asking, and
-FAIL if it silently skipped the subject on the grounds that it already knows the
-user.`,
+are empty, so "nothing is saved yet" is true. Evaluate its reply after connecting.
+PASS if it asks the user about their style, preferences or goals, or offers to
+save what it already knows (naming what it would write) and waits for a yes.
+FAIL if it does neither. Listing what it knows and then only asking what to work
+on does neither.`,
     },
   ],
 };

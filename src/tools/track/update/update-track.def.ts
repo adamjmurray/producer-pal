@@ -8,7 +8,10 @@ import { MONITORING_STATE } from "#src/tools/constants.ts";
 import { addressingAliases } from "#src/tools/shared/schema/addressing-params.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
-import { sendsInputSchema } from "#src/tools/shared/sends/sends-schema.ts";
+import {
+  deprecatedSendParams,
+  sendsInputSchema,
+} from "#src/tools/shared/sends/sends-schema.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateTrack = defineTool("ppal-update-track", {
@@ -113,19 +116,11 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
         smallModel: null,
       },
     ),
-    sendGainDb: param(z.coerce.number().min(-70).max(0).optional(), {
-      default: "send gain in dB, requires sendReturn",
-      smallModel: null,
-    }),
-    sendReturn: param(z.coerce.string().optional(), {
-      default:
-        'return track, as read-track reports it (`return`/`returnId`): id, exact name (e.g., "A-Reverb"), path (e.g., "rt0"), or letter (e.g., "A"); or comma-separated one per target',
-      smallModel: null,
-    }),
     sends: param(sendsInputSchema, {
       default:
-        "several sends at once: [{return, gainDb}], return as for sendReturn. Use instead of sendGainDb + sendReturn",
+        '[{return, gainDb}]; return is a return track as read-track reports it (`return`/`returnId`): id, exact name (e.g., "A-Reverb"), path (e.g., "rt0"), or letter (e.g., "A")',
       smallModel: null,
     }),
+    ...deprecatedSendParams,
   },
 });

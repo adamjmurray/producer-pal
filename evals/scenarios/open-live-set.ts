@@ -45,6 +45,8 @@ import {
   type DialogWatcher,
 } from "./helpers/open-live-set/open-live-set-dialogs.ts";
 import { nextReadyStreak } from "./helpers/open-live-set/open-live-set-ready.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
+import { sleep } from "#evals/shared/sleep.ts";
 
 // For `open -a`. Override to test against a differently-named bundle
 // (e.g. a side-by-side older version).
@@ -272,7 +274,7 @@ async function mcpServerIsReady(): Promise<boolean> {
     const { tools } = await client.listTools();
     const toolNames = tools.map((t) => t.name);
 
-    if (!toolNames.includes("ppal-connect")) {
+    if (!toolNames.includes(TOOLS.connect)) {
       throw new Error("ppal-connect tool not found");
     }
 
@@ -413,15 +415,6 @@ async function runAppleScript(script: string): Promise<string | null> {
   const { output } = await runOsascript(script);
 
   return output;
-}
-
-/**
- * Sleeps for the specified duration.
- * @param ms - Duration in milliseconds
- * @returns A promise that resolves after the specified duration
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // CLI entry point

@@ -51,6 +51,33 @@ export async function waitForAutosave(): Promise<void> {
 }
 
 /**
+ * Add a transcript turn, run `leave` while its autosave is still waiting out
+ * the debounce, then let the debounce fire. The debounce is a real 1ms timer,
+ * so without holding it `leave` (an IndexedDB call) races it, and the save
+ * sometimes fires before the user has left.
+ * @param addTurn - Pushes a transcript turn, which schedules the autosave
+ * @param leave - What the user does before the debounce fires
+ */
+export async function leaveBeforeAutosaveFires(
+  addTurn: () => void,
+  leave: () => Promise<void>,
+): Promise<void> {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+  try {
+    addTurn();
+    await act(leave);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+  } finally {
+    vi.useRealTimers();
+  }
+
+  await waitForAutosave();
+}
+
+/**
  * Build a user message item with typed text content.
  * @param text - The input text
  * @returns A RealtimeItem
@@ -249,11 +276,13 @@ export async function bulkDeleteDuringPendingNewSave(
   const { result, rerender } = renderVoicePersistenceWithHistory();
 
   await waitForEffects();
-  rerender([userTextItem("brand new")]);
-  expect(result.current.activeConversationId).toBeNull();
-
-  await act(() => bulkDelete(result.current));
-  await waitForAutosave();
+  await leaveBeforeAutosaveFires(
+    () => {
+      rerender([userTextItem("brand new")]);
+      expect(result.current.activeConversationId).toBeNull();
+    },
+    () => bulkDelete(result.current),
+  );
 
   return result;
 }

@@ -28,6 +28,7 @@ import {
   sampleBrowseAssertionHead,
 } from "../helpers/sample-browse-setup.ts";
 import { type EvalScenario, type EvalTurnResult } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /**
  * A pad-path sample param. The published spelling is the short `pC1/sample`,
@@ -57,7 +58,7 @@ export const deviceDrumKit: EvalScenario = {
 
   assertions: [
     ...sampleBrowseAssertionHead(),
-    { type: "tool_called", tool: "ppal-create-device", turn: 2 },
+    { type: "tool_called", tool: TOOLS.createDevice, turn: 2 },
 
     // One device call must carry >= 2 distinct pad-path sample params, accepted.
     {
@@ -66,8 +67,7 @@ export const deviceDrumKit: EvalScenario = {
         "kit built in one device call with >=2 path-prefixed pad samples",
       assert: (turns: EvalTurnResult[]) => {
         const deviceCalls = getToolCalls(turns, 2).filter(
-          (c) =>
-            c.name === "ppal-create-device" || c.name === "ppal-update-device",
+          (c) => c.name === TOOLS.createDevice || c.name === TOOLS.updateDevice,
         );
 
         const oneCallKit = deviceCalls.find((c) => {

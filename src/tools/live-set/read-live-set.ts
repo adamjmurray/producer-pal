@@ -5,9 +5,10 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  intervalsToPitchClasses,
-  PITCH_CLASS_NAMES,
-} from "#src/shared/pitch.ts";
+  formatScale,
+  readScalePitches,
+  readScaleState,
+} from "#src/tools/shared/schema/scale/scale-reading.ts";
 import { automatedFieldNames } from "#src/tools/shared/arrangement/tracks/automated-fields.ts";
 import { readOneScene } from "#src/tools/scene/read-scene.ts";
 import { readLocators } from "#src/tools/shared/locator/locators.ts";
@@ -25,6 +26,7 @@ import {
   readOneTrack,
   readTrackGeneric,
 } from "#src/tools/track/read/read-track.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 
 interface ReadLiveSetArgs {
   include?: string[];
@@ -65,10 +67,8 @@ export function readLiveSet(
 
   const liveSetName = liveSet.getName();
   // Read once: the result's time signature and the locators spell the same meter.
-  const timeSigNumerator = liveSet.getProperty("signature_numerator") as number;
-  const timeSigDenominator = liveSet.getProperty(
-    "signature_denominator",
-  ) as number;
+  const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
+    songMeter();
   const result: Record<string, unknown> = {
     ...(liveSetName ? { name: liveSetName } : {}),
     tempo: roundDisplayValue(liveSet.getProperty("tempo"), round2dp),
@@ -148,20 +148,11 @@ export function readLiveSet(
   }
 
   // Only include scale properties when scale is enabled
-  const scaleEnabled = (liveSet.getProperty("scale_mode") as number) > 0;
+  const scale = readScaleState(liveSet);
 
-  if (scaleEnabled) {
-    const scaleName = liveSet.getProperty("scale_name");
-    const rootNote = liveSet.getProperty("root_note") as number;
-    const scaleRoot = PITCH_CLASS_NAMES[rootNote];
-
-    result.scale = `${scaleRoot} ${String(scaleName)}`;
-    const scaleIntervals = liveSet.getProperty("scale_intervals") as number[];
-
-    result.scalePitches = intervalsToPitchClasses(
-      scaleIntervals,
-      rootNote,
-    ).join(",");
+  if (scale.enabled) {
+    result.scale = formatScale(scale);
+    result.scalePitches = readScalePitches(liveSet, scale.rootNote);
   }
 
   // Include locators when requested

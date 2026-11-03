@@ -19,6 +19,7 @@ import {
 } from "./helpers/call/duplicate-call-types.ts";
 import { newDuplicateRun } from "./helpers/call/duplicate-run.ts";
 import { duplicateTargets } from "./helpers/call/duplicate-targets.ts";
+import { locateSources } from "./helpers/call/locate-sources.ts";
 import { parseDuplicateCall } from "./helpers/call/parse-duplicate-call.ts";
 import { planDuplicateOrder } from "./helpers/call/plan-duplicate-order.ts";
 import { settleDuplicate } from "./helpers/call/settle/settle-duplicate.ts";
@@ -98,5 +99,6 @@ function duplicateSpec(
     write: (target, step) => writeDuplicateCopy(run, target, step),
 
     settle: (done, call) => settleDuplicate(run, done, call),
+    locate: locateSources,
   };
 }

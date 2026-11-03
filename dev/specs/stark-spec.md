@@ -258,6 +258,9 @@ the free ordering of the `' , ! ?` suffixes. It applies to every token type:
 drum hit, pitched note, rest, bracket chord, and chord symbol. There is **no
 group repeat** (`(…)*N` is not supported) — repeat multiplies one token only.
 
+`N` over 10000 is a parse error, and a whole string may make at most 10000
+notes.
+
 The serializer **emits** `*N`: a final pass collapses each run of **3+**
 consecutive identical rendered tokens (same core, `/N`, and dynamic) into
 `token*N`, so a read-back of a 16th roll reads `X*16` rather than sixteen `X`s.

@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
@@ -109,7 +109,7 @@ describe("select id aliases", () => {
     setupSongViewMock();
 
     expect(() => select({ clipId: "id missing" })).toThrow(
-      'id "id missing" does not exist',
+      'clipId "id missing" does not exist',
     );
   });
 
@@ -117,7 +117,7 @@ describe("select id aliases", () => {
   // is published, so naming them back would be four lines about params the
   // caller can't act on.
   it("reads coerced-null aliases as unset, without a word", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     setupSongViewMock();
     select({ trackId: "null", sceneId: "null", clipId: "null", deviceId: "" });
@@ -345,7 +345,7 @@ describe("select id aliases", () => {
       path: livePath.track(0),
       type: "Track",
     });
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     setupSongViewMock();
 

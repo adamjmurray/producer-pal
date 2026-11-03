@@ -13,22 +13,32 @@ import {
   setAudioClipProperties,
 } from "#src/tools/clip/helpers/audio-clip-properties.ts";
 import { applyAudioClipWarping } from "#src/tools/clip/helpers/audio-clip-warping.ts";
+import { applyScale } from "#src/tools/shared/schema/scale/scale-writing.ts";
 import { type Step } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { buildClipProperties } from "../created-clip-result.ts";
 import { type CreatePayload } from "./create-clip-targets.ts";
 import { type CreateClipCall } from "./parse-create-call.ts";
 
+/** What a scale write has to say on the clip's entry. */
+export interface ScaleOutcome {
+  /** The scale Live stores, when it isn't the one asked for */
+  scale?: string;
+  /** Why it isn't */
+  detail?: string;
+}
+
 /**
- * Give a new MIDI clip its region, name, color and notes.
+ * Give a new MIDI clip its region, name, color, scale and notes.
  * @param step - The call's state for this target
  * @param clip - The new clip
  * @param payload - The target's payload
+ * @returns The scale Live stores when it isn't the one asked for, and why
  */
 export function configureMidiClip(
   step: Step<CreateClipCall>,
   clip: LiveAPI,
   payload: CreatePayload,
-): void {
+): ScaleOutcome {
   const { plan, transform, name, color } = payload;
   const { timing } = plan;
 
@@ -47,11 +57,24 @@ export function configureMidiClip(
   );
   step.landed("properties");
 
+  // Before the notes, so they land in the scale the clip ends up with.
+  const { scales, callScale } = step.checked;
+  const request = scales[payload.index];
+  const scale: ScaleOutcome = {};
+
+  if (request != null && callScale.supported()) {
+    applyScale(clip, request.parsed, request.requested, scale, () =>
+      step.landed("scale"),
+    );
+  }
+
   // v0 notes were already filtered out by applyV0Deletions in interpretNotation
   if (transform.notes.length > 0) {
     clip.call("add_new_notes", { notes: transform.notes });
     step.landed("notes");
   }
+
+  return scale;
 }
 
 /**

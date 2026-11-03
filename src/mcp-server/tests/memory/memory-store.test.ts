@@ -16,17 +16,17 @@ import {
   renameMemory,
   slugifyMemoryName,
 } from "#src/mcp-server/helpers/memory/memory-store.ts";
-import { warn } from "#src/mcp-server/node-for-max-logger.ts";
+import { nodeWarn } from "#src/mcp-server/node-for-max-logger.ts";
 import {
   unreadableWays,
   useTempConfigDir,
 } from "../config-dir-test-helpers.ts";
 
 vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
-  log: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+  nodeLog: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeWarn: vi.fn(),
+  nodeError: vi.fn(),
 }));
 
 vi.mock(import("node:fs"), async (importOriginal) => {
@@ -392,7 +392,9 @@ describe.each(unreadableWays)(
 
         expect(listMemoryEntries().map((e) => e.name)).toStrictEqual(["good"]);
         expect(regenerateIndex()).toContain("`good`");
-        expect(warn).toHaveBeenCalledWith(expect.stringContaining("locked.md"));
+        expect(nodeWarn).toHaveBeenCalledWith(
+          expect.stringContaining("locked.md"),
+        );
       },
     );
   },

@@ -6,9 +6,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
@@ -312,7 +312,9 @@ describe("createClip path param", () => {
     await createClip({ path: "null", slot: "0/0", notes: "C3 1|1" });
 
     expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
-    expect(consoleMock.warn).toHaveBeenCalledWith('path "null" names nothing');
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
+      'path "null" names nothing',
+    );
   });
 
   it("refuses path and slot together rather than picking one", async () => {
@@ -356,7 +358,9 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
     });
 
     expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
-    expect(consoleMock.warn).toHaveBeenCalledWith('slot "," names nothing');
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
+      'slot "," names nothing',
+    );
   });
 
   it("still reads trackIndex alone as the arrangement", async () => {
@@ -376,6 +380,29 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
       'sceneIndex 2 has no track; use path "t<track>/s2"',
     );
   });
+
+  // The refusal quotes what the caller sent, not a path they never wrote.
+  it.each([
+    [
+      { trackIndex: 0 },
+      'trackIndex 0 names no position; use path "t0[5|1]" for the arrangement, or "t0/s<scene>" for a clip slot',
+    ],
+    [
+      { trackIndex: 0, takeLane: 2 },
+      'trackIndex 0 with takeLane 2 names no position; use path "t0/l1[5|1]"; take lanes hold arrangement clips',
+    ],
+    [
+      { path: "t0", takeLane: 2 },
+      'path "t0" with takeLane 2 names no position; use path "t0/l1[5|1]"; take lanes hold arrangement clips',
+    ],
+  ])(
+    "quotes the params sent for a lane with no position: %o",
+    async (args, message) => {
+      await expect(createClip({ ...args, notes: "C3 1|1" })).rejects.toThrow(
+        message,
+      );
+    },
+  );
 
   it("refuses a path sent with trackIndex or sceneIndex", async () => {
     const { clipSlot } = setupSessionMocks({
@@ -426,7 +453,7 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
     await createClip({ slot: "0/0", trackIndex: 1, notes: "C3 1|1" });
 
     expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
       expect.stringContaining("trackIndex ignored"),
     );
   });

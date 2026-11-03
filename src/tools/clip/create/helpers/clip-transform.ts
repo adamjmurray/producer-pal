@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
+import { dedupeAndSortNotes } from "#src/notation/helpers/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-context.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {
@@ -12,9 +12,10 @@ import {
 } from "#src/notation/transform/transformed-count.ts";
 import {
   droppedDuplicatesNote,
+  transformsChangedNothingNote,
   transformsIgnoredAudioNote,
   transformsIgnoredNoNotesNote,
-} from "#src/tools/clip/helpers/clip-entry-notes.ts";
+} from "#src/tools/clip/helpers/notes/clip-entry-notes.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-results.ts";
 import { buildTransformClipContext } from "#src/tools/clip/helpers/transform-clip-context.ts";
 import { createdClipLength } from "./created-clip-result.ts";
@@ -36,7 +37,7 @@ export interface ClipTransformInputs {
   startBeats: number | null;
   timeSigNumerator: number;
   timeSigDenominator: number;
-  /** Live Set scale mask for the `scale:mask` variable, or undefined */
+  /** The new clip's scale mask for the `scale:mask` variable, or undefined */
   scaleMask: number | undefined;
 }
 
@@ -117,6 +118,9 @@ export function resolveClipTransform(
   // survive). Mirrors the update and merge write paths.
   const { notes: sorted, collisions } = dedupeAndSortNotes(clipNotes);
 
+  // Counted on the deduped notes, so collapsed duplicates don't inflate it.
+  const transformCounts = countTransforms(outcome, sorted);
+
   return {
     notes: sorted,
     clipLength: calculateClipLength(
@@ -125,9 +129,11 @@ export function resolveClipTransform(
       inputs.timeSigNumerator,
       inputs.timeSigDenominator,
     ),
-    // Counted on the deduped notes, so collapsed duplicates don't inflate it.
-    transformCounts: countTransforms(outcome, sorted),
-    details: factsFor(droppedDuplicatesNote(collisions)),
+    transformCounts,
+    details: [
+      ...factsFor(droppedDuplicatesNote(collisions)),
+      ...factsFor(transformsChangedNothingNote(outcome, transformCounts)),
+    ],
   };
 }
 

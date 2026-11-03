@@ -152,6 +152,39 @@ describe("shouldSkipScenario", () => {
       ).toBeNull();
     });
 
+    // ppal-manage is `omitInSmallModel`, so the mode never offers it.
+    it("skips under small-model mode when a required tool is hidden there", () => {
+      const reason = shouldSkipScenario(
+        makeScenario({ tools: ["ppal-manage"] }),
+        smallModelEnv,
+      );
+
+      expect(reason).toBe(
+        "requires tool(s) hidden in small-model mode: ppal-manage",
+      );
+    });
+
+    it("resolves short names for the small-model check too", () => {
+      const reason = shouldSkipScenario(
+        makeScenario({ tools: ["connect", "manage"] }),
+        smallModelEnv,
+      );
+
+      expect(reason).toMatch(/hidden in small-model mode: ppal-manage$/);
+    });
+
+    it("does not skip under small-model mode when every required tool is offered", () => {
+      expect(
+        shouldSkipScenario(makeScenario({ tools: ["connect"] }), smallModelEnv),
+      ).toBeNull();
+    });
+
+    it("does not skip a hidden tool outside small-model mode", () => {
+      expect(
+        shouldSkipScenario(makeScenario({ tools: ["ppal-manage"] }), fullEnv),
+      ).toBeNull();
+    });
+
     it("does not skip when the run has the full tool set", () => {
       expect(
         shouldSkipScenario(

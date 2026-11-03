@@ -52,12 +52,19 @@ const UPDATE = { action: "update-producer-pal" };
  * @param options - What else differs between tests
  * @param options.deviceOnline - False for a device that isn't running
  * @param options.deviceTools - Give the device ppal-connect and ppal-manage
+ * @param options.portalArgs - Flags for the portal
+ * @param options.deviceSmallModelMode - What the device's GET /config reports
  * @returns The pieces a test looks at
  */
 async function setup(
   running: string,
   swap?: RouteHandler | null,
-  options: { deviceOnline?: boolean; deviceTools?: boolean } = {},
+  options: {
+    deviceOnline?: boolean;
+    deviceTools?: boolean;
+    portalArgs?: string[];
+    deviceSmallModelMode?: boolean;
+  } = {},
 ) {
   const library = newLibrary();
 
@@ -67,6 +74,7 @@ async function setup(
       version: running,
       connectTool: options.deviceTools,
       manageTool: options.deviceTools,
+      smallModelMode: options.deviceSmallModelMode,
     }),
   );
   const script = track(
@@ -92,7 +100,9 @@ async function setup(
   const copy = track(copyPortal(true, PORTAL_VERSION));
   // HOME is a temp folder too, so nothing of the developer's is touched.
   const env = { ...script.env, HOME: library, USERPROFILE: library };
-  const portal = track(await startPortal(device.origin, [], env, copy.file));
+  const portal = track(
+    await startPortal(device.origin, options.portalArgs, env, copy.file),
+  );
 
   return { library, device, script, portal };
 }
@@ -104,8 +114,19 @@ describe("ppal-manage update-producer-pal", () => {
     const { text, isError } = await callToolText(portal, "ppal-manage", UPDATE);
 
     expect(isError).toBeFalsy();
-    expect(text).toBe(
-      `{device:{from:"${OLD}",to:"${PORTAL_VERSION}"},track:{path:"t1",name:"1-MIDI"},nextSteps:"Call ppal-connect next."}`,
+    expect(
+      text.startsWith(
+        `{device:{from:"${OLD}",to:"${PORTAL_VERSION}"},track:{path:"t1",name:"1-MIDI"},pluginHost:[`,
+      ),
+    ).toBe(true);
+    expect(
+      text.endsWith(
+        '],nextSteps:"Now call ppal-connect without versionCheck to load the Skills and confirm the update."}',
+      ),
+    ).toBe(true);
+    expect(text).toContain('{name:"PPal Plug-in Effect",status:"installed"');
+    expect(text).toContain(
+      '{name:"PPal Plug-in Instrument",status:"installed"',
     );
     expect(existsSync(join(library, ...AMXD))).toBe(true);
 
@@ -198,7 +219,8 @@ describe("ppal-manage update-producer-pal", () => {
 });
 
 describe("a device older than the portal", () => {
-  const INSTALL = { action: "install-remote-script" };
+  const INSTALL = { action: "install-producer-pal" };
+  const RETIRED = { action: "install-remote-script" };
 
   it("sends a device from before ppal-manage to the by-hand upgrade, not update-producer-pal", async () => {
     const { portal } = await setup("2.4.0", undefined, { deviceTools: true });
@@ -213,44 +235,78 @@ describe("a device older than the portal", () => {
     expect(hint).not.toContain("update-producer-pal");
   });
 
-  it("answers install-remote-script itself, installing the portal's script", async () => {
-    const { library, device, portal } = await setup("2.5.0-rc1", undefined, {
+  it.each([
+    ["a portal started in small-model mode", { portalArgs: ["-s"] }],
+    ["a device in small-model mode", { deviceSmallModelMode: true }],
+  ])("adds no update note for %s", async (_name, mode) => {
+    const { portal } = await setup("2.5.0-rc1", undefined, {
       deviceTools: true,
+      ...mode,
     });
 
-    const { text, isError } = await callToolText(portal, "ppal-manage", {
-      ...INSTALL,
-      userLibrary: library,
-    });
-    const folder = join(library, "Remote Scripts", "Producer_Pal");
-
-    expect(isError).toBeFalsy();
-    expect(text).not.toContain(MANAGE_TOOL_REPLY);
-    expect(text).toContain(`version:"${PORTAL_VERSION}"`);
-    expect(readFileSync(join(folder, "version.py"), "utf8")).toContain(
-      PORTAL_VERSION,
-    );
-    expect(
-      device.requests.filter((r) => r.method === "tools/call"),
-    ).toStrictEqual([]);
+    expect(await callToolTexts(portal, "ppal-connect")).toStrictEqual([
+      "connected",
+    ]);
   });
 
-  it("forwards install-remote-script to a device with the portal's version", async () => {
-    const { library, device, portal } = await setup(PORTAL_VERSION, undefined, {
-      deviceTools: true,
-    });
+  it.each([
+    ["install-producer-pal", INSTALL],
+    ["install-remote-script, which an older device advertises", RETIRED],
+  ])(
+    "answers %s itself, installing the portal's script and device",
+    async (_name, action) => {
+      const { library, device, portal } = await setup("2.5.0-rc1", undefined, {
+        deviceTools: true,
+      });
 
-    const { text } = await callToolText(portal, "ppal-manage", {
-      ...INSTALL,
-      userLibrary: library,
-    });
+      const { text, isError } = await callToolText(portal, "ppal-manage", {
+        ...action,
+        userLibrary: library,
+      });
+      const folder = join(library, "Remote Scripts", "Producer_Pal");
 
-    expect(text).toBe(MANAGE_TOOL_REPLY);
-    expect(
-      device.requests
-        .filter((r) => r.method === "tools/call")
-        .map((r) => r.tool),
-    ).toStrictEqual(["ppal-manage"]);
-    expect(existsSync(join(library, "Remote Scripts"))).toBe(false);
-  });
+      expect(isError).toBeFalsy();
+      expect(text).not.toContain(MANAGE_TOOL_REPLY);
+      expect(text).toContain(`version:"${PORTAL_VERSION}"`);
+      expect(text).toContain(`device:{status:"installed"`);
+      expect(readFileSync(join(folder, "version.py"), "utf8")).toContain(
+        PORTAL_VERSION,
+      );
+      expect(existsSync(join(library, ...AMXD))).toBe(true);
+      // Producer Pal is running, so there is no device to add afterwards.
+      expect(text).not.toContain("add-producer-pal");
+      expect(
+        device.requests.filter((r) => r.method === "tools/call"),
+      ).toStrictEqual([]);
+    },
+  );
+
+  it.each([
+    ["install-producer-pal", INSTALL],
+    ["install-remote-script", RETIRED],
+  ])(
+    "forwards %s to a device with the portal's version",
+    async (_name, action) => {
+      const { library, device, portal } = await setup(
+        PORTAL_VERSION,
+        undefined,
+        {
+          deviceTools: true,
+        },
+      );
+
+      const { text } = await callToolText(portal, "ppal-manage", {
+        ...action,
+        userLibrary: library,
+      });
+
+      expect(text).toBe(MANAGE_TOOL_REPLY);
+      expect(
+        device.requests
+          .filter((r) => r.method === "tools/call")
+          .map((r) => r.tool),
+      ).toStrictEqual(["ppal-manage"]);
+      expect(existsSync(join(library, "Remote Scripts"))).toBe(false);
+    },
+  );
 });

@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   findSourceFiles,
   projectRoot,
+  repoPath,
   throwOnFileViolations,
 } from "#src/test/helpers/meta-test-helpers.ts";
 
@@ -30,7 +31,7 @@ describe("conversation delete single home", () => {
       path.join(projectRoot, "webui", "src"),
       true,
     )) {
-      const rel = path.relative(projectRoot, file);
+      const rel = repoPath(file);
 
       if (rel.startsWith(HOME)) {
         continue;

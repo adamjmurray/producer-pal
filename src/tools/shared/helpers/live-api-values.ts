@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { isNewerVersion } from "#src/shared/version-check.ts";
+import {
+  isLiveVersionAtLeast,
+  isNewerVersion,
+} from "#src/shared/version-check.ts";
 
 /**
  * Parses a time signature string into numerator and denominator
@@ -171,10 +174,18 @@ export function keptTimeSignature(
  * or setting a property that a version doesn't have does nothing and raises no
  * error, so features added in a later Live check the version instead.
  * @param min - The oldest version that has the feature, like "12.4"
+ * @param options - `release: true` when a beta of `min` may lack the feature, so
+ *   only the release (or a later version's beta) counts
+ * @param options.release - Count a beta of `min` itself as older
  * @returns True when the running Live is `min` or later
  */
-export function liveVersionAtLeast(min: string): boolean {
+export function liveVersionAtLeast(
+  min: string,
+  options?: { release?: boolean },
+): boolean {
   const version = String(LiveAPI.from("live_app").call("get_version_string"));
 
-  return !isNewerVersion(version, min);
+  return options?.release === true
+    ? isLiveVersionAtLeast(version, min)
+    : !isNewerVersion(version, min);
 }

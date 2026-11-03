@@ -55,6 +55,12 @@ More detail:
 and
 [Some Moves Drop Clip Envelopes](/features/limitations#some-moves-drop-clip-envelopes).
 
+## Hosted Plug-ins
+
+Parameters of a [hosted plug-in](/guide/plugins) can be automated too. Live
+shows them under generic slot names, like "Automation 002". See
+[Hosted Plug-ins: Automation](/guide/plugins#automation).
+
 ## Try Asking
 
 - "Read the automation on the clip in track 2, scene 1."

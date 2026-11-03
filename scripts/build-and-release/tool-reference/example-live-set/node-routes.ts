@@ -35,10 +35,19 @@ const ROUTE_RESULTS: Record<string, unknown> = {
     ],
   },
 
-  "manage.installRemoteScript": {
-    installed: true,
-    version: "2.5.0",
-    path: "/Users/example/Music/Ableton/User Library/Remote Scripts/Producer_Pal",
+  // Both files installed: the script is always replaced, the device by version.
+  "manage.installProducerPal": {
+    ran: true,
+    remoteScript: {
+      status: "installed",
+      version: "2.5.0",
+      path: "/Users/example/Music/Ableton/User Library/Remote Scripts/Producer_Pal",
+    },
+    device: {
+      status: "installed",
+      version: "2.5.0",
+      path: "/Users/example/Music/Ableton/User Library/Presets/MIDI Effects/Max MIDI Effect/Producer_Pal.amxd",
+    },
   },
 
   "globalContext.read": {

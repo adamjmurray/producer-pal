@@ -7,7 +7,9 @@ import { describe, expect, it } from "vitest";
 import {
   macroPositions,
   macroProblem,
+  optionValues,
   paramNumber,
+  paramText,
 } from "./device-param-readback.ts";
 
 /**
@@ -108,5 +110,57 @@ describe("macroProblem", () => {
     expect(macroProblem({ parameters: [] }, [6], 2)).toBe(
       "macro 1 not read; macro 2 not read",
     );
+  });
+});
+
+describe("paramText", () => {
+  const result = {
+    parameters: [
+      { name: "1 Filter Type A", value: "Bell", options: ["Bell", "Notch"] },
+      { name: "Gain", value: -6 },
+    ],
+  };
+
+  it("reads a param by exact name or by pattern", () => {
+    expect(paramText(result, "1 Filter Type A")).toBe("Bell");
+    expect(paramText(result, /^1 filter type/i)).toBe("Bell");
+    expect(paramText(result, "Gain")).toBe("-6");
+  });
+
+  it("is undefined for a missing param", () => {
+    expect(paramText(result, "2 Filter Type A")).toBeUndefined();
+    expect(paramText(result, /^Osc/)).toBeUndefined();
+    expect(paramText({}, "Gain")).toBeUndefined();
+  });
+});
+
+describe("optionValues", () => {
+  it("lists only the params that carry options", () => {
+    expect(
+      optionValues({
+        parameters: [
+          { name: "Filter Type", value: "Bell", options: ["Bell", "Notch"] },
+          { name: "Gain", value: -6 },
+          { value: "x", options: ["x"] },
+        ],
+      }),
+    ).toStrictEqual({ "Filter Type": "Bell" });
+  });
+
+  it("counts a param that names a shared list, and an Off/On toggle", () => {
+    expect(
+      optionValues({
+        parameters: [
+          { name: "Wave", value: "Saw", optionList: "L1" },
+          { name: "Osc-B On", value: "Off" },
+          { name: "Retrig", value: "on" },
+          { name: "Gain", value: -6 },
+        ],
+      }),
+    ).toStrictEqual({ Wave: "Saw", "Osc-B On": "Off", Retrig: "on" });
+  });
+
+  it("reads nothing from a read with no params", () => {
+    expect(optionValues({})).toStrictEqual({});
   });
 });

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -18,8 +18,8 @@ import { toolDefCreateTrack } from "../create-track.def.ts";
 import { createTrack } from "../create-track.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 describe("createTrack by path", () => {
@@ -179,7 +179,7 @@ describe("createTrack by path", () => {
 
     createTrack({ type: "return", name: "Old Way" });
 
-    expect(console.warn).toHaveBeenCalledWith(
+    expect(emitWarning).toHaveBeenCalledWith(
       'type "return" is deprecated and will be removed; use path "rt+" instead',
     );
   });

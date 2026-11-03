@@ -52,13 +52,17 @@ Adds formatted MIDI notes for MIDI clips. No effect on audio clips.
 The notes string uses compact bar|beat notation. This is an expensive operation
 (calls `get_notes_extended` on the Live API).
 
-All authored notes round-trip on read, including ones outside the clip's
-playable region: pickups before the start (negative time, e.g. a note authored
-as `1|1-n/12`) and overhang past the end. The read window is the clip's region
-(markers and loop, whichever reach further) plus one clip-length on each side.
-Note times are absolute, so a region starting at 5|1 has its notes at 5|1, not
-1|1. The `noteCount` reported by create/update tools uses the same window, and
-update-clip rewrites only what it covers.
+A clip's notes include ones outside its playable region: pickups before the
+start (negative time, e.g. a note authored as `1|1-n/12`) and, on a clip that
+isn't looping, overhang past the end. The read window starts a clip-length
+before the region (markers and loop, whichever reach further). It ends a
+clip-length past the end of a clip that isn't looping, and exactly at `loop_end`
+on a looping one: a note starting at or past `loop_end` never plays, so it is
+not read, counted or touched by any edit (it stays in the clip, even when
+`end_marker` sits past it). Note times are absolute, so a region starting at 5|1
+has its notes at 5|1, not 1|1. The `noteCount` reported by create/update tools
+uses the same window, and update-clip reads, rewrites and removes only what it
+covers. Copying or moving a clip takes every note, past `loop_end` too.
 
 ## Include: `"sample"`
 

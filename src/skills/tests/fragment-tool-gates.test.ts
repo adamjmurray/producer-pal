@@ -43,15 +43,9 @@ function mentionedTools(body: string): string[] {
 }
 
 // Fragments that name a tool outside their own gate ON PURPOSE: the handoff is
-// the content. Both directions of library↔writers are here — a library result is
-// only useful as an argument to something else.
+// the content. The devices fragments name ppal-library because a library
+// result is only useful as an argument to something else.
 const DELIBERATE_CROSS_REFERENCES: Record<string, readonly string[]> = {
-  library: [
-    "ppal-create-clip",
-    "ppal-update-clip",
-    "ppal-create-device",
-    "ppal-update-device",
-  ],
   "devices-write": ["ppal-library"],
   "plugins-and-max-devices": ["ppal-library"],
 };
@@ -251,7 +245,7 @@ describe("fragment prose", () => {
       0,
     );
 
-    expect(total).toBeLessThanOrEqual(6);
+    expect(total).toBeLessThanOrEqual(2);
   });
 
   it("lists no allowance that is no longer needed", () => {

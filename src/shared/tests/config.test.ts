@@ -13,6 +13,8 @@ import {
   SAME_TIME_EPSILON,
   SMALL_MODEL_MODE_HEADER,
   VERSION,
+  isIpLiteralHost,
+  isLoopbackHost,
   PORTAL_VERSION_HEADER,
   resolveEnabledTools,
   resolvePortalVersion,
@@ -180,5 +182,77 @@ describe("default MCP port", () => {
     expect(
       initial?.saved_attribute_attributes.valueof.parameter_initial,
     ).toStrictEqual([DEFAULT_MCP_PORT]);
+  });
+});
+
+describe("isLoopbackHost", () => {
+  it.each([
+    "localhost",
+    "LOCALHOST:3350",
+    "127.0.0.1",
+    "127.0.0.1:3350",
+    "[::1]",
+    "[::1]:3350",
+    "pp.localhost:3350",
+    "a.b.LOCALHOST",
+    "127.0.0.2:3350",
+    "127.255.255.255",
+  ])("accepts %s", (host) => {
+    expect(isLoopbackHost(host)).toBe(true);
+  });
+
+  it.each([
+    "",
+    "evil.com@localhost",
+    "localhost/x",
+    "localhost:",
+    "localhost:abc",
+    "localhost.evil.com",
+    "127.0.0.256",
+    "127.0.0.1.evil.com",
+    ".localhost",
+    "localhost.evil.com",
+    "::1",
+    "192.168.1.5:3350",
+    "http://localhost",
+  ])("refuses %j", (host) => {
+    expect(isLoopbackHost(host)).toBe(false);
+  });
+});
+
+describe("isIpLiteralHost", () => {
+  it.each([
+    "192.168.1.5",
+    "192.168.1.5:3350",
+    "10.0.0.1:80",
+    "[::1]:3350",
+    "[fd00::5]",
+    "[fe80::1]:3350",
+    "[::ffff:192.168.1.5]:3350",
+  ])("accepts %s", (host) => {
+    expect(isIpLiteralHost(host)).toBe(true);
+  });
+
+  it.each([
+    "",
+    "localhost",
+    "demo.trycloudflare.com:443",
+    "evil.example",
+    "192.168.1.256",
+    "192.168.1",
+    "192.168.1.5.evil.com",
+    "192.168.1.5:",
+    "2130706433",
+    "fd00::5",
+    "[evil]",
+    "[fd00::5]x",
+    "http://192.168.1.5",
+  ])("refuses %j", (host) => {
+    expect(isIpLiteralHost(host)).toBe(false);
+  });
+
+  it("answers at once for a long run of colons", () => {
+    expect(isIpLiteralHost(`[${":".repeat(100_000)}x]`)).toBe(false);
+    expect(isIpLiteralHost(`[${":".repeat(100_000)}]`)).toBe(true);
   });
 });

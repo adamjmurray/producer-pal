@@ -25,7 +25,7 @@
 
 import { type DatabaseSync } from "node:sqlite";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { detectStalenessRisk } from "./db-staleness.ts";
+import { stalenessNote } from "./db-staleness.ts";
 import { fourCC } from "./library-filters.ts";
 import {
   clampLibraryLimit,
@@ -34,6 +34,7 @@ import {
   type LibraryTag,
 } from "./library-types.ts";
 import { findLiveFilesDbPath } from "./live-db-path.ts";
+import { countGroups } from "./list-tags.ts";
 import { openLiveDb } from "./live-db.ts";
 import {
   COUNTED_FOR_TAG,
@@ -74,9 +75,8 @@ export async function listCategories(
     return { dbAvailable: false, detail: "Live database not found" };
   }
 
-  // Best-effort advisory: flag a pending WAL from an unclean Live exit that our
-  // immutable read can't see. Omitted from the response when there's no risk.
-  const stalenessRisk = await detectStalenessRisk(dbPath);
+  // Our immutable read misses what is still in Live's WAL; the note says so.
+  const stale = await stalenessNote(dbPath);
 
   // Guard the open + query: Live's DB schema varies across releases, so a future
   // rename of the metadata/metadata_values tables or columns would throw a raw
@@ -87,7 +87,7 @@ export async function listCategories(
     try {
       const base = {
         dbAvailable: true as const,
-        ...(stalenessRisk && { stalenessRisk }),
+        ...(stale && { stalenessNote: stale }),
       };
 
       if (args.category != null && args.category !== "") {
@@ -147,7 +147,7 @@ function drillIntoCategory(
   db: DatabaseSync,
   category: string,
   limit: number | undefined,
-): { category: string; tags: LibraryTag[]; detail?: string } {
+): { category: string; tags: LibraryTag[]; more?: number; detail?: string } {
   const leaves = categoryLeafNames(db, category);
 
   // No leaves means the `<category>|%` membership query matched nothing — the
@@ -160,7 +160,7 @@ function drillIntoCategory(
 
   const cap = clampLibraryLimit(limit, DEFAULT_LIST_TAGS_LIMIT);
 
-  return { category, tags: leafTagCounts(db, leaves, cap) };
+  return { category, ...leafTagCounts(db, leaves, cap) };
 }
 
 /**
@@ -200,29 +200,34 @@ function categoryLeafNames(db: DatabaseSync, category: string): string[] {
  * @param db - Open database handle
  * @param leaves - Leaf tag names to count
  * @param limit - Max rows to return
- * @returns Tag names with counts, sorted by count desc
+ * @returns Tag names with counts, sorted by count desc, and `more` (how many
+ *   were left out) when the limit cut the list off
  */
 function leafTagCounts(
   db: DatabaseSync,
   leaves: string[],
   limit: number,
-): LibraryTag[] {
+): { tags: LibraryTag[]; more?: number } {
   const placeholders = leaves.map(() => "?").join(",");
-  const rows = db
-    .prepare(
-      `SELECT kw.name AS name, COUNT(*) AS cnt
+  const grouped = `SELECT kw.name AS name, COUNT(*) AS cnt
        FROM keywords k
        JOIN files kw ON kw.file_id = k.keyw_id
        JOIN files f ON f.file_id = k.file_id
        WHERE kw.name IN (${placeholders})
          AND ${IN_A_PLACE} AND ${COUNTED_FOR_TAG}
-       GROUP BY k.keyw_id
-       ORDER BY cnt DESC, kw.name ASC
-       LIMIT ?`,
-    )
-    .all(...leaves, limit) as unknown as CategoryRow[];
+       GROUP BY k.keyw_id`;
+  // One row past the page tells us whether anything was cut off; only then is
+  // the full count worth running (as in search).
+  const rows = db
+    .prepare(`${grouped} ORDER BY cnt DESC, kw.name ASC LIMIT ?`)
+    .all(...leaves, limit + 1) as unknown as CategoryRow[];
+  const tags = rows
+    .slice(0, limit)
+    .map((r) => ({ name: r.name, count: r.cnt }));
+  const more =
+    rows.length > limit ? countGroups(db, grouped, leaves) - limit : 0;
 
-  return rows.map((r) => ({ name: r.name, count: r.cnt }));
+  return { tags, ...(more > 0 && { more }) };
 }
 
 /**

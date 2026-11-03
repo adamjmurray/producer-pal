@@ -162,6 +162,8 @@ describe("StdioHttpBridge reconnect with calls in flight", () => {
     clients.length = 0;
     state.slow = null;
     state.oldVersion = OLD;
+    // The update hint asks the device's GET /config whether it is small-model.
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}"));
     mockServer.connect.mockResolvedValue(undefined);
     mockServer.sendToolListChanged.mockResolvedValue(undefined);
     vi.spyOn(console, "error").mockImplementation(() => {});

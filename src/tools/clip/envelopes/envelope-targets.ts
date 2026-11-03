@@ -9,6 +9,11 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { type EnvelopeLine } from "./envelope-lines.ts";
+import {
+  type HostedTarget,
+  parseHostedTarget,
+  resolveHostedTarget,
+} from "./hosted/hosted-envelope-target.ts";
 
 /** A device parameter reachable by the remote script's d0/c1/d0 walk. */
 const DEVICE_PARAMETER =
@@ -26,9 +31,14 @@ export interface EnvelopeTarget {
   parameter: string | number;
 }
 
-/** A line, with the parameter it reaches or why it reaches none. */
+/**
+ * A line, with the parameter it reaches or why it reaches none. A hosted
+ * plug-in's param reaches its slot's parameter only once the line is written,
+ * since mapping the slot changes the Set.
+ */
 export type ResolvedEnvelopeLine =
   | { line: EnvelopeLine; target: EnvelopeTarget }
+  | { line: EnvelopeLine; hosted: HostedTarget }
   | { line: EnvelopeLine; error: string };
 
 /**
@@ -43,7 +53,11 @@ export function resolveEnvelopeLines(
 ): ResolvedEnvelopeLine[] {
   return lines.map((line) => {
     try {
-      return { line, target: envelopeTarget(line.target, trackIndex) };
+      const hosted = parseHostedTarget(line.target);
+
+      return hosted == null
+        ? { line, target: envelopeTarget(line.target, trackIndex) }
+        : { line, hosted: resolveHostedTarget(hosted, trackIndex) };
     } catch (error) {
       return { line, error: errorMessage(error) };
     }
@@ -66,7 +80,10 @@ export function findSameParameter(
       continue;
     }
 
-    const key = `${entry.target.device ?? ""}|${String(entry.target.parameter)}`;
+    const key =
+      "hosted" in entry
+        ? `hosted|${entry.hosted.deviceId}|${String(entry.hosted.index)}`
+        : `${entry.target.device ?? ""}|${String(entry.target.parameter)}`;
     const first = seen.get(key);
 
     if (first != null) {

@@ -7,6 +7,7 @@
 
 from . import browser, hot_reload, hotswap, undo
 from .conversions import ROUTES as _CONVERSION_ROUTES
+from .device_basics import ROUTES as _DEVICE_BASICS_ROUTES
 from .device_copy import ROUTES as _DEVICE_COPY_ROUTES
 from .envelopes import ROUTES as _ENVELOPE_ROUTES
 from .errors import RouteError
@@ -24,6 +25,18 @@ from .rack_macros import ROUTES as _RACK_MACRO_ROUTES
 from .simpler_settings import ROUTES as _SIMPLER_ROUTES
 from .undo import ROUTES as _UNDO_ROUTES
 from .version import VERSION, build_commit
+
+# The generative UI's routes. Only a gen-UI build ships gen_ui_routes.py, so a
+# missing module means a release build, not a broken install. Any other import
+# error still surfaces.
+try:
+    from .gen_ui_routes import POST_ONLY as _GEN_UI_POST_ONLY
+    from .gen_ui_routes import ROUTES as _GEN_UI_ROUTES
+except ModuleNotFoundError as err:
+    if err.name != __package__ + ".gen_ui_routes":
+        raise
+    _GEN_UI_POST_ONLY = tuple()
+    _GEN_UI_ROUTES = {}
 
 # A new track's type follows what's being loaded. When that's unknown (plugins),
 # use MIDI: Live refuses an instrument on an audio track and makes a track of
@@ -88,14 +101,23 @@ def list_items(bridge, params):
     start, start_path = _resolve(root, params.get("path"))
     query = params.get("q")
 
+    stop = False
+
     if not _as_bool(params.get("recursive", True)):
         items = browser.list_children(start, start_path, query)
     elif _as_bool(params.get("presets", False)):
         items = browser.list_presets(start, start_path, query)
     else:
-        items = browser.list_loadable(start, start_path, devices_only, query)
+        stop = _as_bool(params.get("plugins_only", False))
+        items = browser.list_loadable(start, start_path, devices_only, query, stop)
 
-    return {"type": item_type, "path": start_path, "count": len(items), "items": items}
+    reply = {"type": item_type, "path": start_path, "count": len(items), "items": items}
+
+    if stop:
+        # Tells the caller this script knows the param: an older one ignores it.
+        reply["plugins_only"] = True
+
+    return reply
 
 
 def load(bridge, params):
@@ -449,9 +471,11 @@ ROUTES = {
     **_DEVICE_COPY_ROUTES,
     **_ENVELOPE_ROUTES,
     **_RACK_MACRO_ROUTES,
+    **_DEVICE_BASICS_ROUTES,
     **_CONVERSION_ROUTES,
     **_SIMPLER_ROUTES,
     **_UNDO_ROUTES,
+    **_GEN_UI_ROUTES,
 }
 
 # Routes that change the Set. A browser can send a GET with no Origin (an
@@ -468,4 +492,5 @@ POST_ONLY = (
     "/undo/end",
     "/undo/undo",
     "/undo/redo",
+    *_GEN_UI_POST_ONLY,
 )

@@ -80,7 +80,7 @@ export interface TestBridge {
     content: Array<{ type: string; text: string }>;
     isError: boolean;
   };
-  _ensureHttpConnection: () => Promise<void>;
+  _ensureHttpConnection: (timeoutMs?: number) => Promise<void>;
 }
 
 /**

@@ -20,10 +20,10 @@ vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
 }));
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
-  warnOnce: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
+  emitWarningOnce: vi.fn(),
 }));
 
 import { type DeviceMove } from "#src/tools/device/update/helpers/move-device.ts";

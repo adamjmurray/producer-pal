@@ -13,10 +13,22 @@ Part of [Skip entries, tool by tool](README.md).
   earlier write of the call already cleared hold their slot as a skip. A split
   that misses a clip is not a skip: one list cutting many clips is expected to
   miss some, so those clips keep plain entries, and a call or position that cut
-  nothing anywhere gets one WARNING for the call. The `name` and `color` lists
-  pair by the target's place, so a skip doesn't slide them. The deadline skips
-  every target it never reached; a split that already cut keeps its pieces, each
-  saying what did not run.
+  nothing anywhere gets one WARNING for the call. A MIDI note that crosses a cut
+  stays in the earlier piece and ends at the cut, so that clip's entry says
+  `N notes crossed a cut and now end at it`. Lengthening a looped MIDI clip says
+  the same: each tile starts where the clip before it stopped, which may be
+  mid-loop, so a note still sounding at that point loses its tail. Each note
+  counts once, however many cuts or boundaries it crosses, and only those that
+  landed count; a note that ends at a cut or loop end, or is muted, does not,
+  and neither does a boundary next to a tile Live refused. If the notes can't be
+  read, the cut or tiling goes ahead and says nothing: the count is only a
+  diagnostic. The `name` and `color` lists pair by the target's place, so a skip
+  doesn't slide them. The deadline skips every target it never reached; a split
+  that already cut keeps its pieces, each saying what did not run.
+- **update-clip: a skipped clip's path can go stale.** A conversion's new track,
+  a move or a split changes what a later path names, so a skipped clip's entry
+  adds `that clip is now <path> (id N)`, read after all the writes; see
+  [Tool Behavior](../skips-and-replaced-targets.md).
 - **update-clip: a clip named twice** (id and path, or an id repeated) is
   updated as its last mention asks. The earlier mention keeps its slot as
   `{ id | path, detail }` with no `ok`; if the last mention then fails with
@@ -66,10 +78,11 @@ Part of [Skip entries, tool by tool](README.md).
   the call named them, and `name`/`color` pair by that place — it used to answer
   every clip slot first and the arrangement after. A destination that got no
   clip holds its slot as a skip: a track that isn't there or won't take the
-  clip, a transform its meter can't read, a create Live declined, a take lane
-  past the cap, one the deadline never reached. A `firstStart` the call can't
-  use — without `looping: true`, or at or past the region's end — is a `detail`
-  on that clip's entry rather than a warning, and no `ok`: the clip exists.
+  clip, a transform its meter can't read, a length that spans nothing in its
+  meter, a create Live declined, a take lane past the cap, one the deadline
+  never reached. A `firstStart` the call can't use — without `looping: true`, or
+  at or past the region's end — is a `detail` on that clip's entry rather than a
+  warning, and no `ok`: the clip exists.
 - **create-clip: a place named twice** (the same slot or arrangement spot) is
   written once, by its last mention. The earlier one is
   `{ path, detail: 'named again as "<where>" later in this call' }` with no
@@ -92,6 +105,29 @@ Part of [Skip entries, tool by tool](README.md).
   clip) is a whole-call warning, `auto ignored: …`. A clip meter Live changed (a
   numerator it clamps) is reported as read back, but the clip's region is still
   laid out in the meter asked for.
+- **A clip's own scale (`scale`) is MIDI-only and needs Live 12.4.15.** Each
+  clip keeps its own scale; writing one changes that clip alone, and a clip made
+  without one starts with the Live Set's. update-clip and create-clip take a
+  `scale` (`"C Major"`, `""` for none) with a list form, one per clip. It is
+  written before the clip's notes and transforms. The entry reports `scale` only
+  when Live stores a different spelling than the one asked for, with a `detail`
+  (a sharp root comes back flat), like update-live-set. A param the clip can't
+  take is a `detail` on its entry, never a warning, and a skip when it was all
+  update-clip was asked of that clip:
+  - `scale ignored: the clip is audio`, on an audio clip.
+  - `scale ignored: requires Live 12.4.15 or later`, on every clip of a call run
+    on older Live, where clips have no scale. Everything else in the call goes
+    ahead. The version is asked once per call.
+  - Live fails partway: the clip keeps its entry with `already changed: scale`
+    once its scale has begun to change.
+- **read-clip shows a MIDI clip's `scale` (and `scalePitches`) only when it
+  differs from the Live Set's.** Both off is the same. A clip with its scale off
+  while the Live Set's is on reads `scale: ""` (no `scalePitches`). A clip with
+  its scale on while the Live Set's is off, or with another root or name, reads
+  `"Root Name"` in the format read-live-set uses. Nothing is shown for an audio
+  clip, or on Live older than 12.4.15. There is no include for it. The version
+  and the Live Set's scale are read once per call, not per clip. read-track and
+  read-scene clip entries don't show it.
 - **A clip slot past the last scene is a destination, so it is created.**
   create-clip, update-clip's `toPath` and duplicate's `toPath` all make the
   scenes up to a slot that isn't there yet, sharing one helper, and the entry

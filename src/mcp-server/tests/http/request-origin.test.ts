@@ -3,14 +3,16 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { type Request, type Response } from "express";
+import { type Request } from "express";
 import { describe, expect, it } from "vitest";
 import {
   isLocalOrigin,
   isSameOriginRequest,
   rejectCrossOriginWrite,
   rejectForeignOriginWrite,
+  rejectRebindableOriginWrite,
 } from "../../helpers/http/request-origin.ts";
+import { mockRes } from "./mock-express-response-test-helpers.ts";
 
 /**
  * A minimal Express request exposing only the `Origin`/`Host` headers the
@@ -36,34 +38,6 @@ function mockReq(headers: { origin?: string; host?: string }): Request {
       return undefined;
     },
   } as unknown as Request;
-}
-
-/**
- * A Response stub capturing the status + JSON body a rejection writes.
- * @returns The stub response plus the captured status/body state
- */
-function mockRes(): {
-  res: Response;
-  state: { status: number | null; body: unknown };
-} {
-  const state: { status: number | null; body: unknown } = {
-    status: null,
-    body: undefined,
-  };
-  const res = {
-    status(code: number): Response {
-      state.status = code;
-
-      return res;
-    },
-    json(payload: unknown): Response {
-      state.body = payload;
-
-      return res;
-    },
-  } as unknown as Response;
-
-  return { res, state };
 }
 
 describe("isLocalOrigin", () => {
@@ -223,5 +197,90 @@ describe("rejectForeignOriginWrite", () => {
 
     expect(rejectForeignOriginWrite(req, res, "nope")).toBe(true);
     expect(state.status).toBe(403);
+  });
+});
+
+describe("rejectRebindableOriginWrite", () => {
+  it("allows a non-browser (Origin-less) request", () => {
+    const { res, state } = mockRes();
+    const req = mockReq({ host: "evil.example:3350" });
+
+    expect(rejectRebindableOriginWrite(req, res, "nope")).toBe(false);
+    expect(state.status).toBeNull();
+  });
+
+  it.each([
+    ["localhost", "http://localhost:3350", "localhost:3350"],
+    ["127.0.0.1", "http://127.0.0.1:3350", "127.0.0.1:3350"],
+    ["[::1]", "http://[::1]:3350", "[::1]:3350"],
+    ["a LAN IP", "http://192.168.1.5:3350", "192.168.1.5:3350"],
+    ["a LAN IPv6", "http://[fd00::5]:3350", "[fd00::5]:3350"],
+    ["a *.localhost name", "http://pp.localhost:3350", "pp.localhost:3350"],
+  ])("allows a same-origin request on %s", (_name, origin, host) => {
+    const { res, state } = mockRes();
+
+    expect(
+      rejectRebindableOriginWrite(mockReq({ origin, host }), res, "x"),
+    ).toBe(false);
+    expect(state.status).toBeNull();
+  });
+
+  it("rejects DNS rebinding: a DNS-name Host that matches the Origin", () => {
+    const { res, state } = mockRes();
+    const req = mockReq({
+      origin: "http://evil.example:3350",
+      host: "evil.example:3350",
+    });
+
+    expect(rejectRebindableOriginWrite(req, res, "no install")).toBe(true);
+    expect(state.status).toBe(403);
+    expect(state.body).toStrictEqual({ error: "no install" });
+  });
+
+  it("rejects a tunnel's DNS name", () => {
+    const { res, state } = mockRes();
+    const req = mockReq({
+      origin: "https://demo.trycloudflare.com",
+      host: "demo.trycloudflare.com",
+    });
+
+    expect(rejectRebindableOriginWrite(req, res, "x")).toBe(true);
+    expect(state.status).toBe(403);
+  });
+
+  it("rejects a local Origin with a non-loopback Host", () => {
+    const { res } = mockRes();
+
+    expect(
+      rejectRebindableOriginWrite(
+        mockReq({ origin: "http://localhost:3350", host: "192.168.1.5:3350" }),
+        res,
+        "x",
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects a foreign Origin even when the Host is an IP literal", () => {
+    const { res } = mockRes();
+
+    expect(
+      rejectRebindableOriginWrite(
+        mockReq({ origin: "https://evil.example", host: "192.168.1.5:3350" }),
+        res,
+        "x",
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects a browser request with no Host header", () => {
+    const { res } = mockRes();
+
+    expect(
+      rejectRebindableOriginWrite(
+        mockReq({ origin: "http://localhost:3350" }),
+        res,
+        "x",
+      ),
+    ).toBe(true);
   });
 });

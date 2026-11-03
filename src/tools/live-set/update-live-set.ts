@@ -40,12 +40,14 @@ import {
   validateLocatorOperation,
 } from "./helpers/locator-updates.ts";
 import {
-  applyScale,
   applyTempo,
   applyTimeSignature,
+} from "./helpers/tempo-and-scale-updates.ts";
+import {
   type ParsedScale,
   parseScale,
-} from "./helpers/tempo-and-scale-updates.ts";
+} from "#src/tools/shared/schema/scale/scale-parsing.ts";
+import { applyScale } from "#src/tools/shared/schema/scale/scale-writing.ts";
 
 interface UpdateLiveSetArgs {
   tempo?: number;

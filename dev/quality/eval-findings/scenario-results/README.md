@@ -20,3 +20,5 @@ model the newest directory wins, and refused or errored trials never count.
 | [runs-02-13.md](runs-02-13.md) | Failures in runs 2-9, what moved through run 10, qwen 11-13 |
 | [runs-14-23.md](runs-14-23.md) | What moved, luna and haiku (no full failure lists)          |
 | [runs-24-25.md](runs-24-25.md) | Sonnet 5.5 and GPT-6.1 Terra, every failure                 |
+| [runs-26-30.md](runs-26-30.md) | Luna, haiku and qwen around 2.5.1, every failure            |
+| [runs-31-33.md](runs-31-33.md) | Luna, haiku and qwen on 2.6.0-rc1, every failure            |

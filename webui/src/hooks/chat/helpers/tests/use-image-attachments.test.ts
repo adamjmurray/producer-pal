@@ -90,11 +90,11 @@ describe("useImageAttachments pastes that carry text too", () => {
     );
   });
 
-  it("attaches the image when the HTML is only that image", () => {
+  it("keeps real text typed alongside an image-only HTML paste", () => {
     vi.mocked(attachImages).mockResolvedValue({ images: [], notice: null });
     const { result } = renderHook(() => useImageAttachments());
     const event = pasteEvent(
-      "https://example.com/shot.png",
+      "look at this",
       "<meta charset='utf-8'><!--StartFragment-->" +
         '<img src="https://example.com/shot.png" alt="shot"/>' +
         "<!--EndFragment-->",
@@ -105,6 +105,40 @@ describe("useImageAttachments pastes that carry text too", () => {
     // The editor still pastes the text.
     expect(event.preventDefault).not.toHaveBeenCalled();
     expect(attachImages).toHaveBeenCalled();
+  });
+
+  it.each([
+    ["a Finder file name", "image.png", ""],
+    ["a file name with surrounding whitespace", " image.png\n", ""],
+    [
+      "a Firefox Copy Image URL",
+      "https://example.com/shot.png",
+      '<img src="https://example.com/shot.png"/>',
+    ],
+  ])("drops %s and attaches the image", (_label, text, html) => {
+    vi.mocked(attachImages).mockResolvedValue({ images: [], notice: null });
+    const { result } = renderHook(() => useImageAttachments());
+    const event = pasteEvent(text, html);
+
+    void act(() => result.current.zoneProps.onPasteCapture(event));
+
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(event.stopPropagation).toHaveBeenCalledOnce();
+    expect(attachImages).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a link that is part of an HTML copy with real text", () => {
+    vi.mocked(attachImages).mockResolvedValue({ images: [], notice: null });
+    const { result } = renderHook(() => useImageAttachments());
+    const event = pasteEvent(
+      "https://example.com/page",
+      '<a href="https://example.com/page">The page</a>',
+    );
+
+    void act(() => result.current.zoneProps.onPasteCapture(event));
+
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(attachImages).not.toHaveBeenCalled();
   });
 });
 

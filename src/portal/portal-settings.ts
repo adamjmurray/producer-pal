@@ -13,6 +13,8 @@ import {
 } from "#src/shared/config.ts";
 import { NOTATION_HEADER, type Notation } from "#src/shared/notation.ts";
 
+const CONFIG_TIMEOUT_MS = 2000;
+
 /**
  * The portal's per-client settings. Every one of them travels as a request
  * header, never as a POST /config push: those write device-wide state, so one
@@ -80,4 +82,32 @@ export function requestHeaderTransportOptions(options: BridgeOptions): {
   requestInit: { headers: Record<string, string> };
 } {
   return { requestInit: { headers: buildRequestHeaders(options) } };
+}
+
+/**
+ * Whether small-model mode is on for this portal's calls. The portal's own
+ * setting wins; otherwise the device's (Chat UI toggle), read from GET /config.
+ * Never throws: when the device can't say, the answer is false.
+ * @param portalSetting - The portal's small-model setting, if it has one
+ * @param mcpUrl - The device's MCP URL
+ * @returns True when small-model mode is on
+ */
+export async function callerSmallModelMode(
+  portalSetting: boolean | undefined,
+  mcpUrl: string,
+): Promise<boolean> {
+  if (portalSetting != null) {
+    return portalSetting;
+  }
+
+  try {
+    const response = await fetch(new URL("/config", mcpUrl), {
+      signal: AbortSignal.timeout(CONFIG_TIMEOUT_MS),
+    });
+    const config = (await response.json()) as { smallModelMode?: unknown };
+
+    return config.smallModelMode === true;
+  } catch {
+    return false;
+  }
 }

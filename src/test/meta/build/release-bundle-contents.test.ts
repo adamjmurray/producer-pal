@@ -12,19 +12,31 @@
 // So this builds the release bundles for real and inspects which modules went
 // in — the artifact, not the config text.
 
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { rolldown, type InputOptions, type RolldownOutput } from "rolldown";
+import { isAbsolute, join } from "node:path";
+import {
+  rolldown,
+  type InputOptions,
+  type OutputOptions,
+  type RolldownOutput,
+} from "rolldown";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { projectRoot } from "#src/test/helpers/meta-test-helpers.ts";
+import { GEN_UI_REMOTE_SCRIPT_FILES } from "#src/mcp-server/rpc/remote-script/bundle/gen-ui-remote-script-files.ts";
+import {
+  pluginHostSourceDir,
+  readPluginHostSource,
+} from "#src/portal/setup/plugin-host/plugin-host-source.ts";
+import { projectRoot, repoPath } from "#src/test/helpers/meta-test-helpers.ts";
 import {
   DEV_BUILD_MARKER,
   GUARDED_BUILD_FLAGS,
 } from "../../../../scripts/build-and-release/helpers/build-flag-guard.ts";
+import { buildChatUI } from "../../../../config/rolldown-plugin-inline-chat-ui.mjs";
 import {
   BUILD_STATS_STUBS,
   CODE_EXEC_STUBS,
+  PLUGIN_HOST_TOOL_STUBS,
 } from "../../../../config/rolldown-plugin-stub-modules.mjs";
 
 // Taken from the plugin's own tables rather than restated. A restated path that
@@ -34,6 +46,7 @@ import {
 const STUB_TABLE: Record<string, string> = {
   ...CODE_EXEC_STUBS,
   ...BUILD_STATS_STUBS,
+  ...PLUGIN_HOST_TOOL_STUBS,
 };
 
 /** Modules that must never reach a build without those flags. */
@@ -69,6 +82,11 @@ const chunkCode: Record<string, string> = {};
 let portalWithInstaller = "";
 let bundleCount = 0;
 let scratchDir = "";
+// Where the chat UI is built, so a test run never touches the device's folder:
+// one folder per variant (release, gen UI), since the flags are baked in at
+// build time. A build with a flag on must never write to the release one.
+let releaseUiDir = "";
+let genUiDir = "";
 
 beforeAll(async () => {
   // The config reads these at import time; a shell that happens to export one
@@ -79,11 +97,21 @@ beforeAll(async () => {
   }
 
   scratchDir = mkdtempSync(join(tmpdir(), "ppal-bundle-contents-"));
+  releaseUiDir = join(scratchDir, "chat-ui-release");
+  genUiDir = join(scratchDir, "chat-ui-gen");
+  process.env.CHAT_UI_OUT_DIR = releaseUiDir;
 
   const fakeDevice = join(scratchDir, "Producer_Pal.amxd");
 
   writeFileSync(fakeDevice, FAKE_DEVICE_TEXT);
   process.env.PRODUCER_PAL_DEVICE_FILE = fakeDevice;
+
+  // Each device build would otherwise build its chat UI in turn, blocking.
+  // Built up front, in parallel, the bundler finds them fresh and reuses them.
+  await Promise.all([
+    buildChatUI({ CHAT_UI_OUT_DIR: releaseUiDir }),
+    buildChatUI({ CHAT_UI_OUT_DIR: genUiDir, ENABLE_GEN_UI: "true" }),
+  ]);
 
   const config = await import("../../../../config/rolldown.config.mjs");
   const configs = config.default as (InputOptions & { output: unknown })[];
@@ -118,6 +146,7 @@ beforeAll(async () => {
 
 afterAll(() => {
   delete process.env.PRODUCER_PAL_DEVICE_FILE;
+  delete process.env.CHAT_UI_OUT_DIR;
   rmSync(scratchDir, { recursive: true, force: true });
 });
 
@@ -157,6 +186,13 @@ describe.each(BUNDLES)("release bundle: $name", ({ name, stubs }) => {
 
   it("carries no dev-build marker", () => {
     expect(chunkCode[name]).not.toContain(DEV_BUILD_MARKER);
+  });
+
+  // A dev-only debug tool: ENABLE_LIVE_API picks it, so a release leaves it out.
+  it("does not carry the ppal-plugin-host tool", () => {
+    expect(chunkCode[name]).not.toContain('"ppal-plugin-host"');
+    expect(chunkCode[name]).not.toContain("Spike: read and set VST3");
+    expect(chunkCode[name]).not.toContain("action 'raw' needs");
   });
 
   it("does not import node:vm", () => {
@@ -201,6 +237,13 @@ describe("dev build marker", () => {
   it.each(BUNDLES.map((b) => b.name))("is in the %s bundle", (name) => {
     expect(devCode[name]).toContain(`/* ${DEV_BUILD_MARKER} */`);
   });
+
+  it.each(["live-api-adapter", "mcp-server"])(
+    "has the ppal-plugin-host tool in the %s bundle",
+    (name) => {
+      expect(devCode[name]).toContain('"ppal-plugin-host"');
+    },
+  );
 });
 
 describe("remote script embedding", () => {
@@ -220,6 +263,154 @@ describe("remote script embedding", () => {
   });
 });
 
+// A release leaves the gen-UI Python out entirely, and a gen-UI build has it.
+describe("gen-UI remote script files", () => {
+  const embeddedKey = (file: string): string => `"${file}":`;
+  let genUiCode = "";
+
+  beforeAll(async () => {
+    vi.resetModules();
+    process.env.ENABLE_GEN_UI = "true";
+    // Also inlines the gen-UI chat UI the flagged chat UI checks read.
+    process.env.CHAT_UI_OUT_DIR = genUiDir;
+
+    try {
+      const config = await import("../../../../config/rolldown.config.mjs");
+      const configs = config.default as (InputOptions & { output: unknown })[];
+
+      const built = await buildChunks(configs[1] as InputOptions);
+
+      genUiCode = built.code;
+    } finally {
+      delete process.env.ENABLE_GEN_UI;
+      process.env.CHAT_UI_OUT_DIR = releaseUiDir;
+    }
+  }, 120_000);
+
+  it.each(GEN_UI_REMOTE_SCRIPT_FILES)(
+    "%s is not in a release build",
+    (file) => {
+      expect(chunkCode["mcp-server"]).not.toContain(embeddedKey(file));
+      expect(portalWithInstaller).not.toContain(embeddedKey(file));
+    },
+  );
+
+  it.each(GEN_UI_REMOTE_SCRIPT_FILES)("%s is in a gen-UI build", (file) => {
+    expect(genUiCode).toContain(embeddedKey(file));
+  });
+
+  // The Python files above only prove the bundler dropped them. This proves the
+  // gate itself is a constant: a flag read the replacement plugin misses (say
+  // `process.env["ENABLE_GEN_UI"]`) would stay a runtime check in the release.
+  const CONSTANT_FALSE_GATE =
+    /function isGenUiEnabled\(\)\s*\{\s*return false;?\s*\}/;
+  const RUNTIME_FLAG_READ = /\benv\s*(?:\?\.|\.|\[\s*["'`])\s*ENABLE_GEN_UI/;
+
+  it("inlines isGenUiEnabled() to false in a release build", () => {
+    expect(chunkCode["mcp-server"]).toMatch(CONSTANT_FALSE_GATE);
+  });
+
+  it("does not read ENABLE_GEN_UI at runtime in a release build", () => {
+    expect(chunkCode["mcp-server"]).not.toMatch(RUNTIME_FLAG_READ);
+    expect(chunkCode["mcp-server"]).not.toMatch(
+      /ENABLE_GEN_UI[^\n]*=\s*process\.env\b/,
+    );
+  });
+
+  it("does not inline isGenUiEnabled() to false in a gen-UI build", () => {
+    expect(genUiCode).not.toMatch(CONSTANT_FALSE_GATE);
+  });
+});
+
+// Hosting ships in every build: the `hosted` param, the wrappers' bytes and the
+// code that installs them.
+describe("hosted plug-ins", () => {
+  const NODE_BUNDLES = ["mcp-server", "portal"] as const;
+  // The start of each file, which differs by device type.
+  const wrapperBytes = Object.values(
+    readPluginHostSource(pluginHostSourceDir(projectRoot)),
+  ).map((base64) => base64.slice(0, 200));
+
+  it("finds the wrapper files to look for", () => {
+    expect(new Set(wrapperBytes).size).toBe(2);
+    expect(wrapperBytes.every((bytes) => bytes.length === 200)).toBe(true);
+  });
+
+  it("mcp-server: offers `hosted` on ppal-create-device", () => {
+    expect(chunkCode["mcp-server"]).toContain("inside a Producer Pal wrapper");
+  });
+
+  it("live-api-adapter: reads hosted plug-ins", () => {
+    expect(chunkCode["live-api-adapter"]).toContain("detectHostedPlugin");
+  });
+
+  it.each(NODE_BUNDLES)("%s: embeds both wrappers", (name) => {
+    for (const bytes of wrapperBytes) {
+      expect(chunkCode[name]).toContain(bytes);
+    }
+  });
+
+  it.each(NODE_BUNDLES)("%s: has the install code", (name) => {
+    expect(chunkCode[name]).toContain("installPluginHostWrappers");
+  });
+
+  it("keeps the bytes out of the V8 bundle", () => {
+    for (const bytes of wrapperBytes) {
+      expect(chunkCode["live-api-adapter"]).not.toContain(bytes);
+    }
+  });
+});
+
+const readUi = (dir: string): string =>
+  readFileSync(join(dir, "chat-ui.html"), "utf-8");
+
+// The chat UI carries the plug-in host install UI in every build. The UI is
+// minified, so a name left in it is real code.
+describe("plug-in host chat UI", () => {
+  const text = ["Install the plug-in host devices", "Plug-in host devices:"];
+
+  it.each([...text, "pluginHost"])("a release chat-ui.html has %s", (str) => {
+    expect(readUi(releaseUiDir)).toContain(str);
+  });
+
+  it.each(text)("the release device bundle has %s", (str) => {
+    expect(chunkCode["mcp-server"]).toContain(str);
+  });
+});
+
+// A release chat UI must carry none of the unfinished generative-UI panel's
+// text or code, or a user could reach it by typing a URL. The device bundle
+// inlines the chat UI, so that is checked too.
+describe("generative-UI chat panel", () => {
+  const text = [
+    "Generative UI",
+    "No widgets yet",
+    "gen-app-frame",
+    "producer_pal_gen_app_source",
+    "Not available in this build",
+  ];
+  const code = ["ENABLE_GEN_UI"];
+
+  it.each([...text, ...code])("a release chat-ui.html has no %s", (str) => {
+    expect(readUi(releaseUiDir)).not.toContain(str);
+  });
+
+  it.each(text)("the release device bundle has no %s", (str) => {
+    expect(chunkCode["mcp-server"]).not.toContain(str);
+  });
+
+  // Text only: the flag name itself is replaced by its value in that build.
+  it.each(text)("a gen-UI chat-ui.html has %s", (str) => {
+    expect(readUi(genUiDir)).toContain(str);
+  });
+});
+
+it("finds a built chat UI for each variant", () => {
+  for (const dir of [releaseUiDir, genUiDir]) {
+    expect(readUi(dir).length).toBeGreaterThan(1_000_000);
+  }
+});
+
 /**
  * Bundle one rolldown config in memory.
  *
@@ -230,11 +421,18 @@ async function buildChunks(
   input: InputOptions,
 ): Promise<{ ids: string[]; code: string }> {
   const bundle = await rolldown(input);
+  // The config's own output settings, not rolldown's defaults: those give a
+  // device bundle cut down to a few hundred KB with the tools missing, which
+  // would let every absence check pass for nothing.
+  const output: OutputOptions = {
+    ...((input as { output?: OutputOptions }).output ?? { format: "es" }),
+    file: undefined,
+  };
 
   let generated: RolldownOutput;
 
   try {
-    generated = await bundle.generate({ format: "es" });
+    generated = await bundle.generate(output);
   } finally {
     await bundle.close();
   }
@@ -244,9 +442,7 @@ async function buildChunks(
   return {
     ids: chunks.flatMap((chunk) =>
       Object.keys(chunk.modules).map((id) =>
-        id.startsWith(`${projectRoot}/`)
-          ? id.slice(projectRoot.length + 1)
-          : id,
+        isAbsolute(id) && !repoPath(id).startsWith("..") ? repoPath(id) : id,
       ),
     ),
     code: chunks.map((chunk) => chunk.code).join("\n"),

@@ -25,6 +25,7 @@ import {
   type ProbeResult,
 } from "./port/remote-script-port.ts";
 import {
+  outdatedFields,
   outdatedScript,
   unknownRouteReason,
 } from "./port/remote-script-version.ts";
@@ -194,10 +195,16 @@ export async function remoteScriptRequest({
   }
 
   const outdated =
-    port == null ? outdatedScript(cachedScriptVersion(target), asker) : null;
+    port == null
+      ? outdatedFields(
+          (manage) =>
+            outdatedScript(cachedScriptVersion(target), asker, manage),
+          asker,
+        )
+      : null;
 
   if (outdated != null) {
-    return { available: false, outdated };
+    return { available: false, ...outdated };
   }
 
   const reply = await send(
@@ -216,14 +223,19 @@ export async function remoteScriptRequest({
   }
 
   // A script too old to have the route says so; no other 404 does.
-  const unknown = unknownRouteReason(
-    reply.status,
-    reply.body,
-    cachedScriptVersion(target),
+  const unknown = outdatedFields(
+    (manage) =>
+      unknownRouteReason(
+        reply.status,
+        reply.body,
+        cachedScriptVersion(target),
+        asker,
+        manage,
+      ),
     asker,
   );
 
-  return unknown == null ? reply : { available: false, outdated: unknown };
+  return unknown == null ? reply : { available: false, ...unknown };
 }
 
 /**
@@ -493,7 +505,13 @@ export function unavailableReply(
 ): RemoteScriptUnavailable {
   return reply.outdated == null
     ? { available: false }
-    : { available: false, outdated: reply.outdated };
+    : {
+        available: false,
+        outdated: reply.outdated,
+        ...(reply.outdatedWithoutManage != null && {
+          outdatedWithoutManage: reply.outdatedWithoutManage,
+        }),
+      };
 }
 
 /**

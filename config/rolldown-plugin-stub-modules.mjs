@@ -23,7 +23,7 @@ const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
  * path, so it makes no difference whether a caller wrote `./x.ts` or `#src/…`.
  */
 export const CODE_EXEC_STUBS = {
-  "src/live-api-adapter/code-exec-v8-protocol.ts":
+  "src/live-api-adapter/protocols/code-exec-v8-protocol.ts":
     "src/tools/clip/code-exec/code-exec-v8-protocol-disabled.ts",
   "src/mcp-server/code-executor.ts":
     "src/tools/clip/code-exec/code-executor-disabled.ts",
@@ -35,6 +35,12 @@ export const CODE_EXEC_STUBS = {
 export const BUILD_STATS_STUBS = {
   "src/live-api-adapter/live-api-build-stats.ts":
     "src/live-api-adapter/live-api-build-stats-disabled.ts",
+};
+
+/** Same, for the ppal-plugin-host debug tool, which only a dev build carries. */
+export const PLUGIN_HOST_TOOL_STUBS = {
+  "src/tools/advanced/plugin-host/plugin-host.def.ts":
+    "src/tools/advanced/plugin-host/plugin-host-def-disabled.ts",
 };
 
 /**
@@ -53,6 +59,15 @@ export function stubCodeExec() {
  */
 export function stubBuildStats() {
   return stubModules("stub-build-stats", BUILD_STATS_STUBS);
+}
+
+/**
+ * Build the ppal-plugin-host stub plugin. Only add it when ENABLE_LIVE_API is off.
+ *
+ * @returns A rolldown plugin
+ */
+export function stubPluginHostTool() {
+  return stubModules("stub-plugin-host-tool", PLUGIN_HOST_TOOL_STUBS);
 }
 
 /**

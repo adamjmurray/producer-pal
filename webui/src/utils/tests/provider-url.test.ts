@@ -6,8 +6,64 @@
 import { describe, expect, it } from "vitest";
 import {
   getBaseUrl,
+  isProviderReady,
+  LOCAL_PROVIDER_API_KEY,
   normalizeLocalProviderUrl,
+  resolveProviderApiKey,
 } from "#webui/utils/provider-url";
+
+describe("resolveProviderApiKey", () => {
+  it("passes a stored key through", () => {
+    expect(resolveProviderApiKey("openai", "sk-1")).toBe("sk-1");
+    expect(resolveProviderApiKey("custom", "sk-1", "https://x.test/v1")).toBe(
+      "sk-1",
+    );
+  });
+
+  it.each(["lmstudio", "ollama"])("uses the placeholder for %s", (provider) => {
+    expect(resolveProviderApiKey(provider, "")).toBe(LOCAL_PROVIDER_API_KEY);
+  });
+
+  it("uses the placeholder for a custom provider with a URL and no key", () => {
+    expect(resolveProviderApiKey("custom", "", "https://x.test/v1")).toBe(
+      LOCAL_PROVIDER_API_KEY,
+    );
+  });
+
+  it.each([undefined, "", "   "])(
+    "gives a custom provider with URL %j and no key no key",
+    (baseUrl) => {
+      expect(resolveProviderApiKey("custom", "", baseUrl)).toBe("");
+    },
+  );
+
+  it("gives a cloud provider with no key no key, even with a URL", () => {
+    expect(resolveProviderApiKey("openai", "", "https://x.test/v1")).toBe("");
+  });
+});
+
+describe("isProviderReady", () => {
+  it("is true for a provider with a key", () => {
+    expect(isProviderReady("anthropic", "sk-1")).toBe(true);
+  });
+
+  it("is false for a cloud provider with no key", () => {
+    expect(isProviderReady("anthropic", "")).toBe(false);
+  });
+
+  it("is true for local providers with no key", () => {
+    expect(isProviderReady("lmstudio", "")).toBe(true);
+    expect(isProviderReady("ollama", "")).toBe(true);
+  });
+
+  it("is true for custom with a URL and no key", () => {
+    expect(isProviderReady("custom", "", "https://x.test/v1")).toBe(true);
+  });
+
+  it("is false for custom with an empty URL and no key", () => {
+    expect(isProviderReady("custom", "", "")).toBe(false);
+  });
+});
 
 describe("normalizeLocalProviderUrl", () => {
   it("appends /v1 when missing", () => {

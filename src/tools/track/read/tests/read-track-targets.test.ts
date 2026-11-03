@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Claude Code (Anthropic)
+// AI assistance: Claude Code (Anthropic), Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
@@ -14,6 +14,7 @@ describe("takeLaneRead", () => {
       from: "path",
       path: { kind: "take-lane", trackIndex: 0, laneIndex: 1 },
       entry: "t0/l1",
+      label: "path",
     });
   });
 

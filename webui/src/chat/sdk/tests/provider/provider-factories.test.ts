@@ -306,7 +306,7 @@ describe("transformAnthropicRequest", () => {
       expect(parsed.thinking?.display).toBe("summarized");
     });
 
-    it("does not modify enabled thinking (Haiku 4.5)", async () => {
+    it("does not modify enabled thinking", async () => {
       const parsed = await transform({
         thinking: { type: "enabled", budget_tokens: 10240 },
       });
@@ -483,12 +483,12 @@ describe("transformAnthropicRequest", () => {
     });
 
     it("leaves a request with no cacheable prefix untouched", async () => {
-      // Haiku is excluded from disabled-thinking injection, so this body needs
+      // Opus is excluded from disabled-thinking injection, so this body needs
       // no transform at all and must pass through byte-for-byte.
       await expectPassthrough(
         transformAnthropicRequest,
         url,
-        JSON.stringify({ model: "claude-haiku-4-5", messages: [] }),
+        JSON.stringify({ model: "claude-opus-5-5", messages: [] }),
       );
     });
   });

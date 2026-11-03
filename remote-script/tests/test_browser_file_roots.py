@@ -165,7 +165,10 @@ class PlacesByLocationTest(unittest.TestCase):
             real = os.path.join(tmp, "real", "Samples")
             os.makedirs(real)
             link = os.path.join(tmp, "link")
-            os.symlink(os.path.join(tmp, "real"), link)
+            try:
+                os.symlink(os.path.join(tmp, "real"), link)
+            except OSError:
+                self.skipTest("can't create symlinks (Windows needs Developer Mode)")
             by_link = FakeItem("Samples", [KICK], uri="userfolder:" + link + "/Samples")
             by_real = FakeItem("Samples", [KICK], uri="userfolder:" + real)
             self.assertIs(find(real + "/kick.wav", [by_link])[0], KICK)

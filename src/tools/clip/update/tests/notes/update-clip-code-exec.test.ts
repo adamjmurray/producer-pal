@@ -19,15 +19,18 @@ import {
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 // Mock the code execution protocol module
-vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
-  executeNoteCode: vi.fn(),
-  executeNoteCodeWithData: vi.fn(),
-  requestCodeExecution: vi.fn(),
-  handleCodeExecResult: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/code-exec-v8-protocol.ts"),
+  () => ({
+    executeNoteCode: vi.fn(),
+    executeNoteCodeWithData: vi.fn(),
+    requestCodeExecution: vi.fn(),
+    handleCodeExecResult: vi.fn(),
+  }),
+);
 
 // Import the mocked module to configure per-test behavior
-import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
+import { executeNoteCode } from "#src/live-api-adapter/protocols/code-exec-v8-protocol.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateClip - code execution", () => {

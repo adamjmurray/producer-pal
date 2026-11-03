@@ -376,6 +376,40 @@ describe("ppal-update-live-set", () => {
     expect(locators.length).toBe(initialLocators.length);
   });
 
+  it("deletes a locator by a name written with stray spaces", async () => {
+    // Names are stored trimmed, so a lookup must trim too or " E2E Trim "
+    // finds nothing.
+    await ctx.client!.callTool({
+      name: "ppal-update-live-set",
+      arguments: {
+        locatorOperation: "create",
+        locatorTime: "3|1",
+        locatorName: " E2E Trim ",
+      },
+    });
+    await sleep(100);
+
+    expect(
+      (await readLocatorList()).find((l) => l.name === "E2E Trim"),
+    ).toBeDefined();
+
+    const deleted = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: { locatorOperation: "delete", locatorName: " E2E Trim " },
+      }),
+    );
+
+    expect(deleted.locator?.operation).toBe("delete");
+    expect(deleted.locator?.count).toBe(1);
+
+    await sleep(100);
+
+    expect(
+      (await readLocatorList()).find((l) => l.name === "E2E Trim"),
+    ).toBeUndefined();
+  });
+
   // Past the song end, a temp clip on the first usable track extends the song.
   it("creates a locator past the song end and removes the temp clip", async () => {
     const arrangementClipCount = async (): Promise<number> => {

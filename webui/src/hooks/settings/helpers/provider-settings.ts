@@ -214,36 +214,6 @@ function readLegacyGeminiSettings(): ProviderSettings {
   return { ...DEFAULT_SETTINGS.gemini, ...legacySettings };
 }
 
-/**
- * Checks if provider has an API key configured
- * @param {Provider} provider - Provider to check
- * @returns {any} - Hook return value
- */
-export function checkHasApiKey(provider: Provider): boolean {
-  if (provider === "lmstudio" || provider === "ollama") {
-    return Boolean(localStorage.getItem(`producer_pal_provider_${provider}`));
-  }
-
-  const savedData = localStorage.getItem(`producer_pal_provider_${provider}`);
-
-  if (savedData) {
-    try {
-      const data = JSON.parse(savedData);
-
-      return Boolean(data.apiKey);
-    } catch {
-      return false;
-    }
-  }
-
-  // Legacy Gemini API key check
-  if (provider === "gemini") {
-    return Boolean(localStorage.getItem("gemini_api_key"));
-  }
-
-  return false;
-}
-
 export interface AllProviderSettings {
   anthropic: ProviderSettings;
   gemini: ProviderSettings;

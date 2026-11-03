@@ -26,6 +26,28 @@ const PLAYHEAD = 8;
 /** Beat 6 (bar 2, beat 3): where a Set that was playing started from. */
 const START = 6;
 
+/** @returns The answer to a call creating a locator at bar 5 */
+function createAtBar5(): ReturnType<typeof updateLiveSet> {
+  return updateLiveSet({ locatorOperation: "create", locatorTime: "5|1" });
+}
+
+/**
+ * Create a locator at bar 5 on an empty Set, and expect it made with one
+ * warning.
+ * @param set - The simulated Set
+ * @param warning - The warning the call raises
+ */
+async function expectCreatedWarning(
+  set: ReturnType<typeof simulateLocators>,
+  warning: string,
+): Promise<void> {
+  const result = await createAtBar5();
+
+  expect(result.locator).toStrictEqual({ operation: "create", id: "26" });
+  expect(set.locators()).toStrictEqual([{ time: 16, name: "" }]);
+  expect(capturedWarnings()).toStrictEqual([warning]);
+}
+
 /**
  * The positions the start marker was sent to.
  * @param liveSet - The live_set mock
@@ -88,7 +110,7 @@ describe("the playhead after locator edits", () => {
   it("is back after a create", async () => {
     const set = simulateLocators(liveSet, [], { playhead: PLAYHEAD });
 
-    await updateLiveSet({ locatorOperation: "create", locatorTime: "5|1" });
+    await createAtBar5();
 
     expect(set.locators()).toStrictEqual([{ time: 16, name: "" }]);
     expect(set.playhead()).toBe(PLAYHEAD);
@@ -138,9 +160,7 @@ describe("the playhead after locator edits", () => {
       noCueAt: 16,
     });
 
-    await expect(
-      updateLiveSet({ locatorOperation: "create", locatorTime: "5|1" }),
-    ).rejects.toThrow("Live made no locator at 5|1");
+    await expect(createAtBar5()).rejects.toThrow("Live made no locator at 5|1");
     expect(set.playhead()).toBe(PLAYHEAD);
   });
 
@@ -187,7 +207,7 @@ describe("the playhead after locator edits", () => {
       playing: true,
     });
 
-    await updateLiveSet({ locatorOperation: "create", locatorTime: "5|1" });
+    await createAtBar5();
 
     expect(liveSet.call).toHaveBeenCalledWith("stop_playing");
     expect(capturedWarnings()).toStrictEqual([
@@ -199,7 +219,7 @@ describe("the playhead after locator edits", () => {
   it("is left alone by a create where a locator already is", async () => {
     simulateLocators(liveSet, LOCATORS, { playhead: PLAYHEAD, playing: true });
 
-    await updateLiveSet({ locatorOperation: "create", locatorTime: "5|1" });
+    await createAtBar5();
 
     // Playing, and nothing moved it: writing the old spot would make it jump.
     expect(playheadWrites(liveSet)).toStrictEqual([]);
@@ -230,7 +250,7 @@ describe("the playhead after locator edits", () => {
       },
     });
 
-    await updateLiveSet({ locatorOperation: "create", locatorTime: "5|1" });
+    await createAtBar5();
 
     expect(set.locators()).toHaveLength(1);
     expect(playheadWrites(liveSet)).toStrictEqual([16]);
@@ -265,22 +285,28 @@ describe("the start marker after locator edits", () => {
     liveSet = registerMockObject("live_set_id", { path: "live_set" });
   });
 
-  it("is put back after playback was stopped to edit", async () => {
+  it.each([
+    [
+      "is put back after playback was stopped to edit",
+      true,
+      // After the playhead, which dragged it along.
+      [START],
+      ["Playback stopped to modify locators"],
+    ],
+    ["is not written on a stopped Set, where nothing drags it", false, [], []],
+  ])("%s", async (_, playing, writes, warnings) => {
     const set = simulateLocators(liveSet, [], {
       playhead: PLAYHEAD,
-      playing: true,
+      playing,
       startTime: START,
     });
 
-    await updateLiveSet({ locatorOperation: "create", locatorTime: "5|1" });
+    await createAtBar5();
 
     expect(set.playhead()).toBe(PLAYHEAD);
     expect(set.startTime()).toBe(START);
-    // After the playhead, which dragged it along.
-    expect(startTimeWrites(liveSet)).toStrictEqual([START]);
-    expect(capturedWarnings()).toStrictEqual([
-      "Playback stopped to modify locators",
-    ]);
+    expect(startTimeWrites(liveSet)).toStrictEqual(writes);
+    expect(capturedWarnings()).toStrictEqual(warnings);
   });
 
   it("is put back after a delete on a playing Set", async () => {
@@ -304,23 +330,8 @@ describe("the start marker after locator edits", () => {
       noCueAt: 16,
     });
 
-    await expect(
-      updateLiveSet({ locatorOperation: "create", locatorTime: "5|1" }),
-    ).rejects.toThrow("Live made no locator at 5|1");
+    await expect(createAtBar5()).rejects.toThrow("Live made no locator at 5|1");
     expect(set.startTime()).toBe(START);
-  });
-
-  it("is not written on a stopped Set, where nothing drags it", async () => {
-    const set = simulateLocators(liveSet, [], {
-      playhead: PLAYHEAD,
-      startTime: START,
-    });
-
-    await updateLiveSet({ locatorOperation: "create", locatorTime: "5|1" });
-
-    expect(set.playhead()).toBe(PLAYHEAD);
-    expect(set.startTime()).toBe(START);
-    expect(startTimeWrites(liveSet)).toStrictEqual([]);
   });
 
   it("is not written over a rename", async () => {
@@ -349,10 +360,7 @@ describe("the start marker after locator edits", () => {
 
       failWrites(liveSet, how, (property) => property === "start_time");
 
-      const result = await updateLiveSet({
-        locatorOperation: "create",
-        locatorTime: "5|1",
-      });
+      const result = await createAtBar5();
 
       expect(result.locator).toStrictEqual({ operation: "create", id: "26" });
       expect(set.playhead()).toBe(PLAYHEAD);
@@ -378,14 +386,7 @@ describe("when the playhead can't be put back", () => {
       stallAt: PLAYHEAD,
     });
 
-    const result = await updateLiveSet({
-      locatorOperation: "create",
-      locatorTime: "5|1",
-    });
-
-    expect(result.locator).toStrictEqual({ operation: "create", id: "26" });
-    expect(set.locators()).toStrictEqual([{ time: 16, name: "" }]);
-    expect(capturedWarnings()).toStrictEqual(["Playhead not put back at 3|1"]);
+    await expectCreatedWarning(set, "Playhead not put back at 3|1");
   });
 
   it("warns when Live refuses the write, and still answers the call", async () => {
@@ -393,25 +394,17 @@ describe("when the playhead can't be put back", () => {
 
     refuseSendingTo(PLAYHEAD);
 
-    const result = await updateLiveSet({
-      locatorOperation: "create",
-      locatorTime: "5|1",
-    });
-
-    expect(result.locator).toStrictEqual({ operation: "create", id: "26" });
-    expect(set.locators()).toStrictEqual([{ time: 16, name: "" }]);
-    expect(capturedWarnings()).toStrictEqual([
+    await expectCreatedWarning(
+      set,
       "Playhead not put back: Live refused the write",
-    ]);
+    );
   });
 
   it("keeps the call's own error", async () => {
     simulateLocators(liveSet, [], { playhead: PLAYHEAD, noCueAt: 16 });
     refuseSendingTo(PLAYHEAD);
 
-    await expect(
-      updateLiveSet({ locatorOperation: "create", locatorTime: "5|1" }),
-    ).rejects.toThrow("Live made no locator at 5|1");
+    await expect(createAtBar5()).rejects.toThrow("Live made no locator at 5|1");
     expect(capturedWarnings()).toStrictEqual([
       "Playhead not put back: Live refused the write",
     ]);

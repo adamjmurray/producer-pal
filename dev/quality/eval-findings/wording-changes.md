@@ -1,7 +1,7 @@
 # Skill wording changes
 
-Text changes to the skills and tool descriptions that were measured, what moved
-and what did not. The index is [README.md](README.md).
+Text changes to the skills, tool descriptions and results that were measured,
+what moved and what did not. The index is [README.md](README.md).
 
 ## Wording changes that were measured and did not work
 
@@ -49,14 +49,16 @@ message alone.
 
 Both guards were removed on 2026-09-13: any signed period is legitimate (a
 negative one runs the cycle backwards, a zero one is phase 0), and so is a
-waveform that gives every note the same value. So the lever that moved the
-number is gone on purpose. The finding stands — refusal is what causes
-self-correction — but the turn-4 check is now a capability target with no
-product lever behind it.
+waveform that gives every note the same value. What is refused instead, up
+front, is a period that references a note property (`note.*`, `next.*`): it can
+only be the radians habit. Clip values and random functions stay allowed. The
+error names the property and shows `sin(n/4)`, so the model can fix it off the
+message alone.
 
 The first call is still the radian form, and nothing we send can reach it — the
-model writes it before it has seen anything from us. The turn-4 check wants one
-call, so it stays red whatever ships. Don't retry this as prose.
+model writes it before it has seen anything from us. The scenario's turn-4 check
+wants one call, so a refusal still costs a second call and it stays red. Don't
+retry this as prose.
 
 **A locator param loses to a value the model already has.** `ppal-duplicate`'s
 locator was missed in 3 of 3 trials while `ppal-playback`'s `startLocator`
@@ -79,6 +81,17 @@ prompt's "unless the user gives specific notes" became "unless the user names a
 key, scale or specific notes": `middle-c-scale-stark` 2/4. The Stark run example
 `G A B C'`, which ends like the wrong answer, became `G B D'`: 4/8. Baseline was
 3/5; neither kept. Raising Codex's reasoning effort fixed it (6/6).
+
+**Echoing the written pitches as names doesn't catch a midi-json octave slip.**
+midi-json is the one notation where the model turns note names into numbers, and
+models slip an octave there: luna writes the whole melody with C3 = 48, and
+haiku writes one note (B3 as 59) while its reply still says B3. A prototype
+added the written pitches as names to the create-clip result
+(`pitches:"C2 E2 G2 C3 …"`). `melody-pitch-midi-json`, luna 1/3 (baseline 2/3):
+one miss ignored the echo, the other said it would fix the octave and ended the
+turn without a call. Haiku went 3/3, but every trial was right on its first
+write, so it never met a slip. Not kept: the result costs bytes on every write
+and corrected nothing. The Skill already names the convention.
 
 ## Wording changes that did work
 

@@ -14,6 +14,7 @@ import {
   createAndDeleteTempClip,
   type TilingContext,
 } from "./helpers/arrangement-tiling-clips.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 export interface HoldingClipResult {
   holdingClipId: string;
@@ -69,9 +70,7 @@ export function createShortenedClipInHolding(
 
   // Only create temp clip if there's actually something to truncate
   // Use small epsilon to handle floating-point precision
-  const EPSILON = 0.001;
-
-  if (tempLength > EPSILON) {
+  if (tempLength > SAME_TIME_EPSILON) {
     createAndDeleteTempClip(
       track,
       newHoldingEnd,

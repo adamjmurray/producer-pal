@@ -117,7 +117,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     });
   });
 
-  it("reports the sendGainDb/sendReturn pair under sends as well", () => {
+  it("reports the deprecated sendGainDb/sendReturn pair under sends as well", () => {
     keepsParamValue(send, -6.02);
 
     const result = updateDevice({
@@ -179,7 +179,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
   });
 
   it("sets a chain's send to a rack return chain", () => {
-    updateDevice({ id: "chain-0", sendGainDb: -12, sendReturn: "a" });
+    updateDevice({ id: "chain-0", sends: [{ return: "a", gainDb: -12 }] });
 
     expect(send.set).toHaveBeenCalledWith("display_value", -12);
     expect(volume.set).not.toHaveBeenCalled();
@@ -191,6 +191,33 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     expect(volume.set).not.toHaveBeenCalled();
     expect(panning.set).not.toHaveBeenCalled();
     expect(send.set).not.toHaveBeenCalled();
+  });
+
+  describe("deprecated sendGainDb + sendReturn", () => {
+    it("still sets the send", () => {
+      updateDevice({ id: "chain-0", sendGainDb: -12, sendReturn: "a" });
+
+      expect(send.set).toHaveBeenCalledWith("display_value", -12);
+    });
+
+    it.each([
+      ["both", { sendGainDb: -6, sendReturn: "a" }],
+      ["sendGainDb", { sendGainDb: -6 }],
+      ["sendReturn", { sendReturn: "a" }],
+    ])("refuses sends sent with %s, writing nothing", (_label, args) => {
+      expect(() =>
+        updateDevice({
+          id: "chain-0",
+          gainDb: -3,
+          sends: [{ return: "a", gainDb: -12 }],
+          ...args,
+        }),
+      ).toThrow(
+        /^sends names the send on its own - don't send .* with it \(sendGainDb and sendReturn are deprecated\)$/,
+      );
+      expect(send.set).not.toHaveBeenCalled();
+      expect(volume.set).not.toHaveBeenCalled();
+    });
   });
 
   // pan and sendReturn each need their own case: paired with another mixer
@@ -230,13 +257,12 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
         id: "target-1",
         gainDb: -3,
         pan: 1,
-        sendGainDb: -6,
-        sendReturn: "a",
-        sends: [{ return: "a", gainDb: -6 }],
+        sends: [
+          { return: "a", gainDb: -6 },
+          { return: "a", gainDb: -6 },
+        ],
       }),
-    ).toThrow(
-      "gainDb, pan, sendGainDb, sendReturn, sends ignored: can't be set on a device",
-    );
+    ).toThrow("gainDb, pan, sends ignored: can't be set on a device");
     expect(capturedWarnings()).toStrictEqual([]);
   });
 

@@ -9,11 +9,16 @@ import {
   requireCreatedClip,
   requireCreatedSessionClip,
 } from "#src/tools/clip/helpers/clip-results.ts";
+import {
+  copyClipScale,
+  readClipScaleToCopy,
+} from "#src/tools/shared/schema/scale/copy-clip-scale.ts";
+import { type ScaleState } from "#src/tools/shared/schema/scale/scale-reading.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   type CopiedNote,
   rawNotesToCopiedNotes,
-  readAllClipNotes,
+  readEveryClipNote,
 } from "./clip-notes.ts";
 import { arrangementSpan, noteSpanLoss } from "./arrangement-span.ts";
 import { clipRegionWrites } from "./clip-region-writes.ts";
@@ -48,6 +53,8 @@ interface ClipSnapshot {
   /** The source's own color, read only when there is no override to use. */
   color: unknown;
   properties: Record<string, unknown>;
+  /** The source's own scale, or null where Live gives clips none */
+  scale: ScaleState | null;
 }
 
 /** Everything read off an audio source before the new clip exists. */
@@ -180,9 +187,6 @@ export function canRecreateClip(clip: LiveAPI): boolean {
  * default markers. Live reports success for `add_warp_marker` and
  * `move_warp_marker` and then does nothing, so hand-edited markers can't be put
  * back. Defaults do come across unchanged, hence "reset", not "lost".
- *
- * Clip scale is missing on purpose: Live 12.4 puts no scale property on a Clip
- * at all, so there is nothing to copy or report.
  * @param sourceClip - The clip being copied
  * @returns The losses, empty when there are none
  */
@@ -263,6 +267,8 @@ function recreateInto(
     } catch (error) {
       throw new PartialRecreateError(errorMessage(error), newClip);
     }
+
+    copyClipScale(newClip, snapshot.scale, losses);
 
     return newClip;
   }
@@ -369,10 +375,10 @@ function snapshotClip(
   color: string | undefined,
   span: number | null,
 ): ClipSnapshot {
-  // readAllClipNotes brings pickups and overhang along. Only note_id is
-  // stripped, so a stale id isn't re-fed when copying one source to several
-  // positions.
-  const notes = rawNotesToCopiedNotes(readAllClipNotes(sourceClip));
+  // readEveryClipNote brings pickups and overhang along, past loop_end too.
+  // Only note_id is stripped, so a stale id isn't re-fed when copying one
+  // source to several positions.
+  const notes = rawNotesToCopiedNotes(readEveryClipNote(sourceClip));
   const length = span ?? (sourceClip.getProperty("length") as number);
 
   return {
@@ -401,6 +407,7 @@ function snapshotClip(
       name: name ?? sourceClip.getProperty("name"),
       groove: sourceGroove(sourceClip),
     },
+    scale: readClipScaleToCopy(sourceClip),
   };
 }
 

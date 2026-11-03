@@ -4,23 +4,44 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * The read/remember/forget/list RPC quartet every markdown collection exposes to
- * V8. `ppal-context` runs in V8, which has no filesystem, so its collection ops
+ * The remember/list/readMany/forgetMany RPC routes every markdown collection
+ * exposes to V8. `ppal-context` runs in V8, which has no filesystem, so its collection ops
  * round-trip through Node to reach ~/.producer-pal/<subdir>/. Memory and custom
  * skills are both bindings of this factory (memory-node-routes.ts,
  * custom-skills-node-routes.ts) — the wording the assistant reads is the only
  * thing that differs, so it comes in as config rather than a second copy.
  *
- * Every mutating route echoes back the freshly regenerated index so the
- * assistant always sees the current list.
+ * `remember` echoes back the freshly regenerated index so the assistant sees the
+ * current list.
  */
 
+import { errorMessage } from "#src/shared/error-message.ts";
+import {
+  namedAgain,
+  replacementFailedDetail,
+} from "#src/shared/max/named-again-wording.ts";
 import { registerNodeRoute } from "./node-request-protocol.ts";
-import { optionalString, requireString } from "./route-string-args.ts";
+import {
+  optionalString,
+  requireString,
+  requireStringArray,
+} from "./route-string-args.ts";
 
 /** Result shape shared by every collection route: a text payload for the LLM. */
 interface CollectionRouteResult {
   content: string;
+}
+
+/**
+ * One name's answer from a many-name route, in the name as the caller wrote it.
+ * A name that couldn't be served has `ok: false`; one with nothing to do has a
+ * `detail` and no `ok`.
+ */
+interface CollectionNameEntry {
+  name: string;
+  content?: string;
+  ok?: false;
+  detail?: string;
 }
 
 /** What a route needs off a stored entry. */
@@ -38,14 +59,14 @@ interface CollectionRouteInput {
 
 /** One collection's RPC namespace, store bindings, and user-facing wording. */
 export interface CollectionNodeRoutesConfig {
-  /** RPC name prefix, e.g. "memory" ⇒ `memory.read`. */
+  /** RPC name prefix, e.g. "memory" ⇒ `memory.readMany`. */
   namespace: string;
   /** Lowercase noun in route replies, e.g. "memory" or "custom skill". */
   noun: string;
   /** Stand-in index text when the collection is empty. */
   emptyIndex: string;
-  /** Reply when a forget found nothing (the two collections word this differently). */
-  missingDeleteNote: (name: string) => string;
+  /** The name an entry is stored under, so two spellings of one can be told apart. */
+  slugify: (name: string) => string;
   /** Read one entry by name, or null when absent. */
   read: (name: string) => CollectionRouteEntry | null;
   /** Create or overwrite an entry, returning the stored one. */
@@ -58,26 +79,17 @@ export interface CollectionNodeRoutesConfig {
 
 /**
  * Build one collection's route registrar. The returned function registers
- * `<namespace>.read` / `.remember` / `.forget` / `.list`; the underlying registry
- * throws on duplicate registration, so call it once.
+ * `<namespace>.remember` / `.list` / `.readMany` / `.forgetMany`; the underlying
+ * registry throws on duplicate registration, so call it once.
  *
  * @param config - The collection's namespace, store bindings, and wording
- * @returns A function that registers the four routes
+ * @returns A function that registers the routes
  */
 export function makeCollectionNodeRoutes(
   config: CollectionNodeRoutesConfig,
 ): () => void {
   const currentIndex = (): string =>
     config.regenerateIndex() || config.emptyIndex;
-
-  const readRoute = (args: unknown): CollectionRouteResult => {
-    const name = requireString(args, "name");
-    const entry = config.read(name);
-
-    return {
-      content: entry ? entry.body : `No ${config.noun} found for "${name}".`,
-    };
-  };
 
   const rememberRoute = (args: unknown): CollectionRouteResult => {
     const entry = config.remember({
@@ -91,19 +103,72 @@ export function makeCollectionNodeRoutes(
     };
   };
 
-  const forgetRoute = (args: unknown): CollectionRouteResult => {
-    const name = requireString(args, "name");
-    const note = config.forget(name)
-      ? `Deleted ${config.noun} "${name}".`
-      : config.missingDeleteNote(name);
+  const readManyRoute = (
+    args: unknown,
+  ): { entries: CollectionNameEntry[] } => ({
+    entries: requireStringArray(args, "names").map(
+      (name): CollectionNameEntry => {
+        try {
+          const entry = config.read(name);
 
-    return { content: `${note}\n\n${currentIndex()}` };
+          return entry
+            ? { name, content: entry.body }
+            : {
+                name,
+                ok: false,
+                detail: `No ${config.noun} found for "${name}".`,
+              };
+        } catch (error) {
+          return { name, ok: false, detail: errorMessage(error) };
+        }
+      },
+    ),
+  });
+
+  // A name given again later is deleted once, by its last mention; the earlier
+  // ones say so and do nothing, and fail with the last one if it fails. A name
+  // that throws costs only its own entry.
+  const forgetManyRoute = (
+    args: unknown,
+  ): { entries: CollectionNameEntry[] } => {
+    const names = requireStringArray(args, "names");
+    const slugs = names.map((name) => config.slugify(name));
+    const lastMention = (i: number): number =>
+      slugs[i] === "" ? i : slugs.lastIndexOf(slugs[i] ?? "");
+
+    const entries = names.map((name, i): CollectionNameEntry => {
+      if (lastMention(i) !== i) {
+        return { name, detail: namedAgain(`"${names[lastMention(i)]}"`) };
+      }
+
+      try {
+        return config.forget(name)
+          ? { name }
+          : { name, detail: "nothing to delete" };
+      } catch (error) {
+        return { name, ok: false, detail: errorMessage(error) };
+      }
+    });
+
+    return {
+      entries: entries.map((entry, i) => {
+        const last = lastMention(i);
+
+        return last !== i && entries[last]?.ok === false
+          ? {
+              name: entry.name,
+              ok: false,
+              detail: replacementFailedDetail(`"${names[last]}"`),
+            }
+          : entry;
+      }),
+    };
   };
 
   return () => {
-    registerNodeRoute(`${config.namespace}.read`, readRoute);
+    registerNodeRoute(`${config.namespace}.readMany`, readManyRoute);
+    registerNodeRoute(`${config.namespace}.forgetMany`, forgetManyRoute);
     registerNodeRoute(`${config.namespace}.remember`, rememberRoute);
-    registerNodeRoute(`${config.namespace}.forget`, forgetRoute);
     registerNodeRoute(`${config.namespace}.list`, () => ({
       content: currentIndex(),
     }));

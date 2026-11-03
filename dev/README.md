@@ -57,6 +57,8 @@ part is a file beside it.
   clip to MIDI, Simpler or Drum Rack, and why the result is found by diff.
 - [live-api/rack-macro-mappings.md](live-api/rack-macro-mappings.md) — what can
   be learned about rack macro mappings.
+- [live-api/plugin-hosting.md](live-api/plugin-hosting.md) — reaching every
+  VST/AU parameter by hosting the plug-in in a Max for Live wrapper.
 
 ## Clients
 

@@ -214,7 +214,9 @@ describe("clip-notes-exchange", () => {
       // User code returned two notes at the same pitch and onset. add_new_notes
       // deletes the earlier one when the later overlaps its onset, so without the
       // dedupe one note is silently dropped. Collapse keep-last; the caller says so.
-      const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+      const warn = vi
+        .spyOn(v8Console, "emitWarning")
+        .mockImplementation(() => {});
       const mockClip = createMockClip(4); // signature_denominator
       const first = codeNote(60, 0, { duration: 1, velocity: 100 });
       const last = codeNote(60, 0, { duration: 2, velocity: 80 });
@@ -310,7 +312,9 @@ describe("clip-notes-exchange", () => {
       });
 
       it("replaces one with a user note at the same pitch and start, without a warning", () => {
-        const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+        const warn = vi
+          .spyOn(v8Console, "emitWarning")
+          .mockImplementation(() => {});
         const mockClip = createMockClip(4, JSON.stringify({ notes: [MUTED] }));
         const same = codeNote(64, 1, { velocity: 80 });
 

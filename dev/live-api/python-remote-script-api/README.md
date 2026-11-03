@@ -49,6 +49,25 @@ Max writes don't have this problem: a time signature change followed by a
 locator or start position at a bar, in the same call or the next, lands at the
 right beat.
 
+## Undo steps
+
+How Live groups changes into undo steps (probed on Live 12.4.6):
+
+- With no `begin_undo_step`/`end_undo_step` at all, Live merges every change
+  into one step labeled "Change", however far apart. Time doesn't close a step.
+- `begin_undo_step` raises a depth count and `end_undo_step` lowers it. An `end`
+  at depth 0 closes the pending step. A `begin` also closes the pending step
+  before it opens its group.
+- After a begin/end pair brings the depth back to 0, the step stays open: later
+  changes merge into it until the next `begin` or `end`.
+- An edit the user makes in Live closes the pending step. Tool call A, a typed
+  tempo, then tool call B and an `end` gave three separate undos.
+
+Ableton's Push scripts (`pushbase/undo_step_handler`) keep a set of active
+clients and pair `begin`/`end` on first join and last leave. Producer Pal only
+ever sends `end` (see
+[One undo step per call](../../tools/write-pipeline.md#one-undo-step-per-call)).
+
 ## Probing
 
 The scripts are in `scripts/live-api/python-probe/`.

@@ -41,7 +41,7 @@ Operations that change how many notes exist, or modulate a value across the clip
 - \`choose(a, b, ...)\` - random selection from arguments
 - \`ramp(start, end)\` - linear interpolation; reaches end value at time range end (or clip end)
 - \`curve(start, end, exp)\` - exponential (exp>1: slow start, exp<1: fast start); reaches end value at time range end
-- For ramp/curve, end the time filter on the last note's beat position so it reaches its end value. In 4/4: last 8th=N|4.5, last 16th=N|4.75
+- ramp/curve hit their end value at the range's end bound (or the clip end with no time filter), not at the last note. So to make the last note reach it, end the range inclusively on that note's start: the last two beats of bar 4 on a 16th grid = \`4|3-4|4.75\`, on an 8th grid = \`4|3-4|4.5\`. Both \`4|3-4|4\` (misses the notes after 4|4) and \`4|3-<5|1\` (peaks after the last note) fall short
 - Period spellings: \`n/4\` = quarter-note cycle, \`n/1\` = whole note, \`<count>bar\` = meter-aware bars (\`cos(1bar)\`, \`cos(4bar)\`). Same \`n\` fraction grammar as everywhere; bare numbers are beats
 - \`sync\` keyword (last arg on periodic waves) anchors phase to the arrangement timeline (continuous across clips) instead of clip start. Only meaningful on arrangement clips: a session clip has no arrangement position, so \`sync\` is ignored and the wave degrades to clip-relative (phase resets at clip start), noted on the clip — the modulation still applies. Without \`sync\`, phase is clip-relative everywhere (the default)
 

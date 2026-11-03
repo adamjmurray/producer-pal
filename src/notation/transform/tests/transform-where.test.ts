@@ -8,7 +8,7 @@ import {
   applyTransforms,
   evaluateTransform,
 } from "#src/notation/transform/transform-evaluator.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   createContext,
   createTestNotes,
@@ -288,7 +288,9 @@ describe("where() predicate filtering", () => {
     });
 
     it("warns and excludes a note whose predicate property is unavailable", () => {
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warnSpy = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
 
       // probability is undefined → predicate eval throws → warn-and-exclude.
       expectVelocitiesAfter(
@@ -337,7 +339,9 @@ describe("where() predicate filtering", () => {
     });
 
     it("skips (with a warning) when a predicate property is missing", () => {
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const warnSpy = vi
+        .spyOn(maxConsole, "emitWarning")
+        .mockImplementation(() => {});
 
       const result = evaluateTransform(
         "where(note.velocity > 80): velocity = 64",

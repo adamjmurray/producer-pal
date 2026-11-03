@@ -14,10 +14,11 @@
 // outside one.
 
 import { warnIgnored } from "#src/shared/max/ignored-wording.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { assembleEntries } from "./helpers/assemble-entries.ts";
 import { type CallJournal, callJournal } from "./helpers/call-landed.ts";
 import { afterMaybe } from "./helpers/maybe-async.ts";
+import { noteMovedPaths } from "./helpers/moved-paths.ts";
 import { resolveTargets } from "./helpers/resolve-targets.ts";
 import { settleSupersession } from "./helpers/settle-supersession.ts";
 import {
@@ -157,7 +158,7 @@ function finish<Args, Parsed, P, Checked, E extends object, Each>(
   // says to read them again. With nothing written there are no entries to keep.
   const keep = outcomes.includes("written")
     ? (detail: string): void =>
-        console.warn(
+        emitWarning(
           `Final step failed: ${detail}; results may be incomplete and paths or ids out of date; read them again before relying on them.`,
         )
     : undefined;
@@ -176,6 +177,8 @@ function finish<Args, Parsed, P, Checked, E extends object, Each>(
     ),
     () => {
       verdict.unchanged = changedNothing();
+      // After the writes and the tool's settle: the paths are where they stay.
+      noteMovedPaths(spec.locate, { targets, checked, entries, outcomes });
 
       return result;
     },

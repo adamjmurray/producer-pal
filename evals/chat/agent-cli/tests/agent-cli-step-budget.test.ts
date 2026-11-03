@@ -5,7 +5,11 @@
 
 import { describe, expect, it } from "vitest";
 import { CODEX_CLI_TRANSPORT } from "../../codex/codex-cli-protocol.ts";
-import { createStepBudgetWatcher } from "../agent-cli-step-budget.ts";
+import {
+  createStepBudgetWatcher,
+  isStepBudgetStop,
+  STEP_BUDGET_STOP_PHRASE,
+} from "../agent-cli-step-budget.ts";
 
 /** One completed MCP call, as the watcher sees it on stdout. */
 const CALL_LINE = `${JSON.stringify({
@@ -34,5 +38,14 @@ describe("createStepBudgetWatcher", () => {
     const watcher = createStepBudgetWatcher(CODEX_CLI_TRANSPORT, 0);
 
     expect(watcher.push("not json at all\n\n")).toBe(false);
+  });
+});
+
+describe("isStepBudgetStop", () => {
+  it("recognizes the spawn error and nothing else", () => {
+    expect(
+      isStepBudgetStop(`codex CLI ${STEP_BUDGET_STOP_PHRASE} 2 steps`),
+    ).toBe(true);
+    expect(isStepBudgetStop("codex CLI timed out after 60s")).toBe(false);
   });
 });

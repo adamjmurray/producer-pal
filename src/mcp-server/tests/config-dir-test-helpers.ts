@@ -246,6 +246,7 @@ export interface ParsedNodeResponse<TResult = { content?: string }> {
   success: boolean;
   result?: TResult;
   error?: string;
+  notRun?: true;
 }
 
 /**
@@ -276,7 +277,7 @@ export function parseSentNodeResponse<
  * response. The shared harness for the config-dir node-route tests (global
  * context, memory, custom skills).
  *
- * @param route - The route name (e.g. "memory.read")
+ * @param route - The route name (e.g. "memory.readMany")
  * @param args - The route args
  * @returns The parsed node response
  */

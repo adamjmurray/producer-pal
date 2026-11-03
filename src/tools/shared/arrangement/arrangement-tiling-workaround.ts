@@ -20,9 +20,9 @@ import {
 import { type ClipSpan } from "./helpers/arrangement-write-effects.ts";
 import {
   createAndDeleteTempClip,
-  EPSILON,
   type TilingContext,
 } from "./helpers/arrangement-tiling-clips.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 /**
  * Verify a duplicate_clip_to_arrangement result and return the new clip's ID.
@@ -209,7 +209,7 @@ export function canClearTiledSpan(
   const sourceEnd = sourceClip.getProperty("end_time") as number;
 
   return !(
-    sourceEnd - sourceStart > tileSpacing + EPSILON ||
+    sourceEnd - sourceStart > tileSpacing + SAME_TIME_EPSILON ||
     sourceOverlapsTarget(sourceClip.id, startPosition, totalLength)
   );
 }
@@ -411,10 +411,10 @@ function clearOverlappingClip(
 ): void {
   const { start: clipStart, end: clipEnd, id: clipId } = overlappingClip;
 
-  // Less than EPSILON outside the range is Live's rounding: trimming to keep it
+  // Less than SAME_TIME_EPSILON outside the range is Live's rounding: trimming to keep it
   // leaves a zero-length clip Live won't delete.
-  const hasBefore = clipStart < targetPosition - EPSILON;
-  const hasAfter = clipEnd > targetEnd + EPSILON;
+  const hasBefore = clipStart < targetPosition - SAME_TIME_EPSILON;
+  const hasAfter = clipEnd > targetEnd + SAME_TIME_EPSILON;
 
   if (!hasAfter) {
     // No "after" portion to preserve — simple handling

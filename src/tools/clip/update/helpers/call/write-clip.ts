@@ -10,6 +10,7 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { isDeadlineExceeded } from "#src/shared/max/v8-request-deadline.ts";
+import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { applyClipConvert } from "#src/tools/clip/convert/apply-clip-convert.ts";
 import { applyClipEnvelopes } from "#src/tools/clip/envelopes/apply-clip-envelopes.ts";
 import {
@@ -66,6 +67,7 @@ const CONTENT_PARAMS = [
   "name",
   "color",
   "timeSignature",
+  "scale",
   "start",
   "length",
   "firstStart",
@@ -292,7 +294,8 @@ async function updatePiece(
       startParam: call.startParam,
       destinationTracks: run.destinationTracks,
       context,
-      scaleMask: run.scaleMask,
+      callScale: run.scale,
+      scaleRequest: call.scales[step.index],
       updatedClips: updated,
       landings: run.landings,
       reasons,
@@ -316,6 +319,7 @@ async function updatePiece(
       reasons,
       progress: run.convert,
       deadline: context.deadline,
+      manage: manageOffered(context),
     });
   } catch (error) {
     // Properties written before the throw can have resized the clip, which

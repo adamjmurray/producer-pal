@@ -20,9 +20,9 @@ import {
 } from "../clip/helpers/clip-tool-constants.ts";
 import { trackNames } from "../helpers/track-names.ts";
 import { assertCallResult, assertPathArg } from "./path-assertions.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_CREATE_TRACK = "ppal-create-track";
-const TOOL_CREATE_SCENE = "ppal-create-scene";
+const TOOL_CREATE_TRACK = TOOLS.createTrack;
 
 const NEW_TRACK = "Perc";
 const NEW_SCENE = "Intro";
@@ -71,16 +71,16 @@ export const pathInsertPosition: EvalScenario = {
       check: (result) => resultPath(result) === "t3",
     }),
 
-    { type: "tool_called", tool: TOOL_CREATE_SCENE, turn: 2 },
+    { type: "tool_called", tool: TOOLS.createScene, turn: 2 },
     assertPathArg({
       turn: 2,
-      tool: TOOL_CREATE_SCENE,
+      tool: TOOLS.createScene,
       param: "path",
       expected: "s0",
     }),
     assertCallResult({
       turn: 2,
-      tool: TOOL_CREATE_SCENE,
+      tool: TOOLS.createScene,
       what: "the scene landed at s0",
       check: (result) => resultPath(result) === "s0",
     }),
@@ -90,7 +90,7 @@ export const pathInsertPosition: EvalScenario = {
     // is not what this grades.
     {
       type: "state",
-      tool: "ppal-read-live-set",
+      tool: TOOLS.readLiveSet,
       args: { include: ["tracks"] },
       expect: (result) =>
         trackNames(result).slice(0, TRACKS_AFTER_INSERT.length).join(",") ===

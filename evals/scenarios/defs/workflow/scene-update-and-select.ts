@@ -15,9 +15,9 @@ import { argText } from "../arg-text.ts";
 import { colorReads } from "../helpers/color-reads.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
 import { assertNamesTarget } from "../path/path-assertions.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_UPDATE_SCENE = "ppal-update-scene";
-const TOOL_SELECT = "ppal-select";
+const TOOL_UPDATE_SCENE = TOOLS.updateScene;
 
 /** The second scene. Distinct from scene 0 so "that scene" is checkable. */
 const SCENE_INDEX = 1;
@@ -31,7 +31,7 @@ const SCENE_NAME = "Chorus";
 function assertSceneUpdated(): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-scene",
+    tool: TOOLS.readScene,
     args: { sceneIndex: SCENE_INDEX, include: ["color"] },
     expect: (result) => {
       const scene = result as { name?: unknown; color?: unknown };
@@ -54,7 +54,7 @@ function assertSceneUpdated(): EvalAssertion {
 function assertSceneSelected(): EvalAssertion {
   return {
     type: "state",
-    tool: TOOL_SELECT,
+    tool: TOOLS.select,
     args: {},
     expect: (result) =>
       (result as { selectedScene?: { path?: string } }).selectedScene?.path ===
@@ -82,14 +82,14 @@ export const sceneUpdateAndSelect: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     { type: "tool_called", tool: TOOL_UPDATE_SCENE, turn: 1 },
     assertNamesTarget({ turn: 1, tool: TOOL_UPDATE_SCENE }),
     assertSceneUpdated(),
 
-    { type: "tool_called", tool: TOOL_SELECT, turn: 2 },
-    assertNamesTarget({ turn: 2, tool: TOOL_SELECT }),
+    { type: "tool_called", tool: TOOLS.select, turn: 2 },
+    assertNamesTarget({ turn: 2, tool: TOOLS.select }),
     assertSceneSelected(),
 
     { type: "token_usage", maxTokens: 1_500 },

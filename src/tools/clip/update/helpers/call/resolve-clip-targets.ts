@@ -25,7 +25,10 @@ import {
   arrangementPositionPath,
   slotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
-import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
+import {
+  type NamedTarget,
+  sentParam,
+} from "#src/tools/shared/validation/lists/named-targets.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
@@ -89,7 +92,7 @@ export function clipTargets(
     const result = found[index] as ReturnType<typeof findClip>;
 
     if ("skip" in result) {
-      return { named, skip: result.skip };
+      return { named, atStart: result.atStart, skip: result.skip };
     }
 
     const payload = payloadFor(call, result.clip, index, batchIds);
@@ -97,6 +100,8 @@ export function clipTargets(
     return {
       named,
       key: result.clip.id,
+      // What a path named at the start, for a skip to say if it has moved on.
+      atStart: named.param === "path" ? result.clip.id : undefined,
       covers: coversOf(payload, readers.destinationTracks),
       data: payload,
     };
@@ -109,35 +114,44 @@ export function clipTargets(
  * The clip one target names.
  * @param target - The target, as the caller wrote it
  * @param lanes - The call's lanes
- * @returns The clip, or why it names none
+ * @returns The clip, or why it names none, and for a path what it named
  * @throws Error when a path can't be parsed
  */
 function findClip(
   target: NamedTarget,
   lanes: LaneView | undefined,
-): { clip: LiveAPI } | { skip: string } {
+): { clip: LiveAPI } | { skip: string; atStart?: string | null } {
   let id = target.value;
 
   if (target.param === "path") {
     // A path that doesn't parse is a mistake in the call, so it refuses the
     // call; one that parses but names no clip skips only its own target.
-    parseObjectPath(target.value, "path");
+    parseObjectPath(target.value, sentParam(target));
 
     const lookup = resolvePathEntry(target.value, (entry) =>
-      clipIdAtPath(entry, "path", lanes),
+      clipIdAtPath(entry, sentParam(target), lanes),
     );
 
     if (lookup.id == null) {
-      return { skip: lookup.reason };
+      return { skip: lookup.reason, atStart: lookup.empty ? null : undefined };
     }
 
     id = lookup.id;
   }
 
   try {
-    return { clip: validateIdType(id, "clip") };
+    return {
+      clip: validateIdType(
+        id,
+        "clip",
+        target.param === "id" ? sentParam(target) : undefined,
+      ),
+    };
   } catch (error) {
-    return { skip: errorMessage(error) };
+    return {
+      skip: errorMessage(error),
+      atStart: target.param === "path" ? id : undefined,
+    };
   }
 }
 

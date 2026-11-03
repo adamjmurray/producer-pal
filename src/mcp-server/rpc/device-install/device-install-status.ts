@@ -3,18 +3,16 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { deviceFileFacts } from "#src/portal/setup/device-file/device-file-facts.ts";
 import {
   type DeviceState,
   deviceFilePath,
   deviceFileStatus,
-} from "#src/portal/setup/device-file-status.ts";
+} from "#src/portal/setup/device-file/device-file-status.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { findUserLibraryPath } from "../../live-library/query/user-library-path.ts";
 import { resolveUserLibraryFolder } from "../remote-script/user-library/user-library-folder.ts";
-import {
-  libraryRealPath,
-  readLibraryBytes,
-} from "../remote-script/user-library/user-library-fs.ts";
+import { libraryRealPath } from "../remote-script/user-library/user-library-fs.ts";
 import {
   askDeviceToReport,
   deviceSourcePath,
@@ -131,7 +129,7 @@ export function checkDeviceSource(): DeviceSourceCheck {
   }
 
   try {
-    return isFrozenDevice(readLibraryBytes(source))
+    return isFrozenDevice(deviceFileFacts(source).header)
       ? { source, problem: null }
       : { source, problem: "not-frozen" };
   } catch {

@@ -19,9 +19,14 @@ export interface ParamInfo {
   value?: number | string;
   min?: number;
   max?: number;
+  /** Resolved from the device's `optionLists` when the read shared the list;
+   * absent on an Off/On toggle, which the read doesn't list options for. */
   options?: (string | number)[];
   alsoAccepts?: string;
 }
+
+/** A param as the read gives it: a shared list is named, not spelled out. */
+type ReadParamInfo = ParamInfo & { optionList?: string };
 
 /**
  * Read one parameter off a device by name.
@@ -35,7 +40,10 @@ export async function readParam(
   deviceId: string,
   name: string,
 ): Promise<ParamInfo> {
-  const device = parseToolResult<{ parameters?: ParamInfo[] }>(
+  const device = parseToolResult<{
+    optionLists?: Record<string, (string | number)[]>;
+    parameters?: ReadParamInfo[];
+  }>(
     await client.callTool({
       name: "ppal-read-device",
       arguments: {
@@ -49,7 +57,13 @@ export async function readParam(
 
   expect(found, `no parameter named "${name}"`).toBeDefined();
 
-  return found as ParamInfo;
+  const { optionList, ...param } = found as ReadParamInfo;
+
+  if (optionList != null) {
+    param.options = device.optionLists?.[optionList];
+  }
+
+  return param;
 }
 
 /** One `params` entry, as create-device and update-device report it. */

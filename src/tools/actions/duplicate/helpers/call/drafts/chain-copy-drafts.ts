@@ -43,9 +43,13 @@ export function chainCopyDrafts(
           ? source.named
           : { param: "path" as const, value: toPath };
 
+      // Only a copy addressed by its source can say where the source went.
+      const atStart = toPath == null ? source.atStart : undefined;
+
       return source.skip == null
         ? {
             named,
+            atStart,
             make: () => ({
               body: {
                 kind,
@@ -54,7 +58,7 @@ export function chainCopyDrafts(
               },
             }),
           }
-        : { named, skip: source.skip };
+        : { named, atStart, skip: source.skip };
     });
   });
 }

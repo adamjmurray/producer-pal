@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildProviderOptions } from "#evals/chat/thinking-provider-options.ts";
 
@@ -16,7 +15,10 @@ describe("buildProviderOptions for the Vercel gateway", () => {
     expect(
       buildProviderOptions("vercel", "high", "anthropic/claude-sonnet-5.5"),
     ).toStrictEqual({
-      anthropic: { thinking: { type: "adaptive" }, effort: "high" },
+      anthropic: {
+        thinking: { type: "adaptive", display: "summarized" },
+        effort: "high",
+      },
     });
     expect(
       buildProviderOptions("vercel", "low", "openai/gpt-6-luna"),
@@ -124,34 +126,83 @@ describe("buildProviderOptions for OpenAI", () => {
     ).toStrictEqual({ openai: { reasoningEffort: "max" } });
   });
 
-  it("sends nothing for off or ultra on other models", () => {
+  it("sends nothing for off on GPT-5 and models without reasoning effort", () => {
     expect(buildProviderOptions("openai", "off", "gpt-5.4")).toBeUndefined();
-    expect(buildProviderOptions("openai", "ultra", "gpt-5.4")).toBeUndefined();
+    expect(buildProviderOptions("openai", "high", "gpt-4o")).toBeUndefined();
+  });
+
+  it("sends xhigh for ultra where the model supports it", () => {
+    expect(buildProviderOptions("openai", "ultra", "gpt-5.4")).toStrictEqual({
+      openai: { reasoningEffort: "xhigh" },
+    });
   });
 });
 
-describe("rules copied from the chat UI", () => {
-  // Copied from webui (evals can't import it at runtime); keep in step.
-  const read = (path: string): string =>
-    readFileSync(new URL(path, import.meta.url), "utf8");
-  const webui = read("../../../webui/src/hooks/settings/config-builders.ts");
-  const evals = read("../thinking-provider-options.ts");
+describe("buildProviderOptions for Gemini", () => {
+  it("sends a low thinking level for off on Gemini 3+", () => {
+    const low = { google: { thinkingConfig: { thinkingLevel: "low" } } };
 
-  it.each(["GPT6_ACCEPTS_NONE", "ALWAYS_ON_THINKING_MODEL"])(
-    "%s is the same pattern",
-    (name) => {
-      const rule = new RegExp(`const ${name} = (/.*/);`);
+    expect(
+      buildProviderOptions("google", "off", "gemini-3.8-flash"),
+    ).toStrictEqual(low);
+    expect(
+      buildProviderOptions("vercel", "off", "google/gemini-3.8-flash"),
+    ).toStrictEqual(low);
+  });
 
-      expect(rule.exec(webui)?.[1]).toBeDefined();
-      expect(rule.exec(evals)?.[1]).toBe(rule.exec(webui)?.[1]);
-    },
-  );
+  it("sends a zero budget for off on Gemini 2.5 except Pro", () => {
+    expect(
+      buildProviderOptions("google", "off", "gemini-2.5-flash"),
+    ).toStrictEqual({ google: { thinkingConfig: { thinkingBudget: 0 } } });
+    expect(
+      buildProviderOptions("google", "off", "gemini-2.5-pro"),
+    ).toBeUndefined();
+  });
 
-  it("treats a model as always-on on the same capability test", () => {
-    const test =
-      "caps.rejectsThinkingDisabled && !caps.supportsBetweenToolsThinking";
+  it("treats a zero token budget like off", () => {
+    expect(
+      buildProviderOptions("google", "0", "gemini-3.8-flash"),
+    ).toStrictEqual({ google: { thinkingConfig: { thinkingLevel: "low" } } });
+  });
 
-    expect(webui).toContain(test);
-    expect(evals).toContain(test);
+  it("still sends a budget for other levels", () => {
+    expect(
+      buildProviderOptions("google", "medium", "gemini-2.5-pro"),
+    ).toStrictEqual({
+      google: {
+        thinkingConfig: { thinkingBudget: 4096, includeThoughts: true },
+      },
+    });
+  });
+});
+
+describe("buildProviderOptions for OpenRouter", () => {
+  it("sends effort none for off", () => {
+    expect(
+      buildProviderOptions("openrouter", "off", "deepseek/deepseek-v4.1-flash"),
+    ).toStrictEqual({ openrouter: { reasoning: { effort: "none" } } });
+  });
+
+  it("sends the named effort for other levels", () => {
+    expect(
+      buildProviderOptions(
+        "openrouter",
+        "ultra",
+        "deepseek/deepseek-v4.1-flash",
+      ),
+    ).toStrictEqual({ openrouter: { reasoning: { effort: "xhigh" } } });
+  });
+});
+
+describe("buildProviderOptions for the local provider", () => {
+  it("sends reasoning effort none for off", () => {
+    expect(buildProviderOptions("local", "off", "qwen3.8")).toStrictEqual({
+      local: { reasoningEffort: "none" },
+    });
+  });
+
+  it("sends nothing for other levels or when unset", () => {
+    expect(buildProviderOptions("local", "ultra", "qwen3.8")).toBeUndefined();
+    expect(buildProviderOptions("local", undefined, "qwen3.8")).toBeUndefined();
   });
 });

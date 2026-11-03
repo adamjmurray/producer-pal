@@ -16,9 +16,9 @@ import {
 
 // Capture take lane warnings
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
 }));
 
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
@@ -112,7 +112,7 @@ describe("duplicate take lane", () => {
     expect(newClip?.set).toHaveBeenCalledWith("signature_denominator", 4);
     // The entry says how the copy got there, so the user can find it. This
     // source has no envelopes, so nothing was lost and it names no cost.
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
     expect(result).toStrictEqual({
       id: "tl_clip_1",
       path: "t0/l0[5|1]",
@@ -172,7 +172,7 @@ describe("duplicate take lane", () => {
       arrangementLength: "2bar",
     });
 
-    expect(consoleMock.warn).not.toHaveBeenCalled();
+    expect(consoleMock.emitWarning).not.toHaveBeenCalled();
     expect(result).toStrictEqual(
       expect.objectContaining({
         detail: expect.stringContaining(
@@ -197,12 +197,12 @@ describe("duplicate take lane", () => {
   it("applies explicit name and color overrides to the take-lane copy", async () => {
     const newClip = await duplicateToFreshLane({
       name: "Variation A",
-      color: "#FF0000",
+      color: "#FF3636",
     });
 
     expect(newClip?.set).toHaveBeenCalledWith("name", "Variation A");
-    // setColor("#FF0000") converts to Live's 0x00RRGGBB int
-    expect(newClip?.set).toHaveBeenCalledWith("color", 0xff0000);
+    // setColor("#FF3636") converts to Live's 0x00RRGGBB int
+    expect(newClip?.set).toHaveBeenCalledWith("color", 0xff3636);
   });
 
   it("skips add_new_notes when the source clip is empty", async () => {
@@ -285,7 +285,7 @@ describe("duplicate take lane", () => {
       takeLaneName: "Verse take",
     });
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
       expect.stringContaining("takeLaneName ignored"),
     );
   });
@@ -302,7 +302,7 @@ describe("duplicate take lane", () => {
       takeLaneName: "Verse take",
     });
 
-    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).not.toHaveBeenCalledWith(
       expect.stringContaining("takeLaneName ignored"),
     );
     expect(
@@ -322,7 +322,7 @@ describe("duplicate take lane", () => {
       takeLaneName: "Verse take",
     });
 
-    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).not.toHaveBeenCalledWith(
       expect.stringContaining("takeLaneName ignored"),
     );
   });
@@ -337,7 +337,7 @@ describe("duplicate take lane", () => {
       takeLane: 1,
     });
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
       expect.stringContaining(
         "takeLane ignored: session destinations have no take lanes",
       ),
@@ -367,7 +367,7 @@ describe("duplicate take lane", () => {
       takeLane: "garbage",
     });
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).toHaveBeenCalledWith(
       expect.stringContaining(
         "takeLane ignored: session destinations have no take lanes",
       ),
@@ -648,7 +648,7 @@ describe("duplicate take lane", () => {
     expect(result[1]?.detail).toBe(
       `take lane "l${MAX_TAKE_LANES}" is out of range: Producer Pal creates take lanes only up to "l${MAX_TAKE_LANES - 1}"`,
     );
-    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+    expect(consoleMock.emitWarning).not.toHaveBeenCalledWith(
       expect.stringContaining(`skipping "t2/l${MAX_TAKE_LANES}"`),
     );
   });

@@ -83,7 +83,7 @@ named for nothing, and the cap only goes down.
 In `src/`, always include `.ts` extensions. In `webui/`, never. To cross between
 top-level modules use the `#src/`, `#webui/`, `#evals/` aliases; a relative
 import must stay inside its own module (`webui/` bans `..` entirely). Enforced
-by `src/test/meta/import-restrictions.test.ts`.
+by `src/test/meta/architecture/import-restrictions.test.ts`.
 
 ```typescript
 import { createMcpServer } from "#src/mcp-server/create-mcp-server.ts";

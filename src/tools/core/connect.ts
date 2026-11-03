@@ -21,10 +21,13 @@ interface LiveSetInfo {
   scalePitches?: string;
 }
 
-interface ConnectResult {
+interface VersionCheckResult {
   connected: boolean;
   producerPalVersion: string;
   abletonLiveVersion: string;
+}
+
+interface ConnectResult extends VersionCheckResult {
   liveSet: LiveSetInfo;
 }
 
@@ -40,15 +43,12 @@ interface ConnectResult {
  * @returns Connection status and basic Live Set info
  */
 export function connect(_params: object = {}): ConnectResult {
+  const versions = connectVersions();
   const liveSet = LiveAPI.from("live_set");
-  const liveApp = LiveAPI.from("live_app");
 
   const trackIds = liveSet.getChildIds("tracks");
   const returnTrackIds = liveSet.getChildIds("return_tracks");
   const sceneIds = liveSet.getChildIds("scenes");
-
-  // Live 12.4 returns "12.4" which Max V8 coerces to a number; force string.
-  const abletonLiveVersion = String(liveApp.call("get_version_string"));
 
   // Build liveSet overview matching readLiveSet default response
   const liveSetName = liveSet.getName();
@@ -86,10 +86,19 @@ export function connect(_params: object = {}): ConnectResult {
     ).join(",");
   }
 
-  return {
-    connected: true,
-    producerPalVersion: VERSION,
-    abletonLiveVersion,
-    liveSet: liveSetInfo,
-  };
+  return { ...versions, liveSet: liveSetInfo };
+}
+
+/**
+ * The `versionCheck: true` answer: the versions only, so the Live Set is never
+ * read.
+ * @returns Connection status and both versions
+ */
+export function connectVersions(): VersionCheckResult {
+  // Live 12.4 returns "12.4" which Max V8 coerces to a number; force string.
+  const abletonLiveVersion = String(
+    LiveAPI.from("live_app").call("get_version_string"),
+  );
+
+  return { connected: true, producerPalVersion: VERSION, abletonLiveVersion };
 }

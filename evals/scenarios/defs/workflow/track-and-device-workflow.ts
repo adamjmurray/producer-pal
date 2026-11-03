@@ -9,8 +9,9 @@
  */
 
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_UPDATE_TRACK = "ppal-update-track";
+const TOOL_UPDATE_TRACK = TOOLS.updateTrack;
 
 /** Drums is the first track of the basic-midi-4-track Live Set. */
 const DRUMS_TRACK_INDEX = 0;
@@ -28,16 +29,15 @@ interface TrackSend {
 }
 
 /**
- * The Drums track's send to the delay return sits at the asked-for level. Both
- * halves matter: `sendGainDb` without `sendReturn` (or a return name that
- * matches nothing) warns and writes nothing, and the tool still succeeds.
+ * The Drums track's send to the delay return sits at the asked-for level. A
+ * return name that matches nothing writes nothing, and the tool still succeeds.
  *
  * @returns A state assertion over the track's sends
  */
 function assertDelaySend(): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-track",
+    tool: TOOLS.readTrack,
     args: { trackIndex: DRUMS_TRACK_INDEX, include: ["mixer"] },
     expect: (result) =>
       delaySends(result).some(
@@ -70,10 +70,10 @@ export const trackAndDeviceWorkflow: EvalScenario = {
     "Create track, add device, update properties, route sends to a new and an existing return",
   kind: "regression",
   liveSet: "basic-midi-4-track",
-  // Both send turns need update-track's `sendGainDb`/`sendReturn`, which
+  // Both send turns need update-track's `sends`, which
   // small-model mode strips from the schema — a send is impossible there, and
   // the scenario used to score a pass for calling update-track at all.
-  requires: { params: ["sendReturn"] },
+  requires: { params: ["sends"] },
   // The checks below pin the outcome. The judge only adds commentary they
   // can't anticipate — hallucinations, misleading prose, extra steps.
   judgeAdvisory: true,
@@ -92,13 +92,13 @@ export const trackAndDeviceWorkflow: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     // Turn 1: Track creation
-    { type: "tool_called", tool: "ppal-create-track", turn: 1 },
+    { type: "tool_called", tool: TOOLS.createTrack, turn: 1 },
 
     // Turn 2: Device creation
-    { type: "tool_called", tool: "ppal-create-device", turn: 2 },
+    { type: "tool_called", tool: TOOLS.createDevice, turn: 2 },
 
     // Turn 3: Track property updates
     { type: "tool_called", tool: TOOL_UPDATE_TRACK, turn: 3 },
@@ -113,7 +113,7 @@ export const trackAndDeviceWorkflow: EvalScenario = {
     { type: "response_contains", pattern: /mute|purple/i, turn: 3 },
 
     // Turn 4: Device parameter update
-    { type: "tool_called", tool: "ppal-update-device", turn: 4 },
+    { type: "tool_called", tool: TOOLS.updateDevice, turn: 4 },
     {
       type: "response_contains",
       pattern: /filter|cutoff/i,
@@ -121,7 +121,7 @@ export const trackAndDeviceWorkflow: EvalScenario = {
     },
 
     // Turn 5: Return track + send routing
-    { type: "tool_called", tool: "ppal-create-track", turn: 5 },
+    { type: "tool_called", tool: TOOLS.createTrack, turn: 5 },
     { type: "tool_called", tool: TOOL_UPDATE_TRACK, turn: 5 },
     {
       type: "response_contains",

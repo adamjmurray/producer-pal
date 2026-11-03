@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { request } from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { registerMemoryCollectionRoutes } from "#src/mcp-server/routes/memory-collection-route.ts";
 import {
@@ -231,6 +232,36 @@ describe("memory-collection route", () => {
 
     expect(putRes.status).toBe(403);
     expect(delRes.status).toBe(403);
+  });
+
+  it("still allows a same-origin write under a DNS-name Host (remote webui)", async () => {
+    // Only the User Library install routes refuse a DNS-name Host.
+    const status = await new Promise<number>((resolve, reject) => {
+      const payload = JSON.stringify({ description: "hook", content: "x" });
+      const req = request(
+        {
+          host: "127.0.0.1",
+          port: Number(new URL(server.baseUrl).port),
+          path: "/memory/tunnel-write",
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(payload),
+            Host: "demo.trycloudflare.com",
+            Origin: "https://demo.trycloudflare.com",
+          },
+        },
+        (res) => {
+          res.resume();
+          res.on("end", () => resolve(res.statusCode ?? 0));
+        },
+      );
+
+      req.on("error", reject);
+      req.end(payload);
+    });
+
+    expect(status).toBe(200);
   });
 
   it("PUT /:name/rename moves the entry to the new slug; GET reflects it", async () => {

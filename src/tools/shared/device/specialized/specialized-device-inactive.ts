@@ -64,7 +64,7 @@ export function applyInactiveStates(
       continue;
     }
 
-    const inactiveNames = rule.cases[String(controller.value)];
+    const inactiveNames = inactiveNamesAt(rule, controller.value);
 
     if (inactiveNames == null) {
       continue;
@@ -80,4 +80,44 @@ export function applyInactiveStates(
       }
     }
   }
+}
+
+/**
+ * Whether a rule set marks one param inactive. A controller is read only when a
+ * rule names the param, so a param no rule touches costs nothing.
+ * @param rules - The device's inactivity rules
+ * @param paramName - Display name of the param
+ * @param readController - Reads a controller param's current display value
+ * @returns True when a rule makes the param inactive at the controller's value
+ */
+export function ruleMarksInactive(
+  rules: InactiveWhenRule[],
+  paramName: string,
+  readController: (controller: string) => unknown,
+): boolean {
+  return rules.some((rule) => {
+    const named = Object.values(rule.cases).some((names) =>
+      names.includes(paramName),
+    );
+
+    return (
+      named &&
+      inactiveNamesAt(rule, readController(rule.controller))?.includes(
+        paramName,
+      ) === true
+    );
+  });
+}
+
+/**
+ * The params a rule makes inactive at a controller value.
+ * @param rule - The inactivity rule
+ * @param controllerValue - The controller's current display value
+ * @returns The inactive param names, or undefined when the value has no case
+ */
+function inactiveNamesAt(
+  rule: InactiveWhenRule,
+  controllerValue: unknown,
+): string[] | undefined {
+  return rule.cases[String(controllerValue)];
 }

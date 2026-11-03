@@ -67,7 +67,7 @@ export {
   contextWriteLayerProject,
 } from "./context/context-write-layers.ts";
 export { contextWritePreserves } from "./context/context-write-preserve.ts";
-export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
+export { connectToAbleton } from "./workflow/connect/connect-to-ableton.ts";
 export { deleteTargets } from "./workflow/delete-targets.ts";
 export {
   libraryDiscoveryActions,
@@ -87,7 +87,8 @@ export { deviceMovePairing } from "./device/device-move-pairing.ts";
 export { deviceTypePaths } from "./device/device-type-paths.ts";
 export { deviceKitByName } from "./device/presets/device-kit-by-name.ts";
 export { deviceCopyInPlace } from "./device/device-copy-in-place.ts";
-export { deviceMappedMacros } from "./device/device-mapped-macros.ts";
+export { deviceMappedMacros } from "./device/params/device-mapped-macros.ts";
+export { deviceOptionParams } from "./device/params/device-option-params.ts";
 export { devicePresetSwapByName } from "./device/presets/device-preset-swap-by-name.ts";
 export { deviceLibraryPadSamples } from "./device/device-library-pad-samples.ts";
 export { drumPadForceGuard } from "./device/drum-pad-force-guard.ts";
@@ -164,3 +165,6 @@ export { trackAndDeviceWorkflow } from "./workflow/track-and-device-workflow.ts"
 export { updateLiveSet } from "./workflow/update-live-set.ts";
 export { pathInsertPosition } from "./path/path-insert-position.ts";
 export { pathLocatorCoordinate } from "./path/path-locator-coordinate.ts";
+export { upgradeDeviceVersionCheck } from "./workflow/connect/upgrade-device-version-check.ts";
+export { upgradeFirstMessageFullConnect } from "./workflow/connect/upgrade-first-message-full-connect.ts";
+export { upgradeRemoteScriptRestartCheck } from "./workflow/connect/upgrade-remote-script-restart-check.ts";

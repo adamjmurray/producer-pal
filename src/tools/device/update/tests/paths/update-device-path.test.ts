@@ -13,7 +13,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { updateDevice } from "../../update-device.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -26,7 +26,7 @@ describe("updateDevice with path parameter", () => {
   // z.coerce.string() renders that as "null" — counting it as sent refused the
   // update over a param the caller deliberately left empty.
   it("updates by path when id is a coerced null", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const device = registerMockObject("device-456", {
       path: livePath.track(1).device(0),
       type: "Device",
@@ -211,9 +211,9 @@ describe("updateDevice with path parameter", () => {
     });
 
     it("should update chain color by path", () => {
-      const result = updateDevice({ path: "t1/d0/c0", color: "#FF0000" });
+      const result = updateDevice({ path: "t1/d0/c0", color: "#FF3636" });
 
-      expect(chain123.set).toHaveBeenCalledWith("color", 16711680);
+      expect(chain123.set).toHaveBeenCalledWith("color", 16725558);
       expect(result).toStrictEqual({ id: "chain-123", path: "t1/d0/c0" });
     });
 

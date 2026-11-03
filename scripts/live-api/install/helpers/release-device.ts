@@ -6,7 +6,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { type DeviceInstallResult } from "#src/portal/setup/device-install.ts";
-import { DEVICE_FILE_NAME } from "#src/portal/setup/device-file-status.ts";
+import { DEVICE_FILE_NAME } from "#src/portal/setup/device-file/device-file-status.ts";
 
 /**
  * Where `npm run release:amxd` leaves the frozen device.

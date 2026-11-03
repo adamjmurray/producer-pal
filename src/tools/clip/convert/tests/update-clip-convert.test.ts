@@ -7,7 +7,7 @@
 // comparing track lists since Live makes it after the route has answered.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import {
@@ -34,10 +34,13 @@ import { createNoteTrackingMethods } from "#src/test/helpers/mock-registry-test-
 const OUTDATED =
   "the Producer Pal remote script is out of date (running 2.4.0, needs 2.5.0 or later)";
 
-vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
-  requestNode: vi.fn(),
-  handleNodeResponse: vi.fn(),
-}));
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 /** The name Live gives a new track. */
 const TRACK_NAME = "5-Drums to MIDI";
@@ -143,6 +146,28 @@ describe("updateClip - convert", () => {
     addTrack("201", 0);
     mocks.clip123.path = livePath.track(1).clipSlot(0).clip();
     mocks.clip456.path = livePath.track(2).clipSlot(1).clip();
+  }
+
+  /**
+   * Put clip 300 first in track 4's arrangement.
+   * @param startTime - Where the clip starts, in beats
+   * @param trackProps - Extra properties for the track
+   */
+  function addArrangementClip(
+    startTime: number,
+    trackProps: Record<string, unknown>,
+  ): void {
+    const clip = registerMockObject("300", {
+      path: livePath.track(4).arrangementClip(0),
+      methods: createNoteTrackingMethods(),
+    });
+
+    setupMidiClipMock(clip, { is_arrangement_clip: 1, start_time: startTime });
+    registerMockObject("200", {
+      path: livePath.track(4),
+      type: "Track",
+      properties: { ...trackProps, arrangement_clips: ["id", "300"] },
+    });
   }
 
   /**
@@ -263,17 +288,7 @@ describe("updateClip - convert", () => {
     setupArrangementAudioClipMock(mocks.clip789, { start_time: 16 });
     answerRoute(() => {
       addTrack("200", 4);
-      const clip = registerMockObject("300", {
-        path: livePath.track(4).arrangementClip(0),
-        methods: createNoteTrackingMethods(),
-      });
-
-      setupMidiClipMock(clip, { is_arrangement_clip: 1, start_time: 16 });
-      registerMockObject("200", {
-        path: livePath.track(4),
-        type: "Track",
-        properties: { arrangement_clips: ["id", "300"] },
-      });
+      addArrangementClip(16, {});
     });
 
     const result = await updateClip({ id: "789", convert: "harmony" });
@@ -294,6 +309,23 @@ describe("updateClip - convert", () => {
     answerRoute(() => addTrack("200", 4));
 
     const result = await updateClip({ id: "123", convert: "drums" });
+
+    expect(convertedOf(result)).toStrictEqual({ track: NEW_TRACK });
+    expect(result).toStrictEqual(
+      expect.objectContaining({
+        detail: "the new track has no MIDI clip where this clip was",
+      }),
+    );
+  });
+
+  it("says the track has no clip where an arrangement clip started", async () => {
+    setupArrangementAudioClipMock(mocks.clip789, { start_time: 16 });
+    answerRoute(() => {
+      addTrack("200", 4);
+      addArrangementClip(0, { name: TRACK_NAME });
+    });
+
+    const result = await updateClip({ id: "789", convert: "harmony" });
 
     expect(convertedOf(result)).toStrictEqual({ track: NEW_TRACK });
     expect(result).toStrictEqual(
@@ -626,6 +658,20 @@ describe("updateClip - convert", () => {
       await expect(updateClip({ id: "123", convert: "drums" })).rejects.toThrow(
         /converting a clip needs the Producer Pal remote script.*Settings/,
       );
+    });
+
+    it("sends a caller without ppal-manage to the chat UI instead", async () => {
+      answerRoute(undefined, { available: false });
+
+      const refused = updateClip(
+        { id: "123", convert: "drums" },
+        { manageAvailable: false },
+      );
+
+      await expect(refused).rejects.toThrow(
+        /converting a clip needs the Producer Pal remote script.*Settings → Installation/,
+      );
+      await expect(refused).rejects.not.toThrow("ppal-manage");
     });
 
     it("says so when the remote script is out of date", async () => {

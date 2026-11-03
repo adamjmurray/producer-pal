@@ -3,10 +3,10 @@
 // AI assistance: Claude (Anthropic), Claude Code (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { EPSILON } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { takeLaneIndexOfClip } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { type ClipCall } from "./parse-clip-call.ts";
 import { type ClipPayload } from "./resolve-clip-targets.ts";
+import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 
 /**
  * Why a target's envelopes can't go with its arrangementLength. Lengthening a
@@ -43,7 +43,7 @@ export function tiledEnvelopesRefusal(
   if (
     onTakeLane ||
     !looping ||
-    lengthBeats <= span.end - span.start + EPSILON
+    lengthBeats <= span.end - span.start + SAME_TIME_EPSILON
   ) {
     return null;
   }

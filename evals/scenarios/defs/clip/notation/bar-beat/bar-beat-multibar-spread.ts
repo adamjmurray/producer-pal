@@ -29,6 +29,7 @@ import {
   LEAD_SLOT_1,
   LEAD_SLOT_2,
 } from "../../helpers/clip-scenario-builders.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** Float tolerance for note start_time comparisons (in beats). */
 const EPS = 1e-6;
@@ -103,7 +104,7 @@ export const barBeatPerBarSpread: EvalScenario = createClipScenario({
   clearSlots: [LEAD_SLOT_1, LEAD_SLOT_2],
   assertions: [
     clipStateAssertion(LEAD_SLOT_1, "4/4", chordPerBar),
-    { type: "tool_called", tool: "ppal-create-clip", turn: 2 },
+    { type: "tool_called", tool: TOOLS.createClip, turn: 2 },
     clipStateAssertion(LEAD_SLOT_2, "4/4", notePerBar),
     { type: "token_usage", maxTokens: 2_500 },
   ],

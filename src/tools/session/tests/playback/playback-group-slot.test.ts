@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import {
@@ -89,10 +89,6 @@ function setUpTracks(layout: TrackSpec[]): {
 describe("playback - firing a group track's slot", () => {
   beforeEach(() => {
     setupPlaybackLiveSet();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it("names the clips it launches and the tracks it stops", () => {

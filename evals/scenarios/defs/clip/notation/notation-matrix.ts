@@ -47,9 +47,9 @@ import {
   getCreatedClip,
   slotToPath,
 } from "../helpers/clip-turn-readers.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** create-clip tool name (turn-1 create assertion). */
-const TOOL_CREATE_CLIP = "ppal-create-clip";
 
 /** Shared 4-track set: track 0 = Drums (Drum Rack), track 3 = Lead (melodic). */
 export const MATRIX_LIVE_SET = "basic-midi-4-track";
@@ -114,7 +114,7 @@ export function notationNeutralScenarios(
     setup: (mcpClient) => clearClipSlots(mcpClient, candidateSlots),
     assertions: [
       { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-      { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+      { type: "tool_called", tool: TOOLS.createClip, turn: 1 },
       midiJsonNotesAssertion(spec.meter, spec.expected),
       correctPathAssertion(correctSlot),
       { type: "token_usage", maxTokens: 1_500 },

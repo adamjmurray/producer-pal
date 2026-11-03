@@ -40,17 +40,15 @@ import {
   MSG_CONNECT,
   TOOL_CONNECT,
 } from "../clip/helpers/clip-tool-constants.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_CREATE_CLIP = "ppal-create-clip";
-const TOOL_UPDATE_CLIP = "ppal-update-clip";
-const TOOL_READ_TRACK = "ppal-read-track";
-const TOOL_DUPLICATE = "ppal-duplicate";
+const TOOL_CREATE_CLIP = TOOLS.createClip;
 
 /** The tools that can carry a per-item list into a clip. */
-const WRITE_TOOLS = new Set([
+const WRITE_TOOLS = new Set<string>([
   TOOL_CREATE_CLIP,
-  TOOL_UPDATE_CLIP,
-  TOOL_DUPLICATE,
+  TOOLS.updateClip,
+  TOOLS.duplicate,
 ]);
 
 /**
@@ -100,7 +98,7 @@ function assertNoShortList(
 function assertAlternatingColors(): EvalAssertion {
   return {
     type: "state",
-    tool: TOOL_READ_TRACK,
+    tool: TOOLS.readTrack,
     args: { trackIndex: 0, include: ["session-clips", "color"] },
     expect: (result) => {
       const clips = (result as { sessionClips?: Array<{ color?: unknown }> })
@@ -125,28 +123,80 @@ function assertAlternatingColors(): EvalAssertion {
   };
 }
 
+/** How a copy may be stretched: the clip's length, and every requested start. */
+interface Tiling {
+  tileBars: number;
+  /** Requested starts on every track; a repeat can't reach the next one. */
+  requested: string[];
+}
+
+/**
+ * Whether a clip start is a repeat of the clip at `from`: the same beat, a whole
+ * number of `tileBars` later, and before any other requested start (on any
+ * track). Giving duplicate an `arrangementLength` longer than the clip tiles it,
+ * which is a fine way to fill the space. A "repeat" that lands on another
+ * track's requested bar is a misplaced copy, not a stretch.
+ *
+ * @param start - A clip start, as bar|beat
+ * @param from - A requested start, as bar|beat
+ * @param tiling - The clip's length and all requested starts
+ * @returns True when `start` is a tiled repeat of `from`
+ */
+function isTiledRepeat(start: string, from: string, tiling: Tiling): boolean {
+  const [bar, beat] = start.split("|").map(Number);
+  const [fromBar, fromBeat] = from.split("|").map(Number);
+
+  return (
+    bar != null &&
+    fromBar != null &&
+    beat === fromBeat &&
+    bar > fromBar &&
+    (bar - fromBar) % tiling.tileBars === 0 &&
+    !tiling.requested.some((other) => {
+      const otherBar = Number(other.split("|")[0]);
+
+      return otherBar > fromBar && otherBar <= bar;
+    })
+  );
+}
+
 /**
  * One track's arrangement holds clips at exactly these bars.
  * @param trackIndex - The track to read
  * @param bars - The bar|beat positions expected on it
+ * @param tiling - When set, repeats of a requested clip every `tileBars` bars
+ *   are fine too (for a copy the model stretched), up to the next start
+ *   requested on any track
  * @returns A state assertion over the track's arrangement
  */
 function assertArrangementBars(
   trackIndex: number,
   bars: string[],
+  tiling?: Tiling,
 ): EvalAssertion {
+  const problem = (result: unknown): string | null => {
+    const starts = clipStarts(asArrangementTrack(result).arrangementClips);
+    const missing = bars.filter((bar) => !starts.includes(bar));
+    const stray = starts.filter(
+      (start) =>
+        !bars.includes(start) &&
+        (tiling == null ||
+          !bars.some((bar) => isTiledRepeat(start, bar, tiling))),
+    );
+
+    return missing.length === 0 && stray.length === 0
+      ? null
+      : `expected t${trackIndex} clips at ${bars.join(", ")}, got ${
+          starts.join(", ") || "none"
+        }`;
+  };
+
   return {
     type: "state",
-    tool: TOOL_READ_TRACK,
+    tool: TOOLS.readTrack,
     args: { trackIndex, include: ["arrangement-clips"] },
-    expect: (result) =>
-      clipStarts(asArrangementTrack(result).arrangementClips).join(",") ===
-      bars.join(","),
-    explain: (result) =>
-      `expected t${trackIndex} clips at ${bars.join(", ")}, got ${
-        clipStarts(asArrangementTrack(result).arrangementClips).join(", ") ||
-        "none"
-      }`,
+    expect: (result) => problem(result) == null,
+    explain: (result) => problem(result) ?? "ok",
   };
 }
 
@@ -198,6 +248,14 @@ export const arrangementDestinationPairing: EvalScenario = {
   ],
 };
 
+/** The drum clip is two bars long; a longer `arrangementLength` tiles it. */
+const DRUM_CLIP_BARS = 2;
+
+const DUPLICATE_TILING: Tiling = {
+  tileBars: DRUM_CLIP_BARS,
+  requested: ["1|1", "5|1", "9|1", "13|1"],
+};
+
 export const duplicateDestinationPairing: EvalScenario = {
   id: "duplicate-destination-pairing",
   tags: ["pairing"],
@@ -214,8 +272,8 @@ export const duplicateDestinationPairing: EvalScenario = {
 
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    assertArrangementBars(0, ["1|1", "9|1"]),
-    assertArrangementBars(1, ["5|1", "13|1"]),
+    assertArrangementBars(0, ["1|1", "9|1"], DUPLICATE_TILING),
+    assertArrangementBars(1, ["5|1", "13|1"], DUPLICATE_TILING),
     assertNoShortList("toPath", "arrangementStart"),
     { type: "token_usage", maxTokens: 1_500 },
   ],

@@ -15,6 +15,7 @@ import { extractToolResultText } from "#evals/chat/mcp.ts";
 import { remoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { resolveSamplesPath } from "../../../run-scenario/scenario-config.ts";
 import { firstResultPath } from "../../helpers/new-track-path.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** A sample in `evals/live-sets/samples`, by its path inside that folder. */
 export type EvalSample = "drums/kick.aiff" | "sample.aiff";
@@ -42,7 +43,7 @@ export async function seedAudioClip(
     );
   }
 
-  const track = await callTool(mcpClient, "ppal-create-track", {
+  const track = await callTool(mcpClient, TOOLS.createTrack, {
     path: "t+",
     type: "audio",
     name,
@@ -53,7 +54,7 @@ export async function seedAudioClip(
     throw new Error(`ppal-create-track named no path: ${track}`);
   }
 
-  await callTool(mcpClient, "ppal-create-clip", {
+  await callTool(mcpClient, TOOLS.createClip, {
     path: `${trackPath}/s0`,
     sampleFile: `${resolveSamplesPath("samples")}/${sample}`,
     // Otherwise Live decides per its own setting, which varies by machine.

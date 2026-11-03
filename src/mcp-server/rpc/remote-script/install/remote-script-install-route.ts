@@ -8,14 +8,18 @@ import {
   type InstallReply,
   MANAGE_ROUTES,
 } from "#src/tools/core/helpers/manage-contract.ts";
+import { installPluginHostParts } from "#src/portal/setup/plugin-host/plugin-host-part.ts";
+import { findUserLibraryPath } from "../../../live-library/query/user-library-path.ts";
 import { registerNodeRoute } from "../../node-request-protocol.ts";
 import { optionalString } from "../../route-string-args.ts";
+import { installRunningDevicePart } from "../../device-install/running-device-install-part.ts";
 import { syncDeviceInstallNotice } from "../../device-install/device-install-notice.ts";
-import { installRemoteScriptReply } from "./remote-script-install-reply.ts";
+import { installProducerPalReply } from "./producer-pal-install-reply.ts";
+import { installRemoteScriptPart } from "./remote-script-install-reply.ts";
 
 /**
- * Register the route V8 uses to install the remote script from the ppal-manage
- * tool. V8 has no filesystem, so the install runs here.
+ * Register the route V8 uses to install the remote script and this device from
+ * the ppal-manage tool. V8 has no filesystem, so the install runs here.
  */
 export function registerRemoteScriptInstallRoute(): void {
   registerNodeRoute(
@@ -27,14 +31,20 @@ export function registerRemoteScriptInstallRoute(): void {
 
 /**
  * @param args - `{ userLibrary? }`
- * @returns The version and path installed, or why it wasn't
+ * @returns What became of the remote script and the device file
  */
 async function installFromRoute(args: unknown): Promise<InstallReply> {
-  const reply = await installRemoteScriptReply(
+  const reply = await installProducerPalReply(
     optionalString(args, "userLibrary"),
+    {
+      findUserLibrary: findUserLibraryPath,
+      installRemoteScript: installRemoteScriptPart,
+      installDevice: installRunningDevicePart,
+      installPluginHost: installPluginHostParts,
+    },
   );
 
-  if (reply.installed) {
+  if (reply.ran) {
     // The device's "Finish installation" notice may be done with.
     void syncDeviceInstallNotice();
   }

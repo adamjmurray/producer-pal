@@ -6,7 +6,7 @@
 import { type Express, type Request, type Response } from "express";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { rejectCrossOriginWrite } from "../../helpers/http/request-origin.ts";
-import * as console from "../../node-for-max-logger.ts";
+import { nodeError, nodeWarn } from "../../node-for-max-logger.ts";
 
 const OPENAI_CLIENT_SECRETS_URL =
   "https://api.openai.com/v1/realtime/client_secrets";
@@ -78,7 +78,7 @@ export function registerVoiceTokenRoute(app: Express): void {
         if (!upstream.ok) {
           const detail = await safeReadError(upstream);
 
-          console.warn(
+          nodeWarn(
             `voice-token upstream error: ${upstream.status} ${upstream.statusText}`,
           );
           res.status(upstream.status).json({
@@ -96,7 +96,7 @@ export function registerVoiceTokenRoute(app: Express): void {
         // `{ value: undefined }` the client has to reverse-engineer. Validate at
         // the trust boundary so the error names the real cause.
         if (json == null || typeof json.value !== "string" || !json.value) {
-          console.warn("voice-token: upstream 200 response missing 'value'");
+          nodeWarn("voice-token: upstream 200 response missing 'value'");
           res.status(502).json({
             error: "OpenAI client_secrets response missing 'value' field",
           });
@@ -112,7 +112,7 @@ export function registerVoiceTokenRoute(app: Express): void {
         // AbortSignal.timeout fires a DOMException named "TimeoutError"; surface
         // it as a gateway timeout rather than a generic 502.
         if (err instanceof Error && err.name === "TimeoutError") {
-          console.warn(
+          nodeWarn(
             `voice-token: upstream timed out after ${UPSTREAM_TIMEOUT_MS}ms`,
           );
           res
@@ -122,7 +122,7 @@ export function registerVoiceTokenRoute(app: Express): void {
           return;
         }
 
-        console.error(`voice-token error: ${errorMessage(err)}`);
+        nodeError(`voice-token error: ${errorMessage(err)}`);
         res.status(502).json({ error: errorMessage(err) });
       }
     },

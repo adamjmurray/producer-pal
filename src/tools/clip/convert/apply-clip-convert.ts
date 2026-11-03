@@ -8,7 +8,7 @@
 // the edited clip. Only the remote script can do it, and it answers before Live
 // has made anything, so the new track is found by comparing track lists.
 
-import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import {
   CONVERT_ROUTE,
   type ConvertReply,
@@ -20,7 +20,7 @@ import {
   type ClipReasons,
   ignoreClipParams,
 } from "#src/tools/clip/update/helpers/entries/clip-reasons.ts";
-import { REMOTE_SCRIPT_SETUP } from "#src/tools/shared/remote-script/remote-script-setup.ts";
+import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { whyUnavailable } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
@@ -47,8 +47,14 @@ const ARRIVAL_WAIT_MS = 20_000;
 /** The least left over for the new track to show up once Live has the job. */
 const MIN_ARRIVAL_WAIT_MS = 3000;
 
-/** Why a conversion can't run without the remote script. */
-export const CONVERT_NEEDS_REMOTE_SCRIPT = `converting a clip needs the Producer Pal remote script, which isn't answering; ${REMOTE_SCRIPT_SETUP}`;
+/**
+ * Why a conversion can't run without the remote script.
+ * @param manage - Whether the caller can use ppal-manage
+ * @returns The reason, with how to get the script
+ */
+export function convertNeedsRemoteScript(manage: boolean): string {
+  return `converting a clip needs the Producer Pal remote script, which isn't answering; ${remoteScriptSetup(manage)}`;
+}
 
 /** What the conversions of one call know of each other. */
 export interface ConvertProgress {
@@ -86,6 +92,8 @@ export interface ClipConvert {
   progress: ConvertProgress;
   /** The request deadline from ToolContext, if any */
   deadline?: number | null;
+  /** Whether the caller can use ppal-manage (`manageOffered`) */
+  manage: boolean;
 }
 
 /** The clip to convert, as the remote script names it, and where it sits. */
@@ -110,7 +118,7 @@ type Started = { ok: true; unsure?: string } | { ok: false; reason: string };
  * @param convert - The clip, the kind of conversion, and where to report
  */
 export async function applyClipConvert(convert: ClipConvert): Promise<void> {
-  const { entry, type, clipId, reasons, progress, deadline } = convert;
+  const { entry, type, clipId, reasons, progress, deadline, manage } = convert;
 
   if (entry == null || type == null) {
     return;
@@ -145,6 +153,7 @@ export async function applyClipConvert(convert: ClipConvert): Promise<void> {
   const started = await startConversion(
     { ...source.request, type, expiresInMs: remoteScriptExpiry(waitMs) },
     waitMs,
+    manage,
   );
 
   if (!started.ok) {
@@ -210,11 +219,13 @@ function readSource(clipId: string): Source | string {
  * Ask the remote script to start the conversion.
  * @param request - What to convert, and how
  * @param waitMs - How long to wait for the answer
+ * @param manage - Whether the caller can use ppal-manage
  * @returns Whether Live took the job, or why it didn't
  */
 async function startConversion(
   request: ConvertRequest,
   waitMs: number,
+  manage: boolean,
 ): Promise<Started> {
   const response = await requestNode<ConvertReply>(
     CONVERT_ROUTE,
@@ -234,7 +245,7 @@ async function startConversion(
   if (!reply.available) {
     return {
       ok: false,
-      reason: whyUnavailable(reply, CONVERT_NEEDS_REMOTE_SCRIPT),
+      reason: whyUnavailable(reply, convertNeedsRemoteScript(manage), manage),
     };
   }
 

@@ -17,6 +17,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { runProbe } from "./probe-client.ts";
+import { errorMessage } from "#src/shared/error-message.ts";
 
 const [file, outFile] = process.argv.slice(2);
 
@@ -41,6 +42,6 @@ try {
     console.log(`Wrote ${outFile}`);
   }
 } catch (error) {
-  console.error(error instanceof Error ? error.message : String(error));
+  console.error(errorMessage(error));
   process.exit(1);
 }

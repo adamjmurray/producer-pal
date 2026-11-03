@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   namedIdParam,
   namedParam,
@@ -14,7 +14,7 @@ import {
 
 describe("namedParam", () => {
   it("reads a blank param as naming nothing, without a word", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     expect(namedParam(undefined, "path")).toBeUndefined();
     expect(namedParam(null, "path")).toBeUndefined();
@@ -27,7 +27,7 @@ describe("namedParam", () => {
   // sent refuses calls and pairs values with the wrong object, so read it as
   // unset — but say so, since it names nothing.
   it("reads a coerced null as naming nothing, and says so", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
 
     expect(namedParam("null", "toPath")).toBeUndefined();
     expect(warn).toHaveBeenCalledWith('toPath "null" names nothing');

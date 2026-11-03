@@ -416,6 +416,14 @@ describe("ChatSdkClient", () => {
       expect(last[1]!.toolResults![0]!.result).toBe("Connection failed");
     });
 
+    it("keeps the text the SDK sends the model for a tool-error", async () => {
+      const last = await sendToolError(new Error("bar|beat syntax error"));
+
+      expect(last[1]!.toolResults![0]!.errorText).toBe(
+        "Error: bar|beat syntax error",
+      );
+    });
+
     it("extracts message from Error objects in tool-error parts", async () => {
       const last = await sendToolError(new Error("bar|beat syntax error"));
 

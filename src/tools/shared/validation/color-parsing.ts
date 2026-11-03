@@ -7,15 +7,15 @@ import {
   type ListEntries,
   splitList,
   valueForIndex,
-  warnPairingMismatch,
+  requirePairing,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
 
 /** A color entry must be exactly this: `#` plus six hex digits. */
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
 /**
- * Parse a comma-separated color param, refuse a malformed entry, and warn when
- * the list names the wrong number.
+ * Parse a comma-separated color param, refuse a malformed entry, and refuse a
+ * list that names the wrong number.
  *
  * One color covers every item; a list pairs 1:1 in order. See `list-pairing.ts`
  * for why nothing cycles. Every entry is checked before anything is written, so
@@ -25,7 +25,8 @@ const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
  * @param count - How many items the call acts on
  * @param item - What the call acts on, singular ("clip", "track")
  * @returns One color per item, or null when the value covers every item
- * @throws Error when any entry isn't `#RRGGBB`
+ * @throws Error when any entry isn't `#RRGGBB`, or the list's length doesn't
+ *   match the items
  */
 export function parseColors(
   value: string | undefined,
@@ -40,7 +41,7 @@ export function parseColors(
     }
   }
 
-  warnPairingMismatch(parsed?.length ?? 0, count, {
+  requirePairing(parsed?.length ?? 0, count, {
     param: "color",
     noun: "color",
     item,

@@ -6,20 +6,17 @@
 /**
  * Scenario: `loc:<name>` works as a song position inside a path.
  *
- * `locator-navigation` asks whether a model REACHES for a locator when nothing
- * points it there, and it currently fails every trial — models compute the bar
- * instead. That leaves the form itself unproven from a model's hands: we know
- * `t2[loc:Bridge]` resolves in e2e, and nothing shows a model can write one.
+ * `locator-navigation` grades only where a model lands, in either spelling. This
+ * scenario is the only check that a model can write the `loc:` form: we know
+ * `t2[loc:Bridge]` resolves in e2e, and nothing else shows a model can write
+ * one.
  *
- * So this prompt asks for the locator spelling outright. Between the two, a
- * failure is attributable: fail here and the form is broken, fail only there
- * and the model just didn't think of it.
+ * So this prompt asks for the locator spelling outright: a failure here means
+ * the form itself is broken.
  *
  * All three writing tools are covered because they take the coordinate in
  * different params — `path` on create, `toPath` on update and duplicate — and
- * a break in one would not show in the others. `locator-navigation` reaches
- * `ppal-duplicate` too, but only in the "did the model think of it" sense, and
- * it fails there every trial, so duplicate's `toPath` had no proof at all.
+ * a break in one would not show in the others.
  *
  * No `requires` — a path coordinate is in every schema, small-model mode
  * included, unlike duplicate's `locator` param.
@@ -30,6 +27,7 @@ import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
 import { asArrangementTrack, clipStarts } from "../arrangement-readback.ts";
 import { assertCallResult } from "./path-assertions.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** The arrangement Set, named by path — it lives under e2e/live-sets/. */
 const LIVE_SET =
@@ -49,9 +47,7 @@ const BRIDGE_POSITION = "[25|1]";
  */
 const AFTER_DUPLICATE = ["1|1", "9|1", "17|1", "25|1", "33|1"];
 
-const TOOL_CREATE_CLIP = "ppal-create-clip";
-const TOOL_UPDATE_CLIP = "ppal-update-clip";
-const TOOL_DUPLICATE = "ppal-duplicate";
+const TOOL_CREATE_CLIP = TOOLS.createClip;
 
 /** A path whose song position names a locator instead of a bar. */
 const LOCATOR_COORDINATE = /\[\s*loc(?:ator)?\s*:/i;
@@ -110,7 +106,7 @@ function assertLocatorCoordinate(options: {
 function assertBassClipsAt(expected: string[]): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-track",
+    tool: TOOLS.readTrack,
     args: { trackIndex: BASS_TRACK_INDEX, include: ["arrangement-clips"] },
     expect: (result) =>
       clipStarts(asArrangementTrack(result).arrangementClips).join(",") ===
@@ -135,7 +131,7 @@ export const pathLocatorCoordinate: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
 
     { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
     assertLocatorCoordinate({
@@ -153,17 +149,17 @@ export const pathLocatorCoordinate: EvalScenario = {
       check: (result) => argText(result.path).endsWith(BRIDGE_POSITION),
     }),
 
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
+    { type: "tool_called", tool: TOOLS.updateClip, turn: 2 },
     assertLocatorCoordinate({
       turn: 2,
-      tool: TOOL_UPDATE_CLIP,
+      tool: TOOLS.updateClip,
       param: "toPath",
       locator: "Intro",
     }),
-    { type: "tool_called", tool: TOOL_DUPLICATE, turn: 3 },
+    { type: "tool_called", tool: TOOLS.duplicate, turn: 3 },
     assertLocatorCoordinate({
       turn: 3,
-      tool: TOOL_DUPLICATE,
+      tool: TOOLS.duplicate,
       param: "toPath",
       locator: "Bridge",
     }),

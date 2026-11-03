@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
@@ -111,7 +111,7 @@ describe("deleteObject when Live refuses the delete", () => {
 
   beforeEach(() => {
     simulateMockDeletes();
-    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    warnSpy = vi.spyOn(maxConsole, "emitWarning").mockImplementation(() => {});
   });
 
   // The one target it was given was not deleted, so the call did nothing and

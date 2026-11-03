@@ -74,10 +74,14 @@ several).
 
 ## Library Search Misses New Plug-ins and Samples
 
-Live saves new library entries, like a plug-in you just installed or a sample
-you just added, in a place Producer Pal can't read until Live quits. Until then,
-`ppal-library` won't find them, even though Live's browser shows them. Asking
-for a plug-in by name still loads it.
+Live saves new library entries, like a sample you just added, in a place
+Producer Pal can't read until Live quits. Until then, `ppal-library` won't find
+them, even though Live's browser shows them. Asking for a plug-in by name still
+loads it.
+
+Plug-ins are different when the [remote script](/guide/remote-script) is
+running: the plug-in list comes from Live's browser and is current. Without the
+remote script, the plug-in list has the same delay as samples.
 
 **Workaround:** quit and reopen Live. Reopening a Set is not enough.
 
@@ -93,15 +97,6 @@ Delay Sync reads 0 where the plug-in shows "Free".
 
 **Workaround:** check the plug-in's window after a change, and tell the AI what
 you see so it can adjust.
-
-## CC Control Can't Be Read or Changed
-
-Live doesn't let Max for Live devices see inside CC Control. Producer Pal can
-add CC Control to a track, but afterwards it shows up with no name, as switched
-off, and with no settings, and the AI can't change any of them. The device
-itself works normally in Live.
-
-**Workaround:** set CC Control up by hand in Live.
 
 ## Live's Memory Grows Over Very Long Sessions
 

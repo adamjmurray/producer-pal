@@ -67,7 +67,7 @@ import {
 } from "#src/notation/stark/helpers/stark-note-formatting.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 
 /** Options for {@link formatNotation}. */
 export interface StarkFormatOptions {
@@ -148,7 +148,7 @@ function warnOnCeilingClippedNotes(count: number): void {
   const noun = count === 1 ? "note" : "notes";
   const verb = count === 1 ? "is" : "are";
 
-  console.warn(
+  emitWarning(
     `Stark: ${count} ${noun} longer than ${MAX_GRID_BEATS} beats ${verb} ` +
       `shortened on read-back — Stark's longest note value is a dotted whole ` +
       `(${MAX_GRID_BEATS} beats). Use bar|beat or midi-json notation to ` +

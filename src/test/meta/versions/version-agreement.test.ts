@@ -52,6 +52,17 @@ describe("version agreement", () => {
     );
   });
 
+  it("npm/server.json matches, top-level and per package", () => {
+    // The MCP Registry entry for the npm package; the Registry's copy of the
+    // version can't be changed once published.
+    expect(readJsonField("npm/server.json", (json) => json.version)).toBe(
+      expected,
+    );
+    expect(
+      readJsonField("npm/server.json", (json) => json.packages?.[0]?.version),
+    ).toBe(expected);
+  });
+
   it("src/shared/config.ts matches", () => {
     // The one copy that is not JSON: it ships inside the built V8 and Node
     // bundles, which have no package.json to read at runtime.

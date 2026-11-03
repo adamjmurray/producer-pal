@@ -70,7 +70,9 @@ export function App() {
     [setViewState],
   );
 
-  useSettingsDeepLink(openSettings);
+  // A visit before chat is set up opens Connection; a deep link overrides it.
+  // Settings is closable either way, so Installation-only users can leave.
+  useSettingsDeepLink(openSettings, settings.chatSetUp ? null : "connection");
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
   // Over the full catalog: a tool the server isn't listing right now can still
@@ -85,7 +87,7 @@ export function App() {
   );
   const remoteConfig = useRemoteConfig(mcpStatus);
 
-  const showSettings = viewState.settingsOpen || !settings.settingsConfigured;
+  const showSettings = viewState.settingsOpen;
   const { settingsClosing, closeSettings } = useSettingsClose(setViewState);
   // The Presets tab's create form is a sub-form inside the settings dialog:
   // saving or dismissing would close the modal over an unfinished preset, so
@@ -171,15 +173,11 @@ export function App() {
   } = useContextOverlay();
   const { shake, clearShake, overlayHandlers } = useSettingsDismiss({
     showSettings,
-    settingsConfigured: settings.settingsConfigured,
     settingsClosing,
     hasUnsavedChanges,
     handleCancelSettings,
-    // Defer Esc to the Context overlay when both are open. Settings renders
-    // above Context in the DOM, but the Context overlay is the one with an
-    // unconditional Esc-dismiss path (Settings won't dismiss when
-    // !settingsConfigured) — without this, both handlers fire and either
-    // Settings refuses to close OR both close at once.
+    // Defer Esc to the Context overlay when both are open, or both close at
+    // once.
     blockEscape: contextOpen,
     blockDismiss: presetDraftOpen,
   });

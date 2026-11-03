@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
+import { replacementFailedDetail } from "#src/shared/max/named-again-wording.ts";
 import {
-  replacementFailedDetail,
   skipEntry,
   spelledAs,
   unreachedDetail,

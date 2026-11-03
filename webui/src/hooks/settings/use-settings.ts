@@ -13,6 +13,7 @@ import {
 import { errorMessage } from "#src/shared/error-message";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation";
 import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
+import { isProviderReady } from "#webui/utils/provider-url";
 import { useApplyPreset } from "./presets/preset-apply";
 import {
   loadEnabledTools,
@@ -26,7 +27,6 @@ import {
 } from "./helpers/chat-settings-storage";
 import {
   type AllProviderSettings,
-  checkHasApiKey,
   DEFAULT_SETTINGS,
   loadAllProviderSettingsAsync,
   loadCurrentProvider,
@@ -99,7 +99,9 @@ export function useSettings(): UseSettingsReturn {
   const [savedThinking, setSavedThinking] = useState<string>(
     () => loadProviderSettings(loadCurrentProvider()).thinking,
   );
-  const [settingsConfigured, setSettingsConfigured] = useState<boolean>(
+  // Whether chat can be used: set only by a Save with a usable connection (see
+  // saveCurrentSettings), never by closing Settings or saving Installation-only.
+  const [chatSetUp, setChatSetUp] = useState<boolean>(
     () => localStorage.getItem("producer_pal_settings_configured") === "true",
   );
   const [enabledTools, setEnabledToolsState] =
@@ -239,8 +241,10 @@ export function useSettings(): UseSettingsReturn {
     // values even when encryption/IndexedDB failed — the user saw silent data
     // loss only on the next reload. Now a failed persist returns false, the
     // modal stays open, and saveError surfaces it.
+    let setsUpChat: boolean;
+
     try {
-      await persistAllSettings(
+      setsUpChat = await persistAllSettings(
         provider,
         enabledTools,
         providerSettings,
@@ -260,7 +264,11 @@ export function useSettings(): UseSettingsReturn {
     setSavedModel(providerSettings[provider].model);
     setSavedProvider(provider);
     setSavedThinking(providerSettings[provider].thinking);
-    setSettingsConfigured(true);
+
+    if (setsUpChat) {
+      setChatSetUp(true);
+    }
+
     setLiveApiEnabledDirty(false);
     setNotationDirty(false);
 
@@ -332,12 +340,13 @@ export function useSettings(): UseSettingsReturn {
   // key was reset while the localStorage envelope persisted), so reading the raw
   // stored envelope would falsely report a usable key. currentSettings.apiKey is
   // the decrypted value (blank until the post-mount load lands), so it matches
-  // what requests will actually send. lmstudio/ollama need no key — keep their
-  // "configured at all" signal via checkHasApiKey.
-  const hasApiKey =
-    provider === "lmstudio" || provider === "ollama"
-      ? checkHasApiKey(provider)
-      : Boolean(currentSettings.apiKey);
+  // what requests will actually send. Providers that need no key count as ready
+  // (see isProviderReady).
+  const hasApiKey = isProviderReady(
+    provider,
+    currentSettings.apiKey,
+    currentSettings.baseUrl,
+  );
   const resetBehaviorToDefaults = useCallback(() => {
     setThinking(DEFAULT_SETTINGS[provider].thinking);
   }, [provider, setThinking]);
@@ -370,7 +379,7 @@ export function useSettings(): UseSettingsReturn {
     saveSettings,
     cancelSettings,
     hasApiKey,
-    settingsConfigured,
+    chatSetUp,
     settingsLoaded,
     enabledTools,
     setEnabledTools: setEnabledToolsState,
@@ -445,6 +454,7 @@ function warnIfNotLoaded(settingsLoaded: boolean): boolean {
  * @param {boolean} smallModelMode - Small-model-mode flag
  * @param {string | null} subagentPresetId - Subagent preset id (null = inherit)
  * @param {number} maxToolSteps - Per-turn tool-step budget
+ * @returns {Promise<boolean>} Whether this save set chat up
  */
 async function persistAllSettings(
   provider: Provider,
@@ -453,11 +463,18 @@ async function persistAllSettings(
   smallModelMode: boolean,
   subagentPresetId: string | null,
   maxToolSteps: number,
-): Promise<void> {
-  await saveCurrentSettings(provider, enabledTools, allSettings);
+): Promise<boolean> {
+  const setsUpChat = await saveCurrentSettings(
+    provider,
+    enabledTools,
+    allSettings,
+  );
+
   saveSmallModelMode(smallModelMode);
   saveSubagentPresetId(subagentPresetId);
   saveMaxToolSteps(maxToolSteps);
+
+  return setsUpChat;
 }
 
 /**

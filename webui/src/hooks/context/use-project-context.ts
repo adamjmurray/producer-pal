@@ -75,10 +75,27 @@ async function postConfig(
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Config update failed (${response.status} ${response.statusText})`,
-    );
+    const reason = await refusalReason(response);
+    const failed = `Config update failed (${response.status} ${response.statusText})`;
+
+    throw new Error(reason == null ? failed : `${failed}: ${reason}`);
   }
 
   return (await response.json()) as ConfigResponse;
+}
+
+/**
+ * The server's own reason for a refused update, such as a context over the
+ * length limit, so the editor can say what to change.
+ * @param response - The failed response
+ * @returns Its `error` text, or null when the body has none
+ */
+async function refusalReason(response: Response): Promise<string | null> {
+  try {
+    const body = (await response.json()) as { error?: unknown };
+
+    return typeof body.error === "string" ? body.error : null;
+  } catch {
+    return null;
+  }
 }

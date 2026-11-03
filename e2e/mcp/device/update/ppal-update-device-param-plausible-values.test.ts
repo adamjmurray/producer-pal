@@ -188,6 +188,11 @@ describe("ppal-update-device param writes a model plausibly sends", () => {
       async (device, param, sent, label) => {
         const deviceId = await createTestDevice(ctx.client!, device, "t8");
 
+        // An off LFO's params are inactive, and a write to one says so.
+        if (device === "Analog") {
+          await writeParam(ctx.client!, deviceId, "LFO1 On/Off", "On");
+        }
+
         await expectParamWritten(deviceId, param, sent, label);
       },
     );

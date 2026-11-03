@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import {
@@ -29,8 +30,15 @@ import { type TargetSkip } from "#src/tools/shared/validation/lists/named-target
 import {
   readFanOut,
   type ReadResult,
+  type ReadTargetParams,
 } from "#src/tools/shared/validation/lists/read-fan-out.ts";
+import {
+  type CallScale,
+  newCallScale,
+} from "#src/tools/shared/schema/scale/call-scale.ts";
 import { type ClipEnvelope, clipEnvelopes } from "./helpers/clip-envelopes.ts";
+import { addClipScale } from "./helpers/clip-scale-fields.ts";
+import { addBooleanStateProperties } from "./helpers/clip-state-flags.ts";
 import {
   clipRegionBeats,
   processWarpMarkers,
@@ -42,16 +50,12 @@ import {
   resolveClipLocation,
 } from "./helpers/clip-resolution.ts";
 
-export interface ReadClipArgs {
+/** The args of a read-clip call; the fan-out adds the names the targets came under. */
+export interface ReadClipArgs extends ReadTargetParams {
   /** Clip slot, "t<track>/s<scene>" */
   path?: string | null;
-  /** Hidden alias for path */
-  paths?: string | null;
   /** Deprecated clip slot, trackIndex/sceneIndex */
   slot?: string | null;
-  id?: string | null;
-  /** Hidden alias for id */
-  ids?: string | null;
   /** Hidden alias for id */
   clipId?: string | null;
   include?: string[];
@@ -68,6 +72,9 @@ export interface ReadClipArgs {
   /** @internal Told the track of a slot that is really empty; may throw to
    * say why that slot holds no clip */
   onEmptySlot?: (track: LiveAPI) => void;
+  /** @internal The call's scale questions, shared across its clips. Only
+   * read-clip passes it, and only it shows a MIDI clip's own scale. */
+  callScale?: CallScale;
 }
 
 interface WarpMarker {
@@ -113,6 +120,11 @@ export interface ReadClipResult {
   arrangementLength?: string;
 
   // MIDI clip properties
+  /** The clip's own scale ("C Major"), only when it differs from the Live Set's;
+   * "" when the clip's scale is off and the Live Set's is on. */
+  scale?: string;
+  /** The notes of `scale`, like "C,D,E,F,G,A,B"; left out with `scale: ""`. */
+  scalePitches?: string;
   notes?: string;
   /** How many muted notes are hidden from `notes`; edits leave them alone. */
   mutedNotes?: number;
@@ -149,6 +161,8 @@ export async function readClip(
   args: ReadClipArgs = {},
   context: Partial<ToolContext> = {},
 ): Promise<ReadResult<ReadClipResult>> {
+  // Asked once for the whole call, however many clips it reads.
+  const callScale = newCallScale();
   const result = readFanOut(
     args,
     {
@@ -159,7 +173,7 @@ export async function readClip(
       pathSpellings: ["slot"],
       deadline: context.deadline,
     },
-    (one) => readNamedClip(one, context),
+    (one) => readNamedClip({ ...one, callScale }, context),
   );
 
   // Envelopes are read after the fan-out, not inside it: they are the one part
@@ -167,7 +181,7 @@ export async function readClip(
   // them — read-track and read-scene share the per-clip read and stay sync.
   if (parseIncludeArray(args.include, READ_CLIP_DEFAULTS).includeEnvelopes) {
     for (const entry of Array.isArray(result) ? result : [result]) {
-      await addClipEnvelopes(entry, context.deadline);
+      await addClipEnvelopes(entry, context.deadline, manageOffered(context));
     }
   }
 
@@ -179,10 +193,12 @@ export async function readClip(
  * that can't reach the remote script still answers with everything else.
  * @param entry - One clip the read produced, or a target it skipped
  * @param deadline - The request deadline from ToolContext, if any
+ * @param manage - Whether the caller can use ppal-manage
  */
 async function addClipEnvelopes(
   entry: ReadClipResult | TargetSkip,
   deadline: number | null | undefined,
+  manage: boolean,
 ): Promise<void> {
   if ("ok" in entry || entry.id == null) {
     return;
@@ -196,6 +212,7 @@ async function addClipEnvelopes(
       (clip.getProperty("is_arrangement_clip") as number) > 0,
       clipMeterReader(clip),
       deadline,
+      manage,
     );
   } catch (error) {
     entry.envelopes = errorMessage(error);
@@ -254,7 +271,7 @@ export function readOneClip(
   } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
   if (clipId == null && (trackIndex == null || sceneIndex == null)) {
-    throw new Error(idOrPathRequired());
+    throw new Error(idOrPathRequired("clip"));
   }
 
   const resolved = resolveClip(
@@ -263,6 +280,7 @@ export function readOneClip(
     sceneIndex,
     args.slotValidated,
     args.onEmptySlot,
+    args.targetNames?.idParam,
   );
 
   if (!resolved.found) {
@@ -294,6 +312,10 @@ export function readOneClip(
   }
 
   if (result.type === "midi") {
+    if (args.callScale != null) {
+      addClipScale(result, clip, args.callScale);
+    }
+
     processMidiClip(
       result,
       clip,
@@ -309,44 +331,6 @@ export function readOneClip(
   }
 
   return result;
-}
-
-/**
- * Add boolean state properties (playing, triggered, recording, overdubbing,
- * muted, envs). Only includes properties that are true
- * @param result - Result object to add properties to
- * @param clip - LiveAPI clip object
- * @param isArrangementClip - Arrangement clips never get `envs`: their
- *   envelopes can't be read or written
- */
-function addBooleanStateProperties(
-  result: ReadClipResult,
-  clip: LiveAPI,
-  isArrangementClip: boolean,
-): void {
-  if ((clip.getProperty("is_playing") as number) > 0) {
-    result.playing = true;
-  }
-
-  if ((clip.getProperty("is_triggered") as number) > 0) {
-    result.triggered = true;
-  }
-
-  if ((clip.getProperty("is_recording") as number) > 0) {
-    result.recording = true;
-  }
-
-  if ((clip.getProperty("is_overdubbing") as number) > 0) {
-    result.overdubbing = true;
-  }
-
-  if ((clip.getProperty("muted") as number) > 0) {
-    result.muted = true;
-  }
-
-  if (!isArrangementClip && (clip.getProperty("has_envelopes") as number) > 0) {
-    result.envs = true;
-  }
 }
 
 /**

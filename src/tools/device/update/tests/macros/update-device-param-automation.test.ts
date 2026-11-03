@@ -6,54 +6,22 @@
 import { describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
-  children,
-  livePath,
   registerContinuousParam,
   registerVariationRack,
-  registerMockObject,
+  registerNamedParams,
   updateDevice,
 } from "../update-device-test-helpers.ts";
 import { automatedParam } from "#src/test/mocks/mock-registry.ts";
 import { OVERRIDDEN } from "#src/tools/shared/arrangement/tracks/tests/automation-override-test-helpers.ts";
 
-/**
- * Register a device whose params are continuous 0..1 and not automated yet.
- * @param names - The params' names, in order
- * @returns The registered params, in order
- */
-function registerParams(...names: string[]): RegisteredMockObject[] {
-  registerMockObject("dev1", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: {
-      parameters: children(...names.map((_, index) => `p${index}`)),
-    },
-  });
-
-  return names.map((name, index) =>
-    registerMockObject(`p${index}`, {
-      properties: {
-        name,
-        original_name: name,
-        is_quantized: 0,
-        is_enabled: 1,
-        value: 0.5,
-        min: 0,
-        max: 1,
-      },
-      methods: { str_for_value: (value: unknown) => Number(value).toFixed(2) },
-    }),
-  );
-}
-
 describe("updateDevice - params with arrangement automation", () => {
   it("says so on the param's own entry, each param on its own", () => {
-    const [cutoff, , mix, untouched] = registerParams(
+    const [cutoff, , mix, untouched] = registerNamedParams([
       "Cutoff",
       "Reso",
       "Mix",
       "Drive",
-    );
+    ]);
 
     automatedParam(cutoff as RegisteredMockObject);
     automatedParam(mix as RegisteredMockObject, 2);
@@ -103,7 +71,7 @@ describe("updateDevice - params with arrangement automation", () => {
     ["no lane, or unknown while playing from Session", 0, "0.8"],
     ["a lane when the value it holds is written again", 1, "0.5"],
   ])("says nothing for %s", (_, state, value) => {
-    const [cutoff] = registerParams("Cutoff");
+    const [cutoff] = registerNamedParams(["Cutoff"]);
 
     automatedParam(cutoff as RegisteredMockObject, state);
 

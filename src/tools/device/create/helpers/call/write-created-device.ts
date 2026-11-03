@@ -18,6 +18,7 @@ import {
 } from "../device-creation.ts";
 import { refuseIndexInNewChain } from "../index-in-new-chain.ts";
 import { type CreateChecked, type DevicePlan } from "./check-create-call.ts";
+import { createHostedDevice } from "./write-hosted-device.ts";
 import { type CreatePayload } from "./parse-create-call.ts";
 
 /**
@@ -38,6 +39,10 @@ export function writeCreatedDevice(
   // Before the path makes any chains: it would leave them behind when refused.
   refuseIndexInNewChain(target.data.path);
 
+  if (plan.hosted != null) {
+    return createHostedDevice({ ...plan, hosted: plan.hosted }, step);
+  }
+
   if (plan.item == null) {
     return place(insertNativeDevice(plan.device, plan.path), step);
   }
@@ -53,13 +58,16 @@ async function loadDevice(
   item: NonNullable<DevicePlan["item"]>,
   step: Step<CreateChecked>,
 ): Promise<CreateDeviceResult> {
-  const { deadline, timeoutMs } = step.call.ctx;
+  const { deadline, timeoutMs, manageAvailable, smallModelMode } =
+    step.call.ctx;
   // Named and given its params as soon as it is moved into place, before the
   // load cleans up its temp track, so the entry already shows what was asked
   // when the cleanup has something to add.
   const created = await createBrowserDevice(item, plan.device, plan.path, {
     deadline,
     timeoutMs,
+    manageAvailable,
+    smallModelMode,
     onPlaced: (placed) => place(placed, step),
   });
 

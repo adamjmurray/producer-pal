@@ -224,7 +224,7 @@ describe("duplicate clip - a toPath entry the clip can't go to", () => {
     registerDestTrack(2, false);
 
     // Counting only the survivor left one copy, so the list stopped splitting
-    // and "#ff0000,#00ff00" reached Live as a single color — a hard tool
+    // and "#FF3636,#1AFF2F" reached Live as a single color — a hard tool
     // failure, with the first copy already made.
     await duplicate({
       type: "clip",
@@ -232,11 +232,11 @@ describe("duplicate clip - a toPath entry the clip can't go to", () => {
       arrangementStart: "3|1",
       toPath: "t1,t2",
       name: "Verse,Chorus",
-      color: "#ff0000,#00ff00",
+      color: "#FF3636,#1AFF2F",
     });
 
     expect(clip1.set).toHaveBeenCalledWith("name", "Verse");
-    expect(clip1.set).toHaveBeenCalledWith("color", 0xff0000);
+    expect(clip1.set).toHaveBeenCalledWith("color", 0xff3636);
   });
 
   it("still splits the list when a clip slot shares an arrangement toPath", async () => {
@@ -258,7 +258,7 @@ describe("duplicate clip - a toPath entry the clip can't go to", () => {
     });
 
     expect(clip2.set).toHaveBeenCalledWith("name", "Chorus");
-    expect(clip2.set).toHaveBeenCalledWith("color", 0x00ff00);
+    expect(clip2.set).toHaveBeenCalledWith("color", 0x1aff2f);
   });
 });
 

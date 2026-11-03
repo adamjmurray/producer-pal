@@ -125,6 +125,17 @@ export function libraryModifiedMs(path: string): number | undefined {
 }
 
 /**
+ * @param path - Path to check
+ * @returns A stamp that changes when a different file is put at the path (size,
+ *   modified time and inode), or undefined when it's gone
+ */
+export function libraryFileStamp(path: string): string | undefined {
+  const stats = statSync(path, { throwIfNoEntry: false });
+
+  return stats && `${stats.size}:${stats.mtimeMs}:${stats.ino}`;
+}
+
+/**
  * Make a folder and any missing parents. A folder that's there is fine.
  *
  * @param folder - Folder to make
@@ -151,12 +162,15 @@ export function removeFromLibrary(path: string): void {
 }
 
 /**
- * Write a UTF-8 file, creating its parent folders.
+ * Write a file, creating its parent folders. Text is written as UTF-8.
  *
  * @param file - Path to write
  * @param contents - File contents
  */
-export function writeLibraryFile(file: string, contents: string): void {
+export function writeLibraryFile(
+  file: string,
+  contents: string | Uint8Array,
+): void {
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, contents, "utf8");
 }

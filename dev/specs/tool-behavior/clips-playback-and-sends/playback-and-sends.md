@@ -46,9 +46,9 @@ and the playhead is moving anyway once playback runs.
 
 ## Sends
 
-`sendReturn` and `sends[].return` take a return's id, name, path (`rt0`, return
-tracks only) or letter prefix. The first hit wins, in that order, and all but
-ids are case-insensitive:
+`sends[].return` (and the deprecated `sendReturn`) take a return's id, name,
+path (`rt0`, return tracks only) or letter prefix. The first hit wins, in that
+order, and all but ids are case-insensitive:
 
 1. An id is exact and can't be shared. Only the ids of the returns being
    addressed count.
@@ -66,3 +66,12 @@ the order; a clash is not refused, because the order is deterministic.
 
 Return tracks and rack return chains share one resolver. Chains have no path
 form.
+
+`sends` is the one published way to set a send, on a track (update-track) and on
+a chain or pad (update-device). `sendGainDb` + `sendReturn` is deprecated: still
+honored, not published, and a call using it carries the deprecation warning,
+which gives the `sends` call it means (built from the call's own values). A
+comma list in `sendReturn` pairs one return per target, which `sends` can't do,
+so that warning says to make one call per return. A call sending `sends` with
+either of the pair is refused up front, whatever the values, before anything is
+written. Half the pair is refused too.

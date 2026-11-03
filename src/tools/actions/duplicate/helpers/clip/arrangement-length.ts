@@ -15,6 +15,7 @@ import {
   laneViewOf,
   trackLane,
 } from "#src/tools/shared/arrangement/helpers/arrangement-lane-view.ts";
+import { refuseEmptyLength } from "#src/tools/shared/schema/refuse-empty-length.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { createShortenedClipInHolding } from "#src/tools/shared/arrangement/arrangement-tiling-holding.ts";
@@ -58,11 +59,11 @@ export function parseArrangementLength(
       timeSigDenominator,
     );
 
-    if (arrangementLengthBeats <= 0) {
-      throw new Error(
-        `arrangementLength must be positive, got "${arrangementLength}"`,
-      );
-    }
+    refuseEmptyLength(
+      arrangementLength,
+      arrangementLengthBeats,
+      "arrangementLength",
+    );
 
     return arrangementLengthBeats;
   } catch (error) {

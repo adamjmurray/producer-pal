@@ -26,8 +26,9 @@ import {
   assertMemoryRead,
   assertNoMemoryRead,
 } from "./helpers/memory-assertions.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_CREATE_CLIP = "ppal-create-clip";
+const TOOL_CREATE_CLIP = TOOLS.createClip;
 
 /** Quarter beats in two 4/4 bars — the length ceiling the project context sets. */
 const TWO_BARS = 8;
@@ -95,7 +96,7 @@ export const contextFollowProject: EvalScenario = contextFollowScenario({
   id: "context-follow-project",
   description: "Honors the house-style rules in project context",
 
-  // resetConfig() reverts the project layer, so it needs no teardown.
+  // The runner reverts the project layer, so it needs no teardown.
   config: { projectContext: PROJECT_CONTEXT },
   seed: seedContext({ clearSlots: [LEAD_SLOT] }),
 

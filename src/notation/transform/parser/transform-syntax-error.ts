@@ -6,6 +6,7 @@
 import {
   type ExpectedItem,
   formatSyntaxError,
+  invisibleCharHint,
 } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { diagnoseTransformMistake } from "./helpers/transform-mistakes.ts";
@@ -30,7 +31,9 @@ export function formatTransformSyntaxError(
     error,
     source,
     (failure) =>
-      diagnoseTransformMistake(failure) ?? describeExpected(failure.expected),
+      invisibleCharHint(failure.line.slice(failure.column)) ??
+      diagnoseTransformMistake(failure) ??
+      describeExpected(failure.expected),
   );
 }
 
@@ -70,9 +73,10 @@ function describeExpected(expected: ExpectedItem[]): string {
     return `expected a statement, like "velocity = 100", "C1: v80", or "ratchet(2)".`;
   }
 
-  // A list made only of literals is a closed set (`note.` + a property name),
-  // so show all of it; otherwise it is mostly noise, so keep the first few.
-  const closed = expected.every((item) => item.type === "literal");
+  // Literals, characters and the end are a closed set (`note.` + a property
+  // name, the comparison operators), so show all of it. A named rule among
+  // them makes it mostly noise, so keep the first few.
+  const closed = expected.every((item) => item.type !== "other");
   const shown = closed ? [...names] : [...names].slice(0, 5);
 
   return names.size > 0 ? `expected ${shown.join(", ")}.` : "unexpected text.";

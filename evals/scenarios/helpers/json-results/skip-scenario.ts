@@ -10,12 +10,15 @@
  * A scenario declares `requires` (transforms DSL, bracket notation, specific
  * tools, a small-model-excluded param, a large model). When the run environment
  * can't satisfy a requirement — e.g. small-model mode doesn't teach the
- * transforms DSL, or the `--tools` subset omits a needed tool — the scenario is
+ * transforms DSL or hides a needed tool, or the `--tools` subset omits it — the scenario is
  * reported as `skipped` instead of being run and failed, so scores stay
  * apples-to-apples.
  */
 
-import { SMALL_MODEL_EXCLUDED_PARAMS } from "#src/mcp-server/create-mcp-server.ts";
+import {
+  SMALL_MODEL_EXCLUDED_PARAMS,
+  SMALL_MODEL_HIDDEN_TOOLS,
+} from "#src/mcp-server/create-mcp-server.ts";
 import { toFullToolName } from "../../run-env/run-env.ts";
 import { type EvalScenario } from "../../types.ts";
 import { type JsonEvalResult } from "./types.ts";
@@ -68,14 +71,21 @@ export function shouldSkipScenario(
     }
   }
 
-  // Revived: checked against the run's `--tools` subset (both sides resolved to
-  // full names). Bites only when the operator restricts `--tools` below the
-  // required set. Small-model mode excludes no whole standard tools, so it never
-  // trips this — its exclusion surface is params, handled above.
   if (req.tools) {
-    const missing = req.tools
-      .map(toFullToolName)
-      .filter((tool) => !env.tools.includes(tool));
+    const required = req.tools.map(toFullToolName);
+
+    // Small-model mode hides some whole tools (e.g. ppal-manage).
+    const hidden = smallModel
+      ? required.filter((tool) => SMALL_MODEL_HIDDEN_TOOLS.has(tool))
+      : [];
+
+    if (hidden.length > 0) {
+      return `requires tool(s) hidden in small-model mode: ${hidden.join(", ")}`;
+    }
+
+    // Checked against the run's `--tools` subset. Bites only when the operator
+    // restricts `--tools` below the required set.
+    const missing = required.filter((tool) => !env.tools.includes(tool));
 
     if (missing.length > 0) {
       return `run's --tools subset excludes required tool(s): ${missing.join(", ")}`;

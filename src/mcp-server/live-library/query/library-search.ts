@@ -20,10 +20,13 @@
 
 import { stat } from "node:fs/promises";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { detectStalenessRisk } from "../db-staleness.ts";
+import { stalenessNote } from "../db-staleness.ts";
+import { type DatabaseSync } from "node:sqlite";
 import {
   clampLibraryLimit,
+  clampLibraryOffset,
   DEFAULT_LIBRARY_LIMIT,
+  MAX_SEARCH_LIMIT,
   type LibraryItem,
   type LibrarySearchArgs,
   type LibrarySearchResult,
@@ -40,8 +43,8 @@ import {
   resolveFileIdForPath,
   type SearchRow,
 } from "./candidate-query.ts";
-import { presetFolderNote } from "./preset-folder-note.ts";
-import { rackKindNote } from "./rack-kind-note.ts";
+import { presetFolderNote } from "./notes/preset-folder-note.ts";
+import { rackKindNote } from "./notes/rack-kind-note.ts";
 
 /**
  * Run a structured library search.
@@ -63,10 +66,8 @@ export async function librarySearch(
     };
   }
 
-  // Best-effort advisory: flag when an unclean Live exit left a pending WAL
-  // that our immutable read can't see. Spread into every success return so the
-  // signal sits at the top alongside dbAvailable; omitted when there's no risk.
-  const stalenessRisk = await detectStalenessRisk(dbPath);
+  // Our immutable read misses what is still in Live's WAL; the note says so.
+  const stale = await stalenessNote(dbPath);
 
   // Guard the open + query: the f.subtype column (clip subtype) is the
   // most recently added column we SELECT, and Live's DB schema varies across
@@ -93,7 +94,7 @@ export async function librarySearch(
       if (inFolder != null && resolvedParent == null) {
         return {
           dbAvailable: true,
-          ...(stalenessRisk && { stalenessRisk }),
+          ...(stale && { stalenessNote: stale }),
           items: [],
           detail: `inFolder path not found: ${inFolder}`,
         };
@@ -101,16 +102,12 @@ export async function librarySearch(
 
       // At this point resolvedParent is either undefined (no inFolder) or a valid number
       const parentId: number | undefined = resolvedParent ?? undefined;
-      const { sql, params } = buildSearchQuery(args, parentId);
-      // node:sqlite returns `unknown[]`. We trust the SELECT column list to
-      // match SearchRow — the SQL is hand-written and pinned by tests, so a
-      // per-row runtime validator would be dead weight at the cost of
-      // measurable overhead at limit=1000.
-      const rows = db.prepare(sql).all(...params) as unknown as SearchRow[];
+      const { rows, more } = searchPage(db, args, parentId);
       const fileIds = rows.map((r) => r.file_id);
       const paths = resolveAbsolutePaths(db, fileIds);
       const tagsByFile = fetchTagsBulk(db, fileIds);
       const items = rows.map((row) => buildLibraryItem(row, paths, tagsByFile));
+      const offset = clampLibraryOffset(args.offset);
 
       if (args.verifyPaths) {
         await verifyItemPaths(items);
@@ -118,14 +115,15 @@ export async function librarySearch(
 
       const notes = [
         presetFolderNote(db, args, parentId),
-        rackKindNote(db, args, parentId, items.length),
+        rackKindNote(db, args, parentId, offset + items.length),
       ].filter((n) => n != null);
       const note = notes.length > 0 ? notes.join("; ") : undefined;
 
       return {
         dbAvailable: true,
-        ...(stalenessRisk && { stalenessRisk }),
+        ...(stale && { stalenessNote: stale }),
         items,
+        ...(more != null && { more }),
         ...(note != null && { note }),
       };
     } finally {
@@ -143,7 +141,7 @@ export async function librarySearch(
 /**
  * Stat each item's path and set `pathExists` so the caller can drop stale
  * entries. Runs in parallel — a warm-cache stat is sub-millisecond, so even a
- * full limit=1000 result set stays well under a second. Truncated paths are
+ * full limit=200 result set stays well under a second. Truncated paths are
  * skipped (their missing leading segments would always stat as not-found).
  *
  * @param items - Items to verify in place
@@ -185,37 +183,55 @@ async function pathExistsOnDisk(path: string): Promise<boolean> {
   }
 }
 
-interface QueryPieces {
-  sql: string;
-  params: Array<string | number>;
-}
-
 /**
- * Compose the search SQL and its positional parameters from filter args:
- * the shared candidate WHERE plus search's own ORDER BY and LIMIT.
+ * Read one page of matches. It asks for a row past the page: finding one means
+ * more matches follow, and only then are they counted (the count is a few
+ * milliseconds, so a search that fits its page never pays for it).
  *
- * @param args - Filter parameters
+ * @param db - Open database handle
+ * @param args - Filter parameters, including limit and offset
  * @param parentId - Resolved file_id for the inFolder constraint, when present
- * @returns SQL string and parameter array for prepared statement binding
+ * @returns The page's rows, and how many matches lie beyond it (omitted if none)
  */
-function buildSearchQuery(
+function searchPage(
+  db: DatabaseSync,
   args: LibrarySearchArgs,
   parentId?: number,
-): QueryPieces {
+): { rows: SearchRow[]; more?: number } {
   const { where, params } = buildCandidateWhere(args, parentId);
-  const orderBy = orderByClause(args.sort);
-  const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
-
-  params.push(limit);
-
+  const limit = clampLibraryLimit(
+    args.limit,
+    DEFAULT_LIBRARY_LIMIT,
+    MAX_SEARCH_LIMIT,
+  );
+  const offset = clampLibraryOffset(args.offset);
   // buildCandidateWhere always emits at least the file_type filter.
-  const sql = `SELECT ${CANDIDATE_COLUMNS}
-               FROM ${CANDIDATE_FROM}
-               WHERE ${where.join(" AND ")}
-               ORDER BY ${orderBy}
-               LIMIT ?`;
+  const from = `${CANDIDATE_FROM} WHERE ${where.join(" AND ")}`;
+  // node:sqlite returns `unknown[]`. We trust the SELECT column list to
+  // match SearchRow — the SQL is hand-written and pinned by tests, so a
+  // per-row runtime validator would be dead weight at the cost of
+  // measurable overhead at limit=200.
+  const fetched = db
+    .prepare(
+      `SELECT ${CANDIDATE_COLUMNS}
+       FROM ${from}
+       ORDER BY ${orderByClause(args.sort)}
+       LIMIT ? OFFSET ?`,
+    )
+    .all(...params, limit + 1, offset) as unknown as SearchRow[];
 
-  return { sql, params };
+  if (fetched.length <= limit) {
+    return { rows: fetched };
+  }
+
+  const { n } = db
+    .prepare(`SELECT COUNT(*) AS n FROM ${from}`)
+    .get(...params) as { n: number };
+
+  return {
+    rows: fetched.slice(0, limit),
+    more: Math.max(n - offset - limit, 1),
+  };
 }
 
 /**
@@ -230,19 +246,22 @@ function buildSearchQuery(
  *   - "mod-date":  f.mod_date DESC, f.name ASC               ↔ (DB items trust upstream order)
  *   - "use-count": f.use_count DESC, f.mod_date DESC, name   ↔ b.useCount - a.useCount || name
  *
+ * Every order ends on file_id so the page boundary is stable: with ties left
+ * to the engine, a file could land on two pages or none.
+ *
  * @param sort - Sort enum (defaults to use-count)
  * @returns SQL fragment safe to inline (no params)
  */
 function orderByClause(sort: LibrarySearchArgs["sort"]): string {
   if (sort === "name") {
-    return "f.name ASC";
+    return "f.name ASC, f.file_id ASC";
   }
 
   if (sort === "mod-date") {
-    return "f.mod_date DESC, f.name ASC";
+    return "f.mod_date DESC, f.name ASC, f.file_id ASC";
   }
 
   // Default use-count sort: stable tiebreakers so a fresh user (where most
   // rows have use_count=0) doesn't fall back to whatever the index returns.
-  return "f.use_count DESC, f.mod_date DESC, f.name ASC";
+  return "f.use_count DESC, f.mod_date DESC, f.name ASC, f.file_id ASC";
 }

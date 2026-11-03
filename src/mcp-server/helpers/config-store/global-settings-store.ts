@@ -14,7 +14,7 @@
 
 import { readFileSync } from "node:fs";
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "../../node-for-max-logger.ts";
+import { nodeWarn } from "../../node-for-max-logger.ts";
 import {
   isConfigDirInert,
   resolveConfigPath,
@@ -121,7 +121,7 @@ function readRaw(): Record<string, unknown> {
     text = readFileSync(target, "utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      console.warn(`Failed to read ${target}: ${errorMessage(error)}`);
+      nodeWarn(`Failed to read ${target}: ${errorMessage(error)}`);
     }
 
     return {};
@@ -136,7 +136,7 @@ function readRaw(): Record<string, unknown> {
 
     return parsed as Record<string, unknown>;
   } catch (error) {
-    console.warn(`Ignoring malformed ${target}: ${errorMessage(error)}`);
+    nodeWarn(`Ignoring malformed ${target}: ${errorMessage(error)}`);
 
     return {};
   }

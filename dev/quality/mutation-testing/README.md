@@ -8,7 +8,8 @@ nothing. Mutation testing closes that gap: it introduces small faults
 mutant** is a behavior change no test caught — a concrete test-quality gap.
 
 Tool: [Stryker Mutator](https://stryker-mutator.io/) with the Vitest runner. CI
-runs it only on manual dispatch (`.github/workflows/mutation-testing.yml`).
+runs it weekly and on manual dispatch
+(`.github/workflows/mutation-testing.yml`); see "Scheduled CI run" below.
 
 ## Running
 
@@ -40,16 +41,16 @@ scope's `break` floor (the table under "Baselines" mirrors them):
 - **`sharedRuntime`** — `src/shared/` (cross-cutting utilities shared by the
   Node MCP server and the V8 Max runtime: pitch, notation identity, compact
   serializer/parser, path builders, config, error/response utils, v8 console /
-  sleep, silent-wav, version-check). It is **not** under `src/tools/`, so it
-  uses its own glob const (`SHARED_RUNTIME_GLOBS`), and its scope key can't be
-  `shared` — that already means `src/tools/shared`.
+  sleep, version-check). It is **not** under `src/tools/`, so it uses its own
+  glob const (`SHARED_RUNTIME_GLOBS`), and its scope key can't be `shared` —
+  that already means `src/tools/shared`.
 - **`mcpServer`** — `src/mcp-server/` (the Node-for-Max side: the Express app,
   MCP server wiring, REST routes, the live-library SQLite reader, the
-  markdown/memory/skill override stores, and the RPC protocol to the V8
-  runtime). Also **not** under `src/tools/`, so it uses its own glob const
-  (`MCP_SERVER_GLOBS`) and the camelCase key `mcpServer`. The bundle entry point
-  `mcp-server.ts` is excluded (it runs module-load side effects wired to
-  `max-api` and is already coverage-excluded).
+  markdown/memory/skill override stores, the silent-WAV generator, and the RPC
+  protocol to the V8 runtime). Also **not** under `src/tools/`, so it uses its
+  own glob const (`MCP_SERVER_GLOBS`) and the camelCase key `mcpServer`. The
+  bundle entry point `mcp-server.ts` is excluded (it runs module-load side
+  effects wired to `max-api` and is already coverage-excluded).
 - **`v8Adapter`** — `src/live-api-adapter/` (the V8 side of the Max device).
 - **Groups** — `tools` (all ten tool domains) and `all` (every scope above),
   expanded by the runner into their member scopes.
@@ -152,15 +153,32 @@ just chase green.
 ## Status
 
 Every scope is triaged and ratcheted; none is in baseline mode. Mutation testing
-stays off the per-PR hot path (a run is minutes per scope).
+stays off the per-PR hot path (a full run takes hours).
 
 - Notation's remaining survivors are mostly epsilon-boundary, warning-string and
   equivalent mutants (buckets 2 and 3), so real gaps are sparse.
 - Raise a scope's `break` as its score climbs.
 
-A scheduled CI run is not wired. A full-tree run is ~8–20 hours, and a GitHub
-Actions job is capped at 6, so it would be a matrix with one job per scope (each
-running `npm run mutation -- <scope>` and uploading
-`reports/mutation/<scope>.html`). After a first full run, Stryker's
-`--incremental` mode re-tests only mutants in changed files, which would make a
-non-blocking per-PR run feasible.
+### Scheduled CI run
+
+`.github/workflows/mutation-testing.yml` runs every scope weekly (Mondays 03:00
+UTC) and on manual dispatch (a scope or group, default `all`). It is not a PR
+check and never blocks a commit.
+
+- A first job prints the scope list as JSON
+  (`node config/run-mutation.mjs --list all`, from `SCOPE_GROUPS.all`); a matrix
+  then runs one scope per job, `fail-fast: false`. A new scope in
+  `config/mutation-scopes.mjs` is picked up with no workflow edit.
+- A full-tree run is ~8–20 hours and a GitHub Actions job is capped at 6, hence
+  one job per scope (`timeout-minutes: 350`).
+- Every run is a full one: no incremental file is restored. (To force a full run
+  locally, delete `reports/mutation/<scope>-incremental.json`;
+  `--incremental false` on the CLI is broken.)
+- Each job uploads `reports/mutation/<scope>.html` as the artifact
+  `mutation-report-<scope>` (30 days), also when the score is under the floor.
+- A scope under its `break` floor fails its own job (Stryker's exit code passes
+  through the runner). **Shared runners are noisier than a dev machine.**
+  Stryker counts a timeout as killed, and which mutants time out varies per run,
+  so a scope near its floor can fail without a real regression. Re-run it and
+  read the report before acting. The `v8Adapter` and `mcpServer` scopes are the
+  noisiest.

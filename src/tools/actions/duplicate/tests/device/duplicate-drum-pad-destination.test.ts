@@ -9,16 +9,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
+import { copyKickToTrack1 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import {
   clearMockRegistry,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
-  error: vi.fn(),
-  log: vi.fn(),
-  warn: vi.fn(),
-  warnOnce: vi.fn(),
+  maxError: vi.fn(),
+  maxLog: vi.fn(),
+  emitWarning: vi.fn(),
+  emitWarningOnce: vi.fn(),
 }));
 
 const RACK = livePath.track(0).device(0);
@@ -86,9 +87,7 @@ describe("duplicate type drum-pad — a toPath that is not a pad", () => {
       properties: { can_have_drum_pads: [1], has_drum_pads: [1] },
     });
 
-    await expect(
-      duplicate({ type: "drum-pad", id: "pad36", toPath: "t1/d0/pD1" }),
-    ).rejects.toThrow(
+    await expect(copyKickToTrack1()).rejects.toThrow(
       'are in different racks — the drum rack is nested; try "t1/d0/c0/d0/pD1"',
     );
   });

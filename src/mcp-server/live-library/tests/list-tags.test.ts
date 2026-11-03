@@ -4,8 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
+import { MAX_LIBRARY_LIMIT } from "../library-types.ts";
 import { listTags } from "../list-tags.ts";
 import {
+  addManyTags,
   createPartialSchemaDb,
   FILES_ONLY_SCHEMA,
   setupLibraryFixtureLifecycle,
@@ -79,6 +81,32 @@ describe("listTags", () => {
     const result = await listTags({ limit: 0 });
 
     expect(result.tags.length).toBeGreaterThan(0);
+  });
+
+  it("says how many tags the limit left out, with no way to page", async () => {
+    // Fixture: 5 tags.
+    const result = await listTags({ limit: 2 });
+
+    expect(result.tags).toHaveLength(2);
+    expect(result.more).toBe(3);
+    expect(result).not.toHaveProperty("nextOffset");
+  });
+
+  it("leaves `more` off when every tag fits", async () => {
+    expect(await listTags({ limit: 5 })).not.toHaveProperty("more");
+    expect(await listTags()).not.toHaveProperty("more");
+  });
+});
+
+describe("listTags - limit cap", () => {
+  setupLibraryFixtureLifecycle(dbPathMod, addManyTags);
+
+  it("returns at most 1000 tags and counts the rest", async () => {
+    const result = await listTags({ limit: 5_000 });
+
+    // 1,100 new tags plus the fixture's 5.
+    expect(result.tags).toHaveLength(MAX_LIBRARY_LIMIT);
+    expect(result.more).toBe(105);
   });
 });
 

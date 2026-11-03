@@ -69,7 +69,9 @@ describe("createClip - audio properties", () => {
   });
 
   it("should say on the entry that audio properties were skipped on a MIDI clip", async () => {
-    const warnSpy = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+    const warnSpy = vi
+      .spyOn(v8Console, "emitWarning")
+      .mockImplementation(() => {});
 
     setupSessionMocks();
 

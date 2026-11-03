@@ -11,7 +11,9 @@ import {
   readAllClipNotes,
   readClipNotes,
   readVisibleClipNotesInSpan,
+  readEveryClipNote,
   removeAllClipNotes,
+  removeEveryClipNote,
 } from "#src/tools/shared/clip/clip-notes.ts";
 
 const RAW_NOTE = {
@@ -215,6 +217,76 @@ describe("clip note scan window", () => {
 
     expect(clip.call).toHaveBeenCalledWith(
       "get_notes_extended",
+      0,
+      128,
+      -4,
+      24,
+    );
+  });
+});
+
+// loop 0..4 with end_marker out at 16, and a clip-length (4) of margin.
+const LOOP_WITH_FAR_END = {
+  length: 4,
+  looping: 1,
+  start_marker: 0,
+  end_marker: 16,
+  loop_start: 0,
+  loop_end: 4,
+};
+
+describe("clip note scan window on a looping clip", () => {
+  it("ends at loop_end, not at an end_marker past it", () => {
+    const clip = makeClip("null", LOOP_WITH_FAR_END);
+
+    readAllClipNotes(clip);
+
+    // Starts a clip-length before the region (-4) and ends at loop_end (4):
+    // notes at or past beat 4, such as one at beat 10, are not read.
+    expect(clip.call).toHaveBeenCalledWith("get_notes_extended", 0, 128, -4, 8);
+  });
+
+  it("starts where the window of a clip that isn't looping starts", () => {
+    const looping = makeClip("null", LOOP_WITH_FAR_END);
+    const notLooping = makeClip("null", { ...LOOP_WITH_FAR_END, looping: 0 });
+
+    readAllClipNotes(looping);
+    readAllClipNotes(notLooping);
+
+    expect(vi.mocked(looping.call).mock.calls[0]![3]).toBe(
+      vi.mocked(notLooping.call).mock.calls[0]![3],
+    );
+  });
+
+  // Notes outside the window must survive every edit, which only holds while
+  // the remove covers exactly what the read does.
+  it("removes exactly the span it reads, so a note past loop_end survives", () => {
+    const clip = makeClip("null", LOOP_WITH_FAR_END);
+
+    readClipNotes(clip);
+    removeAllClipNotes(clip);
+
+    const [read, remove] = vi.mocked(clip.call).mock.calls;
+
+    expect(remove).toStrictEqual(["remove_notes_extended", ...read!.slice(1)]);
+  });
+
+  it("is still read whole when a copy takes every note", () => {
+    const clip = makeClip("null", LOOP_WITH_FAR_END);
+
+    readEveryClipNote(clip);
+    removeEveryClipNote(clip);
+
+    // Through end_marker 16 and a clip-length past it.
+    expect(clip.call).toHaveBeenCalledWith(
+      "get_notes_extended",
+      0,
+      128,
+      -4,
+      24,
+    );
+    expect(clip.call).toHaveBeenCalledWith(
+      "remove_notes_extended",
       0,
       128,
       -4,

@@ -24,6 +24,11 @@ interface ToolContext {
    */
   notation?: "barbeat" | "midi-json" | "stark";
   sampleFolder: string | null;
+  /**
+   * Whether this request's caller can use ppal-manage. Undefined ⇒ true unless
+   * small-model mode is on.
+   */
+  manageAvailable?: boolean;
   silenceWavPath?: string;
   timeoutMs?: number;
   /**
@@ -73,6 +78,13 @@ declare function error(...args: unknown[]): void;
  * @param args - The message selector and arguments
  */
 declare function outlet(outletNumber: number, ...args: unknown[]): void;
+
+/**
+ * Max V8 global function to send a message to every `[receive]` with this name.
+ * @param name - The receive name
+ * @param args - The message to send
+ */
+declare function messnamed(name: string, ...args: unknown[]): void;
 
 /**
  * Max V8 global variable to declare the number of outlets.

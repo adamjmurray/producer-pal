@@ -16,8 +16,9 @@ import {
 } from "../../types.ts";
 import { listEntries } from "../path/path-assertions.ts";
 import { argText } from "../arg-text.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-export const TOOL_UPDATE_LIVE_SET = "ppal-update-live-set";
+export const TOOL_UPDATE_LIVE_SET = TOOLS.updateLiveSet;
 
 /** A locator as the Set should hold it. */
 export interface LocatorRow {
@@ -100,7 +101,7 @@ function describeRows(rows: LocatorRow[]): string {
 export function assertLocatorsAre(expected: LocatorRow[]): EvalAssertion {
   return {
     type: "state",
-    tool: "ppal-read-live-set",
+    tool: TOOLS.readLiveSet,
     args: { include: ["locators"] },
     expect: (result) =>
       describeRows(locatorRows(result)) === describeRows(expected),

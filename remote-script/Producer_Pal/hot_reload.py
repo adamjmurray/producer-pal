@@ -192,6 +192,11 @@ def reload_implementation(package=__package__):
 
 def reload_route(bridge, params):
     """`POST /reload`: the route that calls reload_implementation."""
+    # What modules hold in Live may call into code about to be replaced.
+    # getattr: a bridge from before hot reload had cleanups lacks the method.
+    cleanup = getattr(bridge, "run_cleanups", None)
+    if cleanup is not None:
+        cleanup()
     try:
         reloaded, digest = reload_implementation()
     except ReloadError as err:

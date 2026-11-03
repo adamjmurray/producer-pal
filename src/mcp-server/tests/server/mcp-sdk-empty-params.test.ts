@@ -10,11 +10,13 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
+import {
+  OPT_IN_TOOL_DEFS,
+  STANDARD_TOOL_DEFS,
+} from "#src/mcp-server/create-mcp-server.ts";
 import { buildFallbackTools } from "#src/portal/fallback-tools.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { connectMcpClient as connect } from "#src/mcp-server/tests/server/mcp-client-test-helpers.ts";
-import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { isOfferedInMode } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 
@@ -29,7 +31,7 @@ const PROFILES: { smallModelMode?: boolean; notation?: Notation }[] = [
   { notation: "stark" },
 ];
 
-const TOOL_DEFS = [...STANDARD_TOOL_DEFS, toolDefLiveApi];
+const TOOL_DEFS = [...STANDARD_TOOL_DEFS, ...OPT_IN_TOOL_DEFS];
 
 type Profile = (typeof PROFILES)[number];
 

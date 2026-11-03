@@ -30,12 +30,13 @@ import { extractToolResultText } from "#evals/chat/mcp.ts";
 import { mcpResultWarnings } from "#evals/chat/shared/mcp-result-text.ts";
 import { type EvalSession } from "../../eval-session.ts";
 import { type EvalScenario, type EvalTurnResult } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 /** The opening message shared by nearly every scenario. */
 export const CONNECT_MESSAGE = "Connect to Ableton Live";
 
 /** The tool a connect turn calls. */
-export const CONNECT_TOOL = "ppal-connect";
+export const CONNECT_TOOL = TOOLS.connect;
 
 /**
  * The assistant's closing line for a seeded connect turn.

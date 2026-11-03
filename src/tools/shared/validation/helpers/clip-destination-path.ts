@@ -120,16 +120,18 @@ export function pathCarriesPosition(value: string | null | undefined): boolean {
  * @param rawPath - The destination path param as the caller sent it
  * @param arrangementStart - The position param as the caller sent it
  * @param label - The destination param's name
+ * @param startParam - The param the position was sent in, if not arrangementStart
  */
 export function refuseDoubledPosition(
   rawPath: string | null | undefined,
   arrangementStart: string | null | undefined,
   label: string,
+  startParam = "arrangementStart",
 ): void {
   refuseNamedTwice({
     param: label,
     value: pathCarriesPosition(rawPath) ? rawPath : undefined,
     noun: "song position",
-    also: { arrangementStart },
+    also: { [startParam]: arrangementStart },
   });
 }

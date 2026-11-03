@@ -48,7 +48,7 @@ describe("noteChainMixerLeftBehind", () => {
     );
 
     expect(capturedWarnings()).toContain(
-      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or move the whole pad instead (update-device with the pad path and toPath)',
+      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sends or move the whole pad instead (update-device with the pad path and toPath)',
     );
   });
 
@@ -68,7 +68,7 @@ describe("noteChainMixerLeftBehind", () => {
     );
 
     expect(capturedWarnings()).toContain(
-      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sends',
     );
   });
 
@@ -81,7 +81,7 @@ describe("noteChainMixerLeftBehind", () => {
     );
 
     expect(capturedWarnings()).toContain(
-      'chain "Snare" t0/d0/c1 (id chain-1) trim (pan 0.5) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+      'chain "Snare" t0/d0/c1 (id chain-1) trim (pan 0.5) stays behind — reapply on the destination chain with update-device gainDb/pan/sends',
     );
   });
 
@@ -95,7 +95,7 @@ describe("noteChainMixerLeftBehind", () => {
     );
 
     expect(capturedWarnings()).toContain(
-      `chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) does not follow the copy — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or copy the whole pad instead (duplicate type 'drum-pad' with the pad path and toPath), which brings the trim with it`,
+      `chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) does not follow the copy — reapply on the destination chain with update-device gainDb/pan/sends or copy the whole pad instead (duplicate type 'drum-pad' with the pad path and toPath), which brings the trim with it`,
     );
   });
 
@@ -112,7 +112,7 @@ describe("noteChainMixerLeftBehind", () => {
     );
 
     expect(capturedWarnings()).toContain(
-      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) stays behind — reapply on the destination track with update-track gainDb/pan/sendGainDb+sendReturn',
+      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) stays behind — reapply on the destination track with update-track gainDb/pan/sends',
     );
   });
 
@@ -132,7 +132,7 @@ describe("noteChainMixerLeftBehind", () => {
     );
 
     expect(capturedWarnings()).toContain(
-      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15, 2 sends) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or move the whole pad instead (update-device with the pad path and toPath)',
+      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15, 2 sends) stays behind — reapply on the destination chain with update-device gainDb/pan/sends or move the whole pad instead (update-device with the pad path and toPath)',
     );
   });
 

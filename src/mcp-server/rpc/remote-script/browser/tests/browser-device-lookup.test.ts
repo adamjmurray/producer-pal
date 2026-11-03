@@ -241,7 +241,14 @@ describe("lookUpBrowserDevice", () => {
       available: true,
       error:
         'invalid device "Nope": no native device, plug-in, or Max for Live device has that name',
+      notFound: true,
     });
+  });
+
+  it("marks only a name nothing has as not found, not an ambiguous one", async () => {
+    expect(
+      await lookUpIn({ "audio-effect": ["Delay A", "Delay B"] }, "delay"),
+    ).not.toHaveProperty("notFound");
   });
 
   it("refuses a blank name without asking", async () => {
@@ -393,6 +400,7 @@ describe("lookUpBrowserDevice", () => {
         expect(await lookUpIn({ plugin }, deviceName)).toStrictEqual({
           available: true,
           error: `invalid device "${deviceName}": no native device, plug-in, or Max for Live device has that name`,
+          notFound: true,
         });
 
         await fake?.close();

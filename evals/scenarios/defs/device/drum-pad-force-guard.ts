@@ -41,11 +41,10 @@ import {
   MSG_CONNECT,
   TOOL_CONNECT,
 } from "../clip/helpers/clip-tool-constants.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
+import { sleep } from "#evals/shared/sleep.ts";
 
-const TOOL_CREATE_DEVICE = "ppal-create-device";
-const TOOL_UPDATE_DEVICE = "ppal-update-device";
-const TOOL_DELETE = "ppal-delete";
-const TOOL_READ_DEVICE = "ppal-read-device";
+const TOOL_CREATE_DEVICE = TOOLS.createDevice;
 
 /** The Cyndal Kit sits inside an Instrument Rack, two levels below the track. */
 const RACK = "t0/d0/c0/d0";
@@ -60,7 +59,7 @@ const SAMPLER_PAD = `${RACK}/pD3`;
  */
 async function padDeviceType(mcpClient: Client): Promise<string> {
   const result = await mcpClient.callTool({
-    name: TOOL_READ_DEVICE,
+    name: TOOLS.readDevice,
     arguments: { path: `${SAMPLER_PAD}/d0` },
   });
 
@@ -100,7 +99,7 @@ async function seedDrumSampler(mcpClient: Client): Promise<void> {
   }
 
   // Let Live settle before the check read, as the e2e tests do.
-  await new Promise((resolve) => setTimeout(resolve, 150));
+  await sleep(150);
 
   const type = await padDeviceType(mcpClient);
 
@@ -112,10 +111,10 @@ async function seedDrumSampler(mcpClient: Client): Promise<void> {
 }
 
 /** The tools that can create, replace, or remove a device. */
-const WRITE_TOOLS = new Set([
+const WRITE_TOOLS = new Set<string>([
   TOOL_CREATE_DEVICE,
-  TOOL_UPDATE_DEVICE,
-  TOOL_DELETE,
+  TOOLS.updateDevice,
+  TOOLS.delete,
 ]);
 
 /**
@@ -155,7 +154,7 @@ function assertNothingReplacedYet(turn: number): EvalAssertion {
       }
 
       const deleted = calls.find(
-        (call) => call.name === TOOL_DELETE && argText(call.args.type) !== "",
+        (call) => call.name === TOOLS.delete && argText(call.args.type) !== "",
       );
 
       if (deleted) {
@@ -213,7 +212,7 @@ function sampleOf(result: unknown): string {
 function assertKickLoaded(): EvalAssertion {
   return {
     type: "state",
-    tool: TOOL_READ_DEVICE,
+    tool: TOOLS.readDevice,
     args: { path: `${SAMPLER_PAD}/d0`, include: ["sample"] },
     expect: (result) => /kick/i.test(sampleOf(result)),
     explain: (result) =>
@@ -246,7 +245,7 @@ export const drumPadForceGuard: EvalScenario = {
 
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: "ppal-library", turn: 1 },
+    { type: "tool_called", tool: TOOLS.library, turn: 1 },
 
     // Turn 2 — unprimed. The device survives, and the model says why.
     assertNothingReplacedYet(2),

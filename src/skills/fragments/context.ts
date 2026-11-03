@@ -23,6 +23,13 @@ export const NEW_USER_MARKER = "nothing is saved about them yet";
 // "tell me anytime" gives the user nothing to decline, so a brush-off never gets
 // recorded and they'd be asked every session. What they share goes to global
 // (always-on); an empty document needs no permission.
+//
+// Kept as a constant so a build that knows the user isn't new can drop it
+// (contextStandardKnownUser); the text a new user gets is unchanged.
+const NEW_USER_PARAGRAPH = `**New user** (connect says ${NEW_USER_MARKER}): end your connect reply with one short yes-or-no question: would they like to tell you their musical style, preferences, and goals so you can remember them across sessions? If they share, write what they said to global context (it's empty, so nothing is overwritten). If they say no or just start working, write a one-line memory saying so, so they aren't asked again.
+
+`;
+
 /**
  * The Context & Memory fragment at standard depth: the three ppal-context
  * scopes, who owns each, and how to manage the memory index.
@@ -35,7 +42,7 @@ Three layers, chosen by \`scope\`:
 
 - **global** — who this user is: musical style, preferences, how they want you to work, high-level goals that outlive any one project. Always in your context.
 - **project** — THIS Live Set: its genre, structure, the goals for this track. Always in your context.
-- **memory** — durable facts and rules that only matter in CERTAIN situations (e.g. the sample folder they raid for jungle). Yours to manage freely. Only the INDEX (each entry's name + description) stays in context; load a full body on demand with action:read, name:<name>.
+- **memory** — durable facts and rules that only matter in CERTAIN situations (e.g. the sample folder they raid for jungle). Yours to manage freely. Only the INDEX (each entry's name + description) stays in context; load full bodies on demand with action:read, name:<name> (several: comma-separated).
 
 If a fact should ALWAYS apply, it belongs in context — never divert it into memory just because memory is easier to write.
 
@@ -43,9 +50,7 @@ Before ANY write, check the memory index: if an entry covers the fact, UPDATE it
 
 Whichever layer you write, write for a stranger: they have none of this conversation. Capture the whole structure a fact sits in, not the isolated detail in front of you — so they can act on it without re-deriving what you worked out here.
 
-**New user** (connect says ${NEW_USER_MARKER}): end your connect reply with one short yes-or-no question: would they like to tell you their musical style, preferences, and goals so you can remember them across sessions? If they share, write what they said to global context (it's empty, so nothing is overwritten). If they say no or just start working, write a one-line memory saying so, so they aren't asked again.
-
-Writing project/global (the user's own documents — an action:write REPLACES the whole document):
+${NEW_USER_PARAGRAPH}Writing project/global (the user's own documents — an action:write REPLACES the whole document):
 - **Only what the USER told you, here.** Facts you already hold about them — from your own memory, another tool, an earlier project — are NOT yours to install. Offer: list exactly what you'd add, and write only on a yes.
 - **Document empty?** Write what they tell you, unasked, and say what you saved. There is nothing to destroy, so it needs no permission. Past the opening exchange, action:read the scope first to confirm it is still empty — the copy you saw on connect goes stale.
 - **Document has content?** If they merely MENTIONED the fact, don't save it on that turn, even when it's obviously worth keeping: say what you'd add, and wait for a yes. "Always", "never", "for everything I make" tell you WHICH layer, not that you may write — a durable-sounding preference is still a mention. But once they ASK you to save it — or say yes — WRITE IT IMMEDIATELY: don't ask twice, and never quietly settle for memory instead.
@@ -54,8 +59,18 @@ Writing project/global (the user's own documents — an action:write REPLACES th
 Managing memory:
 - The description is all you see until you read an entry — make it a precise recall hook (what's inside, when it's relevant), not a vague label.
 - One fact per memory.
-- **delete** (scope:memory) anything wrong or outdated — don't leave stale entries. Convert relative dates ("next week") to absolute before storing.
+- **delete** (scope:memory; several names at once, comma-separated) anything wrong or outdated — don't leave stale entries. Convert relative dates ("next week") to absolute before storing.
 - Save MEMORIES quietly as facts emerge; don't announce each one.`;
+
+/**
+ * {@link contextStandard} without the New user paragraph, for a build that knows
+ * the user already has global context or memories. Derived, so the two cannot
+ * drift apart.
+ */
+export const contextStandardKnownUser = contextStandard.replace(
+  NEW_USER_PARAGRAPH,
+  "",
+);
 
 /**
  * The Context fragment at basic (small-model) depth. Deliberately minimal:

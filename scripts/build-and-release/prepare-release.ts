@@ -16,6 +16,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildFlagGuard } from "./helpers/build-flag-guard.ts";
 import {
+  MIN_VERSION_FILE,
+  scriptChangesSinceLastTag,
+  staleMinRemoteScriptVersion,
+} from "./helpers/version/min-remote-script-version.ts";
+import {
   checkTreeClean,
   type Checkout,
   gitIn,
@@ -33,6 +38,32 @@ const flagRefusal = buildFlagGuard(process.env);
 
 if (flagRefusal != null) {
   console.error(flagRefusal);
+  process.exit(1);
+}
+
+// A remote script changed since the last release needs a minimum at this
+// version. The bump checks that once, so a later script change slips past it.
+// Guarding the build covers `npm run tag` too: the tag must match the build.
+let staleMinimum: string | null;
+
+try {
+  const { lastTag, changedFiles } = scriptChangesSinceLastTag(rootDir);
+
+  staleMinimum = staleMinRemoteScriptVersion(
+    readFileSync(join(rootDir, MIN_VERSION_FILE), "utf8"),
+    JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8")).version,
+    lastTag,
+    changedFiles,
+  );
+} catch (error) {
+  console.error(
+    `\n❌ Couldn't check the remote script against the last release tag (run git fetch --tags?): ${String(error)}`,
+  );
+  process.exit(1);
+}
+
+if (staleMinimum != null) {
+  console.error(staleMinimum);
   process.exit(1);
 }
 

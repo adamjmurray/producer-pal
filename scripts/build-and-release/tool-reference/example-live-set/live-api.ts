@@ -38,7 +38,7 @@ export async function installMockLiveApi(): Promise<void> {
   await import("#src/live-api-adapter/live-api-extensions.ts");
 
   ({ handleNodeResponse: respondToNode } =
-    await import("#src/live-api-adapter/node-request-v8-protocol.ts"));
+    await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"));
 }
 
 /**

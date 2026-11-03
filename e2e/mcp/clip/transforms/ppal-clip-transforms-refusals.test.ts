@@ -102,6 +102,20 @@ describe("ppal-clip-transforms (bad argument refused up front)", () => {
     await expectNoClip(toPath);
   });
 
+  it("ppal-update-clip says a negative note value grid must be above 0", async () => {
+    const clipId = await createMidiClip(91, "v80 C3 1|1");
+
+    expectRefused(
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { id: clipId, transforms: "ratchet(-n/16)" },
+      }),
+      "ratchet() grid must be greater than 0",
+    );
+    // Still the one note, not ratcheted
+    expect((await readClipNotes(clipId)).match(/C3/g)).toHaveLength(1);
+  });
+
   it("ppal-update-clip points a syntax error at the failing token", async () => {
     const clipId = await createMidiClip(96, "v80 C3 1|1");
     const result = await ctx.client!.callTool({
@@ -168,8 +182,10 @@ describe("ppal-clip-transforms (bad argument refused up front)", () => {
       "timing = swing(0.5)",
       "swing amount is a delay in beats and must be under the grid (0.5 beats); 0 is straight (MPC 50%)",
     ],
+    ["timing = swing(0.1, -n/8)", "swing() grid must be greater than 0"],
+    ["timing = quant(-n/8)", "quant() grid must be greater than 0"],
   ])(
-    "ppal-update-clip refuses a swing amount at or past its grid: %s",
+    "ppal-update-clip refuses a swing amount at or past its grid, or a swing/quant grid of 0 or less: %s",
     async (transforms, message) => {
       const clipId = await createMidiClip(98, "v80 C3 1|1.5");
 
@@ -182,6 +198,32 @@ describe("ppal-clip-transforms (bad argument refused up front)", () => {
       );
       // Still on the off-beat, not moved
       expect(await readClipNotes(clipId)).toContain("1|1.5");
+    },
+  );
+
+  it.each([
+    [
+      "velocity = 80 + 30*sin(note.start * 6.28318530718)",
+      "sin() period is a cycle length (e.g. sin(n/4) or sin(1bar)), not radians, so it can't use note.start; the wave already follows each note's start, so leave note.start out, phase included",
+    ],
+    [
+      "velocity = 90 + 20 * cos(note.pitch + 0.5)",
+      "cos() period is a cycle length (e.g. cos(n/4) or cos(1bar)), not radians, so it can't use note.pitch; for per-note variation, put it in the phase (2nd argument) as a fraction of a cycle, e.g. cos(1bar, note.pitch / 12): a whole number shifts nothing",
+    ],
+  ])(
+    "ppal-update-clip refuses a waveform period that uses a note property: %s",
+    async (transforms, message) => {
+      const clipId = await createMidiClip(99, "v80 C3 1|1");
+
+      expectRefused(
+        await ctx.client!.callTool({
+          name: "ppal-update-clip",
+          arguments: { id: clipId, transforms },
+        }),
+        message,
+      );
+      // Velocity untouched
+      expect(await readClipNotes(clipId)).toContain("v80");
     },
   );
 });

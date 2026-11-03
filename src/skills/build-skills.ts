@@ -23,6 +23,7 @@ import {
   RETIRED_SKILL_SLOTS,
   SPLIT_SKILL_SLOTS,
 } from "#src/skills/skill-slots.ts";
+import { contextStandardKnownUser } from "#src/skills/fragments/context.ts";
 import { staleSplitLines } from "#src/skills/stale-split-lines.ts";
 
 /** How much of a copied line a warning quotes. */
@@ -55,6 +56,13 @@ export interface BuildSkillsOptions {
    * fragment teaching it.
    */
   remoteScript?: boolean;
+  /**
+   * Whether this user has no global context and no memories. Only an explicit
+   * `false` drops the New user paragraph from the built-in context guide;
+   * omitted keeps it, since a caller that can't tell may be showing it to a new
+   * user. A user's own override of the guide is never edited.
+   */
+  newUser?: boolean;
 }
 
 /**
@@ -138,6 +146,8 @@ export function buildSkills(
  * @param options.tools - The tools available to this caller (omit for no gating).
  * @param options.audience - Who the blob is for (omit for the user-facing chat).
  * @param options.remoteScript - Whether the Producer Pal remote script answered.
+ * @param options.newUser - Whether this is a new user (only `false` drops the
+ *   New user paragraph).
  * @param overrides - Per-fragment user overrides (empty by default).
  * @param onWarn - Sink for non-fatal assembly warnings.
  * @returns The blob and the fragments gating dropped from it.
@@ -149,11 +159,17 @@ export function assembleSkills(
     tools,
     audience,
     remoteScript,
+    newUser,
   }: BuildSkillsOptions = {},
   overrides: SkillOverrides = {},
   onWarn?: (message: string) => void,
 ): AssembledSkills {
   const builtIns = builtinFragments();
+
+  if (newUser === false) {
+    builtIns["context-standard"] = contextStandardKnownUser;
+  }
+
   const root = smallModelMode ? "basic" : "standard";
   const fragments = overrides.fragments ?? {};
   // Reported separately from the other two: a user's own off switch is already

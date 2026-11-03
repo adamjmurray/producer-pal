@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { replacementFailedDetail } from "#src/tools/shared/validation/lists/named-targets.ts";
+import { replacementFailedDetail } from "#src/shared/max/named-again-wording.ts";
 
 /** The later entry an overridden one was left unwritten for, by position. */
 export interface ReplacerAt {

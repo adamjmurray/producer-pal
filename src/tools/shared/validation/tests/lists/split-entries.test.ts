@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { pairLabels } from "#src/tools/shared/validation/lists/labeled-targets.ts";
 import {
@@ -69,7 +69,7 @@ const READERS: Array<[string, (value: string) => unknown]> = [
 
 describe.each(READERS)("%s", (_reader, read) => {
   it("splits a list only at a comma not written \\,", () => {
-    const warn = vi.spyOn(console, "warn");
+    const warn = vi.spyOn(maxConsole, "emitWarning");
     const entries = read("A,Verse\\, part 2");
 
     expect(entries).toStrictEqual(["A", "Verse, part 2"]);

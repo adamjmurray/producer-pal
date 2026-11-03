@@ -36,6 +36,17 @@ export interface RoutingArgs extends RoutingParams {
   outputRoutingChannelId?: string;
 }
 
+/** The name each routing param was sent under: its own, or its deprecated alias. */
+export type RoutingNames = Record<keyof RoutingParams, string>;
+
+/** Routing params as the tool publishes them, for a call that sent no alias. */
+const PUBLISHED_NAMES: RoutingNames = {
+  inputRoutingType: "inputRoutingType",
+  inputRoutingChannel: "inputRoutingChannel",
+  outputRoutingType: "outputRoutingType",
+  outputRoutingChannel: "outputRoutingChannel",
+};
+
 /**
  * A routing param's label in a mismatch warning.
  * @param param - The routing param
@@ -85,6 +96,33 @@ export function routingValuesAt(
 }
 
 /**
+ * The name each routing param was sent under. The alias only stands in for a
+ * param the call left out.
+ * @param args - The routing params and aliases, as the caller sent them
+ * @returns The name to quote for each routing param in an error
+ */
+export function routingNamesSent(args: RoutingArgs): RoutingNames {
+  return {
+    inputRoutingType:
+      args.inputRoutingType == null && args.inputRoutingTypeId != null
+        ? "inputRoutingTypeId"
+        : "inputRoutingType",
+    inputRoutingChannel:
+      args.inputRoutingChannel == null && args.inputRoutingChannelId != null
+        ? "inputRoutingChannelId"
+        : "inputRoutingChannel",
+    outputRoutingType:
+      args.outputRoutingType == null && args.outputRoutingTypeId != null
+        ? "outputRoutingTypeId"
+        : "outputRoutingType",
+    outputRoutingChannel:
+      args.outputRoutingChannel == null && args.outputRoutingChannelId != null
+        ? "outputRoutingChannelId"
+        : "outputRoutingChannel",
+  };
+}
+
+/**
  * Apply routing properties to a track. Input routing exists only on regular,
  * non-group tracks, so it is refused on group/return/master tracks — mirroring
  * the read-side guard in track-routing.ts processCurrentRouting
@@ -93,11 +131,13 @@ export function routingValuesAt(
  * @param track - Track object
  * @param params - Routing properties
  * @param notes - What the track's entry has to say, added to
+ * @param names - The names the params were sent under, for what is said
  */
 export function applyRoutingProperties(
   track: LiveAPI,
   params: RoutingParams,
   notes: TargetNotes,
+  names: RoutingNames = PUBLISHED_NAMES,
 ): void {
   const {
     inputRoutingType,
@@ -117,16 +157,41 @@ export function applyRoutingProperties(
         "input routing is only available on regular non-group tracks",
       );
     } else {
-      setRouting(track, "input_routing_type", inputRoutingType, notes);
-      setRouting(track, "input_routing_channel", inputRoutingChannel, notes);
+      setRouting(
+        track,
+        "input_routing_type",
+        inputRoutingType,
+        notes,
+        names.inputRoutingType,
+      );
+      setRouting(
+        track,
+        "input_routing_channel",
+        inputRoutingChannel,
+        notes,
+        names.inputRoutingChannel,
+      );
     }
   }
 
-  setRouting(track, "output_routing_type", outputRoutingType, notes);
-  setRouting(track, "output_routing_channel", outputRoutingChannel, notes);
+  setRouting(
+    track,
+    "output_routing_type",
+    outputRoutingType,
+    notes,
+    names.outputRoutingType,
+  );
+  setRouting(
+    track,
+    "output_routing_channel",
+    outputRoutingChannel,
+    notes,
+    names.outputRoutingChannel,
+  );
 }
 
-/** The param a caller names a routing property by. */
+/** The published param a routing property is asked for with: what a refusal
+ * counts as not done, whatever name the caller sent it under. */
 const ROUTING_PARAM: Record<string, string> = {
   input_routing_type: "inputRoutingType",
   input_routing_channel: "inputRoutingChannel",
@@ -140,25 +205,32 @@ const ROUTING_PARAM: Record<string, string> = {
  * @param property - Live routing property, e.g. "input_routing_type"
  * @param value - Routing display name or identifier, or undefined to skip
  * @param notes - What the track's entry has to say, added to
+ * @param param - The param the value was sent under
  */
 function setRouting(
   track: LiveAPI,
   property: string,
   value: string | undefined,
   notes: TargetNotes,
+  param: string,
 ): void {
   if (value == null) {
     return;
   }
 
-  const identifier = resolveRoutingIdentifier(track, property, value, notes);
+  const identifier = resolveRoutingIdentifier(
+    track,
+    { property, param },
+    value,
+    notes,
+  );
 
   if (identifier == null) {
     return;
   }
 
   track.setProperty(property, { identifier });
-  noteLanded(notes, ROUTING_PARAM[property] as string);
+  noteLanded(notes, param);
 }
 
 /**
@@ -166,14 +238,17 @@ function setRouting(
  * available list, falling back to treating the value as Live's numeric
  * identifier so callers that already have one keep working.
  * @param track - Track object
- * @param property - Live routing property, e.g. "input_routing_type"
+ * @param routing - The Live routing property (e.g. "input_routing_type") and
+ *   the param the value was sent under
+ * @param routing.property - Live routing property
+ * @param routing.param - The param the value was sent under
  * @param value - Routing display name or identifier
  * @param notes - What the track's entry has to say, added to
  * @returns The numeric identifier, or null when nothing matched
  */
 function resolveRoutingIdentifier(
   track: LiveAPI,
-  property: string,
+  { property, param }: { property: string; param: string },
   value: string,
   notes: TargetNotes,
 ): number | null {
@@ -194,7 +269,7 @@ function resolveRoutingIdentifier(
 
       noteTarget(
         notes,
-        `${matches.length} ${ROUTING_PARAM[property]} options are named "${value}"; used the first — send the identifier (${ids}) to pick another`,
+        `${matches.length} ${param} options are named "${value}"; used the first — send the identifier (${ids}) to pick another`,
       );
     }
 
@@ -212,7 +287,7 @@ function resolveRoutingIdentifier(
   refuseTargetWork(
     notes,
     [ROUTING_PARAM[property] as string],
-    `the track has no ${ROUTING_PARAM[property]} named "${value}"; available: ${names || "none"}`,
+    `the track has no ${param} named "${value}"; available: ${names || "none"}`,
   );
 
   return null;

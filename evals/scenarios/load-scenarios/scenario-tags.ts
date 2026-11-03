@@ -24,6 +24,7 @@ export const SCENARIO_TAGS = [
   "paths",
   "results",
   "transforms",
+  "upgrade",
   "workflow",
 ] as const;
 

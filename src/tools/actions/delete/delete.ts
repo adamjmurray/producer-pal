@@ -6,6 +6,7 @@
 import { blankTargetIgnores } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { noteEntry } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { whereObjectIs } from "#src/tools/shared/write-pipeline/where-object-is.ts";
 import { runWrite } from "#src/tools/shared/write-pipeline/write-pipeline.ts";
 import {
   type AppliedTarget,
@@ -22,6 +23,7 @@ import { deleteObjectByType } from "./helpers/delete-object-by-type.ts";
 import {
   type DeletePayload,
   NOTHING_TO_DELETE,
+  deletePathId,
   deleteTargets,
 } from "./helpers/delete-targets.ts";
 import {
@@ -103,6 +105,11 @@ const DELETE_WRITE: WriteSpec<
   plan: planDeletes,
   write: deleteTarget,
   settle: settleDelete,
+  // Deleting an object shifts the siblings after it.
+  locate: {
+    idAt: (path, { type }) => deletePathId(path, type),
+    whereIs: (id) => whereObjectIs(id),
+  },
 };
 
 // --- Helpers below main export ---

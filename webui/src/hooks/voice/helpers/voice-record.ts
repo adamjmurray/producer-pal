@@ -92,7 +92,9 @@ export async function buildVoiceRecord(
   meta: ActiveMeta | null,
 ): Promise<ConversationRecord> {
   const existing =
-    snapshot.reuseId == null ? null : await loadConversation(snapshot.reuseId);
+    snapshot.reuseId == null
+      ? null
+      : await loadConversation(snapshot.reuseId, { images: false });
   const now = Date.now();
 
   return {

@@ -77,7 +77,7 @@
  */
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
+import { maxError } from "#src/shared/max/v8-max-console.ts";
 
 const trackedObjects: LiveAPI[] = [];
 
@@ -337,11 +337,11 @@ function releaseTrackedObjects(): void {
   trackedObjects.length = 0;
 
   if (failures > 0) {
-    // Max console, not the tool response. warn() would put this in front of the
+    // Max console, not the tool response. emitWarning() would put this in front of the
     // model, which can do nothing about a leaked path listener — and the release
     // runs after the response is already out, so it would land on some later
     // tool call. Reloading the device is the only fix, so tell the user.
-    console.error(
+    maxError(
       `Failed to release ${String(failures)} LiveAPI object(s): ${firstError ?? ""}`,
     );
   }

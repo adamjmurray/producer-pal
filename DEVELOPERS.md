@@ -38,7 +38,11 @@ ships:
 ```bash
 ENABLE_CODE_EXEC=true npm run build:debug      # the `code` param
 ENABLE_WARP_MARKERS=true npm run build:debug   # warp markers (work in progress)
+ENABLE_GEN_UI=true npm run build:debug         # experimental generative UI
 ```
+
+`ENABLE_GEN_UI=true` adds the `ppal-ui` tool, the `/api/ui` routes and the
+widget panel at `/chat?view=gen` (hidden; no menu links to it).
 
 `ENABLE_CODE_EXEC=true` adds the `code` param (JS note editing).
 `ENABLE_WARP_MARKERS=true` exposes the work-in-progress warp-marker surface —
@@ -240,10 +244,15 @@ and installs with a dev switch:
 - `npm run install:device` - copy `release/Producer_Pal.amxd` (from
   `npm run release:amxd`) into the User Library; `-- --force` replaces a newer
   one
-- `npm run install:status` - show what's installed, plus other `.amxd` copies
-- `npm run uninstall` - remove the device and remote script (also
-  `uninstall:device`, `uninstall:remote-script`; `uninstall:device:all` and
-  `uninstall:all` also delete other `Producer_Pal*.amxd` copies)
+- `npm run install:plugin-host` - copy the plug-in hosting wrappers from
+  `max-for-live-device/plugin-host/` into the User Library (replaces any that
+  differ)
+- `npm run install:status` - show what's installed (including the plug-in
+  hosting wrappers), plus other `.amxd` copies
+- `npm run uninstall` - remove the device, remote script and plug-in hosting
+  wrappers (also `uninstall:device`, `uninstall:remote-script`,
+  `uninstall:plugin-host`; `uninstall:device:all` and `uninstall:all` also
+  delete other `Producer_Pal*.amxd` copies)
 
 The install and uninstall scripts use `ABLETON_USER_LIBRARY` from `.env`, or
 find Live's User Library if it's unset.

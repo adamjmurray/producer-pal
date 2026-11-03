@@ -35,7 +35,6 @@ import {
   toLiveApiId,
 } from "#src/tools/shared/helpers/live-api-values.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
-import { EPSILON } from "./arrangement-tiling-clips.ts";
 import { type ClipSpan } from "./arrangement-write-effects.ts";
 import { isTakeLaneClip, takeLaneIndexOfClip } from "./take-lanes.ts";
 
@@ -95,7 +94,7 @@ export class LaneView {
    * @param end - Where it ends, in beats
    * @param api - The lane object, when the caller already has it
    * @returns The clips; one that only touches an edge, or reaches in from
-   *   outside by less than EPSILON, isn't in it
+   *   outside by less than SAME_TIME_EPSILON, isn't in it
    */
   overlapping(
     lane: ArrangementLane,
@@ -492,7 +491,7 @@ function readIfChanged(state: LaneState, id: string): ClipSpan | null {
 
 /**
  * Whether a clip shares time with a stretch. A clip reaching in from outside by
- * less than EPSILON doesn't: Live rounds clip times, so tiles laid end to end
+ * less than SAME_TIME_EPSILON doesn't: Live rounds clip times, so tiles laid end to end
  * overlap by a hair, and trimming that hair off leaves a zero-length clip Live
  * won't delete. A clip wholly inside counts however short it is.
  * @param clip - A clip's span
@@ -506,9 +505,13 @@ function sharesTime(clip: ClipSpan, start: number, end: number): boolean {
   }
 
   const endsJustInside =
-    clip.start < start && clip.end <= end && clip.end < start + EPSILON;
+    clip.start < start &&
+    clip.end <= end &&
+    clip.end < start + SAME_TIME_EPSILON;
   const startsJustInside =
-    clip.end > end && clip.start >= start && clip.start > end - EPSILON;
+    clip.end > end &&
+    clip.start >= start &&
+    clip.start > end - SAME_TIME_EPSILON;
 
   return !endsJustInside && !startsJustInside;
 }
@@ -519,5 +522,8 @@ function sharesTime(clip: ClipSpan, start: number, end: number): boolean {
  * @returns Whether they share any time; touching at an edge doesn't count
  */
 function overlaps(clip: ClipSpan, reach: Reach): boolean {
-  return clip.start < reach.end - EPSILON && clip.end > reach.start + EPSILON;
+  return (
+    clip.start < reach.end - SAME_TIME_EPSILON &&
+    clip.end > reach.start + SAME_TIME_EPSILON
+  );
 }

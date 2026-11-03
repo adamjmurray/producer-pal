@@ -204,6 +204,7 @@ export function createFullTiles(args: CreateFullTilesArgs): FullTilesResult {
         sourceClipId,
         currentPosition,
         currentContentOffset,
+        arrangementTileLength,
         clipLoopStart,
         clipLoopEnd,
         clipLength,
@@ -231,6 +232,7 @@ interface PlaceTileArgs {
   sourceClipId: string;
   currentPosition: number;
   currentContentOffset: number;
+  arrangementTileLength: number;
   clipLoopStart: number;
   clipLoopEnd: number;
   clipLength: number;
@@ -253,6 +255,7 @@ function placeTile(args: PlaceTileArgs): void {
     sourceClipId,
     currentPosition,
     currentContentOffset,
+    arrangementTileLength,
     clipLoopStart,
     clipLoopEnd,
     clipLength,
@@ -294,6 +297,12 @@ function placeTile(args: PlaceTileArgs): void {
   if (tileStartMarker >= clipLoopEnd) {
     tileStartMarker = clipLoopStart;
   }
+
+  context.pieces?.push({
+    start: currentPosition,
+    length: arrangementTileLength,
+    startMarker: tileStartMarker,
+  });
 
   // Try setting on fresh clip object
   freshClip.set("start_marker", tileStartMarker);

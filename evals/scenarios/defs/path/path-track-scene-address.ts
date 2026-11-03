@@ -24,11 +24,9 @@ import {
   TOOL_CONNECT,
 } from "../clip/helpers/clip-tool-constants.ts";
 import { assertCallResult, assertPathArg } from "./path-assertions.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
-const TOOL_READ_TRACK = "ppal-read-track";
-const TOOL_UPDATE_TRACK = "ppal-update-track";
-const TOOL_CREATE_TRACK = "ppal-create-track";
-const TOOL_CREATE_SCENE = "ppal-create-scene";
+const TOOL_READ_TRACK = TOOLS.readTrack;
 
 /**
  * Read a result's path, whichever shape the tool returned it in.
@@ -66,33 +64,33 @@ export const pathTrackSceneAddress: EvalScenario = {
       allowList: true,
     }),
 
-    { type: "tool_called", tool: TOOL_UPDATE_TRACK, turn: 2 },
+    { type: "tool_called", tool: TOOLS.updateTrack, turn: 2 },
     assertPathArg({
       turn: 2,
-      tool: TOOL_UPDATE_TRACK,
+      tool: TOOLS.updateTrack,
       param: "path",
       expected: "mt",
     }),
 
-    { type: "tool_called", tool: TOOL_CREATE_TRACK, turn: 3 },
+    { type: "tool_called", tool: TOOLS.createTrack, turn: 3 },
     assertPathArg({
       turn: 3,
-      tool: TOOL_CREATE_TRACK,
+      tool: TOOLS.createTrack,
       param: "path",
       expected: "rt+",
     }),
     // The Set has two returns, so a third lands at rt2.
     assertCallResult({
       turn: 3,
-      tool: TOOL_CREATE_TRACK,
+      tool: TOOLS.createTrack,
       what: "added the return track after the existing two",
       check: (result) => resultPath(result) === "rt2",
     }),
 
-    { type: "tool_called", tool: TOOL_CREATE_SCENE, turn: 4 },
+    { type: "tool_called", tool: TOOLS.createScene, turn: 4 },
     assertPathArg({
       turn: 4,
-      tool: TOOL_CREATE_SCENE,
+      tool: TOOLS.createScene,
       param: "path",
       expected: "s+",
     }),
@@ -100,7 +98,7 @@ export const pathTrackSceneAddress: EvalScenario = {
     // means the model counted rather than spelling the append.
     assertCallResult({
       turn: 4,
-      tool: TOOL_CREATE_SCENE,
+      tool: TOOLS.createScene,
       what: "added the scene after the existing eight",
       check: (result) => resultPath(result) === "s8",
     }),

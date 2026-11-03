@@ -9,27 +9,18 @@
 
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
+import {
+  isLoopbackHost,
+  type ProducerPalConfig,
+  type ProducerPalConfigUpdate,
+} from "#src/shared/config.ts";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation.ts";
 
 export const CONFIG_URL = siblingUrl(MCP_URL, "config");
 export const REST_BASE_URL = siblingUrl(MCP_URL, "").replace(/\/$/, "");
 
-/**
- * Configuration options that can be set via the /config endpoint
- */
-export interface ConfigOptions {
-  projectContext?: string;
-  smallModelMode?: boolean;
-  jsonOutput?: boolean;
-  sampleFolder?: string;
-  liveApiEnabled?: boolean;
-  /** False makes the remote script look uninstalled. Debug builds only; a release build ignores it. */
-  remoteScriptEnabled?: boolean;
-  /** A version string makes a running remote script older than it look out of date; null clears it. Debug builds only. */
-  remoteScriptMinVersion?: string | null;
-  tools?: string[];
-  notation?: Notation;
-}
+/** Configuration options that can be set via the /config endpoint */
+export type ConfigOptions = ProducerPalConfigUpdate & { notation?: Notation };
 
 /**
  * Update server config via the /config endpoint
@@ -44,31 +35,31 @@ export async function setConfig(options: ConfigOptions): Promise<void> {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to set config: ${response.status}`);
+    throw new Error(
+      `Failed to set config: ${response.status}${await errorText(response)}`,
+    );
   }
+
+  await assertTestSwitchesApplied(options, response);
 }
+
+type RestorableConfig = Partial<
+  Pick<ProducerPalConfig, "liveApiEnabled" | "smallModelMode">
+> & { notation?: Notation };
 
 /**
  * Read the server's current config via the /config endpoint.
  *
  * @returns The fields scenarios restore after changing them
  */
-async function fetchConfig(): Promise<{
-  notation?: Notation;
-  liveApiEnabled?: boolean;
-  smallModelMode?: boolean;
-}> {
+async function fetchConfig(): Promise<RestorableConfig> {
   const response = await fetch(CONFIG_URL);
 
   if (!response.ok) {
     throw new Error(`Failed to get config: ${response.status}`);
   }
 
-  return (await response.json()) as {
-    notation?: Notation;
-    liveApiEnabled?: boolean;
-    smallModelMode?: boolean;
-  };
+  return (await response.json()) as RestorableConfig;
 }
 
 /**
@@ -117,9 +108,12 @@ export async function resetConfig(): Promise<void> {
     projectContext: "",
     jsonOutput: true,
     sampleFolder: "",
-    // A release build ignores this, so the reset works on either build.
-    remoteScriptEnabled: true,
-    remoteScriptMinVersion: null,
+    // Only a same-machine client may send these; a remote server refuses the
+    // whole request (403) if they are present.
+    ...(isLoopbackUrl(CONFIG_URL) && {
+      remoteScriptEnabled: true,
+      remoteScriptMinVersion: null,
+    }),
     tools: [...TOOL_NAMES],
     notation: DEFAULT_NOTATION,
   });
@@ -139,4 +133,59 @@ export function siblingUrl(mcpUrl: string, endpoint: string): string {
   url.pathname = url.pathname.replace(/\/mcp$/, `/${endpoint}`);
 
   return url.toString();
+}
+
+// --- Helpers below main exports ---
+
+async function errorText(response: Response): Promise<string> {
+  try {
+    const { error } = (await response.json()) as { error?: unknown };
+
+    return typeof error === "string" ? `: ${error}` : "";
+  } catch {
+    return "";
+  }
+}
+
+function isLoopbackUrl(url: string): boolean {
+  return isLoopbackHost(new URL(url).host);
+}
+
+/**
+ * A device built before it accepted `remoteScriptEnabled` and
+ * `remoteScriptMinVersion` answers 200 and drops them, so a run meant to hide
+ * or age the remote script would quietly use the real one. Their absence from
+ * the echoed config is how to tell. Turning the remote script back on (the
+ * reset) is harmless either way, so only a switch that changes the script is
+ * checked.
+ * @param options - What was sent
+ * @param response - The server's answer, which echoes the config it holds
+ */
+async function assertTestSwitchesApplied(
+  options: ConfigOptions,
+  response: Response,
+): Promise<void> {
+  const wanted: Array<[string, unknown]> = [];
+
+  if (options.remoteScriptEnabled === false) {
+    wanted.push(["remoteScriptEnabled", false]);
+  }
+
+  if (typeof options.remoteScriptMinVersion === "string") {
+    wanted.push(["remoteScriptMinVersion", options.remoteScriptMinVersion]);
+  }
+
+  if (wanted.length === 0) {
+    return;
+  }
+
+  const applied = (await response.json()) as Record<string, unknown>;
+
+  for (const [name, value] of wanted) {
+    if (applied[name] !== value) {
+      throw new Error(
+        `The server ignored ${name}: the device build is too old to accept it. Rebuild the device.`,
+      );
+    }
+  }
 }

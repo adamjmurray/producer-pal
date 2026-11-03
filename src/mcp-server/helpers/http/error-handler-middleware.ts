@@ -5,7 +5,7 @@
 
 import { STATUS_CODES } from "node:http";
 import { type NextFunction, type Request, type Response } from "express";
-import * as console from "../../node-for-max-logger.ts";
+import { nodeError } from "../../node-for-max-logger.ts";
 
 /** What Express attaches to an error it raises. */
 interface HttpError {
@@ -66,7 +66,7 @@ export function errorHandlerMiddleware(
 
   // A caller mistake is not worth logging; a genuine internal failure is. Never
   // echo it, or we've traded an HTML stack trace for a JSON one.
-  console.error(`Unhandled request error: ${String(error)}`);
+  nodeError(`Unhandled request error: ${String(error)}`);
   res.status(500).json({ error: "Internal server error" });
 }
 

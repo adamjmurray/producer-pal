@@ -6,6 +6,7 @@
 import { resolveSamplesPath } from "../../run-scenario/scenario-config.ts";
 import { type ConfigOptions } from "#evals/shared/config.ts";
 import { type EvalAssertion } from "../../types.ts";
+import { TOOLS } from "#evals/shared/tool-names.ts";
 
 export const SAMPLE_FOLDER_CONFIG: ConfigOptions = {
   sampleFolder: resolveSamplesPath("samples"),
@@ -19,8 +20,8 @@ export const SAMPLE_FOLDER_CONFIG: ConfigOptions = {
  */
 export function sampleBrowseAssertionHead(): EvalAssertion[] {
   return [
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
-    { type: "tool_called", tool: "ppal-library", turn: 1 },
-    { type: "tool_called", tool: "ppal-create-track", turn: 2 },
+    { type: "tool_called", tool: TOOLS.connect, turn: 0 },
+    { type: "tool_called", tool: TOOLS.library, turn: 1 },
+    { type: "tool_called", tool: TOOLS.createTrack, turn: 2 },
   ];
 }

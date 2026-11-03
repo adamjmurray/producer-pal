@@ -15,18 +15,21 @@ const loopRead = locatorNavigation.assertions.find(
   (a) => a.type === "state" && a.tool === "ppal-playback",
 ) as StateAssertion | undefined;
 
-const loopTurnGrader = locatorNavigation.assertions.find(
-  (a) => a.type === "custom" && a.description.includes("loopStart"),
+const startGrader = locatorNavigation.assertions.find(
+  (a) => a.type === "custom" && a.description.includes("chorus"),
 ) as CustomAssertion;
 
-const loopTurn = (args: Record<string, unknown>): EvalTurnResult[] =>
+const startTurn = (
+  args: Record<string, unknown>,
+  result: Record<string, unknown>,
+): EvalTurnResult[] =>
   Array.from({ length: 5 }, (_, i) => ({
     turnIndex: i,
     userMessage: "u",
     assistantResponse: "a",
     toolCalls:
-      i === 2
-        ? [{ name: "ppal-playback", args, result: "{playing:true}" }]
+      i === 1
+        ? [{ name: "ppal-playback", args, result: JSON.stringify(result) }]
         : [],
     durationMs: 1,
   }));
@@ -58,20 +61,34 @@ describe("locatorNavigation loop turn", () => {
 
     expect(expected({ playing: true, ...result })).toBe(false);
   });
+});
 
-  it("accepts locator ids, since the loop read grades where they land", () => {
+describe("locatorNavigation start turn", () => {
+  it.each([
+    ["a computed correct position", "17|1", "17|1"],
+    ["a loc: naming the chorus", "loc:Chorus", "17|1"],
+  ])("passes with %s", (_label, startTime, landed) => {
     expect(
-      loopTurnGrader.assert(
-        loopTurn({ loopStart: "loc:12", loopEnd: "loc:13" }),
+      startGrader.assert(
+        startTurn(
+          { action: "play-arrangement", startTime },
+          { startTime: landed },
+        ),
       ),
     ).toBe(true);
   });
 
-  it("fails a computed bar position", () => {
+  it.each([
+    ["a computed wrong position", "25|1", "25|1"],
+    ["a loc: naming the wrong locator", "loc:Bridge", "25|1"],
+  ])("fails with %s", (_label, startTime, landed) => {
     expect(() =>
-      loopTurnGrader.assert(
-        loopTurn({ loopStart: "25|1", loopEnd: "loc:Outro" }),
+      startGrader.assert(
+        startTurn(
+          { action: "play-arrangement", startTime },
+          { startTime: landed },
+        ),
       ),
-    ).toThrow("did not name a locator: loopStart=25|1");
+    ).toThrow("expected the chorus (17|1)");
   });
 });

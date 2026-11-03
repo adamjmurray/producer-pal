@@ -152,6 +152,37 @@ export function targetLabel(api: LiveAPI): string {
 }
 
 /**
+ * A clip's track index, or a refusal naming the clip when it has none.
+ * @param clip - The clip
+ * @param what - What to call the clip in the message
+ * @returns The clip's track index
+ */
+export function requireTrackIndex(clip: LiveAPI, what = "clip"): number {
+  const trackIndex = clip.trackIndex;
+
+  if (trackIndex == null) {
+    throw new Error(`no track for ${what} ${targetLabel(clip)}`);
+  }
+
+  return trackIndex;
+}
+
+/**
+ * A scene's index, or a refusal naming the scene when it has none.
+ * @param scene - The scene
+ * @returns The scene's index
+ */
+export function requireSceneIndex(scene: LiveAPI): number {
+  const sceneIndex = scene.sceneIndex;
+
+  if (sceneIndex == null) {
+    throw new Error(`no scene index for ${targetLabel(scene)}`);
+  }
+
+  return sceneIndex;
+}
+
+/**
  * {@link targetLabel} for an object already read into a result, which carries
  * both spellings itself.
  * @param result - A tool result, with an `id` and the `path` it spells

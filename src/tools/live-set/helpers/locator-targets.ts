@@ -22,8 +22,8 @@ import { validateListLengths } from "#src/tools/shared/validation/lists/list-len
 import {
   splitList,
   valueForIndex,
+  wholeValue,
 } from "#src/tools/shared/validation/lists/list-pairing.ts";
-import { unescapeCommas } from "#src/tools/shared/validation/lists/split-entries.ts";
 
 export type LocatorOperation = "create" | "delete" | "rename";
 
@@ -239,7 +239,7 @@ function deleteNames(
     return [];
   }
 
-  const whole = unescapeCommas(locatorName);
+  const whole = wholeValue(locatorName);
 
   if (!whole.includes(",") || findLocatorsByName(liveSet, whole).length > 0) {
     return [whole];

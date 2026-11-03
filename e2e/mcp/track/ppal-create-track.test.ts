@@ -285,6 +285,26 @@ describe("ppal-create-track", () => {
     // Color may be quantized to Live's palette, but should be set
     expect(coloredTrack.color).toBeDefined();
 
+    // A color off the palette lands on the perceptually nearest entry (Live's
+    // own snap would have made #800080 a pink-red) and the result says so.
+    const purpleResult = await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { name: "Purple Track", color: "#800080" },
+    });
+    const purple = parseToolResult<CreateTrackResult>(purpleResult);
+
+    expect(purple).toStrictEqual(expect.objectContaining({ color: "#624BAD" }));
+
+    await sleep(100);
+    const verifyPurple = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { id: purple.id, include: ["color"] },
+    });
+
+    expect(parseToolResult<ReadTrackResult>(verifyPurple).color).toBe(
+      "#624BAD",
+    );
+
     // Test 3: Create track with mute: true
     const mutedResult = await ctx.client!.callTool({
       name: "ppal-create-track",

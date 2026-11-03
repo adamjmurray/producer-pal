@@ -23,7 +23,7 @@ vi.mock(import("../../live-db-path.ts"), () => ({
   liveDatabaseDir: vi.fn(),
 }));
 vi.mock(import("../../db-staleness.ts"), () => ({
-  detectStalenessRisk: vi.fn(),
+  stalenessNote: vi.fn(),
 }));
 
 const dbPathMod = await import("../../live-db-path.ts");
@@ -90,7 +90,7 @@ describe("Live's library listing rules", () => {
   setupLibraryFixtureLifecycle(dbPathMod, addLeftOutKicks);
 
   beforeEach(() => {
-    vi.mocked(stalenessMod.detectStalenessRisk).mockResolvedValue(undefined);
+    vi.mocked(stalenessMod.stalenessNote).mockResolvedValue(undefined);
   });
 
   it("search leaves out flagged and Place-less files library-wide", async () => {
