@@ -7,7 +7,6 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   registerMockObject,
   simulateMockWrites,
-  type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
   LIVE_FAILURE,
@@ -17,6 +16,7 @@ import {
   LIVE_WITH_CLIP_SCALE,
   LIVE_WITHOUT_CLIP_SCALE,
   registerLiveVersion,
+  scaleWrites,
   registerSongScale,
 } from "#src/tools/shared/schema/scale/tests/scale-test-helpers.ts";
 import { createClip } from "../../create-clip.ts";
@@ -27,17 +27,6 @@ import {
 } from "../notes/session-slot-test-helpers.ts";
 
 const METER = { signature_numerator: 4, signature_denominator: 4 };
-
-/**
- * The scale properties a clip was written, in order.
- * @param clip - The registered clip
- * @returns [property, value] pairs for the scale properties
- */
-function scaleWrites(clip: RegisteredMockObject): unknown[][] {
-  return clip.set.mock.calls.filter(([property]) =>
-    ["root_note", "scale_name", "scale_mode"].includes(property as string),
-  );
-}
 
 /**
  * Two empty session slots, in a Set with the given scale.

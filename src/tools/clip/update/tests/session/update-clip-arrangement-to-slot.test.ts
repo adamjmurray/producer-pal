@@ -19,6 +19,8 @@ import {
   newClipReasons,
 } from "../../helpers/entries/clip-reasons.ts";
 import {
+  DORIAN,
+  expectDorianWritten,
   LIVE_WITH_CLIP_SCALE,
   registerLiveVersion,
   type ScaleProps,
@@ -419,13 +421,11 @@ describe("handleArrangementToSlotMove", () => {
 
   it("gives the re-created clip the source's own scale", () => {
     registerLiveVersion(LIVE_WITH_CLIP_SCALE);
-    runMove({ scale: { scale_mode: 1, root_note: 2, scale_name: "Dorian" } });
+    runMove({ scale: DORIAN });
 
     const copy = lookupMockObject(NEW_ID);
 
-    expect(copy?.set).toHaveBeenCalledWith("root_note", 2);
-    expect(copy?.set).toHaveBeenCalledWith("scale_name", "Dorian");
-    expect(copy?.set).toHaveBeenCalledWith("scale_mode", 1);
+    expectDorianWritten(copy);
     expect(movedReason()).toBe(`re-created at t${DEST_TRACK}/s${DEST_SCENE}`);
   });
 
@@ -434,7 +434,7 @@ describe("handleArrangementToSlotMove", () => {
     registerLiveVersion(LIVE_WITH_CLIP_SCALE);
 
     const updatedClips = runMove({
-      scale: { scale_mode: 1, root_note: 2, scale_name: "Dorian" },
+      scale: DORIAN,
       scaleWriteFails: true,
     });
 

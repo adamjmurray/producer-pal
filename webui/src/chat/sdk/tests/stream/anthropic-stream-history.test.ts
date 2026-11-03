@@ -9,10 +9,10 @@ import * as F from "./anthropic-fixtures";
 import {
   assistantTurns,
   collectSdkWarnings,
+  expectCutOffWithNotice,
   expectHttpFailure,
   expectStreamFailure,
   liveSetStep,
-  OUTPUT_LIMIT_NOTICE,
   restoreSdkWarnings,
   say,
   startChat,
@@ -258,16 +258,7 @@ describe("Anthropic stream to history", () => {
     it("keeps the text that arrived before the output limit cut the answer off, then adds a notice", async () => {
       stubProviderFetch([F.CUT_OFF], true);
 
-      const history = await say(await claude(), "Tracks?");
-
-      const turns = assistantTurns(history);
-
-      expect(turns[0]?.content).toBe("Tracks: Drums, Ba");
-      expect(turns.at(-1)).toStrictEqual({
-        role: "assistant",
-        content: OUTPUT_LIMIT_NOTICE,
-        isError: true,
-      });
+      expectCutOffWithNotice(await say(await claude(), "Tracks?"));
     });
 
     it("throws the provider's message for an error inside the stream, keeping the text so far", async () => {

@@ -29,6 +29,8 @@ import {
   newClipReasons,
 } from "../../helpers/entries/clip-reasons.ts";
 import {
+  DORIAN,
+  expectDorianWritten,
   LIVE_WITH_CLIP_SCALE,
   registerLiveVersion,
   type ScaleProps,
@@ -476,14 +478,12 @@ describe("moving an arrangement clip to another lane", () => {
     registerLiveVersion(LIVE_WITH_CLIP_SCALE);
     runMove({
       destination: { trackIndex: DEST_TRACK, takeLane: 0 },
-      scale: { scale_mode: 1, root_note: 2, scale_name: "Dorian" },
+      scale: DORIAN,
     });
 
     const copy = lookupMockObject(undefined, takeLaneClipPath(0));
 
-    expect(copy?.set).toHaveBeenCalledWith("root_note", 2);
-    expect(copy?.set).toHaveBeenCalledWith("scale_name", "Dorian");
-    expect(copy?.set).toHaveBeenCalledWith("scale_mode", 1);
+    expectDorianWritten(copy);
     expect(movedReason()).toBe(`re-created on t${DEST_TRACK}/l0`);
   });
 
@@ -493,7 +493,7 @@ describe("moving an arrangement clip to another lane", () => {
 
     const result = runMove({
       destination: { trackIndex: DEST_TRACK, takeLane: 0 },
-      scale: { scale_mode: 1, root_note: 2, scale_name: "Dorian" },
+      scale: DORIAN,
       scaleWriteFails: true,
     });
 

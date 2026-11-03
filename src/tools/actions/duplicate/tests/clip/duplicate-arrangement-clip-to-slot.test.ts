@@ -15,6 +15,8 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
+  DORIAN,
+  expectDorianWritten,
   LIVE_WITH_CLIP_SCALE,
   registerLiveVersion,
   type ScaleProps,
@@ -23,7 +25,6 @@ import { failOnSet } from "#src/tools/shared/tests/write-conformance/write-confo
 
 const SOURCE_ID = "arr_clip";
 const NEW_ID = "new_clip";
-const DORIAN = { scale_mode: 1, root_note: 2, scale_name: "Dorian" };
 
 interface SourceOptions {
   isMidi?: number;
@@ -179,9 +180,7 @@ describe("duplicate - arrangement clip to a clip slot", () => {
 
     const copy = lookupMockObject(NEW_ID);
 
-    expect(copy?.set).toHaveBeenCalledWith("root_note", 2);
-    expect(copy?.set).toHaveBeenCalledWith("scale_name", "Dorian");
-    expect(copy?.set).toHaveBeenCalledWith("scale_mode", 1);
+    expectDorianWritten(copy);
   });
 
   // The clip and its notes are already there, so the copy landed.

@@ -23,6 +23,7 @@ import { buildModelMessages } from "#webui/chat/sdk/build-model-messages";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
 import {
   createConfig,
+  itAddsFinishNotice,
   mockStreamParts,
   sendWithParts,
 } from "#webui/chat/sdk/tests/client-test-helpers";
@@ -35,23 +36,6 @@ const LIMIT_ENTRY = {
   content: expect.stringMatching(LIMIT_NOTICE) as unknown,
   isError: true,
 };
-
-const TOOL_STEP_PARTS = [
-  { type: "start-step" },
-  {
-    type: "tool-call",
-    toolCallId: "t1",
-    toolName: "ppal-read-live-set",
-    input: {},
-  },
-  {
-    type: "tool-result",
-    toolCallId: "t1",
-    toolName: "ppal-read-live-set",
-    input: {},
-    output: "ok",
-  },
-];
 
 describe("empty reply from the provider", () => {
   beforeEach(() => {
@@ -100,21 +84,7 @@ describe("reply cut off by the output limit", () => {
     vi.clearAllMocks();
   });
 
-  it("keeps the partial text and adds the notice after it", async () => {
-    const history = await sendWithParts([
-      { type: "start-step" },
-      { type: "text-delta", text: "Here is the start" },
-      { type: "finish-step", finishReason: "length" },
-      { type: "finish", finishReason: "length" },
-    ]);
-
-    expect(history).toHaveLength(3);
-    expect(history[1]?.content).toBe("Here is the start");
-    expect(history[1]?.isError).toBeUndefined();
-    expect(history[2]).toStrictEqual(LIMIT_ENTRY);
-    expect(history[2]?.content).toContain("Retry");
-    expect(history[2]?.content).toContain("continue");
-  });
+  itAddsFinishNotice("length", LIMIT_ENTRY);
 
   it("adds the notice when the cut-off reply has no text", async () => {
     const history = await sendWithParts([
@@ -125,34 +95,8 @@ describe("reply cut off by the output limit", () => {
 
     expect(history).toHaveLength(2);
     expect(history[1]).toStrictEqual(LIMIT_ENTRY);
-  });
-
-  it("adds exactly one notice when the step after a tool step is cut off", async () => {
-    const history = await sendWithParts([
-      ...TOOL_STEP_PARTS,
-      { type: "finish-step", finishReason: "tool-calls" },
-      { type: "start-step" },
-      { type: "text-delta", text: "Partial" },
-      { type: "finish-step", finishReason: "length" },
-      { type: "finish", finishReason: "length" },
-    ]);
-
-    expect(history.filter((m) => m.isError)).toStrictEqual([LIMIT_ENTRY]);
-    expect(history.at(-1)).toStrictEqual(LIMIT_ENTRY);
-  });
-
-  it("adds nothing when only an earlier step was cut off", async () => {
-    const history = await sendWithParts([
-      ...TOOL_STEP_PARTS,
-      { type: "finish-step", finishReason: "length" },
-      { type: "start-step" },
-      { type: "text-delta", text: "All done." },
-      { type: "finish-step", finishReason: "stop" },
-      { type: "finish", finishReason: "stop" },
-    ]);
-
-    expect(history.some((m) => m.isError)).toBe(false);
-    expect(history.at(-1)?.content).toBe("All done.");
+    expect(history[1]?.content).toContain("Retry");
+    expect(history[1]?.content).toContain("continue");
   });
 
   it("skips the notice but keeps the partial text in the next request", async () => {

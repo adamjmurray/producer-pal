@@ -83,40 +83,30 @@ describe("createClip - transforms name the clip they warn about", () => {
     expect(warningLabels()).toStrictEqual(["clip t0[1|1]: "]);
   });
 
-  // The same argument is wrong for every clip, so nothing is created.
-  it("refuses a transform argument that is wrong for every clip before creating one", async () => {
+  // The transforms are wrong for every clip, so nothing is created.
+  it.each([
+    [
+      "a transform argument that is wrong for every clip",
+      "velocity = C3",
+      `note name "C3" isn't a value for velocity`,
+    ],
+    [
+      "a swing grid of 0 or less",
+      "timing = swing(0.1, -n/8)",
+      "swing() grid must be greater than 0",
+    ],
+  ])("refuses %s before creating a clip", async (_, transforms, error) => {
     const slot = registerMockObject("live_set/tracks/0/clip_slots/0", {
       path: livePath.track(0).clipSlot(0),
       properties: { has_clip: 0 },
     });
 
     await expect(
-      createClip({
-        slot: "0/0",
-        notes: "C3 1|1",
-        transforms: "velocity = C3",
-      }),
-    ).rejects.toThrow(`note name "C3" isn't a value for velocity`);
+      createClip({ slot: "0/0", notes: "C3 1|1", transforms }),
+    ).rejects.toThrow(error);
 
     expect(slot.call).not.toHaveBeenCalled();
     expect(capturedWarnings()).toStrictEqual([]);
-  });
-
-  it("refuses a swing grid of 0 or less before creating a clip", async () => {
-    const slot = registerMockObject("live_set/tracks/0/clip_slots/0", {
-      path: livePath.track(0).clipSlot(0),
-      properties: { has_clip: 0 },
-    });
-
-    await expect(
-      createClip({
-        slot: "0/0",
-        notes: "C3 1|1",
-        transforms: "timing = swing(0.1, -n/8)",
-      }),
-    ).rejects.toThrow("swing() grid must be greater than 0");
-
-    expect(slot.call).not.toHaveBeenCalled();
   });
 
   // A transform for the other kind of clip does nothing there; the created

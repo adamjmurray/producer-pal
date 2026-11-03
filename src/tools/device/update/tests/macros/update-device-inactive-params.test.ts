@@ -10,6 +10,7 @@ import {
   livePath,
   paramsOf,
   registerMockObject,
+  registerNamedParams,
   updateDevice,
 } from "../update-device-test-helpers.ts";
 import { automatedParam } from "#src/test/mocks/mock-registry.ts";
@@ -18,52 +19,13 @@ import { INACTIVE_PARAM_DETAIL } from "#src/tools/device/update/helpers/params/p
 import { readBackDetail } from "#src/tools/shared/helpers/read-back-comparison.ts";
 
 /**
- * Register a device with continuous 0..1 params, each owned by it.
- * @param names - The params' names, in order
- * @param extra - Properties to add to every param
- * @param deviceName - The device's class_display_name
- * @returns The registered param mocks, in order
- */
-function registerParams(
-  names: string[],
-  extra: Record<string, unknown> = {},
-  deviceName = "Reverb",
-): RegisteredMockObject[] {
-  registerMockObject("dev1", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: {
-      class_display_name: deviceName,
-      parameters: children(...names.map((_, index) => `p${index}`)),
-    },
-  });
-
-  return names.map((name, index) =>
-    registerMockObject(`p${index}`, {
-      properties: {
-        name,
-        original_name: name,
-        is_quantized: 0,
-        is_enabled: 1,
-        value: 0.5,
-        min: 0,
-        max: 1,
-        canonical_parent: children("dev1"),
-        ...extra,
-      },
-      methods: { str_for_value: (value: unknown) => Number(value).toFixed(2) },
-    }),
-  );
-}
-
-/**
  * Register a Wavetable whose LFO 1 Sync reads as given, beside the two rates
  * it picks between.
  * @param sync - "Free" or "Tempo"
  * @returns The sync param mock
  */
 function registerWavetableLfo(sync: string): RegisteredMockObject {
-  registerParams(["LFO 1 Rate", "LFO 1 S. Rate", "Gain"], {}, "Wavetable");
+  registerNamedParams(["LFO 1 Rate", "LFO 1 S. Rate", "Gain"], {}, "Wavetable");
 
   const syncParam = registerMockObject("sync", {
     properties: {
@@ -91,7 +53,7 @@ function registerWavetableLfo(sync: string): RegisteredMockObject {
 
 describe("updateDevice - params inactive in the device's mode", () => {
   it("says so when Live marks the param inactive", () => {
-    const [, reso] = registerParams(["Cutoff", "Reso"]);
+    const [, reso] = registerNamedParams(["Cutoff", "Reso"]);
 
     (reso as NonNullable<typeof reso>).properties.state = 1;
 
@@ -144,7 +106,7 @@ describe("updateDevice - params inactive in the device's mode", () => {
   });
 
   it("adds nothing to a param on a device with no rules", () => {
-    registerParams(["Cutoff"]);
+    registerNamedParams(["Cutoff"]);
 
     const result = updateDevice({
       id: "dev1",
@@ -163,7 +125,7 @@ describe("updateDevice - params inactive in the device's mode", () => {
   });
 
   it("joins after the read-back detail", () => {
-    registerParams(["Cutoff"], { state: 1 });
+    registerNamedParams(["Cutoff"], { state: 1 });
 
     const result = updateDevice({
       id: "dev1",
@@ -181,7 +143,7 @@ describe("updateDevice - params inactive in the device's mode", () => {
   });
 
   it("joins after the automation override detail", () => {
-    const [cutoff] = registerParams(["Cutoff"], { state: 1 });
+    const [cutoff] = registerNamedParams(["Cutoff"], { state: 1 });
 
     automatedParam(cutoff as NonNullable<typeof cutoff>);
 

@@ -3,13 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { type DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
-import { fourCC } from "../library-filters.ts";
 import { MAX_LIBRARY_LIMIT } from "../library-types.ts";
 import { listTags } from "../list-tags.ts";
 import {
-  createLibraryFixture,
+  addManyTags,
   createPartialSchemaDb,
   FILES_ONLY_SCHEMA,
   setupLibraryFixtureLifecycle,
@@ -101,48 +99,16 @@ describe("listTags", () => {
 });
 
 describe("listTags - limit cap", () => {
+  setupLibraryFixtureLifecycle(dbPathMod, addManyTags);
+
   it("returns at most 1000 tags and counts the rest", async () => {
-    const fixture = createLibraryFixture(addManyTags);
+    const result = await listTags({ limit: 5_000 });
 
-    try {
-      vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(
-        fixture.dbPath,
-      );
-
-      const result = await listTags({ limit: 5_000 });
-
-      // 1,100 new tags plus the fixture's 5.
-      expect(result.tags).toHaveLength(MAX_LIBRARY_LIMIT);
-      expect(result.more).toBe(105);
-    } finally {
-      fixture.cleanup();
-    }
+    // 1,100 new tags plus the fixture's 5.
+    expect(result.tags).toHaveLength(MAX_LIBRARY_LIMIT);
+    expect(result.more).toBe(105);
   });
 });
-
-/**
- * Add 1,100 tags, each on one pack file, so the list outgrows the 1000 cap.
- *
- * @param db - Writable fixture DB
- */
-function addManyTags(db: DatabaseSync): void {
-  const file = db.prepare(
-    "INSERT INTO files (file_id, parent_id, file_type, file_kind, name) VALUES (?, 1, ?, 0, ?)",
-  );
-  const tag = db.prepare(
-    "INSERT INTO keywords (file_id, keyw_id, is_auto) VALUES (2001, ?, 0)",
-  );
-
-  // One transaction: thousands of autocommitted inserts are slow on CI runners.
-  db.exec("BEGIN");
-
-  for (let i = 0; i < 1_100; i++) {
-    file.run(20_000 + i, fourCC("keyw"), `Tag ${String(i).padStart(4, "0")}`);
-    tag.run(20_000 + i);
-  }
-
-  db.exec("COMMIT");
-}
 
 /**
  * Create a temp Live-files DB that omits the `keywords` table the listTags

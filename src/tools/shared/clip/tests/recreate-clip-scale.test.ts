@@ -15,6 +15,7 @@ import {
   LIVE_WITHOUT_CLIP_SCALE,
   registerLiveVersion,
   type ScaleProps,
+  scaleWrites,
 } from "#src/tools/shared/schema/scale/tests/scale-test-helpers.ts";
 import { failOnSet } from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
 import { recreateClip, recreateClipInSlot } from "../recreate-clip.ts";
@@ -23,7 +24,6 @@ const SOURCE_PATH = livePath.track(0).arrangementClip(0);
 const TRACK_PATH = livePath.track(1);
 const SLOT_PATH = livePath.track(1).clipSlot(0);
 const D_DORIAN = { scale_mode: 1, root_note: 2, scale_name: "Dorian" };
-const SCALE_PROPERTIES = new Set(["root_note", "scale_name", "scale_mode"]);
 
 /**
  * Register a source clip.
@@ -104,17 +104,6 @@ function inSlot(losses: string[] = []): LiveAPI {
     undefined,
     undefined,
     losses,
-  );
-}
-
-/**
- * The scale properties a clip was written, in order.
- * @param clip - The registered clip
- * @returns [property, value] pairs
- */
-function scaleWrites(clip: RegisteredMockObject | undefined): unknown[][] {
-  return (clip?.set.mock.calls ?? []).filter(([property]) =>
-    SCALE_PROPERTIES.has(property as string),
   );
 }
 

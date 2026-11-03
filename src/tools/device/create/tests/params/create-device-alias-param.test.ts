@@ -9,13 +9,9 @@
 
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import {
-  clearMockRegistry,
-  registerMockObject,
-  type RegisteredMockObject,
-} from "#src/test/mocks/mock-registry.ts";
+import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
 import { createDevice } from "../../create-device.ts";
+import { registerInsertTrack } from "./insert-track-fixtures.ts";
 import { toolDefCreateDevice } from "../../create-device.def.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -23,32 +19,13 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   emitWarningOnce: vi.fn(),
 }));
 
-const TRACK = livePath.track(0);
-
-/**
- * Register a track that takes an insert.
- * @returns The track mock
- */
-function registerTrack(): RegisteredMockObject {
-  const track = registerMockObject("track-0", {
-    path: TRACK,
-    type: "Track",
-    properties: { devices: [] },
-    methods: { insert_device: () => ["id", "new-device"] },
-  });
-
-  registerMockObject("new-device", { path: TRACK.device(0) });
-
-  return track;
-}
-
 describe("createDevice — device alias", () => {
   beforeEach(() => {
     clearMockRegistry();
   });
 
   it("creates the device from deviceName", async () => {
-    registerTrack();
+    registerInsertTrack();
 
     expect(
       await createDevice({ deviceName: "Reverb", path: "t0/d+" }),
@@ -56,7 +33,7 @@ describe("createDevice — device alias", () => {
   });
 
   it("creates the device from the device alias", async () => {
-    registerTrack();
+    registerInsertTrack();
 
     expect(
       await createDevice({ device: "Reverb", path: "t0/d+" }),
@@ -66,7 +43,7 @@ describe("createDevice — device alias", () => {
   // Both spellings name the same thing, so the call is refused rather than
   // quietly taking one of them.
   it("refuses device beside deviceName, creating nothing", async () => {
-    const track = registerTrack();
+    const track = registerInsertTrack();
 
     await expect(
       createDevice({

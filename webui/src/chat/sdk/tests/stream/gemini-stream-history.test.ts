@@ -12,6 +12,7 @@ import {
   collectSdkWarnings,
   expectEmptyArgsStep,
   expectFailedToolRun,
+  expectCutOffWithNotice,
   expectHttpFailure,
   expectStreamFailure,
   httpError,
@@ -21,7 +22,6 @@ import {
   stubProviderFetch,
   toolLimitReachedAfter,
   FILTER_NOTICE,
-  OUTPUT_LIMIT_NOTICE,
 } from "./raw-stream-harness";
 
 vi.mock(import("#webui/chat/sdk/mcp-tools"), async () => {
@@ -385,16 +385,7 @@ describe("Gemini stream to history", () => {
     it("keeps the text that arrived before the output limit cut the answer off, then adds a notice", async () => {
       stubProviderFetch([F.CUT_OFF]);
 
-      const history = await say(await gemini(), "Tracks?");
-
-      const turns = assistantTurns(history);
-
-      expect(turns[0]?.content).toBe("Tracks: Drums, Ba");
-      expect(turns.at(-1)).toStrictEqual({
-        role: "assistant",
-        content: OUTPUT_LIMIT_NOTICE,
-        isError: true,
-      });
+      expectCutOffWithNotice(await say(await gemini(), "Tracks?"));
     });
 
     it.each([
