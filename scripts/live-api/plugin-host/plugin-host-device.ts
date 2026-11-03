@@ -45,8 +45,8 @@ const RawJson = JSON as unknown as {
 /**
  * Rebuild one plug-in host .amxd: put the wrapper code into its v8.codebox and
  * replace the automation-slot dials, their prepends and cords, the vstslots
- * pattr, the slot list and the name and Open button, and take vst~ out of the
- * panel. Never touches the patcher's "project" block (one
+ * pattr, the slot list and the name and Open button, take vst~ out of the
+ * panel, and cut vststate off from vst~. Never touches the patcher's "project" block (one
  * missing fields crashes Live). Running it twice gives the same bytes.
  *
  * @param amxd - The device file
@@ -71,10 +71,19 @@ export function buildPluginHostDevice(
       delete b.box.presentation;
       delete b.box.presentation_rect;
     }
+
+    // Storage only: the wrapper restores it into vst~, which can't read the
+    // stored form. A cord would also reset the plug-in on every restore.
+    if (b.box.id === "vststate") {
+      b.box.text = "pattr vststate @parameter_enable 1";
+    }
   }
 
   p.boxes = [...boxes, ...ownedBoxes().map((box) => ({ box }))];
-  p.lines = [...p.lines.filter((l) => !touchesOurs(l)), ...ownedLines()];
+  p.lines = [
+    ...p.lines.filter((l) => !touchesOurs(l) && !feedsVst(l)),
+    ...ownedLines(),
+  ];
   p.parameters ??= { parameterbanks: {}, inherited_shortname: 1 };
 
   const body = Buffer.from(`${JSON.stringify(json, null, 2)}\n\0`);
@@ -143,6 +152,10 @@ function touchesOurs(line: Patchline): boolean {
   const { source, destination } = line.patchline;
 
   return isOurs(source[0]) || isOurs(destination[0]);
+}
+
+function feedsVst(line: Patchline): boolean {
+  return line.patchline.source[0] === "vststate";
 }
 
 function ownedBoxes(): Json[] {

@@ -15,8 +15,8 @@
 //
 // The plug-in's state lives in two pattrs: "vstmirror" is bound to vst~ and
 // reads its state; "vststate" is a stored-only blob parameter that Live saves
-// with the Set and restores into vst~ through vstmirror at load. "vstname" is
-// another such blob, holding the plug-in's name, and "vstslots" one holding
+// with the Set, and this script restores into vst~ through vstmirror. "vstname"
+// is another such blob, holding the plug-in's name, and "vstslots" one holding
 // which plug-in param each automation dial drives.
 // Replies go to "ppal-plugin-host-res" as: plugin_host_response <id> <json>
 
@@ -481,12 +481,15 @@ let transport = null;
 pollTask.interval = POLL_MS;
 pollTask.repeat();
 
-// Once the restore has run: if a state is stored, the plug-in matches it, so
-// the first poll doesn't write it back. (The two strings can differ in key
-// order even when the state is the same.)
+// Once the Set has loaded: restore the stored state (if the listener below
+// hasn't yet), then take what the plug-in reports as saved, so the first poll
+// doesn't write it back. (The two strings can differ in key order even when the
+// state is the same.)
 initTask.schedule(1500);
 
 function adoptStored() {
+  watchStored();
+  if (lastSaved == null) restoreStored();
   if (lastSaved == null && storedState() != null) lastSaved = stateOf();
 
   slotsReady = true;
@@ -500,13 +503,95 @@ function stateOf() {
   return this.patcher.getnamed("vstmirror").getvalueof().stringify();
 }
 
+// Live cuts a restored string at Max's symbol limit (~32 KB), and most plug-in
+// states are bigger: they came back cut, and the plug-in reset to its defaults.
+// So vststate keeps the snapshot's blob in parts, and this script restores it
+// (vststate has no cord to vst~, which can't read the parts).
+// Live restores vststate at load, on a duplicate, and on undo or redo.
+let storedListener = null;
+const RESTORE_SETTLE_MS = 3000;
+let restoredAt = 0;
+
+function loadbang() {
+  watchStored();
+}
+
+function watchStored() {
+  if (storedListener) return;
+
+  const stored = this.patcher.getnamed("vststate");
+
+  // An arrow, so `this` stays the script (it reaches the patcher).
+  storedListener = new MaxobjListener(stored, () => onStoredChange());
+}
+
+function onStoredChange() {
+  // Our own write: the plug-in already has it.
+  if (lastSaved != null && storedState() === lastSaved) return;
+
+  restoreStored();
+}
+
+function restoreStored() {
+  const stored = storedState();
+
+  if (stored == null || stored === readState()) return;
+
+  const dict = new Dict();
+
+  dict.parse(stored);
+  // Up, so the plug-in's echoes of the restore don't count as edits: saving
+  // them would add an undo step and drop the redo.
+  busy++;
+  try {
+    this.patcher.getnamed("vstmirror").message("dictionary", dict.name);
+  } finally {
+    busy--;
+    restoredAt = Date.now();
+  }
+}
+
+// The stored snapshot, rebuilt to what vstmirror reports.
 function storedState() {
   const stored = this.patcher.getnamed("vststate").getvalueof();
 
   // Nothing stored yet: pattr answers with a number, not a dict.
-  return stored != null && typeof stored.stringify === "function"
-    ? stored.stringify()
-    : null;
+  if (stored == null || typeof stored.stringify !== "function") return null;
+
+  const json = stored.stringify();
+
+  // Saved before the blob was split: use it as it is.
+  if (!json.includes('"blobparts"')) return json;
+
+  const value = JSON.parse(json);
+  const { blobparts, ...rest } = value.snapshot;
+  const dict = new Dict();
+
+  // A one-part list comes back as a plain string. The blob is the snapshot's
+  // last key, so putting it back last keeps the string equal to vstmirror's.
+  value.snapshot = { ...rest, blob: [].concat(blobparts).join("") };
+  dict.parse(JSON.stringify(value));
+
+  return dict.stringify();
+}
+
+// The snapshot with its blob split into parts that survive Live's restore.
+function storedForm(json) {
+  const value = JSON.parse(json);
+  const blob = value.snapshot?.blob;
+
+  if (typeof blob !== "string") return json;
+
+  const { blob: _blob, ...rest } = value.snapshot;
+  const blobparts = [];
+
+  for (let start = 0; start < blob.length; start += CHUNK_SIZE) {
+    blobparts.push(blob.slice(start, start + CHUNK_SIZE));
+  }
+
+  value.snapshot = { ...rest, blobparts };
+
+  return JSON.stringify(value);
 }
 
 // Copy the plug-in's state into the blob if it changed. Returns an error
@@ -521,10 +606,16 @@ function saveState(why) {
     if (lastSaved == null) lastSaved = storedState();
     if (current === lastSaved) return null;
 
-    // Slots wrote since the last save and nothing else changed the plug-in:
-    // take the new state as saved without writing it, so automation never adds
-    // undo steps. (A program change made while slots move is missed too.)
-    if (why === "poll" && slotWriteAt > savedAt) {
+    // Slots wrote since the last save and nothing else changed the plug-in, or
+    // a restore is settling (Vital changes its state on its own about a second
+    // after one; Cassette echoes late and reports its old state for a while):
+    // take the new state as saved without writing it, so neither adds an undo
+    // step (which would also drop a redo) or overwrites the restored state.
+    // (A program change or plug-in-window edit made meanwhile is missed too.)
+    const settling = Date.now() - restoredAt < RESTORE_SETTLE_MS;
+    const quiet = why === "poll" || why === "edit";
+
+    if (quiet && ((why === "poll" && slotWriteAt > savedAt) || settling)) {
       lastSaved = current;
       savedAt = Date.now();
 
@@ -539,10 +630,11 @@ function saveState(why) {
       return null;
     }
 
-    const dict = this.patcher.getnamed("vstmirror").getvalueof();
+    const dict = new Dict();
 
-    this.patcher.getnamed("vststate").message("dictionary", dict.name);
+    dict.parse(storedForm(current));
     lastSaved = current;
+    this.patcher.getnamed("vststate").message("dictionary", dict.name);
     savedAt = Date.now();
     edited = false;
     editTask.cancel();

@@ -47,12 +47,14 @@ const stale = amxd(`{
     { "box": { "id": "slotdial999", "maxclass": "live.dial" } },
     { "box": { "id": "pluginname", "maxclass": "live.comment", "text": "old" } },
     { "box": { "id": "vst", "maxclass": "newobj", "presentation": 1, "presentation_rect": [4, 4, 220, 40] } },
+    { "box": { "id": "vststate", "maxclass": "newobj", "text": "pattr vststate @parameter_enable 1 @thru 2" } },
     { "box": { "id": "other", "maxclass": "newobj", "patching_rect": [20.0, 1.5] } }
   ],
   "lines": [
     { "patchline": { "source": ["slotdial999", 0], "destination": ["code", 0] } },
     { "patchline": { "source": ["openprep", 0], "destination": ["code", 0] } },
-    { "patchline": { "source": ["other", 0], "destination": ["code", 0] } }
+    { "patchline": { "source": ["other", 0], "destination": ["code", 0] } },
+    { "patchline": { "source": ["vststate", 0], "destination": ["vstmirror", 0] } }
   ],
   "project": { "searchpath": {} }
 }`);
@@ -113,6 +115,16 @@ describe("buildPluginHostDevice", () => {
     expect(cords).toContain("openeditor>openprep");
     expect(box("vst")).not.toHaveProperty("presentation");
     expect(box("vst")).not.toHaveProperty("presentation_rect");
+  });
+
+  it("cuts vststate off from vst~", () => {
+    const { patcher } = parse(buildPluginHostDevice(stale, CODE));
+    const box = patcher.boxes.find((b) => b.box.id === "vststate")?.box;
+
+    expect(box?.text).toBe("pattr vststate @parameter_enable 1");
+    expect(
+      patcher.lines.filter((l) => l.patchline.source[0] === "vststate"),
+    ).toHaveLength(0);
   });
 
   it("refuses wrapper code without one SLOT_COUNT line", () => {

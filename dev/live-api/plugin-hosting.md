@@ -99,8 +99,8 @@ Set's restore has run, from the same sources as `info`'s `plugin`.
   `C74_AU:/Serum 2 FX` or `C74_VST:/Kaivo`, each with a number after it that
   varies and can be missing right after a load. `plug_au "Apple: AUDelay"` (with
   the vendor) loads nothing, and a bundle holding two AUs needs nothing extra,
-  because the name picks one. `subname` is VST3 only. Saving state works
-  unchanged for all three, and survives a track duplicate.
+  because the name picks one. `subname` is VST3 only. Saving state works the
+  same for all three.
 - **VST2.** Live's plug-in database has VST2 rows (`device:vst:instr:…?n=Kaivo`,
   path `…/VST/Kaivo.vst`), so VST2 resolves like VST3. A VST2 _shell_ plug-in
   (several in one module, like Waves' WaveShell) is refused: `subname` can't
@@ -153,7 +153,11 @@ Set's restore has run, from the same sources as `info`'s `plugin`.
   least 128 long. Checked on 11 plug-ins. Real counts after hiding: Colour Copy
   31, Pianoteq 9 217, Diva 282, Hive 341, Supermodal 384, Serum 2 543, Organteq
   2 560, Pro-Q 4 605, VCV Rack 2 1025, Zebra3 2194. Serum 2's AU has the same
-  2080-param block and comes to 542.
+  2080-param block and comes to 542. 50 more checked later: blocks of 130
+  (MeldaProduction, Madrona Labs, Sugar Bytes) and 131 (Softube,
+  `[MIDI CC 0 (ch 1)]`) are hidden too. Two blocks are missed and shown:
+  sforzando (`Ch00 - ChanAft`, `Ch00 - PitchBend`, `Ch00 - CC000`…) and
+  Chromaphone 3 (2080 params all named `Internal MIDI`, mid-list).
 - `open` / `wclose` open and close the plug-in's own editor window.
 - `valuemode 2` makes `get` return the value and the display text together.
 
@@ -197,9 +201,27 @@ Live saves the plug-in's state in a hidden blob parameter, not through `vst~`.
   programs), fresh on every read.
 - `vststate` is a `pattr` with `parameter_enable 1`, type blob, "stored only"
   (`parameter_invisible 1`). It is not in `device.parameters` and can't be
-  automated. Live saves it in the device's blob (a 2 MB value was saved), and at
-  load restores it through `vstmirror` into `vst~`. Its `thru` is 2, so writing
-  it doesn't send the state back to the plug-in.
+  automated. Live saves it in the device's blob (a 2 MB value was saved) and
+  restores it at load, on a duplicate, and on undo or redo.
+- **Live cuts a restored string at 32,767 characters** (Live 12, Max 9.1.5).
+  Most plug-in states are bigger (Vital's blob is 233 KB), so they came back
+  cut: `vst~` loaded the plug-in (its id comes before the blob) and reset it to
+  defaults. So `vststate` keeps the snapshot's blob as a list of 10,000-char
+  `blobparts`, and the wrapper rebuilds it and sends it to `vstmirror` as a
+  `dictionary` (`setvalueof` doesn't restore). The build cuts the cord from
+  `vststate` to `vstmirror`: `vst~` can't read the parts, and Live's restore
+  through it reset the plug-in after the wrapper's. For 3 s after a restore the
+  wrapper adopts state changes without writing them: Vital changes its state
+  about a second later, and Cassette echoes late while still reporting its old
+  state, which a write would save over the restored one.
+- With that, Vital, Pigments, Sumu and Efx FRAGMENTS keep a write through a
+  track duplicate and a reopen every time (Microtonic too, through a duplicate;
+  its reopen is untested). Before, all lost it on reopen. Cassette keeps it most
+  times; Serum 2 lost one write on both the copy and the reopen, so that write
+  was likely never saved (seen once before this fix too). Lost every time, by
+  the plug-in: Generate's and RANDOM's state never holds the value (it hashes
+  the same whatever the setting), and DrumComputer and ShaperBox 3 ignore a
+  restored state. Falcon wasn't traced.
 - Writing `vststate` is one undo step, whatever the size. The wrapper writes it
   only when the state changed, by comparing state strings:
   - at the end of each request that can change the plug-in, before it replies,
@@ -412,11 +434,22 @@ Live's browser must find the wrappers by name, so they go in the User Library:
   current or differing from the repo; `uninstall`, `uninstall:all` and
   `uninstall:plugin-host` remove them.
 
+### CPU and sharing
+
+- Hosting costs about what native loading does: four Diva instances playing a
+  chord ran Live at 117.5% CPU hosted and 116% native (idle 55%), well inside
+  the noise.
+- Collect All and Save (with User Library files on, Live's default) copies the
+  wrapper into the project's `Presets/Instruments/Max Instrument/` and points
+  the device at that copy. Only wrappers in use are copied.
+- Two hosted plug-ins crashed Live once each, in their own code: Beat Scholar
+  (Modalics, worker thread) and Pigments (main thread, just after a copy of it
+  was deleted).
+
 ## Not yet tested
 
 - CC, pitch bend and aftertouch reaching the plug-in: the Live API can't write
   MIDI CC or pitch bend clip envelopes, so this needs a keyboard.
-- CPU cost against the same plug-in loaded natively.
 - Windows, and VST2 shell plug-ins.
-- Sharing Sets: the wrapper must travel with the Set (Collect All and Save), and
-  the other user needs Max for Live.
+- Opening a shared Set on a machine without the plug-in, or without Max for
+  Live.
