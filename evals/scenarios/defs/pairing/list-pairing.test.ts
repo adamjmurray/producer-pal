@@ -39,6 +39,24 @@ describe("duplicateDestinationPairing", () => {
     expect(check(drums, track("1|1", "3|1"))).toBe(false);
   });
 
+  it("passes a clip stretched right up to the next requested start", () => {
+    expect(check(drums, track("1|1", "3|1", "9|1"))).toBe(true);
+    expect(check(bass, track("5|1", "7|1", "13|1"))).toBe(true);
+  });
+
+  it("fails copies placed on every requested bar on both tracks", () => {
+    const all = track("1|1", "5|1", "9|1", "13|1");
+
+    expect(check(drums, all)).toBe(false);
+    expect(check(bass, all)).toBe(false);
+  });
+
+  it("fails the wrong alternation, where odd bars look like tiles", () => {
+    expect(check(drums, track("1|1", "5|1", "9|1", "13|1"))).toBe(false);
+    expect(check(bass, track("5|1", "13|1"))).toBe(true);
+    expect(check(drums, track("1|1", "5|1", "9|1"))).toBe(false);
+  });
+
   it("fails a stray clip that is not a tiled repeat", () => {
     expect(check(drums, track("1|1", "2|1", "9|1"))).toBe(false);
     expect(check(drums, track("1|1", "9|1", "9|3"))).toBe(false);
