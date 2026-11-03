@@ -71,6 +71,26 @@ describe("loadResumedTrials", () => {
   });
 });
 
+describe("loadResumedTrials with a crashed trial", () => {
+  it("reruns a trial cut short by an error, but keeps a failed one", async () => {
+    const crashed = await store("a.json", {
+      scenarioId: "a",
+      result: "error",
+      error: "Live died",
+      turns: [{}],
+    });
+
+    await store("b.json", { scenarioId: "b", result: "fail", turns: [{}] });
+
+    const resumed = await loadResumedTrials(dir);
+
+    expect([...resumed.errored.values()]).toStrictEqual([crashed]);
+    expect([...resumed.done.keys()]).toStrictEqual([
+      trialKey("b", "openai/m", "default", 1),
+    ]);
+  });
+});
+
 describe("dropReplacedError", () => {
   const key = trialKey("c", "openai/m", "default", 1);
 

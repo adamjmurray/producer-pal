@@ -339,12 +339,14 @@ apples-to-apples.
 
 A run that tested nothing about the model is reported as `error`, and is
 likewise kept out of pass/fail counts and scores: Live would not open the Set,
-the config would not apply, or the provider refused the request (usage limit,
-credits, capacity, rate limit) at any turn. Scoring it would turn an outage into
-a wall of convincing zeros. The harness retries a failed open three times,
-waiting once and then killing Live for a cold launch. After three of a model's
-trials in a row errored, that model is dropped from the rest of the run; the run
-stops when no model is left.
+the config would not apply, the provider refused the request (usage limit,
+credits, capacity, rate limit) at any turn, or the run threw before all its
+turns ran (Live died, a call timed out, the CLI crashed). A turn the step budget
+stopped is the model looping, so it stays a `fail`. Scoring it would turn an
+outage into a wall of convincing zeros. The harness retries a failed open three
+times, waiting once and then killing Live for a cold launch. After three of a
+model's trials in a row errored, that model is dropped from the rest of the run;
+the run stops when no model is left.
 
 ```bash
 # Default environment

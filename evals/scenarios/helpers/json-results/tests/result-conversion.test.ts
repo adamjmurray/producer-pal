@@ -274,9 +274,48 @@ describe("toJsonResult", () => {
   it.each([
     ["errored before the first turn", [], "Live would not swap Sets", "error"],
     ["was refused by the provider", [makeTurn()], "usage limit", "error"],
-    ["hit some other error mid-run", [makeTurn()], "timed out", "pass"],
+    ["errored after its last turn", [makeTurn()], "timed out", "pass"],
   ])("grades a run that %s", (_label, turns, error, outcome) => {
     expect(convert({ turns, error }).result).toBe(outcome);
+  });
+
+  describe("a run that threw before its scripted turns all ran", () => {
+    const scenario = {
+      ...makeResult().scenario,
+      messages: ["Connect to Ableton", "Make a clip", "Name it"],
+    };
+    const twoTurns = [makeTurn(), makeTurn({ turnIndex: 1 })];
+
+    it("is an error, so it is not scored or kept on resume", () => {
+      const result = convert({
+        scenario,
+        turns: twoTurns,
+        error: "Live died",
+      });
+
+      expect(result.result).toBe("error");
+    });
+
+    it("stays a fail when the step budget stopped the turn", () => {
+      const result = convert({
+        scenario,
+        turns: twoTurns,
+        assertions: [makeAssertion({ earned: 0 })],
+        error: "codex CLI hit the step budget of 2 steps and was stopped.",
+      });
+
+      expect(result.result).toBe("fail");
+    });
+
+    it("stays graded when every turn ran and the error came later", () => {
+      const result = convert({
+        scenario,
+        turns: [...twoTurns, makeTurn({ turnIndex: 2 })],
+        error: "judge crashed",
+      });
+
+      expect(result.result).toBe("pass");
+    });
   });
 
   it("handles zero checks gracefully", () => {

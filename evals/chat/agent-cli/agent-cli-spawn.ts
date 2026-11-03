@@ -9,6 +9,7 @@ import { agentCliCommand } from "./agent-cli-command.ts";
 import {
   createStepBudgetWatcher,
   StepBudgetError,
+  STEP_BUDGET_STOP_PHRASE,
 } from "./agent-cli-step-budget.ts";
 import {
   type AgentCliTransport,
@@ -121,7 +122,7 @@ export function spawnAgentCli(
       if (overBudget) {
         reject(
           new StepBudgetError(
-            `${transport.label} hit the step budget of ${stepBudget} steps ` +
+            `${transport.label} ${STEP_BUDGET_STOP_PHRASE} ${stepBudget} steps ` +
               `and was stopped. The model was probably looping.`,
             stdout,
           ),

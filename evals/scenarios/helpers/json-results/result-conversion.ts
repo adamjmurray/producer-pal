@@ -13,6 +13,7 @@ import {
   type EvalScenarioResult,
   type EvalTurnResult,
 } from "../../types.ts";
+import { isStepBudgetStop } from "#evals/chat/agent-cli/agent-cli-step-budget.ts";
 import { isProviderRefusal } from "../trials/provider-refusal.ts";
 import { assertionLabel } from "./assertion-label.ts";
 import { buildJudge } from "./judge-record.ts";
@@ -186,9 +187,12 @@ function buildEfficiency(
 
 /**
  * Classify a run's outcome. A run that errored before the model's first turn
- * (the Set would not open, the config would not apply), or that the provider
- * cut off (usage limit, credits, capacity), tested nothing about the model.
- * Calling it a fail turns an outage into a wall of convincing-looking zeros.
+ * (the Set would not open, the config would not apply), that the provider cut
+ * off (usage limit, credits, capacity), or that threw before its scripted turns
+ * all ran (Live died, a call timed out, the CLI crashed), did not finish the
+ * test. Calling it a fail turns an outage into a wall of convincing-looking
+ * zeros, and `--resume` would keep it. A turn the step budget stopped is the
+ * model looping, so it stays a fail.
  *
  * @param result - Internal scenario result
  * @param checks - Checks result
@@ -200,14 +204,28 @@ function deriveOutcome(
   checks: JsonChecks,
   judge: JsonJudge | undefined,
 ): "pass" | "fail" | "error" {
-  if (
-    result.error != null &&
-    (result.turns.length === 0 || isProviderRefusal(result.error))
-  ) {
+  if (result.error != null && isInfrastructureError(result)) {
     return "error";
   }
 
   return derivePassFail(checks, judge);
+}
+
+/**
+ * Whether a run's error kept it from finishing, rather than the model failing.
+ *
+ * @param result - Internal scenario result with `error` set
+ * @returns True when the error is not the model's doing
+ */
+function isInfrastructureError(result: EvalScenarioResult): boolean {
+  const error = result.error ?? "";
+  const cutShort = result.turns.length < result.scenario.messages.length;
+
+  return (
+    result.turns.length === 0 ||
+    isProviderRefusal(error) ||
+    (cutShort && !isStepBudgetStop(error))
+  );
 }
 
 /**

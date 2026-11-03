@@ -64,6 +64,20 @@ export function createStepBudgetWatcher(
   };
 }
 
+/** Wording of the error a stopped turn carries; see `isStepBudgetStop`. */
+export const STEP_BUDGET_STOP_PHRASE = "hit the step budget of";
+
+/**
+ * Whether an error is a turn the step budget stopped. The model looped, so
+ * that is a fail, not an infrastructure error.
+ *
+ * @param error - Error message from a run
+ * @returns True when the step budget stopped the turn
+ */
+export function isStepBudgetStop(error: string): boolean {
+  return error.includes(STEP_BUDGET_STOP_PHRASE);
+}
+
 /** The budget stopped the CLI. Keeps what it printed, so the turn isn't lost. */
 export class StepBudgetError extends Error {
   readonly stdout: string;
