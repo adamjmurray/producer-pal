@@ -5,12 +5,29 @@
 
 import { VERSION } from "#src/shared/config.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
+import { type OfflineDeps } from "../offline/offline-deps.ts";
 import { olderDevice } from "./older-device.ts";
 import { type RunningDevice } from "./running-device.ts";
 
 // The first build that lists ppal-manage. Not "2.5.0": isNewerVersion puts
 // every 2.5.0-rcN before 2.5.0, and those builds already have the tool.
 const FIRST_MANAGE_VERSION = "2.5.0-rc1";
+
+/** The longest the hint waits for the device: it is optional. */
+export const UPDATE_HINT_MS = 5_000;
+
+/**
+ * @param deps - The clock
+ * @param budgetEnd - When the call's budget ends, as a `now()` time
+ * @returns When the hint's look at the device must be done: what is left of
+ *   the budget, and no more than `UPDATE_HINT_MS`
+ */
+export function hintDeadline(
+  deps: Pick<OfflineDeps, "now">,
+  budgetEnd: number,
+): number {
+  return Math.min(budgetEnd, deps.now() + UPDATE_HINT_MS);
+}
 
 const UPDATE_BY_HAND_URL =
   "https://producer-pal.org/installation/upgrading#update-by-hand";

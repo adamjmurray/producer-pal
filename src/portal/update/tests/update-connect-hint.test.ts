@@ -5,7 +5,11 @@
 
 import { describe, expect, it } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
-import { withUpdateHint } from "../update-connect-hint.ts";
+import {
+  hintDeadline,
+  UPDATE_HINT_MS,
+  withUpdateHint,
+} from "../update-connect-hint.ts";
 import { DOWN, fakeDevice, OLD } from "./update-test-helpers.ts";
 
 const CONNECT = { name: "ppal-connect", manageOffered: true };
@@ -181,5 +185,17 @@ describe("withUpdateHint", () => {
 
     expect(await withUpdateHint(failed, CONNECT, device)).toBe(failed);
     expect(await withUpdateHint(bare, CONNECT, device)).toBe(bare);
+  });
+});
+
+describe("hintDeadline", () => {
+  const clock = { now: () => 1000 };
+
+  it("allows the hint its own few seconds when the budget has more", () => {
+    expect(hintDeadline(clock, 1000 + 50_000)).toBe(1000 + UPDATE_HINT_MS);
+  });
+
+  it("allows only what is left of the budget when that is less", () => {
+    expect(hintDeadline(clock, 1000 + 2000)).toBe(3000);
   });
 });

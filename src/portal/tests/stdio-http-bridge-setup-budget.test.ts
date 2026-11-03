@@ -97,6 +97,8 @@ import {
 import { type OfflineDeps } from "../offline/offline-deps.ts";
 import { SETUP_BUDGET_MS } from "../setup/setup-deadline.ts";
 import { StdioHttpBridge } from "../stdio-http-bridge.ts";
+import { UPDATE_HINT_MS } from "../update/update-connect-hint.ts";
+import { OLD } from "../update/tests/update-test-helpers.ts";
 
 const MANAGE = { name: "ppal-manage", description: "", inputSchema: {} };
 
@@ -280,5 +282,38 @@ describe("StdioHttpBridge setup calls against a port that never answers", () => 
 
     await mockClient.close();
     await call.done;
+  });
+
+  it("answers ppal-connect within the hint's 5 s when its look at an older device hangs", async () => {
+    // The call's own connect works; the hint's fresh one never answers.
+    portNeverAnswers();
+    mockClient.connect.mockImplementationOnce(() => Promise.resolve());
+    mockClient.getServerVersion.mockReturnValue({ name: "d", version: OLD });
+    mockClient.callTool.mockResolvedValue({
+      content: [{ type: "text", text: "connected" }],
+    });
+
+    const bridge = new StdioHttpBridge(
+      "http://localhost:3350/mcp",
+      {},
+      clockedDeps().deps,
+    ) as unknown as TestBridge;
+    const handler = await startAndGetCallHandler(bridge);
+    const started = Date.now();
+    let finished: number | undefined;
+    let blocks: unknown[] = [];
+    const done = Promise.resolve(handler(callToolRequest("ppal-connect"))).then(
+      (result) => {
+        finished = Date.now();
+        blocks = (result as { content: unknown[] }).content;
+      },
+    );
+
+    await vi.advanceTimersByTimeAsync(UPDATE_HINT_MS + FLOOR_MS);
+    await done;
+
+    expect(finished! - started).toBeLessThanOrEqual(UPDATE_HINT_MS + FLOOR_MS);
+    // As if the device weren't older: no hint.
+    expect(blocks).toStrictEqual([{ type: "text", text: "connected" }]);
   });
 });

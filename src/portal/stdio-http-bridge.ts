@@ -30,7 +30,7 @@ import { setupDeadline, timeLeft } from "./setup/setup-deadline.ts";
 import { type RunningDevice } from "./update/running-device.ts";
 import { answerInstallWhenDeviceOlder } from "./update/answer-install-when-device-older.ts";
 import { answerUpdateCall, isUpdateCall } from "./update/update-call.ts";
-import { withUpdateHint } from "./update/update-connect-hint.ts";
+import { hintDeadline, withUpdateHint } from "./update/update-connect-hint.ts";
 import {
   type BridgeOptions,
   callerSmallModelMode,
@@ -380,6 +380,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
         );
 
         const deadline = this._setupDeadline(request);
+        const budgetEnd = deadline ?? setupDeadline(this.offlineDeps);
         const own = await this._answerInPortal(request, deadline);
 
         if (own != null) {
@@ -422,7 +423,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
           return await withUpdateHint(
             result,
             { name: request.params.name, manageOffered: this._manageOffered() },
-            this._runningDevice(),
+            this._runningDevice(hintDeadline(this.offlineDeps, budgetEnd)),
           );
         } catch (error) {
           logger.error(
