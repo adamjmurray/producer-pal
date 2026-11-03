@@ -8,12 +8,12 @@
  * Offline re-judge: run the production LLM judge (`assertWithLlmJudge`) over
  * saved eval results. No Ableton, no re-running the model. Verdicts go to
  * sidecar files (`<run>/judges/<judge-slug>/<result-file>`); results are never
- * changed. Re-runs skip results the judge already did on the current criteria.
+ * changed. Re-runs skip results the judge already did on the current criteria
  * A failed judge call saves nothing, so the next run retries it.
  *
  * Run: npm run probe:rejudge -- [run-ids...] -j <provider/model> [flags]
  *   -j, --judge <provider/model>  same format as the eval CLI's -j
- *   --judge-thinking=level  the judge's thinking level, as in the eval CLI
+ *   --judge-thinking=level  judge thinking level; a separate judge, `<slug>~<level>`
  *   --scenario=id  only this scenario (repeatable)
  *   --limit=N      judge at most N results now (after skipping done ones)
  *   --concurrency=N  parallel judge calls (default 4)
@@ -117,7 +117,7 @@ export async function runRejudge(
   const args = parseRejudgeArgs(argv);
   const log = deps.log ?? ((line: string) => console.log(line));
   const spec = parseModelArg(args.judge);
-  const slug = judgeSlug(`${spec.provider}/${spec.model}`);
+  const slug = judgeSlug(`${spec.provider}/${spec.model}`, args.judgeThinking);
   const { items, skipped } = await loadJudgedResults({
     ...deps.load,
     runIds: args.runIds,
@@ -236,6 +236,7 @@ async function judgeOne(
       provider: details.provider ?? spec.provider,
       requestedModel: spec.model,
       model: details.model,
+      ...(args.judgeThinking == null ? {} : { thinking: args.judgeThinking }),
     },
     criteriaHash: criteriaHash(criteria),
     judgedAt: ctx.now().toISOString(),
@@ -265,7 +266,7 @@ async function applySample(
 
   const failedFiles = new Set<string>();
 
-  for (const slug of args.failsFrom.map(judgeSlug)) {
+  for (const slug of args.failsFrom.map((s) => judgeSlug(s))) {
     for (const item of eligible) {
       const v = await readSidecar(
         args.resultsDir,

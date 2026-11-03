@@ -68,6 +68,12 @@ describe("parseArgs --reference and --results-dir", () => {
     ).toStrictEqual(["codex-code_luna", "anthropic_claude-haiku-5-5"]);
   });
 
+  it("reads a reference with a thinking level", () => {
+    expect(
+      parseArgs(["--reference=codex-code_luna~high"]).references,
+    ).toStrictEqual(["codex-code_luna~high"]);
+  });
+
   it("reads the results directory", () => {
     expect(parseArgs(["--results-dir=/tmp/r"]).resultsDir).toBe("/tmp/r");
   });

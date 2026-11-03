@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type assertWithLlmJudge } from "#evals/scenarios/assertions/llm-judge.ts";
 import { type EvalScenario } from "#evals/scenarios/types.ts";
 import { parseRejudgeArgs, runRejudge } from "../jev-rejudge.ts";
-import { readSidecar } from "../jev-sidecar.ts";
+import { criteriaHash, readSidecar, writeSidecar } from "../jev-sidecar.ts";
 
 const scenarios = (prompt = "Prompt A"): EvalScenario[] =>
   [
@@ -178,6 +178,74 @@ describe("runRejudge", () => {
     expect(judge.mock.calls[0]?.[3]).toStrictEqual(
       expect.objectContaining({ thinking: "high" }),
     );
+  });
+
+  it("keeps verdicts at different thinking levels side by side", async () => {
+    const judge = fakeJudge();
+    const withHigh = [...base(), "--judge-thinking=high"];
+    const at = (slug: string): ReturnType<typeof readSidecar> =>
+      readSidecar(dir, join("run1", "a1.json"), slug, "Prompt A");
+
+    await runRejudge(base(), deps(judge));
+
+    const high = await runRejudge(withHigh, deps(judge));
+
+    expect(high).toStrictEqual(
+      expect.objectContaining({
+        slug: "codex-code_luna~high",
+        alreadyJudged: 0,
+        judged: 2,
+      }),
+    );
+    const plain = await at("codex-code_luna");
+
+    expect(plain?.judge.thinking).toBeUndefined();
+    expect(await at("codex-code_luna~high")).toStrictEqual(
+      expect.objectContaining({
+        slug: "codex-code_luna~high",
+        judge: expect.objectContaining({ thinking: "high" }),
+      }),
+    );
+
+    const again = await runRejudge(withHigh, deps(judge));
+    const other = await runRejudge(
+      [...base(), "--judge-thinking=low"],
+      deps(judge),
+    );
+
+    expect(again.alreadyJudged).toBe(2);
+    expect(other.alreadyJudged).toBe(0);
+    expect(judge).toHaveBeenCalledTimes(6);
+  });
+
+  it("finds a verdict saved before thinking levels as the no-thinking judge", async () => {
+    const judge = fakeJudge();
+
+    await writeSidecar(dir, {
+      version: 1,
+      file: join("run1", "a1.json"),
+      scenarioId: "a",
+      slug: "codex-code_luna",
+      judge: { provider: "codex-code", requestedModel: "luna" },
+      criteriaHash: criteriaHash("Prompt A"),
+      judgedAt: "2026-10-01T00:00:00.000Z",
+      durationMs: 1,
+      checksPass: true,
+      pass: true,
+      issues: [],
+    });
+
+    const summary = await runRejudge(base(), deps(judge));
+
+    expect(summary.alreadyJudged).toBe(1);
+    expect(summary.judged).toBe(1);
+
+    const high = await runRejudge(
+      [...base(), "--judge-thinking=high"],
+      deps(judge),
+    );
+
+    expect(high.alreadyJudged).toBe(0);
   });
 
   it("re-judges results from a --jev run, whoever decided them", async () => {

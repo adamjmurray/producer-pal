@@ -42,6 +42,14 @@ describe("judgeSlug", () => {
     expect(judgeSlug("codex-code_luna")).toBe("codex-code_luna");
   });
 
+  it("puts a thinking level in the slug and keeps it on a slug", () => {
+    expect(judgeSlug("codex-code/luna", "high")).toBe("codex-code_luna~high");
+    expect(judgeSlug("codex-code_luna~high")).toBe("codex-code_luna~high");
+    expect(judgeSlug("codex-code/luna", "off")).not.toBe(
+      judgeSlug("codex-code/luna"),
+    );
+  });
+
   it("replaces characters that are unsafe in a path", () => {
     expect(judgeSlug("a/b:c d")).toBe("a_b_c_d");
   });

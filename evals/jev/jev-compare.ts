@@ -290,7 +290,7 @@ export function parseArgs(argv: string[]): CliArgs {
     via: parseJevRoute(flag("via").at(-1)),
     includeStale: argv.includes("--include-stale"),
     recorded: argv.includes("--recorded"),
-    references: flag("reference").map(judgeSlug),
+    references: flag("reference").map((s) => judgeSlug(s)),
     resultsDir: flag("results-dir").at(-1) ?? RESULTS_DIR,
   };
 }

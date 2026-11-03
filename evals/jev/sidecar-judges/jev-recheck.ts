@@ -68,7 +68,7 @@ export async function runRecheck(
     return;
   }
 
-  const slugs = new Set(args.judges.map(judgeSlug));
+  const slugs = new Set(args.judges.map((s) => judgeSlug(s)));
 
   for (const runId of args.runIds) {
     for (const slug of await judgeFolders(args.resultsDir, runId)) {

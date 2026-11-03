@@ -12,6 +12,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
+import { type ThinkingLevel } from "#evals/chat/shared/types.ts";
 import { JUDGE_SYSTEM_PROMPT } from "#evals/scenarios/assertions/llm-judge.ts";
 
 /** Folder inside a run directory that holds the sidecars. */
@@ -25,8 +26,14 @@ export interface SidecarVerdict {
   scenarioId: string;
   /** Names the sidecar folder; see `judgeSlug` */
   slug: string;
-  /** The judge asked for, and the model it resolved to */
-  judge: { provider: string; requestedModel?: string; model?: string };
+  /** The judge asked for, the model it resolved to, and its thinking level */
+  judge: {
+    provider: string;
+    requestedModel?: string;
+    model?: string;
+    /** Absent when no `--judge-thinking` was given */
+    thinking?: ThinkingLevel;
+  };
   /** Hash of the criteria the judge was given; see `criteriaHash` */
   criteriaHash: string;
   judgedAt: string;
@@ -38,13 +45,19 @@ export interface SidecarVerdict {
 }
 
 /**
- * Turn a judge spec into a folder name.
+ * Turn a judge spec into a folder name. A thinking level is part of the
+ * identity: the same judge at another level gets its own folder. No level
+ * keeps the bare name, so verdicts saved before this existed still match.
  *
- * @param spec - "provider/model" or a slug that is already one
- * @returns The slug, e.g. "codex-code_luna"
+ * @param spec - "provider/model" or a slug that is already one (a slug may
+ *   already end in "~level")
+ * @param thinking - The judge's thinking level, when one was set
+ * @returns The slug, e.g. "codex-code_luna" or "codex-code_luna~high"
  */
-export function judgeSlug(spec: string): string {
-  return spec.replaceAll(/[^A-Za-z0-9._-]/g, "_");
+export function judgeSlug(spec: string, thinking?: ThinkingLevel): string {
+  const slug = spec.replaceAll(/[^A-Za-z0-9._~-]/g, "_");
+
+  return thinking == null ? slug : `${slug}~${thinking}`;
 }
 
 /**

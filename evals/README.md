@@ -550,7 +550,11 @@ results afterwards with another judge, without Live or re-running the model, use
 with `-j` (same `provider/model` format as above) and writes each verdict to
 `<results>/<run>/judges/<judge-slug>/<result-file>`. Saved results are never
 changed, and re-runs skip results that judge already did (`--force` redoes
-them). A saved verdict is redone once the criteria or the judge's system prompt
+them). The judge's thinking level is part of its identity: with
+`--judge-thinking=high` the folder is `<judge-slug>~high` (e.g.
+`codex-code_luna~high`), so verdicts at different levels sit side by side, and
+`--reference=` takes the slug with its level. With no flag the folder has no
+suffix. A saved verdict is redone once the criteria or the judge's system prompt
 change. Results from before the scenario's judge criteria last changed are left
 out (`--include-stale` keeps them).
 
