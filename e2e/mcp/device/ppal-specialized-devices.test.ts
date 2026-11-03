@@ -371,11 +371,11 @@ describe("specialized devices: Wavetable", () => {
     expect(setMod?.description.length).toBeGreaterThan(0);
   });
 
-  it("surfaces the degrees unit on a Phase Offset param (param-values)", async () => {
+  it("surfaces the degrees unit on an LFO Offset param (param-values)", async () => {
     const id = await createInstrument("Wavetable");
-    const device = await readDevice(id, ["param-values"], "Phase Offset");
-    const phaseParam = device.parameters?.find((p) =>
-      p.name.includes("Phase Offset"),
+    const device = await readDevice(id, ["param-values"], "LFO 1 Offset");
+    const phaseParam = device.parameters?.find(
+      (p) => p.name === "LFO 1 Offset",
     );
 
     expect(phaseParam).toBeDefined();
@@ -861,71 +861,59 @@ describe("specialized devices: modulation-rate effects (inactiveWhen)", () => {
     return readDevice(id, ["param-values"]);
   }
 
-  it("Auto Filter: LFO T Mode gates LFO Freq/Time/Rate/16th", async () => {
-    const id = await createEffect("Auto Filter");
-    const group = ["LFO Freq", "LFO Time", "LFO Rate", "LFO 16th"];
-    const cases: Array<[string, string]> = [
-      ["Rate", "LFO Freq"],
-      ["Time", "LFO Time"],
-      ["Synced", "LFO Rate"],
-      ["Triplet", "LFO Rate"],
-      ["Dotted", "LFO Rate"],
-      ["Sixteenth", "LFO 16th"],
-    ];
+  // Both name the 16th mode differently, but share the rate params.
+  it.each([
+    ["Auto Filter", "Sixteenth"],
+    ["Auto Pan-Tremolo", "16th"],
+  ])(
+    "%s: LFO Mode gates LFO Freq/Time/Synced/16th",
+    async (name, sixteenth) => {
+      const id = await createEffect(name);
+      const group = ["LFO Freq", "LFO Time", "LFO Synced", "LFO 16th"];
+      const cases: Array<[string, string]> = [
+        ["Rate", "LFO Freq"],
+        ["Time", "LFO Time"],
+        ["Synced", "LFO Synced"],
+        ["Triplet", "LFO Synced"],
+        ["Dotted", "LFO Synced"],
+        [sixteenth, "LFO 16th"],
+      ];
 
-    for (const [mode, active] of cases) {
-      const device = await setModeAndRead(id, "LFO T Mode", mode);
+      for (const [mode, active] of cases) {
+        const device = await setModeAndRead(id, "LFO Mode", mode);
 
-      expectOnlyActive(device, group, active);
-    }
-  });
+        expectOnlyActive(device, group, active);
+      }
+    },
+  );
 
-  it("Auto Pan-Tremolo: Time Mode gates Frequency/Time/Rate/16th", async () => {
-    const id = await createEffect("Auto Pan-Tremolo");
-    const group = ["Frequency", "Time", "Rate", "16th"];
-    const cases: Array<[string, string]> = [
-      ["Rate", "Frequency"],
-      ["Time", "Time"],
-      ["Synced", "Rate"],
-      ["Triplet", "Rate"],
-      ["Dotted", "Rate"],
-      ["16th", "16th"],
-    ];
-
-    for (const [mode, active] of cases) {
-      const device = await setModeAndRead(id, "Time Mode", mode);
-
-      expectOnlyActive(device, group, active);
-    }
-  });
-
-  it("Phaser-Flanger: each Mod Sync section gates its Hz vs synced rate", async () => {
+  it("Phaser-Flanger: each LFO Sync toggle gates its Hz vs synced rate", async () => {
     const id = await createEffect("Phaser-Flanger");
 
     // Opposite toggles on the two independent sections prove they don't
     // interfere: Off → Hz freq active, On → synced rate active.
     await updateDevice(id, {
       params: [
-        { name: "Mod Sync", value: "Off" },
-        { name: "Mod Sync 2", value: "On" },
+        { name: "LFO 1 Sync", value: "Off" },
+        { name: "LFO 2 Sync", value: "On" },
       ],
     });
 
     const offOn = await readDevice(id, ["param-values"]);
 
-    expectOnlyActive(offOn, ["Mod Freq", "Mod Rate"], "Mod Freq");
-    expectOnlyActive(offOn, ["Mod Freq 2", "Mod Rate 2"], "Mod Rate 2");
+    expectOnlyActive(offOn, ["LFO 1 Freq", "LFO 1 Synced"], "LFO 1 Freq");
+    expectOnlyActive(offOn, ["LFO 2 Freq", "LFO 2 Synced"], "LFO 2 Synced");
 
     await updateDevice(id, {
       params: [
-        { name: "Mod Sync", value: "On" },
-        { name: "Mod Sync 2", value: "Off" },
+        { name: "LFO 1 Sync", value: "On" },
+        { name: "LFO 2 Sync", value: "Off" },
       ],
     });
 
     const onOff = await readDevice(id, ["param-values"]);
 
-    expectOnlyActive(onOff, ["Mod Freq", "Mod Rate"], "Mod Rate");
-    expectOnlyActive(onOff, ["Mod Freq 2", "Mod Rate 2"], "Mod Freq 2");
+    expectOnlyActive(onOff, ["LFO 1 Freq", "LFO 1 Synced"], "LFO 1 Synced");
+    expectOnlyActive(onOff, ["LFO 2 Freq", "LFO 2 Synced"], "LFO 2 Freq");
   });
 });
