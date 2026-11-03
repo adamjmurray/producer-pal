@@ -269,6 +269,7 @@ async function main(): Promise<void> {
           prompt,
         ).catch((error: unknown) => {
           console.error(`  ${route} ${scenario} failed: ${String(error)}`);
+          process.exitCode = 1;
         });
         globalThis.fetch = realFetch;
 
