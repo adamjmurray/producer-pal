@@ -12,6 +12,7 @@ import {
   collectSdkWarnings,
   expectEmptyArgsStep,
   expectFailedToolRun,
+  expectCutOffWithNotice,
   expectHttpFailure,
   expectParallelCalls,
   expectStreamFailure,
@@ -23,7 +24,6 @@ import {
   stubProviderFetch,
   toolLimitReachedAfter,
   FILTER_NOTICE,
-  OUTPUT_LIMIT_NOTICE,
 } from "./raw-stream-harness";
 
 vi.mock(import("#webui/chat/sdk/mcp-tools"), async () => {
@@ -299,16 +299,7 @@ describe("OpenAI Responses stream to history", () => {
     it("keeps the text that arrived before the output limit cut the answer off, then adds a notice", async () => {
       stubResponses([F.CUT_OFF]);
 
-      const history = await say(await gpt(), "Tracks?");
-
-      const turns = assistantTurns(history);
-
-      expect(turns[0]?.content).toBe("Tracks: Drums, Ba");
-      expect(turns.at(-1)).toStrictEqual({
-        role: "assistant",
-        content: OUTPUT_LIMIT_NOTICE,
-        isError: true,
-      });
+      expectCutOffWithNotice(await say(await gpt(), "Tracks?"));
     });
 
     it("says the content filter stopped the answer when it ends the response with no output", async () => {

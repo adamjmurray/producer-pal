@@ -263,6 +263,44 @@ export function setupLibraryFixtureLifecycle(
   });
 }
 
+/**
+ * Add 1,100 tags, each on one pack file, so a tag list outgrows the 1000 cap.
+ *
+ * @param db - Writable fixture DB
+ * @param category - When set, also files every tag under this category
+ */
+export function addManyTags(db: DatabaseSync, category?: string): void {
+  const file = db.prepare(
+    "INSERT INTO files (file_id, parent_id, file_type, file_kind, name) VALUES (?, 1, ?, 0, ?)",
+  );
+  const tag = db.prepare(
+    "INSERT INTO keywords (file_id, keyw_id, is_auto) VALUES (2001, ?, 0)",
+  );
+  const value = db.prepare(
+    "INSERT INTO metadata_values (id, value) VALUES (?, ?)",
+  );
+  const meta = db.prepare(
+    "INSERT INTO metadata (file_id, key, value_id) VALUES (2001, ?, ?)",
+  );
+
+  // One transaction: thousands of autocommitted inserts are slow on CI runners.
+  db.exec("BEGIN");
+
+  for (let i = 0; i < 1_100; i++) {
+    const name = `Tag ${String(i).padStart(4, "0")}`;
+
+    file.run(20_000 + i, fourCC("keyw"), name);
+    tag.run(20_000 + i);
+
+    if (category != null) {
+      value.run(1_000 + i, `${category}|${name}`);
+      meta.run(fourCC("CKey"), 1_000 + i);
+    }
+  }
+
+  db.exec("COMMIT");
+}
+
 const FLDR = fourCC("fldr");
 const AIFF = fourCC("aiff");
 const WAV = fourCC("wav-");

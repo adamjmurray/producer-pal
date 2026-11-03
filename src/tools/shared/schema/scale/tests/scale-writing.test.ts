@@ -4,20 +4,9 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
+import { mockScaleTarget } from "./scale-test-helpers.ts";
 import { applyScale } from "../scale-writing.ts";
 import { parseScale } from "../scale-parsing.ts";
-
-/** A target mock that stores what applyScale writes and reads it back. */
-function mockLiveSetWithScaleState(): LiveAPI {
-  const stored: Record<string, unknown> = {};
-
-  return {
-    set: vi.fn((property: string, value: unknown) => {
-      stored[property] = value;
-    }),
-    getProperty: vi.fn((property: string) => stored[property]),
-  } as unknown as LiveAPI;
-}
 
 /** What applyScale writes onto the tool's result. */
 type ScaleResult = { scale?: string; detail?: string };
@@ -34,7 +23,7 @@ describe("applyScale", () => {
   });
 
   it("says nothing about a scale Live stores the way it was asked for", () => {
-    const mockLiveSet = mockLiveSetWithScaleState();
+    const mockLiveSet = mockScaleTarget();
     const result: ScaleResult = {};
 
     applyScale(mockLiveSet, parseScale("C Major"), "C Major", result);
@@ -48,7 +37,7 @@ describe("applyScale", () => {
   it("reports a sharp root by the flat name Live stores", () => {
     // Live keeps only root_note, a pitch class number, so the result must
     // name it the way every read of it will.
-    const mockLiveSet = mockLiveSetWithScaleState();
+    const mockLiveSet = mockScaleTarget();
     const result: ScaleResult = {};
 
     applyScale(mockLiveSet, parseScale("F# Minor"), "F# Minor", result);
@@ -63,7 +52,7 @@ describe("applyScale", () => {
   });
 
   it("says how a spelling the tools only tolerate is stored", () => {
-    const mockLiveSet = mockLiveSetWithScaleState();
+    const mockLiveSet = mockScaleTarget();
     const result: ScaleResult = {};
 
     applyScale(mockLiveSet, parseScale("bB DoRiAn"), "bB DoRiAn", result);
@@ -75,7 +64,7 @@ describe("applyScale", () => {
   });
 
   it("should handle flat root notes", () => {
-    const mockLiveSet = mockLiveSetWithScaleState();
+    const mockLiveSet = mockScaleTarget();
     const result: ScaleResult = {};
 
     applyScale(mockLiveSet, parseScale("Bb Dorian"), "Bb Dorian", result);

@@ -233,6 +233,22 @@ export function expectFailedToolRun(history: ChatMessage[]): void {
 }
 
 /**
+ * Check that the fixtures' cut-off answer kept its partial text and ended on
+ * the output-limit notice.
+ * @param history - Chat history after the `CUT_OFF` fixture
+ */
+export function expectCutOffWithNotice(history: ChatMessage[]): void {
+  const turns = assistantTurns(history);
+
+  expect(turns[0]?.content).toBe("Tracks: Drums, Ba");
+  expect(turns.at(-1)).toStrictEqual({
+    role: "assistant",
+    content: OUTPUT_LIMIT_NOTICE,
+    isError: true,
+  });
+}
+
+/**
  * The call and result of the fixtures' successful `ppal-read-live-set` step.
  * @param id - The call id both entries carry
  * @returns `toolCalls` and `toolResults` to spread into a turn

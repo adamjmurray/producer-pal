@@ -4,19 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mockScaleTarget } from "#src/tools/shared/schema/scale/tests/scale-test-helpers.ts";
 import { applyTempo, applyTimeSignature } from "../tempo-and-scale-updates.ts";
-
-/** A live_set mock that stores what is written to it and reads it back. */
-function mockLiveSetWithScaleState(): LiveAPI {
-  const stored: Record<string, unknown> = {};
-
-  return {
-    set: vi.fn((property: string, value: unknown) => {
-      stored[property] = value;
-    }),
-    getProperty: vi.fn((property: string) => stored[property]),
-  } as unknown as LiveAPI;
-}
 
 /** A live_set mock that answers with `held`, whatever is written to it. */
 function mockLiveSetHolding(held: Record<string, unknown>): LiveAPI {
@@ -33,7 +22,7 @@ describe("tempo-and-scale-updates", () => {
 
   describe("applyTempo", () => {
     it.each([120, 20, 999])("writes %i and says nothing about it", (tempo) => {
-      const mockLiveSet = mockLiveSetWithScaleState();
+      const mockLiveSet = mockScaleTarget();
       const result: { tempo?: number } = {};
 
       applyTempo(mockLiveSet, tempo, result);
@@ -75,7 +64,7 @@ describe("tempo-and-scale-updates", () => {
 
   describe("applyTimeSignature", () => {
     it("writes both halves and says nothing about the one Live kept", () => {
-      const mockLiveSet = mockLiveSetWithScaleState();
+      const mockLiveSet = mockScaleTarget();
       const result: { timeSignature?: string } = {};
 
       applyTimeSignature(mockLiveSet, { numerator: 6, denominator: 8 }, result);

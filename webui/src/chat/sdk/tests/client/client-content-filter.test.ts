@@ -25,26 +25,11 @@ import { ChatSdkClient } from "#webui/chat/sdk/client";
 import {
   createConfig,
   failingAfterStream,
+  itAddsFinishNotice,
   mockStreamParts,
   sendWithParts,
+  TOOL_STEP_PARTS,
 } from "#webui/chat/sdk/tests/client-test-helpers";
-
-const TOOL_STEP_PARTS = [
-  { type: "start-step" },
-  {
-    type: "tool-call",
-    toolCallId: "t1",
-    toolName: "ppal-read-live-set",
-    input: {},
-  },
-  {
-    type: "tool-result",
-    toolCallId: "t1",
-    toolName: "ppal-read-live-set",
-    input: {},
-    output: "ok",
-  },
-];
 
 const NOTICE = /content filter/;
 const ERROR_ENTRY = {
@@ -57,6 +42,8 @@ describe("content-filter finish", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+
+  itAddsFinishNotice("content-filter", ERROR_ENTRY);
 
   it("shows an error when Gemini stops a reply for safety with no content", async () => {
     const history = await sendWithParts([
@@ -82,20 +69,6 @@ describe("content-filter finish", () => {
     // The empty reasoning block is not stored as a turn of its own.
     expect(history.map((m) => m.role)).toStrictEqual(["user", "assistant"]);
     expect(history[1]).toStrictEqual(ERROR_ENTRY);
-  });
-
-  it("keeps partial text and adds the notice after it", async () => {
-    const history = await sendWithParts([
-      { type: "start-step" },
-      { type: "text-delta", text: "Here is the start" },
-      { type: "finish-step", finishReason: "content-filter" },
-      { type: "finish", finishReason: "content-filter" },
-    ]);
-
-    expect(history).toHaveLength(3);
-    expect(history[1]?.content).toBe("Here is the start");
-    expect(history[1]?.isError).toBeUndefined();
-    expect(history[2]).toStrictEqual(ERROR_ENTRY);
   });
 
   it("adds nothing for a tool-call step that has no text", async () => {
@@ -134,33 +107,6 @@ describe("content-filter finish", () => {
     const messages = buildModelMessages(client.chatHistory);
 
     expect(messages.map((m) => m.role)).toStrictEqual(["user"]);
-  });
-
-  it("adds exactly one notice when the step after a tool step is filtered", async () => {
-    const history = await sendWithParts([
-      ...TOOL_STEP_PARTS,
-      { type: "finish-step", finishReason: "tool-calls" },
-      { type: "start-step" },
-      { type: "finish-step", finishReason: "content-filter" },
-      { type: "finish", finishReason: "content-filter" },
-    ]);
-
-    expect(history.filter((m) => m.isError)).toStrictEqual([ERROR_ENTRY]);
-    expect(history.at(-1)).toStrictEqual(ERROR_ENTRY);
-  });
-
-  it("adds nothing when only an earlier step was filtered", async () => {
-    const history = await sendWithParts([
-      ...TOOL_STEP_PARTS,
-      { type: "finish-step", finishReason: "content-filter" },
-      { type: "start-step" },
-      { type: "text-delta", text: "All done." },
-      { type: "finish-step", finishReason: "stop" },
-      { type: "finish", finishReason: "stop" },
-    ]);
-
-    expect(history.some((m) => m.isError)).toBe(false);
-    expect(history.at(-1)?.content).toBe("All done.");
   });
 
   it("adds exactly one notice when a resume after a 429 ends filtered", async () => {

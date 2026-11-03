@@ -5,7 +5,6 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
-import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   setupAudioClipMock,
   setupMidiClipMock,
@@ -17,18 +16,8 @@ import {
   LIVE_WITH_CLIP_SCALE,
   LIVE_WITHOUT_CLIP_SCALE,
   registerLiveVersion,
+  scaleWrites,
 } from "#src/tools/shared/schema/scale/tests/scale-test-helpers.ts";
-
-/**
- * The scale properties a clip was written, in order.
- * @param clip - The registered clip
- * @returns [property, value] pairs for the scale properties
- */
-function scaleWrites(clip: RegisteredMockObject): unknown[][] {
-  return clip.set.mock.calls.filter(([property]) =>
-    ["root_note", "scale_name", "scale_mode"].includes(property as string),
-  );
-}
 
 describe("updateClip - scale", () => {
   let mocks: UpdateClipMocks;

@@ -9,11 +9,11 @@ import {
   assistantTurns,
   collectSdkWarnings,
   expectFailedToolRun,
+  expectCutOffWithNotice,
   expectHttpFailure,
   expectParallelCalls,
   expectStreamFailure,
   liveSetStep,
-  OUTPUT_LIMIT_NOTICE,
   restoreSdkWarnings,
   say,
   startChat,
@@ -209,16 +209,7 @@ describe.each(ALL_ROUTES)("%s chat completions stream to history", (route) => {
   it("keeps the text that arrived before the output limit cut the answer off, then adds a notice", async () => {
     stubProviderFetch([F.CUT_OFF]);
 
-    const history = await say(await chat(route), "Tracks?");
-
-    const turns = assistantTurns(history);
-
-    expect(turns[0]?.content).toBe("Tracks: Drums, Ba");
-    expect(turns.at(-1)).toStrictEqual({
-      role: "assistant",
-      content: OUTPUT_LIMIT_NOTICE,
-      isError: true,
-    });
+    expectCutOffWithNotice(await say(await chat(route), "Tracks?"));
   });
 
   it("finishes a stream that ends without the [DONE] marker", async () => {

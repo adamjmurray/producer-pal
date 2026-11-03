@@ -27,6 +27,13 @@ const SCRIPT_OK: InstallPart = {
   path: SCRIPT_PATH,
 };
 
+/** Both the remote script and the device fail to install. */
+const NOTHING_INSTALLED: Partial<OfflineDeps> = {
+  installRemoteScript: () => ({ ok: false, detail: "no script." }),
+  installDevice: () =>
+    copied("failed", { error: "EBUSY", detail: "No device." }),
+};
+
 /**
  * @param overrides - What this test changes
  * @returns Dependencies where both installs work
@@ -261,9 +268,7 @@ describe("offline install-producer-pal when one install fails", () => {
   it("is not an error when neither file installed but a wrapper did", async () => {
     const response = await install(
       installDeps({
-        installRemoteScript: () => ({ ok: false, detail: "no script." }),
-        installDevice: () =>
-          copied("failed", { error: "EBUSY", detail: "No device." }),
+        ...NOTHING_INSTALLED,
         installPluginHost: vi.fn(() => [
           {
             name: "PPal Plug-in Effect",
@@ -282,13 +287,7 @@ describe("offline install-producer-pal when one install fails", () => {
   });
 
   it("is an error naming both when neither installed", async () => {
-    const response = await install(
-      installDeps({
-        installRemoteScript: () => ({ ok: false, detail: "no script." }),
-        installDevice: () =>
-          copied("failed", { error: "EBUSY", detail: "No device." }),
-      }),
-    );
+    const response = await install(installDeps(NOTHING_INSTALLED));
 
     expect(response.isError).toBe(true);
     expect(textOf(response)).toBe(

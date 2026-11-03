@@ -135,6 +135,24 @@ function setupNoteTrackingMock(
   }
 }
 
+/**
+ * One session slot whose code returns `notes`, tracking what Live stores.
+ * @param notes - What the code returns
+ * @param cutsOverlaps - Whether Live cuts overlapping notes short
+ */
+function mockCodeNotes(
+  notes: Parameters<typeof codeExecSuccess>[0],
+  cutsOverlaps?: boolean,
+): void {
+  const { clipsByScene } = setupSessionCodeExecMocks([0]);
+
+  setupNoteTrackingMock(
+    [clipsByScene.get(0) as RegisteredMockObject],
+    cutsOverlaps,
+  );
+  vi.mocked(executeNoteCode).mockResolvedValue(codeExecSuccess(notes));
+}
+
 describe("createClip - code execution", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -215,12 +233,7 @@ describe("createClip - code execution", () => {
   });
 
   it("should report duplicate notes dropped from code on the created clip's entry", async () => {
-    const { clipsByScene } = setupSessionCodeExecMocks([0]);
-
-    setupNoteTrackingMock([clipsByScene.get(0) as RegisteredMockObject]);
-    vi.mocked(executeNoteCode).mockResolvedValue(
-      codeExecSuccess([codeNote(60, 0), codeNote(60, 0)]),
-    );
+    mockCodeNotes([codeNote(60, 0), codeNote(60, 0)]);
 
     const result = await createClip({ slot: "0/0", code: "return notes" });
 
@@ -234,14 +247,9 @@ describe("createClip - code execution", () => {
   });
 
   it("should report notes Live cut short from the code's overlaps", async () => {
-    const { clipsByScene } = setupSessionCodeExecMocks([0]);
-
-    setupNoteTrackingMock([clipsByScene.get(0) as RegisteredMockObject], true);
-    vi.mocked(executeNoteCode).mockResolvedValue(
-      codeExecSuccess([
-        codeNote(60, 0, { duration: 2 }),
-        codeNote(60, 1, { duration: 2 }),
-      ]),
+    mockCodeNotes(
+      [codeNote(60, 0, { duration: 2 }), codeNote(60, 1, { duration: 2 })],
+      true,
     );
 
     const result = await createClip({ slot: "0/0", code: "return notes" });
@@ -255,12 +263,7 @@ describe("createClip - code execution", () => {
   });
 
   it("should leave overlaps in notes the code replaced unsaid", async () => {
-    const { clipsByScene } = setupSessionCodeExecMocks([0]);
-
-    setupNoteTrackingMock([clipsByScene.get(0) as RegisteredMockObject], true);
-    vi.mocked(executeNoteCode).mockResolvedValue(
-      codeExecSuccess([codeNote(60, 0), codeNote(64, 1)]),
-    );
+    mockCodeNotes([codeNote(60, 0), codeNote(64, 1)], true);
 
     const result = await createClip({
       slot: "0/0",

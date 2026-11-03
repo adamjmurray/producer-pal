@@ -31,6 +31,13 @@ const C_SHARP_3 = {
   probability: 1,
   velocity_deviation: 0,
 };
+/** C minor pentatonic, switched on. */
+const PENTATONIC_ON = {
+  scale_mode: 1,
+  root_note: 0,
+  scale_intervals: C_MINOR_PENTATONIC,
+};
+
 const SNAP = "pitch = snap(note.pitch)";
 
 /**
@@ -78,11 +85,7 @@ describe("updateClip - transforms follow the clip's own scale", () => {
   });
 
   it("snaps to the clip's scale, not the Live Set's", async () => {
-    clipWithScale(mocks.clip123, {
-      scale_mode: 1,
-      root_note: 0,
-      scale_intervals: C_MINOR_PENTATONIC,
-    });
+    clipWithScale(mocks.clip123, PENTATONIC_ON);
 
     await updateClip({ id: "123", transforms: SNAP });
 
@@ -130,11 +133,7 @@ describe("updateClip - transforms follow the clip's own scale", () => {
   });
 
   it("does not snap when the same call turns the clip's scale off", async () => {
-    clipWithScale(mocks.clip123, {
-      scale_mode: 1,
-      root_note: 0,
-      scale_intervals: C_MINOR_PENTATONIC,
-    });
+    clipWithScale(mocks.clip123, PENTATONIC_ON);
 
     await updateClip({ id: "123", scale: "", transforms: SNAP });
 
@@ -142,11 +141,7 @@ describe("updateClip - transforms follow the clip's own scale", () => {
   });
 
   it("snaps a preTransform and merged notes to the clip's scale too", async () => {
-    clipWithScale(mocks.clip123, {
-      scale_mode: 1,
-      root_note: 0,
-      scale_intervals: C_MINOR_PENTATONIC,
-    });
+    clipWithScale(mocks.clip123, PENTATONIC_ON);
 
     await updateClip({ id: "123", preTransforms: SNAP });
 
@@ -158,11 +153,7 @@ describe("updateClip - transforms follow the clip's own scale", () => {
   });
 
   it("snaps each clip of a call to its own scale", async () => {
-    clipWithScale(mocks.clip123, {
-      scale_mode: 1,
-      root_note: 0,
-      scale_intervals: C_MINOR_PENTATONIC,
-    });
+    clipWithScale(mocks.clip123, PENTATONIC_ON);
     clipWithScale(mocks.clip456, {
       scale_mode: 1,
       root_note: 0,
@@ -176,11 +167,7 @@ describe("updateClip - transforms follow the clip's own scale", () => {
   });
 
   it("snaps a doubled loop's notes to the clip's scale", async () => {
-    clipWithScale(mocks.clip123, {
-      scale_mode: 1,
-      root_note: 0,
-      scale_intervals: C_MINOR_PENTATONIC,
-    });
+    clipWithScale(mocks.clip123, PENTATONIC_ON);
 
     await updateClip({
       id: "123",
@@ -207,11 +194,7 @@ describe("updateClip - transforms follow the clip's own scale", () => {
     });
 
     it("falls back to the Live Set's scale", async () => {
-      clipWithScale(mocks.clip123, {
-        scale_mode: 1,
-        root_note: 0,
-        scale_intervals: C_MINOR_PENTATONIC,
-      });
+      clipWithScale(mocks.clip123, PENTATONIC_ON);
 
       await updateClip({ id: "123", transforms: SNAP });
 

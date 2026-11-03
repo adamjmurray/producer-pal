@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
+  DORIAN,
   LIVE_WITH_CLIP_SCALE,
   LIVE_WITHOUT_CLIP_SCALE,
   registerLiveVersion,
@@ -51,11 +52,7 @@ describe("buildCodeExecutionContext - the clip's own scale", () => {
   });
 
   it("puts the clip's scale on the clip, apart from the Live Set's", () => {
-    const clip = clipWith({
-      scale_mode: 1,
-      root_note: 2,
-      scale_name: "Dorian",
-    });
+    const clip = clipWith(DORIAN);
 
     const context = buildCodeExecutionContext(clip, "session", 0, 1, 0);
 
@@ -80,26 +77,16 @@ describe("buildCodeExecutionContext - the clip's own scale", () => {
     ]);
   });
 
-  it("leaves it out when the clip's scale is off, though the Live Set's is on", () => {
-    const clip = clipWith({
-      scale_mode: 0,
-      root_note: 2,
-      scale_name: "Dorian",
-    });
-
-    const context = buildCodeExecutionContext(clip, "session", 0, 1, 0);
-
-    expect(context.clip).not.toHaveProperty("scale");
-    expect(context.liveSet.scale).toBe("C Major");
-  });
-
-  it("leaves it out where Live gives clips no scale", () => {
-    registerLiveVersion(LIVE_WITHOUT_CLIP_SCALE);
-    const clip = clipWith({
-      scale_mode: 1,
-      root_note: 2,
-      scale_name: "Dorian",
-    });
+  it.each([
+    [
+      "the clip's scale is off, though the Live Set's is on",
+      LIVE_WITH_CLIP_SCALE,
+      { ...DORIAN, scale_mode: 0 },
+    ],
+    ["Live gives clips no scale", LIVE_WITHOUT_CLIP_SCALE, DORIAN],
+  ])("leaves it out when %s", (_, version, scale) => {
+    registerLiveVersion(version);
+    const clip = clipWith(scale);
 
     const context = buildCodeExecutionContext(clip, "session", 0, 1, 0);
 
@@ -109,12 +96,7 @@ describe("buildCodeExecutionContext - the clip's own scale", () => {
 
   it("leaves it out for an audio clip, without asking Live for its version", () => {
     const asked = registerLiveVersion(LIVE_WITH_CLIP_SCALE);
-    const clip = clipWith({
-      is_audio_clip: 1,
-      scale_mode: 1,
-      root_note: 2,
-      scale_name: "Dorian",
-    });
+    const clip = clipWith({ ...DORIAN, is_audio_clip: 1 });
 
     const context = buildCodeExecutionContext(clip, "session", 0, 1, 0);
 

@@ -60,6 +60,20 @@ function hangUntilClosed(closeFails = false): void {
   });
 }
 
+/**
+ * The next connect stays open until the returned function is called.
+ * @returns Finishes the connect
+ */
+function holdNextConnect(): () => void {
+  let finish: () => void = () => {};
+
+  mockClient.connect.mockImplementationOnce(
+    () => new Promise<void>((resolve) => (finish = resolve)),
+  );
+
+  return () => finish();
+}
+
 describe("StdioHttpBridge connect time limit", () => {
   let bridge: TestBridge;
 
@@ -132,11 +146,7 @@ describe("StdioHttpBridge connect time limit", () => {
   });
 
   it("stops a caller that joins a longer connect at its own limit, without cutting that connect short", async () => {
-    let finish: () => void = () => {};
-
-    mockClient.connect.mockImplementationOnce(
-      () => new Promise<void>((resolve) => (finish = resolve)),
-    );
+    const finish = holdNextConnect();
 
     const first = bridge._ensureHttpConnection();
     const joiner = bridge._ensureHttpConnection(2000);
@@ -156,11 +166,7 @@ describe("StdioHttpBridge connect time limit", () => {
   });
 
   it("lets a joiner share the connect when it finishes in time", async () => {
-    let finish: () => void = () => {};
-
-    mockClient.connect.mockImplementationOnce(
-      () => new Promise<void>((resolve) => (finish = resolve)),
-    );
+    const finish = holdNextConnect();
 
     const first = bridge._ensureHttpConnection();
     const joiner = bridge._ensureHttpConnection(2000);

@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   clearMockRegistry,
@@ -12,13 +11,12 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { INACTIVE_PARAM_DETAIL } from "#src/tools/device/update/helpers/params/param-read-back.ts";
 import { createDevice } from "../../create-device.ts";
+import { registerInsertTrack } from "./insert-track-fixtures.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   emitWarning: vi.fn(),
   emitWarningOnce: vi.fn(),
 }));
-
-const TRACK = livePath.track(0);
 
 describe("createDevice - params inactive in the device's mode", () => {
   beforeEach(() => {
@@ -26,14 +24,7 @@ describe("createDevice - params inactive in the device's mode", () => {
   });
 
   it("says so on the entry of a param Live marks inactive", async () => {
-    registerMockObject("track-0", {
-      path: TRACK,
-      type: "Track",
-      properties: { devices: [] },
-      methods: { insert_device: () => ["id", "new-device"] },
-    });
-    registerMockObject("new-device", {
-      path: TRACK.device(0),
+    registerInsertTrack({
       type: "Device",
       properties: {
         class_display_name: "Reverb",

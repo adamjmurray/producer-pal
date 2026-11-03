@@ -247,6 +247,45 @@ export function registerParamMock(
 }
 
 /**
+ * Register a device with continuous 0..1 params, each owned by it.
+ * @param names - The params' names, in order
+ * @param extra - Properties to add to every param
+ * @param deviceName - The device's class_display_name
+ * @returns The registered param mocks, in order
+ */
+export function registerNamedParams(
+  names: string[],
+  extra: Record<string, unknown> = {},
+  deviceName = "Reverb",
+): RegisteredMockObject[] {
+  registerMockObject("dev1", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: {
+      class_display_name: deviceName,
+      parameters: children(...names.map((_, index) => `p${index}`)),
+    },
+  });
+
+  return names.map((name, index) =>
+    registerMockObject(`p${index}`, {
+      properties: {
+        name,
+        original_name: name,
+        is_quantized: 0,
+        is_enabled: 1,
+        value: 0.5,
+        min: 0,
+        max: 1,
+        canonical_parent: children("dev1"),
+        ...extra,
+      },
+      methods: { str_for_value: (value: unknown) => Number(value).toFixed(2) },
+    }),
+  );
+}
+
+/**
  * Register a Drum Rack at t0/d0 whose one pad chain sits on C1 (MIDI 36).
  * @param padDeviceIds - Ids of the devices already on the pad chain
  * @param chainMethods - Methods the chain answers, such as `insert_device`

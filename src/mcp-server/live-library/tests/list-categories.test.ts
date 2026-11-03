@@ -3,13 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { type DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
-import { fourCC } from "../library-filters.ts";
 import { MAX_LIBRARY_LIMIT } from "../library-types.ts";
 import { listCategories } from "../list-categories.ts";
 import {
-  createLibraryFixture,
+  addManyTags,
   createPartialSchemaDb,
   FILES_ONLY_SCHEMA,
   setupLibraryFixtureLifecycle,
@@ -149,57 +147,15 @@ describe("listCategories", () => {
 });
 
 describe("listCategories - limit cap", () => {
+  setupLibraryFixtureLifecycle(dbPathMod, (db) => addManyTags(db, "Big"));
+
   it("returns at most 1000 tags and counts the rest", async () => {
-    const fixture = createLibraryFixture(addManyTags);
+    const result = await listCategories({ category: "Big", limit: 5_000 });
 
-    try {
-      vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(
-        fixture.dbPath,
-      );
-
-      const result = await listCategories({ category: "Big", limit: 5_000 });
-
-      expect(result.tags).toHaveLength(MAX_LIBRARY_LIMIT);
-      expect(result.more).toBe(100);
-    } finally {
-      fixture.cleanup();
-    }
+    expect(result.tags).toHaveLength(MAX_LIBRARY_LIMIT);
+    expect(result.more).toBe(100);
   });
 });
-
-/**
- * Add a "Big" category of 1,100 tags, each on one pack file.
- *
- * @param db - Writable fixture DB
- */
-function addManyTags(db: DatabaseSync): void {
-  const file = db.prepare(
-    "INSERT INTO files (file_id, parent_id, file_type, file_kind, name) VALUES (?, 1, ?, 0, ?)",
-  );
-  const tag = db.prepare(
-    "INSERT INTO keywords (file_id, keyw_id, is_auto) VALUES (2001, ?, 0)",
-  );
-  const value = db.prepare(
-    "INSERT INTO metadata_values (id, value) VALUES (?, ?)",
-  );
-  const meta = db.prepare(
-    "INSERT INTO metadata (file_id, key, value_id) VALUES (2001, ?, ?)",
-  );
-
-  // One transaction: thousands of autocommitted inserts are slow on CI runners.
-  db.exec("BEGIN");
-
-  for (let i = 0; i < 1_100; i++) {
-    const name = `Tag ${String(i).padStart(4, "0")}`;
-
-    file.run(20_000 + i, fourCC("keyw"), name);
-    tag.run(20_000 + i);
-    value.run(1_000 + i, `Big|${name}`);
-    meta.run(fourCC("CKey"), 1_000 + i);
-  }
-
-  db.exec("COMMIT");
-}
 
 /**
  * Create a temp Live-files DB without the `metadata` / `metadata_values` tables

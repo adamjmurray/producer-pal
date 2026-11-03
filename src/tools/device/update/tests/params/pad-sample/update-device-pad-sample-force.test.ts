@@ -46,6 +46,29 @@ function padWithDrumSampler(): RegisteredMockObject {
   return chain as RegisteredMockObject;
 }
 
+/**
+ * Assert force was ignored: nothing landed and the instrument stayed.
+ * @param chain - The pad's chain
+ * @param write - The forced write
+ */
+function expectForceIgnored(
+  chain: RegisteredMockObject,
+  write: () => unknown = () => writeKick(true),
+): void {
+  expect(noParamLanded(write)).toContain(IGNORED);
+  expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
+}
+
+/**
+ * Assert force in the next request swaps the instrument out.
+ * @param chain - The pad's chain
+ */
+function expectForceSwapsNextRequest(chain: RegisteredMockObject): void {
+  beginWarningCapture();
+  writeKick(true);
+  expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
+}
+
 describe("updateDevice - force on a pad sample swap", () => {
   it("swaps after a skip, and a second force is unearned again", () => {
     const chain = padWithDrumSampler();
@@ -60,20 +83,16 @@ describe("updateDevice - force on a pad sample swap", () => {
     chain.call.mockClear();
     registerDrumSamplerOn(chain);
     beginWarningCapture();
-    expect(noParamLanded(() => writeKick(true))).toContain(IGNORED);
-    expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
+    expectForceIgnored(chain);
   });
 
   it("ignores force before any skip, says so, and keeps the instrument", () => {
     const chain = padWithDrumSampler();
 
-    expect(noParamLanded(() => writeKick(true))).toContain(IGNORED);
-    expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
+    expectForceIgnored(chain);
 
     // That skip warned, so force in the next request works.
-    beginWarningCapture();
-    writeKick(true);
-    expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
+    expectForceSwapsNextRequest(chain);
   });
 
   it("counts a skip from the rack shortcut for the pad's own path", () => {
@@ -105,13 +124,10 @@ describe("updateDevice - force on a pad sample swap", () => {
 
     // The user puts a different instrument on the pad.
     registerDrumSamplerOn(chain, 0, "ds-2");
-    expect(noParamLanded(() => writeKick(true))).toContain(IGNORED);
-    expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
+    expectForceIgnored(chain);
 
     // That skip warned about the new instrument, so force now works.
-    beginWarningCapture();
-    writeKick(true);
-    expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
+    expectForceSwapsNextRequest(chain);
   });
 
   it("does not let two spellings of one pad in a call unlock each other", () => {
@@ -126,12 +142,9 @@ describe("updateDevice - force on a pad sample swap", () => {
         force: true,
       });
 
-    expect(noParamLanded(swapBoth)).toContain(IGNORED);
-    expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
+    expectForceIgnored(chain, swapBoth);
 
     // The call warned, so force in the next request goes ahead.
-    beginWarningCapture();
-    writeKick(true);
-    expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
+    expectForceSwapsNextRequest(chain);
   });
 });

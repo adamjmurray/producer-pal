@@ -7,7 +7,6 @@
 // stays, so the clip keeps its entry with a detail naming it.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   setupMidiClipMock,
   setupUpdateClipMocks,
@@ -15,24 +14,13 @@ import {
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
+  failOnSet,
+  LIVE_FAILURE,
+} from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
+import {
   LIVE_WITH_CLIP_SCALE,
   registerLiveVersion,
 } from "#src/tools/shared/schema/scale/tests/scale-test-helpers.ts";
-
-const REFUSED = "Live refused";
-
-/**
- * Make a mock refuse one property write.
- * @param mock - The registered object
- * @param property - The property whose write throws
- */
-function refuseSet(mock: RegisteredMockObject, property: string): void {
-  mock.set.mockImplementation((written: string) => {
-    if (written === property) {
-      throw new Error(REFUSED);
-    }
-  });
-}
 
 describe("updateClip - Live throws while a clip's scale is written", () => {
   let mocks: UpdateClipMocks;
@@ -45,7 +33,7 @@ describe("updateClip - Live throws while a clip's scale is written", () => {
   });
 
   it("keeps the entry and says the scale changed when a later write is refused", async () => {
-    refuseSet(mocks.clip123, "scale_mode");
+    failOnSet(mocks.clip123, "scale_mode");
 
     const result = await updateClip({
       id: "123,456",
@@ -56,25 +44,25 @@ describe("updateClip - Live throws while a clip's scale is written", () => {
       {
         id: "123",
         path: "t0/s0",
-        detail: `${REFUSED}; already changed: scale`,
+        detail: `${LIVE_FAILURE}; already changed: scale`,
       },
       { id: "456", path: "t1/s1" },
     ]);
   });
 
   it("skips the clip, with nothing changed, when the first write is refused", async () => {
-    refuseSet(mocks.clip123, "root_note");
+    failOnSet(mocks.clip123, "root_note");
 
     const result = await updateClip({ id: "123,456", scale: "C Major" });
 
     expect(result).toStrictEqual([
-      { id: "123", ok: false, detail: REFUSED },
+      { id: "123", ok: false, detail: LIVE_FAILURE },
       { id: "456", path: "t1/s1" },
     ]);
   });
 
   it("reports only the scale when it throws before anything else is written", async () => {
-    refuseSet(mocks.clip123, "scale_name");
+    failOnSet(mocks.clip123, "scale_name");
 
     const result = await updateClip({
       id: "123",
@@ -85,7 +73,7 @@ describe("updateClip - Live throws while a clip's scale is written", () => {
     expect(result).toStrictEqual({
       id: "123",
       path: "t0/s0",
-      detail: `${REFUSED}; already changed: scale`,
+      detail: `${LIVE_FAILURE}; already changed: scale`,
     });
   });
 });
