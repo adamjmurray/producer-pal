@@ -67,12 +67,15 @@ export function ModelSelector({
   // (gpt-5 on the way to gpt-5-mini) must not close the input.
   const typedRef = useRef<{ provider: Provider; value: string } | null>(null);
 
-  // Sync showCustomInput when model or provider changes
+  // Sync showCustomInput when model or provider changes. A model the user
+  // typed stays in the custom input, even after switching providers away and back.
   useEffect(() => {
     if (
       typedRef.current?.provider === provider &&
       typedRef.current.value === model
     ) {
+      setShowCustomInput(true);
+
       return;
     }
 

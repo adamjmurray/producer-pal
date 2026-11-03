@@ -271,6 +271,42 @@ describe("ModelSelector", () => {
       ).toBe("gemini-3.5-flash-lite-2");
     });
 
+    it("keeps a typed model in the custom input after switching providers and back", () => {
+      function Harness({ provider }: { provider: "gemini" | "openai" }) {
+        const [models, setModels] = useState({
+          gemini: "my-model",
+          openai: "gpt-6-luna",
+        });
+
+        return (
+          <ModelSelector
+            provider={provider}
+            model={models[provider]}
+            setModel={(m) => setModels((prev) => ({ ...prev, [provider]: m }))}
+          />
+        );
+      }
+
+      const { rerender } = render(<Harness provider="gemini" />);
+
+      fireEvent.input(screen.getByPlaceholderText(/e.g., gemini-3.8-flash/), {
+        target: { value: "gemini-3.5-flash-lite" },
+      });
+      rerender(<Harness provider="openai" />);
+      rerender(<Harness provider="gemini" />);
+
+      expect(
+        (
+          screen.getByPlaceholderText(
+            /e.g., gemini-3.8-flash/,
+          ) as HTMLInputElement
+        ).value,
+      ).toBe("gemini-3.5-flash-lite");
+      expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
+        "OTHER",
+      );
+    });
+
     it("shows custom input initially for non-preset models", () => {
       renderModelSelector({ model: "my-custom-model" });
       expect(
