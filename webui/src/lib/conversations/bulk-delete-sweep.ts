@@ -80,7 +80,8 @@ export async function runBulkDeleteSweep(
   let liveRowSurvived: boolean;
 
   try {
-    liveRowSurvived = (await loadConversation(liveId)) != null;
+    liveRowSurvived =
+      (await loadConversation(liveId, { images: false })) != null;
   } catch (error) {
     // Rows are already gone or kept — this only failed to confirm which.
     // Leaving a live conversation alone on an unproven guess is safer than

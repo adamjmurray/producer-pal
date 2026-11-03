@@ -159,7 +159,7 @@ export async function saveConversation(
     void store.delete(id);
   }
 
-  const stored = storeConversationImages(record, images);
+  const stored = await storeConversationImages(record, images);
   const trimmed = new Set(trim.ids);
 
   void store.put(stored);
@@ -176,25 +176,36 @@ export async function saveConversation(
   };
 }
 
+/** What {@link loadConversation} reads. */
+export interface LoadConversationOptions {
+  /**
+   * False skips reading image bytes, for callers that only need the record's
+   * metadata. Its messages then keep their stored image refs, so never show or
+   * resave them. Default true.
+   */
+  images?: boolean;
+}
+
 /**
  * Load a single conversation by ID.
  * @param id - Conversation ID
+ * @param options - Whether to read image bytes
  * @returns The conversation record, or undefined if not found
  */
 export async function loadConversation(
   id: string,
+  options: LoadConversationOptions = {},
 ): Promise<ConversationRecord | undefined> {
   const db = await getConversationDb();
   const tx = db.transaction([STORE_NAME, IMAGE_STORE], "readonly");
   const raw = (await tx.objectStore(STORE_NAME).get(id)) as
     | Partial<ConversationRecord>
     | undefined;
-  const record = raw
-    ? await loadConversationImages(
-        normalizeLegacyRecord(raw),
-        tx.objectStore(IMAGE_STORE),
-      )
-    : undefined;
+  const normalized = raw ? normalizeLegacyRecord(raw) : undefined;
+  const record =
+    normalized && options.images !== false
+      ? await loadConversationImages(normalized, tx.objectStore(IMAGE_STORE))
+      : normalized;
 
   await tx.done;
 

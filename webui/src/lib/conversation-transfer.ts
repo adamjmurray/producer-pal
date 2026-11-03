@@ -165,7 +165,9 @@ export async function importConversations(json: string): Promise<ImportResult> {
         record,
         cyclicForkIds.has(record.id as string),
       );
-      const existing = await loadConversation(normalized.id);
+      const existing = await loadConversation(normalized.id, {
+        images: false,
+      });
 
       if (existing && existing.updatedAt >= normalized.updatedAt) {
         ignoredCount++;

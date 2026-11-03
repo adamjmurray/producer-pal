@@ -12,7 +12,10 @@ import { type ChatImage, type ChatMessage } from "#webui/chat/sdk/types";
  */
 export const IMAGE_STORE = "images";
 
-/** Ref per in-memory image, so a save skips the hash. Images never change. */
+/**
+ * Ref per in-memory image, so a save skips the hash. Images never change. It
+ * doesn't say the bytes are still stored: every save checks the store.
+ */
 const knownRefs = new WeakMap<object, string>();
 
 /** The parts of an idb object store this module reads. */
@@ -23,6 +26,7 @@ interface ImageStore {
 
 /** The same, in a readwrite transaction. */
 interface WritableImageStore extends ImageStore {
+  getKey: (key: string) => Promise<unknown>;
   put: (value: string, key: string) => Promise<unknown>;
   delete: (key: string) => Promise<void>;
 }
@@ -41,16 +45,19 @@ interface WithMessages {
 /**
  * Move a record's image bytes into the image store, returning the copy to
  * write in their place. Images saved before the store existed are inline, and
- * move on their next save.
+ * move on their next save. Bytes already stored are left alone; ones a delete
+ * elsewhere swept are written again. The check shares the caller's readwrite
+ * transaction, so a sweep can't land between it and the write.
  * @param record - Record with inline images
  * @param store - The image store, in a readwrite transaction
  * @returns A copy whose images are refs
  */
-export function storeConversationImages<T extends WithMessages>(
+export async function storeConversationImages<T extends WithMessages>(
   record: T,
   store: WritableImageStore,
-): T {
-  return mapImages(record, (image) => {
+): Promise<T> {
+  const inline = new Map<string, string>();
+  const stored = mapImages(record, (image) => {
     if (isStoredImage(image)) {
       return image;
     }
@@ -58,11 +65,18 @@ export function storeConversationImages<T extends WithMessages>(
     const ref = knownRefs.get(image) ?? hashImageData(image.data);
 
     knownRefs.set(image, ref);
-    // Put anyway: a delete elsewhere may have swept the bytes.
-    void store.put(image.data, ref);
+    inline.set(ref, image.data);
 
     return { mediaType: image.mediaType, ref };
   });
+
+  for (const [ref, data] of inline) {
+    if ((await store.getKey(ref)) == null) {
+      void store.put(data, ref);
+    }
+  }
+
+  return stored;
 }
 
 /**

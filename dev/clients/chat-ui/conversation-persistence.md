@@ -21,10 +21,13 @@ reached.
 `images` store, keyed by a hash of their content, so an edit/retry fork shares
 them instead of storing another copy. A stored message holds
 `{ mediaType, ref }`; `loadConversation` puts the bytes back, so callers only
-ever see inline images. There are no reference counts: every save and delete
-sweeps the images no remaining record uses, in the same transaction. Images
-saved before the store existed stay inline until their record is next saved.
-Export writes images inline, so an export file stays self-contained.
+ever see inline images (`{ images: false }` skips that for metadata-only reads,
+such as the autosave's look at the saved record). A save writes only the bytes
+missing from the store, checked in its own transaction. There are no reference
+counts: every save and delete sweeps the images no remaining record uses, in the
+same transaction. Images saved before the store existed stay inline until their
+record is next saved. Export writes images inline, so an export file stays
+self-contained.
 
 **Versioning**: IndexedDB is schemaless for record data, so adding a field to a
 stored record needs no version bump — just default it when it's missing on read.

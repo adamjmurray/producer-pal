@@ -237,6 +237,72 @@ describe("conversation images", () => {
     expect(await imagesOf("a")).toStrictEqual([PNG]);
   });
 
+  it("skips the image bytes when asked for metadata only", async () => {
+    await saveConversation(withImages("a", [PNG], { title: "kept" }));
+
+    const get = vi.spyOn(IDBObjectStore.prototype, "get");
+
+    try {
+      const loaded = await loadConversation("a", { images: false });
+
+      expect(loaded?.title).toBe("kept");
+      expect(
+        get.mock.contexts.map((s) => (s as IDBObjectStore).name),
+      ).toStrictEqual(["conversations"]);
+    } finally {
+      get.mockRestore();
+    }
+  });
+
+  it("doesn't write images that are already stored", async () => {
+    await saveConversation(withImages("a", [PNG]));
+
+    const put = vi.spyOn(IDBObjectStore.prototype, "put");
+
+    try {
+      await saveConversation((await loadConversation("a"))!);
+      await saveConversation(withImages("a", [{ ...PNG }]));
+
+      expect(
+        put.mock.contexts.filter(
+          (s) => (s as IDBObjectStore).name === "images",
+        ),
+      ).toHaveLength(0);
+    } finally {
+      put.mockRestore();
+    }
+  });
+
+  it("writes an image's bytes once however often a record repeats it", async () => {
+    const put = vi.spyOn(IDBObjectStore.prototype, "put");
+
+    try {
+      await saveConversation(withImages("a", [PNG, { ...PNG }]));
+
+      expect(
+        put.mock.contexts.filter(
+          (s) => (s as IDBObjectStore).name === "images",
+        ),
+      ).toHaveLength(1);
+    } finally {
+      put.mockRestore();
+    }
+  });
+
+  it("writes an image again when its bytes were swept after it was hashed", async () => {
+    const record = withImages("a", [{ ...PNG }]);
+
+    await saveConversation(record);
+
+    const db = await getConversationDb();
+
+    await db.clear("images");
+    await saveConversation(record);
+
+    expect(await storedImageKeys()).toHaveLength(1);
+    expect(await imagesOf("a")).toStrictEqual([PNG]);
+  });
+
   it("reuses the ref of a newly saved image on its next save", async () => {
     const record = withImages("a", [{ ...PNG }]);
     const image = record.messages[0]!.images![0]!;
