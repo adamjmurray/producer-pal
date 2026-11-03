@@ -7,7 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // ppal-plugin-host is a debug tool: both registries read ENABLE_LIVE_API when
 // they load, so each is imported fresh. A release build never sets the flag.
-describe("the ppal-plugin-host debug tool", () => {
+// A fresh import of both takes ~1 s, so the default 5 s timeout fails under load.
+describe("the ppal-plugin-host debug tool", { timeout: 30_000 }, () => {
   beforeEach(() => {
     vi.resetModules();
   });

@@ -462,7 +462,8 @@ describe("live-api release", () => {
     expect(tracked.path).toBe("");
   });
 
-  it("stops pooling once the free list is full", () => {
+  // Builds 16k objects (~1 s), so the default 5 s timeout fails under load.
+  it("stops pooling once the free list is full", { timeout: 30_000 }, () => {
     // The ceiling bounds memory: one big request can build far more objects
     // than any later one needs, and without a cap they all stay on the list.
     const overflow = 10;
