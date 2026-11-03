@@ -446,7 +446,7 @@ describe("pitch bend params on a target that isn't a Simpler", () => {
         ],
       }),
     ).toThrow(
-      /"pC1\/d0\/pitchBendRange": can only be set with ppal-update-device on the Simpler's own path, and needs the Producer Pal remote script; "pC1\/d0\/notePitchBendRange": can only/,
+      /no param landed — all 2: can only be set with ppal-update-device on the Simpler's own path, and needs the Producer Pal remote script$/,
     );
     expect(requestNode).not.toHaveBeenCalled();
   });

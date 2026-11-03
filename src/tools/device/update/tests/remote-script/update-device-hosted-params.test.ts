@@ -469,8 +469,7 @@ describe("updateDevice hosted plug-in params", () => {
       (thrown: Error) => thrown.message,
     );
 
-    expect(error).toContain(TOO_LARGE);
-    expect(error).not.toContain("may have changed");
+    expect(error).toBe(`no param landed — all 800: ${TOO_LARGE}`);
   });
 
   it("refuses each target of a call too large for one request", async () => {

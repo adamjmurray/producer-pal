@@ -138,12 +138,30 @@ export function refuseIfNoneLanded<T extends object>(
     return;
   }
 
-  const failures = entries.map(
-    (entry) => `"${name(entry)}": ${(entry as NestedEntry).detail}`,
-  );
-
   notes.refused.push(...params);
-  notes.unlanded.push(`no ${noun} landed — ${failures.join("; ")}`);
+  notes.unlanded.push(`no ${noun} landed — ${failureList(entries, name)}`);
+}
+
+/**
+ * Each failure with its entry's name, or the reason once when every entry
+ * shares it: a whole-list refusal would otherwise repeat it per entry.
+ * @param entries - The failed entries
+ * @param name - How the detail names one entry
+ * @returns The failures, for after "no ... landed — "
+ */
+function failureList<T extends object>(
+  entries: readonly T[],
+  name: (entry: T) => string,
+): string {
+  const details = entries.map((entry) => (entry as NestedEntry).detail);
+
+  if (entries.length > 1 && details.every((detail) => detail === details[0])) {
+    return `all ${entries.length}: ${details[0]}`;
+  }
+
+  return entries
+    .map((entry, index) => `"${name(entry)}": ${details[index]}`)
+    .join("; ");
 }
 
 /**

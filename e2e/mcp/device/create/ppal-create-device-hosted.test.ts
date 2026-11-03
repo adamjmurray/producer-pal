@@ -102,7 +102,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !HAS_SERUM)("hosted plug-ins", () => {
     const text = JSON.stringify(result);
 
     expect(result.isError).toBe(true);
-    expect(text).toContain("too large for one call");
+    expect(text).toContain("no param landed — all 800: not set: too large");
     expect(text).not.toContain("may have changed");
     expect((await readDevice(path, "Main Vol")).parameters?.[0]?.value).toBe(
       before,

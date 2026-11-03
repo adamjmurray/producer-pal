@@ -502,7 +502,7 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
   });
 
   // Neither is written, so neither overrides the other.
-  it("refuses a param sent twice on a chain once per entry, by id where sent by id", () => {
+  it("refuses every entry of a param sent twice on a chain", () => {
     registerPadRack();
 
     const notApplicable =
@@ -519,10 +519,7 @@ describe("updateDevice - a sample addressed by the pad's own path", () => {
           ],
         }),
       ),
-    ).toBe(
-      `no param landed — "Volume": ${notApplicable}; ` +
-        `"volume": ${notApplicable}; "7": ${notApplicable}`,
-    );
+    ).toBe(`no param landed — all 3: ${notApplicable}`);
   });
 
   it("still refuses every other param on a chain, in the error", () => {
