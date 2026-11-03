@@ -24,7 +24,9 @@ import {
   installBundledDevice,
   requireBundledDevice,
 } from "../setup/bundled-device/bundled-device-copy.ts";
+import { type PluginHostPart } from "#src/tools/core/helpers/manage-contract.ts";
 import { type DeviceInstallResult } from "../setup/device-install.ts";
+import { withPluginHostNote } from "../setup/plugin-host/plugin-host-part.ts";
 import { userLibraryFor } from "../setup/library-for-device.ts";
 import { remoteScriptReady } from "../setup/remote-script-ready.ts";
 import { setupDeadline, timeLeft } from "../setup/setup-deadline.ts";
@@ -75,6 +77,9 @@ export async function updateProducerPal(
     return await offlineGuidance(true, deps);
   }
 
+  // Written before the swap, so a failure after it still has to say so.
+  let pluginHost: PluginHostPart[] = [];
+
   try {
     const running = device.version();
     const from = versionToReplace(running);
@@ -92,7 +97,8 @@ export async function updateProducerPal(
       installBundledDevice(library, bundled, deps, UPDATE),
       from,
     );
-    const pluginHost = deps.installPluginHost(library);
+
+    pluginHost = deps.installPluginHost(library);
     const track = await replaceDevice(
       file.path,
       from,
@@ -118,7 +124,7 @@ export async function updateProducerPal(
       nextSteps: updatedNextSteps(device.fullConnectSeen()),
     });
   } catch (error) {
-    return offlineError(errorMessage(error));
+    return offlineError(withPluginHostNote(errorMessage(error), pluginHost));
   }
 }
 

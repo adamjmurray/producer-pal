@@ -19,7 +19,11 @@ import { UPDATE_PORTAL_ADVICE } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { type McpResponse } from "#src/shared/mcp-responses.ts";
-import { describePluginHostParts } from "../setup/plugin-host/plugin-host-part.ts";
+import { type PluginHostPart } from "#src/tools/core/helpers/manage-contract.ts";
+import {
+  describePluginHostParts,
+  withPluginHostNote,
+} from "../setup/plugin-host/plugin-host-part.ts";
 import {
   installBundledDevice,
   requireBundledDevice,
@@ -68,6 +72,9 @@ export async function addProducerPal(
   deps: OfflineDeps,
   deadline = setupDeadline(deps),
 ): Promise<McpResponse> {
+  // Written before the device loads, so a failure after it still has to say so.
+  let pluginHost: PluginHostPart[] = [];
+
   try {
     const bundled = requireBundledDevice(deps, ADD);
     let ping: RemoteScriptPing;
@@ -84,7 +91,8 @@ export async function addProducerPal(
 
     const library = await userLibraryFor(userLibrary, ping, deps, ADD);
     const device = copyDevice(library, bundled, deps);
-    const pluginHost = deps.installPluginHost(library);
+
+    pluginHost = deps.installPluginHost(library);
     const track = await loadDevice(device.path, deps, deadline);
 
     await waitForServer(track, connect, deps, deadline);
@@ -96,7 +104,7 @@ export async function addProducerPal(
       nextSteps: "Call ppal-connect next.",
     });
   } catch (error) {
-    return offlineError(errorMessage(error));
+    return offlineError(withPluginHostNote(errorMessage(error), pluginHost));
   }
 }
 

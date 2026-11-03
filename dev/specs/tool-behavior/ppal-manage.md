@@ -141,7 +141,9 @@ unless the user already asked for it.
   that hosts plug-ins. `device` says what happened to the file in the User
   Library (installed, updated, already current, kept because the installed one
   is newer or can't be ordered, or kept because the update failed, with why).
-  `nextSteps` is `Call ppal-connect next.`
+  `nextSteps` is `Call ppal-connect next.` The wrappers are copied before the
+  load, so a later failure (the load request, the wait for the server) ends with
+  a `Plug-in host wrappers: ...` line saying what became of each.
 - **An installed device newer than the bundled one:** it is loaded as it is, and
   `device` adds that this portal is older than it and the user should update the
   portal (the npx package or the Claude Desktop extension).
@@ -239,10 +241,13 @@ to ask the user first, unless the user already asked for it.
   where `path` is `t3`, `rt0` or `mt` as in the tools, plus `note` when the
   loaded file wasn't the portal's, and `pluginHost` (as under
   `install-producer-pal`). The wrappers are copied right after the device and
-  before the swap; a wrapper that fails never refuses the update. `nextSteps` is
-  `Now call ppal-connect to load the Skills and confirm the update.` until a
-  plain `ppal-connect` has worked through this portal (the chat can't have
-  connected yet), and after that
+  before the swap; a wrapper that fails never refuses the update. A failure
+  after the wrappers were copied (a refused or lost swap, a new server that
+  doesn't answer) ends with a `Plug-in host wrappers: ...` line saying what
+  became of each. `nextSteps` is
+  `Now call ppal-connect without versionCheck to load the Skills and confirm the update.`
+  until a plain `ppal-connect` has worked through this portal (the chat can't
+  have connected yet), and after that
   `Now call ppal-connect with versionCheck: true to confirm the update. (If this chat hasn't called ppal-connect yet, call it without versionCheck.)`
   It is worded as the required next step, so the model doesn't read it as
   optional.

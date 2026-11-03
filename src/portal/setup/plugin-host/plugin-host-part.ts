@@ -111,6 +111,23 @@ export function describePluginHostParts(parts: PluginHostPart[]): string {
   return `Plug-in host wrappers: ${each.join("; ")}.`;
 }
 
+/**
+ * Add what the wrapper install did to a failure message, so a failure after the
+ * wrappers were written doesn't hide that User Library files changed.
+ *
+ * @param message - Why the call failed
+ * @param parts - The wrappers' parts, empty when none were tried
+ * @returns The message, with the wrappers' line after it when there are any
+ */
+export function withPluginHostNote(
+  message: string,
+  parts: PluginHostPart[],
+): string {
+  return parts.length === 0
+    ? message
+    : `${message} ${describePluginHostParts(parts)}`;
+}
+
 function failureDetail(
   result: Extract<PluginHostResult, { outcome: "failed" }>,
   retry: string,
