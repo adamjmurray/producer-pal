@@ -4,10 +4,18 @@
 // SPDX-License-Identifier: MIT
 
 import Max from "max-api";
+import { nodeError } from "../../node-for-max-logger.ts";
 import { describe, expect, it, vi } from "vitest";
 import { setupExpressAppServer } from "../express-app-test-helpers.ts";
 
-describe("POST /config validation", () => {
+vi.mock(import("#src/mcp-server/node-for-max-logger.ts"), () => ({
+  nodeLog: vi.fn(),
+  nodeInfo: vi.fn(),
+  nodeWarn: vi.fn(),
+  nodeError: vi.fn(),
+}));
+
+describe("POST /config validation and device failures", () => {
   const appState = setupExpressAppServer();
 
   /**
@@ -102,5 +110,149 @@ describe("POST /config validation", () => {
 
     expect(response.status).toBe(200);
     await appState.postConfig({ projectContext: "" });
+  });
+
+  describe("when the device doesn't take a setting", () => {
+    /**
+     * Make sends of the named device settings fail; the rest succeed.
+     *
+     * @param keys - Device setting names whose send rejects
+     * @returns The mock, to inspect which settings were sent
+     */
+    function failOutlets(...keys: string[]): ReturnType<typeof vi.fn> {
+      const outlet = vi.fn((_channel: string, key: string) =>
+        keys.includes(key)
+          ? Promise.reject(new Error(`no ${key}`))
+          : Promise.resolve(),
+      );
+
+      // A rejecting outlet is past what the responder API covers, so replace it;
+      // resetMaxMock() puts the default back before the next test.
+      Max.outlet = outlet as unknown as typeof Max.outlet;
+
+      return outlet;
+    }
+
+    it("sends the rest, names the field that failed and rolls it back", async () => {
+      const before = await getConfig();
+      const outlet = failOutlets("notation");
+      const response = await appState.postConfig({
+        projectContext: "after",
+        notation: before.notation === "midi-json" ? "bar-beat" : "midi-json",
+        smallModelMode: !before.smallModelMode,
+      });
+      const body = await response.json();
+
+      expect(response.status).toBe(502);
+      expect(body.fields).toStrictEqual(["notation"]);
+      expect(body.error).toContain("did not reach the device");
+      expect(outlet.mock.calls.map(([, key]) => key)).toStrictEqual([
+        "projectContext",
+        "smallModelMode",
+        "notation",
+      ]);
+      expect(nodeError).toHaveBeenCalledWith(
+        expect.stringContaining("notation"),
+      );
+
+      // GET /config matches what the device has: the two that got through are
+      // kept, the one that didn't is back to its old value.
+      const after = await getConfig();
+
+      expect(after.projectContext).toBe("after");
+      expect(after.smallModelMode).toBe(!before.smallModelMode);
+      expect(after.notation).toBe(before.notation);
+
+      Max.outlet = vi.fn().mockResolvedValue(undefined);
+      await appState.postConfig({
+        projectContext: before.projectContext,
+        smallModelMode: before.smallModelMode,
+      });
+    });
+
+    it("names every field that failed, once each", async () => {
+      const before = await getConfig();
+
+      failOutlets("sampleFolder", "compactOutput");
+      const response = await appState.postConfig({
+        sampleFolder: "/tmp/somewhere",
+        jsonOutput: !before.jsonOutput,
+      });
+      const body = await response.json();
+
+      expect(response.status).toBe(502);
+      expect(body.fields.toSorted()).toStrictEqual([
+        "jsonOutput",
+        "sampleFolder",
+      ]);
+      const after = await getConfig();
+
+      expect(after.sampleFolder).toBe(before.sampleFolder);
+      expect(after.jsonOutput).toBe(before.jsonOutput);
+    });
+
+    it("restores liveApiEnabled and the whitelist when the tools send fails", async () => {
+      const before = await getConfig();
+
+      failOutlets("tools");
+      const response = await appState.postConfig({
+        liveApiEnabled: !before.liveApiEnabled,
+      });
+      const body = await response.json();
+
+      expect(response.status).toBe(502);
+      expect(body.fields).toStrictEqual(["liveApiEnabled"]);
+      const after = await getConfig();
+
+      expect(after.tools).toStrictEqual(before.tools);
+      // The flag itself reached the device, so Node keeps it.
+      expect(after.liveApiEnabled).toBe(!before.liveApiEnabled);
+
+      Max.outlet = vi.fn().mockResolvedValue(undefined);
+      await appState.postConfig({ liveApiEnabled: before.liveApiEnabled });
+    });
+
+    it("keeps a setting that reached the device by another route", async () => {
+      const before = await getConfig();
+
+      // `tools` goes out with liveApiEnabled and on its own: one getting
+      // through is enough, so the later one failing changes nothing. Sends are
+      // tools, liveApiEnabled, tools: the third call fails.
+      const outlet = vi.fn((_channel: string, key: string) =>
+        key === "tools" && outlet.mock.calls.length === 3
+          ? Promise.reject(new Error("no tools"))
+          : Promise.resolve(),
+      );
+
+      Max.outlet = outlet as unknown as typeof Max.outlet;
+      const response = await appState.postConfig({
+        liveApiEnabled: !before.liveApiEnabled,
+        tools: ["ppal-connect"],
+      });
+
+      expect(outlet).toHaveBeenCalledTimes(3);
+      expect(response.status).toBe(200);
+      const after = await getConfig();
+
+      expect(after.tools).toStrictEqual(["ppal-connect"]);
+
+      Max.outlet = vi.fn().mockResolvedValue(undefined);
+      await appState.postConfig({
+        liveApiEnabled: before.liveApiEnabled,
+        tools: before.tools,
+      });
+    });
+
+    it("answers as before when every send works", async () => {
+      const before = await getConfig();
+      const response = await appState.postConfig({ projectContext: "ok" });
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toStrictEqual({
+        ...before,
+        projectContext: "ok",
+      });
+      await appState.postConfig({ projectContext: before.projectContext });
+    });
   });
 });

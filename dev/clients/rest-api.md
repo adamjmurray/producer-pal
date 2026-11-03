@@ -39,7 +39,13 @@ Fields (all optional; unknown keys are ignored):
 A bad body is refused whole: every field is checked first, a `400` returns
 `{error, fields, validToolNames?}` naming each bad field, and nothing is
 applied. Booleans must be real booleans (`"false"` is a `400`, not true). On
-success it returns the new config. Code: `parseConfigBody()` in
+success it returns the new config.
+
+If the device doesn't take a setting (a send to Max fails), the other settings
+are still sent and kept, and the call returns `502` with `{error, fields}`
+naming the fields that failed. Those are rolled back in Node, so `GET /config`
+always matches the device; retry them. Code: `emitConfigOutlets()` in
+`src/mcp-server/helpers/http/config-outlets.ts`, `parseConfigBody()` in
 `src/mcp-server/helpers/http/config-body.ts`, `handleConfigUpdate()` in
 `src/mcp-server/create-express-app.ts`.
 

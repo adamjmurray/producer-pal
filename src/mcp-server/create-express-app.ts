@@ -30,7 +30,14 @@ import { connectWidgetsToSet } from "./rpc/gen-ui/set-storage.ts";
 import { withGenUi } from "./rpc/gen-ui/with-gen-ui.ts";
 import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
 import { errorHandlerMiddleware } from "./helpers/http/error-handler-middleware.ts";
-import { parseConfigBody } from "./helpers/http/config-body.ts";
+import {
+  parseConfigBody,
+  type ConfigBody,
+} from "./helpers/http/config-body.ts";
+import {
+  emitConfigOutlets,
+  type ConfigOutlet,
+} from "./helpers/http/config-outlets.ts";
 import { requestBody } from "./helpers/http/request-body.ts";
 import { rejectCrossOriginWrite } from "./helpers/http/request-origin.ts";
 import {
@@ -438,8 +445,9 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // Check every field first: a bad one refuses the whole request, so a 400
-  // never leaves config half-applied (or Node and the device out of step).
+  // Check every field first: a bad one refuses the whole request (400), so
+  // nothing is applied. A failure sending to the device comes after this and
+  // is handled at the end.
   const parsed = parseConfigBody(body, config.liveApiEnabled);
 
   if (!parsed.ok) {
@@ -448,40 +456,87 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const incoming = parsed.value;
-  const outlets: Array<() => Promise<void>> = [];
+  const before = { ...config };
+  const outlets = applyConfigUpdate(parsed.value);
 
+  // Send everything to V8, even if one send fails. A setting that didn't get
+  // through is rolled back in Node, so GET /config still matches the device.
+  const failedFields = await emitConfigOutlets(config, before, outlets);
+
+  if (failedFields.length > 0) {
+    res.status(502).json({
+      error:
+        "Some settings did not reach the device and were left unchanged. Retry them.",
+      fields: failedFields,
+    });
+
+    return;
+  }
+
+  res.json(config);
+}
+
+/**
+ * Apply a validated POST /config body to Node's config and the test switches.
+ *
+ * @param incoming - The validated update
+ * @returns The sends to the device, one per setting that changed
+ */
+function applyConfigUpdate(
+  incoming: ConfigBody,
+): Array<ConfigOutlet<typeof config>> {
+  const outlets: Array<ConfigOutlet<typeof config>> = [];
+
+  // Each device key is spelled out in its Max.outlet call (a test scans for
+  // that) and again as deviceKey, which names it in errors.
   if (incoming.projectContext !== undefined) {
     config.projectContext = incoming.projectContext ?? "";
-    outlets.push(() =>
-      Max.outlet("config", "projectContext", config.projectContext),
-    );
+    outlets.push({
+      field: "projectContext",
+      configKey: "projectContext",
+      deviceKey: "projectContext",
+      send: () => Max.outlet("config", "projectContext", config.projectContext),
+    });
   }
 
   if (incoming.smallModelMode !== undefined) {
     config.smallModelMode = incoming.smallModelMode;
-    outlets.push(() =>
-      Max.outlet("config", "smallModelMode", config.smallModelMode),
-    );
+    outlets.push({
+      field: "smallModelMode",
+      configKey: "smallModelMode",
+      deviceKey: "smallModelMode",
+      send: () => Max.outlet("config", "smallModelMode", config.smallModelMode),
+    });
   }
 
   if (incoming.notation !== undefined) {
     config.notation = incoming.notation;
-    outlets.push(() => Max.outlet("config", "notation", config.notation));
+    outlets.push({
+      field: "notation",
+      configKey: "notation",
+      deviceKey: "notation",
+      send: () => Max.outlet("config", "notation", config.notation),
+    });
   }
 
   if (incoming.jsonOutput !== undefined) {
     config.jsonOutput = incoming.jsonOutput;
-    outlets.push(() =>
-      Max.outlet("config", "compactOutput", !config.jsonOutput),
-    );
+    outlets.push({
+      field: "jsonOutput",
+      configKey: "jsonOutput",
+      deviceKey: "compactOutput",
+      send: () => Max.outlet("config", "compactOutput", !config.jsonOutput),
+    });
   }
 
   if (incoming.sampleFolder !== undefined) {
     config.sampleFolder = incoming.sampleFolder ?? "";
-    outlets.push(() =>
-      Max.outlet("config", "sampleFolder", config.sampleFolder),
-    );
+    outlets.push({
+      field: "sampleFolder",
+      configKey: "sampleFolder",
+      deviceKey: "sampleFolder",
+      send: () => Max.outlet("config", "sampleFolder", config.sampleFolder),
+    });
   }
 
   if (incoming.liveApiEnabled !== undefined) {
@@ -489,8 +544,19 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
 
     // The whitelist is rebuilt either way, so it goes out with the flag.
     outlets.push(
-      () => Max.outlet("config", "tools", JSON.stringify(config.tools)),
-      () => Max.outlet("config", "liveApiEnabled", config.liveApiEnabled),
+      {
+        field: "liveApiEnabled",
+        configKey: "tools",
+        deviceKey: "tools",
+        send: () => Max.outlet("config", "tools", JSON.stringify(config.tools)),
+      },
+      {
+        field: "liveApiEnabled",
+        configKey: "liveApiEnabled",
+        deviceKey: "liveApiEnabled",
+        send: () =>
+          Max.outlet("config", "liveApiEnabled", config.liveApiEnabled),
+      },
     );
   }
 
@@ -511,15 +577,13 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
 
   if (incoming.tools !== undefined) {
     config.tools = incoming.tools;
-    outlets.push(() =>
-      Max.outlet("config", "tools", JSON.stringify(config.tools)),
-    );
+    outlets.push({
+      field: "tools",
+      configKey: "tools",
+      deviceKey: "tools",
+      send: () => Max.outlet("config", "tools", JSON.stringify(config.tools)),
+    });
   }
 
-  // Emit all config updates to V8 (after synchronously updating config)
-  for (const emit of outlets) {
-    await emit();
-  }
-
-  res.json(config);
+  return outlets;
 }
