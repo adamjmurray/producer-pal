@@ -18,7 +18,8 @@ with `timing =`. `timing += swing(...)` (or `-=`, `*=`, `/=`) is refused.
   off-beat between beats: an 8th note in x/4 meters, a 16th in x/8 (the natural
   swing subdivision per meter). It is _not_ a fixed `n/8`, which would coincide
   only in x/4. Uses the same grid notation as `quant()` (e.g., `n/16` for
-  16th-note swing). Internally, `period = grid * 2`.
+  16th-note swing). Must be > 0, as for `quant()`. Internally,
+  `period = grid * 2`.
 - **raw**: Keyword that skips auto-quantize (see below).
 
 **Algorithm**: Each period (2× grid) is split into two halves. Notes in the
@@ -53,7 +54,9 @@ with `timing =`; a compound assignment is refused, as for `swing()`.
 
 - **grid**: Grid size as a note value or numeric musical beats. Must be > 0 —
   unlike a waveform period, a zero or negative grid has nothing to snap to. Same
-  for `swing()`'s optional grid.
+  for `swing()`'s optional grid. A constant grid of 0 or less is refused up
+  front; one only known per note (`quant(note.pitch - 60)`) is reported on the
+  clip as the transform runs.
 
 ```
 timing = quant(n/8) // snap to 8th-note grid (0.5 beats in 4/4)

@@ -62,11 +62,12 @@ the note's start to itself; the message says to use `timing = swing(...)`), a
 percent-looking amount gets the delay it should have been), a built-in with the
 wrong argument count, and a constant argument that can't be evaluated, isn't
 finite or is out of range (a ratchet count below 2 or grid of 0, a repeat offset
-of 0 or count below 1, a `curve()` exponent of 0 or less), and a waveform period
-that uses a note property (`sin(note.start * 6.28)`; the message says the period
-is a cycle length and points per-note variation at the phase). Argument counts
-count only positional args — the trailing `sync`/`raw` keywords are not
-arguments.
+of 0 or count below 1, a `swing()` or `quant()` grid of 0 or less like
+`swing(0.1, -n/8)` or `quant(0 * n/8)`, a `curve()` exponent of 0 or less), and
+a waveform period that uses a note property (`sin(note.start * 6.28)`; the
+message says the period is a cycle length and points per-note variation at the
+phase). Argument counts count only positional args — the trailing `sync`/`raw`
+keywords are not arguments.
 
 Two kinds of argument can't be judged up front, and are reported on the clip as
 the transform runs:

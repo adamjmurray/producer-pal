@@ -182,8 +182,10 @@ describe("ppal-clip-transforms (bad argument refused up front)", () => {
       "timing = swing(0.5)",
       "swing amount is a delay in beats and must be under the grid (0.5 beats); 0 is straight (MPC 50%)",
     ],
+    ["timing = swing(0.1, -n/8)", "swing() grid must be greater than 0"],
+    ["timing = quant(-n/8)", "quant() grid must be greater than 0"],
   ])(
-    "ppal-update-clip refuses a swing amount at or past its grid: %s",
+    "ppal-update-clip refuses a swing amount at or past its grid, or a swing/quant grid of 0 or less: %s",
     async (transforms, message) => {
       const clipId = await createMidiClip(98, "v80 C3 1|1.5");
 

@@ -271,6 +271,21 @@ describe("duplicate - transforms/code", () => {
       );
     });
 
+    it("refuses a quant grid of 0 or less before copying anything", async () => {
+      registerSessionClipDuplication({ destClipProperties: {} });
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          toSlot: "0/1",
+          transforms: "timing = quant(-n/8)",
+        }),
+      ).rejects.toThrow("quant() grid must be greater than 0");
+
+      expect(updateClipMock).not.toHaveBeenCalled();
+    });
+
     // 1|6-2|1 is a backwards range in 4/4 but valid in 6/8: the copy keeps its
     // source's meter, so that decides.
     function copyWithMeter(

@@ -102,6 +102,23 @@ describe("createClip - transforms name the clip they warn about", () => {
     expect(capturedWarnings()).toStrictEqual([]);
   });
 
+  it("refuses a swing grid of 0 or less before creating a clip", async () => {
+    const slot = registerMockObject("live_set/tracks/0/clip_slots/0", {
+      path: livePath.track(0).clipSlot(0),
+      properties: { has_clip: 0 },
+    });
+
+    await expect(
+      createClip({
+        slot: "0/0",
+        notes: "C3 1|1",
+        transforms: "timing = swing(0.1, -n/8)",
+      }),
+    ).rejects.toThrow("swing() grid must be greater than 0");
+
+    expect(slot.call).not.toHaveBeenCalled();
+  });
+
   // A transform for the other kind of clip does nothing there; the created
   // clip exists, so its entry carries that as a detail and never as ok:false.
   it("says on the entry that a gain transform does nothing on a MIDI clip", async () => {
