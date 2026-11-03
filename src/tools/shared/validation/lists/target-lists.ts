@@ -64,12 +64,12 @@ export function foldTargetParams(
   const id =
     idAlias == null
       ? plural
-      : foldedIdParam(plural.value, idAlias.value, idAlias.name);
+      : foldedIdParam(plural.value, idAlias.value, idAlias.name, plural.param);
   const path = foldedPathParam(targets.path, targets.paths);
 
   return {
     id: id.value,
-    idParam: plural.value == null ? id.param : plural.param,
+    idParam: id.param,
     path: path.value,
     pathParam: path.param,
   };

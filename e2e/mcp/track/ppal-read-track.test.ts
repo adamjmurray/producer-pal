@@ -345,6 +345,14 @@ describe("ppal-read-track over a list of targets", () => {
     );
   });
 
+  it("names ids, as sent, when it arrives beside trackId", async () => {
+    const refused = await readTracks({ ids: "1", trackId: "2" });
+
+    expect(getToolErrorMessage(refused)).toContain(
+      "ids names the target on its own - don't send trackId with it",
+    );
+  });
+
   it("unwraps a single target", async () => {
     const track = parseToolResult<ReadTrackResult>(
       await readTracks({ path: "t0" }),

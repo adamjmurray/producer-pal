@@ -82,7 +82,7 @@ export function readFanOut<A extends ReadTargetParams, T>(
     value: alias,
   });
 
-  refuseIndexBesideTarget(args, folded.path, options);
+  refuseIndexBesideTarget(args, folded, options);
 
   const targets = namedTargets(folded);
   const first = targets[0];
@@ -117,7 +117,7 @@ export function readFanOut<A extends ReadTargetParams, T>(
 /**
  * Refuse an index param sent beside the param that names the target on its own.
  * @param args - The call's args as the caller sent them
- * @param path - The folded `path` param
+ * @param folded - The call's targets, folded, with the names sent
  * @param options - What this tool reads, and the params it accepts
  * @param options.object - What this tool reads, singular
  * @param options.indexParams - The deprecated index params
@@ -126,15 +126,16 @@ export function readFanOut<A extends ReadTargetParams, T>(
  */
 function refuseIndexBesideTarget(
   args: TargetParams,
-  path: string | null | undefined,
+  folded: FoldedTargets,
   { object, indexParams = [], pathSpellings = [] }: FanOutOptions,
 ): void {
   const also = Object.fromEntries(
     indexParams.map((param) => [param, paramValue(args, param)]),
   );
 
-  for (const param of ["path", ...pathSpellings]) {
-    const value = param === "path" ? path : paramValue(args, param);
+  for (const param of [folded.pathParam, ...pathSpellings]) {
+    const value =
+      param === folded.pathParam ? folded.path : paramValue(args, param);
 
     refuseNamedTwice({ param, value, noun: object, also });
   }

@@ -160,6 +160,29 @@ describe("id lists", () => {
     },
   );
 
+  // Folding `ids` first must not make the second fold quote `id`.
+  it.each(ID_TOOLS.filter(([, , , , alias]) => alias !== "ids"))(
+    "%s names ids and its own spelling when both are sent",
+    async (...tool) => {
+      const [, call, base, , alias] = tool;
+
+      for (const [first, second] of [
+        ["ids", alias],
+        ["id", alias],
+      ]) {
+        expect(
+          await refusal(call, {
+            ...base,
+            [first as string]: "1",
+            [alias]: "2",
+          }),
+        ).toContain(
+          `${first} names the target on its own - don't send ${second} with it`,
+        );
+      }
+    },
+  );
+
   it("names select's id aliases as sent", async () => {
     mockNonExistentObjects();
 

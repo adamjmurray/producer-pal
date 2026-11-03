@@ -100,6 +100,8 @@ export function namedIdParam(
  * @param id - The `id` param
  * @param alias - The alias param
  * @param aliasLabel - The alias's name
+ * @param idLabel - The name `id` arrived under, when it is already a folded
+ *   alias (`ids`), so a refusal names what the caller sent
  * @returns The folded value and the name it came under
  * @throws Error when both name something
  */
@@ -107,8 +109,9 @@ export function foldedIdParam(
   id: string | null | undefined,
   alias: string | null | undefined,
   aliasLabel: string,
+  idLabel = "id",
 ): FoldedParam {
-  return foldedParam(id, "id", alias, aliasLabel);
+  return foldedParam(id, idLabel, alias, aliasLabel);
 }
 
 /**

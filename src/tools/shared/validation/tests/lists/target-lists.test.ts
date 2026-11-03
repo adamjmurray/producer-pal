@@ -59,6 +59,9 @@ describe("foldTargetParams", () => {
     expect(() =>
       foldTargetParams({ id: "1" }, { name: "clipId", value: "2" }),
     ).toThrow("don't send clipId with it");
+    expect(() =>
+      foldTargetParams({ ids: "1" }, { name: "clipId", value: "2" }),
+    ).toThrow("ids names the target on its own - don't send clipId with it");
   });
 });
 
