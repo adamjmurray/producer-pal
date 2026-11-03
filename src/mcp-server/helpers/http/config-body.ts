@@ -5,13 +5,22 @@
 
 import { z } from "zod";
 import { isNotation, NOTATIONS, type Notation } from "#src/shared/notation.ts";
+import { MAX_CONTEXT_CONTENT_LENGTH } from "#src/tools/constants.ts";
 import { validateTools } from "../../create-mcp-server.ts";
 
 // `null` is allowed on the two text fields: Max sends a bare null for an
 // emptied one. Booleans are strict: the string "false" is refused, not read as
 // true. Unknown keys are ignored.
 const configBodySchema = z.object({
-  projectContext: z.string().nullable().optional(),
+  // Capped like a ppal-context write, which also keeps it whole on its way to
+  // the device.
+  projectContext: z
+    .string()
+    .max(MAX_CONTEXT_CONTENT_LENGTH, {
+      message: `must be at most ${MAX_CONTEXT_CONTENT_LENGTH} characters`,
+    })
+    .nullable()
+    .optional(),
   sampleFolder: z.string().nullable().optional(),
   smallModelMode: z.boolean().optional(),
   jsonOutput: z.boolean().optional(),

@@ -12,7 +12,9 @@
  */
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { MAX_CONTEXT_CONTENT_LENGTH } from "#src/tools/constants.ts";
 import {
+  CONFIG_URL,
   extractToolResultText,
   getToolErrorMessage,
   parseToolResult,
@@ -64,6 +66,34 @@ describe("ppal-context (project scope)", () => {
     );
 
     expect(readResult.content).toBe("");
+  });
+
+  it("keeps the longest context the editor may save whole on the device", async () => {
+    // 3-byte characters: the longest allowed context, in bytes, must still
+    // reach the device in one piece.
+    const longest = `${"€".repeat(MAX_CONTEXT_CONTENT_LENGTH - 3)}END`;
+
+    await setConfig({ projectContext: longest });
+
+    const read = parseToolResult<ContentResult>(
+      await callProjectContextTool("read"),
+    );
+
+    expect(read.content).toBe(longest);
+
+    const refused = await fetch(CONFIG_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectContext: `${longest}!` }),
+    });
+
+    expect(refused.status).toBe(400);
+    expect(
+      parseToolResult<ContentResult>(await callProjectContextTool("read"))
+        .content,
+    ).toBe(longest);
+
+    await setConfig({ projectContext: "" });
   });
 
   it("writes content and round-trips through read", async () => {

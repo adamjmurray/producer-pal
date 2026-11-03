@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
+import { MAX_CONTEXT_CONTENT_LENGTH } from "#src/tools/constants.ts";
 import { parseConfigBody } from "../../helpers/http/config-body.ts";
 
 describe("parseConfigBody", () => {
@@ -36,6 +37,23 @@ describe("parseConfigBody", () => {
       jsonOutput: "must be a boolean",
       projectContext: "must be a string",
     });
+  });
+
+  it("caps projectContext like a ppal-context write", () => {
+    const longest = "é".repeat(MAX_CONTEXT_CONTENT_LENGTH);
+
+    expect(parseConfigBody({ projectContext: longest }, false).ok).toBe(true);
+
+    const result = parseConfigBody({ projectContext: `${longest}x` }, false);
+
+    expect(!result.ok && result.error.fields).toStrictEqual({
+      projectContext: `must be at most ${MAX_CONTEXT_CONTENT_LENGTH} characters`,
+    });
+  });
+
+  it("keeps the longest projectContext whole in one Max atom", () => {
+    // Max cuts an atom at 32,767 bytes; one UTF-16 unit is at most 3 bytes.
+    expect(MAX_CONTEXT_CONTENT_LENGTH * 3).toBeLessThanOrEqual(32_767);
   });
 
   it("refuses a non-boolean remoteScriptEnabled", () => {

@@ -4,11 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from "zod";
+import { MAX_CONTEXT_CONTENT_LENGTH } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-
-const MAX_CONTENT_LENGTH = 10_000;
 
 export const toolDefContext = defineTool("ppal-context", {
   title: "Context",
@@ -87,11 +86,11 @@ export const toolDefContext = defineTool("ppal-context", {
       },
     ),
 
-    content: param(boundedString(MAX_CONTENT_LENGTH).optional(), {
+    content: param(boundedString(MAX_CONTEXT_CONTENT_LENGTH).optional(), {
       default:
         "Text to write — project/global: the whole document; memory: the " +
-        `entry body (one fact). Max ${MAX_CONTENT_LENGTH} chars.`,
-      smallModel: `The full document text to write. Max ${MAX_CONTENT_LENGTH} chars.`,
+        `entry body (one fact). Max ${MAX_CONTEXT_CONTENT_LENGTH} chars.`,
+      smallModel: `The full document text to write. Max ${MAX_CONTEXT_CONTENT_LENGTH} chars.`,
     }),
 
     name: param(z.string().max(1000).optional(), {
