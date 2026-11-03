@@ -413,20 +413,20 @@ function standInRange(names) {
 
 const DEFAULT_LIMIT = 100;
 
-function readParams({ names, search, offset = 0, limit = DEFAULT_LIMIT }) {
+// `all` is a debug switch only ppal-plugin-host sends: it lists the stand-ins
+// too. A search is always just a name filter.
+function readParams({ names, search, all, offset = 0, limit = DEFAULT_LIMIT }) {
   loadNames();
 
   const wanted = names?.length ? new Set(names.map(String)) : null;
-  // Debug: "*" lists everything, stand-ins included.
-  const all = search === "*";
-  const needle = all ? null : search?.toLowerCase();
+  const needle = search?.toLowerCase();
   const matches = [];
 
   const [hideFrom, hideTo] = standInRange(state.names);
   const isStandIn = (i) => i >= hideFrom && i < hideTo;
 
   state.names.forEach((name, i) => {
-    if (wanted ? wanted.has(name) : all || !isStandIn(i)) {
+    if (wanted ? wanted.has(name) : all === true || !isStandIn(i)) {
       if (!needle || name.toLowerCase().includes(needle)) matches.push(i + 1);
     }
   });

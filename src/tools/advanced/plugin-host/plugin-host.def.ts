@@ -55,6 +55,10 @@ export const toolDefPluginHost = defineTool("ppal-plugin-host", {
       .string()
       .optional()
       .describe("For params: case-insensitive name match"),
+    all: z
+      .boolean()
+      .optional()
+      .describe("For params: also list the hidden MIDI stand-in params"),
     offset: z.coerce.number().int().min(0).optional().describe("For params"),
     limit: z.coerce
       .number()

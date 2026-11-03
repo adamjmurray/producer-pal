@@ -74,6 +74,13 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !HAS_SERUM)("hosted plug-ins", () => {
     });
   });
 
+  it("treats a paramSearch of * as plain text, never listing MIDI stand-ins", async () => {
+    const { path } = await hostOnNewTrack("Serum 2");
+    const device = await readDevice(path, "*");
+
+    expect(device.parameters ?? []).toStrictEqual([]);
+  });
+
   it("sets a param by its display text", async () => {
     const { path } = await hostOnNewTrack("Serum 2");
 

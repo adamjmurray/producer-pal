@@ -20,6 +20,7 @@ interface PluginHostArgs {
   plugin?: string;
   names?: string[];
   search?: string;
+  all?: boolean;
   offset?: number;
   limit?: number;
   params?: Array<{ index?: number; name?: string; value: number }>;
@@ -37,6 +38,7 @@ interface PluginHostArgs {
  * @param args.plugin - Plug-in to load, by the name Live's browser shows (load)
  * @param args.names - Parameter names to read (params)
  * @param args.search - Name filter (params)
+ * @param args.all - Also list the MIDI stand-in params (params)
  * @param args.offset - Matches to skip (params)
  * @param args.limit - Most matches to return (params)
  * @param args.params - Parameters to set (set)
@@ -52,6 +54,7 @@ export async function pluginHost({
   plugin,
   names,
   search,
+  all,
   offset,
   limit,
   params,
@@ -67,6 +70,7 @@ export async function pluginHost({
   const request = buildRequest(action, params, message, {
     names,
     search,
+    all,
     offset,
     limit,
     slot,
@@ -137,15 +141,15 @@ function buildRequest(
   message: string[] | undefined,
   query: Pick<
     PluginHostArgs,
-    "names" | "search" | "offset" | "limit" | "slot" | "name" | "index"
+    "names" | "search" | "all" | "offset" | "limit" | "slot" | "name" | "index"
   >,
 ): object {
   switch (action) {
     case "params": {
-      const { names, search, offset, limit } = query;
+      const { names, search, all, offset, limit } = query;
 
       // Unset fields drop out when the request is serialized.
-      return { names, search, offset, limit };
+      return { names, search, all, offset, limit };
     }
 
     case "map":

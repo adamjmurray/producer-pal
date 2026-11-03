@@ -62,6 +62,16 @@ describe("ppal-plugin-host", () => {
     await pending;
   });
 
+  it("sends `all` for params, to list the MIDI stand-ins", async () => {
+    const pending = pluginHost({ deviceId: "9", action: "params", all: true });
+
+    expect(sent().payload).toStrictEqual(
+      expect.objectContaining({ all: true }),
+    );
+    plugin_host_response(sent().requestId, '{"success":true,"params":[]}');
+    await pending;
+  });
+
   it("sends the params for set and returns the read-back", async () => {
     const params = [
       { name: "Cutoff", value: 0.5 },
