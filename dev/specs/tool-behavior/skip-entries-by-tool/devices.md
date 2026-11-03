@@ -182,10 +182,11 @@ Part of [Skip entries, tool by tool](README.md).
     the files are read and kept if they are for it (a rack counts for the device
     it is built around; an unreadable file or an unknown device counts as for
     it). Several files refuse, listing their absolute paths. One file loads only
-    when the browser's matches look like that file listed under several devices:
-    no two at the same browser path, all with the same path below their device
-    folder, and the file's path ending with it. Otherwise, and with no files
-    left, the browser's paths are listed.
+    when the browser's matches look like that rack listed under several devices
+    (only racks, `.adg`; a `.adv` is listed under its own device only, so
+    matches that are all `.adv` refuse): no two at the same browser path, all
+    with the same path below their device folder, and the file's path ending
+    with it. Otherwise, and with no files left, the browser's paths are listed.
   - **No database.** The browser's match loads, or its paths are listed for
     several; with no match, today's "no preset" error stands.
   - update-device asks for the target's presets first and takes any preset only

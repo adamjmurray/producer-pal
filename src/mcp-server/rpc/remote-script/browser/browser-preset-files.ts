@@ -31,6 +31,9 @@ import {
 import { presetFileIsFor } from "./preset-file-device.ts";
 import { RemoteScriptTimeout } from "../remote-script-errors.ts";
 
+/** A rack file, the only kind the browser lists under several devices. */
+const RACK_FILE = /\.adg$/i;
+
 /** The kind of device each remote script `type` holds presets for. */
 const SCOPE_KINDS: Record<string, LibraryDeviceKind> = {
   instrument: "instrument",
@@ -262,11 +265,12 @@ async function keepFilesFor(
 }
 
 /**
- * Whether the browser's matches are one file listed under several devices:
- * each device folder lists it once, and below that folder every match has the
- * same path, which the file's path ends with. The browser gives no file
- * identity, so two matches at one path, or at different paths, may be
- * different files.
+ * Whether the browser's matches are one rack listed under several devices:
+ * only racks (.adg) are listed under each device they are built around, a
+ * device preset (.adv) sits under its own device only. Each device folder lists
+ * it once, and below that folder every match has the same path, which the
+ * file's path ends with. The browser gives no file identity, so two matches at
+ * one path, or at different paths, may be different files.
  * @param matches - The browser's matches
  * @param file - The library file's absolute path
  * @returns True when the file accounts for every match
@@ -280,6 +284,7 @@ function isListedUnderEachDevice(matches: Candidate[], file: string): boolean {
 
   return (
     tail !== "" &&
+    matches.every(({ path }) => RACK_FILE.test(path)) &&
     new Set(full).size === full.length &&
     tails.every((parts) => parts.join("/") === tail) &&
     comparable(file).endsWith(`/${tail}`)
@@ -301,10 +306,11 @@ function endsWith(file: string, tail: string): boolean {
 
 /**
  * @param path - A browser or file path
- * @returns The path with forward slashes, in lower case
+ * @returns The path with forward slashes, in lower case and composed form
+ *   (macOS can store file names decomposed)
  */
 function comparable(path: string): string {
-  return path.replaceAll("\\", "/").toLowerCase();
+  return path.normalize("NFC").replaceAll("\\", "/").toLowerCase();
 }
 
 /**

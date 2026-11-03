@@ -130,6 +130,28 @@ async function lookUp(
 }
 
 /**
+ * Look a preset up in a browser that lists the given instrument paths.
+ * @param preset - The preset name
+ * @param paths - The browser paths it lists, each ending with a file name
+ * @returns The resolution
+ */
+async function lookUpListed(
+  preset: string,
+  paths: string[],
+): Promise<Awaited<ReturnType<typeof lookUpBrowserPreset>>> {
+  fake = await startFakeRemoteScript(({ query }) => ({
+    body: {
+      items:
+        query.type === "instrument"
+          ? paths.map((path) => ({ name: path.split("/").at(-1), path }))
+          : [],
+    },
+  }));
+
+  return await lookUpBrowserPreset(preset, undefined, Date.now() + 60_000);
+}
+
+/**
  * Look Electric Bass up in a browser that lists the given instrument paths.
  * @param paths - The browser paths it lists
  * @returns The resolution
@@ -137,20 +159,7 @@ async function lookUp(
 async function lookUpBass(
   paths: string[],
 ): Promise<Awaited<ReturnType<typeof lookUpBrowserPreset>>> {
-  fake = await startFakeRemoteScript(({ query }) => ({
-    body: {
-      items:
-        query.type === "instrument"
-          ? paths.map((path) => ({ name: "Electric Bass.adg", path }))
-          : [],
-    },
-  }));
-
-  return await lookUpBrowserPreset(
-    "Electric Bass",
-    undefined,
-    Date.now() + 60_000,
-  );
+  return await lookUpListed("Electric Bass", paths);
 }
 
 describe("lookUpBrowserPreset — a name the browser lists several times", () => {
@@ -191,6 +200,38 @@ describe("lookUpBrowserPreset — a name the browser lists several times", () =>
     expect(await lookUpBass(BASS_PATHS)).toStrictEqual({
       available: true,
       item: { type: "file", path, name: "electric bass.ADG" },
+    });
+  });
+
+  it("matches a decomposed file path to the browser's composed one", async () => {
+    const path = "/Live/racks/Caf\u0065\u0301/Pad.adg";
+
+    vi.mocked(findPresetFiles).mockResolvedValue([{ name: "Pad.adg", path }]);
+
+    expect(
+      await lookUpListed("Pad", [
+        "Instrument Rack/Caf\u00e9/Pad.adg",
+        "Sampler/Caf\u00e9/Pad.adg",
+      ]),
+    ).toStrictEqual({
+      available: true,
+      item: { type: "file", path, name: "Pad.adg" },
+    });
+  });
+
+  it("refuses device presets of one name under different devices, though the library has only one of them", async () => {
+    // Only racks are listed under several devices; .adv files are not.
+    vi.mocked(findPresetFiles).mockResolvedValue([
+      { name: "Init.adv", path: "/Live/presets/Operator/Init.adv" },
+    ]);
+
+    expect(
+      await lookUpListed("Init", ["Operator/Init.adv", "Wavetable/Init.adv"]),
+    ).toStrictEqual({
+      available: true,
+      error:
+        'preset "Init" matches 2 presets; pass one of these as preset: ' +
+        '"Instruments/Operator/Init.adv", "Instruments/Wavetable/Init.adv"',
     });
   });
 
