@@ -17,6 +17,10 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 import {
+  LIVE_WITH_CLIP_SCALE,
+  registerLiveVersion,
+} from "#src/tools/shared/schema/scale/tests/scale-test-helpers.ts";
+import {
   CLIPS_ONLY,
   duplicateToLanes,
   type LaneCopyEntry,
@@ -36,6 +40,9 @@ import {
 async function copyToLanes<T>(args: Record<string, unknown>): Promise<T> {
   return await duplicateToLanes<T>({ id: "src_track", ...args });
 }
+
+/** Clip properties for a source clip with a scale of its own. */
+const DORIAN = { scale_mode: 1, root_note: 2, scale_name: "Dorian" };
 
 describe("duplicate track to take lane", () => {
   beforeEach(() => {
@@ -88,6 +95,31 @@ describe("duplicate track to take lane", () => {
     const copy = registerMockObject(result.clips[0]?.id as string, {});
 
     expect(copy.set).toHaveBeenCalledWith("name", "Take B");
+  });
+
+  it("gives each copy the source clip's own scale", async () => {
+    registerLiveVersion(LIVE_WITH_CLIP_SCALE);
+    registerMainLaneSource([0], {}, DORIAN);
+    registerTakeLaneTrack({ trackIndex: 1 });
+
+    const result = await copyToLanes<LaneCopyEntry>({ toPath: "t1/l0" });
+    const copy = registerMockObject(result.clips[0]?.id as string, {});
+
+    expect(copy.set).toHaveBeenCalledWith("root_note", 2);
+    expect(copy.set).toHaveBeenCalledWith("scale_name", "Dorian");
+    expect(copy.set).toHaveBeenCalledWith("scale_mode", 1);
+  });
+
+  // The clips and their notes are already there, so the copy landed.
+  it("lists the scale among the losses, and still lands the copies, when the scale write throws", async () => {
+    registerLiveVersion(LIVE_WITH_CLIP_SCALE);
+    registerMainLaneSource([0], {}, DORIAN);
+    registerTakeLaneTrack({ trackIndex: 1, scaleWriteFails: true });
+
+    const result = await copyToLanes<LaneCopyEntry>({ toPath: "t1/l0" });
+
+    expect(result.detail).toBe(`${CLIPS_ONLY}; scale isn't copied`);
+    expect(result.clips).toHaveLength(1);
   });
 
   it("appends a lane per l+ and names the one takeLaneName asks for", async () => {

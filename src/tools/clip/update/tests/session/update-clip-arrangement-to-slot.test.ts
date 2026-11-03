@@ -18,6 +18,12 @@ import {
   type ClipReasons,
   newClipReasons,
 } from "../../helpers/entries/clip-reasons.ts";
+import {
+  LIVE_WITH_CLIP_SCALE,
+  registerLiveVersion,
+  type ScaleProps,
+} from "#src/tools/shared/schema/scale/tests/scale-test-helpers.ts";
+import { failOnSet } from "#src/tools/shared/tests/write-conformance/write-conformance-fixtures.ts";
 import { joinedClipReason } from "../../helpers/update-clip-test-helpers.ts";
 
 /** What the clip had to say about the move the last runMove ran. */
@@ -86,6 +92,10 @@ interface MoveOptions {
   scratchDeleteFails?: boolean;
   /** Live refuses to delete the arrangement source after the move landed. */
   sourceDeleteFails?: boolean;
+  /** The scale the source holds, for the copy to take. */
+  scale?: Partial<ScaleProps>;
+  /** Live creates the copy, then writing its scale_mode throws. */
+  scaleWriteFails?: boolean;
 }
 
 /**
@@ -137,6 +147,7 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
       signature_denominator: 4,
       name: "Verse",
       color: 16711680,
+      ...opts.scale,
     },
     methods: { get_notes_extended: () => JSON.stringify({ notes: NOTES }) },
   });
@@ -226,7 +237,7 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
 
   /** Registers the clip a successful create lands at the destination. */
   function registerDestClip(): void {
-    registerMockObject(NEW_ID, {
+    const clip = registerMockObject(NEW_ID, {
       path: newClipPath,
       type: "Clip",
       ...(incompleteCreate && {
@@ -237,6 +248,10 @@ function runMove(opts: MoveOptions = {}): ClipResult[] {
         },
       }),
     });
+
+    if (opts.scaleWriteFails) {
+      failOnSet(clip, "scale_mode");
+    }
   }
 
   /**
@@ -400,6 +415,33 @@ describe("handleArrangementToSlotMove", () => {
       "create_audio_clip",
       "/samples/loop.wav",
     );
+  });
+
+  it("gives the re-created clip the source's own scale", () => {
+    registerLiveVersion(LIVE_WITH_CLIP_SCALE);
+    runMove({ scale: { scale_mode: 1, root_note: 2, scale_name: "Dorian" } });
+
+    const copy = lookupMockObject(NEW_ID);
+
+    expect(copy?.set).toHaveBeenCalledWith("root_note", 2);
+    expect(copy?.set).toHaveBeenCalledWith("scale_name", "Dorian");
+    expect(copy?.set).toHaveBeenCalledWith("scale_mode", 1);
+    expect(movedReason()).toBe(`re-created at t${DEST_TRACK}/s${DEST_SCENE}`);
+  });
+
+  // The clip and its notes are already there, so the move landed.
+  it("still reports the move, naming the scale, when the scale write throws", () => {
+    registerLiveVersion(LIVE_WITH_CLIP_SCALE);
+
+    const updatedClips = runMove({
+      scale: { scale_mode: 1, root_note: 2, scale_name: "Dorian" },
+      scaleWriteFails: true,
+    });
+
+    expect(movedReason()).toBe(
+      `re-created at t${DEST_TRACK}/s${DEST_SCENE} (scale isn't copied)`,
+    );
+    expect(updatedClips[0]?.id).toBe(NEW_ID);
   });
 
   it("says what the re-created clip loses", () => {

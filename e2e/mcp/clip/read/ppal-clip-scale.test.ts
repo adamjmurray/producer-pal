@@ -299,6 +299,102 @@ describe("ppal-clip-scale", () => {
     });
   });
 
+  // Live can't copy these, so the clip is rebuilt from its notes. A rebuilt clip
+  // starts with the Live Set's scale, so its own has to be put back.
+  describe("a clip that is re-created", () => {
+    /**
+     * Make an arrangement clip with its own scale.
+     * @param position - Where it starts, in bar|beat
+     * @param scale - Its scale, "" for none
+     * @returns The clip's id
+     */
+    async function makeScaledArrangementClip(
+      position: string,
+      scale: string,
+    ): Promise<string> {
+      const id = await makeArrangementClip(position);
+
+      await updateClip(ctx.client!, id, { scale });
+
+      return id;
+    }
+
+    /**
+     * Duplicate a clip to a path.
+     * @param id - The source clip
+     * @param toPath - Where the copy goes
+     * @returns The copy's id
+     */
+    async function duplicateTo(id: string, toPath: string): Promise<string> {
+      const result = parseToolResult<{ id: string }>(
+        await ctx.client!.callTool({
+          name: "ppal-duplicate",
+          arguments: { type: "clip", id, toPath },
+        }),
+      );
+
+      await sleep(100);
+
+      return result.id;
+    }
+
+    it("keeps its scale when moved from the arrangement to a slot", async () => {
+      const id = await makeScaledArrangementClip("61|1", "D Dorian");
+      const { data } = await updateClip(ctx.client!, id, {
+        toPath: `t${EMPTY_MIDI_TRACK}/s19`,
+      });
+
+      expect(data.path).toBe(`t${EMPTY_MIDI_TRACK}/s19`);
+      expect(data.detail).toContain("re-created");
+
+      const moved = await readClipFully(ctx.client!, { id: data.id });
+
+      expect(moved.scale).toBe("D Dorian");
+      expect(moved.scalePitches).toBe("D,E,F,G,A,B,C");
+    });
+
+    it("keeps a scale that is off when moved from the arrangement to a slot", async () => {
+      const id = await makeScaledArrangementClip("65|1", "");
+      const { data } = await updateClip(ctx.client!, id, {
+        toPath: `t${EMPTY_MIDI_TRACK}/s20`,
+      });
+
+      expect((await readClipFully(ctx.client!, { id: data.id })).scale).toBe(
+        "",
+      );
+    });
+
+    it("keeps its scale when moved from the arrangement to a take lane", async () => {
+      const id = await makeScaledArrangementClip("69|1", "E Minor");
+      const { data } = await updateClip(ctx.client!, id, {
+        toPath: `t${EMPTY_MIDI_TRACK}/l0[73|1]`,
+      });
+
+      expect(data.path).toBe(`t${EMPTY_MIDI_TRACK}/l0[73|1]`);
+      expect((await readClipFully(ctx.client!, { id: data.id })).scale).toBe(
+        "E Minor",
+      );
+    });
+
+    it("keeps its scale when duplicated from the arrangement to a slot", async () => {
+      const id = await makeScaledArrangementClip("77|1", "F Lydian");
+      const copy = await duplicateTo(id, `t${EMPTY_MIDI_TRACK}/s21`);
+
+      expect((await readClipFully(ctx.client!, { id: copy })).scale).toBe(
+        "F Lydian",
+      );
+    });
+
+    it("keeps its scale when duplicated from the arrangement to a take lane", async () => {
+      const id = await makeScaledArrangementClip("81|1", "G Mixolydian");
+      const copy = await duplicateTo(id, `t${EMPTY_MIDI_TRACK}/l0[85|1]`);
+
+      expect((await readClipFully(ctx.client!, { id: copy })).scale).toBe(
+        "G Mixolydian",
+      );
+    });
+  });
+
   describe("ppal-create-clip", () => {
     it("makes a clip with the scale asked for", async () => {
       const result = parseToolResult<CreateClipResult>(

@@ -63,6 +63,8 @@ export interface TakeLaneTrackOptions {
   clipCreationFails?: boolean;
   /** Live creates a real clip, then its add_new_notes throws — a post-creation failure. */
   postCreateFails?: boolean;
+  /** Live creates a real clip, then writing its scale_mode throws. */
+  scaleWriteFails?: boolean;
   /** 0 makes it an audio track, which an audio source can be copied to */
   hasMidiInput?: number;
   /** 1 makes it a group track, which has no take lanes */
@@ -117,6 +119,7 @@ export function registerTakeLaneTrack(
     clipLength = 4,
     clipCreationFails = false,
     postCreateFails = false,
+    scaleWriteFails = false,
     hasMidiInput = 1,
     isFoldable = 0,
     initialLaneClips = [],
@@ -149,6 +152,7 @@ export function registerTakeLaneTrack(
       clipLength,
       clipCreationFails,
       postCreateFails,
+      scaleWriteFails,
     };
     const createClip = (
       kind: string,
@@ -196,6 +200,7 @@ export function registerTakeLaneTrack(
     clipLength,
     clipCreationFails,
     postCreateFails,
+    scaleWriteFails,
   };
 
   return registerMockObject(`tl_track_${trackIndex}`, {
@@ -230,6 +235,7 @@ interface ClipOwner {
   clipLength: number;
   clipCreationFails: boolean;
   postCreateFails: boolean;
+  scaleWriteFails: boolean;
 }
 
 /**
@@ -260,7 +266,7 @@ function createOwnedClip(
     typeof lengthBeats === "number" ? lengthBeats : owner.clipLength;
 
   clearCoveredClips(owner, start, start + length);
-  registerMockObject(clipId, {
+  const clip = registerMockObject(clipId, {
     path: owner.pathFor(owner.clips.length),
     type: "Clip",
     properties: {
@@ -278,6 +284,15 @@ function createOwnedClip(
       },
     }),
   });
+
+  if (owner.scaleWriteFails) {
+    clip.set.mockImplementation((property: string) => {
+      if (property === "scale_mode") {
+        throw new Error("scale failed");
+      }
+    });
+  }
+
   owner.clips.push(clipId);
   owner.props.arrangement_clips = children(...owner.clips);
 

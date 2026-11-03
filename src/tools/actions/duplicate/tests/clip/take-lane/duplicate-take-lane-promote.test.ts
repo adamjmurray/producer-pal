@@ -17,6 +17,10 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import "../../duplicate-mocks-test-helpers.ts";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
+import {
+  LIVE_WITH_CLIP_SCALE,
+  registerLiveVersion,
+} from "#src/tools/shared/schema/scale/tests/scale-test-helpers.ts";
 
 // Capture take lane warnings
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -32,6 +36,9 @@ import {
   SOURCE_NOTE,
 } from "#src/tools/actions/duplicate/helpers/duplicate-take-lane-test-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
+
+/** A take-lane source with a scale of its own. */
+const DORIAN = { scale_mode: 1, root_note: 2, scale_name: "Dorian" };
 
 describe("promoting a take-lane clip", () => {
   // Promotion goes through the same re-create as a lane write, because
@@ -105,6 +112,48 @@ describe("promoting a take-lane clip", () => {
       ),
     );
     expect(consoleMock.emitWarning).not.toHaveBeenCalled();
+  });
+
+  it("gives the promoted clip the source's own scale", async () => {
+    registerLiveVersion(LIVE_WITH_CLIP_SCALE);
+    registerLiveSet();
+    registerTakeLaneTrack({ initialLanes: 1 });
+    registerTakeLaneSource(DORIAN);
+
+    await duplicate({
+      type: "clip",
+      id: "tl_src_clip",
+      arrangementStart: "5|1",
+    });
+
+    const promoted = lookupMockObject(
+      undefined,
+      livePath.track(0).arrangementClip(0),
+    );
+
+    expect(promoted?.set).toHaveBeenCalledWith("root_note", 2);
+    expect(promoted?.set).toHaveBeenCalledWith("scale_name", "Dorian");
+    expect(promoted?.set).toHaveBeenCalledWith("scale_mode", 1);
+  });
+
+  // The clip and its notes are already there, so the copy landed.
+  it("still reports each promoted copy, naming the scale, when the scale write throws", async () => {
+    registerLiveVersion(LIVE_WITH_CLIP_SCALE);
+    registerLiveSet();
+    registerTakeLaneTrack({ initialLanes: 1, scaleWriteFails: true });
+    registerTakeLaneSource(DORIAN);
+
+    const result = (await duplicate({
+      type: "clip",
+      id: "tl_src_clip",
+      arrangementStart: "1|1,2|1",
+    })) as Array<{ id: string; detail?: string }>;
+
+    expect(result.map((entry) => entry.detail)).toStrictEqual(
+      Array.from({ length: 2 }).fill(
+        "promoted to the main lane by re-creating it (scale isn't copied)",
+      ),
+    );
   });
 
   // Promoting re-creates the clip, which an audio clip with no sample file has
