@@ -189,7 +189,7 @@
     "oxlint": "1.89.0",
     "oxlint-tsgolint": "7.0.2005",
     "peggy": "5.1.1",
-    "rolldown": "1.2.15",
+    "rolldown": "1.2.16",
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "undici": "8.12.3",
     "vite": "8.3.5",
