@@ -131,6 +131,13 @@ describe("resolvePlugin by format", () => {
     );
     addBundle("Serum2", plist([["Xfer Records: Serum 2 FX", "aufx"]]));
     addBundle("Binary", Buffer.from("bplist00\u0000"));
+    addBundle("A-OtherCo", plist([["OtherCo: Reverb", "aumu"]]));
+    addBundle("B-Acme", plist([["Acme: Reverb", "aufx"]]));
+    addBundle("Acmetone", plist([["Acmetone: Flanger", "aufx"]]));
+    addBundle("AcmeLabs", plist([["Acme Labs: Flanger", "aumu"]]));
+    addBundle("Acme", plist([["Acme: Echo", "aufx"]]));
+    addBundle("AcmeAudio", plist([["Acme Audio: Echo", "aufx"]]));
+    addBundle("SoloCo", plist([["Solo Co: Solo", "aufx"]]));
 
     appDir = join(dir, "Applications");
     const appex = join(appDir, "Synth.app/Contents/PlugIns/Synth.appex");
@@ -311,6 +318,64 @@ describe("resolvePlugin by format", () => {
       await expect(resolvePlugin({ name: "Dupe" }, [auDir])).rejects.toThrow(
         "(vendors: unknown, B Co)",
       );
+    });
+
+    describe("when several vendors have a bundle of the name", () => {
+      /**
+       * @param name - The AU's name
+       * @param vendor - The vendor folder Live's browser shows
+       * @returns The bundle and kind picked
+       */
+      async function picked(name: string, vendor: string | null) {
+        browserLists(au(name, vendor));
+
+        const { file, category } = await resolvePlugin({ name }, [auDir]);
+
+        return { file: file.split("/").pop(), category };
+      }
+
+      it("takes the bundle of the vendor the browser shows", async () => {
+        await expect(picked("Reverb", "OtherCo")).resolves.toStrictEqual({
+          file: "A-OtherCo.component",
+          category: "instrument",
+        });
+      });
+
+      it("matches the browser's vendor loosely at a word boundary", async () => {
+        await expect(picked("Reverb", "Acme Audio")).resolves.toStrictEqual({
+          file: "B-Acme.component",
+          category: "audiofx",
+        });
+        await expect(picked("Flanger", "Acme")).resolves.toStrictEqual({
+          file: "AcmeLabs.component",
+          category: "instrument",
+        });
+      });
+
+      it("uses the only vendor there is, whatever the browser calls it", async () => {
+        await expect(picked("Solo", "Whoever")).resolves.toStrictEqual({
+          file: "SoloCo.component",
+          category: "audiofx",
+        });
+      });
+
+      it("refuses when no vendor matches", async () => {
+        await expect(picked("Reverb", "Nobody")).rejects.toThrow(
+          /^More than one AU plug-in is named "Reverb" \(vendors: (OtherCo, Acme|Acme, OtherCo)\)$/,
+        );
+      });
+
+      it("refuses when the browser has no vendor", async () => {
+        await expect(picked("Reverb", null)).rejects.toThrow(
+          /^More than one AU plug-in is named "Reverb"/,
+        );
+      });
+
+      it("refuses when several vendors match loosely", async () => {
+        await expect(picked("Echo", "Acme Audio Group")).rejects.toThrow(
+          /^More than one AU plug-in is named "Echo" \(vendors: (Acme, Acme Audio|Acme Audio, Acme)\)$/,
+        );
+      });
     });
 
     it("counts one AU installed in two folders once", async () => {

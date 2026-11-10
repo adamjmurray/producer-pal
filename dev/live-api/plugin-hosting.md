@@ -116,7 +116,12 @@ Set's restore has run, from the same sources as `info`'s `plugin`.
   `/Library/Audio/Plug-Ins/Components`, the same under `~`, and
   `/System/Library/Components` (Apple's AUs, e.g. `CoreAudio.component`). A
   binary plist, or an AU with no matching entry, is "can't tell". Plists are
-  read only when no VST3 matched. AU presets aren't supported.
+  read only when no VST3 matched. Bundles of other vendors share names, so the
+  bundle is picked by vendor: the browser's vendor folder exactly, else the only
+  vendor there is, else the one vendor matching it loosely (one name starts with
+  the other at a word boundary: "Acme Audio" ~ "Acme"). Anything else is refused
+  naming the bundles' vendors, never another vendor's bundle. AU presets aren't
+  supported.
 - **AUv3 can't be hosted.** `vst~` loads nothing for one, under any name
   (`plug_au "Audulus 4 FX"`, with the vendor, `C74_AU:/…`, the `juce_id`
   `AudioUnit:/aumf,adfx,ADLS`), even after `scan 2` and seconds of waiting,

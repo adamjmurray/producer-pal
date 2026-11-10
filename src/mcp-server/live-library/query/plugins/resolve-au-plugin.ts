@@ -67,6 +67,7 @@ export async function resolveAuPlugin(
       samePluginName(candidate.name, listed.name),
     ),
     listed.vendor,
+    wanted,
   );
 
   if (component == null) {
@@ -103,18 +104,94 @@ export async function resolveAuPlugin(
 }
 
 /**
+ * Choose among the installed bundles with the plug-in's name, never taking
+ * another vendor's. In order: the browser's vendor exactly; the only vendor
+ * there is; the one vendor that matches loosely (Live's folder "Acme Audio",
+ * the plist's "Acme").
+ *
  * @param components - Bundle entries with the right name
  * @param vendor - The vendor folder Live's browser shows, if any
- * @returns The entry of that vendor, else the first
+ * @param wanted - The name asked for
+ * @returns The entry to use, or undefined when there are none
+ * @throws When the vendor can't pick one of several vendors' bundles
  */
 function pickComponent(
   components: AuComponent[],
   vendor: string | null,
+  wanted: string,
 ): AuComponent | undefined {
-  const wanted = vendor?.trim().toLowerCase();
+  const browserVendor = fold(vendor);
+  const exact = components.find((item) => fold(item.vendor) === browserVendor);
+
+  if (exact != null || components.length === 0) {
+    return exact;
+  }
+
+  if (distinctVendors(components).length === 1) {
+    return components[0];
+  }
+
+  const loose = components.filter((item) =>
+    looselyMatches(browserVendor, fold(item.vendor)),
+  );
+
+  if (distinctVendors(loose).length === 1) {
+    return loose[0];
+  }
+
+  const names = distinctVendors(components).map(
+    (item) => item.vendor ?? "unknown",
+  );
+
+  throw new Error(
+    `More than one AU plug-in is named "${wanted}" (vendors: ${names.join(", ")})`,
+  );
+}
+
+/**
+ * @param vendor - A vendor name
+ * @returns The name in the form vendors are compared in; undefined for none
+ */
+function fold(vendor: string | null | undefined): string | undefined {
+  return vendor?.trim().toLowerCase();
+}
+
+/**
+ * @param components - Bundle entries
+ * @returns One entry per vendor, in order
+ */
+function distinctVendors(components: AuComponent[]): AuComponent[] {
+  const seen = new Set<string | undefined>();
+
+  return components.filter((item) => {
+    const key = fold(item.vendor);
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+
+    return true;
+  });
+}
+
+/**
+ * @param a - A folded vendor name
+ * @param b - Another
+ * @returns Whether one starts with the other at a word boundary: "acme audio"
+ *   and "acme" do, "acme" and "acmetone" don't
+ */
+function looselyMatches(a: string | undefined, b: string | undefined): boolean {
+  if (a == null || b == null || a === "" || b === "") {
+    return false;
+  }
+
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
 
   return (
-    components.find((item) => item.vendor?.trim().toLowerCase() === wanted) ??
-    components[0]
+    long.startsWith(short) &&
+    (long.length === short.length ||
+      /^[^\p{L}\p{N}]/u.test(long.slice(short.length)))
   );
 }
