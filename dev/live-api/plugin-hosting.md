@@ -50,8 +50,8 @@ No sockets or ports: named Max `send`/`receive` inside Live's one Max instance.
 Ops: `info`, `load {format, file, sub?, name, synth}` (see Loading),
 `params {names | search, offset, limit}`,
 `set {params: [{index | name, value}]}`,
-`write {params: [{index | name, text?, number?}]}` (see Setting by display
-text), and debug-only `raw {message}` (send `vst~` anything). Values are
+`write {params: [{index | name, text?, number?, bare?}]}` (see Setting by
+display text), and debug-only `raw {message}` (send `vst~` anything). Values are
 `vst~`'s normalized 0–1, with the plug-in's own display text read back (e.g.
 `" 30% [-17.9 dB]"`, `"1/16 dot"`).
 
@@ -168,11 +168,14 @@ Set's restore has run, from the same sources as `info`'s `plugin`.
 shows. A sample whose text matches (ignoring case and spaces; or the text in
 brackets, as in `[-17.9 dB]`) wins. Otherwise, given a number, it bisects
 between the two samples that bracket it, comparing the leading number of the
-text (`kHz` and `s` scaled to Hz and ms), and keeps the closest. If nothing
-matches, it puts the param back and says what the param does show. One request
-covers a whole `params` list. It resolves names exactly, then ignoring case and
-padding; a name that matches more than one param is refused; two entries
-reaching one param write the last.
+text (`kHz` and `s` scaled to Hz and ms), and keeps the closest. `number` is
+already in Hz or ms; with `bare` (the text had no unit) it is in the unit the
+param showed before the search, so the wrapper scales it by that (1000 for kHz
+or s) and answers with the `scale` it used. If nothing matches, it puts the
+param back and says what the param does show. One request covers a whole
+`params` list. It resolves names exactly, then ignoring case and padding; a name
+that matches more than one param is refused; two entries reaching one param
+write the last.
 
 ### Naming the plug-in
 

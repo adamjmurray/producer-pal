@@ -138,7 +138,7 @@ describe("updateDevice hosted plug-in params", () => {
         deviceId: "device-123",
         op: "write",
         params: [
-          { name: "Mix", text: "75", number: 75 },
+          { name: "Mix", text: "75", number: 75, bare: true },
           { index: 5, text: "1/16" },
         ],
       },

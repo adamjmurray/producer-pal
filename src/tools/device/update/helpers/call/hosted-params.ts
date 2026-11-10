@@ -61,7 +61,14 @@ interface HostedCall {
 
 /** What the wrapper answers for one param. */
 type WrapperResult =
-  | { ok: true; index: number; name: string; display?: string }
+  | {
+      ok: true;
+      index: number;
+      name: string;
+      display?: string;
+      /** What a bare number was multiplied by to reach Hz or ms (kHz, s) */
+      scale?: number;
+    }
   | {
       ok: false;
       kind: string;
@@ -178,7 +185,9 @@ function outOfTime(deadline: number | null | undefined): string | null {
 
 /**
  * What the wrapper is asked for one entry: the param, and the value as text and,
- * when it reads as one, a number.
+ * when it reads as one, a number in Hz or ms. A number with no unit is flagged
+ * `bare`: the wrapper reads it in the unit the param shows (3 is 3 kHz on a
+ * param reading "2.50 kHz"), which only it can see.
  * @param item - The entry sent
  * @param item.entry - The entry
  * @param item.key - The name or id as the call spelled it
@@ -189,11 +198,13 @@ function wrapperEntry({ entry, key, byId }: SentEntry): object {
   const text = entry.value.trim();
   const value = normalizeParamValue(text, undefined, key);
   const index = byId ? parseHostedParamId(key) : null;
+  const bare = text !== "" && Number.isFinite(Number(text));
 
   return {
     ...(index == null ? { name: key } : { index }),
     text,
     ...(typeof value === "number" && { number: value }),
+    ...(bare && { bare }),
   };
 }
 
@@ -312,11 +323,12 @@ function failureReason(
  * @param result.index - The plug-in's number for the param
  * @param result.name - The param's name
  * @param result.display - What the plug-in shows for the value
+ * @param result.scale - What the wrapper multiplied a bare number by (kHz, s)
  * @returns The outcome
  */
 function landed(
   entry: ParamEntry,
-  result: { index: number; name: string; display?: string },
+  result: { index: number; name: string; display?: string; scale?: number },
 ): ParamOutcome {
   const { index } = result;
   const name = result.name.trim();
@@ -324,7 +336,9 @@ function landed(
   const shown = (result.display ?? "").trim();
   const asked = entry.value.trim();
   const requested =
-    asked !== "" && Number.isFinite(Number(asked)) ? Number(asked) : null;
+    asked !== "" && Number.isFinite(Number(asked))
+      ? Number(asked) * (result.scale ?? 1)
+      : null;
   const read = parseLabel(shown).value;
   const same =
     requested != null &&

@@ -43,18 +43,20 @@ Part of [Skip entries, tool by tool](README.md).
   own params by name or `h<number>` id, in the units the plug-in displays; the
   whole list is one request to the wrapper, ahead of the target's other writes.
   The wrapper finds the value that displays as asked, so a number or the
-  plug-in's text works. Entries answer as any param's do: `{ id, name }` for a
-  bare number that displays as asked, otherwise the display text as `value`
-  (with a `detail` when a bare number landed elsewhere, such as a clamp), and
-  always the text when text was sent. `ok: false` says why: a Live param id (not
-  an `h` id) is refused unsent; no such param (`not found on <target>`); a name
-  more than one param has lists the ids and asks for an `id`; no value displays
-  as asked (`not set:` plus what it does show), and the param is left as it was.
-  Two entries reaching one param, by name and by id, write the last. A wrapper
-  that doesn't answer may have written: the entries say `may have changed` and
-  the hosted devices after it say they weren't tried. A list too big for one
-  request (a few hundred entries; Max cuts a message near 30 KB) is refused
-  unsent, each entry
+  plug-in's text works. A bare number is in the unit the param shows when the
+  write starts (3 is 3 kHz on a param reading `2.50 kHz`, 0.8 is 0.8 s on
+  `0.50 s`); a number with a unit (`3000 Hz`, `800 ms`) is as written. Entries
+  answer as any param's do: `{ id, name }` for a bare number that displays as
+  asked, otherwise the display text as `value` (with a `detail` when a bare
+  number landed elsewhere, such as a clamp), and always the text when text was
+  sent. `ok: false` says why: a Live param id (not an `h` id) is refused unsent;
+  no such param (`not found on <target>`); a name more than one param has lists
+  the ids and asks for an `id`; no value displays as asked (`not set:` plus what
+  it does show), and the param is left as it was. Two entries reaching one
+  param, by name and by id, write the last. A wrapper that doesn't answer may
+  have written: the entries say `may have changed` and the hosted devices after
+  it say they weren't tried. A list too big for one request (a few hundred
+  entries; Max cuts a message near 30 KB) is refused unsent, each entry
   `not set: too large for one call; split the params across calls`: nothing
   changed, so it never says `may have changed` and the devices after it are not
   stopped by it. create-device's `params` follow the same rule: the device is

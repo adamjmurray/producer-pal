@@ -927,8 +927,11 @@ function setParams(changes) {
 // turn a 0-1 value into text only by setting it, so each param is searched:
 // sample the range, take the value whose text matches, else bisect on the
 // number it shows. A param nothing matches goes back to where it was.
-// Entry: {index | name, text?, number?}. Result per entry:
-// {ok, index, name, value, display}
+// Entry: {index | name, text?, number?, bare?}. `number` is in the units
+// Producer Pal compares in (Hz, ms). `bare` says the text had no unit, so the
+// number is in the unit the param shows now: 3 on "2.50 kHz" means 3 kHz.
+// Result per entry: {ok, index, name, value, display, scale?}, where `scale`
+// is what a bare number was multiplied by to reach the compare units.
 // | {ok: false, kind: "missing" | "ambiguous" | "nomatch", error, matches?}
 // | {superseded: <position of the entry that replaces it>, index, name}.
 const SAMPLES = 128;
@@ -1014,7 +1017,7 @@ function indexesOf(test) {
 function writeOne(target, entry) {
   const { index } = target;
   const original = readParam(index);
-  const found = searchValue(index, entry);
+  const found = searchValue(index, entry, original.display);
 
   if (found.error) {
     outlet(0, index, Number(original.value));
@@ -1031,11 +1034,13 @@ function writeOne(target, entry) {
     ...identity(target),
     value: landed.value,
     display: landed.display,
+    ...(found.scale ? { scale: found.scale } : {}),
   };
 }
 
-// Where in 0-1 does the param show this text or number?
-function searchValue(index, { text, number }) {
+// Where in 0-1 does the param show this text or number? `before` is what it
+// showed before the search moved it.
+function searchValue(index, { text, number, bare }, before) {
   const samples = [];
 
   for (let i = 0; i <= SAMPLES; i++) {
@@ -1051,9 +1056,13 @@ function searchValue(index, { text, number }) {
   if (hit) return { value: hit.value };
   if (number == null) return { error: noMatch(samples, text) };
 
-  const found = bisect(index, samples, Number(number));
+  // The unit the param showed before the search, not at the sample it lands on.
+  const scale = bare ? bareScale(String(before ?? "")) : 1;
+  const found = bisect(index, samples, Number(number) * scale);
 
-  return found ?? { error: noMatch(samples, text ?? String(number)) };
+  if (found) return scale === 1 ? found : { ...found, scale };
+
+  return { error: noMatch(samples, text ?? String(number)) };
 }
 
 function looseText(text) {
@@ -1067,17 +1076,33 @@ function matchesText(display, wanted) {
   return shown === wanted || shown.includes(`[${wanted}]`);
 }
 
+// A display's leading number and the unit after it, or null if it has no number.
+function splitDisplay(display) {
+  const match = /^\s*([-+]?(?:\d+\.?\d*|\.\d+))\s*(\S*)/.exec(display);
+
+  return match ? { number: Number(match[1]), unit: match[2] } : null;
+}
+
 // The number a display starts with, in the units Producer Pal compares in:
 // Hz (kHz scaled) and ms (s scaled). Null for a display that isn't a number.
 function displayNumber(display) {
-  const match = /^\s*([-+]?(?:\d+\.?\d*|\.\d+))\s*(\S*)/.exec(display);
+  const parts = splitDisplay(display);
 
-  if (!match) return null;
+  if (!parts) return null;
 
-  const unit = match[2];
-  const scale = /^k(hz)?$/i.test(unit) ? 1000 : unit === "s" ? 1000 : 1;
+  return parts.number * unitScale(parts.unit);
+}
 
-  return Number(match[1]) * scale;
+// 1000 for a unit shown in thousands of the compare unit (kHz, k, s), else 1.
+function unitScale(unit) {
+  return /^k(hz)?$/i.test(unit) || unit === "s" ? 1000 : 1;
+}
+
+// What a number with no unit is multiplied by to reach the compare units: it
+// means the unit the param shows, so 1000 for kHz, k and s, else 1. TS reads a
+// written "3 kHz" or "0.8 s" the same way (param-label-parsing.ts).
+function bareScale(display) {
+  return unitScale(splitDisplay(display)?.unit ?? "");
 }
 
 function bisect(index, samples, target) {
