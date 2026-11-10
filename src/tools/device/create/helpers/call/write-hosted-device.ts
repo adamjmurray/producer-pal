@@ -8,21 +8,19 @@
 // plug-in is deleted again, so the call never leaves an empty one behind.
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import { writeHostedParams } from "#src/tools/device/update/helpers/call/hosted-params.ts";
 import { getDeviceInsertionPoint } from "#src/tools/device/update/helpers/wrap/wrapped-rack.ts";
 import { errorWithChainsLeft } from "#src/tools/shared/device/helpers/path/chains-left.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
-import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import { unreachedDetail } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { type Step } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import { createBrowserDevice } from "../browser-devices.ts";
 import {
   type CreateDeviceResult,
   type CreatedDevice,
-  labelCreatedDevice,
 } from "../device-creation.ts";
 import { loadPluginInto } from "../plugin-host-load.ts";
 import { type CreateChecked, type DevicePlan } from "./check-create-call.ts";
+import { placeCreatedDevice } from "./place-created-device.ts";
 
 /**
  * Create one hosted plug-in's device: its wrapper, with the plug-in loaded into
@@ -55,7 +53,7 @@ export async function createHostedDevice(
     throw failedHostedLoad(failure, created, step);
   }
 
-  return await labelHosted(created, step);
+  return await placeCreatedDevice(created, step);
 }
 
 // --- Helpers below main export ---
@@ -100,41 +98,4 @@ function deleteWrapper(device: LiveAPI): string | undefined {
   } catch (error) {
     return `the empty wrapper device couldn't be deleted: ${errorMessage(error)}`;
   }
-}
-
-/**
- * Record the device, then name it and set its params. Params go to the
- * plug-in, and are written ahead of the sync param write like update-device's.
- * @param created - The wrapper, with its plug-in loaded
- * @param step - The call's state for this target
- * @returns The target's entry
- */
-async function labelHosted(
-  created: CreatedDevice,
-  step: Step<CreateChecked>,
-): Promise<CreateDeviceResult> {
-  const { device, entry, written } = created;
-  const { name, names, params, placed, hostedStall } = step.checked;
-
-  placed.set(entry.id, { device, written });
-  step.landed("device created", { ...entry });
-
-  const settled = await writeHostedParams(device, params, hostedStall, {
-    deadline: step.call.ctx.deadline,
-    landed: (phrase) => step.landed(phrase),
-  });
-  const labeled = labelCreatedDevice(
-    device,
-    entry,
-    getNameForIndex(name, step.index, names),
-    params,
-    (phrase) => step.landed(phrase),
-    settled,
-  );
-
-  if (labeled.params != null) {
-    step.landed("params", { params: labeled.params });
-  }
-
-  return labeled;
 }

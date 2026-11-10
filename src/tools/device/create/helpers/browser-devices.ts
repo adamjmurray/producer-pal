@@ -102,10 +102,11 @@ export type RequestTiming = Pick<
 /** What a browser load needs besides the device. */
 export interface BrowserLoadOptions extends RequestTiming {
   /**
-   * Called once the device is in place, before the temp track is cleaned up.
-   * A throw from it leaves the device in the Set.
+   * Called once the device is in place, before the temp track is cleaned up,
+   * and awaited when it returns a promise. A throw from it leaves the device in
+   * the Set.
    */
-  onPlaced?: (created: CreatedDevice) => void;
+  onPlaced?: (created: CreatedDevice) => unknown;
 }
 
 /**
@@ -137,7 +138,8 @@ export async function createBrowserDevice(
       ...options,
       onPlaced: (created) => {
         arrival.placed = true;
-        options.onPlaced?.(created);
+
+        return options.onPlaced?.(created);
       },
     });
   } catch (error) {
@@ -231,7 +233,7 @@ async function loadAndMove(
         written: writtenContainer(target),
       };
 
-      options.onPlaced?.(placed);
+      await options.onPlaced?.(placed);
 
       return placed;
     },

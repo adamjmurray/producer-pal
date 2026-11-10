@@ -52,6 +52,9 @@ export interface HostedStall {
   reason?: string;
 }
 
+/** Why entries are refused when a wrapper gives no answer to a write. */
+export const WRAPPER_SILENT = "not set: the hosted plug-in didn't answer";
+
 /** What the write needs from the call. */
 interface HostedCall {
   deadline: number | null | undefined;
@@ -111,6 +114,22 @@ export function writeHostedParams(
   return hosted == null
     ? undefined
     : settle(target, hosted, params, stall, call);
+}
+
+/**
+ * Refuse every entry of a wrapper that won't answer, so none of them falls to
+ * the wrapper's own Live params.
+ * @param params - The call's `params`
+ * @param reason - Why none was written
+ * @returns What each entry came to
+ */
+export function refuseHostedParams(
+  params: ParamEntry[],
+  reason: string,
+): SettledParams {
+  const sent = params.map((entry) => ({ entry, ...paramEntryKey(entry) }));
+
+  return refuseAll(new Map(), sent, reason);
 }
 
 // --- Helpers below main exports ---
@@ -225,11 +244,7 @@ function readReply(
   const results = (reply.params ?? []) as WrapperResult[];
 
   if (results.length !== sent.length) {
-    return refuseAll(
-      settled,
-      sent,
-      "not set: the hosted plug-in didn't answer",
-    );
+    return refuseAll(settled, sent, WRAPPER_SILENT);
   }
 
   const outcomes = sent.map((item, i) =>

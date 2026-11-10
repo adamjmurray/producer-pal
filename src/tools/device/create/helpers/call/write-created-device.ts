@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { getNameForIndex } from "#src/tools/shared/validation/name-parsing.ts";
 import {
   type AppliedTarget,
   type MaybePromise,
@@ -14,10 +13,22 @@ import {
   type CreateDeviceResult,
   type CreatedDevice,
   insertNativeDevice,
-  labelCreatedDevice,
 } from "../device-creation.ts";
+import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { refuseIndexInNewChain } from "../index-in-new-chain.ts";
 import { type CreateChecked, type DevicePlan } from "./check-create-call.ts";
+import {
+  hostedCall,
+  labelPlaced,
+  placeCreatedDevice,
+  recordPlaced,
+} from "./place-created-device.ts";
+import { isWrapperItem, waitForWrapper } from "./wait-for-wrapper.ts";
+import {
+  refuseHostedParams,
+  writeHostedParams,
+  WRAPPER_SILENT,
+} from "#src/tools/device/update/helpers/call/hosted-params.ts";
 import { createHostedDevice } from "./write-hosted-device.ts";
 import { type CreatePayload } from "./parse-create-call.ts";
 
@@ -44,7 +55,7 @@ export function writeCreatedDevice(
   }
 
   if (plan.item == null) {
-    return place(insertNativeDevice(plan.device, plan.path), step);
+    return placeCreatedDevice(insertNativeDevice(plan.device, plan.path), step);
   }
 
   return loadDevice(plan, plan.item, step);
@@ -60,6 +71,22 @@ async function loadDevice(
 ): Promise<CreateDeviceResult> {
   const { deadline, timeoutMs, manageAvailable, smallModelMode } =
     step.call.ctx;
+  const { params } = step.checked;
+
+  // A new wrapper isn't up yet, so it takes its params once the temp track is
+  // gone, not while that sits in the Set waiting for it.
+  if (isWrapperItem(item) && params != null && params.length > 0) {
+    const loaded = await createBrowserDevice(item, plan.device, plan.path, {
+      deadline,
+      timeoutMs,
+      manageAvailable,
+      smallModelMode,
+      onPlaced: (placed) => recordPlaced(placed, step),
+    });
+
+    return await finishWrapper(loaded, params, step);
+  }
+
   // Named and given its params as soon as it is moved into place, before the
   // load cleans up its temp track, so the entry already shows what was asked
   // when the cleanup has something to add.
@@ -68,33 +95,29 @@ async function loadDevice(
     timeoutMs,
     manageAvailable,
     smallModelMode,
-    onPlaced: (placed) => place(placed, step),
+    onPlaced: (placed) => placeCreatedDevice(placed, step),
   });
 
   return created.entry;
 }
 
-// Record that a device is in the Set, then name it and set its params.
-function place(
-  { device, entry, written }: CreatedDevice,
+// Give a wrapper its params once it answers. One that never does is refused
+// them all: it can't be told from a Max device, and its own Live params are
+// not the plug-in's.
+async function finishWrapper(
+  created: CreatedDevice,
+  params: ParamEntry[],
   step: Step<CreateChecked>,
-): CreateDeviceResult {
-  const { name, names, params, placed } = step.checked;
+): Promise<CreateDeviceResult> {
+  const { device } = created;
+  const settled = (await waitForWrapper(device.id, step.call.ctx.deadline))
+    ? await writeHostedParams(
+        device,
+        params,
+        step.checked.hostedStall,
+        hostedCall(step),
+      )
+    : refuseHostedParams(params, WRAPPER_SILENT);
 
-  placed.set(entry.id, { device, written });
-  step.landed("device created", { ...entry });
-
-  const labeled = labelCreatedDevice(
-    device,
-    entry,
-    getNameForIndex(name, step.index, names),
-    params,
-    (phrase) => step.landed(phrase),
-  );
-
-  if (labeled.params != null) {
-    step.landed("params", { params: labeled.params });
-  }
-
-  return labeled;
+  return labelPlaced(created, step, settled);
 }

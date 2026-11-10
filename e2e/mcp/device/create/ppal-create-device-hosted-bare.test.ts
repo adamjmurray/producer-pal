@@ -5,8 +5,9 @@
 
 /**
  * E2E tests for a plug-in host wrapper with no plug-in in it (dragged in bare).
- * It reads as having no plug-in loaded, and its `params` and clip envelope
- * lines fail with that reason.
+ * It reads as having no plug-in loaded, and its `params` (also when it is
+ * created by its browser name with them) and clip envelope lines fail with that
+ * reason.
  * Needs no plug-in, only the wrappers installed (`npm run install:plugin-host`)
  * and the remote script.
  *
@@ -94,6 +95,32 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("bare plug-in host wrapper", () => {
     });
 
     expect(getToolErrorMessage(result)).toContain(`"Mix": ${NO_PLUGIN}`);
+  });
+
+  it("creates a wrapper by its browser name and refuses its params with that reason", async () => {
+    const track = await createMidiTrack(ctx.client!);
+    // Straight after the load: the wrapper may not be up yet.
+    const created = await call<{
+      id: string;
+      path: string;
+      params: Array<{ name?: string; ok?: boolean; detail?: string }>;
+    }>("ppal-create-device", {
+      deviceName: "PPal Plug-in Effect",
+      path: `t${track}/d+`,
+      params: [
+        { name: "Cutoff", value: "1000" },
+        // The wrapper's own slot dial, which must not move.
+        { name: "Automation 001", value: "0.5" },
+      ],
+    });
+
+    expect(created.path, "the device is still created").toMatch(
+      new RegExp(`^t${track}/d\\d+$`),
+    );
+    expect(created.params).toStrictEqual([
+      { name: "Cutoff", ok: false, detail: NO_PLUGIN },
+      { name: "Automation 001", ok: false, detail: NO_PLUGIN },
+    ]);
   });
 
   it("skips a clip envelope line with that reason", async () => {
