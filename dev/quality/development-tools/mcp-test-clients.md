@@ -173,7 +173,9 @@ inspector (served from a localhost origin) just works — dev or release. Pages
 from a non-localhost origin get no CORS headers and are blocked; to reach the
 server from one (a remote inspector, or over the LAN), build with
 `ALLOW_DEV_BUILD_FLAGS=true ENABLE_REMOTE_CORS=true npm run build` — a plain
-`npm run build` refuses every debug flag so one can't reach a release.
+`npm run build` refuses every debug flag so one can't reach a release. Reach the
+server by IP address or local name: on any other DNS name only `/mcp` answers,
+and not to a browser (DNS rebinding guard).
 
 The stdio portal is another way in (and it pushes config-override flags to the
 device on connect, below):

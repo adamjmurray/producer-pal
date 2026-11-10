@@ -18,7 +18,7 @@
  * Uses: e2e-test-set - t8 "9-MIDI" (empty MIDI track), t0/s0 "Beat"
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp -- per-request-headers
+ * Run with: npm run e2e:mcp -- workflow/http/per-request-headers
  */
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { afterEach, describe, expect, it } from "vitest";
@@ -39,12 +39,12 @@ import {
   setConfig,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers.ts";
+} from "../../mcp-test-helpers.ts";
 import {
   readConnectSkills,
   remoteScriptAnswers,
-} from "./helpers/server-capability-test-helpers.ts";
-import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
+} from "../helpers/server-capability-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 

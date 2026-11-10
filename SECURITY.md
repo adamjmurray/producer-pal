@@ -102,6 +102,12 @@ Stated plainly, because you should be able to make your own call:
   Wi-Fi, anyone on that network who finds the port can drive Ableton Live
   through it. If that matters to you, don't run Producer Pal on an untrusted
   network.
+- **Web pages can't reach the server by pointing a domain at your computer**
+  (DNS rebinding). Reached by any name other than localhost, an IP address, a
+  local network name (`studio-mac`, `studio-mac.local`) or a known tunnel domain
+  (Cloudflare quick tunnels, Pinggy, ngrok), only the MCP endpoint answers, and
+  never to a web page. So on a custom domain, MCP connectors work, but the chat
+  UI and REST API don't yet.
 - **Web tunnel URLs are effectively secrets.** If you expose Producer Pal
   through a tunnel, anyone with the URL can reach it. Treat it like a password.
 - **Tool inputs trust the AI provider.** Producer Pal assumes the model's tool

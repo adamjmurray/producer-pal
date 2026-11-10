@@ -5,7 +5,7 @@
 
 import { type Express, type Request, type Response } from "express";
 import { errorMessage } from "#src/shared/error-message.ts";
-import { rejectCrossOriginWrite } from "../../helpers/http/request-origin.ts";
+import { rejectCrossOriginWrite } from "../../helpers/http/browser/request-origin.ts";
 import { nodeError, nodeWarn } from "../../node-for-max-logger.ts";
 
 const OPENAI_CLIENT_SECRETS_URL =

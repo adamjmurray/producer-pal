@@ -27,7 +27,7 @@ import {
   type StoreResult,
 } from "./widget-store.ts";
 import { requestBody } from "../../helpers/http/request-body.ts";
-import { rejectForeignOriginWrite } from "../../helpers/http/request-origin.ts";
+import { rejectForeignOriginWrite } from "../../helpers/http/browser/request-origin.ts";
 
 const HEARTBEAT_MS = 25_000;
 

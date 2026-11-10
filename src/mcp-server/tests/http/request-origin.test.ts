@@ -11,7 +11,7 @@ import {
   rejectCrossOriginWrite,
   rejectForeignOriginWrite,
   rejectRebindableOriginWrite,
-} from "../../helpers/http/request-origin.ts";
+} from "../../helpers/http/browser/request-origin.ts";
 import { mockRes } from "./mock-express-response-test-helpers.ts";
 
 /**

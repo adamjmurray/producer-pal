@@ -5,7 +5,7 @@
 
 import { type Request, type Response } from "express";
 import { UserLibraryFolderError } from "../../rpc/remote-script/user-library/user-library-folder.ts";
-import { rejectRebindableOriginWrite } from "./request-origin.ts";
+import { rejectRebindableOriginWrite } from "./browser/request-origin.ts";
 
 const INSTALL_REFUSED =
   "Can't install from this address. Open the chat UI at localhost or this computer's IP address to install.";

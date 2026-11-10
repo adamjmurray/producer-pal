@@ -28,7 +28,7 @@ import {
 import { startLiveWatcher } from "./rpc/gen-ui/live-watcher.ts";
 import { connectWidgetsToSet } from "./rpc/gen-ui/set-storage.ts";
 import { withGenUi } from "./rpc/gen-ui/with-gen-ui.ts";
-import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
+import { corsMiddleware } from "./helpers/http/browser/cors-middleware.ts";
 import { errorHandlerMiddleware } from "./helpers/http/error-handler-middleware.ts";
 import {
   parseConfigBody,
@@ -38,8 +38,9 @@ import {
   emitConfigOutlets,
   type ConfigOutlet,
 } from "./helpers/http/config-outlets.ts";
+import { rebindingGuard } from "./helpers/http/browser/rebinding-guard.ts";
 import { requestBody } from "./helpers/http/request-body.ts";
-import { rejectCrossOriginWrite } from "./helpers/http/request-origin.ts";
+import { rejectCrossOriginWrite } from "./helpers/http/browser/request-origin.ts";
 import {
   resolveRequestProfile,
   type RequestProfile,
@@ -263,6 +264,10 @@ function setNoStore(res: Response): void {
 export function createExpressApp(): Express {
   const app = express();
 
+  // First, so every route, CORS preflight and 404 is covered: on a Host a
+  // website could rebind to this computer, only non-browser /mcp gets through.
+  app.use(rebindingGuard);
+
   // Localhost-only CORS by default; ENABLE_REMOTE_CORS widens it (see the
   // middleware for the reasoning).
   app.use(corsMiddleware);
@@ -271,16 +276,12 @@ export function createExpressApp(): Express {
   // exceed Express's 100 KB default.
   app.use(express.json({ limit: "2mb" }));
 
-  // No cross-origin (Origin) gate here, intentionally — unlike POST /config.
-  // The chat UI's getMcpUrl() targets the page's own origin, so over a LAN or
-  // tunnel it POSTs /mcp with a NON-localhost Origin (e.g. http://192.168.x:PORT
-  // or https://*.trycloudflare.com). Gating by isLocalOrigin — or any
-  // Origin/Host comparison, which reverse-proxy tunnels defeat by forwarding
-  // Host=localhost while Origin stays the public domain — would 403 the
-  // LAN/tunnel chat's own tool calls and break the documented remote access
-  // feature, which is unauthenticated by design (docs/installation/
-  // remote-access.md). The localhost-CSRF surface (a web page POSTing to
-  // http://localhost:PORT/mcp) is accepted as part of that "no auth" model.
+  // No Origin gate here, unlike POST /config: the chat UI posts /mcp from its
+  // own origin, which over a LAN or tunnel isn't localhost (192.168.x:PORT,
+  // *.trycloudflare.com). Tunnels pass the public hostname as Host. Remote
+  // access is unauthenticated by design (docs/installation/remote-access.md),
+  // so a web page POSTing to http://localhost:PORT/mcp is accepted too.
+  // On a rebindable Host, rebindingGuard refuses browsers here.
   app.post("/mcp", async (req: Request, res: Response): Promise<void> => {
     try {
       const method =

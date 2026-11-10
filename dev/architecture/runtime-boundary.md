@@ -50,6 +50,12 @@ literal can't. A chat UI reached through a tunnel's DNS name can read the
 Installation tab but not install. Content writes (memory, skills) keep the
 looser same-origin rule, so a remote chat UI can still save them.
 
+Every request also passes `rebindingGuard` first. Unless the Host is localhost,
+an IP literal, a local-only name, or a known tunnel domain, only `/mcp` answers,
+and not to a browser (`Origin` or `Sec-Fetch-Site`). Headers alone can't pass a
+GET: over plain http a browser's same-origin GET carries neither. The guard
+allows tunnel names the install gate refuses, so that gate stays.
+
 The script updates separately from the device, so it drifts. Both the chat UI
 header and `ppal-connect` flag it, using one rule (`remoteScriptAttention` in
 `src/shared/version-check.ts`): **update** when the installed copy differs from

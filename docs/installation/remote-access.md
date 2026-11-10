@@ -49,6 +49,10 @@ setup, and Live is reachable by anyone with the link.
 
 A tunnel gives your Producer Pal a public web address.
 
+The chat UI works through the tunnels below. On your own domain (a named
+Cloudflare tunnel, a custom ngrok domain), connecting claude.ai, ChatGPT, or Le
+Chat works, but the chat UI and REST API don't yet.
+
 ::: danger Security Warning
 
 Producer Pal has no authentication. Anyone with your tunnel URL can control

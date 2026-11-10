@@ -31,7 +31,7 @@ import {
   globalContextBlock,
   projectContextBlock,
 } from "../helpers/global-context/global-context-inject.ts";
-import { rejectForeignOriginWrite } from "../helpers/http/request-origin.ts";
+import { rejectForeignOriginWrite } from "../helpers/http/browser/request-origin.ts";
 import { resolveRequestProfile } from "../helpers/http/request-profile.ts";
 import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
 import { withRemoteScriptAnswer } from "../helpers/skills-inject.ts";

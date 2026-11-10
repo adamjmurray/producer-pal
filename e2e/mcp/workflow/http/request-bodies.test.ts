@@ -13,7 +13,7 @@
  * Uses: e2e-test-set - t8 "9-MIDI" (empty MIDI track)
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp -- workflow/request-bodies
+ * Run with: npm run e2e:mcp -- workflow/http/request-bodies
  */
 import { describe, expect, it } from "vitest";
 import { REST_BASE_URL } from "#evals/shared/config.ts";
@@ -21,8 +21,8 @@ import {
   getToolErrorMessage,
   isToolError,
   setupMcpTestContext,
-} from "../mcp-test-helpers.ts";
-import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
+} from "../../mcp-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
