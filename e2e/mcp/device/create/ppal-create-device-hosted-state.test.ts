@@ -16,25 +16,17 @@
  *
  * Run with: npm run e2e:mcp:remote-script -- device/create/ppal-create-device-hosted-state
  */
-import { existsSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { setConfig, setupMcpTestContext, sleep } from "../../mcp-test-helpers";
 import {
   type HostedDevice,
+  hasVst3,
   hostedPluginHelpers,
 } from "../helpers/hosted-plugin-test-helpers";
 import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../helpers/remote-script-test-helpers";
-
-const hasVst3 = (file: string) =>
-  [
-    "/Library/Audio/Plug-Ins/VST3",
-    join(homedir(), "Library/Audio/Plug-Ins/VST3"),
-  ].some((folder) => existsSync(join(folder, file)));
 
 // Live closes an undo step after about this long without a change.
 const UNDO_SETTLE_MS = 5000;

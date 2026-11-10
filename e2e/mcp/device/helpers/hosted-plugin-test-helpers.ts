@@ -5,6 +5,9 @@
 
 // What the E2E suites for hosted plug-ins share.
 
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import {
   createMidiTrack,
   type McpTestContext,
@@ -14,6 +17,18 @@ import {
 
 /** A duplicated wrapper restores its plug-in a moment after it appears. */
 const RESTORE_MS = 3000;
+
+/**
+ * Whether a VST3 plug-in file is installed, for suites that skip without it.
+ * @param file - The bundle's file name, e.g. "Serum2.vst3"
+ * @returns True when the system or user VST3 folder holds it
+ */
+export function hasVst3(file: string): boolean {
+  return [
+    "/Library/Audio/Plug-Ins/VST3",
+    join(homedir(), "Library/Audio/Plug-Ins/VST3"),
+  ].some((folder) => existsSync(join(folder, file)));
+}
 
 export interface HostedDevice {
   id: string;
