@@ -8,12 +8,17 @@ import { browserNamedPackPath } from "../../../../live-library/query/pack-folder
 import { findPresetFiles } from "../../../../live-library/query/preset-files.ts";
 import { lookUpPresetFile } from "../browser-preset-files.ts";
 import { lookUpBrowserPreset } from "../browser-preset-lookup.ts";
+import { filesMissing } from "./preset-lookup-test-helpers.ts";
 
 // A pack installed twice sits in "AAS Angelicals-1" but Live's browser lists it
 // as "AAS Angelicals". The remote script finds files in a pack by that name,
 // so the item it is sent names the pack that way; errors keep the disk path.
 vi.mock(import("../../../../live-library/query/preset-files.ts"), () => ({
   findPresetFiles: vi.fn(),
+}));
+// The library's files are made-up paths; each one exists unless a test says not.
+vi.mock(import("../file-exists-on-disk.ts"), () => ({
+  fileExistsOnDisk: vi.fn(),
 }));
 vi.mock(import("../../../../live-library/query/pack-folder-names.ts"), () => ({
   browserNamedPackPath: vi.fn(),
@@ -25,6 +30,7 @@ const CORE = "/Live/Core Library/Pad/String Machine.adg";
 
 beforeEach(() => {
   vi.mocked(findPresetFiles).mockReset();
+  filesMissing();
   vi.mocked(browserNamedPackPath).mockReset();
   vi.mocked(browserNamedPackPath).mockImplementation((path) =>
     Promise.resolve(path === ON_DISK ? IN_BROWSER : path),

@@ -6,17 +6,25 @@
 import { type PresetScope } from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { describe, expect, it, vi } from "vitest";
 import { lookUpBrowserPreset } from "../browser-preset-lookup.ts";
+import { fileExistsOnDisk } from "../file-exists-on-disk.ts";
 import { findPresetFiles } from "../../../../live-library/query/preset-files.ts";
 import {
   type FakeAnswer,
   type ReceivedRequest,
 } from "../../tests/remote-script-test-helpers.ts";
-import { usePresetLookupStandIn } from "./preset-lookup-test-helpers.ts";
+import {
+  filesMissing,
+  usePresetLookupStandIn,
+} from "./preset-lookup-test-helpers.ts";
 
 // The browser lists one "Transmission", under Shifter; the library has another
 // in a pack, which the browser doesn't list.
 vi.mock(import("../../../../live-library/query/preset-files.ts"), () => ({
   findPresetFiles: vi.fn(),
+}));
+// The library's files are made-up paths; each one exists unless a test says not.
+vi.mock(import("../file-exists-on-disk.ts"), () => ({
+  fileExistsOnDisk: vi.fn(),
 }));
 // The pack-name mapping reads the machine's own library; keep paths as given.
 vi.mock(import("../../../../live-library/query/pack-folder-names.ts"), () => ({
@@ -120,6 +128,38 @@ describe("lookUpBrowserPreset — a name the browser lists once", () => {
     });
   });
 
+  it("loads the browser's match when the library's other file is gone from disk", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([SHIFTER_FILE, PACK_FILE]);
+    filesMissing(PACK_FILE.path);
+
+    expect(await lookUp()).toStrictEqual(BROWSER_MATCH);
+  });
+
+  it("loads the browser's match when the library's files are all gone from disk", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([SHIFTER_FILE, PACK_FILE]);
+    filesMissing(SHIFTER_FILE.path, PACK_FILE.path);
+
+    expect(await lookUp(SHIFTER)).toStrictEqual(BROWSER_MATCH);
+  });
+
+  it("lists only the files that exist when the library has several", async () => {
+    const third = { ...PACK_FILE, path: "/Users/me/Other/Transmission.adv" };
+
+    vi.mocked(findPresetFiles).mockResolvedValue([
+      SHIFTER_FILE,
+      PACK_FILE,
+      third,
+    ]);
+    filesMissing(PACK_FILE.path);
+
+    expect(await lookUp()).toStrictEqual({
+      available: true,
+      error:
+        'preset "Transmission" matches 2 presets; pass one of these as preset: ' +
+        `"${SHIFTER_FILE.path}", "${third.path}"`,
+    });
+  });
+
   it("loads the browser's match when the library has just the one", async () => {
     vi.mocked(findPresetFiles).mockResolvedValue([SHIFTER_FILE]);
 
@@ -178,6 +218,24 @@ describe("lookUpBrowserPreset — a name the browser lists once", () => {
       },
     });
     expect(findPresetFiles).not.toHaveBeenCalled();
+  });
+
+  it("stops when the deadline passes while the files are checked on disk", async () => {
+    const realNow = Date.now.bind(Date);
+    let late = 0;
+
+    vi.mocked(findPresetFiles).mockResolvedValue([SHIFTER_FILE, PACK_FILE]);
+    vi.mocked(fileExistsOnDisk).mockImplementation(() => {
+      late = 250;
+
+      return Promise.resolve(true);
+    });
+    vi.spyOn(Date, "now").mockImplementation(() => realNow() + late);
+    await standIn.start(browserAnswer);
+
+    await expect(lookUp(undefined, realNow() + 200)).rejects.toThrow(
+      "ran out of time before the library's files were checked",
+    );
   });
 
   it("stops when the deadline passes before the library is checked", async () => {

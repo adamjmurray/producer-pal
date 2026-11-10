@@ -11,6 +11,7 @@ import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
@@ -26,9 +27,14 @@ import {
   lookUpPresetFile,
 } from "../browser-preset-files.ts";
 import { RemoteScriptTimeout } from "../../remote-script-errors.ts";
+import { filesMissing } from "./preset-lookup-test-helpers.ts";
 
 vi.mock(import("../../../../live-library/query/preset-files.ts"), () => ({
   findPresetFiles: vi.fn(),
+}));
+// The library's files are made-up paths; each one exists unless a test says not.
+vi.mock(import("../file-exists-on-disk.ts"), () => ({
+  fileExistsOnDisk: vi.fn(),
 }));
 // The pack-name mapping reads the machine's own library; keep paths as given.
 vi.mock(import("../../../../live-library/query/pack-folder-names.ts"), () => ({
@@ -59,6 +65,10 @@ async function lookUp(scope: PresetScope): ReturnType<typeof lookUpPresetFile> {
     Date.now() + 60_000,
   );
 }
+
+beforeEach(() => {
+  filesMissing();
+});
 
 afterEach(() => {
   vi.restoreAllMocks();

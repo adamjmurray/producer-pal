@@ -17,11 +17,16 @@ import {
   startFakeRemoteScript,
   unknownRouteAnswer,
 } from "../../tests/remote-script-test-helpers.ts";
+import { filesMissing } from "./preset-lookup-test-helpers.ts";
 
 // A name the browser doesn't have is looked up in Live's database, which a test
 // can't stand in for. The database's own queries are tested beside it.
 vi.mock(import("../../../../live-library/query/preset-files.ts"), () => ({
   findPresetFiles: vi.fn(),
+}));
+// The library's files are made-up paths; each one exists unless a test says not.
+vi.mock(import("../file-exists-on-disk.ts"), () => ({
+  fileExistsOnDisk: vi.fn(),
 }));
 // The pack-name mapping reads the machine's own library; keep paths as given.
 vi.mock(import("../../../../live-library/query/pack-folder-names.ts"), () => ({
@@ -51,6 +56,7 @@ let fake: FakeRemoteScript | undefined;
 
 beforeEach(() => {
   vi.mocked(findPresetFiles).mockResolvedValue(null);
+  filesMissing();
 });
 
 afterEach(async () => {
@@ -334,6 +340,29 @@ describe("lookUpBrowserPreset — a name only the library has", () => {
       error:
         'preset "505 Classic Kit" matches 2 presets; pass one of these as preset: ' +
         `"${KIT.path}", "/Users/me/User Library/Kit.adg"`,
+    });
+  });
+
+  it("loads the one file that is on disk when the library lists a deleted one too", async () => {
+    const gone = { name: KIT.name, path: "/Users/me/User Library/Kit.adg" };
+
+    vi.mocked(findPresetFiles).mockResolvedValue([KIT, gone]);
+    filesMissing(gone.path);
+
+    expect(await lookUp("505 Classic Kit")).toStrictEqual({
+      available: true,
+      item: { type: "file", path: KIT.path, name: KIT.name },
+    });
+  });
+
+  it("keeps the no-preset error when the library's only file is gone", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([KIT]);
+    filesMissing(KIT.path);
+
+    expect(await lookUp("505 Classic Kit")).toStrictEqual({
+      available: true,
+      error:
+        'no preset "505 Classic Kit". Search ppal-library (kind: preset or device-group) and pass a result\'s path as preset',
     });
   });
 

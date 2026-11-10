@@ -15,6 +15,7 @@ import {
   type ReceivedRequest,
   startFakeRemoteScript,
 } from "../../tests/remote-script-test-helpers.ts";
+import { filesMissing } from "./preset-lookup-test-helpers.ts";
 
 // The browser lists a rack under every device it is built around, so a name
 // can have several browser matches for one file, or for files that share a
@@ -25,6 +26,10 @@ vi.mock(import("../../../../live-library/query/preset-files.ts"), () => ({
 // The pack-name mapping reads the machine's own library; keep paths as given.
 vi.mock(import("../../../../live-library/query/pack-folder-names.ts"), () => ({
   browserNamedPackPath: (path: string) => Promise.resolve(path),
+}));
+// The library's files are made-up paths; each one exists unless a test says not.
+vi.mock(import("../file-exists-on-disk.ts"), () => ({
+  fileExistsOnDisk: vi.fn(),
 }));
 vi.mock(import("../preset-file-device.ts"), () => ({
   presetFileIsFor: vi.fn(),
@@ -73,6 +78,7 @@ let fake: FakeRemoteScript | undefined;
 beforeEach(() => {
   vi.mocked(findPresetFiles).mockReset();
   vi.mocked(findPresetFiles).mockResolvedValue(null);
+  filesMissing();
   vi.mocked(presetFileIsFor).mockReset();
   vi.mocked(presetFileIsFor).mockResolvedValue(true);
 });
@@ -262,6 +268,42 @@ describe("lookUpBrowserPreset — a name the browser lists several times", () =>
         'preset "Electric Bass" matches 2 presets; pass one of these as preset: ' +
         '"Instruments/Instrument Rack/Bass/Electric Bass.adg", "Instruments/Sampler/Bass/Electric Bass.adg"',
     });
+  });
+
+  it("loads the one file the library has on disk when its other file is gone", async () => {
+    // The library still lists a deleted copy of the rack.
+    const gone = { ...BASS, path: "/Live/User Library/Bass/Electric Bass.adg" };
+
+    vi.mocked(findPresetFiles).mockResolvedValue([BASS, gone]);
+    filesMissing(gone.path);
+
+    expect(await lookUpBass(BASS_PATHS)).toStrictEqual({
+      available: true,
+      item: { type: "file", path: BASS.path, name: BASS.name },
+    });
+  });
+
+  it("lists both files while both are on disk", async () => {
+    const other = {
+      ...BASS,
+      path: "/Live/User Library/Bass/Electric Bass.adg",
+    };
+
+    vi.mocked(findPresetFiles).mockResolvedValue([BASS, other]);
+
+    expect(await lookUpBass(BASS_PATHS)).toStrictEqual({
+      available: true,
+      error:
+        'preset "Electric Bass" matches 2 presets; pass one of these as preset: ' +
+        `"${BASS.path}", "${other.path}"`,
+    });
+  });
+
+  it("keeps the browser's paths when the library's files are all gone", async () => {
+    vi.mocked(findPresetFiles).mockResolvedValue([CORE, PACK]);
+    filesMissing(CORE.path, PACK.path);
+
+    expect(await lookUp()).toStrictEqual(BROWSER_REFUSED);
   });
 
   it("keeps the browser's paths when the library has none", async () => {

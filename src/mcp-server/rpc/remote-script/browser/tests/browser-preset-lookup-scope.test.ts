@@ -18,6 +18,10 @@ import { usePresetLookupStandIn } from "./preset-lookup-test-helpers.ts";
 vi.mock(import("../../../../live-library/query/preset-files.ts"), () => ({
   findPresetFiles: vi.fn(),
 }));
+// The library's files are made-up paths; each one exists unless a test says not.
+vi.mock(import("../file-exists-on-disk.ts"), () => ({
+  fileExistsOnDisk: vi.fn(),
+}));
 vi.mock(import("../../../../live-library/query/pack-folder-names.ts"), () => ({
   browserNamedPackPath: (path: string) => Promise.resolve(path),
 }));

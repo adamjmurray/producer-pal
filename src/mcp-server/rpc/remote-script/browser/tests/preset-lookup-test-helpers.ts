@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { afterEach, beforeEach, vi } from "vitest";
+import { fileExistsOnDisk } from "../file-exists-on-disk.ts";
 import { findPresetFiles } from "../../../../live-library/query/preset-files.ts";
 import {
   type FakeAnswer,
@@ -22,8 +23,9 @@ export interface PresetLookupStandIn {
 }
 
 /**
- * Before each test, the library finds no presets (the caller must vi.mock
- * preset-files.ts); after it, the stand-in remote script closes.
+ * Before each test, the library finds no presets and every file exists (the
+ * caller must vi.mock preset-files.ts and file-exists-on-disk.ts); after it,
+ * the stand-in remote script closes.
  * @returns Starts and reads this test's stand-in
  */
 export function usePresetLookupStandIn(): PresetLookupStandIn {
@@ -32,6 +34,7 @@ export function usePresetLookupStandIn(): PresetLookupStandIn {
   beforeEach(() => {
     vi.mocked(findPresetFiles).mockReset();
     vi.mocked(findPresetFiles).mockResolvedValue(null);
+    filesMissing();
   });
 
   afterEach(async () => {
@@ -47,4 +50,15 @@ export function usePresetLookupStandIn(): PresetLookupStandIn {
     },
     current: () => fake,
   };
+}
+
+/**
+ * Make the library's files exist on disk, except these.
+ * @param paths - The paths that are gone
+ */
+export function filesMissing(...paths: string[]): void {
+  vi.mocked(fileExistsOnDisk).mockReset();
+  vi.mocked(fileExistsOnDisk).mockImplementation((path) =>
+    Promise.resolve(!paths.includes(path)),
+  );
 }

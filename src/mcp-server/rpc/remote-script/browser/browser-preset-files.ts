@@ -10,6 +10,7 @@
 // by its file, which the remote script finds under Packs, User Library or
 // Places.
 
+import { fileExistsOnDisk } from "./file-exists-on-disk.ts";
 import { isDrumRackScope } from "../../../live-library/query/drum-rack-scope.ts";
 import { type LibraryDeviceKind } from "../../../live-library/library-types.ts";
 import {
@@ -339,7 +340,8 @@ function throwIfLate(endsAt: number, message: string): void {
 }
 
 /**
- * Ask the library for the files with a name.
+ * Ask the library for the files with a name. Its database lags the disk, so a
+ * file that is gone is left out.
  * @param key - The name, normalized
  * @param device - Only presets for this device, if given
  * @param endsAt - When the lookup must be done, in epoch ms
@@ -353,13 +355,28 @@ async function findNamedPresetFiles(
 ): Promise<PresetFile[] | null> {
   throwIfLate(endsAt, "ran out of time before the library was searched");
 
-  const files = await findPresetFiles({
+  const listed = await findPresetFiles({
     name: key,
     ...(device == null ? {} : { device }),
   });
 
+  if (listed == null) {
+    return null;
+  }
+
+  const exists = await Promise.all(
+    listed.map(({ path }) => fileExistsOnDisk(path)),
+  );
+
+  throwIfLate(
+    endsAt,
+    "ran out of time before the library's files were checked",
+  );
+
+  const files = listed.filter((_, i) => exists[i]);
+
   // A Drum Rack's files include Instrument Racks, kept if they hold a Drum Rack.
-  return files != null && device != null && isDrumRackScope(device.name)
+  return device != null && isDrumRackScope(device.name)
     ? await keepFilesFor(files, device.name, endsAt)
     : files;
 }

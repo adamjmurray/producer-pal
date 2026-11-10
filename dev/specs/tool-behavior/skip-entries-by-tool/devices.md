@@ -204,7 +204,8 @@ Part of [Skip entries, tool by tool](README.md).
     when it has none by that name. A plug-in, or a Max device listed under Max
     for Live, has no class to filter by, so its name isn't looked up in the
     database. The database is read as of Live's last save, so a preset added
-    this session may not be found.
+    this session may not be found. A file the database lists that is gone from
+    disk isn't counted.
 - **A browser path two items share is refused, never guessed.** A `preset` or
   `deviceName` spelled `<section>/<path>` (e.g.
   `Instruments/Instrument Rack/Mallets/Vibraphone.adg`) that lists two or more
