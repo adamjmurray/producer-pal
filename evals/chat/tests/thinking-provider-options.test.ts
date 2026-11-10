@@ -112,6 +112,9 @@ describe("buildProviderOptions for OpenAI", () => {
     expect(buildProviderOptions("openai", "off", "gpt-6-luna")).toStrictEqual({
       openai: { reasoningEffort: "none" },
     });
+    expect(
+      buildProviderOptions("vercel", "off", "openai/gpt-6.1-terra"),
+    ).toStrictEqual({ openai: { reasoningEffort: "none" } });
     expect(buildProviderOptions("openai", "off", "gpt-6.1-sol")).toStrictEqual({
       openai: { reasoningEffort: "low" },
     });

@@ -92,6 +92,7 @@ describe("mapThinkingToReasoningEffort", () => {
 
     it("should map off to none", () => {
       expect(mapThinkingToReasoningEffort("off", "gpt-6-luna")).toBe("none");
+      expect(mapThinkingToReasoningEffort("off", "gpt-6.1-terra")).toBe("none");
     });
 
     it("should map off to low for GPT-6 models that reject none", () => {
