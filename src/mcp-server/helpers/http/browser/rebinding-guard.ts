@@ -13,7 +13,8 @@ import { isNetworkAccessAllowed } from "../network-access-state.ts";
 const LOCAL_SUFFIXES = [".local", ".lan", ".home.arpa", ".internal"];
 
 // Documented tunnel domains. They resolve to the tunnel company's servers, so a
-// website can't point them at this computer.
+// website can't point them at this computer. Tailscale's ts.net names only
+// point at devices in the user's own tailnet.
 const TUNNEL_DOMAINS = [
   "trycloudflare.com",
   "ngrok-free.dev",
@@ -25,6 +26,7 @@ const TUNNEL_DOMAINS = [
   "free.pinggy.net",
   "pinggy.link",
   "a.pinggy.io",
+  "ts.net",
 ];
 
 // A DNS name with an optional port. No empty labels, so a trailing dot fails.

@@ -80,6 +80,8 @@ describe("isRebindSafeHost", () => {
     "abc.a.free.pinggy.link",
     "abc.a.pinggy.link",
     "myname.a.pinggy.io",
+    "studio-mac.yak-bebop.ts.net",
+    "studio-mac.tail1a2b3c.ts.net:3350",
   ])("allows %s", (host) => {
     expect(isRebindSafeHost(host)).toBe(true);
   });
@@ -101,6 +103,8 @@ describe("isRebindSafeHost", () => {
     "trycloudflare.com.evil.com",
     "evilngrok.io",
     "evilpinggy.link",
+    "evilts.net",
+    "ts.net.evil.com",
     "pinggy.io",
     "dashboard.pinggy.io",
     "evil.local.evil.com",
