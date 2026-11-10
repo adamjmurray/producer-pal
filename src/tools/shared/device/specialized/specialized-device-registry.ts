@@ -376,12 +376,13 @@ export function isParamInactiveBySpecialized(
   device: LiveAPI,
   paramName: string,
 ): boolean {
-  const rules = getSpecForDevice(device)?.inactiveWhen;
+  const spec = getSpecForDevice(device);
+  const rules = spec?.inactiveWhen;
 
   return (
     rules != null &&
     ruleMarksInactive(rules, paramName, (controller) =>
-      controllerValue(device, controller),
+      controllerValue(device, spec?.params ?? [], controller),
     )
   );
 }
@@ -389,10 +390,21 @@ export function isParamInactiveBySpecialized(
 /**
  * A device param's current display value, as read-device reports it.
  * @param device - LiveAPI device object
+ * @param pseudoParams - The device's pseudo-params, checked first
  * @param name - Display name of the param
  * @returns The value, or undefined when the device has no such param
  */
-function controllerValue(device: LiveAPI, name: string): unknown {
+function controllerValue(
+  device: LiveAPI,
+  pseudoParams: PseudoParam[],
+  name: string,
+): unknown {
+  const pseudo = pseudoParams.find((param) => param.name === name);
+
+  if (pseudo != null) {
+    return pseudo.read(device);
+  }
+
   let value: unknown;
 
   device.someChild("parameters", (param) => {

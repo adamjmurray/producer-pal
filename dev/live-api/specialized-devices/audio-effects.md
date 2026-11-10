@@ -123,6 +123,10 @@ and `B`), e.g. `1 Filter On A`, `1 Frequency A`, ... `8 Q B`. Plus device-wide:
 always independently addressable by name regardless of `edit_mode` or
 `global_mode`** — chain is determined by parameter suffix.
 
+Stereo mode uses only the A chain, but Live still reports a switched-on B band
+as active. An `inactiveWhen` rule marks every B param inactive while
+`globalMode` is stereo, so a model doesn't edit the side that has no effect.
+
 **Producer Pal interface** (as built; design probed 2026-05-21):
 
 Two writable fields on `update-device`, also returned by `read-device`:

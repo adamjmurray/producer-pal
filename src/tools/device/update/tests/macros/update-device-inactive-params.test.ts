@@ -88,6 +88,32 @@ describe("updateDevice - params inactive in the device's mode", () => {
     ]);
   });
 
+  it("says so for a pseudo-param controller (EQ Eight's B side in stereo)", () => {
+    registerNamedParams(["3 Q A", "3 Q B"], {}, "EQ Eight");
+    registerMockObject("dev1", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: {
+        class_display_name: "EQ Eight",
+        global_mode: 0,
+        parameters: children("p0", "p1"),
+      },
+    });
+
+    const result = updateDevice({
+      id: "dev1",
+      params: [
+        { name: "3 Q A", value: "0.8" },
+        { name: "3 Q B", value: "0.3" },
+      ],
+    });
+
+    expect(paramsOf(result)).toStrictEqual([
+      { id: "p0", name: "3 Q A" },
+      { id: "p1", name: "3 Q B", detail: INACTIVE_PARAM_DETAIL },
+    ]);
+  });
+
   it("judges by the mode the whole call leaves, not the one it started in", () => {
     registerWavetableLfo("Tempo");
 
