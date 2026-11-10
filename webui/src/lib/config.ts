@@ -29,6 +29,9 @@ export const REMOTE_SCRIPT_DOCS_URL =
 export const FINISH_INSTALLATION_DOCS_URL =
   "https://producer-pal.org/installation#finish-the-installation";
 
+export const PLAIN_HTTP_KEYS_DOCS_URL =
+  "https://producer-pal.org/installation/remote-access#api-keys-over-plain-http";
+
 const ALL_MODELS = [
   ...ANTHROPIC_MODELS,
   ...GEMINI_MODELS,

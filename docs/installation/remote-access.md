@@ -44,6 +44,25 @@ Some things only work on Live's computer: voice mode, and device settings like
 small model mode. From a phone, use an [AI router](./ai-routers) or an
 [API key](./api-keys). Local AI isn't set up for this.
 
+### API Keys Over Plain HTTP
+
+The chat UI keeps your API key in the browser, encrypted. It goes straight from
+your browser to the AI provider, not through a Producer Pal server. (Voice mode,
+which only works on Live's computer, sends the key to Producer Pal on that
+computer to get a short-lived token from the provider.)
+
+The encryption keeps your key out of plain-text browser storage, so a stray
+program that scans your files for API keys won't find it. That's a step up from
+keeping keys in a plain text file, as many tools do. It doesn't stop something
+that targets the chat UI on purpose: the decryption key lives in the same
+browser, and any script running in the page can use it.
+
+On a phone or another computer, the address starts with `http://`, so the
+connection to the chat UI isn't encrypted. Your key is still stored encrypted,
+but anyone on that network could alter the page. For a trusted home or studio
+network that's usually fine. A [web tunnel](#web-tunnels) gives an encrypted
+connection and is the better way to use the chat UI from another device.
+
 ## Web Chat
 
 Use Producer Pal from a provider's chat website. Websites can't reach Live on

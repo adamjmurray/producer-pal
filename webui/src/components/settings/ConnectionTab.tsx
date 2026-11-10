@@ -10,6 +10,7 @@ import {
 import { type Provider } from "#webui/types/settings";
 import { ModelSelector } from "./controls/ModelSelector";
 import { ProviderSelector } from "./controls/ProviderSelector";
+import { InsecurePageNote } from "./helpers/InsecurePageNote";
 import { ModelDocsLink } from "./helpers/ModelDocsLink";
 import { SmallModelToggle } from "./helpers/SmallModelToggle";
 import { ThinkingSelector } from "./helpers/ThinkingSelector";
@@ -100,6 +101,7 @@ export function ConnectionTab({
             API keys are encrypted at rest in your browser; this is not a
             substitute for OS-level protection.
           </p>
+          <InsecurePageNote />
         </div>
       )}
 

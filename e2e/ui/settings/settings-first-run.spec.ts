@@ -133,6 +133,41 @@ test.describe("Settings — before chat is set up (stubbed backend)", () => {
     await expect(heading(page)).toBeHidden();
   });
 
+  test("saving a key works on a plain-HTTP page without crypto.subtle", async ({
+    page,
+  }) => {
+    // What a phone sees at http://<LAN-IP>:3350.
+    await page.addInitScript(() => {
+      Object.defineProperty(Crypto.prototype, "subtle", {
+        get: () => undefined,
+      });
+      Object.defineProperty(window, "isSecureContext", { value: false });
+    });
+    await firstVisit(page);
+
+    await expect(page.getByTestId("insecure-page-note")).toBeVisible();
+    await page.getByTestId("api-key-input").fill("plain-http-secret");
+    await saveButton(page).click();
+    await expect(heading(page)).toBeHidden();
+    await expectSetUp(page);
+
+    const stored = await page.evaluate(() =>
+      Object.keys(localStorage)
+        .map((k) => localStorage.getItem(k))
+        .join("\n"),
+    );
+
+    expect(stored).toContain("enc:v1:");
+    expect(stored).not.toContain("plain-http-secret");
+
+    // The key reads back after a reload (decrypted with the stored raw key).
+    await page.reload();
+    await page.getByRole("button", { name: "Settings" }).click();
+    await expect(page.getByTestId("api-key-input")).toHaveValue(
+      "plain-http-secret",
+    );
+  });
+
   test("a custom endpoint with a URL and no key sets chat up", async ({
     page,
   }) => {

@@ -81,6 +81,7 @@ This file includes bundled dependencies:
 - Marked (MIT)
 - DOMPurify (Apache-2.0 OR MPL-2.0)
 - idb (ISC)
+- @noble/ciphers (MIT)
 - Tailwind CSS, incl. @tailwindcss/typography (MIT)
 - Vercel AI SDK: ai, @ai-sdk/{anthropic,google,mistral,openai,provider-utils} (Apache-2.0)
 - @openrouter/ai-sdk-provider (Apache-2.0)

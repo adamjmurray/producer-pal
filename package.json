@@ -153,6 +153,7 @@
     "@google/genai": "2.32.0",
     "@lezer/highlight": "1.2.5",
     "@modelcontextprotocol/sdk": "1.32.2",
+    "@noble/ciphers": "2.4.0",
     "@openai/agents": "0.21.0",
     "@openrouter/ai-sdk-provider": "3.1.0",
     "@tailwindcss/typography": "0.5.20",

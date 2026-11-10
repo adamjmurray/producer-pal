@@ -53,9 +53,9 @@ Shipped code also cannot shell out or evaluate strings: importing
 
 You choose the provider, you bring the key, and the key stays on your machine.
 
-- Keys are **encrypted at rest** in your browser (AES-GCM, under a
-  non-extractable key held in IndexedDB). Plaintext keys are not written to
-  local storage.
+- Keys are **encrypted at rest** in your browser (AES-GCM, with the key held in
+  IndexedDB: non-extractable where the browser allows it, raw bytes on plain
+  HTTP pages). Plaintext keys are not written to local storage.
 - **Text chat** calls your provider directly from the browser. The key does not
   pass through the local server.
 - **Voice mode** is the exception: the key is sent to the local server, which
