@@ -154,6 +154,27 @@ describe("ppal-connect", () => {
     expect(typeof parsed.liveSet.regularTrackCount).toBe("number");
     expect(typeof parsed.liveSet.returnTrackCount).toBe("number");
     expect(typeof parsed.liveSet.sceneCount).toBe("number");
+
+    // The overview lists tracks as { path, name }; an empty or 257+ list is left out
+    const { liveSet } = parsed;
+
+    for (const [list, count, prefix] of [
+      [liveSet.tracks, liveSet.regularTrackCount, /^t\d+$/],
+      [liveSet.returnTracks, liveSet.returnTrackCount, /^rt\d+$/],
+    ] as const) {
+      if (count === 0 || count > 256) {
+        expect(list).toBeUndefined();
+      } else {
+        expect(list).toHaveLength(count);
+        expect(
+          list?.every(
+            (track) =>
+              prefix.test(track.path) && typeof track.name === "string",
+          ),
+        ).toBe(true);
+      }
+    }
+
     expect(parsed.liveSet.tempo).toBeDefined();
     expect(
       parsed.liveSet.timeSignature === null ||
@@ -549,6 +570,8 @@ interface ConnectResult {
     sceneCount: number;
     regularTrackCount: number;
     returnTrackCount: number;
+    tracks?: { path: string; name: string }[];
+    returnTracks?: { path: string; name: string }[];
     isPlaying?: boolean;
     scale?: string;
     scalePitches?: string;

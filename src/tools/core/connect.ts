@@ -5,9 +5,20 @@
 
 import { VERSION } from "#src/shared/config.ts";
 import {
+  livePath,
+  type TrackPath,
+} from "#src/shared/live-api-path-builders.ts";
+import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
 } from "#src/shared/pitch.ts";
+import {
+  formatObjectPath,
+  type TrackSegment,
+} from "#src/tools/shared/validation/object-path.ts";
+
+/** A track list longer than this is left out; the count still says how many. */
+const MAX_LISTED_TRACKS = 256;
 
 interface LiveSetInfo {
   name?: unknown;
@@ -16,9 +27,17 @@ interface LiveSetInfo {
   sceneCount: number;
   regularTrackCount: number;
   returnTrackCount: number;
+  tracks?: ListedTrack[];
+  returnTracks?: ListedTrack[];
   isPlaying?: boolean;
   scale?: string;
   scalePitches?: string;
+}
+
+/** A track in the overview, shaped like a read-live-set track entry. */
+interface ListedTrack {
+  path: string;
+  name: string;
 }
 
 interface VersionCheckResult {
@@ -32,13 +51,9 @@ interface ConnectResult extends VersionCheckResult {
 }
 
 /**
- * Initialize connection to Ableton Live with minimal data for safety. The
- * per-project context blob is no longer embedded in this result — it is
- * appended Node-side as its own labeled block (withProjectContext), the same
- * shape as the global-context and memory blocks, so V8 (no filesystem) and
- * external MCP clients all see the same consistent connect response. The
- * `nextStep` instruction moved to Node-side too (withNextStep), where it lands
- * after those blocks and can vary with what they held — V8 cannot read them.
+ * Initialize connection to Ableton Live with a small Live Set overview. The
+ * project context, global context, memory and next step are added Node-side
+ * (V8 has no filesystem).
  * @param _params - No parameters used
  * @returns Connection status and basic Live Set info
  */
@@ -60,6 +75,7 @@ export function connect(_params: object = {}): ConnectResult {
     sceneCount: sceneIds.length,
     regularTrackCount: trackIds.length,
     returnTrackCount: returnTrackIds.length,
+    ...trackLists(trackIds.length, returnTrackIds.length),
   };
 
   const isPlaying = (liveSet.getProperty("is_playing") as number) > 0;
@@ -87,6 +103,46 @@ export function connect(_params: object = {}): ConnectResult {
   }
 
   return { ...versions, liveSet: liveSetInfo };
+}
+
+/**
+ * Lists regular and return tracks as `{ path, name }`. A list is left out when
+ * it is empty or longer than the cap.
+ * @param trackCount - Number of regular tracks
+ * @param returnTrackCount - Number of return tracks
+ * @returns The `tracks` and `returnTracks` fields that apply
+ */
+function trackLists(
+  trackCount: number,
+  returnTrackCount: number,
+): Pick<LiveSetInfo, "tracks" | "returnTracks"> {
+  const lists: Pick<LiveSetInfo, "tracks" | "returnTracks"> = {};
+
+  if (trackCount > 0 && trackCount <= MAX_LISTED_TRACKS) {
+    lists.tracks = listTracks(trackCount, false);
+  }
+
+  if (returnTrackCount > 0 && returnTrackCount <= MAX_LISTED_TRACKS) {
+    lists.returnTracks = listTracks(returnTrackCount, true);
+  }
+
+  return lists;
+}
+
+function listTracks(count: number, isReturn: boolean): ListedTrack[] {
+  return Array.from({ length: count }, (_, index) => {
+    const [segment, path]: [TrackSegment, TrackPath] = isReturn
+      ? [
+          { kind: "return-track", returnIndex: index },
+          livePath.returnTrack(index),
+        ]
+      : [{ kind: "track", trackIndex: index }, livePath.track(index)];
+
+    return {
+      path: formatObjectPath(segment),
+      name: LiveAPI.from(path).getName(),
+    };
+  });
 }
 
 /**

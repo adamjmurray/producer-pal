@@ -10,7 +10,7 @@ import { VERSION } from "#src/shared/config.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/tracks/get-host-track-index.ts";
-import { connect, connectVersions } from "../connect.ts";
+import { connect, connectVersions } from "../../connect.ts";
 
 // Mock the getHostTrackIndex function
 vi.mock(
@@ -256,9 +256,21 @@ describe("connect", () => {
         tracks: children("track0", "track1", "track2"),
         scenes: children("scene0", "scene1"),
         extra: {
-          [String(livePath.track(0))]: { has_midi_input: 1, devices: [] },
-          [String(livePath.track(1))]: { has_midi_input: 1, devices: [] },
-          [String(livePath.track(2))]: { has_midi_input: 0, devices: [] },
+          [String(livePath.track(0))]: {
+            name: "Drums",
+            has_midi_input: 1,
+            devices: [],
+          },
+          [String(livePath.track(1))]: {
+            name: "Bass",
+            has_midi_input: 1,
+            devices: [],
+          },
+          [String(livePath.track(2))]: {
+            name: "Keys",
+            has_midi_input: 0,
+            devices: [],
+          },
         },
       }),
       "12.3",
@@ -277,6 +289,11 @@ describe("connect", () => {
         sceneCount: 2,
         regularTrackCount: 3,
         returnTrackCount: 0,
+        tracks: [
+          { path: "t0", name: "Drums" },
+          { path: "t1", name: "Bass" },
+          { path: "t2", name: "Keys" },
+        ],
         isPlaying: true,
       },
     });
