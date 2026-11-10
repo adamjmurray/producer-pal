@@ -69,7 +69,7 @@ vi.mock(import("@modelcontextprotocol/sdk/types.js"), () =>
   partialModule({
     CallToolRequestSchema: "CallToolRequestSchema",
     ListToolsRequestSchema: "ListToolsRequestSchema",
-    ErrorCode: { ConnectionClosed: -32000 },
+    ErrorCode: { ConnectionClosed: -32000, RequestTimeout: -32001 },
   }),
 );
 
@@ -95,6 +95,7 @@ import {
   responseText,
 } from "../offline/tests/offline-add-producer-pal-test-helpers.ts";
 import { type OfflineDeps } from "../offline/offline-deps.ts";
+import { CLIENT_TOOL_TIMEOUT_MS, VERSION } from "#src/shared/config.ts";
 import { SETUP_BUDGET_MS } from "../setup/setup-deadline.ts";
 import { StdioHttpBridge } from "../stdio-http-bridge.ts";
 import { UPDATE_HINT_MS } from "../update/update-connect-hint.ts";
@@ -315,5 +316,139 @@ describe("StdioHttpBridge setup calls against a port that never answers", () => 
     expect(finished! - started).toBeLessThanOrEqual(UPDATE_HINT_MS + FLOOR_MS);
     // As if the device weren't older: no hint.
     expect(blocks).toStrictEqual([{ type: "text", text: "connected" }]);
+  });
+});
+
+/** A device that reports `VERSION` and never answers a tool call, and the timeout each call was given. */
+function deviceThatNeverAnswersTools(): { timeouts: number[] } {
+  const timeouts: number[] = [];
+
+  mockClient.getServerVersion.mockReturnValue({ name: "d", version: VERSION });
+  mockClient.callTool.mockImplementation(
+    (_request: unknown, _schema: unknown, options: { timeout: number }) =>
+      new Promise((_resolve, reject) => {
+        timeouts.push(options.timeout);
+        setTimeout(
+          () => reject(Object.assign(new Error("timed out"), { code: -32001 })),
+          options.timeout,
+        );
+      }),
+  );
+
+  return { timeouts };
+}
+
+describe("StdioHttpBridge setup calls the device accepts and never answers", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    mockServer.connect.mockResolvedValue(undefined);
+    mockClient.connect.mockReset();
+    mockClient.close.mockReset();
+    mockClient.callTool.mockReset();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * @param deps - What the portal's own answers reach out to
+   * @param connected - Whether a client is already connected
+   * @returns The call handler
+   */
+  async function handlerFor(deps: OfflineDeps, connected: boolean) {
+    const bridge = new StdioHttpBridge(
+      "http://localhost:3350/mcp",
+      {},
+      deps,
+    ) as unknown as TestBridge;
+
+    bridge.fallbackTools.tools.push(MANAGE);
+
+    const handler = await startAndGetCallHandler(bridge);
+
+    if (connected) {
+      bridge.httpClient = mockClient;
+      bridge.isConnected = true;
+    }
+
+    return handler;
+  }
+
+  it("bounds the install forwarded on a connected client by the budget, and says it may have run", async () => {
+    const { timeouts } = deviceThatNeverAnswersTools();
+    const handler = await handlerFor(clockedDeps().deps, true);
+    const call = Promise.resolve(
+      handler(
+        callToolRequest("ppal-manage", { action: "install-producer-pal" }),
+      ),
+    ).then((result) => responseText(result as never));
+
+    await vi.advanceTimersByTimeAsync(SETUP_BUDGET_MS - 1000);
+    // Not answered yet: the old 65 s wait is gone, the new one isn't up.
+    expect(timeouts).toStrictEqual([SETUP_BUDGET_MS]);
+
+    await vi.advanceTimersByTimeAsync(1000 + FLOOR_MS);
+
+    expect(await call).toContain("may or may not have finished");
+  });
+
+  it("gives the forwarded install only what the handshake left of the budget", async () => {
+    const { timeouts } = deviceThatNeverAnswersTools();
+    const handler = await handlerFor(clockedDeps().deps, false);
+
+    // The handshake answers at 40 s; there is no version until it does.
+    mockClient.connect.mockImplementation(
+      () => new Promise<void>((resolve) => setTimeout(resolve, 40_000)),
+    );
+
+    const call = Promise.resolve(
+      handler(
+        callToolRequest("ppal-manage", { action: "install-producer-pal" }),
+      ),
+    ).then((result) => responseText(result as never));
+
+    await vi.advanceTimersByTimeAsync(SETUP_BUDGET_MS + FLOOR_MS);
+
+    expect(timeouts).toHaveLength(1);
+    expect(timeouts[0]).toBeLessThanOrEqual(SETUP_BUDGET_MS - 40_000);
+    expect(await call).toContain("may or may not have finished");
+  });
+
+  it("sends nothing, and says nothing was installed, when the handshake took the whole budget", async () => {
+    deviceThatNeverAnswersTools();
+
+    let clock = 0;
+    const deps = happyDeps({ now: () => clock });
+    const handler = await handlerFor(deps, false);
+
+    mockClient.connect.mockImplementation(() => {
+      clock = SETUP_BUDGET_MS + 1000;
+
+      return Promise.resolve();
+    });
+
+    const text = responseText(
+      (await handler(
+        callToolRequest("ppal-manage", { action: "install-producer-pal" }),
+      )) as never,
+    );
+
+    expect(mockClient.callTool).not.toHaveBeenCalled();
+    expect(text).toContain("nothing was installed");
+    expect(text).not.toContain("may or may not");
+  });
+
+  it("keeps the 65 s timeout on every other tool call", async () => {
+    const { timeouts } = deviceThatNeverAnswersTools();
+    const handler = await handlerFor(clockedDeps().deps, true);
+
+    void handler(callToolRequest("ppal-read-live-set"));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(timeouts).toStrictEqual([CLIENT_TOOL_TIMEOUT_MS]);
   });
 });

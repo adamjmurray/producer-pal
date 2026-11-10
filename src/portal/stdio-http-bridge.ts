@@ -26,7 +26,12 @@ import {
 } from "./offline/offline-call.ts";
 import { type OfflineDeps, realOfflineDeps } from "./offline/offline-deps.ts";
 import { SETUP_URL } from "./offline/offline-setup-hints.ts";
-import { setupDeadline, timeLeft } from "./setup/setup-deadline.ts";
+import {
+  setupDeadline,
+  timeLeft,
+  withinTimeout,
+} from "./setup/setup-deadline.ts";
+import { forwardedSetupTimeout } from "./offline/setup-call-timeout.ts";
 import { type RunningDevice } from "./update/running-device.ts";
 import { answerInstallWhenDeviceOlder } from "./update/answer-install-when-device-older.ts";
 import { answerUpdateCall, isUpdateCall } from "./update/update-call.ts";
@@ -43,6 +48,7 @@ import {
 // local `as number` does not survive --fix (no-unnecessary-type-assertion
 // deletes it), so the widening lives here instead.
 const CONNECTION_CLOSED_CODE: number = ErrorCode.ConnectionClosed;
+const REQUEST_TIMEOUT_CODE: number = ErrorCode.RequestTimeout;
 
 interface CallToolRequest {
   params: {
@@ -164,6 +170,38 @@ export class StdioHttpBridge {
 
   private _timeLeft(deadline?: number): number | undefined {
     return deadline == null ? undefined : timeLeft(this.offlineDeps, deadline);
+  }
+
+  private _setupBudgetRanOut(deadline: number | undefined, code: unknown) {
+    return (
+      deadline != null &&
+      typeof code === "number" &&
+      code === REQUEST_TIMEOUT_CODE
+    );
+  }
+
+  private _budgetSpent(deadline?: number): boolean {
+    return deadline != null && this.offlineDeps.now() >= deadline;
+  }
+
+  // Explicit timeout rather than the SDK's 60s default, which would sit too
+  // close to the device's ceiling. The upstream client's own deadline still
+  // binds first — this only keeps our leg out of the way. A setup call gets
+  // what is left of its budget instead, so handshake and call share one limit.
+  private async _callOnDevice(
+    client: Client,
+    request: CallToolRequest,
+    deadline?: number,
+  ) {
+    const timeout = this._timeLeft(deadline) ?? CLIENT_TOOL_TIMEOUT_MS;
+    const toolRequest = {
+      name: request.params.name,
+      arguments: request.params.arguments ?? {},
+    };
+
+    return await this.inFlight.run(client, () =>
+      client.callTool(toolRequest, undefined, { timeout }),
+    );
   }
 
   private _createMisconfiguredUrlResponse() {
@@ -395,28 +433,22 @@ Tell the user to check ${SETUP_URL} for configuration help.
           await this._ensureHttpConnection(this._timeLeft(deadline));
           client = this.httpClient as Client;
 
-          const toolRequest = {
-            name: request.params.name,
-            arguments: request.params.arguments ?? {},
-          };
+          const args = request.params.arguments ?? {};
+
+          // A setup call that used its budget getting connected sends nothing.
+          if (this._budgetSpent(deadline)) {
+            return forwardedSetupTimeout(args, false);
+          }
 
           // httpClient is guaranteed non-null after successful _ensureHttpConnection()
-          // Explicit timeout rather than the SDK's 60s default, which would
-          // sit too close to the device's ceiling. The upstream client's own
-          // deadline still binds first — this only keeps our leg out of the way.
-          const active = client;
-          const result = await this.inFlight.run(active, () =>
-            active.callTool(toolRequest, undefined, {
-              timeout: CLIENT_TOOL_TIMEOUT_MS,
-            }),
-          );
+          const result = await this._callOnDevice(client, request, deadline);
 
           logger.debug(
             `[Bridge] Tool call successful for ${request.params.name}`,
           );
 
           this.fullConnectSeen ||= isFullConnect(
-            { name: request.params.name, args: toolRequest.arguments },
+            { name: request.params.name, args },
             result,
           );
 
@@ -435,6 +467,13 @@ Tell the user to check ${SETUP_URL} for configuration help.
             error && typeof error === "object" && "code" in error
               ? error.code
               : undefined;
+
+          // A setup call's budget ran out while the device had the request
+          // (a connect that ran out is wrapped, with no code). The connection
+          // is still alive, so isConnected stays set.
+          if (this._setupBudgetRanOut(deadline, errorCode)) {
+            return forwardedSetupTimeout(request.params.arguments ?? {}, true);
+          }
 
           // A numeric code normally means we connected and got a structured
           // JSON-RPC error — return it to the client. The exception is
@@ -521,35 +560,5 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
     this.isConnected = false;
     logger.info(`stdio-to-HTTP bridge stopped`);
-  }
-}
-
-/**
- * Wait for a promise for at most `timeoutMs`, without touching the promise.
- * @param promise - What to wait for
- * @param timeoutMs - The longest wait; unset waits as long as it takes
- * @returns Resolves when the promise does; throws when time runs out first
- */
-async function withinTimeout(
-  promise: Promise<void>,
-  timeoutMs?: number,
-): Promise<void> {
-  if (timeoutMs == null) {
-    return await promise;
-  }
-
-  let timer: NodeJS.Timeout | undefined;
-
-  try {
-    await Promise.race([
-      promise,
-      new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => {
-          reject(new Error(`Timed out after ${timeoutMs} ms`));
-        }, timeoutMs);
-      }),
-    ]);
-  } finally {
-    clearTimeout(timer);
   }
 }

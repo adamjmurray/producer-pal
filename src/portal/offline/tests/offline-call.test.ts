@@ -5,6 +5,8 @@
 
 import { describe, expect, it } from "vitest";
 import { isSetupCall } from "../offline-call.ts";
+import { forwardedSetupTimeout } from "../setup-call-timeout.ts";
+import { responseText } from "./offline-add-producer-pal-test-helpers.ts";
 
 describe("isSetupCall", () => {
   it.each([
@@ -22,5 +24,42 @@ describe("isSetupCall", () => {
     ["add-producer-pal", "ppal-read-live-set", true],
   ])("is false for %s on %s when offered is %s", (action, name, offered) => {
     expect(isSetupCall(name, { action }, offered)).toBe(false);
+  });
+});
+
+const INSTALL = { action: "install-producer-pal" };
+
+describe("forwardedSetupTimeout", () => {
+  it("says an install that was sent may or may not have finished", () => {
+    const text = responseText(forwardedSetupTimeout(INSTALL, true));
+
+    expect(text).toContain("may or may not have finished");
+    expect(text).toContain("Run it again");
+  });
+
+  it("says nothing was installed when the install was never sent", () => {
+    const text = responseText(forwardedSetupTimeout(INSTALL, false));
+
+    expect(text).toContain("nothing was installed");
+    expect(text).not.toContain("may or may not");
+  });
+
+  it("answers the retired install name the same way", () => {
+    const text = responseText(
+      forwardedSetupTimeout({ action: "install-remote-script" }, false),
+    );
+
+    expect(text).toContain("nothing was installed");
+  });
+
+  it("words other setup actions without claiming an install", () => {
+    const add = { action: "add-producer-pal" };
+
+    expect(responseText(forwardedSetupTimeout(add, false))).toContain(
+      "nothing was changed",
+    );
+    expect(responseText(forwardedSetupTimeout(add, true))).toContain(
+      "Call ppal-connect to check",
+    );
   });
 });

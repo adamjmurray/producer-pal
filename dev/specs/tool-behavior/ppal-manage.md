@@ -125,6 +125,12 @@ script.
   large to send back, Node's own route timeout) may follow an install that
   already wrote files, so it gets the same "may or may not have finished" text
   as a timeout, with the real error in parentheses.
+- **Portal time limit:** through the portal an install also finishes in about 50
+  s, counted from arrival: the handshake and the forwarded call share that one
+  deadline, so the call gets what the handshake left. If the device hasn't
+  answered by then, the error says the install may or may not have finished (run
+  it again). If the handshake used up the budget, nothing is sent and the error
+  says nothing was installed.
 
 ## `add-producer-pal`
 

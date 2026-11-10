@@ -31,3 +31,33 @@ export function timeLeft(
 ): number {
   return Math.max(1, deadline - deps.now());
 }
+
+/**
+ * Wait for a promise for at most `timeoutMs`, without touching the promise.
+ * @param promise - What to wait for
+ * @param timeoutMs - The longest wait; unset waits as long as it takes
+ * @returns Resolves when the promise does; throws when time runs out first
+ */
+export async function withinTimeout(
+  promise: Promise<void>,
+  timeoutMs?: number,
+): Promise<void> {
+  if (timeoutMs == null) {
+    return await promise;
+  }
+
+  let timer: NodeJS.Timeout | undefined;
+
+  try {
+    await Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`Timed out after ${timeoutMs} ms`));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
