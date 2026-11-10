@@ -139,6 +139,12 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !hasVst3("Serum2.vst3"))(
         params: [{ name: "Main Vol", value: "25%" }],
       });
 
+      // Read the original first: a failure then says whether the write or the
+      // copy lost the value.
+      const [written] = (await readDevice(path, "Main Vol")).parameters ?? [];
+
+      expect(written?.value).toMatch(/^25%/);
+
       const copy = await duplicateTrack(track);
       const devicePath = `${copy}/${path.split("/").at(-1)}`;
       const [param] =
