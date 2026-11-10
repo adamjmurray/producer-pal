@@ -23,6 +23,8 @@ const TUNNEL_DOMAINS = [
   "ngrok.io",
   "pinggy-free.link",
   "free.pinggy.net",
+  "pinggy.link",
+  "a.pinggy.io",
 ];
 
 // A DNS name with an optional port. No empty labels, so a trailing dot fails.

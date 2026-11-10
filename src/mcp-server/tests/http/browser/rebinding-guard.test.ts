@@ -77,6 +77,9 @@ describe("isRebindSafeHost", () => {
     "x.ngrok.io",
     "abc.run.pinggy-free.link",
     "abc.a.free.pinggy.net",
+    "abc.a.free.pinggy.link",
+    "abc.a.pinggy.link",
+    "myname.a.pinggy.io",
   ])("allows %s", (host) => {
     expect(isRebindSafeHost(host)).toBe(true);
   });
@@ -97,6 +100,9 @@ describe("isRebindSafeHost", () => {
     "eviltrycloudflare.com",
     "trycloudflare.com.evil.com",
     "evilngrok.io",
+    "evilpinggy.link",
+    "pinggy.io",
+    "dashboard.pinggy.io",
     "evil.local.evil.com",
     "999.1.1.1",
     "evil.com@localhost",
