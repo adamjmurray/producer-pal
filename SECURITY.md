@@ -95,13 +95,13 @@ reasoning and the rejected alternatives.
 
 Stated plainly, because you should be able to make your own call:
 
-- **The local server has no authentication, and it is reachable from your local
-  network** — not just from localhost. It listens on port 3350 on all network
-  interfaces, which is what makes remote and tunneled setups work. On a network
-  you trust (your own home Wi-Fi), this is generally fine. On shared or public
-  Wi-Fi, anyone on that network who finds the port can drive Ableton Live
-  through it. If that matters to you, don't run Producer Pal on an untrusted
-  network.
+- **The local server has no authentication.** By default it listens only on this
+  computer (127.0.0.1 and ::1, port 3350), so other devices on your network
+  can't reach it. Turning on "Allow other devices to connect" in the device's
+  Setup tab (a per-computer setting, off by default, never saved in a Live Set)
+  makes it listen on all network interfaces, and then anyone on that network who
+  finds the port can drive Ableton Live. Only turn it on for a network you
+  trust. Other programs on your own computer can always reach it.
 - **Web pages can't reach the server by pointing a domain at your computer**
   (DNS rebinding). Reached by any name other than localhost, an IP address, a
   local network name (`studio-mac`, `studio-mac.local`) or a known tunnel domain
@@ -120,8 +120,8 @@ It's designed for trusted local use, not deployment in adversarial environments.
 ## Security Best Practices
 
 - Keep your API keys and any web tunnel URLs private
-- Prefer a network you trust, or don't leave Producer Pal running on one you
-  don't
+- Leave "Allow other devices to connect" off unless you need it, and only turn
+  it on for a network you trust
 - Use the latest version of Producer Pal
 - Be cautious when using unfamiliar forks of this repository
 

@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { MAX_CONTEXT_CONTENT_LENGTH } from "#src/tools/constants.ts";
-import { parseConfigBody } from "../../helpers/http/config-body.ts";
+import { parseConfigBody } from "../../helpers/http/config/config-body.ts";
 
 describe("parseConfigBody", () => {
   it("accepts a valid body", () => {

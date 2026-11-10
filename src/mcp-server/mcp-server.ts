@@ -5,13 +5,17 @@
 
 // the entry point / loader script for the MCP server running inside Ableton Live via Node for Max
 import Max from "max-api";
-import { BUILD_SHA, DEFAULT_MCP_PORT, VERSION } from "#src/shared/config.ts";
+import { BUILD_SHA, VERSION } from "#src/shared/config.ts";
 import { createExpressApp } from "./create-express-app.ts";
 import { syncDeviceInstallNotice } from "./rpc/device-install/device-install-notice.ts";
 import { registerDeviceReportRoute } from "./rpc/device-install/device-report-route.ts";
 import { askDeviceToReport } from "./rpc/device-install/device-source.ts";
 import { isConfigDirInert } from "./helpers/config-store/config-markdown-store.ts";
 import { registerGlobalContextNodeRoutes } from "./helpers/global-context/global-context-node-routes.ts";
+import {
+  parseServerArgs,
+  startHttpListeners,
+} from "./helpers/http/http-listeners.ts";
 import { getUpdate } from "./helpers/http/update-check.ts";
 import { registerMemoryNodeRoutes } from "./helpers/memory/memory-node-routes.ts";
 import { registerCustomSkillsNodeRoutes } from "./helpers/skills-custom/custom-skills-node-routes.ts";
@@ -26,30 +30,10 @@ registerGlobalContextNodeRoutes();
 registerMemoryNodeRoutes();
 registerCustomSkillsNodeRoutes();
 
-interface ServerError extends Error {
-  code?: string;
-}
-
 // Cast process to access Node.js argv (max-globals.d.ts has limited process type)
-const args = (process as unknown as { argv: string[] }).argv;
-
-let port = DEFAULT_MCP_PORT;
-
-for (const [index, arg] of args.entries()) {
-  if (arg === "port") {
-    const portValueArg = args[index + 1];
-
-    if (portValueArg == null) {
-      throw new Error("Missing port value");
-    }
-
-    port = Number.parseInt(portValueArg);
-
-    if (Number.isNaN(port)) {
-      throw new Error(`Invalid port: ${portValueArg}`);
-    }
-  }
-}
+const { port } = parseServerArgs(
+  (process as unknown as { argv: string[] }).argv,
+);
 
 // The build SHA disambiguates two builds of the same version — the only way a
 // bug report can name the exact artifact it came from.
@@ -88,39 +72,37 @@ if (isConfigDirInert()) {
 
 const appServer = createExpressApp();
 
-appServer
-  .listen(port, () => {
-    const url = `http://localhost:${port}/mcp`;
+function announceStarted(): void {
+  const url = `http://localhost:${port}/mcp`;
 
-    nodeLog(
-      `Producer Pal ${versionLabel} running.\nConnect Claude Desktop or another MCP client to ${url}`,
-    );
-    void Max.outlet("version", VERSION);
+  nodeLog(
+    `Producer Pal ${versionLabel} running.\nConnect Claude Desktop or another MCP client to ${url}`,
+  );
+  void Max.outlet("version", VERSION);
 
-    // We need to use our own started event because the Node for Max started
-    // occurs too early, before our message handlers are registered.
-    void Max.outlet("started");
+  // We need to use our own started event because the Node for Max started
+  // occurs too early, before our message handlers are registered.
+  void Max.outlet("started");
 
-    // The device knows where its file is; this is how Node finds out.
-    askDeviceToReport();
+  // The device knows where its file is; this is how Node finds out.
+  askDeviceToReport();
 
-    // The process's only GitHub request. `GET /update` reuses this same result
-    // rather than making its own — see update-check.ts.
-    void getUpdate().then((update) => {
-      if (update) {
-        nodeLog(`Producer Pal update available: ${update.version}`);
-        // One value only: the patch builds its label from it.
-        void Max.outlet("update_available", update.version);
-      }
+  // The process's only GitHub request. `GET /update` reuses this same result
+  // rather than making its own — see update-check.ts.
+  void getUpdate().then((update) => {
+    if (update) {
+      nodeLog(`Producer Pal update available: ${update.version}`);
+      // One value only: the patch builds its label from it.
+      void Max.outlet("update_available", update.version);
+    }
 
-      // The install notice waits for this answer: it gives way to the update.
-      void syncDeviceInstallNotice();
-    });
-  })
-  .on("error", (error: ServerError) => {
-    throw new Error(
-      error.code === "EADDRINUSE"
-        ? `Producer Pal failed to start: Port ${port} is already in use.`
-        : `Producer Pal failed to start: ${error}`,
-    );
+    // The install notice waits for this answer: it gives way to the update.
+    void syncDeviceInstallNotice();
   });
+}
+
+// A failure to listen rejects unhandled, which stops the script with the error.
+void startHttpListeners(appServer, {
+  port,
+  onListening: announceStarted,
+});

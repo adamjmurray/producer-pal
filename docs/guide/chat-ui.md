@@ -568,9 +568,10 @@ cards use the one User Library path at the top of the tab.
   you can spot it without opening Settings.
 
 Installing and **Swap** work only when the chat UI is open at `localhost` or
-this computer's IP address (for example from another computer on your network).
-Through a web tunnel's domain name, the tab shows status but refuses to install,
-so another website can't install files on your computer.
+this computer's IP address (for example from another computer on your network,
+with **Allow other devices to connect** on). Through a web tunnel's domain name,
+the tab shows status but refuses to install, so another website can't install
+files on your computer.
 
 <img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="Installation tab" width="500"/>
 

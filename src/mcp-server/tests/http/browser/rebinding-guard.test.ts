@@ -8,8 +8,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   isRebindSafeHost,
   rebindingGuard,
-} from "../../helpers/http/browser/rebinding-guard.ts";
-import { mockRes } from "./mock-express-response-test-helpers.ts";
+} from "../../../helpers/http/browser/rebinding-guard.ts";
+import { mockRes } from "../mock-express-response-test-helpers.ts";
 
 /**
  * A minimal Express request with a path and headers, read case-insensitively

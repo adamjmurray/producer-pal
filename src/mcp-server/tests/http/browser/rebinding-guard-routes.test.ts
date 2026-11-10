@@ -5,7 +5,7 @@
 
 import { request } from "node:http";
 import { describe, expect, it } from "vitest";
-import { setupExpressAppServer } from "../express-app-test-helpers.ts";
+import { setupExpressAppServer } from "../../express-app-test-helpers.ts";
 
 interface Answer {
   status: number;

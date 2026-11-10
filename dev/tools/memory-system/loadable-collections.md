@@ -60,9 +60,9 @@ nothing reads it.
 
 **That inertness is the precondition, and restoring the feature is what ends
 it.** Wiring `withCustomSkills` back up turns anything already in
-`skills-custom/` into live instruction text on every connect. The server binds
-all interfaces with no auth, so a restore should audit or clear that directory
-as part of enabling it rather than assume it starts empty.
+`skills-custom/` into live instruction text on every connect. The server has no
+auth (and can bind all interfaces), so a restore should audit or clear that
+directory as part of enabling it rather than assume it starts empty.
 
 Beyond custom skills, the generic store / REST / webui kit is written for future
 collections that don't exist yet.

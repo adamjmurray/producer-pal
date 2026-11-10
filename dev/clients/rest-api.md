@@ -45,8 +45,8 @@ If the device doesn't take a setting (a send to Max fails), the other settings
 are still sent and kept, and the call returns `502` with `{error, fields}`
 naming the fields that failed. Those are rolled back in Node, so `GET /config`
 always matches the device; retry them. Code: `emitConfigOutlets()` in
-`src/mcp-server/helpers/http/config-outlets.ts`, `parseConfigBody()` in
-`src/mcp-server/helpers/http/config-body.ts`, `handleConfigUpdate()` in
+`src/mcp-server/helpers/http/config/config-outlets.ts`, `parseConfigBody()` in
+`src/mcp-server/helpers/http/config/config-body.ts`, `handleConfigUpdate()` in
 `src/mcp-server/create-express-app.ts`.
 
 ## Security

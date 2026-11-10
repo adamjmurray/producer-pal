@@ -7,22 +7,37 @@ tunnel.
 ## Local Networks
 
 For studios, classrooms, or performances on a local network, you don't need a
-tunnel. Producer Pal has no authentication, so anyone on the same network can
-reach it at the default port. You can customize the port number in the Producer
-Pal device settings (default: 3350), which reduces the chance of accidental
-discovery but is not real access control. Update the `:3350` in your AI
-connection settings if you change it in the Producer Pal Max for Live device.
+tunnel. By default only Live's computer can connect. To let phones and other
+computers in, turn on **Allow other devices to connect** in the device's
+[Setup tab](/guide/device#setup-tab). It's saved for this computer, not in your
+Live Sets. It takes effect right away, and open connections drop for a moment.
+
+::: warning No Password
+
+With the setting on, anyone on the same network can control Ableton Live.
+Producer Pal has no password, so only turn it on for a network you trust, and
+turn it off when you're done. Changing the port (default: 3350) makes accidental
+discovery less likely, but it is not real access control.
+
+:::
+
+**Upgrading to 2.6:** other computers could connect without this setting before.
+They can't now until you turn it on.
+
+Update the `:3350` in your AI connection settings if you change the port in the
+Producer Pal Max for Live device.
 
 ### Chat From a Phone or Another Computer
 
-1. Connect the phone or other computer to the same Wi-Fi network as Live's
+1. Turn on **Allow other devices to connect** in the device's Setup tab.
+2. Connect the phone or other computer to the same Wi-Fi network as Live's
    computer.
-2. Find the IP address of Live's computer. On a Mac: System Settings → Wi-Fi →
+3. Find the IP address of Live's computer. On a Mac: System Settings → Wi-Fi →
    Details → TCP/IP. On Windows: Settings → Network & internet → Wi-Fi → your
    network.
-3. In the phone's browser, open `http://<that address>:3350`, for example
+4. In the phone's browser, open `http://<that address>:3350`, for example
    `http://192.168.1.20:3350`.
-4. Set up the AI in the chat's settings. Each browser keeps its own settings, so
+5. Set up the AI in the chat's settings. Each browser keeps its own settings, so
    paste your API key again.
 
 Some things only work on Live's computer: voice mode, and device settings like
@@ -47,7 +62,10 @@ setup, and Live is reachable by anyone with the link.
 
 ## Web Tunnels
 
-A tunnel gives your Producer Pal a public web address.
+A tunnel gives your Producer Pal a public web address. A tunnel running on
+Live's computer and pointed at `localhost` works with **Allow other devices to
+connect** off. One running in WSL2, Docker, or a VM, or pointed at the
+computer's network address, needs the setting on.
 
 The chat UI works through the tunnels below. On your own domain (a named
 Cloudflare tunnel, a custom ngrok domain), connecting claude.ai, ChatGPT, or Le

@@ -387,6 +387,11 @@ export function tools(): void {}
 export function updateDismissed(): void {}
 
 /**
+ * Ignore the network access setting. Only the Setup tab's toggle shows it.
+ */
+export function allowNetwork(): void {}
+
+/**
  * Ignore the "Finish installation" notice toggle. It only tells the device's
  * Main tab to show or hide its notice.
  */

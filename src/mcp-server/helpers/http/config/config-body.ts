@@ -6,7 +6,7 @@
 import { z } from "zod";
 import { isNotation, NOTATIONS, type Notation } from "#src/shared/notation.ts";
 import { MAX_CONTEXT_CONTENT_LENGTH } from "#src/tools/constants.ts";
-import { validateTools } from "../../create-mcp-server.ts";
+import { validateTools } from "../../../create-mcp-server.ts";
 
 // `null` is allowed on the two text fields: Max sends a bare null for an
 // emptied one. Booleans are strict: the string "false" is refused, not read as

@@ -4,14 +4,85 @@
         "appversion": {
             "major": 9,
             "minor": 1,
-            "revision": 4,
+            "revision": 5,
             "architecture": "x64",
             "modernui": 1
         },
         "classnamespace": "box",
-        "rect": [ 438.0, 110.0, 864.0, 756.0 ],
+        "rect": [ 215.0, 110.0, 971.0, 811.0 ],
         "openinpresentation": 1,
         "boxes": [
+            {
+                "box": {
+                    "annotation": "Lets phones and other computers on your network connect to Producer Pal. When off, only this computer can connect. This is a global setting for this computer, not just this Live Set. Warning: when on, anyone on your network can control Live, and there is no password. Only turn it on for a network you trust.",
+                    "annotation_name": "Allow other devices to connect",
+                    "id": "obj-99",
+                    "maxclass": "live.toggle",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "parameter_enable": 1,
+                    "parameter_mappable": 0,
+                    "patching_rect": [ 825.0, 226.0, 15.0, 15.0 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 101.0, 45.0, 15.0, 15.0 ],
+                    "saved_attribute_attributes": {
+                        "valueof": {
+                            "parameter_enum": [ "off", "on" ],
+                            "parameter_invisible": 2,
+                            "parameter_longname": "live.toggle",
+                            "parameter_mmax": 1,
+                            "parameter_modmode": 0,
+                            "parameter_shortname": "live.toggle",
+                            "parameter_type": 2
+                        }
+                    },
+                    "varname": "allow-network"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-118",
+                    "maxclass": "message",
+                    "numinlets": 2,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 825.0, 263.0, 100.0, 22.0 ],
+                    "text": "allowNetwork $1"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-119",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 825.0, 298.0, 89.0, 22.0 ],
+                    "text": "s ---node-script"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-121",
+                    "maxclass": "newobj",
+                    "numinlets": 1,
+                    "numoutlets": 1,
+                    "outlettype": [ "" ],
+                    "patching_rect": [ 824.5, 147.0, 72.0, 22.0 ],
+                    "text": "prepend set"
+                }
+            },
+            {
+                "box": {
+                    "id": "obj-120",
+                    "linecount": 5,
+                    "maxclass": "comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 846.0, 180.0, 174.0, 74.0 ],
+                    "text": "Hidden parameter: not saved in the Set or presets. Node saves it per computer and sends the actual state back on start and after each change"
+                }
+            },
             {
                 "box": {
                     "annotation": "The format used to represent the notes inside MIDI clips:\n* barbeat - full-featured syntax tuned for large models\n* stark - simplified syntax tuned for small models\n* midi-json - json format tuned for manipulating MIDI with code",
@@ -417,7 +488,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 326.0, 616.0, 63.0, 83.5 ],
                     "presentation": 1,
-                    "presentation_rect": [ 4.0000001192092896, 41.00000122189522, 114.00000339746475, 20.055414140224457 ],
+                    "presentation_rect": [ 4.0, 41.0, 95.00000163912773, 20.0 ],
                     "proportion": 0.39,
                     "varname": "Server Port"
                 }
@@ -459,11 +530,11 @@
                     "id": "obj-15",
                     "linecount": 2,
                     "maxclass": "newobj",
-                    "numinlets": 6,
-                    "numoutlets": 6,
-                    "outlettype": [ "", "", "", "", "", "" ],
-                    "patching_rect": [ 602.0, 29.0, 218.0, 35.0 ],
-                    "text": "route smallModelMode compactOutput sampleFolder liveApiEnabled notation"
+                    "numinlets": 7,
+                    "numoutlets": 7,
+                    "outlettype": [ "", "", "", "", "", "", "" ],
+                    "patching_rect": [ 602.0, 29.0, 286.0, 35.0 ],
+                    "text": "route smallModelMode compactOutput sampleFolder liveApiEnabled notation allowNetwork"
                 }
             },
             {
@@ -1403,10 +1474,10 @@
                 "box": {
                     "id": "obj-114",
                     "maxclass": "newobj",
-                    "numinlets": 2,
+                    "numinlets": 1,
                     "numoutlets": 3,
                     "outlettype": [ "", "int", "int" ],
-                    "patching_rect": [ 455.0, 623.0, 70.0, 22.0 ],
+                    "patching_rect": [ 455.0, 623.0, 78.0, 22.0 ],
                     "text": "change 3350"
                 }
             },
@@ -1614,8 +1685,32 @@
             },
             {
                 "patchline": {
+                    "destination": [ "obj-3", 0 ],
+                    "source": [ "obj-114", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-119", 0 ],
+                    "source": [ "obj-118", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-99", 0 ],
+                    "source": [ "obj-121", 0 ]
+                }
+            },
+            {
+                "patchline": {
                     "destination": [ "obj-9", 0 ],
                     "source": [ "obj-14", 0 ]
+                }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-121", 0 ],
+                    "source": [ "obj-15", 5 ]
                 }
             },
             {
@@ -1925,12 +2020,6 @@
             },
             {
                 "patchline": {
-                    "destination": [ "obj-3", 0 ],
-                    "source": [ "obj-114", 0 ]
-                }
-            },
-            {
-                "patchline": {
                     "destination": [ "obj-74", 0 ],
                     "source": [ "obj-68", 0 ]
                 }
@@ -2128,6 +2217,12 @@
                     "midpoints": [ 706.5, 395.5, 602.5, 395.5 ],
                     "source": [ "obj-97", 0 ]
                 }
+            },
+            {
+                "patchline": {
+                    "destination": [ "obj-118", 0 ],
+                    "source": [ "obj-99", 0 ]
+                }
             }
         ],
         "parameters": {
@@ -2144,6 +2239,7 @@
             "obj-8": [ "verbose-logs", "verbose-logs", 0 ],
             "obj-84": [ "direct-live-api", "direct-live-api", 0 ],
             "obj-90": [ "notation", "notation", 0 ],
+            "obj-99": [ "live.toggle", "live.toggle", 0 ],
             "parameterbanks": {
                 "0": {
                     "index": 0,

@@ -91,14 +91,40 @@ export function updateGlobalSettings(
     return readGlobalSettings();
   }
 
-  const merged = { ...readRaw(), ...patch };
-
-  writeConfigFileAtomic(
-    resolveConfigPath(FILENAME),
-    `${JSON.stringify(merged, null, 2)}\n`,
-  );
+  writeRaw({ ...readRaw(), ...patch });
 
   return readGlobalSettings();
+}
+
+/**
+ * Whether other devices on the network may connect. Kept out of GlobalSettings
+ * so /settings can neither show nor change it: only the device does. Anything
+ * but exactly `true` reads as off.
+ *
+ * @returns True when the server should listen on all interfaces
+ */
+export function readAllowNetwork(): boolean {
+  return readRaw().allowNetwork === true;
+}
+
+/**
+ * Save the network access setting, keeping every other key.
+ *
+ * @param allowNetwork - Whether other devices may connect
+ */
+export function writeAllowNetwork(allowNetwork: boolean): void {
+  if (isConfigDirInert()) {
+    return;
+  }
+
+  writeRaw({ ...readRaw(), allowNetwork });
+}
+
+function writeRaw(settings: Record<string, unknown>): void {
+  writeConfigFileAtomic(
+    resolveConfigPath(FILENAME),
+    `${JSON.stringify(settings, null, 2)}\n`,
+  );
 }
 
 /**

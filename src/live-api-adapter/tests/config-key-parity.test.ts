@@ -25,6 +25,7 @@ const CONFIG_OUTLET = /Max\.outlet\(\s*"config"\s*,\s*"([^"]+)"/g;
 // pin the set. A failure here means either a new key (give V8 a setter and add
 // it) or a call the regex can no longer see (fix the scan).
 const BROADCAST_KEYS = [
+  "allowNetwork",
   "compactOutput",
   "installNotice",
   "liveApiEnabled",
@@ -55,6 +56,7 @@ describe("V8 config key parity", () => {
     expect(() => adapter.tools()).not.toThrow();
     expect(() => adapter.updateDismissed()).not.toThrow();
     expect(() => adapter.installNotice()).not.toThrow();
+    expect(() => adapter.allowNetwork()).not.toThrow();
   });
 });
 

@@ -24,8 +24,8 @@ const PROXY_HEADERS = new Set([
 const LOOPBACK_V4 = /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
 
 /**
- * Whether the request came from a client on this machine. The server listens on
- * all interfaces, so the peer address is checked, not just Origin. An HTTP
+ * Whether the request came from a client on this machine. The server can listen
+ * on all interfaces, so the peer address is checked, not just Origin. An HTTP
  * tunnel running here also connects from loopback, so a request with proxy
  * headers or a non-loopback `Host` is treated as remote. Best-effort: a raw TCP
  * forwarder (`ssh -R`, socat) passes the client's own headers and can't be told

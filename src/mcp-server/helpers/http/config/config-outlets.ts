@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import { nodeError } from "../../node-for-max-logger.ts";
+import { nodeError } from "../../../node-for-max-logger.ts";
 
 /** One setting POST /config sends to the device. */
 export interface ConfigOutlet<C extends object> {

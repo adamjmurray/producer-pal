@@ -33,11 +33,11 @@ import { errorHandlerMiddleware } from "./helpers/http/error-handler-middleware.
 import {
   parseConfigBody,
   type ConfigBody,
-} from "./helpers/http/config-body.ts";
+} from "./helpers/http/config/config-body.ts";
 import {
   emitConfigOutlets,
   type ConfigOutlet,
-} from "./helpers/http/config-outlets.ts";
+} from "./helpers/http/config/config-outlets.ts";
 import { rebindingGuard } from "./helpers/http/browser/rebinding-guard.ts";
 import { requestBody } from "./helpers/http/request-body.ts";
 import { rejectCrossOriginWrite } from "./helpers/http/browser/request-origin.ts";
