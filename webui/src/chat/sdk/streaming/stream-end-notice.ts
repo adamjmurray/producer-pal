@@ -14,7 +14,7 @@ const EMPTY_REPLY_REASON = "The provider ended this reply without any content.";
 const EMPTY_REPLY_NOTICE = `${EMPTY_REPLY_REASON} Use Retry, or edit your message.`;
 
 const OUTPUT_LIMIT_REASON = "The reply hit the output limit and was cut off.";
-const OUTPUT_LIMIT_NOTICE = `${OUTPUT_LIMIT_REASON} Use Retry, edit your message, or ask the model to continue.`;
+const OUTPUT_LIMIT_NOTICE = `${OUTPUT_LIMIT_REASON} Use Retry, or edit your message to ask for a shorter reply.`;
 
 const REASON_BY_NOTICE: ReadonlyMap<string, string> = new Map([
   [CONTENT_FILTER_NOTICE, CONTENT_FILTER_REASON],

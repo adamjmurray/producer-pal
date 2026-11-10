@@ -393,4 +393,4 @@ export const FILTER_NOTICE =
 
 /** The notice the chat adds when the output limit cuts a reply off. */
 export const OUTPUT_LIMIT_NOTICE =
-  "The reply hit the output limit and was cut off. Use Retry, edit your message, or ask the model to continue.";
+  "The reply hit the output limit and was cut off. Use Retry, or edit your message to ask for a shorter reply.";

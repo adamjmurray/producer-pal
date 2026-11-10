@@ -96,7 +96,7 @@ describe("reply cut off by the output limit", () => {
     expect(history).toHaveLength(2);
     expect(history[1]).toStrictEqual(LIMIT_ENTRY);
     expect(history[1]?.content).toContain("Retry");
-    expect(history[1]?.content).toContain("continue");
+    expect(history[1]?.content).toContain("shorter reply");
   });
 
   it("skips the notice but keeps the partial text in the next request", async () => {

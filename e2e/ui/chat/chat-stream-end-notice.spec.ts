@@ -54,7 +54,7 @@ test.describe("Stream end notice", () => {
 
     await expect(
       page.getByText(
-        "The reply hit the output limit and was cut off. Use Retry, edit your message, or ask the model to continue.",
+        "The reply hit the output limit and was cut off. Use Retry, or edit your message to ask for a shorter reply.",
       ),
     ).toBeVisible();
 
