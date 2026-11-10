@@ -15,6 +15,7 @@ import { isIpLiteralHost, isLoopbackHost } from "#src/shared/config.ts";
  * those same-origin from the page URL, which over LAN/tunnel is a non-localhost
  * origin, so a localhost gate there would break the documented unauthenticated
  * remote-access feature (see the POST /mcp handler in create-express-app.ts).
+ * POST /api/tools gets the same-origin {@link rejectForeignOriginWrite} instead.
  *
  * @param origin - Origin header value
  * @returns true if origin hostname is localhost/127.0.0.1/[::1]
@@ -38,7 +39,7 @@ export function isLocalOrigin(origin: string): boolean {
  * non-browser (Origin-less) clients pass; a cross-origin browser gets a 403
  * with `message` and this returns true so the caller can bail. See
  * {@link isLocalOrigin} for why this is applied to config/content writes but
- * never to /mcp or /api/tools.
+ * never to /mcp.
  *
  * @param req - Express request
  * @param res - Express response (a 403 is written when rejected)
@@ -84,9 +85,9 @@ export function isSameOriginRequest(origin: string, req: Request): boolean {
  * (the webui served by THIS server, including over LAN/tunnel), localhost, and
  * non-browser (Origin-less) clients pass; only a genuinely foreign browser
  * origin gets a 403. Applied to the content endpoints (global context / custom
- * instructions, skills overrides, memory, custom skills) so a remote webui can
- * save its own content — consistent with /mcp and /api/tools, which are already
- * remotely writable. The stricter localhost-only {@link rejectCrossOriginWrite}
+ * instructions, skills overrides, memory, custom skills) and to POST
+ * /api/tools, so a remote webui can save and call its own — consistent with
+ * /mcp, which is already remotely writable. The stricter localhost-only {@link rejectCrossOriginWrite}
  * still guards /config and voice-token minting.
  *
  * Also guards GET /subagent-briefing — a read, but the only one that dispatches

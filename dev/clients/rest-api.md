@@ -8,7 +8,9 @@ to build custom clients using plain HTTP requests without the MCP SDK.
 Served on the same Express server as MCP (default port 3350):
 
 - `GET /api/tools` — lists enabled tools with their JSON Schemas.
-- `POST /api/tools/:toolName` — calls a tool with a JSON body of arguments.
+- `POST /api/tools/:toolName` — calls a tool with a JSON body of arguments. A
+  browser request from a foreign origin (including `Origin: null`) gets a 403
+  before the tool runs; same-origin, localhost and Origin-less callers pass.
 
 The request and response contract (result format, errors, `?format`,
 `?timeoutMs`, per-request settings) is documented in
