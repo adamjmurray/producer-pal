@@ -67,15 +67,18 @@ let loads = 0;
  * @param options - How the routes answer
  * @param options.plugin - What the plug-in database says, or null for no match
  * @param options.item - What Live's browser has for the wrapper
+ * @param options.resolution - The whole answer to the wrapper's lookup
+ * @param options.load - The answer to the load, which then lands no wrapper
  */
 function answerNode(
   options: {
     plugin?: Record<string, unknown> | null;
     item?: Record<string, unknown>;
     resolution?: Record<string, unknown>;
+    load?: Record<string, unknown>;
   } = {},
 ): void {
-  const { plugin = SERUM_FX, item = EFFECT_ITEM, resolution } = options;
+  const { plugin = SERUM_FX, item = EFFECT_ITEM, resolution, load } = options;
 
   vi.mocked(requestNode).mockImplementation((route) => {
     if (route === "library.resolvePlugin") {
@@ -91,6 +94,10 @@ function answerNode(
         success: true,
         result: resolution ?? { available: true, item },
       });
+    }
+
+    if (load != null) {
+      return Promise.resolve({ success: true, result: load });
     }
 
     const devices = tempTrack.properties.devices as unknown[];
@@ -387,6 +394,24 @@ describe("createDevice hosted", () => {
     ).rejects.toThrow(
       `can't host "Serum 2 FX": the Producer Pal remote script is out of date: running 2.4.0`,
     );
+  });
+
+  it("names no ppal-manage when the wrapper's load finds the script out of date", async () => {
+    answerNode({
+      load: {
+        available: false,
+        outdated: "running 2.4.0; update it with ppal-manage",
+        outdatedWithoutManage: "running 2.4.0; have the user update it",
+      },
+    });
+
+    const failure = createDevice(
+      { device: "Serum 2 FX", hosted: true, path: "t0/d+" },
+      { manageAvailable: false },
+    );
+
+    await expect(failure).rejects.toThrow("have the user update it");
+    await expect(failure).rejects.not.toThrow("ppal-manage");
   });
 
   it("refuses a preset with hosted, and hosted with nothing to host", async () => {

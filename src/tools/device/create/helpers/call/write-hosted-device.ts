@@ -37,12 +37,13 @@ export async function createHostedDevice(
   plan: DevicePlan & { hosted: NonNullable<DevicePlan["hosted"]> },
   step: Step<CreateChecked>,
 ): Promise<CreateDeviceResult> {
-  const { deadline, timeoutMs } = step.call.ctx;
+  const { deadline, timeoutMs, manageAvailable, smallModelMode } =
+    step.call.ctx;
   const created = await createBrowserDevice(
     plan.item as NonNullable<DevicePlan["item"]>,
     plan.device,
     plan.path,
-    { deadline, timeoutMs },
+    { deadline, timeoutMs, manageAvailable, smallModelMode },
   );
   const left = deadline == null ? undefined : deadline - Date.now();
   const failure =
