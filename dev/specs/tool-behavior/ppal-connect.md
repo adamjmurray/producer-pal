@@ -66,8 +66,8 @@ other boolean param.
 ### The new-chat line
 
 > Everything is up to date. If this chat only connected and updated Producer
-> Pal, suggest the user start a new chat so it loads the new version's skills
-> and tools.
+> Pal, tell the user to start a new chat: this one loaded its skills and tools
+> before the update.
 
 It appears only when all of these hold:
 

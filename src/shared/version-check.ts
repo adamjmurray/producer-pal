@@ -323,4 +323,4 @@ export const AFTER_RESTART_CHECK = `Once they have, call ${VERSION_CHECK_CALL}.`
 
 /** Ends a version check that found nothing to fix. */
 export const UP_TO_DATE_NEW_CHAT =
-  "Everything is up to date. If this chat only connected and updated Producer Pal, suggest the user start a new chat so it loads the new version's skills and tools.";
+  "Everything is up to date. If this chat only connected and updated Producer Pal, tell the user to start a new chat: this one loaded its skills and tools before the update.";
