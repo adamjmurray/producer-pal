@@ -51,9 +51,13 @@ Installation tab but not install. Content writes (memory, skills) keep the
 looser same-origin rule, so a remote chat UI can still save them.
 
 Every request also passes `rebindingGuard` first. Unless the Host is localhost,
-an IP literal, a local-only name, or a known tunnel domain, only `/mcp` answers,
-and not to a browser (`Origin` or `Sec-Fetch-Site`). Headers alone can't pass a
-GET: over plain http a browser's same-origin GET carries neither. The guard
+an IP literal, or a known tunnel domain, only `/mcp` answers, and not to a
+browser (`Origin` or `Sec-Fetch-Site`). Headers alone can't pass a GET: over
+plain http a browser's same-origin GET carries neither. A one-word name or a
+`.local`, `.lan`, `.home.arpa` or `.internal` name also passes, but only while
+"Allow other devices to connect" is on: the local network decides how those
+resolve, so with it off someone on the Wi-Fi could point one at 127.0.0.1. The
+guard reads the live listening state (`network-access-state.ts`) per request. It
 allows tunnel names the install gate refuses, so that gate stays.
 
 The script updates separately from the device, so it drifts. Both the chat UI

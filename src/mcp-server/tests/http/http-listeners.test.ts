@@ -16,6 +16,7 @@ import {
   parseServerArgs,
   startHttpListeners,
 } from "../../helpers/http/http-listeners.ts";
+import { isNetworkAccessAllowed } from "../../helpers/http/network-access-state.ts";
 import { useTempConfigDir } from "../config-dir-test-helpers.ts";
 import { mockMax } from "../express-app-test-helpers.ts";
 
@@ -370,6 +371,83 @@ describe("startHttpListeners", () => {
       expect(WILDCARDS).toContain(hosts(listeners)[0]);
       expect(posted("couldn't save the network setting")).toBe(true);
     });
+  });
+});
+
+describe("network access state for request guards", () => {
+  const configDir = useTempConfigDir();
+  let listeners: HttpListeners | undefined;
+
+  afterEach(async () => {
+    await listeners?.close();
+    listeners = undefined;
+  });
+
+  it("is off when listening on this computer only", async () => {
+    listeners = await startHttpListeners(app, { port: 0 });
+
+    expect(isNetworkAccessAllowed()).toBe(false);
+  });
+
+  it("is on when started with network access on", async () => {
+    writeFileSync(
+      join(configDir(), "settings.json"),
+      JSON.stringify({ allowNetwork: true }),
+    );
+    listeners = await startHttpListeners(app, { port: 0 });
+
+    expect(isNetworkAccessAllowed()).toBe(true);
+  });
+
+  it("follows each toggle", async () => {
+    listeners = await startHttpListeners(app, { port: 0 });
+
+    await listeners.setAllowNetwork(true);
+    expect(isNetworkAccessAllowed()).toBe(true);
+
+    await listeners.setAllowNetwork(false);
+    expect(isNetworkAccessAllowed()).toBe(false);
+  });
+
+  it("stays off when opening the network fails", async () => {
+    let failNext = false;
+
+    listeners = await startHttpListeners(app, {
+      port: 0,
+      create: (handler) => {
+        const server = failNext
+          ? failingServer("EACCES")
+          : createServer(handler);
+
+        failNext = false;
+
+        return server;
+      },
+    });
+
+    failNext = true;
+    await listeners.setAllowNetwork(true);
+
+    expect(isNetworkAccessAllowed()).toBe(false);
+  });
+
+  it("is off while nothing is listening after a failed switch", async () => {
+    writeFileSync(
+      join(configDir(), "settings.json"),
+      JSON.stringify({ allowNetwork: true }),
+    );
+    let failing = false;
+
+    listeners = await startHttpListeners(app, {
+      port: 0,
+      create: (handler) =>
+        failing ? failingServer("EACCES") : createServer(handler),
+    });
+
+    failing = true;
+    await listeners.setAllowNetwork(false);
+
+    expect(isNetworkAccessAllowed()).toBe(false);
   });
 });
 

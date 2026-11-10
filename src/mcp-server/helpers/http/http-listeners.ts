@@ -13,6 +13,7 @@ import {
   readAllowNetwork,
   writeAllowNetwork,
 } from "../config-store/global-settings-store.ts";
+import { setNetworkAccessAllowed } from "./network-access-state.ts";
 
 const LOOPBACK_V4 = "127.0.0.1";
 const LOOPBACK_V6 = "::1";
@@ -64,6 +65,9 @@ export async function startHttpListeners(
   const { port, create = createServer } = options;
   let current = readAllowNetwork();
   let servers = await listenAll(app, port, current, create);
+
+  setNetworkAccessAllowed(current);
+
   // Port 0 (tests) picks one; re-listen on the same one.
   const boundPort = (servers[0]?.address() as AddressInfo | null)?.port ?? port;
   let queue: Promise<void> = Promise.resolve();
@@ -84,10 +88,12 @@ export async function startHttpListeners(
     await closeAll(servers);
     servers = [];
     current = false;
+    setNetworkAccessAllowed(false);
 
     try {
       servers = await listenAll(app, boundPort, next, create);
       current = next;
+      setNetworkAccessAllowed(next);
       logNetworkAccess(next);
 
       return;
@@ -123,6 +129,7 @@ export async function startHttpListeners(
       enqueue(async () => {
         await closeAll(servers);
         servers = [];
+        setNetworkAccessAllowed(false);
       }),
   };
 

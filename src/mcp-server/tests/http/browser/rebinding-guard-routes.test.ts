@@ -4,7 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 import { request } from "node:http";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { setNetworkAccessAllowed } from "../../../helpers/http/network-access-state.ts";
 import { setupExpressAppServer } from "../../express-app-test-helpers.ts";
 
 interface Answer {
@@ -141,7 +142,6 @@ describe("DNS rebinding guard on the Express app", () => {
     "127.0.0.1:3350",
     "[::1]:3350",
     "192.168.1.20:3350",
-    "studio-mac.local:3350",
     "demo.trycloudflare.com",
     "x.ngrok.app",
   ])("on Host %s", (host) => {
@@ -152,6 +152,43 @@ describe("DNS rebinding guard on the Express app", () => {
       const answer = await send("GET", "/config", { Host: host, ...headers });
 
       expect(answer.status).toBe(200);
+    });
+  });
+
+  describe("on a local network name", () => {
+    afterEach(() => {
+      setNetworkAccessAllowed(false);
+    });
+
+    it.each(["studio-mac:3350", "studio-mac.local:3350", "nas.lan"])(
+      "answers GET /config on %s only while other devices may connect",
+      async (host) => {
+        setNetworkAccessAllowed(true);
+
+        const served = await send("GET", "/config", { Host: host });
+
+        expect(served.status).toBe(200);
+
+        setNetworkAccessAllowed(false);
+
+        const refused = await send("GET", "/config", { Host: host });
+
+        expect(refused.status).toBe(403);
+        expect(JSON.parse(refused.body)).toStrictEqual({
+          error: expect.stringContaining("DNS rebinding"),
+        });
+      },
+    );
+
+    it("keeps POST /mcp away from a page on it when only this computer may connect", async () => {
+      const host = "evil.local:3350";
+      const page = { Host: host, Origin: `http://${host}` };
+
+      const fromPage = await send("POST", "/mcp", page);
+      const fromClient = await send("POST", "/mcp", { Host: host });
+
+      expect(fromPage.status).toBe(403);
+      expect(fromClient.status).toBe(200);
     });
   });
 });

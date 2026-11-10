@@ -5,8 +5,11 @@
 
 import { type NextFunction, type Request, type Response } from "express";
 import { isIpLiteralHost, isLoopbackHost } from "#src/shared/config.ts";
+import { isNetworkAccessAllowed } from "../network-access-state.ts";
 
-// Names nobody can register publicly, so no outside DNS can rebind them.
+// Names nobody can register publicly. The local network resolves them (mDNS,
+// router DNS, search domains), so someone on it can point one at 127.0.0.1.
+// Trusted only while other devices may connect.
 const LOCAL_SUFFIXES = [".local", ".lan", ".home.arpa", ".internal"];
 
 // Documented tunnel domains. They resolve to the tunnel company's servers, so a
@@ -28,8 +31,9 @@ const DNS_HOST = /^([a-z0-9_-]+(?:\.[a-z0-9_-]+)*)(?::\d+)?$/;
 const REFUSED_MESSAGE =
   "only /mcp answers at this address, and never to a web page: a website " +
   "could point the address at this computer (DNS rebinding). For the chat UI " +
-  "and REST API, use localhost, an IP address, a local network name, or a " +
-  "documented tunnel domain. Custom domains aren't supported for those yet.";
+  "and REST API, use localhost, an IP address, a documented tunnel domain, " +
+  'or (only while "Allow other devices to connect" is on) a local network ' +
+  "name. Custom domains aren't supported for those yet.";
 
 /**
  * Guard against DNS rebinding: a website pointing its own name at this
@@ -72,7 +76,11 @@ export function rebindingGuard(
 
 /**
  * Whether a `host[:port]` can't be rebound by a website: localhost, an IP
- * literal, a one-word name, a local-only suffix, or a documented tunnel domain.
+ * literal, or a documented tunnel domain; plus a one-word name or a local-only
+ * suffix, but only while "Allow other devices to connect" is on. The local
+ * network decides how those resolve, so with it off, anyone on the Wi-Fi could
+ * point `evil.local` at their own address and then at 127.0.0.1. Read per
+ * request, because the setting can change while running.
  * `localhost.evil.com` and `127.0.0.1.evil.com` don't count.
  *
  * @param host - Host header value, with an optional port
@@ -90,11 +98,17 @@ export function isRebindSafeHost(host: string): boolean {
   }
 
   return (
-    !name.includes(".") ||
-    LOCAL_SUFFIXES.some((suffix) => name.endsWith(suffix)) ||
     TUNNEL_DOMAINS.some(
       (domain) => name === domain || name.endsWith(`.${domain}`),
-    )
+    ) ||
+    (isNetworkAccessAllowed() && isLocalNetworkName(name))
+  );
+}
+
+function isLocalNetworkName(name: string): boolean {
+  return (
+    !name.includes(".") ||
+    LOCAL_SUFFIXES.some((suffix) => name.endsWith(suffix))
   );
 }
 

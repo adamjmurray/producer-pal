@@ -4,11 +4,12 @@
 // SPDX-License-Identifier: MIT
 
 import { type Request } from "express";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   isRebindSafeHost,
   rebindingGuard,
 } from "../../../helpers/http/browser/rebinding-guard.ts";
+import { setNetworkAccessAllowed } from "../../../helpers/http/network-access-state.ts";
 import { mockRes } from "../mock-express-response-test-helpers.ts";
 
 /**
@@ -43,6 +44,19 @@ function guard(
   return { passed: next.mock.calls.length === 1, ...state };
 }
 
+afterEach(() => {
+  setNetworkAccessAllowed(false);
+});
+
+const LOCAL_NETWORK_NAMES = [
+  "studio-mac:3350",
+  "studio-mac.local:3350",
+  "Studio-Mac.LOCAL",
+  "nas.lan",
+  "box.home.arpa",
+  "host.internal",
+];
+
 describe("isRebindSafeHost", () => {
   it.each([
     "localhost",
@@ -54,12 +68,6 @@ describe("isRebindSafeHost", () => {
     "192.168.1.20:3350",
     "10.0.0.5",
     "[fe80::1]:3350",
-    "studio-mac:3350",
-    "studio-mac.local:3350",
-    "Studio-Mac.LOCAL",
-    "nas.lan",
-    "box.home.arpa",
-    "host.internal",
     "demo.trycloudflare.com",
     "trycloudflare.com",
     "abc.ngrok-free.dev",
@@ -97,6 +105,59 @@ describe("isRebindSafeHost", () => {
     "",
   ])("refuses %s", (host) => {
     expect(isRebindSafeHost(host)).toBe(false);
+  });
+
+  describe("local network names", () => {
+    it.each(LOCAL_NETWORK_NAMES)(
+      "allows %s while other devices may connect",
+      (host) => {
+        setNetworkAccessAllowed(true);
+
+        expect(isRebindSafeHost(host)).toBe(true);
+      },
+    );
+
+    it.each(LOCAL_NETWORK_NAMES)(
+      "refuses %s when only this computer may connect",
+      (host) => {
+        setNetworkAccessAllowed(false);
+
+        expect(isRebindSafeHost(host)).toBe(false);
+      },
+    );
+
+    it("refuses them by default", () => {
+      expect(isRebindSafeHost("studio-mac.local")).toBe(false);
+    });
+
+    it("follows the setting as it changes", () => {
+      setNetworkAccessAllowed(true);
+      expect(isRebindSafeHost("nas.lan")).toBe(true);
+
+      setNetworkAccessAllowed(false);
+      expect(isRebindSafeHost("nas.lan")).toBe(false);
+    });
+
+    it("still refuses look-alikes while other devices may connect", () => {
+      setNetworkAccessAllowed(true);
+
+      expect(isRebindSafeHost("evil.local.evil.com")).toBe(false);
+      expect(isRebindSafeHost("studio-mac.local.")).toBe(false);
+    });
+
+    it.each([
+      "localhost",
+      "app.localhost",
+      "127.0.0.1:3350",
+      "[::1]:3350",
+      "192.168.1.20:3350",
+      "demo.trycloudflare.com",
+      "abc.ngrok-free.app",
+    ])("still allows %s when only this computer may connect", (host) => {
+      setNetworkAccessAllowed(false);
+
+      expect(isRebindSafeHost(host)).toBe(true);
+    });
   });
 });
 
@@ -164,6 +225,27 @@ describe("rebindingGuard", () => {
     it("treats a missing Host as one that can be rebound", () => {
       expect(guard("/config", {}).passed).toBe(false);
       expect(guard("/mcp", {}).passed).toBe(true);
+    });
+  });
+
+  describe("on a local network name", () => {
+    it("treats it as unknown when only this computer may connect", () => {
+      const host = "evil.local:3350";
+
+      expect(guard("/config", { host }).status).toBe(403);
+      expect(
+        guard("/api/tools", { host, origin: `http://${host}` }).status,
+      ).toBe(403);
+      expect(guard("/mcp", { host, origin: `http://${host}` }).status).toBe(
+        403,
+      );
+      expect(guard("/mcp", { host }).passed).toBe(true);
+    });
+
+    it("passes every path while other devices may connect", () => {
+      setNetworkAccessAllowed(true);
+
+      expect(guard("/config", { host: "evil.local:3350" }).passed).toBe(true);
     });
   });
 
