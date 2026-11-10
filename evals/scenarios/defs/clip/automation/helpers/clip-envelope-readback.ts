@@ -32,6 +32,17 @@ export const TOOL_CREATE_CLIP = TOOLS.createClip;
 export const LEAD_CLIP = "t3/s0";
 export const LEAD_TRACK_INDEX = 3;
 
+/** Judge-criteria note on raw volume values: the judge can't know Live's scale. */
+export const VOLUME_SCALE_NOTE = `Envelope values are raw: mixer volume 0.85 is 0 dB (unity) and 1 is the
+fader's top (+6 dB).`;
+
+/**
+ * For prompts that ask for "full" volume. The volume checks accept either top
+ * value, so a reply calling either one "full" must not fail. Keep it out of
+ * prompts that don't say "full": there it made Jev pass a wrong end level.
+ */
+export const FULL_VOLUME_NOTE = `${VOLUME_SCALE_NOTE} Either counts as "full" volume.`;
+
 /** One automated parameter, as ppal-read-clip's `envelopes` reports it. */
 export interface ClipEnvelopeRead {
   /** Live's own name for the parameter. */

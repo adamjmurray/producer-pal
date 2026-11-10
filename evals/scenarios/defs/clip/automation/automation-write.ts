@@ -26,6 +26,7 @@ import {
   sortEnvelopes,
   TOOL_READ_CLIP,
   TOOL_UPDATE_CLIP,
+  FULL_VOLUME_NOTE,
 } from "./helpers/clip-envelope-readback.ts";
 import { ON_BARE_LEAD_CLIP } from "./helpers/seed-clip-envelopes.ts";
 
@@ -153,7 +154,9 @@ export const automationWriteMixer: EvalScenario = {
       prompt: `The user asked for three automation envelopes on the Lead clip: volume
 fading in from silence to full, pan sweeping hard left to hard right, and send A
 rising from nothing to about half. Evaluate the final reply: it says all three
-were written. Envelope values are raw: mixer volume 0.85 is 0 dB (unity).`,
+were written.
+
+${FULL_VOLUME_NOTE}`,
     },
   ],
 };

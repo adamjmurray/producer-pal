@@ -32,6 +32,7 @@ import {
   resultEntries,
   TOOL_DUPLICATE,
   TOOL_UPDATE_CLIP,
+  VOLUME_SCALE_NOTE,
 } from "./helpers/clip-envelope-readback.ts";
 import {
   ON_BARE_LEAD_CLIP,
@@ -157,7 +158,7 @@ fade-in. Two routes work: write the fade on the session clip and copy it to bar
 writes the track's automation lane over the clip's span, and the clip gets a new
 id).
 
-Envelope values are raw: mixer volume 0.85 is 0 dB (unity).
+${VOLUME_SCALE_NOTE}
 
 Evaluate the final reply:
 1. It says the Lead clip is on the arrangement at bar 5.
