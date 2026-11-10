@@ -22,3 +22,4 @@ model the newest directory wins, and refused or errored trials never count.
 | [runs-24-25.md](runs-24-25.md) | Sonnet 5.5 and GPT-6.1 Terra, every failure                 |
 | [runs-26-30.md](runs-26-30.md) | Luna, haiku and qwen around 2.5.1, every failure            |
 | [runs-31-33.md](runs-31-33.md) | Luna, haiku and qwen on 2.6.0-rc1, every failure            |
+| [runs-34-35.md](runs-34-35.md) | Luna and haiku, judge pass-bar check, every failure         |

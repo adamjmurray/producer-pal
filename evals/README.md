@@ -537,10 +537,11 @@ judges split on borderline replies. On 51 escalated results from the Nov 2026
 runs, Luna (high effort) failed 16 and Haiku none, listing the same flaws; a
 Haiku and Sonnet majority sided against Luna on 14 of 15. With the bar, Luna
 agreed with the three-judge majority on 49 of 50 and still failed a false
-account of the model's own steps, so `-j codex-code/luna` works for `--jev`
-runs. Haiku is too lenient to judge alone. The judge sees only the transcript
-and the criteria, so a Live fact a reply relies on (mixer volume 0.85 is 0 dB)
-goes in the criteria.
+account of the model's own steps. On a fresh run it agreed with Haiku and Sonnet
+on 45 of 49 escalations, so `-j codex-code/luna` works for `--jev` runs. Haiku
+is too lenient to judge alone. The judge sees only the transcript and the
+criteria, so a Live fact a reply relies on (mixer volume 0.85 is 0 dB) goes in
+the criteria.
 
 ### Re-judging saved results
 

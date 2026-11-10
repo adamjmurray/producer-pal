@@ -45,6 +45,8 @@ fails, gemma passes" until run 2 turned out to predate the refusal of
 | 31  | gpt-6-luna        | `thinking:high` | `6c1b9b427`? | 3      | 393 | 380 (97%) | 180.5M | 5h44m  |
 | 32  | claude-haiku-5-5  | default         | `6c1b9b427`? | 3      | 393 | 381 (97%) | 101.8M | 2h16m  |
 | 33  | qwen3.8-27b       | `--small-model` | `6c1b9b427`? | 3      | 231 | 214 (93%) | 15.4M  | 4h05m  |
+| 34  | gpt-6-luna        | `thinking:high` | `fc8f151e6`  | 3      | 393 | 379 (96%) | 163.5M | 7h06m  |
+| 35  | claude-haiku-5-5  | default         | `fc8f151e6`  | 3      | 393 | 386 (98%) | 89.9M  | 1h26m  |
 
 **Run 6 was stopped after 22 of 101 scenarios** and is not a suite result — the
 70% is over the scenarios it reached, which are the expensive front of the list.
@@ -144,3 +146,8 @@ never pass: the three `upgrade-*` scenarios need `ppal-manage`, which
 small-model mode hides, and now skip there (214/222, 96%, without them). Luna's
 one trial stopped by Codex's 25-step budget counts as a fail. Wall is scenario
 time.
+
+**Runs 34 and 35 are the held-out check for the judge pass bar** (Live 12.4.16).
+They ran together as one invocation on a debug build of `fc8f151e6`, with the
+same flags as runs 31 and 32: `--jev`, Luna at high effort judging escalations.
+Wall is scenario time.
