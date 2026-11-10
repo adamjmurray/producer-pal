@@ -27,17 +27,17 @@
  */
 
 import { parseToolResult } from "#evals/chat/mcp.ts";
-import { argText } from "../arg-text.ts";
-import { getToolCalls } from "../../assertions/index.ts";
+import { argText } from "../../arg-text.ts";
+import { getToolCalls } from "../../../assertions/index.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
-} from "../../types.ts";
+} from "../../../types.ts";
 import {
   MSG_CONNECT,
   TOOL_CONNECT,
-} from "../clip/helpers/clip-tool-constants.ts";
+} from "../../clip/helpers/clip-tool-constants.ts";
 import { TOOLS } from "#evals/shared/tool-names.ts";
 
 const TOOL_UPDATE_DEVICE = TOOLS.updateDevice;

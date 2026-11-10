@@ -28,19 +28,19 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
-import { argText } from "../arg-text.ts";
-import { getAllToolCalls } from "../../assertions/index.ts";
-import { resolveSamplesPath } from "../../run-scenario/scenario-config.ts";
+import { argText } from "../../arg-text.ts";
+import { getAllToolCalls } from "../../../assertions/index.ts";
+import { resolveSamplesPath } from "../../../run-scenario/scenario-config.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
   type ToolCall,
-} from "../../types.ts";
+} from "../../../types.ts";
 import {
   MSG_CONNECT,
   TOOL_CONNECT,
-} from "../clip/helpers/clip-tool-constants.ts";
+} from "../../clip/helpers/clip-tool-constants.ts";
 import { TOOLS } from "#evals/shared/tool-names.ts";
 import { sleep } from "#evals/shared/sleep.ts";
 
