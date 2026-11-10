@@ -35,21 +35,28 @@ let busy = false;
 /** Queued writes, oldest first. Each starts when called. */
 const waiting: (() => void)[] = [];
 
+/** Writes that have arrived and not yet answered; each settles when it does. */
+const unanswered = new Set<Promise<void>>();
+
 /**
- * Run write calls one at a time, in arrival order; reads skip the queue. V8
- * runs other requests while one waits on the remote script, so a parallel write
- * could shift the tracks or clips a waiting write already looked up.
+ * Run write calls one at a time, in arrival order. V8 runs other requests
+ * while one waits on the remote script, so a parallel write could shift the
+ * tracks or clips a waiting write already looked up.
  *
- * Queue time counts toward the call's own timeout, so the caller still hears
- * back within it. A write that gets down to MIN_RUN_BUDGET_MS (or half its
- * timeout) before its turn, or whose caller goes away, never runs. The turn
- * passes on when a call answers, a timeout included, though V8 may still be
+ * A read waits for the writes that arrived before it, then runs alongside
+ * whatever comes next; reads never wait for each other. Otherwise a read sent
+ * in parallel with a write sees it half done (two of its three envelopes).
+ *
+ * Waiting counts toward the call's own timeout, so the caller still hears back
+ * within it. A call that gets down to MIN_RUN_BUDGET_MS (or half its timeout)
+ * before it can run, or whose caller goes away, never runs. A write's turn
+ * passes on when it answers, a timeout included, though V8 may still be
  * finishing a timed-out write.
  *
  * @param send - Sends one call to V8 with how long it queued, and resolves
  *   with its answer
  * @param getTimeoutMs - Reads the default timeout, for calls without an override
- * @returns The same call, with writes queued
+ * @returns The same call, with writes queued and reads behind them
  */
 export function withWriteQueue(
   send: SendToV8,
@@ -58,23 +65,56 @@ export function withWriteQueue(
   return async (tool, args, overrides) => {
     // The signal is for the queue only; V8 gets the rest.
     const { signal, ...rest } = overrides ?? {};
+    const budgetMs = rest.timeoutMs ?? getTimeoutMs();
 
     if (!isWriteCall(tool, args)) {
-      return await send(tool, args, rest);
+      if (unanswered.size === 0) {
+        return await send(tool, args, rest);
+      }
+
+      const ahead = Promise.all(unanswered).then(() => undefined);
+      const turn = await waitFor(ahead, tool, budgetMs, signal);
+
+      return "notRun" in turn
+        ? notRunResponse(turn.notRun)
+        : await send(tool, args, rest, turn.waitedMs);
     }
 
-    const budgetMs = rest.timeoutMs ?? getTimeoutMs();
-    const turn = await takeTurn(tool, budgetMs, signal);
-
-    if ("notRun" in turn) {
-      return notRunResponse(turn.notRun);
-    }
+    const markAnswered = trackWrite();
 
     try {
-      return await send(tool, args, rest, turn.waitedMs);
+      const turn = await takeTurn(tool, budgetMs, signal);
+
+      if ("notRun" in turn) {
+        return notRunResponse(turn.notRun);
+      }
+
+      try {
+        return await send(tool, args, rest, turn.waitedMs);
+      } finally {
+        passTurn();
+      }
     } finally {
-      passTurn();
+      markAnswered();
     }
+  };
+}
+
+/**
+ * Hold reads that arrive from now on until this write answers.
+ * @returns Marks the write answered
+ */
+function trackWrite(): () => void {
+  let resolveAnswer!: () => void;
+  const answer = new Promise<void>((resolve) => {
+    resolveAnswer = resolve;
+  });
+
+  unanswered.add(answer);
+
+  return () => {
+    unanswered.delete(answer);
+    resolveAnswer();
   };
 }
 
@@ -140,6 +180,58 @@ function takeTurn(
 
     signal?.addEventListener("abort", onAbort);
     waiting.push(start);
+  });
+}
+
+/**
+ * Wait for the writes ahead of a read, or until it runs out of time or its
+ * caller goes.
+ * @param ahead - Settles once every write ahead of the read has answered
+ * @param tool - Tool name, for the log
+ * @param budgetMs - The call's whole timeout
+ * @param signal - Aborts when the caller goes away
+ * @returns How long it waited, or why it won't run
+ */
+function waitFor(
+  ahead: Promise<void>,
+  tool: string,
+  budgetMs: number,
+  signal: AbortSignal | undefined,
+): Promise<Turn> {
+  if (signal?.aborted === true) {
+    return Promise.resolve({ notRun: disconnectedText() });
+  }
+
+  nodeInfo(`${tool} waits for ${unanswered.size} write call(s)`);
+
+  const since = Date.now();
+  const minRunMs = Math.min(MIN_RUN_BUDGET_MS, budgetMs / 2);
+
+  return new Promise((resolve) => {
+    const leave = (turn: Turn): void => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      resolve(turn);
+    };
+
+    const onAbort = (): void => leave({ notRun: disconnectedText() });
+    const timer = setTimeout(
+      () => leave({ notRun: outOfTimeText(Date.now() - since) }),
+      budgetMs - minRunMs,
+    );
+
+    signal?.addEventListener("abort", onAbort);
+
+    // The writes can answer after the give-up point but before the timer fires.
+    void ahead.then(() => {
+      const waitedMs = Date.now() - since;
+
+      leave(
+        budgetMs - waitedMs < minRunMs
+          ? { notRun: outOfTimeText(waitedMs) }
+          : { waitedMs },
+      );
+    });
   });
 }
 

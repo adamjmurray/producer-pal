@@ -118,18 +118,118 @@ describe("withWriteQueue", () => {
     await second;
   });
 
-  it("lets reads run while a write is in V8", async () => {
+  it("holds reads until every write ahead of them answers, then runs them together", async () => {
+    vi.useFakeTimers();
+    const { call, sent, first, second } = queueTwoWrites();
+    const reads = [call(READ, {}), call(READ, {})];
+
+    await settle();
+    expect(sent.map((s) => s.tool)).toStrictEqual([WRITE]);
+
+    sent[0]?.answer();
+    await first;
+    await settle();
+    expect(sent.map((s) => s.tool)).toStrictEqual([WRITE, WRITE]);
+
+    vi.advanceTimersByTime(2000);
+    sent[1]?.answer();
+    await second;
+    await settle();
+    expect(sent.slice(2).map((s) => [s.tool, s.queuedMs])).toStrictEqual([
+      [READ, 2000],
+      [READ, 2000],
+    ]);
+
+    sent[2]?.answer();
+    sent[3]?.answer();
+    await Promise.all(reads);
+  });
+
+  it("runs a read alongside a write that arrived after it", async () => {
+    const { call, sent } = setup();
+    const read = call(READ, {});
+    const write = call(WRITE, {});
+
+    await settle();
+    expect(sent.map((s) => s.tool)).toStrictEqual([READ, WRITE]);
+
+    sent[0]?.answer();
+    sent[1]?.answer();
+    await Promise.all([read, write]);
+  });
+
+  it("releases a read when the write ahead of it throws", async () => {
     const { call, sent } = setup();
     const write = call(WRITE, {});
     const read = call(READ, {});
 
     await settle();
-    expect(sent.map((s) => s.tool).toSorted()).toStrictEqual([READ, WRITE]);
+    sent[0]?.fail(new Error("boom"));
+    await expect(write).rejects.toThrow("boom");
+    await settle();
+    expect(sent.map((s) => s.tool)).toStrictEqual([WRITE, READ]);
 
-    sent.find((s) => s.tool === READ)?.answer();
+    sent[1]?.answer();
     await read;
-    sent.find((s) => s.tool === WRITE)?.answer();
+  });
+
+  it("gives up on a read that runs out of time waiting, and never runs it", async () => {
+    vi.useFakeTimers();
+    const { call, sent } = setup();
+    const write = call(WRITE, {});
+    const read = call(READ, {});
+
+    await settle();
+    vi.advanceTimersByTime(TIMEOUT_MS - MIN_RUN_BUDGET_MS);
+
+    const answer = await read;
+
+    expect(answer.content[0]?.text).toMatch(/^Not run: waited 40s/);
+    expect(isChangedNothing(answer)).toBe(true);
+
+    sent[0]?.answer();
     await write;
+    await settle();
+    expect(sent).toHaveLength(1);
+  });
+
+  it("gives up on a read whose writes answer too late, before the timer fires", async () => {
+    vi.useFakeTimers();
+    const { call, sent } = setup();
+    const write = call(WRITE, {});
+    const read = call(READ, {}, { timeoutMs: 200 });
+
+    await settle();
+    vi.setSystemTime(Date.now() + 300);
+    sent[0]?.answer();
+    await write;
+
+    const answer = await read;
+
+    expect(answer.content[0]?.text).toMatch(/^Not run: waited 0.3s/);
+    expect(sent).toHaveLength(1);
+  });
+
+  it("drops a waiting read whose caller goes away, or already went", async () => {
+    const { call, sent } = setup();
+    const controller = new AbortController();
+    const write = call(WRITE, {});
+    const read = call(READ, {}, { signal: controller.signal });
+    const gone = await call(READ, {}, { signal: AbortSignal.abort() });
+
+    await settle();
+    controller.abort();
+
+    for (const answer of [await read, gone]) {
+      expect(answer.content[0]?.text).toMatch(
+        /^Not run: the caller disconnected/,
+      );
+    }
+
+    sent[0]?.answer();
+    await write;
+    await settle();
+    expect(sent).toHaveLength(1);
   });
 
   it("passes the turn on when a write throws", async () => {

@@ -273,8 +273,8 @@ it short.
 
 ### Write calls run one at a time
 
-Node sends write calls to V8 one at a time, across all clients; reads skip the
-queue. See [write-queue.md](write-queue.md).
+Node sends write calls to V8 one at a time, across all clients; a read waits for
+the writes that arrived before it. See [write-queue.md](write-queue.md).
 
 ## Live API Interface
 

@@ -119,13 +119,14 @@ redo refusals still name it, and so do the portal's messages for its own
 `ppal-manage`. The chat UI's device swap (a person, over REST) never sees the
 tool name.
 
-## A write that waits for another
+## A call that waits for a write
 
-A queued write that runs short of time before its turn doesn't run and answers
+A queued write, or a read waiting for the writes ahead of it, that runs short of
+time before it can run doesn't run and answers
 `Not run: waited <N>s for other Producer Pal writes to finish and ran out of time. Nothing changed; retry it.`
 A call whose args or context won't fit in one Max message (over 32,000 bytes of
 UTF-8) isn't sent and answers
 `... too large for a single Max IPC message: <N> bytes exceeds 32000. Not run. Send less in one call. Nothing changed.`
-A write whose caller disconnects while it waits doesn't run either. The queue's
+A call whose caller disconnects while it waits doesn't run either. The queue's
 rules (what counts as a write, the timeout budget) are in
 [write-queue.md](../../architecture/write-queue.md).
