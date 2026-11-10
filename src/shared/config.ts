@@ -185,6 +185,15 @@ export function resolveSystemInstruction(override?: string | null): string {
 export const SMALL_MODEL_MODE_HEADER = "x-producer-pal-small-model-mode";
 
 /**
+ * Where the device's initialize result carries its small-model setting, as
+ * `capabilities.experimental[SMALL_MODEL_MODE_CAPABILITY].smallModelMode`. The
+ * portal reads it over /mcp because the DNS-rebinding guard refuses GET /config
+ * on a Host it doesn't trust (a custom tunnel domain), while /mcp gets through.
+ * Clients ignore unknown experimental capabilities, so no model sees it.
+ */
+export const SMALL_MODEL_MODE_CAPABILITY = "producerPal";
+
+/**
  * Resolve the effective small-model mode for one request from its header value,
  * falling back to the global default when the header is absent or unrecognized.
  * The client sends the string "true" or "false"; anything else is treated as

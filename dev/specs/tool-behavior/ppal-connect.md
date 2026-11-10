@@ -84,6 +84,12 @@ It appears only when all of these hold:
   own update hint after the result, and the new-chat line stays out. In
   small-model mode (set on the portal, or on the device when the portal sets
   none) the portal appends no hint: version management confuses local models.
+  The portal reads the device's setting from its MCP initialize result
+  (`capabilities.experimental.producerPal.smallModelMode`), because the
+  DNS-rebinding guard refuses `GET /config` on a Host it doesn't trust, such as
+  a custom tunnel domain. A device that doesn't report it, or whose reply can't
+  be read, is asked at `GET /config` instead. If that fails too, the setting is
+  taken as off.
 - The remote script status could be read. It is read once per connect and shared
   by the remote script line and this one, so they can't disagree. If it can't be
   read, neither adds a line.

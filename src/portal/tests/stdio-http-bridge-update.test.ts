@@ -8,7 +8,7 @@
 
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { VERSION } from "#src/shared/config.ts";
+import { SMALL_MODEL_MODE_CAPABILITY, VERSION } from "#src/shared/config.ts";
 import {
   callToolRequest,
   mockClient,
@@ -432,8 +432,19 @@ describe("StdioHttpBridge ppal-connect update hint", () => {
 
     it("adds nothing when only the device is in it", async () => {
       serverReports("2.5.0-rc1");
+      // The device reports it in its initialize reply.
       deviceConfig.mockImplementation(() =>
-        Promise.resolve(Response.json({ smallModelMode: true })),
+        Promise.resolve(
+          Response.json({
+            result: {
+              capabilities: {
+                experimental: {
+                  [SMALL_MODEL_MODE_CAPABILITY]: { smallModelMode: true },
+                },
+              },
+            },
+          }),
+        ),
       );
 
       // The portal can't see the device's mode, so it lists ppal-manage.

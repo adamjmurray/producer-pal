@@ -54,6 +54,7 @@ const UPDATE = { action: "update-producer-pal" };
  * @param options.deviceTools - Give the device ppal-connect and ppal-manage
  * @param options.portalArgs - Flags for the portal
  * @param options.deviceSmallModelMode - What the device's GET /config reports
+ * @param options.initializeSmallModelMode - What its initialize result reports
  * @returns The pieces a test looks at
  */
 async function setup(
@@ -64,6 +65,7 @@ async function setup(
     deviceTools?: boolean;
     portalArgs?: string[];
     deviceSmallModelMode?: boolean;
+    initializeSmallModelMode?: boolean;
   } = {},
 ) {
   const library = newLibrary();
@@ -75,6 +77,7 @@ async function setup(
       connectTool: options.deviceTools,
       manageTool: options.deviceTools,
       smallModelMode: options.deviceSmallModelMode,
+      initializeSmallModelMode: options.initializeSmallModelMode,
     }),
   );
   const script = track(
@@ -238,6 +241,11 @@ describe("a device older than the portal", () => {
   it.each([
     ["a portal started in small-model mode", { portalArgs: ["-s"] }],
     ["a device in small-model mode", { deviceSmallModelMode: true }],
+    // No GET /config here, as behind a Host the rebinding guard refuses.
+    [
+      "a device that reports small-model mode over /mcp",
+      { initializeSmallModelMode: true },
+    ],
   ])("adds no update note for %s", async (_name, mode) => {
     const { portal } = await setup("2.5.0-rc1", undefined, {
       deviceTools: true,

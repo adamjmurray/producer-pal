@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { VERSION } from "#src/shared/config.ts";
+import { SMALL_MODEL_MODE_CAPABILITY, VERSION } from "#src/shared/config.ts";
 import { GEN_UI_TOOL_ID, isGenUiEnabled } from "#src/shared/gen-ui-types.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { toolDefDelete } from "#src/tools/actions/delete/delete.def.ts";
@@ -153,10 +153,19 @@ export function createMcpServer(
   } = options;
   const includedSet = tools ? new Set(tools) : null;
 
-  const server = new McpServer({
-    name: "Ableton Live Producer Pal: AI tools for producing music in Ableton Live",
-    version: VERSION,
-  });
+  // The setting rides in the initialize result so a portal can read it over
+  // /mcp (see SMALL_MODEL_MODE_CAPABILITY).
+  const server = new McpServer(
+    {
+      name: "Ableton Live Producer Pal: AI tools for producing music in Ableton Live",
+      version: VERSION,
+    },
+    {
+      capabilities: {
+        experimental: { [SMALL_MODEL_MODE_CAPABILITY]: { smallModelMode } },
+      },
+    },
+  );
 
   for (const toolDef of STANDARD_TOOL_DEFS) {
     if (includedSet && !includedSet.has(toolDef.toolName)) {
