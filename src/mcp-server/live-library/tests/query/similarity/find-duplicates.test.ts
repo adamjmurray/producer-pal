@@ -4,26 +4,26 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { findDuplicates } from "../../query/find-duplicates.ts";
+import { findDuplicates } from "../../../query/similarity/find-duplicates.ts";
 import {
   expectQueryDegradesOnBrokenDb,
   expectQueryDegradesWithoutDb,
   expectSampleFolderExplained,
   setupLibraryFixtureLifecycle,
   STALENESS_NOTE,
-} from "../fixtures/library-fixture.ts";
+} from "../../fixtures/library-fixture.ts";
 
-vi.mock(import("../../live-db-path.ts"), () => ({
+vi.mock(import("../../../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),
   findLivePluginsDbPath: vi.fn(),
   liveDatabaseDir: vi.fn(),
 }));
-vi.mock(import("../../db-staleness.ts"), () => ({
+vi.mock(import("../../../db-staleness.ts"), () => ({
   stalenessNote: vi.fn(),
 }));
 
-const dbPathMod = await import("../../live-db-path.ts");
-const stalenessMod = await import("../../db-staleness.ts");
+const dbPathMod = await import("../../../live-db-path.ts");
+const stalenessMod = await import("../../../db-staleness.ts");
 
 const SUB_A = "/Users/test/Music/Ableton/Factory Packs/Pack One/SubA";
 

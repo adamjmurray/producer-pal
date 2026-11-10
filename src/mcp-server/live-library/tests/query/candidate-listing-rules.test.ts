@@ -8,8 +8,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fourCC } from "../../library-filters.ts";
 import { listCategories } from "../../list-categories.ts";
 import { listTags } from "../../list-tags.ts";
-import { findDuplicates } from "../../query/find-duplicates.ts";
-import { findSimilar } from "../../query/find-similar.ts";
+import { findDuplicates } from "../../query/similarity/find-duplicates.ts";
+import { findSimilar } from "../../query/similarity/find-similar.ts";
 import { librarySearch } from "../../query/library-search.ts";
 import {
   featureBlob,

@@ -30,6 +30,7 @@ import {
   type LibraryItem,
   type LibrarySearchArgs,
   type LibrarySearchResult,
+  type LibrarySearchRouteArgs,
 } from "../library-types.ts";
 import { findLiveFilesDbPath } from "../live-db-path.ts";
 import { openLiveDb } from "../live-db.ts";
@@ -49,12 +50,12 @@ import { rackKindNote } from "./notes/rack-kind-note.ts";
 /**
  * Run a structured library search.
  *
- * @param args - Filter parameters
+ * @param args - Filter parameters, and the files to leave out
  * @returns Result with merged items, plus dbAvailable flag for graceful
  *   fallback when Live's DB isn't installed.
  */
 export async function librarySearch(
-  args: LibrarySearchArgs = {},
+  args: LibrarySearchRouteArgs = {},
 ): Promise<LibrarySearchResult> {
   const dbPath = await findLiveFilesDbPath();
 
@@ -189,16 +190,25 @@ async function pathExistsOnDisk(path: string): Promise<boolean> {
  * milliseconds, so a search that fits its page never pays for it).
  *
  * @param db - Open database handle
- * @param args - Filter parameters, including limit and offset
+ * @param args - Filter parameters, including limit, offset and exclusions
  * @param parentId - Resolved file_id for the inFolder constraint, when present
  * @returns The page's rows, and how many matches lie beyond it (omitted if none)
  */
 function searchPage(
   db: DatabaseSync,
-  args: LibrarySearchArgs,
+  args: LibrarySearchRouteArgs,
   parentId?: number,
 ): { rows: SearchRow[]; more?: number } {
   const { where, params } = buildCandidateWhere(args, parentId);
+
+  // One bound JSON value, not one `?` per id, so a long list can't reach
+  // SQLite's bound-parameter limit. The page, the probe row and the count all
+  // share this WHERE, so none of them sees an excluded file.
+  if (args.excludeFileIds != null && args.excludeFileIds.length > 0) {
+    where.push("f.file_id NOT IN (SELECT value FROM json_each(?))");
+    params.push(JSON.stringify(args.excludeFileIds));
+  }
+
   const limit = clampLibraryLimit(
     args.limit,
     DEFAULT_LIBRARY_LIMIT,

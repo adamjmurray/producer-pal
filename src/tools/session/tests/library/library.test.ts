@@ -57,15 +57,26 @@ function leaves(result: LibraryToolSearchResult): Array<string | undefined> {
 }
 
 /**
+ * Stub the library.search route with the given result. The folder-overlap
+ * lookup (library.resolveFileIds) answers with the given ids, none by default.
+ *
+ * @param result - What library.search returns
+ * @param fileIds - The ids library.resolveFileIds returns
+ */
+function mockRoutes(result: unknown, fileIds: number[] = []): void {
+  vi.mocked(protocolMock.requestNode).mockImplementation(async (route) => ({
+    success: true,
+    result: route === "library.resolveFileIds" ? { fileIds } : result,
+  }));
+}
+
+/**
  * Stub the library.search route with the given items.
  *
  * @param items - Items the route should return
  */
 function mockSearchRoute(items: unknown[]): void {
-  vi.mocked(protocolMock.requestNode).mockResolvedValue({
-    success: true,
-    result: { dbAvailable: true, items },
-  });
+  mockRoutes({ dbAvailable: true, items });
 }
 
 /**
@@ -350,28 +361,49 @@ describe("library tool — folder scan integration", () => {
     expect(kick?.pathExists).toBe(true);
   });
 
-  it("dedupes folder hits against DB hits by absolute path", async () => {
+  it("has the DB search skip the files the folder scan matched", async () => {
     mockSampleFolder("kick.wav");
-    mockSearchRoute([
-      {
-        name: "kick.wav",
-        path: "/samples/kick.wav",
-        kind: "audio",
-        tags: [],
-        useCount: 99,
-        source: "user",
-      },
-    ]);
+    mockRoutes({ dbAvailable: true, items: [] }, [7]);
 
-    const result = await library(ANY, { sampleFolder: "/samples/" });
+    await library(ANY, { sampleFolder: "/samples/" });
 
-    assertItems(result);
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.resolveFileIds",
+      expect.objectContaining({ paths: ["/samples/kick.wav"] }),
+    );
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.objectContaining({ excludeFileIds: [7] }),
+    );
+  });
 
-    const kicks = result.items.filter((i) => i.path === "/samples/kick.wav");
+  it("sends no exclusion when the DB lists none of the folder's files", async () => {
+    mockSampleFolder("kick.wav");
+    mockSearchRoute([]);
 
-    expect(kicks).toHaveLength(1);
-    // Folder wins (it's user-explicit)
-    expect(kicks[0]?.source).toBe("sample-folder");
+    await library(ANY, { sampleFolder: "/samples/" });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.resolveFileIds",
+      expect.anything(),
+    );
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.not.objectContaining({ excludeFileIds: expect.anything() }),
+    );
+  });
+
+  it("looks up no ids when the folder matched nothing", async () => {
+    mockSampleFolder("snare.wav");
+    mockSearchRoute([]);
+
+    await library({ query: "kick" }, { sampleFolder: "/samples/" });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledTimes(1);
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.not.objectContaining({ excludeFileIds: expect.anything() }),
+    );
   });
 
   it("skips folder scan when source is a DB-only category", async () => {
@@ -672,13 +704,10 @@ describe("library tool — folder scan integration", () => {
 
   it("preserves the DB-side reason when the merged DB call returns one", async () => {
     mockSampleFolder("kick.wav");
-    vi.mocked(protocolMock.requestNode).mockResolvedValue({
-      success: true,
-      result: {
-        dbAvailable: false,
-        items: [],
-        detail: "Live database not found",
-      },
+    mockRoutes({
+      dbAvailable: false,
+      items: [],
+      detail: "Live database not found",
     });
 
     const result = await library(ANY, { sampleFolder: "/samples/" });

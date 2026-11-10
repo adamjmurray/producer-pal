@@ -24,9 +24,11 @@ import {
   type ListPluginsResult,
   type PluginCategory,
   type PluginFormat,
+  type ResolveFileIdsResult,
 } from "#src/mcp-server/live-library/library-types.ts";
 import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { refuseLibraryParamsOutsideAction } from "./helpers/library/library-action-params.ts";
+import { folderFileIds } from "./helpers/library/library-folder-overlap.ts";
 import { trimLibraryItems } from "./helpers/library/library-item-trim.ts";
 import { refuseUnfilteredSearch } from "./helpers/library/library-unfiltered-search.ts";
 import { runSearchBatch } from "./library-search-batch.ts";
@@ -178,9 +180,8 @@ export async function library(
  *
  * Paging runs over the folder's matches followed by the DB's, so a page is a
  * window on that stream: folder items fill it first, the DB asks for the rest.
- * A DB file the folder scan also found is dropped from its page rather than
- * moved, which keeps the pages from overlapping or skipping (a page can then
- * come back short).
+ * A file both sources list shows once, as the folder's: the DB search skips
+ * the files the folder matched, so its pages and its count are exact.
  *
  * @param args - Tool arguments
  * @param ctx - Per-request context
@@ -221,13 +222,14 @@ export async function runSearch(
           offset: Math.max(0, offset - folderItems.length),
           limit: Math.max(1, limit - folderPage.length),
           verifyPaths: args.verifyPaths,
+          ...(await excludedFiles(folderItems)),
         });
 
-  // Case-insensitive dedup: V8-in-Max only runs on macOS/Windows, whose
-  // default filesystems (APFS, NTFS) are case-insensitive — so the same file
-  // can surface with different casing from the folder scan vs Live's DB
-  // (which records paths as written at index time). Mirrors the SQL side's
-  // `COLLATE NOCASE` on inFolder.
+  // Backstop for the exclusion above: a DB row the folder also lists shows
+  // once, as the folder's. It drops nothing when the exclusion matched the
+  // file; when it couldn't (the lookup failed, or the paths differ in a way
+  // the lookup doesn't fold), `more` may count the copy. Case-insensitive:
+  // APFS and NTFS are, and the DB keeps the casing it was indexed with.
   const folderPaths = new Set(folderItems.map((i) => i.path.toLowerCase()));
   const dbRows = dbResult?.items ?? [];
   const dbSlots = limit - folderPage.length;
@@ -235,7 +237,7 @@ export async function runSearch(
     .slice(0, dbSlots)
     .filter((i) => !folderPaths.has(i.path.toLowerCase()));
   // Beyond the page: what follows the DB window, plus the probe row when the
-  // folder filled the page. The count can include a file both sources list.
+  // folder filled the page.
   const dbLeft = dbRows.slice(dbSlots).length + (dbResult?.more ?? 0);
   const more = folderLeft + dbLeft;
   // Sort on the full fields, then trim. The DB cut its window in SQL order;
@@ -262,6 +264,40 @@ export async function runSearch(
     ...(dbResult.note != null && { note: dbResult.note }),
     ...(detail != null && { detail }),
   };
+}
+
+/**
+ * The DB search's exclusion for the files the folder scan matched, as route
+ * args. Empty when the folder matched nothing, or when the lookup fails: the
+ * search then runs as it did without one.
+ *
+ * @param folderItems - The folder scan's matches
+ * @returns `excludeFileIds` to spread into the route args, or nothing
+ */
+async function excludedFiles(
+  folderItems: LibraryItem[],
+): Promise<{ excludeFileIds?: number[] }> {
+  if (folderItems.length === 0) {
+    return {};
+  }
+
+  try {
+    const excludeFileIds = await folderFileIds(
+      folderItems.map((i) => i.path),
+      async (paths) => {
+        const answer = await callRoute<ResolveFileIdsResult>(
+          "library.resolveFileIds",
+          { paths },
+        );
+
+        return answer.fileIds;
+      },
+    );
+
+    return excludeFileIds.length > 0 ? { excludeFileIds } : {};
+  } catch {
+    return {};
+  }
 }
 
 /**

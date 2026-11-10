@@ -5,8 +5,8 @@
 
 import { type DatabaseSync } from "node:sqlite";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fourCC } from "../../library-filters.ts";
-import { findSimilar } from "../../query/find-similar.ts";
+import { fourCC } from "../../../library-filters.ts";
+import { findSimilar } from "../../../query/similarity/find-similar.ts";
 import {
   expectQueryDegradesOnBrokenDb,
   expectQueryDegradesWithoutDb,
@@ -15,19 +15,19 @@ import {
   KICK_VECTOR,
   setupLibraryFixtureLifecycle,
   STALENESS_NOTE,
-} from "../fixtures/library-fixture.ts";
+} from "../../fixtures/library-fixture.ts";
 
-vi.mock(import("../../live-db-path.ts"), () => ({
+vi.mock(import("../../../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),
   findLivePluginsDbPath: vi.fn(),
   liveDatabaseDir: vi.fn(),
 }));
-vi.mock(import("../../db-staleness.ts"), () => ({
+vi.mock(import("../../../db-staleness.ts"), () => ({
   stalenessNote: vi.fn(),
 }));
 
-const dbPathMod = await import("../../live-db-path.ts");
-const stalenessMod = await import("../../db-staleness.ts");
+const dbPathMod = await import("../../../live-db-path.ts");
+const stalenessMod = await import("../../../db-staleness.ts");
 
 const PACK_ONE = "/Users/test/Music/Ableton/Factory Packs/Pack One";
 const SEED_KICK = "/Users/test/Music/Ableton/User Library/user_kick.aif";

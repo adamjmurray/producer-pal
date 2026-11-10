@@ -22,13 +22,13 @@ const protocolMock =
 const DB_NAMES = ["a.wav", "b.wav", "c.wav", "d.wav", "e.wav"];
 
 /**
- * @param name - File name
- * @returns A DB item whose path is /L/<name>
+ * @param name - File name, or an absolute path
+ * @returns A DB item; a bare name sits in /L
  */
 function dbItem(name: string): Record<string, unknown> {
   return {
-    name,
-    path: `/L/${name}`,
+    name: name.split("/").at(-1),
+    path: name.startsWith("/") ? name : `/L/${name}`,
     kind: "audio",
     tags: [],
     useCount: 0,
@@ -37,24 +37,50 @@ function dbItem(name: string): Record<string, unknown> {
 }
 
 /**
- * Stub library.search as a DB holding the given items: it honors offset and
- * limit and reports how many rows follow its window, as the real route does.
- * @param names - The matching files, in the order the DB returns them
+ * Stub the library routes as a DB holding the given items, each with its
+ * position as its file id. library.search honors excludeFileIds, offset and
+ * limit and reports how many rows follow its window, as the real route does;
+ * library.resolveFileIds finds the ids of the paths the DB lists, ignoring
+ * case.
+ * @param names - The matching files, in the order the DB returns them; a name
+ *   starting with "/" is a full path
+ * @param useCounts - Use count per name
  */
 function mockDb(
   names: string[] = DB_NAMES,
   useCounts: Record<string, number> = {},
 ): void {
+  const rows: Array<{ id: number; item: Record<string, unknown> }> = names.map(
+    (name, i) => ({
+      id: i + 1,
+      item: { ...dbItem(name), useCount: useCounts[name] ?? 0 },
+    }),
+  );
+
   vi.mocked(protocolMock.requestNode).mockImplementation(
-    async (_route, routeArgs) => {
-      const { offset = 0, limit } = routeArgs as {
+    async (route, routeArgs) => {
+      if (route === "library.resolveFileIds") {
+        const { paths } = routeArgs as { paths: string[] };
+        const wanted = new Set(paths.map((p) => p.toLowerCase()));
+        const fileIds = rows
+          .filter((r) => wanted.has(String(r.item.path).toLowerCase()))
+          .map((r) => r.id);
+
+        return { success: true, result: { fileIds } };
+      }
+
+      const {
+        offset = 0,
+        limit,
+        excludeFileIds = [],
+      } = routeArgs as {
         offset?: number;
         limit: number;
+        excludeFileIds?: number[];
       };
-      const items = names
-        .slice(offset, offset + limit)
-        .map((name) => ({ ...dbItem(name), useCount: useCounts[name] ?? 0 }));
-      const left = names.length - offset - items.length;
+      const kept = rows.filter((r) => !excludeFileIds.includes(r.id));
+      const items = kept.slice(offset, offset + limit).map((r) => r.item);
+      const left = kept.length - offset - items.length;
 
       return {
         success: true,
@@ -174,6 +200,18 @@ describe("library search paging", () => {
     expect(result).not.toHaveProperty("detail");
   });
 
+  it("looks up no ids without a sample folder", async () => {
+    mockDb();
+
+    await search({ limit: 2 });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledTimes(1);
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.not.objectContaining({ excludeFileIds: expect.anything() }),
+    );
+  });
+
   describe("with a sample folder", () => {
     beforeEach(() => {
       mockSampleFolder();
@@ -236,41 +274,83 @@ describe("library search paging", () => {
       );
     });
 
-    it("drops a DB file the folder already listed, keeping the pages aligned", async () => {
-      vi.mocked(protocolMock.requestNode).mockImplementation(
-        async (_route, routeArgs) => {
-          const { offset = 0, limit } = routeArgs as {
-            offset?: number;
-            limit: number;
-          };
-          const all = ["/samples/f0.wav", "/L/a.wav", "/L/b.wav"];
-          const items = all
-            .slice(offset, offset + limit)
-            .map((path) => ({ ...dbItem("x"), path }));
-          const left = all.length - offset - items.length;
+    it("shows a file both sources list once, with full pages and an exact count", async () => {
+      // The DB also lists f0, whose casing differs from the folder's.
+      mockDb(["/samples/F0.WAV", "/L/a.wav", "/L/b.wav"]);
 
-          return {
-            success: true,
-            result: {
-              dbAvailable: true,
-              items,
-              ...(left > 0 && { more: left }),
-            },
-          };
-        },
-      );
-
-      // Positions: f0 f1 f2 | (f0 again) a b. The page is cut by position, so
-      // the duplicate leaves it short instead of shifting the next page.
       const first = await search({ limit: 4 }, ctx);
       const second = await search({ limit: 4, offset: 4 }, ctx);
 
-      expect(first.names).toStrictEqual(["f0.wav", "f1.wav", "f2.wav"]);
+      expect(first.names).toStrictEqual([
+        "f0.wav",
+        "f1.wav",
+        "f2.wav",
+        "a.wav",
+      ]);
       expect(first.result).toStrictEqual(
-        expect.objectContaining({ more: 2, nextOffset: 4 }),
+        expect.objectContaining({ more: 1, nextOffset: 4 }),
       );
-      expect(second.names).toStrictEqual(["a.wav", "b.wav"]);
+      expect(second.names).toStrictEqual(["b.wav"]);
       expect(second.result).not.toHaveProperty("more");
+      expect(protocolMock.requestNode).toHaveBeenCalledWith(
+        "library.search",
+        expect.objectContaining({ excludeFileIds: [1] }),
+      );
+    });
+
+    it.each([
+      ["answers with a failure", { success: false, error: "timed out" }],
+      ["throws", new Error("boom")],
+    ])(
+      "still searches, showing a shared file once, when the id lookup %s",
+      async (_name, failure) => {
+        mockDb(["/samples/F0.WAV", "/L/a.wav", "/L/b.wav"]);
+
+        const dbRoute = vi
+          .mocked(protocolMock.requestNode)
+          .getMockImplementation()!;
+
+        vi.mocked(protocolMock.requestNode).mockImplementation(
+          async (route, routeArgs, timeout) => {
+            if (route !== "library.resolveFileIds") {
+              return await dbRoute(route, routeArgs, timeout);
+            }
+
+            if (failure instanceof Error) {
+              throw failure;
+            }
+
+            return failure;
+          },
+        );
+
+        const { names } = await search({ limit: 4 }, ctx);
+
+        expect(names).toStrictEqual(["f0.wav", "f1.wav", "f2.wav"]);
+        expect(protocolMock.requestNode).toHaveBeenCalledWith(
+          "library.search",
+          expect.not.objectContaining({ excludeFileIds: expect.anything() }),
+        );
+      },
+    );
+
+    it("reports no more when every remaining DB match is a folder file", async () => {
+      mockDb(["/samples/f1.wav", "/samples/f2.wav"]);
+
+      const { names, result } = await search({ limit: 3 }, ctx);
+
+      expect(names).toStrictEqual(["f0.wav", "f1.wav", "f2.wav"]);
+      expect(result).not.toHaveProperty("more");
+      expect(result).not.toHaveProperty("nextOffset");
+    });
+
+    it("sends no exclusion when the DB lists none of the folder's files", async () => {
+      await search({ limit: 4 }, ctx);
+
+      expect(protocolMock.requestNode).toHaveBeenCalledWith(
+        "library.search",
+        expect.not.objectContaining({ excludeFileIds: expect.anything() }),
+      );
     });
 
     it("pages a folder-only search without asking the DB", async () => {
@@ -316,6 +396,34 @@ describe("library search paging", () => {
       ).toStrictEqual(["c.wav", "d.wav"]);
       expect(last).not.toHaveProperty("more");
       expect(last).not.toHaveProperty("nextOffset");
+    });
+
+    it("skips the folder's files in every entry", async () => {
+      mockSampleFolder();
+      mockDb(["/samples/f0.wav", "/L/a.wav", "/L/b.wav"]);
+
+      const result = await library(
+        {
+          searches: [
+            { label: "One", query: "wav", limit: 4 },
+            { label: "Two", query: "wav", limit: 4, offset: 4 },
+          ],
+        },
+        { sampleFolder: "/samples/" },
+      );
+
+      if (!("results" in result)) {
+        throw new Error("expected results");
+      }
+
+      const [one, two] = result.results;
+
+      expect(one).toStrictEqual(
+        expect.objectContaining({ more: 1, nextOffset: 4 }),
+      );
+      expect(one?.items).toHaveLength(4);
+      expect(two?.items.map((i) => i.path)).toStrictEqual(["/L/b.wav"]);
+      expect(two).not.toHaveProperty("more");
     });
 
     it("keeps the paging fields on a lone entry's plain answer", async () => {

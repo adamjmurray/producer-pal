@@ -22,8 +22,8 @@ import {
   type FindDuplicatesArgs,
   type LibraryDuplicateGroup,
   type LibraryFindDuplicatesResult,
-} from "../library-types.ts";
-import { resolveAbsolutePaths } from "../reconstruct-path.ts";
+} from "../../library-types.ts";
+import { resolveAbsolutePaths } from "../../reconstruct-path.ts";
 import {
   buildCandidateWhere,
   buildLibraryItem,
@@ -32,10 +32,10 @@ import {
   fetchTagsBulk,
   resolveInFolder,
   type SearchRow,
-} from "./candidate-query.ts";
+} from "../candidate-query.ts";
 import { decodeFeatureVector } from "./feature-vectors.ts";
-import { withLiveDb } from "./live-db-query.ts";
-import { presetFolderNote } from "./notes/preset-folder-note.ts";
+import { withLiveDb } from "../live-db-query.ts";
+import { presetFolderNote } from "../notes/preset-folder-note.ts";
 
 /** Default cap on duplicate groups returned (most-duplicated first). */
 const DEFAULT_FIND_DUPLICATES_LIMIT = 50;

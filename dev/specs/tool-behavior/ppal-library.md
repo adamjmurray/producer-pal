@@ -36,7 +36,8 @@ date. The refusal rules are in
   and `nextOffset`, also when a lone entry is unwrapped into a plain answer.
   - A count, not a flag: `more: 3` and `more: 3000` call for different next
     steps (page on, or narrow the search), and the number costs the same tokens
-    as `true`. The count is exact except for the overlap below.
+    as `true`. The count is exact, except for a file that can't be matched to
+    its copy in the database (see below).
   - The search reads one row past its page, and only finding one runs a
     `COUNT(*)` over the same filters (milliseconds). A search that fits its page
     never counts.
@@ -46,10 +47,14 @@ date. The refusal rules are in
     none. A page of folder items alone still asks the database for one row, to
     learn whether any follow.
   - A file both the sample folder and Live's database list shows once, as the
-    folder's. The database's copy is dropped from its page, which can leave that
-    page short, and is still counted in `more`, which is then one too high per
-    such file beyond the page. `nextOffset` stays right: it is the position
-    after this page, not the number of items shown.
+    folder's. The database search skips the files the folder matched (matched by
+    path, ignoring case), so its rows, offset, probe row and count never see
+    them: pages stay full, `more` is exact, and `nextOffset` never leads to an
+    empty page. V8 looks the folder's paths up as database ids first (a V8 to
+    Node message can't carry a long path list). A file that can't be matched to
+    its database copy by path (the lookup failed, or a folder name differs in a
+    way the lookup doesn't fold) is still shown once, as a filter on the page
+    drops the copy, but `more` counts it, one too high.
   - An `offset` past the last match returns no items, no `more`, and a `detail`
     saying so, so it isn't read as a search with no matches. A negative,
     fractional or non-numeric `offset` is treated as a whole number from 0,

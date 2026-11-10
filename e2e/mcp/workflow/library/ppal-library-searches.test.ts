@@ -287,6 +287,69 @@ describe("ppal-library searches", () => {
       expect(names(second)).toStrictEqual(["sample.aiff"]);
     });
 
+    it("shows a file both sources list once, with full pages and an exact count", async ({
+      skip,
+    }) => {
+      // Live indexes its bundled Core Library, so pointing the sample folder at
+      // one of its folders makes the folder scan and the database list the same
+      // files, on any install. "Perc Semba" is a loop every Core Library has;
+      // the unfiltered search lists it, as the merged search below must.
+      const query = "Perc Semba";
+
+      await setConfig({ sampleFolder: "" });
+
+      const dbSearch = await search({ query, limit: 200 });
+      const core = dbSearch.items.find((item) =>
+        item.path.includes("/Core Library/"),
+      );
+
+      if (core == null) {
+        skip("Live's library lists no Core Library 'Perc Semba' loop");
+
+        return;
+      }
+
+      const folder = core.path.slice(0, core.path.lastIndexOf("/"));
+      const lower = (entry: BatchEntry): string[] =>
+        entry.items.map((item) => item.path.toLowerCase());
+
+      // Each source alone (the database's whole answer fits one page).
+      const dbOnly = lower(dbSearch);
+
+      expect(dbSearch).not.toHaveProperty("more");
+
+      await setConfig({ sampleFolder: folder });
+
+      const folderOnly = lower(
+        await search({ source: "sample-folder", query, limit: 200 }),
+      );
+      const overlap = folderOnly.filter((path) => dbOnly.includes(path));
+      const total = folderOnly.length + dbOnly.length - overlap.length;
+
+      expect(overlap.length).toBeGreaterThan(0);
+
+      // Both together: a handful of pages.
+      const limit = Math.max(1, Math.ceil(total / 3));
+      const first = await search({ query, limit });
+      const paths = lower(first);
+      let page = first;
+
+      for (let i = 0; i < 10 && page.nextOffset != null; i++) {
+        expect(page.items).toHaveLength(limit);
+
+        page = await search({ query, limit, offset: page.nextOffset });
+        paths.push(...lower(page));
+      }
+
+      expect(page).not.toHaveProperty("more");
+      expect(page.items.length).toBeGreaterThan(0);
+      expect(new Set(paths).size).toBe(paths.length);
+      expect(paths).toHaveLength(total);
+      expect(paths).toHaveLength(
+        first.more == null ? first.items.length : limit + first.more,
+      );
+    });
+
     it("says so when the offset is past the last match", async () => {
       await setConfig({ sampleFolder: SAMPLE_FOLDER });
 

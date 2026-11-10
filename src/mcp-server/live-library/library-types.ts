@@ -138,6 +138,27 @@ export interface LibrarySearchArgs {
   verifyPaths?: boolean;
 }
 
+/**
+ * What the `library.search` route takes: the search's filters, plus the files
+ * to leave out (see `library.resolveFileIds`).
+ */
+export interface LibrarySearchRouteArgs extends LibrarySearchArgs {
+  /** DB files the search skips, so its rows, offset and count ignore them. */
+  excludeFileIds?: number[];
+}
+
+/** What the `library.resolveFileIds` route takes. */
+export interface ResolveFileIdsArgs {
+  /** Absolute file paths, matched case-insensitively. */
+  paths?: string[];
+}
+
+/** What the `library.resolveFileIds` route answers. */
+export interface ResolveFileIdsResult {
+  /** The DB file_id of each path the DB lists; the rest are left out. */
+  fileIds: number[];
+}
+
 export interface LibraryItem {
   /** Filename only */
   name: string;

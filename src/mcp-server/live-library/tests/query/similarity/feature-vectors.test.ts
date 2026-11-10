@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   decodeFeatureVector,
   euclideanDistance,
-} from "../../query/feature-vectors.ts";
+} from "../../../query/similarity/feature-vectors.ts";
 
 /**
  * Build an fe_values BLOB, overriding header fields / total length to model
