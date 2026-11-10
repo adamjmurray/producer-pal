@@ -867,9 +867,9 @@ single repeat (`*20000`) or bar range over 10,000. Split it across clips.
 **`force: true` works only after a guard has warned about that target.** It
 applies to the pad sample swap in `ppal-update-device` and the overwrite guard
 in `ppal-context`. A `force` sent before any guard fired is ignored: the call is
-skipped or refused as without it, with
-`force:true ignored - nothing had warned about this yet` in front. Send the call
-as it was, read what would be lost, then repeat it with `force`.
+skipped or refused as without it, with a note starting `force:true ignored` in
+front. Send the call as it was, read what would be lost, then repeat it with
+`force`.
 
 **String values are trimmed**, whole or as a list entry: `name: " A "` stores
 `A`. A value of only spaces reads as `""`.

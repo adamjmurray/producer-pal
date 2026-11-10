@@ -8,6 +8,7 @@
   - finding a preset by name outside a device's own presets (packs' drum kits,
     Sounds racks, custom folders)
   - opening a plug-in's editor window
+  - [hosting a plug-in](/guide/plugins) to reach all its parameters
 
   Use the version of Max bundled with Live, or make sure your standalone Max is
   up to date.
