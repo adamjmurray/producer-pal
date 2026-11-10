@@ -299,7 +299,10 @@ describe("conversation-db", () => {
 
     await deleteUnbookmarkedConversations();
 
-    expect(spy).toHaveBeenCalledTimes(1);
+    // The image sweep that follows runs in the image database, not this one.
+    expect(
+      spy.mock.contexts.filter((db) => (db as IDBDatabase).name === DB_NAME),
+    ).toHaveLength(1);
     spy.mockRestore();
   });
 

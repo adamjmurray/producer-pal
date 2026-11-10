@@ -304,7 +304,7 @@ export async function openHistoryPanel(page: Page): Promise<void> {
 }
 
 // Keep in step with DB_VERSION in webui/src/lib/conversation-db-open.ts.
-const CONVERSATIONS_DB_VERSION = 2;
+const CONVERSATIONS_DB_VERSION = 1;
 
 /**
  * Seed the conversations IndexedDB with the given records. Creates the object
@@ -330,10 +330,6 @@ export async function seedConversations(
             });
 
             store.createIndex("updatedAt", "updatedAt");
-          }
-
-          if (!db.objectStoreNames.contains("images")) {
-            db.createObjectStore("images");
           }
         };
 

@@ -19,6 +19,8 @@ import {
   resetDbCache,
   saveConversation,
 } from "#webui/lib/conversation-db";
+import { storeConversationImages } from "#webui/lib/conversations/conversation-images";
+import { IMAGE_DB_NAME, getImageDb } from "#webui/lib/conversations/image-db";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 import { deleteIndexedDb } from "#webui/test-utils/indexeddb-test-helpers";
 
@@ -64,9 +66,19 @@ async function imagesOf(id: string): Promise<ChatImage[] | undefined> {
  * @returns Stored image keys
  */
 async function storedImageKeys(): Promise<IDBValidKey[]> {
-  const db = await getConversationDb();
+  const db = await getImageDb();
 
   return await db.getAllKeys("images");
+}
+
+/**
+ * Make every stored image look old, so a sweep may take it. Sweeps spare an
+ * image saved in the last minute.
+ */
+async function ageImages(): Promise<void> {
+  const db = await getImageDb();
+
+  await db.clear("touched");
 }
 
 /**
@@ -83,6 +95,7 @@ describe("conversation images", () => {
   beforeEach(async () => {
     await resetDbCache();
     await deleteIndexedDb(DB_NAME);
+    await deleteIndexedDb(IMAGE_DB_NAME);
   });
 
   it("stores one copy of an image shared by a fork", async () => {
@@ -108,6 +121,7 @@ describe("conversation images", () => {
   it("keeps an image until the last record using it is deleted", async () => {
     await saveConversation(withImages("a", [PNG, JPEG]));
     await saveConversation(withImages("b", [PNG]));
+    await ageImages();
 
     await deleteConversation("a");
     expect(await storedImageKeys()).toHaveLength(1);
@@ -120,6 +134,7 @@ describe("conversation images", () => {
   it("sweeps images only unbookmarked records used", async () => {
     await saveConversation(withImages("kept", [PNG], { bookmarked: true }));
     await saveConversation(withImages("gone", [JPEG]));
+    await ageImages();
 
     await deleteUnbookmarkedConversations();
 
@@ -127,16 +142,43 @@ describe("conversation images", () => {
     expect(await imagesOf("kept")).toStrictEqual([PNG]);
   });
 
-  it("clears every image with every conversation", async () => {
+  it("clears every image with every conversation, even one just saved", async () => {
     await saveConversation(withImages("a", [PNG]));
 
     await deleteAllConversations();
 
+    const db = await getImageDb();
+
     expect(await storedImageKeys()).toHaveLength(0);
+    expect(await db.count("touched")).toBe(0);
+  });
+
+  it("still deletes the records when clearing the images fails", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await saveConversation(withImages("a", [PNG]));
+    const clear = IDBObjectStore.prototype.clear;
+
+    vi.spyOn(IDBObjectStore.prototype, "clear").mockImplementation(function (
+      this: IDBObjectStore,
+    ) {
+      if (this.name === "images") {
+        throw new Error("clear failed");
+      }
+
+      return clear.call(this);
+    });
+
+    await deleteAllConversations();
+
+    expect(error).toHaveBeenCalledOnce();
+    vi.restoreAllMocks();
+    expect(await loadConversation("a")).toBeUndefined();
   });
 
   it("sweeps an image a re-save no longer uses", async () => {
     await saveConversation(withImages("a", [PNG]));
+    await ageImages();
     await saveConversation(withImages("a", [JPEG]));
 
     expect(await storedImageKeys()).toHaveLength(1);
@@ -148,6 +190,7 @@ describe("conversation images", () => {
 
     const snapshot = await loadConversation("a");
 
+    await ageImages();
     await deleteConversation("a");
     await saveConversation(snapshot as ConversationRecord);
 
@@ -181,6 +224,29 @@ describe("conversation images", () => {
     );
 
     expect(await imagesOf("orphan")).toStrictEqual([]);
+  });
+
+  it("keeps the images of a record saved again as stored refs", async () => {
+    await saveConversation(withImages("a", [PNG]));
+
+    const refsOnly = await loadConversation("a", { images: false });
+
+    await saveConversation(refsOnly!);
+
+    expect(await storedImageKeys()).toHaveLength(1);
+    expect(await imagesOf("a")).toStrictEqual([PNG]);
+  });
+
+  it("loads a record mixing stored and inline images", async () => {
+    await saveConversation(withImages("a", [PNG]));
+
+    const [ref] = await storedImageKeys();
+
+    await putRaw(
+      withImages("mixed", [JPEG, { mediaType: PNG.mediaType, ref } as never]),
+    );
+
+    expect(await imagesOf("mixed")).toStrictEqual([JPEG, PNG]);
   });
 
   it("loads every record with its images for export", async () => {
@@ -229,7 +295,7 @@ describe("conversation images", () => {
     await saveConversation(withImages("a", [PNG]));
 
     const loaded = await loadConversation("a");
-    const db = await getConversationDb();
+    const db = await getImageDb();
 
     await db.clear("images");
     await saveConversation(loaded!);
@@ -294,7 +360,7 @@ describe("conversation images", () => {
 
     await saveConversation(record);
 
-    const db = await getConversationDb();
+    const db = await getImageDb();
 
     await db.clear("images");
     await saveConversation(record);
@@ -318,134 +384,100 @@ describe("conversation images", () => {
   });
 });
 
-describe("upgrade from version 1", () => {
+describe("writing and sweeping across the two databases", () => {
   beforeEach(async () => {
     await resetDbCache();
     await deleteIndexedDb(DB_NAME);
+    await deleteIndexedDb(IMAGE_DB_NAME);
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  /**
-   * Create a version 1 database holding one record with an inline image.
-   * @returns The open version 1 connection
-   */
-  function createVersion1Db(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, 1);
-
-      request.onupgradeneeded = () => {
-        const store = request.result.createObjectStore("conversations", {
-          keyPath: "id",
-        });
-
-        store.createIndex("updatedAt", "updatedAt");
-        store.put(withImages("old", [PNG]));
-      };
-
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  it("adds the image store and keeps existing records", async () => {
-    const oldDb = await createVersion1Db();
-
-    oldDb.close();
-
-    expect(await imagesOf("old")).toStrictEqual([PNG]);
-    expect(await storedImageKeys()).toHaveLength(0);
-  });
-
-  it("asks to close other tabs while an old one blocks the upgrade", async () => {
-    const alertSpy = vi.fn();
-
-    vi.stubGlobal("alert", alertSpy);
-    const oldTab = await createVersion1Db();
-    const opening = getConversationDb();
-
-    await vi.waitFor(() => expect(alertSpy).toHaveBeenCalledOnce());
-    oldTab.close();
-
-    const db = await opening;
-
-    expect(db.version).toBe(2);
-  });
-
-  it("creates both stores in a version 1 database that has none", async () => {
-    await new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME);
-
-      request.onsuccess = () => {
-        request.result.close();
-        resolve();
-      };
-
-      request.onerror = () => reject(request.error);
-    });
-
-    const db = await getConversationDb();
-
-    expect([...db.objectStoreNames].toSorted()).toStrictEqual([
-      "conversations",
-      "images",
-    ]);
-
-    await saveConversation(withImages("a", [PNG]));
-    expect(await imagesOf("a")).toStrictEqual([PNG]);
-  });
-});
-
-describe("a newer build upgrading the database", () => {
-  beforeEach(async () => {
-    await resetDbCache();
-    await deleteIndexedDb(DB_NAME);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
-  /**
-   * Open the DB at a newer version, as another tab on a newer build would.
-   * @returns The open connection
-   */
-  function openNewerVersion(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, 3);
+  it("writes the image before the record", async () => {
+    const put = vi.spyOn(IDBObjectStore.prototype, "put");
 
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  it("closes this tab's connection, tells the user, and never reopens", async () => {
-    const alertSpy = vi.fn();
-    const confirmSpy = vi.fn(() => true);
-
-    vi.stubGlobal("alert", alertSpy);
-    vi.stubGlobal("confirm", confirmSpy);
     await saveConversation(withImages("a", [PNG]));
 
-    // Resolves only if this tab let go of its connection.
-    const newer = await openNewerVersion();
+    const stores = put.mock.contexts.map((s) => (s as IDBObjectStore).name);
 
-    expect(alertSpy).toHaveBeenCalledExactlyOnceWith(
-      expect.stringContaining("Reload"),
+    expect(stores.indexOf("images")).toBeLessThan(
+      stores.indexOf("conversations"),
     );
+  });
 
-    await expect(loadConversation("a")).rejects.toThrow("reload this one");
-    await expect(saveConversation(withImages("b", []))).rejects.toThrow(
-      "reload this one",
+  it("leaves only an unused image if the record never gets written", async () => {
+    await getConversationDb();
+
+    const put = IDBObjectStore.prototype.put;
+
+    vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
+      this: IDBObjectStore,
+      ...args: Parameters<IDBObjectStore["put"]>
+    ) {
+      if (this.name === "conversations") {
+        throw new Error("crash");
+      }
+
+      return put.apply(this, args);
+    });
+
+    await expect(saveConversation(withImages("a", [PNG]))).rejects.toThrow(
+      "crash",
     );
+    vi.restoreAllMocks();
 
-    // No reset prompt, and the data is untouched.
-    expect(confirmSpy).not.toHaveBeenCalled();
-    expect(newer.version).toBe(3);
-    expect(newer.objectStoreNames).toContain("conversations");
-    newer.close();
+    expect(await loadConversation("a")).toBeUndefined();
+
+    // The next sweep, once the image is old enough, removes it.
+    await ageImages();
+    await saveConversation(withImages("b", []));
+    expect(await storedImageKeys()).toHaveLength(0);
+  });
+
+  it("spares an image saved just before its record is written", async () => {
+    const stored = await storeConversationImages(withImages("a", [PNG]));
+
+    // A sweep in another tab, which knows no record that uses it.
+    await deleteConversation("other");
+    expect(await storedImageKeys()).toHaveLength(1);
+
+    const db = await getConversationDb();
+
+    await db.put("conversations", stored);
+    expect(await imagesOf("a")).toStrictEqual([PNG]);
+  });
+
+  it("spares a stored image another save has just re-used", async () => {
+    await saveConversation(withImages("a", [PNG]));
+    await ageImages();
+
+    // Re-using the image marks it, before the record that uses it is written.
+    const stored = await storeConversationImages(withImages("b", [PNG]));
+
+    await deleteConversation("a");
+    expect(await storedImageKeys()).toHaveLength(1);
+
+    const db = await getConversationDb();
+
+    await db.put("conversations", stored);
+    expect(await imagesOf("b")).toStrictEqual([PNG]);
+  });
+
+  it("still saves the record when the sweep fails", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await saveConversation(withImages("a", [PNG]));
+    vi.spyOn(IDBObjectStore.prototype, "getAllKeys").mockImplementation(() => {
+      throw new Error("sweep failed");
+    });
+
+    await expect(
+      saveConversation(withImages("b", [JPEG])),
+    ).resolves.toMatchObject({ saved: true });
+    expect(error).toHaveBeenCalledOnce();
+    vi.restoreAllMocks();
+    expect(await imagesOf("b")).toStrictEqual([JPEG]);
   });
 });

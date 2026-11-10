@@ -93,10 +93,14 @@ describe("useConversations switch race", () => {
   it("keeps a switch made while the chat in the URL was loading", async () => {
     const handle = await setupConversationsHook();
     const [first, second] = await saveTwo(handle);
-    const { release, restore } = gateNextLoad();
 
+    // The first hook is still mounted and reacts to the hash change too. Let it
+    // finish before arming the gate, or it can take the gate from the reopened
+    // hook's load (a race against how fast that load starts).
     window.location.hash = `#${first}`;
+    await waitForEffects();
 
+    const { release, restore } = gateNextLoad();
     const reopened = await setupConversationsHook();
 
     await act(async () => {

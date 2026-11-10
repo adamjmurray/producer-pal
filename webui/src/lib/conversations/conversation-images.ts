@@ -4,32 +4,24 @@
 // SPDX-License-Identifier: MIT
 
 import { type ChatImage, type ChatMessage } from "#webui/chat/sdk/types";
+import {
+  IMAGE_STORE,
+  TOUCHED_STORE,
+  getImageDb,
+} from "#webui/lib/conversations/image-db";
 
 /**
- * Image bytes keyed by content hash, shared by every record that shows them,
- * so an edit/retry fork doesn't store another copy. Records hold
- * `{ mediaType, ref }` instead of the bytes.
+ * How long a sweep spares an image after a save wrote or re-used it. An image
+ * is written before its conversation is (the two live in different databases),
+ * so a sweep landing between them must not take it.
  */
-export const IMAGE_STORE = "images";
+const SPARED_MS = 60_000;
 
 /**
  * Ref per in-memory image, so a save skips the hash. Images never change. It
  * doesn't say the bytes are still stored: every save checks the store.
  */
 const knownRefs = new WeakMap<object, string>();
-
-/** The parts of an idb object store this module reads. */
-interface ImageStore {
-  get: (key: string) => Promise<unknown>;
-  getAllKeys: () => Promise<IDBValidKey[]>;
-}
-
-/** The same, in a readwrite transaction. */
-interface WritableImageStore extends ImageStore {
-  getKey: (key: string) => Promise<unknown>;
-  put: (value: string, key: string) => Promise<unknown>;
-  delete: (key: string) => Promise<void>;
-}
 
 /** How an image sits in a stored record: its bytes live under `ref`. */
 interface StoredImage {
@@ -43,18 +35,18 @@ interface WithMessages {
 }
 
 /**
- * Move a record's image bytes into the image store, returning the copy to
- * write in their place. Images saved before the store existed are inline, and
- * move on their next save. Bytes already stored are left alone; ones a delete
- * elsewhere swept are written again. The check shares the caller's readwrite
- * transaction, so a sweep can't land between it and the write.
+ * Move a record's image bytes into the image database, returning the copy to
+ * write in their place. Do this before writing the record: a crash in between
+ * leaves an unused image, never a record whose image is missing. Images saved
+ * before the store existed are inline, and move on their next save. Bytes
+ * already stored are left alone but marked as just used; ones a delete
+ * elsewhere swept are written again. The check shares the write transaction,
+ * so a sweep can't land between it and the write.
  * @param record - Record with inline images
- * @param store - The image store, in a readwrite transaction
  * @returns A copy whose images are refs
  */
 export async function storeConversationImages<T extends WithMessages>(
   record: T,
-  store: WritableImageStore,
 ): Promise<T> {
   const inline = new Map<string, string>();
   const stored = mapImages(record, (image) => {
@@ -70,10 +62,8 @@ export async function storeConversationImages<T extends WithMessages>(
     return { mediaType: image.mediaType, ref };
   });
 
-  for (const [ref, data] of inline) {
-    if ((await store.getKey(ref)) == null) {
-      void store.put(data, ref);
-    }
+  if (inline.size > 0) {
+    await writeImages(inline);
   }
 
   return stored;
@@ -83,16 +73,22 @@ export async function storeConversationImages<T extends WithMessages>(
  * Put a stored record's image bytes back. An image whose bytes are missing is
  * dropped: an empty one would fail the next model request.
  * @param record - Record as read from the conversation store
- * @param store - The image store
  * @returns A copy with inline images
  */
 export async function loadConversationImages<T extends WithMessages>(
   record: T,
-  store: ImageStore,
 ): Promise<T> {
+  const refs = conversationImageRefs([record]);
+
+  if (refs.size === 0) {
+    return record;
+  }
+
+  const db = await getImageDb();
+  const store = db.transaction(IMAGE_STORE).store;
   const bytes = new Map<string, string | undefined>();
 
-  for (const ref of conversationImageRefs([record])) {
+  for (const ref of refs) {
     bytes.set(ref, (await store.get(ref)) as string | undefined);
   }
 
@@ -116,23 +112,81 @@ export async function loadConversationImages<T extends WithMessages>(
 }
 
 /**
- * Delete the images no remaining record refers to. Run it in the transaction
- * that removed or rewrote records, so a save in another tab can't add a
- * reference between the scan and the delete.
+ * Delete the images no remaining record uses and no save touched lately. Run
+ * it after the transaction that removed or rewrote records, with the records
+ * that transaction left. A save in another tab may add a reference after
+ * those were read, which is what {@link SPARED_MS} covers. A failure is only
+ * logged: the records are already written, and the next sweep retries.
  * @param records - Every record left in the conversation store
- * @param store - The image store, in a readwrite transaction
  */
 export async function sweepConversationImages(
   records: WithMessages[],
-  store: WritableImageStore,
 ): Promise<void> {
-  const inUse = conversationImageRefs(records);
+  try {
+    const inUse = conversationImageRefs(records);
+    const db = await getImageDb();
+    const tx = db.transaction([IMAGE_STORE, TOUCHED_STORE], "readwrite");
+    const images = tx.objectStore(IMAGE_STORE);
+    const touched = tx.objectStore(TOUCHED_STORE);
+    const touchedKeys = (await touched.getAllKeys()) as string[];
+    const touchedTimes = (await touched.getAll()) as number[];
+    const touchedAt = new Map(touchedKeys.map((k, i) => [k, touchedTimes[i]]));
+    const cutoff = Date.now() - SPARED_MS;
 
-  for (const ref of (await store.getAllKeys()) as string[]) {
-    if (!inUse.has(ref)) {
-      void store.delete(ref);
+    for (const ref of (await images.getAllKeys()) as string[]) {
+      const at = touchedAt.get(ref);
+
+      if (!inUse.has(ref) && (at == null || at < cutoff)) {
+        void images.delete(ref);
+        void touched.delete(ref);
+      }
     }
+
+    await tx.done;
+  } catch (error) {
+    console.error("Failed to remove unused images", error);
   }
+}
+
+/**
+ * Delete every stored image, whatever was saved lately. For "delete all", where
+ * the user expects nothing left. Run it after the records are gone. A failure
+ * is only logged, like {@link sweepConversationImages}: the records are gone,
+ * and a later sweep takes what is left.
+ */
+export async function clearConversationImages(): Promise<void> {
+  try {
+    const db = await getImageDb();
+    const tx = db.transaction([IMAGE_STORE, TOUCHED_STORE], "readwrite");
+
+    void tx.objectStore(IMAGE_STORE).clear();
+    void tx.objectStore(TOUCHED_STORE).clear();
+    await tx.done;
+  } catch (error) {
+    console.error("Failed to remove images", error);
+  }
+}
+
+/**
+ * Write image bytes that aren't stored yet and mark every one as just used.
+ * @param inline - Bytes by ref
+ */
+async function writeImages(inline: Map<string, string>): Promise<void> {
+  const db = await getImageDb();
+  const tx = db.transaction([IMAGE_STORE, TOUCHED_STORE], "readwrite");
+  const images = tx.objectStore(IMAGE_STORE);
+  const touched = tx.objectStore(TOUCHED_STORE);
+  const now = Date.now();
+
+  for (const [ref, data] of inline) {
+    if ((await images.getKey(ref)) == null) {
+      void images.put(data, ref);
+    }
+
+    void touched.put(now, ref);
+  }
+
+  await tx.done;
 }
 
 /**

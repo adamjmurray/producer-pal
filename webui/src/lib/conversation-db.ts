@@ -10,18 +10,18 @@ import {
   branchFamilyIds,
   collapseBranchFamilies,
 } from "#webui/lib/conversation-branches";
+import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-open";
 import {
-  STORE_NAME,
-  resetDbRetired,
-  retiredDbError,
-  tryOpenDb,
-} from "#webui/lib/conversation-db-open";
-import {
-  IMAGE_STORE,
+  clearConversationImages,
   loadConversationImages,
   storeConversationImages,
   sweepConversationImages,
 } from "#webui/lib/conversations/conversation-images";
+import {
+  resetDbRetired,
+  retiredDbError,
+} from "#webui/lib/conversations/open-tracked-db";
+import { resetImageDbCache } from "#webui/lib/conversations/image-db";
 
 export const MAX_CONVERSATIONS = 200;
 
@@ -131,6 +131,8 @@ export function getConversationDb(): Promise<IDBPDatabase> {
  *
  * The existence check, the limit trim, and the write share one transaction, so
  * a delete can't land between them. See {@link SaveConversationOptions.expectPersisted}.
+ * The images are written first, in the image database, and swept last: a crash
+ * in between leaves an unused image, never a record pointing at a missing one.
  * @param record - The conversation to save
  * @param options - Limit protection and the anti-resurrection check
  * @returns Whether the record was written, and what the limit evicted
@@ -141,9 +143,9 @@ export async function saveConversation(
 ): Promise<SaveConversationResult> {
   const { protectedIds, expectPersisted = false } = options;
   const db = await getConversationDb();
-  const tx = db.transaction([STORE_NAME, IMAGE_STORE], "readwrite");
-  const store = tx.objectStore(STORE_NAME);
-  const images = tx.objectStore(IMAGE_STORE);
+  const stored = await storeConversationImages(record);
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  const store = tx.store;
   const all = (await store.getAll()) as ConversationRecord[];
   const exists = all.some((r) => r.id === record.id);
 
@@ -159,15 +161,14 @@ export async function saveConversation(
     void store.delete(id);
   }
 
-  const stored = await storeConversationImages(record, images);
   const trimmed = new Set(trim.ids);
 
   void store.put(stored);
-  await sweepConversationImages(
-    [...all.filter((r) => r.id !== record.id && !trimmed.has(r.id)), stored],
-    images,
-  );
   await tx.done;
+  await sweepConversationImages([
+    ...all.filter((r) => r.id !== record.id && !trimmed.has(r.id)),
+    stored,
+  ]);
 
   return {
     deletedCount: trim.ids.length,
@@ -197,19 +198,14 @@ export async function loadConversation(
   options: LoadConversationOptions = {},
 ): Promise<ConversationRecord | undefined> {
   const db = await getConversationDb();
-  const tx = db.transaction([STORE_NAME, IMAGE_STORE], "readonly");
-  const raw = (await tx.objectStore(STORE_NAME).get(id)) as
+  const raw = (await db.get(STORE_NAME, id)) as
     | Partial<ConversationRecord>
     | undefined;
   const normalized = raw ? normalizeLegacyRecord(raw) : undefined;
-  const record =
-    normalized && options.images !== false
-      ? await loadConversationImages(normalized, tx.objectStore(IMAGE_STORE))
-      : normalized;
 
-  await tx.done;
-
-  return record;
+  return normalized && options.images !== false
+    ? await loadConversationImages(normalized)
+    : normalized;
 }
 
 /**
@@ -219,17 +215,11 @@ export async function loadConversation(
  */
 export async function loadAllConversations(): Promise<ConversationRecord[]> {
   const db = await getConversationDb();
-  const tx = db.transaction([STORE_NAME, IMAGE_STORE], "readonly");
-  const images = tx.objectStore(IMAGE_STORE);
   const records: ConversationRecord[] = [];
 
-  for (const raw of (await tx
-    .objectStore(STORE_NAME)
-    .getAll()) as ConversationRecord[]) {
-    records.push(await loadConversationImages(raw, images));
+  for (const raw of (await db.getAll(STORE_NAME)) as ConversationRecord[]) {
+    records.push(await loadConversationImages(raw));
   }
-
-  await tx.done;
 
   return records;
 }
@@ -247,11 +237,11 @@ export async function deleteConversation(id: string): Promise<void> {
  */
 export async function deleteAllConversations(): Promise<void> {
   const db = await getConversationDb();
-  const tx = db.transaction([STORE_NAME, IMAGE_STORE], "readwrite");
+  const tx = db.transaction(STORE_NAME, "readwrite");
 
-  void tx.objectStore(STORE_NAME).clear();
-  void tx.objectStore(IMAGE_STORE).clear();
+  void tx.store.clear();
   await tx.done;
+  await clearConversationImages();
 }
 
 /**
@@ -418,6 +408,7 @@ export async function resetDbCache(): Promise<void> {
 
   dbPromise = null;
   resetDbRetired();
+  await resetImageDbCache();
 
   if (cached) {
     const db = await cached;
@@ -429,16 +420,15 @@ export async function resetDbCache(): Promise<void> {
 // --- Helpers below main exports ---
 
 /**
- * Delete the matching conversations and the images only they used, in one
- * transaction.
+ * Delete the matching conversations, then the images only they used.
  * @param shouldDelete - Picks the records to delete
  */
 async function deleteWhere(
   shouldDelete: (record: ConversationRecord) => boolean,
 ): Promise<void> {
   const db = await getConversationDb();
-  const tx = db.transaction([STORE_NAME, IMAGE_STORE], "readwrite");
-  const store = tx.objectStore(STORE_NAME);
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  const store = tx.store;
   const kept: ConversationRecord[] = [];
 
   for (const record of (await store.getAll()) as ConversationRecord[]) {
@@ -449,8 +439,8 @@ async function deleteWhere(
     }
   }
 
-  await sweepConversationImages(kept, tx.objectStore(IMAGE_STORE));
   await tx.done;
+  await sweepConversationImages(kept);
 }
 
 /**
