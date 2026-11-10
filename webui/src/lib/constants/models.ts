@@ -126,7 +126,7 @@ export function isValidRealtimeVoice(value: string): value is RealtimeVoice {
 export const ANTHROPIC_MODELS = [
   { value: "claude-sonnet-5-5", label: "Claude Sonnet 5.5" },
   { value: "claude-opus-5-5", label: "Claude Opus 5.5" },
-  { value: "claude-fable-5-1", label: "Claude Fable 5.1" },
+  { value: "claude-fable-5-2", label: "Claude Fable 5.2" },
   { value: "claude-haiku-5-5", label: "Claude Haiku 5.5" },
   OTHER_MODEL_OPTION,
 ];
@@ -174,8 +174,8 @@ export const OPENROUTER_MODELS = [
     label: "[Paid] Anthropic Claude Opus 5.5",
   },
   {
-    value: "anthropic/claude-fable-5.1",
-    label: "[Paid] Anthropic Claude Fable 5.1",
+    value: "anthropic/claude-fable-5.2",
+    label: "[Paid] Anthropic Claude Fable 5.2",
   },
   {
     value: "anthropic/claude-haiku-5.5",
@@ -228,7 +228,7 @@ export const VERCEL_MODELS = [
     label: "Anthropic Claude Sonnet 5.5",
   },
   { value: "anthropic/claude-opus-5.5", label: "Anthropic Claude Opus 5.5" },
-  { value: "anthropic/claude-fable-5.1", label: "Anthropic Claude Fable 5.1" },
+  { value: "anthropic/claude-fable-5.2", label: "Anthropic Claude Fable 5.2" },
   { value: "anthropic/claude-haiku-5.5", label: "Anthropic Claude Haiku 5.5" },
   { value: "openai/gpt-6.1-terra", label: "OpenAI GPT-6.1 Terra" },
   { value: "openai/gpt-6.1-sol", label: "OpenAI GPT-6.1 Sol" },
