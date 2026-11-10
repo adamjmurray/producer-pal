@@ -192,6 +192,32 @@ describe("resolvePlugin", () => {
     );
   });
 
+  it("says to restart Live when its browser lists a plug-in the database lacks", async () => {
+    useDb(goodDb);
+    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([
+      { name: "Brand New", vendor: "New Co", format: "VST3" },
+      { name: "Fresh Old", vendor: "Old Co", format: "VST" },
+    ]);
+
+    await expect(resolvePlugin({ name: "brand new" })).rejects.toThrow(
+      /^Live lists "Brand New" but its plug-in database doesn't have it yet\. Restart Live, then try again\.$/,
+    );
+    await expect(resolvePlugin({ name: "Fresh Old" })).rejects.toThrow(
+      /^Live lists "Fresh Old" but its plug-in database/,
+    );
+  });
+
+  it("keeps the plain not-found message for a name neither lists", async () => {
+    useDb(goodDb);
+    vi.mocked(browserMod.listBrowserPlugins).mockResolvedValue([
+      { name: "Brand New", vendor: "New Co", format: "VST3" },
+    ]);
+
+    await expect(resolvePlugin({ name: "Nope" })).rejects.toThrow(
+      /^No plug-in named "Nope"$/,
+    );
+  });
+
   it("does not offer disabled plug-ins", async () => {
     useDb(goodDb);
 

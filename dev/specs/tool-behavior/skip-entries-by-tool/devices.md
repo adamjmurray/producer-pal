@@ -105,17 +105,22 @@ Part of [Skip entries, tool by tool](README.md).
   Settings → Installation) when the caller has `ppal-manage`, else the chat UI
   alone, and it adds that Live's browser can take a few seconds to see a new
   file. The lookup says "nothing by that name" with a typed flag, never by its
-  message text. A name installed in several formats loads as VST3, else AU, else
-  VST2. Several plug-ins of that name in the chosen format, a VST2 shell
-  plug-in, an AU that is neither an instrument nor an audio effect, an AUv3, and
-  a plug-in whose kind can't be told, are refused the same way. An AU counts
-  only if Live's browser lists it; with the remote script unanswering there are
-  none. `hosted` with `preset`, or with no `device`, is refused. The wrapper is
-  loaded and placed like any browser device (same path, misfit and chain rules),
-  then told to load the plug-in; the target only counts as created once that
-  worked, then takes its `name` and `params` (routed to the plug-in as
-  update-device's are). A plug-in that won't load, or that doesn't answer in
-  time, deletes the wrapper again and skips the target with the reason
+  message text. A VST3 or VST2 that Live's browser lists but its plug-in
+  database doesn't (installed since Live started) is refused with
+  `Live lists "<plug-in>" but its plug-in database doesn't have it yet. Restart Live, then try again.`;
+  the plain `No plug-in named "<name>"` is for a name in neither. A database
+  that can't be read fails only VST3 and VST2 names: an AU still resolves. A
+  name installed in several formats loads as VST3, else AU, else VST2. Several
+  plug-ins of that name in the chosen format, a VST2 shell plug-in, an AU that
+  is neither an instrument nor an audio effect, an AUv3, and a plug-in whose
+  kind can't be told, are refused the same way. An AU counts only if Live's
+  browser lists it; with the remote script unanswering there are none. `hosted`
+  with `preset`, or with no `device`, is refused. The wrapper is loaded and
+  placed like any browser device (same path, misfit and chain rules), then told
+  to load the plug-in; the target only counts as created once that worked, then
+  takes its `name` and `params` (routed to the plug-in as update-device's are).
+  A plug-in that won't load, or that doesn't answer in time, deletes the wrapper
+  again and skips the target with the reason
   (`could not load "<plug-in>": ...`), leaving the other paths alone. A wrapper
   that can't be deleted stays: the entry keeps its `id` and `path`, and the
   detail says so.

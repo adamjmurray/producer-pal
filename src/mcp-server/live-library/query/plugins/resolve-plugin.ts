@@ -7,7 +7,8 @@
  * Turn a plug-in name as Live's browser shows it ("Serum 2 FX") into what the
  * plug-in host loads. A name installed in several formats resolves in the order
  * VST3, AU, VST2. VST3 and VST2 come from Live's plug-in database; AUs come
- * from Live's browser, because the database has none. Read-only.
+ * from Live's browser, because the database has none. An AU still resolves when
+ * the database can't be read. Read-only.
  */
 
 import { errorMessage } from "#src/shared/error-message.ts";
@@ -46,7 +47,8 @@ const MAX_SUGGESTIONS = 5;
  * @param auDirs - Folders to read AU bundles from (the system's by default)
  * @param appDirs - Folders to read apps' AUv3 plug-ins from (the system's by default)
  * @returns The plug-in's name, vendor, category, format and bundle path
- * @throws When the database can't be read, or no single plug-in matches
+ * @throws When no single plug-in matches, or a VST can't be looked up because
+ *   the database can't be read
  */
 export async function resolvePlugin(
   { name }: ResolvePluginArgs,
@@ -59,7 +61,7 @@ export async function resolvePlugin(
     throw new Error("A plug-in name is required");
   }
 
-  const rows = await readPluginRows();
+  const { rows, failure } = await readPluginRows();
   const vst3 = resolveDbPlugin(rows, wanted, "VST3");
 
   if (vst3 != null) {
@@ -79,20 +81,28 @@ export async function resolvePlugin(
   );
   const found = au ?? resolveDbPlugin(rows, wanted, "VST");
 
-  if (found == null) {
-    throw new Error(notFoundMessage(rows, browserPlugins, wanted));
+  if (found != null) {
+    return found;
   }
 
-  return found;
+  // Only VST2 and VST3 need the database, so only they fail without it.
+  if (failure != null) {
+    throw new Error(failure);
+  }
+
+  throw new Error(notFoundMessage(rows, browserPlugins, wanted));
 }
 
 /**
  * Read every enabled plug-in with its bundle path.
  *
- * @returns One row per plug-in
- * @throws When the database is missing or doesn't have the expected tables
+ * @returns One row per plug-in, or no rows and why the database can't be read
+ *   (it is missing or doesn't have the expected tables)
  */
-async function readPluginRows(): Promise<PluginModuleRow[]> {
+async function readPluginRows(): Promise<{
+  rows: PluginModuleRow[];
+  failure?: string;
+}> {
   try {
     const source = await selectPluginDb();
 
@@ -105,21 +115,23 @@ async function readPluginRows(): Promise<PluginModuleRow[]> {
     try {
       // Live 11 and 12.0-12.1 keep these tables in the files database; if the
       // join doesn't fit there, the catch below reports it.
-      return db
+      const rows = db
         .prepare(
           `SELECT p.name, p.vendor, p.dev_identifier, m.path
            FROM plugins p JOIN plugin_modules m ON m.module_id = p.module_id
            WHERE p.enabled = 1`,
         )
         .all() as unknown as PluginModuleRow[];
+
+      return { rows };
     } finally {
       db.close();
     }
   } catch (error) {
-    throw new Error(
-      `Can't read Live's plug-in database: ${errorMessage(error)}`,
-      { cause: error },
-    );
+    return {
+      rows: [],
+      failure: `Can't read Live's plug-in database: ${errorMessage(error)}`,
+    };
   }
 }
 
@@ -185,7 +197,9 @@ function resolveDbPlugin(
 }
 
 /**
- * Say the plug-in wasn't found, with similar names when there are any.
+ * Say the plug-in wasn't found. A VST that Live's browser lists but its
+ * database doesn't (a new install) says to restart Live. Otherwise similar
+ * names are offered when there are any.
  *
  * @param rows - Every enabled plug-in
  * @param browserPlugins - The plug-ins Live's browser lists
@@ -197,6 +211,16 @@ function notFoundMessage(
   browserPlugins: BrowserPlugin[],
   wanted: string,
 ): string {
+  const unscanned = browserPlugins.find(
+    (item) =>
+      (item.format === "VST3" || item.format === "VST") &&
+      samePluginName(item.name, wanted),
+  );
+
+  if (unscanned != null) {
+    return `Live lists "${unscanned.name}" but its plug-in database doesn't have it yet. Restart Live, then try again.`;
+  }
+
   const lower = wanted.toLowerCase();
   const names = [
     ...rows

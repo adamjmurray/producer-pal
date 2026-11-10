@@ -417,7 +417,8 @@ export interface ListPluginsResult {
   dbAvailable?: boolean;
   /** Set when the DB snapshot may miss what Live added since it last quit. */
   stalenessNote?: string;
-  /** Set when plugins is empty due to a discoverable failure (e.g. DB missing). */
+  /** Set when the DB couldn't be read (e.g. missing). `plugins` then holds only
+   * what Live's browser lists, if it answered. */
   detail?: string;
   /** Set when a category or subcategory filter left out plug-ins whose
    * category is unknown. */

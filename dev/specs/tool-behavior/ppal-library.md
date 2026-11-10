@@ -105,6 +105,9 @@ quits, so a read can miss them.
     browser-only. A plug-in directly in a format folder has no browser vendor
     and takes the matched row's.
   - The remote script lists plug-ins without their presets (`plugins_only`).
+- With the remote script running but the plug-in database missing or unreadable,
+  the result is `dbAvailable: false` with its `detail`, and `plugins` still
+  holds the browser's plug-ins (no version, category or subcategories).
 - Without the remote script, or when it doesn't answer in time or is too old to
   know `plugins_only`, the list is the database alone, with `stalenessNote`
   under the rule above.

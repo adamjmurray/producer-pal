@@ -178,6 +178,24 @@ describe("resolvePlugin by format", () => {
       });
     });
 
+    it("still resolves when the plug-in database can't be read", async () => {
+      vi.mocked(dbPathMod.findLivePluginsDbPath).mockResolvedValue(null);
+      browserLists(au("AUDelay"));
+
+      await expect(
+        resolvePlugin({ name: "AUDelay" }, [auDir]),
+      ).resolves.toStrictEqual(expect.objectContaining({ format: "AU" }));
+    });
+
+    it("says the database can't be read when no AU has the name", async () => {
+      vi.mocked(dbPathMod.findLivePluginsDbPath).mockResolvedValue(null);
+      browserLists(au("AUDelay"));
+
+      await expect(resolvePlugin({ name: "Serum 2" }, [auDir])).rejects.toThrow(
+        "Can't read Live's plug-in database",
+      );
+    });
+
     it("reads aumu as an instrument and aumf as an effect", async () => {
       browserLists(au("AUMIDISynth"), au("AUMixer"));
 

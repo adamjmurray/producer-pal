@@ -34,7 +34,10 @@
  */
 
 import { type DatabaseSync } from "node:sqlite";
-import { listBrowserPlugins } from "../rpc/remote-script/browser/browser-plugins.ts";
+import {
+  type BrowserPlugin,
+  listBrowserPlugins,
+} from "../rpc/remote-script/browser/browser-plugins.ts";
 import { stalenessNote } from "./db-staleness.ts";
 import {
   clampLibraryLimit,
@@ -72,11 +75,17 @@ interface PluginRow {
  *
  * @param args - Filter parameters (name/vendor substrings, format, category)
  * @returns Result with plugin items, plus dbAvailable flag for graceful
- *   fallback when no plugin source DB is installed.
+ *   fallback when no plugin source DB is installed. The browser's plug-ins
+ *   still list then, without version or category.
  */
 export async function listPlugins(
   args: ListPluginsArgs = {},
 ): Promise<ListPluginsResult> {
+  // Live's DB lags behind new installs, but its browser doesn't. It never
+  // throws, so it is asked first: its list survives a DB that can't be read.
+  const browserPlugins = await listBrowserPlugins();
+  let failure: string;
+
   // Guard the entire DB-selection + open + query path: selectPluginDb probes
   // the files DB (Live 11 / 12.0–12.1 fallback), which can throw if openLiveDb
   // fails on a corrupt/inaccessible file. The plugin schema is also the
@@ -87,62 +96,96 @@ export async function listPlugins(
     const source = await selectPluginDb();
 
     if (!source) {
-      return {
-        dbAvailable: false,
-        plugins: [],
-        detail: "Live plugin database not found",
-      };
-    }
-
-    // Live's DB lags behind new installs, but its browser doesn't. Without the
-    // browser (remote script unavailable) the DB may be stale, and says so.
-    const browserPlugins = await listBrowserPlugins();
-    const stale =
-      browserPlugins == null ? await stalenessNote(source) : undefined;
-    const db = await openLiveDb(source);
-
-    try {
-      // `enabled = 1` filter: verified (Live 12.3) that every scanned plugin has
-      // enabled = 1, so this surfaces all real plugins and would hide only ones
-      // Live has explicitly disabled.
-      const rows = db
-        .prepare(
-          `SELECT name, vendor, version, scanstate, enabled,
-                  subcategories, dev_identifier
-           FROM ${PLUGINS_TABLE}
-           WHERE enabled = 1
-           ORDER BY name COLLATE NOCASE ASC`,
-        )
-        .all() as unknown as PluginRow[];
-      const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
-      const dbPlugins = rows.map(buildPluginItem);
-      const { matches, unknownCategoryLeftOut } = filterPlugins(
-        browserPlugins == null
-          ? dbPlugins
-          : mergeBrowserPlugins(dbPlugins, browserPlugins),
-        args,
-      );
-      const note = unknownCategoryNote(unknownCategoryLeftOut);
-
-      const more = matches.length - limit;
-
-      return {
-        dbAvailable: true,
-        ...(stale && { stalenessNote: stale }),
-        plugins: matches.slice(0, limit),
-        ...(more > 0 && { more }),
-        ...(note != null && { note }),
-      };
-    } finally {
-      db.close();
+      failure = "Live plugin database not found";
+    } else {
+      return await listFromDb(source, browserPlugins, args);
     }
   } catch (error) {
-    return {
-      dbAvailable: false,
-      plugins: [],
-      detail: `Failed to read Live plugin database: ${errorMessage(error)}`,
-    };
+    failure = `Failed to read Live plugin database: ${errorMessage(error)}`;
   }
+
+  // No readable DB: the browser's plug-ins still list, without version or
+  // category. Without the browser too there is nothing to list.
+  return {
+    dbAvailable: false,
+    ...listResult([], browserPlugins, args),
+    detail: failure,
+  };
+}
+
+/**
+ * List from the plug-in DB at `source`, merged with the browser's list when
+ * there is one.
+ *
+ * @param source - Path of the DB holding the plugin table
+ * @param browserPlugins - The browser's plug-ins, or null when it can't answer
+ * @param args - Filter parameters
+ * @returns The result
+ */
+async function listFromDb(
+  source: string,
+  browserPlugins: BrowserPlugin[] | null,
+  args: ListPluginsArgs,
+): Promise<ListPluginsResult> {
+  // Without the browser (remote script unavailable) the DB may be stale, and
+  // says so.
+  const stale =
+    browserPlugins == null ? await stalenessNote(source) : undefined;
+  const db = await openLiveDb(source);
+
+  try {
+    // `enabled = 1` filter: verified (Live 12.3) that every scanned plugin has
+    // enabled = 1, so this surfaces all real plugins and would hide only ones
+    // Live has explicitly disabled.
+    const rows = db
+      .prepare(
+        `SELECT name, vendor, version, scanstate, enabled,
+                subcategories, dev_identifier
+         FROM ${PLUGINS_TABLE}
+         WHERE enabled = 1
+         ORDER BY name COLLATE NOCASE ASC`,
+      )
+      .all() as unknown as PluginRow[];
+
+    return {
+      dbAvailable: true,
+      ...(stale && { stalenessNote: stale }),
+      ...listResult(rows.map(buildPluginItem), browserPlugins, args),
+    };
+  } finally {
+    db.close();
+  }
+}
+
+/**
+ * Filter and trim the plug-ins to list: the browser's, with what the DB knows
+ * about each, else the DB's alone.
+ *
+ * @param dbPlugins - Plug-ins read from the DB (none when it can't be read)
+ * @param browserPlugins - The browser's plug-ins, or null when it can't answer
+ * @param args - Filter parameters
+ * @returns The plugins, and `more` and `note` when they apply
+ */
+function listResult(
+  dbPlugins: PluginItem[],
+  browserPlugins: BrowserPlugin[] | null,
+  args: ListPluginsArgs,
+): Pick<ListPluginsResult, "plugins" | "more" | "note"> {
+  const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
+  const { matches, unknownCategoryLeftOut } = filterPlugins(
+    browserPlugins == null
+      ? dbPlugins
+      : mergeBrowserPlugins(dbPlugins, browserPlugins),
+    args,
+  );
+  const note = unknownCategoryNote(unknownCategoryLeftOut);
+  const more = matches.length - limit;
+
+  return {
+    plugins: matches.slice(0, limit),
+    ...(more > 0 && { more }),
+    ...(note != null && { note }),
+  };
 }
 
 /**
