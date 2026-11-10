@@ -101,6 +101,7 @@ check_commit() {
 
 	if ! git worktree add -q --detach "$wt/tree" "$1" </dev/null 2>"$log"; then
 		cat "$log" >&2
+		rm -f "$log"
 		cleanup
 		return 1
 	fi

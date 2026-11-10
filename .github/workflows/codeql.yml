@@ -12,8 +12,12 @@ on:
   schedule:
     - cron: "17 4 * * 1"
 
+# The event is in the group so the weekly scan and a push to main, both on
+# main, can't cancel each other.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group:
+    ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref ||
+    github.ref_name }}
   cancel-in-progress: true
 
 jobs:
