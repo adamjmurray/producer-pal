@@ -11,7 +11,10 @@ import { MANAGE_TOOL } from "../offline/offline-call.ts";
 import { type OfflineDeps } from "../offline/offline-deps.ts";
 import { installProducerPal } from "../offline/offline-install-producer-pal.ts";
 import { checkedManageArgs } from "../offline/offline-manage-args.ts";
-import { offlineError } from "../offline/offline-responses.ts";
+import {
+  offlineError,
+  remoteSetupRefusal,
+} from "../offline/offline-responses.ts";
 import { olderDevice } from "./older-device.ts";
 import { type RunningDevice } from "./running-device.ts";
 
@@ -24,12 +27,19 @@ import { type RunningDevice } from "./running-device.ts";
  * @param call.name - The tool called
  * @param call.args - Its arguments
  * @param call.manageOffered - Whether this portal lists ppal-manage
+ * @param call.remoteHost - The device's `host[:port]` when it is on another
+ *   computer, which this machine can't install onto
  * @param device - The bridge's connection to the running device
  * @param deps - What the install reaches out to
  * @returns The response, or null when the device should answer it
  */
 export async function answerInstallWhenDeviceOlder(
-  call: { name: string; args: Record<string, unknown>; manageOffered: boolean },
+  call: {
+    name: string;
+    args: Record<string, unknown>;
+    manageOffered: boolean;
+    remoteHost?: string | null;
+  },
   device: RunningDevice,
   deps: OfflineDeps,
 ): Promise<McpResponse | null> {
@@ -55,6 +65,10 @@ export async function answerInstallWhenDeviceOlder(
   } catch {
     // Not reachable: the offline path answers.
     return null;
+  }
+
+  if (call.remoteHost != null) {
+    return remoteSetupRefusal(call.remoteHost, call.args.action, true);
   }
 
   let checked: CheckedManageArgs;

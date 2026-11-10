@@ -7,11 +7,13 @@
 // "Error: <why>", a result is compact JS literal text.
 
 import { toCompactJSLiteral } from "#src/shared/compact/compact-serializer.ts";
+import { canonicalManageAction } from "#src/tools/core/helpers/manage-contract.ts";
 import {
   formatErrorResponse,
   formatSuccessResponse,
   type McpResponse,
 } from "#src/shared/mcp-responses.ts";
+import { SETUP_URL } from "./offline-setup-hints.ts";
 
 /**
  * @param message - Why the call failed, and what state it left
@@ -27,4 +29,33 @@ export function offlineError(message: string): McpResponse {
  */
 export function offlineResult(result: object): McpResponse {
   return formatSuccessResponse(toCompactJSLiteral(result));
+}
+
+const SETUP_VERBS: Record<string, string> = {
+  "install-producer-pal": "install",
+  "add-producer-pal": "add",
+  "update-producer-pal": "update",
+};
+
+/**
+ * Refuse an install, add or update for a device on another computer: they copy
+ * files on this machine.
+ * @param host - The device's `host[:port]`
+ * @param action - The ppal-manage action called
+ * @param deviceOlder - Whether the running device is older than this portal
+ * @returns The error response
+ */
+export function remoteSetupRefusal(
+  host: string,
+  action: unknown,
+  deviceOlder = false,
+): McpResponse {
+  const verb = SETUP_VERBS[String(canonicalManageAction(action))] ?? "set up";
+  const older = deviceOlder
+    ? " Producer Pal there is older than this connector."
+    : "";
+
+  return offlineError(
+    `This connector points at another computer (${host}), so it can't ${verb} Producer Pal there. That needs files copied on Live's computer.${older} Run it from a connector on Live's computer, or set up the device by hand: ${SETUP_URL}`,
+  );
 }

@@ -4,9 +4,21 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { isSetupCall } from "../offline-call.ts";
+import { VERSION } from "#src/shared/config.ts";
+import {
+  answerOfflineCall,
+  isSetupCall,
+  type OfflineCall,
+  remoteHost,
+} from "../offline-call.ts";
+import { SETUP_URL } from "../offline-setup-hints.ts";
 import { forwardedSetupTimeout } from "../setup-call-timeout.ts";
 import { responseText } from "./offline-add-producer-pal-test-helpers.ts";
+import {
+  expectNothingTouched,
+  fakeOfflineDeps,
+  noDevice,
+} from "./offline-test-helpers.ts";
 
 describe("isSetupCall", () => {
   it.each([
@@ -61,5 +73,129 @@ describe("forwardedSetupTimeout", () => {
     expect(responseText(forwardedSetupTimeout(add, true))).toContain(
       "Call ppal-connect to check",
     );
+  });
+});
+
+describe("remoteHost", () => {
+  it.each([
+    "http://localhost:3350/mcp",
+    "http://127.0.0.1:3350/mcp",
+    "http://127.5.6.7/mcp",
+    "http://[::1]:3350/mcp",
+    "http://producer.localhost:3350/mcp",
+  ])("is null for the loopback URL %s", (url) => {
+    expect(remoteHost(url)).toBeNull();
+  });
+
+  it.each([
+    ["http://192.168.1.20:3350/mcp", "192.168.1.20:3350"],
+    ["http://studio-mac.local:3350/mcp", "studio-mac.local:3350"],
+    ["https://example.com/mcp", "example.com"],
+    ["http://0.0.0.0:3350/mcp", "0.0.0.0:3350"],
+  ])("names the host of %s", (url, host) => {
+    expect(remoteHost(url)).toBe(host);
+  });
+
+  it("is null for a URL that doesn't parse, which the bridge reports itself", () => {
+    expect(remoteHost("localhost:3350")).toBeNull();
+    expect(remoteHost("not a url")).toBeNull();
+  });
+});
+
+// A device on another computer: the answers must not look at this machine.
+const HOST = "192.168.1.20:3350";
+
+/**
+ * @param name - The tool called
+ * @param args - Its arguments
+ * @param host - The device's host, or null for this machine
+ * @param manageOffered - Whether the portal lists ppal-manage
+ * @returns A call the device didn't answer
+ */
+function call(
+  name: string,
+  args: Record<string, unknown>,
+  host: string | null = HOST,
+  manageOffered = true,
+): OfflineCall {
+  return { name, args, manageOffered, connect: noDevice, remoteHost: host };
+}
+
+describe("answerOfflineCall for a device on another computer", () => {
+  it.each([
+    ["install-producer-pal", "install"],
+    ["install-remote-script", "install"],
+    ["add-producer-pal", "add"],
+    ["update-producer-pal", "update"],
+  ])(
+    "refuses ppal-manage %s without touching this machine",
+    async (action, verb) => {
+      const deps = fakeOfflineDeps();
+      const response = await answerOfflineCall(
+        call("ppal-manage", { action, userLibrary: "/lib" }),
+        deps,
+      );
+      const text = responseText(response);
+
+      expect(response.isError).toBe(true);
+      expect(text).toBe(
+        `Error: This connector points at another computer (${HOST}), so it can't ${verb} Producer Pal there. That needs files copied on Live's computer. Run it from a connector on Live's computer, or set up the device by hand: ${SETUP_URL}`,
+      );
+      expectNothingTouched(deps);
+    },
+  );
+
+  it.each([
+    ["ppal-connect", {}, true],
+    ["ppal-manage", { action: "undo" }, true],
+    ["ppal-manage", { action: "redo" }, true],
+    ["ppal-read-live-set", {}, false],
+    ["ppal-manage", { action: "install-producer-pal" }, false],
+  ])(
+    "gives %s %j the remote guidance without touching this machine (ppal-manage offered: %s)",
+    async (name, args, manageOffered) => {
+      const deps = fakeOfflineDeps();
+      const response = await answerOfflineCall(
+        call(name, args, HOST, manageOffered),
+        deps,
+      );
+
+      expect(response.isError).toBe(true);
+      expect(responseText(response))
+        .toBe(`❌ Producer Pal at ${HOST} didn't answer.
+
+Check on Live's computer:
+- Live 12.3+ is running with the Producer Pal device in the Set.
+- "Allow other devices to connect" is on in the device's Setup tab.
+- The address and port are right.
+Setup help: ${SETUP_URL}
+
+(Producer Pal ${VERSION})`);
+      expectNothingTouched(deps);
+    },
+  );
+});
+
+describe("answerOfflineCall for this machine", () => {
+  it("still looks at this machine for guidance", async () => {
+    const deps = fakeOfflineDeps();
+    const response = await answerOfflineCall(
+      call("ppal-connect", {}, null),
+      deps,
+    );
+
+    expect(responseText(response)).toContain("Cannot connect to Ableton Live.");
+    expect(deps.ping).toHaveBeenCalled();
+  });
+
+  it("still answers install-producer-pal itself", async () => {
+    const deps = fakeOfflineDeps();
+    const response = await answerOfflineCall(
+      call("ppal-manage", { action: "install-producer-pal" }, null),
+      deps,
+    );
+
+    expect(responseText(response)).not.toContain("another computer");
+    expect(deps.findUserLibrary).toHaveBeenCalled();
   });
 });

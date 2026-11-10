@@ -23,6 +23,7 @@ import {
   answerOfflineCall,
   isSetupCall,
   MANAGE_TOOL,
+  remoteHost,
 } from "./offline/offline-call.ts";
 import { type OfflineDeps, realOfflineDeps } from "./offline/offline-deps.ts";
 import { SETUP_URL } from "./offline/offline-setup-hints.ts";
@@ -104,6 +105,7 @@ export class StdioHttpBridge {
         manageOffered: this._manageOffered(),
         connect: (timeoutMs) => this._ensureHttpConnection(timeoutMs),
         deadline,
+        remoteHost: remoteHost(this.httpUrl),
       },
       this.offlineDeps,
     );
@@ -118,6 +120,7 @@ export class StdioHttpBridge {
   private async _answerInPortal(request: CallToolRequest, deadline?: number) {
     const args = request.params.arguments ?? {};
     const manageOffered = this._manageOffered();
+    const host = remoteHost(this.httpUrl);
 
     // The device being updated can't answer its own replacement.
     if (isUpdateCall(request.params.name, args, manageOffered)) {
@@ -125,12 +128,13 @@ export class StdioHttpBridge {
         args,
         this._runningDevice(deadline),
         this.offlineDeps,
+        host,
       );
     }
 
     // An older device would install its own older script.
     return await answerInstallWhenDeviceOlder(
-      { name: request.params.name, args, manageOffered },
+      { name: request.params.name, args, manageOffered, remoteHost: host },
       this._runningDevice(deadline),
       this.offlineDeps,
     );

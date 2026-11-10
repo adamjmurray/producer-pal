@@ -363,3 +363,26 @@ it (small-model mode and `--disable-tools` drop it).
       the one already there (nothing to install), or add a newer or different
       one as is. With no device bundled, it sends the user to the install guide
       and doesn't point at `add-producer-pal`.
+
+### A device on another computer
+
+When the portal's URL isn't loopback (`localhost`, `*.localhost`, `127.0.0.0/8`,
+`[::1]`), the portal's own answers would act on the wrong machine: the remote
+script client talks to `127.0.0.1`, and installs copy into this machine's User
+Library. So the portal answers none of them. This machine's own LAN address
+counts as another computer. `remoteHost()` in
+`src/portal/offline/offline-call.ts` is the one check. `ppal-manage` stays
+listed.
+
+- **`install-producer-pal`, `add-producer-pal`, `update-producer-pal`** that the
+  portal would answer (offline install and add, update always, install when the
+  running device is older) are refused with an error that names the host and
+  says to run it from a connector on Live's computer or set up the device by
+  hand. Nothing here is pinged, looked up or copied. The older-device case adds
+  that Producer Pal there is older than this connector.
+- **An install with the device up and not older** still goes to the device,
+  which installs on its own computer. `undo` and `redo` still go to the device.
+- **Every other offline call** (undo and redo included) gets guidance that names
+  the host and lists what to check on Live's computer: Live 12.3+ running with
+  the device in the Set, "Allow other devices to connect" on in the device's
+  Setup tab, and the address and port. It never pings or reads the User Library.

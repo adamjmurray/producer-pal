@@ -81,3 +81,22 @@ function runningAdvice(
       )
     : `Tell the user to add the Producer Pal Max for Live device to it, per ${SETUP_URL}.`;
 }
+
+/**
+ * Say what to check when a device on another computer doesn't answer. Nothing
+ * here looks at this machine: its remote script and User Library say nothing
+ * about that Live.
+ * @param host - The device's `host[:port]`
+ * @returns The error response
+ */
+export function remoteGuidance(host: string): McpResponse {
+  return formatErrorResponse(`❌ Producer Pal at ${host} didn't answer.
+
+Check on Live's computer:
+- Live 12.3+ is running with the Producer Pal device in the Set.
+- "Allow other devices to connect" is on in the device's Setup tab.
+- The address and port are right.
+Setup help: ${SETUP_URL}
+
+(Producer Pal ${VERSION})`);
+}

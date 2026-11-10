@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { vi } from "vitest";
+import { expect, vi, type Mock } from "vitest";
 import { type RemoteScriptPing } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { type OfflineDeps } from "../offline-deps.ts";
@@ -66,4 +66,17 @@ export function fakeOfflineDeps(
     now: vi.fn(() => 0),
     ...overrides,
   };
+}
+
+/**
+ * Assert that nothing looked at this machine. The clock and sleep are left out:
+ * the bridge reads the clock for every setup call.
+ * @param deps - Dependencies made by `fakeOfflineDeps`
+ */
+export function expectNothingTouched(deps: OfflineDeps): void {
+  const { now: _now, sleep: _sleep, ...touching } = deps;
+
+  for (const dep of Object.values(touching)) {
+    expect((dep as Mock).mock.calls).toHaveLength(0);
+  }
 }
