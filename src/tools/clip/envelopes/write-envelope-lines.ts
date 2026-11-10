@@ -286,14 +286,26 @@ async function writeOneLine(
     return { ok: false, reason: errorMessage(error), available: true };
   }
 
-  // A clear only looks for the slot a hosted param has; it never makes one.
-  const placed =
-    "hosted" in resolved
-      ? await call.slots.place(resolved.hosted, points == null)
-      : { ok: true as const, target: resolved.target };
+  let placed;
+
+  try {
+    // A clear only looks for the slot a hosted param has; it never makes one.
+    placed =
+      "hosted" in resolved
+        ? await call.slots.place(resolved.hosted, points == null)
+        : { ok: true as const, target: resolved.target };
+  } catch (error) {
+    // Earlier lines already landed, so this one is refused rather than thrown.
+    return { ok: false, reason: errorMessage(error), available: true };
+  }
 
   if (!placed.ok) {
-    return { ok: false, reason: placed.reason, available: true };
+    return {
+      ok: false,
+      reason: placed.reason,
+      available: placed.available ?? true,
+      ...(placed.stalled != null && { stalled: placed.stalled }),
+    };
   }
 
   // A hosted param with no slot has no envelope to clear.

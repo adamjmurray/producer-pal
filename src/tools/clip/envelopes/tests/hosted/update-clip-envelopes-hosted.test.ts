@@ -277,10 +277,13 @@ describe("updateClip - envelopes on a hosted plug-in's param", () => {
   it("still says it mapped a slot when the write then fails", async () => {
     setupTrack();
     answerAsWrapper();
-    vi.mocked(requestNode).mockResolvedValue({
+    vi.mocked(requestNode).mockImplementation(async (route) => ({
       success: true,
-      result: { available: true, error: "Live said no" },
-    });
+      result:
+        route === ENVELOPE_ROUTES.list
+          ? { available: true, result: { envelopes: [] } }
+          : { available: true, error: "Live said no" },
+    }));
 
     expect(await write("t0/d0/h206")).toStrictEqual(
       expect.objectContaining({

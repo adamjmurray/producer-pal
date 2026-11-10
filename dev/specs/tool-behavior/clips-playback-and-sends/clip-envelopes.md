@@ -78,11 +78,18 @@ still run:
   automation can walk (devices and rack chains, not drum pads or return chains),
   and be a hosted plug-in. `h0` is no param id.
 - **The slot** is the one already driving the param; else the lowest unmapped
-  slot without arrangement automation; else a mapped slot whose automation is
-  gone everywhere (no arrangement automation, no envelope in any clip on the
-  track), which is remapped. A slot with automation is never remapped, and
-  nothing is reclaimed while the track plays from Session, where automation
-  can't be told. Each wrapper is asked once per call.
+  slot with no automation (no arrangement automation, no envelope in any clip on
+  the track); else a mapped slot whose automation is gone everywhere, which is
+  remapped. A slot with automation is never remapped. On a track that plays from
+  Session, where arrangement automation reads as none, a free slot is still
+  mapped, and only clip envelopes are checked; nothing is reclaimed there. Each
+  wrapper is asked once per call, and only when the param has no slot.
+- **The clips can't be checked** (no answer, no remote script, out of time):
+  nothing is mapped, since a free slot might hold an envelope. The line skips
+  with
+  `no slot mapped, since the track's clips couldn't be checked for automation: <why>`;
+  a missing remote script or an out-of-time call ends the clip's lines as it
+  does for a write. Lines whose param already has a slot are unaffected.
 - **Mapping is reported.** A new mapping adds `mapped to slot "Automation 002"`
   to the entry's `detail`, and a reclaimed slot adds
   `(it drove "<param>", which had no automation left)`. If the write then fails,
@@ -102,10 +109,7 @@ still run:
   `there was no envelope to clear`. It never maps.
 - **Two spellings of one param** (`h206`, `H206`) are the same parameter:
   nothing is written, as for any pair of lines on one parameter.
-- **Known limits.** A free slot is judged by arrangement automation only, so an
-  unmapped slot that still has session-clip envelopes (possible only after an
-  `unmap` through the debug tool) can be handed out, and those envelopes then
-  drive the new param. A hosted line and a line naming the same slot's raw
+- **Known limits.** A hosted line and a line naming the same slot's raw
   parameter id aren't caught as one parameter: both are written and the later
   wins.
 

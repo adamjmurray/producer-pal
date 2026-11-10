@@ -463,6 +463,22 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !HAS_SERUM)("hosted plug-ins", () => {
       ).toStrictEqual([other?.name]);
     }, 60_000);
 
+    it("skips an unmapped slot whose dial a clip already automates", async () => {
+      const { track, path } = await hostOnNewTrack("Serum 2");
+      const deviceId = (await readDevice(path)).id;
+      const clipId = await newClip(track);
+      const dial = await findDial(deviceId, "Automation 001");
+
+      await automate(clipId, `${dial}: 1|1 0.9`);
+
+      expect(await automate(clipId, `${path}/h1: 1|1 0.2`)).toStrictEqual(
+        expect.objectContaining({
+          envelopes: 1,
+          detail: `envelope "${path}/h1": mapped to slot "Automation 002"`,
+        }),
+      );
+    }, 60_000);
+
     it("clears nothing, without an error, for a param no slot drives", async () => {
       const { track, path } = await hostOnNewTrack("Serum 2");
       const clipId = await newClip(track);

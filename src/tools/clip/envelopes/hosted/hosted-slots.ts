@@ -4,10 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 // Choosing the automation slot that carries a hosted param's envelope, and
-// mapping it. A slot already on the param is used; else the lowest free one;
-// else one whose automation is gone everywhere. A slot with automation is never
-// remapped. What a call learns about a wrapper is kept for the rest of the call,
-// so each wrapper is asked once, however many lines name it.
+// mapping it. A slot already on the param is used; else the lowest free one
+// (unmapped, with no automation in a lane or a clip); else a mapped one whose
+// automation is gone everywhere. A slot with automation is never remapped. What
+// a call learns about a wrapper is kept for the rest of the call, so each
+// wrapper is asked once, however many lines name it.
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { followsArrangement } from "#src/tools/shared/arrangement/tracks/follows-arrangement.ts";
@@ -20,7 +21,7 @@ import {
   type SlotMap,
   type SlotParameter,
 } from "#src/tools/shared/device/helpers/params/hosted-automation-slots.ts";
-import { envelopeRoute } from "../envelope-route.ts";
+import { envelopeRoute, type RouteOutcome } from "../envelope-route.ts";
 import { type EnvelopeTarget } from "../envelope-targets.ts";
 import {
   ENVELOPE_ROUTES,
@@ -38,11 +39,20 @@ export interface HostedSlotContext {
 /**
  * Where a hosted param's envelope goes: the slot's Live parameter, or null
  * when there is no slot and the line only clears. `mapped` says what was
- * changed to get there, for the clip's entry.
+ * changed to get there, for the clip's entry. A refusal carries `available` or
+ * `stalled` when the failure is one the next line would meet too.
  */
 export type SlotPlacement =
   | { ok: true; target: EnvelopeTarget | null; mapped?: string }
-  | { ok: false; reason: string };
+  | {
+      ok: false;
+      reason: string;
+      available?: false;
+      stalled?: "out-of-time";
+    };
+
+/** Why the clips' envelopes couldn't be listed. */
+type LookupFailure = Extract<RouteOutcome<unknown>, { ok: false }>;
 
 /** Places hosted params on slots for the rest of one call. */
 export interface HostedSlots {
@@ -64,7 +74,7 @@ interface WrapperSlots {
   claimed: Set<number>;
   params?: Map<number, SlotParameter>;
   /** Params of this device that a clip on the track holds an envelope for */
-  automated?: Set<number> | null;
+  automated?: Set<number> | LookupFailure;
 }
 
 /**
@@ -157,8 +167,13 @@ async function placeForWrite(
     return placeOn(wrapper, existing.slot);
   }
 
-  // Reclaiming lists every clip on the track, so it is the last resort.
-  const free = freeSlot(wrapper);
+  // Both look at every clip on the track, so only when the param has no slot.
+  const free = await freeSlot(wrapper, context);
+
+  if (typeof free === "object") {
+    return lookupRefusal(free);
+  }
+
   const taken = free == null ? await reclaimable(wrapper, context) : undefined;
   const slot = free ?? taken?.slot;
 
@@ -227,19 +242,63 @@ function hasLaneAutomation(wrapper: WrapperSlots, slot: number): boolean {
 }
 
 /**
- * The lowest slot that drives nothing and holds no arrangement automation,
- * which mapping would otherwise hand to the new param.
+ * The lowest slot that drives nothing and holds no automation, in a lane or in
+ * a clip: mapping it would hand that automation to the new param. A track that
+ * plays from Session reads every lane as empty, and its free slots are mapped
+ * all the same; only a clip's envelope is checked then.
  * @param wrapper - The wrapper's slots
- * @returns The slot number, if any
+ * @param context - The clip's track, deadline and who is calling
+ * @returns The slot number, if any; why the clips couldn't be checked, in
+ *   which case no slot is taken, since one might hold automation
  */
-function freeSlot(wrapper: WrapperSlots): number | undefined {
+async function freeSlot(
+  wrapper: WrapperSlots,
+  context: HostedSlotContext,
+): Promise<number | LookupFailure | undefined> {
   for (let slot = 1; slot <= wrapper.slots.count; slot++) {
-    if (!wrapper.slots.mapped.has(slot) && !hasLaneAutomation(wrapper, slot)) {
+    const found =
+      wrapper.slots.mapped.has(slot) || hasLaneAutomation(wrapper, slot)
+        ? undefined
+        : parameterOf(wrapper, slot);
+
+    if (found == null) {
+      continue;
+    }
+
+    const automated = await clipAutomated(wrapper, context);
+
+    if (!(automated instanceof Set)) {
+      return automated;
+    }
+
+    if (!automated.has(found.index)) {
       return slot;
     }
   }
 
   return undefined;
+}
+
+/**
+ * Refuse a line whose slot couldn't be chosen because the clips couldn't be
+ * checked. A missing remote script or an out-of-time call ends the clip's
+ * lines, as it does for a write; a lost answer refuses just this line.
+ * @param failure - Why the clips couldn't be listed
+ * @returns The refusal
+ */
+function lookupRefusal(failure: LookupFailure): SlotPlacement {
+  if (!failure.available) {
+    return { ok: false, reason: failure.reason, available: false };
+  }
+
+  if (failure.stalled === "out-of-time") {
+    return { ok: false, reason: failure.reason, stalled: "out-of-time" };
+  }
+
+  return {
+    ok: false,
+    reason: `no slot mapped, since the track's clips couldn't be checked for automation: ${failure.reason}`,
+  };
 }
 
 /**
@@ -327,15 +386,26 @@ async function reclaimable(
     return undefined;
   }
 
-  if (wrapper.automated === undefined) {
-    wrapper.automated = await automatedParams(wrapper.where, context);
-  }
+  const automated = await clipAutomated(wrapper, context);
 
-  const { automated } = wrapper;
+  return automated instanceof Set
+    ? candidates.find(({ index }) => !automated.has(index))?.entry
+    : undefined;
+}
 
-  return automated == null
-    ? undefined
-    : candidates.find(({ index }) => !automated.has(index))?.entry;
+/**
+ * @param wrapper - The wrapper's slots
+ * @param context - The clip's track, deadline and who is calling
+ * @returns The wrapper's params that clips hold envelopes for, or why that
+ *   couldn't be told; asked once per wrapper
+ */
+async function clipAutomated(
+  wrapper: WrapperSlots,
+  context: HostedSlotContext,
+): Promise<Set<number> | LookupFailure> {
+  wrapper.automated ??= await automatedParams(wrapper.where, context);
+
+  return wrapper.automated;
 }
 
 /**
@@ -344,12 +414,12 @@ async function reclaimable(
  * parameter's `automation_state` already says.
  * @param where - The device
  * @param context - The clip's track, deadline and who is calling
- * @returns The params' positions, or null when the clips couldn't all be read
+ * @returns The params' positions, or why the clips couldn't all be read
  */
 async function automatedParams(
   where: WrapperSlots["where"],
   context: HostedSlotContext,
-): Promise<Set<number> | null> {
+): Promise<Set<number> | LookupFailure> {
   const track = LiveAPI.from(livePath.track(context.trackIndex));
   const found = new Set<number>();
 
@@ -366,7 +436,7 @@ async function automatedParams(
     );
 
     if (!listed.ok) {
-      return null;
+      return listed;
     }
 
     for (const envelope of listed.result.envelopes) {
