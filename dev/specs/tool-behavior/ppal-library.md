@@ -64,6 +64,20 @@ date. The refusal rules are in
     sit beside `searches`.
   - The rack note for an empty `preset` search counts the offset, so a page past
     the last preset doesn't claim there were none.
+- **A multi-word `query` that finds nothing says why.** `query` matches as one
+  substring (`*` is the only wildcard), but models write keyword lists. When a
+  query with whitespace between words finds no item in the whole search (sample
+  folder and database both count), the result carries a one-sentence `note`: put
+  `*` between words (the example is built from the query's first two words, left
+  out when they aren't plain and short), or use `tags`/`type` for the rest. V8
+  adds it once per search, so it is the same for a plain search, each `searches`
+  entry and `source: "sample-folder"`, whatever the query already holds (a `*`
+  included), and joins the database's own notes with `; `. It is left off when
+  the result has a `detail` (database not found, sample folder missing or
+  unreadable, `inFolder` not found), which already says why nothing came back,
+  and on a page after the first: an empty page past the end says nothing about
+  the query. The sample folder matches the relative path, the database the file
+  name; the note holds for both.
 - **An item leaves out what the request or its own `path` already says.** The
   items are sorted on their full fields first, then trimmed:
   - `name` goes when it is the last segment of `path`. A name with a `/` in it

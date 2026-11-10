@@ -44,7 +44,18 @@ interface ShapeItem {
 
 interface ShapeResult {
   items: ShapeItem[];
+  dbAvailable?: boolean;
+  note?: string;
 }
+
+interface ShapeBatch {
+  results: Array<{ label: string; items: ShapeItem[]; note?: string }>;
+}
+
+/** Two words no file name holds, so the search finds nothing on any machine. */
+const NONSENSE = "zqxjv wkpqz";
+const MULTI_WORD_NOTE =
+  "query matches as one substring, not keywords. Use * between words (zqxjv*wkpqz), or tags/type for the rest.";
 
 /**
  * Call ppal-library.
@@ -94,6 +105,64 @@ describe("ppal-library search shape", () => {
       expect(isToolError(await call({ type: "oneshot", limit: 1 }))).toBe(
         false,
       );
+    });
+  });
+
+  describe("a multi-word query that finds nothing", () => {
+    it("says the query is one substring", async ({ skip }) => {
+      const result = parseToolResult<ShapeResult>(
+        await call({ query: NONSENSE }),
+      );
+
+      skip(result.dbAvailable !== true, "Live's library database not found");
+
+      expect(result.items).toStrictEqual([]);
+      expect(result.note).toBe(MULTI_WORD_NOTE);
+    });
+
+    it("says it for a sample-folder search too", async () => {
+      await setConfig({ sampleFolder: SAMPLE_FOLDER });
+
+      const result = parseToolResult<ShapeResult>(
+        await call({ source: "sample-folder", query: NONSENSE }),
+      );
+
+      expect(result.items).toStrictEqual([]);
+      expect(result.note).toBe(MULTI_WORD_NOTE);
+    });
+
+    it("says nothing for one word that finds nothing", async ({ skip }) => {
+      const result = parseToolResult<ShapeResult>(
+        await call({ query: "zqxjvwkpqz" }),
+      );
+
+      skip(result.dbAvailable !== true, "Live's library database not found");
+
+      expect(result.items).toStrictEqual([]);
+      expect(result.note).toBeUndefined();
+    });
+
+    it("notes each searches entry that found nothing, and no other", async ({
+      skip,
+    }) => {
+      const result = parseToolResult<ShapeBatch>(
+        await call({
+          searches: [
+            { label: "words", query: NONSENSE },
+            { label: "word", query: "zqxjvwkpqz" },
+          ],
+        }),
+      );
+
+      skip(
+        result.results[0]?.note == null,
+        "Live's library database not found",
+      );
+
+      expect(result.results.map((r) => r.note)).toStrictEqual([
+        MULTI_WORD_NOTE,
+        undefined,
+      ]);
     });
   });
 

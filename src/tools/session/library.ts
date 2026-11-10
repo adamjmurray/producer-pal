@@ -29,6 +29,7 @@ import {
 import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { refuseLibraryParamsOutsideAction } from "./helpers/library/library-action-params.ts";
 import { folderFileIds } from "./helpers/library/library-folder-overlap.ts";
+import { multiWordQueryNote } from "./helpers/library/multi-word-query-note.ts";
 import { trimLibraryItems } from "./helpers/library/library-item-trim.ts";
 import { refuseUnfilteredSearch } from "./helpers/library/library-unfiltered-search.ts";
 import { runSearchBatch } from "./library-search-batch.ts";
@@ -249,9 +250,21 @@ export async function runSearch(
   const detail =
     folderScan.detail ?? dbResult?.detail ?? pastTheEnd(offset, items, more);
   const paging = more > 0 ? { more, nextOffset: end } : {};
+  // A detail already says why nothing came back (no DB, no folder, a failed
+  // scan), so the query's shape isn't the news.
+  const queryNote =
+    detail == null
+      ? multiWordQueryNote(args.query, offset + items.length)
+      : undefined;
+  const note = [dbResult?.note, queryNote].filter((n) => n != null).join("; ");
 
   if (dbResult == null) {
-    return { items, ...paging, ...(detail != null && { detail }) };
+    return {
+      items,
+      ...paging,
+      ...(note !== "" && { note }),
+      ...(detail != null && { detail }),
+    };
   }
 
   return {
@@ -261,7 +274,7 @@ export async function runSearch(
     }),
     items,
     ...paging,
-    ...(dbResult.note != null && { note: dbResult.note }),
+    ...(note !== "" && { note }),
     ...(detail != null && { detail }),
   };
 }
