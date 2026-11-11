@@ -11,7 +11,7 @@ const withDecider = (decider: unknown): JsonEvalResult =>
   ({ judge: { pass: true, issues: [], decider } }) as unknown as JsonEvalResult;
 
 describe("recordedDecider", () => {
-  it("has nothing for a result from a run without --jev", () => {
+  it("has nothing for a result from a run without --decider", () => {
     expect(recordedDecider({} as JsonEvalResult, "1. A.")).toBeUndefined();
     expect(
       recordedDecider(
@@ -25,7 +25,7 @@ describe("recordedDecider", () => {
     expect(
       recordedDecider(
         withDecider({
-          route: "typesafe",
+          provider: "typesafe",
           verdict: "error",
           escalationReason: "boom",
         }),
@@ -36,7 +36,7 @@ describe("recordedDecider", () => {
 
   it("rebuilds the answer, taking question text from the current criteria", () => {
     const saved = withDecider({
-      route: "typesafe",
+      provider: "typesafe",
       verdict: "escalate",
       escalatedBy: "claims",
       escalationReason: "close",
@@ -46,7 +46,12 @@ describe("recordedDecider", () => {
         { id: "req1", kind: "requirement", probability: 0.5 },
         { id: "gone", kind: "requirement", probability: 0.9 },
       ],
-      outcome: { score: 2, level: "partial success", confidence: 0.6 },
+      outcome: {
+        maxScore: 5,
+        score: 2,
+        level: "partial success",
+        confidence: 0.6,
+      },
       inputTokens: 10,
       outputTokens: 2,
       cost: 0.01,
@@ -55,6 +60,7 @@ describe("recordedDecider", () => {
 
     expect(recordedDecider(saved, "1. Says A.")).toStrictEqual({
       decider: {
+        provider: "typesafe",
         verdict: "escalate",
         escalatedBy: "claims",
         minProbability: 0.5,
@@ -67,7 +73,12 @@ describe("recordedDecider", () => {
           },
           { id: "gone", kind: "requirement", text: "", probability: 0.9 },
         ],
-        outcome: { score: 2, confidence: 0.6, label: "partial success" },
+        outcome: {
+          maxScore: 5,
+          score: 2,
+          confidence: 0.6,
+          label: "partial success",
+        },
         model: "decider-1",
         inputTokens: 10,
         outputTokens: 2,
@@ -77,14 +88,19 @@ describe("recordedDecider", () => {
     });
   });
 
-  it("leaves out the cost when the route did not report one", () => {
+  it("leaves out the cost when the provider did not report one", () => {
     const saved = withDecider({
-      route: "typesafe",
+      provider: "typesafe",
       verdict: "pass",
       model: "decider-1",
       minProbability: 0.9,
       questions: [],
-      outcome: { score: 3, level: "complete success", confidence: 1 },
+      outcome: {
+        score: 5,
+        maxScore: 5,
+        level: "complete success",
+        confidence: 1,
+      },
       inputTokens: 1,
       outputTokens: 1,
       truncated: false,

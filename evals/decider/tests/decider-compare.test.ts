@@ -22,28 +22,45 @@ import {
   writeSidecar,
 } from "../sidecar-judges/decider-sidecar.ts";
 
-describe("parseArgs --via", () => {
-  it("is unset by default", () => {
-    expect(parseArgs([]).via).toBeUndefined();
+describe("parseArgs --decider and --concurrency", () => {
+  it("leaves both unset by default", () => {
+    expect(parseArgs([]).decider).toBeUndefined();
+    expect(parseArgs([]).concurrency).toBeUndefined();
   });
 
-  it.each(["typesafe", "openrouter", "vercel"] as const)(
-    "accepts %s",
-    (route) => {
-      expect(parseArgs([`--via=${route}`]).via).toBe(route);
-    },
-  );
+  it("parses the decider like the eval flag does", () => {
+    expect(parseArgs(["--decider=jev"]).decider).toStrictEqual({});
+    expect(parseArgs(["--decider=vercel"]).decider).toStrictEqual({
+      provider: "vercel",
+    });
+    expect(
+      parseArgs(["--decider=ollama/pplx-decider-flash:latest"]).decider,
+    ).toStrictEqual({ provider: "ollama", model: "pplx-decider-flash:latest" });
+  });
 
-  it("rejects an unknown route, naming the choices", () => {
-    expect(() => parseArgs(["--via=nowhere"])).toThrow(
-      "Unknown --via=nowhere; use one of typesafe, openrouter, vercel",
+  it("rejects an unknown provider and ollama with no model", () => {
+    expect(() => parseArgs(["--decider=nowhere"])).toThrow(
+      "Unknown --decider=nowhere",
+    );
+    expect(() => parseArgs(["--decider=ollama"])).toThrow(
+      "--decider=ollama needs a model",
+    );
+  });
+
+  it("refuses --decider with --recorded", () => {
+    expect(() => parseArgs(["--decider=jev", "--recorded"])).toThrow(
+      "--decider can't be used with --recorded",
     );
   });
 
   it("does not treat the flag as a run id", () => {
-    expect(parseArgs(["run-1", "--via=vercel"]).runIds).toStrictEqual([
+    expect(parseArgs(["run-1", "--decider=vercel"]).runIds).toStrictEqual([
       "run-1",
     ]);
+  });
+
+  it("keeps a --concurrency the user gave", () => {
+    expect(parseArgs(["--concurrency=3"]).concurrency).toBe(3);
   });
 });
 
@@ -88,10 +105,16 @@ describe("runDeciderCompare", () => {
   const deciderAnswer = (
     verdict: DeciderJudgeResult["verdict"],
   ): DeciderJudgeResult => ({
+    provider: "typesafe",
     verdict,
     minProbability: 0.5,
     questions: [],
-    outcome: { score: 2, confidence: 0.5, label: "partial success" },
+    outcome: {
+      maxScore: 5,
+      score: 2,
+      confidence: 0.5,
+      label: "partial success",
+    },
     model: "decider-1",
     inputTokens: 10,
     outputTokens: 1,
@@ -103,10 +126,11 @@ describe("runDeciderCompare", () => {
   const run = (
     argv: string[],
     decider = vi.fn(async () => deciderAnswer("pass")),
+    resolved?: { provider: "ollama"; model: string },
   ) =>
     runDeciderCompare([...argv, `--results-dir=${dir}`], {
       decider,
-      route: "typesafe",
+      resolved: resolved ?? { provider: "typesafe", model: "jev-latest" },
       log,
       load: { scenarios, criteriaDate: () => undefined },
     });
@@ -175,8 +199,70 @@ describe("runDeciderCompare", () => {
     await run(["run1"], decider);
 
     expect(decider).toHaveBeenCalledTimes(1);
-    expect(output()).toContain("The decider vs stored judge");
+    expect(output()).toContain("Decider vs stored judge");
     expect(output()).toContain("Wrong pass 0, wrong fail 1");
+  });
+
+  it("calls the decider it was asked for, by provider and model", async () => {
+    await vote("run1/b.json", "h", true);
+
+    const decider = vi.fn(async (..._args: unknown[]) => deciderAnswer("pass"));
+
+    await run(["run1", "--reference=h"], decider, {
+      provider: "ollama",
+      model: "autotrust-jev",
+    });
+
+    expect(decider.mock.calls[0]?.[2]).toStrictEqual({
+      provider: "ollama",
+      model: "autotrust-jev",
+    });
+    expect(output()).toContain("with the decider ollama/autotrust-jev");
+  });
+
+  describe("concurrency", () => {
+    /**
+     * Run three results through a decider that records how many calls overlap.
+     *
+     * @param argv - Extra arguments
+     * @param resolved - The decider asked for
+     * @returns The most calls in flight at once
+     */
+    async function peak(
+      argv: string[],
+      resolved?: { provider: "ollama"; model: string },
+    ): Promise<number> {
+      let active = 0;
+      let most = 0;
+      const decider = vi.fn(async () => {
+        active++;
+        most = Math.max(most, active);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        active--;
+
+        return deciderAnswer("pass");
+      });
+
+      await vote("run1/b.json", "h", true);
+      await vote("run1/c.json", "h", true);
+      await run(["run1", "--reference=h", ...argv], decider, resolved);
+
+      return most;
+    }
+
+    const ollama = { provider: "ollama", model: "m" } as const;
+
+    it("runs hosted calls in parallel by default", async () => {
+      expect(await peak([])).toBe(2);
+    });
+
+    it("runs ollama one call at a time by default", async () => {
+      expect(await peak([], ollama)).toBe(1);
+    });
+
+    it("lets --concurrency override the ollama default", async () => {
+      expect(await peak(["--concurrency=2"], ollama)).toBe(2);
+    });
   });
 
   it("gives the decider the gating checks, then the signals", async () => {
@@ -267,7 +353,7 @@ describe("runDeciderCompare", () => {
     await run(["run1", "--reference=h", "--reference=l"], decider);
 
     expect(decider).toHaveBeenCalledTimes(2); // a.json has no sidecar
-    expect(output()).toContain("The decider vs LLM judges");
+    expect(output()).toContain("Decider vs LLM judges");
     expect(output()).toContain("Wrong pass 1, wrong fail 0");
     expect(output()).toContain("1 tied (no majority, not counted)");
     expect(output()).toContain("h vs l: 50.0% (1/2)");
@@ -313,7 +399,7 @@ describe("runDeciderCompare", () => {
 
   describe("--recorded", () => {
     const savedDecider = (verdict: string, claims: number) => ({
-      route: "typesafe",
+      provider: "typesafe",
       verdict,
       model: "decider-1",
       minProbability: 0.95,
@@ -322,7 +408,12 @@ describe("runDeciderCompare", () => {
         { id: "whole", kind: "whole", probability: 0.95 },
         { id: "claims", kind: "claims", probability: claims },
       ],
-      outcome: { score: 3, level: "complete success", confidence: 1 },
+      outcome: {
+        score: 5,
+        maxScore: 5,
+        level: "complete success",
+        confidence: 1,
+      },
       inputTokens: 5,
       outputTokens: 1,
       truncated: false,
@@ -362,7 +453,7 @@ describe("runDeciderCompare", () => {
       );
       expect(output()).toContain("1 result(s) have no saved decider answer");
       expect(output()).toContain("Compared 2 result(s)");
-      expect(output()).toContain("recorded in the run");
+      expect(output()).toContain("Decider: typesafe/decider-1 (2)");
       expect(output()).toContain("decider pass 1, fail 0, escalate 1");
       expect(output()).toContain("Claims question");
       expect(output()).toContain(
@@ -378,7 +469,7 @@ describe("runDeciderCompare", () => {
           issues: [],
           decidedBy: "llm",
           decider: {
-            route: "typesafe",
+            provider: "typesafe",
             verdict: "error",
             escalationReason: "down",
           },

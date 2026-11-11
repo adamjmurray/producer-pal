@@ -17,10 +17,11 @@ import {
 import { type SkipCounts } from "../../decider-results.ts";
 
 const decider = (verdict: DeciderVerdict, score = 2): DeciderJudgeResult => ({
+  provider: "typesafe",
   verdict,
   minProbability: 0.5,
   questions: [],
-  outcome: { score, confidence: 0.8, label: "partial success" },
+  outcome: { maxScore: 5, score, confidence: 0.8, label: "partial success" },
   model: "decider-1",
   inputTokens: 100,
   outputTokens: 5,
@@ -89,16 +90,37 @@ describe("referenceLines", () => {
   it("names the reference judges and reports pairwise agreement", () => {
     expect(text).toContain("LLM judges: h, l, s");
     expect(text).toContain("h vs l: 66.7% (4/6)");
-    expect(text).toContain("h vs decider: 40.0% (2/5)");
+    expect(text).toContain("h vs typesafe/decider-1: 40.0% (2/5)");
   });
 
   it("reports each judge's wrong calls where the others agree", () => {
-    expect(text).toContain("decider: n=3, wrong pass 1, wrong fail 1");
+    expect(text).toContain(
+      "typesafe/decider-1: n=3, wrong pass 1, wrong fail 1",
+    );
     expect(text).toContain("h: n=5, wrong pass 1, wrong fail 0");
   });
 
+  it("keeps deciders apart by name, and falls back to one label when mixed", () => {
+    const local = {
+      ...entry("m1.json", trio(true, true, true), "pass"),
+      decider: {
+        ...decider("pass"),
+        provider: "ollama" as const,
+        model: "autotrust-jev",
+      },
+    };
+    const one = referenceLines([local], ["h", "l", "s"]).join("\n");
+    const mixed = referenceLines(
+      [local, entry("m2.json", trio(true, true, true), "pass")],
+      ["h", "l", "s"],
+    ).join("\n");
+
+    expect(one).toContain("h vs ollama/autotrust-jev:");
+    expect(mixed).toContain("h vs decider:");
+  });
+
   it("reports the decider's escalations", () => {
-    expect(text).toContain("The decider escalated on 1 of 6 result(s).");
+    expect(text).toContain("Decider escalated on 1 of 6 result(s).");
   });
 
   it("reports how the LLM judges do on the escalated results alone", () => {
@@ -155,7 +177,7 @@ describe("referenceLines", () => {
       ["h", "l", "s"],
     ).join("\n");
 
-    expect(out).toContain("The decider escalated on 0 of 0 result(s).");
+    expect(out).toContain("Decider escalated on 0 of 0 result(s).");
   });
 });
 
@@ -175,10 +197,10 @@ describe("formatReport with LLM judge references", () => {
   const text = formatReport(entries, skipped).join("\n");
 
   it("compares the decider with the majority and leaves ties out", () => {
-    expect(text).toContain("The decider vs LLM judges");
+    expect(text).toContain("Decider vs LLM judges");
     expect(text).toContain("Reference: majority of 3 (2)");
     expect(text).toContain(
-      "Compared 2 result(s); 0 the decider error(s); 1 tied (no majority, not counted).",
+      "Compared 2 result(s); 0 decider error(s); 1 tied (no majority, not counted).",
     );
     expect(text).toContain(
       "Checks passed (the judge decides): n=2, judge fails 1",

@@ -4,15 +4,16 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Reads what the decider answered during a `--jev` run, so a comparison can use the
+ * Reads what the decider answered during a `--decider` run, so a comparison can use the
  * answer the run recorded instead of calling the decider again.
  */
 
 import { type JsonEvalResult } from "#evals/scenarios/helpers/json-results/types.ts";
+import { type DeciderProvider } from "./decider-provider.ts";
 import { buildQuestions, type DeciderJudgeResult } from "./decider-judge.ts";
 
 /**
- * Rebuild the decider's answer from a saved `--jev` result.
+ * Rebuild the decider's answer from a saved `--decider` result.
  *
  * @param result - A saved result
  * @param criteria - The scenario's current llm_judge prompt, for question text
@@ -37,6 +38,7 @@ export function recordedDecider(
 
   return {
     decider: {
+      provider: saved.provider as DeciderProvider,
       verdict: saved.verdict,
       ...(saved.escalatedBy != null && { escalatedBy: saved.escalatedBy }),
       minProbability: saved.minProbability,
@@ -47,6 +49,7 @@ export function recordedDecider(
       })),
       outcome: {
         score: saved.outcome.score,
+        maxScore: saved.outcome.maxScore,
         confidence: saved.outcome.confidence,
         label: saved.outcome.level,
       },

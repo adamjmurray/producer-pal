@@ -80,10 +80,10 @@ describe("rankAuc", () => {
 describe("summarizeOutcome", () => {
   it("gives group sizes, means and AUC", () => {
     const s = summarizeOutcome([
-      { judgePass: true, score: 3 },
-      { judgePass: true, score: 2 },
-      { judgePass: false, score: 1 },
-      { judgePass: false, score: 2.5 },
+      { judgePass: true, score: 3, maxScore: 3 },
+      { judgePass: true, score: 2, maxScore: 3 },
+      { judgePass: false, score: 1, maxScore: 3 },
+      { judgePass: false, score: 2.5, maxScore: 3 },
     ]);
 
     expect(s).toStrictEqual({
@@ -92,7 +92,33 @@ describe("summarizeOutcome", () => {
       passMean: 2.5,
       failMean: 1.75,
       auc: 0.75,
+      maxScore: 3,
     });
+  });
+
+  it("keeps the raw scores on a scale of 5", () => {
+    const s = summarizeOutcome([
+      { judgePass: true, score: 5, maxScore: 5 },
+      { judgePass: false, score: 2, maxScore: 5 },
+    ]);
+
+    expect(s).toStrictEqual(
+      expect.objectContaining({ passMean: 5, failMean: 2, maxScore: 5 }),
+    );
+  });
+
+  it("takes each score as a share of its own scale when scales mix", () => {
+    const s = summarizeOutcome([
+      { judgePass: true, score: 3, maxScore: 3 },
+      { judgePass: true, score: 4, maxScore: 5 },
+      { judgePass: false, score: 3, maxScore: 5 },
+      { judgePass: false, score: 1, maxScore: 3 },
+    ]);
+
+    expect(s.maxScore).toBeNull();
+    expect(s.passMean).toBeCloseTo(0.9);
+    expect(s.failMean).toBeCloseTo((0.6 + 1 / 3) / 2);
+    expect(s.auc).toBe(1);
   });
 
   it("has null means and AUC with no rows", () => {
@@ -102,6 +128,7 @@ describe("summarizeOutcome", () => {
       passMean: null,
       failMean: null,
       auc: null,
+      maxScore: null,
     });
   });
 });

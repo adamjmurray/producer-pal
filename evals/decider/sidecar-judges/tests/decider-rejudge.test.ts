@@ -248,14 +248,19 @@ describe("runRejudge", () => {
     expect(high.alreadyJudged).toBe(0);
   });
 
-  it("re-judges results from a --jev run, whoever decided them", async () => {
+  it("re-judges results from a --decider run, whoever decided them", async () => {
     const decider = {
-      route: "typesafe",
+      provider: "typesafe",
       verdict: "pass",
       model: "decider-1",
       minProbability: 0.9,
       questions: [],
-      outcome: { score: 3, level: "complete success", confidence: 0.9 },
+      outcome: {
+        score: 5,
+        maxScore: 5,
+        level: "complete success",
+        confidence: 0.9,
+      },
       inputTokens: 1,
       outputTokens: 1,
       truncated: false,

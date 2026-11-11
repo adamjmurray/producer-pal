@@ -13,6 +13,7 @@ const answer = (
   claims?: number,
   whole = 0.95,
 ): DeciderJudgeResult => ({
+  provider: "typesafe",
   verdict,
   minProbability: Math.min(req, whole),
   questions: [
@@ -34,7 +35,7 @@ const answer = (
           },
         ]),
   ],
-  outcome: { score: 3, confidence: 1, label: "complete success" },
+  outcome: { score: 5, maxScore: 5, confidence: 1, label: "complete success" },
   model: "decider",
   inputTokens: 1,
   outputTokens: 1,

@@ -14,9 +14,11 @@ import {
   pairwiseAgreement,
   type Calls,
 } from "./decider-reference.ts";
-import { statsLines, type CompareEntry } from "../report/decider-report.ts";
-
-const DECIDER_ID = "decider";
+import {
+  deciderName,
+  statsLines,
+  type CompareEntry,
+} from "../report/decider-report.ts";
 
 /** The split list is cut here; the JSON report has all of them. */
 const SPLIT_LIST_LIMIT = 40;
@@ -33,8 +35,9 @@ export function referenceLines(
   llmIds: string[],
 ): string[] {
   const answered = entries.filter((e) => e.decider != null);
-  const rows = answered.map(toCalls);
-  const ids = [...llmIds, DECIDER_ID];
+  const deciderId = deciderIdOf(answered);
+  const rows = answered.map((e) => toCalls(e, deciderId));
+  const ids = [...llmIds, deciderId];
   const escalated = answered.filter((e) => e.decider?.verdict === "escalate");
   const unanimous = answered.filter(
     (e) => e.reference?.unanimous === true && e.checksPass,
@@ -54,7 +57,7 @@ export function referenceLines(
         `  ${e.judge}: n=${e.n}, wrong pass ${e.wrongPass}, wrong fail ${e.wrongFail}`,
     ),
     "",
-    `The decider escalated on ${escalated.length} of ${answered.length} result(s).`,
+    `Decider escalated on ${escalated.length} of ${answered.length} result(s).`,
     "",
     ...escalatedLines(escalated, llmIds),
     "",
@@ -65,7 +68,7 @@ export function referenceLines(
 }
 
 /**
- * How the LLM judges do on the results the decider escalated, which is where a `--jev`
+ * How the LLM judges do on the results the decider escalated, which is where a `--decider`
  * run relies on one of them.
  *
  * @param escalated - Entries the decider escalated
@@ -73,7 +76,7 @@ export function referenceLines(
  * @returns Report lines
  */
 function escalatedLines(escalated: CompareEntry[], llmIds: string[]): string[] {
-  const rows = escalated.map(toCalls);
+  const rows = escalated.map((e) => toCalls(e, "decider"));
 
   return [
     `On the ${escalated.length} escalated result(s), pairwise agreement:`,
@@ -99,12 +102,32 @@ function percent(value: number | null): string {
 }
 
 /**
+ * The decider's name in the pairwise lines: its provider/model, so a run with
+ * two deciders does not blend them.
+ *
+ * @param answered - Entries with a decider answer
+ * @returns provider/model when every entry has the same one, else "decider"
+ */
+function deciderIdOf(answered: CompareEntry[]): string {
+  const names = new Set(
+    answered.flatMap((e) =>
+      e.decider == null ? [] : [deciderName(e.decider)],
+    ),
+  );
+
+  const [only] = names;
+
+  return names.size === 1 && only != null ? only : "decider";
+}
+
+/**
  * One result's calls by judge.
  *
  * @param entry - A compared result with a decider answer
+ * @param deciderId - The decider's name among the judges
  * @returns Each LLM judge's pass/fail, and the decider's unless it escalated
  */
-function toCalls(entry: CompareEntry): Calls {
+function toCalls(entry: CompareEntry, deciderId: string): Calls {
   const calls: Calls = {};
 
   for (const v of entry.reference?.votes ?? []) {
@@ -113,7 +136,7 @@ function toCalls(entry: CompareEntry): Calls {
 
   const verdict = entry.decider?.verdict;
 
-  calls[DECIDER_ID] = verdict === "escalate" ? undefined : verdict === "pass";
+  calls[deciderId] = verdict === "escalate" ? undefined : verdict === "pass";
 
   return calls;
 }

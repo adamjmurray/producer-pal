@@ -13,17 +13,17 @@
  *   run-ids: run directories under evals/results (default: all)
  *   flags:   --scenario=id   only this scenario (repeatable)
  *            --limit=N       compare at most N results
- *            --concurrency=N parallel decider calls (default 4)
- *            --via=route     typesafe, openrouter or vercel (default: the first
- *                            with its key set, in that order)
+ *            --concurrency=N parallel decider calls (default 4; 1 for ollama)
+ *            --decider=D     jev (default), typesafe|openrouter|vercel, or
+ *                            provider/model, e.g. ollama/autotrust-jev
  *            --include-stale also use results recorded before the scenario's
  *                            judge criteria last changed
- *            --reference=slug use this sidecar judge (a folder under a run's
- *                            judges/, or provider/model) as the reference
- *                            instead of the stored verdict (repeatable). With
- *                            several, their majority is the reference; ties
- *                            are left out and listed as splits.
- *            --recorded      use the decider answers a `--jev` run saved (no calls)
+ *            --reference=slug use this sidecar judge (a judges/ folder, or
+ *                            provider/model) as the reference instead of the
+ *                            stored verdict (repeatable; several: majority,
+ *                            ties left out and listed as splits)
+ *            --recorded      use the decider answers a `--decider` run saved
+ *                            (no calls; not with --decider)
  *            --results-dir=D results directory (default evals/results)
  *
  * The full per-result report goes to <results-dir>/decider-compare-<time>.json.
@@ -34,10 +34,12 @@ import { basename, join } from "node:path";
 import { RESULTS_DIR } from "#evals/scenarios/helpers/json-results/types.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import {
-  parseDeciderRoute,
-  resolveDeciderRoute,
-  type DeciderRoute,
-} from "./decider-client.ts";
+  defaultConcurrency,
+  parseDeciderSpec,
+  resolveDecider,
+  type DeciderSpec,
+  type ResolvedDecider,
+} from "./decider-provider.ts";
 import { deciderJudge } from "./decider-judge.ts";
 import { recordedDecider } from "./decider-recorded.ts";
 import {
@@ -55,14 +57,14 @@ import {
 import { judgeSlug, readSidecar } from "./sidecar-judges/decider-sidecar.ts";
 import { mapConcurrent } from "./map-concurrent.ts";
 
-const DEFAULT_CONCURRENCY = 4;
-
 interface CliArgs {
   runIds?: string[];
   scenarioIds: string[];
   limit?: number;
-  concurrency: number;
-  via?: DeciderRoute;
+  /** Set only when the user gave `--concurrency`; the provider decides otherwise */
+  concurrency?: number;
+  /** What `--decider` named; undefined takes the default hosted provider */
+  decider?: DeciderSpec;
   includeStale: boolean;
   /** Use the decider answers saved in the results instead of calling the decider */
   recorded: boolean;
@@ -77,10 +79,10 @@ interface Candidate {
   votes: Vote[];
 }
 
-/** Test seams: the decider call and route, and how scenarios and criteria load. */
+/** Test seams: the decider call and who it is, and how scenarios and criteria load. */
 export interface CompareDeps {
   decider?: typeof deciderJudge;
-  route?: DeciderRoute;
+  resolved?: Pick<ResolvedDecider, "provider" | "model">;
   load?: Pick<LoadOptions, "scenarios" | "criteriaDate">;
   log?: (text: string) => void;
 }
@@ -97,9 +99,9 @@ export async function runDeciderCompare(
   deps: CompareDeps = {},
 ): Promise<void> {
   const args = parseArgs(argv);
-  const route = args.recorded
+  const asked = args.recorded
     ? undefined
-    : (deps.route ?? resolveDeciderRoute(args.via).route);
+    : (deps.resolved ?? resolveDecider(args.decider));
   const log = deps.log ?? ((text: string) => console.log(text));
   const { items, skipped } = await loadJudgedResults({
     ...deps.load,
@@ -115,24 +117,26 @@ export async function runDeciderCompare(
     args.limit == null ? candidates : candidates.slice(0, args.limit);
 
   log(
-    route == null
+    asked == null
       ? `Reading the recorded decider answer of ${selected.length} of ${candidates.length} saved result(s)...`
-      : `Judging ${selected.length} of ${candidates.length} saved result(s) with the decider via ${route}...`,
+      : `Judging ${selected.length} of ${candidates.length} saved result(s) with the decider ${asked.provider}/${asked.model}...`,
   );
 
-  const compared = await mapConcurrent(selected, args.concurrency, (c) =>
-    compareOne(c, route, deps.decider ?? deciderJudge),
+  const concurrency =
+    args.concurrency ?? defaultConcurrency({ provider: asked?.provider });
+  const compared = await mapConcurrent(selected, concurrency, (c) =>
+    compareOne(c, asked, deps.decider ?? deciderJudge),
   );
   const entries = compared.filter((e) => e != null);
 
   if (entries.length < compared.length) {
     log(
-      `${compared.length - entries.length} result(s) have no saved decider answer (not a --jev run) and are left out.`,
+      `${compared.length - entries.length} result(s) have no saved decider answer (not a --decider run) and are left out.`,
     );
   }
 
   const lines = [
-    ...formatReport(entries, skipped, route ?? "recorded in the run"),
+    ...formatReport(entries, skipped),
     ...(args.references.length > 0
       ? ["", ...referenceLines(entries, args.references)]
       : []),
@@ -193,13 +197,13 @@ async function withVotes(
  * Re-judge one saved result. A decider failure is recorded, not thrown.
  *
  * @param candidate - The saved result, its criteria and any sidecar votes
- * @param route - The decider route to call; undefined reads the answer saved in the result
+ * @param asked - The decider to call; undefined reads the answer saved in the result
  * @param decider - The decider judge
  * @returns The comparison entry, or undefined for a result with no saved decider answer
  */
 async function compareOne(
   candidate: Candidate,
-  route: DeciderRoute | undefined,
+  asked: Pick<ResolvedDecider, "provider" | "model"> | undefined,
   decider: typeof deciderJudge,
 ): Promise<CompareEntry | undefined> {
   const { result, file, criteria } = candidate.item;
@@ -214,7 +218,7 @@ async function compareOne(
     ...(result.judge?.llm != null && { runLlmPass: result.judge.llm.pass }),
   };
 
-  if (route == null) {
+  if (asked == null) {
     const saved = recordedDecider(result, criteria);
 
     return saved == null ? undefined : { ...base, ...saved };
@@ -224,7 +228,7 @@ async function compareOne(
     const answer = await decider(
       { turns: result.turns, checks: judgeChecks(result) },
       criteria,
-      { route },
+      { provider: asked.provider, model: asked.model },
     );
 
     return { ...base, decider: answer };
@@ -272,7 +276,7 @@ function voteJudge(votes: Vote[]): CompareEntry["judge"] {
  *
  * @param argv - Arguments
  * @returns Parsed options
- * @throws On an unknown `--via` route
+ * @throws On a bad `--decider` value, or `--decider` with `--recorded`
  */
 export function parseArgs(argv: string[]): CliArgs {
   const runIds = argv
@@ -289,14 +293,23 @@ export function parseArgs(argv: string[]): CliArgs {
     return Number.isFinite(n) && n > 0 ? Math.floor(n) : undefined;
   };
 
+  const decider = flag("decider").at(-1);
+  const recorded = argv.includes("--recorded");
+
+  if (decider != null && recorded) {
+    throw new Error(
+      "--decider can't be used with --recorded: the run's saved answers are used",
+    );
+  }
+
   return {
     runIds: runIds.length > 0 ? runIds : undefined,
     scenarioIds: flag("scenario"),
     limit: num("limit"),
-    concurrency: num("concurrency") ?? DEFAULT_CONCURRENCY,
-    via: parseDeciderRoute(flag("via").at(-1)),
+    concurrency: num("concurrency"),
+    decider: decider == null ? undefined : parseDeciderSpec(decider),
     includeStale: argv.includes("--include-stale"),
-    recorded: argv.includes("--recorded"),
+    recorded,
     references: flag("reference").map((s) => judgeSlug(s)),
     resultsDir: flag("results-dir").at(-1) ?? RESULTS_DIR,
   };

@@ -38,21 +38,16 @@ export function buildJudge(
     return { pass: false, issues: [judgeResult.message], ...advisoryFlag };
   }
 
-  // The decider decided: it has no provider or model of its own in the details
-  const deciderModel =
-    details.decidedBy === "decider" && details.decider?.verdict !== "error"
-      ? details.decider?.model
-      : undefined;
+  // Decider decided: the details carry no provider or model of their own,
+  // so take the decider's.
+  const decided = details.decidedBy === "decider" ? details.decider : undefined;
 
   return {
     pass: details.pass,
     issues: details.issues,
     ...advisoryFlag,
-    ...(details.decidedBy === "decider"
-      ? {
-          provider: "decider",
-          ...(deciderModel != null && { model: deciderModel }),
-        }
+    ...(decided != null && decided.verdict !== "error"
+      ? { provider: decided.provider, model: decided.model }
       : {
           ...(details.provider != null && { provider: details.provider }),
           ...(details.model != null && { model: details.model }),

@@ -82,13 +82,14 @@ describe("runTrial", () => {
       SPEC,
       RUN_ENV,
       "default",
-      { ...ctx(1), decider: { route: "vercel" } },
+      { ...ctx(1), decider: { provider: "vercel", model: "jev-latest" } },
       1,
       false,
     );
 
     expect(vi.mocked(runScenario).mock.calls[0]?.[1].decider).toStrictEqual({
-      route: "vercel",
+      provider: "vercel",
+      model: "jev-latest",
     });
   });
 

@@ -23,7 +23,13 @@ import {
   type DeciderQuestion,
 } from "./decider-client.ts";
 import { splitRequirements } from "./decider-requirements.ts";
-import { buildDeciderState } from "./decider-state.ts";
+import {
+  DECIDER_PROVIDERS,
+  resolveDecider,
+  type DeciderProvider,
+  type DeciderProviderInfo,
+} from "./decider-provider.ts";
+import { buildDeciderState, type BuiltDeciderState } from "./decider-state.ts";
 
 // Both tuned on saved eval results against the stored judge.
 /** The lowest answer at or above this is a decider pass. */
@@ -53,7 +59,10 @@ export interface DeciderQuestionResult {
   probability: number;
 }
 
-/** The outcome levels, lowest first: the index is the score. */
+/**
+ * The outcome levels, lowest first: the index is the score. Every decider gets
+ * the same six (autotrust-jev refuses any other count), so scores compare.
+ */
 const OUTCOME_LEVELS = [
   {
     label: "complete failure",
@@ -65,9 +74,19 @@ const OUTCOME_LEVELS = [
       "Mostly failed: little of what was asked got done, or it went badly wrong",
   },
   {
-    label: "partial success",
+    label: "major gaps",
     criterion:
-      "Partial success: some of what was asked got done, with real gaps or problems",
+      "Partial success with major gaps: some of what was asked got done, but important parts are missing or wrong",
+  },
+  {
+    label: "minor gaps",
+    criterion:
+      "Partial success with minor gaps: most of what was asked got done, with small gaps or problems",
+  },
+  {
+    label: "near-complete success",
+    criterion:
+      "Near-complete success: everything asked got done, with a small inaccuracy in the reply",
   },
   {
     label: "complete success",
@@ -76,16 +95,22 @@ const OUTCOME_LEVELS = [
   },
 ];
 
+/** The top score of the outcome scale; results saved before it was recorded used 3. */
+export const OUTCOME_MAX_SCORE = OUTCOME_LEVELS.length - 1;
+
 const OUTCOME_ID = "outcome";
+const MAX_FIT_ATTEMPTS = 4;
 const CLAIMS_ID = "claims";
 
 /** Kept narrow on purpose: a broad "no hallucinations" question over-failed. */
 const CLAIMS_QUESTION = `Every action the assistant's replies say it took (something created, named, renamed, set, changed, moved, deleted, played) is shown in the tool calls and their results. Answer yes only if no reply claims an action that the tool calls do not show.`;
 
-/** A graded 0-3 judgment of the whole run. */
+/** A graded judgment of the whole run. */
 export interface DeciderOutcome {
-  /** 0 (complete failure) to 3 (complete success) */
+  /** 0 (complete failure) to `maxScore` (complete success) */
   score: number;
+  /** The top of the scale this score is on */
+  maxScore: number;
   confidence: number;
   /** The name of the nearest level */
   label: string;
@@ -95,6 +120,8 @@ export interface DeciderOutcome {
 export type DeciderVerdict = "pass" | "fail" | "escalate";
 
 export interface DeciderJudgeResult {
+  /** Which provider answered */
+  provider: DeciderProvider;
   verdict: DeciderVerdict;
   /** Set when only the claims answer kept a pass from standing */
   escalatedBy?: "claims";
@@ -104,11 +131,11 @@ export interface DeciderJudgeResult {
   questions: DeciderQuestionResult[];
   /** Graded outcome; not part of the verdict */
   outcome: DeciderOutcome;
-  /** The model version that answered, as the route reports it */
+  /** The model that answered, as the provider reports it */
   model: string;
   inputTokens: number;
   outputTokens: number;
-  /** Actual cost in USD, when the route reports it */
+  /** Actual cost in USD, when the provider reports it */
   cost?: number;
   /** True when the transcript had to be cut to fit */
   truncated: boolean;
@@ -127,7 +154,7 @@ export async function deciderJudge(
   criteria: string,
   options?: AskDeciderOptions,
 ): Promise<DeciderJudgeResult> {
-  const { state, truncated } = buildDeciderState(run.turns, run.checks);
+  const { provider } = resolveDecider(options, options?.apiKey);
   const planned = buildQuestions(criteria);
   const questions: Record<string, DeciderQuestion> = {};
 
@@ -140,14 +167,13 @@ export async function deciderJudge(
 
   questions[OUTCOME_ID] = buildOutcomeQuestion(criteria);
 
+  const { state, truncated } = buildFittingState(run, questions, provider);
   const response = await askDecider(state, questions, options);
   const results = planned.map((q): DeciderQuestionResult => {
     const answer = response.answers[q.id];
 
     if (answer?.type !== "noul") {
-      throw new Error(
-        `The decider gave no yes/no answer for question "${q.id}"`,
-      );
+      throw new Error(`Decider gave no yes/no answer for question "${q.id}"`);
     }
 
     return {
@@ -161,7 +187,7 @@ export async function deciderJudge(
   const outcomeAnswer = response.answers[OUTCOME_ID];
 
   if (outcomeAnswer?.type !== "score") {
-    throw new Error("The decider gave no outcome score");
+    throw new Error("Decider gave no outcome score");
   }
 
   const minProbability = Math.min(
@@ -171,6 +197,7 @@ export async function deciderJudge(
   const verdict = decideVerdict(minProbability, claimsProbability(results));
 
   return {
+    provider,
     verdict,
     ...(verdict === "escalate" &&
       minProbability >= PASS_THRESHOLD && { escalatedBy: "claims" as const }),
@@ -178,6 +205,7 @@ export async function deciderJudge(
     questions: results,
     outcome: {
       score: outcomeAnswer.score,
+      maxScore: OUTCOME_MAX_SCORE,
       confidence: outcomeAnswer.confidence,
       label: outcomeLabel(outcomeAnswer.score),
     },
@@ -187,6 +215,46 @@ export async function deciderJudge(
     cost: response.usage.cost,
     truncated,
   };
+}
+
+/**
+ * Build the state, cut to what the provider accepts. A provider that caps the
+ * whole request in bytes gets the state cut again if the questions and
+ * multi-byte text push it over.
+ *
+ * @param run - The run's turns and deterministic check results
+ * @param questions - The questions that go with the state
+ * @param provider - The provider that will answer
+ * @returns The state and whether anything was cut
+ */
+function buildFittingState(
+  run: DeciderRun,
+  questions: Record<string, DeciderQuestion>,
+  provider: DeciderProvider,
+): BuiltDeciderState {
+  const { maxStateChars, maxRequestBytes: maxBytes }: DeciderProviderInfo =
+    DECIDER_PROVIDERS[provider];
+  let chars = maxStateChars;
+  let built = buildDeciderState(run.turns, run.checks, chars);
+
+  if (maxBytes == null) {
+    return built;
+  }
+
+  for (let attempt = 0; attempt < MAX_FIT_ATTEMPTS; attempt++) {
+    const bytes = Buffer.byteLength(
+      JSON.stringify({ state: built.state, questions }),
+    );
+
+    if (bytes <= maxBytes) {
+      break;
+    }
+
+    chars = Math.floor(chars * (maxBytes / bytes) * 0.95);
+    built = buildDeciderState(run.turns, run.checks, chars);
+  }
+
+  return built;
 }
 
 /**
@@ -206,7 +274,7 @@ export function buildOutcomeQuestion(criteria: string): DeciderQuestion {
 /**
  * Name the outcome level nearest a score.
  *
- * @param score - 0 to 3, fractional allowed
+ * @param score - 0 to `OUTCOME_MAX_SCORE`, fractional allowed
  * @returns The short level name
  */
 export function outcomeLabel(score: number): string {

@@ -50,40 +50,84 @@ describe("result-file", () => {
     });
   });
 
-  it("renames the old jev judge names to decider", async () => {
+  it("brings a record saved with the old jev names up to date", async () => {
+    const outcome = { score: 2.8, level: "complete success", confidence: 0.9 };
     const oldJudge = {
       pass: true,
       issues: [],
       provider: "jev",
       model: "jev-1.14.0",
       decidedBy: "jev",
-      jev: { route: "typesafe", verdict: "pass", model: "jev-1.14.0" },
+      jev: {
+        route: "openrouter",
+        verdict: "pass",
+        model: "jev-1.14.0",
+        outcome,
+      },
     };
 
     expect(await read(JSON.stringify({ judge: oldJudge }))).toStrictEqual({
       judge: {
         pass: true,
         issues: [],
-        provider: "decider",
+        provider: "openrouter",
         model: "jev-1.14.0",
         decidedBy: "decider",
-        decider: { route: "typesafe", verdict: "pass", model: "jev-1.14.0" },
+        decider: {
+          provider: "openrouter",
+          verdict: "pass",
+          model: "jev-1.14.0",
+          outcome: { ...outcome, maxScore: 3 },
+        },
       },
     });
   });
 
-  it("keeps a decider judge as it is, and an LLM judge from a jev run", async () => {
-    const decider = { route: "typesafe", verdict: "escalate" };
+  it("reads a legacy jev provider with no answer as TypeSafe", async () => {
+    const text = JSON.stringify({
+      judge: { pass: true, issues: [], provider: "decider", decidedBy: "jev" },
+    });
+
+    expect(await read(text)).toStrictEqual({
+      judge: {
+        pass: true,
+        issues: [],
+        provider: "typesafe",
+        decidedBy: "decider",
+      },
+    });
+  });
+
+  it("keeps a new record as it is, scale included", async () => {
+    const judge = {
+      pass: true,
+      issues: [],
+      provider: "ollama",
+      model: "autotrust-jev",
+      decidedBy: "decider",
+      decider: {
+        provider: "ollama",
+        verdict: "pass",
+        model: "autotrust-jev",
+        outcome: { score: 4, maxScore: 5, level: "x", confidence: 1 },
+      },
+    };
+
+    expect(await read(JSON.stringify({ judge }))).toStrictEqual({ judge });
+  });
+
+  it("keeps an LLM judge's verdict, and moves a jev answer beside it", async () => {
+    const answer = { provider: "typesafe", verdict: "escalate" };
     const judge = { pass: false, issues: [], provider: "x", decidedBy: "llm" };
     const text = (extra: object): string =>
       JSON.stringify({ judge: { ...judge, ...extra } });
 
-    expect(await read(text({ decider }))).toStrictEqual({
-      judge: { ...judge, decider },
+    expect(await read(text({ decider: answer }))).toStrictEqual({
+      judge: { ...judge, decider: answer },
     });
-    expect(await read(text({ jev: decider }))).toStrictEqual({
-      judge: { ...judge, decider },
-    });
+    expect(
+      await read(text({ jev: { route: "typesafe", verdict: "escalate" } })),
+    ).toStrictEqual({ judge: { ...judge, decider: answer } });
   });
 
   it("reads a result with no judge, or none at all", async () => {

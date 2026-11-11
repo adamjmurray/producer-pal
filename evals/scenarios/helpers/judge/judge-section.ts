@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * The scenario runner's Judge section: runs the judge (the decider first with `--jev`)
+ * The scenario runner's Judge section: runs the judge (the decider first with `--decider`)
  * and prints the verdict.
  */
 

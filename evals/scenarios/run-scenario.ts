@@ -61,7 +61,7 @@ export interface RunScenarioOptions {
   /** Thinking level for the model's turns; absent keeps the provider default. */
   thinking?: ThinkingLevel;
   skipJudge?: boolean;
-  /** Judge with the decider first, escalating to the LLM judge (see `--jev`). */
+  /** Judge with the decider first, escalating to the LLM judge (see `--decider`). */
   decider?: DeciderSettings;
   /** Skip the post-failure self-reflection turn (default: inject one). */
   skipReflection?: boolean;

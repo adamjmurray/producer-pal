@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { type Command } from "commander";
 import { RESULTS_DIR } from "../../json-results/types.ts";
 import { parseRepeatCount } from "../multi-trial-runs.ts";
+import { withLegacyDecider } from "../../judge/decider-settings.ts";
 import { readRunRecord, type RunRecord } from "./run-record.ts";
 
 /** Changing anything else would mix two different runs in one folder. */
@@ -67,7 +68,7 @@ export async function resumeOptions<Options extends ResumableOptions>(
   return {
     argv: record.argv,
     options: {
-      ...record.options,
+      ...withLegacyDecider(record.options),
       resume: runId,
       repeat: given.repeat ?? record.options.repeat,
       quiet: given.quiet,

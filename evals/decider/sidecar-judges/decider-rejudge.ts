@@ -21,7 +21,7 @@
  *                  passes; --seed=S makes the pick repeatable (default 1)
  *   --fails-from=slug  also count what this sidecar judge failed as a fail
  *                  for --sample (repeatable)
- *   --escalated    only results the decider escalated in a `--jev` run
+ *   --escalated    only results the decider escalated in a `--decider` run
  *   --include-failed-checks  also judge results whose gating checks failed
  *                  (default: gating-passed only, where the judge decides)
  *   --include-stale  keep results recorded before the criteria last changed

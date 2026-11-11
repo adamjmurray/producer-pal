@@ -73,10 +73,8 @@ interface CliOptions {
   judge?: string;
   /** Thinking level for the LLM judge. */
   judgeThinking?: string;
-  /** Judge with the decider first; the LLM judge handles what the decider won't decide. */
-  jev?: boolean;
-  /** The decider route: typesafe, openrouter or vercel. */
-  jevVia?: string;
+  /** Judge with this decider first; the LLM judge handles what it won't decide. */
+  decider?: string;
   repeat?: string;
   /** Run id of an earlier run to finish, replaying its saved options. */
   resume?: string;
@@ -190,12 +188,8 @@ program
     "Thinking level (off, low, medium, high, ultra) for the -j judge",
   )
   .option(
-    "--jev",
-    "Judge with the decider first; the -j LLM judge decides what the decider escalates",
-  )
-  .option(
-    "--jev-via <route>",
-    "The decider route: typesafe, openrouter or vercel (default: first with a key set)",
+    "--decider <provider/model>",
+    "Judge with a decider first; the -j LLM judge decides what it escalates. jev (hosted Jev, first provider with a key), typesafe|openrouter|vercel (Jev there), or <provider>/<model>, e.g. ollama/autotrust-jev",
   )
   .option(
     "-r, --repeat <N>",
@@ -378,10 +372,10 @@ async function runEvaluation(
       console.log(
         styleText(
           "gray",
-          `Judge: decider first (via ${decider.route}); LLM judge for escalations`,
+          `Judge: decider ${decider.provider}/${decider.model} first; LLM judge for escalations`,
         ),
       );
-    } else if (options.jev && options.skipJudge) {
+    } else if (options.decider != null && options.skipJudge) {
       console.log(styleText("gray", "--skip-judge: the decider is not used"));
     }
 

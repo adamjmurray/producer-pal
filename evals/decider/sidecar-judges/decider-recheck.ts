@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * One command to check the decider on a finished `--jev` run: re-judge the saved
+ * One command to check the decider on a finished `--decider` run: re-judge the saved
  * results with the LLM judges that haven't judged them yet, then compare the
  * decider answers recorded in the run with the majority of those judges. No
  * Ableton, no model re-run, no decider calls.

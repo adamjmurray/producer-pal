@@ -57,13 +57,18 @@ const rowFor = (name: string): string =>
 describe("printStoredRunSummary", () => {
   it("prints the decider totals, with the claims check, when the run used the decider", async () => {
     const decider = (verdict: string, escalatedBy?: string): object => ({
-      route: "typesafe",
+      provider: "typesafe",
       verdict,
       ...(escalatedBy != null && { escalatedBy }),
       model: "decider-1",
       minProbability: 0.9,
       questions: [],
-      outcome: { score: 3, level: "complete success", confidence: 1 },
+      outcome: {
+        score: 5,
+        maxScore: 5,
+        level: "complete success",
+        confidence: 1,
+      },
       inputTokens: 10,
       outputTokens: 1,
       truncated: false,
@@ -102,7 +107,7 @@ describe("printStoredRunSummary", () => {
     await printStoredRunSummary(dir);
 
     expect(printed().join("\n")).toContain(
-      "The decider judge: 3 call(s); decided 1 (1 pass, 0 fail); escalated 2 to the LLM judge (1 unsure, 1 by the claims check, 0 error)",
+      "Decider judge: 3 call(s); decided 1 (1 pass, 0 fail); escalated 2 to the LLM judge (1 unsure, 1 by the claims check, 0 error)",
     );
   });
 
@@ -110,7 +115,7 @@ describe("printStoredRunSummary", () => {
     await store("alpha", "openai/m1", 1, "pass");
     await printStoredRunSummary(dir);
 
-    expect(printed().join("\n")).not.toContain("The decider");
+    expect(printed().join("\n")).not.toContain("Decider");
   });
 
   it("tallies passed trials per scenario and model, with a total", async () => {

@@ -4,11 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  askDecider,
-  DeciderError,
-  resolveDeciderRoute,
-} from "../decider-client.ts";
+import { askDecider, DeciderError } from "../decider-client.ts";
 import { stubKeys } from "./decider-test-helpers.ts";
 
 const okBody = {
@@ -80,26 +76,32 @@ describe("askDecider", () => {
       "VERCEL_AI_GATEWAY_KEY",
       "https://ai-gateway.vercel.sh/typesafe/v1/systemone",
     ],
-  ] as const)("calls %s with its URL and key", async (route, envVar, url) => {
-    stubKeys({ TYPESAFE_KEY: "t", OPENROUTER_KEY: "o", [envVar]: "mine" });
+  ] as const)(
+    "calls %s with its URL and key",
+    async (provider, envVar, url) => {
+      stubKeys({ TYPESAFE_KEY: "t", OPENROUTER_KEY: "o", [envVar]: "mine" });
 
-    const fetchMock = vi.fn().mockResolvedValue(json(okBody));
+      const fetchMock = vi.fn().mockResolvedValue(json(okBody));
 
-    vi.stubGlobal("fetch", fetchMock);
-    await askDecider("s", {}, { route });
+      vi.stubGlobal("fetch", fetchMock);
+      await askDecider("s", {}, { provider });
 
-    const [calledUrl, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const [calledUrl, init] = fetchMock.mock.calls[0] as [
+        string,
+        RequestInit,
+      ];
 
-    expect(calledUrl).toBe(url);
-    expect((init.headers as Record<string, string>).Authorization).toBe(
-      "Bearer mine",
-    );
-    expect(JSON.parse(init.body as string)).toStrictEqual({
-      model: "jev-latest",
-      state: "s",
-      questions: {},
-    });
-  });
+      expect(calledUrl).toBe(url);
+      expect((init.headers as Record<string, string>).Authorization).toBe(
+        "Bearer mine",
+      );
+      expect(JSON.parse(init.body as string)).toStrictEqual({
+        model: "jev-latest",
+        state: "s",
+        questions: {},
+      });
+    },
+  );
 
   it("throws the 400 detail", async () => {
     vi.stubGlobal(
@@ -165,50 +167,55 @@ describe("askDecider", () => {
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
-});
 
-describe("resolveDeciderRoute", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
+  it("joins a hosted 400 detail and an Ollama error alike", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(json({ error: "model 'x' not found" }, 404)),
+    );
+
+    await expect(
+      askDecider("s", {}, { provider: "ollama", model: "x" }),
+    ).rejects.toThrow("Decider API error 404: model 'x' not found");
   });
 
-  it("defaults to the first route with a key: typesafe, openrouter, vercel", () => {
-    stubKeys({ OPENROUTER_KEY: "o", VERCEL_AI_GATEWAY_KEY: "v" });
-    expect(resolveDeciderRoute().route).toBe("openrouter");
+  it("falls back to the raw text for an error body it can't read", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(json({ error: { code: 1 } }, 400)),
+    );
 
-    stubKeys({ VERCEL_AI_GATEWAY_KEY: "v" });
-    expect(resolveDeciderRoute().route).toBe("vercel");
-
-    stubKeys({ TYPESAFE_KEY: "t", OPENROUTER_KEY: "o" });
-    expect(resolveDeciderRoute().route).toBe("typesafe");
-  });
-
-  it("uses the requested route even when an earlier one has a key", () => {
-    stubKeys({ TYPESAFE_KEY: "t", VERCEL_AI_GATEWAY_KEY: "v" });
-
-    expect(resolveDeciderRoute("vercel")).toStrictEqual({
-      route: "vercel",
-      url: "https://ai-gateway.vercel.sh/typesafe/v1/systemone",
-      apiKey: "v",
-    });
-  });
-
-  it("names the missing variable for a requested route", () => {
-    stubKeys({ TYPESAFE_KEY: "t" });
-
-    expect(() => resolveDeciderRoute("openrouter")).toThrow(
-      /OPENROUTER_KEY is not set.*--via=openrouter/,
+    await expect(askDecider("s", {}, { apiKey: "k" })).rejects.toThrow(
+      'Decider API error 400: {"error":{"code":1}}',
     );
   });
 
-  it("sends an explicit key to TypeSafe unless a route is given", () => {
-    stubKeys();
+  describe("with Ollama", () => {
+    it("posts to the Ollama host with the model and no Authorization header", async () => {
+      vi.stubEnv("OLLAMA_HOST", "box:9999");
 
-    expect(resolveDeciderRoute(undefined, "k")).toStrictEqual({
-      route: "typesafe",
-      url: "https://api.typesafe.ai/v1/systemone",
-      apiKey: "k",
+      const fetchMock = vi.fn().mockResolvedValue(json(okBody));
+
+      vi.stubGlobal("fetch", fetchMock);
+      await askDecider("s", {}, { provider: "ollama", model: "autotrust-jev" });
+
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+
+      expect(url).toBe("http://box:9999/v1/systemone");
+      expect(init.headers).toStrictEqual({
+        "Content-Type": "application/json",
+      });
+      expect(JSON.parse(init.body as string)).toStrictEqual({
+        model: "autotrust-jev",
+        state: "s",
+        questions: {},
+      });
     });
-    expect(resolveDeciderRoute("vercel", "k").apiKey).toBe("k");
+
+    it("needs a model", async () => {
+      await expect(askDecider("s", {}, { provider: "ollama" })).rejects.toThrow(
+        "ollama needs a model",
+      );
+    });
   });
 });

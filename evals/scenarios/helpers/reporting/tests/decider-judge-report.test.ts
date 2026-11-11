@@ -16,12 +16,17 @@ import {
 } from "../decider-judge-report.ts";
 
 const answer = (over: Partial<JsonDeciderAnswer> = {}): JsonDeciderAnswer => ({
-  route: "typesafe",
+  provider: "typesafe",
   verdict: "pass",
   model: "decider-1",
   minProbability: 0.9,
   questions: [],
-  outcome: { score: 3, level: "complete success", confidence: 0.8 },
+  outcome: {
+    score: 5,
+    maxScore: 5,
+    level: "complete success",
+    confidence: 0.8,
+  },
   inputTokens: 100,
   outputTokens: 10,
   truncated: false,
@@ -29,7 +34,7 @@ const answer = (over: Partial<JsonDeciderAnswer> = {}): JsonDeciderAnswer => ({
 });
 
 const failure: JsonDeciderJudgment = {
-  route: "typesafe",
+  provider: "typesafe",
   verdict: "error",
   escalationReason: "decider call failed: boom",
 };
@@ -46,7 +51,7 @@ describe("deciderJudgeNote", () => {
 
   it("names the decision and the outcome level", () => {
     expect(deciderJudgeNote({ decidedBy: "decider", decider: answer() })).toBe(
-      "The decider decided: pass (outcome: complete success, lowest answer 0.90)",
+      "Decider decided: pass (outcome: complete success, lowest answer 0.90)",
     );
   });
 
@@ -57,13 +62,13 @@ describe("deciderJudgeNote", () => {
         decider: answer({ verdict: "escalate", escalationReason: "too close" }),
       }),
     ).toBe(
-      "The decider escalated to the LLM judge: too close (outcome: complete success, lowest answer 0.90)",
+      "Decider escalated to the LLM judge: too close (outcome: complete success, lowest answer 0.90)",
     );
   });
 
   it("gives the reason for a failed call", () => {
     expect(deciderJudgeNote({ decidedBy: "llm", decider: failure })).toBe(
-      "The decider escalated to the LLM judge: decider call failed: boom",
+      "Decider escalated to the LLM judge: decider call failed: boom",
     );
   });
 });
@@ -92,8 +97,8 @@ describe("deciderSummaryLines", () => {
     ]);
 
     expect(lines).toStrictEqual([
-      "The decider judge: 4 call(s); decided 2 (1 pass, 1 fail); escalated 2 to the LLM judge (1 unsure, 0 by the claims check, 1 error)",
-      "The decider tokens: 250 in, 25 out",
+      "Decider judge: 4 call(s); decided 2 (1 pass, 1 fail); escalated 2 to the LLM judge (1 unsure, 0 by the claims check, 1 error)",
+      "Decider tokens: 250 in, 25 out",
     ]);
   });
 
@@ -108,7 +113,7 @@ describe("deciderSummaryLines", () => {
     ]);
 
     expect(lines[0]).toBe(
-      "The decider judge: 3 call(s); decided 1 (1 pass, 0 fail); escalated 2 to the LLM judge (1 unsure, 1 by the claims check, 0 error)",
+      "Decider judge: 3 call(s); decided 1 (1 pass, 0 fail); escalated 2 to the LLM judge (1 unsure, 1 by the claims check, 0 error)",
     );
   });
 
@@ -118,7 +123,7 @@ describe("deciderSummaryLines", () => {
       withJudge({ decidedBy: "decider", decider: answer({ cost: 0.0025 }) }),
     ]);
 
-    expect(lines[1]).toBe("The decider tokens: 200 in, 20 out; cost $0.0035");
+    expect(lines[1]).toBe("Decider tokens: 200 in, 20 out; cost $0.0035");
   });
 
   it("says when only some calls report a cost", () => {

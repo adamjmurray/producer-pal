@@ -43,7 +43,7 @@ export interface SkipCounts {
   unreadable: number;
   /** Recorded before the scenario's judge criteria last changed */
   staleCriteria: number;
-  /** The decider gave the stored verdict (a `--jev` run), so there is no LLM verdict */
+  /** The decider gave the stored verdict (a `--decider` run), so there is no LLM verdict */
   deciderDecided: number;
 }
 

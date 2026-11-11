@@ -16,12 +16,17 @@ import { type JsonDeciderAnswer } from "../types.ts";
 const deciderAnswer = (
   over: Partial<JsonDeciderAnswer> = {},
 ): JsonDeciderAnswer => ({
-  route: "openrouter",
+  provider: "openrouter",
   verdict: "pass",
   model: "decider-1.2",
   minProbability: 0.9,
   questions: [{ id: "req1", kind: "requirement", probability: 0.9 }],
-  outcome: { score: 3, level: "complete success", confidence: 0.8 },
+  outcome: {
+    score: 5,
+    maxScore: 5,
+    level: "complete success",
+    confidence: 0.8,
+  },
   inputTokens: 10,
   outputTokens: 1,
   truncated: false,
@@ -54,11 +59,11 @@ const escalated: DeciderFirstDetails = {
 };
 
 describe("buildJudge with the decider", () => {
-  it("records a decider-decided verdict with the decider as its provider and model", () => {
+  it("records a decider-decided verdict with the decider's provider and model", () => {
     expect(buildJudge([judgeAssertion(deciderDecided)], false)).toStrictEqual({
       pass: true,
       issues: [],
-      provider: "decider",
+      provider: "openrouter",
       model: "decider-1.2",
       decidedBy: "decider",
       decider: deciderDecided.decider,
@@ -81,7 +86,7 @@ describe("buildJudge with the decider", () => {
     const failure: DeciderFirstDetails = {
       ...escalated,
       decider: {
-        route: "typesafe",
+        provider: "typesafe",
         verdict: "error",
         escalationReason: "boom",
       },
@@ -89,20 +94,38 @@ describe("buildJudge with the decider", () => {
 
     expect(buildJudge([judgeAssertion(failure)], false)?.decider).toStrictEqual(
       {
-        route: "typesafe",
+        provider: "typesafe",
         verdict: "error",
         escalationReason: "boom",
       },
     );
   });
 
-  it("gives a decider verdict no model if the decider's record has none", () => {
+  it("names a local decider by provider and model", () => {
+    const local: DeciderFirstDetails = {
+      ...deciderDecided,
+      decider: {
+        ...deciderAnswer({ verdict: "pass" }),
+        provider: "ollama",
+        model: "autotrust-jev",
+      },
+    };
+
+    expect(buildJudge([judgeAssertion(local)], false)).toStrictEqual(
+      expect.objectContaining({
+        provider: "ollama",
+        model: "autotrust-jev",
+        decidedBy: "decider",
+      }),
+    );
+  });
+
+  it("records no provider or model for a decider verdict with no decider record", () => {
     const odd = { ...deciderDecided, decider: undefined };
 
     expect(buildJudge([judgeAssertion(odd)], false)).toStrictEqual({
       pass: true,
       issues: [],
-      provider: "decider",
       decidedBy: "decider",
     });
   });
@@ -160,7 +183,7 @@ describe("saved result version", () => {
     const failed = {
       ...deciderDecided,
       pass: false,
-      issues: ["The decider: not met"],
+      issues: ["Decider: not met"],
     };
 
     expect(convert(failed).result).toBe("fail");

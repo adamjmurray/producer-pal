@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Console text for `--jev` runs: the per-result note on who decided the judge
+ * Console text for `--decider` runs: the per-result note on who decided the judge
  * verdict, and the end-of-run the decider totals.
  */
 
@@ -32,14 +32,14 @@ export function deciderJudgeNote(judge: {
   }
 
   if (decider.verdict === "error") {
-    return `The decider escalated to the LLM judge: ${decider.escalationReason}`;
+    return `Decider escalated to the LLM judge: ${decider.escalationReason}`;
   }
 
   const outcome = `outcome: ${decider.outcome.level}, lowest answer ${decider.minProbability.toFixed(2)}`;
 
   return decider.verdict === "escalate"
-    ? `The decider escalated to the LLM judge: ${decider.escalationReason} (${outcome})`
-    : `The decider decided: ${decider.verdict} (${outcome})`;
+    ? `Decider escalated to the LLM judge: ${decider.escalationReason} (${outcome})`
+    : `Decider decided: ${decider.verdict} (${outcome})`;
 }
 
 /**
@@ -95,7 +95,7 @@ export function deciderSummaryLines(results: JsonEvalResult[]): string[] {
   );
 
   return [
-    `The decider judge: ${calls.length} call(s); decided ${decided.length} (${passed} pass, ${failed} fail); escalated ${calls.length - decided.length} to the LLM judge (${unsure} unsure, ${byClaims} by the claims check, ${errors} error)`,
+    `Decider judge: ${calls.length} call(s); decided ${decided.length} (${passed} pass, ${failed} fail); escalated ${calls.length - decided.length} to the LLM judge (${unsure} unsure, ${byClaims} by the claims check, ${errors} error)`,
     tokenLine(answers),
   ];
 }
@@ -119,5 +119,5 @@ function tokenLine(answers: JsonDeciderAnswer[]): string {
       ? `; cost $${sum((a) => a.cost ?? 0).toFixed(4)}${partial}`
       : "";
 
-  return `The decider tokens: ${sum((a) => a.inputTokens)} in, ${sum((a) => a.outputTokens)} out${cost}`;
+  return `Decider tokens: ${sum((a) => a.inputTokens)} in, ${sum((a) => a.outputTokens)} out${cost}`;
 }

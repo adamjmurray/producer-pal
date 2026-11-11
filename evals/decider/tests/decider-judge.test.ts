@@ -13,6 +13,7 @@ import {
   escalationReason,
   FAIL_THRESHOLD,
   deciderJudge,
+  OUTCOME_MAX_SCORE,
   outcomeLabel,
   PASS_THRESHOLD,
 } from "../decider-judge.ts";
@@ -134,7 +135,7 @@ describe("buildQuestions", () => {
 });
 
 describe("buildOutcomeQuestion", () => {
-  it("is a four-level score question over the trimmed criteria", () => {
+  it("is a six-level score question over the trimmed criteria", () => {
     expect(buildOutcomeQuestion("  1. A.\n")).toStrictEqual({
       type: "score",
       instructions:
@@ -142,7 +143,9 @@ describe("buildOutcomeQuestion", () => {
       criteria: [
         "Complete failure: none of what was asked got done",
         "Mostly failed: little of what was asked got done, or it went badly wrong",
-        "Partial success: some of what was asked got done, with real gaps or problems",
+        "Partial success with major gaps: some of what was asked got done, but important parts are missing or wrong",
+        "Partial success with minor gaps: most of what was asked got done, with small gaps or problems",
+        "Near-complete success: everything asked got done, with a small inaccuracy in the reply",
         "Complete success: everything asked got done, and the reply is accurate",
       ],
     });
@@ -155,14 +158,20 @@ describe("outcomeLabel", () => {
     expect(outcomeLabel(0.4)).toBe("complete failure");
     expect(outcomeLabel(0.6)).toBe("mostly failed");
     expect(outcomeLabel(1.4)).toBe("mostly failed");
-    expect(outcomeLabel(2.4)).toBe("partial success");
-    expect(outcomeLabel(2.6)).toBe("complete success");
-    expect(outcomeLabel(3)).toBe("complete success");
+    expect(outcomeLabel(2.4)).toBe("major gaps");
+    expect(outcomeLabel(3)).toBe("minor gaps");
+    expect(outcomeLabel(4)).toBe("near-complete success");
+    expect(outcomeLabel(4.6)).toBe("complete success");
+    expect(outcomeLabel(5)).toBe("complete success");
   });
 
   it("clamps scores outside the range", () => {
     expect(outcomeLabel(-1)).toBe("complete failure");
-    expect(outcomeLabel(5)).toBe("complete success");
+    expect(outcomeLabel(9)).toBe("complete success");
+  });
+
+  it("scores on a scale of 5", () => {
+    expect(OUTCOME_MAX_SCORE).toBe(5);
   });
 });
 
@@ -223,9 +232,11 @@ describe("deciderJudge", () => {
     expect(result.questions.at(-1)?.kind).toBe("claims");
     expect(result.outcome).toStrictEqual({
       score: 2.4,
+      maxScore: 5,
       confidence: 0.7,
-      label: "partial success",
+      label: "major gaps",
     });
+    expect(result.provider).toBe("typesafe");
     expect(result.inputTokens).toBe(100);
     expect(result.model).toBe("decider-1.14.0");
     expect(result.cost).toBe(0.002);
@@ -289,6 +300,95 @@ describe("deciderJudge", () => {
     });
 
     expect(second.escalatedBy).toBeUndefined();
+  });
+
+  describe("with Ollama", () => {
+    const answers = {
+      req1: { type: "noul", noul: 0.9 },
+      whole: { type: "noul", noul: 0.9 },
+      claims: { type: "noul", noul: 0.9 },
+      outcome: {
+        type: "score",
+        score: 4,
+        confidence: 0.9,
+        legend: {},
+        probabilities: {},
+      },
+    };
+    const turnWith = (text: string) => ({
+      userMessage: "hi",
+      assistantResponse: text,
+      toolCalls: [],
+    });
+
+    /**
+     * Judge a run through a fake Ollama and return what was sent.
+     *
+     * @param text - The reply text in the run's one turn
+     * @returns The request body bytes, the parsed body and the result
+     */
+    async function viaOllama(text: string) {
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            model: "autotrust-jev",
+            answers,
+            usage: { input_tokens: 1, output_tokens: 1 },
+          }),
+        ),
+      );
+
+      vi.stubGlobal("fetch", fetchMock);
+
+      const result = await deciderJudge(
+        { turns: [turnWith(text)], checks: [] },
+        "Be good.",
+        { provider: "ollama", model: "autotrust-jev" },
+      );
+      const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+      const body = init.body as string;
+
+      return { bytes: Buffer.byteLength(body), result, init };
+    }
+
+    it("calls it with no key, and reports the provider and the six-level scale", async () => {
+      const { result, init } = await viaOllama("short");
+
+      expect(init.headers).toStrictEqual({
+        "Content-Type": "application/json",
+      });
+      expect(result.provider).toBe("ollama");
+      expect(result.model).toBe("autotrust-jev");
+      expect(result.outcome.maxScore).toBe(5);
+      expect(result.truncated).toBe(false);
+      expect(result.cost).toBeUndefined();
+    });
+
+    it("cuts the state to 48,000 characters, below the hosted 80,000", async () => {
+      const { bytes, result } = await viaOllama("a".repeat(70_000));
+
+      expect(result.truncated).toBe(true);
+      expect(bytes).toBeLessThan(63_000);
+    });
+
+    it("cuts again when multi-byte text pushes the request over the byte cap", async () => {
+      const { bytes, result } = await viaOllama("→".repeat(40_000));
+
+      expect(result.truncated).toBe(true);
+      expect(bytes).toBeLessThanOrEqual(63_000);
+    });
+
+    it("keeps 70,000 characters for a hosted provider", async () => {
+      stubAnswers(answers);
+
+      const result = await deciderJudge(
+        { turns: [turnWith("a".repeat(70_000))], checks: [] },
+        "Be good.",
+        { apiKey: "k" },
+      );
+
+      expect(result.truncated).toBe(false);
+    });
   });
 
   it("throws when the outcome answer is missing", async () => {

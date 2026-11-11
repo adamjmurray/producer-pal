@@ -165,7 +165,11 @@ describe("loadJudgedResults", () => {
           issues: [],
           provider: "jev",
           decidedBy: "jev",
-          jev: { route: "typesafe", verdict: "pass" },
+          jev: {
+            route: "openrouter",
+            verdict: "pass",
+            outcome: { score: 3, level: "complete success", confidence: 1 },
+          },
         },
         turns: [],
         checks: { pass: true, results: [] },
@@ -184,9 +188,18 @@ describe("loadJudgedResults", () => {
     expect(old?.result.judge).toStrictEqual({
       pass: true,
       issues: [],
-      provider: "decider",
+      provider: "openrouter",
       decidedBy: "decider",
-      decider: { route: "typesafe", verdict: "pass" },
+      decider: {
+        provider: "openrouter",
+        verdict: "pass",
+        outcome: {
+          score: 3,
+          maxScore: 3,
+          level: "complete success",
+          confidence: 1,
+        },
+      },
     });
   });
 

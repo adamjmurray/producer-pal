@@ -17,12 +17,17 @@ import { printSummary } from "../summary-printer.ts";
 vi.mock(import("../report-table.ts"), () => ({ printResultsTable: vi.fn() }));
 
 const deciderAnswer: JsonDeciderAnswer = {
-  route: "typesafe",
+  provider: "typesafe",
   verdict: "pass",
   model: "decider-1",
   minProbability: 0.93,
   questions: [],
-  outcome: { score: 3, level: "complete success", confidence: 0.9 },
+  outcome: {
+    score: 5,
+    maxScore: 5,
+    level: "complete success",
+    confidence: 0.9,
+  },
   inputTokens: 40,
   outputTokens: 4,
   truncated: false,
@@ -67,7 +72,7 @@ describe("The decider in run output", () => {
     printResult(result(deciderJudge));
 
     expect(output()).toContain(
-      "The decider decided: pass (outcome: complete success, lowest answer 0.93)",
+      "Decider decided: pass (outcome: complete success, lowest answer 0.93)",
     );
   });
 
@@ -84,7 +89,11 @@ describe("The decider in run output", () => {
         pass: false,
         issues: [],
         decidedBy: "llm",
-        decider: { route: "typesafe", verdict: "error", escalationReason: "x" },
+        decider: {
+          provider: "typesafe",
+          verdict: "error",
+          escalationReason: "x",
+        },
       }),
     );
 
@@ -94,22 +103,22 @@ describe("The decider in run output", () => {
   it("prints no decider note for a judge the decider was not asked about", () => {
     printResultBlock(result({ pass: true, issues: [] }));
 
-    expect(output()).not.toContain("The decider");
+    expect(output()).not.toContain("Decider");
   });
 
   it("totals the decider calls in a single-model summary", () => {
     printSummary(byScenario([result(deciderJudge)]), specs(1), "default");
 
     expect(output()).toContain(
-      "The decider judge: 1 call(s); decided 1 (1 pass, 0 fail)",
+      "Decider judge: 1 call(s); decided 1 (1 pass, 0 fail)",
     );
-    expect(output()).toContain("The decider tokens: 40 in, 4 out");
+    expect(output()).toContain("Decider tokens: 40 in, 4 out");
   });
 
   it("totals the decider calls under the multi-model table too", () => {
     printSummary(byScenario([result(deciderJudge)]), specs(2), "default");
 
-    expect(output()).toContain("The decider judge: 1 call(s)");
+    expect(output()).toContain("Decider judge: 1 call(s)");
   });
 
   it("prints no decider totals for a run without the decider", () => {
@@ -119,6 +128,6 @@ describe("The decider in run output", () => {
       "default",
     );
 
-    expect(output()).not.toContain("The decider");
+    expect(output()).not.toContain("Decider");
   });
 });

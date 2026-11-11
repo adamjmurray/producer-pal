@@ -17,6 +17,7 @@ import {
 import { bandLines, claimsLines } from "./decider-bands.ts";
 import { type DeciderJudgeResult } from "../decider-judge.ts";
 import { type ReferenceVerdict } from "../sidecar-judges/decider-reference.ts";
+import { DECIDER_PROVIDERS } from "../decider-provider.ts";
 import { type SkipCounts } from "../decider-results.ts";
 
 /** Jev input price, USD per million tokens. */
@@ -37,7 +38,7 @@ export interface CompareEntry {
     provider?: string;
     model?: string;
   };
-  /** The LLM judge's verdict in a `--jev` run, when it ran (after an escalation) */
+  /** The LLM judge's verdict in a `--decider` run, when it ran (after an escalation) */
   runLlmPass?: boolean;
   /** The deterministic checks passed, so the judge decides the outcome */
   checksPass: boolean;
@@ -56,13 +57,11 @@ export interface CompareEntry {
  *
  * @param entries - Compared results
  * @param skipped - What the loader left out
- * @param route - The route the decider calls went through
  * @returns Report lines
  */
 export function formatReport(
   entries: CompareEntry[],
   skipped: SkipCounts,
-  route?: string,
 ): string[] {
   const errors = entries.filter((e) => e.decider == null);
   const answered = entries.filter((e) => e.decider != null);
@@ -73,10 +72,10 @@ export function formatReport(
     ties > 0 ? "; " + ties + " tied (no majority, not counted)" : "";
 
   return [
-    sidecars ? "The decider vs LLM judges" : "The decider vs stored judge",
+    sidecars ? "Decider vs LLM judges" : "Decider vs stored judge",
     `${sidecars ? "Reference" : "Stored judge"}: ${judgeCounts(judged)}`,
-    `The decider: ${route ?? "unknown route"}, ${deciderModelCounts(judged)}`,
-    `Compared ${judged.length} result(s); ${errors.length} the decider error(s)${tieNote}.`,
+    `Decider: ${deciderCounts(judged)}`,
+    `Compared ${judged.length} result(s); ${errors.length} decider error(s)${tieNote}.`,
     `Left out: ${skipped.notScored} skipped/error, ${skipped.noScenario} unknown scenario, ${skipped.noLlmJudge} scenario without llm_judge, ${skipped.unreadable} unreadable, ${skipped.staleCriteria} recorded before the criteria changed${deciderNote(skipped)}.`,
     "",
     ...statsLines(
@@ -126,7 +125,13 @@ export function statsLines(title: string, subset: CompareEntry[]): string[] {
     subset.flatMap((e) =>
       e.decider == null
         ? []
-        : [{ judgePass: e.judge.pass, score: e.decider.outcome.score }],
+        : [
+            {
+              judgePass: e.judge.pass,
+              score: e.decider.outcome.score,
+              maxScore: e.decider.outcome.maxScore,
+            },
+          ],
     ),
   );
 
@@ -158,7 +163,14 @@ function hasReference(entry: CompareEntry): boolean {
 function outcomeLine(o: OutcomeStats): string {
   const auc = o.auc == null ? "n/a" : o.auc.toFixed(3);
 
-  return `  Outcome score (0-3), mean: judge pass ${fixed(o.passMean)} (n=${o.passN}), judge fail ${fixed(o.failMean)} (n=${o.failN}); AUC ${auc}`;
+  const scale =
+    o.maxScore != null
+      ? `0-${o.maxScore}`
+      : o.passN + o.failN === 0
+        ? "none"
+        : "share of each scale, 0-1";
+
+  return `  Outcome score (${scale}), mean: judge pass ${fixed(o.passMean)} (n=${o.passN}), judge fail ${fixed(o.failMean)} (n=${o.failN}); AUC ${auc}`;
 }
 
 /**
@@ -206,7 +218,7 @@ function wrongCallLines(judged: CompareEntry[]): string[] {
       `- ${e.file} (${kind})`,
       `  scenario ${e.scenarioId}; checks ${e.checksPass ? "passed" : "failed"}`,
       `  Judge (${judgeName(e)}): ${e.judge.pass ? "pass" : "fail"}${issues}`,
-      `  the decider: ${decider.verdict} - ${probs} outcome=${decider.outcome.score.toFixed(1)} ${decider.outcome.label}`,
+      `  decider: ${decider.verdict} - ${probs} outcome=${outcomeText(decider.outcome)}`,
     );
   }
 
@@ -225,7 +237,8 @@ function lowestOutcomeLines(judged: CompareEntry[]): string[] {
     .filter((e) => e.judge.pass && e.decider != null)
     .toSorted(
       (a, b) =>
-        (a.decider?.outcome.score ?? 0) - (b.decider?.outcome.score ?? 0),
+        outcomeFraction(a.decider?.outcome) -
+        outcomeFraction(b.decider?.outcome),
     )
     .slice(0, LOWEST_OUTCOME_COUNT);
   const lines = ["Lowest outcome scores (judge passed):"];
@@ -235,7 +248,7 @@ function lowestOutcomeLines(judged: CompareEntry[]): string[] {
 
     if (decider != null) {
       lines.push(
-        `- ${e.file}: scenario ${e.scenarioId}; outcome=${decider.outcome.score.toFixed(1)} ${decider.outcome.label}; the decider ${decider.verdict}`,
+        `- ${e.file}: scenario ${e.scenarioId}; outcome=${outcomeText(decider.outcome)}; decider ${decider.verdict}`,
       );
     }
   }
@@ -256,7 +269,7 @@ function errorLines(errors: CompareEntry[]): string[] {
 
   return [
     "",
-    "The decider errors:",
+    "Decider errors:",
     ...errors.map((e) => `- ${e.file}: ${e.error ?? "unknown error"}`),
   ];
 }
@@ -278,12 +291,27 @@ function costLine(judged: CompareEntry[]): string {
   if (judged.length > 0 && costs.every((c) => c != null)) {
     const actual = costs.reduce((sum, c) => sum + c, 0);
 
-    return `The decider input tokens: ${tokens} (actual $${actual.toFixed(4)})`;
+    return `Decider input tokens: ${tokens} (actual $${actual.toFixed(4)})`;
   }
 
-  const usd = (tokens / 1_000_000) * JEV_USD_PER_M_INPUT_TOKENS;
+  // The price is Jev's, so only hosted calls get an estimate; local ones are free.
+  const hosted = judged.filter(
+    (e) =>
+      e.decider != null && DECIDER_PROVIDERS[e.decider.provider].envVar != null,
+  );
 
-  return `The decider input tokens: ${tokens} (~$${usd.toFixed(4)} estimated)`;
+  if (hosted.length === 0) {
+    return `Decider input tokens: ${tokens} (local, no cost)`;
+  }
+
+  const hostedTokens = hosted.reduce(
+    (sum, e) => sum + (e.decider?.inputTokens ?? 0),
+    0,
+  );
+  const usd = (hostedTokens / 1_000_000) * JEV_USD_PER_M_INPUT_TOKENS;
+  const local = hosted.length < judged.length ? ", local calls free" : "";
+
+  return `Decider input tokens: ${tokens} (~$${usd.toFixed(4)} estimated${local})`;
 }
 
 /**
@@ -341,21 +369,56 @@ function judgeCounts(entries: CompareEntry[]): string {
 }
 
 /**
- * Count the answers per resolved decider model version, most common first.
+ * Count the answers per decider (provider and resolved model), most common
+ * first, so results from different deciders show up as such.
  *
  * @param entries - Compared results with a decider answer
- * @returns Text like "decider-1.14.0 (50)"
+ * @returns Text like "typesafe/jev-1.14.0 (50)"
  */
-function deciderModelCounts(entries: CompareEntry[]): string {
+function deciderCounts(entries: CompareEntry[]): string {
   const counts = new Map<string, number>();
 
   for (const e of entries) {
-    const model = e.decider?.model ?? "unknown";
+    const name = e.decider == null ? "unknown" : deciderName(e.decider);
 
-    counts.set(model, (counts.get(model) ?? 0) + 1);
+    counts.set(name, (counts.get(name) ?? 0) + 1);
   }
 
   const sorted = [...counts].toSorted((a, b) => b[1] - a[1]);
 
   return sorted.map(([name, n]) => `${name} (${n})`).join(", ") || "none";
+}
+
+/**
+ * Name a decider as provider/model.
+ *
+ * @param answer - A decider answer
+ * @returns Text like "ollama/autotrust-jev"
+ */
+export function deciderName(
+  answer: Pick<DeciderJudgeResult, "provider" | "model">,
+): string {
+  return `${answer.provider}/${answer.model}`;
+}
+
+/**
+ * Show an outcome as score out of the top of its scale, with its level name.
+ *
+ * @param outcome - A decider outcome
+ * @returns Text like "4.0/5 near-complete success"
+ */
+function outcomeText(outcome: DeciderJudgeResult["outcome"]): string {
+  return `${outcome.score.toFixed(1)}/${outcome.maxScore} ${outcome.label}`;
+}
+
+/**
+ * An outcome as a share of its own scale, so scores on different scales sort together.
+ *
+ * @param outcome - A decider outcome, if any
+ * @returns 0 to 1 (0 with no outcome)
+ */
+function outcomeFraction(
+  outcome: DeciderJudgeResult["outcome"] | undefined,
+): number {
+  return outcome == null ? 0 : outcome.score / outcome.maxScore;
 }

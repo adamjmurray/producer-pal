@@ -12,7 +12,7 @@ export const RESULTS_DIR = "evals/results";
 /** JSON-serializable result of a single eval scenario run */
 export interface JsonEvalResult {
   /** Schema version for forward compatibility. 2 adds the decider-first judge
-   *  fields (`JsonJudge.decidedBy`, `decider`, `llm`); runs without `--jev` still
+   *  fields (`JsonJudge.decidedBy`, `decider`, `llm`); runs without `--decider` still
    *  write 1. */
   version: 1 | 2;
   /** Unique run identifier (ISO timestamp with dashes, e.g. "2026-03-22T10-30-00Z") */
@@ -110,16 +110,17 @@ export interface JsonJudge {
    * the overall result to fail (the scenario's deterministic checks are
    * authoritative). Set per-scenario via `judgeAdvisory`. */
   advisory?: boolean;
-  /** Provider that produced the verdict (absent in older results) */
+  /** Provider that produced the verdict (absent in older results). For a
+   *  decider, the decider's provider (typesafe, openrouter, vercel, ollama). */
   provider?: string;
   /** Model that produced the verdict, as resolved (absent in older results) */
   model?: string;
   /** Who gave the verdict above. Absent in results from runs without
-   *  `--jev`, where it was always the LLM judge. When "decider", `provider` is
-   *  "decider", `model` is the decider version and `issues` only name unmet
+   *  `--decider`, where it was always the LLM judge. When "decider",
+   *  `provider` and `model` name the decider and `issues` only name unmet
    *  requirements (the decider gives no explanation). */
   decidedBy?: JudgeDecidedBy;
-  /** What the decider said, in a `--jev` run (also when it escalated or failed) */
+  /** What the decider said, in a `--decider` run (also when it escalated or failed) */
   decider?: JsonDeciderJudgment;
   /** The LLM judge's own verdict, when it ran (after a decider escalation) */
   llm?: JsonLlmVerdict;
@@ -138,8 +139,8 @@ export interface JsonLlmVerdict {
 
 /** What the decider answered for one judge call. */
 export interface JsonDeciderAnswer {
-  /** The decider route: typesafe, openrouter or vercel */
-  route: string;
+  /** Where the decider ran: typesafe, openrouter, vercel or ollama */
+  provider: string;
   /** pass and fail decide the verdict; escalate hands it to the LLM judge */
   verdict: "pass" | "fail" | "escalate";
   /** Why the decider did not decide (present when `verdict` is escalate) */
@@ -147,17 +148,24 @@ export interface JsonDeciderAnswer {
   /** "claims" when every requirement passed and only the claims check kept the
    *  pass from standing (present only on such escalations) */
   escalatedBy?: "claims";
-  /** The model version the decider reports */
+  /** The model the decider reports */
   model: string;
   /** The lowest requirement or whole-criteria answer; it decides pass or fail
    *  (the claims answer can only turn a pass into an escalation) */
   minProbability: number;
   questions: JsonDeciderQuestion[];
-  /** A graded 0-3 read on the whole run; it does not affect `verdict` */
-  outcome: { score: number; level: string; confidence: number };
+  /** A graded read on the whole run; it does not affect `verdict`. `maxScore`
+   *  is the top of the scale (0-5 now; results saved before it was recorded
+   *  were 0-3, which the reader fills in). */
+  outcome: {
+    score: number;
+    maxScore: number;
+    level: string;
+    confidence: number;
+  };
   inputTokens: number;
   outputTokens: number;
-  /** USD, when the route reports it (OpenRouter only) */
+  /** USD, when the provider reports it (OpenRouter only) */
   cost?: number;
   /** The transcript was cut to fit the decider's input limit */
   truncated: boolean;
@@ -165,7 +173,9 @@ export interface JsonDeciderAnswer {
 
 /** The decider call failed, so the LLM judge decided. */
 export interface JsonDeciderFailure {
-  route: string;
+  provider: string;
+  /** The model that was asked */
+  model?: string;
   verdict: "error";
   escalationReason: string;
 }

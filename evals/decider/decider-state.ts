@@ -15,8 +15,6 @@ import {
   type TranscriptTurn,
 } from "#evals/scenarios/assertions/llm-judge.ts";
 
-/** Jev rejects state past 32k tokens. Stay well under, at ~4 chars/token. */
-export const MAX_STATE_CHARS = 80_000;
 const MIN_RESULT_CHARS = 200;
 
 export interface DeciderState {
@@ -41,7 +39,7 @@ export interface BuiltDeciderState {
 export function buildDeciderState(
   turns: TranscriptTurn[],
   checks: CheckSummary[],
-  maxChars: number = MAX_STATE_CHARS,
+  maxChars: number,
 ): BuiltDeciderState {
   const deterministicChecks =
     formatCheckResults(checks) || "(no deterministic checks)";

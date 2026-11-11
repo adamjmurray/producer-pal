@@ -4,19 +4,21 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * Test helpers for code that reads the decider route keys from the environment.
+ * Test helpers for code that reads the decider API keys from the environment.
  */
 
 import { vi } from "vitest";
-import { JEV_ROUTES } from "../decider-client.ts";
+import { DECIDER_PROVIDERS } from "../decider-provider.ts";
 
 /**
- * Set the three route keys; unlisted ones are blanked.
+ * Set the hosted providers' keys; unlisted ones are blanked.
  *
  * @param keys - Values by env var name
  */
 export function stubKeys(keys: Record<string, string> = {}): void {
-  for (const { envVar } of Object.values(JEV_ROUTES)) {
-    vi.stubEnv(envVar, keys[envVar] ?? "");
+  for (const { envVar } of Object.values(DECIDER_PROVIDERS)) {
+    if (envVar != null) {
+      vi.stubEnv(envVar, keys[envVar] ?? "");
+    }
   }
 }

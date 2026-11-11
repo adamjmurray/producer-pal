@@ -41,6 +41,7 @@ function answer(
   cost?: number,
 ): DeciderJudgeResult {
   return {
+    provider: "openrouter",
     verdict,
     minProbability: min,
     questions: [
@@ -53,7 +54,12 @@ function answer(
       },
       { id: "whole", kind: "whole", text: "all", probability: min },
     ],
-    outcome: { score: 1.2, confidence: 0.7, label: "mostly failed" },
+    outcome: {
+      maxScore: 5,
+      score: 1.2,
+      confidence: 0.7,
+      label: "mostly failed",
+    },
     model: "decider-2026",
     inputTokens: 100,
     outputTokens: 5,
@@ -93,7 +99,7 @@ async function run(
     "google",
     override,
     checks,
-    { route: "openrouter", model: "jev-x" },
+    { provider: "openrouter", model: "jev-x" },
     { decider, llm },
   );
 
@@ -107,22 +113,27 @@ describe("assertWithDeciderFirst", () => {
 
     expect(llm).not.toHaveBeenCalled();
     expect(decider).toHaveBeenCalledWith({ turns, checks }, "Do it", {
-      route: "openrouter",
+      provider: "openrouter",
       model: "jev-x",
     });
-    expect(result.message).toBe("The decider judge: pass");
+    expect(result.message).toBe("Decider judge: pass");
     expect(result.maxScore).toBe(0);
     expect(details).toStrictEqual(
       expect.objectContaining({ pass: true, issues: [], decidedBy: "decider" }),
     );
     expect(details.llm).toBeUndefined();
     expect(details.decider).toStrictEqual({
-      route: "openrouter",
+      provider: "openrouter",
       verdict: "pass",
       model: "decider-2026",
       minProbability: PASS_THRESHOLD,
       questions: expect.any(Array),
-      outcome: { score: 1.2, level: "mostly failed", confidence: 0.7 },
+      outcome: {
+        maxScore: 5,
+        score: 1.2,
+        level: "mostly failed",
+        confidence: 0.7,
+      },
       inputTokens: 100,
       outputTokens: 5,
       cost: 0.002,
@@ -137,11 +148,11 @@ describe("assertWithDeciderFirst", () => {
     );
 
     expect(llm).not.toHaveBeenCalled();
-    expect(result.message).toBe("The decider judge: fail (2 unmet)");
+    expect(result.message).toBe("Decider judge: fail (2 unmet)");
     expect(details.pass).toBe(false);
     expect(details.issues).toStrictEqual([
-      `The decider: not met (P=0.20): ${"x".repeat(200)}...`,
-      "The decider: not met (P=0.20): the criteria as a whole",
+      `Decider: not met (P=0.20): ${"x".repeat(200)}...`,
+      "Decider: not met (P=0.20): the criteria as a whole",
     ]);
     expect(details.decider).not.toHaveProperty("cost");
   });
@@ -160,7 +171,7 @@ describe("assertWithDeciderFirst", () => {
     });
 
     expect(details.issues).toContain(
-      "The decider: not met (P=0.10): replies claim actions the tool calls do not show",
+      "Decider: not met (P=0.10): replies claim actions the tool calls do not show",
     );
   });
 
@@ -204,7 +215,7 @@ describe("assertWithDeciderFirst", () => {
       }),
     });
     expect(result.message).toBe(
-      "The decider escalated (lowest answer 0.50 (req2) is between 0.3 and 0.85); LLM judge: fail (1 issue(s))",
+      "Decider escalated (lowest answer 0.50 (req2) is between 0.3 and 0.85); LLM judge: fail (1 issue(s))",
     );
   });
 
@@ -261,13 +272,12 @@ describe("assertWithDeciderFirst", () => {
     expect(llm).toHaveBeenCalledTimes(1);
     expect(details.decidedBy).toBe("llm");
     expect(details.decider).toStrictEqual({
-      route: "openrouter",
+      provider: "openrouter",
+      model: "jev-x",
       verdict: "error",
       escalationReason: "decider call failed: Decider API error 500: down",
     });
-    expect(result.message).toContain(
-      "The decider escalated (decider call failed",
-    );
+    expect(result.message).toContain("Decider escalated (decider call failed");
   });
 
   it("omits provider and model from the LLM record when it gave none", async () => {
@@ -284,7 +294,7 @@ describe("assertWithDeciderFirst", () => {
       "google",
       undefined,
       undefined,
-      { route: "typesafe" },
+      { provider: "typesafe", model: "jev-latest" },
       {
         decider: vi.fn(async () => {
           throw new Error("x");

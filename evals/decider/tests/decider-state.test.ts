@@ -17,6 +17,7 @@ describe("buildDeciderState", () => {
     const { state, truncated } = buildDeciderState(
       [turn("ok")],
       [{ pass: false, label: "has notes", message: "none" }],
+      80_000,
     );
 
     expect(truncated).toBe(false);
@@ -25,9 +26,9 @@ describe("buildDeciderState", () => {
   });
 
   it("says so when there are no checks", () => {
-    expect(buildDeciderState([turn("ok")], []).state.deterministicChecks).toBe(
-      "(no deterministic checks)",
-    );
+    expect(
+      buildDeciderState([turn("ok")], [], 80_000).state.deterministicChecks,
+    ).toBe("(no deterministic checks)");
   });
 
   it("cuts only the longest result and marks it", () => {

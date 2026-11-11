@@ -40,7 +40,7 @@ export interface TrialRunOptions {
 export interface RunContext {
   runId: string;
   judgeOverride: JudgeOverride;
-  /** Set by `--jev`: the decider judges first, the LLM judge handles escalations */
+  /** Set by `--decider`: the decider judges first, the LLM judge handles escalations */
   decider?: DeciderSettings;
   repeatCount: number;
   /** `--thinking` level per `provider/model`; a model not in it sends none. */

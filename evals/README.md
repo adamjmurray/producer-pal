@@ -90,34 +90,33 @@ scripts/eval [options]
 
 ### Options
 
-| Flag                      | Description                                                  |
-| ------------------------- | ------------------------------------------------------------ |
-| `-m, --model <model>`     | Model to test (required, repeatable)                         |
-| `-t, --test <id>`         | Run specific scenario by ID (repeatable)                     |
-| `--tag <name>`            | Run scenarios by tag (repeatable, comma-separated)           |
-| `-a, --all`               | Run all scenarios                                            |
-| `--small-model`           | Enable small-model mode (basic skills + schemas)             |
-| `--json`                  | JSON tool-result output (default: compact)                   |
-| `--tools <list>`          | Tool subset, comma-separated (default: all)                  |
-| `--live-api`              | Enable the Direct Live API tool (`ppal-live-api`)            |
-| `--thinking <spec>`       | Thinking level, for all models or `model=level`              |
-| `-o, --output-tokens <n>` | Max output tokens per call (default 8192; 32768 for `local`) |
-| `-j, --judge <model>`     | Judge model (default: `gemini-3.8-flash`)                    |
-| `--judge-thinking <lvl>`  | Thinking level for the judge (default: none sent)            |
-| `--jev`                   | Jev judges first; `-j` decides what Jev escalates            |
-| `--jev-via <route>`       | Jev route: typesafe, openrouter, vercel                      |
-| `-s, --skip-setup`        | Skip Live Set setup (reuse existing connection)              |
-| `--skip-judge`            | Skip the LLM-as-judge step (checks only)                     |
-| `--skip-reflection`       | Skip the self-reflection turn after a failure                |
-| `--no-seed-connect`       | Let the model run the opening connect turn                   |
-| `-q, --quiet`             | Suppress detailed AI and judge responses                     |
-| `-r, --repeat <N>`        | Run every scenario N times, one round at a time              |
-| `--resume <runId>`        | Finish a stopped run (takes only `-r`, `-q`, `-u`)           |
-| `-u, --usage`             | Show token usage per turn                                    |
-| `--no-save`               | Skip writing JSON result files to disk                       |
-| `-b, --base-url <url>`    | Base URL for the `local` provider                            |
-| `-l, --list`              | List available scenarios                                     |
-| `--list-tags`             | List scenario tags with their counts                         |
+| Flag                         | Description                                                  |
+| ---------------------------- | ------------------------------------------------------------ |
+| `-m, --model <model>`        | Model to test (required, repeatable)                         |
+| `-t, --test <id>`            | Run specific scenario by ID (repeatable)                     |
+| `--tag <name>`               | Run scenarios by tag (repeatable, comma-separated)           |
+| `-a, --all`                  | Run all scenarios                                            |
+| `--small-model`              | Enable small-model mode (basic skills + schemas)             |
+| `--json`                     | JSON tool-result output (default: compact)                   |
+| `--tools <list>`             | Tool subset, comma-separated (default: all)                  |
+| `--live-api`                 | Enable the Direct Live API tool (`ppal-live-api`)            |
+| `--thinking <spec>`          | Thinking level, for all models or `model=level`              |
+| `-o, --output-tokens <n>`    | Max output tokens per call (default 8192; 32768 for `local`) |
+| `-j, --judge <model>`        | Judge model (default: `gemini-3.8-flash`)                    |
+| `--judge-thinking <lvl>`     | Thinking level for the judge (default: none sent)            |
+| `--decider <provider/model>` | A decider judges first; `-j` decides what it escalates       |
+| `-s, --skip-setup`           | Skip Live Set setup (reuse existing connection)              |
+| `--skip-judge`               | Skip the LLM-as-judge step (checks only)                     |
+| `--skip-reflection`          | Skip the self-reflection turn after a failure                |
+| `--no-seed-connect`          | Let the model run the opening connect turn                   |
+| `-q, --quiet`                | Suppress detailed AI and judge responses                     |
+| `-r, --repeat <N>`           | Run every scenario N times, one round at a time              |
+| `--resume <runId>`           | Finish a stopped run (takes only `-r`, `-q`, `-u`)           |
+| `-u, --usage`                | Show token usage per turn                                    |
+| `--no-save`                  | Skip writing JSON result files to disk                       |
+| `-b, --base-url <url>`       | Base URL for the `local` provider                            |
+| `-l, --list`                 | List available scenarios                                     |
+| `--list-tags`                | List scenario tags with their counts                         |
 
 ### Model format
 
@@ -491,19 +490,49 @@ run outranks a recovered one without either being marked a failure.
 The judge defaults to Gemini 3 Flash. Override with `-j`, or skip it entirely
 with `--skip-judge`.
 
-With `--jev`, Jev (TypeSafe AI) judges every `llm_judge` assertion first. A
-clear pass or fail stands. When Jev is unsure, or its call fails, the `-j` LLM
-judge decides as usual. `--skip-judge` wins over `--jev`. The route is the first
-one with a key set (`TYPESAFE_KEY`, `OPENROUTER_KEY`, `VERCEL_AI_GATEWAY_KEY`),
-or `--jev-via`; a run with no key stops at startup. Each saved `judge` records
-`decidedBy` (`decider` or `llm`), the decider's (Jev's) per-question
-probabilities, outcome level and verdict (`pass`, `fail`, `escalate`, or `error`
-with the reason), and the LLM verdict when it ran. An escalation caused only by
-the claims check (below) is marked `escalatedBy: "claims"`. Such results are
-`version: 2`. Results saved before the rename wrote `jev` for `decider` and
-still load. The summary (and `eval-report --summarize`) counts calls the decider
-decided versus escalated, how many of those the claims check caused, and the
-token cost. The thresholds are in `evals/decider/decider-judge.ts`.
+With `--decider`, a decider judges every `llm_judge` assertion first. A clear
+pass or fail stands. When the decider is unsure, or its call fails, the `-j` LLM
+judge decides as usual. `--skip-judge` wins over `--decider`. The value is:
+
+- `jev`: TypeSafe AI's Jev (`jev-latest`) on the first hosted provider with a
+  key set (`TYPESAFE_KEY`, `OPENROUTER_KEY`, `VERCEL_AI_GATEWAY_KEY`, in that
+  order).
+- `typesafe`, `openrouter` or `vercel`: Jev on that provider.
+- `<provider>/<model>`: that model on that provider, split at the first `/` (so
+  `:` in a model name is fine). `ollama` needs a model.
+
+```bash
+scripts/eval --decider jev
+scripts/eval --decider openrouter/jev-latest
+scripts/eval --decider ollama/autotrust-jev
+scripts/eval --decider ollama/pplx-decider-flash:latest
+```
+
+An unknown provider, or a hosted one with no key, stops the run at startup.
+Ollama uses no key and reads `OLLAMA_HOST` (default `http://localhost:11434`).
+Local models answer one call at a time, so the probe scripts default
+`--concurrency` to 1 for `ollama` (4 otherwise). Ollama refuses requests over 64
+KiB, so the transcript sent to it is cut to fit (48,000 characters, and again if
+multi-byte text pushes the request over the limit); hosted providers get 80,000.
+The pass/fail thresholds were tuned on Jev and apply unchanged to every decider.
+Each saved `judge` records `decidedBy` (`decider` or `llm`), the decider's
+`provider` and `model`, its per-question probabilities, outcome level and
+verdict (`pass`, `fail`, `escalate`, or `error` with the reason), and the LLM
+verdict when it ran. When the decider decided, the judge's own `provider` and
+`model` are the decider's. An escalation caused only by the claims check (below)
+is marked `escalatedBy: "claims"`. Such results are `version: 2`. Results saved
+before the rename wrote `jev` for `decider` (and `route` for `provider`, and
+meant TypeSafe's Jev); they still load. The summary (and
+`eval-report --summarize`) counts calls the decider decided versus escalated,
+how many of those the claims check caused, and the token cost. The thresholds
+are in `evals/decider/decider-judge.ts`.
+
+Every decider gets the same graded outcome question, with six levels (0 complete
+failure to 5 complete success; autotrust-jev refuses any other count), so scores
+compare across deciders. Each saved outcome records its `maxScore`; one without
+it was the old four-level scale (0-3). The probe reports read the saved scale,
+and take each score as a share of its own scale when a report mixes the two. The
+outcome does not affect the verdict.
 
 On the Oct 2026 runs, Jev decided about 55–70% of judged results and made no
 wrong passes against a majority of three LLM judges. Its weak spot is a false
@@ -513,11 +542,13 @@ took appears in the tool calls; a low answer (under 0.7) turns a pass into an
 escalation and never into a fail. It flagged all 12 replies with a made-up
 action added to real passes, and none of the 12 unedited copies, but it also
 escalates passes with loose claims, so it adds about 2–14 points of escalations.
-A broad "no hallucinations" question over-failed, and deciding by Jev's outcome
-score instead of the lowest requirement probability passed 5 failures on a
-second run, so the thresholds stay on the requirements. Jev sees only the
-transcript; it can't inspect Live or hear audio. Re-running Jev on the same
-result flips about 5% of verdicts.
+On the old four-level outcome (0-3), Jev's outcome score separated stored-judge
+passes from fails with an AUC of 0.91; that was measured on four levels, and the
+six-level outcome has not been re-measured. A broad "no hallucinations" question
+over-failed, and deciding by Jev's outcome score instead of the lowest
+requirement probability passed 5 failures on a second run, so the thresholds
+stay on the requirements. Jev sees only the transcript; it can't inspect Live or
+hear audio. Re-running Jev on the same result flips about 5% of verdicts.
 
 Requirements like "Confirmed each step was completed" sat between the thresholds
 in nearly every result, because Jev can't tell what counts as confirmed. They
@@ -539,8 +570,8 @@ runs, Luna (high effort) failed 16 and Haiku none, listing the same flaws; a
 Haiku and Sonnet majority sided against Luna on 14 of 15. With the bar, Luna
 agreed with the three-judge majority on 49 of 50 and still failed a false
 account of the model's own steps. On a fresh run it agreed with Haiku and Sonnet
-on 45 of 49 escalations, so `-j codex-code/luna` works for `--jev` runs. Haiku
-is too lenient to judge alone. The judge sees only the transcript and the
+on 45 of 49 escalations, so `-j codex-code/luna` works for `--decider` runs.
+Haiku is too lenient to judge alone. The judge sees only the transcript and the
 criteria, so a Live fact a reply relies on (mixer volume 0.85 is 0 dB) goes in
 the criteria.
 
@@ -573,12 +604,16 @@ Other flags: `--scenario=id`, `--limit=N`, `--concurrency=N`,
 fails as fails for `--sample`), `--results-dir=D`. The header of
 `evals/decider/sidecar-judges/decider-rejudge.ts` lists them all.
 
-`npm run probe:decider` compares the decider with the stored verdict. Results
-the decider decided in a `--jev` run have no LLM verdict, so it leaves them out
-(and says how many); the ones it escalated are the hard cases. `probe:rejudge`
-judges any saved result.
+`npm run probe:decider` compares a decider with the stored verdict, calling the
+one `--decider=<value>` names (same values as the eval flag; default `jev`).
+Results the decider decided in a `--decider` run have no LLM verdict, so it
+leaves them out (and says how many); the ones it escalated are the hard cases.
+The report names the decider as `provider/model`, so results from different
+deciders show up separately. With `--recorded` it reads the answers saved in the
+run instead of calling a decider (and then `--decider` is an error).
+`probe:rejudge` judges any saved result.
 
-To check the decider on a finished `--jev` run in one go, run
+To check the decider on a finished `--decider` run in one go, run
 `npm run probe:decider-recheck -- evals/results/<run>`. It has Luna judge any
 result Luna hasn't judged yet
 (`--judges=codex-code/luna,anthropic/claude-haiku-5-5` adds others, which cost

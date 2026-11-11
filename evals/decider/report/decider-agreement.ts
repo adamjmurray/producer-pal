@@ -66,6 +66,8 @@ export interface OutcomeRow {
   judgePass: boolean;
   /** The decider's outcome score */
   score: number;
+  /** The top of the scale the score is on (0-3 in older results, 0-5 now) */
+  maxScore: number;
 }
 
 export interface OutcomeStats {
@@ -77,6 +79,9 @@ export interface OutcomeStats {
   failMean: number | null;
   /** See `rankAuc`; null unless both groups have rows */
   auc: number | null;
+  /** The scale the means are on; null when the rows mix scales, in which case
+   *  every score is first taken as a share (0-1) of its own scale */
+  maxScore: number | null;
 }
 
 /**
@@ -86,8 +91,11 @@ export interface OutcomeStats {
  * @returns Group sizes, means and AUC
  */
 export function summarizeOutcome(rows: OutcomeRow[]): OutcomeStats {
-  const passes = rows.filter((r) => r.judgePass).map((r) => r.score);
-  const fails = rows.filter((r) => !r.judgePass).map((r) => r.score);
+  const scales = new Set(rows.map((r) => r.maxScore));
+  const value = (r: OutcomeRow): number =>
+    scales.size > 1 ? r.score / r.maxScore : r.score;
+  const passes = rows.filter((r) => r.judgePass).map(value);
+  const fails = rows.filter((r) => !r.judgePass).map(value);
 
   return {
     passN: passes.length,
@@ -95,6 +103,7 @@ export function summarizeOutcome(rows: OutcomeRow[]): OutcomeStats {
     passMean: mean(passes),
     failMean: mean(fails),
     auc: rankAuc(fails, passes),
+    maxScore: scales.size === 1 ? (rows[0]?.maxScore ?? null) : null,
   };
 }
 

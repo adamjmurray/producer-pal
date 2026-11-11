@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { assertWithDeciderFirst } from "./decider-first-judge.ts";
+import {
+  assertWithDeciderFirst,
+  type DeciderSettings,
+} from "./decider-first-judge.ts";
 import { assertWithLlmJudge } from "../../assertions/llm-judge.ts";
 import { type EvalSession } from "../../eval-session.ts";
 import {
@@ -48,10 +51,10 @@ const judgeResult = (
  * Run the assertions with the judge flags under test.
  *
  * @param skipJudge - The --skip-judge flag
- * @param decider - The decider settings, if --jev
+ * @param decider - The decider settings, if --decider
  * @returns The assertion results
  */
-function run(skipJudge: boolean, decider?: { route: "typesafe" }) {
+function run(skipJudge: boolean, decider?: DeciderSettings) {
   return runAllAssertions(
     scenario,
     turns,
@@ -84,17 +87,17 @@ describe("runAllAssertions judge choice", () => {
 
     expect(assertWithLlmJudge).toHaveBeenCalledTimes(1);
     expect(assertWithDeciderFirst).not.toHaveBeenCalled();
-    expect(output()).not.toContain("The decider");
+    expect(output()).not.toContain("Decider");
   });
 
-  it("asks the decider first with --jev, leaving the LLM judge to the wrapper", async () => {
+  it("asks the decider first with --decider, leaving the LLM judge to the wrapper", async () => {
     vi.mocked(assertWithDeciderFirst).mockResolvedValue(
-      judgeResult("The decider judge: pass", {
+      judgeResult("Decider judge: pass", {
         pass: true,
         issues: [],
         decidedBy: "decider",
         decider: {
-          route: "typesafe",
+          provider: "typesafe",
           verdict: "pass",
           minProbability: 0.95,
           outcome: { level: "complete success" },
@@ -102,7 +105,10 @@ describe("runAllAssertions judge choice", () => {
       }),
     );
 
-    const results = await run(false, { route: "typesafe" });
+    const results = await run(false, {
+      provider: "typesafe",
+      model: "jev-latest",
+    });
 
     expect(assertWithLlmJudge).not.toHaveBeenCalled();
     expect(assertWithDeciderFirst).toHaveBeenCalledWith(
@@ -111,16 +117,19 @@ describe("runAllAssertions judge choice", () => {
       "google",
       undefined,
       [],
-      { route: "typesafe" },
+      { provider: "typesafe", model: "jev-latest" },
     );
     expect(results).toHaveLength(1);
     expect(output()).toContain(
-      "The decider decided: pass (outcome: complete success, lowest answer 0.95)",
+      "Decider decided: pass (outcome: complete success, lowest answer 0.95)",
     );
   });
 
-  it("lets --skip-judge win over --jev", async () => {
-    const results = await run(true, { route: "typesafe" });
+  it("lets --skip-judge win over --decider", async () => {
+    const results = await run(true, {
+      provider: "typesafe",
+      model: "jev-latest",
+    });
 
     expect(results).toStrictEqual([]);
     expect(assertWithDeciderFirst).not.toHaveBeenCalled();
@@ -129,15 +138,15 @@ describe("runAllAssertions judge choice", () => {
 
   it("prints the issues of a fail", async () => {
     vi.mocked(assertWithDeciderFirst).mockResolvedValue(
-      judgeResult("The decider judge: fail (1 unmet)", {
+      judgeResult("Decider judge: fail (1 unmet)", {
         pass: false,
-        issues: ["The decider: not met"],
+        issues: ["Decider: not met"],
       }),
     );
 
-    await run(false, { route: "typesafe" });
+    await run(false, { provider: "typesafe", model: "jev-latest" });
 
-    expect(output()).toContain("The decider: not met");
+    expect(output()).toContain("Decider: not met");
     expect(output()).toContain("fail — 1 issue(s)");
   });
 
