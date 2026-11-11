@@ -399,7 +399,11 @@ together.
   audio block). `speedlim` passes at most one per 20 ms and holds the latest for
   the end of the interval, so a move's last value always arrives. On Serum 2, 3
   wrappers with 8 moving params each went from 110% to 95% of a core (10 ms:
-  100%), and sweeps still sounded smooth.
+  100%), and sweeps still sounded smooth. What 20 ms costs: a jump after a hold
+  still lands on time, continuous moves arrive about 10 ms late, and a spike
+  shorter than 20 ms is stretched to 20 ms, not lost. That's from bouncing
+  native and wrapped Serum 2 with the same spiky Filter 1 Freq automation and
+  comparing spectrograms. No difference was audible.
 - **Slot writes or edits**: the script learns of slot writes from `vst~`'s echo.
   While Live plays, an echo for a param a slot drives counts as a slot write, so
   an edit to that param in the plug-in's window during playback is saved only by
