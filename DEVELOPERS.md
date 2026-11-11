@@ -258,8 +258,9 @@ and installs with a dev switch:
 The install and uninstall scripts use `ABLETON_USER_LIBRARY` from `.env`, or
 find Live's User Library if it's unset.
 
-- `npm run e2e:mcp:remote-script -- <file>` - e2e suites that need the script
-  (ask before running; they open Live)
+- `npm run e2e:mcp` runs the e2e suites that need the script too, and fails them
+  if it isn't running (`E2E_REMOTE_SCRIPT=false` skips them). Ask before
+  running; they open Live.
 
 See [remote-script/README.md](remote-script/README.md) and
 [the Python API notes](dev/live-api/python-remote-script-api/README.md). For how

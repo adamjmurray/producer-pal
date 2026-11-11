@@ -17,7 +17,7 @@
  * read past the clips.
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- clip/remote-script/ppal-update-clip-arrangement-automation
+ * Run with: npm run e2e:mcp -- clip/remote-script/ppal-update-clip-arrangement-automation
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";

@@ -5,15 +5,13 @@
 
 /**
  * E2E tests for ppal-manage. Undo and redo step Live's own history through the
- * remote script, so they are opt-in like the other remote script suites:
- * skipped unless E2E_REMOTE_SCRIPT=true, and failed when that's set but the
- * script isn't answering. The install only ever targets a scratch User Library
+ * remote script. The install only ever targets a scratch User Library
  * or is driven into its refusals: a real install would overwrite the
  * developer's installed script and device.
  *
  * Every test opens a fresh Set and only undoes its own track creations.
  *
- * Run with: npm run e2e:mcp:remote-script -- control/ppal-manage
+ * Run with: npm run e2e:mcp -- control/ppal-manage
  */
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

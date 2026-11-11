@@ -24,8 +24,11 @@ import {
   skipTestBeforeLive,
 } from "../../workflow/helpers/server-capability-test-helpers";
 
-/** Whether the suites that need the remote script run at all. */
-export const REMOTE_SCRIPT_E2E = process.env.E2E_REMOTE_SCRIPT === "true";
+/**
+ * Whether the suites that need the remote script run. On unless
+ * E2E_REMOTE_SCRIPT=false, so a missing script fails them instead of skipping.
+ */
+export const REMOTE_SCRIPT_E2E = process.env.E2E_REMOTE_SCRIPT !== "false";
 
 /**
  * Long enough for the end-undo-step request, which a write call doesn't wait
@@ -51,15 +54,14 @@ export async function appendTracksInOneCall(
 }
 
 /**
- * Fail the suite, rather than skip it, when E2E_REMOTE_SCRIPT is set but the
- * remote script isn't answering. Call it ahead of setupMcpTestContext, so it
- * fails before any Live Set opens.
+ * Fail the suite, rather than skip it, when the remote script isn't answering.
+ * Call it ahead of setupMcpTestContext, so it fails before any Live Set opens.
  */
 export function requireRemoteScript(): void {
   beforeAll(async () => {
     if (!(await remoteScriptAnswers())) {
       throw new Error(
-        `E2E_REMOTE_SCRIPT=true, but the Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${String(await resolveRemoteScriptPort())}. Install it and select it as a control surface (see remote-script/README.md).`,
+        `The Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${String(await resolveRemoteScriptPort())}. Install it and select it as a control surface (see remote-script/README.md), or set E2E_REMOTE_SCRIPT=false to skip these suites.`,
       );
     }
   });

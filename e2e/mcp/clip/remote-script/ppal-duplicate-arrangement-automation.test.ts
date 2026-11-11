@@ -24,7 +24,7 @@
  * enough to read anywhere in the test range.
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- clip/remote-script/ppal-duplicate-arrangement-automation
+ * Run with: npm run e2e:mcp -- clip/remote-script/ppal-duplicate-arrangement-automation
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import {

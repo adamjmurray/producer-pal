@@ -6,14 +6,13 @@
 /**
  * E2E tests for which rack macros are mapped, which only the Producer Pal
  * remote script can say: ppal-read-device names them, and ppal-update-device's
- * `macroCount` names the mapped ones it hides. Opt-in like the other remote
- * script suites.
+ * `macroCount` names the mapped ones it hides.
  *
  * Uses: racks-test — t0/d0/c0/d0 is the "Kit" Drum Rack with macros 1-7
  * mapped. The visible count is read at run time, and put back after each test.
  * See: e2e/live-sets/specs/racks-test-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- device/params/ppal-rack-macros-remote-script
+ * Run with: npm run e2e:mcp -- device/params/ppal-rack-macros-remote-script
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { RACKS_TEST_PATH } from "../../e2e-test-set.ts";

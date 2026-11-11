@@ -40,20 +40,15 @@ The suite skips itself when the variable is absent from the test environment.
 
 ### Remote script tests
 
-The `ppal-create-device-browser`, `ppal-create-device-preset` and
-`ppal-update-device-preset` suites load Max for Live devices and presets through
-the Producer Pal remote script, so they need the script installed and selected
-as a control surface — see
-[remote-script/README.md](../../remote-script/README.md). They only run when
-asked:
+Suites that use the Producer Pal remote script (browser loads, presets,
+envelopes, undo, `ppal-manage`) need it installed and selected as a control
+surface — see [remote-script/README.md](../../remote-script/README.md). They run
+by default, and a script that doesn't answer `/ping` fails them rather than
+skipping them. On a machine without the script, skip them explicitly:
 
 ```bash
-npm run e2e:mcp:remote-script -- device/create/ppal-create-device-browser
+E2E_REMOTE_SCRIPT=false npm run e2e:mcp
 ```
-
-That script is `e2e:mcp` with `E2E_REMOTE_SCRIPT=true`. Without the variable a
-suite skips itself. With it, a remote script that doesn't answer `/ping` fails
-the suite instead of skipping it.
 
 `POST /config { "remoteScriptEnabled": false }` makes a running script look
 uninstalled (a test switch, on any build; `resetConfig()` turns it back on).

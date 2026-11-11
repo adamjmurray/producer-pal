@@ -9,10 +9,7 @@
  * one, so these assert shape: the usual plug-in fields, and no stalenessNote
  * (or old stalenessRisk payload) while the browser answers.
  *
- * Opt-in like the other remote script suites: skipped unless
- * E2E_REMOTE_SCRIPT=true.
- *
- * Run with: npm run e2e:mcp:remote-script -- library/ppal-library-plugins
+ * Run with: npm run e2e:mcp -- library/ppal-library-plugins
  */
 import { describe, expect, it } from "vitest";
 import {

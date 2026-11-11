@@ -5,13 +5,13 @@
 
 /**
  * E2E tests for ppal-create-device's `preset`, loaded through the Producer Pal
- * remote script. Opt-in like the other browser tests. Presets are picked from
+ * remote script. Presets are picked from
  * Drift's own list at run time, since editions ship different ones.
  *
  * Uses: e2e-test-set
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- device/create/ppal-create-device-preset
+ * Run with: npm run e2e:mcp -- device/create/ppal-create-device-preset
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import {

@@ -5,14 +5,12 @@
 
 /**
  * E2E tests for POST /config `remoteScriptMinVersion`, the dev switch that makes
- * a running remote script look older than this server needs. Opt-in like the
- * other remote script suites: skipped unless E2E_REMOTE_SCRIPT=true, and failed
- * when that's set but the script isn't answering.
+ * a running remote script look older than this server needs.
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track.
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- control/ppal-remote-script-min-version
+ * Run with: npm run e2e:mcp -- control/ppal-remote-script-min-version
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";

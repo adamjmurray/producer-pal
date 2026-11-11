@@ -8,14 +8,11 @@
  * with ppal-manage is pointed at it; a small-model caller never has the tool,
  * so it is sent to the chat UI instead. Covers a missing script
  * (`remoteScriptEnabled`) and an out-of-date one (`remoteScriptMinVersion`).
- * Opt-in like the other remote script suites: skipped unless
- * E2E_REMOTE_SCRIPT=true, and failed when that's set but the script isn't
- * answering.
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track.
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- device/create/ppal-create-device-manage-wording
+ * Run with: npm run e2e:mcp -- device/create/ppal-create-device-manage-wording
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";

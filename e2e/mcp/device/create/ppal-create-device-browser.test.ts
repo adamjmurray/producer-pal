@@ -5,9 +5,7 @@
 
 /**
  * E2E tests for ppal-create-device loading a device from Live's browser through
- * the Producer Pal remote script. Opt-in: skipped unless E2E_REMOTE_SCRIPT=true,
- * and failed, not skipped, when that's set but the remote script isn't
- * answering. Loads the LFO (a Max for Live device) by a browser path picked by
+ * the Producer Pal remote script. Loads the LFO (a Max for Live device) by a browser path picked by
  * Live version: 12.4 lists it under Audio Effects, older Live under Max for Live
  * > Max Audio Effect. Not by bare name: a Live 12.4 with an older Max for Live
  * pack lists it in both, so the name is ambiguous. Never a machine-specific
@@ -16,7 +14,7 @@
  * Uses: e2e-test-set (rt0 is a return track)
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- device/create/ppal-create-device-browser
+ * Run with: npm run e2e:mcp -- device/create/ppal-create-device-browser
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";

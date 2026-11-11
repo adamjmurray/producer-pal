@@ -20,7 +20,7 @@
  *
  * Uses: e2e-test-set (adds its own MIDI track)
  *
- * Run with: npm run e2e:mcp:remote-script -- device/create/ppal-create-device-hosted
+ * Run with: npm run e2e:mcp -- device/create/ppal-create-device-hosted
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { setConfig, setupMcpTestContext, sleep } from "../../mcp-test-helpers";

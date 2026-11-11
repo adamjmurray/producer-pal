@@ -5,14 +5,13 @@
 
 /**
  * E2E tests for POST /config `remoteScriptEnabled`, the dev switch that makes a
- * running remote script look uninstalled. Opt-in like the other remote script
- * suites: skipped unless E2E_REMOTE_SCRIPT=true, and failed when that's set but
- * the script isn't answering, since with no script there is nothing to switch off.
+ * running remote script look uninstalled. Needs a running script, since with
+ * none there is nothing to switch off.
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track.
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- control/ppal-remote-script-switch
+ * Run with: npm run e2e:mcp -- control/ppal-remote-script-switch
  */
 import { describe, expect, it } from "vitest";
 import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";

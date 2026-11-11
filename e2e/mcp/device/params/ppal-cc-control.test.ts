@@ -14,7 +14,7 @@
  * See: e2e/live-sets/specs/e2e-test-set-spec.md
  *
  * Run with: npm run e2e:mcp -- device/params/ppal-cc-control
- * The remote script cases: npm run e2e:mcp:remote-script -- device/params/ppal-cc-control
+ * The remote script cases: npm run e2e:mcp -- device/params/ppal-cc-control
  */
 import { describe, expect, it } from "vitest";
 import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";

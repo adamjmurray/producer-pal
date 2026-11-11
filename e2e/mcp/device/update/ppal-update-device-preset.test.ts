@@ -5,7 +5,7 @@
 
 /**
  * E2E tests for ppal-update-device's `preset`, swapped onto a device through
- * the Producer Pal remote script. Opt-in like the other browser tests. Presets
+ * the Producer Pal remote script. Presets
  * are picked from Drift's and Reverb's own lists at run time. The preset holding
  * Producer Pal is a repo file, copied into the User Library for the suite.
  *
@@ -13,7 +13,7 @@
  * See: e2e/live-sets/specs/e2e-test-set-spec.md,
  * e2e/live-sets/specs/ppal-drum-pad-spec.md
  *
- * Run with: npm run e2e:mcp:remote-script -- device/update/ppal-update-device-preset
+ * Run with: npm run e2e:mcp -- device/update/ppal-update-device-preset
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
