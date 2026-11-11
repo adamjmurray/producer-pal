@@ -19,7 +19,7 @@ import {
 import { formatTokenLabel } from "../json-results/assertion-label.ts";
 import { countToolCalls } from "../json-results/tool-errors.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
-import { jevJudgeNote, jevJudgeTag } from "./jev-judge-report.ts";
+import { deciderJudgeNote, deciderJudgeTag } from "./decider-judge-report.ts";
 import { OUTPUT_CAP_HINT, outputCapTurns } from "./output-cap.ts";
 import {
   checkTally,
@@ -258,7 +258,7 @@ function printJudgeSection(result: JsonEvalResult): void {
 
   console.log("\n  " + styleText(color, `${label}${issueSuffix}`));
 
-  const note = jevJudgeNote(judge);
+  const note = deciderJudgeNote(judge);
 
   if (note != null) {
     console.log("  " + styleText("gray", note));
@@ -312,7 +312,7 @@ export function printResultBlock(result: JsonEvalResult): void {
     const { color, label, issueCount } = judgeVerdict(result.judge);
     const issueSuffix = issueCount > 0 ? ` — ${issueCount} issue(s)` : "";
 
-    const tag = jevJudgeTag(result.judge);
+    const tag = deciderJudgeTag(result.judge);
     const by = tag == null ? "" : styleText("gray", ` (${tag})`);
 
     console.log(`  Judge:      ${styleText(color, label + issueSuffix)}${by}`);

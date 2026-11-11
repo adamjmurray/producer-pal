@@ -33,7 +33,7 @@ import {
   resolveLiveSetPath,
   validateConfig,
 } from "./run-scenario/scenario-config.ts";
-import { type JevSettings } from "./helpers/judge/jev-first-judge.ts";
+import { type DeciderSettings } from "./helpers/judge/decider-first-judge.ts";
 import {
   runAllAssertions,
   type JudgeOverride,
@@ -61,8 +61,8 @@ export interface RunScenarioOptions {
   /** Thinking level for the model's turns; absent keeps the provider default. */
   thinking?: ThinkingLevel;
   skipJudge?: boolean;
-  /** Judge with Jev first, escalating to the LLM judge (see `--jev`). */
-  jev?: JevSettings;
+  /** Judge with the decider first, escalating to the LLM judge (see `--jev`). */
+  decider?: DeciderSettings;
   /** Skip the post-failure self-reflection turn (default: inject one). */
   skipReflection?: boolean;
   /** Seed the opening connect turn instead of paying the model for it
@@ -162,7 +162,7 @@ export async function runScenario(
       judgeOverride,
       options.skipJudge ?? false,
       options.skipReflection ?? false,
-      options.jev,
+      options.decider,
     );
 
     return {

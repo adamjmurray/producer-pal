@@ -20,7 +20,7 @@ import {
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { printResultsTable, type ResultsByScenario } from "./report-table.ts";
-import { jevSummaryLines } from "./jev-judge-report.ts";
+import { deciderSummaryLines } from "./decider-judge-report.ts";
 import {
   OUTPUT_CAP_HINT,
   outputCapCount,
@@ -56,7 +56,7 @@ export function printSummary(
   // Use the table for multi-model runs (a single run environment per run).
   if (modelSpecs.length > 1) {
     printResultsTable(resultsByScenario, modelSpecs, label);
-    printJevSummary(allResultGroups.flat());
+    printDeciderSummary(allResultGroups.flat());
 
     return;
   }
@@ -115,7 +115,7 @@ export function printSummary(
     `\n  ${totalRuns} run(s): ${passCount} pass, ${failCount} fail${skipText}${errorText}`,
   );
   printOutputCapSummary(allResultGroups.flat());
-  printJevSummary(allResultGroups.flat());
+  printDeciderSummary(allResultGroups.flat());
 }
 
 /**
@@ -138,12 +138,12 @@ function printOutputCapSummary(results: JsonEvalResult[]): void {
 }
 
 /**
- * Print the Jev judge totals, when the run used Jev.
+ * Print the decider judge totals, when the run used the decider.
  *
  * @param results - Every result in the run
  */
-function printJevSummary(results: JsonEvalResult[]): void {
-  const lines = jevSummaryLines(results);
+function printDeciderSummary(results: JsonEvalResult[]): void {
+  const lines = deciderSummaryLines(results);
 
   if (lines.length > 0) {
     console.log("\n" + lines.map((l) => "  " + l).join("\n"));

@@ -10,7 +10,7 @@
 
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type ThinkingByModel } from "../../run-env/parse-thinking-arg.ts";
-import { type JevSettings } from "../judge/jev-first-judge.ts";
+import { type DeciderSettings } from "../judge/decider-first-judge.ts";
 import { type JudgeOverride } from "../judge/judge-section.ts";
 import { type RunEnv } from "../../run-env/run-env.ts";
 import { runScenario } from "../../run-scenario.ts";
@@ -40,8 +40,8 @@ export interface TrialRunOptions {
 export interface RunContext {
   runId: string;
   judgeOverride: JudgeOverride;
-  /** Set by `--jev`: Jev judges first, the LLM judge handles escalations */
-  jev?: JevSettings;
+  /** Set by `--jev`: the decider judges first, the LLM judge handles escalations */
+  decider?: DeciderSettings;
   repeatCount: number;
   /** `--thinking` level per `provider/model`; a model not in it sends none. */
   thinking?: ThinkingByModel;
@@ -72,7 +72,7 @@ export async function runTrial(
   trial: number,
   liveSetAlreadyOpened: boolean,
 ): Promise<JsonEvalResult> {
-  const { runId, judgeOverride, jev, repeatCount, options } = ctx;
+  const { runId, judgeOverride, decider, repeatCount, options } = ctx;
   const modelKey = `${spec.provider}/${spec.model}`;
   const scenarioResult = await runScenario(scenario, {
     provider: spec.provider,
@@ -85,7 +85,7 @@ export async function runTrial(
     outputTokens: options.outputTokens,
     thinking: ctx.thinking?.get(modelKey),
     skipJudge: options.skipJudge,
-    jev,
+    decider,
     skipReflection: options.skipReflection,
     seedConnect: options.seedConnect,
   });

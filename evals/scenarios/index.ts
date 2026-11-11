@@ -29,9 +29,9 @@ import {
 } from "./run-env/parse-thinking-arg.ts";
 import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
 import { keepDisplayAwake } from "./helpers/open-live-set/keep-display-awake.ts";
-import { type JevSettings } from "./helpers/judge/jev-first-judge.ts";
+import { type DeciderSettings } from "./helpers/judge/decider-first-judge.ts";
 import { type JudgeOverride } from "./helpers/judge/judge-section.ts";
-import { resolveJevSettings } from "./helpers/judge/jev-settings.ts";
+import { resolveDeciderSettings } from "./helpers/judge/decider-settings.ts";
 import { generateRunId } from "./helpers/json-results/run-id.ts";
 import { type RunRecord } from "./helpers/trials/resume/run-record.ts";
 import { setQuietMode } from "./helpers/quiet-mode.ts";
@@ -73,9 +73,9 @@ interface CliOptions {
   judge?: string;
   /** Thinking level for the LLM judge. */
   judgeThinking?: string;
-  /** Judge with Jev first; the LLM judge handles what Jev won't decide. */
+  /** Judge with the decider first; the LLM judge handles what the decider won't decide. */
   jev?: boolean;
-  /** Jev route: typesafe, openrouter or vercel. */
+  /** The decider route: typesafe, openrouter or vercel. */
   jevVia?: string;
   repeat?: string;
   /** Run id of an earlier run to finish, replaying its saved options. */
@@ -191,11 +191,11 @@ program
   )
   .option(
     "--jev",
-    "Judge with Jev first; the -j LLM judge decides what Jev escalates",
+    "Judge with the decider first; the -j LLM judge decides what the decider escalates",
   )
   .option(
     "--jev-via <route>",
-    "Jev route: typesafe, openrouter or vercel (default: first with a key set)",
+    "The decider route: typesafe, openrouter or vercel (default: first with a key set)",
   )
   .option(
     "-r, --repeat <N>",
@@ -315,10 +315,10 @@ async function runEvaluation(
   const thinking = parseThinkingOrExit(options.thinking, modelSpecs);
   const judgeOverride = parseJudgeOrExit(options);
 
-  let jev: JevSettings | undefined;
+  let decider: DeciderSettings | undefined;
 
   try {
-    jev = resolveJevSettings(options);
+    decider = resolveDeciderSettings(options);
   } catch (error) {
     program.error(errorMessage(error));
 
@@ -374,15 +374,15 @@ async function runEvaluation(
       );
     }
 
-    if (jev != null) {
+    if (decider != null) {
       console.log(
         styleText(
           "gray",
-          `Judge: Jev first (via ${jev.route}); LLM judge for escalations`,
+          `Judge: decider first (via ${decider.route}); LLM judge for escalations`,
         ),
       );
     } else if (options.jev && options.skipJudge) {
-      console.log(styleText("gray", "--skip-judge: Jev is not used"));
+      console.log(styleText("gray", "--skip-judge: the decider is not used"));
     }
 
     keepDisplayAwake();
@@ -392,7 +392,7 @@ async function runEvaluation(
     const runCtx: RunContext = {
       runId,
       judgeOverride,
-      jev,
+      decider,
       repeatCount,
       thinking,
       options,

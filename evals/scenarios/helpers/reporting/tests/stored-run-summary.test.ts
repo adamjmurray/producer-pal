@@ -55,12 +55,12 @@ const rowFor = (name: string): string =>
   printed().find((line) => line.includes(name)) ?? "";
 
 describe("printStoredRunSummary", () => {
-  it("prints the Jev totals, with the claims check, when the run used Jev", async () => {
-    const jev = (verdict: string, escalatedBy?: string): object => ({
+  it("prints the decider totals, with the claims check, when the run used the decider", async () => {
+    const decider = (verdict: string, escalatedBy?: string): object => ({
       route: "typesafe",
       verdict,
       ...(escalatedBy != null && { escalatedBy }),
-      model: "jev-1",
+      model: "decider-1",
       minProbability: 0.9,
       questions: [],
       outcome: { score: 3, level: "complete success", confidence: 1 },
@@ -83,34 +83,34 @@ describe("printStoredRunSummary", () => {
     await write("a", {
       pass: true,
       issues: [],
-      decidedBy: "jev",
-      jev: jev("pass"),
+      decidedBy: "decider",
+      decider: decider("pass"),
     });
     await write("b", {
       pass: true,
       issues: [],
       decidedBy: "llm",
-      jev: jev("escalate", "claims"),
+      decider: decider("escalate", "claims"),
     });
     await write("c", {
       pass: true,
       issues: [],
       decidedBy: "llm",
-      jev: jev("escalate"),
+      decider: decider("escalate"),
     });
 
     await printStoredRunSummary(dir);
 
     expect(printed().join("\n")).toContain(
-      "Jev judge: 3 call(s); decided 1 (1 pass, 0 fail); escalated 2 to the LLM judge (1 unsure, 1 by the claims check, 0 error)",
+      "The decider judge: 3 call(s); decided 1 (1 pass, 0 fail); escalated 2 to the LLM judge (1 unsure, 1 by the claims check, 0 error)",
     );
   });
 
-  it("prints no Jev line for a run without Jev", async () => {
+  it("prints no decider line for a run without the decider", async () => {
     await store("alpha", "openai/m1", 1, "pass");
     await printStoredRunSummary(dir);
 
-    expect(printed().join("\n")).not.toContain("Jev");
+    expect(printed().join("\n")).not.toContain("The decider");
   });
 
   it("tallies passed trials per scenario and model, with a total", async () => {

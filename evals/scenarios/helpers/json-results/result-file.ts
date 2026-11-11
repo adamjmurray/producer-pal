@@ -9,7 +9,7 @@
  */
 
 import { readFile } from "node:fs/promises";
-import { type JsonEvalResult } from "./types.ts";
+import { type JsonEvalResult, type JsonJudge } from "./types.ts";
 
 /** A run's saved command line and options, for `--resume`; not a result. */
 export const RUN_RECORD_FILE = "run.json";
@@ -25,6 +25,39 @@ export function isResultFile(name: string): boolean {
 }
 
 /**
+ * Rename the old "jev" judge names to "decider" in place, so the rest of the
+ * code sees one shape. Results saved before the rename have `decidedBy: "jev"`,
+ * `provider: "jev"` and a `jev` field where new ones have `decider`.
+ *
+ * @param result - A parsed result file
+ * @returns The same result
+ */
+export function normalizeLegacyJudge(result: JsonEvalResult): JsonEvalResult {
+  const judge = (result as JsonEvalResult | null)?.judge as
+    | (Omit<JsonJudge, "decidedBy"> & { decidedBy?: string; jev?: unknown })
+    | undefined;
+
+  if (judge == null) {
+    return result;
+  }
+
+  if (judge.decidedBy === "jev") {
+    judge.decidedBy = "decider";
+  }
+
+  if (judge.provider === "jev") {
+    judge.provider = "decider";
+  }
+
+  if (judge.jev != null) {
+    judge.decider ??= judge.jev as JsonJudge["decider"];
+    delete judge.jev;
+  }
+
+  return result;
+}
+
+/**
  * Read a result file. A run killed mid-write can leave one cut short, so a
  * file that isn't valid JSON reads as undefined instead of throwing.
  *
@@ -37,7 +70,7 @@ export async function readResultFile(
   const text = await readFile(path, "utf8");
 
   try {
-    return JSON.parse(text) as JsonEvalResult;
+    return normalizeLegacyJudge(JSON.parse(text) as JsonEvalResult);
   } catch {
     return undefined;
   }

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { assertWithJevFirst } from "./jev-first-judge.ts";
+import { assertWithDeciderFirst } from "./decider-first-judge.ts";
 import { assertWithLlmJudge } from "../../assertions/llm-judge.ts";
 import { type EvalSession } from "../../eval-session.ts";
 import {
@@ -18,8 +18,8 @@ vi.mock(import("../../assertions/llm-judge.ts"), async (importOriginal) => ({
   ...(await importOriginal()),
   assertWithLlmJudge: vi.fn(),
 }));
-vi.mock(import("./jev-first-judge.ts"), () => ({
-  assertWithJevFirst: vi.fn(),
+vi.mock(import("./decider-first-judge.ts"), () => ({
+  assertWithDeciderFirst: vi.fn(),
 }));
 
 const scenario = {
@@ -48,10 +48,10 @@ const judgeResult = (
  * Run the assertions with the judge flags under test.
  *
  * @param skipJudge - The --skip-judge flag
- * @param jev - The Jev settings, if --jev
+ * @param decider - The decider settings, if --jev
  * @returns The assertion results
  */
-function run(skipJudge: boolean, jev?: { route: "typesafe" }) {
+function run(skipJudge: boolean, decider?: { route: "typesafe" }) {
   return runAllAssertions(
     scenario,
     turns,
@@ -60,7 +60,7 @@ function run(skipJudge: boolean, jev?: { route: "typesafe" }) {
     undefined,
     skipJudge,
     true,
-    jev,
+    decider,
   );
 }
 
@@ -70,12 +70,12 @@ describe("runAllAssertions judge choice", () => {
   beforeEach(() => {
     log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     vi.mocked(assertWithLlmJudge).mockReset();
-    vi.mocked(assertWithJevFirst).mockReset();
+    vi.mocked(assertWithDeciderFirst).mockReset();
   });
 
   const output = (): string => log.mock.calls.flat().join("\n");
 
-  it("uses only the LLM judge without Jev", async () => {
+  it("uses only the LLM judge without the decider", async () => {
     vi.mocked(assertWithLlmJudge).mockResolvedValue(
       judgeResult("LLM judge: pass", { pass: true, issues: [] }),
     );
@@ -83,17 +83,17 @@ describe("runAllAssertions judge choice", () => {
     await run(false);
 
     expect(assertWithLlmJudge).toHaveBeenCalledTimes(1);
-    expect(assertWithJevFirst).not.toHaveBeenCalled();
-    expect(output()).not.toContain("Jev");
+    expect(assertWithDeciderFirst).not.toHaveBeenCalled();
+    expect(output()).not.toContain("The decider");
   });
 
-  it("asks Jev first with --jev, leaving the LLM judge to the wrapper", async () => {
-    vi.mocked(assertWithJevFirst).mockResolvedValue(
-      judgeResult("Jev judge: pass", {
+  it("asks the decider first with --jev, leaving the LLM judge to the wrapper", async () => {
+    vi.mocked(assertWithDeciderFirst).mockResolvedValue(
+      judgeResult("The decider judge: pass", {
         pass: true,
         issues: [],
-        decidedBy: "jev",
-        jev: {
+        decidedBy: "decider",
+        decider: {
           route: "typesafe",
           verdict: "pass",
           minProbability: 0.95,
@@ -105,7 +105,7 @@ describe("runAllAssertions judge choice", () => {
     const results = await run(false, { route: "typesafe" });
 
     expect(assertWithLlmJudge).not.toHaveBeenCalled();
-    expect(assertWithJevFirst).toHaveBeenCalledWith(
+    expect(assertWithDeciderFirst).toHaveBeenCalledWith(
       scenario.assertions[0],
       turns,
       "google",
@@ -115,7 +115,7 @@ describe("runAllAssertions judge choice", () => {
     );
     expect(results).toHaveLength(1);
     expect(output()).toContain(
-      "Jev decided: pass (outcome: complete success, lowest answer 0.95)",
+      "The decider decided: pass (outcome: complete success, lowest answer 0.95)",
     );
   });
 
@@ -123,21 +123,21 @@ describe("runAllAssertions judge choice", () => {
     const results = await run(true, { route: "typesafe" });
 
     expect(results).toStrictEqual([]);
-    expect(assertWithJevFirst).not.toHaveBeenCalled();
+    expect(assertWithDeciderFirst).not.toHaveBeenCalled();
     expect(assertWithLlmJudge).not.toHaveBeenCalled();
   });
 
   it("prints the issues of a fail", async () => {
-    vi.mocked(assertWithJevFirst).mockResolvedValue(
-      judgeResult("Jev judge: fail (1 unmet)", {
+    vi.mocked(assertWithDeciderFirst).mockResolvedValue(
+      judgeResult("The decider judge: fail (1 unmet)", {
         pass: false,
-        issues: ["Jev: not met"],
+        issues: ["The decider: not met"],
       }),
     );
 
     await run(false, { route: "typesafe" });
 
-    expect(output()).toContain("Jev: not met");
+    expect(output()).toContain("The decider: not met");
     expect(output()).toContain("fail — 1 issue(s)");
   });
 

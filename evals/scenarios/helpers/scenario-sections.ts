@@ -14,7 +14,7 @@ import {
   formatSubsectionHeader,
 } from "#evals/chat/shared/formatting.ts";
 import { isSignalAssertion } from "../assertions/index.ts";
-import { type JevSettings } from "./judge/jev-first-judge.ts";
+import { type DeciderSettings } from "./judge/decider-first-judge.ts";
 import {
   printJudgeSection,
   type JudgeOverride,
@@ -102,7 +102,7 @@ async function runAssertionLoop(
  * @param judgeOverride - Optional judge LLM override
  * @param skipJudge - When true, skip the LLM-as-judge step entirely
  * @param skipReflection - When true, skip the post-failure self-reflection turn
- * @param jev - When set, Jev judges first and the LLM judge only escalations
+ * @param decider - When set, the decider judges first and the LLM judge only escalations
  * @returns Combined assertion results
  */
 export async function runAllAssertions(
@@ -113,7 +113,7 @@ export async function runAllAssertions(
   judgeOverride: JudgeOverride | undefined,
   skipJudge: boolean,
   skipReflection: boolean,
-  jev?: JevSettings,
+  decider?: DeciderSettings,
 ): Promise<EvalAssertionResult[]> {
   const checkAssertions = scenario.assertions.filter(
     (a) =>
@@ -164,7 +164,7 @@ export async function runAllAssertions(
     provider,
     judgeOverride,
     toCheckSummaries([...checkResults, ...signalResults]),
-    jev,
+    decider,
   );
 
   return [

@@ -49,4 +49,47 @@ describe("result-file", () => {
       scenarioId: "a",
     });
   });
+
+  it("renames the old jev judge names to decider", async () => {
+    const oldJudge = {
+      pass: true,
+      issues: [],
+      provider: "jev",
+      model: "jev-1.14.0",
+      decidedBy: "jev",
+      jev: { route: "typesafe", verdict: "pass", model: "jev-1.14.0" },
+    };
+
+    expect(await read(JSON.stringify({ judge: oldJudge }))).toStrictEqual({
+      judge: {
+        pass: true,
+        issues: [],
+        provider: "decider",
+        model: "jev-1.14.0",
+        decidedBy: "decider",
+        decider: { route: "typesafe", verdict: "pass", model: "jev-1.14.0" },
+      },
+    });
+  });
+
+  it("keeps a decider judge as it is, and an LLM judge from a jev run", async () => {
+    const decider = { route: "typesafe", verdict: "escalate" };
+    const judge = { pass: false, issues: [], provider: "x", decidedBy: "llm" };
+    const text = (extra: object): string =>
+      JSON.stringify({ judge: { ...judge, ...extra } });
+
+    expect(await read(text({ decider }))).toStrictEqual({
+      judge: { ...judge, decider },
+    });
+    expect(await read(text({ jev: decider }))).toStrictEqual({
+      judge: { ...judge, decider },
+    });
+  });
+
+  it("reads a result with no judge, or none at all", async () => {
+    expect(await read("null")).toBeNull();
+    expect(await read('{"judge": {"pass": true, "issues": []}}')).toStrictEqual(
+      { judge: { pass: true, issues: [] } },
+    );
+  });
 });

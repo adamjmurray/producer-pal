@@ -496,13 +496,14 @@ clear pass or fail stands. When Jev is unsure, or its call fails, the `-j` LLM
 judge decides as usual. `--skip-judge` wins over `--jev`. The route is the first
 one with a key set (`TYPESAFE_KEY`, `OPENROUTER_KEY`, `VERCEL_AI_GATEWAY_KEY`),
 or `--jev-via`; a run with no key stops at startup. Each saved `judge` records
-`decidedBy` (`jev` or `llm`), Jev's per-question probabilities, outcome level
-and verdict (`pass`, `fail`, `escalate`, or `error` with the reason), and the
-LLM verdict when it ran. An escalation caused only by the claims check (below)
-is marked `escalatedBy: "claims"`. Such results are `version: 2`. The summary
-(and `eval-report --summarize`) counts calls Jev decided versus escalated, how
-many of those the claims check caused, and the token cost. The thresholds are in
-`evals/jev/jev-judge.ts`.
+`decidedBy` (`decider` or `llm`), the decider's (Jev's) per-question
+probabilities, outcome level and verdict (`pass`, `fail`, `escalate`, or `error`
+with the reason), and the LLM verdict when it ran. An escalation caused only by
+the claims check (below) is marked `escalatedBy: "claims"`. Such results are
+`version: 2`. Results saved before the rename wrote `jev` for `decider` and
+still load. The summary (and `eval-report --summarize`) counts calls the decider
+decided versus escalated, how many of those the claims check caused, and the
+token cost. The thresholds are in `evals/decider/decider-judge.ts`.
 
 On the Oct 2026 runs, Jev decided about 55–70% of judged results and made no
 wrong passes against a majority of three LLM judges. Its weak spot is a false
@@ -567,32 +568,33 @@ npm run probe:rejudge -- 2026-10-29T07-51-59Z -j claude-code/sonnet --sample=fai
 ```
 
 Other flags: `--scenario=id`, `--limit=N`, `--concurrency=N`,
-`--judge-thinking=<level>`, `--escalated` (only results Jev escalated),
+`--judge-thinking=<level>`, `--escalated` (only results the decider escalated),
 `--include-failed-checks`, `--fails-from=<judge-slug>` (count another judge's
 fails as fails for `--sample`), `--results-dir=D`. The header of
-`evals/jev/sidecar-judges/jev-rejudge.ts` lists them all.
+`evals/decider/sidecar-judges/decider-rejudge.ts` lists them all.
 
-`npm run probe:jev` compares Jev with the stored verdict. Results Jev decided in
-a `--jev` run have no LLM verdict, so it leaves them out (and says how many);
-the ones Jev escalated are the hard cases. `probe:rejudge` judges any saved
-result.
+`npm run probe:decider` compares the decider with the stored verdict. Results
+the decider decided in a `--jev` run have no LLM verdict, so it leaves them out
+(and says how many); the ones it escalated are the hard cases. `probe:rejudge`
+judges any saved result.
 
-To check Jev on a finished `--jev` run in one go, run
-`npm run probe:jev-recheck -- evals/results/<run>`. It has Luna judge any result
-Luna hasn't judged yet (`--judges=codex-code/luna,anthropic/claude-haiku-5-5`
-adds others, which cost money; judges already in the run's `judges/` folder are
-used as is), then reports the Jev answers saved in the run against the majority
-of those judges: wrong passes and fails, the escalation rate, how each judge
-does on the escalated results, which requirements sit between the thresholds
-most often, and the claims-escalated results with the LLM judge's verdict on
-each. It calls no Jev and no model; `--dry-run` only counts. The same report for
-any run is `probe:jev -- <run> --recorded --reference=<judge-slug>`.
+To check the decider on a finished `--jev` run in one go, run
+`npm run probe:decider-recheck -- evals/results/<run>`. It has Luna judge any
+result Luna hasn't judged yet
+(`--judges=codex-code/luna,anthropic/claude-haiku-5-5` adds others, which cost
+money; judges already in the run's `judges/` folder are used as is), then
+reports the decider answers saved in the run against the majority of those
+judges: wrong passes and fails, the escalation rate, how each judge does on the
+escalated results, which requirements sit between the thresholds most often, and
+the claims-escalated results with the LLM judge's verdict on each. It calls no
+decider and no model; `--dry-run` only counts. The same report for any run is
+`probe:decider -- <run> --recorded --reference=<judge-slug>`.
 
-`npm run probe:jev -- <run> --reference=<judge-slug>` (repeatable) then compares
-Jev with those sidecar judges instead of the stored verdict. With several, their
-majority is the reference; it also reports pairwise agreement, each judge's
-wrong passes and fails against the others, and lists the results where the LLM
-judges split, for hand-labeling.
+`npm run probe:decider -- <run> --reference=<judge-slug>` (repeatable) then
+compares the decider with those sidecar judges instead of the stored verdict.
+With several, their majority is the reference; it also reports pairwise
+agreement, each judge's wrong passes and fails against the others, and lists the
+results where the LLM judges split, for hand-labeling.
 
 When using `-r N`, the run goes in rounds: every scenario once, then every
 scenario again, up to N. Cancelling part-way leaves about the same number of

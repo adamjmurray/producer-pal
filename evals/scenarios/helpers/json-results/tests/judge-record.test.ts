@@ -4,19 +4,21 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
-import { type JevFirstDetails } from "../../judge/jev-first-judge.ts";
+import { type DeciderFirstDetails } from "../../judge/decider-first-judge.ts";
 import {
   type EvalAssertionResult,
   type EvalScenarioResult,
 } from "../../../types.ts";
 import { buildJudge } from "../judge-record.ts";
 import { toJsonResult } from "../result-conversion.ts";
-import { type JsonJevAnswer } from "../types.ts";
+import { type JsonDeciderAnswer } from "../types.ts";
 
-const jevAnswer = (over: Partial<JsonJevAnswer> = {}): JsonJevAnswer => ({
+const deciderAnswer = (
+  over: Partial<JsonDeciderAnswer> = {},
+): JsonDeciderAnswer => ({
   route: "openrouter",
   verdict: "pass",
-  model: "jev-1.2",
+  model: "decider-1.2",
   minProbability: 0.9,
   questions: [{ id: "req1", kind: "requirement", probability: 0.9 }],
   outcome: { score: 3, level: "complete success", confidence: 0.8 },
@@ -34,73 +36,81 @@ const judgeAssertion = (details: unknown): EvalAssertionResult => ({
   details,
 });
 
-const jevDecided: JevFirstDetails = {
+const deciderDecided: DeciderFirstDetails = {
   pass: true,
   issues: [],
-  decidedBy: "jev",
-  jev: jevAnswer(),
+  decidedBy: "decider",
+  decider: deciderAnswer(),
 };
 
-const escalated: JevFirstDetails = {
+const escalated: DeciderFirstDetails = {
   pass: false,
   issues: ["bad"],
   provider: "google",
   model: "gemini-x",
   decidedBy: "llm",
-  jev: jevAnswer({ verdict: "escalate", escalationReason: "close" }),
+  decider: deciderAnswer({ verdict: "escalate", escalationReason: "close" }),
   llm: { pass: false, issues: ["bad"], provider: "google", model: "gemini-x" },
 };
 
-describe("buildJudge with Jev", () => {
-  it("records a Jev-decided verdict with Jev as its provider and model", () => {
-    expect(buildJudge([judgeAssertion(jevDecided)], false)).toStrictEqual({
+describe("buildJudge with the decider", () => {
+  it("records a decider-decided verdict with the decider as its provider and model", () => {
+    expect(buildJudge([judgeAssertion(deciderDecided)], false)).toStrictEqual({
       pass: true,
       issues: [],
-      provider: "jev",
-      model: "jev-1.2",
-      decidedBy: "jev",
-      jev: jevDecided.jev,
+      provider: "decider",
+      model: "decider-1.2",
+      decidedBy: "decider",
+      decider: deciderDecided.decider,
     });
   });
 
-  it("records an escalated verdict as the LLM judge's, with Jev's answer", () => {
+  it("records an escalated verdict as the LLM judge's, with the decider's answer", () => {
     expect(buildJudge([judgeAssertion(escalated)], false)).toStrictEqual({
       pass: false,
       issues: ["bad"],
       provider: "google",
       model: "gemini-x",
       decidedBy: "llm",
-      jev: escalated.jev,
+      decider: escalated.decider,
       llm: escalated.llm,
     });
   });
 
-  it("records a failed Jev call without a Jev model", () => {
-    const failure: JevFirstDetails = {
+  it("records a failed decider call without a decider model", () => {
+    const failure: DeciderFirstDetails = {
       ...escalated,
-      jev: { route: "typesafe", verdict: "error", escalationReason: "boom" },
+      decider: {
+        route: "typesafe",
+        verdict: "error",
+        escalationReason: "boom",
+      },
     };
 
-    expect(buildJudge([judgeAssertion(failure)], false)?.jev).toStrictEqual({
-      route: "typesafe",
-      verdict: "error",
-      escalationReason: "boom",
-    });
+    expect(buildJudge([judgeAssertion(failure)], false)?.decider).toStrictEqual(
+      {
+        route: "typesafe",
+        verdict: "error",
+        escalationReason: "boom",
+      },
+    );
   });
 
-  it("gives a Jev verdict no model if Jev's record has none", () => {
-    const odd = { ...jevDecided, jev: undefined };
+  it("gives a decider verdict no model if the decider's record has none", () => {
+    const odd = { ...deciderDecided, decider: undefined };
 
     expect(buildJudge([judgeAssertion(odd)], false)).toStrictEqual({
       pass: true,
       issues: [],
-      provider: "jev",
-      decidedBy: "jev",
+      provider: "decider",
+      decidedBy: "decider",
     });
   });
 
   it("keeps the advisory flag", () => {
-    expect(buildJudge([judgeAssertion(jevDecided)], true)?.advisory).toBe(true);
+    expect(buildJudge([judgeAssertion(deciderDecided)], true)?.advisory).toBe(
+      true,
+    );
   });
 });
 
@@ -141,13 +151,17 @@ describe("saved result version", () => {
     expect(result.judge).not.toHaveProperty("decidedBy");
   });
 
-  it("is 2 once Jev was asked, whoever decided", () => {
-    expect(convert(jevDecided).version).toBe(2);
+  it("is 2 once the decider was asked, whoever decided", () => {
+    expect(convert(deciderDecided).version).toBe(2);
     expect(convert(escalated).version).toBe(2);
   });
 
-  it("lets a Jev fail gate the result, unless the judge is advisory", () => {
-    const failed = { ...jevDecided, pass: false, issues: ["Jev: not met"] };
+  it("lets a decider fail gate the result, unless the judge is advisory", () => {
+    const failed = {
+      ...deciderDecided,
+      pass: false,
+      issues: ["The decider: not met"],
+    };
 
     expect(convert(failed).result).toBe("fail");
     expect(convert(failed, true).result).toBe("pass");

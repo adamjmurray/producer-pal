@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 /**
- * The scenario runner's Judge section: runs the judge (Jev first with `--jev`)
+ * The scenario runner's Judge section: runs the judge (the decider first with `--jev`)
  * and prints the verdict.
  */
 
@@ -15,7 +15,7 @@ import {
   assertWithLlmJudge,
   type CheckSummary,
 } from "../../assertions/index.ts";
-import { jevJudgeNote } from "../reporting/jev-judge-report.ts";
+import { deciderJudgeNote } from "../reporting/decider-judge-report.ts";
 import { isQuietMode } from "../quiet-mode.ts";
 import {
   type EvalAssertion,
@@ -24,10 +24,10 @@ import {
   type EvalTurnResult,
 } from "../../types.ts";
 import {
-  assertWithJevFirst,
-  type JevFirstDetails,
-  type JevSettings,
-} from "./jev-first-judge.ts";
+  assertWithDeciderFirst,
+  type DeciderFirstDetails,
+  type DeciderSettings,
+} from "./decider-first-judge.ts";
 
 /** CLI override for the judge model, when one was passed. */
 export interface JudgeOverride {
@@ -45,7 +45,7 @@ export interface JudgeOverride {
  * @param provider - LLM provider
  * @param judgeOverride - Optional judge override
  * @param checkSummaries - Check results for judge context
- * @param jev - When set, Jev judges first
+ * @param decider - When set, the decider judges first
  * @returns Judge assertion results
  */
 export async function printJudgeSection(
@@ -54,7 +54,7 @@ export async function printJudgeSection(
   provider: EvalProvider,
   judgeOverride: JudgeOverride | undefined,
   checkSummaries: CheckSummary[],
-  jev?: JevSettings,
+  decider?: DeciderSettings,
 ): Promise<EvalAssertionResult[]> {
   if (assertions.length === 0) {
     return [];
@@ -70,7 +70,7 @@ export async function printJudgeSection(
     console.log("\n" + formatSubsectionHeader("Judge"));
 
     const result =
-      jev == null
+      decider == null
         ? await assertWithLlmJudge(
             assertion,
             turns,
@@ -78,13 +78,13 @@ export async function printJudgeSection(
             judgeOverride,
             checkSummaries,
           )
-        : await assertWithJevFirst(
+        : await assertWithDeciderFirst(
             assertion,
             turns,
             provider,
             judgeOverride,
             checkSummaries,
-            jev,
+            decider,
           );
 
     results.push(result);
@@ -99,7 +99,7 @@ export async function printJudgeSection(
 
 /** What the console shows of a judge result. */
 type JudgeDetailsView = { pass: boolean; issues: string[] } & Partial<
-  Pick<JevFirstDetails, "decidedBy" | "jev">
+  Pick<DeciderFirstDetails, "decidedBy" | "decider">
 >;
 
 /**
@@ -125,7 +125,7 @@ function printJudgeDetails(details: JudgeDetailsView | undefined): void {
 
   console.log("\n  " + styleText(color, `${label}${issueSuffix}`));
 
-  const note = details == null ? undefined : jevJudgeNote(details);
+  const note = details == null ? undefined : deciderJudgeNote(details);
 
   if (note != null) {
     console.log("  " + styleText("gray", note));

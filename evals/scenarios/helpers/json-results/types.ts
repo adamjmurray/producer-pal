@@ -11,8 +11,8 @@ export const RESULTS_DIR = "evals/results";
 
 /** JSON-serializable result of a single eval scenario run */
 export interface JsonEvalResult {
-  /** Schema version for forward compatibility. 2 adds the Jev-first judge
-   *  fields (`JsonJudge.decidedBy`, `jev`, `llm`); runs without `--jev` still
+  /** Schema version for forward compatibility. 2 adds the decider-first judge
+   *  fields (`JsonJudge.decidedBy`, `decider`, `llm`); runs without `--jev` still
    *  write 1. */
   version: 1 | 2;
   /** Unique run identifier (ISO timestamp with dashes, e.g. "2026-03-22T10-30-00Z") */
@@ -115,18 +115,18 @@ export interface JsonJudge {
   /** Model that produced the verdict, as resolved (absent in older results) */
   model?: string;
   /** Who gave the verdict above. Absent in results from runs without
-   *  `--jev`, where it was always the LLM judge. When "jev", `provider` is
-   *  "jev", `model` is the Jev version and `issues` only name unmet
-   *  requirements (Jev gives no explanation). */
-  decidedBy?: JudgeDecider;
-  /** What Jev said, in a `--jev` run (also when it escalated or failed) */
-  jev?: JsonJevJudgment;
-  /** The LLM judge's own verdict, when it ran (after a Jev escalation) */
+   *  `--jev`, where it was always the LLM judge. When "decider", `provider` is
+   *  "decider", `model` is the decider version and `issues` only name unmet
+   *  requirements (the decider gives no explanation). */
+  decidedBy?: JudgeDecidedBy;
+  /** What the decider said, in a `--jev` run (also when it escalated or failed) */
+  decider?: JsonDeciderJudgment;
+  /** The LLM judge's own verdict, when it ran (after a decider escalation) */
   llm?: JsonLlmVerdict;
 }
 
 /** Who decided a judge verdict. */
-export type JudgeDecider = "jev" | "llm";
+export type JudgeDecidedBy = "decider" | "llm";
 
 /** An LLM judge's verdict. */
 export interface JsonLlmVerdict {
@@ -136,44 +136,44 @@ export interface JsonLlmVerdict {
   model?: string;
 }
 
-/** What Jev answered for one judge call. */
-export interface JsonJevAnswer {
-  /** The Jev route: typesafe, openrouter or vercel */
+/** What the decider answered for one judge call. */
+export interface JsonDeciderAnswer {
+  /** The decider route: typesafe, openrouter or vercel */
   route: string;
   /** pass and fail decide the verdict; escalate hands it to the LLM judge */
   verdict: "pass" | "fail" | "escalate";
-  /** Why Jev did not decide (present when `verdict` is escalate) */
+  /** Why the decider did not decide (present when `verdict` is escalate) */
   escalationReason?: string;
   /** "claims" when every requirement passed and only the claims check kept the
    *  pass from standing (present only on such escalations) */
   escalatedBy?: "claims";
-  /** The model version Jev reports */
+  /** The model version the decider reports */
   model: string;
   /** The lowest requirement or whole-criteria answer; it decides pass or fail
    *  (the claims answer can only turn a pass into an escalation) */
   minProbability: number;
-  questions: JsonJevQuestion[];
+  questions: JsonDeciderQuestion[];
   /** A graded 0-3 read on the whole run; it does not affect `verdict` */
   outcome: { score: number; level: string; confidence: number };
   inputTokens: number;
   outputTokens: number;
   /** USD, when the route reports it (OpenRouter only) */
   cost?: number;
-  /** The transcript was cut to fit Jev's input limit */
+  /** The transcript was cut to fit the decider's input limit */
   truncated: boolean;
 }
 
-/** The Jev call failed, so the LLM judge decided. */
-export interface JsonJevFailure {
+/** The decider call failed, so the LLM judge decided. */
+export interface JsonDeciderFailure {
   route: string;
   verdict: "error";
   escalationReason: string;
 }
 
-export type JsonJevJudgment = JsonJevAnswer | JsonJevFailure;
+export type JsonDeciderJudgment = JsonDeciderAnswer | JsonDeciderFailure;
 
-/** One yes/no question Jev answered. */
-export interface JsonJevQuestion {
+/** One yes/no question the decider answered. */
+export interface JsonDeciderQuestion {
   /** req1, req2, ... for the numbered requirements; "whole" for the criteria;
    *  "claims" for the check of the replies' claims against the tool calls */
   id: string;
