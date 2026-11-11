@@ -56,6 +56,7 @@ import { nodeError, nodeInfo } from "./node-for-max-logger.ts";
 import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-collection-route.ts";
 import { registerGlobalContextRoutes } from "./routes/config/global-context-route.ts";
 import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
+import { registerNetworkAccessRoutes } from "./routes/config/network-access-route.ts";
 import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
 import { setRemoteScriptEnabled } from "./rpc/remote-script/remote-script-client.ts";
 import { setRemoteScriptMinVersion } from "./rpc/remote-script/port/remote-script-version.ts";
@@ -390,6 +391,7 @@ export function createExpressApp(): Express {
 
   registerGlobalContextRoutes(app);
   registerGlobalSettingsRoutes(app);
+  registerNetworkAccessRoutes(app);
   registerMemoryCollectionRoutes(app);
   registerCustomSkillsCollectionRoutes(app);
   registerSystemPromptRoutes(app);

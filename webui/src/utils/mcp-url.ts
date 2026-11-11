@@ -110,6 +110,15 @@ export function getSettingsUrl(): string {
 }
 
 /**
+ * Gets the network-access endpoint URL ("Allow other devices to connect": GET
+ * reads it, PUT changes it).
+ * @returns {string} The network-access endpoint URL
+ */
+export function getNetworkAccessUrl(): string {
+  return serverUrl("/network-access");
+}
+
+/**
  * Gets the remote-script endpoint URL (whether the Producer Pal control surface
  * is installed in Live's User Library, and whether Live is running it).
  * @returns {string} The remote-script endpoint URL

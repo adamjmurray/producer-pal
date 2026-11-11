@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { createServer, type RequestListener, type Server } from "node:http";
-import { type AddressInfo, connect } from "node:net";
+import { type AddressInfo, type Socket, connect } from "node:net";
 import Max from "max-api";
 import { DEFAULT_MCP_PORT } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
@@ -13,11 +13,18 @@ import {
   readAllowNetwork,
   writeAllowNetwork,
 } from "../config-store/global-settings-store.ts";
-import { setNetworkAccessAllowed } from "./network-access-state.ts";
+import {
+  type SwitchRequest,
+  clearNetworkSwitcher,
+  setNetworkAccessAllowed,
+  setNetworkSwitcher,
+} from "./network-access-state.ts";
 
 const LOOPBACK_V4 = "127.0.0.1";
 const LOOPBACK_V6 = "::1";
 const PROBE_TIMEOUT_MS = 250;
+const ANSWER_TIMEOUT_MS = 2000;
+const CLOSE_TIMEOUT_MS = 1000;
 
 // Errors binding ::1 that mean IPv6 is turned off on this machine.
 const IPV6_UNAVAILABLE_CODES = new Set([
@@ -31,8 +38,15 @@ interface ServerError extends Error {
 }
 
 export interface HttpListeners {
-  /** Re-listen on the same port: all interfaces when true, this machine only when false */
-  setAllowNetwork: (allowNetwork: boolean) => Promise<void>;
+  /**
+   * Re-listen on the same port: all interfaces when true, this machine only
+   * when false. A `request` that asked for it keeps its connection open until
+   * its answer is sent, even if other switches are queued behind it.
+   */
+  setAllowNetwork: (
+    allowNetwork: boolean,
+    request?: SwitchRequest,
+  ) => Promise<void>;
   /** The addresses currently listened on */
   addresses: () => AddressInfo[];
   close: () => Promise<void>;
@@ -44,6 +58,8 @@ export interface HttpListenOptions {
   onListening?: () => void;
   /** Test seam for the server factory */
   create?: (app: RequestListener) => Server;
+  /** Test seam: how long to wait for a switch's answer to be sent */
+  answerTimeoutMs?: number;
 }
 
 /**
@@ -63,6 +79,7 @@ export async function startHttpListeners(
   options: HttpListenOptions,
 ): Promise<HttpListeners> {
   const { port, create = createServer } = options;
+  const answerTimeoutMs = options.answerTimeoutMs ?? ANSWER_TIMEOUT_MS;
   let current = readAllowNetwork();
   let servers = await listenAll(app, port, current, create);
 
@@ -82,16 +99,47 @@ export async function startHttpListeners(
     return queue;
   };
 
+  // Connections of requests waiting on a switch. A switch spares them all, not
+  // only its own request's, so a queued one isn't cut before its turn.
+  const held = new Set<Socket>();
+
+  // Listen once more after dropping `held` if the port looks busy: a held
+  // connection to a closing server may be what holds it. Listening while
+  // connections are open is a platform detail we don't rely on.
+  const listen = async (
+    allowNetwork: boolean,
+    closing: Closing,
+  ): Promise<Server[]> => {
+    try {
+      return await listenAll(app, boundPort, allowNetwork, create);
+    } catch (error) {
+      if ((error as ServerError).code !== "EADDRINUSE" || held.size === 0) {
+        throw error;
+      }
+
+      for (const socket of held) {
+        socket.destroy();
+      }
+
+      held.clear();
+      await settleWithin(closing.closed, CLOSE_TIMEOUT_MS);
+
+      return await listenAll(app, boundPort, allowNetwork, create);
+    }
+  };
+
   // Never rejects: an unhandled rejection would kill the process. On failure,
   // fall back to this machine only, never to all interfaces.
   const relisten = async (next: boolean): Promise<void> => {
-    await closeAll(servers);
+    const closing = closeAll(servers, held);
+
+    await closing.ready;
     servers = [];
     current = false;
     setNetworkAccessAllowed(false);
 
     try {
-      servers = await listenAll(app, boundPort, next, create);
+      servers = await listen(next, closing);
       current = next;
       setNetworkAccessAllowed(next);
       logNetworkAccess(next);
@@ -106,7 +154,7 @@ export async function startHttpListeners(
     }
 
     try {
-      servers = await listenAll(app, boundPort, false, create);
+      servers = await listen(false, closing);
       logNetworkAccess(false);
     } catch (error) {
       nodeError(errorMessage(error));
@@ -114,8 +162,12 @@ export async function startHttpListeners(
   };
 
   const listeners: HttpListeners = {
-    setAllowNetwork: (next) =>
-      enqueue(async () => {
+    setAllowNetwork: (next, request) => {
+      if (request != null) {
+        hold(held, request.keep);
+      }
+
+      return enqueue(async () => {
         // Nothing listening (a failed switch): retry even an unchanged value.
         if (next !== current || servers.length === 0) {
           await relisten(next);
@@ -123,19 +175,28 @@ export async function startHttpListeners(
         }
 
         showState(current);
-      }),
+
+        if (request != null) {
+          await deliver(request, current, servers.length > 0, answerTimeoutMs);
+          held.delete(request.keep);
+        }
+      });
+    },
     addresses: () => servers.map((server) => server.address() as AddressInfo),
     close: () =>
       enqueue(async () => {
-        await closeAll(servers);
+        await closeAll(servers).closed;
         servers = [];
         setNetworkAccessAllowed(false);
+        clearNetworkSwitcher(listeners.setAllowNetwork);
       }),
   };
 
   Max.addHandler("allowNetwork", (value: unknown) => {
     void listeners.setAllowNetwork(isOn(value));
   });
+
+  setNetworkSwitcher(listeners.setAllowNetwork);
 
   options.onListening?.();
 
@@ -184,7 +245,7 @@ async function listenAll(
   // SO_REUSEADDR lets a wildcard and a loopback socket share a port, so a bind
   // can succeed while another program still gets this machine's traffic.
   if (port !== 0 && (await loopbackAnswers(port))) {
-    throw new Error(portInUse(port));
+    throw portInUseError(port);
   }
 
   if (allowNetwork) {
@@ -201,7 +262,7 @@ async function listenAll(
     const code = (error as ServerError).code;
 
     if (code == null || !IPV6_UNAVAILABLE_CODES.has(code)) {
-      await closeAll([v4]);
+      await closeAll([v4]).closed;
       throw error;
     }
 
@@ -218,11 +279,13 @@ function listenOn(
   port: number,
   host?: string,
 ): Promise<Server> {
+  trackConnections(server);
+
   return new Promise((resolve, reject) => {
     const onError = (error: ServerError): void => {
       reject(
         error.code === "EADDRINUSE"
-          ? new Error(portInUse(port))
+          ? portInUseError(port)
           : Object.assign(
               new Error(`Producer Pal failed to start: ${error.message}`),
               { code: error.code },
@@ -240,6 +303,10 @@ function listenOn(
 
 function portInUse(port: number): string {
   return `Producer Pal failed to start: Port ${port} is already in use.`;
+}
+
+function portInUseError(port: number): Error {
+  return Object.assign(new Error(portInUse(port)), { code: "EADDRINUSE" });
 }
 
 async function loopbackAnswers(port: number): Promise<boolean> {
@@ -285,18 +352,98 @@ function showState(allowNetwork: boolean): void {
   void Max.outlet("config", "allowNetwork", allowNetwork ? 1 : 0);
 }
 
+const openConnections = new WeakMap<Server, Set<Socket>>();
+
+// Node keeps no list of a server's connections, and closing all but one needs it.
+function trackConnections(server: Server): void {
+  const sockets = new Set<Socket>();
+
+  openConnections.set(server, sockets);
+  server.on("connection", (socket) => {
+    sockets.add(socket);
+    socket.once("close", () => sockets.delete(socket));
+  });
+}
+
+interface Closing {
+  /** Every server without a spared connection has closed. */
+  ready: Promise<void>;
+  /** Every server has closed, spared connections included. */
+  closed: Promise<void>;
+}
+
 // Drops open connections too: turning network access off must cut off
 // devices already connected, and the port must be free to listen again.
-async function closeAll(servers: Server[]): Promise<void> {
-  await Promise.all(
-    servers.map(
-      (server) =>
-        new Promise<void>((resolve) => {
-          server.close(() => resolve());
-          server.closeAllConnections();
-        }),
-    ),
-  );
+// `spare` connections (requests waiting for their answer) are left open. A
+// server's close callback waits for its last connection, so servers holding
+// one aren't waited for in `ready`.
+function closeAll(
+  servers: Server[],
+  spare: ReadonlySet<Socket> = new Set(),
+): Closing {
+  const ready: Array<Promise<void>> = [];
+  const closed: Array<Promise<void>> = [];
+
+  for (const server of servers) {
+    const done = new Promise<void>((resolve) => {
+      server.close(() => resolve());
+    });
+    // Every server listenOn started is tracked.
+    const sockets = openConnections.get(server) as Set<Socket>;
+    let holdsSpare = false;
+
+    for (const socket of sockets) {
+      if (spare.has(socket)) {
+        holdsSpare = true;
+      } else {
+        socket.destroy();
+      }
+    }
+
+    server.closeIdleConnections();
+    closed.push(done);
+    ready.push(holdsSpare ? Promise.resolve() : done);
+  }
+
+  return {
+    ready: Promise.all(ready).then(() => undefined),
+    closed: Promise.all(closed).then(() => undefined),
+  };
+}
+
+function hold(held: Set<Socket>, socket: Socket): void {
+  held.add(socket);
+  socket.once("close", () => held.delete(socket));
+}
+
+// Sends the answer and waits for it to be out, bounded so a stuck client can't
+// jam the queue. Never rejects.
+async function deliver(
+  request: SwitchRequest,
+  allowNetwork: boolean,
+  listening: boolean,
+  timeoutMs: number,
+): Promise<void> {
+  const sent = Promise.resolve()
+    .then(() => request.answer({ allowNetwork, listening }))
+    .catch((error: unknown) => nodeError(errorMessage(error)));
+
+  await settleWithin(sent, timeoutMs);
+}
+
+async function settleWithin(
+  promise: Promise<unknown>,
+  ms: number,
+): Promise<void> {
+  let timer: NodeJS.Timeout | undefined;
+
+  await Promise.race([
+    promise,
+    new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, ms);
+    }),
+  ]);
+  clearTimeout(timer);
 }
 
 function logNetworkAccess(allowNetwork: boolean): void {

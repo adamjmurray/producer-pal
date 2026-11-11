@@ -98,10 +98,14 @@ Stated plainly, because you should be able to make your own call:
 - **The local server has no authentication.** By default it listens only on this
   computer (127.0.0.1 and ::1, port 3350), so other devices on your network
   can't reach it. Turning on "Allow other devices to connect" in the device's
-  Setup tab (a per-computer setting, off by default, never saved in a Live Set)
-  makes it listen on all network interfaces, and then anyone on that network who
-  finds the port can drive Ableton Live. Only turn it on for a network you
-  trust. Other programs on your own computer can always reach it.
+  Setup tab, or in the chat UI opened on this computer (a per-computer setting,
+  off by default, never saved in a Live Set) makes it listen on all network
+  interfaces, and then anyone on that network who finds the port can drive
+  Ableton Live. Only turn it on for a network you trust. Other programs on your
+  own computer can always reach it. The chat UI refuses to turn it on from other
+  devices, web tunnels and other websites. A raw TCP forwarder on this computer
+  (`ssh -R`, socat, `ngrok tcp`) relays the caller's own headers and can't be
+  told apart from a local client.
 - **Web pages can't reach the server by pointing a domain at your computer**
   (DNS rebinding). Reached by any name other than localhost, an IP address, or a
   known tunnel domain (Cloudflare quick tunnels, Pinggy, ngrok), only the MCP

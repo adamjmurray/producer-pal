@@ -11,6 +11,9 @@ tunnel. By default only Live's computer can connect. To let phones and other
 computers in, turn on **Allow other devices to connect** in the device's
 [Setup tab](/guide/device#setup-tab). It's saved for this computer, not in your
 Live Sets. It takes effect right away, and open connections drop for a moment.
+You can also turn it on in the Chat UI's Installation tab. That works from the
+Chat UI open at `localhost` on Live's computer. Other devices on your network,
+web tunnels, and other websites can't turn it on.
 
 ::: warning No Password
 

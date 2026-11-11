@@ -77,6 +77,11 @@ export function routeInstallationFetch(
       return Promise.resolve(jsonResponse(GLOBAL_SETTINGS));
     }
 
+    // So does the network option.
+    if (url.includes("/network-access")) {
+      return Promise.resolve(jsonResponse({ allowNetwork: false }));
+    }
+
     const isDevice = url.includes("/device-install");
     const next = (isDevice ? device : remote).shift();
 

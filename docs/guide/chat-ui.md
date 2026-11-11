@@ -594,6 +594,14 @@ stored in `~/.producer-pal/settings.json` and also govern the device's own
 notices. The `×` beside the `(update)` link dismisses that version's notice in
 both places; a later release brings it back.
 
+Under **Network**, **Allow other devices to connect** is the same setting as the
+toggle on the device (see the [device guide](/guide/device#setup-tab)). It
+applies immediately and shows what the server reports. It is off by default, and
+with it on, anyone on your network can control Live, and there's no password. To
+turn it on, open the Chat UI at `localhost` on Live's computer: it refuses to
+turn it on from other devices on your network, from web tunnels, and from other
+websites. Turning it off from another device cuts that device off.
+
 ### Preferences
 
 The Preferences tab controls visual preferences and conversation management:

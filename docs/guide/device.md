@@ -83,8 +83,10 @@ editor, the same one the **Open Editor** button opens. See
   [web tunnels](/installation/remote-access#web-tunnels) running on it still
   work. Turn it on to connect from a phone or another computer on your network.
   Anyone on that network can then control Live, and there's no password, so only
-  use it on a network you trust. Takes effect right away. Saved for this
-  computer, not in the Live Set, so opening a Set never turns it on.
+  use it on a network you trust. Takes effect right away. The Chat UI's
+  Installation tab has the same setting; it turns it on only when the Chat UI is
+  open at `localhost` on this computer. Saved for this computer, not in the Live
+  Set, so opening a Set never turns it on.
 - **Timeout** - Maximum time for AI operations (default: 45 sec, max 55 sec;
   increase on slow computers if experiencing timeouts during complex
   operations). The cap stays under 60 sec because that is where most AI clients

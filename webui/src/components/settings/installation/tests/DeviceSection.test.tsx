@@ -86,6 +86,7 @@ describe("InstallationTab device section", () => {
       "device-section",
       "remote-script-section",
       "installation-options",
+      "network-access-option",
     ]);
     expect(
       screen.getByTestId("installation-tab").children[0]?.contains(field),

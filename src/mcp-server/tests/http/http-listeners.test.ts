@@ -4,8 +4,13 @@
 // SPDX-License-Identifier: MIT
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { createServer, type RequestListener, type Server } from "node:http";
-import { type AddressInfo, connect } from "node:net";
+import {
+  createServer,
+  type RequestListener,
+  type Server,
+  type ServerResponse,
+} from "node:http";
+import { type AddressInfo, Socket, connect } from "node:net";
 import { networkInterfaces } from "node:os";
 import { join } from "node:path";
 import Max from "max-api";
@@ -16,9 +21,13 @@ import {
   parseServerArgs,
   startHttpListeners,
 } from "../../helpers/http/http-listeners.ts";
-import { isNetworkAccessAllowed } from "../../helpers/http/network-access-state.ts";
+import {
+  type SwitchResult,
+  isNetworkAccessAllowed,
+} from "../../helpers/http/network-access-state.ts";
 import { useTempConfigDir } from "../config-dir-test-helpers.ts";
 import { mockMax } from "../express-app-test-helpers.ts";
+import { failingServer as failingServerWith } from "./listen-failure-test-helpers.ts";
 
 const app: RequestListener = (_req, res) => res.end("ok");
 
@@ -29,24 +38,8 @@ const hasIpv6Loopback = Object.values(networkInterfaces()).some((addrs) =>
 const LOOPBACK = hasIpv6Loopback ? ["127.0.0.1", "::1"] : ["127.0.0.1"];
 const WILDCARDS = ["::", "0.0.0.0"];
 
-/**
- * A server whose listen fails with `code`, like a refused bind.
- *
- * @param code - The bind error code
- * @returns The server
- */
 function failingServer(code: string): Server {
-  const server = createServer(app);
-
-  server.listen = (() => {
-    process.nextTick(() =>
-      server.emit("error", Object.assign(new Error(code), { code })),
-    );
-
-    return server;
-  }) as Server["listen"];
-
-  return server;
+  return failingServerWith(code, app);
 }
 
 /**
@@ -311,6 +304,71 @@ describe("startHttpListeners", () => {
       await listeners.setAllowNetwork(false);
 
       await expect(closed).resolves.toBeUndefined();
+    });
+
+    it("spares the connection of a request it is answering", async () => {
+      // Holds its response open, like a request waiting on the switch.
+      const waiting: ServerResponse[] = [];
+      const kept: Socket[] = [];
+
+      const holdOpen: RequestListener = (req, res) => {
+        waiting.push(res);
+        kept.push(req.socket);
+      };
+
+      storeSettings({ allowNetwork: true });
+      listeners = await startHttpListeners(holdOpen, { port: 0 });
+      const port = ports(listeners)[0] as number;
+      const other = connect(port, "127.0.0.1");
+      const otherClosed = new Promise<void>((resolve) =>
+        other.on("close", () => resolve()),
+      );
+      const reply = fetch(`http://127.0.0.1:${port}/`).then((r) => r.text());
+      const answer = vi.fn(
+        (result: SwitchResult) =>
+          new Promise<void>((resolve) => {
+            waiting[0]?.once("finish", resolve);
+            waiting[0]?.end(`allow=${result.allowNetwork}`);
+          }),
+      );
+
+      other.on("error", () => undefined);
+      await vi.waitFor(() => expect(waiting).toHaveLength(1));
+      await listeners.setAllowNetwork(false, {
+        keep: kept[0] as Socket,
+        answer,
+      });
+      await otherClosed;
+
+      expect(hosts(listeners)).toStrictEqual(LOOPBACK);
+      expect(answer).toHaveBeenCalledWith({
+        allowNetwork: false,
+        listening: true,
+      });
+      expect(await reply).toBe("allow=false");
+    });
+
+    it("moves on when an answer never finishes, or throws", async () => {
+      listeners = await startHttpListeners(app, {
+        port: 0,
+        answerTimeoutMs: 30,
+      });
+      const never = vi.fn(() => new Promise<void>(() => undefined));
+      const throws = vi.fn(() => Promise.reject(new Error("write failed")));
+
+      await listeners.setAllowNetwork(true, {
+        keep: new Socket(),
+        answer: never,
+      });
+      await listeners.setAllowNetwork(false, {
+        keep: new Socket(),
+        answer: throws,
+      });
+
+      expect(never).toHaveBeenCalledOnce();
+      expect(throws).toHaveBeenCalledOnce();
+      expect(hosts(listeners)).toStrictEqual(LOOPBACK);
+      expect(posted("write failed")).toBe(true);
     });
 
     it("falls back to this computer only when opening fails", async () => {

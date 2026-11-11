@@ -118,6 +118,63 @@ export async function setupUiTest(
 }
 
 /**
+ * The Installation tab's status reads, and the header badge's: nothing
+ * installed, nothing to offer, and "Allow other devices to connect" off. A spec
+ * that wants more registers its own route after this.
+ * @param page - Playwright page
+ */
+async function stubInstallationStatus(page: Page): Promise<void> {
+  // Remote script status (the header badge reads it on load) — not installed,
+  // so no badge. A spec that wants one registers its own route after this.
+  await page.route("**/remote-script", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        userLibrary: null,
+        installed: false,
+        installedVersion: null,
+        bundledVersion: "1.2.0",
+        running: false,
+        runningVersion: null,
+        liveVersion: null,
+        otherOnPort: null,
+        updateAvailable: false,
+        installedNewer: false,
+      }),
+    }),
+  );
+
+  // Device install status (the Installation tab reads it) — a device that
+  // hasn't said where it is, so there is nothing to offer. A spec that wants
+  // more registers its own route after this.
+  await page.route("**/device-install", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        source: null,
+        problem: "unknown-source",
+        userLibrary: null,
+        path: null,
+        state: null,
+        version: "1.2.0",
+        installedVersion: null,
+        otherCopies: [],
+      }),
+    }),
+  );
+
+  await page.route("**/network-access", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ allowNetwork: false }),
+    }),
+  );
+}
+
+/**
  * Install all route stubs and the settings-gate bypass. Must run before the
  * first navigation (addInitScript applies to every subsequent document).
  * @param page - Playwright page
@@ -211,46 +268,7 @@ export async function installStubs(
     }),
   );
 
-  // Remote script status (the header badge reads it on load) — not installed,
-  // so no badge. A spec that wants one registers its own route after this.
-  await page.route("**/remote-script", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        userLibrary: null,
-        installed: false,
-        installedVersion: null,
-        bundledVersion: "1.2.0",
-        running: false,
-        runningVersion: null,
-        liveVersion: null,
-        otherOnPort: null,
-        updateAvailable: false,
-        installedNewer: false,
-      }),
-    }),
-  );
-
-  // Device install status (the Installation tab reads it) — a device that
-  // hasn't said where it is, so there is nothing to offer. A spec that wants
-  // more registers its own route after this.
-  await page.route("**/device-install", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        source: null,
-        problem: "unknown-source",
-        userLibrary: null,
-        path: null,
-        state: null,
-        version: "1.2.0",
-        installedVersion: null,
-        otherCopies: [],
-      }),
-    }),
-  );
+  await stubInstallationStatus(page);
 
   // Bypass the first-run settings screen: mark settings configured with a dummy
   // Gemini (text) provider so the app routes straight to the chat screen. No

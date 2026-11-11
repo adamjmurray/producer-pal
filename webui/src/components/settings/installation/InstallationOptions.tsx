@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { useGlobalSettings } from "#webui/hooks/connection/use-global-settings";
+import { useNetworkAccess } from "#webui/hooks/settings/installation/use-network-access";
 import { FINISH_INSTALLATION_DOCS_URL } from "#webui/lib/config";
 import { linkClass } from "./helpers/installation-classes";
 
@@ -58,6 +59,99 @@ export function InstallationOptions() {
         />
         Automatically check for new versions
       </label>
+    </div>
+  );
+}
+
+/**
+ * "Allow other devices to connect": the same switch as on the Max for Live
+ * device. Applies on change, like the device, and shows what the server says.
+ * @returns {JSX.Element} The checkbox, its warning, and the server's message
+ */
+export function NetworkAccessOption() {
+  const network = useNetworkAccess();
+  // Turning it on is only possible from the computer running Live.
+  const blocked = network.allowNetwork === false && !network.onThisComputer;
+
+  // Turning it off from another device cuts that device off.
+  const leaving = network.allowNetwork === true && !network.onThisComputer;
+
+  return (
+    <div
+      className="flex flex-col gap-1.5 border-t border-zinc-300 pt-3 dark:border-zinc-600"
+      data-testid="network-access-option"
+    >
+      <h4 className="text-[13px] font-semibold">Network</h4>
+      <label className="flex cursor-pointer items-center gap-2">
+        <input
+          type="checkbox"
+          data-testid="allow-network"
+          aria-describedby={[
+            "allow-network-warning",
+            network.loadFailed && "allow-network-unavailable",
+            blocked && "allow-network-blocked",
+            leaving && "allow-network-leaving",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          checked={network.allowNetwork === true}
+          disabled={network.allowNetwork == null || network.busy || blocked}
+          onChange={(e) => {
+            const input = e.target as HTMLInputElement;
+
+            network.setAllowNetwork(input.checked);
+            // Show only what the server reports: put the old value back now,
+            // and the reported one replaces it. Without this a cancelled or
+            // refused change would leave the box flipped.
+            input.checked = network.allowNetwork === true;
+          }}
+        />
+        Allow other devices to connect
+      </label>
+      <p
+        id="allow-network-warning"
+        className="text-xs text-zinc-600 dark:text-zinc-400"
+      >
+        Lets a phone or another computer on your network connect. Anyone on that
+        network can then control Live, and there&apos;s no password, so only use
+        it on a network you trust.
+      </p>
+      {network.loadFailed && (
+        <p
+          id="allow-network-unavailable"
+          className="text-xs"
+          data-testid="allow-network-unavailable"
+        >
+          Couldn&apos;t read this setting from the server. Switch to another tab
+          and back to try again.
+        </p>
+      )}
+      {blocked && (
+        <p
+          id="allow-network-blocked"
+          className="text-xs"
+          data-testid="allow-network-blocked"
+        >
+          It can only be turned on from the computer running Live.
+        </p>
+      )}
+      {leaving && (
+        <p
+          id="allow-network-leaving"
+          className="text-xs"
+          data-testid="allow-network-leaving"
+        >
+          Turning it off will cut this device off.
+        </p>
+      )}
+      {/* Always rendered, so a screen reader announces the text put into it. */}
+      <p
+        className="text-xs empty:hidden"
+        role="status"
+        data-testid="allow-network-message"
+      >
+        {network.message}
+      </p>
     </div>
   );
 }
