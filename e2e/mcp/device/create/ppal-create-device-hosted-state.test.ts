@@ -61,6 +61,21 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("hosted plug-in state", () => {
     return Number(results.at(-1));
   }
 
+  /**
+   * Wait for Live to close the undo step, undo once, and check that it took
+   * back the tempo marker: anything else means the test added an undo step.
+   * @param before - The tempo before the marker
+   */
+  async function expectUndoRestoresTempo(before: number): Promise<void> {
+    await sleep(UNDO_SETTLE_MS);
+    await call("ppal-live-api", {
+      path: "live_set",
+      operations: [{ type: "call", method: "undo" }],
+    });
+
+    expect(await tempo()).toBe(before);
+  }
+
   it.skipIf(!hasVst3("Serum2.vst3"))(
     "adds no undo step when reading a hosted plug-in",
     async () => {
@@ -87,18 +102,76 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("hosted plug-in state", () => {
           await call("ppal-plugin-host", { deviceId, action });
         }
 
-        await sleep(UNDO_SETTLE_MS);
-        await call("ppal-live-api", {
-          path: "live_set",
-          operations: [{ type: "call", method: "undo" }],
-        });
-
-        expect(await tempo()).toBe(before);
+        await expectUndoRestoresTempo(before);
       } finally {
         await tempo(before);
       }
     },
     60_000,
+  );
+
+  // Slots reach vst~ without the wrapper's script, which learns of their writes
+  // from vst~'s echo. If it took them for window edits, it would save the state
+  // and add undo steps while automation plays.
+  it.skipIf(!hasVst3("Serum2.vst3"))(
+    "moves a hosted param from clip automation without adding an undo step",
+    async () => {
+      const { track, path } = await hostOnNewTrack("Serum 2");
+      const deviceId = (await readDevice(path)).id;
+      const clip = `t${track}/s0`;
+      const { params } = await call<{ params: { index: number }[] }>(
+        "ppal-plugin-host",
+        { deviceId, action: "params", names: ["Filter 1 Freq"] },
+      );
+
+      const readFreq = async () => {
+        const read = await call<{ params: { value: number }[] }>(
+          "ppal-plugin-host",
+          { deviceId, action: "params", names: ["Filter 1 Freq"] },
+        );
+
+        return read.params[0]?.value;
+      };
+
+      await call("ppal-create-clip", {
+        path: clip,
+        notes: "C3 1|1",
+        length: "4bar",
+      });
+      await call("ppal-update-clip", {
+        path: clip,
+        envelopes: `${path}/h${params[0]?.index}: 1|1 0 / 3|1 1 / 5|1 0`,
+      });
+
+      const before = await tempo();
+
+      await sleep(UNDO_SETTLE_MS);
+
+      try {
+        await tempo(before + 7);
+        await sleep(UNDO_SETTLE_MS);
+        await call("ppal-playback", {
+          action: "play-session-clips",
+          path: clip,
+        });
+        await sleep(1000);
+
+        const first = await readFreq();
+
+        await sleep(1000);
+        expect(await readFreq()).not.toBe(first);
+
+        await sleep(3000);
+        await call("ppal-playback", { action: "stop" });
+        // The wait inside also outlasts the wrapper's 2 s poll, which would save
+        // a state it took for an edit.
+        await expectUndoRestoresTempo(before);
+      } finally {
+        await call("ppal-playback", { action: "stop" });
+        await tempo(before);
+      }
+    },
+    90_000,
   );
 
   // Right after a load, vst~ can report the file without its numeric id, so

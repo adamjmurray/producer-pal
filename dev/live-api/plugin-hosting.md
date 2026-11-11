@@ -339,8 +339,8 @@ with `vst~`'s `read <path>`:
 
 Plug-in params aren't Live parameters, so the wrapper carries a fixed set of
 `live.dial`s, 0–1, that Live can automate. Each dial is a slot that can drive
-one plug-in param. There are 128: a dial, a `prepend slot N` and two cords per
-slot in the patcher, and `SLOT_COUNT` in the code box. Change both together.
+one plug-in param. There are 128: a dial, a `prepend` and two cords per slot in
+the patcher, and `SLOT_COUNT` in the code box. Change both together.
 
 - **Names are fixed and zero-padded**: "Automation 001" to "Automation 128" (two
   digits under 100 slots). Live reads a device's parameter list once, about 90
@@ -354,9 +354,13 @@ slot in the patcher, and `SLOT_COUNT` in the code box. Change both together.
   was made for. Entries for another file are ignored, and dropped the next time
   the mapping is saved. `ppal-plugin-host` has `map`, `unmap` and `slots` (which
   also gives the slot count). The panel shows the list ("3: Cutoff").
-- **Running**: a dial change reaches the code box as `slot <n> <value>`, which
-  writes the mapped param. `vst~` echoes a write straight back, while the script
-  is still busy, so the echo isn't taken for an edit in the plug-in's window.
+- **Running**: each dial goes through its `prepend` and one shared
+  `route ignore` straight to `vst~`, never through the code box, so automation
+  doesn't wait on the script. The script sets each `prepend` to its param's
+  index, or `ignore` when the slot drives nothing. It learns of slot writes from
+  `vst~`'s echo: an echo for a param a slot drives counts as a slot write, so an
+  edit to that param in the plug-in's window is saved only by the next real
+  save. Live still delivers most automation values on its main thread.
 - **After load**: the restored plug-in state wins. The wrapper doesn't send the
   dials' values to the plug-in: a dial is only synced by `map`, so a value set
   later (a write, or the plug-in window) would be overwritten by the dial's

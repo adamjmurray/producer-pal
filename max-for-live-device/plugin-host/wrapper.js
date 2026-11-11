@@ -9,7 +9,6 @@
 // In:  request <id> <json>   on the shared "ppal-plugin-host-req" channel
 //      pname <names...>      vst~ parameter names (params)
 //      pval <index> <value> <display>   vst~ get/changed output (valuemode 2)
-//      slot <n> <value>      automation dial n (0-1), forwarded to its param
 //      openeditor bang       the Open button: opens the plug-in's window
 // Out: messages to vst~
 //
@@ -177,12 +176,19 @@ function pval(index, value, ...display) {
 
   state.values[index] = { value, display: display.join(" ") };
 
-  // A change we didn't ask for: an edit in the plug-in's own window. Our own
-  // writes, slots included, echo back synchronously while busy is up.
+  // Our own writes echo back synchronously while busy is up.
   if (busy > 0) return;
   // MIDI from Live (All Notes Off on start and stop) lands on the stand-ins.
   if (isStandIn(index)) return;
+  // A slot wrote it. (An edit to a slot's param in the plug-in's window lands
+  // here too, so it's saved only by the next real save.)
+  if (routedIndexes.has(Number(index))) {
+    slotWriteAt = Date.now();
 
+    return;
+  }
+
+  // Anything else is an edit in the plug-in's own window.
   markEdited();
 }
 
@@ -747,22 +753,24 @@ let slotsReady = false; // the stored mapping is readable, or a plug-in was load
 let slotCache = null; // {at, map}: re-read at most every SLOTS_REFRESH_MS
 let slotShown = null; // the list text last put in the display
 let slotWriteAt = 0; // when a slot last wrote to vst~
+const routed = {}; // slot -> what its prepend sends: a param index or "ignore"
+const routedIndexes = new Set(); // params a slot drives
 
-// vst~ echoes a write synchronously, so busy tells it from a window edit.
-function slot(n, value) {
-  if (!slotsReady) return;
+// Each dial reaches vst~ through its "slotprep<n>" prepend and one shared
+// "route ignore", never through this script, so automation doesn't wait on
+// it. A prepend holds its param's index, or "ignore" when the slot drives
+// nothing. pval learns of slot writes from vst~'s echo.
+function routeSlots(map) {
+  routedIndexes.clear();
 
-  const entry = readSlots()[n];
+  for (let n = 1; n <= SLOT_COUNT; n++) {
+    const target = map[n]?.index ?? "ignore";
 
-  if (entry == null || !isFinite(value)) return;
+    if (target !== "ignore") routedIndexes.add(Number(target));
+    if (routed[n] === target) continue;
 
-  slotWriteAt = Date.now();
-  busy++;
-
-  try {
-    outlet(0, entry.index, Number(value));
-  } finally {
-    busy--;
+    routed[n] = target;
+    this.patcher.getnamed(`slotprep${n}`)?.message("set", target);
   }
 }
 
@@ -869,8 +877,7 @@ function sortedSlots(map) {
   return Object.keys(map).sort((a, b) => Number(a) - Number(b));
 }
 
-// The mapping for the plug-in that is loaded now, cached briefly because
-// automation asks for it on every value.
+// The mapping for the plug-in that is loaded now, cached briefly.
 function readSlots() {
   const now = Date.now();
 
@@ -880,6 +887,7 @@ function readSlots() {
 
   slotCache = { at: now, map: storedSlots() };
   showSlots(slotCache.map);
+  routeSlots(slotCache.map);
 
   return slotCache.map;
 }
@@ -915,6 +923,7 @@ function saveSlots(map) {
   this.patcher.getnamed("vstslots").message("dictionary", dict.name);
   slotCache = { at: Date.now(), map };
   showSlots(map);
+  routeSlots(map);
 }
 
 function showSlots(map) {

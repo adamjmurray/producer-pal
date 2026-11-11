@@ -10,6 +10,7 @@ const COLUMNS = 8;
 const HEADER_SIZE = 32;
 const SLOT_BOX = /^slot(dial|prep)\d+$/;
 const PANEL_BOXES = new Set(["pluginname", "openeditor", "openprep"]);
+const SLOT_ROUTE = "slotroute";
 // A pattr bound to vst~ re-reads the plug-in's whole state on every param
 // change, which glitches the audio while automation moves.
 const REMOVED_BOXES = new Set(["vstmirror"]);
@@ -149,6 +150,7 @@ function isOurs(id: unknown): boolean {
     typeof id === "string" &&
     (id === "vstslots" ||
       id === "slotlist" ||
+      id === SLOT_ROUTE ||
       PANEL_BOXES.has(id) ||
       SLOT_BOX.test(id))
   );
@@ -174,6 +176,7 @@ function ownedBoxes(): Json[] {
   return [
     ...slots.map(dial),
     ...slots.map(prepend),
+    slotRoute(),
     vstslots(),
     slotlist(),
     pluginName(),
@@ -185,18 +188,19 @@ function ownedBoxes(): Json[] {
 function ownedLines(): Patchline[] {
   const slotCords = Array.from({ length: SLOTS }, (_, i) => [
     cord(`slotdial${i + 1}`, `slotprep${i + 1}`),
-    cord(`slotprep${i + 1}`, "code"),
+    cord(`slotprep${i + 1}`, SLOT_ROUTE),
   ]).flat();
 
   return [
     ...slotCords,
+    cord(SLOT_ROUTE, "vst", 1),
     cord("openeditor", "openprep"),
     cord("openprep", "code"),
   ];
 }
 
-function cord(from: string, to: string): Patchline {
-  return { patchline: { source: [from, 0], destination: [to, 0] } };
+function cord(from: string, to: string, outlet = 0): Patchline {
+  return { patchline: { source: [from, outlet], destination: [to, 0] } };
 }
 
 // Names are zero-padded so Live sorts them.
@@ -232,11 +236,26 @@ function prepend(n: number): Json {
   return {
     id: `slotprep${n}`,
     maxclass: "newobj",
-    text: `prepend slot ${n}`,
+    text: "prepend ignore",
+    varname: `slotprep${n}`,
     numinlets: 1,
     numoutlets: 1,
     outlettype: [""],
     patching_rect: [450 + col * 100, 180 + row * 30, 90, 22],
+  };
+}
+
+// Unmapped slots send "ignore"; everything else goes on to vst~. The wrapper
+// sets each slot's prepend to its param index.
+function slotRoute(): Json {
+  return {
+    id: SLOT_ROUTE,
+    maxclass: "newobj",
+    text: "route ignore",
+    numinlets: 1,
+    numoutlets: 2,
+    outlettype: ["", ""],
+    patching_rect: [450, 150, 90, 22],
   };
 }
 

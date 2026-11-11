@@ -22,6 +22,8 @@ export interface Rig {
   stored: { state: string | null };
   failWrites: { on: boolean };
   cancelled: () => number;
+  /** Messages sent to the slot prepends, as [box, ...args] */
+  prepends: unknown[][];
 }
 
 /**
@@ -38,6 +40,7 @@ export function loadWrapper(
   const mirror = { state: '{"snapshot":{"a":1}}' };
   const stored: { state: string | null } = { state: null };
   const failWrites = { on: false };
+  const prepends: unknown[][] = [];
   let cancels = 0;
   let lastParsed = "";
 
@@ -89,7 +92,11 @@ export function loadWrapper(
     post: () => {},
     outlet,
     patcher: {
-      getnamed: (name: string) => objects[name],
+      getnamed: (name: string) =>
+        objects[name] ??
+        (name.startsWith("slotprep")
+          ? { message: (...args: unknown[]) => prepends.push([name, ...args]) }
+          : undefined),
       newdefault: () => ({ message: () => {} }),
       remove: () => {},
     },
@@ -104,5 +111,6 @@ export function loadWrapper(
     stored,
     failWrites,
     cancelled: () => cancels,
+    prepends,
   };
 }

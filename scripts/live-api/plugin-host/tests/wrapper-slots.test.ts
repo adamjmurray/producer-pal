@@ -18,3 +18,35 @@ describe("wrapper unmapSlot", () => {
     );
   });
 });
+
+describe("wrapper slot routing", () => {
+  it("points each slot's prepend at its param, once", () => {
+    const rig = loadWrapper();
+
+    rig.run('routeSlots({ "3": { index: 206 } })');
+
+    expect(rig.prepends).toHaveLength(128);
+    expect(rig.prepends).toContainEqual(["slotprep3", "set", 206]);
+    expect(rig.prepends).toContainEqual(["slotprep4", "set", "ignore"]);
+
+    rig.prepends.length = 0;
+    rig.run('routeSlots({ "3": { index: 206 } })');
+    expect(rig.prepends).toHaveLength(0);
+
+    rig.run("routeSlots({})");
+    expect(rig.prepends).toStrictEqual([["slotprep3", "set", "ignore"]]);
+  });
+
+  it("takes a slot param's echo as a slot write, not an edit", () => {
+    const rig = loadWrapper();
+
+    rig.run('routeSlots({ "3": { index: 206 } })');
+    rig.run('pval(206, 0.5, "718")');
+
+    expect(rig.run("slotWriteAt > 0")).toBe(true);
+    expect(rig.run("edited")).toBe(false);
+
+    rig.run('pval(207, 0.5, "1")');
+    expect(rig.run("edited")).toBe(true);
+  });
+});
