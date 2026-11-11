@@ -325,6 +325,8 @@ export class LiveAPI {
   declare takeLaneIndex: number | null;
   declare deviceIndex: number | null;
   declare timeSignature: string | null;
+  declare isStepSequencerClip: boolean;
+  declare midiClipIsStepSequencer: boolean;
   declare getColor: () => string | null;
   declare getName: () => string;
   declare setColor: (cssColor: string, raw?: boolean) => void;

@@ -81,7 +81,9 @@ export function readEveryClipNote(clip: LiveAPI): Record<string, unknown>[] {
 }
 
 /**
- * Read every note starting in a span, as raw Live API note objects.
+ * Read every note starting in a span, as raw Live API note objects. A step
+ * sequencer clip answers none without asking Live: its notes API reads a hidden
+ * list, never the steps.
  * @param clip - LiveAPI clip object
  * @param fromTime - Span start in beats
  * @param timeSpan - Span length in beats
@@ -92,6 +94,10 @@ export function readClipNotesInSpan(
   fromTime: number,
   timeSpan: number,
 ): Record<string, unknown>[] {
+  if (clip.isStepSequencerClip) {
+    return [];
+  }
+
   const result = JSON.parse(
     clip.call("get_notes_extended", 0, 128, fromTime, timeSpan) as string,
   );
@@ -101,10 +107,15 @@ export function readClipNotesInSpan(
 
 /**
  * Remove every note in a clip's scan window — the same window
- * {@link readAllClipNotes} reads, and it must stay that way.
+ * {@link readAllClipNotes} reads, and it must stay that way. Does nothing on a
+ * step sequencer clip, whose notes API only reaches a hidden list.
  * @param clip - LiveAPI clip object
  */
 export function removeAllClipNotes(clip: LiveAPI): void {
+  if (clip.isStepSequencerClip) {
+    return;
+  }
+
   const [fromTime, timeSpan] = clipNoteScanWindow(clip);
 
   clip.call("remove_notes_extended", 0, 128, fromTime, timeSpan);
@@ -116,6 +127,10 @@ export function removeAllClipNotes(clip: LiveAPI): void {
  * @param clip - LiveAPI clip object
  */
 export function removeEveryClipNote(clip: LiveAPI): void {
+  if (clip.isStepSequencerClip) {
+    return;
+  }
+
   const [fromTime, timeSpan] = clipFullNoteWindow(clip);
 
   clip.call("remove_notes_extended", 0, 128, fromTime, timeSpan);

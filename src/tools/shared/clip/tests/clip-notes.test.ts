@@ -346,3 +346,35 @@ describe("rawNotesToCopiedNotes", () => {
     });
   });
 });
+
+describe("a step sequencer clip", () => {
+  /**
+   * A clip whose notes API reaches only a hidden list.
+   * @returns The clip
+   */
+  function stepSequencerClip(): LiveAPI {
+    return {
+      getProperty: vi.fn((name: string) => REGION_AT_ZERO[name as "length"]),
+      call: vi.fn(() => JSON.stringify({ notes: [{ pitch: 60, mute: 0 }] })),
+      isStepSequencerClip: true,
+    } as unknown as LiveAPI;
+  }
+
+  it("reads no notes, and never asks Live for any", () => {
+    const clip = stepSequencerClip();
+
+    expect(readClipNotes(clip)).toStrictEqual({ visible: [], muted: [] });
+    expect(readEveryClipNote(clip)).toStrictEqual([]);
+    expect(getClipNoteCount(clip)).toBe(0);
+    expect(clip.call).not.toHaveBeenCalled();
+  });
+
+  it("removes nothing, and never asks Live to", () => {
+    const clip = stepSequencerClip();
+
+    removeAllClipNotes(clip);
+    removeEveryClipNote(clip);
+
+    expect(clip.call).not.toHaveBeenCalled();
+  });
+});

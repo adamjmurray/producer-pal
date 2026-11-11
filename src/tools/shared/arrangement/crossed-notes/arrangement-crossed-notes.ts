@@ -107,6 +107,11 @@ function crossedBy(
   clip: LiveAPI,
   cuts: (played: PlayedClip) => Cut[],
 ): number[] {
+  // Its steps can't be read, so nothing is known to cross.
+  if (clip.isStepSequencerClip) {
+    return [];
+  }
+
   try {
     const played: PlayedClip = {
       looping: (clip.getProperty("looping") as number) > 0,

@@ -41,6 +41,7 @@ import { reportNotesOutsideRegion } from "../notes/notes-outside-region.ts";
 import { parseNoteEdits } from "../notes/note-edit-parsing.ts";
 import { writeClipProperties } from "./write-clip-properties.ts";
 import { checkTransformsForClipType } from "../notes/transform-clip-type.ts";
+import { ignoreNoteParamsOnStepSequencer } from "../notes/step-sequencer-params.ts";
 import {
   CLIP_IS_AUDIO,
   CLIP_IS_MIDI,
@@ -124,7 +125,10 @@ export function processSingleClipUpdate(
   // What a transform skips on this kind of clip goes to the clip's own entry.
   withClipWarningLabel(
     `clip ${targetLabel(params.clip)}`,
-    () => updateOneClip(checkTransformsForClipType(params)),
+    () =>
+      updateOneClip(
+        checkTransformsForClipType(ignoreNoteParamsOnStepSequencer(params)),
+      ),
     (reason) => noteTransformReason(params, reason),
   );
 }

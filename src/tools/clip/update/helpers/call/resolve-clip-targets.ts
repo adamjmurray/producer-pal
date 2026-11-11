@@ -18,6 +18,7 @@ import {
   takeLaneLabel,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import { recreateBlocker } from "#src/tools/shared/clip/recreate-clip.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { resolvePathEntry } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import {
@@ -332,6 +333,15 @@ function laneCovers(
   const isMidi = (clip.getProperty("is_midi_clip") as number) > 0;
 
   if (lane != null && clipCopyBlocker(isMidi, landing.trackIndex) != null) {
+    return undefined;
+  }
+
+  // A move to or from a take lane re-creates the clip, which not every clip can
+  // be (no sample, a step sequencer clip), and then it writes nothing.
+  if (
+    (landing.takeLane != null || takeLaneIndexOfClip(clip) != null) &&
+    recreateBlocker(clip) != null
+  ) {
     return undefined;
   }
 

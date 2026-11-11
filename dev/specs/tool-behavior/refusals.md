@@ -23,8 +23,8 @@ How the tool answers depends on what is wrong:
   return a success-shaped result.
 - **Applicability that depends on the target, found while working → skip that
   target** (see [Skips](skips-and-replaced-targets.md)). `quantize` on an audio
-  clip is not knowable until that clip is reached, and the earlier targets can't
-  be rolled back.
+  clip or a step sequencer clip is not knowable until that clip is reached, and
+  the earlier targets can't be rolled back.
 - **Check before an irreversible step.** When a step can't be undone and a later
   one can fail, check the later one first and refuse both. update-clip checks a
   move (destination, clip type) before shortening the clip.
@@ -83,8 +83,8 @@ Change the action or drop similarTo.
 - A value no action can use is refused too (`deviceKind: "midifx"` on
   `list-plugins`).
 - A param that doesn't suit one _target_ stays a skip: `quantize` on an audio
-  clip, a warp param on a MIDI clip. Only a param whose home is another value of
-  a call-level param is refused.
+  clip or a step sequencer clip, a warp param on a MIDI clip. Only a param whose
+  home is another value of a call-level param is refused.
 - A write that would drop a whole stored document (`ppal-context`) throws a
   message naming `force`, rather than returning the document beside a warning.
 - Top-level search filters beside `searches` are refused: the call can't say

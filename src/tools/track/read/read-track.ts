@@ -19,7 +19,6 @@ import {
   READ_TRACK_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
-import { stripFields } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   readFanOut,
   type ReadResult,
@@ -43,6 +42,7 @@ import {
   readSessionClips,
   readTakeLanes,
   type ReadTakeLaneResult,
+  stripRedundantClipType,
 } from "./helpers/track-clips.ts";
 import { getInstrumentName } from "./helpers/instrument-name.ts";
 import {
@@ -475,8 +475,10 @@ export function readTrackGeneric({
   // Strip fields from nested clips that are redundant with parent track
   // context. Every clip keeps its path: "t0/s3" and "t0[5|1]" each address one
   // clip, which the track's own path doesn't.
-  stripFields(result.sessionClips as unknown[], "type");
-  stripFields(result.arrangementClips as unknown[], "type");
+  stripRedundantClipType(result.sessionClips as ReadClipResult[] | undefined);
+  stripRedundantClipType(
+    result.arrangementClips as ReadClipResult[] | undefined,
+  );
 
   return result;
 }

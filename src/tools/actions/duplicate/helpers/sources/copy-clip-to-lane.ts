@@ -16,7 +16,8 @@ import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
 import { paramNamesSomething } from "#src/tools/shared/helpers/param-presence.ts";
 import { isSpanLoss } from "#src/tools/shared/clip/arrangement-span.ts";
 import {
-  canRecreateClip,
+  recreateBlocker,
+  STEP_SEQUENCER_NO_REBUILD,
   PartialRecreateError,
   recreateClip,
   recreatedClipLosses,
@@ -77,12 +78,16 @@ export function copyClipToLane(
   const { label, meter } = destination;
   const startBeats = clip.getProperty("start_time") as number;
 
-  if (!canRecreateClip(clip)) {
+  const blocker = recreateBlocker(clip);
+
+  if (blocker != null) {
     // Addressed where the copy was headed, so an entry pastes back as a path.
     return refusedCopy(
       { beats: startBeats, label },
       meter,
-      "a lane copy is re-created from the sample, and this audio clip has none",
+      blocker === STEP_SEQUENCER_NO_REBUILD
+        ? blocker
+        : "a lane copy is re-created from the sample, and this audio clip has none",
     );
   }
 

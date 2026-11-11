@@ -7,19 +7,19 @@ General conventions are in [README.md](README.md).
 
 Always returned for any clip:
 
-| Field               | Type                | Description                                                                                     |
-| ------------------- | ------------------- | ----------------------------------------------------------------------------------------------- |
-| `id`                | `string`            | Clip ID                                                                                         |
-| `type`              | `"midi" \| "audio"` | Clip type                                                                                       |
-| `name`              | `string`            | Clip name (omitted if empty)                                                                    |
-| `path`              | `string`            | Where the clip is: `"t0/s3"` in the session, `"t0[5\|1]"` or `"t0/l1[5\|1]"` in the arrangement |
-| `arrangementLength` | `string`            | Arrangement clips only: how far the clip runs (`4bar`, `n/4`, `1bar+n/4`), in song meter        |
-| `playing`           | `true`              | Only present when true                                                                          |
-| `triggered`         | `true`              | Only present when true                                                                          |
-| `recording`         | `true`              | Only present when true                                                                          |
-| `overdubbing`       | `true`              | Only present when true                                                                          |
-| `muted`             | `true`              | Only present when true                                                                          |
-| `envs`              | `true`              | Session clips only, when Live reports automation. Omitted otherwise                             |
+| Field               | Type                                    | Description                                                                                          |
+| ------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `id`                | `string`                                | Clip ID                                                                                              |
+| `type`              | `"midi" \| "step-sequencer" \| "audio"` | Clip type. `"step-sequencer"` is a Live 13 MIDI clip whose steps can't be read; its `detail` says so |
+| `name`              | `string`                                | Clip name (omitted if empty)                                                                         |
+| `path`              | `string`                                | Where the clip is: `"t0/s3"` in the session, `"t0[5\|1]"` or `"t0/l1[5\|1]"` in the arrangement      |
+| `arrangementLength` | `string`                                | Arrangement clips only: how far the clip runs (`4bar`, `n/4`, `1bar+n/4`), in song meter             |
+| `playing`           | `true`                                  | Only present when true                                                                               |
+| `triggered`         | `true`                                  | Only present when true                                                                               |
+| `recording`         | `true`                                  | Only present when true                                                                               |
+| `overdubbing`       | `true`                                  | Only present when true                                                                               |
+| `muted`             | `true`                                  | Only present when true                                                                               |
+| `envs`              | `true`                                  | Session clips only, when Live reports automation. Omitted otherwise                                  |
 
 Boolean state fields (`playing`, `triggered`, `recording`, `overdubbing`,
 `muted`, `envs`) are omitted when `false` to reduce response size.
@@ -43,7 +43,8 @@ differs from the active start (e.g., loop start has been moved).
 
 ## Include: `"notes"`
 
-Adds formatted MIDI notes for MIDI clips. No effect on audio clips.
+Adds formatted MIDI notes for MIDI clips. No effect on audio clips or step
+sequencer clips (whose steps can't be read, so no `notes` or `mutedNotes`).
 
 | Field   | Type     | Description                  |
 | ------- | -------- | ---------------------------- |

@@ -80,6 +80,20 @@ export function countSessionClips(
 }
 
 /**
+ * Drop the type from clips nested in a track: it matches the track's, so it says
+ * nothing. A step sequencer clip's doesn't, and stays.
+ * @param clips - The track's (or take lane's) clip entries, or undefined
+ */
+export function stripRedundantClipType(
+  clips: ReadClipResult[] | undefined,
+): void {
+  stripFields(
+    clips?.filter((clip) => clip.type !== "step-sequencer"),
+    "type",
+  );
+}
+
+/**
  * Read all arrangement clips from a track
  * @param track - Track object
  * @param isDrumMode - Whether nested clip reads use drum mode (see drumModeForTrack)
@@ -150,7 +164,7 @@ export function readTakeLaneClips(
 
   // The clip's type matches its track's. The path stays: it carries where the
   // clip starts, which the lane's own path doesn't.
-  stripFields(clips, "type");
+  stripRedundantClipType(clips);
 
   return clips;
 }

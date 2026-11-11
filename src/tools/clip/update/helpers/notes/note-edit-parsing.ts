@@ -56,7 +56,9 @@ export function parseNoteEdits(
  * written. Each distinct meter the MIDI clips will have is parsed once, because
  * a transform's time range depends on the meter. Audio clips ignore notes and
  * read transforms the way their own evaluator does (no meter), so only their
- * transforms are parsed.
+ * transforms are parsed, and so are a step sequencer clip's: its notes are
+ * ignored, but a transform that can't be read is refused as it would be for a
+ * notes clip.
  *
  * A syntax error, or an argument mistake that holds in every meter, always
  * refuses the call. An error in only some meters (a bar|beat range, a constant
@@ -84,29 +86,39 @@ export function refuseNoteEditsByMeter(
     return unreadable;
   }
 
-  // Keyed by meter, or "audio" for clips that read no meter.
-  const groups = new Map<string, { meter?: TimeSignature; strict: boolean }>();
+  // Keyed by meter, or "audio" for clips that read no meter. A step sequencer
+  // clip ignores its notes, so only its transforms are parsed, apart from the
+  // notes clips of the same meter.
+  const groups = new Map<
+    string,
+    { meter?: TimeSignature; strict: boolean; transformsOnly: boolean }
+  >();
   const keyById = new Map<string, string>();
 
   for (const clip of clips) {
+    const transformsOnly = clip.isStepSequencerClip;
     const isAudio = (clip.getProperty("is_audio_clip") as number) > 0;
     const meter = isAudio ? undefined : meterOf(clip);
     const key =
       meter == null
         ? "audio"
-        : `${meter.timeSigNumerator}/${meter.timeSigDenominator}`;
-    const group = groups.get(key) ?? { meter, strict: false };
+        : `${meter.timeSigNumerator}/${meter.timeSigDenominator}${transformsOnly ? " steps" : ""}`;
+    const group = groups.get(key) ?? { meter, strict: false, transformsOnly };
 
     group.strict ||= strictFor(clip);
     groups.set(key, group);
     keyById.set(clip.id, key);
   }
 
-  const failed = failuresByMeter(groups, ({ meter }) => {
+  const failed = failuresByMeter(groups, ({ meter, transformsOnly }) => {
     if (meter == null) {
       parseAudioTransforms(edits);
     } else {
-      parseNoteEdits(edits, meter.timeSigNumerator, meter.timeSigDenominator);
+      parseNoteEdits(
+        transformsOnly ? { ...edits, notationString: undefined } : edits,
+        meter.timeSigNumerator,
+        meter.timeSigDenominator,
+      );
     }
   });
 

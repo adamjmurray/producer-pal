@@ -59,6 +59,20 @@ Part of [Skip entries, tool by tool](README.md).
   clips, that holding copy can be left there unreported. Another known gap: when
   a target throws partway, notes gathered for that clip before the throw are not
   carried onto its failure entry.
+- **update-clip: a step sequencer clip takes no note work.** A Live 13 step
+  sequencer clip is a MIDI clip whose steps the API can't read or write (its
+  notes calls reach a hidden list and change nothing visible). `notes`,
+  `preTransforms`, `transforms`, `quantize`/`quantizeGrid`/`quantizePitch`,
+  `duplicateLoop` and `code` are each ignored on it the way an audio clip's are:
+  `notes ignored: the clip is a step sequencer` on its entry, a skip when that
+  was all the call asked, and nothing written to it. Every transform counts as a
+  note transform, so the whole param is ignored, `gain` and `pitchShift` too.
+  The other params in the call (name, color, looping, region, meter, `toPath` to
+  a slot or the arrangement's main lane) still land. A note edit that can't be
+  read is not refused for such a clip, since nothing is read for it. The clip is
+  told apart by a list read of `midi_clip_type` equal to 1, only for a MIDI
+  clip; on Live 12 the property answers a bare number, which never counts.
+  `scale` is left as it is for MIDI clips.
 - **update-clip: a clip whose new meter can't read the notes or transforms is a
   skip.** A bar|beat range or constant that is fine in one clip's meter and not
   in another's (`1|5-2|1` is a bar in 4/4, backwards in 3/4) is checked per
@@ -120,6 +134,12 @@ Part of [Skip entries, tool by tool](README.md).
     ahead. The version is asked once per call.
   - Live fails partway: the clip keeps its entry with `already changed: scale`
     once its scale has begun to change.
+- **A step sequencer clip reads as `type: "step-sequencer"`** (beside `"midi"`
+  and `"audio"`) in read-clip and every listing that reuses its entry, with
+  `detail: "steps can't be read"`. No `notes` or `mutedNotes` are shown for it,
+  whatever `include` says; its timing, color and other clip fields read as a
+  MIDI clip's. read-track drops a nested clip's type when it matches the
+  track's, so there the type shows only on a step sequencer clip.
 - **read-clip shows a MIDI clip's `scale` (and `scalePitches`) only when it
   differs from the Live Set's.** Both off is the same. A clip with its scale off
   while the Live Set's is on reads `scale: ""` (no `scalePitches`). A clip with

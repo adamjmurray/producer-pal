@@ -19,7 +19,10 @@ import {
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { arrangementLaneOf } from "#src/tools/shared/arrangement/helpers/arrangement-write-effects.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
-import { canRecreateClip } from "#src/tools/shared/clip/recreate-clip.ts";
+import {
+  canRecreateClip,
+  recreateBlocker,
+} from "#src/tools/shared/clip/recreate-clip.ts";
 import {
   arrangementPositionPath,
   slotPath,
@@ -109,8 +112,10 @@ function slotBlocker(
   params: ClipDraftParams,
 ): string | null {
   // An arrangement clip is re-created into the slot, from its notes or sample.
-  if (clip.sceneIndex == null && !canRecreateClip(clip)) {
-    return "it's an audio clip with no sample file; drag it in Live's UI";
+  const unbuildable = clip.sceneIndex == null ? recreateBlocker(clip) : null;
+
+  if (unbuildable != null) {
+    return unbuildable;
   }
 
   return clipCopyBlocker(
@@ -161,7 +166,9 @@ function slotDrafts(
 interface ArrangementSource {
   share: SourceShare;
   clip: LiveAPI | null;
-  noSample: string | null;
+  /** Why the clip can't be re-created, or null when it can. Read on demand:
+   * a copy Live's own duplicate makes never asks. */
+  rebuildBlocker: () => string | null;
   canPromote: boolean;
 }
 
@@ -217,10 +224,7 @@ function arrangementDrafts(
   const source: ArrangementSource = {
     share,
     clip,
-    noSample:
-      clip == null || canRecreateClip(clip)
-        ? null
-        : "it's an audio clip with no sample file; drag it in Live's UI",
+    rebuildBlocker: () => (clip == null ? null : recreateBlocker(clip)),
     canPromote:
       clip != null &&
       isTakeLaneClip(clip) &&
@@ -300,7 +304,9 @@ function arrangementRefusal(
   dropped: Map<string, string>,
 ): string | null {
   if (target.takeLane != null) {
-    return source.noSample ?? dropped.get(takeLaneLabel(target)) ?? null;
+    return (
+      source.rebuildBlocker() ?? dropped.get(takeLaneLabel(target)) ?? null
+    );
   }
 
   // Live's arrangement duplicate silently no-ops on a take-lane source, so it
@@ -311,7 +317,7 @@ function arrangementRefusal(
     isTakeLaneClip(source.clip) &&
     !source.canPromote
   ) {
-    return source.noSample;
+    return source.rebuildBlocker();
   }
 
   return null;

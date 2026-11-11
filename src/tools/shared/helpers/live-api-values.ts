@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
 import {
   isLiveVersionAtLeast,
   isNewerVersion,
@@ -183,7 +184,10 @@ export function liveVersionAtLeast(
   min: string,
   options?: { release?: boolean },
 ): boolean {
-  const version = String(LiveAPI.from("live_app").call("get_version_string"));
+  // Live can't change version mid-request, and a request may ask per clip.
+  const version = requestMemo("live-version", () =>
+    String(LiveAPI.from("live_app").call("get_version_string")),
+  );
 
   return options?.release === true
     ? isLiveVersionAtLeast(version, min)

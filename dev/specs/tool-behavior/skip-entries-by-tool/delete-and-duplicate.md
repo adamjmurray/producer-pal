@@ -100,6 +100,15 @@ Part of [Skip entries, tool by tool](README.md).
   on after making it, a device whose temp track couldn't be deleted, a pad whose
   chains couldn't be named, a take lane made for a clip that then failed. Only a
   copy nothing of which landed is `ok: false`.
+- **A step sequencer clip is never rebuilt.** Live's API can't create one, so
+  every copy that would re-create a clip from its notes is skipped before
+  anything is made or deleted, with
+  `it's a step sequencer clip, and Live's API can't create one` (update-clip's
+  `toPath` says `not moved: ` first): a copy to or from a take lane, an
+  arrangement clip into a clip slot, and a lane copy's clips. A track's or
+  lane's copy skips just those clips. Copies Live makes itself (slot to slot,
+  anything to the arrangement's main lane, split, tile, lengthen) keep the clip
+  a step sequencer clip.
 - **duplicate: automation written for another length.** A session clip with
   automation copied to the arrangement at an `arrangementLength` other than its
   own has its track automation lane written for the span first. If that stops

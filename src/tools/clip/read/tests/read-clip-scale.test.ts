@@ -19,6 +19,7 @@ import {
   type ScaleProps,
 } from "#src/tools/shared/schema/scale/tests/scale-test-helpers.ts";
 import { readClip, type ReadClipResult } from "../read-clip.ts";
+import { inOneRequestAsync } from "./read-clip-test-helpers.ts";
 
 const D_DORIAN_INTERVALS = [0, 2, 3, 5, 7, 9, 10];
 
@@ -201,7 +202,7 @@ describe("readClip - a MIDI clip's own scale", () => {
     registerClip(1, { scale_mode: 0 });
     registerClip(2, { scale_mode: 0 });
 
-    await readClip({ id: "clip0,clip1,clip2" });
+    await inOneRequestAsync(() => readClip({ id: "clip0,clip1,clip2" }));
 
     expect(asked()).toBe(1);
   });

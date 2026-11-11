@@ -17,7 +17,7 @@ import {
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import {
-  canRecreateClip,
+  recreateBlocker,
   PartialRecreateError,
   recreateClip,
   recreatedClipLosses,
@@ -87,13 +87,12 @@ export function placeMovedClip({
 
   if (destination?.takeLane != null || sourceIsOnTakeLane) {
     // Audio is rebuilt from its sample, so a clip that has none can't be
-    // re-created. Checked before resolveTakeLane, which creates permanent lanes.
-    if (!canRecreateClip(clip)) {
-      refuseClipWork(
-        reasons,
-        clip.id,
-        "not moved: it's an audio clip with no sample file; drag it in Live's UI",
-      );
+    // re-created, and neither can a step sequencer clip. Checked before
+    // resolveTakeLane, which creates permanent lanes.
+    const blocker = recreateBlocker(clip);
+
+    if (blocker != null) {
+      refuseClipWork(reasons, clip.id, `not moved: ${blocker}`);
 
       return null;
     }

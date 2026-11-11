@@ -33,7 +33,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { registerInstrumentRackFixture } from "#src/tools/track/read/tests/helpers/instrument-rack-fixture.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
-import { inOneRequest } from "./read-clip-test-helpers.ts";
+import { inOneRequest, inOneRequestAsync } from "./read-clip-test-helpers.ts";
 
 /** How many chains the throwaway rack carries. */
 const CHAIN_COUNT = 8;
@@ -100,7 +100,7 @@ describe("readClip build budget", () => {
   beforeEach(setupTrackWithClips);
 
   it("builds the clip and nothing above it", async () => {
-    await readClip({ path: "t0/s0" });
+    await inOneRequestAsync(() => readClip({ path: "t0/s0" }));
 
     // A clip that answers proves its track and its scene are there, so a read
     // by path costs exactly the clip, plus the version check.
@@ -127,9 +127,9 @@ describe("readClip build budget", () => {
     // it is keyed on the track, so the walk is paid before the first clip and
     // never again. Every clip after that costs only itself.
     expect(resolves("id rackChain*")).toBe(CHAIN_COUNT);
-    // Each readClip call is a call of its own, so each pays its version check.
+    // The request asks Live for its version once, whatever the call count.
     expect(liveApiBuildStats().resolved).toBe(
-      WALK_COST + CLIP_COUNT * (1 + VERSION_CHECK),
+      WALK_COST + CLIP_COUNT + VERSION_CHECK,
     );
   });
 
@@ -153,10 +153,12 @@ describe("readClip build budget", () => {
   });
 
   it("skips the walk for a clip with no notes to spell", async () => {
-    await readClip({
-      path: `t0/s${String(EMPTY_CLIP_SCENE)}`,
-      include: ["notes"],
-    });
+    await inOneRequestAsync(() =>
+      readClip({
+        path: `t0/s${String(EMPTY_CLIP_SCENE)}`,
+        include: ["notes"],
+      }),
+    );
 
     // Drum mode only decides how notes are spelled. An empty clip has none, so
     // the answer is never used and must not be worked out.
@@ -166,11 +168,13 @@ describe("readClip build budget", () => {
 
   it("costs one object per clip when the caller supplies drum mode", async () => {
     for (let sceneIndex = 0; sceneIndex < CLIP_COUNT; sceneIndex++) {
-      await readClip({
-        path: `t0/s${String(sceneIndex)}`,
-        include: ["notes"],
-        drumMode: false,
-      });
+      await inOneRequestAsync(() =>
+        readClip({
+          path: `t0/s${String(sceneIndex)}`,
+          include: ["notes"],
+          drumMode: false,
+        }),
+      );
     }
 
     // The same reads as above with the answer handed over: the clip and

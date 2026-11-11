@@ -11,6 +11,9 @@ import { emitWarning } from "./v8-max-console.ts";
 /** Why a clip can't take a MIDI-only param. */
 export const CLIP_IS_AUDIO = "the clip is audio";
 
+/** Why a clip can't take a notes param: its steps are hidden from the API. */
+export const CLIP_IS_STEP_SEQUENCER = "the clip is a step sequencer";
+
 /** Why a clip can't take an audio-only param. */
 export const CLIP_IS_MIDI = "the clip is MIDI";
 

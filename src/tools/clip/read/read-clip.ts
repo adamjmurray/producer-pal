@@ -6,13 +6,9 @@
 import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
-import {
-  abletonBeatsToBarBeat,
-  abletonBeatsToDuration,
-} from "#src/notation/barbeat/time/barbeat-time.ts";
+import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatNotation } from "#src/notation/notation.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { readClipNotes } from "#src/tools/shared/clip/clip-notes.ts";
@@ -38,9 +34,12 @@ import {
 } from "#src/tools/shared/schema/scale/call-scale.ts";
 import { type ClipEnvelope, clipEnvelopes } from "./helpers/clip-envelopes.ts";
 import { addClipScale } from "./helpers/clip-scale-fields.ts";
+import {
+  addTimingProperties,
+  type ClipMeter,
+} from "./helpers/clip-timing-fields.ts";
 import { addBooleanStateProperties } from "./helpers/clip-state-flags.ts";
 import {
-  clipRegionBeats,
   processWarpMarkers,
   WARP_MODE_MAPPING,
 } from "./helpers/clip-region-and-warp.ts";
@@ -82,17 +81,12 @@ interface WarpMarker {
   beatTime: number;
 }
 
-/** A clip's own meter, which spells both its positions and its notes. */
-interface ClipMeter {
-  numerator: number;
-  denominator: number;
-}
-
 /** Result returned by readClip */
 export interface ReadClipResult {
   // Core properties
   id: string | null;
-  type: "midi" | "audio" | null;
+  /** "step-sequencer" is a Live 13 MIDI clip whose steps can't be read */
+  type: "midi" | "step-sequencer" | "audio" | null;
   name?: string | null;
   color?: string | null;
   timeSignature?: string | null;
@@ -292,11 +286,12 @@ export function readOneClip(
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
   const isMidiClip = (clip.getProperty("is_midi_clip") as number) > 0;
+  const isStepSequencer = isMidiClip && clip.midiClipIsStepSequencer;
   const clipName = clip.getName();
 
   const result: ReadClipResult = {
     id: clip.id,
-    type: isMidiClip ? "midi" : "audio",
+    type: clipType(isMidiClip, isStepSequencer),
     ...(clipName && { name: clipName }),
     ...(includeColor && { color: clip.getColor() }),
   };
@@ -311,11 +306,13 @@ export function readOneClip(
     addTimingProperties(result, clip, result.type === "audio", clipMeter);
   }
 
-  if (result.type === "midi") {
-    if (args.callScale != null) {
-      addClipScale(result, clip, args.callScale);
-    }
+  if (result.type !== "audio" && args.callScale != null) {
+    addClipScale(result, clip, args.callScale);
+  }
 
+  if (isStepSequencer) {
+    appendDetail(result, STEPS_UNREADABLE);
+  } else if (result.type === "midi") {
     processMidiClip(
       result,
       clip,
@@ -333,6 +330,25 @@ export function readOneClip(
   return result;
 }
 
+/** What a step sequencer clip's entry says in place of its notes. */
+const STEPS_UNREADABLE = "steps can't be read";
+
+/**
+ * @param isMidiClip - Whether Live calls it a MIDI clip
+ * @param isStepSequencer - Whether it is a step sequencer clip
+ * @returns The type the read reports
+ */
+function clipType(
+  isMidiClip: boolean,
+  isStepSequencer: boolean,
+): "midi" | "step-sequencer" | "audio" {
+  if (isStepSequencer) {
+    return "step-sequencer";
+  }
+
+  return isMidiClip ? "midi" : "audio";
+}
+
 /**
  * Read the clip's meter once, and only if something asks: the timing block and
  * the note formatting both spell positions in it, and a read with neither must
@@ -348,57 +364,6 @@ function clipMeterReader(clip: LiveAPI): () => ClipMeter {
       numerator: clip.getProperty("signature_numerator") as number,
       denominator: clip.getProperty("signature_denominator") as number,
     });
-}
-
-/**
- * Add timing properties (timeSignature, looping, start, end, length, firstStart)
- * @param result - Result object to add properties to
- * @param clip - LiveAPI clip object
- * @param isAudioClip - Whether the clip is an audio clip, whose marker
- *   properties are in seconds rather than beats when it is not warped
- * @param clipMeter - Getter for the clip's meter
- */
-function addTimingProperties(
-  result: ReadClipResult,
-  clip: LiveAPI,
-  isAudioClip: boolean,
-  clipMeter: () => ClipMeter,
-): void {
-  const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
-    clipMeter();
-  const isLooping = (clip.getProperty("looping") as number) > 0;
-
-  const { startBeats, endBeats, startMarkerBeats } = clipRegionBeats(
-    clip,
-    isAudioClip,
-    isLooping,
-  );
-
-  result.timeSignature = `${String(timeSigNumerator)}/${String(timeSigDenominator)}`;
-  result.looping = isLooping;
-  result.start = abletonBeatsToBarBeat(
-    startBeats,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-  result.end = abletonBeatsToBarBeat(
-    endBeats,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-  result.length = abletonBeatsToDuration(
-    endBeats - startBeats,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-
-  if (Math.abs(startMarkerBeats - startBeats) > SAME_TIME_EPSILON) {
-    result.firstStart = abletonBeatsToBarBeat(
-      startMarkerBeats,
-      timeSigNumerator,
-      timeSigDenominator,
-    );
-  }
 }
 
 /**

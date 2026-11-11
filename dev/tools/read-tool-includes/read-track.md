@@ -34,7 +34,8 @@ Returns track overview by default. Use `include` to add detail.
 
 Replaces `sessionClipCount` / `arrangementClipCount` with full clip arrays. Each
 clip is read via `readClip()`. Nested clips have `type` stripped (see
-[Redundant field stripping](README.md#redundant-field-stripping)).
+[Redundant field stripping](README.md#redundant-field-stripping)), except a
+`"step-sequencer"` one, whose type isn't the track's.
 
 `arrangement-clips` also replaces `takeLaneCount` with `takeLanes`: one entry
 per lane, each with its `id`, `path` (e.g. `"t2/l0"`), `name`, and `clips`.

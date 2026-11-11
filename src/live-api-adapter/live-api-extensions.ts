@@ -10,8 +10,10 @@ import { errorMessage } from "#src/shared/error-message.ts";
 import { type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { LIVE_API_DEVICE_TYPE_MIDI_EFFECT } from "#src/tools/constants.ts";
+import { liveVersionAtLeast } from "#src/tools/shared/helpers/live-api-values.ts";
 import { buildOrReuse } from "./live-api-build.ts";
 import { NONEXISTENT_ID, parseIdOrPath } from "./live-api-id-or-path.ts";
+import { requestMemo } from "./live-api-release.ts";
 
 // Before Live 12.4.15, Max's LiveAPI lists no members for CC Control, so every
 // device-level read fails on it. What it still answers is its `type` field,
@@ -393,6 +395,25 @@ if (typeof LiveAPI !== "undefined") {
     const last = [...this.path.matchAll(/devices (\d+)/g)].at(-1);
 
     return last == null ? null : Number(last[1]);
+  });
+
+  // A Live 13 step sequencer clip reads `midi_clip_type` as the list [1]; a
+  // notes clip reads [0]. Live 12 has no such property and Max answers a bare 1,
+  // not a list, so only a real list counts, and Live 12 isn't asked at all. An
+  // audio clip refuses the read. For a caller that has just read `is_midi_clip`.
+  defineGetter("midiClipIsStepSequencer", function (this: LiveAPI) {
+    return requestMemo(
+      `step-sequencer-clip ${this.id}`,
+      () =>
+        liveVersionAtLeast("13.0") &&
+        this.getPropertyList("midi_clip_type")[0] === 1,
+    );
+  });
+
+  defineGetter("isStepSequencerClip", function (this: LiveAPI) {
+    return (
+      this.getProperty("is_midi_clip") === 1 && this.midiClipIsStepSequencer
+    );
   });
 
   defineGetter("timeSignature", function (this: LiveAPI) {

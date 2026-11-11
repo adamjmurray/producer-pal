@@ -22,7 +22,7 @@ import {
   withCreatedScenes,
 } from "#src/tools/shared/clip/create-missing-scenes.ts";
 import {
-  canRecreateClip,
+  recreateBlocker,
   recreatedClipLosses,
   recreateLossesNote,
 } from "#src/tools/shared/clip/recreate-clip.ts";
@@ -326,9 +326,12 @@ export function arrangementToSlotBlocker(
     return "could not determine its track";
   }
 
-  // Audio is rebuilt from its sample, so a clip that has none can't be moved.
-  if (!canRecreateClip(clip)) {
-    return "it's an audio clip with no sample file; drag it in Live's UI";
+  // Audio is rebuilt from its sample, so a clip that has none can't be moved,
+  // and a step sequencer clip can't be rebuilt at all.
+  const unbuildable = recreateBlocker(clip);
+
+  if (unbuildable != null) {
+    return unbuildable;
   }
 
   return clipCopyBlocker(

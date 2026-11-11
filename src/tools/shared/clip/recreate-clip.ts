@@ -45,6 +45,10 @@ export class PartialRecreateError extends Error {
   }
 }
 
+/** Why an audio clip with no sample can't be re-created. */
+const NO_SAMPLE_FILE =
+  "it's an audio clip with no sample file; drag it in Live's UI";
+
 /** Everything read off a MIDI source before the new clip exists. */
 interface ClipSnapshot {
   /** What the copy is created at: the source's span, or its loop length. */
@@ -160,20 +164,39 @@ export function recreateClipInSlot(
   });
 }
 
+/** Why a lane or slot copy can't rebuild a step sequencer clip. */
+export const STEP_SEQUENCER_NO_REBUILD =
+  "it's a step sequencer clip, and Live's API can't create one";
+
 /**
- * Whether a clip can be re-created at all. A MIDI clip always can; an audio clip
- * is rebuilt from its sample, so it needs a `file_path`. A non-empty
- * `file_path` only means Live once saw a sample there — not that the file is
- * still on disk, so the create itself can still fail (there's no filesystem
- * access here to check first).
+ * Why a clip can't be re-created, or null when it can. A step sequencer clip
+ * can't: its steps can't be read, and Live's API can only make notes clips. A
+ * MIDI clip otherwise always can; an audio clip is rebuilt from its sample, so
+ * it needs a `file_path`. A non-empty `file_path` only means Live once saw a
+ * sample there — not that the file is still on disk, so the create itself can
+ * still fail (there's no filesystem access here to check first).
+ * @param clip - The clip being copied
+ * @returns The reason, worded for a skip entry, or null
+ */
+export function recreateBlocker(clip: LiveAPI): string | null {
+  const isMidi = clip.getProperty("is_midi_clip") === 1;
+
+  if (isMidi && clip.midiClipIsStepSequencer) {
+    return STEP_SEQUENCER_NO_REBUILD;
+  }
+
+  return isMidi || Boolean(clip.getProperty("file_path"))
+    ? null
+    : NO_SAMPLE_FILE;
+}
+
+/**
+ * Whether a clip can be re-created at all.
  * @param clip - The clip being copied
  * @returns True when {@link recreateClip} can rebuild it
  */
 export function canRecreateClip(clip: LiveAPI): boolean {
-  return (
-    clip.getProperty("is_midi_clip") === 1 ||
-    Boolean(clip.getProperty("file_path"))
-  );
+  return recreateBlocker(clip) == null;
 }
 
 /**
@@ -243,6 +266,12 @@ function recreateInto(
   losses: string[],
   target: RecreateTarget,
 ): LiveAPI {
+  // The callers check first. This is the backstop that keeps the source's
+  // hidden note list from being copied into a clip that looks like the real one.
+  if (sourceClip.isStepSequencerClip) {
+    throw new Error(STEP_SEQUENCER_NO_REBUILD);
+  }
+
   const span = target.keepsSpan ? arrangementSpan(sourceClip) : null;
 
   if (sourceClip.getProperty("is_midi_clip") === 1) {

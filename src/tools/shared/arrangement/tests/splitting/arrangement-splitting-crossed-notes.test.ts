@@ -4,6 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
+import {
+  type MidiClipEra,
+  setMidiClipType,
+} from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   ARRANGEMENT_SPLIT_MODE,
@@ -41,6 +45,8 @@ interface CutOpts {
   runOutOfTime?: boolean;
   /** Leave out the reporter, as a caller with nowhere to say it would. */
   noReporter?: boolean;
+  /** Which Live's `midi_clip_type` answer the clip gives. */
+  era?: MidiClipEra;
 }
 
 /**
@@ -62,6 +68,10 @@ function cutWithNotes(
   const clip = LiveAPI.from("id clip_1");
   const { reports, reportClip } = recordClipReports();
   const inner = clipMock?.call.getMockImplementation();
+
+  if (opts.era != null && clipMock) {
+    setMidiClipType(clipMock, opts.era);
+  }
 
   if (opts.startMarker != null && clipMock) {
     clipMock.properties.start_marker = opts.startMarker;
@@ -113,6 +123,32 @@ function noteReads(clipMock: ReturnType<typeof lookupMockObject>): number {
 }
 
 describe("performSplitting with a note across a cut", () => {
+  it("says nothing for a step sequencer clip, and never reads its notes", () => {
+    const { said, reads } = cutWithNotes(
+      UNLOOPED_12,
+      [{ start_time: 0, duration: 12 }],
+      [104],
+      { era: "step-sequencer" },
+    );
+
+    expect(said).toStrictEqual([]);
+    expect(reads).toBe(0);
+  });
+
+  it.each<MidiClipEra>(["notes", "live-12"])(
+    "still counts a note across the cut on a %s clip",
+    (era) => {
+      const { said } = cutWithNotes(
+        UNLOOPED_12,
+        [{ start_time: 0, duration: 12 }],
+        [104],
+        { era },
+      );
+
+      expect(said).toStrictEqual(["1 note crossed a cut and now ends at it"]);
+    },
+  );
+
   it("says one note ends at the cut", () => {
     const { said } = cutWithNotes(
       UNLOOPED_12,

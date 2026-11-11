@@ -195,5 +195,18 @@ declare global {
 
     /** Get time signature as "N/D" string (e.g., "4/4") */
     readonly timeSignature: string | null;
+
+    /**
+     * Whether this is a Live 13 step sequencer clip: a MIDI clip whose notes
+     * Live hides from the API. False for every other clip, and on Live 12.
+     */
+    readonly isStepSequencerClip: boolean;
+
+    /**
+     * Like `isStepSequencerClip`, for a caller that has already read
+     * `is_midi_clip` as 1 and so skips that read. Never true on an audio clip's
+     * behalf: call it only for a MIDI clip.
+     */
+    readonly midiClipIsStepSequencer: boolean;
   }
 }
