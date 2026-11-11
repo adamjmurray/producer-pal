@@ -29,7 +29,7 @@ const MESSAGE_LIMIT = 200;
  * (see `scorePercentage`) so a clean run outranks a recovered one.
  *
  * A failed call that matches one of the scenario's expected refusals is left
- * out of `count` and `errors`, but still counts toward `total`.
+ * out of `count` and `errors`.
  *
  * @param turns - Completed conversation turns
  * @param expectedRefusals - Refusals the scenario provokes on purpose
@@ -40,7 +40,7 @@ export function collectToolErrors(
   expectedRefusals: ExpectedRefusal[] = [],
 ): JsonToolErrors | undefined {
   const errors: JsonToolErrors["errors"] = [];
-  let total = 0;
+  let madeCall = false;
 
   for (const turn of turns) {
     for (const call of turn.toolCalls) {
@@ -48,7 +48,7 @@ export function collectToolErrors(
         continue;
       }
 
-      total++;
+      madeCall = true;
 
       if (!toolCallFailed(call) || isExpectedRefusal(call, expectedRefusals)) {
         continue;
@@ -62,11 +62,26 @@ export function collectToolErrors(
     }
   }
 
-  if (total === 0) {
+  if (!madeCall) {
     return undefined;
   }
 
-  return { count: errors.length, total, errors };
+  return { count: errors.length, errors };
+}
+
+/**
+ * Count the Producer Pal tool calls a run made, failed ones included. A
+ * transport's own tools are left out, as in `collectToolErrors`.
+ *
+ * @param turns - Turns, live or as saved in a result file
+ * @returns How many Producer Pal calls the turns hold
+ */
+export function countToolCalls(
+  turns: Array<{ toolCalls: Array<{ name: string }> }>,
+): number {
+  return turns
+    .flatMap((turn) => turn.toolCalls)
+    .filter((call) => call.name.startsWith(TOOL_NAME_PREFIX)).length;
 }
 
 function isExpectedRefusal(

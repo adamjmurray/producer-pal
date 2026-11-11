@@ -17,6 +17,7 @@ import {
   stepTimingParts,
 } from "#evals/chat/shared/formatting.ts";
 import { formatTokenLabel } from "../json-results/assertion-label.ts";
+import { countToolCalls } from "../json-results/tool-errors.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { jevJudgeNote, jevJudgeTag } from "./jev-judge-report.ts";
 import { OUTPUT_CAP_HINT, outputCapTurns } from "./output-cap.ts";
@@ -144,7 +145,7 @@ function printToolErrorsSection(result: JsonEvalResult): void {
   console.log(
     "\n" +
       formatSubsectionHeader(
-        `Tool errors (${tally.count}/${tally.total} calls)`,
+        `Tool errors (${tally.count}/${countToolCalls(result.turns)} calls)`,
       ),
   );
   console.log("");
@@ -364,7 +365,7 @@ function printNonGatingLines(result: JsonEvalResult): void {
   const tally = result.toolErrors;
 
   if (tally && tally.count > 0) {
-    const text = `${tally.count} of ${tally.total} calls`;
+    const text = `${tally.count} of ${countToolCalls(result.turns)} calls`;
 
     console.log(`  Tool errs:  ${styleText("yellow", text)}`);
   }

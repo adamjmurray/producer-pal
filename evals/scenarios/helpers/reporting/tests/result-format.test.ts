@@ -19,12 +19,12 @@ import {
  * Build a minimal result with the given check outcomes and tool-error tally.
  *
  * @param checks - Pass/fail per gating check
- * @param toolErrors - Optional failed/total tool call counts
+ * @param toolErrors - Optional failed and made tool call counts
  * @returns A JSON eval result
  */
 function makeResult(
   checks: boolean[],
-  toolErrors?: { count: number; total: number },
+  toolErrors?: { count: number; calls: number },
 ): JsonEvalResult {
   return {
     version: 1,
@@ -35,7 +35,18 @@ function makeResult(
     model: "google/gemini",
     configProfileId: "default",
     result: checks.every(Boolean) ? "pass" : "fail",
-    turns: [],
+    turns: [
+      {
+        turnIndex: 0,
+        userMessage: "",
+        assistantResponse: "",
+        toolCalls: Array.from({ length: toolErrors?.calls ?? 0 }, () => ({
+          name: "ppal-connect",
+          args: {},
+        })),
+        durationMs: 1,
+      },
+    ],
     checks: {
       pass: checks.every(Boolean),
       results: checks.map((pass, i) => ({
@@ -45,7 +56,9 @@ function makeResult(
         message: "",
       })),
     },
-    ...(toolErrors && { toolErrors: { ...toolErrors, errors: [] } }),
+    ...(toolErrors && {
+      toolErrors: { count: toolErrors.count, errors: [] },
+    }),
     totalDurationMs: 1,
   };
 }
@@ -75,13 +88,13 @@ describe("toolErrorPenalty", () => {
   });
 
   it("costs a flat 10% per failed call", () => {
-    expect(toolErrorPenalty(makeResult([true], { count: 2, total: 9 }))).toBe(
+    expect(toolErrorPenalty(makeResult([true], { count: 2, calls: 9 }))).toBe(
       0.2,
     );
   });
 
   it("caps at half the score", () => {
-    expect(toolErrorPenalty(makeResult([true], { count: 20, total: 40 }))).toBe(
+    expect(toolErrorPenalty(makeResult([true], { count: 20, calls: 40 }))).toBe(
       0.5,
     );
   });
@@ -94,15 +107,15 @@ describe("scorePercentage", () => {
   });
 
   it("discounts a passing run for each failed call", () => {
-    const result = makeResult([true, true], { count: 1, total: 4 });
+    const result = makeResult([true, true], { count: 1, calls: 4 });
 
     expect(result.result).toBe("pass");
     expect(scorePercentage([result])).toBe(90);
   });
 
   it("costs the same however many calls the run made", () => {
-    const few = makeResult([true, true], { count: 1, total: 2 });
-    const many = makeResult([true, true], { count: 1, total: 20 });
+    const few = makeResult([true, true], { count: 1, calls: 2 });
+    const many = makeResult([true, true], { count: 1, calls: 20 });
 
     expect(scorePercentage([few])).toBe(90);
     expect(scorePercentage([many])).toBe(90);
@@ -114,8 +127,8 @@ describe("scorePercentage", () => {
 
   it("averages the tool-error penalty across trials", () => {
     const trials = [
-      makeResult([true], { count: 1, total: 5 }),
-      makeResult([true], { count: 0, total: 5 }),
+      makeResult([true], { count: 1, calls: 5 }),
+      makeResult([true], { count: 0, calls: 5 }),
     ];
 
     // Both trials pass (100), mean penalty 5%.

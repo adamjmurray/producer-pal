@@ -547,7 +547,6 @@ describe("toJsonResult", () => {
 
       expect(json.toolErrors).toStrictEqual({
         count: 1,
-        total: 2,
         errors: [
           {
             turnIndex: 0,
@@ -580,7 +579,7 @@ describe("toJsonResult", () => {
         ],
       });
 
-      expect(json.toolErrors).toStrictEqual({ count: 0, total: 1, errors: [] });
+      expect(json.toolErrors).toStrictEqual({ count: 0, errors: [] });
     });
 
     it("omits toolErrors when the run made no tool calls", () => {

@@ -81,12 +81,11 @@ export interface JsonChecks {
   results: JsonCheckResult[];
 }
 
-/** Failed tool calls in a run, and how many calls there were in total. */
+/** Failed tool calls in a run. For how many calls it made, see
+ *  `countToolCalls`. */
 export interface JsonToolErrors {
   /** How many tool calls came back as an error */
   count: number;
-  /** How many tool calls were made */
-  total: number;
   /** One entry per failed call, with the error text truncated */
   errors: Array<{ turnIndex: number; name: string; message: string }>;
 }

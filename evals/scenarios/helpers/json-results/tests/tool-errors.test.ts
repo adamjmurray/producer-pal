@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from "vitest";
 import { type EvalTurnResult, type ToolCall } from "../../../types.ts";
-import { collectToolErrors } from "../tool-errors.ts";
+import { collectToolErrors, countToolCalls } from "../tool-errors.ts";
 
 /**
  * Build a turn holding the given tool calls.
@@ -40,7 +40,6 @@ describe("collectToolErrors", () => {
 
     expect(collectToolErrors(turns)).toStrictEqual({
       count: 0,
-      total: 1,
       errors: [],
     });
   });
@@ -60,7 +59,6 @@ describe("collectToolErrors", () => {
 
     expect(collectToolErrors(turns)).toStrictEqual({
       count: 1,
-      total: 3,
       errors: [
         {
           turnIndex: 1,
@@ -95,7 +93,6 @@ describe("collectToolErrors", () => {
 
     expect(collectToolErrors(turns)).toStrictEqual({
       count: 0,
-      total: 1,
       errors: [],
     });
   });
@@ -124,7 +121,6 @@ describe("collectToolErrors", () => {
 
       expect(tally).toStrictEqual({
         count: 1,
-        total: 2,
         errors: [
           {
             turnIndex: 0,
@@ -174,5 +170,17 @@ describe("collectToolErrors", () => {
 
       expect(tally?.count).toBe(2);
     });
+  });
+});
+
+describe("countToolCalls", () => {
+  it("counts Producer Pal calls across turns, failed ones included", () => {
+    const turns = [
+      { toolCalls: [{ name: "ppal-connect" }, { name: "list_mcp_resources" }] },
+      { toolCalls: [{ name: "ppal-create-clip", isError: true }] },
+      { toolCalls: [] },
+    ];
+
+    expect(countToolCalls(turns)).toBe(2);
   });
 });
