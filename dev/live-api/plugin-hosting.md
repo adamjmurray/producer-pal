@@ -120,8 +120,8 @@ Set's restore has run, from the same sources as `info`'s `plugin`.
   bundle is picked by vendor: the browser's vendor folder exactly, else the only
   vendor there is, else the one vendor matching it loosely (one name starts with
   the other at a word boundary: "Acme Audio" ~ "Acme"). Anything else is refused
-  naming the bundles' vendors, never another vendor's bundle. AU presets aren't
-  supported.
+  naming the bundles' vendors, never another vendor's bundle. Presets aren't
+  supported (see [Presets](#presets)).
 - **AUv3 can't be hosted.** `vst~` loads nothing for one, under any name
   (`plug_au "Audulus 4 FX"`, with the vendor, `C74_AU:/…`, the `juce_id`
   `AudioUnit:/aumf,adfx,ADLS`), even after `scan 2` and seconds of waiting,
@@ -284,6 +284,12 @@ Live saves the plug-in's state in a hidden blob parameter, not through `vst~`.
 
 ### Taking over a native plug-in's state
 
+**Not supported: no tool wraps a native plug-in or unwraps a hosted one.** The
+saved Set's state (below) silently drops edits made since the last save, and
+nothing can tell when it would. A `force` option would lose the state anyway,
+which is no better than removing the native plug-in and adding a hosted one.
+Unwrapping fails the other way: the Live API can't set a native plug-in's state.
+
 The Live API can't read a natively loaded plug-in's state, but the saved Set
 can: `live_set file_path` gives the `.als` (gzipped XML), which stores each
 plug-in's state as hex. Probed on Live 12.4 by loading that state into a wrapper
@@ -303,14 +309,43 @@ with `vst~`'s `read <path>`:
 - AU: `read` with the file's path or its preset name changed nothing, and
   `write` made no file. AU user presets go in
   `~/Library/Audio/Presets/<maker>/<plug-in>/`, which was root-owned on the
-  probe machine, so the by-name test proves nothing. Untried: putting the AU
-  state into the `C74Snapshot` directly.
+  probe machine, so the by-name test proves nothing. Putting the `.aupreset`
+  into the `C74Snapshot` works (see [Presets](#presets)).
 - Only the last save carries over: edits since then are lost, and a Set never
   saved has nothing. No way found to tell whether the Set has unsaved changes.
 - The device has to be found in the XML by track and device position, which is
   wrong if devices moved since the save.
 - Configured params (at most 128) can be read through the Live API and set on
   the wrapper: a partial fallback.
+
+### Presets
+
+Not supported, on purpose: almost no plug-in ships standard preset files.
+Vendors use their own formats (u-he `.h2p`, FabFilter `.ffp`, NKS `.nksf`,
+`.SerumPreset`), which only the plug-in's own browser loads. A search of a disk
+with ~100 plug-ins found no third-party `.fxp`, `.fxb`, `.vstpreset` or
+`.aupreset`, so Live's browser listed no plug-in presets either. Probed on Live
+12 and Max 9:
+
+- **Factory programs** (`pgmnames` lists them, `int N` picks one, from 1):
+  useful for AU only. Pianoteq and AUMatrixReverb list real names and `int N`
+  switches them. VST3 plug-ins list 128 placeholders ("Program 0", "Prog 1")
+  that change nothing, Pro-Q 4 lists none, and VST2 lists one empty name.
+  `pgmnames` answers on outlet 5, which the wrappers don't wire.
+- **`presetnames`** (AU only) listed nothing, but there were no AU user presets
+  to list.
+- **Files would load**, given a converter for two formats:
+  - VST2: `read` takes an `.fxp`; `write` makes one.
+  - VST3: `write` makes JUCE's `VC2!` file (`.vst3preset`, see above) and `read`
+    takes it back. A Steinberg `.vstpreset` is ignored, but its `Comp` and
+    `Cont` chunks are the `IComponent` and `IEditController` states: put them in
+    a `VC2!` file and `read` loads it. Live listed and loaded a `.vstpreset`
+    built that way.
+  - AU: `read` ignores an `.aupreset`. An AU's `C74Snapshot` blob is its
+    `ClassInfo` plist (JUCE base64), the same dict an `.aupreset` holds, so
+    swapping a preset's plist (XML or binary) into the blob and restoring the
+    snapshot loads it. The first restore on a freshly added wrapper was dropped;
+    later ones all worked. Cause unknown.
 
 ### Audio, MIDI and latency
 

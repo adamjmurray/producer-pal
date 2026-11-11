@@ -45,13 +45,18 @@ so you can set all its parameters".
 
 ## Limits
 
-- **A plug-in already in your Set can't be converted.** Live's API can't read a
-  plug-in's settings, so Producer Pal can only host a plug-in it adds.
+- **A plug-in can't be switched between native and hosted.** Live's API can't
+  read or set a native plug-in's settings, so they wouldn't carry over. To host
+  a plug-in already in your Set, add a hosted one and delete the native one, and
+  the other way around.
 - **A plug-in installed while Live is running** can show in Live's browser
   before Live's plug-in database has it. Restart Live to host a new VST3 or VST2
   plug-in.
 - **Stereo only.** Live gets the first two outputs of a multi-output instrument,
   and an effect gets no sidechain input.
+- **Only what the plug-in exposes.** Producer Pal reaches the parameters a
+  plug-in offers to a host. Anything else, including loading the plug-in's
+  presets, is only in the plug-in's own window.
 - **Not supported:** AUv3 plug-ins, VST2 shell plug-ins (such as Waves'
   WaveShell), and AU MIDI effects.
 - **Tested on macOS only** so far.
