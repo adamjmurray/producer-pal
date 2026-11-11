@@ -123,13 +123,13 @@ text. The plug-in's MIDI stand-in params are left out, and `paramSearch` filters
 by name. After a Set reload a wrapper knows its plug-in only by file name, so
 `type` shows that.
 
-A rack has 16 macro params however many it shows. `parameters` leaves out those
-beyond `count` that nothing maps to. With no mappings (`has_macro_mappings`
-false) that needs nothing more; a rack with mappings keeps them all until the
-remote script says which are mapped, and then keeps only the mapped ones. A
-macro hidden by `macroCount` that is still mapped stays listed (it is in
-`hiddenMapped`). Writes are unaffected: any macro can still be addressed by
-name.
+A rack has all its macro params (16 in Live 12, 32 in Live 13) however many it
+shows. `parameters` leaves out those beyond `count` that nothing maps to. With
+no mappings (`has_macro_mappings` false) that needs nothing more; a rack with
+mappings keeps them all until the remote script says which are mapped, and then
+keeps only the mapped ones. A macro hidden by `macroCount` that is still mapped
+stays listed (it is in `hiddenMapped`). Writes are unaffected: any macro can
+still be addressed by name.
 
 `macros` is `{ count, mapped }` when the remote script is running: `mapped`
 lists the mapped macros' numbers (macro 1 is the first), and `hiddenMapped`

@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { errorMessage } from "#src/shared/error-message.ts";
+import { macroNumber } from "#src/tools/shared/device/helpers/params/hidden-macros.ts";
 import { type MappedMacros } from "#src/tools/shared/device/rack-macro-mappings.ts";
 import { refuseParamsOutsideAction } from "#src/tools/shared/schema/refuse-params-outside-action.ts";
 import {
@@ -147,15 +149,22 @@ function executeMacroVariationAction(
 // Macro count
 // ============================================================================
 
-/** The most macros a rack shows. */
-const MAX_MACRO_COUNT = 16;
+/**
+ * Every rack has at least this many macros. A count above it needs the rack's
+ * own total (Live 13 has 32), read from its params.
+ */
+const MIN_MACRO_LIMIT = 16;
 
 /**
  * Update visible macro count for rack devices.
- * Macros are added/removed in pairs, so odd counts are rounded up to the next even.
- * Lowering the count hides macros but keeps their mappings.
+ * Live steps the count in its own way (by 2 in Live 12, unevenly in Live 13),
+ * so it adds or removes one macro step at a time and reads the count after
+ * each, until the count reaches or passes the target. Odd counts are rounded up
+ * to the next even first. Lowering the count hides macros but keeps their
+ * mappings.
  * @param device - Live API device object
- * @param targetCount - Target number of visible macros (0-16)
+ * @param targetCount - Target number of visible macros (0 up to the rack's own
+ *   total of macros)
  * @param notes - What this device's entry has to say, added to
  * @param mapped - Which macros were mapped, read before the call, when it was
  *   worth asking
@@ -178,7 +187,19 @@ export function updateMacroCount(
     return;
   }
 
-  const target = evenMacroCount(targetCount);
+  const limit = macroLimit(device, targetCount);
+
+  if (targetCount > limit) {
+    refuseTargetWork(
+      notes,
+      ["macroCount"],
+      `macroCount ${targetCount} is above the most this rack has (${limit})`,
+    );
+
+    return;
+  }
+
+  const target = Math.min(evenMacroCount(targetCount), limit);
 
   if (target !== targetCount) {
     noteTarget(
@@ -189,14 +210,82 @@ export function updateMacroCount(
 
   const hadMappings = (device.getProperty("has_macro_mappings") as number) > 0;
   const before = device.getProperty("visible_macro_count") as number;
-  const method = target > before ? "add_macro" : "remove_macro";
+  const { landed, stoppedBy } = stepMacroCount(device, before, target, notes);
 
-  for (let i = 0; i < Math.abs(target - before) / 2; i++) {
-    device.call(method);
-    noteLanded(notes, "macroCount");
+  reportMacroCount(
+    { before, landed, target, hadMappings, mapped, stoppedBy },
+    notes,
+  );
+}
+
+/**
+ * The most macros the rack has. Only a count above what every rack has asks
+ * Live: it's the highest "Macro N" among the rack's params (16 in Live 12, 32
+ * in Live 13).
+ * @param device - The rack
+ * @param targetCount - The count the call asked for
+ * @returns The limit, or at least the count asked for when it needs no check
+ */
+function macroLimit(device: LiveAPI, targetCount: number): number {
+  if (targetCount <= MIN_MACRO_LIMIT) {
+    return MIN_MACRO_LIMIT;
   }
 
-  reportMacroCount(device, { before, target, hadMappings, mapped }, notes);
+  const numbers = device
+    .getChildren("parameters")
+    .map((param) => macroNumber(param.getProperty("original_name") as string));
+
+  return Math.max(MIN_MACRO_LIMIT, ...numbers.filter((n) => n != null));
+}
+
+/**
+ * Add or remove macros one step at a time until the count reaches or passes
+ * the target, stops moving, or Live throws after the count has changed.
+ * @param device - The rack
+ * @param before - The count the rack showed beforehand
+ * @param target - The count to reach
+ * @param notes - Told each step that lands
+ * @returns The count it ended on, and the error that cut it short, if any
+ * @throws Error when Live throws before the count has changed at all
+ */
+function stepMacroCount(
+  device: LiveAPI,
+  before: number,
+  target: number,
+  notes: TargetNotes,
+): { landed: number; stoppedBy?: string } {
+  const adding = target > before;
+  let count = before;
+
+  try {
+    while (adding ? count < target : count > target) {
+      device.call(adding ? "add_macro" : "remove_macro");
+
+      const next = device.getProperty("visible_macro_count") as number;
+
+      // Live stopped moving (its limit): more calls would only repeat.
+      if (adding ? next <= count : next >= count) {
+        break;
+      }
+
+      count = next;
+      noteLanded(notes, "macroCount");
+    }
+  } catch (error) {
+    // Where Live left the count, whether or not the last call moved it.
+    const now = device.getProperty("visible_macro_count") as number;
+
+    if (now === before) {
+      throw error;
+    }
+
+    // The call that threw may be the one that moved it.
+    noteLanded(notes, "macroCount");
+
+    return { landed: now, stoppedBy: errorMessage(error) };
+  }
+
+  return { landed: count };
 }
 
 /**
@@ -221,12 +310,15 @@ export function mayHideMappedMacros(
   );
 }
 
-/** What one macroCount write asked for, and what the rack was before it. */
+/** What one macroCount write asked for, and how it went. */
 interface MacroCountWrite {
   before: number;
+  landed: number;
   target: number;
   hadMappings: boolean;
   mapped?: MappedMacros;
+  /** What Live threw when it cut the steps short */
+  stoppedBy?: string;
 }
 
 /**
@@ -236,35 +328,35 @@ interface MacroCountWrite {
  * @returns The even count
  */
 function evenMacroCount(targetCount: number): number {
-  return targetCount % 2 === 0
-    ? targetCount
-    : Math.min(targetCount + 1, MAX_MACRO_COUNT);
+  return targetCount % 2 === 0 ? targetCount : targetCount + 1;
 }
 
 /**
  * Say what the count actually did, read back off the rack, and which mapped
  * macros it hid. Lowering the count hides macros and keeps their mappings, so
  * the entry says so rather than leaving a mapped macro to vanish silently.
- * @param device - The rack
- * @param write - What the write asked for, and what the rack was before it
+ * @param write - What the write asked for, and how it went
  * @param write.before - The count the rack showed beforehand
+ * @param write.landed - The count the rack ended on
  * @param write.target - The even count the write asked for
  * @param write.hadMappings - Whether a macro was mapped beforehand
  * @param write.mapped - Which macros were mapped beforehand, when known
+ * @param write.stoppedBy - What Live threw when it cut the steps short
  * @param notes - What this device's entry has to say, added to
  */
 function reportMacroCount(
-  device: LiveAPI,
-  { before, target, hadMappings, mapped }: MacroCountWrite,
+  { before, landed, target, hadMappings, mapped, stoppedBy }: MacroCountWrite,
   notes: TargetNotes,
 ): void {
-  const landed = device.getProperty("visible_macro_count") as number;
-
   if (landed !== target) {
     // Live stops at 1 macro: removing from 2 leaves 1, never 0.
     const why = target === 0 && landed === 1 ? "; Live keeps at least 1" : "";
+    const cut = stoppedBy == null ? "" : `; Live said: ${stoppedBy}`;
 
-    noteTarget(notes, `macroCount landed at ${landed}, not ${target}${why}`);
+    noteTarget(
+      notes,
+      `macroCount landed at ${landed}, not ${target}${why}${cut}`,
+    );
   }
 
   if (landed < before && hadMappings) {

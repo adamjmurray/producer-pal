@@ -106,9 +106,9 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         "Rack only: variation index for load/delete operations (0-based)",
       smallModel: null,
     }),
-    macroCount: param(z.coerce.number().int().min(0).max(16).optional(), {
+    macroCount: param(z.coerce.number().int().min(0).max(32).optional(), {
       default:
-        "Rack only: set visible macro count (0-16). Macros come in pairs, so an odd count rounds up; the entry says where the count landed. Lowering hides macros but keeps their mappings; the entry names the mapped ones it hid.",
+        "Rack only: set visible macro count (0-32). More than the rack has (16 in Live 12) is refused with its limit. Macros come in pairs, so an odd count rounds up; Live's steps vary, and the entry says where the count landed. Lowering hides macros but keeps their mappings; the entry names the mapped ones it hid.",
       smallModel: null,
     }),
     abCompare: param(z.enum(["a", "b", "save"]).optional(), {

@@ -457,6 +457,13 @@ export interface MacroRackSpec {
   floor?: number;
   /** Which device slot on track 0 it sits in; the first when absent */
   slot?: number;
+  /**
+   * The counts Live visits, ascending, for a rack that doesn't step by 2. Adding
+   * at the last throws, as Live 13 does at its maximum.
+   */
+  steps?: number[];
+  /** How many macro params it has, for a rack asked for more than 16 */
+  macros?: number;
 }
 
 /**
@@ -468,11 +475,13 @@ export interface MacroRackSpec {
  * @param spec.mapped - Whether one of its macros is mapped
  * @param spec.floor - The fewest macros it will hide down to
  * @param spec.slot - Which device slot on track 0 it sits in
+ * @param spec.steps - The counts Live visits, when it doesn't step by 2
+ * @param spec.macros - How many macro params it has
  * @returns The registered rack mock
  */
 export function registerMacroRack(
   id: string,
-  { count, mapped = false, floor = 0, slot = 0 }: MacroRackSpec,
+  { count, mapped = false, floor = 0, slot = 0, steps, macros }: MacroRackSpec,
 ): RegisteredMockObject {
   const properties: Record<string, unknown> = {
     can_have_chains: 1,
@@ -480,11 +489,29 @@ export function registerMacroRack(
     has_macro_mappings: mapped ? 1 : 0,
   };
 
-  // Live moves macros a pair at a time.
-  const move = (by: number) => (): null => {
+  if (macros != null) {
+    properties.parameters = registerMacroParams(id, macros);
+  }
+
+  // Live 12 moves macros a pair at a time; the steps option is Live 13's.
+  const move = (by: 1 | -1) => (): null => {
     const now = properties.visible_macro_count as number;
 
-    properties.visible_macro_count = Math.max(floor, now + by);
+    if (steps == null) {
+      properties.visible_macro_count = Math.max(floor, now + 2 * by);
+
+      return null;
+    }
+
+    const next = steps[steps.indexOf(now) + by];
+
+    if (next != null) {
+      properties.visible_macro_count = next;
+    } else if (by === 1) {
+      throw new Error(
+        "The maximum number of macro controls is already reached!",
+      );
+    }
 
     return null;
   };
@@ -493,6 +520,29 @@ export function registerMacroRack(
     path: livePath.track(0).device(slot),
     type: "RackDevice",
     properties,
-    methods: { add_macro: move(2), remove_macro: move(-2) },
+    methods: { add_macro: move(1), remove_macro: move(-1) },
   });
+}
+
+/**
+ * Register Device On and the rack's macro params, as a rack lists them.
+ * @param rackId - The rack's mock ID, to name its params
+ * @param macros - How many macros it has
+ * @returns The rack's `parameters` list
+ */
+function registerMacroParams(rackId: string, macros: number): unknown[] {
+  const names = [
+    "Device On",
+    ...Array.from({ length: macros }, (_, i) => `Macro ${i + 1}`),
+  ];
+
+  for (const [i, name] of names.entries()) {
+    registerMockObject(`${rackId}-p${i}`, {
+      path: `id ${rackId}-p${i}`,
+      type: "DeviceParameter",
+      properties: { name, original_name: name },
+    });
+  }
+
+  return names.flatMap((_, i) => ["id", `${rackId}-p${i}`]);
 }

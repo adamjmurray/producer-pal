@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// A rack has 16 macro params however many it shows. A read leaves out the ones
+// A rack has all its macro params (16 here) however many it shows. A read leaves out the ones
 // beyond the visible count that nothing maps to.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";

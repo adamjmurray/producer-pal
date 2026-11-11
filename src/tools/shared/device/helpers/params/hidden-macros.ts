@@ -3,7 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// A rack always has 16 macro params, however many it shows. The ones beyond
+// A rack always has all its macro params (16 in Live 12, 32 in Live 13),
+// however many it shows. The ones beyond
 // `visible_macro_count` that nothing maps to are noise in a read.
 
 /**

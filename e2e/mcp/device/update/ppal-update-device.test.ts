@@ -448,6 +448,44 @@ describe("ppal-update-device", () => {
     }
   });
 
+  // Live 12 steps the count by 2 up to 16; Live 13 steps unevenly up to 32, so
+  // 16 may land on 14. Nothing here assumes one: the entry must say whatever
+  // count the rack really shows, and a count above the rack's macros is refused
+  // with the limit.
+  it("says where macroCount landed, whichever way this Live steps", async () => {
+    const rackId = await rackWithOneChain();
+
+    const raised = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: rackId, macroCount: 32 },
+    });
+
+    if (isToolError(raised)) {
+      expect(getToolErrorMessage(raised)).toMatch(
+        /macroCount 32 is above the most this rack has \(\d+\)/,
+      );
+      expect((await readRackParams(rackId)).macros?.count).toBe(8);
+    } else {
+      expect(
+        parseToolResult<UpdateDeviceResult>(raised).detail,
+      ).toBeUndefined();
+      expect((await readRackParams(rackId)).macros?.count).toBe(32);
+    }
+
+    const lowered = parseToolResult<UpdateDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: { id: rackId, macroCount: 16 },
+      }),
+    );
+    const count = (await readRackParams(rackId)).macros?.count;
+
+    expect(count).toBeDefined();
+    expect(lowered.detail).toBe(
+      count === 16 ? undefined : `macroCount landed at ${count}, not 16`,
+    );
+  });
+
   // A reason names the object the way the tools publish it, never by Live's
   // class name.
   it("says a rack-only param can't be set on a chain", async () => {
