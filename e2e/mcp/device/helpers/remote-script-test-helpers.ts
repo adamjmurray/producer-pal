@@ -14,6 +14,11 @@ import { presetFileIsFor } from "#src/mcp-server/rpc/remote-script/browser/prese
 import { resolveRemoteScriptPort } from "#src/mcp-server/rpc/remote-script/remote-script-client.ts";
 import { beforeAll } from "vitest";
 import {
+  openLiveSet,
+  serverIsAnswering,
+} from "#evals/scenarios/open-live-set.ts";
+import {
+  LIVE_SET_PATH,
   callToolAndSettle,
   parseToolResult,
   sleep,
@@ -53,12 +58,22 @@ export async function appendTracksInOneCall(
   await sleep(END_LANDS_MS);
 }
 
+/** How long a just-opened Live gets for the remote script to answer. */
+const SCRIPT_START_MS = 15_000;
+
 /**
  * Fail the suite, rather than skip it, when the remote script isn't answering.
- * Call it ahead of setupMcpTestContext, so it fails before any Live Set opens.
+ * Call it ahead of setupMcpTestContext, so a running Live without the script
+ * fails before any Set opens. With Live closed, it opens the test Set first:
+ * the script only starts with Live.
  */
 export function requireRemoteScript(): void {
   beforeAll(async () => {
+    if (!(await remoteScriptAnswers()) && !(await serverIsAnswering())) {
+      await openLiveSet(LIVE_SET_PATH);
+      await waitForRemoteScript();
+    }
+
     if (!(await remoteScriptAnswers())) {
       throw new Error(
         `The Producer Pal remote script isn't running: nothing answered GET /ping on 127.0.0.1:${String(await resolveRemoteScriptPort())}. Install it and select it as a control surface (see remote-script/README.md), or set E2E_REMOTE_SCRIPT=false to skip these suites.`,
@@ -368,4 +383,13 @@ function pointFileRef(xml: string, file: string, folder: string): string {
       `<Path Value="${file}" />${middle}` +
       `<OriginalFileSize Value="0" />${c}<OriginalCrc Value="0" />`,
   );
+}
+
+/** Poll the remote script until it answers or SCRIPT_START_MS passes. */
+async function waitForRemoteScript(): Promise<void> {
+  const until = Date.now() + SCRIPT_START_MS;
+
+  while (!(await remoteScriptAnswers()) && Date.now() < until) {
+    await sleep(500);
+  }
 }

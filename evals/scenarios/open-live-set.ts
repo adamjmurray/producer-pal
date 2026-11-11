@@ -100,6 +100,23 @@ export async function openLiveSet(projectPath: string): Promise<void> {
 }
 
 /**
+ * Checks whether anything is serving on the MCP port. Cheaper than a full MCP
+ * handshake, which is all the teardown poll needs.
+ * @returns True if the port answered
+ */
+export async function serverIsAnswering(): Promise<boolean> {
+  try {
+    const response = await fetch(new URL("/config", MCP_URL), {
+      signal: AbortSignal.timeout(2000),
+    });
+
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Fails when AppleScript cannot drive Live's UI.
  *
  * Everything that clears a dialog goes through System Events, and a missing
@@ -237,23 +254,6 @@ async function waitForServerToStart(watcher: DialogWatcher): Promise<void> {
     `MCP server not responsive after ${SERVER_START_TIMEOUT_MS}ms. ` +
       (await describeLiveState()),
   );
-}
-
-/**
- * Checks whether anything is serving on the MCP port. Cheaper than a full MCP
- * handshake, which is all the teardown poll needs.
- * @returns True if the port answered
- */
-async function serverIsAnswering(): Promise<boolean> {
-  try {
-    const response = await fetch(new URL("/config", MCP_URL), {
-      signal: AbortSignal.timeout(2000),
-    });
-
-    return response.ok;
-  } catch {
-    return false;
-  }
 }
 
 /**
