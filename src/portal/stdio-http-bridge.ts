@@ -27,7 +27,7 @@ import {
   remoteHost,
 } from "./offline/offline-call.ts";
 import { type OfflineDeps, realOfflineDeps } from "./offline/offline-deps.ts";
-import { SETUP_URL } from "./offline/offline-setup-hints.ts";
+import { invalidUrlResponse } from "./offline/offline-responses.ts";
 import {
   setupDeadline,
   timeLeft,
@@ -210,12 +210,7 @@ export class StdioHttpBridge {
   }
 
   private _createMisconfiguredUrlResponse() {
-    return formatErrorResponse(`❌ Invalid MCP server URL: "${this.httpUrl.replace(/\/mcp$/, "")}"
-
-The URL must include protocol (e.g. http://localhost:3350).
-Tell the user to check ${SETUP_URL} for configuration help.
-
-(Producer Pal ${VERSION})`);
+    return invalidUrlResponse(this.httpUrl);
   }
 
   // Unset timeoutMs (tool calls) keeps the SDK's default.
@@ -467,7 +462,11 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
           return await withUpdateHint(
             result,
-            { name: request.params.name, manageOffered: this._manageOffered() },
+            {
+              name: request.params.name,
+              manageOffered: this._manageOffered(),
+              remoteHost: remoteHost(this.httpUrl),
+            },
             this._runningDevice(hintDeadline(this.offlineDeps, budgetEnd)),
           );
         } catch (error) {

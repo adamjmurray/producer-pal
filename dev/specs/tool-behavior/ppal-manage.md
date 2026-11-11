@@ -261,9 +261,12 @@ to ask the user first, unless the user already asked for it.
   learn new wording: when a successful `ppal-connect` finds a device older than
   the portal, the portal appends a block telling the model to ask the user, then
   call this action (or, without `ppal-manage`, to tell the user to update the
-  device). The device's own connect line only says when the _portal_ is older.
-  The portal's look at the device waits at most 5 s (and never past the call's
-  setup budget); if the device doesn't answer in time, the result gets no hint.
+  device by hand). For a device on another computer it is always the by-hand
+  form, naming that computer, since the portal refuses the action there (see "A
+  device on another computer"). The device's own connect line only says when the
+  _portal_ is older. The portal's look at the device waits at most 5 s (and
+  never past the call's setup budget); if the device doesn't answer in time, the
+  result gets no hint.
 
 ## `undo` and `redo`
 

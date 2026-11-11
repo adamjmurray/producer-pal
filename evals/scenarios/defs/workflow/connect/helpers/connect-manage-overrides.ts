@@ -90,7 +90,11 @@ export async function connectWithOlderDevice(
 ): Promise<McpContent> {
   const { content } = await withUpdateHint(
     { content: await callReal() },
-    { name: "ppal-connect", manageOffered: callerOf(context).manage },
+    {
+      name: "ppal-connect",
+      manageOffered: callerOf(context).manage,
+      remoteHost: null,
+    },
     olderDevice(context),
   );
 

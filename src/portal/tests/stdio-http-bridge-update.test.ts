@@ -388,6 +388,27 @@ describe("StdioHttpBridge ppal-connect update hint", () => {
     );
   });
 
+  it("tells the user to update by hand on the other computer when the device is on one", async () => {
+    serverReports("2.5.0-rc1");
+
+    const bridge = new StdioHttpBridge(
+      "http://studio-mac.local:3350/mcp",
+      {},
+      updateDeps(),
+    ) as unknown as TestBridge;
+
+    bridge.fallbackTools.tools.push(MANAGE);
+
+    const handler = await startAndGetCallHandler(bridge);
+    const result = (await handler(callToolRequest("ppal-connect"))) as {
+      content: Array<{ text: string }>;
+    };
+
+    expect(result.content[1]?.text).toContain(
+      `The Producer Pal device (2.5.0-rc1) is older than this connector (${VERSION}). Tell the user to update the Producer Pal device by hand on the computer running Live (studio-mac.local:3350): https://producer-pal.org/installation/upgrading#update-by-hand`,
+    );
+  });
+
   it("adds nothing when the device is current", async () => {
     serverReports(VERSION);
 

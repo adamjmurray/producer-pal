@@ -7,14 +7,20 @@ import { describe, expect, it } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
 import {
   hintDeadline,
+  hintFor,
   UPDATE_HINT_MS,
   withUpdateHint,
 } from "../update-connect-hint.ts";
 import { DOWN, fakeDevice, OLD } from "./update-test-helpers.ts";
 
-const CONNECT = { name: "ppal-connect", manageOffered: true };
-const BY_HAND =
-  "Tell the user to update the Producer Pal device by hand: https://producer-pal.org/installation/upgrading#update-by-hand";
+const CONNECT = {
+  name: "ppal-connect",
+  manageOffered: true,
+  remoteHost: null,
+};
+const UPDATE_URL =
+  "https://producer-pal.org/installation/upgrading#update-by-hand";
+const BY_HAND = `Tell the user to update the Producer Pal device by hand: ${UPDATE_URL}`;
 const IN_PLACE =
   'Ask the user, then call ppal-manage action "update-producer-pal" to update it in place.';
 
@@ -85,13 +91,27 @@ describe("withUpdateHint", () => {
   it("sends the user to the by-hand guide when ppal-manage isn't offered", async () => {
     const result = await withUpdateHint(
       connected(),
-      { name: "ppal-connect", manageOffered: false },
+      { ...CONNECT, manageOffered: false },
       await connectedDevice("2.5.0-rc1"),
     );
 
     expect(result.content[1]?.text).toBe(
       `The Producer Pal device (2.5.0-rc1) is older than this connector (${VERSION}). ${BY_HAND}`,
     );
+  });
+
+  it("sends the user to update by hand on the other computer when the device is on one", async () => {
+    // The portal refuses update-producer-pal there, so it isn't offered.
+    const result = await withUpdateHint(
+      connected(),
+      { ...CONNECT, remoteHost: "studio-mac.local:3350" },
+      await connectedDevice("2.5.0-rc1"),
+    );
+
+    expect(result.content[1]?.text).toBe(
+      `The Producer Pal device (2.5.0-rc1) is older than this connector (${VERSION}). Tell the user to update the Producer Pal device by hand on the computer running Live (studio-mac.local:3350): ${UPDATE_URL}`,
+    );
+    expect(result.content[1]?.text).not.toContain("ppal-manage");
   });
 
   it.each([
@@ -107,7 +127,7 @@ describe("withUpdateHint", () => {
 
       const result = await withUpdateHint(
         connected(),
-        { name: "ppal-connect", manageOffered },
+        { ...CONNECT, manageOffered },
         device,
       );
 
@@ -170,7 +190,7 @@ describe("withUpdateHint", () => {
     const device = await connectedDevice(OLD);
     const result = await withUpdateHint(
       connected(),
-      { name: "ppal-read-live-set", manageOffered: true },
+      { ...CONNECT, name: "ppal-read-live-set" },
       device,
     );
 
@@ -185,6 +205,15 @@ describe("withUpdateHint", () => {
 
     expect(await withUpdateHint(failed, CONNECT, device)).toBe(failed);
     expect(await withUpdateHint(bare, CONNECT, device)).toBe(bare);
+  });
+});
+
+describe("hintFor", () => {
+  it("offers the in-place update only for a local device that has ppal-manage", () => {
+    expect(hintFor("2.5.0-rc1", true, null)).toContain(IN_PLACE);
+    expect(hintFor("2.5.0-rc1", true, "10.0.0.5:3350")).not.toContain(IN_PLACE);
+    expect(hintFor("2.5.0-rc1", false, null)).not.toContain(IN_PLACE);
+    expect(hintFor(OLD, true, null)).not.toContain(IN_PLACE);
   });
 });
 
