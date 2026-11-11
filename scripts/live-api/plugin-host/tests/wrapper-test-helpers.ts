@@ -24,6 +24,8 @@ export interface Rig {
   cancelled: () => number;
   /** Messages sent to the slot prepends, as [box, ...args] */
   prepends: unknown[][];
+  /** The slot dials' values, by box name */
+  dials: Record<string, number>;
 }
 
 /**
@@ -41,6 +43,7 @@ export function loadWrapper(
   const stored: { state: string | null } = { state: null };
   const failWrites = { on: false };
   const prepends: unknown[][] = [];
+  const dials: Record<string, number> = {};
   let cancels = 0;
   let lastParsed = "";
 
@@ -96,7 +99,9 @@ export function loadWrapper(
         objects[name] ??
         (name.startsWith("slotprep")
           ? { message: (...args: unknown[]) => prepends.push([name, ...args]) }
-          : undefined),
+          : name.startsWith("slotdial")
+            ? { getvalueof: () => dials[name] ?? 0 }
+            : undefined),
       newdefault: () => ({ message: () => {} }),
       remove: () => {},
     },
@@ -112,5 +117,6 @@ export function loadWrapper(
     failWrites,
     cancelled: () => cancels,
     prepends,
+    dials,
   };
 }

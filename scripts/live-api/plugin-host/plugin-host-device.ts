@@ -8,7 +8,10 @@ const SLOTS = 128;
 const NAME_WIDTH = Math.max(2, String(SLOTS).length);
 const COLUMNS = 8;
 const HEADER_SIZE = 32;
-const SLOT_BOX = /^slot(dial|prep)\d+$/;
+const SLOT_BOX = /^slot(dial|lim|prep)\d+$/;
+// Live sends a moving slot about 670 values a second (one per audio block).
+// Passing at most one per this many ms keeps the plug-in's CPU down.
+const SLOT_INTERVAL_MS = 20;
 const PANEL_BOXES = new Set(["pluginname", "openeditor", "openprep"]);
 const SLOT_ROUTE = "slotroute";
 // A pattr bound to vst~ re-reads the plug-in's whole state on every param
@@ -175,6 +178,7 @@ function ownedBoxes(): Json[] {
 
   return [
     ...slots.map(dial),
+    ...slots.map(speedlim),
     ...slots.map(prepend),
     slotRoute(),
     vstslots(),
@@ -187,7 +191,8 @@ function ownedBoxes(): Json[] {
 
 function ownedLines(): Patchline[] {
   const slotCords = Array.from({ length: SLOTS }, (_, i) => [
-    cord(`slotdial${i + 1}`, `slotprep${i + 1}`),
+    cord(`slotdial${i + 1}`, `slotlim${i + 1}`),
+    cord(`slotlim${i + 1}`, `slotprep${i + 1}`),
     cord(`slotprep${i + 1}`, SLOT_ROUTE),
   ]).flat();
 
@@ -227,6 +232,22 @@ function dial(n: number): Json {
         parameter_unitstyle: 1,
       },
     },
+  };
+}
+
+// Holds the latest value and sends it when the interval ends, so the last
+// value of a move always arrives.
+function speedlim(n: number): Json {
+  const { col, row } = grid(n);
+
+  return {
+    id: `slotlim${n}`,
+    maxclass: "newobj",
+    text: `speedlim ${SLOT_INTERVAL_MS}`,
+    numinlets: 2,
+    numoutlets: 1,
+    outlettype: [""],
+    patching_rect: [450 + col * 100, 600 + row * 30, 90, 22],
   };
 }
 

@@ -180,16 +180,35 @@ function pval(index, value, ...display) {
   if (busy > 0) return;
   // MIDI from Live (All Notes Off on start and stop) lands on the stand-ins.
   if (isStandIn(index)) return;
-  // A slot wrote it. (An edit to a slot's param in the plug-in's window lands
-  // here too, so it's saved only by the next real save.)
-  if (routedIndexes.has(Number(index))) {
-    slotWriteAt = Date.now();
+  if (slotOfIndex.has(Number(index))) {
+    if (isSlotWrite(Number(index), value)) {
+      slotWriteAt = Date.now();
 
-    return;
+      return;
+    }
+
+    slotEditAt = Date.now();
   }
 
   // Anything else is an edit in the plug-in's own window.
   markEdited();
+}
+
+// Whether a change to a param a slot drives came from the slot. Always while
+// Live plays (so a window edit to it during playback is saved only by the next
+// real save), and for a moment after a stop, while speedlim can still send a
+// held value. Live sends a slot's first values about 20 ms before it reports
+// that playback started (is_playing reads 0 too): a value that matches the
+// slot's dial came from it, and a ramp that has moved on is sorted out by
+// saveState when more slot writes follow.
+const STOP_GRACE_MS = 1000;
+
+function isSlotWrite(index, value) {
+  if (playing || Date.now() - stoppedAt < STOP_GRACE_MS) return true;
+
+  const dial = this.patcher.getnamed(`slotdial${slotOfIndex.get(index)}`);
+
+  return Math.abs(Number(dial?.getvalueof()) - Number(value)) < 1e-4;
 }
 
 function handle(req) {
@@ -655,8 +674,14 @@ function saveState(why) {
     // (A program change or plug-in-window edit made meanwhile is missed too.)
     const settling = Date.now() - restoredAt < RESTORE_SETTLE_MS;
     const quiet = why === "poll" || why === "edit";
+    // A stopped change to a slot's param, then slot writes: playback started.
+    const playbackStart =
+      why === "edit" && slotEditAt > savedAt && slotWriteAt >= slotEditAt;
 
-    if (quiet && ((why === "poll" && slotWriteAt > savedAt) || settling)) {
+    if (
+      quiet &&
+      ((why === "poll" && slotWriteAt > savedAt) || playbackStart || settling)
+    ) {
       lastSaved = current;
       savedAt = Date.now();
 
@@ -725,6 +750,7 @@ function onTransport(args) {
   const wasPlaying = playing;
 
   playing = Number(args[1]) === 1;
+  if (wasPlaying && !playing) stoppedAt = Date.now();
   if (wasPlaying && !playing && edited) saveState("stop");
 }
 
@@ -754,19 +780,21 @@ let slotCache = null; // {at, map}: re-read at most every SLOTS_REFRESH_MS
 let slotShown = null; // the list text last put in the display
 let slotWriteAt = 0; // when a slot last wrote to vst~
 const routed = {}; // slot -> what its prepend sends: a param index or "ignore"
-const routedIndexes = new Set(); // params a slot drives
+const slotOfIndex = new Map(); // param index -> the slot that drives it
+let stoppedAt = 0; // when Live's transport last stopped
+let slotEditAt = 0; // when a slot's param last changed while stopped
 
 // Each dial reaches vst~ through its "slotprep<n>" prepend and one shared
 // "route ignore", never through this script, so automation doesn't wait on
 // it. A prepend holds its param's index, or "ignore" when the slot drives
 // nothing. pval learns of slot writes from vst~'s echo.
 function routeSlots(map) {
-  routedIndexes.clear();
+  slotOfIndex.clear();
 
   for (let n = 1; n <= SLOT_COUNT; n++) {
     const target = map[n]?.index ?? "ignore";
 
-    if (target !== "ignore") routedIndexes.add(Number(target));
+    if (target !== "ignore") slotOfIndex.set(Number(target), n);
     if (routed[n] === target) continue;
 
     routed[n] = target;

@@ -81,7 +81,7 @@ describe("buildPluginHostDevice", () => {
     expect(ids).not.toContain("slotdial999");
     expect(ids).toContain("slotdial128");
     expect(ids.filter((id) => id === "vstslots")).toHaveLength(1);
-    expect(patcher.lines).toHaveLength(1 + 128 * 2 + 1 + 2);
+    expect(patcher.lines).toHaveLength(1 + 128 * 3 + 1 + 2);
     expect(patcher.project).toStrictEqual({ searchpath: {} });
     expect(built.readUInt32LE(28)).toBe(built.length - 32);
     expect(built.toString()).toMatch(/\[\s+20\.0,\s+1\.5\s+\]/);
@@ -129,7 +129,7 @@ describe("buildPluginHostDevice", () => {
     ).toHaveLength(0);
   });
 
-  it("sends the slot dials to vst~ through their prepends, not the code", () => {
+  it("sends the slot dials to vst~ through a speed limit and their prepends", () => {
     const { patcher } = parse(buildPluginHostDevice(stale, CODE));
     const box = (id: string) => patcher.boxes.find((b) => b.box.id === id)?.box;
     const cords = patcher.lines.map(
@@ -140,7 +140,9 @@ describe("buildPluginHostDevice", () => {
     expect(box("slotprep7")?.text).toBe("prepend ignore");
     expect(box("slotprep7")?.varname).toBe("slotprep7");
     expect(box("slotroute")?.text).toBe("route ignore");
-    expect(cords).toContain("slotdial7:0>slotprep7");
+    expect(box("slotlim7")?.text).toBe("speedlim 20");
+    expect(cords).toContain("slotdial7:0>slotlim7");
+    expect(cords).toContain("slotlim7:0>slotprep7");
     expect(cords).toContain("slotprep7:0>slotroute");
     expect(cords).toContain("slotroute:1>vst");
     expect(

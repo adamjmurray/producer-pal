@@ -339,8 +339,9 @@ with `vst~`'s `read <path>`:
 
 Plug-in params aren't Live parameters, so the wrapper carries a fixed set of
 `live.dial`s, 0–1, that Live can automate. Each dial is a slot that can drive
-one plug-in param. There are 128: a dial, a `prepend` and two cords per slot in
-the patcher, and `SLOT_COUNT` in the code box. Change both together.
+one plug-in param. There are 128: a dial, a `speedlim`, a `prepend` and three
+cords per slot in the patcher, and `SLOT_COUNT` in the code box. Change both
+together.
 
 - **Names are fixed and zero-padded**: "Automation 001" to "Automation 128" (two
   digits under 100 slots). Live reads a device's parameter list once, about 90
@@ -354,13 +355,28 @@ the patcher, and `SLOT_COUNT` in the code box. Change both together.
   was made for. Entries for another file are ignored, and dropped the next time
   the mapping is saved. `ppal-plugin-host` has `map`, `unmap` and `slots` (which
   also gives the slot count). The panel shows the list ("3: Cutoff").
-- **Running**: each dial goes through its `prepend` and one shared
-  `route ignore` straight to `vst~`, never through the code box, so automation
-  doesn't wait on the script. The script sets each `prepend` to its param's
-  index, or `ignore` when the slot drives nothing. It learns of slot writes from
-  `vst~`'s echo: an echo for a param a slot drives counts as a slot write, so an
-  edit to that param in the plug-in's window is saved only by the next real
-  save. Live still delivers most automation values on its main thread.
+- **Running**: each dial goes through its `speedlim 20`, its `prepend` and one
+  shared `route ignore` straight to `vst~`, never through the code box, so
+  automation doesn't wait on the script. The script sets each `prepend` to its
+  param's index, or `ignore` when the slot drives nothing. Live still delivers
+  most automation values on its main thread.
+- **Thinning**: Live sends a moving slot about 670 values a second (one per
+  audio block). `speedlim` passes at most one per 20 ms and holds the latest for
+  the end of the interval, so a move's last value always arrives. On Serum 2, 3
+  wrappers with 8 moving params each went from 110% to 95% of a core (10 ms:
+  100%), and sweeps still sounded smooth.
+- **Slot writes or edits**: the script learns of slot writes from `vst~`'s echo.
+  While Live plays, an echo for a param a slot drives counts as a slot write, so
+  an edit to that param in the plug-in's window during playback is saved only by
+  the next real save. While stopped, automation can't move, so the same echo
+  counts as an edit, except for 1 s after a stop (`speedlim` can still send a
+  held value) and at playback start. Live sends a slot's first values about 20
+  ms before it reports that playback started, and `is_playing` still reads 0
+  then. So a stopped echo that matches the slot's dial is a slot write (a window
+  edit doesn't move the dial), and one that doesn't (a ramp already moved on) is
+  adopted without saving if slot writes follow before the 300 ms edit save.
+  Edge: a flat envelope on a stepped param, whose value doesn't match the dial,
+  can add one undo step at playback start.
 - **After load**: the restored plug-in state wins. The wrapper doesn't send the
   dials' values to the plug-in: a dial is only synced by `map`, so a value set
   later (a write, or the plug-in window) would be overwritten by the dial's

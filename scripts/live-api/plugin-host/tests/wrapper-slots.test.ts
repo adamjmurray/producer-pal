@@ -41,6 +41,7 @@ describe("wrapper slot routing", () => {
     const rig = loadWrapper();
 
     rig.run('routeSlots({ "3": { index: 206 } })');
+    rig.run("playing = true");
     rig.run('pval(206, 0.5, "718")');
 
     expect(rig.run("slotWriteAt > 0")).toBe(true);
@@ -48,5 +49,60 @@ describe("wrapper slot routing", () => {
 
     rig.run('pval(207, 0.5, "1")');
     expect(rig.run("edited")).toBe(true);
+  });
+
+  it("takes a slot param's change as an edit while stopped", () => {
+    const rig = loadWrapper();
+
+    rig.run('routeSlots({ "3": { index: 206 } })');
+    rig.run('pval(206, 0.5, "718")');
+
+    expect(rig.run("slotWriteAt")).toBe(0);
+    expect(rig.run("edited")).toBe(true);
+  });
+
+  it("takes a stopped change that matches the slot's dial as a slot write", () => {
+    const rig = loadWrapper();
+
+    rig.dials.slotdial3 = 0.2;
+    rig.run('routeSlots({ "3": { index: 206 } })');
+    rig.run('pval(206, 0.20001, "100")');
+
+    expect(rig.run("edited")).toBe(false);
+  });
+
+  it("adopts a stopped slot change that slot writes follow", () => {
+    const rig = loadWrapper();
+
+    rig.run("lastSaved = '{}'; savedAt = 1");
+    rig.run('routeSlots({ "3": { index: 206 } })');
+    rig.run('pval(206, 0.5, "718")');
+    rig.run("playing = true");
+    rig.run('pval(206, 0.6, "800")');
+    rig.run('saveState("edit")');
+
+    expect(rig.writes).toHaveLength(0);
+  });
+
+  it("saves a stopped slot change that no slot write follows", () => {
+    const rig = loadWrapper();
+
+    rig.run("lastSaved = '{}'; savedAt = 1");
+    rig.run('routeSlots({ "3": { index: 206 } })');
+    rig.run('pval(206, 0.5, "718")');
+    rig.run('saveState("edit")');
+
+    expect(rig.writes).toHaveLength(1);
+  });
+
+  it("takes any slot param change just after a stop as a slot write", () => {
+    const rig = loadWrapper();
+
+    rig.run('routeSlots({ "3": { index: 206 } })');
+    rig.run("playing = true");
+    rig.run('onTransport(["is_playing", 0])');
+    rig.run('pval(206, 0.5, "718")');
+
+    expect(rig.run("edited")).toBe(false);
   });
 });

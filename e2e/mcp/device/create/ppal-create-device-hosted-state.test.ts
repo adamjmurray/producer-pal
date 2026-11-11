@@ -76,6 +76,23 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("hosted plug-in state", () => {
     expect(await tempo()).toBe(before);
   }
 
+  /**
+   * Read one hosted param through ppal-plugin-host.
+   * @param deviceId - The wrapper's device id
+   * @param name - The param's exact name
+   * @returns Its index and raw value
+   */
+  async function hostedParam(
+    deviceId: string,
+    name: string,
+  ): Promise<{ index: number; value: number }> {
+    const { params } = await call<{
+      params: { index: number; value: number }[];
+    }>("ppal-plugin-host", { deviceId, action: "params", names: [name] });
+
+    return params[0]!;
+  }
+
   it.skipIf(!hasVst3("Serum2.vst3"))(
     "adds no undo step when reading a hosted plug-in",
     async () => {
@@ -119,19 +136,9 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("hosted plug-in state", () => {
       const { track, path } = await hostOnNewTrack("Serum 2");
       const deviceId = (await readDevice(path)).id;
       const clip = `t${track}/s0`;
-      const { params } = await call<{ params: { index: number }[] }>(
-        "ppal-plugin-host",
-        { deviceId, action: "params", names: ["Filter 1 Freq"] },
-      );
-
-      const readFreq = async () => {
-        const read = await call<{ params: { value: number }[] }>(
-          "ppal-plugin-host",
-          { deviceId, action: "params", names: ["Filter 1 Freq"] },
-        );
-
-        return read.params[0]?.value;
-      };
+      const { index } = await hostedParam(deviceId, "Filter 1 Freq");
+      const readFreq = async () =>
+        (await hostedParam(deviceId, "Filter 1 Freq")).value;
 
       await call("ppal-create-clip", {
         path: clip,
@@ -140,7 +147,7 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("hosted plug-in state", () => {
       });
       await call("ppal-update-clip", {
         path: clip,
-        envelopes: `${path}/h${params[0]?.index}: 1|1 0 / 3|1 1 / 5|1 0`,
+        envelopes: `${path}/h${index}: 1|1 0 / 3|1 1 / 5|1 0`,
       });
 
       const before = await tempo();
