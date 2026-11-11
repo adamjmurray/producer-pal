@@ -160,7 +160,8 @@ reflect it.
 1. **B-chain parameters are silently inaudible in Stereo mode.** Setting
    B-suffix params (e.g. `1 Frequency B`) in Stereo mode persists the values but
    they don't process audio. Switching `globalMode` to `"L/R"` or `"M/S"`
-   activates them. We don't enforce or warn — caller's intent.
+   activates them. The write still goes in, and its entry says the param is
+   inactive.
 2. **Silent rejection on out-of-range writes** to raw `global_mode`. The enum
    mapping should prevent this from reaching the API, but defensive: validate
    before set.
