@@ -223,6 +223,13 @@ Part of [Skip entries, tool by tool](README.md).
   when two items share it, unless it is a Drum Rack kit (above), where the Drum
   Rack files of that name settle which file it is. A device already in the Set
   (update-device) takes a path anywhere.
+- **A preset settles a `deviceName` several devices have.** create-device
+  refuses a `deviceName` that matches more than one device ("matches N
+  devices"), unless it comes with a `preset`. Then the preset is looked up under
+  each matched device (up to 5), and loads when exactly one preset file turns
+  up. Several different files, none, or more than 5 devices keep the
+  `deviceName` refusal. A lookup that runs out of time says so instead. Example:
+  Live 13's native Tape shares its name with Softube's Tape plug-ins.
 - **A preset file is checked against the device a call names.** create-device
   with a `deviceName` and an absolute file path (a Windows drive or network
   share too) reads the gzipped XML and refuses a file for another device, as it

@@ -8,7 +8,10 @@
 // one format as ambiguous, so the search across sections happens here.
 
 import { assertDefined } from "#src/shared/error-message.ts";
-import { type BrowserItemResolution } from "#src/tools/device/create/helpers/remote-script-contract.ts";
+import {
+  type BrowserItem,
+  type BrowserItemResolution,
+} from "#src/tools/device/create/helpers/remote-script-contract.ts";
 import { pathSegment } from "../../../live-library/reconstruct-path.ts";
 import {
   type RemoteScriptAnswer,
@@ -318,10 +321,7 @@ function spelledName(name: string): string {
  * @returns The item, as the load route takes it
  */
 export function found(match: Candidate): BrowserItemResolution {
-  return {
-    available: true,
-    item: { type: match.section.type, path: match.path, name: match.name },
-  };
+  return { available: true, item: browserItem(match) };
 }
 
 /**
@@ -432,6 +432,8 @@ async function searchSections(
           deviceName,
           matches,
         ),
+        // So a preset can still settle which device the name means.
+        candidates: matches.map(browserItem),
       };
 }
 
@@ -499,4 +501,12 @@ function nothingNamed(deviceName: string): BrowserItemResolution {
     error: `invalid device "${deviceName}": no native device, plug-in, or Max for Live device has that name`,
     notFound: true,
   };
+}
+
+/**
+ * @param match - A matched item
+ * @returns It as the load route takes it
+ */
+function browserItem(match: Candidate): BrowserItem {
+  return { type: match.section.type, path: match.path, name: match.name };
 }

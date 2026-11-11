@@ -21,10 +21,14 @@ import {
   type MaybePromise,
   type Target,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
-import { resolveBrowserDevice } from "../browser-devices.ts";
+import {
+  BrowserDeviceAmbiguousError,
+  resolveBrowserDevice,
+} from "../browser-devices.ts";
 import {
   presetScopeForDevice,
   resolveBrowserPreset,
+  resolvePresetUnderAny,
 } from "../browser-presets.ts";
 import { type PluginPlan } from "../plugin-host-load.ts";
 import { type BrowserItem } from "../remote-script-contract.ts";
@@ -198,19 +202,44 @@ async function devicePlans(
         ? null
         : await cached(deviceName, () =>
             findBrowserItem(deviceName, deadline, manage),
-          );
+          ).catch((error: unknown) => {
+            // A preset can still say which of several devices the name means.
+            if (
+              presetName != null &&
+              error instanceof BrowserDeviceAmbiguousError
+            ) {
+              return error;
+            }
+
+            throw error;
+          });
 
     if (presetName == null) {
-      plans.push({ path, device: deviceName as string, item: deviceItem });
+      plans.push({
+        path,
+        device: deviceName as string,
+        item: deviceItem as BrowserItem | null,
+      });
       continue;
     }
 
-    const scope =
-      deviceName == null
-        ? undefined
-        : presetScopeForDevice(deviceName, deviceItem);
     const item = await cached(`${deviceName ?? ""}\n${presetName}`, () =>
-      resolveBrowserPreset(presetName, scope, deadline, manage),
+      deviceItem instanceof BrowserDeviceAmbiguousError
+        ? resolvePresetUnderAny(
+            presetName,
+            deviceName as string,
+            deviceItem,
+            deadline,
+            manage,
+          )
+        : resolveBrowserPreset(
+            presetName,
+            deviceName == null
+              ? undefined
+              : presetScopeForDevice(deviceName, deviceItem),
+            deadline,
+            manage,
+          ),
     );
 
     plans.push({ path, device: presetName, item });

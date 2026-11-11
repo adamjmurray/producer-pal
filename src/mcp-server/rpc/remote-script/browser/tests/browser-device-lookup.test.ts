@@ -191,6 +191,10 @@ describe("lookUpBrowserDevice", () => {
       available: true,
       error:
         'deviceName "Echo" matches 2 devices; pass one of these as deviceName: "Plug-Ins/VST3/Acme/Echo", "Audio Effects/Echo"',
+      candidates: [
+        { type: "plugin", path: "VST3/Acme/Echo", name: "Echo" },
+        { type: "audio-effect", path: "Echo", name: "Echo" },
+      ],
     });
   });
 

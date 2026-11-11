@@ -74,6 +74,21 @@ export function lookupOutOfTime(nothingDone: string): string {
 /** A browser lookup found nothing by that name. */
 export class BrowserDeviceNotFoundError extends Error {}
 
+/** A browser lookup found several devices by that name. */
+export class BrowserDeviceAmbiguousError extends Error {
+  /** The devices the name matched */
+  readonly candidates: BrowserItem[];
+
+  /**
+   * @param message - The refusal, worded for the model
+   * @param candidates - The devices the name matched
+   */
+  constructor(message: string, candidates: BrowserItem[]) {
+    super(message);
+    this.candidates = candidates;
+  }
+}
+
 /** How often, and how many times, to look for the loaded device. */
 const ARRIVAL_POLL = { pollingInterval: 50, maxRetries: 40 };
 
@@ -158,7 +173,8 @@ export async function createBrowserDevice(
  * @returns The item, or `available: false` when the remote script isn't
  *   answering (`outdated` when it is too old)
  * @throws BrowserDeviceNotFoundError when nothing goes by that name
- * @throws Error when more than one thing does, or the lookup fails
+ * @throws BrowserDeviceAmbiguousError when several devices do
+ * @throws Error when the lookup fails
  */
 export async function resolveBrowserDevice(
   deviceName: string,
@@ -198,6 +214,13 @@ export async function resolveBrowserDevice(
   if ("error" in resolution) {
     if ("outOfTime" in resolution) {
       throw lookUpFailed(lookupOutOfTime("nothing was created"));
+    }
+
+    if (resolution.candidates != null) {
+      throw new BrowserDeviceAmbiguousError(
+        resolution.error,
+        resolution.candidates,
+      );
     }
 
     throw "notFound" in resolution

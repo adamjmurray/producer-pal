@@ -26,7 +26,10 @@ import {
   unreachedDetail,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { remoteScriptSetup } from "#src/tools/shared/remote-script/remote-script-setup.ts";
-import { lookupOutOfTime } from "./browser-devices.ts";
+import {
+  type BrowserDeviceAmbiguousError,
+  lookupOutOfTime,
+} from "./browser-devices.ts";
 
 /**
  * Why nothing loads when the remote script isn't answering.
@@ -127,6 +130,59 @@ export async function resolveBrowserPreset(
   }
 
   return resolution.item;
+}
+
+/** The most devices an ambiguous name's preset is looked for under. */
+const MAX_DEVICES_FOR_PRESET = 5;
+
+/**
+ * Find a preset when the device name it came with matches several devices:
+ * look under each, and load it if exactly one preset turns up.
+ * @param preset - The preset as the call named it
+ * @param device - The device as the call named it
+ * @param ambiguity - The device lookup's refusal, with the devices it matched
+ * @param deadline - The request deadline from ToolContext
+ * @param manage - Whether the caller can use ppal-manage
+ * @returns The item
+ * @throws The ambiguity when no one preset turns up, or the lookup's own error
+ *   when it ran out of time
+ */
+export async function resolvePresetUnderAny(
+  preset: string,
+  device: string,
+  ambiguity: BrowserDeviceAmbiguousError,
+  deadline: number | null | undefined,
+  manage: boolean,
+): Promise<BrowserItem> {
+  const { candidates } = ambiguity;
+
+  if (candidates.length > MAX_DEVICES_FOR_PRESET) {
+    throw ambiguity;
+  }
+
+  const items = new Map<string, BrowserItem>();
+
+  for (const candidate of candidates) {
+    try {
+      const scope = presetScopeForDevice(device, candidate);
+      const item = await resolveBrowserPreset(preset, scope, deadline, manage);
+
+      items.set(`${item.type}\n${item.path}`, item);
+    } catch (error) {
+      // Out of time, a miss may only mean the search didn't finish.
+      if (remoteScriptWait(deadline) == null) {
+        throw error;
+      }
+    }
+  }
+
+  const [only, ...more] = items.values();
+
+  if (only == null || more.length > 0) {
+    throw ambiguity;
+  }
+
+  return only;
 }
 
 /**
