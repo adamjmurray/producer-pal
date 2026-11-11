@@ -366,13 +366,18 @@ it (small-model mode and `--disable-tools` drop it).
 
 ### A device on another computer
 
-When the portal's URL isn't loopback (`localhost`, `*.localhost`, `127.0.0.0/8`,
-`[::1]`), the portal's own answers would act on the wrong machine: the remote
-script client talks to `127.0.0.1`, and installs copy into this machine's User
-Library. So the portal answers none of them. This machine's own LAN address
+When the portal's URL isn't this machine (`localhost`, `*.localhost`,
+`127.0.0.0/8`, `[::1]`, plus `0.0.0.0`, `[::]`, a trailing dot and IPv4-mapped
+IPv6 of those), the portal's own answers would act on the wrong machine: the
+remote script client talks to `127.0.0.1`, and installs copy into this machine's
+User Library. So the portal answers none of them. This machine's own LAN address
 counts as another computer. `remoteHost()` in
 `src/portal/offline/offline-call.ts` is the one check. `ppal-manage` stays
 listed.
+
+A URL that isn't `http:` or `https:`, or doesn't parse (`studio-mac.local:3350`
+has no scheme), can't be classified. Every tool call gets the "Invalid MCP
+server URL" error and nothing here is pinged, looked up or copied.
 
 - **`install-producer-pal`, `add-producer-pal`, `update-producer-pal`** that the
   portal would answer (offline install and add, update always, install when the

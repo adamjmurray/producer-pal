@@ -21,6 +21,7 @@ import { InFlightClients } from "./update/in-flight-clients.ts";
 import { isFullConnect } from "./update/full-connect-advice.ts";
 import {
   answerOfflineCall,
+  isHttpUrl,
   isSetupCall,
   MANAGE_TOOL,
   remoteHost,
@@ -254,7 +255,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
     }
 
     // Create new connection
-    const url = new URL(this.httpUrl); // let this throw if the URL is invalid, see handling for ERR_INVALID_URL
+    const url = new URL(this.httpUrl); // throws for a bad URL; tool calls refuse one earlier
 
     try {
       // Every setting rides on every request as a header, so they narrow (or
@@ -421,6 +422,14 @@ Tell the user to check ${SETUP_URL} for configuration help.
           `[Bridge] Tool call: ${request.params.name} ${JSON.stringify(request.params.arguments)}`,
         );
 
+        // Before anything else: the answers below act on this machine, and they
+        // can't tell which computer a URL they can't read points at.
+        if (!isHttpUrl(this.httpUrl)) {
+          logger.debug("[Bridge] Not an http(s) URL, so not asking it");
+
+          return this._createMisconfiguredUrlResponse();
+        }
+
         const deadline = this._setupDeadline(request);
         const budgetEnd = deadline ?? setupDeadline(this.offlineDeps);
         const own = await this._answerInPortal(request, deadline);
@@ -509,14 +518,6 @@ Tell the user to check ${SETUP_URL} for configuration help.
           // we've since replaced says nothing about the new one.
           if (client == null || client === this.httpClient) {
             this.isConnected = false;
-          }
-
-          if (errorCode === "ERR_INVALID_URL") {
-            logger.debug(
-              `[Bridge] Invalid Producer Pal URL in the Desktop Extension config. Returning the dedicated error response for this scenario.`,
-            );
-
-            return this._createMisconfiguredUrlResponse();
           }
         }
 

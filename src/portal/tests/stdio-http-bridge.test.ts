@@ -808,7 +808,7 @@ describe("StdioHttpBridge", () => {
         invalidBridge._createMisconfiguredUrlResponse(),
       );
       expect(logger.debug).toHaveBeenCalledWith(
-        "[Bridge] Invalid Producer Pal URL in the Desktop Extension config. Returning the dedicated error response for this scenario.",
+        "[Bridge] Not an http(s) URL, so not asking it",
       );
     });
   });

@@ -258,3 +258,81 @@ describe("StdioHttpBridge with a device on another computer", () => {
     expect(text).toContain(`Producer Pal at ${HOST} didn't answer.`);
   });
 });
+
+describe("StdioHttpBridge with a device URL it can't read", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockServer.connect.mockResolvedValue(undefined);
+    mockClient.connect.mockRejectedValue(new Error("Connection failed"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // The first two parse without throwing, with no host.
+  it.each([
+    "localhost:3350/mcp",
+    "studio-mac.local:3350/mcp",
+    "192.168.1.5:3350/mcp",
+    "not-a-valid-url",
+    "ftp://studio-mac.local/mcp",
+  ])(
+    "reports %s as misconfigured and looks at nothing on this machine",
+    async (url) => {
+      const deps = fakeOfflineDeps();
+      const bridge = new StdioHttpBridge(
+        url,
+        {},
+        deps,
+      ) as unknown as TestBridge;
+
+      bridge.fallbackTools.tools.push(MANAGE);
+
+      const handler = await startAndGetCallHandler(bridge);
+
+      for (const request of [
+        callToolRequest("ppal-manage", { action: "update-producer-pal" }),
+        callToolRequest("ppal-manage", { action: "install-producer-pal" }),
+        callToolRequest("ppal-manage", { action: "add-producer-pal" }),
+        callToolRequest("ppal-manage", { action: "undo" }),
+        callToolRequest("ppal-connect"),
+      ]) {
+        const result = await handler(request);
+
+        expect(result).toStrictEqual(bridge._createMisconfiguredUrlResponse());
+      }
+
+      expect(mockClient.connect).not.toHaveBeenCalled();
+      expectNothingTouched(deps);
+    },
+  );
+});
+
+describe("StdioHttpBridge with a device at another spelling of this machine", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockServer.connect.mockResolvedValue(undefined);
+    mockClient.connect.mockRejectedValue(new Error("Connection failed"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it.each([
+    "http://0.0.0.0:3350/mcp",
+    "http://[::]:3350/mcp",
+    "http://localhost.:3350/mcp",
+    "http://[::ffff:127.0.0.1]:3350/mcp",
+  ])("doesn't call %s another computer", async (url) => {
+    const handler = await startAndGetCallHandler(bridgeAt(url));
+    const result = (await handler(
+      callToolRequest("ppal-manage", { action: "add-producer-pal" }),
+    )) as { content: { text: string }[] };
+
+    expect(JSON.stringify(result)).not.toContain("another computer");
+  });
+});

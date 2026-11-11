@@ -7,15 +7,14 @@
 // are refused, and every other call gets the remote guidance, without the
 // portal looking at this machine (the remote script here, or the User Library).
 //
-// The "other computer" is 0.0.0.0 with nothing listening: not loopback, and the
-// connection is refused at once, with no DNS lookup.
+// The "other computer" is a `.invalid` name: reserved, so it can never be this
+// machine, and the lookup fails at once.
 //
 // Run with: npm run e2e:portal
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { reservePort } from "../local-server";
 import {
   callToolText,
   copyPortal,
@@ -39,7 +38,7 @@ async function remotePortal(): Promise<{
   script: Awaited<ReturnType<typeof createStubRemoteScript>>;
   host: string;
 }> {
-  const host = `0.0.0.0:${await reservePort()}`;
+  const host = "other-computer.invalid:3350";
   const script = track(await createStubRemoteScript());
   const copy = track(copyPortal(true));
   const home = newFolder();
