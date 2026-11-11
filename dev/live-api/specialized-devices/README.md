@@ -129,6 +129,7 @@ Everything below documents **deltas** from this baseline.
 | [instruments/](instruments/README.md)                | Per-device catalog: Drift, Meld, Simpler, Wavetable, plus the generic-Device instruments                                    |
 | [drum-racks.md](drum-racks.md)                       | How a Drum Rack is modeled: pads are slots, chains are layers, and what each tool does with them                            |
 | [audio-effects.md](audio-effects.md)                 | Per-device catalog: Compressor, EQ Eight, Hybrid Reverb, Roar, Shifter, Spectral Resonator, plus the generic-Device effects |
+| [live-13-devices.md](live-13-devices.md)             | Live 13's new devices: Drum Synth and Transient Shaper (mode-gated), Clipper, the fixed-chain racks, Softube                |
 
 Read only the one you need — each catalog is long.
 

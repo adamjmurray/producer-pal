@@ -20,8 +20,8 @@ import {
   getToolErrorMessage,
   parseToolResult,
   setupMcpTestContext,
-} from "../../mcp-test-helpers";
-import { LIVE_13_OR_NEWER, LIVE_13_TEST_PATH } from "../../e2e-test-set.ts";
+} from "../../../mcp-test-helpers";
+import { LIVE_13_OR_NEWER, LIVE_13_TEST_PATH } from "../../../e2e-test-set.ts";
 
 const MID_SIDE = "t1/d0";
 const MULTIBAND = "t1/d1";

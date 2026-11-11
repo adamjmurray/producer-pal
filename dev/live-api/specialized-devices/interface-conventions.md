@@ -106,6 +106,13 @@ active, the rest inactive" shape. Several controller values may map to the same
 active param (the builder dedupes the group) — e.g. Auto Filter's
 Synced/Triplet/Dotted modes all drive the one note-value selector.
 
+A rule may also carry `prefixes` (the `prefixModes(controller, prefixByValue)`
+builder) for a controller that picks one family of params sharing a name prefix:
+a param starting with a listed prefix and a space is inactive unless it starts
+with the controller value's prefix. Drum Synth uses it; see
+[live-13-devices.md](live-13-devices.md). A device Live 12 never had is matched
+by `classNames` (`class_name`) instead of `displayNames`.
+
 Current rules, by Live 12.4.16's param names. Live renamed these params in a
 12.4 update, so each device also keeps a rule with the earlier names (shown in
 brackets); a rule whose controller is missing is skipped, so the extra rule

@@ -3,9 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
 import { errorMessage } from "#src/shared/error-message.ts";
 import { compressorSpec } from "./devices/compressor.ts";
 import { driftSpec } from "./devices/drift.ts";
+import { drumSynthSpec } from "./devices/live-13/drum-synth.ts";
 import { eqEightSpec } from "./devices/eq-eight.ts";
 import { hybridReverbSpec } from "./devices/hybrid-reverb.ts";
 import { meldSpec } from "./devices/meld.ts";
@@ -17,6 +19,7 @@ import {
 import { roarSpec } from "./devices/roar.ts";
 import { simplerSpec } from "./devices/simpler.ts";
 import { spectralResonatorSpec } from "./devices/spectral-resonator.ts";
+import { transientShaperSpec } from "./devices/live-13/transient-shaper.ts";
 import { wavetableSpec } from "./devices/wavetable.ts";
 import {
   type UnresolvedParam,
@@ -49,6 +52,7 @@ import {
 export const SPECS: SpecializedDeviceSpec[] = [
   // Instruments
   driftSpec,
+  drumSynthSpec,
   meldSpec,
   simplerSpec,
   wavetableSpec,
@@ -61,27 +65,44 @@ export const SPECS: SpecializedDeviceSpec[] = [
   phaserFlangerSpec,
   roarSpec,
   spectralResonatorSpec,
+  transientShaperSpec,
 ];
 
 const SPEC_BY_DISPLAY_NAME = new Map<string, SpecializedDeviceSpec>();
+const SPEC_BY_CLASS_NAME = new Map<string, SpecializedDeviceSpec>();
 
 for (const spec of SPECS) {
   for (const displayName of spec.displayNames) {
     SPEC_BY_DISPLAY_NAME.set(displayName, spec);
   }
+
+  for (const className of spec.classNames ?? []) {
+    SPEC_BY_CLASS_NAME.set(className, spec);
+  }
 }
 
 /**
- * Look up the specialized spec for a device by its class_display_name.
+ * Look up the specialized spec for a device by its class_display_name, then by
+ * its class_name (read only when the display name matched nothing). Callers ask
+ * several times per device per call, so the answer is kept for the request,
+ * keyed by device id: a generic device costs its two reads once, not on every
+ * ask.
  * @param device - LiveAPI device object
  * @returns The matching spec, or undefined for a generic device
  */
 export function getSpecForDevice(
   device: LiveAPI,
 ): SpecializedDeviceSpec | undefined {
-  const displayName = device.getProperty("class_display_name") as string;
+  return requestMemo(`specialized-spec ${device.id}`, () => {
+    const displayName = device.getProperty("class_display_name") as string;
+    const byDisplayName = SPEC_BY_DISPLAY_NAME.get(displayName);
 
-  return SPEC_BY_DISPLAY_NAME.get(displayName);
+    if (byDisplayName != null) {
+      return byDisplayName;
+    }
+
+    return SPEC_BY_CLASS_NAME.get(device.getProperty("class_name") as string);
+  });
 }
 
 /**

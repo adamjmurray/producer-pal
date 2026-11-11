@@ -79,6 +79,7 @@ function deviceWithController(
     type: "Device",
     properties: {
       class_display_name: spec.displayNames[0],
+      class_name: spec.classNames?.[0],
       parameters: pseudo == null ? children("controller") : [],
     },
   });

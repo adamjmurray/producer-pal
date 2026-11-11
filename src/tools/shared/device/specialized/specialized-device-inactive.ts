@@ -33,11 +33,30 @@ export function exclusiveModes(
 }
 
 /**
+ * Build a rule for a controller whose value picks one family of params that
+ * share a name prefix (Drum Synth: a sound type or model owns the params named
+ * after it). See `InactiveWhenRule.prefixes`.
+ * @param controller - Controller param display name
+ * @param prefixByValue - Controller value → prefix (or prefixes) of the params
+ *   active there (null when none are)
+ * @param cases - Params to switch off by name, as in `exclusiveModes`
+ * @returns The assembled rule
+ */
+export function prefixModes(
+  controller: string,
+  prefixByValue: Record<string, string | readonly string[] | null>,
+  cases: Record<string, string[]> = {},
+): InactiveWhenRule {
+  return { controller, cases, prefixes: prefixByValue };
+}
+
+/**
  * Apply sibling-driven inactivity rules to an already-read parameter list,
  * marking params `state: "inactive"` when a controller param's current value
  * makes them irrelevant (see `SpecializedDeviceSpec.inactiveWhen`). Mutates the
  * entries in place. Reuses the values already read for the response, so it adds
- * no Live API calls unless `readController` is given.
+ * no Live API calls unless `readController` is given. Every param carrying a
+ * name is marked, so two params sharing one are both covered.
  *
  * A controller absent from `parameters` (filtered out by a param search) is
  * read with `readController` when a listed param depends on it, and skips its
@@ -52,61 +71,36 @@ export function applyInactiveStates(
   parameters: Record<string, unknown>[],
   readController?: (controller: string) => unknown,
 ): void {
-  const byName = new Map<string, Record<string, unknown>>();
-
-  for (const param of parameters) {
-    if (typeof param.name === "string") {
-      byName.set(param.name, param);
-    }
-  }
+  const named = parameters.filter(
+    (param): param is Record<string, unknown> & { name: string } =>
+      typeof param.name === "string",
+  );
 
   for (const rule of rules) {
-    const listed = byName.get(rule.controller);
+    const listed = named.find((param) => param.name === rule.controller);
 
-    if (listed == null && !ruleNamesAny(rule, byName, readController)) {
+    if (
+      listed == null &&
+      (readController == null ||
+        !named.some((param) => ruleNamesParam(rule, param.name)))
+    ) {
       continue;
     }
 
-    const inactiveNames = inactiveNamesAt(
-      rule,
-      listed == null ? readController?.(rule.controller) : listed.value,
-    );
+    const controllerValue =
+      listed == null ? readController?.(rule.controller) : listed.value;
 
-    if (inactiveNames == null) {
-      continue;
-    }
-
-    for (const name of inactiveNames) {
-      const target = byName.get(name);
-
-      // Only set when present and Live hasn't already assigned a state
-      // (inactive/disabled) — Live's own greying-out takes precedence.
-      if (target != null && target.state == null) {
-        target.state = "inactive";
+    for (const param of named) {
+      // Only set when Live hasn't already assigned a state (inactive/disabled):
+      // Live's own greying-out takes precedence.
+      if (
+        param.state == null &&
+        ruleInactiveAt(rule, controllerValue, param.name)
+      ) {
+        param.state = "inactive";
       }
     }
   }
-}
-
-/**
- * Whether an unlisted controller is worth reading: a way to read it exists and
- * a listed param is one the rule can make inactive.
- * @param rule - The inactivity rule
- * @param listed - The listed params by name
- * @param readController - Reads a controller, when allowed
- * @returns True when the controller should be read
- */
-function ruleNamesAny(
-  rule: InactiveWhenRule,
-  listed: Map<string, unknown>,
-  readController: unknown,
-): boolean {
-  return (
-    readController != null &&
-    Object.values(rule.cases).some((names) =>
-      names.some((name) => listed.has(name)),
-    )
-  );
 }
 
 /**
@@ -122,29 +116,75 @@ export function ruleMarksInactive(
   paramName: string,
   readController: (controller: string) => unknown,
 ): boolean {
-  return rules.some((rule) => {
-    const named = Object.values(rule.cases).some((names) =>
-      names.includes(paramName),
-    );
-
-    return (
-      named &&
-      inactiveNamesAt(rule, readController(rule.controller))?.includes(
-        paramName,
-      ) === true
-    );
-  });
+  return rules.some(
+    (rule) =>
+      ruleNamesParam(rule, paramName) &&
+      ruleInactiveAt(rule, readController(rule.controller), paramName),
+  );
 }
 
 /**
- * The params a rule makes inactive at a controller value.
+ * Whether a rule can make a param inactive at some controller value: a `cases`
+ * list names it, or it starts with one of the rule's prefixes.
+ * @param rule - The inactivity rule
+ * @param paramName - Display name of the param
+ * @returns True when the rule governs the param
+ */
+function ruleNamesParam(rule: InactiveWhenRule, paramName: string): boolean {
+  return (
+    Object.values(rule.cases).some((names) => names.includes(paramName)) ||
+    prefixesOf(rule).some((prefix) => hasPrefix(paramName, prefix))
+  );
+}
+
+/**
+ * Whether a rule makes a param inactive at a controller value.
  * @param rule - The inactivity rule
  * @param controllerValue - The controller's current display value
- * @returns The inactive param names, or undefined when the value has no case
+ * @param paramName - Display name of the param
+ * @returns True when the param is inactive at that value
  */
-function inactiveNamesAt(
+function ruleInactiveAt(
   rule: InactiveWhenRule,
   controllerValue: unknown,
-): string[] | undefined {
-  return rule.cases[String(controllerValue)];
+  paramName: string,
+): boolean {
+  const key = String(controllerValue);
+
+  if (rule.cases[key]?.includes(paramName) === true) {
+    return true;
+  }
+
+  if (rule.prefixes == null || controllerValue == null) {
+    return false;
+  }
+
+  const active = [rule.prefixes[key] ?? []].flat();
+
+  return (
+    prefixesOf(rule).some((prefix) => hasPrefix(paramName, prefix)) &&
+    !active.some((prefix) => hasPrefix(paramName, prefix))
+  );
+}
+
+/**
+ * Every prefix a rule's controller can select.
+ * @param rule - The inactivity rule
+ * @returns The distinct prefixes
+ */
+function prefixesOf(rule: InactiveWhenRule): string[] {
+  return [...new Set(Object.values(rule.prefixes ?? {}).flat())].filter(
+    (prefix): prefix is string => prefix != null,
+  );
+}
+
+/**
+ * Whether a param name starts with a prefix as a whole word, so "Kick" owns
+ * "Kick Click" but not "Kickback".
+ * @param paramName - Display name of the param
+ * @param prefix - The prefix
+ * @returns True when the name starts with the prefix and a space
+ */
+function hasPrefix(paramName: string, prefix: string): boolean {
+  return paramName.startsWith(`${prefix} `);
 }
