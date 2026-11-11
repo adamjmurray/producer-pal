@@ -53,7 +53,7 @@ export function appendParameters(
   // synced LFO's free-running Hz rate). Only meaningful with values, since
   // `state` is value-level.
   if (includeValues) {
-    applySpecializedInactiveStates(device, merged);
+    applySpecializedInactiveStates(device, merged, Boolean(paramSearch));
 
     // Before `parameters`, so a reader meets the lists first.
     const optionLists = shareOptionLists(merged);

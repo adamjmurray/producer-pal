@@ -37,17 +37,20 @@ export function exclusiveModes(
  * marking params `state: "inactive"` when a controller param's current value
  * makes them irrelevant (see `SpecializedDeviceSpec.inactiveWhen`). Mutates the
  * entries in place. Reuses the values already read for the response, so it adds
- * no Live API calls.
+ * no Live API calls unless `readController` is given.
  *
- * Degrades gracefully: a controller absent from `parameters` (e.g. filtered out
- * by a param search) skips its rule, and an existing non-active state set by
+ * A controller absent from `parameters` (filtered out by a param search) is
+ * read with `readController` when a listed param depends on it, and skips its
+ * rule when there is no `readController`. An existing non-active state set by
  * Live is never overwritten.
  * @param rules - The device's inactivity rules
  * @param parameters - Parameter entries from the reader (mutated in place)
+ * @param readController - Reads a controller missing from `parameters`
  */
 export function applyInactiveStates(
   rules: InactiveWhenRule[],
   parameters: Record<string, unknown>[],
+  readController?: (controller: string) => unknown,
 ): void {
   const byName = new Map<string, Record<string, unknown>>();
 
@@ -58,13 +61,16 @@ export function applyInactiveStates(
   }
 
   for (const rule of rules) {
-    const controller = byName.get(rule.controller);
+    const listed = byName.get(rule.controller);
 
-    if (controller == null) {
+    if (listed == null && !ruleNamesAny(rule, byName, readController)) {
       continue;
     }
 
-    const inactiveNames = inactiveNamesAt(rule, controller.value);
+    const inactiveNames = inactiveNamesAt(
+      rule,
+      listed == null ? readController?.(rule.controller) : listed.value,
+    );
 
     if (inactiveNames == null) {
       continue;
@@ -80,6 +86,27 @@ export function applyInactiveStates(
       }
     }
   }
+}
+
+/**
+ * Whether an unlisted controller is worth reading: a way to read it exists and
+ * a listed param is one the rule can make inactive.
+ * @param rule - The inactivity rule
+ * @param listed - The listed params by name
+ * @param readController - Reads a controller, when allowed
+ * @returns True when the controller should be read
+ */
+function ruleNamesAny(
+  rule: InactiveWhenRule,
+  listed: Map<string, unknown>,
+  readController: unknown,
+): boolean {
+  return (
+    readController != null &&
+    Object.values(rule.cases).some((names) =>
+      names.some((name) => listed.has(name)),
+    )
+  );
 }
 
 /**

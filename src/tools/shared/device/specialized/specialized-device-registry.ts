@@ -21,8 +21,6 @@ import { wavetableSpec } from "./devices/wavetable.ts";
 import {
   type UnresolvedParam,
   type WrittenPseudoParam,
-  formatParamName,
-  readParameter,
   skippedParam,
 } from "../helpers/param-reading.ts";
 import { markSuperseded } from "#src/tools/shared/helpers/entry-details.ts";
@@ -30,6 +28,7 @@ import { namedAgain } from "#src/shared/max/named-again-wording.ts";
 import { failUnreplacedEntries } from "#src/tools/shared/write-pipeline/plans/replaced-entries.ts";
 import { lastWins } from "#src/tools/shared/write-pipeline/plans/last-wins.ts";
 import { parseAction } from "./specialized-device-action-parser.ts";
+import { readControllerValue } from "./specialized-controller-value.ts";
 import {
   applyInactiveStates,
   ruleMarksInactive,
@@ -46,7 +45,8 @@ import {
 // `class_display_name` (consistent with the existing Simpler handling). See
 // dev/live-api/specialized-devices/README.md.
 
-const SPECS: SpecializedDeviceSpec[] = [
+/** Every specialized-device spec. */
+export const SPECS: SpecializedDeviceSpec[] = [
   // Instruments
   driftSpec,
   meldSpec,
@@ -350,17 +350,29 @@ function collectParamOptions(
  * Mark a device's parameters inactive per its specialized `inactiveWhen` rules
  * (no-op for generic devices or specs without rules). Mutates `parameters` in
  * place; call only when reading param values, since `state` is value-level.
+ *
+ * After a param search a rule's controller may not be in `parameters`. Then it
+ * is read from the device, only when a listed param depends on it, and is not
+ * added to the list.
  * @param device - LiveAPI device object
  * @param parameters - Parameter entries to annotate (mutated in place)
+ * @param searched - Whether a param search filtered `parameters`
  */
 export function applySpecializedInactiveStates(
   device: LiveAPI,
   parameters: Record<string, unknown>[],
+  searched = false,
 ): void {
   const spec = getSpecForDevice(device);
 
   if (spec?.inactiveWhen) {
-    applyInactiveStates(spec.inactiveWhen, parameters);
+    applyInactiveStates(
+      spec.inactiveWhen,
+      parameters,
+      searched
+        ? (controller) => readControllerValue(device, spec.params, controller)
+        : undefined,
+    );
   }
 }
 
@@ -382,42 +394,9 @@ export function isParamInactiveBySpecialized(
   return (
     rules != null &&
     ruleMarksInactive(rules, paramName, (controller) =>
-      controllerValue(device, spec?.params ?? [], controller),
+      readControllerValue(device, spec?.params ?? [], controller),
     )
   );
-}
-
-/**
- * A device param's current display value, as read-device reports it.
- * @param device - LiveAPI device object
- * @param pseudoParams - The device's pseudo-params, checked first
- * @param name - Display name of the param
- * @returns The value, or undefined when the device has no such param
- */
-function controllerValue(
-  device: LiveAPI,
-  pseudoParams: PseudoParam[],
-  name: string,
-): unknown {
-  const pseudo = pseudoParams.find((param) => param.name === name);
-
-  if (pseudo != null) {
-    return pseudo.read(device);
-  }
-
-  let value: unknown;
-
-  device.someChild("parameters", (param) => {
-    if (formatParamName(param) !== name) {
-      return false;
-    }
-
-    value = readParameter(param).value;
-
-    return true;
-  });
-
-  return value;
 }
 
 /**

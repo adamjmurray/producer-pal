@@ -97,8 +97,10 @@ apply in that mode. After the params are read, `applySpecializedInactiveStates`
 (in `specialized-device-registry.ts`) sets `state: "inactive"` on them — reusing
 the values already read (no extra Live API calls), only when reading param
 values, and never overriding a state Live already set. A controller filtered out
-by a param search just skips its rule. Use the
-`exclusiveModes(controller, activeByValue)` builder (in
+by a param search is read from the device (`readControllerValue`, shared with
+the write read-back), only when a listed param depends on it, and is not added
+to the result, so a searched read marks the same params as an unsearched one.
+Use the `exclusiveModes(controller, activeByValue)` builder (in
 `specialized-device-inactive.ts`) for the common "one mode keeps one param
 active, the rest inactive" shape. Several controller values may map to the same
 active param (the builder dedupes the group) — e.g. Auto Filter's

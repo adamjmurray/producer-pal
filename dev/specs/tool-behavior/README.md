@@ -153,7 +153,9 @@ client is measured (`evals/schema-compat`, `unset-optionals`).
   `inactive in the device's current mode, so it has no effect until that changes`,
   joined after any other detail. Inactive means what read-device marks
   `state: "inactive"`: Live's own `state`, plus the specialized-device
-  `inactiveWhen` rules, read after the whole call has run.
+  `inactiveWhen` rules, read after the whole call has run. A read with
+  `paramSearch` marks the same params as one without: a rule's controller the
+  search filtered out is read from the device and left out of the result.
 - **A write that overrides arrangement automation says so.** Writing a parameter
   that has an arrangement lane makes Live ignore the whole lane until the user
   presses Re-Enable Automation (`automation_state` becomes 2). The write still

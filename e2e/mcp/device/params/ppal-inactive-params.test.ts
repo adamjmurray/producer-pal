@@ -11,6 +11,9 @@
  * Live's param names, which change between Live versions, so only a real Live
  * can tell whether they still fire.
  *
+ * A param search that filters out a rule's controller must not change which
+ * params read inactive, so searched reads are checked against the same rules.
+ *
  * Writes: a write to an inactive param still goes in (setting it before
  * switching modes is valid), and its entry says it has no effect. EQ Eight's B
  * side in stereo mode and a Notch band's Gain are Live's own inactive params.
@@ -83,6 +86,27 @@ async function inactiveOf(id: string, names: string[]): Promise<string[]> {
 }
 
 /**
+ * Read a device's params through a search.
+ * @param id - The device
+ * @param paramSearch - The search text
+ * @returns The listed params, in order
+ */
+async function searchedParams(
+  id: string,
+  paramSearch: string,
+): Promise<ParamEntry[]> {
+  const { parameters } = parseToolResult<{ parameters: ParamEntry[] }>(
+    await callToolAndSettle(ctx.client!, "ppal-read-device", {
+      id,
+      include: ["param-values"],
+      paramSearch,
+    }),
+  );
+
+  return parameters;
+}
+
+/**
  * A device on a fresh MIDI track (audio effects work on one too).
  * @param name - The device to create
  * @returns Its id
@@ -150,6 +174,37 @@ describe("read-device marks mode-gated rate params inactive", () => {
     expect(await inactiveOf(id, rates)).toStrictEqual([
       "LFO 1 Freq",
       "LFO 2 Synced",
+    ]);
+  });
+});
+
+describe("read-device marks inactive params under a param search", () => {
+  it("EQ Eight: B side in stereo, with the mode itself searched out", async () => {
+    const id = await createOnNewTrack("EQ Eight");
+
+    await write(id, { globalMode: "stereo" });
+
+    const params = await searchedParams(id, "3 Filter On");
+
+    expect(params.map((p) => [p.name, p.state])).toStrictEqual([
+      ["3 Filter On A", undefined],
+      ["3 Filter On B", "inactive"],
+    ]);
+  });
+
+  it("Wavetable: a rate its Sync mode doesn't use, with Sync searched out", async () => {
+    const id = await createOnNewTrack("Wavetable");
+
+    await write(id, { "LFO 1 Sync": "Tempo" });
+
+    const free = await searchedParams(id, "LFO 1 Freq");
+    const synced = await searchedParams(id, "LFO 1 Synced");
+
+    expect(free.map((p) => [p.name, p.state])).toStrictEqual([
+      ["LFO 1 Freq", "inactive"],
+    ]);
+    expect(synced.map((p) => [p.name, p.state])).toStrictEqual([
+      ["LFO 1 Synced", undefined],
     ]);
   });
 });
