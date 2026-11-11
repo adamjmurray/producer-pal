@@ -5,53 +5,18 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type RequestOverrides } from "#src/mcp-server/helpers/request-overrides/request-overrides.ts";
+import {
+  READ,
+  type Sent,
+  TIMEOUT_MS,
+  WRITE,
+  setup,
+  settle,
+} from "./write-queue-test-helpers.ts";
 import { isWriteCall } from "./write-calls.ts";
-import { MIN_RUN_BUDGET_MS, withWriteQueue } from "./write-queue.ts";
+import { MIN_RUN_BUDGET_MS, type withWriteQueue } from "./write-queue.ts";
 import { type McpResponse } from "#src/mcp-server/max-api-adapter.ts";
 import { isChangedNothing } from "#src/mcp-server/rpc/remote-script/forwarded/changed-nothing.ts";
-
-const WRITE = "ppal-update-clip";
-const READ = "ppal-read-clip";
-const TIMEOUT_MS = 45_000;
-
-interface Sent {
-  tool: string;
-  overrides?: RequestOverrides;
-  queuedMs?: number;
-  answer: (response?: McpResponse) => void;
-  fail: (error: Error) => void;
-}
-
-/**
- * A stand-in V8 that holds every call until the test answers it.
- * @returns The queued call function and the calls that reached V8
- */
-function setup(): {
-  call: ReturnType<typeof withWriteQueue>;
-  sent: Sent[];
-} {
-  const sent: Sent[] = [];
-  const send = vi.fn(
-    (
-      tool: string,
-      _args: object,
-      overrides?: RequestOverrides,
-      queuedMs?: number,
-    ) =>
-      new Promise<McpResponse>((resolve, reject) => {
-        sent.push({
-          tool,
-          overrides,
-          queuedMs,
-          answer: (response) =>
-            resolve(response ?? { content: [{ type: "text", text: tool }] }),
-          fail: reject,
-        });
-      }),
-  );
-
-  return { call: withWriteQueue(send, () => TIMEOUT_MS), sent };
-}
 
 /**
  * Two writes, the second queued behind the first.
@@ -89,13 +54,6 @@ async function expectQueueFree(
   expect(sent).toHaveLength(2);
   sent[1]?.answer();
   await next;
-}
-
-/** @returns Nothing, once pending promise callbacks have run */
-async function settle(): Promise<void> {
-  for (let i = 0; i < 5; i++) {
-    await Promise.resolve();
-  }
 }
 
 afterEach(() => {

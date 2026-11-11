@@ -9,7 +9,10 @@ Every tool call reaches V8 through `callLiveApi` in
 any MCP client) or REST. There, `withWriteQueue`
 (`src/mcp-server/rpc/write-queue/`) sends write calls one at a time, in arrival
 order, across all clients. A read waits for the writes that arrived before it,
-then runs alongside whatever comes next; reads never wait for each other.
+then runs alongside whatever comes next; reads never wait for each other. When a
+write answers, the reads waiting on it are sent first, then the next write
+starts, so V8 receives calls in arrival order. A read doesn't need to answer
+before the next write goes.
 
 V8 runs other requests while one waits on the remote script, and models send
 parallel tool calls. Without the queue, one write could insert a track while
