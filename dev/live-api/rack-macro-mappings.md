@@ -23,6 +23,9 @@ macro is mapped to anything. It has a listener. Max's `info` on a rack doesn't
 list it. The remote script's `/device/macros` route serves it, and
 `ppal-read-device` and `ppal-update-device` use that.
 
+Live 13 racks have 32 macros: see
+[python-only-candidates.md](python-remote-script-api/python-only-candidates.md#live-130b25-beta-compared-with-12416).
+
 ## Lowering the macro count
 
 Live doesn't refuse, and doesn't keep a mapped macro visible: lowering the count

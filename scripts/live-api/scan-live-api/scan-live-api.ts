@@ -20,7 +20,7 @@ import { dirname } from "node:path";
 import {
   formatOutput,
   getInfo,
-  getProperty,
+  getPropertyValue,
   getTypeName,
   parseInfo,
   scanPath,
@@ -148,13 +148,13 @@ async function scanChainsOnTrack(
   }
 
   const nestedDrumRack = `live_set tracks ${trackIdx} devices 0 chains 0 devices 0`;
-  const canHavePads = await getProperty(
+  const canHavePads = await getPropertyValue(
     ctx.baseUrl,
     nestedDrumRack,
     "can_have_drum_pads",
   );
 
-  if (canHavePads?.includes("[1]")) {
+  if (canHavePads === "1") {
     const padPath = `${nestedDrumRack} drum_pads 0`;
 
     if (await scanPath(ctx, padPath, `DrumPad (track ${trackIdx})`)) {
@@ -177,13 +177,13 @@ async function scanClips(ctx: ScanContext): Promise<void> {
   console.log("\nScanning clips...");
 
   for (let t = 0; t < MAX_TRACKS; t++) {
-    const hasClip = await getProperty(
+    const hasClip = await getPropertyValue(
       ctx.baseUrl,
       `live_set tracks ${t} clip_slots 0`,
       "has_clip",
     );
 
-    if (hasClip?.includes("[1]")) {
+    if (hasClip === "1") {
       const clipPath = `live_set tracks ${t} clip_slots 0 clip`;
 
       if (await scanPath(ctx, clipPath, `Clip (track ${t})`)) {

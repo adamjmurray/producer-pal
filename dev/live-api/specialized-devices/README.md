@@ -178,6 +178,15 @@ Read only the one you need — each catalog is long.
 
 ---
 
+# Live 13 devices
+
+New in the Live 13 beta, with their class names: Drum Synth (`DrumSynth`),
+Clipper (`Clipper`), Transient Shaper (`TransientShaper`), Mid-Side Rack
+(`AudioEffectMidSideGroupDevice`), Multiband Rack
+(`AudioEffectMultibandGroupDevice`).
+
+---
+
 # Reproducing the scan
 
 Two scripts automate building the test bed and surveying it. Both talk to a

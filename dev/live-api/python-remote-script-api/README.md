@@ -94,7 +94,8 @@ The scripts are in `scripts/live-api/python-probe/`.
 
 Run `compare-python-max.ts` on the old and new Live and diff the two surface
 JSON files: new members and enum values show up in the diff. Update
-[python-only-candidates.md](python-only-candidates.md) from the report.
+[python-only-candidates.md](python-only-candidates.md) from the report. It also
+records the Live 13 beta differences.
 
 ## How the Max check works
 
