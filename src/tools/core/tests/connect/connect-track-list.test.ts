@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 import { setupConnectMocks } from "./connect-test-helpers.ts";
 import { connect } from "../../connect.ts";
 
+const TOO_MANY = "Too many to list here: use ppal-read-live-set";
+
 function names(prefix: string, count: number): string[] {
   return Array.from({ length: count }, (_, i) => `${prefix}${i}`);
 }
@@ -65,7 +67,7 @@ describe("connect track lists", () => {
     expect(liveSet.tracks?.[255]).toStrictEqual({ path: "t255", name: "T255" });
   });
 
-  it("leaves out a list over 256 tracks but keeps the count", () => {
+  it("replaces a list over 256 tracks with a note and keeps the count", () => {
     setupConnectMocks({
       trackNames: names("T", 257),
       returnTrackNames: ["A-Delay"],
@@ -73,7 +75,7 @@ describe("connect track lists", () => {
 
     const { liveSet } = connect();
 
-    expect(liveSet).not.toHaveProperty("tracks");
+    expect(liveSet.tracks).toBe(TOO_MANY);
     expect(liveSet.regularTrackCount).toBe(257);
     expect(liveSet.returnTracks).toStrictEqual([
       { path: "rt0", name: "A-Delay" },
@@ -86,12 +88,12 @@ describe("connect track lists", () => {
     expect(connect().liveSet.returnTracks).toHaveLength(256);
   });
 
-  it("leaves out a return track list over 256 tracks but keeps the count", () => {
+  it("replaces a return track list over 256 with a note and keeps the count", () => {
     setupConnectMocks({ returnTrackNames: names("R", 257) });
 
     const { liveSet } = connect();
 
-    expect(liveSet).not.toHaveProperty("returnTracks");
+    expect(liveSet.returnTracks).toBe(TOO_MANY);
     expect(liveSet.returnTrackCount).toBe(257);
   });
 });

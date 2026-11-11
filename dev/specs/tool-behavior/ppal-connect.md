@@ -21,10 +21,11 @@ because only Node can read files and headers. In this order:
 7. Next step, always last: which of project context, global context and memory
    are empty, and what to do now.
 
-The overview lists regular and return tracks as `{ path, name }`, the shape of a
-`ppal-read-live-set` track entry, in Live's flat order with group members
-included. An empty list or one longer than 256 is left out; the counts still say
-how many there are.
+The overview lists regular and return tracks as `{ path, name }`, the path and
+name a `ppal-read-live-set` track entry carries, in Live's flat order with group
+members included. An empty list is left out. One longer than 256 is replaced by
+the text `Too many to list here: use ppal-read-live-set`, so a missing list
+isn't read as no tracks; the counts still say how many there are.
 
 A block with nothing to say is left out. A block that fails to build is left out
 alone, and the others still arrive.

@@ -17,8 +17,11 @@ import {
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
 
-/** A track list longer than this is left out; the count still says how many. */
+/** A track list longer than this is replaced by `TOO_MANY_TO_LIST`. */
 const MAX_LISTED_TRACKS = 256;
+
+/** Stands in for a list over the cap, so its absence isn't read as "none". */
+const TOO_MANY_TO_LIST = "Too many to list here: use ppal-read-live-set";
 
 interface LiveSetInfo {
   name?: unknown;
@@ -27,14 +30,14 @@ interface LiveSetInfo {
   sceneCount: number;
   regularTrackCount: number;
   returnTrackCount: number;
-  tracks?: ListedTrack[];
-  returnTracks?: ListedTrack[];
+  tracks?: ListedTrack[] | string;
+  returnTracks?: ListedTrack[] | string;
   isPlaying?: boolean;
   scale?: string;
   scalePitches?: string;
 }
 
-/** A track in the overview, shaped like a read-live-set track entry. */
+/** A track in the overview: the path and name read-live-set gives it. */
 interface ListedTrack {
   path: string;
   name: string;
@@ -106,8 +109,8 @@ export function connect(_params: object = {}): ConnectResult {
 }
 
 /**
- * Lists regular and return tracks as `{ path, name }`. A list is left out when
- * it is empty or longer than the cap.
+ * Lists regular and return tracks as `{ path, name }`. An empty list is left
+ * out, and one longer than the cap is replaced by a note.
  * @param trackCount - Number of regular tracks
  * @param returnTrackCount - Number of return tracks
  * @returns The `tracks` and `returnTracks` fields that apply
@@ -118,18 +121,22 @@ function trackLists(
 ): Pick<LiveSetInfo, "tracks" | "returnTracks"> {
   const lists: Pick<LiveSetInfo, "tracks" | "returnTracks"> = {};
 
-  if (trackCount > 0 && trackCount <= MAX_LISTED_TRACKS) {
+  if (trackCount > 0) {
     lists.tracks = listTracks(trackCount, false);
   }
 
-  if (returnTrackCount > 0 && returnTrackCount <= MAX_LISTED_TRACKS) {
+  if (returnTrackCount > 0) {
     lists.returnTracks = listTracks(returnTrackCount, true);
   }
 
   return lists;
 }
 
-function listTracks(count: number, isReturn: boolean): ListedTrack[] {
+function listTracks(count: number, isReturn: boolean): ListedTrack[] | string {
+  if (count > MAX_LISTED_TRACKS) {
+    return TOO_MANY_TO_LIST;
+  }
+
   return Array.from({ length: count }, (_, index) => {
     const [segment, path]: [TrackSegment, TrackPath] = isReturn
       ? [
