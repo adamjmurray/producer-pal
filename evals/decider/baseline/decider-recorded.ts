@@ -9,8 +9,8 @@
  */
 
 import { type JsonEvalResult } from "#evals/scenarios/helpers/json-results/types.ts";
-import { type DeciderProvider } from "./decider-provider.ts";
-import { buildQuestions, type DeciderJudgeResult } from "./decider-judge.ts";
+import { type DeciderProvider } from "../decider-provider.ts";
+import { buildQuestions, type DeciderJudgeResult } from "../decider-judge.ts";
 
 /**
  * Rebuild the decider's answer from a saved `--decider` result.

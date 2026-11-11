@@ -613,6 +613,23 @@ deciders show up separately. With `--recorded` it reads the answers saved in the
 run instead of calling a decider (and then `--decider` is an error).
 `probe:rejudge` judges any saved result.
 
+`--baseline=<recorded | decider>` compares the `--decider` with another decider
+instead of a judge verdict, so no LLM verdict is needed and results the decider
+decided in a run are included. `recorded` reads the answers the run saved
+(results with none are left out and counted); a decider (same values as
+`--decider`) is called fresh, which also puts both sides on today's outcome
+scale. It reports a verdict table with agreement and escalation rates,
+per-question probability differences, outcome scores, seconds per call, and the
+results where the verdicts differ with the stored LLM verdict. It can't be
+combined with `--reference` or `--recorded`.
+
+```bash
+# Local model against the answers a --decider run saved
+npm run probe:decider -- <run> --decider=ollama/autotrust-jev --baseline=recorded
+# Both called fresh on the same results
+npm run probe:decider -- <run> --decider=ollama/autotrust-jev --baseline=jev
+```
+
 To check the decider on a finished `--decider` run in one go, run
 `npm run probe:decider-recheck -- evals/results/<run>`. It has Luna judge any
 result Luna hasn't judged yet

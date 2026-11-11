@@ -24,7 +24,8 @@
 import { readdir } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { RESULTS_DIR } from "#evals/scenarios/helpers/json-results/types.ts";
-import { runDeciderCompare, type CompareDeps } from "../decider-compare.ts";
+import { type CompareDeps } from "../baseline/decider-baseline.ts";
+import { runDeciderCompare } from "../decider-compare.ts";
 import { runRejudge, type RejudgeDeps } from "./decider-rejudge.ts";
 import { judgeSlug, SIDECAR_DIR } from "./decider-sidecar.ts";
 

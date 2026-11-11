@@ -64,6 +64,38 @@ describe("parseArgs --decider and --concurrency", () => {
   });
 });
 
+describe("parseArgs --baseline", () => {
+  it("is unset by default", () => {
+    expect(parseArgs([]).baseline).toBeUndefined();
+  });
+
+  it("reads recorded", () => {
+    expect(parseArgs(["--baseline=recorded"]).baseline).toBe("recorded");
+  });
+
+  it("reads a decider like --decider does", () => {
+    expect(parseArgs(["--baseline=jev"]).baseline).toStrictEqual({});
+    expect(
+      parseArgs(["--baseline=ollama/autotrust-jev"]).baseline,
+    ).toStrictEqual({ provider: "ollama", model: "autotrust-jev" });
+  });
+
+  it("rejects a bad decider, naming the flag", () => {
+    expect(() => parseArgs(["--baseline=nowhere"])).toThrow(
+      "Unknown --baseline=nowhere",
+    );
+  });
+
+  it("refuses --reference and --recorded", () => {
+    expect(() => parseArgs(["--baseline=jev", "--reference=h"])).toThrow(
+      "--baseline can't be used with --reference or --recorded",
+    );
+    expect(() => parseArgs(["--baseline=jev", "--recorded"])).toThrow(
+      "--baseline can't be used with --reference or --recorded",
+    );
+  });
+});
+
 describe("parseArgs --recorded", () => {
   it("is off by default and on with the flag", () => {
     expect(parseArgs([]).recorded).toBe(false);

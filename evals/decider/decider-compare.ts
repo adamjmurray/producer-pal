@@ -6,8 +6,8 @@
 
 /**
  * Offline probe: re-judge saved eval results with the decider and measure how often it
- * agrees with the judge verdict stored in each result, or with sidecar verdicts
- * from `decider-rejudge.ts`. No Ableton needed.
+ * agrees with the judge verdict stored in each result, with sidecar verdicts
+ * from `decider-rejudge.ts`, or with a baseline decider. No Ableton needed.
  *
  * Run: node --env-file=.env evals/decider/decider-compare.ts [run-ids...] [flags]
  *   run-ids: run directories under evals/results (default: all)
@@ -16,14 +16,15 @@
  *            --concurrency=N parallel decider calls (default 4; 1 for ollama)
  *            --decider=D     jev (default), typesafe|openrouter|vercel, or
  *                            provider/model, e.g. ollama/autotrust-jev
- *            --include-stale also use results recorded before the scenario's
- *                            judge criteria last changed
+ *            --include-stale also use results older than the judge criteria
  *            --reference=slug use this sidecar judge (a judges/ folder, or
- *                            provider/model) as the reference instead of the
- *                            stored verdict (repeatable; several: majority,
- *                            ties left out and listed as splits)
+ *                            provider/model) instead of the stored verdict
+ *                            (repeatable; several: majority, ties listed)
  *            --recorded      use the decider answers a `--decider` run saved
  *                            (no calls; not with --decider)
+ *            --baseline=B    compare with a baseline decider, not a judge:
+ *                            `recorded` (saved answers) or a decider as for
+ *                            --decider (called fresh); not with --reference
  *            --results-dir=D results directory (default evals/results)
  *
  * The full per-result report goes to <results-dir>/decider-compare-<time>.json.
@@ -40,8 +41,12 @@ import {
   type DeciderSpec,
   type ResolvedDecider,
 } from "./decider-provider.ts";
+import {
+  compareToBaseline,
+  type CompareDeps,
+} from "./baseline/decider-baseline.ts";
 import { deciderJudge } from "./decider-judge.ts";
-import { recordedDecider } from "./decider-recorded.ts";
+import { recordedDecider } from "./baseline/decider-recorded.ts";
 import {
   resolveReference,
   type Vote,
@@ -52,7 +57,6 @@ import {
   judgeChecks,
   loadJudgedResults,
   type JudgedResult,
-  type LoadOptions,
 } from "./decider-results.ts";
 import { judgeSlug, readSidecar } from "./sidecar-judges/decider-sidecar.ts";
 import { mapConcurrent } from "./map-concurrent.ts";
@@ -70,6 +74,8 @@ interface CliArgs {
   recorded: boolean;
   /** Sidecar judge slugs to use as the reference; empty = the stored verdict */
   references: string[];
+  /** Compare with a baseline decider (the recorded answers, or a decider to call) */
+  baseline?: "recorded" | DeciderSpec;
   resultsDir: string;
 }
 
@@ -77,14 +83,6 @@ interface CliArgs {
 interface Candidate {
   item: JudgedResult;
   votes: Vote[];
-}
-
-/** Test seams: the decider call and who it is, and how scenarios and criteria load. */
-export interface CompareDeps {
-  decider?: typeof deciderJudge;
-  resolved?: Pick<ResolvedDecider, "provider" | "model">;
-  load?: Pick<LoadOptions, "scenarios" | "criteriaDate">;
-  log?: (text: string) => void;
 }
 
 /**
@@ -99,6 +97,11 @@ export async function runDeciderCompare(
   deps: CompareDeps = {},
 ): Promise<void> {
   const args = parseArgs(argv);
+
+  if (args.baseline != null) {
+    return await compareToBaseline({ ...args, baseline: args.baseline }, deps);
+  }
+
   const asked = args.recorded
     ? undefined
     : (deps.resolved ?? resolveDecider(args.decider));
@@ -276,7 +279,8 @@ function voteJudge(votes: Vote[]): CompareEntry["judge"] {
  *
  * @param argv - Arguments
  * @returns Parsed options
- * @throws On a bad `--decider` value, or `--decider` with `--recorded`
+ * @throws On a bad `--decider` or `--baseline` value, `--decider` with `--recorded`,
+ *   or `--baseline` with `--reference` or `--recorded`
  */
 export function parseArgs(argv: string[]): CliArgs {
   const runIds = argv
@@ -295,6 +299,14 @@ export function parseArgs(argv: string[]): CliArgs {
 
   const decider = flag("decider").at(-1);
   const recorded = argv.includes("--recorded");
+  const baseline = flag("baseline").at(-1);
+  const references = flag("reference").map((s) => judgeSlug(s));
+
+  if (baseline != null && (recorded || references.length > 0)) {
+    throw new Error(
+      "--baseline can't be used with --reference or --recorded: it compares two deciders",
+    );
+  }
 
   if (decider != null && recorded) {
     throw new Error(
@@ -310,7 +322,13 @@ export function parseArgs(argv: string[]): CliArgs {
     decider: decider == null ? undefined : parseDeciderSpec(decider),
     includeStale: argv.includes("--include-stale"),
     recorded,
-    references: flag("reference").map((s) => judgeSlug(s)),
+    references,
+    ...(baseline != null && {
+      baseline:
+        baseline === "recorded"
+          ? ("recorded" as const)
+          : parseDeciderSpec(baseline, "--baseline"),
+    }),
     resultsDir: flag("results-dir").at(-1) ?? RESULTS_DIR,
   };
 }
