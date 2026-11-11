@@ -137,6 +137,15 @@ Part of [Skip entries, tool by tool](README.md).
   (`could not load "<plug-in>": ...`), leaving the other paths alone. A wrapper
   that can't be deleted stays: the entry keeps its `id` and `path`, and the
   detail says so.
+- **A path that would add a chain to a rack with fixed chains is that path's
+  skip.** create-device's `c+` or `c<n>` past the last chain, and a `toPath` of
+  update-device that names one, fail the one target with the rack's limit and
+  chains (see the [path catalog](../object-paths/path-catalog.md)) before any
+  chain or device is made; the call's other paths still run, and a lone one
+  throws the reason. A device copy's `toPath` is refused the same way, but only
+  after the copy exists: the copy is deleted again, and if that fails the entry
+  says where the copy is left
+  (`the copy may be left at ...: it wasn't deleted`).
 - **A take lane reports the params it has no use for.** `ppal-update-track`
   writes a lane's name and nothing else, so everything else the call sent is a
   `detail` on the lane's own entry, which otherwise reads like any other hit.

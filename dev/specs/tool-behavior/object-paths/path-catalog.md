@@ -96,6 +96,21 @@ The exception is `ppal-duplicate`, since a copy carries its source's `in_note`:
 `toPath: "t0/d0/c+"` into a Drum Rack lands on the source's own pad, the same
 place the bare rack path names.
 
+**Racks with fixed chains.** Live 13's Mid-Side Rack (2 chains) and Multiband
+Rack (3) turn every `insert_chain` down, and read their limit as
+`max_num_chains`. A path that would add a chain to a rack that already holds
+that many (`c+`, or a `c<n>` at or past the count) is refused before any chain
+is made, naming the rack, the limit and its chains:
+`Multiband Rack (id 7) has a fixed 3 chains (Low, Mid, High), so it can't take another`.
+The limit is believed only on Live 13 or later, and only as a positive whole
+number the rack has reached; Live 12 answers the unknown property with a bare 1,
+and any other value (none, 0, a number not yet reached) means no limit. It
+applies wherever a path adds a chain: create-device, update-device `toPath` and
+`wrapInRack`, and `ppal-duplicate` of a chain or a device into a rack. A device
+copy is made first and then refused, like any other destination it can't reach,
+and the copy is deleted again. A path into a chain the rack has (`t1/d1/c0/d+`)
+is unaffected.
+
 ## Naming a return in a send
 
 `sends[].return` (and the deprecated `sendReturn`) take an id, name, path

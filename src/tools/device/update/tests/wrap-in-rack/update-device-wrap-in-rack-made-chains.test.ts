@@ -8,6 +8,10 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  registerFixedChainRack,
+  registerLive12Rack,
+} from "../../../tests/helpers/fixed-chain-rack-fixtures.ts";
+import {
   type RegisteredMockObject,
   children,
   livePath,
@@ -116,6 +120,33 @@ describe("updateDevice - wrapInRack with chains made by toPath", () => {
     ).toThrow(
       "wrapInRack: Live refused to insert the Instrument Rack; left an empty chain: c0",
     );
+  });
+
+  it("refuses a c+ into a rack with fixed chains before making the wrap rack", () => {
+    const rack = registerFixedChainRack(2, "midSide");
+
+    expect(() =>
+      updateDevice({ path: "t0/d0", wrapInRack: true, toPath: "t2/d0/c+" }),
+    ).toThrow("Mid-Side Rack (id rack) has a fixed 2 chains");
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  // Live 12 reads max_num_chains as a bare 1, which must not stop a rack that
+  // already has a chain from taking another.
+  it("still appends a chain on Live 12, where the property reads 1", () => {
+    const rack = registerLive12Rack(2, 1, 1, {
+      inserted: "new-rack",
+      chainIdPrefix: "dest-chain",
+    });
+
+    expect(
+      updateDevice({ path: "t0/d0", wrapInRack: true, toPath: "t2/d0/c+" }),
+    ).toStrictEqual({
+      id: "new-rack",
+      type: "audio-effect-rack",
+      deviceCount: 1,
+    });
+    expect(rack.call).toHaveBeenCalledWith("insert_chain");
   });
 
   it("says nothing of chains when toPath made none", () => {

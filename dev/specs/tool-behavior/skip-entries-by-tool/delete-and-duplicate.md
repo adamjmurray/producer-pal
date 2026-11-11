@@ -145,6 +145,13 @@ Part of [Skip entries, tool by tool](README.md).
   copies every track inside the group, at any depth, and the group's entry says
   so by their paths after the call: `detail`:
   `also copied the 2 tracks inside this group track: t12 (id 47), t13 (id 48)`.
+- **A chain of a rack with fixed chains can be neither copied nor deleted.** A
+  chain copy into a rack that holds its limit (Live 13's Mid-Side and Multiband
+  Racks) is the target's skip, `ok: false` with the rack's refusal as `detail`
+  (see the [path catalog](../object-paths/path-catalog.md)'s fixed-chain note),
+  and the rack is left as it was. delete refuses any chain that isn't a drum
+  chain the same way for these racks as for every other rack: `ok: false`,
+  `Live has no way to delete a rack chain`.
 - **A device, chain or drum-pad copy also answers per destination**, addressed
   by the caller's own spelling of that `toPath` entry. A move Live turned down
   hands back why rather than warning it, so the destination's `detail` says what

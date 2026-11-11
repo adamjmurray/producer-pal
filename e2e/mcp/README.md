@@ -107,15 +107,15 @@ listing everything in it. Those specs are the reference for writing assertions.
 The table lists the ones the MCP suites open; `arrangement-sections` is used by
 the evals.
 
-| Set                      | Covers                                                |
-| ------------------------ | ----------------------------------------------------- |
-| `e2e-test-set`           | everything else; the default                          |
-| `racks-test`             | nested racks, macro-mapped params, rack return chains |
-| `arrangement-clip-tests` | arrangement clip edits                                |
-| `tracks-test`            | frozen tracks, nested groups                          |
-| `tracks-test-twin`       | a second Set sharing `tracks-test`'s project folder   |
-| `ppal-drum-pad`          | the Producer Pal device inside a drum pad             |
-| `live-13-test`           | Live 13 only: step sequencer and envelope clips       |
+| Set                      | Covers                                                    |
+| ------------------------ | --------------------------------------------------------- |
+| `e2e-test-set`           | everything else; the default                              |
+| `racks-test`             | nested racks, macro-mapped params, rack return chains     |
+| `arrangement-clip-tests` | arrangement clip edits                                    |
+| `tracks-test`            | frozen tracks, nested groups                              |
+| `tracks-test-twin`       | a second Set sharing `tracks-test`'s project folder       |
+| `ppal-drum-pad`          | the Producer Pal device inside a drum pad                 |
+| `live-13-test`           | Live 13 only: step sequencer, envelope clips, fixed racks |
 
 `e2e/live-sets/presets/` holds a rack preset with the Producer Pal device in it.
 See `specs/ppal-drum-pad-spec.md` for how a test loads it.
@@ -158,6 +158,11 @@ fails with "Unable to find application named" even though the app is there:
 ABLETON_APP="/Applications/Ableton Live 12 Suite 12.3.app" \
   npm run e2e:mcp -- track/ppal-take-lanes
 ```
+
+A suite that opens a Live 13 Set skips itself on Live 12:
+`describe.skipIf(!LIVE_13_OR_NEWER)` from `e2e/mcp/e2e-test-set.ts`, with
+`setupMcpTestContext` called inside the `describe` so no hook opens the Set. It
+reads the version from the app bundle `ABLETON_APP` names.
 
 A Set opens only in the Live that saved it or a newer one. Point an older Live
 at a Set a newer one saved and Live puts up a modal instead of opening it — the

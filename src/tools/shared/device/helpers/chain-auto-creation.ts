@@ -25,6 +25,7 @@ import {
   warnRackRelativeDrumChainSpelling,
 } from "./path/device-drumpad-navigation.ts";
 import { liveApiAtDevicePath } from "./path/with-device-path-cache.ts";
+import { refuseFixedChains } from "./path/rack-chain-limit.ts";
 
 /** A chain segment: everything an IndexedSegment can be except a device. */
 type ChainSegment = Exclude<IndexedSegment, { kind: "device" }>;
@@ -77,8 +78,11 @@ export function resolveContainerWithAutoCreate(
  * caller that wants it on a pad sets its `in_note` afterwards.
  * @param rack - The rack device
  * @returns The new chain, or null when Live made none
+ * @throws Error when the rack's chains are fixed (Mid-Side, Multiband)
  */
 export function appendChain(rack: LiveAPI): LiveAPI | null {
+  refuseFixedChains(rack);
+
   // insert_chain returns ["id", chainId] on success, or 1 on failure.
   const result = rack.call("insert_chain");
 
@@ -186,6 +190,9 @@ function autoCreateChains(
       `Auto-creating chains in Drum Racks is not supported (path: "${fullPath}")`,
     );
   }
+
+  // A fixed-chain rack is refused before anything is made, whatever the index.
+  refuseFixedChains(device);
 
   // Limit how many chains can be auto-created
   const firstIndex = device.getChildCount("chains");

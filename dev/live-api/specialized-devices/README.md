@@ -258,3 +258,10 @@ What each device exposes:
 **Not implemented — Shifter.** Small surface (`pitch_bend_range`,
 `pitch_mode_index`) with no companion `_list` for `pitch_mode_index`. Deferred
 unless there's explicit demand.
+
+**Known gap — Multiband Rack (Live 13).** `Low-Mid Crossover` and
+`Mid-High Crossover` are readable and settable as ordinary params, but Live
+doesn't expose the crossover mode, so the tools can't read or set it. Its three
+chains, like the Mid-Side Rack's two, are fixed: no tool can add one (see the
+fixed-chain note in the
+[path catalog](../../specs/tool-behavior/object-paths/path-catalog.md)).

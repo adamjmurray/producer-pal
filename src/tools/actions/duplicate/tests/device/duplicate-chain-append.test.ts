@@ -14,6 +14,10 @@ import {
   clearMockRegistry,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  registerFixedChainRack,
+  registerLive12Rack,
+} from "#src/tools/device/tests/helpers/fixed-chain-rack-fixtures.ts";
 
 vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
   moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
@@ -104,5 +108,55 @@ describe("duplicate type=chain — c+ as a destination", () => {
     await expect(
       duplicate({ type: "chain", id: "chain-0", toPath: "t0/d0/pC1/c+" }),
     ).rejects.toThrow("no destination rack at toPath");
+  });
+});
+
+// A Live 13 rack with fixed chains turns every insert_chain down, so a copy into
+// one is refused before anything is made. Live 12 reads the limit as a bare 1
+// and still copies.
+const MULTIBAND =
+  "Multiband Rack (id rack) has a fixed 3 chains (Low, Mid, High), so it can't take another";
+
+describe("duplicate type=chain — a rack with fixed chains", () => {
+  beforeEach(() => {
+    clearMockRegistry();
+    registerMockObject("live_set", { path: livePath.liveSet });
+  });
+
+  it("refuses a copy into the chain's own rack", async () => {
+    const rack = registerFixedChainRack(0, "multiband");
+
+    await expect(duplicate({ type: "chain", id: "chain-1" })).rejects.toThrow(
+      MULTIBAND,
+    );
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses a copy to a c+ destination", async () => {
+    registerFixedChainRack(0, "multiband");
+
+    await expect(
+      duplicate({ type: "chain", id: "chain-0", toPath: "t0/d0/c+" }),
+    ).rejects.toThrow(MULTIBAND);
+  });
+
+  it("answers each chain of a list with the refusal", async () => {
+    registerFixedChainRack(0, "multiband");
+
+    await expect(
+      duplicate({ type: "chain", id: "chain-0, chain-1" }),
+    ).resolves.toStrictEqual([
+      { id: "chain-0", ok: false, detail: MULTIBAND },
+      { id: "chain-1", ok: false, detail: MULTIBAND },
+    ]);
+  });
+
+  it("still copies on Live 12, where the property reads 1", async () => {
+    const rack = registerLive12Rack(0, 1);
+
+    await expect(
+      duplicate({ type: "chain", id: "chain-0" }),
+    ).resolves.toMatchObject({ id: "chain-1" });
+    expect(rack.call).toHaveBeenCalledWith("insert_chain");
   });
 });

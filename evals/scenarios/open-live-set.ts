@@ -50,7 +50,7 @@ import { sleep } from "#evals/shared/sleep.ts";
 
 // For `open -a`. Override to test against a differently-named bundle
 // (e.g. a side-by-side older version).
-const ABLETON_APP = process.env.ABLETON_APP ?? "Ableton Live 12 Suite";
+export const ABLETON_APP = process.env.ABLETON_APP ?? "Ableton Live 12 Suite";
 const POLL_INTERVAL_MS = 250;
 // Consecutive successful probes required before the server counts as up. See
 // nextReadyStreak() for why one success alone isn't enough.
