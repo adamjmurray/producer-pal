@@ -4,16 +4,16 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from "vitest";
-import { librarySearch } from "../../query/library-search.ts";
-import { setupLibraryFixtureLifecycle } from "../fixtures/library-fixture.ts";
+import { librarySearch } from "../../../query/library-search.ts";
+import { setupLibraryFixtureLifecycle } from "../../fixtures/library-fixture.ts";
 
-vi.mock(import("../../live-db-path.ts"), () => ({
+vi.mock(import("../../../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),
   findLivePluginsDbPath: vi.fn(),
   liveDatabaseDir: vi.fn(),
 }));
 
-const dbPathMod = await import("../../live-db-path.ts");
+const dbPathMod = await import("../../../live-db-path.ts");
 
 // Audio by use-count desc, with file ids: pack_kick (2001), user_kick (1001),
 // user_snare (1002), pack_clap (2002), subfolder_x (211), subfolder_z (221),

@@ -181,11 +181,23 @@ export const PRESET_FOLDER_KIND = 5;
 /** folder_kind of a pack's place. */
 export const PACK_FOLDER_KIND = 0;
 
+/** folder_kind of Live's "Built-in" place. */
+const BUILTIN_FOLDER_KIND = 8;
+
+/**
+ * SQL on places `p`: its folder_kind for `source`. Live files the Core Library
+ * as a pack (folder_kind 0), but it ships with Live, so it counts as builtin.
+ * Matched by the place's root folder name, which isn't localized.
+ */
+export const SOURCE_FOLDER_KIND = `CASE WHEN p.folder_kind = ${PACK_FOLDER_KIND}
+  AND p.file_id IN (SELECT file_id FROM files WHERE place_id = 0 AND name = 'Core Library')
+  THEN ${BUILTIN_FOLDER_KIND} ELSE p.folder_kind END`;
+
 const SOURCE_TO_FOLDER_KINDS: Record<DbLibrarySource, number[]> = {
   user: [1, 2],
   pack: [PACK_FOLDER_KIND],
   "preset-folder": [PRESET_FOLDER_KIND],
-  builtin: [8],
+  builtin: [BUILTIN_FOLDER_KIND],
   cloud: [9],
   plugin: [10],
 };
