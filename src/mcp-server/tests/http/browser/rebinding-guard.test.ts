@@ -171,6 +171,16 @@ describe("isRebindSafeHost", () => {
   });
 });
 
+const DISCOVERY_PATHS = [
+  "/.well-known/oauth-protected-resource",
+  "/.well-known/oauth-protected-resource/mcp",
+  "/.well-known/oauth-authorization-server",
+  "/.well-known/oauth-authorization-server/mcp",
+  "/.well-known/openid-configuration",
+  "/.well-known/openid-configuration/mcp",
+  "/.well-known/mcp/server-card/mcp",
+];
+
 describe("rebindingGuard", () => {
   describe("on a Host that can be rebound", () => {
     it.each([
@@ -198,12 +208,40 @@ describe("rebindingGuard", () => {
       });
     });
 
-    it.each(["/mcp", "/MCP", "/mcp/", "/.well-known/mcp/server-card/mcp"])(
+    it.each(["/mcp", "/MCP", "/mcp/", ...DISCOVERY_PATHS])(
       "passes %s with no browser headers",
       (path) => {
         expect(guard(path, { host: "mcp.example.com" }).passed).toBe(true);
       },
     );
+
+    it.each([
+      "/.well-known/",
+      "/.well-known/anything",
+      "/.well-known/mcp",
+      "/.well-known/mcp/server-card",
+      "/.well-known/oauth-protected-resource/",
+      "/.well-known/oauth-protected-resource/other",
+      "/.well-known/oauth-protected-resource/../config",
+      "/.well-known/oauth-protected-resource/%2E%2E/config",
+      "/.well-known/OAuth-Protected-Resource",
+      "/.well-known/openid-configuration/mcp/",
+    ])("refuses %s with no browser headers", (path) => {
+      expect(guard(path, { host: "mcp.example.com" })).toStrictEqual({
+        passed: false,
+        status: 403,
+        body: { error: expect.stringContaining("DNS rebinding") },
+      });
+    });
+
+    it("refuses a discovery path from a browser", () => {
+      expect(
+        guard(DISCOVERY_PATHS[0] as string, {
+          host: "mcp.example.com",
+          origin: "https://mcp.example.com",
+        }).status,
+      ).toBe(403);
+    });
 
     it.each([
       ["Origin", { origin: "https://mcp.example.com" }],
@@ -267,6 +305,12 @@ describe("rebindingGuard", () => {
     ])("passes any path (%o)", (headers) => {
       expect(
         guard("/config", { host: "192.168.1.20:3350", ...headers }).passed,
+      ).toBe(true);
+    });
+
+    it("passes any path under /.well-known/ too", () => {
+      expect(
+        guard("/.well-known/anything", { host: "192.168.1.20:3350" }).passed,
       ).toBe(true);
     });
   });

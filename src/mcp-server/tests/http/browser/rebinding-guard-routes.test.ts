@@ -118,12 +118,27 @@ describe("DNS rebinding guard on the Express app", () => {
       },
     );
 
-    it("keeps the 404 on GET /.well-known/mcp/server-card/mcp", async () => {
-      const answer = await send("GET", "/.well-known/mcp/server-card/mcp", {
-        Host: host,
-      });
+    it.each([
+      "/.well-known/oauth-protected-resource",
+      "/.well-known/oauth-protected-resource/mcp",
+      "/.well-known/oauth-authorization-server",
+      "/.well-known/oauth-authorization-server/mcp",
+      "/.well-known/openid-configuration",
+      "/.well-known/openid-configuration/mcp",
+      "/.well-known/mcp/server-card/mcp",
+    ])("keeps the 404 on GET %s", async (path) => {
+      const answer = await send("GET", path, { Host: host });
 
       expect(answer.status).toBe(404);
+    });
+
+    it("answers GET on any other /.well-known/ path with the rebinding 403", async () => {
+      const answer = await send("GET", "/.well-known/anything", { Host: host });
+
+      expect(answer.status).toBe(403);
+      expect(JSON.parse(answer.body)).toStrictEqual({
+        error: expect.stringContaining("DNS rebinding"),
+      });
     });
   });
 
@@ -152,6 +167,12 @@ describe("DNS rebinding guard on the Express app", () => {
       const answer = await send("GET", "/config", { Host: host, ...headers });
 
       expect(answer.status).toBe(200);
+    });
+
+    it("leaves /.well-known/ paths to the routes (404)", async () => {
+      const answer = await send("GET", "/.well-known/anything", { Host: host });
+
+      expect(answer.status).toBe(404);
     });
   });
 

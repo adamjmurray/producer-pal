@@ -116,19 +116,32 @@ function isLocalNetworkName(name: string): boolean {
   );
 }
 
+// The discovery paths MCP clients probe (OAuth metadata, and the server card
+// from the original probe). No route answers them: they only get Express's
+// plain 404 instead of the guard's 403, which clients can read as "no auth".
+// Exact and case-sensitive: clients send them lowercase, and a prefix would let
+// any future route under `/.well-known/` through on an untrusted Host.
+const DISCOVERY_PATHS = new Set([
+  ...[
+    "oauth-protected-resource",
+    "oauth-authorization-server",
+    "openid-configuration",
+  ].flatMap((name) => [`/.well-known/${name}`, `/.well-known/${name}/mcp`]),
+  "/.well-known/mcp/server-card/mcp",
+]);
+
 /**
- * Whether a path is the MCP endpoint or MCP discovery. Matches exactly what
- * Express routes to `/mcp` (case-insensitive, optional trailing slash). Express
- * doesn't decode or resolve `..` before routing, so `/mcp/../config` and
- * `/.well-known/../config` reach no route.
+ * Whether a path is the MCP endpoint or one of the discovery paths. `/mcp`
+ * matches exactly what Express routes to it (case-insensitive, optional
+ * trailing slash). Express doesn't decode or resolve `..` before routing, so
+ * `/mcp/../config` and `/.well-known/oauth-protected-resource/../config` reach
+ * no route.
  *
  * @param path - Request path, without the query
- * @returns true for `/mcp` and anything under `/.well-known/`
+ * @returns true for `/mcp` and the discovery paths
  */
 function isMcpEndpoint(path: string): boolean {
   const lower = path.toLowerCase();
 
-  return (
-    lower === "/mcp" || lower === "/mcp/" || path.startsWith("/.well-known/")
-  );
+  return lower === "/mcp" || lower === "/mcp/" || DISCOVERY_PATHS.has(path);
 }
