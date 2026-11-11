@@ -377,6 +377,12 @@ together.
   adopted without saving if slot writes follow before the 300 ms edit save.
   Edge: a flat envelope on a stepped param, whose value doesn't match the dial,
   can add one undo step at playback start.
+- **Slots don't follow the plug-in window**: an edit there never sets the slot's
+  dial. Setting it would override the slot's automation (Re-Enable Automation
+  lights) and add an undo step, as touching an automated native knob does, and
+  during playback the wrapper can't tell such an edit from automation anyway.
+  The plug-in's own value is still saved while stopped; the dial shows its old
+  value until automation or `map` moves it.
 - **After load**: the restored plug-in state wins. The wrapper doesn't send the
   dials' values to the plug-in: a dial is only synced by `map`, so a value set
   later (a write, or the plug-in window) would be overwritten by the dial's

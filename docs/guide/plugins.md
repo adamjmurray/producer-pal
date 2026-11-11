@@ -70,9 +70,12 @@ automate.
   hand, check the wrapper's panel: it lists which slot drives which parameter.
 - **All 128 slots are always listed** in the automation chooser.
 - **Lanes show 0 to 100%**, not the plug-in's units.
-- **An edit in the plug-in's window**, or a program change, made while
-  automation is moving may not save with the Set until you make another edit
-  with automation stopped.
+- **Slots don't follow the plug-in's window.** Turning an automated knob there
+  doesn't move its slot in Live, so the slot shows its old value until
+  automation or Producer Pal moves it.
+- **While Live plays**, an edit in the plug-in's window to an automated
+  parameter, or a program change while automation is moving, may not save with
+  the Set until you make another edit with Live stopped.
 
 Hosted automation follows the same rules as any other
 [clip automation](/guide/automation). The wrapper must be on the clip's own
