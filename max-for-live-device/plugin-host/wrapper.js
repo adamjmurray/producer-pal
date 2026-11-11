@@ -13,11 +13,10 @@
 //      openeditor bang       the Open button: opens the plug-in's window
 // Out: messages to vst~
 //
-// The plug-in's state lives in two pattrs: "vstmirror" is bound to vst~ and
-// reads its state; "vststate" is a stored-only blob parameter that Live saves
-// with the Set, and this script restores into vst~ through vstmirror. "vstname"
-// is another such blob, holding the plug-in's name, and "vstslots" one holding
-// which plug-in param each automation dial drives.
+// The plug-in's state is read from vst~ and restored through a short-lived
+// pattr bound to it. "vststate" is a stored-only blob parameter that Live saves
+// with the Set. "vstname" is another such blob, holding the plug-in's name, and
+// "vstslots" one holding which plug-in param each automation dial drives.
 // Replies go to "ppal-plugin-host-res" as: plugin_host_response <id> <json>
 
 autowatch = 0;
@@ -454,7 +453,7 @@ function readParam(index, name) {
 }
 
 // --- Saving the plug-in's state in the Set ---
-// vstmirror.getvalueof() returns the plug-in's current state as a dict (a
+// vst~'s getvalueof() returns the plug-in's current state as a dict (a
 // C74Snapshot: plug-in id plus the plug-in's own state chunk). We copy it into
 // vststate only when it changed, since each write is a Live undo step and Live
 // saves whatever vststate holds. vst~ has parameter_enable and autosave off:
@@ -504,7 +503,7 @@ function adoptStored() {
 }
 
 function stateOf() {
-  return this.patcher.getnamed("vstmirror").getvalueof().stringify();
+  return this.patcher.getnamed("vst").getvalueof().stringify();
 }
 
 // Live cuts a restored string at Max's symbol limit (~32 KB), and most plug-in
@@ -517,6 +516,7 @@ const RESTORE_SETTLE_MS = 3000;
 let restoredAt = 0;
 
 function loadbang() {
+  makeRestorer();
   watchStored();
 }
 
@@ -548,14 +548,41 @@ function restoreStored() {
   // them would add an undo step and drop the redo.
   busy++;
   try {
-    this.patcher.getnamed("vstmirror").message("dictionary", dict.name);
+    restoreInto(dict.name);
   } finally {
     busy--;
     restoredAt = Date.now();
   }
 }
 
-// The stored snapshot, rebuilt to what vstmirror reports.
+// vst~ only takes a state from a pattr bound to it, and a pattr left bound
+// re-reads the whole state on every param change, glitching the audio while
+// automation moves. So a spare pattr is bound for one restore, then removed.
+// A new pattr can't restore in the tick it's made, so the next is made ahead.
+// (Unbinding with "bindto" and an empty name crashed Live.)
+let restorer = null;
+const restorerTask = new Task(makeRestorer);
+
+function makeRestorer() {
+  restorer ??= this.patcher.newdefault(0, 0, "pattr", "vstrestore");
+}
+
+function restoreInto(dictName) {
+  if (restorer == null) throw new Error("plug-in restore not ready");
+
+  const used = restorer;
+
+  restorer = null;
+  try {
+    used.message("bindto", "vst");
+    used.message("dictionary", dictName);
+  } finally {
+    this.patcher.remove(used);
+    restorerTask.schedule(0);
+  }
+}
+
+// The stored snapshot, rebuilt to what vst~ reports.
 function storedState() {
   const stored = this.patcher.getnamed("vststate").getvalueof();
 
@@ -572,7 +599,7 @@ function storedState() {
   const dict = new Dict();
 
   // A one-part list comes back as a plain string. The blob is the snapshot's
-  // last key, so putting it back last keeps the string equal to vstmirror's.
+  // last key, so putting it back last keeps the string equal to vst~'s.
   value.snapshot = { ...rest, blob: [].concat(blobparts).join("") };
   dict.parse(JSON.stringify(value));
 

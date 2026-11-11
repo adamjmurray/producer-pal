@@ -60,10 +60,6 @@ export function loadWrapper(
     }
   }
   const objects: Record<string, unknown> = {
-    vstmirror: {
-      getvalueof: () => ({ stringify: () => mirror.state }),
-      message: () => {},
-    },
     vststate: {
       getvalueof: () =>
         stored.state == null ? 0 : { stringify: () => stored.state },
@@ -76,7 +72,10 @@ export function loadWrapper(
         writes.push(lastParsed);
       },
     },
-    vst: { getattr: () => plugin },
+    vst: {
+      getattr: () => plugin,
+      getvalueof: () => ({ stringify: () => mirror.state }),
+    },
   };
   const context = vm.createContext({
     Task,
@@ -89,7 +88,11 @@ export function loadWrapper(
     },
     post: () => {},
     outlet,
-    patcher: { getnamed: (name: string) => objects[name] },
+    patcher: {
+      getnamed: (name: string) => objects[name],
+      newdefault: () => ({ message: () => {} }),
+      remove: () => {},
+    },
   });
 
   vm.runInContext(wrapperCode, context);

@@ -203,10 +203,19 @@ Live saves the plug-in's state in a hidden blob parameter, not through `vst~`.
   every value sent to `vst~` is a Live undo step and `vst~` saves its own state
   in the Set, so Live's saved state lags: Serum 2 came back one change behind,
   and edits made outside the wrapper stayed out.
-- `vstmirror` is a `pattr` bound to `vst~`. Its `getvalueof()` returns the
-  plug-in's current state as a dict (a `C74Snapshot`: plug-in id plus the
-  plug-in's own state chunk, 5 KB for ColourCopy and Serum 2's factory
-  programs), fresh on every read.
+- The wrapper reads the state with `getvalueof()` on `vst~` itself: a dict (a
+  `C74Snapshot`: plug-in id plus the plug-in's own state chunk, 5 KB for
+  ColourCopy and Serum 2's factory programs), fresh on every read.
+- **Never leave a `pattr` bound to `vst~`.** `vst~` announces every param
+  change, and a bound `pattr` answers by re-reading the whole state (Serum 2's
+  `getStateInformation` plus base64). With automation moving that ran hundreds
+  of times a second and broke up the audio.
+- Restoring needs a bound `pattr`: `setvalueof` on `vst~` returns 0 and loads
+  nothing. So the wrapper keeps a spare unbound `pattr` (`vstrestore`), binds it
+  with a `bindto vst` message, sends the state, deletes it and makes the next
+  one. A `pattr` can't restore in the same call that creates it (with `@bindto`
+  or a `bindto` message); one made earlier binds and restores at once. Unbinding
+  with `bindto ""` crashed Live.
 - `vststate` is a `pattr` with `parameter_enable 1`, type blob, "stored only"
   (`parameter_invisible 1`). It is not in `device.parameters` and can't be
   automated. Live saves it in the device's blob (a 2 MB value was saved) and
@@ -215,13 +224,12 @@ Live saves the plug-in's state in a hidden blob parameter, not through `vst~`.
   Most plug-in states are bigger (Vital's blob is 233 KB), so they came back
   cut: `vst~` loaded the plug-in (its id comes before the blob) and reset it to
   defaults. So `vststate` keeps the snapshot's blob as a list of 10,000-char
-  `blobparts`, and the wrapper rebuilds it and sends it to `vstmirror` as a
-  `dictionary` (`setvalueof` doesn't restore). The build cuts the cord from
-  `vststate` to `vstmirror`: `vst~` can't read the parts, and Live's restore
-  through it reset the plug-in after the wrapper's. For 3 s after a restore the
-  wrapper adopts state changes without writing them: Vital changes its state
-  about a second later, and Cassette echoes late while still reporting its old
-  state, which a write would save over the restored one.
+  `blobparts`, and the wrapper rebuilds it and restores it as a `dictionary`.
+  `vststate` has no cord to `vst~`: `vst~` can't read the parts, and Live's
+  restore through a cord reset the plug-in after the wrapper's. For 3 s after a
+  restore the wrapper adopts state changes without writing them: Vital changes
+  its state about a second later, and Cassette echoes late while still reporting
+  its old state, which a write would save over the restored one.
 - With that, Vital, Pigments, Sumu and Efx FRAGMENTS keep a write through a
   track duplicate and a reopen every time (Microtonic too, through a duplicate;
   its reopen is untested). Before, all lost it on reopen. Cassette keeps it most
@@ -296,7 +304,7 @@ with `vst~`'s `read <path>`:
   `write` made no file. AU user presets go in
   `~/Library/Audio/Presets/<maker>/<plug-in>/`, which was root-owned on the
   probe machine, so the by-name test proves nothing. Untried: putting the AU
-  state into `vstmirror`'s `C74Snapshot` directly.
+  state into the `C74Snapshot` directly.
 - Only the last save carries over: edits since then are lost, and a Set never
   saved has nothing. No way found to tell whether the Set has unsaved changes.
 - The device has to be found in the XML by track and device position, which is

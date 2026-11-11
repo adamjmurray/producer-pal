@@ -10,6 +10,9 @@ const COLUMNS = 8;
 const HEADER_SIZE = 32;
 const SLOT_BOX = /^slot(dial|prep)\d+$/;
 const PANEL_BOXES = new Set(["pluginname", "openeditor", "openprep"]);
+// A pattr bound to vst~ re-reads the plug-in's whole state on every param
+// change, which glitches the audio while automation moves.
+const REMOVED_BOXES = new Set(["vstmirror"]);
 
 type Json = Record<string, unknown>;
 
@@ -46,8 +49,9 @@ const RawJson = JSON as unknown as {
  * Rebuild one plug-in host .amxd: put the wrapper code into its v8.codebox and
  * replace the automation-slot dials, their prepends and cords, the vstslots
  * pattr, the slot list and the name and Open button, take vst~ out of the
- * panel, and cut vststate off from vst~. Never touches the patcher's "project" block (one
- * missing fields crashes Live). Running it twice gives the same bytes.
+ * panel, cut vststate off from vst~ and drop vstmirror. Never touches the
+ * patcher's "project" block (one missing fields crashes Live). Running it twice
+ * gives the same bytes.
  *
  * @param amxd - The device file
  * @param wrapperCode - wrapper.js source; its SLOT_COUNT is set to SLOTS
@@ -60,7 +64,9 @@ export function buildPluginHostDevice(
   const code = setSlotCount(wrapperCode);
   const json = readPatcher(amxd);
   const p = json.patcher;
-  const boxes = p.boxes.filter((b) => !isOurs(b.box.id));
+  const boxes = p.boxes.filter(
+    (b) => !isOurs(b.box.id) && !isRemoved(b.box.id),
+  );
 
   for (const b of boxes) {
     if (b.box.maxclass === "v8.codebox") {
@@ -148,10 +154,14 @@ function isOurs(id: unknown): boolean {
   );
 }
 
-function touchesOurs(line: Patchline): boolean {
-  const { source, destination } = line.patchline;
+function isRemoved(id: unknown): boolean {
+  return typeof id === "string" && REMOVED_BOXES.has(id);
+}
 
-  return isOurs(source[0]) || isOurs(destination[0]);
+function touchesOurs(line: Patchline): boolean {
+  const ends = [line.patchline.source[0], line.patchline.destination[0]];
+
+  return ends.some((id) => isOurs(id) || isRemoved(id));
 }
 
 function feedsVst(line: Patchline): boolean {
