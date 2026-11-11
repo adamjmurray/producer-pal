@@ -292,15 +292,12 @@ describe.skipIf(!REMOTE_SCRIPT_E2E)("ppal-create-device — presets", () => {
     const listed = [...message.matchAll(/"((?:\/|[A-Za-z]:[\\/])[^"]+)"/g)].map(
       (match) => match[1] as string,
     );
+    // Live 13 moved Core Library presets under Presets/, so match the tail only.
     const advFile = listed.find((path) =>
-      path
-        .replaceAll("\\", "/")
-        .endsWith("Devices/Instruments/Drift/Pad/Flutter Pad.adv"),
+      path.replaceAll("\\", "/").endsWith("/Drift/Pad/Flutter Pad.adv"),
     );
     const adgFile = listed.find((path) =>
-      path
-        .replaceAll("\\", "/")
-        .endsWith("Racks/Instrument Racks/Pad/Flutter Pad.adg"),
+      path.replaceAll("\\", "/").endsWith("/Pad/Flutter Pad.adg"),
     );
 
     expect(isToolError(result)).toBe(true);

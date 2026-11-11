@@ -192,7 +192,12 @@ export async function packDrumKitOrSkip(
   );
 
   for (const kit of kits) {
-    if (!(await presetFileIsFor(kit.path, "Drum Rack"))) {
+    // Skip kits saved as an Instrument Rack around a Drum Rack: they load as
+    // instrument-rack, and their own test covers them.
+    if (
+      !(await presetFileIsFor(kit.path, "Drum Rack")) ||
+      (await presetFileIsFor(kit.path, "Instrument Rack"))
+    ) {
       continue;
     }
 
