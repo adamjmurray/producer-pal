@@ -115,6 +115,7 @@ the evals.
 | `tracks-test`            | frozen tracks, nested groups                          |
 | `tracks-test-twin`       | a second Set sharing `tracks-test`'s project folder   |
 | `ppal-drum-pad`          | the Producer Pal device inside a drum pad             |
+| `live-13-test`           | Live 13 only: step sequencer and envelope clips       |
 
 `e2e/live-sets/presets/` holds a rack preset with the Producer Pal device in it.
 See `specs/ppal-drum-pad-spec.md` for how a test loads it.

@@ -30,6 +30,10 @@ export const TRACKS_TEST_TWIN_PATH =
 export const PPAL_DRUM_PAD_PATH =
   "e2e/live-sets/ppal-drum-pad Project/ppal-drum-pad.als";
 
+/** Live 13 features: step sequencer and envelope clips, fixed-chain racks. Live 12 can't open it. */
+export const LIVE_13_TEST_PATH =
+  "e2e/live-sets/live-13-test Project/live-13-test.als";
+
 /** t8 "9-MIDI": no clips, no devices, No Output. The scratch track. */
 export const EMPTY_MIDI_TRACK = 8;
 
