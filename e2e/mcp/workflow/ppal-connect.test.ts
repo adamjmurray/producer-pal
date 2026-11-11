@@ -37,6 +37,9 @@ const ctx = setupMcpTestContext({ once: true });
 /** The section the skills add only while the remote script answers. */
 const PLUGINS_HEADING = "### Plug-Ins, Max for Live Devices & Presets";
 
+/** Live's version string. Betas carry a build suffix ("13.0b25"). */
+const LIVE_VERSION = /^\d+\.\d+(\.\d+)?(b\d+)?$/;
+
 /** Helper to call ppal-connect and return the raw MCP result. */
 async function callConnectRaw(): Promise<unknown> {
   return ctx.client!.callTool({ name: "ppal-connect", arguments: {} });
@@ -147,7 +150,7 @@ describe("ppal-connect", () => {
 
     expect(parsed.abletonLiveVersion).toBeDefined();
     expect(typeof parsed.abletonLiveVersion).toBe("string");
-    expect(parsed.abletonLiveVersion).toMatch(/^\d+\.\d+(\.\d+)?$/);
+    expect(parsed.abletonLiveVersion).toMatch(LIVE_VERSION);
 
     // Live Set info
     expect(parsed.liveSet).toBeDefined();
@@ -425,7 +428,7 @@ describe("ppal-connect", () => {
 
       expect(parsed.connected).toBe(true);
       expect(parsed.producerPalVersion).toBe(VERSION);
-      expect(parsed.abletonLiveVersion).toMatch(/^\d+\.\d+(\.\d+)?$/);
+      expect(parsed.abletonLiveVersion).toMatch(LIVE_VERSION);
       expect(parsed.liveSet).toBeUndefined();
       expect(blocks[1]).toBe(`portalVersion: ${VERSION}`);
       expect(extractSkills(result)).toBe("");

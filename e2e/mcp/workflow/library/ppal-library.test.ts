@@ -411,8 +411,9 @@ describe("ppal-library", () => {
       // A preset named like a rack could exist and make this search non-empty.
       skip(result.items.length > 0, "a preset shares the rack's name");
 
+      // A multi-word rack name adds a hint after a "; ".
       expect(result.note).toMatch(
-        /^\d+ matching racks? \(\.adg\) (is|are) kind device-group$/,
+        /^\d+ matching racks? \(\.adg\) (is|are) kind device-group(;|$)/,
       );
     });
 
