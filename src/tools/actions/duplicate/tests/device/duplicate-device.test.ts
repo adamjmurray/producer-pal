@@ -32,6 +32,8 @@ vi.mock(
 );
 
 vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
+  // Nothing says the destination is refused before the copy; the move decides.
+  checkMoveDestination: vi.fn(() => null),
   // Reports a completed move; tests that need a failed one override it.
   moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
 }));

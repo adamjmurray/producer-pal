@@ -15,6 +15,7 @@ import {
 } from "#src/tools/shared/device/helpers/path/chains-left.ts";
 import { nothingAtPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
+  checkInsertionPath,
   resolveDrumPadFromPath,
   resolveInsertionPath,
   resolvePathToLiveApi,
@@ -226,6 +227,9 @@ function resolveDevices(
  * @throws Error when the path names nowhere a rack can go
  */
 function rackDestination(toPath: string): RackDestination {
+  // Refused here, in the same words, before resolving makes any chain.
+  checkInsertionPath(toPath, "toPath");
+
   const { container, position, namesNothing, createdChains, madeChains } =
     resolveInsertionPath(toPath, "toPath");
 

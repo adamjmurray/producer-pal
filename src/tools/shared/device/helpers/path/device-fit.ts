@@ -116,8 +116,39 @@ export function misfitReason(
   kind: DeviceKind | null,
   container: LiveAPI,
 ): string | null {
-  const restriction = restrictionOf(container, kind);
+  return misfitText(
+    restrictionOf(container, kind),
+    deviceName,
+    kind,
+    targetLabel(container),
+  );
+}
 
+/**
+ * Why a chain that doesn't exist yet won't take a device: the rack it would be
+ * made in decides. A chain not made has no id, so it is named by its path.
+ * @param deviceName - The device as the call named it
+ * @param kind - The device's kind, or null when it isn't known
+ * @param rack - The rack the chain would be made in
+ * @param chainPath - The path the chain would have, e.g. `t0/d0/c2`
+ * @returns The reason, or null when the chain would take it
+ */
+export function newChainMisfitReason(
+  deviceName: string,
+  kind: DeviceKind | null,
+  rack: LiveAPI,
+  chainPath: string,
+): string | null {
+  return misfitText(rackRestriction(rack), deviceName, kind, chainPath);
+}
+
+// The reason a restricted place turns a device down, or null when it doesn't.
+function misfitText(
+  restriction: Restriction | null,
+  deviceName: string,
+  kind: DeviceKind | null,
+  label: string,
+): string | null {
   if (restriction == null || kind === restriction.only) {
     return null;
   }
@@ -127,7 +158,7 @@ export function misfitReason(
       ? `"${deviceName}" may not be ${KIND_NAMES[restriction.only].one}`
       : `"${deviceName}" is ${KIND_NAMES[kind].one}`;
 
-  return `${restriction.place} ${targetLabel(container)} takes only ${KIND_NAMES[restriction.only].many}; ${what}`;
+  return `${restriction.place} ${label} takes only ${KIND_NAMES[restriction.only].many}; ${what}`;
 }
 
 // What a container takes only, or null when it takes every kind. A track always
@@ -171,7 +202,11 @@ function trackRestriction(container: LiveAPI): Restriction | null {
 
 // Only an audio or MIDI effect rack limits its chains; the others take all.
 function chainRestriction(chain: LiveAPI): Restriction | null {
-  const rack = LiveAPI.from(chain.path.replace(CHAIN_TAIL, ""));
+  return rackRestriction(LiveAPI.from(chain.path.replace(CHAIN_TAIL, "")));
+}
+
+// What the chains of a rack take only, or null when they take every kind.
+function rackRestriction(rack: LiveAPI): Restriction | null {
   const only = loadedDeviceKind(rack);
 
   return only === AUDIO_EFFECT || only === MIDI_EFFECT

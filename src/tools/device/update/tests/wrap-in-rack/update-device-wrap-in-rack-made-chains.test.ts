@@ -11,6 +11,7 @@ import {
   registerFixedChainRack,
   registerLive12Rack,
 } from "../../../tests/helpers/fixed-chain-rack-fixtures.ts";
+import { registerGrowingRack } from "../../../tests/helpers/growing-rack-fixtures.ts";
 import {
   type RegisteredMockObject,
   children,
@@ -63,6 +64,16 @@ function registerDestinationRack(accepts: boolean): void {
       },
     },
   });
+}
+
+/**
+ * An ordinary rack on track 2 with one chain, whose insert_chain would add one.
+ * @returns The rack
+ */
+function registerGrowingChainRackAt2(): RegisteredMockObject {
+  registerMockObject("track-2", { path: livePath.track(2) });
+
+  return registerGrowingRack({ track: 2, existing: 1 });
 }
 
 describe("updateDevice - wrapInRack with chains made by toPath", () => {
@@ -129,6 +140,38 @@ describe("updateDevice - wrapInRack with chains made by toPath", () => {
       updateDevice({ path: "t0/d0", wrapInRack: true, toPath: "t2/d0/c+" }),
     ).toThrow("Mid-Side Rack (id rack) has a fixed 2 chains");
     expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it.each([
+    ["t2/d0/c+", '"t2/d0/c+" appends a chain to a Drum Rack'],
+    ["t2/d0/c5/d+", "Auto-creating chains in Drum Racks is not supported"],
+  ])("refuses %s into a Drum Rack before making any chain", (toPath, why) => {
+    const rack = registerGrowingChainRackAt2();
+
+    rack.properties.can_have_drum_pads = 1;
+
+    expect(() =>
+      updateDevice({ path: "t0/d0", wrapInRack: true, toPath }),
+    ).toThrow(why);
+    expect(rack.call).not.toHaveBeenCalled();
+  });
+
+  it("refuses a chain past a full fixed-chain rack before making any", () => {
+    const rack = registerFixedChainRack(2, "multiband");
+
+    expect(() =>
+      updateDevice({ path: "t0/d0", wrapInRack: true, toPath: "t2/d0/c5/d+" }),
+    ).toThrow("Multiband Rack (id rack) has a fixed 3 chains");
+    expect(rack.call).not.toHaveBeenCalled();
+  });
+
+  it("refuses a path that would make too many chains before making any", () => {
+    const rack = registerGrowingChainRackAt2();
+
+    expect(() =>
+      updateDevice({ path: "t0/d0", wrapInRack: true, toPath: "t2/d0/c40/d+" }),
+    ).toThrow("Cannot auto-create 40 chains (max: 16)");
+    expect(rack.call).not.toHaveBeenCalled();
   });
 
   // Live 12 reads max_num_chains as a bare 1, which must not stop a rack that

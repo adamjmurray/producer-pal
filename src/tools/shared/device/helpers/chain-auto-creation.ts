@@ -12,6 +12,7 @@ import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { createdRange } from "#src/tools/shared/helpers/created-range.ts";
 import { markSetChanged } from "#src/tools/shared/write-pipeline/set-changed.ts";
 import { NEW_CHAIN } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { trackSegmentPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   liveApiCollection,
@@ -37,11 +38,50 @@ const MAX_AUTO_CREATE_CHAINS = 16;
 export type CreatedChains = string[];
 
 /**
+ * Passed to a walk to have it only check, making nothing: the same refusals,
+ * but where it would make a chain it says so here instead.
+ */
+export interface DryWalk {
+  /** The path ends in a chain the walk would have made */
+  makesChain: boolean;
+  /** The rack that chain would be made in, and the index it would get */
+  newChain?: { rack: LiveAPI; index: number };
+  /** The path ends where only a drum pad's write could tell */
+  undetermined: boolean;
+}
+
+/**
+ * Refuse a `c+` on a device that can't take a chain, or won't take another.
+ * @param rack - The device the `c+` sits under
+ * @param path - The path as the caller wrote it, for error messages
+ * @throws Error when no chain can be appended to the device
+ */
+export function refuseChainAppend(rack: LiveAPI, path: string): void {
+  // A new chain arrives on the catch-all pad, which plays every note no pad
+  // claims — a surprise no result text undoes, and the reason cN refuses a
+  // Drum Rack too. A pad path has a note to land on.
+  if ((rack.getProperty("can_have_drum_pads") as number) > 0) {
+    throw new Error(
+      `"${path}" appends a chain to a Drum Rack, where every chain belongs to ` +
+        `a pad; name the pad instead (e.g. "${pathPrefix(rack)}/pC1/${NEW_CHAIN}")`,
+    );
+  }
+
+  if (!rack.getProperty("can_have_chains")) {
+    throw new Error(`"${path}" appends a chain to a device that has none`);
+  }
+
+  refuseFixedChains(rack);
+}
+
+/**
  * Resolve container with auto-creation of missing chains
  * @param root - Parsed track root
  * @param segments - Device and chain segments below the root
  * @param path - Original path for error messages
  * @param created - Chain ranges this path made, added to
+ * @param dry - Makes nothing when given: a chain that would be made is noted
+ *   on it, and the object returned for it doesn't exist
  * @returns LiveAPI object (Track or Chain)
  */
 export function resolveContainerWithAutoCreate(
@@ -49,6 +89,7 @@ export function resolveContainerWithAutoCreate(
   segments: IndexedSegment[],
   path: string,
   created?: CreatedChains,
+  dry?: DryWalk,
 ): LiveAPI {
   let currentPath = trackSegmentPath(root).toString();
   let current = liveApiAtDevicePath(currentPath);
@@ -57,12 +98,26 @@ export function resolveContainerWithAutoCreate(
     throw new Error(`Track in path "${path}" does not exist`);
   }
 
-  for (const segment of segments) {
+  for (const [index, segment] of segments.entries()) {
     if (segment.kind === "device") {
       current = navigateToDevice(currentPath, segment.index, path);
       currentPath += ` devices ${segment.index}`;
     } else {
-      current = navigateToChain(current, currentPath, segment, path, created);
+      current = navigateToChain(
+        current,
+        currentPath,
+        segment,
+        path,
+        created,
+        dry,
+      );
+
+      // A chain only checked for is as empty as one made, and has no path of
+      // its own to look below.
+      if (dry?.makesChain && index < segments.length - 1) {
+        throw new Error(`Device in path "${path}" does not exist`);
+      }
+
       currentPath = current.path;
     }
   }
@@ -127,6 +182,7 @@ function navigateToDevice(
  * @param segment - Chain or return-chain segment
  * @param fullPath - Full path for error messages
  * @param created - Chain ranges this path made, added to
+ * @param dry - As in resolveContainerWithAutoCreate
  * @returns LiveAPI chain object
  */
 function navigateToChain(
@@ -135,6 +191,7 @@ function navigateToChain(
   segment: ChainSegment,
   fullPath: string,
   created?: CreatedChains,
+  dry?: DryWalk,
 ): LiveAPI {
   const chainPath = `${currentPath} ${liveApiCollection(segment)} ${segment.index}`;
 
@@ -158,7 +215,7 @@ function navigateToChain(
   warnRackRelativeDrumChainSpelling(existing);
 
   if (segment.index >= parentDevice.getChildCount("chains")) {
-    autoCreateChains(parentDevice, segment.index, fullPath, created);
+    autoCreateChains(parentDevice, segment.index, fullPath, created, dry);
 
     return liveApiAtDevicePath(chainPath);
   }
@@ -172,12 +229,14 @@ function navigateToChain(
  * @param targetIndex - Target chain index
  * @param fullPath - Full path for error messages
  * @param created - Chain ranges this path made, added to
+ * @param dry - As in resolveContainerWithAutoCreate
  */
 function autoCreateChains(
   device: LiveAPI,
   targetIndex: number,
   fullPath: string,
   created?: CreatedChains,
+  dry?: DryWalk,
 ): void {
   // Check if device supports chains (prevents infinite loop on non-rack devices)
   if (!device.getProperty("can_have_chains")) {
@@ -202,6 +261,13 @@ function autoCreateChains(
     throw new Error(
       `Cannot auto-create ${chainsToCreate} chains (max: ${MAX_AUTO_CREATE_CHAINS}) in path "${fullPath}"`,
     );
+  }
+
+  if (dry != null) {
+    dry.makesChain = true;
+    dry.newChain = { rack: device, index: targetIndex };
+
+    return;
   }
 
   // Create the exact number of chains needed (bounded loop, not while). A

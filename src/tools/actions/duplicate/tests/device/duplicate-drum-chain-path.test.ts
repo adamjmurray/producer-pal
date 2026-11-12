@@ -16,6 +16,8 @@ import {
 import { registerLayeredDrumRack } from "#src/tools/device/tests/helpers/device-rack-fixtures.ts";
 
 vi.mock(import("#src/tools/device/update/helpers/move-device.ts"), () => ({
+  // Nothing says the destination is refused before the copy; the move decides.
+  checkMoveDestination: vi.fn(() => null),
   moveDeviceToPath: vi.fn((): DeviceMove => ({ outcome: "moved" })),
 }));
 

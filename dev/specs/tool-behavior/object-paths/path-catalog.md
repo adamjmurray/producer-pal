@@ -140,11 +140,10 @@ number the rack has reached; Live 12 answers the unknown property with a bare 1,
 and any other value (none, 0, a number not yet reached) means no limit. It
 applies wherever a path adds a chain: create-device, update-device `toPath` and
 `wrapInRack`, and `ppal-duplicate` of a chain or a device into a rack. A device
-copy is made first and then refused, like any other destination it can't reach,
-and the copy is deleted again. A path into a chain the rack has (`t1/d1/c0/d+`)
-is unaffected. A device read shows the limit as `maxChains` on such a rack, read
-by the same check (a whole number up to 1000; Live 13's unlimited racks read
-INT_MAX and show none).
+copy is refused before it is made, like any other destination it can't take. A
+path into a chain the rack has (`t1/d1/c0/d+`) is unaffected. A device read
+shows the limit as `maxChains` on such a rack, read by the same check (a whole
+number up to 1000; Live 13's unlimited racks read INT_MAX and show none).
 
 ## Naming a return in a send
 

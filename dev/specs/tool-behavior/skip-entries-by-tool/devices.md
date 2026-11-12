@@ -145,10 +145,8 @@ Part of [Skip entries, tool by tool](README.md).
   update-device that names one, fail the one target with the rack's limit and
   chains (see the [path catalog](../object-paths/path-catalog.md)) before any
   chain or device is made; the call's other paths still run, and a lone one
-  throws the reason. A device copy's `toPath` is refused the same way, but only
-  after the copy exists: the copy is deleted again, and if that fails the entry
-  says where the copy is left
-  (`the copy may be left at ...: it wasn't deleted`).
+  throws the reason. A device copy's `toPath` is refused the same way, before
+  the copy is made: nothing is copied, deleted or created for it.
 - **A take lane reports the params it has no use for.** `ppal-update-track`
   writes a lane's name and nothing else, so everything else the call sent is a
   `detail` on the lane's own entry, which otherwise reads like any other hit.
@@ -337,3 +335,20 @@ Part of [Skip entries, tool by tool](README.md).
   before it began stay in the error. An instrument wrap's `toPath` slot reads
   against the container as the call found it, though Live keeps an instrument
   ahead of audio effects, so the rack may land before them.
+- **An update-device move or a device copy checks its `toPath` before making
+  chains.** What the destination refuses is known without making anything: no
+  such track, device or chain, a pad path on a rack with no pads (no
+  destination), a chain in a Drum Rack, a full fixed-chain rack, too many chains
+  to make, an index past the end (a chain the path would make holds none), and a
+  kind of device the place takes none of. For a chain the path would make, the
+  kind is the rack's: an instrument into an audio effect rack's new chain is
+  refused naming the chain by path
+  (`chain t1/d0/c1 takes only audio effects; ...`), with no id since the chain
+  isn't there. Those refuse the target with the same reason and no chains left,
+  so no `; left N empty chains` follows them. `wrapInRack` checks its `toPath`
+  the same way, for what the walk refuses (not the index or the kind). Only what
+  Live's refusal shows (a second instrument) and a chain on a drum pad that the
+  write would make are known after the move, and keep the `; left ...` wording.
+  A chain copy checks its destination rack before it adds the chain, and
+  create-device resolves its container before it loads or inserts; neither makes
+  a copy to delete.

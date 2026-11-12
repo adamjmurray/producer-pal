@@ -16,6 +16,11 @@ import {
   registerGrowingRack,
   registerMoveSourceAndRackTrack,
 } from "../../../tests/helpers/growing-rack-fixtures.ts";
+import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+  LIVE_API_DEVICE_TYPE_INSTRUMENT,
+} from "#src/tools/constants.ts";
 import {
   mockWorkingDeviceMoves,
   updateDevice,
@@ -93,5 +98,84 @@ describe("updateDevice — a toPath into a rack with fixed chains", () => {
       path: "t1/d0/c2/d0",
     });
     expect(rack.call).toHaveBeenCalledWith("insert_chain");
+  });
+});
+
+// A destination the move can't take is refused before it makes a chain or
+// moves anything: the device stays where it was and no chain is left behind.
+describe("updateDevice - a toPath refused before anything is made", () => {
+  it.each([
+    [
+      "a c+ on a full fixed-chain rack",
+      "t1/d0/c+",
+      () => registerFixedChainRack(1, "multiband"),
+      "Multiband Rack (id rack) has a fixed 3 chains",
+    ],
+    [
+      "a chain past a full fixed-chain rack's last",
+      "t1/d0/c5/d+",
+      () => registerFixedChainRack(1, "multiband"),
+      "Multiband Rack (id rack) has a fixed 3 chains",
+    ],
+    [
+      "more chains than are made for one path",
+      "t1/d0/c40/d+",
+      () => registerGrowingRack({ track: 1, existing: 1 }),
+      "not moved: Cannot auto-create 40 chains (max: 16)",
+    ],
+    [
+      "an index past the end",
+      "t1/d9",
+      () => registerFixedChainRack(1, "midSide"),
+      'not moved to "t1/d9": "t1/d9" is past the end of a container holding 1 device',
+    ],
+    [
+      "an index past the end of a chain the path would make",
+      "t1/d0/c9/d2",
+      () => registerGrowingRack({ track: 1, existing: 1 }),
+      'not moved to "t1/d0/c9/d2": "t1/d0/c9/d2" is past the end of a container holding 0 devices',
+    ],
+  ])("refuses %s", (_what, toPath, registerRack, refusal) => {
+    const liveSet = mockWorkingDeviceMoves();
+
+    registerMoveSourceAndRackTrack();
+
+    const rack = registerRack();
+
+    expect(() => updateDevice({ id: "src-0", toPath })).toThrow(refusal);
+    expect(rack.call).not.toHaveBeenCalled();
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  it("refuses an instrument for a chain an audio effect rack would make", () => {
+    const liveSet = mockWorkingDeviceMoves();
+
+    registerMoveSourceAndRackTrack();
+
+    const rack = registerGrowingRack({ track: 1, existing: 1 });
+
+    rack.properties.type = LIVE_API_DEVICE_TYPE_AUDIO_EFFECT;
+    lookupMockObject("src-0")!.properties.type =
+      LIVE_API_DEVICE_TYPE_INSTRUMENT;
+
+    expect(() => updateDevice({ id: "src-0", toPath: "t1/d0/c+" })).toThrow(
+      /^not moved to "t1\/d0\/c\+": chain t1\/d0\/c1 takes only audio effects; ".*" is an instrument$/,
+    );
+    expect(rack.call).not.toHaveBeenCalled();
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
+  it("answers no destination for a pad path on a rack with no pads", () => {
+    const liveSet = mockWorkingDeviceMoves();
+
+    registerMoveSourceAndRackTrack();
+
+    const rack = registerGrowingRack({ track: 1, existing: 1 });
+
+    expect(() => updateDevice({ id: "src-0", toPath: "t1/d0/pC1/d+" })).toThrow(
+      'not moved: nothing at toPath "t1/d0/pC1/d+"',
+    );
+    expect(rack.call).not.toHaveBeenCalled();
+    expect(liveSet.call).not.toHaveBeenCalled();
   });
 });

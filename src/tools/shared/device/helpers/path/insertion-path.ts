@@ -5,7 +5,9 @@
 
 import {
   type CreatedChains,
+  type DryWalk,
   appendChain,
+  refuseChainAppend,
   resolveContainerWithAutoCreate,
   resolveOrCreateDrumPadChain,
 } from "#src/tools/shared/device/helpers/chain-auto-creation.ts";
@@ -16,10 +18,7 @@ import {
   trackSegmentPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { NEW_CHAIN } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
-import {
-  objectPathForApi,
-  pathPrefix,
-} from "#src/tools/shared/validation/object-path-for-api.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   formatDeviceSegment,
   formatObjectPath,
@@ -46,6 +45,9 @@ export {
   findDrumPad,
   resolveDrumPadFromPath,
 } from "./device-drumpad-navigation.ts";
+
+/** What a resolution answers, found out without making anything. */
+export type InsertionCheck = InsertionPathResolution & DryWalk;
 
 export interface InsertionPathResolution {
   container: LiveAPI | null;
@@ -91,6 +93,47 @@ export function resolveInsertionPath(
   path: string,
   label = "path",
 ): InsertionPathResolution {
+  return walkInsertionPath(path, label);
+}
+
+/**
+ * What resolving a path would do, found out without doing it: no chain is made.
+ * It refuses what resolveInsertionPath would refuse — the same walk, the same
+ * words — and says when the path ends in a chain it would have to make (whose
+ * `container` is then null) or in one only a drum pad's write could tell about.
+ * @param path - Device insertion path
+ * @param label - Param name the path came from, for error messages
+ * @returns What resolving the path answers, plus what it would have made
+ * @throws Error when resolving the path would throw
+ */
+export function checkInsertionPath(
+  path: string,
+  label = "path",
+): InsertionCheck {
+  const dry: DryWalk = { makesChain: false, undetermined: false };
+  const resolution = walkInsertionPath(path, label, dry);
+
+  // The chain it would make isn't there to hand back.
+  return {
+    ...resolution,
+    ...dry,
+    ...(dry.makesChain ? { container: null } : {}),
+  };
+}
+
+/**
+ * The one walk resolveInsertionPath and checkInsertionPath share, so what one
+ * refuses the other refuses.
+ * @param path - Device insertion path
+ * @param label - Param name the path came from, for error messages
+ * @param dry - Makes nothing when given, and is told what it would have made
+ * @returns Container, optional position, and the container's spelling
+ */
+function walkInsertionPath(
+  path: string,
+  label: string,
+  dry?: DryWalk,
+): InsertionPathResolution {
   const {
     root,
     segments,
@@ -119,7 +162,7 @@ export function resolveInsertionPath(
 
   try {
     container = resolved
-      ? resolveContainer(root, above, path, appendsChain, created)
+      ? resolveContainer(root, above, path, appendsChain, created, dry)
       : null;
   } catch (error) {
     // Chains made on the way down stay in the Set, so the refusal names them.
@@ -215,6 +258,7 @@ function containerSegments<T extends DeviceSegment>(segments: T[]): T[] {
  * @param path - Original path, for error messages
  * @param appendsChain - Whether the path ended in `c+`
  * @param created - Chain ranges the path made on the way down, added to
+ * @param dry - Makes nothing when given, and is told what it would have made
  * @returns LiveAPI object (Track or Chain)
  */
 function resolveContainer(
@@ -223,6 +267,7 @@ function resolveContainer(
   path: string,
   appendsChain: boolean,
   created: CreatedChains,
+  dry?: DryWalk,
 ): LiveAPI | null {
   const indexed = segments.filter(
     (segment): segment is IndexedSegment => segment.kind !== "drum-pad",
@@ -231,15 +276,22 @@ function resolveContainer(
   // A drum pad resolves by MIDI note against a live rack, so the whole path
   // goes through the pad navigator rather than the chain walker.
   if (indexed.length !== segments.length) {
-    return resolveDrumPadContainer(root, segments, path, appendsChain, created);
+    return resolveDrumPadContainer(
+      root,
+      segments,
+      path,
+      appendsChain,
+      created,
+      dry,
+    );
   }
 
   const container =
     indexed.length === 0
       ? liveApiAtDevicePath(trackSegmentPath(root).toString())
-      : resolveContainerWithAutoCreate(root, indexed, path, created);
+      : resolveContainerWithAutoCreate(root, indexed, path, created, dry);
 
-  return appendsChain ? appendChainTo(container, path) : container;
+  return appendsChain ? appendChainTo(container, path, dry) : container;
 }
 
 /**
@@ -249,6 +301,9 @@ function resolveContainer(
  * @param path - Original path, for error messages
  * @param appendsChain - Whether the path ended in `c+`
  * @param created - Chain ranges the path made on the way down, added to
+ * @param dry - As in resolveContainer. A pad's chain is only read: whether the
+ *   write would make one, or can't, takes the write, so an absent one is
+ *   `undetermined`
  * @returns LiveAPI object (Chain)
  */
 function resolveDrumPadContainer(
@@ -257,12 +312,17 @@ function resolveDrumPadContainer(
   path: string,
   appendsChain: boolean,
   created: CreatedChains,
+  dry?: DryWalk,
 ): LiveAPI | null {
   const resolved = resolveDevicePath({ kind: "device", root, segments });
   const rack = liveApiAtDevicePath(resolved.liveApiPath);
   // The path had a drum pad segment, so resolution stopped at one
   const note = resolved.drumPadNote as string;
   const tail = resolved.remainingSegments;
+
+  if (dry != null) {
+    return peekDrumPadContainer(rack, note, tail, appendsChain, path, dry);
+  }
 
   // A `c+` straight after the pad appends a layer to it, which only the pad
   // navigator can do — Live indexes a drum chain by note, not by position.
@@ -279,25 +339,67 @@ function resolveDrumPadContainer(
 }
 
 /**
+ * The chain a drum pad path names, read without making one.
+ * @param rack - The rack the pad belongs to
+ * @param note - The pad's note
+ * @param tail - Path segments after the pad
+ * @param appendsChain - Whether the path ended in `c+`
+ * @param path - The path as the caller wrote it, for error messages
+ * @param dry - Told when the path ends in a chain the write would make, or
+ *   where only the write can tell
+ * @returns The chain, or null when it isn't there to read
+ */
+function peekDrumPadContainer(
+  rack: LiveAPI,
+  note: string,
+  tail: string[],
+  appendsChain: boolean,
+  path: string,
+  dry: DryWalk,
+): LiveAPI | null {
+  // The write's own first refusal: a rack with no pads has no chain to name,
+  // which a copy would only find out once it was made.
+  if (
+    !rack.exists() ||
+    (rack.getProperty("can_have_drum_pads") as number) <= 0
+  ) {
+    return null;
+  }
+
+  const container =
+    appendsChain && tail.length === 0
+      ? null
+      : resolveDrumPadFromPath(rack.path, note, tail).target;
+
+  if (container == null) {
+    dry.undetermined = true;
+
+    return null;
+  }
+
+  return appendsChain ? appendChainTo(container, path, dry) : container;
+}
+
+/**
  * Append a chain to the rack a `c+` path names.
  * @param rack - The device the `c+` sits under
  * @param path - The path as the caller wrote it, for error messages
- * @returns The new chain
+ * @param dry - Makes nothing when given: the chain is noted there instead
+ * @returns The new chain, or null when it would only be made
  * @throws Error when the device takes no chain, or Live made none
  */
-function appendChainTo(rack: LiveAPI, path: string): LiveAPI {
-  // A new chain arrives on the catch-all pad, which plays every note no pad
-  // claims — a surprise no result text undoes, and the reason cN refuses a
-  // Drum Rack too. A pad path has a note to land on.
-  if ((rack.getProperty("can_have_drum_pads") as number) > 0) {
-    throw new Error(
-      `"${path}" appends a chain to a Drum Rack, where every chain belongs to ` +
-        `a pad; name the pad instead (e.g. "${pathPrefix(rack)}/pC1/${NEW_CHAIN}")`,
-    );
-  }
+function appendChainTo(
+  rack: LiveAPI,
+  path: string,
+  dry?: DryWalk,
+): LiveAPI | null {
+  refuseChainAppend(rack, path);
 
-  if (!rack.getProperty("can_have_chains")) {
-    throw new Error(`"${path}" appends a chain to a device that has none`);
+  if (dry != null) {
+    dry.makesChain = true;
+    dry.newChain = { rack, index: rack.getChildCount("chains") };
+
+    return null;
   }
 
   const created = appendChain(rack);

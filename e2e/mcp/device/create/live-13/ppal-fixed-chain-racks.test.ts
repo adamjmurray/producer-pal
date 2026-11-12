@@ -7,7 +7,10 @@
  * E2E tests for Live 13's racks with fixed chains: the Mid-Side Rack (Mid,
  * Side) and the Multiband Rack (Low, Mid, High). Live turns every insert_chain
  * down on them (Max answers 1, Python throws), so each path that would add a
- * chain is refused up front with the rack's limit and chains.
+ * chain is refused up front with the rack's limit and chains. A device copy or
+ * move into one leaves nothing behind. This suite checks that outcome only: a
+ * copy made and then deleted would end the same way, so the unit tests are what
+ * prove the refusal comes before the copy.
  *
  * A read of either rack shows its limit as `maxChains`.
  *
@@ -24,6 +27,7 @@ import {
   setupMcpTestContext,
 } from "../../../mcp-test-helpers";
 import { LIVE_13_OR_NEWER, LIVE_13_TEST_PATH } from "../../../e2e-test-set.ts";
+import { readTrackCount } from "../../helpers/track-count-test-helpers.ts";
 
 const MID_SIDE = "t1/d0";
 const MULTIBAND = "t1/d1";
@@ -58,6 +62,19 @@ describe.skipIf(!LIVE_13_OR_NEWER)("racks with fixed chains (Live 13)", () => {
     );
 
     return result.chains ?? [];
+  }
+
+  /**
+   * Add a Utility to the Mid-Side Rack's first chain.
+   * @returns The new device's id
+   */
+  async function createUtilityInMidSide(): Promise<{ id: string }> {
+    return parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: { deviceName: "Utility", path: `${MID_SIDE}/c0/d+` },
+      }),
+    );
   }
 
   // getToolErrorMessage throws when the call succeeded.
@@ -155,12 +172,7 @@ describe.skipIf(!LIVE_13_OR_NEWER)("racks with fixed chains (Live 13)", () => {
   });
 
   it("refuses to move a device into a new chain", async () => {
-    const created = parseToolResult<{ id: string }>(
-      await ctx.client!.callTool({
-        name: "ppal-create-device",
-        arguments: { deviceName: "Utility", path: `${MID_SIDE}/c0/d+` },
-      }),
-    );
+    const created = await createUtilityInMidSide();
 
     expect(
       await failure("ppal-update-device", {
@@ -169,6 +181,52 @@ describe.skipIf(!LIVE_13_OR_NEWER)("racks with fixed chains (Live 13)", () => {
       }),
     ).toContain("has a fixed 2 chains (Mid, Side)");
     expect(await readChains(MID_SIDE)).toHaveLength(2);
+  });
+
+  it("leaves nothing behind when a device copy is refused for a new chain", async () => {
+    const created = await createUtilityInMidSide();
+    const chainsBefore = await readChains(MID_SIDE);
+    const multibandBefore = await readChains(MULTIBAND);
+    const tracksBefore = await readTrackCount(ctx.client!);
+
+    for (const toPath of [`${MID_SIDE}/c+`, `${MULTIBAND}/c5/d+`]) {
+      const message = await failure("ppal-duplicate", {
+        type: "device",
+        id: created.id,
+        toPath,
+      });
+
+      expect(message).toContain("not copied");
+      expect(message).toContain("has a fixed");
+      expect(message).not.toContain("may be left");
+    }
+
+    // Each rack's chains (id, name, device count) and the track count read as
+    // before: no stray copy, and no temp track, remains.
+    expect(await readChains(MID_SIDE)).toStrictEqual(chainsBefore);
+    expect(await readChains(MULTIBAND)).toStrictEqual(multibandBefore);
+    expect(await readTrackCount(ctx.client!)).toBe(tracksBefore);
+  });
+
+  it("leaves a device where it was when a move to a full rack's new chain is refused", async () => {
+    const created = await createUtilityInMidSide();
+    const midSideBefore = await readChains(MID_SIDE);
+    const multibandBefore = await readChains(MULTIBAND);
+
+    for (const toPath of [`${MULTIBAND}/c+`, `${MULTIBAND}/c5/d+`]) {
+      const message = await failure("ppal-update-device", {
+        id: created.id,
+        toPath,
+      });
+
+      expect(message).toContain("has a fixed 3 chains (Low, Mid, High)");
+      expect(message).not.toContain("left");
+    }
+
+    // Each rack's chains (id, name, device count) read as before, so the device
+    // is still in Mid-Side's chain 0 and no chain was made.
+    expect(await readChains(MID_SIDE)).toStrictEqual(midSideBefore);
+    expect(await readChains(MULTIBAND)).toStrictEqual(multibandBefore);
   });
 
   it("refuses to delete a chain, as it does for any rack chain", async () => {
