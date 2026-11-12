@@ -87,6 +87,7 @@ export function resolveSlotCopySource(
  * @param sourceSceneIndex - Source scene index
  * @param toTrackIndex - Destination track index
  * @param toSceneIndex - Destination scene index
+ * @param envelopeLoss - What a copy to another track drops, read by the caller
  * @param name - Optional name for the duplicated clip
  * @param color - Optional color for the duplicated clip
  * @param shared - Source objects the caller already resolved for this call
@@ -97,6 +98,7 @@ export function duplicateClipSlot(
   sourceSceneIndex: number,
   toTrackIndex: number,
   toSceneIndex: number,
+  envelopeLoss: string | null,
   name?: string,
   color?: string,
   shared: SlotCopySource = resolveSlotCopySource(
@@ -140,6 +142,7 @@ export function duplicateClipSlot(
     return copyIntoSlot(sourceClipSlot, prepared, destination, progress, {
       name,
       color,
+      envelopeLoss,
     });
   });
 }
@@ -152,9 +155,10 @@ export function duplicateClipSlot(
  * @param prepared - The destination slot, and the scenes made to reach it
  * @param destination - The destination as the path a copy there would report
  * @param progress - Notes what landed, for the entry a throw leaves behind
- * @param label - The copy's name and color, if any
+ * @param label - The copy's name and color, if any, and what it drops
  * @param label.name - Name for the copy
  * @param label.color - Color for the copy
+ * @param label.envelopeLoss - The device envelopes the copy dropped, if any
  * @returns The copy, or the entry saying no copy landed there
  */
 export function copyIntoSlot(
@@ -162,7 +166,11 @@ export function copyIntoSlot(
   prepared: PreparedSlot,
   destination: string,
   progress: SlotProgress,
-  { name, color }: { name?: string; color?: string },
+  {
+    name,
+    color,
+    envelopeLoss,
+  }: { name?: string; color?: string; envelopeLoss: string | null },
 ): MinimalClipInfo | TargetSkip {
   const { clipSlot: destClipSlot, created } = prepared;
 
@@ -183,9 +191,10 @@ export function copyIntoSlot(
 
   progress.landed = newClip;
 
-  if (destinationWasOccupied) {
-    progress.note = clipOverwriteNote(destination);
-  }
+  progress.note = joinDetails([
+    destinationWasOccupied ? clipOverwriteNote(destination) : undefined,
+    envelopeLoss ?? undefined,
+  ]);
 
   newClip.setAll({ name, color });
 

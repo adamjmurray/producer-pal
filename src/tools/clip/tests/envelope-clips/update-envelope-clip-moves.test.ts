@@ -6,17 +6,28 @@
 // update-clip moving an envelope clip: only to a return track's slot, by Live's
 // own copy and then deleting the original.
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
   clipSlotReadsOnReturns,
   registerRegularClip,
 } from "./envelope-clip-test-helpers.ts";
 import {
+  answerEnvelopeList,
   noteOrAudioTouches,
+  PREDELAY_ENVELOPE,
   resetWritableEnvelopeWorld,
   type WritableEnvelopeWorld,
 } from "./envelope-write-test-helpers.ts";
+
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const ONLY_RETURN = "an envelope clip can only go to a return-track slot";
 const ONLY_ENVELOPE = "a return-track slot only takes an envelope clip";
@@ -44,6 +55,7 @@ describe("update-clip - moving an envelope clip", () => {
 
   beforeEach(() => {
     world = resetWritableEnvelopeWorld();
+    answerEnvelopeList([PREDELAY_ENVELOPE]);
   });
 
   it.each([
@@ -74,9 +86,20 @@ describe("update-clip - moving an envelope clip", () => {
       name: "Moved",
     })) as unknown as Entry;
 
-    expect(result).toStrictEqual({ id: "copy-1", path: "rt0/s1" });
+    expect(result).toStrictEqual({
+      id: "copy-1",
+      path: "rt0/s1",
+      detail:
+        "dropped the device envelopes, which don't copy to another track: Predelay (rt1/d0)",
+    });
     expect(world.withEnv.set).toHaveBeenCalledWith("name", "Moved");
     expect(slotCalls(world, 1, 0)).toContain("delete_clip");
+  });
+
+  it("doesn't look for envelopes when the clip stays on its return track", async () => {
+    await updateClip({ ids: "with-env", toPath: "rt1/s1" });
+
+    expect(vi.mocked(requestNode)).not.toHaveBeenCalled();
   });
 
   it("says when the move replaced the clip in the destination", async () => {

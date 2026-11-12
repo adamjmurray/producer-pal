@@ -39,6 +39,7 @@ import {
   type DuplicateRun,
 } from "./duplicate-call-types.ts";
 import {
+  envelopeLossFor,
   liveObject,
   meterOf,
   scenePass,
@@ -70,7 +71,7 @@ export function writeDuplicateCopy(
     case "scene-arrangement":
       return writeSceneArrangement(body, label, call, step, run);
     case "slot":
-      return landed(writeSlotCopy(body, label, run), step);
+      return writeSlotCopy(body, label, run, step);
     case "arrangement":
       return writeArrangementCopy(body, label, target.named, step, run);
     case "lane":
@@ -107,39 +108,63 @@ function landed(entry: object, step: DuplicateStep): object {
  * @param body - The copy
  * @param label - Its name and color
  * @param run - The call's shared state
- * @returns The copy's entry, or the skip saying none landed
+ * @param step - The copy's turn in the call
+ * @returns The copy's entry
+ * @throws Error carrying the skip's detail when no copy landed
  */
-function writeSlotCopy(
+async function writeSlotCopy(
   body: Extract<CopyBody, { kind: "slot" }>,
   label: CopyLabel,
   run: DuplicateRun,
-): object {
+  step: DuplicateStep,
+): Promise<object> {
   const clip = liveObject(run, body.sourceId);
-  const { trackIndex, sceneIndex } = clip;
+  const slot = body.slot;
 
   // The draft only plans an envelope clip into a return track's slot.
-  if (isReturnSlotPosition(body.slot)) {
-    return duplicateEnvelopeClip(clip, body.slot, label.name, label.color);
-  }
+  if (isReturnSlotPosition(slot)) {
+    const loss = await envelopeLossFor(run, clip, {
+      kind: "return",
+      index: slot.returnIndex,
+    });
 
-  // An arrangement clip has no slot to read from, so it is re-created.
-  if (trackIndex == null || sceneIndex == null) {
-    return duplicateArrangementClipToSlot(
-      clip,
-      body.slot,
-      label.name,
-      label.color,
+    return landed(
+      duplicateEnvelopeClip(clip, slot, label.name, label.color, loss),
+      step,
     );
   }
 
-  return duplicateClipSlot(
-    trackIndex,
-    sceneIndex,
-    body.slot.trackIndex,
-    body.slot.sceneIndex,
-    label.name,
-    label.color,
-    slotSourceFor(run, clip, body.slot.trackIndex),
+  // An arrangement clip is re-created, which says what that drops itself.
+  const loss =
+    clip.trackIndex == null || clip.sceneIndex == null
+      ? null
+      : await envelopeLossFor(run, clip, {
+          kind: "regular",
+          index: slot.trackIndex,
+        });
+  // Read after the await: the clip's place is only good as of now.
+  const { trackIndex, sceneIndex } = clip;
+
+  // An arrangement clip has no slot to read from, so it is re-created.
+  if (trackIndex == null || sceneIndex == null) {
+    return landed(
+      duplicateArrangementClipToSlot(clip, slot, label.name, label.color),
+      step,
+    );
+  }
+
+  return landed(
+    duplicateClipSlot(
+      trackIndex,
+      sceneIndex,
+      slot.trackIndex,
+      slot.sceneIndex,
+      loss,
+      label.name,
+      label.color,
+      slotSourceFor(run, clip, slot.trackIndex),
+    ),
+    step,
   );
 }
 

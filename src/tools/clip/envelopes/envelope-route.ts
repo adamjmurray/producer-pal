@@ -29,6 +29,9 @@ export const ARRANGEMENT_CLIP_NOTE =
  * @param args - Which clip, and which parameter of it
  * @param deadline - The request deadline from ToolContext, if any
  * @param manage - Whether the caller can use ppal-manage (`manageOffered`)
+ * @param maxWaitMs - A shorter wait than the usual one, for a caller that can
+ *   do without the answer
+ * @param reserveMs - Time to keep before the deadline for work after the answer
  * @returns The route's result, or why there isn't one
  */
 export function envelopeRoute<T>(
@@ -36,6 +39,8 @@ export function envelopeRoute<T>(
   args: object,
   deadline: number | null | undefined,
   manage: boolean,
+  maxWaitMs?: number,
+  reserveMs?: number,
 ): Promise<RouteOutcome<T>> {
   return remoteScriptRoute<T>(
     route,
@@ -43,6 +48,8 @@ export function envelopeRoute<T>(
     deadline,
     REMOTE_SCRIPT_MISSING,
     manage,
+    maxWaitMs,
+    reserveMs,
   );
 }
 

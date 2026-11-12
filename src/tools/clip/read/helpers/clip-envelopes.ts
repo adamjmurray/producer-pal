@@ -197,7 +197,7 @@ function parameterTarget(entry: ListedEnvelope): {
  * @param wrappers - What this read has learned about each device's slots
  * @returns The parameter, id, device and slot the entry names it by
  */
-function envelopeIdentity(
+export function envelopeIdentity(
   track: EnvelopeTrack,
   entry: ListedEnvelope,
   wrappers: Map<string, SlotMap | null>,

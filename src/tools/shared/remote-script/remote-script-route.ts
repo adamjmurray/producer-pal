@@ -46,6 +46,7 @@ export type RouteOutcome<T> =
  * @param manage - Whether the caller can use ppal-manage (`manageOffered`)
  * @param maxWaitMs - A shorter wait than the usual one, for a caller that can
  *   do without the answer
+ * @param reserveMs - Time to keep before the deadline for work after the answer
  * @returns The route's result, or why there isn't one
  */
 export function remoteScriptRoute<T>(
@@ -55,8 +56,12 @@ export function remoteScriptRoute<T>(
   missing: string,
   manage: boolean,
   maxWaitMs?: number,
+  reserveMs?: number,
 ): Promise<RouteOutcome<T>> {
-  return callRoute<T>(route, args, deadline, missing, manage, { maxWaitMs });
+  return callRoute<T>(route, args, deadline, missing, manage, {
+    maxWaitMs,
+    reserveMs,
+  });
 }
 
 /**
@@ -90,7 +95,8 @@ export function remoteScriptChange<T>(
  * @param deadline - The request deadline from ToolContext, if any
  * @param missing - What to say when the remote script isn't running
  * @param manage - Whether the caller can use ppal-manage
- * @param options - `maxWaitMs`: a shorter wait than the usual one; `change`:
+ * @param options - `maxWaitMs`: a shorter wait than the usual one; `reserveMs`:
+ *   time to keep before the deadline; `change`:
  *   send the expiry a change needs
  * @returns The route's result, or why there isn't one
  */
@@ -100,9 +106,9 @@ async function callRoute<T>(
   deadline: number | null | undefined,
   missing: string,
   manage: boolean,
-  options: { maxWaitMs?: number; change?: boolean },
+  options: { maxWaitMs?: number; reserveMs?: number; change?: boolean },
 ): Promise<RouteOutcome<T>> {
-  const usual = remoteScriptWait(deadline);
+  const usual = remoteScriptWait(deadline, options.reserveMs);
   const waitMs =
     usual == null ? null : Math.min(usual, options.maxWaitMs ?? usual);
 

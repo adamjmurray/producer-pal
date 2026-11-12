@@ -22,6 +22,7 @@ import {
  * @param toSlot - The destination slot on a return track
  * @param name - Name for the copy, if any
  * @param color - Color for the copy, if any
+ * @param envelopeLoss - What a copy to another return track drops, if anything
  * @returns The copy, or the entry saying no copy landed there
  */
 export function duplicateEnvelopeClip(
@@ -29,6 +30,7 @@ export function duplicateEnvelopeClip(
   toSlot: ReturnSlotPosition,
   name: string | undefined,
   color: string | undefined,
+  envelopeLoss: string | null,
 ): MinimalClipInfo | TargetSkip {
   const destination = returnSlotPath(toSlot.returnIndex, toSlot.sceneIndex);
 
@@ -52,6 +54,7 @@ export function duplicateEnvelopeClip(
     return copyIntoSlot(sourceClipSlot, prepared, destination, progress, {
       name,
       color,
+      envelopeLoss,
     });
   });
 }

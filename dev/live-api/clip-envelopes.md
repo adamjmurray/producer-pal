@@ -54,8 +54,12 @@ are **MIDI or warped audio**.
   (`automation_envelope`, `create_automation_envelope`, `clear_envelope`,
   `value_at_time`), probed on 13.0b25. The routes address it as `rt0` beside
   `slot`, and the parameters are the return track's own mixer and devices.
-- Duplicating a Session clip keeps its envelopes, curves included. Duplicating
-  to the Arrangement writes the envelope into the track's automation lane. See
+- Duplicating a Session clip within its track keeps its envelopes, curves
+  included. Onto **another track** (a regular or return track, even onto an
+  identical device or a duplicate of the source track) it keeps the mixer
+  envelopes (volume, pan, sends) and drops every device-parameter one, probed on
+  Live 12.4 and 13 beta. Duplicating to the Arrangement writes the envelope into
+  the track's automation lane. See
   [arrangement-automation.md](arrangement-automation.md).
 
 ## Overridden automation

@@ -37,7 +37,9 @@ import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   noteClipOverwrite,
   noteClipReason,
+  journalEnvelopeLoss,
   noteLanded,
+  sayEnvelopeLoss,
   refuseClipWork,
   type ClipReasons,
 } from "../entries/clip-reasons.ts";
@@ -179,10 +181,13 @@ export function moveBetweenSlots(
     id: newClip.id,
     path: destPath,
   });
+  journalEnvelopeLoss(reasons, clip.id);
 
   if (destinationWasOccupied) {
     noteClipOverwrite(reasons, clip.id, destPath);
   }
+
+  sayEnvelopeLoss(reasons, clip.id);
 
   deleteMovedSource({
     reasons,

@@ -12,7 +12,8 @@
  * Live 13 only: the Set can't be opened by Live 12, so the suite skips there.
  * Uses: live-13-test; rt0 "A-Echo" s0 "No Envs" (no envelopes), rt1
  * "B-Wide Hallway" s0 "With Env" (Predelay: flat until 1.2, ramps up to 1.4,
- * then flat), and t0 "Drums" s1 "Notes". See
+ * then flat), and t0 "Drums" s1 "Notes". A copy of "With Env" to another
+ * return track drops the Predelay envelope, and says so. See
  * e2e/live-sets/specs/live-13-test-spec.md.
  *
  * Run with: npm run e2e:mcp -- clip/remote-script/ppal-envelope-return-clips
@@ -236,6 +237,24 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !LIVE_13_OR_NEWER)(
 
       expect((await writeEnvelopes(NOTES_CLIP, "volume:")).envelopes).toBe(1);
       expect(await readEnvelopes(NOTES_CLIP)).toStrictEqual([]);
+    });
+
+    it("says a copy to a slot of another return track dropped the device envelopes", async () => {
+      try {
+        const copy = await call<{ detail?: string }>("ppal-duplicate", {
+          type: "clip",
+          path: WITH_ENV,
+          toPath: "rt0/s1",
+        });
+
+        expect(copy.detail).toMatch(
+          /^dropped the device envelopes, which don't copy to another track: Predelay \(rt1\/d\d+\)$/,
+        );
+        // The mixer envelopes would have come along; the device one doesn't.
+        expect(await readEnvelopes("rt0/s1")).toStrictEqual([]);
+      } finally {
+        await call("ppal-delete", { type: "clip", path: "rt0/s1" });
+      }
     });
 
     // Last: a hosted plug-in's envelope may not be clearable, and this one

@@ -155,7 +155,7 @@ describe("duplicateClipSlot", () => {
   it("returns the copy that landed", () => {
     const { sourceClipSlot } = setupSlotDuplication();
 
-    const result = duplicateClipSlot(0, 0, 1, 0, "Copy", "#FF3636");
+    const result = duplicateClipSlot(0, 0, 1, 0, null, "Copy", "#FF3636");
 
     expect(sourceClipSlot.call).toHaveBeenCalledWith(
       "duplicate_clip_to",
@@ -169,7 +169,7 @@ describe("duplicateClipSlot", () => {
   it("reports a MIDI clip aimed at an audio track on the slot's entry", () => {
     const { sourceClipSlot } = setupSlotDuplication({ destIsMidi: 0 });
 
-    expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
+    expect(duplicateClipSlot(0, 0, 1, 0, null)).toStrictEqual({
       path: "t1/s0",
       ok: false,
       detail:
@@ -182,7 +182,7 @@ describe("duplicateClipSlot", () => {
   it("reports an audio clip aimed at a MIDI track on the slot's entry", () => {
     setupSlotDuplication({ clipIsMidi: 0 });
 
-    expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
+    expect(duplicateClipSlot(0, 0, 1, 0, null)).toStrictEqual({
       path: "t1/s0",
       ok: false,
       detail:
@@ -195,7 +195,7 @@ describe("duplicateClipSlot", () => {
   it("reports a frozen destination track on the slot's entry", () => {
     const { sourceClipSlot } = setupSlotDuplication({ destIsFrozen: 1 });
 
-    expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
+    expect(duplicateClipSlot(0, 0, 1, 0, null)).toStrictEqual({
       path: "t1/s0",
       ok: false,
       detail: "track t1 (id live_set/tracks/1) is frozen; unfreeze it first",
@@ -208,7 +208,7 @@ describe("duplicateClipSlot", () => {
 
     // is_frozen is falsy, so the frozen guard must not fire (kills its
     // forced-true mutant).
-    expect(duplicateClipSlot(0, 0, 1, 0)).not.toHaveProperty("ok");
+    expect(duplicateClipSlot(0, 0, 1, 0, null)).not.toHaveProperty("ok");
   });
 
   it("reports a throw before the copy exists as a skip", () => {
@@ -218,7 +218,7 @@ describe("duplicateClipSlot", () => {
       throw new Error("Live is unhappy");
     };
 
-    expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
+    expect(duplicateClipSlot(0, 0, 1, 0, null)).toStrictEqual({
       path: "t1/s0",
       ok: false,
       detail: "Live is unhappy",
@@ -231,7 +231,7 @@ describe("duplicateClipSlot", () => {
 
     makeCopyRefuseItsName(sourceClipSlot);
 
-    expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toStrictEqual({
+    expect(duplicateClipSlot(0, 0, 1, 0, null, "Copy")).toStrictEqual({
       id: COPY_ID,
       path: "t1/s0",
       detail: "the copy landed, but name refused",
@@ -243,7 +243,7 @@ describe("duplicateClipSlot", () => {
 
     makeCopyRefuseItsName(sourceClipSlot);
 
-    expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toStrictEqual({
+    expect(duplicateClipSlot(0, 0, 1, 0, null, "Copy")).toStrictEqual({
       id: COPY_ID,
       path: "t1/s0",
       detail:
@@ -256,7 +256,7 @@ describe("duplicateClipSlot", () => {
   it("reports instead of failing when no clip lands in the destination", () => {
     setupSlotDuplication({ copyLands: false });
 
-    expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
+    expect(duplicateClipSlot(0, 0, 1, 0, null)).toStrictEqual({
       path: "t1/s0",
       ok: false,
       detail: "Live made no copy there",
@@ -271,7 +271,7 @@ describe("duplicateClipSlot", () => {
       copyLands: false,
     });
 
-    expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toStrictEqual({
+    expect(duplicateClipSlot(0, 0, 1, 0, null, "Copy")).toStrictEqual({
       path: "t1/s0",
       ok: false,
       detail: "Live made no copy there",
@@ -285,7 +285,7 @@ describe("duplicateClipSlot", () => {
   it("says the copy replaced the clip already in the slot", () => {
     setupSlotDuplication({ destHasClip: 1 });
 
-    expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
+    expect(duplicateClipSlot(0, 0, 1, 0, null)).toStrictEqual({
       id: COPY_ID,
       path: "t1/s0",
       detail: "overwrote the existing clip at t1/s0",
@@ -295,7 +295,7 @@ describe("duplicateClipSlot", () => {
   it("says nothing about overwriting when the slot was empty", () => {
     setupSlotDuplication({ destHasClip: 0 });
 
-    expect(duplicateClipSlot(0, 0, 1, 0)).not.toHaveProperty("detail");
+    expect(duplicateClipSlot(0, 0, 1, 0, null)).not.toHaveProperty("detail");
   });
 });
 
@@ -378,7 +378,7 @@ describe("duplicateClipSlot past the last scene", () => {
   it("makes the scenes up to the destination and says which", () => {
     const liveSet = setupShortSet();
 
-    expect(duplicateClipSlot(0, 0, 1, 3)).toStrictEqual({
+    expect(duplicateClipSlot(0, 0, 1, 3, null)).toStrictEqual({
       id: COPY_ID,
       path: "t1/s3",
       created: "s2-s3",
@@ -390,7 +390,7 @@ describe("duplicateClipSlot past the last scene", () => {
   it("names the scenes it made when Live declines the copy", () => {
     setupShortSet({ copyLands: false });
 
-    expect(duplicateClipSlot(0, 0, 1, 3)).toStrictEqual({
+    expect(duplicateClipSlot(0, 0, 1, 3, null)).toStrictEqual({
       path: "t1/s3",
       ok: false,
       detail: "Live made no copy there; created s2-s3 to reach it",
@@ -400,7 +400,7 @@ describe("duplicateClipSlot past the last scene", () => {
   it("names the scenes it made when the slot still isn't there", () => {
     setupShortSet({ slotAppears: false });
 
-    expect(duplicateClipSlot(0, 0, 1, 3)).toStrictEqual({
+    expect(duplicateClipSlot(0, 0, 1, 3, null)).toStrictEqual({
       path: "t1/s3",
       ok: false,
       detail: "no clip slot there; created s2-s3 to reach it",
@@ -410,7 +410,9 @@ describe("duplicateClipSlot past the last scene", () => {
   it("refuses a destination past the scene cap, making nothing", () => {
     const liveSet = setupShortSet();
 
-    expect(duplicateClipSlot(0, 0, 1, MAX_AUTO_CREATED_SCENES)).toStrictEqual({
+    expect(
+      duplicateClipSlot(0, 0, 1, MAX_AUTO_CREATED_SCENES, null),
+    ).toStrictEqual({
       path: `t1/s${MAX_AUTO_CREATED_SCENES}`,
       ok: false,
       detail:
@@ -433,7 +435,7 @@ describe("duplicateClipSlot with a missing slot or clip", () => {
       destExists: true,
     });
 
-    expect(() => duplicateClipSlot(0, 0, 1, 0)).toThrow(
+    expect(() => duplicateClipSlot(0, 0, 1, 0, null)).toThrow(
       "no clip slot at t0/s0",
     );
   });
@@ -445,7 +447,9 @@ describe("duplicateClipSlot with a missing slot or clip", () => {
       destExists: true,
     });
 
-    expect(() => duplicateClipSlot(0, 0, 1, 0)).toThrow("no clip at t0/s0");
+    expect(() => duplicateClipSlot(0, 0, 1, 0, null)).toThrow(
+      "no clip at t0/s0",
+    );
   });
 
   it("reports a destination clip slot that does not exist", () => {
@@ -456,7 +460,7 @@ describe("duplicateClipSlot with a missing slot or clip", () => {
       destExists: false,
     });
 
-    expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
+    expect(duplicateClipSlot(0, 0, 1, 0, null)).toStrictEqual({
       path: "t1/s0",
       ok: false,
       detail: "no clip slot there",

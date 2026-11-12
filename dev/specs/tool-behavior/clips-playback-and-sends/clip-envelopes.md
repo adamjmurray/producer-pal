@@ -138,14 +138,53 @@ target id must sit on that return track.
   `id 473 is not on the clip's track (rt0), and a clip can only automate its own track`.
 - **An empty envelope clip** reads `envelopes: []`, like an empty session clip;
   `envs: true` shows once it has one.
-- **A copy** to another return slot is Live's own duplicate, which carries the
-  envelopes: nothing is written for it. An envelope on a device that isn't on
-  the destination return track has nothing to drive there; Live decides what the
-  copy keeps, and the result doesn't say.
+- **A copy or move** to a slot of another return track is Live's own duplicate:
+  nothing is written for it, and the device envelopes aren't carried. The entry
+  says so (see
+  [Copies and moves to another track](#copies-and-moves-to-another-track)).
 - **A remote script from before Live 13 return tracks** answers
   `the Producer Pal remote script in Live is a different build than this device's and can't do this; update it ...`
   for a return clip (a regular clip's envelopes work on it). Live 12 has no
   return-track clips, so `rt` paths are refused before any of this.
+
+## Copies and moves to another track
+
+Mechanics: [clip-envelopes.md](../../../live-api/clip-envelopes.md).
+
+Live's clip copy onto another track never carries device-parameter envelopes;
+volume, pan and send envelopes survive. When `ppal-duplicate` or
+`ppal-update-clip` lands a clip on another track by Live's own copy, the
+target's entry says what was dropped. A return track counts as a track.
+
+- **A session clip** names the device envelopes, by Live's parameter name and
+  the source device's path: `detail` reads
+  `dropped the device envelopes, which don't copy to another track: Frequency (t0/d1), Macro 1 (t0/d0)`.
+  A hosted plug-in's param is named as the plug-in names it. Mixer envelopes are
+  never listed. A clip with only mixer envelopes says nothing.
+- **An arrangement clip** can't list them, so when `has_envelopes` is true its
+  entry says
+  `any device envelopes were dropped, since they don't copy to another track`.
+  Without `has_envelopes` it says nothing.
+- **Remote script missing**, or it can't list the clip: a session clip with
+  envelopes gets the arrangement clip's wording instead of failing the write.
+- **The same track** says nothing and doesn't read: the envelopes are listed
+  only when the destination is another track and the clip has envelopes. A
+  `ppal-duplicate` of one source to several slots lists it once.
+- **The list is read before the copy**, since a move deletes the source, and
+  waits no longer than a detail read does. Once a read stalls (no remote script,
+  no answer, out of time), the rest of the call goes straight to the hedged
+  wording. A failure building the note gives the hedged wording too, and never
+  blocks the copy.
+- **The note is on the entry only once the copy landed**, and stays on it when a
+  later step throws. It comes after the entry's other notes about the copy (an
+  overwrite, the lane write), the same in both tools.
+- **A session clip copied to another track's arrangement**, at any length, says
+  what Live wrote to the lane, then the session wording above: the lane gets the
+  mixer envelopes and no device ones. On its own track it says only the lane
+  write.
+- **Paths that re-create the clip** (an arrangement clip moved or copied to a
+  slot, or onto a take lane) already say `automation envelopes aren't copied`
+  and add nothing.
 
 ## Envelopes on an arrangement clip
 

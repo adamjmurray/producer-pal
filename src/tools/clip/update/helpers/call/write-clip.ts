@@ -44,6 +44,7 @@ import { isSwitchedOff } from "#src/tools/shared/validation/lists/refuse-no-writ
 import { afterUpdateParams } from "./envelope-clip-params.ts";
 import { type ClipRun } from "./clip-run.ts";
 import { cutClip } from "./cut-clip.ts";
+import { readEnvelopeLoss } from "../move/read-envelope-loss.ts";
 import { type ClipCall } from "./parse-clip-call.ts";
 import { type ClipPlanned } from "./plan-clip-moves.ts";
 import { type ClipPayload } from "./resolve-clip-targets.ts";
@@ -278,6 +279,8 @@ async function updatePiece(
   try {
     const later = afterUpdateParams(piece, call, reasons);
 
+    // Before the move deletes the source it reads.
+    await readEnvelopeLoss(piece, motion, reasons, context);
     processSingleClipUpdate({
       ...paramsFor(call),
       clip: piece,

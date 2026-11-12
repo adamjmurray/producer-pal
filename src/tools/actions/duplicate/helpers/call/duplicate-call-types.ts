@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
+import { type EnvelopeReads } from "#src/tools/clip/envelopes/cross-track-envelopes.ts";
 import {
   type ArrangementTrack,
   type ResolvedTakeLane,
@@ -183,6 +184,10 @@ export interface DuplicateRun {
   spares: Map<string, Spare>;
   /** What each source clip's slot copies share, by the clip's id */
   slotSources: Map<string, SlotCopySource>;
+  /** What a copy of each source clip to another track drops, by the clip's id */
+  envelopeLosses: Map<string, string | null>;
+  /** What the call has learned about listing envelopes through the remote script */
+  envelopeReads: EnvelopeReads;
   /** Deprecated: the name for a take lane a copy makes */
   takeLaneName: string | undefined;
   /** Whether any destination the call named is a take lane */

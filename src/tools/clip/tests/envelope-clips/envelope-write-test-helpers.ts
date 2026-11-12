@@ -3,8 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { UNNAMED_ENVELOPE_LOSS } from "#src/tools/clip/envelopes/cross-track-envelopes.ts";
 import {
   clearMockRegistry,
   deleteMockObject,
@@ -215,4 +217,88 @@ export function noteOrAudioTouches(world: WritableEnvelopeWorld): string[] {
       .filter(([prop]) => NOTE_OR_AUDIO_PROPS.includes(String(prop)))
       .map(([prop]) => `get ${String(prop)}`),
   ]);
+}
+
+/** The parameter info a listed envelope carries. */
+const LISTED_PARAMETER = {
+  min: 0,
+  max: 1,
+  value: 0.5,
+  display: "0.5",
+  quantized: false,
+  enabled: true,
+  automation_state: 1,
+};
+
+/** A device parameter's listed envelope, as the remote script lists it. */
+export const PREDELAY_ENVELOPE = {
+  device: "d0",
+  parameter_index: 1,
+  parameter: { ...LISTED_PARAMETER, name: "Predelay" },
+  event_count: 4,
+};
+
+/** A device parameter's listed envelope, on the second device. */
+export const FREQUENCY_ENVELOPE = {
+  device: "d1",
+  parameter_index: 3,
+  parameter: { ...LISTED_PARAMETER, name: "Frequency" },
+  event_count: 4,
+};
+
+/** A device parameter's listed envelope, on the first device. */
+export const MACRO_ENVELOPE = {
+  device: "d0",
+  parameter_index: 1,
+  parameter: { ...LISTED_PARAMETER, name: "Macro 1" },
+  event_count: 2,
+};
+
+/** A mixer parameter's listed envelope. */
+export const VOLUME_ENVELOPE = {
+  parameter_name: "volume",
+  parameter: { ...LISTED_PARAMETER, name: "Track Volume" },
+  event_count: 2,
+};
+
+/** A mixer parameter's listed envelope. */
+export const PAN_ENVELOPE = {
+  parameter_name: "pan",
+  parameter: { ...LISTED_PARAMETER, name: "Track Pan" },
+  event_count: 2,
+};
+
+/**
+ * Make the mocked remote script list these envelopes for any clip. The test
+ * file mocks `requestNode`.
+ * @param envelopes - What the list route reports; null for no remote script
+ */
+export function answerEnvelopeList(envelopes: unknown[] | null): void {
+  vi.mocked(requestNode).mockReset();
+  vi.mocked(requestNode).mockResolvedValue({
+    success: true,
+    result:
+      envelopes == null
+        ? { available: false }
+        : { available: true, result: { envelopes } },
+  });
+}
+
+/**
+ * Check that a call copying to two other tracks reads the envelope list once,
+ * finds the remote script gone, and hedges both entries.
+ * @param run - Makes the call
+ */
+export async function expectOneReadThenHedges(
+  run: () => Promise<unknown>,
+): Promise<void> {
+  answerEnvelopeList(null);
+
+  const result = (await run()) as Array<{ detail?: string }>;
+
+  expect(result.map((entry) => entry.detail)).toStrictEqual([
+    UNNAMED_ENVELOPE_LOSS,
+    UNNAMED_ENVELOPE_LOSS,
+  ]);
+  expect(requestNode).toHaveBeenCalledTimes(1);
 }

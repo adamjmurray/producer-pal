@@ -5,7 +5,8 @@
 
 // ppal-delete and ppal-duplicate on Live 13 return-track envelope clips.
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-protocol.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { deleteObject } from "#src/tools/actions/delete/delete.ts";
@@ -13,11 +14,22 @@ import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { getMinimalClipInfo } from "#src/tools/actions/duplicate/helpers/minimal-clip-info.ts";
 import { registerRegularClip } from "./envelope-clip-test-helpers.ts";
 import {
+  answerEnvelopeList,
   NO_ENVS_BY_PATH_OR_ID,
   noteOrAudioTouches,
+  PAN_ENVELOPE,
+  PREDELAY_ENVELOPE,
   resetWritableEnvelopeWorld,
   type WritableEnvelopeWorld,
 } from "./envelope-write-test-helpers.ts";
+
+vi.mock(
+  import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts"),
+  () => ({
+    requestNode: vi.fn(),
+    handleNodeResponse: vi.fn(),
+  }),
+);
 
 const ONLY_RETURN = "an envelope clip can only go to a return-track slot";
 const ONLY_ENVELOPE = "a return-track slot only takes an envelope clip";
@@ -105,6 +117,7 @@ describe("ppal-duplicate - envelope clips", () => {
 
   beforeEach(() => {
     world = resetWritableEnvelopeWorld();
+    answerEnvelopeList([PREDELAY_ENVELOPE, PAN_ENVELOPE]);
   });
 
   it.each(NO_ENVS_BY_PATH_OR_ID)(
@@ -136,8 +149,14 @@ describe("ppal-duplicate - envelope clips", () => {
       toPath: "rt0/s2",
     })) as Entry;
 
-    expect(result).toStrictEqual({ id: "copy-1", path: "rt0/s2" });
-    // Live's copy carries the envelopes, so nothing is stamped or written.
+    // Only the device envelope is named: Live's copy keeps the mixer ones.
+    expect(result).toStrictEqual({
+      id: "copy-1",
+      path: "rt0/s2",
+      detail:
+        "dropped the device envelopes, which don't copy to another track: Predelay (rt1/d0)",
+    });
+    // Nothing is stamped or written to put them back.
     expect(world.slots[1]?.[0]?.call.mock.calls).toStrictEqual([
       ["duplicate_clip_to", "id r0s2"],
     ]);
@@ -145,6 +164,53 @@ describe("ppal-duplicate - envelope clips", () => {
     expect(world.returnTracks.flatMap((t) => t.call.mock.calls)).toStrictEqual(
       [],
     );
+  });
+
+  it("says it dropped device envelopes, unnamed, when the remote script isn't running", async () => {
+    answerEnvelopeList(null);
+
+    const result = (await duplicate({
+      type: "clip",
+      id: "with-env",
+      toPath: "rt0/s2",
+    })) as Entry;
+
+    expect(result.detail).toBe(
+      "any device envelopes were dropped, since they don't copy to another track",
+    );
+  });
+
+  it("says nothing of envelopes when only mixer ones were on the clip", async () => {
+    answerEnvelopeList([PAN_ENVELOPE]);
+
+    const result = (await duplicate({
+      type: "clip",
+      id: "with-env",
+      toPath: "rt0/s2",
+    })) as Entry;
+
+    expect(result).toStrictEqual({ id: "copy-1", path: "rt0/s2" });
+  });
+
+  it("asks the remote script once for a clip copied to several slots", async () => {
+    await duplicate({
+      type: "clip",
+      id: "with-env",
+      toPath: "rt0/s2,rt0/s1",
+    });
+
+    expect(vi.mocked(requestNode)).toHaveBeenCalledTimes(1);
+  });
+
+  it("doesn't look for envelopes when the copy stays on its return track", async () => {
+    const result = (await duplicate({
+      type: "clip",
+      id: "with-env",
+      toPath: "rt1/s2",
+    })) as Entry;
+
+    expect(result).toStrictEqual({ id: "copy-1", path: "rt1/s2" });
+    expect(vi.mocked(requestNode)).not.toHaveBeenCalled();
   });
 
   it("names and colors the copies", async () => {

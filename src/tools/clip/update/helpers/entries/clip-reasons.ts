@@ -14,6 +14,7 @@
 // Everything is keyed by the clip's id as the call found it; a step writing
 // under a new id hands its reasons back with {@link moveClipReasons}.
 
+import { type EnvelopeReads } from "#src/tools/clip/envelopes/cross-track-envelopes.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { type ClipReporter } from "#src/tools/shared/arrangement/helpers/clip-reporter.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
@@ -39,6 +40,13 @@ export interface ClipReasons {
    * that reports them (`start`, `gainDb`, ...). */
   readBacks: Map<string, Record<string, number | string>>;
   /**
+   * What a move to another track will do to a clip's device envelopes, read
+   * before the move since it deletes the source. By the clip's id.
+   */
+  envelopeLosses: Map<string, string>;
+  /** What the call has learned about listing envelopes through the remote script */
+  envelopeReads: EnvelopeReads;
+  /**
    * Where the target being written says what has landed, so a throw later in
    * its update keeps the entry for what exists by then. Set per target.
    */
@@ -61,6 +69,8 @@ export function newClipReasons(): ClipReasons {
     colors: new Map(),
     created: new Map(),
     readBacks: new Map(),
+    envelopeLosses: new Map(),
+    envelopeReads: { stalled: false },
   };
 }
 
@@ -180,6 +190,44 @@ export function noteClipOverwrite(
   destPath: string,
 ): void {
   noteClipReason(reasons, clipId, clipOverwriteNote(destPath));
+}
+
+/**
+ * Say that the copy landed and dropped the clip's device envelopes, so a throw
+ * later in its update keeps the note on the target's entry.
+ * @param reasons - What each clip has to say, which carries the journal
+ * @param clipId - The clip, by the id the call found it at
+ * @param note - What was dropped, when the caller knows it now; otherwise the
+ *   note read ahead for the clip
+ */
+export function journalEnvelopeLoss(
+  reasons: ClipReasons,
+  clipId: string,
+  note?: string,
+): void {
+  if (note != null) {
+    reasons.envelopeLosses.set(clipId, note);
+  }
+
+  const kept = reasons.envelopeLosses.get(clipId);
+
+  if (kept != null) {
+    noteLanded(reasons, kept);
+  }
+}
+
+/**
+ * Put the dropped-envelopes note on the clip's entry. Said after the copy's own
+ * notes, so the order matches ppal-duplicate's.
+ * @param reasons - What each clip has to say, added to
+ * @param clipId - The clip, by the id the call found it at
+ */
+export function sayEnvelopeLoss(reasons: ClipReasons, clipId: string): void {
+  const note = reasons.envelopeLosses.get(clipId);
+
+  if (note != null) {
+    noteClipReason(reasons, clipId, note);
+  }
 }
 
 /**

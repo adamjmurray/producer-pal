@@ -24,6 +24,7 @@ import {
   recreateLossesNote,
 } from "#src/tools/shared/clip/recreate-clip.ts";
 import { arrangementPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { arrangementEnvelopeLoss } from "#src/tools/clip/envelopes/cross-track-envelopes.ts";
 import {
   noteClipReason,
   noteTakeLanesMade,
@@ -104,7 +105,9 @@ export function placeMovedClip({
     return promoteToMainLane(clip, destTrackIndex, targetBeats, reasons);
   }
 
-  return duplicateToArrangementTarget(
+  // Read before the copy: a self-overlapping move deletes the source in it.
+  const loss = arrangementEnvelopeLoss(clip, destTrackIndex);
+  const placed = duplicateToArrangementTarget(
     LiveAPI.from(livePath.track(destTrackIndex)),
     clip.id,
     targetBeats,
@@ -113,6 +116,13 @@ export function placeMovedClip({
     clip,
     true,
   );
+
+  if (loss != null && placed.exists()) {
+    // Kept for the move to say once its copy is noted.
+    reasons.envelopeLosses.set(clip.id, loss);
+  }
+
+  return placed;
 }
 
 // --- Helpers below main exports ---

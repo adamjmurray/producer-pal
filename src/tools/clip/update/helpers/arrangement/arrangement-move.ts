@@ -26,11 +26,13 @@ import {
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
+  journalEnvelopeLoss,
   markClipLanded,
   moveClipReasons,
   noteClipReason,
   noteLanded,
   refuseClipWork,
+  sayEnvelopeLoss,
   type ClipReasons,
 } from "../entries/clip-reasons.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
@@ -145,6 +147,7 @@ export function handleArrangementStartOperation({
         id: newClip.id,
         path: copyPath,
       });
+      journalEnvelopeLoss(reasons, clip.id);
     }
 
     // The source describes itself: it is about to be cleared, and a move onto
@@ -193,6 +196,8 @@ export function handleArrangementStartOperation({
 
     return clip.id;
   }
+
+  sayEnvelopeLoss(reasons, clip.id);
 
   recordLandedClip(landings, landing, targetBeats, {
     id: newClip.id,
