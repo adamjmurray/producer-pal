@@ -42,7 +42,7 @@ export interface SendOptions {
   noHost?: boolean;
 }
 
-/** This computer's own network address, which looks like another device. */
+/** This computer's own network address, which looks like another computer. */
 export const LAN_ADDRESS = Object.values(networkInterfaces())
   .flatMap((addrs) => addrs ?? [])
   .find((addr) => addr.family === "IPv4" && !addr.internal)?.address;

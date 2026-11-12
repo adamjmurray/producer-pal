@@ -560,7 +560,7 @@ cards use the one User Library path at the top of the tab.
   the device in your Set with it. The AI connection drops for a moment while the
   new device starts. Save your Live Set afterwards so it keeps using the User
   Library copy.
-- **Remote script:** installs the Producer Pal
+- **Control Surface remote script:** installs the Producer Pal
   [remote script](/guide/remote-script), which adds clip automation, undo and
   redo, and loading plug-ins, Max for Live devices and presets. It shows whether
   the script is installed and whether Live is running it, and offers an update
@@ -569,9 +569,9 @@ cards use the one User Library path at the top of the tab.
 
 Installing and **Swap** work only when the chat UI is open at `localhost` or
 this computer's IP address (for example from another computer on your network,
-with **Allow other devices to connect** on). Through a web tunnel's domain name,
-the tab shows status but refuses to install, so another website can't install
-files on your computer.
+with **Remote Control** on). Through a web tunnel's domain name, the tab shows
+status but refuses to install, so another website can't install files on your
+computer.
 
 <img src="/img/producer-pal-chat-settings-remote-script-running.png" alt="Installation tab" width="500"/>
 
@@ -594,13 +594,15 @@ stored in `~/.producer-pal/settings.json` and also govern the device's own
 notices. The `×` beside the `(update)` link dismisses that version's notice in
 both places; a later release brings it back.
 
-Under **Network**, **Allow other devices to connect** is the same setting as the
-toggle on the device (see the [device guide](/guide/device#setup-tab)). It
-applies immediately and shows what the server reports. It is off by default, and
-with it on, anyone on your network can control Live, and there's no password. To
-turn it on, open the Chat UI at `localhost` on Live's computer: it refuses to
-turn it on from other devices on your network, from web tunnels, and from other
-websites. Turning it off from another device cuts that device off.
+Under **Remote Control**, **Allow other computers to connect** is the same
+setting as the **Remote Control** toggle on the device (see the
+[device guide](/guide/device#setup-tab)). It applies immediately and shows what
+the server reports, and it picks up a change made on the device when you come
+back to the window. It is off by default, and with it on, anyone on your network
+can control Live, and there's no password. To turn it on, open the Chat UI at
+`localhost` on Live's computer: it refuses to turn it on from other phones and
+computers on your network, from web tunnels, and from other websites. Turning it
+off from another phone or computer cuts it off.
 
 ### Preferences
 

@@ -13,8 +13,8 @@ to AI by giving it an interface to the Live API.
   trying to start.
 - **Docs** - Link to this documentation site
 - **Open Chat UI** - Opens the built-in Chat UI in your default browser. Turn on
-  **Allow other devices to connect** (Setup tab) to also reach it from other
-  devices on your network, for
+  **Remote Control** (Setup tab) to also reach it from other computers on your
+  network, for
   [phone access](/installation/remote-access#chat-from-a-phone-or-another-computer).
 - **Finish installation…** - Shown while the User Library copy of the device or
   the remote script is missing or out of date. Opens the Chat UI's
@@ -78,20 +78,27 @@ editor, the same one the **Open Editor** button opens. See
   and for the `npx producer-pal` bridge set the `MCP_SERVER_ORIGIN` environment
   variable (e.g. `MCP_SERVER_ORIGIN=http://localhost:3400`), which defaults to
   `http://localhost:3350`.
-- **Allow other devices to connect** (the toggle next to Port) - Off by default:
-  only this computer can connect, and
-  [web tunnels](/installation/remote-access#web-tunnels) running on it still
-  work. Turn it on to connect from a phone or another computer on your network.
-  Anyone on that network can then control Live, and there's no password, so only
-  use it on a network you trust. Takes effect right away. The Chat UI's
-  Installation tab has the same setting; it turns it on only when the Chat UI is
-  open at `localhost` on this computer. Saved for this computer, not in the Live
-  Set, so opening a Set never turns it on.
 - **Timeout** - Maximum time for AI operations (default: 45 sec, max 55 sec;
   increase on slow computers if experiencing timeouts during complex
   operations). The cap stays under 60 sec because that is where most AI clients
   give up. Past that, you lose the partial results Producer Pal returns when it
   times out
+
+### Global
+
+These settings are saved for this computer, not in the Live Set.
+
+- **Installation Settings** - Opens the Chat UI on Settings → Installation,
+  where you can install or update the device and the remote script. See
+  [Installation](/guide/chat-ui#installation).
+- **Remote Control** - Off by default: only this computer can connect, and
+  [web tunnels](/installation/remote-access#web-tunnels) running on it still
+  work. Turn it on to connect from a phone or another computer on your network.
+  Anyone on that network can then control Live, and there's no password, so only
+  use it on a network you trust. Takes effect right away, and opening a Set
+  never turns it on. The Chat UI has the same setting (Settings → Installation →
+  Remote Control); it turns it on only when the Chat UI is open at `localhost`
+  on this computer.
 
 ### Behavior
 

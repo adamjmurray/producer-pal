@@ -49,7 +49,9 @@ describe("InstallationTab remote script card", () => {
   it("is labelled by its title and says what the script is for", async () => {
     const card = await renderCard();
 
-    expect(screen.getByRole("region", { name: "Remote script" })).toBe(card);
+    expect(
+      screen.getByRole("region", { name: "Control Surface remote script" }),
+    ).toBe(card);
     expect(card.textContent).toContain(
       "Adds clip automation, undo, and loading plug-ins and device presets.",
     );

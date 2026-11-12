@@ -13,7 +13,7 @@ let networkAccessAllowed = false;
 
 /** What a switch ended up as. */
 export interface SwitchResult {
-  /** Whether other devices can connect now. */
+  /** Whether other computers can connect now. */
   allowNetwork: boolean;
   /** False when a failed switch left nothing listening at all. */
   listening: boolean;
@@ -41,7 +41,7 @@ export type NetworkSwitcher = (
 let networkSwitcher: NetworkSwitcher | undefined;
 
 /**
- * Whether other devices can connect right now.
+ * Whether other computers can connect right now.
  *
  * @returns True while the server listens on all interfaces
  */

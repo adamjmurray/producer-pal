@@ -14,6 +14,21 @@
         "boxes": [
             {
                 "box": {
+                    "fontface": 1,
+                    "fontsize": 11.0,
+                    "id": "obj-4",
+                    "maxclass": "live.comment",
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 339.0, 291.0, 58.0, 20.0 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 134.00000399351117, 4.0, 53.846161, 20.0 ],
+                    "text": "Global",
+                    "textjustification": 0
+                }
+            },
+            {
+                "box": {
                     "annotation": "Lets phones and other computers on your network connect to Producer Pal. When off, only this computer can connect. This is a global setting for this computer, not just this Live Set. \n\nWarning: when on, anyone on your network can control Live, and there is no password. Only turn it on for a network you trust.",
                     "annotation_name": "Remote Control",
                     "id": "obj-99",
@@ -25,7 +40,7 @@
                     "parameter_mappable": 0,
                     "patching_rect": [ 719.0, 279.0, 15.0, 15.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 138.0, 42.0, 15.0, 15.0 ],
+                    "presentation_rect": [ 138.0, 48.0, 15.0, 15.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_enum": [ "off", "on" ],
@@ -42,8 +57,8 @@
             },
             {
                 "box": {
-                    "annotation": "Open the large editor in a web browser.",
-                    "annotation_name": "Open Editor",
+                    "annotation": "Open settings for how Producer Pal is installed.",
+                    "annotation_name": "Open Installation Settings",
                     "fontsize": 10.0,
                     "id": "obj-65",
                     "maxclass": "live.text",
@@ -54,7 +69,7 @@
                     "parameter_enable": 1,
                     "patching_rect": [ 582.0, 486.0, 83.0, 24.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 132.0, 10.0, 109.0, 20.0 ],
+                    "presentation_rect": [ 135.5, 23.0, 105.0, 20.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_enum": [ "val1", "val2" ],
@@ -67,7 +82,7 @@
                         }
                     },
                     "text": "Installation Settings",
-                    "varname": "open-chat-ui"
+                    "varname": "open-installation-settings"
                 }
             },
             {
@@ -119,7 +134,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 132.69232445955276, 242.30772292613983, 63.0, 83.5 ],
                     "presentation": 1,
-                    "presentation_rect": [ 131.0, 38.0, 114.00000339746475, 22.33333346247673 ],
+                    "presentation_rect": [ 131.0, 44.0, 114.00000339746475, 22.33333346247673 ],
                     "proportion": 0.39,
                     "varname": "Remote Control"
                 }
@@ -133,7 +148,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 425.0, 577.0, 43.0, 29.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 155.0, 41.0, 78.20513808727264, 18.0 ],
+                    "presentation_rect": [ 155.0, 47.0, 78.5, 18.0 ],
                     "text": "Remote Control",
                     "textjustification": 0
                 }
@@ -700,25 +715,6 @@
                     "outlettype": [ "" ],
                     "patching_rect": [ 441.0, -14.0, 81.0, 22.0 ],
                     "text": "r ---v8-started"
-                }
-            },
-            {
-                "box": {
-                    "angle": 270.0,
-                    "annotation": "Select a folder to allow the AI to scan for supported audio samples (.wav, .aiff, .aif, .aifc, .flac, .ogg, .mp3, .m4a) and use them to create audio clips.",
-                    "bgcolor": [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
-                    "hint": "",
-                    "id": "obj-86",
-                    "ignoreclick": 0,
-                    "maxclass": "panel",
-                    "mode": 0,
-                    "numinlets": 1,
-                    "numoutlets": 0,
-                    "patching_rect": [ 173.0, 616.0, 63.0, 83.5 ],
-                    "presentation": 1,
-                    "presentation_rect": [ 123.0, 0.0, 126.70025211572647, 74.05541574954987 ],
-                    "proportion": 0.39,
-                    "varname": "Sample Folder"
                 }
             },
             {
@@ -1386,6 +1382,26 @@
                     "patching_rect": [ 4.0, 129.0, 83.0, 75.0 ],
                     "presentation": 1,
                     "presentation_rect": [ 4.0000001192092896, 83.3333358168602, 114.3333367407322, 64.00000190734863 ],
+                    "proportion": 0.39,
+                    "saved_attribute_attributes": {
+                        "bgfillcolor": {
+                            "expression": "themecolor.live_assignment_text_bg"
+                        }
+                    }
+                }
+            },
+            {
+                "box": {
+                    "angle": 270.0,
+                    "bgcolor": [ 0.27450980392156865, 0.27450980392156865, 0.27450980392156865, 1.0 ],
+                    "id": "obj-76",
+                    "maxclass": "panel",
+                    "mode": 0,
+                    "numinlets": 1,
+                    "numoutlets": 0,
+                    "patching_rect": [ 115.0, 664.0, 83.0, 75.0 ],
+                    "presentation": 1,
+                    "presentation_rect": [ 132.0, 4.0, 112.0, 62.0 ],
                     "proportion": 0.39,
                     "saved_attribute_attributes": {
                         "bgfillcolor": {

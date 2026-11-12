@@ -64,8 +64,8 @@ export function InstallationOptions() {
 }
 
 /**
- * "Allow other devices to connect": the same switch as on the Max for Live
- * device. Applies on change, like the device, and shows what the server says.
+ * "Remote Control": the same switch as on the Max for Live device. Applies on
+ * change, like the device, and shows what the server says.
  * @returns {JSX.Element} The checkbox, its warning, and the server's message
  */
 export function NetworkAccessOption() {
@@ -73,7 +73,7 @@ export function NetworkAccessOption() {
   // Turning it on is only possible from the computer running Live.
   const blocked = network.allowNetwork === false && !network.onThisComputer;
 
-  // Turning it off from another device cuts that device off.
+  // Turning it off from another phone or computer cuts it off.
   const leaving = network.allowNetwork === true && !network.onThisComputer;
 
   return (
@@ -81,7 +81,7 @@ export function NetworkAccessOption() {
       className="flex flex-col gap-1.5 border-t border-zinc-300 pt-3 dark:border-zinc-600"
       data-testid="network-access-option"
     >
-      <h4 className="text-[13px] font-semibold">Network</h4>
+      <h4 className="text-[13px] font-semibold">Remote Control</h4>
       <label className="flex cursor-pointer items-center gap-2">
         <input
           type="checkbox"
@@ -106,15 +106,17 @@ export function NetworkAccessOption() {
             input.checked = network.allowNetwork === true;
           }}
         />
-        Allow other devices to connect
+        Allow other computers to connect
       </label>
       <p
         id="allow-network-warning"
         className="text-xs text-zinc-600 dark:text-zinc-400"
       >
-        Lets a phone or another computer on your network connect. Anyone on that
-        network can then control Live, and there&apos;s no password, so only use
-        it on a network you trust.
+        Lets a phone or another computer on your network connect.{" "}
+        <span className="text-amber-700 dark:text-amber-300">
+          Warning: anyone on that network can control Live, and there&apos;s no
+          password, so only use it on a network you trust.
+        </span>
       </p>
       {network.loadFailed && (
         <p
@@ -141,7 +143,7 @@ export function NetworkAccessOption() {
           className="text-xs"
           data-testid="allow-network-leaving"
         >
-          Turning it off will cut this device off.
+          Turning it off will disconnect you.
         </p>
       )}
       {/* Always rendered, so a screen reader announces the text put into it. */}

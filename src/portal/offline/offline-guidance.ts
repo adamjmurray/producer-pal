@@ -94,7 +94,7 @@ export function remoteGuidance(host: string): McpResponse {
 
 Check on Live's computer:
 - Live 12.3+ is running with the Producer Pal device in the Set.
-- "Allow other devices to connect" is on in the device's Setup tab.
+- "Remote Control" is on in the device's Setup tab.
 - The address and port are right.
 Setup help: ${SETUP_URL}
 

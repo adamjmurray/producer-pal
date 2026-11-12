@@ -119,7 +119,7 @@ export async function setupUiTest(
 
 /**
  * The Installation tab's status reads, and the header badge's: nothing
- * installed, nothing to offer, and "Allow other devices to connect" off. A spec
+ * installed, nothing to offer, and "Remote Control" off. A spec
  * that wants more registers its own route after this.
  * @param page - Playwright page
  */

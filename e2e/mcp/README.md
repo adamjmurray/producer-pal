@@ -139,7 +139,7 @@ Set the `MCP_URL` environment variable to use a different server:
 MCP_URL=http://192.168.1.100:3350/mcp npm run e2e:mcp
 ```
 
-That machine's device needs **Allow other devices to connect** on.
+That machine's device needs **Remote Control** on.
 
 A server on another machine refuses the remote script switches, so
 `resetConfig()` skips them there.

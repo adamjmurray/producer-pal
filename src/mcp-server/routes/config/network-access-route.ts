@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// "Allow other devices to connect", for the chat UI. The device toggle does the
+// "Remote Control", for the chat UI. The device toggle does the
 // same through the Max message; both end in the listeners' setAllowNetwork,
 // which saves the setting and shows it on the device. Not part of /settings:
 // that file's keys never open the network.

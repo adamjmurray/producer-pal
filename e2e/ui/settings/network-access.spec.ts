@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: MIT
 
-// "Allow other devices to connect" on the Installation tab against a stubbed
+// "Allow other computers to connect" on the Installation tab against a stubbed
 // /network-access. The page is served from localhost, so turning it on is
 // offered; what the server answers (its real state, or a refusal) is what the
 // box then shows.
@@ -50,7 +50,7 @@ async function stubNetworkAccess(
   return sent;
 }
 
-test.describe("Settings — allow other devices (stubbed backend)", () => {
+test.describe("Settings — allow other computers (stubbed backend)", () => {
   test("warns, and turns on when the server says it did", async ({ page }) => {
     await installStubs(page);
     const sent = await stubNetworkAccess(page, false, {
@@ -65,7 +65,7 @@ test.describe("Settings — allow other devices (stubbed backend)", () => {
 
     await expect(box).not.toBeChecked();
     await expect(page.getByTestId("network-access-option")).toContainText(
-      "Anyone on that network can then control Live, and there's no password",
+      "Warning: anyone on that network can control Live, and there's no password",
     );
 
     // click, not check(): the box only flips once the server answers.
@@ -132,5 +132,37 @@ test.describe("Settings — allow other devices (stubbed backend)", () => {
 
     await expect(box).not.toBeChecked();
     expect(sent).toStrictEqual([{ allowNetwork: false }]);
+  });
+
+  test("follows the server when the window regains focus", async ({ page }) => {
+    await installStubs(page);
+
+    let reported = false;
+
+    await page.route("**/network-access", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ allowNetwork: reported }),
+      }),
+    );
+
+    await loadSettings(page);
+    await openInstallationTab(page);
+
+    const box = page.getByTestId("allow-network");
+
+    await expect(box).not.toBeChecked();
+
+    // Someone flips the toggle on the device.
+    reported = true;
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await expect(box).toBeChecked();
+
+    reported = false;
+    await page.evaluate(() =>
+      document.dispatchEvent(new Event("visibilitychange")),
+    );
+    await expect(box).not.toBeChecked();
   });
 });

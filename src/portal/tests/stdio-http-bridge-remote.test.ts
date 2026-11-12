@@ -214,7 +214,7 @@ describe("StdioHttpBridge with a device on another computer", () => {
 
       expect(isError).toBe(true);
       expect(text).toContain(`Producer Pal at ${HOST} didn't answer.`);
-      expect(text).toContain("Allow other devices to connect");
+      expect(text).toContain("Remote Control");
       expect(text).not.toContain("Cannot connect to Ableton Live");
     },
   );

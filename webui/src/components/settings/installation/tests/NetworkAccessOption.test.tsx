@@ -67,14 +67,35 @@ describe("NetworkAccessOption", () => {
     vi.stubGlobal("location", { host, hostname, port, protocol: "http:" });
   }
 
-  it("warns that anyone on the network gets control, with no password", () => {
+  it("labels the section and the box for what they do", () => {
     fetchMock.mockReturnValue(new Promise(() => {}));
     render(<NetworkAccessOption />);
 
     expect(
-      screen.getByText(/Anyone on that network can then control Live/),
+      screen.getByRole("heading", { name: "Remote Control" }),
     ).toBeTruthy();
-    expect(screen.getByText(/there's no password/)).toBeTruthy();
+    expect(screen.getByLabelText("Allow other computers to connect")).toBe(
+      box(),
+    );
+  });
+
+  it("warns in amber that anyone on the network gets control, with no password", () => {
+    fetchMock.mockReturnValue(new Promise(() => {}));
+    render(<NetworkAccessOption />);
+
+    const warning = screen.getByText(
+      /Warning: anyone on that network can control Live/,
+    );
+
+    expect(warning.textContent).toMatch(/there's no password/);
+    expect(warning.className).toContain("text-amber-700");
+    expect(warning.className).toContain("dark:text-amber-300");
+    expect(box().getAttribute("aria-describedby")).toContain(
+      "allow-network-warning",
+    );
+    expect(
+      document.getElementById("allow-network-warning")?.contains(warning),
+    ).toBe(true);
   });
 
   it("waits for the server before it can be changed", () => {
@@ -210,7 +231,7 @@ describe("NetworkAccessOption", () => {
     expect(confirm).not.toHaveBeenCalled();
   });
 
-  describe("on another device", () => {
+  describe("on another phone or computer", () => {
     it("can't be turned on, and says it must be done at the computer", async () => {
       openedAt("192.168.1.20:3350");
       serve(false);
@@ -223,7 +244,7 @@ describe("NetworkAccessOption", () => {
       );
     });
 
-    it("warns that turning it off cuts this device off, and confirms first", async () => {
+    it("warns that turning it off disconnects you, and confirms first", async () => {
       openedAt("192.168.1.20:3350");
       const confirm = stubConfirm(false);
 

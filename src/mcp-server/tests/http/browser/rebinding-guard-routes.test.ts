@@ -182,7 +182,7 @@ describe("DNS rebinding guard on the Express app", () => {
     });
 
     it.each(["studio-mac:3350", "studio-mac.local:3350", "nas.lan"])(
-      "answers GET /config on %s only while other devices may connect",
+      "answers GET /config on %s only while other computers may connect",
       async (host) => {
         setNetworkAccessAllowed(true);
 

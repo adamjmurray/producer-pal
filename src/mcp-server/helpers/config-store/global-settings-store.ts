@@ -97,7 +97,7 @@ export function updateGlobalSettings(
 }
 
 /**
- * Whether other devices on the network may connect. Kept out of GlobalSettings
+ * Whether other computers on the network may connect. Kept out of GlobalSettings
  * so /settings can neither show nor change it: only the device does. Anything
  * but exactly `true` reads as off.
  *
@@ -110,7 +110,7 @@ export function readAllowNetwork(): boolean {
 /**
  * Save the network access setting, keeping every other key.
  *
- * @param allowNetwork - Whether other devices may connect
+ * @param allowNetwork - Whether other computers may connect
  */
 export function writeAllowNetwork(allowNetwork: boolean): void {
   if (isConfigDirInert()) {

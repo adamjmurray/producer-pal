@@ -392,5 +392,5 @@ server URL" error and nothing here is pinged, looked up or copied.
   which installs on its own computer. `undo` and `redo` still go to the device.
 - **Every other offline call** (undo and redo included) gets guidance that names
   the host and lists what to check on Live's computer: Live 12.3+ running with
-  the device in the Set, "Allow other devices to connect" on in the device's
-  Setup tab, and the address and port. It never pings or reads the User Library.
+  the device in the Set, "Remote Control" on in the device's Setup tab, and the
+  address and port. It never pings or reads the User Library.

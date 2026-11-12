@@ -119,7 +119,7 @@ describe("isRebindSafeHost", () => {
 
   describe("local network names", () => {
     it.each(LOCAL_NETWORK_NAMES)(
-      "allows %s while other devices may connect",
+      "allows %s while other computers may connect",
       (host) => {
         setNetworkAccessAllowed(true);
 
@@ -148,7 +148,7 @@ describe("isRebindSafeHost", () => {
       expect(isRebindSafeHost("nas.lan")).toBe(false);
     });
 
-    it("still refuses look-alikes while other devices may connect", () => {
+    it("still refuses look-alikes while other computers may connect", () => {
       setNetworkAccessAllowed(true);
 
       expect(isRebindSafeHost("evil.local.evil.com")).toBe(false);
@@ -290,7 +290,7 @@ describe("rebindingGuard", () => {
       expect(guard("/mcp", { host }).passed).toBe(true);
     });
 
-    it("passes every path while other devices may connect", () => {
+    it("passes every path while other computers may connect", () => {
       setNetworkAccessAllowed(true);
 
       expect(guard("/config", { host: "evil.local:3350" }).passed).toBe(true);

@@ -5,7 +5,7 @@
 
 /**
  * The server always answers on this machine's loopback addresses. Its LAN
- * address answers only when "Allow other devices to connect" is saved on for
+ * address answers only when "Remote Control" is saved on for
  * this computer (~/.producer-pal/settings.json), and is refused otherwise.
  * Skipped when MCP_URL points at another machine.
  *
@@ -199,7 +199,7 @@ describe.skipIf(!isLocalServer)("PUT /network-access", () => {
   });
 
   it.skipIf(lanAddress == null)(
-    "turns on from this computer, refuses another device, and lets it turn off",
+    "turns on from this computer, refuses another computer, and lets it turn off",
     async () => {
       const on = await call("PUT", true, {
         headers: { host: `localhost:${port}` },
@@ -207,7 +207,7 @@ describe.skipIf(!isLocalServer)("PUT /network-access", () => {
 
       expect(on.body.allowNetwork).toBe(true);
 
-      // This computer's own network address looks like another device's.
+      // This computer's own network address looks like another computer's.
       const refused = await call("PUT", true, { connectTo: lanAddress });
 
       expect(refused.status).toBe(403);

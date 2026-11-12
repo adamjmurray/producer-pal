@@ -8,12 +8,13 @@ tunnel.
 
 For studios, classrooms, or performances on a local network, you don't need a
 tunnel. By default only Live's computer can connect. To let phones and other
-computers in, turn on **Allow other devices to connect** in the device's
+computers in, turn on **Remote Control** in the device's
 [Setup tab](/guide/device#setup-tab). It's saved for this computer, not in your
 Live Sets. It takes effect right away, and open connections drop for a moment.
-You can also turn it on in the Chat UI's Installation tab. That works from the
-Chat UI open at `localhost` on Live's computer. Other devices on your network,
-web tunnels, and other websites can't turn it on.
+You can also turn it on in the Chat UI under Settings → Installation → Remote
+Control. That works from the Chat UI open at `localhost` on Live's computer.
+Other phones and computers on your network, web tunnels, and other websites
+can't turn it on.
 
 ::: warning No Password
 
@@ -24,15 +25,15 @@ discovery less likely, but it is not real access control.
 
 :::
 
-**Upgrading to 2.6:** other computers could connect without this setting before.
-They can't now until you turn it on.
+**Upgrading to 2.6:** other phones and computers could connect without this
+setting before. They can't now until you turn it on.
 
 Update the `:3350` in your AI connection settings if you change the port in the
 Producer Pal Max for Live device.
 
 ### Chat From a Phone or Another Computer
 
-1. Turn on **Allow other devices to connect** in the device's Setup tab.
+1. Turn on **Remote Control** in the device's Setup tab.
 2. Connect the phone or other computer to the same Wi-Fi network as Live's
    computer.
 3. Find the IP address of Live's computer. On a Mac: System Settings → Wi-Fi →
@@ -64,7 +65,7 @@ On a phone or another computer, the address starts with `http://`, so the
 connection to the chat UI isn't encrypted. Your key is still stored encrypted,
 but anyone on that network could alter the page. For a trusted home or studio
 network that's usually fine. A [web tunnel](#web-tunnels) gives an encrypted
-connection and is the better way to use the chat UI from another device.
+connection and is the better way to use the chat UI from another computer.
 
 ## Web Chat
 
@@ -85,9 +86,9 @@ setup, and Live is reachable by anyone with the link.
 ## Web Tunnels
 
 A tunnel gives your Producer Pal a public web address. A tunnel running on
-Live's computer and pointed at `localhost` works with **Allow other devices to
-connect** off. One running in WSL2, Docker, or a VM, or pointed at the
-computer's network address, needs the setting on.
+Live's computer and pointed at `localhost` works with **Remote Control** off.
+One running in WSL2, Docker, or a VM, or pointed at the computer's network
+address, needs the setting on.
 
 The chat UI works through the tunnels below. On your own domain (a named
 Cloudflare tunnel, a custom ngrok domain), connecting claude.ai, ChatGPT, or Le

@@ -8,12 +8,12 @@ import { isLocalPeerRequest } from "../test-switch-guard.ts";
 import { isSameOriginRequest } from "./request-origin.ts";
 
 export const TURN_ON_REFUSED =
-  "Other devices can only be allowed to connect from the computer running " +
+  "Remote Control can only be turned on from the computer running " +
   "Live: use the chat UI at localhost, or the toggle on the device.";
 
 /**
  * Whether a request to turn network access on provably comes from a person at
- * this computer, not from another device or a web page of another site. Every
+ * this computer, not from another computer or a web page of another site. Every
  * check must pass:
  *
  * - The connection is from loopback, with a loopback `Host` and no proxy

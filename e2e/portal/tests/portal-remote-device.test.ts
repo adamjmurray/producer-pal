@@ -92,7 +92,7 @@ describe("a portal whose device is on another computer", () => {
 
       expect(isError).toBe(true);
       expect(text).toContain(`Producer Pal at ${host} didn't answer.`);
-      expect(text).toContain("Allow other devices to connect");
+      expect(text).toContain("Remote Control");
       expect(text).not.toContain("Cannot connect to Ableton Live");
     }
 

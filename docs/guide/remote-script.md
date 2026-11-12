@@ -64,8 +64,9 @@ Installation**.
    `<User Library>/Presets/MIDI Effects/Max MIDI Effect/Producer_Pal.amxd`. One
    copy there serves all your projects, and lets a coding agent or the Claude
    Desktop extension add Producer Pal to a new project.
-3. **Remote script:** click **Install** (or **Update**). The script is written
-   to `<User Library>/Remote Scripts/Producer_Pal`, replacing any older copy.
+3. **Control Surface remote script:** click **Install** (or **Update**). The
+   script is written to `<User Library>/Remote Scripts/Producer_Pal`, replacing
+   any older copy.
 
 ### Swap the running device for the User Library copy
 

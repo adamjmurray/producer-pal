@@ -96,23 +96,23 @@ reasoning and the rejected alternatives.
 Stated plainly, because you should be able to make your own call:
 
 - **The local server has no authentication.** By default it listens only on this
-  computer (127.0.0.1 and ::1, port 3350), so other devices on your network
-  can't reach it. Turning on "Allow other devices to connect" in the device's
-  Setup tab, or in the chat UI opened on this computer (a per-computer setting,
-  off by default, never saved in a Live Set) makes it listen on all network
-  interfaces, and then anyone on that network who finds the port can drive
-  Ableton Live. Only turn it on for a network you trust. Other programs on your
-  own computer can always reach it. The chat UI refuses to turn it on from other
-  devices, web tunnels and other websites. A raw TCP forwarder on this computer
-  (`ssh -R`, socat, `ngrok tcp`) relays the caller's own headers and can't be
-  told apart from a local client.
+  computer (127.0.0.1 and ::1, port 3350), so other computers on your network
+  can't reach it. Turning on "Remote Control" in the device's Setup tab, or in
+  the chat UI opened on this computer (a per-computer setting, off by default,
+  never saved in a Live Set) makes it listen on all network interfaces, and then
+  anyone on that network who finds the port can drive Ableton Live. Only turn it
+  on for a network you trust. Other programs on your own computer can always
+  reach it. The chat UI refuses to turn it on from other computers, web tunnels
+  and other websites. A raw TCP forwarder on this computer (`ssh -R`, socat,
+  `ngrok tcp`) relays the caller's own headers and can't be told apart from a
+  local client.
 - **Web pages can't reach the server by pointing a domain at your computer**
   (DNS rebinding). Reached by any name other than localhost, an IP address, or a
   known tunnel domain (Cloudflare quick tunnels, Pinggy, ngrok), only the MCP
   endpoint answers, and never to a web page. Local network names (`studio-mac`,
-  `studio-mac.local`) count as safe only while "Allow other devices to connect"
-  is on, because the local network decides where they point. So on a custom
-  domain, MCP connectors work, but the chat UI and REST API don't yet.
+  `studio-mac.local`) count as safe only while "Remote Control" is on, because
+  the local network decides where they point. So on a custom domain, MCP
+  connectors work, but the chat UI and REST API don't yet.
 - **Web tunnel URLs are effectively secrets.** If you expose Producer Pal
   through a tunnel, anyone with the URL can reach it. Treat it like a password.
 - **Tool inputs trust the AI provider.** Producer Pal assumes the model's tool
@@ -125,8 +125,8 @@ It's designed for trusted local use, not deployment in adversarial environments.
 ## Security Best Practices
 
 - Keep your API keys and any web tunnel URLs private
-- Leave "Allow other devices to connect" off unless you need it, and only turn
-  it on for a network you trust
+- Leave "Remote Control" off unless you need it, and only turn it on for a
+  network you trust
 - Use the latest version of Producer Pal
 - Be cautious when using unfamiliar forks of this repository
 

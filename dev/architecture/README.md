@@ -157,15 +157,15 @@ imports all tool definitions from `src/tools/**/*.def.ts`.
 
 **Key details:**
 
-- Runs on port 3350 by default, on 127.0.0.1 and ::1 only. "Allow other devices
-  to connect" (saved per computer in `~/.producer-pal/settings.json`, not in the
-  Set) switches it to all interfaces. The device toggle and
-  `PUT /network-access` (the chat UI) both end in `setAllowNetwork`. The route
-  refuses to turn it on unless the request looks like it is from this computer
-  (loopback socket and Host, no proxy headers, same-origin or no browser
-  headers, JSON body); turning it off works from anywhere. A raw TCP forwarder
-  can't be told apart (see SECURITY.md). The switch keeps the requesting
-  connection until its answer is sent, even with other switches queued
+- Runs on port 3350 by default, on 127.0.0.1 and ::1 only. "Remote Control"
+  (saved per computer in `~/.producer-pal/settings.json`, not in the Set)
+  switches it to all interfaces. The device toggle and `PUT /network-access`
+  (the chat UI) both end in `setAllowNetwork`. The route refuses to turn it on
+  unless the request looks like it is from this computer (loopback socket and
+  Host, no proxy headers, same-origin or no browser headers, JSON body); turning
+  it off works from anywhere. A raw TCP forwarder can't be told apart (see
+  SECURITY.md). The switch keeps the requesting connection until its answer is
+  sent, even with other switches queued
 - Uses StreamableHTTP transport (SSE is deprecated)
 - Bundles all dependencies (@modelcontextprotocol/sdk, express, zod)
 

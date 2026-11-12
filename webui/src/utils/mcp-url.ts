@@ -110,7 +110,7 @@ export function getSettingsUrl(): string {
 }
 
 /**
- * Gets the network-access endpoint URL ("Allow other devices to connect": GET
+ * Gets the network-access endpoint URL ("Remote Control": GET
  * reads it, PUT changes it).
  * @returns {string} The network-access endpoint URL
  */

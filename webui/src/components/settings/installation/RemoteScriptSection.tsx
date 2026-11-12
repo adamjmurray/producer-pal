@@ -57,7 +57,7 @@ export function RemoteScriptSection({
         id="remote-script"
         testId="remote-script-section"
         kind="unknown"
-        title="Remote script"
+        title="Control Surface remote script"
       >
         <Description />
         {remote.loading ? (
@@ -84,7 +84,7 @@ export function RemoteScriptSection({
       id="remote-script"
       testId="remote-script-section"
       kind={look.kind}
-      title="Remote script"
+      title="Control Surface remote script"
       aside={
         <InstallButton
           status={status}

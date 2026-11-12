@@ -64,7 +64,7 @@ export interface HttpListenOptions {
 
 /**
  * Serve the app on this machine only (127.0.0.1 and ::1), or on all interfaces
- * when "Allow other devices to connect" is on. The setting is saved per
+ * when "Remote Control" is on. The setting is saved per
  * computer in ~/.producer-pal/settings.json, never in the Live Set or a start
  * argument, so opening someone else's Set or a crash restart can't open the
  * network. The device's `allowNetwork 0|1` message changes it; Node sends the
@@ -449,7 +449,7 @@ async function settleWithin(
 function logNetworkAccess(allowNetwork: boolean): void {
   if (allowNetwork) {
     nodeWarn(
-      "Producer Pal: other devices can connect. Anyone on your network can " +
+      "Producer Pal: other computers can connect. Anyone on your network can " +
         "control Live, and there's no password. Only use a network you trust.",
     );
   } else {

@@ -113,7 +113,7 @@ describe("/network-access", () => {
   });
 
   describe("refusing to turn on", () => {
-    const REFUSED = /only be allowed to connect from the computer running Live/;
+    const REFUSED = /only be turned on from the computer running Live/;
 
     it.each([
       ["a tunnel's Host", { host: "demo.trycloudflare.com" }],
@@ -179,7 +179,7 @@ describe("/network-access", () => {
         await put(true);
 
         // Connecting to the computer's own network address shows up as that
-        // address, as another device's would.
+        // address, as another computer's would.
         const res = await send(port(), {
           connectTo: LAN_ADDRESS,
           body: JSON.stringify({ allowNetwork: true }),
