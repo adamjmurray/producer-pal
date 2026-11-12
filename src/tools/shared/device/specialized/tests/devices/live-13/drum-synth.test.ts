@@ -186,7 +186,11 @@ describe("Drum Synth", () => {
         const active = activeAt(type, firstModels(modelParam, model));
 
         expect(active.toSorted()).toStrictEqual(
-          expected(type, model, type === "Clap" ? ["Material"] : []),
+          expected(
+            type,
+            model,
+            type === "Clap" && model === "Marbles" ? ["Material"] : [],
+          ),
         );
       }
     },
@@ -209,11 +213,18 @@ describe("Drum Synth", () => {
     expect(activeAt("Snare", models)).toContain("Snare TR Snap");
   });
 
-  it("gates Material by Sound Type only, not by Clap model", () => {
-    expect(activeAt("Clap", firstModels("Clap Model", "Guiro"))).toContain(
-      "Material",
+  it.each([
+    ["Clap", "Marbles", true],
+    ["Clap", "Clap TR", false],
+    ["Clap", "Guiro", false],
+    ["Kick", "Kick 80x", false],
+  ])("Material under %s / %s is active: %s", (type, model, isActive) => {
+    const models = firstModels(
+      type === "Clap" ? "Clap Model" : undefined,
+      type === "Clap" ? model : undefined,
     );
-    expect(activeAt("Kick", firstModels())).not.toContain("Material");
+
+    expect(activeAt(type, models).includes("Material")).toBe(isActive);
   });
 
   it("answers a write check from the current sound type and model", () => {
@@ -241,5 +252,6 @@ describe("Drum Synth", () => {
 
     expect(isParamInactiveBySpecialized(device, "Kick 80x Click")).toBe(true);
     expect(isParamInactiveBySpecialized(device, "Snare Model")).toBe(false);
+    expect(isParamInactiveBySpecialized(device, "Material")).toBe(true);
   });
 });

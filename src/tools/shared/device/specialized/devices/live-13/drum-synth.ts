@@ -97,10 +97,11 @@ function modelPrefix(model: string): string {
 }
 
 /**
- * `Material` (Wood, Plastic, Marble) sits among the Clap params. Which Clap
- * model it belongs to can't be read from the API, so it is gated by type only.
+ * `Material` belongs to the Clap type's Marbles model (Live names it
+ * `Clap_MarblesMaterial`) but carries no model prefix, so it is gated by name:
+ * off for other types, and off for the other Clap models.
  */
-const CLAP_ONLY = "Material";
+const MARBLES_PARAM = "Material";
 
 /**
  * The rules: one on Sound Type, one per type on its model param.
@@ -118,14 +119,21 @@ function drumSynthRules(): InactiveWhenRule[] {
     Object.fromEntries(
       TYPES.filter(({ type }) => type !== "Clap").map(({ type }) => [
         type,
-        [CLAP_ONLY],
+        [MARBLES_PARAM],
       ]),
     ),
   );
-  const modelRules = TYPES.map(({ modelParam, models }) =>
+  const modelRules = TYPES.map(({ type, modelParam, models }) =>
     prefixModes(
       modelParam,
       Object.fromEntries(models.map((model) => [model, modelPrefix(model)])),
+      type === "Clap"
+        ? Object.fromEntries(
+            models
+              .filter((model) => model !== "Marbles")
+              .map((model) => [model, [MARBLES_PARAM]]),
+          )
+        : {},
     ),
   );
 

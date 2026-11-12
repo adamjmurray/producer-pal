@@ -30,6 +30,7 @@ import {
   REMOTE_SCRIPT_E2E,
   requireRemoteScript,
 } from "../../device/helpers/remote-script-test-helpers.ts";
+import { hasVst3 } from "../../device/helpers/hosted-plugin-test-helpers.ts";
 import { postEnvelopeRoute } from "../helpers/envelope-route-test-helpers.ts";
 import { envelopeClipTools } from "../read/live-13/envelope-clip-tools.ts";
 
@@ -236,5 +237,43 @@ describe.skipIf(!REMOTE_SCRIPT_E2E || !LIVE_13_OR_NEWER)(
       expect((await writeEnvelopes(NOTES_CLIP, "volume:")).envelopes).toBe(1);
       expect(await readEnvelopes(NOTES_CLIP)).toStrictEqual([]);
     });
+
+    // Last: a hosted plug-in's envelope may not be clearable, and this one
+    // leaves rt0/s0 with an envelope. The device is deleted afterwards.
+    it.skipIf(!hasVst3("Serum2.vst3"))(
+      "writes and reads an envelope on a hosted plug-in on the return",
+      async () => {
+        const device = await call<{ id: string; path: string }>(
+          "ppal-create-device",
+          { deviceName: "Serum 2 FX", hosted: true, path: "rt0/d+" },
+        );
+
+        try {
+          // The wrapper restores its plug-in a moment after it appears.
+          await sleep(3000);
+
+          const id = `${device.path}/h1`;
+          const written = await writeEnvelopes(NO_ENVS, `${id}: 1|1 0 / 1|3 1`);
+
+          expect(written.envelopes).toBe(1);
+          expect(await readEnvelopes(NO_ENVS)).toStrictEqual([
+            expect.objectContaining({
+              parameter: "Main Vol",
+              id,
+              eventCount: 2,
+            }),
+          ]);
+
+          // Not on the other return's clip.
+          const other = await writeEnvelopes(WITH_ENV, `${id}: 1|1 0 / 1|3 1`);
+
+          expect(other.envelopes).toBe(0);
+          expect(other.detail).toMatch(/not on the clip's track \(rt1\)/);
+        } finally {
+          await call("ppal-delete", { type: "device", id: device.id });
+        }
+      },
+      60_000,
+    );
   },
 );

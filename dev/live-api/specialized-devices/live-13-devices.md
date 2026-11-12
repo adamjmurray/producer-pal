@@ -49,9 +49,10 @@ is by name (`specialized/devices/live-13/drum-synth.ts`, one table):
 - Both are `prefixModes` rules: a param starting with a listed prefix and a
   space is inactive unless it starts with the active value's prefix.
 
-`Material` (Marble, Wood, Plastic) sits in the Clap group. The API can't say
-which Clap model uses it (Marbles is a guess), so it is gated by Sound Type =
-Clap only, not by model.
+`Material` (Wood, Plastic, Marble) has no model prefix, but Live's schema names
+it `Clap_MarblesMaterial`, so it belongs to the Clap type's Marbles model. It is
+inactive unless Sound Type = Clap and Clap Model = Marbles (a name-based `cases`
+entry on the Sound Type and Clap Model rules).
 
 On a drum pad, the chain is named after the preset ("Kick 80x"), not the device.
 

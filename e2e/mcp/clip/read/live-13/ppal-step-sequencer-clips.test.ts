@@ -167,6 +167,29 @@ describe.skipIf(!LIVE_13_OR_NEWER)("step sequencer clips (Live 13)", () => {
       }
     });
 
+    it("lands a scale on it, and it stays a step sequencer clip", async () => {
+      try {
+        const result = await call<UpdateClipResult>("ppal-update-clip", {
+          path: STEP,
+          scale: "D Minor",
+        });
+
+        expect(result.detail).toBeUndefined();
+        expect(result.scale).toBeUndefined();
+
+        const clip = await call<ReadClipResult>("ppal-read-clip", {
+          path: STEP,
+          include: ["*"],
+        });
+
+        expect(clip.scale).toBe("D Minor");
+        expect(clip.type).toBe("step-sequencer");
+      } finally {
+        // The Set's own scale; a read omits a clip scale equal to it.
+        await call("ppal-update-clip", { path: STEP, scale: "A Minor" });
+      }
+    });
+
     it("writes the notes clip and ignores the step sequencer one in the same call", async () => {
       const results = await call<Array<UpdateClipResult | SkippedTargetResult>>(
         "ppal-update-clip",

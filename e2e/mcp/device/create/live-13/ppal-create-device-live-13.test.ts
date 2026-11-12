@@ -176,6 +176,24 @@ describe.skipIf(!LIVE_13_OR_NEWER)("Live 13 devices", () => {
     expect(state(read, "Rim Model")).toBe("inactive");
   });
 
+  it("gates a Drum Synth's Material by the Clap model", async () => {
+    const path = await createTestDeviceAt(
+      ctx.client!,
+      "Drum Synth",
+      await createTrack("midi"),
+    );
+    const materialState = async (): Promise<string | undefined> =>
+      (await readParams(path)).parameters.find((p) => p.name === "Material")
+        ?.state;
+
+    await writeParam(path, "Sound Type", "Clap");
+    await writeParam(path, "Clap Model", "Clap TR");
+    expect(await materialState()).toBe("inactive");
+
+    await writeParam(path, "Clap Model", "Marbles");
+    expect(await materialState()).toBeUndefined();
+  });
+
   it("creates a Clipper and reads its params", async () => {
     const path = await createTestDeviceAt(
       ctx.client!,
