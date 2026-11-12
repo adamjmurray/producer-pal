@@ -264,3 +264,107 @@ export function setUpTracks(
 
   return liveSet;
 }
+
+export interface ArrangementClip {
+  start: number;
+  name: string;
+}
+
+/**
+ * Re-register the tracks so they list their clip slots, as Live's do, and put
+ * arrangement clips on a regular track's main lane and take lanes. Ids are
+ * `a<track>-<lane>-<n>`; the lanes are listed in the order given.
+ * @param sceneCount - How many slots each track has
+ * @param arrangement - Clips on one track
+ * @param arrangement.track - The track
+ * @param arrangement.main - Clips on the main lane
+ * @param arrangement.lanes - Clips on each take lane
+ */
+export function registerTracks(
+  sceneCount: number,
+  arrangement?: {
+    track: number;
+    main: ArrangementClip[];
+    lanes?: ArrangementClip[][];
+  },
+): void {
+  const slotIds = (prefix: string, index: number): string[] =>
+    Array.from(
+      { length: sceneCount },
+      (_, scene) => `${prefix}${index}s${scene}`,
+    );
+
+  for (let index = 0; index < 2; index++) {
+    const own = arrangement?.track === index ? arrangement : undefined;
+    const clips =
+      own == null
+        ? { main: [], lanes: [] }
+        : putClips(index, own.main, own.lanes ?? []);
+
+    registerMockObject(`track${index}`, {
+      path: livePath.track(index),
+      type: "Track",
+      properties: {
+        name: "Synth",
+        clip_slots: children(...slotIds("t", index)),
+        arrangement_clips: children(...clips.main),
+        take_lanes: children(...clips.lanes),
+      },
+    });
+    registerMockObject(`return${index}`, {
+      path: livePath.returnTrack(index),
+      type: "Track",
+      properties: {
+        name: "A-Echo",
+        clip_slots: children(...slotIds("rt", index)),
+      },
+    });
+
+    // The world's return slots have other ids, so give these slots their own.
+    for (let scene = 0; scene < sceneCount; scene++) {
+      registerMockObject(`rt${index}s${scene}`, {
+        path: livePath.returnTrack(index).clipSlot(scene),
+        properties: { has_clip: 0 },
+      });
+    }
+  }
+}
+
+function putClips(
+  trackIndex: number,
+  main: ArrangementClip[],
+  lanes: ArrangementClip[][],
+): { main: string[]; lanes: string[] } {
+  const track = livePath.track(trackIndex);
+  const register = (
+    owner: { arrangementClip: (i: number) => string },
+    prefix: string,
+    clips: ArrangementClip[],
+  ): string[] =>
+    clips.map(({ start, name }, i) => {
+      registerMockObject(`${prefix}-${i}`, {
+        path: owner.arrangementClip(i),
+        type: "Clip",
+        properties: { name, start_time: start, is_arrangement_clip: 1 },
+      });
+
+      return `${prefix}-${i}`;
+    });
+  const laneIds = lanes.map((clips, lane) => {
+    const laneMock = track.takeLane(lane);
+
+    registerMockObject(`lane${trackIndex}-${lane}`, {
+      path: String(laneMock),
+      type: "TakeLane",
+      properties: {
+        arrangement_clips: children(
+          ...register(laneMock, `a${trackIndex}-l${lane}`, clips),
+        ),
+      },
+    });
+
+    return `lane${trackIndex}-${lane}`;
+  });
+
+  return { main: register(track, `a${trackIndex}-main`, main), lanes: laneIds };
+}

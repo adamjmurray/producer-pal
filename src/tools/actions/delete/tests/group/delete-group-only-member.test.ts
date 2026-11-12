@@ -12,6 +12,7 @@ import {
   LONE_IN_NESTED,
   PAIR,
   PAIR_IN_NESTED,
+  putClipInSlot,
   setUpGroupSet,
 } from "./delete-group-test-helpers.ts";
 
@@ -38,6 +39,25 @@ describe("deleteObject of the only track in a group track", () => {
       { id: "g", foldable: true },
       { id: "a", group: "g" },
     ]);
+
+    expect(deleteObject({ path: "t2,t0", type: "track" })).toStrictEqual([
+      {
+        path: "t2",
+        ok: false,
+        detail:
+          "Live won't delete the only track in a group track; delete group track t1 (id g) instead, which deletes both; that track is now t1 (id a)",
+      },
+      { id: "w", deletedPath: "t0" },
+    ]);
+  });
+
+  it("lists no clips for the skipped track", () => {
+    setUpGroupSet([
+      { id: "w" },
+      { id: "g", foldable: true },
+      { id: "a", group: "g", clipSlots: ["a-slot"] },
+    ]);
+    putClipInSlot("a-slot", 2);
 
     expect(deleteObject({ path: "t2,t0", type: "track" })).toStrictEqual([
       {

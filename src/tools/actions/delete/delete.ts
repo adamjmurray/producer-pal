@@ -19,6 +19,7 @@ import {
   type Target,
   type WriteSpec,
 } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
+import { clipDeletes } from "./helpers/clip-deletes.ts";
 import { deleteObjectByType } from "./helpers/delete-object-by-type.ts";
 import {
   type DeletePayload,
@@ -37,7 +38,6 @@ import {
   parseDeleteCall,
 } from "./helpers/parse-delete-call.ts";
 import { positionalDeleteOrder } from "./helpers/positional-delete-order.ts";
-import { sceneDeletes } from "./helpers/scene-deletes.ts";
 
 /** What the call has to say about one target. */
 export interface DeleteEntry {
@@ -64,9 +64,9 @@ interface DeleteChecked {
   tracks: Map<number, LiveAPI>;
   /** Which named tracks are groups, and which sit inside one that is named */
   groups: GroupDeletes;
-  /** What each scene's delete says about the clips that go with it, by target
-   * index, read before the first delete */
-  sceneClips: ReadonlyMap<number, string>;
+  /** What each scene's or track's delete says about the clips that go with it,
+   * by target index, read before the first delete */
+  clips: ReadonlyMap<number, string>;
 }
 
 /**
@@ -105,7 +105,7 @@ const DELETE_WRITE: WriteSpec<
     sent,
     tracks: new Map(),
     groups: groupDeletes(type, targets),
-    sceneClips: sceneDeletes(type, targets),
+    clips: clipDeletes(type, targets),
   }),
   plan: planDeletes,
   write: deleteTarget,
@@ -182,11 +182,11 @@ function deleteTarget(
     return noteEntry(named, `${NOTHING_TO_DELETE}${data.hint ?? ""}`);
   }
 
-  const { type, tracks, groups, sceneClips } = step.checked;
+  const { type, tracks, groups, clips } = step.checked;
   const { id } = data;
   const address = step.planned;
   const alsoDeleted =
-    sceneClips.get(step.index) ??
+    clips.get(step.index) ??
     alsoDeletedDetail(groups.unnamedInside.get(step.index) ?? []);
   let { object } = data;
 
@@ -195,13 +195,17 @@ function deleteTarget(
     object = LiveAPI.from(id);
 
     if (!object.exists()) {
-      return { id, ...addressField(address, true) };
+      return {
+        id,
+        ...addressField(address, true),
+        ...(clips.has(step.index) && { detail: clips.get(step.index) }),
+      };
     }
   }
 
   const refusal = deleteObjectByType(type, id, object, tracks, (phrase) =>
     step.landed(
-      sceneClips.has(step.index)
+      clips.has(step.index)
         ? `${phrase}, ${alsoDeleted}`
         : landedPhrase(phrase, groups, step.index, alsoDeleted),
       {

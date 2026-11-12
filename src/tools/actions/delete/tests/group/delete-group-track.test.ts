@@ -10,6 +10,7 @@ import { deleteObject } from "../../delete.ts";
 import {
   type GroupTrack,
   PAIR,
+  putClipInSlot,
   setUpGroupSet,
 } from "./delete-group-test-helpers.ts";
 
@@ -147,5 +148,50 @@ describe("deleteObject of a group track", () => {
 
     // Four inside, and the track after them that ends the walk.
     expect(resolves("live_set tracks *")).toBe(5);
+  });
+
+  // A group's slots only fire the tracks inside it, so its entry never lists
+  // clips, and neither does it list the clips of the tracks that went with it.
+  describe("with clips on the tracks", () => {
+    const withClips: GroupTrack[] = [
+      { id: "g", foldable: true, clipSlots: ["g-slot"] },
+      { id: "a", group: "g", clipSlots: ["a-slot"] },
+      { id: "b", group: "g" },
+    ];
+
+    function putClips(): void {
+      putClipInSlot("g-slot", 0);
+      putClipInSlot("a-slot", 1);
+    }
+
+    it("keeps the group's detail to the tracks inside it", () => {
+      setUpGroupSet(withClips);
+      putClips();
+
+      expect(deleteObject({ id: "g", type: "track" })).toStrictEqual({
+        id: "g",
+        deletedPath: "t0",
+        detail:
+          "also deleted the 2 tracks inside this group track: t1 (id a), t2 (id b)",
+      });
+    });
+
+    it("names the clips of a track the call named along with its group", () => {
+      setUpGroupSet(withClips);
+      putClips();
+
+      expect(deleteObject({ id: "g, a", type: "track" })).toStrictEqual([
+        {
+          id: "g",
+          deletedPath: "t0",
+          detail: "also deleted the track inside this group track: t2 (id b)",
+        },
+        {
+          id: "a",
+          deletedPath: "t1",
+          detail: 'also deleted the clip on this track: t1/s0 "Loop"',
+        },
+      ]);
+    });
   });
 });

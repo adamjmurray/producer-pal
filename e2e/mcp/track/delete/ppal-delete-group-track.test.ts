@@ -18,8 +18,8 @@ import {
   parseToolResult,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers";
-import { PARENT_TRACK } from "../e2e-test-set.ts";
+} from "../../mcp-test-helpers";
+import { PARENT_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
