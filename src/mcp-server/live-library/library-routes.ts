@@ -17,9 +17,8 @@ import {
 import {
   type FindDuplicatesArgs,
   type FindSimilarArgs,
-  type LibrarySearchRouteArgs,
+  type LibrarySearchArgs,
   type ListPluginsArgs,
-  type ResolveFileIdsArgs,
 } from "./library-types.ts";
 import { type ListCategoriesArgs, listCategories } from "./list-categories.ts";
 import { listPlugins } from "./list-plugins.ts";
@@ -33,7 +32,6 @@ import { ensureSqliteAvailable } from "./live-db.ts";
 import { findDuplicates } from "./query/similarity/find-duplicates.ts";
 import { findSimilar } from "./query/similarity/find-similar.ts";
 import { librarySearch } from "./query/library-search.ts";
-import { resolveFileIds } from "./query/resolve-file-ids.ts";
 
 /**
  * Register all library routes. Idempotency is the caller's responsibility;
@@ -58,14 +56,7 @@ export function registerLibraryRoutes(): void {
   registerNodeRoute(
     "library.search",
     libraryRoute((args) =>
-      librarySearch((args as LibrarySearchRouteArgs | null) ?? {}),
-    ),
-  );
-
-  registerNodeRoute(
-    "library.resolveFileIds",
-    libraryRoute((args) =>
-      resolveFileIds((args as ResolveFileIdsArgs | null) ?? {}),
+      librarySearch((args as LibrarySearchArgs | null) ?? {}),
     ),
   );
 

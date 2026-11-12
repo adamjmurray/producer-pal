@@ -429,7 +429,6 @@ export interface ProducerPalConfig {
   smallModelMode: boolean;
   notation: string;
   jsonOutput: boolean; // true = JSON, false = compact (default)
-  sampleFolder: string;
   liveApiEnabled: boolean;
   liveApiForcedOn: boolean;
   // Undocumented test switch (evals and e2e, same-machine requests only): false

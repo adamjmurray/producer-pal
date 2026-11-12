@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
 import { library } from "../../library.ts";
 
 vi.mock(
@@ -15,29 +14,8 @@ vi.mock(
   }),
 );
 
-vi.mock(import("../../read-samples.ts"), async (importOriginal) => {
-  const actual = await importOriginal();
-
-  return { ...actual, readSamples: vi.fn(actual.readSamples) };
-});
-
 const protocolMock =
   await import("#src/live-api-adapter/protocols/node-request-v8-protocol.ts");
-
-/**
- * Stub the "/samples/" folder with the given top-level .wav file names.
- *
- * @param names - File names to place directly under "/samples/"
- */
-function mockSampleFolder(...names: string[]): void {
-  mockFolderStructure({
-    "/samples/": names.map((name) => ({
-      name,
-      type: "file" as const,
-      extension: ".wav",
-    })),
-  });
-}
 
 type SearchBatchResult = Extract<
   Awaited<ReturnType<typeof library>>,
@@ -489,26 +467,19 @@ describe("library tool — searches fan-out", () => {
     expect(result.results[0]?.items).toHaveLength(1);
   });
 
-  it("omits top-level dbAvailable when every query bypasses the DB", async () => {
-    mockSampleFolder("kick.wav");
+  it("omits top-level dbAvailable when every query fails before the DB", async () => {
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: false,
+      error: "route down",
+    });
 
-    const result = await library(
-      {
-        action: "search",
-        searches: [{ source: "sample-folder" }, { source: "sample-folder" }],
-      },
-      { sampleFolder: "/samples/" },
-    );
-
-    if (!("results" in result)) {
-      throw new Error("expected results");
-    }
+    const result = await runSearchBatch([{ tags: "Kick" }, { tags: "Snare" }]);
 
     expect("dbAvailable" in result).toBe(false);
-    expect(result.results[0]?.items.map((i) => leaf(i.path))).toStrictEqual([
-      "kick.wav",
+    expect(result.results.map((r) => r.detail)).toStrictEqual([
+      "route down",
+      "route down",
     ]);
-    expect(protocolMock.requestNode).not.toHaveBeenCalled();
   });
 
   it("surfaces stalenessNote from any DB-consulting query at the batch level", async () => {

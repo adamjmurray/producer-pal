@@ -24,8 +24,8 @@ cross-origin browser writes.
 
 Fields (all optional; unknown keys are ignored):
 
-- `projectContext`, `sampleFolder`: string or `null` (`null` clears it).
-  `projectContext` is capped at 10,000 characters, like a `ppal-context` write
+- `projectContext`: string or `null` (`null` clears it). Capped at 10,000
+  characters, like a `ppal-context` write
 - `smallModelMode`, `jsonOutput`, `liveApiEnabled`: boolean
 - `notation`: one of the notations in `src/shared/notation.ts`
 - `tools`: array of tool names; must be valid for the current `liveApiEnabled`

@@ -90,13 +90,12 @@ setoutletassist(0, "tool call results");
 /**
  * Persistent session-scoped state set by the Max patch via setter messages.
  * This object is the single source of truth for projectContext/smallModelMode/
- * sampleFolder; per-request contexts snapshot from it.
+ * notation; per-request contexts snapshot from it.
  */
 interface SessionState {
   projectContext: { content: string };
   smallModelMode: boolean;
   notation: Notation;
-  sampleFolder: string | null;
 }
 
 const sessionState: SessionState = {
@@ -105,7 +104,6 @@ const sessionState: SessionState = {
   },
   smallModelMode: false,
   notation: DEFAULT_NOTATION,
-  sampleFolder: null,
 };
 
 /**
@@ -125,7 +123,6 @@ function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
     projectContext: sessionState.projectContext,
     smallModelMode: sessionState.smallModelMode,
     notation: sessionState.notation,
-    sampleFolder: sessionState.sampleFolder,
     ...incoming,
   };
 
@@ -174,7 +171,7 @@ const toolDispatch: Record<
   "ppal-duplicate": (args, ctx) => duplicate(args as any, ctx),
   "ppal-context": (args, ctx) => contextTool(args as any, ctx),
   "ppal-manage": (args, ctx) => manage(args as any, ctx),
-  "ppal-library": (args, ctx) => library(args as any, ctx),
+  "ppal-library": (args) => library(args as any),
   "ppal-live-api": (args, ctx) => liveApi(args as any, ctx),
   // Debug tool: only a dev build (ENABLE_LIVE_API) carries it.
   ...(process.env.ENABLE_LIVE_API === "true"
@@ -348,17 +345,6 @@ function applyRestoredProjectContext(
 
   sessionState.projectContext.content = restored;
   outlet(0, "update_project_context", restored);
-}
-
-/**
- * Set the sample folder path
- *
- * @param path - Sample folder path
- */
-export function sampleFolder(path: unknown): void {
-  const value = textEditParamToString(path);
-
-  sessionState.sampleFolder = value;
 }
 
 // The device fans the server's whole config outlet at both V8 and the Setup

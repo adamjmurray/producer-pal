@@ -8,7 +8,6 @@ import { findDuplicates } from "../../../query/similarity/find-duplicates.ts";
 import {
   expectQueryDegradesOnBrokenDb,
   expectQueryDegradesWithoutDb,
-  expectSampleFolderExplained,
   setupLibraryFixtureLifecycle,
   STALENESS_NOTE,
 } from "../../fixtures/library-fixture.ts";
@@ -96,15 +95,6 @@ describe("findDuplicates", () => {
 
     expect(result.groups).toStrictEqual([]);
     expect(result.detail).toContain("inFolder path not found");
-  });
-
-  it("reports source:sampleFolder rather than a silent empty set", async () => {
-    const result = await expectSampleFolderExplained(
-      () => findDuplicates({ source: "sample-folder" }),
-      (r) => r.groups,
-    );
-
-    expect(result.dbAvailable).toBe(true);
   });
 
   it("degrades to dbAvailable:false when the Live DB is missing", async () => {

@@ -14,7 +14,6 @@
  */
 
 import { getToolCalls } from "../../../assertions/index.ts";
-import { resolveSamplesPath } from "../../../run-scenario/scenario-config.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
@@ -121,10 +120,6 @@ export const librarySearchFanout: EvalScenario = {
   requires: { params: ["searches"] },
   // Reads the library and writes nothing to the Set.
   reuseLiveSet: true,
-
-  config: {
-    sampleFolder: resolveSamplesPath("samples"),
-  },
 
   messages: [
     "Connect to Ableton Live",

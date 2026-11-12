@@ -8,7 +8,6 @@
  * paths it resolves.
  */
 
-import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { type ConfigOptions } from "#evals/shared/config.ts";
 import { type RunEnv } from "../run-env/run-env.ts";
@@ -18,7 +17,7 @@ const LIVE_SETS_DIR = "evals/live-sets";
 /**
  * Build the config POSTed to the server for a run. The run environment (CLI
  * flags) wins for its four keys; the scenario keeps its own bound config.
- * @param scenarioConfig - Scenario-bound config (projectContext, sampleFolder)
+ * @param scenarioConfig - Scenario-bound config (projectContext)
  * @param runEnv - The active run environment (CLI-driven)
  * @returns The merged config to send to the server
  */
@@ -33,18 +32,6 @@ export function mergeConfigs(
     tools: runEnv.tools,
     liveApiEnabled: runEnv.liveApiEnabled,
   };
-}
-
-/**
- * Validate config before sending to the server.
- * Throws if sampleFolder is set but the directory doesn't exist.
- *
- * @param config - Config to validate
- */
-export function validateConfig(config: ConfigOptions): void {
-  if (config.sampleFolder && !existsSync(config.sampleFolder)) {
-    throw new Error(`sampleFolder does not exist: ${config.sampleFolder}`);
-  }
 }
 
 /**

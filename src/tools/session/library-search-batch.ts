@@ -21,9 +21,9 @@ export const MAX_BATCH_QUERIES = 20;
 /**
  * Run many filtered library searches in one call, grouping each query's
  * results under its label. Each query reuses the exact single-search path
- * (via the injected runSearch), so filters, folder-scan dedup, and limit
- * behave identically to a standalone search. Query order is preserved and
- * a query with no matches yields an empty `items` entry (never dropped).
+ * (via the injected runSearch), so filters and limit behave identically to a
+ * standalone search. Query order is preserved and a query with no matches
+ * yields an empty `items` entry (never dropped).
  *
  * The batch is capped at MAX_BATCH_QUERIES; extras are truncated with a
  * warning. The top-level dbAvailable reflects the global DB state: present
@@ -31,18 +31,13 @@ export const MAX_BATCH_QUERIES = 20;
  * DB missing.
  *
  * @param queries - Per-query filter sets (optional label each)
- * @param ctx - Per-request context carrying sampleFolder
  * @param runSearch - The single-search implementation to reuse per query
  * @param param - The name the caller sent the queries under, for a warning
  * @returns One entry per query in order, or a lone query's result unwrapped
  */
 export async function runSearchBatch(
   queries: LibraryBatchQuery[],
-  ctx: Partial<ToolContext>,
-  runSearch: (
-    args: LibrarySearchArgs,
-    ctx: Partial<ToolContext>,
-  ) => Promise<LibraryToolSearchResult>,
+  runSearch: (args: LibrarySearchArgs) => Promise<LibraryToolSearchResult>,
   param = "searches",
 ): Promise<LibraryBatchResult | LibraryToolSearchResult> {
   const capped = queries.slice(0, MAX_BATCH_QUERIES);
@@ -76,7 +71,7 @@ export async function runSearchBatch(
     let searchResult: LibraryToolSearchResult;
 
     try {
-      searchResult = await runSearch(filters, ctx);
+      searchResult = await runSearch(filters);
     } catch (err) {
       results.push({
         label: resolvedLabel,
@@ -86,10 +81,8 @@ export async function runSearchBatch(
       continue;
     }
 
-    if ("dbAvailable" in searchResult && searchResult.dbAvailable != null) {
-      dbConsulted = true;
-      dbAvailable &&= searchResult.dbAvailable;
-    }
+    dbConsulted = true;
+    dbAvailable &&= searchResult.dbAvailable !== false;
 
     stalenessNote ??= searchResult.stalenessNote;
 

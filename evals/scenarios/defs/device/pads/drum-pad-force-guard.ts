@@ -30,7 +30,6 @@ import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
 import { argText } from "../../arg-text.ts";
 import { getAllToolCalls } from "../../../assertions/index.ts";
-import { resolveSamplesPath } from "../../../run-scenario/scenario-config.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
@@ -230,16 +229,12 @@ export const drumPadForceGuard: EvalScenario = {
   kind: "capability",
   liveSet: "basic-midi-4-track",
 
-  config: {
-    sampleFolder: resolveSamplesPath("samples"),
-  },
-
   setup: seedDrumSampler,
 
   messages: [
     MSG_CONNECT,
-    "Show me the available samples.",
-    "In the Drums track's drum rack, load the kick onto the Drum Sampler on the D3 pad.",
+    "Find me a kick sample in the library.",
+    "In the Drums track's drum rack, load that kick onto the Drum Sampler on the D3 pad.",
     "Yes, go ahead and replace it.",
   ],
 

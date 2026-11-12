@@ -8,7 +8,6 @@ import { beginLiveApiBuildStats } from "#src/live-api-adapter/live-api-build-sta
 import { resetLiveApiTracking } from "#src/live-api-adapter/live-api-release.ts";
 import { beginWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
 import { clearForceGuardRecords } from "#src/tools/shared/write-pipeline/force-guard.ts";
-import { Folder, clearMockFolderStructure } from "./mocks/mock-folder.ts";
 import { LiveAPI } from "./mocks/mock-live-api.ts";
 import { Max, resetMaxMock } from "./mocks/mock-max.ts";
 import { clearMockRegistry } from "./mocks/mock-registry.ts";
@@ -18,7 +17,6 @@ const g = globalThis as Record<string, unknown>;
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 g.LiveAPI = LiveAPI;
-g.Folder = Folder;
 await import("#src/live-api-adapter/live-api-extensions.ts");
 
 // Nothing answers on port 0, so no unit test reaches a real Producer Pal
@@ -70,9 +68,6 @@ vi.mock(import("@testing-library/preact"), async (importOriginal) => {
 beforeEach(() => {
   // Restore the default mcp_response handler and responder, clear recorded requests
   resetMaxMock();
-
-  // Clear mock folder structure
-  clearMockFolderStructure();
 
   // Clear registered mock objects
   clearMockRegistry();

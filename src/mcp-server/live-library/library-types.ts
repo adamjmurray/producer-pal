@@ -96,14 +96,8 @@ export type LibraryDeviceKind = "instrument" | "audiofx" | "midifx";
  */
 export type LibraryItemType = "loop" | "oneshot" | "impulse-response";
 
-/**
- * Where in Live's library a file lives. Mostly collapses Live's
- * `folder_kind` integers; "sample-folder" is the special case for files
- * found via the user-configured custom sample folder (V8 filesystem
- * scan, not in Live's DB).
- */
+/** Where in Live's library a file lives. Collapses Live's `folder_kind` integers. */
 export type LibrarySource =
-  | "sample-folder"
   | "user"
   | "pack"
   | "builtin"
@@ -136,27 +130,6 @@ export interface LibrarySearchArgs {
    * (adds one filesystem check per result).
    */
   verifyPaths?: boolean;
-}
-
-/**
- * What the `library.search` route takes: the search's filters, plus the files
- * to leave out (see `library.resolveFileIds`).
- */
-export interface LibrarySearchRouteArgs extends LibrarySearchArgs {
-  /** DB files the search skips, so its rows, offset and count ignore them. */
-  excludeFileIds?: number[];
-}
-
-/** What the `library.resolveFileIds` route takes. */
-export interface ResolveFileIdsArgs {
-  /** Absolute file paths, matched case-insensitively. */
-  paths?: string[];
-}
-
-/** What the `library.resolveFileIds` route answers. */
-export interface ResolveFileIdsResult {
-  /** The DB file_id of each path the DB lists; the rest are left out. */
-  fileIds: number[];
 }
 
 export interface LibraryItem {
@@ -234,9 +207,7 @@ export interface LibrarySearchResult {
   items: LibraryItem[];
   /** How many matches lie beyond the returned window. Omitted when none do. */
   more?: number;
-  /** Present when the Live DB was consulted. False if the DB couldn't be
-   * found (Live not installed). Omitted when the request bypassed the DB
-   * entirely (e.g. source=sampleFolder). */
+  /** False if the DB couldn't be found (Live not installed). */
   dbAvailable?: boolean;
   /** Set when the DB snapshot may miss what Live added since it last quit. */
   stalenessNote?: string;
@@ -325,8 +296,8 @@ export interface LibraryBatchEntry {
 
 export interface LibraryBatchResult {
   results: LibraryBatchEntry[];
-  /** Present when the Live DB was consulted; false if it couldn't be found.
-   * Omitted when every query bypassed the DB (e.g. all source=sampleFolder). */
+  /** Present when any query reached the DB; false if it couldn't be found.
+   * Omitted when every query failed before reaching it. */
   dbAvailable?: boolean;
   /** Set when any DB-consulting query saw a stale snapshot. Surfaced at the
    * batch level, not per entry: staleness is one property of Live's DB, so

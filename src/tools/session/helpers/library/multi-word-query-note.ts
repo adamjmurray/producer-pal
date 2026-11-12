@@ -5,9 +5,8 @@
 
 /**
  * The note an empty search carries when its `query` has several words. A query
- * is matched as one substring (of the name in Live's library, of the relative
- * path in the sample folder), but models write keyword lists, and an empty
- * answer doesn't tell them the shape was wrong.
+ * is matched as one substring of the name, but models write keyword lists, and
+ * an empty answer doesn't tell them the shape was wrong.
  */
 
 const MAX_WORD_LENGTH = 20;

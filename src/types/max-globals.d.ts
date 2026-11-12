@@ -23,7 +23,6 @@ interface ToolContext {
    * keep this ambient .d.ts import-free). Undefined ⇒ bar|beat default.
    */
   notation?: "barbeat" | "midi-json" | "stark";
-  sampleFolder: string | null;
   /**
    * Whether this request's caller can use ppal-manage. Undefined ⇒ true unless
    * small-model mode is on.
@@ -108,25 +107,4 @@ declare class Task {
   schedule(delayMs: number): void;
   /** Cancel the scheduled task */
   cancel(): void;
-}
-
-/**
- * Max V8 Folder object for file system operations.
- */
-declare class Folder {
-  constructor(path: string);
-  /** Current directory path */
-  readonly pathname: string;
-  /** Current file/folder name (iterate with next()) */
-  readonly filename: string;
-  /** File extension of current entry */
-  readonly extension: string;
-  /** Type of current entry: "file" or "fold" */
-  readonly filetype: "file" | "fold";
-  /** True when iteration is complete */
-  readonly end: boolean;
-  /** Move to next entry */
-  next(): void;
-  /** Close the folder handle */
-  close(): void;
 }

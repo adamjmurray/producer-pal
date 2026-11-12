@@ -6,10 +6,9 @@
 /**
  * Scenario: find drum sounds in the library and put each on its own pad.
  *
- * `device-drum-kit` builds a kit from the eval samples folder. This one has no
- * sample folder: the sounds come from Live's own library, so the model has to
- * search it, pick a kick, a snare, a closed hat and a clap, and load them on
- * the pads the user names.
+ * `device-drum-kit` builds a two-pad kit. This one is bigger: the model has to
+ * search Live's own library, pick a kick, a snare, a closed hat and a clap, and
+ * load them on the pads the user names.
  *
  * Library content differs per machine, so no file name is pinned. Each pad is
  * graded by keyword: its sample's name has to read as the sound asked for.

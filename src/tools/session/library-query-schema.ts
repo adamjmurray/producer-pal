@@ -36,7 +36,6 @@ export const LIBRARY_DEVICE_KIND_VALUES = [
 ] as const;
 
 export const LIBRARY_SOURCE_VALUES = [
-  "sample-folder",
   "user",
   "pack",
   "builtin",
@@ -58,10 +57,6 @@ export const LIBRARY_ACTION_VALUES = [
 export const LIBRARY_SORT_VALUES = ["use-count", "mod-date", "name"] as const;
 
 // Old camelCase and snake_case spellings, still accepted but never published.
-export const LIBRARY_SOURCE_ALIASES = {
-  sampleFolder: "sample-folder",
-} as const;
-
 export const LIBRARY_ACTION_ALIASES = {
   listTags: "list-tags",
   listCategories: "list-categories",
@@ -99,10 +94,7 @@ export const batchQuerySchema = z.object(
       .describe("default: audio"),
     type: z.enum(LIBRARY_TYPE_VALUES).optional(),
     deviceKind: z.enum(LIBRARY_DEVICE_KIND_VALUES).optional(),
-    source: aliasedEnum(
-      LIBRARY_SOURCE_VALUES,
-      LIBRARY_SOURCE_ALIASES,
-    ).optional(),
+    source: z.enum(LIBRARY_SOURCE_VALUES).optional(),
     inFolder: z.coerce.string().optional(),
     sort: aliasedEnum(LIBRARY_SORT_VALUES, LIBRARY_SORT_ALIASES).optional(),
     verifyPaths: z.boolean().optional(),

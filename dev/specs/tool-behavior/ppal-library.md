@@ -36,25 +36,12 @@ date. The refusal rules are in
   and `nextOffset`, also when a lone entry is unwrapped into a plain answer.
   - A count, not a flag: `more: 3` and `more: 3000` call for different next
     steps (page on, or narrow the search), and the number costs the same tokens
-    as `true`. The count is exact, except for a file that can't be matched to
-    its copy in the database (see below).
+    as `true`.
   - The search reads one row past its page, and only finding one runs a
     `COUNT(*)` over the same filters (milliseconds). A search that fits its page
     never counts.
-  - Pages are windows on one list: the sample folder's matches first, then the
-    database's, each in its own sort order (the order a search always had).
-    Every order ends on the file's id, so a file can't land on two pages or
-    none. A page of folder items alone still asks the database for one row, to
-    learn whether any follow.
-  - A file both the sample folder and Live's database list shows once, as the
-    folder's. The database search skips the files the folder matched (matched by
-    path, ignoring case), so its rows, offset, probe row and count never see
-    them: pages stay full, `more` is exact, and `nextOffset` never leads to an
-    empty page. V8 looks the folder's paths up as database ids first (a V8 to
-    Node message can't carry a long path list). A file that can't be matched to
-    its database copy by path (the lookup failed, or a folder name differs in a
-    way the lookup doesn't fold) is still shown once, as a filter on the page
-    drops the copy, but `more` counts it, one too high.
+  - Pages are windows on the database's one list, in its sort order. Every order
+    ends on the file's id, so a file can't land on two pages or none.
   - An `offset` past the last match returns no items, no `more`, and a `detail`
     saying so, so it isn't read as a search with no matches. A negative,
     fractional or non-numeric `offset` is treated as a whole number from 0,
@@ -66,18 +53,15 @@ date. The refusal rules are in
     the last preset doesn't claim there were none.
 - **A multi-word `query` that finds nothing says why.** `query` matches as one
   substring (`*` is the only wildcard), but models write keyword lists. When a
-  query with whitespace between words finds no item in the whole search (sample
-  folder and database both count), the result carries a one-sentence `note`: put
-  `*` between words (the example is built from the query's first two words, left
-  out when they aren't plain and short), or use `tags`/`type` for the rest. V8
-  adds it once per search, so it is the same for a plain search, each `searches`
-  entry and `source: "sample-folder"`, whatever the query already holds (a `*`
-  included), and joins the database's own notes with `; `. It is left off when
-  the result has a `detail` (database not found, sample folder missing or
-  unreadable, `inFolder` not found), which already says why nothing came back,
-  and on a page after the first: an empty page past the end says nothing about
-  the query. The sample folder matches the relative path, the database the file
-  name; the note holds for both.
+  query with whitespace between words finds no item in the whole search, the
+  result carries a one-sentence `note`: put `*` between words (the example is
+  built from the query's first two words, left out when they aren't plain and
+  short), or use `tags`/`type` for the rest. V8 adds it once per search, so it
+  is the same for a plain search and each `searches` entry, whatever the query
+  already holds (a `*` included), and joins the database's own notes with `; `.
+  It is left off when the result has a `detail` (database not found, `inFolder`
+  not found), which already says why nothing came back, and on a page after the
+  first: an empty page past the end says nothing about the query.
 - **An item leaves out what the request or its own `path` already says.** The
   items are sorted on their full fields first, then trimmed:
   - `name` goes when it is the last segment of `path`. A name with a `/` in it

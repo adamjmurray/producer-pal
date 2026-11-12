@@ -107,7 +107,6 @@ export async function resetConfig(): Promise<void> {
     smallModelMode: false,
     projectContext: "",
     jsonOutput: true,
-    sampleFolder: "",
     // Only a same-machine client may send these; a remote server refuses the
     // whole request (403) if they are present.
     ...(isLoopbackUrl(CONFIG_URL) && {

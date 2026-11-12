@@ -88,7 +88,6 @@ const config: ProducerPalConfig & { notation: Notation } = {
   smallModelMode: false,
   notation: DEFAULT_NOTATION,
   jsonOutput: false,
-  sampleFolder: "",
   liveApiEnabled: liveApiForcedOn,
   liveApiForcedOn,
   ...(liveApiForcedOn && { remoteScriptEnabled: true }),
@@ -137,12 +136,6 @@ Max.addHandler("dismissUpdate", () => {
 
 Max.addHandler("compactOutput", (enabled: unknown) => {
   config.jsonOutput = !enabled;
-});
-
-Max.addHandler("sampleFolder", (path: unknown) => {
-  const value = textEditParamToString(path);
-
-  config.sampleFolder = value;
 });
 
 Max.addHandler("liveApiEnabled", (enabled: unknown) => {
@@ -529,16 +522,6 @@ function applyConfigUpdate(
       configKey: "jsonOutput",
       deviceKey: "compactOutput",
       send: () => Max.outlet("config", "compactOutput", !config.jsonOutput),
-    });
-  }
-
-  if (incoming.sampleFolder !== undefined) {
-    config.sampleFolder = incoming.sampleFolder ?? "";
-    outlets.push({
-      field: "sampleFolder",
-      configKey: "sampleFolder",
-      deviceKey: "sampleFolder",
-      send: () => Max.outlet("config", "sampleFolder", config.sampleFolder),
     });
   }
 

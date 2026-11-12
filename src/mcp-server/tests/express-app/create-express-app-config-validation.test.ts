@@ -48,7 +48,6 @@ describe("POST /config validation and device failures", () => {
   it("names every bad field", async () => {
     const response = await appState.postConfig({
       projectContext: 123,
-      sampleFolder: ["x"],
       smallModelMode: "false",
       jsonOutput: 1,
       liveApiEnabled: "yes",
@@ -63,7 +62,6 @@ describe("POST /config validation and device failures", () => {
       "liveApiEnabled",
       "notation",
       "projectContext",
-      "sampleFolder",
       "smallModelMode",
       "tools",
     ]);
@@ -173,9 +171,9 @@ describe("POST /config validation and device failures", () => {
     it("names every field that failed, once each", async () => {
       const before = await getConfig();
 
-      failOutlets("sampleFolder", "compactOutput");
+      failOutlets("projectContext", "compactOutput");
       const response = await appState.postConfig({
-        sampleFolder: "/tmp/somewhere",
+        projectContext: "somewhere",
         jsonOutput: !before.jsonOutput,
       });
       const body = await response.json();
@@ -183,11 +181,11 @@ describe("POST /config validation and device failures", () => {
       expect(response.status).toBe(502);
       expect(body.fields.toSorted()).toStrictEqual([
         "jsonOutput",
-        "sampleFolder",
+        "projectContext",
       ]);
       const after = await getConfig();
 
-      expect(after.sampleFolder).toBe(before.sampleFolder);
+      expect(after.projectContext).toBe(before.projectContext);
       expect(after.jsonOutput).toBe(before.jsonOutput);
     });
 

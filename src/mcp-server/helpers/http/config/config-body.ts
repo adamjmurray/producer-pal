@@ -21,7 +21,6 @@ const configBodySchema = z.object({
     })
     .nullable()
     .optional(),
-  sampleFolder: z.string().nullable().optional(),
   smallModelMode: z.boolean().optional(),
   jsonOutput: z.boolean().optional(),
   liveApiEnabled: z.boolean().optional(),
@@ -107,7 +106,6 @@ export function parseConfigBody(
 
 const FIELD_TYPES: Record<string, string> = {
   projectContext: "string",
-  sampleFolder: "string",
   notation: "string",
   smallModelMode: "boolean",
   jsonOutput: "boolean",

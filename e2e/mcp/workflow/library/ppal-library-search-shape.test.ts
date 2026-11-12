@@ -8,26 +8,21 @@
  * search with no query or filter is refused, search `limit` is capped at 200, and an
  * item leaves out what its path or the request already says.
  *
- * Library.db contents vary by machine, so the DB assertions state invariants
- * that hold whatever is in it; the sample folder gives the exact case.
+ * Library.db contents vary by machine, so the assertions state invariants that
+ * hold whatever is in it. Live's Core Library ships with every install, so the
+ * item-shape cases search it.
  *
  * Run with: npm run e2e:mcp -- ppal-library-search-shape
  */
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   getToolErrorMessage,
   isToolError,
   parseToolResult,
-  setConfig,
   setupMcpTestContext,
 } from "../../mcp-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SAMPLE_FOLDER = resolve(__dirname, "../../../../evals/live-sets/samples");
 
 /** The most items any library call returns, mirrored from MAX_SEARCH_LIMIT. */
 const MAX_ITEMS = 200;
@@ -120,17 +115,6 @@ describe("ppal-library search shape", () => {
       expect(result.note).toBe(MULTI_WORD_NOTE);
     });
 
-    it("says it for a sample-folder search too", async () => {
-      await setConfig({ sampleFolder: SAMPLE_FOLDER });
-
-      const result = parseToolResult<ShapeResult>(
-        await call({ source: "sample-folder", query: NONSENSE }),
-      );
-
-      expect(result.items).toStrictEqual([]);
-      expect(result.note).toBe(MULTI_WORD_NOTE);
-    });
-
     it("says nothing for one word that finds nothing", async ({ skip }) => {
       const result = parseToolResult<ShapeResult>(
         await call({ query: "zqxjvwkpqz" }),
@@ -183,29 +167,27 @@ describe("ppal-library search shape", () => {
   });
 
   describe("item shape", () => {
-    it("leaves a sample-folder item with just its path and tags", async () => {
-      await setConfig({ sampleFolder: SAMPLE_FOLDER });
-
+    it("leaves out the source and kind the search already named", async () => {
       const { items } = parseToolResult<ShapeResult>(
-        await call({ source: "sample-folder", query: "kick" }),
+        await call({ source: "builtin", kind: "audio", query: "kick" }),
       );
 
-      expect(items).toStrictEqual([
-        { path: `${SAMPLE_FOLDER}/drums/kick.aiff`, tags: [] },
-      ]);
+      expect(items.length).toBeGreaterThan(0);
+
+      for (const item of items) {
+        expect(item.source).toBeUndefined();
+        expect(item.kind).toBeUndefined();
+      }
     });
 
     it("keeps source when the search names none, and drops the default kind", async () => {
-      await setConfig({ sampleFolder: SAMPLE_FOLDER });
-
       const { items } = parseToolResult<ShapeResult>(
         await call({ query: "kick" }),
       );
-      const folderItem = items.find((i) => i.source === "sample-folder");
 
+      expect(items.length).toBeGreaterThan(0);
       // Nothing filtered by source, so every item says where it lives.
       expect(items.every((i) => i.source !== undefined)).toBe(true);
-      expect(folderItem).toBeDefined();
       // The default kind is audio and these are audio, so none repeats it.
       expect(items.every((i) => i.kind === undefined)).toBe(true);
     });

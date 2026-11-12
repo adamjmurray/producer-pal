@@ -882,6 +882,12 @@ write; its entry gets the `detail`
 **`sends` is refused beside `sendGainDb` or `sendReturn`** (`ppal-update-track`,
 `ppal-update-device`), whatever the values. Use one or the other.
 
+**The Setup tab's Sample Folder setting and `ppal-library`'s `sample-folder`
+source are gone** (2.6.0). Add the folder to Places in Live's browser instead:
+`ppal-library` finds its files under `source: "user"`. A search sending
+`source: "sample-folder"` (or `sampleFolder`) is refused, and `POST /config`
+ignores a `sampleFolder` field.
+
 ## Memory answers changed in 2.6.0
 
 **`ppal-context` reads and deletes memories by list, and one name answers like

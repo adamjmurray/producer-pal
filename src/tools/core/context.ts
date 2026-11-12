@@ -41,8 +41,7 @@ interface ContextArgs {
  * V8 has no filesystem, so global and memory scopes round-trip to the Node
  * side over the RPC bridge.
  *
- * Sample search lives in `ppal-library` now (which surfaces both Live's
- * browser DB and the user-configured sampleFolder).
+ * Sample search lives in `ppal-library`.
  *
  * @param args - The parameters
  * @param args.action - Action to perform (read, write, delete)

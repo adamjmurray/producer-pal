@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: MIT
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
 import { library } from "../../../library.ts";
 import { multiWordQueryNote } from "../../../helpers/library/multi-word-query-note.ts";
 
@@ -21,7 +20,6 @@ const protocolMock =
 
 const NOTE =
   "query matches as one substring, not keywords. Use * between words (kick*house), or tags/type for the rest.";
-const ctx = { sampleFolder: "/samples/" };
 
 /**
  * Answer every library.search with an empty DB result.
@@ -34,25 +32,15 @@ function mockEmptyDb(extra: Record<string, unknown> = {}): void {
   });
 }
 
-/**
- * Stub the sample folder with one file, whose name has a space in it.
- */
-function mockFolder(): void {
-  mockFolderStructure({
-    "/samples/": [{ name: "big kick.wav", type: "file", extension: ".wav" }],
-  });
-}
-
 describe("library tool: multi-word query note", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockFolderStructure({ "/samples/": [] });
   });
 
   it("explains the matching when a plain search finds nothing", async () => {
     mockEmptyDb();
 
-    expect(await library({ query: "kick house oneshot" }, ctx)).toStrictEqual({
+    expect(await library({ query: "kick house oneshot" })).toStrictEqual({
       dbAvailable: true,
       items: [],
       note: NOTE,
@@ -62,25 +50,15 @@ describe("library tool: multi-word query note", () => {
   it("says nothing for a single word", async () => {
     mockEmptyDb();
 
-    expect(await library({ query: "kick" }, ctx)).not.toHaveProperty("note");
+    expect(await library({ query: "kick" })).not.toHaveProperty("note");
   });
 
   it("says nothing on a page past the first", async () => {
     mockEmptyDb();
 
     expect(
-      await library({ query: "kick house", offset: 5 }, ctx),
+      await library({ query: "kick house", offset: 5 }),
     ).not.toHaveProperty("note");
-  });
-
-  it("says nothing when the search found something", async () => {
-    mockEmptyDb();
-    mockFolder();
-
-    const result = await library({ query: "big kick" }, ctx);
-
-    expect(result).toHaveProperty("items", [expect.anything()]);
-    expect(result).not.toHaveProperty("note");
   });
 
   it("says nothing when the DB found something", async () => {
@@ -92,78 +70,40 @@ describe("library tool: multi-word query note", () => {
       },
     });
 
-    expect(await library({ query: "big kick" }, ctx)).not.toHaveProperty(
-      "note",
-    );
+    expect(await library({ query: "big kick" })).not.toHaveProperty("note");
   });
 
   it("joins the DB's own note", async () => {
     mockEmptyDb({ note: "DB NOTE" });
 
-    expect(await library({ query: "kick house" }, ctx)).toHaveProperty(
+    expect(await library({ query: "kick house" })).toHaveProperty(
       "note",
       `DB NOTE; ${NOTE}`,
     );
   });
 
-  it("explains it for a sample-folder search too, with no DB call", async () => {
-    expect(
-      await library({ source: "sample-folder", query: "kick house" }, ctx),
-    ).toStrictEqual({ items: [], note: NOTE });
-    expect(protocolMock.requestNode).not.toHaveBeenCalled();
-  });
-
-  it("says nothing for a sample-folder search that matched", async () => {
-    mockFolder();
-
-    const result = await library(
-      { source: "sample-folder", query: "big kick" },
-      ctx,
-    );
-
-    expect(result).toHaveProperty("items", [expect.anything()]);
-    expect(result).not.toHaveProperty("note");
-  });
-
   it("leaves a detail that already says why nothing came back", async () => {
     mockEmptyDb({ dbAvailable: false, detail: "Live database not found" });
 
-    const result = await library({ query: "kick house" }, ctx);
+    const result = await library({ query: "kick house" });
 
     expect(result).toHaveProperty("detail", "Live database not found");
     expect(result).not.toHaveProperty("note");
-
-    const noFolder = await library(
-      { source: "sample-folder", query: "kick house" },
-      {},
-    );
-
-    expect(noFolder).toHaveProperty("detail");
-    expect(noFolder).not.toHaveProperty("note");
   });
 
   it("notes each searches entry on its own", async () => {
     mockEmptyDb();
 
-    const result = await library(
-      {
-        searches: [
-          { label: "words", query: "kick house" },
-          { label: "word", query: "snare" },
-          { label: "folder", source: "sample-folder", query: "hat open" },
-        ],
-      },
-      ctx,
-    );
+    const result = await library({
+      searches: [
+        { label: "words", query: "kick house" },
+        { label: "word", query: "snare" },
+      ],
+    });
 
     expect(result).toHaveProperty("results", [
       { label: "words", items: [], note: NOTE },
       { label: "word", items: [] },
-      {
-        label: "folder",
-        items: [],
-        note: NOTE.replace("kick*house", "hat*open"),
-      },
     ]);
   });
 
@@ -171,7 +111,7 @@ describe("library tool: multi-word query note", () => {
     mockEmptyDb();
 
     expect(
-      await library({ searches: [{ query: "kick house" }] }, ctx),
+      await library({ searches: [{ query: "kick house" }] }),
     ).toStrictEqual({ dbAvailable: true, items: [], note: NOTE });
   });
 });

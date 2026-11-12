@@ -208,17 +208,16 @@ describe("library search result items", () => {
   });
 
   it("caps a huge limit at the maximum", async () => {
-    const many = Array.from({ length: MAX_SEARCH_LIMIT + 50 }, (_, i) =>
-      item({ name: `k${i}.wav`, path: `/L/k${i}.wav`, folder: "L" }),
-    );
-
     vi.mocked(protocolMock.requestNode).mockResolvedValue({
       success: true,
-      result: { dbAvailable: true, items: many },
+      result: { dbAvailable: true, items: [] },
     });
 
-    const result = await library({ query: "k", limit: 1001001001001001 });
+    await library({ query: "k", limit: 1001001001001001 });
 
-    expect("items" in result && result.items).toHaveLength(200);
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.objectContaining({ limit: MAX_SEARCH_LIMIT }),
+    );
   });
 });

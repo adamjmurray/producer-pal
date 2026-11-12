@@ -186,26 +186,6 @@ export async function expectQueryDegradesOnBrokenDb(
 }
 
 /**
- * Assert a `source: "sample-folder"` query explains itself instead of returning
- * a silently empty set. sampleFolder files aren't in Live's fe_values index, so
- * the query can only ever match nothing.
- *
- * @param runQuery - Runs the library query under test and returns its result
- * @param matches - Pulls the result's match list (groups, items, ...)
- * @returns The query result, for any further assertions
- */
-export async function expectSampleFolderExplained<
-  T extends { detail?: string },
->(runQuery: () => Promise<T>, matches: (result: T) => unknown[]): Promise<T> {
-  const result = await runQuery();
-
-  expect(matches(result)).toStrictEqual([]);
-  expect(result.detail).toContain("sample-folder");
-
-  return result;
-}
-
-/**
  * Point the DB finder at nothing and assert the query degrades to
  * `dbAvailable: false` with the standard reason rather than throwing.
  *

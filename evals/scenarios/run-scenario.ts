@@ -31,7 +31,6 @@ import {
 import {
   mergeConfigs,
   resolveLiveSetPath,
-  validateConfig,
 } from "./run-scenario/scenario-config.ts";
 import { type DeciderSettings } from "./helpers/judge/decider-first-judge.ts";
 import {
@@ -109,7 +108,6 @@ export async function runScenario(
     // 2. Apply the run environment (CLI-driven) merged with scenario-bound config
     const mergedConfig = mergeConfigs(scenario.config, options.runEnv);
 
-    validateConfig(mergedConfig);
     await setConfig(mergedConfig);
 
     // 3. Create evaluation session

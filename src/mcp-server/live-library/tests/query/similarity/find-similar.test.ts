@@ -10,7 +10,6 @@ import { findSimilar } from "../../../query/similarity/find-similar.ts";
 import {
   expectQueryDegradesOnBrokenDb,
   expectQueryDegradesWithoutDb,
-  expectSampleFolderExplained,
   featureBlob,
   KICK_VECTOR,
   setupLibraryFixtureLifecycle,
@@ -218,13 +217,6 @@ describe("findSimilar", () => {
     expect(result.seed.found).toBe(true);
     expect(result.items).toStrictEqual([]);
     expect(result.detail).toContain("inFolder path not found");
-  });
-
-  it("reports source:sampleFolder rather than a silent empty set", async () => {
-    await expectSampleFolderExplained(
-      () => findSimilar({ similarTo: SEED_KICK, source: "sample-folder" }),
-      (r) => r.items,
-    );
   });
 
   it("degrades to dbAvailable:false when the Live DB is missing", async () => {

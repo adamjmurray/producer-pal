@@ -19,7 +19,7 @@ import {
  * - `useCount` goes when 0.
  * - `kind` and `source` go when they equal the search's own filter.
  *
- * @param items - Merged, sorted items (sorting needs the full fields)
+ * @param items - Sorted items (sorting needs the full fields)
  * @param args - The search's filters
  * @returns The items as the tool returns them
  */

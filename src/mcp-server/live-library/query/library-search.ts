@@ -30,7 +30,6 @@ import {
   type LibraryItem,
   type LibrarySearchArgs,
   type LibrarySearchResult,
-  type LibrarySearchRouteArgs,
 } from "../library-types.ts";
 import { findLiveFilesDbPath } from "../live-db-path.ts";
 import { openLiveDb } from "../live-db.ts";
@@ -51,11 +50,11 @@ import { rackKindNote } from "./notes/rack-kind-note.ts";
  * Run a structured library search.
  *
  * @param args - Filter parameters, and the files to leave out
- * @returns Result with merged items, plus dbAvailable flag for graceful
+ * @returns Result items, plus dbAvailable flag for graceful
  *   fallback when Live's DB isn't installed.
  */
 export async function librarySearch(
-  args: LibrarySearchRouteArgs = {},
+  args: LibrarySearchArgs = {},
 ): Promise<LibrarySearchResult> {
   const dbPath = await findLiveFilesDbPath();
 
@@ -196,18 +195,10 @@ async function pathExistsOnDisk(path: string): Promise<boolean> {
  */
 function searchPage(
   db: DatabaseSync,
-  args: LibrarySearchRouteArgs,
+  args: LibrarySearchArgs,
   parentId?: number,
 ): { rows: SearchRow[]; more?: number } {
   const { where, params } = buildCandidateWhere(args, parentId);
-
-  // One bound JSON value, not one `?` per id, so a long list can't reach
-  // SQLite's bound-parameter limit. The page, the probe row and the count all
-  // share this WHERE, so none of them sees an excluded file.
-  if (args.excludeFileIds != null && args.excludeFileIds.length > 0) {
-    where.push("f.file_id NOT IN (SELECT value FROM json_each(?))");
-    params.push(JSON.stringify(args.excludeFileIds));
-  }
 
   const limit = clampLibraryLimit(
     args.limit,
@@ -247,7 +238,7 @@ function searchPage(
 /**
  * Map the public LibrarySort enum to a SQL ORDER BY clause.
  *
- * Mirrors the JS comparator side in `sortPartition` (library.ts). When
+ * Mirrors the JS comparator side in `sortItems` (library.ts). When
  * adding a new LibrarySort variant, update BOTH sites — there is no
  * shared mapping table because one returns SQL and the other a Comparator.
  *

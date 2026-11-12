@@ -32,7 +32,6 @@ const BROADCAST_KEYS = [
   "notation",
   "projectContext",
   "reportDevice",
-  "sampleFolder",
   "smallModelMode",
   "tools",
   "updateDismissed",

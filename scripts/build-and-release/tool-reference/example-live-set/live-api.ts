@@ -9,7 +9,6 @@
 // This has to happen before any tool module is imported, which is why the
 // generator reaches everything downstream through dynamic import.
 
-import { Folder } from "#src/test/mocks/mock-folder.ts";
 import { LiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import { nodeRouteResponse } from "./node-routes.ts";
 
@@ -26,7 +25,6 @@ export async function installMockLiveApi(): Promise<void> {
   const g = globalThis as Record<string, unknown>;
 
   g.LiveAPI = LiveAPI;
-  g.Folder = Folder;
   g.Task = ExampleTask;
   g.outlet = handleOutlet;
 

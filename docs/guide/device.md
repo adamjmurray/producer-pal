@@ -111,16 +111,6 @@ AI is taught the notation at the start of a conversation, so switching notation
 takes full effect in a **new conversation**. In an ongoing chat, AI can still
 read your existing notes in the new notation but will keep writing the old one.
 
-### Sample Folder
-
-Configure a folder of audio samples to expose to the
-[Library](/features/tools#ppal-library) tool. Items from this folder appear
-before Live's library results in searches. Shows `(none)` when no folder is
-configured.
-
-- **Choose** - Select your sample folder
-- **Clear** - Remove the configured folder
-
 ### Debug
 
 Diagnostics. Not needed for day-to-day use.

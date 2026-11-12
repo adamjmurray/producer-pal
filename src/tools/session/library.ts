@@ -24,20 +24,13 @@ import {
   type ListPluginsResult,
   type PluginCategory,
   type PluginFormat,
-  type ResolveFileIdsResult,
 } from "#src/mcp-server/live-library/library-types.ts";
 import { emitWarning } from "#src/shared/max/v8-max-console.ts";
 import { refuseLibraryParamsOutsideAction } from "./helpers/library/library-action-params.ts";
-import { folderFileIds } from "./helpers/library/library-folder-overlap.ts";
 import { multiWordQueryNote } from "./helpers/library/multi-word-query-note.ts";
 import { trimLibraryItems } from "./helpers/library/library-item-trim.ts";
 import { refuseUnfilteredSearch } from "./helpers/library/library-unfiltered-search.ts";
 import { runSearchBatch } from "./library-search-batch.ts";
-import { readSamples } from "./read-samples.ts";
-import { errorMessage } from "#src/shared/error-message.ts";
-
-// The source that bypasses Live's DB for the user's sample folder.
-const SAMPLE_FOLDER = "sample-folder";
 
 // deviceKind doubles as the plugin category filter for list-plugins. Only the
 // values plugins can actually be (instrument/audiofx) map through; midifx has
@@ -79,21 +72,10 @@ type LibraryResult =
 /**
  * Search Live's browser library or enumerate available tags.
  *
- * The search action runs two sources in parallel:
- *  - sampleFolder scan (V8): the user-configured sampleFolder, when set
- *    AND filters don't require DB-only data (tags, non-audio kind, deviceKind).
- *  - DB query (Node): library.search route via requestNode RPC.
- * Results are merged and de-duplicated by absolute path. The sampleFolder
- * scan wins ties because the folder is explicitly user-configured.
- *
  * @param args - Tool arguments (action + filters)
- * @param toolContext - Per-request context carrying sampleFolder
  * @returns Search result or tag list, depending on action
  */
-export async function library(
-  args: LibraryArgs = {},
-  toolContext: Partial<ToolContext> = {},
-): Promise<LibraryResult> {
+export async function library(args: LibraryArgs = {}): Promise<LibraryResult> {
   const action = resolveAction(args.action);
   const searches = args.searches ?? args.queries;
   // The name the caller sent the list under, for an error that quotes it.
@@ -163,109 +145,53 @@ export async function library(
   // searches is the fan-out form of a search: each entry carries its own
   // filters, so the top-level ones don't apply.
   if (searches != null) {
-    return await runSearchBatch(
-      searches,
-      toolContext,
-      runSearch,
-      searchesParam,
-    );
+    return await runSearchBatch(searches, runSearch, searchesParam);
   }
 
-  return await runSearch(args, toolContext);
+  return await runSearch(args);
 }
 
 /**
- * Run a structured search against the configured folder + Live's DB,
- * merging results. Exported so the searches fan-out can reuse the exact
- * single-search path (filters, folder-scan dedup, limit) per query.
- *
- * Paging runs over the folder's matches followed by the DB's, so a page is a
- * window on that stream: folder items fill it first, the DB asks for the rest.
- * A file both sources list shows once, as the folder's: the DB search skips
- * the files the folder matched, so its pages and its count are exact.
+ * Run a structured search against Live's DB. Exported so the searches fan-out
+ * can reuse the exact single-search path (filters, limit) per query.
  *
  * @param args - Tool arguments
- * @param ctx - Per-request context
- * @returns Merged result, its items trimmed of what the request already says
+ * @returns The result, its items trimmed of what the request already says
  */
 export async function runSearch(
   args: LibraryArgs,
-  ctx: Partial<ToolContext>,
 ): Promise<LibraryToolSearchResult> {
-  const folderScan = scanFolderItems(args, ctx);
   const limit = clampLibraryLimit(
     args.limit,
     DEFAULT_LIBRARY_LIMIT,
     MAX_SEARCH_LIMIT,
   );
   const offset = clampLibraryOffset(args.offset);
-  const end = offset + limit;
-  // Sorted on the full fields before the page is cut and trimmed.
-  const folderItems = sortItems(folderScan.items, args.sort);
-  const folderPage = folderItems.slice(offset, end);
-  const folderLeft = Math.max(0, folderItems.length - end);
-  // source=sample-folder bypasses the DB entirely; the response omits dbAvailable
-  // to signal "did not consult the DB" instead of lying with `true`.
-  const dbResult =
-    args.source === SAMPLE_FOLDER
-      ? null
-      : await callRoute<LibrarySearchResult>("library.search", {
-          query: args.query,
-          tags: args.tags,
-          kind: args.kind,
-          type: args.type,
-          deviceKind: args.deviceKind,
-          source: args.source,
-          inFolder: args.inFolder,
-          sort: args.sort,
-          // The DB rows start where the folder's end. A full page of folder
-          // items still asks for one DB row, to learn whether any follow.
-          offset: Math.max(0, offset - folderItems.length),
-          limit: Math.max(1, limit - folderPage.length),
-          verifyPaths: args.verifyPaths,
-          ...(await excludedFiles(folderItems)),
-        });
-
-  // Backstop for the exclusion above: a DB row the folder also lists shows
-  // once, as the folder's. It drops nothing when the exclusion matched the
-  // file; when it couldn't (the lookup failed, or the paths differ in a way
-  // the lookup doesn't fold), `more` may count the copy. Case-insensitive:
-  // APFS and NTFS are, and the DB keeps the casing it was indexed with.
-  const folderPaths = new Set(folderItems.map((i) => i.path.toLowerCase()));
-  const dbRows = dbResult?.items ?? [];
-  const dbSlots = limit - folderPage.length;
-  const dbPage = dbRows
-    .slice(0, dbSlots)
-    .filter((i) => !folderPaths.has(i.path.toLowerCase()));
-  // Beyond the page: what follows the DB window, plus the probe row when the
-  // folder filled the page.
-  const dbLeft = dbRows.slice(dbSlots).length + (dbResult?.more ?? 0);
-  const more = folderLeft + dbLeft;
+  const dbResult = await callRoute<LibrarySearchResult>("library.search", {
+    query: args.query,
+    tags: args.tags,
+    kind: args.kind,
+    type: args.type,
+    deviceKind: args.deviceKind,
+    source: args.source,
+    inFolder: args.inFolder,
+    sort: args.sort,
+    offset,
+    limit,
+    verifyPaths: args.verifyPaths,
+  });
+  const more = dbResult.more ?? 0;
   // Sort on the full fields, then trim. The DB cut its window in SQL order;
   // this re-sorts the page by the JS rules (localeCompare on names).
-  const items = trimLibraryItems(
-    sortItems([...folderPage, ...dbPage], args.sort),
-    args,
-  );
-  const detail =
-    folderScan.detail ?? dbResult?.detail ?? pastTheEnd(offset, items, more);
-  const paging = more > 0 ? { more, nextOffset: end } : {};
-  // A detail already says why nothing came back (no DB, no folder, a failed
-  // scan), so the query's shape isn't the news.
+  const items = trimLibraryItems(sortItems(dbResult.items, args.sort), args);
+  const detail = dbResult.detail ?? pastTheEnd(offset, items, more);
+  // A detail already says why nothing came back, so the query's shape isn't
+  // the news.
   const queryNote =
     detail == null
       ? multiWordQueryNote(args.query, offset + items.length)
       : undefined;
-  const note = [dbResult?.note, queryNote].filter((n) => n != null).join("; ");
-
-  if (dbResult == null) {
-    return {
-      items,
-      ...paging,
-      ...(note !== "" && { note }),
-      ...(detail != null && { detail }),
-    };
-  }
+  const note = [dbResult.note, queryNote].filter((n) => n != null).join("; ");
 
   return {
     dbAvailable: dbResult.dbAvailable,
@@ -273,44 +199,10 @@ export async function runSearch(
       stalenessNote: dbResult.stalenessNote,
     }),
     items,
-    ...paging,
+    ...(more > 0 && { more, nextOffset: offset + limit }),
     ...(note !== "" && { note }),
     ...(detail != null && { detail }),
   };
-}
-
-/**
- * The DB search's exclusion for the files the folder scan matched, as route
- * args. Empty when the folder matched nothing, or when the lookup fails: the
- * search then runs as it did without one.
- *
- * @param folderItems - The folder scan's matches
- * @returns `excludeFileIds` to spread into the route args, or nothing
- */
-async function excludedFiles(
-  folderItems: LibraryItem[],
-): Promise<{ excludeFileIds?: number[] }> {
-  if (folderItems.length === 0) {
-    return {};
-  }
-
-  try {
-    const excludeFileIds = await folderFileIds(
-      folderItems.map((i) => i.path),
-      async (paths) => {
-        const answer = await callRoute<ResolveFileIdsResult>(
-          "library.resolveFileIds",
-          { paths },
-        );
-
-        return answer.fileIds;
-      },
-    );
-
-    return excludeFileIds.length > 0 ? { excludeFileIds } : {};
-  } catch {
-    return {};
-  }
 }
 
 /**
@@ -352,138 +244,19 @@ function resolveAction(action: string | undefined): string {
   return action ?? "search";
 }
 
-interface FolderScan {
-  items: LibraryItem[];
-  /** Set when items is empty due to a discoverable cause */
-  detail?: string;
-}
-
 /**
- * Scan the configured sample folder when filters allow it and
- * convert results to LibraryItem shape. Returns a detail string when
- * the scan is skipped or fails for a user-actionable cause so callers
- * can surface diagnostics rather than reporting silent empty results.
+ * Sort one page of results by the requested order. The DB trusts upstream
+ * ordering for mod-date since LibraryItem has no mod_date field to re-sort by.
  *
- * @param args - Tool arguments
- * @param ctx - Per-request context
- * @returns Folder scan result with items and optional detail
- */
-function scanFolderItems(
-  args: LibraryArgs,
-  ctx: Partial<ToolContext>,
-): FolderScan {
-  const sampleFolder = ctx.sampleFolder;
-
-  if (!sampleFolder) {
-    if (args.source === SAMPLE_FOLDER) {
-      return {
-        items: [],
-        detail:
-          "sample folder not configured (set one in the Producer Pal Setup tab)",
-      };
-    }
-
-    return { items: [] };
-  }
-
-  // The folder scan can only satisfy: name substring + (implicit) audio kind.
-  // Any DB-only filter means the user is not asking for sampleFolder content.
-  if (args.source && args.source !== SAMPLE_FOLDER) {
-    return { items: [] };
-  }
-
-  if (args.tags) {
-    return { items: [] };
-  }
-
-  // The folder scan has no tag data, so it can't honor a Type-tag filter.
-  if (args.type) {
-    return { items: [] };
-  }
-
-  if (args.kind && args.kind !== "audio") {
-    return { items: [] };
-  }
-
-  if (args.deviceKind) {
-    return { items: [] };
-  }
-
-  if (args.inFolder) {
-    return { items: [] };
-  }
-
-  let result;
-
-  try {
-    result = readSamples({ search: args.query }, ctx);
-  } catch (err) {
-    return {
-      items: [],
-      detail: `sample folder scan failed: ${errorMessage(err)}`,
-    };
-  }
-
-  const items: LibraryItem[] = result.samples.map((rel) => ({
-    name: leafName(rel),
-    path: `${result.sampleFolder}${rel}`,
-    kind: "audio",
-    tags: [],
-    useCount: 0,
-    source: SAMPLE_FOLDER,
-    // These came from a live filesystem scan, so they exist by construction —
-    // mark them without a redundant re-stat when the caller wants pathExists.
-    ...(args.verifyPaths ? { pathExists: true } : {}),
-  }));
-
-  return { items };
-}
-
-/**
- * Get the leaf filename from a slash-delimited relative path.
+ * Mirrors the SQL side in `orderByClause` (library-search.ts). When adding a
+ * new LibrarySort variant, update BOTH sites — there is no shared mapping
+ * table because one returns SQL and the other a Comparator.
  *
- * @param rel - Relative path like "drums/kick.wav"
- * @returns Final segment ("kick.wav")
- */
-function leafName(rel: string): string {
-  const idx = rel.lastIndexOf("/");
-
-  return idx === -1 ? rel : rel.slice(idx + 1);
-}
-
-/**
- * Sort merged items. sampleFolder items are always grouped before DB items:
- * the sampleFolder is an explicit user choice, so those samples should
- * surface ahead of generic DB hits regardless of sort or useCount.
- *
- * @param items - Combined list of sampleFolder + DB items
+ * @param items - Page of items to sort
  * @param sort - Sort enum (defaults to use-count)
- * @returns Sorted copy of items, sampleFolder partition first
- */
-function sortItems(
-  items: LibraryItem[],
-  sort: LibrarySort | undefined,
-): LibraryItem[] {
-  const folder = items.filter((i) => i.source === SAMPLE_FOLDER);
-  const db = items.filter((i) => i.source !== SAMPLE_FOLDER);
-
-  return [...sortPartition(folder, sort), ...sortPartition(db, sort)];
-}
-
-/**
- * Sort a homogeneous partition (all folder or all DB items) by the
- * requested order. The DB partition trusts upstream ordering for
- * mod-date since LibraryItem has no mod_date field to re-sort by.
- *
- * Mirrors the SQL side in `orderByClause` (library-search.ts). When
- * adding a new LibrarySort variant, update BOTH sites — there is no
- * shared mapping table because one returns SQL and the other a Comparator.
- *
- * @param items - Partition to sort
- * @param sort - Sort enum
  * @returns Sorted copy
  */
-function sortPartition(
+function sortItems(
   items: LibraryItem[],
   sort: LibrarySort | undefined,
 ): LibraryItem[] {
@@ -492,11 +265,7 @@ function sortPartition(
   }
 
   if (sort === "mod-date") {
-    // sample-folder items have no mod_date metadata; fall back to name order.
-    // DB items keep their upstream order (already mod_date-sorted by SQL).
-    return items.every((i) => i.source === SAMPLE_FOLDER)
-      ? items.toSorted((a, b) => a.name.localeCompare(b.name))
-      : [...items];
+    return [...items];
   }
 
   return items.toSorted(

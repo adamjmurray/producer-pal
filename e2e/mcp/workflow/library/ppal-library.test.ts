@@ -6,17 +6,15 @@
 /**
  * E2E tests for ppal-library tool.
  *
- * The search action merges results from a V8-side folder scan (when a
- * sampleFolder is configured) with a Node-side query against Live's
- * Library.db. Library.db contents vary by machine, so tests assert on
- * envelope shape and folder-scan determinism rather than specific DB
- * items.
+ * The search action queries Live's Library.db on the Node side. Its contents
+ * vary by machine, so tests assert on envelope shape and invariants rather
+ * than specific items. Live's Core Library ships with every install, so it is
+ * the one source tests can rely on.
  *
  * Run with: npm run e2e:mcp -- ppal-library
  */
 import { readdir } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { liveDatabaseDir } from "#src/mcp-server/live-library/live-db-path.ts";
 import { openLiveDb } from "#src/mcp-server/live-library/live-db.ts";
@@ -28,15 +26,11 @@ import {
   getToolErrorMessage,
   isToolError,
   parseToolResult,
-  setConfig,
   setupMcpTestContext,
 } from "../../mcp-test-helpers";
 import { readLiveVersion } from "../helpers/server-capability-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SAMPLE_FOLDER = resolve(__dirname, "../../../../evals/live-sets/samples");
 
 /**
  * A search item as returned: `name` and `folder` are the path's last two
@@ -56,7 +50,6 @@ interface LibraryItem {
 
 interface LibrarySearchResult {
   items: LibraryItem[];
-  /** Present when DB was consulted; omitted when bypassed (source=sample-folder). */
   dbAvailable?: boolean;
   detail?: string;
   /** Set when the default left matching plug-in preset folder files out. */
@@ -194,100 +187,6 @@ async function readTagsDirectly(
 }
 
 describe("ppal-library", () => {
-  describe("folder source (deterministic)", () => {
-    it("returns folder-only items when source=sample-folder", async () => {
-      await setConfig({ sampleFolder: SAMPLE_FOLDER });
-
-      const result = await search({ source: "sample-folder" });
-
-      expect(result.items).toHaveLength(2);
-
-      for (const item of result.items) {
-        // The search already said source and kind, and the rest is derivable.
-        expect(Object.keys(item).toSorted()).toStrictEqual(["path", "tags"]);
-        expect(item.tags).toStrictEqual([]);
-        expect(item.path.startsWith(SAMPLE_FOLDER)).toBe(true);
-      }
-
-      const names = result.items.map(fileName).toSorted();
-
-      expect(names).toStrictEqual(["kick.aiff", "sample.aiff"]);
-    });
-
-    it("filters folder items by query substring", async () => {
-      await setConfig({ sampleFolder: SAMPLE_FOLDER });
-
-      const result = await search({ source: "sample-folder", query: "kick" });
-
-      expect(result.items).toHaveLength(1);
-      expect(fileName(result.items[0]!)).toBe("kick.aiff");
-    });
-
-    it("returns empty folder results when no sampleFolder is configured", async () => {
-      await setConfig({ sampleFolder: "" });
-
-      const result = await search({ source: "sample-folder" });
-
-      expect(result.items).toStrictEqual([]);
-    });
-
-    it("merges folder items into a default audio search ahead of DB items", async () => {
-      await setConfig({ sampleFolder: SAMPLE_FOLDER });
-
-      const result = await search({ query: "kick" });
-
-      // Folder items are biased to the front of merged results regardless
-      // of the DB's use-count ranking. Even with the default limit of 50,
-      // the user's configured sample folder should always surface first.
-      expect(result.items.length).toBeGreaterThanOrEqual(1);
-      expect(result.items[0]?.source).toBe("sample-folder");
-      expect(fileName(result.items[0]!)).toBe("kick.aiff");
-    });
-
-    it("suppresses folder scan when kind != audio", async () => {
-      await setConfig({ sampleFolder: SAMPLE_FOLDER });
-
-      const result = await search({ kind: "midi" });
-
-      expect(result.items.every((i) => i.source !== "sample-folder")).toBe(
-        true,
-      );
-    });
-
-    it("suppresses folder scan when tags are present", async () => {
-      await setConfig({ sampleFolder: SAMPLE_FOLDER });
-
-      const result = await search({ tags: "Kick" });
-
-      expect(result.items.every((i) => i.source !== "sample-folder")).toBe(
-        true,
-      );
-    });
-
-    it("suppresses folder scan when deviceKind is present", async () => {
-      await setConfig({ sampleFolder: SAMPLE_FOLDER });
-
-      const result = await search({
-        kind: "preset",
-        deviceKind: "instrument",
-      });
-
-      expect(result.items.every((i) => i.source !== "sample-folder")).toBe(
-        true,
-      );
-    });
-
-    it("suppresses folder scan when source is non-sampleFolder", async () => {
-      await setConfig({ sampleFolder: SAMPLE_FOLDER });
-
-      const result = await search({ source: "user" });
-
-      expect(result.items.every((i) => i.source !== "sample-folder")).toBe(
-        true,
-      );
-    });
-  });
-
   describe("result envelope", () => {
     it("returns search envelope with dbAvailable=true and items array", async () => {
       const result = await search(SOME);
@@ -329,7 +228,6 @@ describe("ppal-library", () => {
 
       skip(result.items.length === 0, "no MIDI items in the library");
 
-      // Folder scan suppressed when kind != audio, so all items are DB items.
       // kind:midi covers .mid files (kind "midi") plus MIDI Live clips, which
       // keep their file-format kind "live-clip" qualified by subtype "midi".
       for (const item of result.items) {
@@ -340,6 +238,18 @@ describe("ppal-library", () => {
           (item.kind === "live-clip" && item.subtype === "midi");
 
         expect(isMidi).toBe(true);
+      }
+    });
+
+    it("source builtin returns Core Library items", async () => {
+      const result = await search({ source: "builtin", query: "kick" });
+
+      expect(result.dbAvailable).toBe(true);
+      expect(result.items.length).toBeGreaterThan(0);
+
+      // The filter's own source is left off every item.
+      for (const item of result.items) {
+        expect(item.source).toBeUndefined();
       }
     });
 

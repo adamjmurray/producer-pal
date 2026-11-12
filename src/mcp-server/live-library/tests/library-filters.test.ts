@@ -199,10 +199,6 @@ describe("folderKindsForSource", () => {
     expect(folderKindsForSource("plugin")).toStrictEqual([10]);
     expect(folderKindsForSource("preset-folder")).toStrictEqual([5]);
   });
-
-  it("returns [] for the synthetic 'sample-folder' source (no DB encoding)", () => {
-    expect(folderKindsForSource("sample-folder")).toStrictEqual([]);
-  });
 });
 
 describe("resolveSource", () => {

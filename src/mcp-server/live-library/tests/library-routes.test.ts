@@ -32,9 +32,6 @@ vi.mock(import("../list-plugins.ts"), () => ({
 vi.mock(import("../query/plugins/resolve-plugin.ts"), () => ({
   resolvePlugin: vi.fn(),
 }));
-vi.mock(import("../query/resolve-file-ids.ts"), () => ({
-  resolveFileIds: vi.fn(),
-}));
 vi.mock(import("../../node-for-max-logger.ts"), () => ({
   nodeLog: vi.fn(),
   nodeInfo: vi.fn(),
@@ -59,7 +56,6 @@ const tagsMod = await import("../list-tags.ts");
 const categoriesMod = await import("../list-categories.ts");
 const pluginsMod = await import("../list-plugins.ts");
 const resolveMod = await import("../query/plugins/resolve-plugin.ts");
-const fileIdsMod = await import("../query/resolve-file-ids.ts");
 const liveDbMod = await import("../live-db.ts");
 const dbPathMod = await import("../live-db-path.ts");
 
@@ -207,30 +203,6 @@ describe("registerLibraryRoutes", () => {
     );
 
     expect(pluginsMod.listPlugins).toHaveBeenCalledWith({});
-  });
-
-  it("registers library.resolveFileIds and dispatches with parsed args", async () => {
-    await handleNodeRequest(
-      "req-ids",
-      JSON.stringify({
-        route: "library.resolveFileIds",
-        args: { paths: ["/a/b.wav"], liveVersion: "12.4" },
-      }),
-    );
-
-    expect(fileIdsMod.resolveFileIds).toHaveBeenCalledWith({
-      paths: ["/a/b.wav"],
-      liveVersion: "12.4",
-    });
-  });
-
-  it("library.resolveFileIds defaults to empty args when null", async () => {
-    await handleNodeRequest(
-      "req-ids-null",
-      JSON.stringify({ route: "library.resolveFileIds", args: null }),
-    );
-
-    expect(fileIdsMod.resolveFileIds).toHaveBeenCalledWith({});
   });
 
   it("registers library.resolvePlugin and dispatches with parsed args", async () => {

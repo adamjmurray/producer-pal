@@ -24,6 +24,15 @@ describe("MCP Express App - Config", () => {
   describe("Config Endpoints", () => {
     let configUrl: string;
 
+    /**
+     * @returns The current GET /config body
+     */
+    async function getConfig(): Promise<Record<string, unknown>> {
+      const response = await fetch(configUrl);
+
+      return await response.json();
+    }
+
     beforeAll(() => {
       configUrl = appState.configUrl;
     });
@@ -41,7 +50,6 @@ describe("MCP Express App - Config", () => {
         smallModelMode: expect.any(Boolean),
         notation: expect.any(String),
         jsonOutput: expect.any(Boolean),
-        sampleFolder: expect.any(String),
         tools: expect.any(Array),
       });
     });
@@ -101,21 +109,21 @@ describe("MCP Express App - Config", () => {
       const getResponse = await fetch(configUrl);
       const before = await getResponse.json();
 
-      // Only update sampleFolder
+      // Only update projectContext
       const response = await appState.postConfig({
-        sampleFolder: "/tmp/partial-test",
+        projectContext: "partial-test",
       });
 
       expect(response.status).toBe(200);
       const after = await response.json();
 
-      expect(after.sampleFolder).toBe("/tmp/partial-test");
+      expect(after.projectContext).toBe("partial-test");
       // Other values should remain unchanged
       expect(after.smallModelMode).toBe(before.smallModelMode);
       expect(after.jsonOutput).toBe(before.jsonOutput);
 
       // Restore
-      await appState.postConfig({ sampleFolder: before.sampleFolder });
+      await appState.postConfig({ projectContext: before.projectContext });
     });
 
     it("should update projectContext string", async () => {
@@ -172,36 +180,33 @@ describe("MCP Express App - Config", () => {
       }
     });
 
-    it("should update sampleFolder", async () => {
-      const testPath = "/path/to/samples";
-
-      const response = await appState.postConfig({ sampleFolder: testPath });
+    it("ignores a sampleFolder sent by an older client", async () => {
+      const before = await getConfig();
+      const response = await appState.postConfig({
+        sampleFolder: "/path/to/samples",
+        smallModelMode: !before.smallModelMode,
+      });
 
       expect(response.status).toBe(200);
       const config = await response.json();
 
-      expect(config.sampleFolder).toBe(testPath);
+      // The known field applies; the retired one is dropped, not refused or kept.
+      expect(config.smallModelMode).toBe(!before.smallModelMode);
+      expect(config).not.toHaveProperty("sampleFolder");
+      expect(await getConfig()).not.toHaveProperty("sampleFolder");
 
-      // Clear
-      await appState.postConfig({ sampleFolder: "" });
+      await appState.postConfig({ smallModelMode: before.smallModelMode });
     });
 
-    it("should clear projectContext and sampleFolder sent as null", async () => {
+    it("should clear projectContext sent as null", async () => {
       // Max sends a bare `null` for an emptied field; it must land as "" rather
       // than as a null the rest of the config code has to guard against.
-      await appState.postConfig({
-        projectContext: "notes",
-        sampleFolder: "/path/to/samples",
-      });
+      await appState.postConfig({ projectContext: "notes" });
 
-      const response = await appState.postConfig({
-        projectContext: null,
-        sampleFolder: null,
-      });
+      const response = await appState.postConfig({ projectContext: null });
       const config = await response.json();
 
       expect(config.projectContext).toBe("");
-      expect(config.sampleFolder).toBe("");
     });
 
     it("should update tools whitelist", async () => {
@@ -270,7 +275,6 @@ describe("MCP Express App - Config", () => {
         liveApiForcedOn: false,
         notation: "barbeat",
         projectContext: "",
-        sampleFolder: "",
         smallModelMode: false,
         tools: expect.any(Array),
       });

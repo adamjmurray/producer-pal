@@ -455,14 +455,6 @@ function sourceCondition(source: LibrarySource): {
 } {
   const kinds = folderKindsForSource(source);
 
-  // Defensive: source=sample-folder has no DB encoding and yields an empty
-  // kinds list. The tool caller filters this out, but the route is publicly
-  // reachable — emit an impossible predicate to keep the SQL valid (no rows
-  // match) rather than producing `IN ()`.
-  if (kinds.length === 0) {
-    return { sql: "1 = 0", params: [] };
-  }
-
   const inKinds = `(${SOURCE_FOLDER_KIND}) IN (${kinds.map(() => "?").join(",")})`;
   const inPresetFolder = `p.folder_kind = ${PRESET_FOLDER_KIND}`;
 

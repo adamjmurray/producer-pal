@@ -116,6 +116,5 @@ function exampleContext(): ToolContext {
       content: "Downtempo sketch in F minor. Keep the drums sparse.",
     },
     smallModelMode: false,
-    sampleFolder: null,
   };
 }

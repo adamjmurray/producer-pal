@@ -55,8 +55,8 @@ the loop.
   [Device tools →](/features/tools#device-tools)
 - **Library**: search Live's browser by name or tag, browse its category
   taxonomy, rank samples by similarity to a seed sample, and list installed
-  plug-ins (Live 12.4+). Your own sample folder is searched by name.
-  [Library →](/features/tools#ppal-library)
+  plug-ins (Live 12.4+). Folders you add to Places in Live's browser are
+  searched too. [Library →](/features/tools#ppal-library)
 - **Playback**: start and stop Session or Arrangement playback, launch clips and
   scenes, set loop points, and jump to locators.
   [Playback →](/features/tools#ppal-playback)

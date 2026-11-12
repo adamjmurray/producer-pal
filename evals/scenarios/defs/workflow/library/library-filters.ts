@@ -17,7 +17,6 @@
  */
 
 import { getToolCalls } from "../../../assertions/index.ts";
-import { resolveSamplesPath } from "../../../run-scenario/scenario-config.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
@@ -31,13 +30,12 @@ const ASK_TURN = 1;
 /** Every scenario here opens by connecting. */
 const MSG_CONNECT = "Connect to Ableton Live";
 
-/** Shared by every scenario here: read-only, and the same tiny sample folder. */
+/** Shared by every scenario here: read-only. */
 const LIBRARY_SCENARIO = {
   kind: "capability",
   liveSet: "basic-midi-4-track",
   // Reads the library and writes nothing to the Set.
   reuseLiveSet: true,
-  config: { sampleFolder: resolveSamplesPath("samples") },
 } as const;
 
 /**
