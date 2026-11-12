@@ -63,9 +63,8 @@ On a drum pad, the chain is named after the preset ("Kick 80x"), not the device.
 ## Transient Shaper
 
 Max lists 8 params: Device On, Attack, Sustain, Soft Clip On, Dry/Wet, S/C Emph
-Type (Off, Low, Mid, High), S/C Gain, S/C On. Live's Python API reports 10, two
-of them named `S/C Gain`; the other two are Python-only and out of reach from
-the Max side. A known gap: Producer Pal's reads never show them.
+Type (Off, Low, Mid, High), S/C Gain, S/C On. Live's Python API lists the same 8
+(checked on 13.0b25, sidechain on and off), so nothing is out of reach.
 
 `transientShaperSpec` marks `S/C Gain` and `S/C Emph Type` inactive while
 `S/C On` is Off (`Off`/`On` labels confirmed). That `S/C Emph Type`, a sidechain
