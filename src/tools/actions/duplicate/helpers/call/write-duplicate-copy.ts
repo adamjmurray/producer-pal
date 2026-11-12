@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { isReturnSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import { duplicateEnvelopeClip } from "../clip/slot-copy/duplicate-envelope-clip.ts";
 import { requireSceneIndex } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   type AppliedTarget,
@@ -12,7 +14,7 @@ import {
 import {
   duplicateArrangementClipToSlot,
   duplicateClipSlot,
-} from "../clip/duplicate-clip-slot.ts";
+} from "../clip/slot-copy/duplicate-clip-slot.ts";
 import { duplicateChain } from "../device/duplicate-chain.ts";
 import { duplicateDevice } from "../device/duplicate-device.ts";
 import {
@@ -114,6 +116,11 @@ function writeSlotCopy(
 ): object {
   const clip = liveObject(run, body.sourceId);
   const { trackIndex, sceneIndex } = clip;
+
+  // The draft only plans an envelope clip into a return track's slot.
+  if (isReturnSlotPosition(body.slot)) {
+    return duplicateEnvelopeClip(clip, body.slot, label.name, label.color);
+  }
 
   // An arrangement clip has no slot to read from, so it is re-created.
   if (trackIndex == null || sceneIndex == null) {

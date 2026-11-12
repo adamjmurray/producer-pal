@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: MIT
 
 // Live 13 return tracks have a clip slot per scene, holding envelope clips: no
-// notes, no sample, only automation. Tools can read them. Every write tool
-// refuses one through the checks here, so lifting the refusal for a tool means
-// changing one call site.
+// notes, no sample, only automation. They take the same session writes as other
+// clips (name, color, region, launch, delete, copy) except anything that needs
+// notes or a sample, and they only move or copy between return-track slots.
 
 import { liveVersionAtLeast } from "#src/tools/shared/helpers/live-api-values.ts";
 
@@ -16,12 +16,21 @@ const RETURN_CLIPS_MIN_VERSION = "13.0";
 /** Why a return-track clip path is refused on Live 12. */
 export const RETURN_CLIPS_NEED_LIVE_13 = "return-track clips need Live 13";
 
-/** Why no tool changes a return-track clip yet. */
-export const RETURN_CLIPS_READ_ONLY = "return-track clips can't be changed yet";
-
 /** Why a clip can't be created in a return track's slot, now or later. */
 export const ENVELOPE_CLIPS_CANT_BE_CREATED =
   "envelope clips can't be created; make one in Live";
+
+/** Why an envelope clip can't go to any other place than a return-track slot. */
+export const ENVELOPE_CLIP_ONLY_TO_RETURN_SLOT =
+  "an envelope clip can only go to a return-track slot";
+
+/** Why a clip that isn't an envelope clip can't go to a return-track slot. */
+export const RETURN_SLOT_ONLY_TAKES_ENVELOPE_CLIPS =
+  "a return-track slot only takes an envelope clip";
+
+/** Why `envelopes` can't be written to an envelope clip yet. */
+export const ENVELOPES_ON_RETURN_CLIPS_NOT_YET =
+  "return-track clips can't take envelopes yet";
 
 /**
  * Whether this Live has return-track clips. The version is read once a request.
@@ -42,17 +51,6 @@ export function requireReturnClips(): void {
 }
 
 /**
- * Why a write can't go to a return-track clip slot: Live 12 has no such slot,
- * and Live 13's clips are read-only for now.
- * @returns The reason
- */
-export function returnSlotWriteRefusal(): string {
-  return returnClipsExist()
-    ? RETURN_CLIPS_READ_ONLY
-    : RETURN_CLIPS_NEED_LIVE_13;
-}
-
-/**
  * Why a clip can't be created in a return track's slot: Live 12 has no such
  * slot, and on Live 13 the clips there are made in Live.
  * @returns The reason
@@ -64,7 +62,8 @@ export function returnSlotCreateRefusal(): string {
 }
 
 /**
- * Whether a clip sits in a return track's clip slot.
+ * Whether a clip sits in a return track's clip slot, which makes it an
+ * envelope clip: nothing else lives there.
  * @param clip - Any clip
  * @returns True for a return-track clip
  */
@@ -73,11 +72,15 @@ export function isReturnTrackClip(clip: LiveAPI): boolean {
 }
 
 /**
- * Why a write tool can't act on a clip, or null when it can. Every write tool
- * asks this of each clip it resolves, by path or by id, before writing.
- * @param clip - The clip the call named
+ * Why a clip can't go to a return-track slot, or null when it can. A slot
+ * there takes envelope clips only, and only on Live 13.
+ * @param clip - The clip to copy or move
  * @returns The reason, or null
  */
-export function returnClipWriteRefusal(clip: LiveAPI): string | null {
-  return isReturnTrackClip(clip) ? RETURN_CLIPS_READ_ONLY : null;
+export function returnSlotCopyBlocker(clip: LiveAPI): string | null {
+  if (!returnClipsExist()) {
+    return RETURN_CLIPS_NEED_LIVE_13;
+  }
+
+  return isReturnTrackClip(clip) ? null : RETURN_SLOT_ONLY_TAKES_ENVELOPE_CLIPS;
 }

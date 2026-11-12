@@ -13,7 +13,10 @@ import {
   livePath,
   type TrackPath,
 } from "#src/shared/live-api-path-builders.ts";
-import { returnSlotWriteRefusal } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
+import {
+  RETURN_CLIPS_NEED_LIVE_13,
+  returnClipsExist,
+} from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
 import {
   type SongMeter,
@@ -273,10 +276,17 @@ export function takeLanePathEntry(entry: string): TakeLanePath | null {
  * @returns The path, narrowed to the shapes a clip can use
  */
 export function requireClipPath(path: ObjectPath, label = "path"): ClipPath {
-  // Well-formed, but no tool writes to a return-track clip yet. Readers take
-  // the slot through requireClipSourcePath instead.
+  // Well-formed, but not a place for this tool's clips. Readers take the slot
+  // through requireClipSourcePath, and tools that move or copy envelope clips
+  // through requireEnvelopeAwareDestination.
   if (path.kind === RETURN_SLOT) {
-    throw pathError(label, formatObjectPath(path), returnSlotWriteRefusal());
+    throw pathError(
+      label,
+      formatObjectPath(path),
+      returnClipsExist()
+        ? "a return-track slot is no place for this tool's clips"
+        : RETURN_CLIPS_NEED_LIVE_13,
+    );
   }
 
   if (

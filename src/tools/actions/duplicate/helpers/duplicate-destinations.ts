@@ -21,6 +21,10 @@ import {
   warnInapplicableClipParams,
 } from "./clip/clip-destinations.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
+import {
+  ENVELOPE_CLIP_ONLY_TO_RETURN_SLOT,
+  isReturnTrackClip,
+} from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { validateDestinationParameter } from "./duplicate-input-validation.ts";
 import { requireTrackIndex } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
@@ -181,6 +185,19 @@ export function resolveDestinationTargets(
   sourceClip: LiveAPI,
   targets: (DuplicateArrangementTarget | null)[],
 ): ResolvedDestinations {
+  // An envelope clip has no arrangement to go to: every entry is refused.
+  if (isReturnTrackClip(sourceClip)) {
+    const count = Math.max(targets.length, 1);
+
+    return {
+      destinations: Array.from({ length: count }, () => null),
+      refusals: Array.from(
+        { length: count },
+        () => ENVELOPE_CLIP_ONLY_TO_RETURN_SLOT,
+      ),
+    };
+  }
+
   const ownTrack = (): ArrangementTrack => {
     return { trackIndex: requireTrackIndex(sourceClip), takeLane: null };
   };

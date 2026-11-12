@@ -4,9 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { returnClipWriteRefusal } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
-import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import {
+  returnSlotPath,
+  slotPath,
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   idDoesNotExist,
   typeMismatch,
@@ -17,14 +19,18 @@ import {
 } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { type TargetNames } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import {
+  type ClipSlotPosition,
+  isReturnSlotPosition,
+  type ReturnSlotPosition,
+} from "#src/tools/shared/validation/position-parsing.ts";
 import { type Target } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 
 /** A clip slot the action acts on. */
 export interface SlotPayload {
   slot: LiveAPI;
-  position: ClipSlotPosition;
-  /** The slot's path, "t0/s1" */
+  position: ClipSlotPosition | ReturnSlotPosition;
+  /** The slot's path, "t0/s1" or "rt0/s1" */
   path: string;
 }
 
@@ -40,7 +46,11 @@ export interface ClipSlotEntry {
  * that names a slot playback can't act on carries why instead of a position.
  */
 export type NamedSlotPath =
-  | { value: string; position: ClipSlotPosition; skip?: undefined }
+  | {
+      value: string;
+      position: ClipSlotPosition | ReturnSlotPosition;
+      skip?: undefined;
+    }
   | { value: string; skip: string; position?: undefined };
 
 /**
@@ -92,13 +102,15 @@ function idTarget(id: string, idParam: string): Target<SlotPayload> {
     return { named, skip: mismatch };
   }
 
-  const refusal = returnClipWriteRefusal(object);
+  const { trackIndex, sceneIndex, returnTrackIndex, returnClipSlotIndex } =
+    object;
 
-  if (refusal != null) {
-    return { named, skip: refusal };
+  if (returnTrackIndex != null && returnClipSlotIndex != null) {
+    return slotTarget(named, {
+      returnIndex: returnTrackIndex,
+      sceneIndex: returnClipSlotIndex,
+    });
   }
-
-  const { trackIndex, sceneIndex } = object;
 
   if (trackIndex == null || sceneIndex == null) {
     return {
@@ -119,11 +131,19 @@ function idTarget(id: string, idParam: string): Target<SlotPayload> {
  */
 function slotTarget(
   named: NamedTarget,
-  position: ClipSlotPosition,
+  position: ClipSlotPosition | ReturnSlotPosition,
 ): Target<SlotPayload> {
-  const { trackIndex, sceneIndex } = position;
-  const path = slotPath(trackIndex, sceneIndex);
-  const slot = LiveAPI.from(livePath.track(trackIndex).clipSlot(sceneIndex));
+  const { sceneIndex } = position;
+  const onReturn = isReturnSlotPosition(position);
+  const path = onReturn
+    ? returnSlotPath(position.returnIndex, sceneIndex)
+    : slotPath(position.trackIndex, sceneIndex);
+  const slot = LiveAPI.from(
+    (onReturn
+      ? livePath.returnTrack(position.returnIndex)
+      : livePath.track(position.trackIndex)
+    ).clipSlot(sceneIndex),
+  );
 
   return slot.exists()
     ? { named, key: path, data: { slot, position, path } }

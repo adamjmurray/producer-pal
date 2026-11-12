@@ -18,20 +18,28 @@ import {
   takeLaneLabel,
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
-import { returnClipWriteRefusal } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
+import {
+  ENVELOPE_CLIP_ONLY_TO_RETURN_SLOT,
+  isReturnTrackClip,
+  RETURN_SLOT_ONLY_TAKES_ENVELOPE_CLIPS,
+} from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { recreateBlocker } from "#src/tools/shared/clip/recreate-clip.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { resolvePathEntry } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
 import {
   type ClipPath,
   arrangementPositionPath,
+  type ReturnSlotPath,
   slotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
   type NamedTarget,
   sentParam,
 } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import {
+  formatObjectPath,
+  parseObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   type Cover,
@@ -44,16 +52,21 @@ import {
 } from "../slot-move/clip-slot-move.ts";
 import { type ClipCall } from "./parse-clip-call.ts";
 
+/** The path kind a return track's clip slot has. */
+const RETURN_SLOT = "return-slot";
+
 /** What one target of an update-clip call carries into its write. */
 export interface ClipPayload {
   clip: LiveAPI;
   /** Where the clip moves, from toPath or toSlot */
   destination: ClipPath | null;
+  /** The return track's slot an envelope clip moves to */
+  returnSlot: ReturnSlotPath | null;
   /**
    * A clip slot named beside an arrangement start or length. It is ignored, so
    * it counts as no destination everywhere but the note saying so.
    */
-  ignoredDestination: ClipPath | null;
+  ignoredDestination: ClipPath | ReturnSlotPath | null;
   /** The position it moves to, in beats */
   startBeats: number | null;
   /** The arrangement span it is resized to, in beats */
@@ -142,19 +155,13 @@ function findClip(
   }
 
   try {
-    const clip = validateIdType(
-      id,
-      "clip",
-      target.param === "id" ? sentParam(target) : undefined,
-    );
-    const refusal = returnClipWriteRefusal(clip);
-
-    return refusal == null
-      ? { clip }
-      : {
-          skip: refusal,
-          atStart: target.param === "path" ? id : undefined,
-        };
+    return {
+      clip: validateIdType(
+        id,
+        "clip",
+        target.param === "id" ? sentParam(target) : undefined,
+      ),
+    };
   } catch (error) {
     return {
       skip: errorMessage(error),
@@ -178,26 +185,31 @@ function payloadFor(
   index: number,
   batchIds: ReadonlySet<string>,
 ): ClipPayload {
-  const startBeats = beatsForClip(call.startBeats, index);
+  const where = splitDestination(call.moves.destinations[index] ?? null, clip);
+  const startBeats = startBeatsFor(call, index, clip, where.refusal);
   const lengthBeats = beatsForClip(call.lengthBeats, index);
-  const named = call.moves.destinations[index] ?? null;
+  const named = where.lane;
   // A slot beside an arrangement position or length is ignored: plan the clip
   // as if no destination was sent.
-  const ignoredDestination =
-    named?.kind === "slot" && (startBeats != null || lengthBeats != null)
-      ? named
-      : null;
+  const ignoredDestination = ignoredSlot(
+    named ?? where.returnSlot,
+    startBeats,
+    lengthBeats,
+  );
   let destination = ignoredDestination == null ? named : null;
-  let refusedMove = call.moves.refusals[index] ?? null;
-  const occupant = slotOccupantInBatch(destination, clip, batchIds);
+  let returnSlot = ignoredDestination == null ? where.returnSlot : null;
+  let refusedMove = call.moves.refusals[index] ?? where.refusal;
+  const slot = destination?.kind === "slot" ? destination : returnSlot;
+  const occupant = slotOccupantInBatch(slot, clip, batchIds);
 
   // The move would overwrite a clip this call also updates, and the call would
   // then work on a clip that no longer exists.
-  if (occupant != null && destination?.kind === "slot") {
+  if (occupant != null && slot != null) {
     refusedMove =
-      `not moved: ${slotPath(destination.trackIndex, destination.sceneIndex)} holds clip ` +
+      `not moved: ${formatObjectPath(slot)} holds clip ` +
       `${targetLabel(occupant)}, which this call also updates; move that clip out in its own call first`;
     destination = null;
+    returnSlot = null;
   }
 
   // A position with no lane means "same lane, other bar", so a take-lane clip is
@@ -218,6 +230,7 @@ function payloadFor(
   return {
     clip,
     destination,
+    returnSlot,
     ignoredDestination,
     startBeats,
     lengthBeats,
@@ -227,27 +240,103 @@ function payloadFor(
 }
 
 /**
+ * The slot a toPath names beside an arrangement position or length, which is
+ * ignored: a slot is off the arrangement timeline those params name.
+ * @param named - The slot or lane the clip is sent to, if any
+ * @param startBeats - The position the call asks for, if any
+ * @param lengthBeats - The arrangement length the call asks for, if any
+ * @returns The slot, or null when it is not ignored
+ */
+function ignoredSlot(
+  named: ClipPath | ReturnSlotPath | null,
+  startBeats: number | null,
+  lengthBeats: number | null,
+): ClipPath | ReturnSlotPath | null {
+  const isSlot = named?.kind === "slot" || named?.kind === RETURN_SLOT;
+
+  return isSlot && (startBeats != null || lengthBeats != null) ? named : null;
+}
+
+/**
+ * The position a clip is to move to. An envelope clip sent to the arrangement is
+ * refused once, by its refusal: the position that went with it has nothing left
+ * to say.
+ * @param call - The update-clip call
+ * @param index - The target's place in the call
+ * @param clip - The clip the target names
+ * @param refusal - Why its destination was refused, if it was
+ * @returns The position in beats, or null for none
+ */
+function startBeatsFor(
+  call: ClipCall,
+  index: number,
+  clip: LiveAPI,
+  refusal: string | null,
+): number | null {
+  return refusal != null && isReturnTrackClip(clip)
+    ? null
+    : beatsForClip(call.startBeats, index);
+}
+
+/**
+ * Where one clip may go among what its toPath entry named. An envelope clip
+ * goes to a return track's slot only, and no other clip goes there; an entry
+ * that breaks that is refused for this clip, which stays where it is.
+ * @param named - What the entry names, if anything
+ * @param clip - The clip being moved
+ * @returns The lane or the return slot the clip can go to, or why it can't
+ */
+function splitDestination(
+  named: ClipPath | ReturnSlotPath | null,
+  clip: LiveAPI,
+): {
+  lane: ClipPath | null;
+  returnSlot: ReturnSlotPath | null;
+  refusal: string | null;
+} {
+  const none = { lane: null, returnSlot: null };
+
+  if (named == null) {
+    return { ...none, refusal: null };
+  }
+
+  const isEnvelope = isReturnTrackClip(clip);
+
+  if (named.kind === RETURN_SLOT) {
+    return isEnvelope
+      ? { ...none, returnSlot: named, refusal: null }
+      : {
+          ...none,
+          refusal: `not moved: ${RETURN_SLOT_ONLY_TAKES_ENVELOPE_CLIPS}`,
+        };
+  }
+
+  return isEnvelope
+    ? { ...none, refusal: `not moved: ${ENVELOPE_CLIP_ONLY_TO_RETURN_SLOT}` }
+    : { ...none, lane: named, refusal: null };
+}
+
+/**
  * The clip a slot destination holds, when this call also updates it.
- * @param destination - Where the clip is headed, if anywhere
+ * @param destination - The slot the clip is headed to, if it is headed to one
  * @param clip - The clip being moved
  * @param batchIds - Every clip the call names
  * @returns The occupant, or null when the slot holds no clip of this call
  */
 function slotOccupantInBatch(
-  destination: ClipPath | null,
+  destination: Extract<ClipPath, { kind: "slot" }> | ReturnSlotPath | null,
   clip: LiveAPI,
   batchIds: ReadonlySet<string>,
 ): LiveAPI | null {
-  if (destination?.kind !== "slot") {
+  if (destination == null) {
     return null;
   }
 
-  const occupant = LiveAPI.from(
-    livePath
-      .track(destination.trackIndex)
-      .clipSlot(destination.sceneIndex)
-      .clip(),
-  );
+  const track =
+    destination.kind === RETURN_SLOT
+      ? livePath.returnTrack(destination.returnIndex)
+      : livePath.track(destination.trackIndex);
+  const occupant = LiveAPI.from(track.clipSlot(destination.sceneIndex).clip());
 
   // A clip's own slot is the no-op the move already handles.
   return occupant.exists() &&
@@ -264,11 +353,13 @@ function slotOccupantInBatch(
  */
 function currentSpan(clip: LiveAPI): LandedSpan | null {
   const { trackIndex } = clip;
-  const start = clip.getProperty("start_time");
-  const end = clip.getProperty("end_time");
+
+  // Only an arrangement clip has a span to read.
+  const onArrangement = (clip.getProperty("is_arrangement_clip") as number) > 0;
+  const start = onArrangement ? clip.getProperty("start_time") : null;
+  const end = onArrangement ? clip.getProperty("end_time") : null;
 
   if (
-    (clip.getProperty("is_arrangement_clip") as number) <= 0 ||
     trackIndex == null ||
     typeof start !== "number" ||
     typeof end !== "number"
@@ -299,7 +390,15 @@ function coversOf(
   payload: ClipPayload,
   destinationTracks: Map<number, LiveAPI>,
 ): Cover[] | undefined {
-  const { clip, destination, span } = payload;
+  const { clip, destination, returnSlot, span } = payload;
+
+  // Its own slot is the no-op the move already handles.
+  if (returnSlot != null) {
+    return clip.returnTrackIndex === returnSlot.returnIndex &&
+      clip.returnClipSlotIndex === returnSlot.sceneIndex
+      ? undefined
+      : [{ slot: formatObjectPath(returnSlot) }];
+  }
 
   if (destination?.kind === "slot") {
     return slotCovers(

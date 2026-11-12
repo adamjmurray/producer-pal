@@ -48,12 +48,22 @@ slot.
   [read tool includes](../../../tools/read-tool-includes/README.md)).
 - A Live 12 call naming one refuses it: `return-track clips need Live 13`. Live
   12 is never asked for a return track's slots.
-- Every write tool skips an envelope clip, by path or by id, with
-  `return-track clips can't be changed yet` (a lone target throws it). A
-  `toPath` naming a return slot is refused with the same words: update-clip
-  skips only that move; duplicate, whose destinations are checked before
-  anything is copied, refuses the call. create-clip refuses it for good:
+- Write tools act on one by path or by id, as on a session clip, minus what
+  needs notes or a sample: update-clip (name, color, region, meter and the
+  like), delete, duplicate, playback and select. The temporary refusal is gone.
+- A return slot is a destination only for an envelope clip, and an envelope clip
+  has no other destination: update-clip's `toPath` moves it there (Live's copy,
+  then deleting the original) and duplicate's copies it. A regular clip sent to
+  `rt0/s3` is refused with `a return-track slot only takes an envelope clip`; an
+  envelope clip sent to a regular slot, a track's arrangement, a take lane or an
+  `arrangementStart` is refused with
+  `an envelope clip can only go to a return-track slot` (update-clip's says
+  `not moved: ` first). Both are per-destination skips, thrown when alone.
+  Envelope clips can't be rebuilt (the API can't create one), so no path that
+  re-creates a clip takes one.
+- create-clip refuses a return slot for good:
   `envelope clips can't be created; make one in Live`.
+- play-scene takes a return slot like a regular one: it names its scene.
 - A return track has no arrangement and no take lanes: `rt0[1|1]` and `rt0/l0`
   stay refused.
 

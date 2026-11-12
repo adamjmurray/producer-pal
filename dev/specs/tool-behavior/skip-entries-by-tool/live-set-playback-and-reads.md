@@ -40,8 +40,16 @@ Part of [Skip entries, tool by tool](README.md).
   track's slot it stops every track inside, and the `detail` names those that
   were playing or queued:
   `stopped the tracks in this group track: t10 (id 7), t11 (id 8)`.
+- **playback fires and stops an envelope clip** (Live 13) by path or by id like
+  any session clip: its entry is `{id, path: "rt0/s0"}`. A return track's slot
+  stops through its own `stop`, since a return track has no group slots and no
+  track-wide stop here; an empty one is `no clip to play` like any empty slot.
+  `play-scene` takes `rt0/s3`, or an envelope clip's id, as the scene it sits
+  in. Live 12 refuses a return slot with `return-track clips need Live 13`.
 - **select has one target**: nothing to list, so a refusal or a failed selection
-  throws.
+  throws. It takes an envelope clip's `rt0/s0` or id like a session clip: it
+  switches to the session view, highlights the return track's slot and reports
+  `selectedClip` with `path: "rt0/s0"`.
 - **The read tools answer per target named, through one `readFanOut`.** A target
   that can't be read holds its slot as `{id | path, ok: false, detail}`, and a
   lone one throws. A multi-target read checks the deadline before each target;

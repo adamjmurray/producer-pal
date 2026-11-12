@@ -11,7 +11,6 @@
 // there and this call can't remove is skipped, with the reason a lone target
 // would have thrown. A path that can't be parsed refuses the whole call.
 
-import { returnClipWriteRefusal } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { nestedRackHintForPath } from "#src/tools/shared/device/helpers/path/nested-rack-hint.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type IdLookup } from "#src/tools/shared/validation/helpers/id-per-path-lookup.ts";
@@ -230,11 +229,5 @@ function undeletable(object: LiveAPI, type: string): string | null {
     );
   }
 
-  const mismatch = typeMismatch(object, type);
-
-  if (mismatch != null) {
-    return mismatch;
-  }
-
-  return type === "clip" ? returnClipWriteRefusal(object) : null;
+  return typeMismatch(object, type);
 }

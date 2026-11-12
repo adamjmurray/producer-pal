@@ -30,8 +30,8 @@ import {
   requireClipSlotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import {
-  returnClipWriteRefusal,
-  returnSlotWriteRefusal,
+  returnClipsExist,
+  RETURN_CLIPS_NEED_LIVE_13,
 } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -211,16 +211,18 @@ function pathSceneRefs(
   }
 
   return entries.map((entry) => {
-    if (entry.kind === "scene" || entry.kind === "slot") {
-      return { scene: entry.sceneIndex, source: quoteEntry(entry, source) };
-    }
+    const onReturn = entry.kind === "return-slot";
 
-    if (entry.kind === "return-slot") {
+    if (onReturn && !returnClipsExist()) {
       throw pathError(
         source.label,
         formatObjectPath(entry),
-        returnSlotWriteRefusal(),
+        RETURN_CLIPS_NEED_LIVE_13,
       );
+    }
+
+    if (onReturn || entry.kind === "scene" || entry.kind === "slot") {
+      return { scene: entry.sceneIndex, source: quoteEntry(entry, source) };
     }
 
     // Every other shape is missing the scene rather than carrying a spare one,
@@ -278,13 +280,20 @@ function slotPathsFrom(
   return entries.map((entry) => {
     assertClipPath(action, entry, source);
 
-    // Well-formed, but no tool acts on a return-track clip yet: that entry is
-    // skipped and the rest go on.
+    // Live 12 has no such slot: that entry is skipped and the rest go on.
     if (entry.kind === "return-slot") {
-      return {
-        value: spellEntry(entry, source),
-        skip: returnSlotWriteRefusal(),
-      };
+      return returnClipsExist()
+        ? {
+            value: spellEntry(entry, source),
+            position: {
+              returnIndex: entry.returnIndex,
+              sceneIndex: entry.sceneIndex,
+            },
+          }
+        : {
+            value: spellEntry(entry, source),
+            skip: RETURN_CLIPS_NEED_LIVE_13,
+          };
     }
 
     return {
@@ -382,17 +391,13 @@ function idSceneRefs(
       continue;
     }
 
-    const refusal = returnClipWriteRefusal(object);
-
-    if (refusal != null) {
-      problems.push(refusal);
-      continue;
-    }
+    // A return-track clip names the scene its slot sits in, like any other.
+    const sceneIndex = object.sceneIndex ?? object.returnClipSlotIndex;
 
     // Arrangement clips and everything off the session grid land here. Say
     // what would work, since "found clip" alone reads as a contradiction to a
     // caller who was asked for a clip id.
-    if (object.sceneIndex == null) {
+    if (sceneIndex == null) {
       const type = publishedType(object.type);
       const kind = type == null ? "" : ` (found ${type})`;
 
@@ -403,7 +408,7 @@ function idSceneRefs(
       continue;
     }
 
-    found.push({ scene: object.sceneIndex, source: `${idParam} "${id}"` });
+    found.push({ scene: sceneIndex, source: `${idParam} "${id}"` });
   }
 
   return { found, problems };

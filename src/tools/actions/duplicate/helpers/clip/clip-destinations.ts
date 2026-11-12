@@ -17,21 +17,23 @@ import {
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
 import {
-  parseClipDestinationList,
-  type ClipDestinationPath,
+  type AnySlotPosition,
+  slotPositionText,
+} from "#src/tools/shared/clip/slot-contents/slot-position.ts";
+import {
+  parseEnvelopeAwareDestinationList,
+  type EnvelopeAwareDestination,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import {
   slotPath,
   type ClipPath,
+  type ReturnSlotPath,
 } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { refuseDoubledSpelling } from "#src/tools/shared/validation/doubled-spelling.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { skippedCopy } from "../minimal-clip-info.ts";
-import {
-  parseSlotList,
-  type ClipSlotPosition,
-} from "#src/tools/shared/validation/position-parsing.ts";
+import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 
 /**
  * One arrangement destination. A null `trackIndex` is a bare `[5|1]`: the entry
@@ -58,8 +60,11 @@ const ALONE: BesideEntries = { arrangement: false, position: false };
 
 export interface ClipDestinations {
   destination: "session" | "arrangement";
-  /** Clip slots, in order. Empty for arrangement destinations. */
-  slots: ClipSlotPosition[];
+  /**
+   * Clip slots, in order, on regular or return tracks. Empty for arrangement
+   * destinations.
+   */
+  slots: AnySlotPosition[];
   /**
    * Arrangement destinations, in order, null where the path named something
    * this call can't use. Empty means the source's own track.
@@ -104,7 +109,7 @@ export function resolveClipDestinations(
   }
 
   const entries = resolveDestinationPositions(
-    parseClipDestinationList(toPath, "toPath"),
+    parseEnvelopeAwareDestinationList(toPath, "toPath"),
     { paramName: "toPath" },
   );
 
@@ -120,7 +125,9 @@ export function resolveClipDestinations(
 
   // A coordinate — bare or not — made the call an arrangement duplicate above,
   // so every entry left here named a lane.
-  return clipSlotDestinations(entries.map(({ lane }) => lane as ClipPath));
+  return clipSlotDestinations(
+    entries.map(({ lane }) => lane as ClipPath | ReturnSlotPath),
+  );
 }
 
 /**
@@ -196,7 +203,7 @@ function legacySlotDestinations(
  * @returns Arrangement destinations, or session ones when only slots were named
  */
 function arrangementDestinations(
-  entries: ClipDestinationPath[],
+  entries: EnvelopeAwareDestination[],
   startParam: string,
   beside: BesideEntries,
 ): ClipDestinations {
@@ -205,7 +212,7 @@ function arrangementDestinations(
   // its own: arrangementStart was refused alongside them.
   const fromPath =
     beside.position || entries.some((entry) => entry.position != null);
-  const slots: ClipSlotPosition[] = [];
+  const slots: AnySlotPosition[] = [];
   const arrangementTargets: (DuplicateArrangementTarget | null)[] = [];
   const arrangementRefusals: (TargetSkip | null)[] = [];
   const arrangementPositions = entries.map((entry) => entry.position);
@@ -215,6 +222,17 @@ function arrangementDestinations(
 
     if (lane == null) {
       arrangementTargets.push({ trackIndex: null, takeLane: null });
+    } else if (lane.kind === "return-slot") {
+      slots.push({
+        returnIndex: lane.returnIndex,
+        sceneIndex: lane.sceneIndex,
+      });
+      arrangementTargets.push(null);
+      arrangementRefusals[arrangementRefusals.length - 1] = skippedCopy(
+        formatObjectPath(lane),
+        "a return-track slot can't take an arrangement copy; an envelope " +
+          "clip can only go to a return-track slot",
+      );
     } else if (lane.kind === "slot") {
       const slot = slotPath(lane.trackIndex, lane.sceneIndex);
 
@@ -247,9 +265,7 @@ function arrangementDestinations(
     };
   }
 
-  const named = slots
-    .map((slot) => `t${slot.trackIndex}/s${slot.sceneIndex}`)
-    .join(", ");
+  const named = slots.map(slotPositionText).join(", ");
 
   // toPath names where the copy goes; arrangementStart only says where on a
   // track. With nothing but clip slots, across every source, the position has
@@ -304,10 +320,21 @@ function noPositionError(lane: ClipPath): Error {
  * @param paths - Parsed clip destination paths
  * @returns Clip slot destinations
  */
-function clipSlotDestinations(paths: ClipPath[]): ClipDestinations {
-  const slots: ClipSlotPosition[] = [];
+function clipSlotDestinations(
+  paths: Array<ClipPath | ReturnSlotPath>,
+): ClipDestinations {
+  const slots: AnySlotPosition[] = [];
 
   for (const path of paths) {
+    if (path.kind === "return-slot") {
+      slots.push({
+        returnIndex: path.returnIndex,
+        sceneIndex: path.sceneIndex,
+      });
+
+      continue;
+    }
+
     // A bare track names two places at once, and guessing between them is how a
     // copy ends up on top of the source. A take lane names the arrangement
     // outright, so it needs a position there rather than a scene.

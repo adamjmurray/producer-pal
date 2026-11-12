@@ -18,7 +18,10 @@ import {
 } from "#src/tools/shared/helpers/entry-details.ts";
 import { landedColor } from "#src/tools/shared/helpers/landed-color.ts";
 import { type ArrangementLane } from "#src/tools/shared/validation/helpers/object-path-position.ts";
-import { slotPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import {
+  returnSlotPath,
+  slotPath,
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { type TargetSkip } from "#src/tools/shared/validation/lists/named-targets.ts";
 import {
   objectPathForApi,
@@ -87,6 +90,15 @@ export function getMinimalClipInfo(
 
   const trackIndex = clip.trackIndex;
   const sceneIndex = clip.sceneIndex;
+
+  // An envelope clip sits in a return track's slot.
+  if (clip.returnTrackIndex != null && clip.returnClipSlotIndex != null) {
+    return {
+      id: clip.id,
+      path: returnSlotPath(clip.returnTrackIndex, clip.returnClipSlotIndex),
+      ...(detail != null && { detail }),
+    };
+  }
 
   if (trackIndex == null || sceneIndex == null) {
     throw new Error(`no clip slot for clip ${targetLabel(clip)}`);

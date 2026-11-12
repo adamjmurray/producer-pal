@@ -6,6 +6,7 @@
 import { assertDefined } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { emitWarning } from "#src/shared/max/v8-max-console.ts";
+import { type AnySlotPosition } from "#src/tools/shared/clip/slot-contents/slot-position.ts";
 import { appendDetail } from "#src/tools/shared/helpers/entry-details.ts";
 import {
   applyPluginEditorWindow,
@@ -341,7 +342,7 @@ interface ValidateParametersOptions {
   deviceId?: string;
   devicePath?: string;
   devicePathParam: "path" | "devicePath";
-  slot?: { trackIndex: number; sceneIndex: number };
+  slot?: AnySlotPosition;
 }
 
 /**

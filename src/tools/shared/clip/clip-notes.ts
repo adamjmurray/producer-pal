@@ -5,6 +5,7 @@
 
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
+import { noNotesReason } from "./slot-contents/clip-kind.ts";
 
 /** A note copied as-is: everything add_new_notes takes, minus note_id. */
 export interface CopiedNote extends NoteEvent {
@@ -83,7 +84,7 @@ export function readEveryClipNote(clip: LiveAPI): Record<string, unknown>[] {
 /**
  * Read every note starting in a span, as raw Live API note objects. A step
  * sequencer clip answers none without asking Live: its notes API reads a hidden
- * list, never the steps.
+ * list, never the steps. An envelope clip has no notes to ask for.
  * @param clip - LiveAPI clip object
  * @param fromTime - Span start in beats
  * @param timeSpan - Span length in beats
@@ -94,7 +95,7 @@ export function readClipNotesInSpan(
   fromTime: number,
   timeSpan: number,
 ): Record<string, unknown>[] {
-  if (clip.isStepSequencerClip) {
+  if (noNotesReason(clip) != null) {
     return [];
   }
 
@@ -108,11 +109,12 @@ export function readClipNotesInSpan(
 /**
  * Remove every note in a clip's scan window — the same window
  * {@link readAllClipNotes} reads, and it must stay that way. Does nothing on a
- * step sequencer clip, whose notes API only reaches a hidden list.
+ * step sequencer clip, whose notes API only reaches a hidden list, or on an
+ * envelope clip, which has none.
  * @param clip - LiveAPI clip object
  */
 export function removeAllClipNotes(clip: LiveAPI): void {
-  if (clip.isStepSequencerClip) {
+  if (noNotesReason(clip) != null) {
     return;
   }
 
@@ -127,7 +129,7 @@ export function removeAllClipNotes(clip: LiveAPI): void {
  * @param clip - LiveAPI clip object
  */
 export function removeEveryClipNote(clip: LiveAPI): void {
-  if (clip.isStepSequencerClip) {
+  if (noNotesReason(clip) != null) {
     return;
   }
 

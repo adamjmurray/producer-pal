@@ -126,25 +126,38 @@ export function registerEnvelopeClip(
   return registerMockObject(id, {
     path: livePath.returnTrack(returnIndex).clipSlot(0).clip(),
     type: "Clip",
-    properties: {
-      name,
-      color: 16711680,
-      is_midi_clip: 0,
-      is_audio_clip: 0,
-      is_arrangement_clip: 0,
-      has_envelopes: hasEnvelopes,
-      length: 4,
-      looping: 0,
-      loop_start: 0,
-      loop_end: 4,
-      start_marker: 0,
-      end_marker: 4,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      is_playing: 0,
-      muted: 0,
-    },
+    properties: envelopeClipProperties(name, hasEnvelopes),
   });
+}
+
+/**
+ * What Live reads from an envelope clip: 1 bar long, neither MIDI nor audio.
+ * @param name - The clip's name
+ * @param hasEnvelopes - The `has_envelopes` flag
+ * @returns The clip's properties
+ */
+export function envelopeClipProperties(
+  name: string,
+  hasEnvelopes: number,
+): Record<string, unknown> {
+  return {
+    name,
+    color: 16711680,
+    is_midi_clip: 0,
+    is_audio_clip: 0,
+    is_arrangement_clip: 0,
+    has_envelopes: hasEnvelopes,
+    length: 4,
+    looping: 0,
+    loop_start: 0,
+    loop_end: 4,
+    start_marker: 0,
+    end_marker: 4,
+    signature_numerator: 4,
+    signature_denominator: 4,
+    is_playing: 0,
+    muted: 0,
+  };
 }
 
 /**

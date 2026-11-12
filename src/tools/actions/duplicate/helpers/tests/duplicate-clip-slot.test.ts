@@ -11,7 +11,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
-import { duplicateClipSlot } from "../clip/duplicate-clip-slot.ts";
+import { duplicateClipSlot } from "../clip/slot-copy/duplicate-clip-slot.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 

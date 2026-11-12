@@ -5,7 +5,6 @@
 
 import { assertDefined } from "#src/shared/error-message.ts";
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
-import { returnClipWriteRefusal } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { fromLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import {
   namedParam,
@@ -147,12 +146,6 @@ export function resolveIdParam(id: string, label = "id"): ResolveIdResult {
   }
 
   if (type === "Clip") {
-    const refusal = returnClipWriteRefusal(object);
-
-    if (refusal != null) {
-      throw new Error(refusal);
-    }
-
     return { clipId: id, detectedType: "clip" };
   }
 
@@ -393,13 +386,14 @@ function ownerTrackPath(id: string): PathLike | null {
 }
 
 /**
- * The scene a clip sits in. Only a session clip has one — an arrangement clip
+ * The scene a clip sits in, on a regular or a return track. Only a session clip has one — an arrangement clip
  * is placed on a timeline, and select reports the arrangement view for it.
  * @param clipId - The clip's id
  * @returns The scene's path, or null for an arrangement clip
  */
 function sceneOfClip(clipId: string): PathLike | null {
-  const sceneIndex = LiveAPI.from(clipId).clipSlotIndex;
+  const clip = LiveAPI.from(clipId);
+  const sceneIndex = clip.clipSlotIndex ?? clip.returnClipSlotIndex;
 
   return sceneIndex == null ? null : livePath.scene(sceneIndex);
 }

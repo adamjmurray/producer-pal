@@ -14,6 +14,9 @@ export const CLIP_IS_AUDIO = "the clip is audio";
 /** Why a clip can't take a notes param: its steps are hidden from the API. */
 export const CLIP_IS_STEP_SEQUENCER = "the clip is a step sequencer";
 
+/** Why a clip can't take a notes or audio param: it holds automation only. */
+export const CLIP_IS_ENVELOPE = "the clip is an envelope clip";
+
 /** Why a clip can't take an audio-only param. */
 export const CLIP_IS_MIDI = "the clip is MIDI";
 

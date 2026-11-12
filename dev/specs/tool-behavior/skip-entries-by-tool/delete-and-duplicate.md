@@ -100,10 +100,19 @@ Part of [Skip entries, tool by tool](README.md).
   on after making it, a device whose temp track couldn't be deleted, a pad whose
   chains couldn't be named, a take lane made for a clip that then failed. Only a
   copy nothing of which landed is `ok: false`.
-- **delete and duplicate skip a Live 13 return-track clip** (an envelope clip)
-  with `return-track clips can't be changed yet`, by path or by id, as the clip
-  to delete or to copy. A return slot as a duplicate's `toPath` refuses the
-  call, like any destination that isn't a place a clip can go.
+- **delete and duplicate take a Live 13 return-track clip** (an envelope clip),
+  by path or by id. delete removes it from its slot. duplicate copies it, with
+  Live's own copy, to another return slot, and says
+  `overwrote the existing clip at rt1/s0` when it replaced one. Every other
+  destination is that destination's skip,
+  `an envelope clip can only go to a return-track slot`, and a regular clip sent
+  to a return slot says `a return-track slot only takes an envelope clip`
+  (thrown when the call has one copy). `transforms` or `code` on the copies are
+  said on their entries (`the clip is an envelope clip`). A copy whose naming
+  failed keeps its entry with `the copy landed, but ...`.
+- **An envelope clip is never rebuilt**, for the same reason: every path that
+  would re-create a clip skips it with
+  `it's an envelope clip, and Live's API can't create one`.
 - **A step sequencer clip is never rebuilt.** Live's API can't create one, so
   every copy that would re-create a clip from its notes is skipped before
   anything is made or deleted, with

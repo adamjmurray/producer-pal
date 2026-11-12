@@ -9,7 +9,6 @@
 // any number; several take one each, in order.
 
 import { errorMessage } from "#src/shared/error-message.ts";
-import { returnClipWriteRefusal } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { targetEntries } from "#src/tools/shared/helpers/target-entries.ts";
 import { resolvePathForType } from "#src/tools/shared/validation/id-per-path.ts";
 import {
@@ -284,14 +283,16 @@ function arrangementShares(
 
 /**
  * Whether a toPath names a spot on the arrangement: any entry that isn't a clip
- * slot, a bare `[5|1]` included.
+ * slot (on a return track too), a bare `[5|1]` included.
  * @param toPath - One source's destination path(s)
  * @returns True when some entry isn't a clip slot
  */
 function namesArrangementEntry(toPath: string | undefined): boolean {
-  return pathEntries(toPath, "toPath").some(
-    (entry) => destinationLane(entry, "toPath")?.kind !== "slot",
-  );
+  return pathEntries(toPath, "toPath").some((entry) => {
+    const lane = destinationLane(entry, "toPath");
+
+    return lane?.kind !== "slot" && lane?.kind !== "return-slot";
+  });
 }
 
 /**
@@ -424,7 +425,7 @@ function typeLookup(
           regularTrackIndex(object);
         }
 
-        return type === "clip" ? returnClipWriteRefusal(object) : null;
+        return null;
       } catch (error) {
         return errorMessage(error);
       }

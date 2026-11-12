@@ -32,7 +32,10 @@ import {
 } from "../entries/clip-reasons.ts";
 import { type LandingLog } from "#src/tools/shared/clip/landings/landing-log.ts";
 import { handlePositionOperations } from "../move/position-operations.ts";
-import { type ClipPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
+import {
+  type ClipPath,
+  type ReturnSlotPath,
+} from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { checkRegionUpFront } from "./check-region-up-front.ts";
 import { writeClipMeter } from "./write-clip-meter.ts";
 import { writeClipScaleParam } from "./write-clip-scale.ts";
@@ -41,7 +44,7 @@ import { reportNotesOutsideRegion } from "../notes/notes-outside-region.ts";
 import { parseNoteEdits } from "../notes/note-edit-parsing.ts";
 import { writeClipProperties } from "./write-clip-properties.ts";
 import { checkTransformsForClipType } from "../notes/transform-clip-type.ts";
-import { ignoreNoteParamsOnStepSequencer } from "../notes/step-sequencer-params.ts";
+import { ignoreParamsWithoutNotes } from "../notes/params-without-notes.ts";
 import {
   CLIP_IS_AUDIO,
   CLIP_IS_MIDI,
@@ -87,8 +90,10 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   arrangementStartBeats?: number | null;
   /** Where this clip moves, from toPath (or the deprecated toSlot). */
   destination?: ClipPath | null;
+  /** The return track slot an envelope clip moves to. */
+  returnDestination?: ReturnSlotPath | null;
   /** A clip slot sent beside an arrangement start or length, to be noted as ignored. */
-  ignoredDestination?: ClipPath | null;
+  ignoredDestination?: ClipPath | ReturnSlotPath | null;
   destinationParam: "toPath" | "toSlot";
   /** The param that named arrangementStartBeats. */
   startParam: "toPath" | "arrangementStart";
@@ -127,7 +132,7 @@ export function processSingleClipUpdate(
     `clip ${targetLabel(params.clip)}`,
     () =>
       updateOneClip(
-        checkTransformsForClipType(ignoreNoteParamsOnStepSequencer(params)),
+        checkTransformsForClipType(ignoreParamsWithoutNotes(params)),
       ),
     (reason) => noteTransformReason(params, reason),
   );
@@ -281,6 +286,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     clip,
     isAudioClip,
     destination: params.destination,
+    returnDestination: params.returnDestination,
     ignoredDestination: params.ignoredDestination,
     destinationParam: params.destinationParam,
     startParam: params.startParam,

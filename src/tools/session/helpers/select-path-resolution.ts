@@ -23,7 +23,14 @@ import {
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
 import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
-import { returnSlotWriteRefusal } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
+import {
+  RETURN_CLIPS_NEED_LIVE_13,
+  returnClipsExist,
+} from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
+import {
+  type AnySlotPosition,
+  slotLivePath,
+} from "#src/tools/shared/clip/slot-contents/slot-position.ts";
 import { namedHiddenPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { requireCompletePosition } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
 import { type CompleteArrangementPosition } from "#src/tools/shared/validation/helpers/object-path-position.ts";
@@ -36,7 +43,7 @@ import {
 import { buildTrackPath, type TrackCategory } from "./selection-updates.ts";
 
 export interface PathTarget {
-  parsedClipSlot?: { trackIndex: number; sceneIndex: number };
+  parsedClipSlot?: AnySlotPosition;
   devicePath?: string;
   /** A drum pad or rack chain path, which selects on its rack rather than the song view. */
   rackTargetPath?: string;
@@ -269,10 +276,7 @@ function assertIdAgrees(
   const slot = target.parsedClipSlot;
 
   if (clipId != null && slot != null) {
-    assertSameObject(
-      clipId,
-      livePath.track(slot.trackIndex).clipSlot(slot.sceneIndex).clip(),
-    );
+    assertSameObject(clipId, slotLivePath(slot).clip());
   }
 }
 
@@ -431,7 +435,22 @@ function targetFromPath(path: ObjectPath): PathTarget {
     }
 
     case "return-slot":
-      throw pathError("path", formatObjectPath(path), returnSlotWriteRefusal());
+      if (!returnClipsExist()) {
+        throw pathError(
+          "path",
+          formatObjectPath(path),
+          RETURN_CLIPS_NEED_LIVE_13,
+        );
+      }
+
+      return {
+        parsedClipSlot: {
+          returnIndex: path.returnIndex,
+          sceneIndex: path.sceneIndex,
+        },
+        impliedTrack: { trackIndex: path.returnIndex, category: "return" },
+        impliedScene: path.sceneIndex,
+      };
 
     default:
       throw pathError(

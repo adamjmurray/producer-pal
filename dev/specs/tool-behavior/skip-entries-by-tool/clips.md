@@ -146,9 +146,23 @@ Part of [Skip entries, tool by tool](README.md).
   list and count them (a scene entry names the return track in `trackName`); a
   nested one keeps its type, since the track's isn't `"envelope"`. Its
   `envelopes` say `envelopes on return-track clips can't be read yet`.
-- **update-clip skips a return-track clip** with
-  `return-track clips can't be changed yet`, by path or by id, and a `toPath`
-  naming a return slot is that clip's `not moved:` entry.
+- **update-clip takes an envelope clip** by path or by id: `name`, `color`,
+  `looping`, the region and marker params and `timeSignature` land as on a MIDI
+  clip. Everything that needs notes or a sample is ignored per param, on the
+  clip's entry, with `the clip is an envelope clip`: `notes`, `transforms`,
+  `preTransforms`, `quantize`/`quantizeGrid`/`quantizePitch`, `duplicateLoop`,
+  `code`, `scale`, `gainDb`, `pitchShift`, the warp params and `convert`
+  (`gainDb, pitchShift ignored: the clip is an envelope clip`). `envelopes` is
+  ignored the same way with its own reason
+  (`return-track clips can't take envelopes yet`) until they can be written. A
+  `transforms` that can't be read still refuses the call; `notes` aren't read. A
+  clip nothing landed on is skipped, or throws when alone. A `toPath` moves it
+  to another return slot only; any other destination is that clip's
+  `not moved: an envelope clip can only go to a return-track slot` (a regular
+  clip sent to a return slot says
+  `not moved: a return-track slot only takes an envelope clip`). A move whose
+  copy landed but whose original wouldn't delete keeps the copy's entry with
+  `the original at rt0/s0 could not be deleted`.
 - **read-clip shows a MIDI clip's `scale` (and `scalePitches`) only when it
   differs from the Live Set's.** Both off is the same. A clip with its scale off
   while the Live Set's is on reads `scale: ""` (no `scalePitches`). A clip with

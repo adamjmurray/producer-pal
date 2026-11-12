@@ -16,6 +16,7 @@ import {
   drumRackOfPad,
   invalidateRackChains,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import { isReturnTrackClip } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { toLiveApiId } from "#src/tools/shared/helpers/live-api-values.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { deleteDrumChain } from "./delete-drum-chain.ts";
@@ -127,6 +128,13 @@ function deleteClipObject(
     return `cannot delete take-lane clip ${targetLabel(object)} via the API; remove it in Live's UI`;
   }
 
+  // A return track's clip has no track call to delete it by id: its slot does.
+  if (isReturnTrackClip(object)) {
+    deleteReturnTrackClip(object);
+
+    return confirmDeleted("clip", id);
+  }
+
   const trackIndex = object.path.match(/live_set tracks (\d+)/)?.[1];
 
   if (!trackIndex) {
@@ -138,6 +146,20 @@ function deleteClipObject(
   track.call("delete_clip", toLiveApiId(object.id));
 
   return confirmDeleted("clip", id);
+}
+
+/**
+ * Deletes a clip from its return track's clip slot.
+ * @param clip - A clip in a return track's slot
+ */
+function deleteReturnTrackClip(clip: LiveAPI): void {
+  const slot = LiveAPI.from(
+    livePath
+      .returnTrack(clip.returnTrackIndex as number)
+      .clipSlot(clip.returnClipSlotIndex as number),
+  );
+
+  slot.call("delete_clip");
 }
 
 /**

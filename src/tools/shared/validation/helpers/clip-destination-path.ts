@@ -8,6 +8,10 @@
 // keeps the clip's position, and `[5|1]` keeps its lane. Sources take neither
 // partial; see dev/specs/tool-behavior/object-paths/README.md, "Complete and partial".
 
+import {
+  RETURN_CLIPS_NEED_LIVE_13,
+  returnClipsExist,
+} from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { refuseNamedTwice } from "#src/tools/shared/helpers/param-presence.ts";
 import {
   formatObjectPath,
@@ -20,15 +24,27 @@ import {
   pathEntries,
   requireClipPath,
   type ClipPath,
+  type ReturnSlotPath,
 } from "./object-paths.ts";
 
+/** The param name a path is sent under when the caller doesn't say. */
+const PATH = "path";
+
+/** The path kind a return track's clip slot has. */
+const RETURN_SLOT = "return-slot";
+
 /** One destination: the lane it named, the position it named, or both. */
-export interface ClipDestinationPath {
+export interface ClipDestinationPath<Lane = ClipPath> {
   /** The lane, or null when the entry is a bare `[5|1]`. */
-  lane: ClipPath | null;
+  lane: Lane | null;
   /** The song position from the coordinate, or null when it carried none. */
   position: string | null;
 }
+
+/** A destination that may also name a Live 13 return track's clip slot. */
+export type EnvelopeAwareDestination = ClipDestinationPath<
+  ClipPath | ReturnSlotPath
+>;
 
 /**
  * Reads a destination path as its two halves.
@@ -38,13 +54,53 @@ export interface ClipDestinationPath {
  */
 export function requireClipDestinationPath(
   path: ObjectPath,
-  label = "path",
+  label = PATH,
 ): ClipDestinationPath {
   if (path.kind === "arrangement-position") {
     return { lane: path.lane, position: path.position };
   }
 
   return { lane: requireClipPath(path, label), position: null };
+}
+
+/**
+ * Reads a destination path as its two halves, for a tool that can send an
+ * envelope clip to a return track's clip slot. Which clips may go where is the
+ * tool's to say, per clip.
+ * @param path - Parsed path
+ * @param label - Param name for error messages
+ * @returns The lane and the position the path names
+ * @throws Error naming a return-track slot on a Live that has none
+ */
+export function requireEnvelopeAwareDestination(
+  path: ObjectPath,
+  label = PATH,
+): EnvelopeAwareDestination {
+  if (path.kind !== RETURN_SLOT) {
+    return requireClipDestinationPath(path, label);
+  }
+
+  if (!returnClipsExist()) {
+    throw pathError(label, formatObjectPath(path), RETURN_CLIPS_NEED_LIVE_13);
+  }
+
+  return { lane: path, position: null };
+}
+
+/**
+ * Parses a comma-separated destination list for a tool that can send an
+ * envelope clip to a return track's clip slot.
+ * @param input - Comma-separated paths (e.g. "t0[5|1],rt1/s2")
+ * @param label - Param name for error messages
+ * @returns One entry per path, in order
+ */
+export function parseEnvelopeAwareDestinationList(
+  input: string | null | undefined,
+  label = PATH,
+): EnvelopeAwareDestination[] {
+  return parseObjectPathList(input, label).map((path) =>
+    requireEnvelopeAwareDestination(path, label),
+  );
 }
 
 /**
@@ -55,7 +111,7 @@ export function requireClipDestinationPath(
  */
 export function parseClipDestinationList(
   input: string | null | undefined,
-  label = "path",
+  label = PATH,
 ): ClipDestinationPath[] {
   return parseObjectPathList(input, label).map((path) =>
     requireClipDestinationPath(path, label),
@@ -64,8 +120,8 @@ export function parseClipDestinationList(
 
 /**
  * Refuses a destination list naming a return track's clip slot, for a tool that
- * can never put a clip there. Other tools refuse one through
- * {@link requireClipPath}, in the words that say it is not changed yet.
+ * can never put a clip there. A tool that can send an envelope clip there reads
+ * its destinations with {@link requireEnvelopeAwareDestination} instead.
  * @param input - Comma-separated destinations, already known to name something
  * @param label - Param name for error messages
  * @param reason - Says why no clip can go there; asked only when one is named
@@ -79,7 +135,7 @@ export function refuseReturnSlotDestinations(
   for (const entry of pathEntries(input, label)) {
     const path = parseObjectPath(entry, label, true);
 
-    if (path.kind === "return-slot") {
+    if (path.kind === RETURN_SLOT) {
       throw pathError(label, formatObjectPath(path), reason());
     }
   }
@@ -95,10 +151,10 @@ export function refuseReturnSlotDestinations(
  */
 export function destinationLane(
   entry: string,
-  label = "path",
-): ClipPath | null {
+  label = PATH,
+): ClipPath | ReturnSlotPath | null {
   try {
-    return requireClipDestinationPath(parseObjectPath(entry, label), label)
+    return requireEnvelopeAwareDestination(parseObjectPath(entry, label), label)
       .lane;
   } catch {
     return null;
@@ -127,7 +183,10 @@ export function loneToPath(paths: string[]): {
   return {
     bare: lane == null,
     trackOrLane:
-      lane != null && lane.kind !== "slot" && !pathCarriesPosition(only),
+      lane != null &&
+      lane.kind !== "slot" &&
+      lane.kind !== RETURN_SLOT &&
+      !pathCarriesPosition(only),
   };
 }
 

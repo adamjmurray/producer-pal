@@ -12,10 +12,8 @@ import {
   noteClipReason,
 } from "../entries/clip-reasons.ts";
 import { reportCodeWriteEffects } from "../notes/muted-note-effects.ts";
-import {
-  CLIP_IS_STEP_SEQUENCER,
-  ignoredText,
-} from "#src/shared/max/ignored-wording.ts";
+import { ignoredText } from "#src/shared/max/ignored-wording.ts";
+import { noNotesReason } from "#src/tools/shared/clip/slot-contents/clip-kind.ts";
 
 /**
  * Run the call's `code` on the clips an update just wrote, and say how it went
@@ -41,9 +39,12 @@ export async function applyCodeToWrittenClips(
   }
 
   for (const clipResult of updatedClips) {
-    // Code rewrites every note, and a step sequencer clip has none it can reach.
-    if (LiveAPI.from(["id", clipResult.id]).isStepSequencerClip) {
-      noteCodeIgnored(reasons, sourceId);
+    // Code rewrites every note, and a step sequencer or envelope clip has none
+    // it can reach.
+    const why = noNotesReason(LiveAPI.from(["id", clipResult.id]));
+
+    if (why != null) {
+      noteCodeIgnored(reasons, sourceId, why);
 
       continue;
     }
@@ -90,9 +91,14 @@ export async function applyCodeToWrittenClips(
  * Say once that `code` did nothing, however many copies of the clip it met.
  * @param reasons - What each clip has to say beyond its result, added to
  * @param sourceId - The clip the call named
+ * @param why - Why the clip's notes can't be reached
  */
-function noteCodeIgnored(reasons: ClipReasons, sourceId: string): void {
-  const reason = ignoredText("code", CLIP_IS_STEP_SEQUENCER);
+function noteCodeIgnored(
+  reasons: ClipReasons,
+  sourceId: string,
+  why: string,
+): void {
+  const reason = ignoredText("code", why);
 
   if (!reasons.said.get(sourceId)?.includes(reason)) {
     ignoreClipParams(reasons, sourceId, ["code"], reason);

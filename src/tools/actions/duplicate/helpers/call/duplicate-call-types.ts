@@ -9,7 +9,7 @@ import {
 } from "#src/tools/shared/arrangement/helpers/take-lanes.ts";
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { type SongMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
-import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import { type AnySlotPosition } from "#src/tools/shared/clip/slot-contents/slot-position.ts";
 import {
   type Cover,
   type Step,
@@ -18,7 +18,7 @@ import {
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
 import { type TargetNames } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { type ClipDestinations } from "../clip/clip-destinations.ts";
-import { type SlotCopySource } from "../clip/duplicate-clip-slot.ts";
+import { type SlotCopySource } from "../clip/slot-copy/duplicate-clip-slot.ts";
 import { type ScenePass } from "../sources/scene-clips.ts";
 import { type LaneTarget } from "../sources/copy-clip-to-lane.ts";
 import { type SourceShare } from "../sources/source-plan.ts";
@@ -115,7 +115,7 @@ export type CopyBody =
   | { kind: "track"; sourceId: string }
   | { kind: "scene"; sourceId: string }
   | { kind: "scene-arrangement"; sourceId: string; startBeats: number }
-  | { kind: "slot"; sourceId: string; turn: number; slot: ClipSlotPosition }
+  | { kind: "slot"; sourceId: string; turn: number; slot: AnySlotPosition }
   | ArrangementCopy
   | { kind: "lane"; entry: string; target: LaneTarget }
   | { kind: "device" | "chain" | "pad"; sourceId: string; toPath?: string };

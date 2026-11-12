@@ -41,6 +41,7 @@ import {
 } from "../entries/clip-reasons.ts";
 import { applyCodeToWrittenClips } from "./apply-clip-code.ts";
 import { isSwitchedOff } from "#src/tools/shared/validation/lists/refuse-no-write.ts";
+import { afterUpdateParams } from "./envelope-clip-params.ts";
 import { type ClipRun } from "./clip-run.ts";
 import { cutClip } from "./cut-clip.ts";
 import { type ClipCall } from "./parse-clip-call.ts";
@@ -50,7 +51,11 @@ import { type ClipPayload } from "./resolve-clip-targets.ts";
 /** Where the clip goes and how long it is to be, once the plan has weighed in. */
 type Motion = Pick<
   ClipPayload,
-  "destination" | "ignoredDestination" | "startBeats" | "lengthBeats"
+  | "destination"
+  | "returnSlot"
+  | "ignoredDestination"
+  | "startBeats"
+  | "lengthBeats"
 >;
 
 /** What one target's write answers. */
@@ -210,6 +215,7 @@ function motionFor(
 
   return {
     destination: null,
+    returnSlot: null,
     ignoredDestination: null,
     startBeats: null,
     lengthBeats: null,
@@ -270,6 +276,8 @@ async function updatePiece(
   };
 
   try {
+    const later = afterUpdateParams(piece, call, reasons);
+
     processSingleClipUpdate({
       ...paramsFor(call),
       clip: piece,
@@ -289,6 +297,7 @@ async function updatePiece(
       arrangementLengthBeats: motion.lengthBeats,
       arrangementStartBeats: motion.startBeats,
       destination: motion.destination,
+      returnDestination: motion.returnSlot,
       ignoredDestination: motion.ignoredDestination,
       destinationParam: call.destinationParam,
       startParam: call.startParam,
@@ -310,11 +319,11 @@ async function updatePiece(
     );
     // Last, and on the entry the rest of the update settled on: a move
     // re-creates the clip under a new id.
-    await applyClipEnvelopes(updated[0], call.envelopeLines, context);
+    await applyClipEnvelopes(updated[0], later.envelopeLines, context);
     // After the envelopes, so it converts the clip as the call left it.
     await applyClipConvert({
       entry: updated[0],
-      type: call.args.convert,
+      type: later.convert,
       clipId: piece.id,
       reasons,
       progress: run.convert,

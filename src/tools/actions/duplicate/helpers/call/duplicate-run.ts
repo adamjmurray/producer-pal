@@ -17,7 +17,7 @@ import { copyLedger } from "../clip/overwrites/copy-overwrites.ts";
 import {
   resolveSlotCopySource,
   type SlotCopySource,
-} from "../clip/duplicate-clip-slot.ts";
+} from "../clip/slot-copy/duplicate-clip-slot.ts";
 import { readScene, type ScenePass } from "../sources/scene-clips.ts";
 import { type DuplicateRun } from "./duplicate-call-types.ts";
 

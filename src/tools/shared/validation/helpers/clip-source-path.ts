@@ -42,8 +42,8 @@ export function requireClipSourcePath(
     return requireCompletePosition(path, label);
   }
 
-  // A return-track slot is a source like any other; it is only refused as a
-  // destination (requireClipPath), and by the write tools that act on it.
+  // A return-track slot is a source like any other. As a destination it is
+  // only for envelope clips, which the tools that move or copy them decide.
   if (path.kind === "return-slot") {
     return path;
   }

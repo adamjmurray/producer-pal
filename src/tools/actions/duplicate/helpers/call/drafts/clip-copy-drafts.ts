@@ -23,14 +23,21 @@ import {
   canRecreateClip,
   recreateBlocker,
 } from "#src/tools/shared/clip/recreate-clip.ts";
-import {
-  arrangementPositionPath,
-  slotPath,
-} from "#src/tools/shared/validation/helpers/object-paths.ts";
+import { arrangementPositionPath } from "#src/tools/shared/validation/helpers/object-paths.ts";
 import { refuseNamedTwice } from "#src/tools/shared/helpers/param-presence.ts";
 import { type SongMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import { type NamedTarget } from "#src/tools/shared/validation/lists/named-targets.ts";
-import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import {
+  type AnySlotPosition,
+  slotPositionText,
+} from "#src/tools/shared/clip/slot-contents/slot-position.ts";
+import { isReturnSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import {
+  ENVELOPE_CLIP_ONLY_TO_RETURN_SLOT,
+  isReturnTrackClip,
+  returnSlotCopyBlocker,
+} from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type Cover } from "#src/tools/shared/write-pipeline/write-pipeline-types.ts";
 import {
   copyLengthBeats,
@@ -108,9 +115,23 @@ function addressed(path: string): NamedTarget {
  */
 function slotBlocker(
   clip: LiveAPI,
-  slot: ClipSlotPosition,
+  slot: AnySlotPosition,
   params: ClipDraftParams,
 ): string | null {
+  // An envelope clip goes between return track slots, and nothing else does.
+  if (isReturnSlotPosition(slot)) {
+    return (
+      returnSlotCopyBlocker(clip) ??
+      (LiveAPI.from(livePath.returnTrack(slot.returnIndex)).exists()
+        ? null
+        : `return track rt${slot.returnIndex} does not exist`)
+    );
+  }
+
+  if (isReturnTrackClip(clip)) {
+    return ENVELOPE_CLIP_ONLY_TO_RETURN_SLOT;
+  }
+
   // An arrangement clip is re-created into the slot, from its notes or sample.
   const unbuildable = clip.sceneIndex == null ? recreateBlocker(clip) : null;
 
@@ -136,13 +157,13 @@ function slotBlocker(
 function slotDrafts(
   source: SourceShare,
   turn: number,
-  slots: ClipSlotPosition[],
+  slots: AnySlotPosition[],
   params: ClipDraftParams,
 ): CopyDraft[] {
   const clip = source.skip == null ? params.objectOf(source.id) : null;
 
   return slots.map((slot): CopyDraft => {
-    const path = slotPath(slot.trackIndex, slot.sceneIndex);
+    const path = slotPositionText(slot);
     const blocker = clip == null ? null : slotBlocker(clip, slot, params);
 
     if (source.skip != null || blocker != null) {

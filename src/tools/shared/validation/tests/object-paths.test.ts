@@ -18,6 +18,7 @@ import {
   trackSegmentPath,
 } from "../helpers/object-paths.ts";
 import { deviceTailNoun } from "../helpers/object-path-device-tail.ts";
+import { registerLiveVersion } from "#src/tools/shared/schema/scale/tests/scale-test-helpers.ts";
 
 describe("parseObjectPathList", () => {
   it("parses a comma-separated list in order", () => {
@@ -122,10 +123,17 @@ describe("requireClipPath", () => {
     }
   });
 
-  // Well-formed, but no tool writes to a return-track clip yet.
+  // Well-formed, but only the tools that move or copy envelope clips take it,
+  // and they read it with requireEnvelopeAwareDestination.
   it("refuses a return-track slot as a place to put a clip", () => {
     expect(() => requireClipPath(parseObjectPath("rt0/s1"), "toPath")).toThrow(
-      'invalid toPath "rt0/s1" - return-track clips',
+      'invalid toPath "rt0/s1" - return-track clips need Live 13',
+    );
+
+    registerLiveVersion("13.0");
+
+    expect(() => requireClipPath(parseObjectPath("rt0/s1"), "toPath")).toThrow(
+      'invalid toPath "rt0/s1" - a return-track slot is no place for this tool\'s clips',
     );
   });
 

@@ -30,10 +30,9 @@ code; when it disagrees with a tool, the tool wins.
 - **`updateTrack` and `updateScene` refuse a `path` entry they can't parse**
   before anything is written; an entry that parses but names no track or scene
   skips only its own target. `rt0/l0` is such an entry: only regular tracks have
-  take lanes. `rt0/s0` parses (a Live 13 return track's clip slot), so every
-  write tool skips that target, or throws when it is alone, until return-track
-  clips can be changed: `return-track clips can't be changed yet`, or
-  `return-track clips need Live 13` on Live 12.
+  take lanes. `rt0/s0` parses (a Live 13 return track's clip slot), so those two
+  skip that target, or throw when it is alone; the clip tools act on it. Live 12
+  refuses it with `return-track clips need Live 13`.
 - **`updateClip` refuses a `path` entry it can't parse** before anything is
   written, and a `toPath` entry the same (`tX`); an entry that parses but names
   no clip skips only its own target, and a `toPath` entry that parses but names

@@ -7,6 +7,7 @@ import { focusSelect } from "#src/tools/session/helpers/focus-select.ts";
 import { idOrPathRequired } from "#src/tools/shared/validation/id-validation.ts";
 import { isGroupTrack } from "#src/tools/shared/arrangement/tracks/tracks-inside-group.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { isReturnSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   blankTargetIgnores,
   type TargetParams,
@@ -129,6 +130,8 @@ interface PlaybackChecked extends PlaybackCall {
 const PLAY_SESSION_CLIPS = "play-session-clips";
 const PLAY_SCENE = "play-scene";
 const STOP = "stop";
+const CLIPS_FIRED = "session clips fired";
+const CLIPS_STOPPED = "session clips stopped";
 const SESSION_CLIP_ACTIONS = [PLAY_SESSION_CLIPS, "stop-session-clips"];
 
 const ACTIONS = new Set([
@@ -351,7 +354,7 @@ function beforeTargets(checked: PlaybackChecked, call: Call): void {
     case "stop-all-session-clips":
       // The transport/arrangement might still be playing, so isPlaying stays.
       liveSet.call("stop_all_clips");
-      call.landed("session clips stopped");
+      call.landed(CLIPS_STOPPED);
       break;
 
     case STOP:
@@ -381,6 +384,20 @@ function writeClip(
   const clipId = clip.exists() ? clip.id : undefined;
   let detail: string | undefined;
 
+  // A return track's slot only ever holds an envelope clip: no group slots,
+  // and its own stop, since the track-wide stop is for tracks with a grid.
+  if (isReturnSlotPosition(position)) {
+    slot.call(action === PLAY_SESSION_CLIPS ? "fire" : "stop");
+    step.call.landed(
+      action === PLAY_SESSION_CLIPS ? CLIPS_FIRED : CLIPS_STOPPED,
+    );
+
+    return {
+      ...(clipId != null && { id: clipId }),
+      path,
+    };
+  }
+
   if (action === PLAY_SESSION_CLIPS) {
     // A group track's slot holds no clip. Read what it reaches before firing.
     if (clipId == null && slot.getProperty("controls_other_clips")) {
@@ -391,7 +408,7 @@ function writeClip(
     }
 
     slot.call("fire");
-    step.call.landed("session clips fired");
+    step.call.landed(CLIPS_FIRED);
   } else if (!stopped.has(position.trackIndex)) {
     const track = LiveAPI.from(livePath.track(position.trackIndex));
 
@@ -404,7 +421,7 @@ function writeClip(
     track.call("stop_all_clips");
     // Only once it went through: after a throw, the next slot tries again.
     stopped.add(position.trackIndex);
-    step.call.landed("session clips stopped");
+    step.call.landed(CLIPS_STOPPED);
   }
 
   return {

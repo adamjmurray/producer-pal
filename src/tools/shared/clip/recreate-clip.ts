@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { errorMessage } from "#src/shared/error-message.ts";
+import { isReturnTrackClip } from "./slot-contents/return-track-clips.ts";
 import {
   requireCreatedArrangementClip,
   requireCreatedClip,
@@ -168,9 +169,14 @@ export function recreateClipInSlot(
 export const STEP_SEQUENCER_NO_REBUILD =
   "it's a step sequencer clip, and Live's API can't create one";
 
+/** Why an envelope clip can't be re-created. */
+export const ENVELOPE_CLIP_NO_REBUILD =
+  "it's an envelope clip, and Live's API can't create one";
+
 /**
  * Why a clip can't be re-created, or null when it can. A step sequencer clip
- * can't: its steps can't be read, and Live's API can only make notes clips. A
+ * can't: its steps can't be read, and Live's API can only make notes clips.
+ * Neither can an envelope clip, which Live's API can't create at all. A
  * MIDI clip otherwise always can; an audio clip is rebuilt from its sample, so
  * it needs a `file_path`. A non-empty `file_path` only means Live once saw a
  * sample there — not that the file is still on disk, so the create itself can
@@ -179,6 +185,10 @@ export const STEP_SEQUENCER_NO_REBUILD =
  * @returns The reason, worded for a skip entry, or null
  */
 export function recreateBlocker(clip: LiveAPI): string | null {
+  if (isReturnTrackClip(clip)) {
+    return ENVELOPE_CLIP_NO_REBUILD;
+  }
+
   const isMidi = clip.getProperty("is_midi_clip") === 1;
 
   if (isMidi && clip.midiClipIsStepSequencer) {
