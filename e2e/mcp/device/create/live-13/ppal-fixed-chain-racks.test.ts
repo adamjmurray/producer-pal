@@ -9,6 +9,8 @@
  * down on them (Max answers 1, Python throws), so each path that would add a
  * chain is refused up front with the rack's limit and chains.
  *
+ * A read of either rack shows its limit as `maxChains`.
+ *
  * Live 13 only: the Set can't be opened by Live 12, so the suite skips there.
  * Uses: live-13-test, t1 (d0 Mid-Side Rack, d1 Multiband Rack). See
  * e2e/live-sets/specs/live-13-test-spec.md.
@@ -30,6 +32,7 @@ const MID_SIDE_LIMIT = "Mid-Side Rack (id";
 const MULTIBAND_LIMIT = "Multiband Rack (id";
 
 interface RackRead {
+  maxChains?: number;
   chains?: { id: string; name?: string; deviceCount?: number }[];
 }
 
@@ -65,6 +68,27 @@ describe.skipIf(!LIVE_13_OR_NEWER)("racks with fixed chains (Live 13)", () => {
     getToolErrorMessage(
       await ctx.client!.callTool({ name: tool, arguments: params }),
     );
+
+  it.each([
+    [MID_SIDE, 2],
+    [MULTIBAND, 3],
+  ])("shows the chain limit of %s when read", async (path, limit) => {
+    const withChains = parseToolResult<RackRead>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { path, include: ["chains"], maxDepth: 0 },
+      }),
+    );
+    const bare = parseToolResult<RackRead>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { path, include: [] },
+      }),
+    );
+
+    expect(withChains.maxChains).toBe(limit);
+    expect(bare.maxChains).toBe(limit);
+  });
 
   it("has the fixed chains the spec lists", async () => {
     expect(

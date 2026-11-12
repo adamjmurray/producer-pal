@@ -18,6 +18,16 @@ because its includes are unique (`params`, `param-values`, `drum-map`,
 | `type`        | `string` | Device type, with class name if not redundant |
 | `name`        | `string` | Display name (omitted if same as class name)  |
 | `deactivated` | `true`   | Only present when device is inactive          |
+| `maxChains`   | `number` | Racks with fixed chains only (see below)      |
+
+### Fixed-chain racks
+
+On Live 13 or later, Mid-Side Rack (2) and Multiband Rack (3) show `maxChains`
+so a caller knows the limit before adding a chain. It needs no `include`; the
+one read that leaves it out is `include: ["drum-map"]` alone. Other racks never
+show it. It costs one `max_num_chains` read per non-drum rack on Live 13 and
+none elsewhere (Live 12 has no such property). `ppal-read-track` shows it on the
+devices it lists too.
 
 ### CC Control
 

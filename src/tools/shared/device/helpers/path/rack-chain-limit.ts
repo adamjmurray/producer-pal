@@ -13,29 +13,46 @@ import { liveVersionAtLeast } from "#src/tools/shared/helpers/live-api-values.ts
 /** `max_num_chains` exists from this Live version on. */
 const CHAIN_LIMIT_MIN_VERSION = "13.0";
 
+/** Live 13 reads an unlimited rack's limit as INT_MAX; real limits are tiny. */
+const MAX_REAL_CHAIN_LIMIT = 1000;
+
 /**
- * The most chains a rack takes, when it is already full.
+ * The most chains a rack ever takes, when Live fixes it (Mid-Side, Multiband).
  *
- * Only a positive whole number that the rack's chain count has reached counts.
- * Live 13 reads an unlimited rack as INT_MAX, which no rack reaches. Live 12
- * has no such property and answers with a bare 1, which `getProperty` already
- * drops (it isn't a list); the version is checked as well before a limit is
- * believed. Anything else is no limit.
+ * Only a whole number from 1 up to a small bound counts. Live 12 has no
+ * `max_num_chains` and answers with a bare 1, which `getProperty` already drops
+ * (it isn't a list); the version is checked first, so Live 12 reads nothing.
+ * @param rack - The rack device
+ * @returns The limit, or null when the rack's chains aren't fixed
+ */
+export function fixedChainLimit(rack: LiveAPI): number | null {
+  if (!liveVersionAtLeast(CHAIN_LIMIT_MIN_VERSION)) {
+    return null;
+  }
+
+  const limit = rack.getProperty("max_num_chains");
+
+  if (
+    typeof limit !== "number" ||
+    !Number.isInteger(limit) ||
+    limit < 1 ||
+    limit > MAX_REAL_CHAIN_LIMIT
+  ) {
+    return null;
+  }
+
+  return limit;
+}
+
+/**
+ * The rack's fixed chain limit, when it already has that many chains.
  * @param rack - The rack device
  * @returns The limit, or null when the rack can take another chain
  */
 export function fullRackChainLimit(rack: LiveAPI): number | null {
-  const limit = rack.getProperty("max_num_chains");
+  const limit = fixedChainLimit(rack);
 
-  if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1) {
-    return null;
-  }
-
-  if (rack.getChildCount("chains") < limit) {
-    return null;
-  }
-
-  return liveVersionAtLeast(CHAIN_LIMIT_MIN_VERSION) ? limit : null;
+  return limit != null && rack.getChildCount("chains") >= limit ? limit : null;
 }
 
 /**

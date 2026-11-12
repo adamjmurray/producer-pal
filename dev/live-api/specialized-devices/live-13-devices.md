@@ -13,6 +13,10 @@ Probed on Live 13.0b25. Live 12 has none of these, so every spec here matches by
 | Multiband Rack      | `Multiband Rack`   | `AudioEffectMultibandGroupDevice` | fixed-chain rack                               |
 | Softube (5 devices) | see below          | `MxDeviceAudioEffect`             | hosted Max for Live, params read cleanly       |
 
+Fixed-chain racks read `max_num_chains` (2 and 3; ordinary racks read INT_MAX,
+Live 12 has no such property). A device read shows it as `maxChains`, and adding
+a chain to a full one is refused up front.
+
 Softube: FET Compressor, OPTO Compressor, BCA Compressor, BCA Equaliser, BCA
 Drive. A Max for Live pack, loaded through the browser, so it may not be
 installed.

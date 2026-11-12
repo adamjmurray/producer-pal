@@ -27,6 +27,7 @@ import {
 } from "./helpers/params/param-listing.ts";
 import { describeDevice, deviceClassName } from "./helpers/device-identity.ts";
 import { extractDevicePath } from "./helpers/path/insertion-path.ts";
+import { fixedChainLimit } from "./helpers/path/rack-chain-limit.ts";
 import { probeSimplerSample } from "./simpler-sample.ts";
 import {
   readSpecializedActions,
@@ -348,6 +349,16 @@ export function readDevice(
 
   addDeactivated(device, deviceInfo);
 
+  // Drum racks never have fixed chains, and a hidden walk drops its racks, so
+  // neither is worth the version check and the read.
+  if (
+    deviceType.includes("rack") &&
+    deviceType !== DEVICE_TYPE.DRUM_RACK &&
+    !chainsHidden
+  ) {
+    addMaxChains(device, deviceInfo);
+  }
+
   // collapsed — kept for potential future use
   // const deviceView = LiveAPI.from(`${device.path} view`);
   // if (
@@ -400,6 +411,23 @@ function addDeactivated(
 
   if (isActive != null && isActive <= 0) {
     deviceInfo.deactivated = true;
+  }
+}
+
+/**
+ * Add `maxChains` to a rack whose chains are fixed (Live 13's Mid-Side and
+ * Multiband racks), so a caller knows before trying to add one.
+ * @param device - LiveAPI rack device
+ * @param deviceInfo - Device info object to mutate
+ */
+function addMaxChains(
+  device: LiveAPI,
+  deviceInfo: Record<string, unknown>,
+): void {
+  const limit = fixedChainLimit(device);
+
+  if (limit != null) {
+    deviceInfo.maxChains = limit;
   }
 }
 
