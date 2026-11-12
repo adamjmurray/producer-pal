@@ -5,6 +5,10 @@
 
 import { errorMessage } from "#src/shared/error-message.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  sceneClips,
+  type SceneSlotClip,
+} from "#src/tools/shared/clip/slot-contents/scene-slot-clips.ts";
 import { type LaneLedger } from "#src/tools/shared/arrangement/helpers/arrangement-lane-ledger.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-clips.ts";
 import { joinDetails } from "#src/tools/shared/helpers/entry-details.ts";
@@ -35,12 +39,7 @@ import {
   getMinimalClipInfo,
   type MinimalClipInfo,
 } from "../minimal-clip-info.ts";
-import {
-  forEachClipInScene,
-  readSceneClips,
-  type ScenePass,
-  sceneIndexOf,
-} from "./scene-clips.ts";
+import { readSceneClips, type ScenePass, sceneIndexOf } from "./scene-clips.ts";
 
 /** What a scene copy reports. */
 export interface SceneCopyEntry {
@@ -107,7 +106,6 @@ export function duplicateScene(
   color?: string,
   withoutClips?: boolean,
 ): SceneCopyEntry {
-  const liveSet = LiveAPI.from(livePath.liveSet);
   const { index: newSceneIndex, threw } = landSceneCopy(sceneIndex);
   const newScene = LiveAPI.from(livePath.scene(newSceneIndex));
   const duplicatedClips: MinimalClipInfo[] = [];
@@ -127,19 +125,22 @@ export function duplicateScene(
       landed = landedColor(newScene, color);
     }
 
-    // Get all duplicated clips in this scene
-    const trackIds = liveSet.getChildIds("tracks");
+    // The copy holds a clip for every one the source had, return tracks too.
+    const slots = sceneClips(newSceneIndex);
 
     if (withoutClips === true) {
-      // Delete all clips in the duplicated scene
-      forEachClipInScene(newSceneIndex, trackIds, (_clip, clipSlot) => {
-        clipSlot.call("delete_clip");
-      });
+      const failures = clearClips(slots, duplicatedClips);
+
+      if (failures.length > 0) {
+        detail = joinDetails([
+          detail,
+          `the scene was made, but ${failures.join("; ")}`,
+        ]);
+      }
     } else {
-      // Default behavior: collect info about duplicated clips
-      forEachClipInScene(newSceneIndex, trackIds, (clip) => {
+      for (const { clip } of slots) {
         duplicatedClips.push(getMinimalClipInfo(clip));
-      });
+      }
     }
   } catch (error) {
     detail = joinDetails([
@@ -156,6 +157,33 @@ export function duplicateScene(
     clips: duplicatedClips,
     ...joinedDetail(detail, landed.detail),
   };
+}
+
+/**
+ * Delete every clip of a new scene. A clip Live wouldn't delete is still
+ * there, so it is listed as one of the scene's clips and the others go on.
+ * @param slots - The scene's clips
+ * @param left - Gets the entry of each clip that is still there
+ * @returns What failed, one phrase per clip
+ */
+function clearClips(slots: SceneSlotClip[], left: MinimalClipInfo[]): string[] {
+  const failures: string[] = [];
+
+  for (const { clip, clipSlot, path } of slots) {
+    try {
+      clipSlot.call("delete_clip");
+    } catch (error) {
+      // A throw can still mean Live deleted it.
+      if (LiveAPI.from(clip.id).exists()) {
+        left.push(getMinimalClipInfo(clip));
+        failures.push(
+          `couldn't clear the clip at ${path}: ${errorMessage(error)}`,
+        );
+      }
+    }
+  }
+
+  return failures;
 }
 
 /**
@@ -208,8 +236,13 @@ export async function duplicateSceneToArrangement(
     return { clips: [] };
   }
 
-  const { clips: sceneClips, length: ownLength } =
-    read ?? readSceneClips(sceneIndex);
+  const {
+    clips: regularClips,
+    returnClips,
+    length: ownLength,
+  } = read ?? readSceneClips(sceneIndex);
+  // They have no arrangement lane, so only the regular tracks' clips are copied.
+  const leftOut = returnClipsLeftOut(returnClips);
   // The length asked for, or the longest clip in the scene.
   const arrangementLengthBeats =
     arrangementLength == null
@@ -221,8 +254,8 @@ export async function duplicateSceneToArrangement(
         );
 
   // Nothing to copy is not a failure: the position is done.
-  if (sceneClips.length === 0) {
-    return { clips: [], detail: "the scene has no clips" };
+  if (regularClips.length === 0) {
+    return { clips: [], detail: noClipsToCopy(returnClips) };
   }
 
   const duplicatedClips: MinimalClipInfo[] = [];
@@ -230,7 +263,7 @@ export async function duplicateSceneToArrangement(
   const declined: string[] = [];
   let changedAny = false;
 
-  for (const { clip, trackIndex } of sceneClips) {
+  for (const { clip, trackIndex } of regularClips) {
     const track = LiveAPI.from(livePath.track(trackIndex));
     const { clips, cleared, changed, failure } = await copyTrackClip(
       clip,
@@ -285,10 +318,38 @@ export async function duplicateSceneToArrangement(
     );
   }
 
-  return { clips: duplicatedClips, ...(detail != null && { detail }) };
+  const said = joinDetails([detail, leftOut]);
+
+  return { clips: duplicatedClips, ...(said != null && { detail: said }) };
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Why a scene copied to the arrangement had nothing to copy.
+ * @param returnClips - Where the scene's return-track clips sit
+ * @returns The detail
+ */
+function noClipsToCopy(returnClips: string[]): string {
+  return returnClips.length === 0
+    ? "the scene has no clips"
+    : `the scene has no clips on regular tracks, and ${returnClipsLeftOut(returnClips)}`;
+}
+
+/**
+ * What a copy to the arrangement says about the return-track clips it left out.
+ * @param returnClips - Where the scene's return-track clips sit
+ * @returns The detail, or undefined when the scene has none
+ */
+function returnClipsLeftOut(returnClips: string[]): string | undefined {
+  if (returnClips.length === 0) {
+    return undefined;
+  }
+
+  return returnClips.length === 1
+    ? `the return-track clip at ${returnClips[0]} was not copied: the arrangement has no return-track clips`
+    : `the ${returnClips.length} return-track clips (${returnClips.join(", ")}) were not copied: the arrangement has no return-track clips`;
+}
 
 /**
  * Copies one track's clip of the scene, and reads what the copy cleared. A

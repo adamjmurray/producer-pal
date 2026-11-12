@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import * as maxConsole from "#src/shared/max/v8-max-console.ts";
 import {
   type RegisteredMockObject,
@@ -14,6 +15,17 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { setupSceneMocks, setupTrackMocks } from "./delete-test-helpers.ts";
 import { deleteObject } from "../delete.ts";
+
+/**
+ * A Set with no tracks, so a scene delete has no clips to list.
+ * @returns The Live Set's mock
+ */
+function registerEmptyLiveSet(): RegisteredMockObject {
+  return registerMockObject("live_set", {
+    path: livePath.liveSet,
+    properties: { tracks: children() },
+  });
+}
 
 describe("deleteObject", () => {
   let liveSet: RegisteredMockObject;
@@ -73,6 +85,7 @@ describe("deleteObject", () => {
   });
 
   it("should delete a single scene when type is 'scene'", () => {
+    liveSet = registerEmptyLiveSet();
     setupSceneMocks({ scene_2: livePath.scene(1) });
 
     const result = deleteObject({ id: "scene_2", type: "scene" });
@@ -85,6 +98,7 @@ describe("deleteObject", () => {
   });
 
   it("should delete multiple scenes in descending index order", () => {
+    liveSet = registerEmptyLiveSet();
     setupSceneMocks({
       scene_0: livePath.scene(0),
       scene_2: livePath.scene(2),

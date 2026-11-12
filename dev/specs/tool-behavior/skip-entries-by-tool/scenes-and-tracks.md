@@ -48,8 +48,10 @@ Part of [Skip entries, tool by tool](README.md).
   them. A create Live ignored is a skip too, though a scene already stands at
   that index; the count of scenes tells. A capture is one target, so a lone
   failure throws; a capture that succeeded and then failed on its name or color
-  keeps its entry with `already changed: scene captured`. A time signature Live
-  changed (a numerator it clamps) is reported as the value read back plus
-  `timeSignature read back as shown, not as sent`; one that can't be kept (a
-  denominator that isn't a power of two) is refused up front. update-scene
-  answers the same way, through the same code.
+  keeps its entry with `already changed: scene captured`. A capture lists the
+  clips the new scene holds, read from its slots rather than assumed: Live 13
+  return-track clips (`rt0/s3`) follow the regular tracks' clips. A time
+  signature Live changed (a numerator it clamps) is reported as the value read
+  back plus `timeSignature read back as shown, not as sent`; one that can't be
+  kept (a denominator that isn't a power of two) is refused up front.
+  update-scene answers the same way, through the same code.

@@ -49,7 +49,7 @@ export function deleteObjectByType(
   }
 
   if (type === "scene") {
-    return deleteSceneObject(id, object);
+    return deleteSceneObject(id, object, landed);
   }
 
   if (type === "clip") {
@@ -94,9 +94,14 @@ function confirmDeleted(type: string, id: string): string | null {
  * Deletes a scene by its index
  * @param id - The object ID
  * @param object - The object to delete
+ * @param landed - Says that Live deleted the scene although the call threw
  * @returns null if the scene is gone, else why it wasn't deleted
  */
-function deleteSceneObject(id: string, object: LiveAPI): string | null {
+function deleteSceneObject(
+  id: string,
+  object: LiveAPI,
+  landed: (phrase: string) => void,
+): string | null {
   const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
 
   if (Number.isNaN(sceneIndex)) {
@@ -105,7 +110,16 @@ function deleteSceneObject(id: string, object: LiveAPI): string | null {
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
-  liveSet.call("delete_scene", sceneIndex);
+  try {
+    liveSet.call("delete_scene", sceneIndex);
+  } catch (error) {
+    // A throw can still mean Live did it, clips and all.
+    if (!LiveAPI.from(id).exists()) {
+      landed("deleted the scene");
+    }
+
+    throw error;
+  }
 
   return confirmDeleted("scene", id);
 }

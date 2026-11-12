@@ -200,7 +200,7 @@ describe("duplicate-scene", () => {
       const slot0 = registerClipSlot(0, 1, true);
 
       registerClipSlot(1, 1, true);
-      // Register clip objects so forEachClipInScene finds them
+      // Register clip objects so the scene's clips are found
       registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
         path: livePath.track(0).clipSlot(1).clip(),
       });

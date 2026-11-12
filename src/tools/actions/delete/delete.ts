@@ -37,6 +37,7 @@ import {
   parseDeleteCall,
 } from "./helpers/parse-delete-call.ts";
 import { positionalDeleteOrder } from "./helpers/positional-delete-order.ts";
+import { sceneDeletes } from "./helpers/scene-deletes.ts";
 
 /** What the call has to say about one target. */
 export interface DeleteEntry {
@@ -63,6 +64,9 @@ interface DeleteChecked {
   tracks: Map<number, LiveAPI>;
   /** Which named tracks are groups, and which sit inside one that is named */
   groups: GroupDeletes;
+  /** What each scene's delete says about the clips that go with it, by target
+   * index, read before the first delete */
+  sceneClips: ReadonlyMap<number, string>;
 }
 
 /**
@@ -101,6 +105,7 @@ const DELETE_WRITE: WriteSpec<
     sent,
     tracks: new Map(),
     groups: groupDeletes(type, targets),
+    sceneClips: sceneDeletes(type, targets),
   }),
   plan: planDeletes,
   write: deleteTarget,
@@ -177,12 +182,12 @@ function deleteTarget(
     return noteEntry(named, `${NOTHING_TO_DELETE}${data.hint ?? ""}`);
   }
 
-  const { type, tracks, groups } = step.checked;
+  const { type, tracks, groups, sceneClips } = step.checked;
   const { id } = data;
   const address = step.planned;
-  const alsoDeleted = alsoDeletedDetail(
-    groups.unnamedInside.get(step.index) ?? [],
-  );
+  const alsoDeleted =
+    sceneClips.get(step.index) ??
+    alsoDeletedDetail(groups.unnamedInside.get(step.index) ?? []);
   let { object } = data;
 
   if (groups.covered.has(step.index)) {
@@ -195,10 +200,15 @@ function deleteTarget(
   }
 
   const refusal = deleteObjectByType(type, id, object, tracks, (phrase) =>
-    step.landed(landedPhrase(phrase, groups, step.index, alsoDeleted), {
-      id,
-      ...addressField(address, type === "track"),
-    }),
+    step.landed(
+      sceneClips.has(step.index)
+        ? `${phrase}, ${alsoDeleted}`
+        : landedPhrase(phrase, groups, step.index, alsoDeleted),
+      {
+        id,
+        ...addressField(address, type === "track" || type === "scene"),
+      },
+    ),
   );
 
   if (refusal != null) {

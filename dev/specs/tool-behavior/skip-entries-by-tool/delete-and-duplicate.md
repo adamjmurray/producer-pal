@@ -39,6 +39,17 @@ Part of [Skip entries, tool by tool](README.md).
   (`the tracks inside it too` when that group holds more). If that group holds
   the Producer Pal device, the detail names that group as one that can't be
   deleted, and suggests none.
+- **delete: a scene's entry names every clip that went with it.** The clips are
+  read before the first delete (a delete shifts later scenes, and a clip's id
+  and path are gone afterwards), regular tracks first, then Live 13's return
+  tracks: `detail`:
+  `also deleted the 3 clips in this scene: t0/s2 "Bass", rt0/s2 "No Envs"`, or
+  `the clip in this scene: ...` for one. Each is its path from before the call
+  and its name (the path alone when it has none; no id, which is gone). An empty
+  scene's entry is a plain `{id, deletedPath}`. If Live deletes the scene and
+  then throws, the entry keeps the listing in
+  `<error>; already changed: deleted the scene, also deleted ...`; if the scene
+  survives, no clip is claimed. Live 12 reads no return-track slot.
 - **delete: a skipped target's path can go stale.** Deleting shifts the siblings
   after it, so a target that wasn't deleted (Live refused, or it is the only
   track in a group) adds `that <noun> is now <path> (id N)` when its path now
@@ -94,6 +105,18 @@ Part of [Skip entries, tool by tool](README.md).
   spare can't be made, none of those copies is. A take-lane source has no spare:
   its clips can be neither duplicated nor deleted through the API, so its copies
   on its own lane still copy what an earlier one left of it.
+- **duplicate: a scene copy lists every clip it holds.** Live copies a scene's
+  Live 13 return-track clips too, so the copy's `clips` lists them (`rt0/s3`)
+  after the regular tracks' clips, as a scene read does. `withoutClips` clears
+  them with the rest, one clip at a time: a clip Live won't clear (a throw while
+  it is still there) stays in `clips`, and the entry's `detail` says
+  `the scene was made, but couldn't clear the clip at rt0/s3: <error>`, while
+  the others are still cleared. A scene copied to the arrangement copies only
+  the regular tracks' clips (a return track has no arrangement lane) and its
+  `detail` says so:
+  `the 2 return-track clips (rt0/s3, rt1/s3) were not copied: the arrangement has no return-track clips`.
+  A scene with only return-track clips has nothing to copy: its `detail` is
+  `the scene has no clips on regular tracks, and ...`.
 - **duplicate: Live fails partway.** A copy that landed keeps its normal entry
   (`id`, where it is now) plus a `detail` of what landed and what didn't: a
   track or scene copy whose naming, coloring or clips failed, a copy Live threw
