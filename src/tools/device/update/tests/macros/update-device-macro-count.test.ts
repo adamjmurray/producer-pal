@@ -138,6 +138,24 @@ describe("updateDevice macroCount that hides mapped macros", () => {
     expect(requestNode).not.toHaveBeenCalled();
   });
 
+  it("names the mapped macro hidden by going from 2 to 1", async () => {
+    const rack = registerMacroRack("rack", {
+      count: 2,
+      mapped: true,
+      floor: 1,
+    });
+
+    remoteScriptSays({ mapped: [2] });
+
+    expect(await updateDevice({ id: "rack", macroCount: 1 })).toStrictEqual({
+      id: "rack",
+      path: "t0/d0",
+      detail: "macro 2 hidden; its mapping is kept",
+    });
+    expect(rack.call).toHaveBeenCalledWith("remove_macro");
+    expect(pathsAsked()).toStrictEqual([[FIRST]]);
+  });
+
   it("doesn't ask when the count goes up", async () => {
     registerMacroRack("rack", { count: 4, mapped: true });
 

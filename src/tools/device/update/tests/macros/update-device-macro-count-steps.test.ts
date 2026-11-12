@@ -8,7 +8,11 @@
 // and reads the count after each, until it reaches or passes the target.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  clearMockRegistry,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "../../update-device.ts";
 import { registerMacroRack } from "../update-device-test-helpers.ts";
 
@@ -20,6 +24,44 @@ const LIVE_13_STEPS = [1, 2, 4, 6, 8, 10, 12, 14, 32];
 describe("updateDevice macroCount on a Live 13 rack", () => {
   beforeEach(() => {
     clearMockRegistry();
+  });
+
+  it.each([8, 2])("lowers to 1 from %i with nothing to report", (from) => {
+    const rack = registerMacroRack("rack", {
+      count: from,
+      steps: LIVE_13_STEPS,
+      macros: 32,
+    });
+
+    expect(updateDevice({ id: "rack", macroCount: 1 })).toStrictEqual({
+      id: "rack",
+      path: "t0/d0",
+    });
+    expect(rack.call).toHaveBeenCalledTimes(from === 8 ? 4 : 1);
+  });
+
+  it("leaves a rack already at 1 alone", () => {
+    const rack = registerMacroRack("rack", {
+      count: 1,
+      steps: LIVE_13_STEPS,
+      macros: 32,
+    });
+
+    expect(updateDevice({ id: "rack", macroCount: 1 })).toStrictEqual({
+      id: "rack",
+      path: "t0/d0",
+    });
+    expect(rack.call).not.toHaveBeenCalled();
+  });
+
+  it("still rounds 3 up to 4, and says so", () => {
+    registerMacroRack("rack", { count: 8, steps: LIVE_13_STEPS, macros: 32 });
+
+    expect(updateDevice({ id: "rack", macroCount: 3 })).toStrictEqual({
+      id: "rack",
+      path: "t0/d0",
+      detail: "macroCount rounded from 3 to 4 (macros come in pairs)",
+    });
   });
 
   it("lands on a count Live steps to without comment", () => {
@@ -98,6 +140,34 @@ describe("updateDevice macroCount on a Live 13 rack", () => {
     });
   });
 
+  it("says where the count landed when Live throws on the way down to 1", () => {
+    const properties = { can_have_chains: 1, visible_macro_count: 4 };
+
+    registerMockObject("rack", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties,
+      methods: {
+        remove_macro: () => {
+          // The first remove lands on 2; the next throws.
+          if (properties.visible_macro_count === 2) {
+            throw new Error("remove failed");
+          }
+
+          properties.visible_macro_count = 2;
+
+          return null;
+        },
+      },
+    });
+
+    expect(updateDevice({ id: "rack", macroCount: 1 })).toStrictEqual({
+      id: "rack",
+      path: "t0/d0",
+      detail: "macroCount landed at 2, not 1; Live said: remove failed",
+    });
+  });
+
   it("throws as Live did when it throws before the count moved", () => {
     registerMacroRack("rack", {
       count: 14,
@@ -149,6 +219,16 @@ describe("updateDevice macroCount on a Live 12 rack", () => {
       "macroCount 17 is above the most this rack has (16)",
     );
     expect(rack.call).not.toHaveBeenCalled();
+  });
+
+  it("lowers to 1 with nothing to report", () => {
+    const rack = registerMacroRack("rack", { count: 8, floor: 1 });
+
+    expect(updateDevice({ id: "rack", macroCount: 1 })).toStrictEqual({
+      id: "rack",
+      path: "t0/d0",
+    });
+    expect(rack.call).toHaveBeenCalledTimes(4);
   });
 
   it("stops when the count stops moving", () => {

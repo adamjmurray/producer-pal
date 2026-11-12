@@ -17,10 +17,13 @@ Part of [Skip entries, tool by tool](README.md).
 - **update-device's `macroCount` follows Live's own steps.** Live 12 steps the
   count by 2 up to 16; Live 13 steps unevenly up to 32. So the write adds or
   removes one macro step at a time and reads the count after each, until it
-  reaches or passes the target or stops moving. The entry says where it landed
-  (`macroCount landed at 14, not 16`); a throw after the count moved is the same
-  entry with `Live said: <error>` added. A count above the rack's own macro
-  total (the highest "Macro N" among its params) is refused with that limit.
+  reaches or passes the target or stops moving. An odd count is rounded up to
+  the next even one (`macroCount rounded from 3 to 4 (macros come in pairs)`),
+  except 1, which lands on 1 with nothing to report. The entry says where it
+  landed (`macroCount landed at 14, not 16`); a throw after the count moved is
+  the same entry with `Live said: <error>` added. A count above the rack's own
+  macro total (the highest "Macro N" among its params) is refused with that
+  limit.
 - **update-device's skip can name a chain a pad move re-numbered.** A drum chain
   move changes which chain `pD1/c0` names, so a skipped chain's entry adds
   `that chain is now <path> (id N)`; see

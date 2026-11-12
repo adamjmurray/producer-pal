@@ -388,15 +388,28 @@ describe("ppal-update-device", () => {
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { id: rackId, macroCount: 1 },
+      arguments: { id: rackId, macroCount: 3 },
     });
 
     // The count landed, just not the one asked for, so there is no `ok`.
     expect(parseToolResult<UpdateDeviceResult>(result).detail).toBe(
-      "macroCount rounded from 1 to 2 (macros come in pairs)",
+      "macroCount rounded from 3 to 4 (macros come in pairs)",
     );
 
-    expect((await readRackParams(rackId)).macros?.count).toBe(2);
+    expect((await readRackParams(rackId)).macros?.count).toBe(4);
+  });
+
+  // Live can show exactly 1 macro, so 1 lands as asked and says nothing.
+  it("lands macroCount 1 on 1 with nothing to report", async () => {
+    const rackId = await rackWithOneChain();
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { id: rackId, macroCount: 1 },
+    });
+
+    expect(parseToolResult<UpdateDeviceResult>(result).detail).toBeUndefined();
+    expect((await readRackParams(rackId)).macros?.count).toBe(1);
   });
 
   // The pair says nothing about any one device, so a reading it can't be given

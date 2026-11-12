@@ -160,8 +160,8 @@ const MIN_MACRO_LIMIT = 16;
  * Live steps the count in its own way (by 2 in Live 12, unevenly in Live 13),
  * so it adds or removes one macro step at a time and reads the count after
  * each, until the count reaches or passes the target. Odd counts are rounded up
- * to the next even first. Lowering the count hides macros but keeps their
- * mappings.
+ * to the next even first, except 1. Lowering the count hides macros but keeps
+ * their mappings.
  * @param device - Live API device object
  * @param targetCount - Target number of visible macros (0 up to the rack's own
  *   total of macros)
@@ -199,7 +199,7 @@ export function updateMacroCount(
     return;
   }
 
-  const target = Math.min(evenMacroCount(targetCount), limit);
+  const target = Math.min(roundedMacroCount(targetCount), limit);
 
   if (target !== targetCount) {
     noteTarget(
@@ -306,7 +306,7 @@ export function mayHideMappedMacros(
     Boolean(device.getProperty("can_have_chains")) &&
     (device.getProperty("has_macro_mappings") as number) > 0 &&
     before > 1 &&
-    evenMacroCount(targetCount) < before
+    roundedMacroCount(targetCount) < before
   );
 }
 
@@ -323,12 +323,14 @@ interface MacroCountWrite {
 
 /**
  * The count to write, rounded up to the next even one: Live adds and removes
- * macros in pairs.
+ * macros in pairs, but it can also stop at 1, so a count of 1 stays 1.
  * @param targetCount - The count the call asked for
- * @returns The even count
+ * @returns The count to write
  */
-function evenMacroCount(targetCount: number): number {
-  return targetCount % 2 === 0 ? targetCount : targetCount + 1;
+function roundedMacroCount(targetCount: number): number {
+  return targetCount === 1 || targetCount % 2 === 0
+    ? targetCount
+    : targetCount + 1;
 }
 
 /**
@@ -338,7 +340,7 @@ function evenMacroCount(targetCount: number): number {
  * @param write - What the write asked for, and how it went
  * @param write.before - The count the rack showed beforehand
  * @param write.landed - The count the rack ended on
- * @param write.target - The even count the write asked for
+ * @param write.target - The count the write asked for, after rounding
  * @param write.hadMappings - Whether a macro was mapped beforehand
  * @param write.mapped - Which macros were mapped beforehand, when known
  * @param write.stoppedBy - What Live threw when it cut the steps short
