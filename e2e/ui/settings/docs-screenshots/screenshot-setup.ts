@@ -18,11 +18,12 @@ export const OUT_DIR = new URL("../../../../docs/public/img/", import.meta.url)
 const USER_LIBRARY = "/Users/you/Music/Ableton/User Library";
 const DEVICE_PATH = `${USER_LIBRARY}/Presets/MIDI Effects/Max MIDI Effect/Producer_Pal.amxd`;
 
+// Without a prerelease suffix: the docs go live with the release.
 export const VERSION = (
   JSON.parse(
     readFileSync(new URL("../../../../package.json", import.meta.url), "utf8"),
   ) as { version: string }
-).version;
+).version.replace(/-.*$/, "");
 
 /** Any 39 characters; the field only ever shows dots. */
 export const FAKE_KEY = "x".repeat(39);
