@@ -10,6 +10,7 @@
 import { manageOffered } from "#src/tools/shared/remote-script/remote-script-setup.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-results.ts";
 import { type EnvelopeLine } from "./envelope-lines.ts";
+import { envelopeSlotOf } from "./envelope-track.ts";
 import { applyArrangementEnvelopes } from "./arrangement/apply-arrangement-envelopes.ts";
 import {
   canWriteEnvelopePoints,
@@ -53,10 +54,9 @@ export async function applyClipEnvelopes(
     return;
   }
 
-  const trackIndex = clip.trackIndex;
-  const slot = clip.clipSlotIndex;
+  const placed = envelopeSlotOf(clip);
 
-  if (trackIndex == null || slot == null) {
+  if (placed == null) {
     entry.envelopes = "only a clip in a session clip slot can hold automation";
 
     return;
@@ -66,8 +66,7 @@ export async function applyClipEnvelopes(
     entry,
     lines,
     {
-      trackIndex,
-      slot,
+      ...placed,
       timeSigNumerator: clip.getProperty("signature_numerator") as number,
       timeSigDenominator: clip.getProperty("signature_denominator") as number,
       endBeats: Math.max(

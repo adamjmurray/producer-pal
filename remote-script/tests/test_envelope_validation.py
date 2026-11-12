@@ -155,12 +155,13 @@ class EnvelopeValidationTest(unittest.TestCase):
         too_many = [{"time": i, "value": 0.5} for i in range(envelopes.MAX_EVENTS + 1)]
         self.assert_400("write", points=too_many)
 
-    def test_return_and_master_tracks_have_no_clips(self):
-        for bad in ("rt0", "mt", "t-1", "x", None):
-            self.assert_400("list", track=bad)
-        with self.assertRaises(routes.RouteError) as caught:
-            call("list", track="t5")
-        self.assertEqual(caught.exception.status, 404)
+    def test_the_main_track_has_no_clips(self):
+        for bad in ("mt", "t-1", "rt-1", "x", None):
+            self.assertIn("the main track has no clips", self.assert_400("list", track=bad))
+        for missing in ("t5", "rt5"):
+            with self.assertRaises(routes.RouteError) as caught:
+                call("list", track=missing)
+            self.assertEqual(caught.exception.status, 404)
 
 
 if __name__ == "__main__":

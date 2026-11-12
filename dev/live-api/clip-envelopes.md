@@ -50,6 +50,10 @@ are **MIDI or warped audio**.
   `has_envelopes`). `ppal-read-clip` says so when `has_envelopes` is true but
   the list route found none. It can't tell unreadable envelopes from readable
   ones when both exist.
+- A Live 13 return track's envelope clip takes the same calls
+  (`automation_envelope`, `create_automation_envelope`, `clear_envelope`,
+  `value_at_time`), probed on 13.0b25. The routes address it as `rt0` beside
+  `slot`, and the parameters are the return track's own mixer and devices.
 - Duplicating a Session clip keeps its envelopes, curves included. Duplicating
   to the Arrangement writes the envelope into the track's automation lane. See
   [arrangement-automation.md](arrangement-automation.md).

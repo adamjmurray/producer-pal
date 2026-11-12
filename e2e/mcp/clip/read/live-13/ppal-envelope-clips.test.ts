@@ -18,10 +18,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { envelopeClipTools } from "./envelope-clip-tools";
-import {
-  type ReadClipResult,
-  setupMcpTestContext,
-} from "../../../mcp-test-helpers";
+import { setupMcpTestContext } from "../../../mcp-test-helpers";
 import { LIVE_13_OR_NEWER, LIVE_13_TEST_PATH } from "../../../e2e-test-set.ts";
 
 const NO_ENVS = "rt0/s0";
@@ -86,17 +83,6 @@ describe.skipIf(!LIVE_13_OR_NEWER)("envelope clips (Live 13)", () => {
       const byId = await readClip({ id: byPath.id });
 
       expect(byId).toStrictEqual(byPath);
-    });
-
-    it("says its envelopes can't be read yet, not that it isn't a session clip", async () => {
-      const clip = await call<ReadClipResult>("ppal-read-clip", {
-        path: WITH_ENV,
-        include: ["envelopes"],
-      });
-
-      expect(clip.envelopes).toBe(
-        "envelopes on return-track clips can't be read yet",
-      );
     });
 
     it("lists each return track's clip, and counts it", async () => {

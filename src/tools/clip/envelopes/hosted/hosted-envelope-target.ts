@@ -10,6 +10,7 @@ import {
   hostedParamId,
   detectHostedPlugin,
 } from "#src/tools/shared/device/helpers/params/hosted-plugin-reading.ts";
+import { type EnvelopeTrack, isOnTrack, trackText } from "../envelope-track.ts";
 import {
   nothingAtPath,
   resolvePathToLiveApi,
@@ -56,13 +57,13 @@ export function parseHostedTarget(target: string): ParsedHostedTarget | null {
 /**
  * Find the wrapper a hosted target names, on the clip's own track.
  * @param parsed - The target, read
- * @param trackIndex - The track the clip sits on
+ * @param track - The track the clip sits on
  * @returns The wrapper and the param
  * @throws Error saying why the target reaches no hosted param
  */
 export function resolveHostedTarget(
   parsed: ParsedHostedTarget,
-  trackIndex: number,
+  track: EnvelopeTrack,
 ): HostedTarget {
   if (parsed.index < 1) {
     throw new Error(
@@ -90,9 +91,9 @@ export function resolveHostedTarget(
     throw new Error(`${resolved.path} is not a device`);
   }
 
-  if (device.category !== "regular" || device.trackIndex !== trackIndex) {
+  if (!isOnTrack(device, track)) {
     throw new Error(
-      `${resolved.path} is not on the clip's track (t${String(trackIndex)}), and a clip can only automate its own track`,
+      `${resolved.path} is not on the clip's track (${trackText(track)}), and a clip can only automate its own track`,
     );
   }
 

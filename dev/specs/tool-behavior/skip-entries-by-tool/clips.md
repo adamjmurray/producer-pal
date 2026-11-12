@@ -145,7 +145,9 @@ Part of [Skip entries, tool by tool](README.md).
   its timing reads in beats. Its `path` is `rt0/s3`. read-track and read-scene
   list and count them (a scene entry names the return track in `trackName`); a
   nested one keeps its type, since the track's isn't `"envelope"`. Its
-  `envelopes` say `envelopes on return-track clips can't be read yet`.
+  `envelopes` read like any session clip's, on the return track's own mixer and
+  devices (see
+  [clip-envelopes.md](../clips-playback-and-sends/clip-envelopes.md#envelopes-on-a-return-track-clip)).
 - **update-clip takes an envelope clip** by path or by id: `name`, `color`,
   `looping`, the region and marker params and `timeSignature` land as on a MIDI
   clip. Everything that needs notes or a sample is ignored per param, on the
@@ -153,11 +155,10 @@ Part of [Skip entries, tool by tool](README.md).
   `preTransforms`, `quantize`/`quantizeGrid`/`quantizePitch`, `duplicateLoop`,
   `code`, `scale`, `gainDb`, `pitchShift`, the warp params and `convert`
   (`gainDb, pitchShift ignored: the clip is an envelope clip`). `envelopes` is
-  ignored the same way with its own reason
-  (`return-track clips can't take envelopes yet`) until they can be written. A
-  `transforms` that can't be read still refuses the call; `notes` aren't read. A
-  clip nothing landed on is skipped, or throws when alone. A `toPath` moves it
-  to another return slot only; any other destination is that clip's
+  written as on a session clip. A `transforms` that can't be read still refuses
+  the call; `notes` aren't read. A clip nothing landed on is skipped, or throws
+  when alone. A `toPath` moves it to another return slot only; any other
+  destination is that clip's
   `not moved: an envelope clip can only go to a return-track slot` (a regular
   clip sent to a return slot says
   `not moved: a return-track slot only takes an envelope clip`). A move whose

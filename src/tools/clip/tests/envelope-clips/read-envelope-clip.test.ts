@@ -75,21 +75,6 @@ describe("read-clip - Live 13 envelope clips", () => {
     }
   });
 
-  it("says plainly that its envelopes can't be read yet", async () => {
-    registerEnvelopeWorld();
-
-    const result = await readClip({
-      path: "rt1/s0",
-      include: ["envelopes"],
-    });
-
-    expect(result).toStrictEqual(
-      expect.objectContaining({
-        envelopes: "envelopes on return-track clips can't be read yet",
-      }),
-    );
-  });
-
   it("answers an empty return slot like an empty regular one", async () => {
     registerEnvelopeWorld();
 

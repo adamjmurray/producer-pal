@@ -9,6 +9,7 @@
 import { errorMessage } from "#src/shared/error-message.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { type EnvelopeLine } from "./envelope-lines.ts";
+import { type EnvelopeTrack, isOnTrack, trackText } from "./envelope-track.ts";
 import {
   type HostedTarget,
   parseHostedTarget,
@@ -17,11 +18,11 @@ import {
 
 /** A device parameter reachable by the remote script's d0/c1/d0 walk. */
 const DEVICE_PARAMETER =
-  /^live_set tracks \d+(?: (?:devices|chains) \d+)+ parameters (\d+)$/;
+  /^live_set (?:tracks|return_tracks) \d+(?: (?:devices|chains) \d+)+ parameters (\d+)$/;
 
 /** A track mixer parameter, in Live's own spelling. */
 const MIXER_PARAMETER =
-  /^live_set tracks \d+ mixer_device (?:(volume|panning)|sends (\d+))$/;
+  /^live_set (?:tracks|return_tracks) \d+ mixer_device (?:(volume|panning)|sends (\d+))$/;
 
 /** Which parameter of which device an envelope route writes. */
 export interface EnvelopeTarget {
@@ -44,20 +45,20 @@ export type ResolvedEnvelopeLine =
 /**
  * Resolve every line's target against the clip's own track.
  * @param lines - The `envelopes` param, already read into lines
- * @param trackIndex - The track the clip sits on
+ * @param track - The track the clip sits on
  * @returns Each line with its parameter, or why it has none
  */
 export function resolveEnvelopeLines(
   lines: readonly EnvelopeLine[],
-  trackIndex: number,
+  track: EnvelopeTrack,
 ): ResolvedEnvelopeLine[] {
   return lines.map((line) => {
     try {
       const hosted = parseHostedTarget(line.target);
 
       return hosted == null
-        ? { line, target: envelopeTarget(line.target, trackIndex) }
-        : { line, hosted: resolveHostedTarget(hosted, trackIndex) };
+        ? { line, target: envelopeTarget(line.target, track) }
+        : { line, hosted: resolveHostedTarget(hosted, track) };
     } catch (error) {
       return { line, error: errorMessage(error) };
     }
@@ -101,12 +102,12 @@ export function findSameParameter(
 /**
  * Resolve one `envelopes` target against the clip's own track.
  * @param target - The target as the call wrote it: an id, or volume/pan/send0..
- * @param trackIndex - The track the clip sits on
+ * @param track - The track the clip sits on
  * @returns The address the remote script takes
  * @throws Error when the id names nothing, isn't a parameter, or sits
  *   somewhere clip automation can't reach
  */
-function envelopeTarget(target: string, trackIndex: number): EnvelopeTarget {
+function envelopeTarget(target: string, track: EnvelopeTrack): EnvelopeTarget {
   if (!/^\d+$/.test(target)) {
     // A mixer name is already the remote script's own spelling.
     return { parameter: target };
@@ -122,9 +123,9 @@ function envelopeTarget(target: string, trackIndex: number): EnvelopeTarget {
     throw new Error(`id ${target} is a ${parameter.type}, not a parameter`);
   }
 
-  if (parameter.category !== "regular" || parameter.trackIndex !== trackIndex) {
+  if (!isOnTrack(parameter, track)) {
     throw new Error(
-      `id ${target} is not on the clip's track (t${String(trackIndex)}), and a clip can only automate its own track`,
+      `id ${target} is not on the clip's track (${trackText(track)}), and a clip can only automate its own track`,
     );
   }
 

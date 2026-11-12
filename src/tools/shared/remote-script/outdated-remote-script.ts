@@ -40,19 +40,20 @@ export function outdatedReason(
 /**
  * What a call is told when the script is new enough by version but lacks a
  * route this build needs: another build of the same version.
- * @param running - The script's version
+ * @param running - The script's version, when known
  * @param asker - Who is asking
  * @param manage - Whether the caller can use ppal-manage; the portal always can
  * @returns The reason, worded for the model
  */
 export function differentBuildReason(
-  running: string,
+  running: string | null,
   asker: RemoteScriptAsker = "device",
   manage = true,
 ): string {
   const ours = asker === "portal" ? "this connector's" : "this device's";
+  const version = running == null ? "" : ` (v${running})`;
 
-  return `the Producer Pal remote script in Live (v${running}) is a different build than ${ours} and can't do this; ${updateHow(asker, manage)}, then restart Live`;
+  return `the Producer Pal remote script in Live${version} is a different build than ${ours} and can't do this; ${updateHow(asker, manage)}, then restart Live`;
 }
 
 /**

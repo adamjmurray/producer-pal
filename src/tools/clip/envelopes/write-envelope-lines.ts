@@ -21,6 +21,7 @@ import { type EnvelopeLine } from "./envelope-lines.ts";
 import { hostedSlots, type HostedSlots } from "./hosted/hosted-slots.ts";
 import { envelopeWritePoints } from "./envelope-write-points.ts";
 import { envelopeChange, type RouteOutcome } from "./envelope-route.ts";
+import { type EnvelopeTrack, trackText } from "./envelope-track.ts";
 import {
   findSameParameter,
   resolveEnvelopeLines,
@@ -35,7 +36,7 @@ import {
 
 /** The clip the lines write to, and the meter their times are spelled in. */
 export interface ClipAddress {
-  trackIndex: number;
+  track: EnvelopeTrack;
   slot: number;
   timeSigNumerator: number;
   timeSigDenominator: number;
@@ -101,7 +102,7 @@ export async function writeEachLine(
   deadline: number | null | undefined,
   manage: boolean,
 ): Promise<number> {
-  const resolved = resolveEnvelopeLines(lines, address.trackIndex);
+  const resolved = resolveEnvelopeLines(lines, address.track);
   const clash = findSameParameter(resolved);
 
   // Each line replaces its parameter's whole envelope, so two on one parameter
@@ -114,7 +115,7 @@ export async function writeEachLine(
 
   let written = 0;
   const slots = hostedSlots({
-    trackIndex: address.trackIndex,
+    track: address.track,
     deadline,
     manage,
   });
@@ -318,7 +319,7 @@ async function writeOneLine(
   }
 
   const request = {
-    track: `t${String(address.trackIndex)}`,
+    track: trackText(address.track),
     slot: address.slot,
     ...placed.target,
   };

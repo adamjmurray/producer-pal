@@ -7,10 +7,7 @@ import {
   CLIP_IS_ENVELOPE,
   ignoredText,
 } from "#src/shared/max/ignored-wording.ts";
-import {
-  ENVELOPES_ON_RETURN_CLIPS_NOT_YET,
-  isReturnTrackClip,
-} from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
+import { isReturnTrackClip } from "#src/tools/shared/clip/slot-contents/return-track-clips.ts";
 import { type ClipReasons, ignoreClipParams } from "../entries/clip-reasons.ts";
 import { type ClipCall } from "./parse-clip-call.ts";
 
@@ -21,9 +18,9 @@ export interface AfterUpdateParams {
 }
 
 /**
- * What an envelope clip can't take of the params that run after its update:
- * `envelopes` can't be written to it yet, and it has no sample to convert. Each
- * one the call sent is said on the clip's entry; the rest of the call lands.
+ * What an envelope clip can't take of the params that run after its update: it
+ * has no sample to convert. When the call sent one, the clip's entry says so;
+ * the rest of the call lands.
  * @param clip - The clip the call is updating
  * @param call - The update-clip call
  * @param reasons - What each clip has to say beyond its result, added to
@@ -41,15 +38,6 @@ export function afterUpdateParams(
     return { envelopeLines, convert };
   }
 
-  if (envelopeLines != null) {
-    ignoreClipParams(
-      reasons,
-      clip.id,
-      ["envelopes"],
-      ignoredText("envelopes", ENVELOPES_ON_RETURN_CLIPS_NOT_YET),
-    );
-  }
-
   if (convert != null) {
     ignoreClipParams(
       reasons,
@@ -59,5 +47,5 @@ export function afterUpdateParams(
     );
   }
 
-  return { envelopeLines: undefined, convert: undefined };
+  return { envelopeLines, convert: undefined };
 }

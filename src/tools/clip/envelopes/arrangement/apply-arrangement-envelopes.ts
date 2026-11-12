@@ -205,7 +205,7 @@ async function fillCarrier(
     entry,
     lines,
     {
-      trackIndex,
+      track: { kind: "regular", index: trackIndex },
       slot: carrier.clipSlotIndex as number,
       ...meter,
       endBeats: lengthBeats,

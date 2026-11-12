@@ -119,6 +119,34 @@ no `device` (the `id` has it), and `id` works as a write target. An envelope on
 an unmapped slot, or on a device that isn't a hosted wrapper, reads as any
 parameter (`parameter: "Automation 002"`, Live's `id`, `device`).
 
+## Envelopes on a return-track clip
+
+Mechanics: [clip-envelopes.md](../../../live-api/clip-envelopes.md). Live 13.
+
+A Live 13 return track's envelope clip (`rt1/s0`) reads and writes `envelopes`
+exactly as a session clip on a regular track does: the same results, details and
+partial-failure reports, with the remote script addressed `rt1` beside the slot.
+Its parameters are the return track's own, named `rt1/d0` for devices, and a
+target id must sit on that return track.
+
+- **Targets.** The return's mixer (`volume`, `pan`, `send0`..; a send exists
+  only if Live gives the return one), its devices and rack-chain devices by
+  parameter id, and a hosted plug-in's param as `rt1/d0/h56`. Drum pads and
+  return chains stay out of reach, as on a regular track.
+- **Only the clip's own track.** An id on another return track or a regular
+  track is that line's `detail`:
+  `id 473 is not on the clip's track (rt0), and a clip can only automate its own track`.
+- **An empty envelope clip** reads `envelopes: []`, like an empty session clip;
+  `envs: true` shows once it has one.
+- **A copy** to another return slot is Live's own duplicate, which carries the
+  envelopes: nothing is written for it. An envelope on a device that isn't on
+  the destination return track has nothing to drive there; Live decides what the
+  copy keeps, and the result doesn't say.
+- **A remote script from before Live 13 return tracks** answers
+  `the Producer Pal remote script in Live is a different build than this device's and can't do this; update it ...`
+  for a return clip (a regular clip's envelopes work on it). Live 12 has no
+  return-track clips, so `rt` paths are refused before any of this.
+
 ## Envelopes on an arrangement clip
 
 Mechanics:

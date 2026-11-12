@@ -11,6 +11,7 @@ import { requestNode } from "#src/live-api-adapter/protocols/node-request-v8-pro
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   mockNonExistentObjects,
+  type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
@@ -62,15 +63,19 @@ export function setupTrack(
     playingSlot?: number;
     skipSlots?: number[];
     nested?: boolean;
+    onReturn?: boolean;
   } = {},
-): void {
+): RegisteredMockObject {
   const { automation = [], playingSlot = -1, skipSlots = [] } = options;
+  const trackPath = options.onReturn
+    ? livePath.returnTrack(0)
+    : livePath.track(0);
   const device = options.nested
-    ? livePath.track(0).device(0).chain(1).device(0)
-    : livePath.track(0).device(0);
+    ? trackPath.device(0).chain(1).device(0)
+    : trackPath.device(0);
 
-  registerMockObject("track0", {
-    path: String(livePath.track(0)),
+  const track = registerMockObject("track0", {
+    path: String(trackPath),
     type: "Track",
     properties: {
       playing_slot_index: playingSlot,
@@ -78,18 +83,19 @@ export function setupTrack(
       devices: ["id", "device-123"],
     },
   });
+
   registerMockObject("cs0", {
-    path: String(livePath.track(0).clipSlot(0)),
+    path: String(trackPath.clipSlot(0)),
     properties: { has_clip: 1 },
   });
   registerMockObject("cs1", {
-    path: String(livePath.track(0).clipSlot(1)),
+    path: String(trackPath.clipSlot(1)),
     properties: { has_clip: 0 },
   });
 
   if (options.nested) {
     registerMockObject("rack", {
-      path: String(livePath.track(0).device(0)),
+      path: String(trackPath.device(0)),
       type: "RackDevice",
       properties: {
         can_have_chains: 1,
@@ -97,7 +103,7 @@ export function setupTrack(
       },
     });
     registerMockObject("chain1", {
-      path: String(livePath.track(0).device(0).chain(1)),
+      path: String(trackPath.device(0).chain(1)),
       type: "Chain",
       properties: { devices: ["id", "device-123"] },
     });
@@ -134,6 +140,8 @@ export function setupTrack(
   }
 
   mockNonExistentObjects();
+
+  return track;
 }
 
 /**

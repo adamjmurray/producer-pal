@@ -28,10 +28,6 @@ export const ENVELOPE_CLIP_ONLY_TO_RETURN_SLOT =
 export const RETURN_SLOT_ONLY_TAKES_ENVELOPE_CLIPS =
   "a return-track slot only takes an envelope clip";
 
-/** Why `envelopes` can't be written to an envelope clip yet. */
-export const ENVELOPES_ON_RETURN_CLIPS_NOT_YET =
-  "return-track clips can't take envelopes yet";
-
 /**
  * Whether this Live has return-track clips. The version is read once a request.
  * @returns True on Live 13 and later

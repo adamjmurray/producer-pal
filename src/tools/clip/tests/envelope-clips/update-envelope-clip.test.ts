@@ -114,18 +114,6 @@ describe("update-clip - envelope clips", () => {
       expect(noteOrAudioTouches(world)).toStrictEqual([]);
     });
 
-    it("keeps envelopes out for now, with its own reason", async () => {
-      const result = (await updateClip({
-        ...base,
-        envelopes: "pan: 1|1 0.5",
-      })) as unknown as Entry;
-
-      expect(result.detail).toBe(
-        "envelopes ignored: return-track clips can't take envelopes yet",
-      );
-      expect(written(world)).toStrictEqual(["name"]);
-    });
-
     it("says each one on its own when several are sent", async () => {
       const result = (await updateClip({
         ...base,

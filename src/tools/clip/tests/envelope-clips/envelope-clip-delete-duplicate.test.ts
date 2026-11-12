@@ -129,6 +129,24 @@ describe("ppal-duplicate - envelope clips", () => {
     },
   );
 
+  it("copies a clip with envelopes by Live's own duplicate alone, with no automation work", async () => {
+    const result = (await duplicate({
+      type: "clip",
+      id: "with-env",
+      toPath: "rt0/s2",
+    })) as Entry;
+
+    expect(result).toStrictEqual({ id: "copy-1", path: "rt0/s2" });
+    // Live's copy carries the envelopes, so nothing is stamped or written.
+    expect(world.slots[1]?.[0]?.call.mock.calls).toStrictEqual([
+      ["duplicate_clip_to", "id r0s2"],
+    ]);
+    expect(world.withEnv.call).not.toHaveBeenCalled();
+    expect(world.returnTracks.flatMap((t) => t.call.mock.calls)).toStrictEqual(
+      [],
+    );
+  });
+
   it("names and colors the copies", async () => {
     const result = (await duplicate({
       type: "clip",

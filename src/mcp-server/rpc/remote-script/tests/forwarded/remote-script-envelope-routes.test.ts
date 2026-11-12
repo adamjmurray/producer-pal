@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from "vitest";
+import { differentBuildReason } from "#src/tools/shared/remote-script/outdated-remote-script.ts";
 import { ENVELOPE_ROUTES } from "#src/tools/clip/envelopes/remote-script-envelope-contract.ts";
 import { dispatchNodeRoute } from "../../../../tests/config-dir-test-helpers.ts";
 import { registerRemoteScriptEnvelopeRoutes } from "../../forwarded/remote-script-envelope-routes.ts";
@@ -110,6 +111,48 @@ describe("remoteScript.envelope failures", () => {
     expect(
       await dispatchNodeRoute(ENVELOPE_ROUTES.read, { track: "t0", slot: 2 }),
     ).toStrictEqual({ success: true, result: OUTDATED_ANSWER });
+  });
+
+  describe("a script from before return-track clips", () => {
+    const refusal = {
+      status: 400,
+      body: {
+        error:
+          "track must be t0, t1... (return and master tracks have no clips)",
+      },
+    };
+
+    it.each(["list", "read"] as const)(
+      "is told to update on %s, whatever its version",
+      async (route) => {
+        await answerWith(refusal);
+
+        expect(
+          await dispatchNodeRoute(ENVELOPE_ROUTES[route], {
+            track: "rt1",
+            slot: 0,
+          }),
+        ).toStrictEqual({
+          success: true,
+          result: {
+            available: false,
+            outdated: differentBuildReason(null, "device", true),
+            outdatedWithoutManage: differentBuildReason(null, "device", false),
+          },
+        });
+      },
+    );
+
+    it("still gets the main track refused in its own words", async () => {
+      await answerWith(refusal);
+
+      expect(
+        await dispatchNodeRoute(ENVELOPE_ROUTES.list, { track: "mt", slot: 0 }),
+      ).toStrictEqual({
+        success: true,
+        result: { available: true, error: refusal.body.error },
+      });
+    });
   });
 
   it("says a dropped connection is not a timeout, and that a write may have landed", async () => {

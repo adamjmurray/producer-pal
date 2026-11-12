@@ -7,11 +7,16 @@
 // Producer Pal remote script can, over a round trip per envelope.
 
 import { formatEnvelopeNotation } from "#src/notation/barbeat/envelope/envelope-notation.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   ARRANGEMENT_CLIP_NOTE,
   envelopeRoute,
 } from "#src/tools/clip/envelopes/envelope-route.ts";
+import {
+  type EnvelopeTrack,
+  envelopeSlotOf,
+  trackObject,
+  trackText,
+} from "#src/tools/clip/envelopes/envelope-track.ts";
 import {
   ENVELOPE_ROUTES,
   type EnvelopeListResult,
@@ -40,10 +45,6 @@ const SEND_PARAMETER = /^send(\d+)$/;
 /** What a clip's envelopes say when it holds ones Producer Pal can't see. */
 const UNREADABLE_ENVELOPES =
   "the clip has envelopes Producer Pal can't read (modulation, clip-level ones like Gain, or MIDI CC)";
-
-/** What a return-track clip's envelopes say until they can be read. */
-const RETURN_CLIP_ENVELOPES =
-  "envelopes on return-track clips can't be read yet";
 
 /** The note on every envelope of an unwarped audio clip. */
 const UNWARPED_ENVELOPE_NOTE =
@@ -91,18 +92,14 @@ export async function clipEnvelopes(
     return ARRANGEMENT_CLIP_NOTE;
   }
 
-  if (clip.returnClipSlotIndex != null) {
-    return RETURN_CLIP_ENVELOPES;
-  }
+  const placed = envelopeSlotOf(clip);
 
-  const trackIndex = clip.trackIndex;
-  const slot = clip.sceneIndex;
-
-  if (trackIndex == null || slot == null) {
+  if (placed == null) {
     return "only a clip in a session clip slot can report its automation";
   }
 
-  const target = { track: `t${String(trackIndex)}`, slot };
+  const { track, slot } = placed;
+  const target = { track: trackText(track), slot };
   const listed = await envelopeRoute<EnvelopeListResult>(
     ENVELOPE_ROUTES.list,
     target,
@@ -131,7 +128,7 @@ export async function clipEnvelopes(
   let stalledReason: string | undefined;
 
   for (const entry of listed.result.envelopes) {
-    const identity = envelopeIdentity(trackIndex, entry, wrappers);
+    const identity = envelopeIdentity(track, entry, wrappers);
 
     if (stalledReason != null) {
       envelopes.push(
@@ -195,29 +192,29 @@ function parameterTarget(entry: ListedEnvelope): {
 /**
  * Name one listed envelope's parameter on a result entry. A hosted plug-in's
  * param is named as the plug-in has it, with the slot that carries it.
- * @param trackIndex - The clip's track, which spells the device path
+ * @param track - The clip's track, which spells the device path
  * @param entry - What the list route said about the parameter
  * @param wrappers - What this read has learned about each device's slots
  * @returns The parameter, id, device and slot the entry names it by
  */
 function envelopeIdentity(
-  trackIndex: number,
+  track: EnvelopeTrack,
   entry: ListedEnvelope,
   wrappers: Map<string, SlotMap | null>,
 ): Pick<ClipEnvelope, "parameter" | "id" | "device" | "slot"> {
-  const hosted = hostedIdentity(trackIndex, entry, wrappers);
+  const hosted = hostedIdentity(track, entry, wrappers);
 
   if (hosted != null) {
     return hosted;
   }
 
-  const id = parameterId(trackIndex, entry);
+  const id = parameterId(track, entry);
 
   return {
     parameter: entry.parameter.name,
     ...(id != null && { id }),
     ...(entry.device != null && {
-      device: `t${String(trackIndex)}/${entry.device}`,
+      device: `${trackText(track)}/${entry.device}`,
     }),
   };
 }
@@ -225,14 +222,14 @@ function envelopeIdentity(
 /**
  * Name an envelope on a wrapper's automation slot by the plug-in param the slot
  * drives, when it drives one.
- * @param trackIndex - The clip's track, which spells the device path
+ * @param track - The clip's track, which spells the device path
  * @param entry - What the list route said about the parameter
  * @param wrappers - What this read has learned about each device's slots
  * @returns The plug-in param's name, an id that targets it, and the slot; null
  *   for any other parameter, and for a slot that drives nothing
  */
 function hostedIdentity(
-  trackIndex: number,
+  track: EnvelopeTrack,
   entry: ListedEnvelope,
   wrappers: Map<string, SlotMap | null>,
 ): Pick<ClipEnvelope, "parameter" | "id" | "slot"> | null {
@@ -243,7 +240,7 @@ function hostedIdentity(
   }
 
   if (!wrappers.has(entry.device)) {
-    wrappers.set(entry.device, slotsOf(trackIndex, entry.device));
+    wrappers.set(entry.device, slotsOf(track, entry.device));
   }
 
   const driven = wrappers.get(entry.device)?.mapped.get(slot);
@@ -254,19 +251,19 @@ function hostedIdentity(
     ? null
     : {
         parameter: driven.name,
-        id: `t${String(trackIndex)}/${entry.device}/${hostedParamId(driven.index)}`,
+        id: `${trackText(track)}/${entry.device}/${hostedParamId(driven.index)}`,
         slot: slotName(slot),
       };
 }
 
 /**
- * @param trackIndex - The clip's track
+ * @param track - The clip's track
  * @param device - The remote script's device path
  * @returns What the device's slots drive, or null when it isn't a hosted
  *   plug-in or can't say
  */
-function slotsOf(trackIndex: number, device: string): SlotMap | null {
-  const wrapper = deviceAt(LiveAPI.from(livePath.track(trackIndex)), device);
+function slotsOf(track: EnvelopeTrack, device: string): SlotMap | null {
+  const wrapper = deviceAt(trackObject(track), device);
 
   if (wrapper == null || detectHostedPlugin(wrapper) == null) {
     return null;
@@ -334,16 +331,19 @@ function envelopeEntry(
 /**
  * The id of the Live parameter an envelope automates, so a caller can address
  * it the way every other tool result does.
- * @param trackIndex - The clip's track
+ * @param track - The clip's track
  * @param entry - One envelope from the list route
  * @returns The parameter's id, or null when nothing is at that address
  */
-function parameterId(trackIndex: number, entry: ListedEnvelope): string | null {
-  const track = LiveAPI.from(livePath.track(trackIndex));
+function parameterId(
+  track: EnvelopeTrack,
+  entry: ListedEnvelope,
+): string | null {
+  const object = trackObject(track);
   const parameter =
     entry.device == null
-      ? mixerParameter(track, entry.parameter_name)
-      : deviceParameter(track, entry.device, entry.parameter_index ?? 0);
+      ? mixerParameter(object, entry.parameter_name)
+      : deviceParameter(object, entry.device, entry.parameter_index ?? 0);
 
   return parameter != null && parameter.exists() ? parameter.id : null;
 }

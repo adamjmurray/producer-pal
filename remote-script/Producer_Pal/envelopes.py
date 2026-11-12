@@ -6,7 +6,8 @@
 """Clip automation envelopes.
 
 Max for Live's LOM can't reach clip envelopes; Live's Python API can, for
-Session clips only. Arrangement clips raise on write and read as empty, so a
+Session clips only (a regular track's, or a Live 13 return track's envelope
+clip, addressed `rt0`). Arrangement clips raise on write and read as empty, so a
 Session clip is the only way in - duplicate it to the Arrangement afterwards.
 
 Only automation on track and device parameters is reachable: modulation,
@@ -26,7 +27,7 @@ seconds), not raw. Times are beats (quarter notes) from the clip start.
 import math
 import re
 
-from .clip_address import clip_in_track, regular_track, whole_number
+from .clip_address import clip_in_track, clip_track, whole_number
 from .errors import RouteError
 
 MAX_EVENTS = 1000
@@ -41,7 +42,7 @@ STRAIGHT = (0.5, 0.5, 0.5, 0.5)
 
 def list_envelopes(bridge, params):
     """Every parameter this clip automates, with its event count."""
-    track = regular_track(bridge.song, params.get("track"))
+    track = clip_track(bridge.song, params.get("track"))
     clip = clip_in_track(track, params)
     out = [
         dict(
@@ -56,7 +57,7 @@ def list_envelopes(bridge, params):
 
 def read(bridge, params):
     """One envelope's events between `from` and `to` (beats), up to `limit`."""
-    track = regular_track(bridge.song, params.get("track"))
+    track = clip_track(bridge.song, params.get("track"))
     param = _parameter(track, params)
     clip = clip_in_track(track, params)
     env = clip.automation_envelope(param)
@@ -98,7 +99,7 @@ def write(bridge, params):
     unless the next has `jump`, which holds until its time and then jumps. A
     point may carry `coefficients`: the curve of the segment it starts."""
     song = bridge.song
-    track = regular_track(song, params.get("track"))
+    track = clip_track(song, params.get("track"))
     param = _parameter(track, params)
     clip = clip_in_track(track, params)
     if not param.is_enabled:
@@ -252,7 +253,7 @@ def clear(bridge, params):
     (`cleared`) and whether envelopes are still on the clip (`remaining`):
     modulation, clip-level and MIDI CC envelopes survive it.
     """
-    track = regular_track(bridge.song, params.get("track"))
+    track = clip_track(bridge.song, params.get("track"))
     clip = clip_in_track(track, params)
     if "parameter" not in params and "device" not in params:
         removed = any(True for _ in _automated(track, clip))

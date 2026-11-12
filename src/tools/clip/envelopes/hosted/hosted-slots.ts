@@ -10,7 +10,6 @@
 // a call learns about a wrapper is kept for the rest of the call, so each
 // wrapper is asked once, however many lines name it.
 
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { followsArrangement } from "#src/tools/shared/arrangement/tracks/follows-arrangement.ts";
 import {
   type MappedSlot,
@@ -22,6 +21,11 @@ import {
   type SlotParameter,
 } from "#src/tools/shared/device/helpers/params/hosted-automation-slots.ts";
 import { envelopeRoute, type RouteOutcome } from "../envelope-route.ts";
+import {
+  type EnvelopeTrack,
+  trackObject,
+  trackText,
+} from "../envelope-track.ts";
 import { type EnvelopeTarget } from "../envelope-targets.ts";
 import {
   ENVELOPE_ROUTES,
@@ -31,7 +35,7 @@ import { type HostedTarget } from "./hosted-envelope-target.ts";
 
 /** What the call needs to look at the track's clips. */
 export interface HostedSlotContext {
-  trackIndex: number;
+  track: EnvelopeTrack;
   deadline: number | null | undefined;
   manage: boolean;
 }
@@ -365,7 +369,7 @@ async function reclaimable(
   wrapper: WrapperSlots,
   context: HostedSlotContext,
 ): Promise<MappedSlot | undefined> {
-  if (!followsArrangement(LiveAPI.from(livePath.track(context.trackIndex)))) {
+  if (!followsArrangement(trackObject(context.track))) {
     return undefined;
   }
 
@@ -420,7 +424,7 @@ async function automatedParams(
   where: WrapperSlots["where"],
   context: HostedSlotContext,
 ): Promise<Set<number> | LookupFailure> {
-  const track = LiveAPI.from(livePath.track(context.trackIndex));
+  const track = trackObject(context.track);
   const found = new Set<number>();
 
   for (const [slot, clipSlot] of track.getChildren("clip_slots").entries()) {
@@ -430,7 +434,7 @@ async function automatedParams(
 
     const listed = await envelopeRoute<EnvelopeListResult>(
       ENVELOPE_ROUTES.list,
-      { track: `t${String(context.trackIndex)}`, slot },
+      { track: trackText(context.track), slot },
       context.deadline,
       context.manage,
     );
@@ -462,7 +466,7 @@ function bankFull(wrapper: WrapperSlots, context: HostedSlotContext): string {
   const { devicePath } = wrapper.where;
   const used = `all ${wrapper.slots.count} automation slots of ${devicePath} are in use`;
 
-  if (!followsArrangement(LiveAPI.from(livePath.track(context.trackIndex)))) {
+  if (!followsArrangement(trackObject(context.track))) {
     return `${used}, and which have automation can't be told while the track plays from Session; stop its session clips and try again`;
   }
 

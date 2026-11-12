@@ -26,7 +26,7 @@ A write's entry says only what you don't already know: a value that landed as yo
 
 A track's \`type\` says \`midi\` or \`audio\`, nothing else. It's absent on a return track and on the main track, whose \`path\` is what identifies them.
 
-On Live 13 a return track has a clip slot per scene (\`rt0/s1\`), holding envelope clips (\`type: "envelope"\`: automation only, no notes or sample). They can be renamed, recolored, looped, launched and deleted; they move and copy only to another return slot. No notes, and you can't create one.
+On Live 13 a return track has a clip slot per scene (\`rt0/s1\`), holding envelope clips (\`type: "envelope"\`: automation only, no notes or sample). They can be renamed, recolored, looped, launched and deleted; they move and copy only to another return slot. Their automation reads and writes like any session clip's (\`envelopes\`, on the return track's own mixer and devices). No notes, and you can't create one.
 
 The \`+\` spellings name a place that doesn't exist yet, for creating: \`t+\` appends a track, \`rt+\` adds a return track, \`s+\` appends a scene. On create, \`t2\` inserts at 2 instead. Return tracks always go on the end, so \`rt2\` reads an existing one but is not a place you can create at.
 
