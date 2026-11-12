@@ -12,7 +12,7 @@ import {
   registerDeviceWithParams,
   registerMockObject,
   updateDevice,
-} from "../update-device-test-helpers.ts";
+} from "../../update-device-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // A non-linear dB param, like Saturator's Drive: raw 0–1 maps to -36..+36 dB

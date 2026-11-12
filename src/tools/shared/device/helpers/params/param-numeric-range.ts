@@ -10,7 +10,7 @@ import { parseLabel, strForValue } from "./param-label-parsing.ts";
 // first probe normally brackets it and nothing more is needed.
 const TRIM_PROBES = 20;
 
-interface NumericPoint {
+export interface NumericPoint {
   raw: number;
   value: number;
   label: string;
@@ -241,7 +241,7 @@ function trimSentinel(
  * @param raw - Raw value to query
  * @returns The point, or null if the label isn't a number
  */
-function pointAt(param: LiveAPI, raw: number): NumericPoint | null {
+export function pointAt(param: LiveAPI, raw: number): NumericPoint | null {
   const label = strForValue(param, raw);
   const value = numericLabel(label);
 

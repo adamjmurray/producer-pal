@@ -6,6 +6,7 @@
 import {
   type ParamNumericRange,
   displayAt,
+  pointAt,
 } from "#src/tools/shared/device/helpers/params/param-numeric-range.ts";
 import { type ParamStep } from "#src/tools/shared/device/helpers/param-writing.ts";
 
@@ -53,12 +54,10 @@ export function findRawValueForDisplay(
       : null;
 
   // Linear mapping: display values match raw values — set directly
-  const span = Math.abs(rawMax - rawMin);
-  const tolerance = span > 0 ? 0.01 * span : 0.01;
-
   if (
-    Math.abs(minValue - rawMin) < tolerance &&
-    Math.abs(maxValue - rawMax) < tolerance
+    Math.abs(minValue - rawMin) < tolerance(range) &&
+    Math.abs(maxValue - rawMax) < tolerance(range) &&
+    !curvesBetweenEnds(param, range)
   ) {
     return { value: clamp(targetDisplay, rawMin, rawMax), ...clamped };
   }
@@ -78,6 +77,56 @@ export function findRawValueForDisplay(
     ),
     ...clamped,
   };
+}
+
+/**
+ * How far a display value may sit from the raw value and still count as equal.
+ * @param range - The parameter's numeric display range
+ * @returns 1% of the raw span
+ */
+function tolerance(range: ParamNumericRange): number {
+  const span = Math.abs(range.rawMax - range.rawMin);
+
+  return span > 0 ? 0.01 * span : 0.01;
+}
+
+/**
+ * Whether the display strays from the raw value at the middle of the range,
+ * though the ends match (Looplet's Volume runs -70..6 raw and reads -inf..6 dB,
+ * but raw -12 reads 0.1 dB). A middle label that isn't a number counts as a
+ * match: keep the shortcut rather than search on a label we can't read. A label
+ * rounded to whole units may sit half a unit off a linear raw value, so allow
+ * that too.
+ * @param param - LiveAPI parameter object
+ * @param range - The parameter's numeric display range
+ * @returns True when the middle point is off the raw value
+ */
+function curvesBetweenEnds(param: LiveAPI, range: ParamNumericRange): boolean {
+  const { rawMin, rawMax } = range;
+
+  if (rawMin === rawMax) {
+    return false;
+  }
+
+  const raw = (rawMin + rawMax) / 2;
+  const point = pointAt(param, raw);
+
+  return (
+    point != null &&
+    Math.abs(point.value - raw) >
+      tolerance(range) + labelRounding(point.label) + 1e-9
+  );
+}
+
+/**
+ * Half the smallest step a label's own decimals can show.
+ * @param label - Display label
+ * @returns 0.5 for "12 dB", 0.05 for "0.1 dB"
+ */
+function labelRounding(label: string): number {
+  const decimals = label.match(/\d+(?:\.(\d+))?/)?.[1]?.length ?? 0;
+
+  return 0.5 * 10 ** -decimals;
 }
 
 /**
